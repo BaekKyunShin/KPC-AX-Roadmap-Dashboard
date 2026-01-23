@@ -1,0 +1,221 @@
+import { describe, it, expect } from 'vitest';
+import {
+  caseStatusSchema,
+  createCaseSchema,
+  createSelfAssessmentSchema,
+  assignConsultantSchema,
+  reassignConsultantSchema,
+} from './case';
+
+describe('caseStatusSchema', () => {
+  const validStatuses = [
+    'NEW',
+    'DIAGNOSED',
+    'MATCH_RECOMMENDED',
+    'ASSIGNED',
+    'INTERVIEWED',
+    'ROADMAP_DRAFTED',
+    'FINALIZED',
+  ];
+
+  it('should accept valid case statuses', () => {
+    validStatuses.forEach((status) => {
+      expect(caseStatusSchema.safeParse(status).success).toBe(true);
+    });
+  });
+
+  it('should reject invalid statuses', () => {
+    expect(caseStatusSchema.safeParse('INVALID').success).toBe(false);
+    expect(caseStatusSchema.safeParse('new').success).toBe(false);
+    expect(caseStatusSchema.safeParse('').success).toBe(false);
+  });
+});
+
+describe('createCaseSchema', () => {
+  const validCase = {
+    company_name: '테스트 기업',
+    industry: '제조업',
+    company_size: '51-100' as const,
+    contact_name: '홍길동',
+    contact_email: 'hong@test.com',
+  };
+
+  it('should accept valid case data', () => {
+    const result = createCaseSchema.safeParse(validCase);
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept case with optional fields', () => {
+    const result = createCaseSchema.safeParse({
+      ...validCase,
+      contact_phone: '010-1234-5678',
+      company_address: '서울시 강남구',
+      customer_comment: '추가 요청사항입니다.',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject short company name', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, company_name: '테' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject empty industry', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, industry: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid company size', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, company_size: '10000+' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept all valid company sizes', () => {
+    const sizes = ['1-10', '11-50', '51-100', '101-500', '500+'] as const;
+    sizes.forEach((size) => {
+      const result = createCaseSchema.safeParse({ ...validCase, company_size: size });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  it('should reject invalid email', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, contact_email: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject short contact name', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, contact_name: '홍' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('createSelfAssessmentSchema', () => {
+  const validAssessment = {
+    case_id: '123e4567-e89b-12d3-a456-426614174000',
+    template_id: '123e4567-e89b-12d3-a456-426614174001',
+    answers: [
+      { question_id: 'q1', answer_value: 3 },
+      { question_id: 'q2', answer_value: 4 },
+    ],
+  };
+
+  it('should accept valid self assessment', () => {
+    const result = createSelfAssessmentSchema.safeParse(validAssessment);
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept assessment with summary text', () => {
+    const result = createSelfAssessmentSchema.safeParse({
+      ...validAssessment,
+      summary_text: '진단 요약입니다.',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject invalid case_id UUID', () => {
+    const result = createSelfAssessmentSchema.safeParse({
+      ...validAssessment,
+      case_id: 'invalid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid template_id UUID', () => {
+    const result = createSelfAssessmentSchema.safeParse({
+      ...validAssessment,
+      template_id: 'invalid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject empty answers array', () => {
+    const result = createSelfAssessmentSchema.safeParse({
+      ...validAssessment,
+      answers: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept string answer values', () => {
+    const result = createSelfAssessmentSchema.safeParse({
+      ...validAssessment,
+      answers: [{ question_id: 'q1', answer_value: 'text answer' }],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('assignConsultantSchema', () => {
+  const validAssignment = {
+    case_id: '123e4567-e89b-12d3-a456-426614174000',
+    consultant_id: '123e4567-e89b-12d3-a456-426614174001',
+    assignment_reason: '제조업 전문성과 교육 경험이 풍부하여 배정합니다.',
+  };
+
+  it('should accept valid assignment', () => {
+    const result = assignConsultantSchema.safeParse(validAssignment);
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject invalid case_id', () => {
+    const result = assignConsultantSchema.safeParse({
+      ...validAssignment,
+      case_id: 'invalid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid consultant_id', () => {
+    const result = assignConsultantSchema.safeParse({
+      ...validAssignment,
+      consultant_id: 'invalid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject short assignment reason', () => {
+    const result = assignConsultantSchema.safeParse({
+      ...validAssignment,
+      assignment_reason: '짧음',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject assignment reason over 500 characters', () => {
+    const result = assignConsultantSchema.safeParse({
+      ...validAssignment,
+      assignment_reason: 'a'.repeat(501),
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('reassignConsultantSchema', () => {
+  const validReassignment = {
+    case_id: '123e4567-e89b-12d3-a456-426614174000',
+    new_consultant_id: '123e4567-e89b-12d3-a456-426614174002',
+    unassignment_reason: '기존 컨설턴트 일정 충돌로 인한 변경입니다.',
+    assignment_reason: '새로운 컨설턴트는 해당 업종 경험이 풍부합니다.',
+  };
+
+  it('should accept valid reassignment', () => {
+    const result = reassignConsultantSchema.safeParse(validReassignment);
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject short unassignment reason', () => {
+    const result = reassignConsultantSchema.safeParse({
+      ...validReassignment,
+      unassignment_reason: '짧음',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject short assignment reason', () => {
+    const result = reassignConsultantSchema.safeParse({
+      ...validReassignment,
+      assignment_reason: '짧음',
+    });
+    expect(result.success).toBe(false);
+  });
+});

@@ -1,27 +1,45 @@
 {
-  "name": "temp-roadmap",
+  "name": "ai-roadmap-dashboard",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.14",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "next": "16.1.4",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.4.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.8"
   }
 }
