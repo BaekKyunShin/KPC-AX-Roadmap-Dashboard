@@ -37,7 +37,7 @@ export default async function OPSCasesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">케이스 관리</h1>
-            <p className="text-sm text-muted-foreground">기업 케이스를 생성하고 관리합니다</p>
+            <p className="text-base text-muted-foreground">기업 케이스를 생성하고 관리합니다</p>
           </div>
         </div>
         <Button asChild>

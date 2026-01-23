@@ -122,8 +122,8 @@ export default function Navigation({ user }: NavigationProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-900">{user.name}</span>
-                <span className="text-xs text-muted-foreground">{user.email}</span>
+                <span className="text-base font-medium text-gray-900">{user.name}</span>
+                <span className="text-sm text-muted-foreground">{user.email}</span>
               </div>
               {getRoleBadge()}
             </div>
@@ -163,7 +163,7 @@ export default function Navigation({ user }: NavigationProps) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -189,7 +189,7 @@ export default function Navigation({ user }: NavigationProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <div className="font-medium text-gray-900">{user.name}</div>
+                <div className="text-base font-medium text-gray-900">{user.name}</div>
                 <div className="text-sm text-muted-foreground">{user.email}</div>
               </div>
               {getRoleBadge()}

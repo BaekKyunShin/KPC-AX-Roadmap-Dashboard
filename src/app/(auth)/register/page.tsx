@@ -192,7 +192,7 @@ export default function RegisterPage() {
               >
                 {step > 1 ? <CheckCircle2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
               </div>
-              <span className={`text-sm font-medium ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className={`text-base font-medium ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
                 기본 정보
               </span>
             </div>
@@ -209,7 +209,7 @@ export default function RegisterPage() {
               >
                 <Briefcase className="h-5 w-5" />
               </div>
-              <span className={`text-sm font-medium ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+              <span className={`text-base font-medium ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
                 프로필 등록
               </span>
             </div>
@@ -290,7 +290,7 @@ export default function RegisterPage() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">8자 이상, 영문과 숫자 포함</p>
+                  <p className="text-sm text-muted-foreground">8자 이상, 영문과 숫자 포함</p>
                 </div>
 
                 <div className="space-y-2">
@@ -322,10 +322,10 @@ export default function RegisterPage() {
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
                   <Checkbox id="agreeToTerms" name="agreeToTerms" required />
                   <div className="space-y-1">
-                    <Label htmlFor="agreeToTerms" className="text-sm font-medium cursor-pointer">
+                    <Label htmlFor="agreeToTerms" className="text-base font-medium cursor-pointer">
                       개인정보 수집·이용에 동의합니다. (필수)
                     </Label>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       수집항목: 이메일, 이름, 연락처 | 목적: 서비스 제공 및 회원 관리 | 보관기간: 회원
                       탈퇴 시까지
                     </p>
@@ -346,7 +346,7 @@ export default function RegisterPage() {
                   )}
                 </Button>
 
-                <div className="text-center text-sm pt-2">
+                <div className="text-center text-base pt-2">
                   <span className="text-muted-foreground">이미 계정이 있으신가요?</span>{' '}
                   <Link
                     href="/login"
@@ -579,7 +579,7 @@ export default function RegisterPage() {
         )}
 
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-muted-foreground">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           © 2024 KPC 한국생산성본부. All rights reserved.
         </p>
       </div>

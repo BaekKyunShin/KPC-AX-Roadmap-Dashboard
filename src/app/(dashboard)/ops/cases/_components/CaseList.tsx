@@ -203,7 +203,7 @@ export default function CaseList() {
       </Card>
 
       {/* 결과 요약 */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-base text-muted-foreground">
         <span>총 {total.toLocaleString()}개의 케이스</span>
         {totalPages > 0 && (
           <span>
@@ -261,7 +261,7 @@ export default function CaseList() {
                               <div className="font-medium text-gray-900">
                                 {caseItem.company_name}
                               </div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-sm text-muted-foreground">
                                 {caseItem.contact_email}
                               </div>
                             </div>
@@ -303,7 +303,7 @@ export default function CaseList() {
               {/* 페이지네이션 */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-base text-muted-foreground">
                     {(page - 1) * ITEMS_PER_PAGE + 1}-
                     {Math.min(page * ITEMS_PER_PAGE, total)} / {total}개
                   </div>

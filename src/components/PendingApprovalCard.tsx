@@ -61,7 +61,7 @@ export default function PendingApprovalCard({
               안녕하세요, <span className="font-semibold text-amber-900">{userName}</span>
               님!
             </p>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-base text-gray-600">
               회원가입이 완료되었습니다. 관리자가 프로필을 검토할 예정이며, 승인이 완료되면 AI 훈련
               로드맵 생성 기능을 이용하실 수 있습니다.
             </p>
@@ -69,7 +69,7 @@ export default function PendingApprovalCard({
 
           {/* 진행 단계 */}
           <div className="py-2">
-            <h4 className="mb-4 text-sm font-medium text-gray-700">진행 상태</h4>
+            <h4 className="mb-4 text-base font-medium text-gray-700">진행 상태</h4>
             <div className="flex items-center justify-between">
               {steps.map((step, index) => {
                 const Icon = step.icon;
@@ -91,7 +91,7 @@ export default function PendingApprovalCard({
                         <Icon className="h-5 w-5" />
                       </div>
                       <span
-                        className={`mt-2 text-xs font-medium ${
+                        className={`mt-2 text-sm font-medium ${
                           isCompleted
                             ? 'text-green-600'
                             : isCurrent
@@ -133,12 +133,12 @@ export default function PendingApprovalCard({
               <HelpCircle className="h-4 w-4 text-blue-600" />
             </div>
             <div className="flex-1">
-              <h4 className="text-sm font-medium text-gray-900">도움이 필요하신가요?</h4>
-              <p className="mt-1 text-sm text-gray-500">
+              <h4 className="text-base font-medium text-gray-900">도움이 필요하신가요?</h4>
+              <p className="mt-1 text-base text-gray-500">
                 승인 관련 문의가 있는 경우, 운영 담당자에게 연락해 주세요.
               </p>
               <Separator className="my-3" />
-              <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex flex-wrap gap-4 text-base">
                 <a
                   href="mailto:ykkim@kpc.or.kr"
                   className="flex items-center gap-1 text-blue-600 hover:underline"

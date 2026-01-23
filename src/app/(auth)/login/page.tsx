@@ -141,7 +141,7 @@ export default function LoginPage() {
               <LoginForm />
             </Suspense>
 
-            <div className="mt-6 text-center text-sm">
+            <div className="mt-6 text-center text-base">
               <span className="text-muted-foreground">계정이 없으신가요?</span>{' '}
               <Link
                 href="/register"
@@ -154,7 +154,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-muted-foreground">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           © 2024 KPC 한국생산성본부. All rights reserved.
         </p>
       </div>
