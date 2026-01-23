@@ -4,6 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface UserWithProfile extends User {
   consultant_profile: ConsultantProfile | null;
@@ -13,10 +21,30 @@ interface UserManagementTableProps {
   users: UserWithProfile[];
 }
 
+// 레벨 라벨 매핑
+const LEVEL_LABELS: Record<string, string> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
+// 코칭 방식 라벨 매핑
+const COACHING_LABELS: Record<string, string> = {
+  PBL: 'PBL',
+  WORKSHOP: '워크숍',
+  MENTORING: '멘토링',
+  LECTURE: '강의',
+  HYBRID: '혼합형',
+};
+
 export default function UserManagementTable({ users }: UserManagementTableProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<{
+    profile: ConsultantProfile;
+    userName: string;
+  } | null>(null);
 
   const handleAction = async (
     userId: string,
@@ -103,7 +131,17 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                 <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(user.status)}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {user.consultant_profile ? (
-                    <span className="text-sm text-green-600">등록됨</span>
+                    <button
+                      onClick={() =>
+                        setSelectedProfile({
+                          profile: user.consultant_profile!,
+                          userName: user.name,
+                        })
+                      }
+                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      프로필 보기
+                    </button>
                   ) : (
                     <span className="text-sm text-gray-400">미등록</span>
                   )}
@@ -152,6 +190,120 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
           </tbody>
         </table>
       </div>
+
+      {/* 프로필 상세 모달 */}
+      <Dialog open={!!selectedProfile} onOpenChange={() => setSelectedProfile(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedProfile?.userName} 컨설턴트 프로필</DialogTitle>
+            <DialogDescription>컨설턴트의 상세 프로필 정보입니다.</DialogDescription>
+          </DialogHeader>
+
+          {selectedProfile?.profile && (
+            <div className="space-y-6 mt-4">
+              {/* 기본 정보 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">경력 연수</h4>
+                  <p className="text-base font-semibold">
+                    {selectedProfile.profile.years_of_experience}년
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">프로필 등록일</h4>
+                  <p className="text-base">
+                    {new Date(selectedProfile.profile.created_at).toLocaleDateString('ko-KR')}
+                  </p>
+                </div>
+              </div>
+
+              {/* 전문분야 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">전문분야</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.profile.expertise_domains.map((domain) => (
+                    <Badge key={domain} variant="secondary">
+                      {domain}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* 가능 업종 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">가능 업종</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.profile.available_industries.map((industry) => (
+                    <Badge key={industry} variant="outline">
+                      {industry}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* 강의 가능 레벨 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">강의 가능 레벨</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.profile.teaching_levels.map((level) => (
+                    <Badge key={level} className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                      {LEVEL_LABELS[level] || level}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* 코칭 방식 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">코칭 방식</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.profile.coaching_methods.map((method) => (
+                    <Badge key={method} className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+                      {COACHING_LABELS[method] || method}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* 역량 태그 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">역량 태그</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProfile.profile.skill_tags.map((tag) => (
+                    <Badge key={tag} className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* 대표 수행경험 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">대표 수행경험/프로젝트</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                  {selectedProfile.profile.representative_experience}
+                </p>
+              </div>
+
+              {/* 포트폴리오 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">강의 포트폴리오</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                  {selectedProfile.profile.portfolio}
+                </p>
+              </div>
+
+              {/* 강점/제약 */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">강점/제약</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                  {selectedProfile.profile.strengths_constraints}
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

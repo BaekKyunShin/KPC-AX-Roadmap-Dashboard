@@ -84,7 +84,8 @@ export async function fetchConsultantCases(
     query = query.eq('status', status);
   }
 
-  const { data: cases, error } = await query.order('case_assignments.assigned_at', {
+  // Supabase에서는 관계 테이블의 컬럼으로 직접 정렬할 수 없으므로 created_at 사용
+  const { data: cases, error } = await query.order('created_at', {
     ascending: false,
   });
 

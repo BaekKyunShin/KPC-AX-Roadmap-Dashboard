@@ -202,39 +202,39 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
  */
 export async function saveConsultantProfile(formData: FormData): Promise<ActionResult> {
   try {
+    // 1. 현재 사용자 확인
     const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
 
-    // 현재 사용자 확인
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    if (userError || !authData?.user) {
       return {
         success: false,
         error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
       };
     }
 
-    // 폼 데이터 안전하게 파싱
-    let rawData;
-    try {
-      rawData = {
-        expertise_domains: JSON.parse(formData.get('expertise_domains') as string || '[]'),
-        available_industries: JSON.parse(formData.get('available_industries') as string || '[]'),
-        teaching_levels: JSON.parse(formData.get('teaching_levels') as string || '[]'),
-        coaching_methods: JSON.parse(formData.get('coaching_methods') as string || '[]'),
-        skill_tags: JSON.parse(formData.get('skill_tags') as string || '[]'),
-        years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
-        representative_experience: formData.get('representative_experience') as string || '',
-        portfolio: formData.get('portfolio') as string || '',
-        strengths_constraints: formData.get('strengths_constraints') as string || '',
-      };
-    } catch (parseError) {
-      return {
-        success: false,
-        error: '입력 데이터 형식이 올바르지 않습니다. 다시 시도해주세요.',
-      };
-    }
+    const userId = authData.user.id;
 
-    // 서버 검증
+    // 2. 폼 데이터 파싱
+    const expertiseDomainsStr = formData.get('expertise_domains') as string | null;
+    const availableIndustriesStr = formData.get('available_industries') as string | null;
+    const teachingLevelsStr = formData.get('teaching_levels') as string | null;
+    const coachingMethodsStr = formData.get('coaching_methods') as string | null;
+    const skillTagsStr = formData.get('skill_tags') as string | null;
+
+    const rawData = {
+      expertise_domains: expertiseDomainsStr ? JSON.parse(expertiseDomainsStr) : [],
+      available_industries: availableIndustriesStr ? JSON.parse(availableIndustriesStr) : [],
+      teaching_levels: teachingLevelsStr ? JSON.parse(teachingLevelsStr) : [],
+      coaching_methods: coachingMethodsStr ? JSON.parse(coachingMethodsStr) : [],
+      skill_tags: skillTagsStr ? JSON.parse(skillTagsStr) : [],
+      years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
+      representative_experience: (formData.get('representative_experience') as string) || '',
+      portfolio: (formData.get('portfolio') as string) || '',
+      strengths_constraints: (formData.get('strengths_constraints') as string) || '',
+    };
+
+    // 3. Zod 검증
     const validation = consultantProfileSchema.safeParse(rawData);
     if (!validation.success) {
       return {
@@ -243,24 +243,25 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
       };
     }
 
-    // admin 클라이언트로 프로필 저장 (RLS 우회)
-    let adminSupabase;
-    try {
-      adminSupabase = createAdminClient();
-    } catch {
-      return {
-        success: false,
-        error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
-      };
-    }
+    // 4. Admin 클라이언트로 프로필 삽입
+    const adminSupabase = createAdminClient();
 
-    const { error: insertError } = await adminSupabase.from('consultant_profiles').insert({
-      user_id: user.id,
-      ...validation.data,
-    });
+    const { error: insertError } = await adminSupabase
+      .from('consultant_profiles')
+      .insert({
+        user_id: userId,
+        expertise_domains: validation.data.expertise_domains,
+        available_industries: validation.data.available_industries,
+        teaching_levels: validation.data.teaching_levels,
+        coaching_methods: validation.data.coaching_methods,
+        skill_tags: validation.data.skill_tags,
+        years_of_experience: validation.data.years_of_experience,
+        representative_experience: validation.data.representative_experience,
+        portfolio: validation.data.portfolio,
+        strengths_constraints: validation.data.strengths_constraints,
+      });
 
     if (insertError) {
-      // 이미 프로필이 존재하는 경우
       if (insertError.code === '23505') {
         return {
           success: false,
@@ -273,25 +274,14 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
       };
     }
 
-    // 프로필 저장 성공 시 역할을 CONSULTANT_APPROVED로 업데이트
-    const { error: roleUpdateError } = await adminSupabase
-      .from('users')
-      .update({ role: 'CONSULTANT_APPROVED' })
-      .eq('id', user.id);
-
-    if (roleUpdateError) {
-      console.error('[Role Update Error]', roleUpdateError);
-      // 프로필은 저장되었으므로 성공으로 처리 (역할은 관리자가 수동 승인 가능)
-    }
-
     return {
       success: true,
     };
-  } catch (error) {
-    console.error('[saveConsultantProfile Error]', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
     return {
       success: false,
-      error: '프로필 저장 중 오류가 발생했습니다. 다시 시도해주세요.',
+      error: `프로필 저장 중 오류: ${errorMessage}`,
     };
   }
 }

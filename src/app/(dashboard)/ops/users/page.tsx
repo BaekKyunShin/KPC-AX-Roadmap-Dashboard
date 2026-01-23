@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import UserManagementTable from '@/components/ops/UserManagementTable';
 
 export default async function UsersPage() {
@@ -24,14 +25,38 @@ export default async function UsersPage() {
     redirect('/dashboard');
   }
 
-  // 사용자 목록 조회
-  const { data: users } = await supabase
+  // Admin 클라이언트 생성 (RLS 우회)
+  const adminSupabase = createAdminClient();
+
+  // 사용자 목록 조회 (admin 클라이언트로 RLS 우회)
+  const { data: usersData, error: usersError } = await adminSupabase
     .from('users')
-    .select(`
-      *,
-      consultant_profile:consultant_profiles(*)
-    `)
+    .select('*')
     .order('created_at', { ascending: false });
+
+  if (usersError) {
+    console.error('[Users Query Error]', usersError);
+  }
+
+  // 컨설턴트 프로필 목록 조회 (admin 클라이언트로 RLS 우회)
+  const { data: profilesData, error: profilesError } = await adminSupabase
+    .from('consultant_profiles')
+    .select('*');
+
+  if (profilesError) {
+    console.error('[Profiles Query Error]', profilesError);
+  }
+
+  // 프로필을 user_id로 매핑
+  const profileMap = new Map(
+    profilesData?.map((profile) => [profile.user_id, profile]) || []
+  );
+
+  // 사용자 데이터에 프로필 병합
+  const users = usersData?.map((user) => ({
+    ...user,
+    consultant_profile: profileMap.get(user.id) || null,
+  }));
 
   return (
     <div>

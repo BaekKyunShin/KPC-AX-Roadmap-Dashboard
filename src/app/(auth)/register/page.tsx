@@ -149,13 +149,18 @@ export default function RegisterPage() {
     formData.set('coaching_methods', JSON.stringify(coachingMethods));
     formData.set('skill_tags', JSON.stringify(skillTags));
 
-    const result = await saveConsultantProfile(formData);
+    try {
+      const result = await saveConsultantProfile(formData);
 
-    if (result.success) {
-      router.push('/dashboard');
-      router.refresh();
-    } else {
-      setError(result.error || '프로필 저장에 실패했습니다.');
+      if (result.success) {
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        setError(result.error || '프로필 저장에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('프로필 저장 오류:', err);
+      setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
 
     setIsLoading(false);

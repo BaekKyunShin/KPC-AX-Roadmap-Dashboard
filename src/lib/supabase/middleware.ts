@@ -27,6 +27,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Server Action 요청은 리다이렉트하지 않음
+  // Server Action은 POST 요청이며 Next-Action 헤더를 포함함
+  const isServerAction =
+    request.method === 'POST' &&
+    (request.headers.get('next-action') || request.headers.get('content-type')?.includes('multipart/form-data'));
+
+  if (isServerAction) {
+    return supabaseResponse;
+  }
+
   // 세션 갱신
   const {
     data: { user },
