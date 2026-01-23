@@ -5,16 +5,8 @@ import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import MatchingRecommendations from '@/components/ops/MatchingRecommendations';
 import RecalculateMatchingButton from '@/components/ops/RecalculateMatchingButton';
 import ReassignmentSection from '@/components/ops/ReassignmentSection';
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  NEW: { label: '신규', color: 'bg-gray-100 text-gray-800' },
-  DIAGNOSED: { label: '진단완료', color: 'bg-blue-100 text-blue-800' },
-  MATCH_RECOMMENDED: { label: '매칭추천', color: 'bg-purple-100 text-purple-800' },
-  ASSIGNED: { label: '배정완료', color: 'bg-green-100 text-green-800' },
-  INTERVIEWED: { label: '인터뷰완료', color: 'bg-yellow-100 text-yellow-800' },
-  ROADMAP_DRAFTED: { label: '로드맵초안', color: 'bg-orange-100 text-orange-800' },
-  FINALIZED: { label: '최종확정', color: 'bg-emerald-100 text-emerald-800' },
-};
+import { getCaseStatusBadge } from '@/lib/constants/status';
+import type { CaseStatus } from '@/types/database';
 
 export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -91,10 +83,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     .eq('case_id', id)
     .order('assigned_at', { ascending: false });
 
-  const statusInfo = STATUS_LABELS[caseData.status] || {
-    label: caseData.status,
-    color: 'bg-gray-100 text-gray-800',
-  };
+  const statusInfo = getCaseStatusBadge(caseData.status as CaseStatus);
 
   return (
     <div className="max-w-4xl mx-auto">

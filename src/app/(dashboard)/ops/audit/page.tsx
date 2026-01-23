@@ -73,6 +73,7 @@ export default function AuditLogPage() {
   }, [filters, selectedAction, selectedTargetType, selectedUser, startDate, endDate]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadLogs();
   }, [loadLogs]);
 
