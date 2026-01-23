@@ -711,7 +711,7 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          &copy; 2024 KPC 한국생산성본부. All rights reserved.
+          &copy; 2026 KPC 한국생산성본부 · Developed by Baek Kyun Shin
         </p>
       </div>
     </div>

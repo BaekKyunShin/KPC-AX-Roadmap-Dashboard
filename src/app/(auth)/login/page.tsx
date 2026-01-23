@@ -155,7 +155,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          © 2024 KPC 한국생산성본부. All rights reserved.
+          © 2026 KPC 한국생산성본부 · Developed by Baek Kyun Shin
         </p>
       </div>
     </div>
