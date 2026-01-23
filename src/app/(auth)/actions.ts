@@ -273,6 +273,17 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
       };
     }
 
+    // 프로필 저장 성공 시 역할을 CONSULTANT_APPROVED로 업데이트
+    const { error: roleUpdateError } = await adminSupabase
+      .from('users')
+      .update({ role: 'CONSULTANT_APPROVED' })
+      .eq('id', user.id);
+
+    if (roleUpdateError) {
+      console.error('[Role Update Error]', roleUpdateError);
+      // 프로필은 저장되었으므로 성공으로 처리 (역할은 관리자가 수동 승인 가능)
+    }
+
     return {
       success: true,
     };

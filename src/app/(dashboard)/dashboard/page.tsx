@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     case 'USER_PENDING':
       return (
         <div className="max-w-2xl mx-auto mt-8">
-          <PendingApprovalCard userName={profile.name} />
+          <PendingApprovalCard userName={profile.name} userEmail={profile.email} />
         </div>
       );
     default:

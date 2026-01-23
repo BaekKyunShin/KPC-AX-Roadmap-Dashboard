@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import CaseList from './_components/CaseList';
+import { Button } from '@/components/ui/button';
+import { Plus, FolderKanban } from 'lucide-react';
 
 export default async function OPSCasesPage() {
   const supabase = await createClient();
@@ -26,25 +28,27 @@ export default async function OPSCasesPage() {
   }
 
   return (
-    <div>
-      <div className="sm:flex sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">케이스 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">기업 케이스를 생성하고 관리합니다.</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+            <FolderKanban className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">케이스 관리</h1>
+            <p className="text-sm text-muted-foreground">기업 케이스를 생성하고 관리합니다</p>
+          </div>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <Link
-            href="/ops/cases/new"
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+        <Button asChild>
+          <Link href="/ops/cases/new">
+            <Plus className="mr-2 h-4 w-4" />
             새 케이스 생성
           </Link>
-        </div>
+        </Button>
       </div>
 
+      {/* Case List */}
       <CaseList />
     </div>
   );

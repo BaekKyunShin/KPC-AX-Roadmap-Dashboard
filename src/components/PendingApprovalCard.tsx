@@ -1,42 +1,163 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Clock,
+  CheckCircle2,
+  FileCheck,
+  Sparkles,
+  Mail,
+  Phone,
+  HelpCircle,
+} from 'lucide-react';
+
 interface PendingApprovalCardProps {
   userName: string;
+  userEmail?: string;
+  submittedAt?: string;
 }
 
-export default function PendingApprovalCard({ userName }: PendingApprovalCardProps) {
+// 진행 단계 정의
+const steps = [
+  { id: 1, label: '가입 완료', icon: CheckCircle2, status: 'completed' },
+  { id: 2, label: '프로필 검토', icon: FileCheck, status: 'current' },
+  { id: 3, label: '승인 완료', icon: CheckCircle2, status: 'pending' },
+  { id: 4, label: '서비스 이용', icon: Sparkles, status: 'pending' },
+];
+
+export default function PendingApprovalCard({
+  userName,
+  userEmail,
+  submittedAt,
+}: PendingApprovalCardProps) {
   return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-      <div className="flex items-start">
-        <div className="flex-shrink-0">
-          <svg
-            className="h-6 w-6 text-yellow-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <h3 className="text-lg font-medium text-yellow-800">승인 대기 중입니다</h3>
-          <div className="mt-2 text-sm text-yellow-700">
-            <p>
-              안녕하세요, <strong>{userName}</strong>님!
+    <div className="space-y-6">
+      {/* 메인 카드 */}
+      <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+              <Clock className="h-6 w-6 text-amber-600" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-amber-900">승인 대기 중입니다</CardTitle>
+              <CardDescription className="text-amber-700">
+                프로필 검토가 진행 중이에요
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* 환영 메시지 */}
+          <div className="rounded-lg bg-white/60 p-4 backdrop-blur-sm">
+            <p className="text-gray-700">
+              안녕하세요, <span className="font-semibold text-amber-900">{userName}</span>
+              님!
             </p>
-            <p className="mt-2">
-              회원가입은 완료되었습니다. 관리자의 승인이 완료되면 AI 로드맵 생성 기능을 이용하실 수
-              있습니다.
-            </p>
-            <p className="mt-4 text-xs">
-              승인 관련 문의는 운영 담당자에게 연락해 주세요.
+            <p className="mt-2 text-sm text-gray-600">
+              회원가입이 완료되었습니다. 관리자가 프로필을 검토할 예정이며, 승인이 완료되면 AI 훈련
+              로드맵 생성 기능을 이용하실 수 있습니다.
             </p>
           </div>
-        </div>
-      </div>
+
+          {/* 진행 단계 */}
+          <div className="py-2">
+            <h4 className="mb-4 text-sm font-medium text-gray-700">진행 상태</h4>
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isCompleted = step.status === 'completed';
+                const isCurrent = step.status === 'current';
+
+                return (
+                  <div key={step.id} className="flex flex-1 items-center">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                          isCompleted
+                            ? 'border-green-500 bg-green-500 text-white'
+                            : isCurrent
+                              ? 'border-amber-500 bg-amber-500 text-white animate-pulse'
+                              : 'border-gray-300 bg-white text-gray-400'
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <span
+                        className={`mt-2 text-xs font-medium ${
+                          isCompleted
+                            ? 'text-green-600'
+                            : isCurrent
+                              ? 'text-amber-600'
+                              : 'text-gray-400'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                    {index < steps.length - 1 && (
+                      <div
+                        className={`mx-2 h-0.5 flex-1 ${
+                          isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                        }`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 예상 정보 */}
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="bg-white/80">
+              <Clock className="mr-1 h-3 w-3" />
+              영업일 기준 2~3일 소요
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 도움말 카드 */}
+      <Card className="border-gray-200 bg-white">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+              <HelpCircle className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-gray-900">도움이 필요하신가요?</h4>
+              <p className="mt-1 text-sm text-gray-500">
+                승인 관련 문의가 있는 경우, 운영 담당자에게 연락해 주세요.
+              </p>
+              <Separator className="my-3" />
+              <div className="flex flex-wrap gap-4 text-sm">
+                <a
+                  href="mailto:ykkim@kpc.or.kr"
+                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                >
+                  <Mail className="h-4 w-4" />
+                  ykkim@kpc.or.kr
+                </a>
+                <a
+                  href="tel:02-398-4311"
+                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                >
+                  <Phone className="h-4 w-4" />
+                  02-398-4311
+                </a>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
