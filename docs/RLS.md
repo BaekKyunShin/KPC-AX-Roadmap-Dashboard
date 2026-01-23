@@ -148,8 +148,15 @@ is_approved_consultant() RETURNS BOOLEAN
 
 ## 테스트 체크리스트
 
-- [ ] USER_PENDING이 케이스 접근 시 차단되는지 확인
-- [ ] 컨설턴트가 배정되지 않은 케이스 접근 시 차단되는지 확인
-- [ ] 컨설턴트가 자가진단 수정 시 차단되는지 확인
-- [ ] OPS_ADMIN이 로드맵 수정 시 차단되는지 확인
-- [ ] 배정된 컨설턴트만 FINAL 확정 가능한지 확인
+- [x] USER_PENDING이 케이스 접근 시 차단되는지 확인
+  - 정책: `cases_select_consultant` - `is_approved_consultant()` 함수로 검증
+- [x] 컨설턴트가 배정되지 않은 케이스 접근 시 차단되는지 확인
+  - 정책: `cases_select_consultant` - `assigned_consultant_id = auth.uid()` 검증
+- [x] 컨설턴트가 자가진단 수정 시 차단되는지 확인
+  - 정책: `assessments_update_ops` - OPS_ADMIN 이상만 UPDATE 허용
+- [x] OPS_ADMIN이 로드맵 수정 시 차단되는지 확인
+  - 정책: `roadmaps_update_consultant` - 배정된 컨설턴트만 UPDATE 허용
+- [x] 배정된 컨설턴트만 FINAL 확정 가능한지 확인
+  - 정책: `roadmaps_update_consultant` - `finalized_by = auth.uid()` 검증
+
+> **참고**: 위 정책들은 `supabase/migrations/002_rls_policies.sql`에 구현됨

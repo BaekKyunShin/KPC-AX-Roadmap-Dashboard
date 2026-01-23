@@ -406,7 +406,10 @@ export type AuditAction =
   | 'ROADMAP_FINALIZE'
   | 'ROADMAP_ARCHIVE'
   | 'DOWNLOAD_PDF'
-  | 'DOWNLOAD_XLSX';
+  | 'DOWNLOAD_XLSX'
+  | 'TEMPLATE_CREATE'
+  | 'TEMPLATE_UPDATE'
+  | 'TEMPLATE_ACTIVATE';
 
 // 사용량 메트릭
 export interface UsageMetric {
