@@ -1,7 +1,11 @@
 {
   "name": "ai-roadmap-dashboard",
   "version": "0.1.0",
+  "description": "KPC AI 훈련 로드맵 대시보드 - 기업 AI 교육 진단, 컨설턴트 매칭, 로드맵 생성을 위한 B2B 내부 도구",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,7 +17,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "validate": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
