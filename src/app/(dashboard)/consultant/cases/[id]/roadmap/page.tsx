@@ -10,8 +10,10 @@ import {
   fetchRoadmapVersion,
   prepareExportData,
   logDownload,
+  editRoadmapManually,
 } from './actions';
 import type { RoadmapRow, PBLCourse, RoadmapCell, ValidationResult } from '@/lib/services/roadmap';
+import CourseEditModal from './_components/CourseEditModal';
 
 interface RoadmapVersion {
   id: string;
@@ -44,6 +46,17 @@ export default function RoadmapPage() {
   const [revisionPrompt, setRevisionPrompt] = useState('');
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'pbl' | 'courses'>('matrix');
+
+  // 편집 모드 상태
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
+  const [editingCourseContext, setEditingCourseContext] = useState<{
+    type: 'matrix' | 'courses';
+    rowIndex?: number;
+    level?: 'beginner' | 'intermediate' | 'advanced';
+    courseIndex?: number;
+  } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 버전 목록 로드
   useEffect(() => {
@@ -120,7 +133,79 @@ export default function RoadmapPage() {
     const version = await fetchRoadmapVersion(versionId);
     if (version) {
       setSelectedVersion(version as RoadmapVersion);
+      setIsEditing(false);
     }
+  }
+
+  // 과정 편집 시작 (매트릭스에서)
+  function handleEditMatrixCourse(rowIndex: number, level: 'beginner' | 'intermediate' | 'advanced') {
+    if (!selectedVersion || selectedVersion.status !== 'DRAFT') return;
+    const row = selectedVersion.roadmap_matrix[rowIndex];
+    const course = row[level];
+    if (course) {
+      setEditingCourse(course);
+      setEditingCourseContext({ type: 'matrix', rowIndex, level });
+    }
+  }
+
+  // 과정 편집 시작 (과정 목록에서)
+  function handleEditCourse(courseIndex: number) {
+    if (!selectedVersion || selectedVersion.status !== 'DRAFT') return;
+    const course = selectedVersion.courses[courseIndex];
+    if (course) {
+      setEditingCourse(course);
+      setEditingCourseContext({ type: 'courses', courseIndex });
+    }
+  }
+
+  // 과정 편집 저장
+  async function handleSaveCourse(updatedCourse: RoadmapCell) {
+    if (!selectedVersion || !editingCourseContext) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    let updates: {
+      roadmap_matrix?: RoadmapRow[];
+      courses?: RoadmapCell[];
+    } = {};
+
+    if (editingCourseContext.type === 'matrix' && editingCourseContext.rowIndex !== undefined && editingCourseContext.level) {
+      const newMatrix = [...selectedVersion.roadmap_matrix];
+      newMatrix[editingCourseContext.rowIndex] = {
+        ...newMatrix[editingCourseContext.rowIndex],
+        [editingCourseContext.level]: updatedCourse,
+      };
+      updates.roadmap_matrix = newMatrix;
+    } else if (editingCourseContext.type === 'courses' && editingCourseContext.courseIndex !== undefined) {
+      const newCourses = [...selectedVersion.courses];
+      newCourses[editingCourseContext.courseIndex] = updatedCourse;
+      updates.courses = newCourses;
+    }
+
+    const result = await editRoadmapManually(selectedVersion.id, updates);
+
+    if (result.success) {
+      setSuccess('과정이 수정되었습니다.');
+      if (result.data?.validation) {
+        setValidation(result.data.validation as ValidationResult);
+      }
+      // 버전 새로고침
+      const updated = await fetchRoadmapVersion(selectedVersion.id);
+      if (updated) setSelectedVersion(updated as RoadmapVersion);
+    } else {
+      setError(result.error || '과정 수정에 실패했습니다.');
+    }
+
+    setIsSaving(false);
+    setEditingCourse(null);
+    setEditingCourseContext(null);
+  }
+
+  // 편집 모달 닫기
+  function handleCloseEditModal() {
+    setEditingCourse(null);
+    setEditingCourseContext(null);
   }
 
   // PDF 다운로드
@@ -400,13 +485,21 @@ export default function RoadmapPage() {
               {/* 탭 내용 */}
               <div className="p-6">
                 {activeTab === 'matrix' && (
-                  <RoadmapMatrix matrix={selectedVersion.roadmap_matrix} />
+                  <RoadmapMatrix
+                    matrix={selectedVersion.roadmap_matrix}
+                    canEdit={selectedVersion.status === 'DRAFT'}
+                    onEditCourse={handleEditMatrixCourse}
+                  />
                 )}
                 {activeTab === 'pbl' && (
                   <PBLCourseView course={selectedVersion.pbl_course} />
                 )}
                 {activeTab === 'courses' && (
-                  <CoursesList courses={selectedVersion.courses} />
+                  <CoursesList
+                    courses={selectedVersion.courses}
+                    canEdit={selectedVersion.status === 'DRAFT'}
+                    onEditCourse={handleEditCourse}
+                  />
                 )}
               </div>
             </div>
@@ -433,12 +526,28 @@ export default function RoadmapPage() {
           )}
         </div>
       </div>
+
+      {/* 과정 편집 모달 */}
+      <CourseEditModal
+        isOpen={!!editingCourse}
+        course={editingCourse}
+        onClose={handleCloseEditModal}
+        onSave={handleSaveCourse}
+      />
     </div>
   );
 }
 
 // NxM 매트릭스 컴포넌트 (반응형)
-function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
+function RoadmapMatrix({
+  matrix,
+  canEdit = false,
+  onEditCourse,
+}: {
+  matrix: RoadmapRow[];
+  canEdit?: boolean;
+  onEditCourse?: (rowIndex: number, level: 'beginner' | 'intermediate' | 'advanced') => void;
+}) {
   const [mobileTab, setMobileTab] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
 
   if (!matrix || matrix.length === 0) {
@@ -473,28 +582,67 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {matrix.map((row) => (
+            {matrix.map((row, rowIndex) => (
               <tr key={row.task_id}>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                   {row.task_name}
                 </td>
                 <td className="px-4 py-3 bg-green-50">
                   {row.beginner ? (
-                    <CourseCell course={row.beginner} />
+                    <div className="flex items-center justify-between group">
+                      <CourseCell course={row.beginner} />
+                      {canEdit && onEditCourse && (
+                        <button
+                          onClick={() => onEditCourse(rowIndex, 'beginner')}
+                          className="opacity-0 group-hover:opacity-100 ml-2 p-1 text-gray-400 hover:text-purple-600 transition-opacity"
+                          title="편집"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-gray-400 text-xs">-</span>
                   )}
                 </td>
                 <td className="px-4 py-3 bg-yellow-50">
                   {row.intermediate ? (
-                    <CourseCell course={row.intermediate} />
+                    <div className="flex items-center justify-between group">
+                      <CourseCell course={row.intermediate} />
+                      {canEdit && onEditCourse && (
+                        <button
+                          onClick={() => onEditCourse(rowIndex, 'intermediate')}
+                          className="opacity-0 group-hover:opacity-100 ml-2 p-1 text-gray-400 hover:text-purple-600 transition-opacity"
+                          title="편집"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-gray-400 text-xs">-</span>
                   )}
                 </td>
                 <td className="px-4 py-3 bg-red-50">
                   {row.advanced ? (
-                    <CourseCell course={row.advanced} />
+                    <div className="flex items-center justify-between group">
+                      <CourseCell course={row.advanced} />
+                      {canEdit && onEditCourse && (
+                        <button
+                          onClick={() => onEditCourse(rowIndex, 'advanced')}
+                          className="opacity-0 group-hover:opacity-100 ml-2 p-1 text-gray-400 hover:text-purple-600 transition-opacity"
+                          title="편집"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-gray-400 text-xs">-</span>
                   )}
@@ -526,15 +674,30 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
 
         {/* 카드 리스트 */}
         <div className="space-y-3">
-          {matrix.map((row) => {
+          {matrix.map((row, rowIndex) => {
             const course = row[mobileTab];
             return (
               <div
                 key={row.task_id}
                 className={`p-4 rounded-lg border ${tabConfig[mobileTab].bgColor}`}
               >
-                <div className="text-xs text-gray-500 mb-1">업무</div>
-                <div className="font-medium text-gray-900 mb-2">{row.task_name}</div>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">업무</div>
+                    <div className="font-medium text-gray-900 mb-2">{row.task_name}</div>
+                  </div>
+                  {canEdit && course && onEditCourse && (
+                    <button
+                      onClick={() => onEditCourse(rowIndex, mobileTab)}
+                      className="p-2 text-gray-400 hover:text-purple-600"
+                      title="편집"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 {course ? (
                   <>
                     <div className="text-sm font-medium text-gray-800">{course.course_name}</div>
@@ -654,7 +817,15 @@ function PBLCourseView({ course }: { course: PBLCourse }) {
 }
 
 // 과정 상세 목록 컴포넌트
-function CoursesList({ courses }: { courses: RoadmapCell[] }) {
+function CoursesList({
+  courses,
+  canEdit = false,
+  onEditCourse,
+}: {
+  courses: RoadmapCell[];
+  canEdit?: boolean;
+  onEditCourse?: (courseIndex: number) => void;
+}) {
   if (!courses || courses.length === 0) {
     return <p className="text-gray-500">과정 데이터가 없습니다.</p>;
   }
@@ -675,6 +846,17 @@ function CoursesList({ courses }: { courses: RoadmapCell[] }) {
               <p className="text-sm text-gray-500">대상 업무: {course.target_task}</p>
             </div>
             <div className="flex items-center space-x-2">
+              {canEdit && onEditCourse && (
+                <button
+                  onClick={() => onEditCourse(idx)}
+                  className="p-1 text-gray-400 hover:text-purple-600"
+                  title="편집"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              )}
               <span className={`px-2 py-1 text-xs rounded ${levelColors[course.level]}`}>
                 {course.level === 'BEGINNER' ? '초급' : course.level === 'INTERMEDIATE' ? '중급' : '고급'}
               </span>

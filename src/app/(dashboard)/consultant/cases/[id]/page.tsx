@@ -102,12 +102,16 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
               >
                 인터뷰 수정
               </Link>
-              <Link
-                href={`/consultant/cases/${caseId}/roadmap`}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-              >
-                로드맵 생성
-              </Link>
+              {/* 인터뷰 완료(INTERVIEWED) 이상의 상태에서만 로드맵 버튼 표시 */}
+              {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(caseData.status) && (
+                <Link
+                  href={`/consultant/cases/${caseId}/roadmap`}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  {caseData.status === 'INTERVIEWED' ? '로드맵 생성' :
+                   caseData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
+                </Link>
+              )}
             </>
           )}
         </div>

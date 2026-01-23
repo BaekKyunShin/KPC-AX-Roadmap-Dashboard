@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import MatchingRecommendations from '@/components/ops/MatchingRecommendations';
-import AssignmentForm from '@/components/ops/AssignmentForm';
 import RecalculateMatchingButton from '@/components/ops/RecalculateMatchingButton';
+import ReassignmentSection from '@/components/ops/ReassignmentSection';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   NEW: { label: '신규', color: 'bg-gray-100 text-gray-800' },
@@ -223,27 +223,12 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
 
       {/* 배정 섹션 */}
       {matchingRecommendations && matchingRecommendations.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">컨설턴트 배정</h2>
-
-          {caseData.assigned_consultant ? (
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-green-800">
-                현재 배정: <span className="font-bold">{caseData.assigned_consultant.name}</span>
-              </p>
-              {assignments?.[0] && (
-                <p className="text-sm text-green-600 mt-1">
-                  배정 사유: {assignments[0].assignment_reason}
-                </p>
-              )}
-            </div>
-          ) : (
-            <AssignmentForm
-              caseId={id}
-              recommendations={matchingRecommendations}
-            />
-          )}
-        </div>
+        <ReassignmentSection
+          caseData={caseData}
+          caseId={id}
+          recommendations={matchingRecommendations}
+          latestAssignment={assignments?.[0]}
+        />
       )}
 
       {/* 배정 이력 */}

@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchUsageStats, updateQuota, type UsageStats } from './actions';
 
+// 현재 월을 YYYY-MM 형식으로 반환
+function getCurrentMonth(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
 export default function QuotaManagementPage() {
   const [users, setUsers] = useState<UsageStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +16,7 @@ export default function QuotaManagementPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [month, setMonth] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editDailyLimit, setEditDailyLimit] = useState<number>(0);

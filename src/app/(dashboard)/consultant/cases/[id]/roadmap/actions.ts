@@ -6,8 +6,12 @@ import {
   finalizeRoadmap,
   getRoadmapVersions,
   getRoadmapVersion,
+  updateRoadmapManually,
   type RoadmapResult,
   type ValidationResult,
+  type RoadmapRow,
+  type PBLCourse,
+  type RoadmapCell,
 } from '@/lib/services/roadmap';
 import { createAuditLog } from '@/lib/services/audit';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
@@ -255,6 +259,58 @@ export async function prepareExportData(roadmapId: string): Promise<{
     return {
       success: false,
       error: error instanceof Error ? error.message : '데이터 준비에 실패했습니다.',
+    };
+  }
+}
+
+/**
+ * 로드맵 수동 편집
+ */
+export async function editRoadmapManually(
+  roadmapId: string,
+  updates: {
+    diagnosis_summary?: string;
+    roadmap_matrix?: RoadmapRow[];
+    pbl_course?: PBLCourse;
+    courses?: RoadmapCell[];
+  }
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: '로그인이 필요합니다.' };
+    }
+
+    // 권한 확인
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
+      return { success: false, error: '컨설턴트만 로드맵을 편집할 수 있습니다.' };
+    }
+
+    const result = await updateRoadmapManually(roadmapId, user.id, updates);
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return {
+      success: true,
+      data: {
+        validation: result.validation,
+      },
+    };
+  } catch (error) {
+    console.error('[editRoadmapManually Error]', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '로드맵 편집에 실패했습니다.',
     };
   }
 }

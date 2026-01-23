@@ -74,7 +74,6 @@ export default function RegisterPage() {
   async function handleStep2Submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
 
@@ -84,6 +83,30 @@ export default function RegisterPage() {
     const teachingLevels = formData.getAll('teaching_levels');
     const coachingMethods = formData.getAll('coaching_methods');
     const skillTags = formData.getAll('skill_tags');
+
+    // 필수 선택 항목 검증
+    if (expertiseDomains.length === 0) {
+      setError('전문분야를 최소 1개 이상 선택해주세요.');
+      return;
+    }
+    if (industries.length === 0) {
+      setError('가능 업종을 최소 1개 이상 선택해주세요.');
+      return;
+    }
+    if (teachingLevels.length === 0) {
+      setError('강의 가능 레벨을 최소 1개 이상 선택해주세요.');
+      return;
+    }
+    if (coachingMethods.length === 0) {
+      setError('코칭 방식을 최소 1개 이상 선택해주세요.');
+      return;
+    }
+    if (skillTags.length === 0) {
+      setError('역량 태그를 최소 1개 이상 선택해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
 
     formData.set('expertise_domains', JSON.stringify(expertiseDomains));
     formData.set('available_industries', JSON.stringify(industries));
@@ -423,22 +446,19 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                이전
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 py-2 px-4 border border-transparent rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isLoading ? '저장 중...' : '가입 완료'}
-              </button>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-700">
+                기본 정보 등록이 완료되었습니다. 컨설턴트 프로필을 입력하시면 가입이 완료됩니다.
+              </p>
             </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-2 px-4 border border-transparent rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isLoading ? '저장 중...' : '가입 완료'}
+            </button>
           </form>
         )}
       </div>

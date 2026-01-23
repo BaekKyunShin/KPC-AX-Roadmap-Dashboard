@@ -1,20 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   fetchAuditLogs,
+  fetchAllAuditLogs,
   getActionTypes,
   getTargetTypes,
+  getUsers,
   type AuditLogEntry,
   type AuditLogFilters,
 } from './actions';
 import type { AuditAction } from '@/types/database';
+import { AuditLogTableSkeleton } from '@/components/ui/Skeleton';
 import * as XLSX from 'xlsx';
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState<'csv' | 'excel' | 'all-csv' | 'all-excel' | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
@@ -26,30 +30,51 @@ export default function AuditLogPage() {
   });
   const [selectedAction, setSelectedAction] = useState<AuditAction | ''>('');
   const [selectedTargetType, setSelectedTargetType] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
 
-  const actionTypes = getActionTypes();
-  const targetTypes = getTargetTypes();
+  // 액션/대상 타입/사용자 목록
+  const [actionTypes, setActionTypes] = useState<{ value: AuditAction; label: string }[]>([]);
+  const [targetTypes, setTargetTypes] = useState<{ value: string; label: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
+
+  // 필터 옵션 로드
+  useEffect(() => {
+    async function loadTypes() {
+      const [actions, targets, userList] = await Promise.all([
+        getActionTypes(),
+        getTargetTypes(),
+        getUsers(),
+      ]);
+      setActionTypes(actions);
+      setTargetTypes(targets);
+      setUsers(userList);
+    }
+    loadTypes();
+  }, []);
 
   // 로그 조회
+  const loadLogs = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchAuditLogs({
+      ...filters,
+      action: selectedAction || undefined,
+      targetType: selectedTargetType || undefined,
+      actorUserId: selectedUser || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+    setLogs(result.logs as AuditLogEntry[]);
+    setTotalPages(result.totalPages);
+    setTotal(result.total);
+    setLoading(false);
+  }, [filters, selectedAction, selectedTargetType, selectedUser, startDate, endDate]);
+
   useEffect(() => {
-    async function loadLogs() {
-      setLoading(true);
-      const result = await fetchAuditLogs({
-        ...filters,
-        action: selectedAction || undefined,
-        targetType: selectedTargetType || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
-      setLogs(result.logs as AuditLogEntry[]);
-      setTotalPages(result.totalPages);
-      setTotal(result.total);
-      setLoading(false);
-    }
     loadLogs();
-  }, [filters, selectedAction, selectedTargetType, startDate, endDate]);
+  }, [loadLogs]);
 
   // 페이지 변경
   function handlePageChange(newPage: number) {
@@ -61,78 +86,22 @@ export default function AuditLogPage() {
   function handleResetFilters() {
     setSelectedAction('');
     setSelectedTargetType('');
+    setSelectedUser('');
     setStartDate('');
     setEndDate('');
+    setSearchKeyword('');
     setPage(1);
     setFilters({ page: 1, limit: 20 });
   }
 
-  // 내보내기 (CSV)
-  function handleExportCSV() {
-    if (logs.length === 0) return;
-
-    const headers = ['시간', '사용자', '이메일', '액션', '대상유형', '대상ID', '상태', '상세'];
-    const rows = logs.map(log => [
-      new Date(log.created_at).toLocaleString('ko-KR'),
-      log.actor?.name || '-',
-      log.actor?.email || log.actor_user_id,
-      getActionLabel(log.action),
-      getTargetTypeLabel(log.target_type),
-      log.target_id,
-      log.success ? '성공' : '실패',
-      log.error_message || JSON.stringify(log.meta),
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  // 내보내기 (Excel)
-  function handleExportExcel() {
-    if (logs.length === 0) return;
-
-    const data = logs.map(log => ({
-      '시간': new Date(log.created_at).toLocaleString('ko-KR'),
-      '사용자': log.actor?.name || '-',
-      '이메일': log.actor?.email || log.actor_user_id,
-      '액션': getActionLabel(log.action),
-      '대상유형': getTargetTypeLabel(log.target_type),
-      '대상ID': log.target_id,
-      '상태': log.success ? '성공' : '실패',
-      '오류메시지': log.error_message || '',
-      '상세정보': JSON.stringify(log.meta),
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '감사로그');
-
-    // 컬럼 너비 설정
-    ws['!cols'] = [
-      { wch: 20 }, // 시간
-      { wch: 15 }, // 사용자
-      { wch: 25 }, // 이메일
-      { wch: 15 }, // 액션
-      { wch: 10 }, // 대상유형
-      { wch: 36 }, // 대상ID
-      { wch: 8 },  // 상태
-      { wch: 30 }, // 오류메시지
-      { wch: 50 }, // 상세정보
-    ];
-
-    XLSX.writeFile(wb, `audit_logs_${new Date().toISOString().split('T')[0]}.xlsx`);
-  }
+  // 검색어 필터링 (클라이언트)
+  const filteredLogs = searchKeyword
+    ? logs.filter(log =>
+        log.actor?.name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        log.actor?.email?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        log.target_id.toLowerCase().includes(searchKeyword.toLowerCase())
+      )
+    : logs;
 
   // 액션 라벨 변환
   function getActionLabel(action: AuditAction): string {
@@ -164,6 +133,108 @@ export default function AuditLogPage() {
     return 'bg-gray-100 text-gray-800';
   }
 
+  // 로그 데이터 변환 (내보내기용)
+  function transformLogsForExport(logsToExport: AuditLogEntry[]) {
+    return logsToExport.map(log => ({
+      '시간': new Date(log.created_at).toLocaleString('ko-KR'),
+      '사용자': log.actor?.name || '-',
+      '이메일': log.actor?.email || log.actor_user_id,
+      '액션': getActionLabel(log.action),
+      '대상유형': getTargetTypeLabel(log.target_type),
+      '대상ID': log.target_id,
+      '상태': log.success ? '성공' : '실패',
+      '오류메시지': log.error_message || '',
+      '상세정보': JSON.stringify(log.meta),
+    }));
+  }
+
+  // CSV 내보내기
+  async function handleExportCSV(exportAll = false) {
+    if (exportAll) {
+      setExporting('all-csv');
+      const result = await fetchAllAuditLogs({
+        action: selectedAction || undefined,
+        targetType: selectedTargetType || undefined,
+        actorUserId: selectedUser || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      exportToCSV(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      setExporting('csv');
+      exportToCSV(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+    setExporting(null);
+  }
+
+  function exportToCSV(logsToExport: AuditLogEntry[], filename: string) {
+    if (logsToExport.length === 0) return;
+
+    const headers = ['시간', '사용자', '이메일', '액션', '대상유형', '대상ID', '상태', '오류메시지', '상세정보'];
+    const rows = logsToExport.map(log => [
+      new Date(log.created_at).toLocaleString('ko-KR'),
+      log.actor?.name || '-',
+      log.actor?.email || log.actor_user_id,
+      getActionLabel(log.action),
+      getTargetTypeLabel(log.target_type),
+      log.target_id,
+      log.success ? '성공' : '실패',
+      log.error_message || '',
+      JSON.stringify(log.meta),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Excel 내보내기
+  async function handleExportExcel(exportAll = false) {
+    if (exportAll) {
+      setExporting('all-excel');
+      const result = await fetchAllAuditLogs({
+        action: selectedAction || undefined,
+        targetType: selectedTargetType || undefined,
+        actorUserId: selectedUser || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } else {
+      setExporting('excel');
+      exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+    setExporting(null);
+  }
+
+  function exportToExcel(logsToExport: AuditLogEntry[], filename: string) {
+    if (logsToExport.length === 0) return;
+
+    const data = transformLogsForExport(logsToExport);
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '감사로그');
+
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 15 },
+      { wch: 10 }, { wch: 36 }, { wch: 8 }, { wch: 30 }, { wch: 50 },
+    ];
+
+    XLSX.writeFile(wb, filename);
+  }
+
+  const hasFilters = selectedAction || selectedTargetType || selectedUser || startDate || endDate;
+
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -172,21 +243,34 @@ export default function AuditLogPage() {
           <h1 className="text-2xl font-bold text-gray-900">감사 로그</h1>
           <p className="mt-1 text-sm text-gray-500">시스템 활동 내역을 확인합니다.</p>
         </div>
-        <Link
-          href="/ops/cases"
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/ops/cases" className="text-sm text-gray-500 hover:text-gray-700">
           ← 케이스 관리로 돌아가기
         </Link>
       </div>
 
       {/* 필터 */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* 검색 */}
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-medium text-gray-500 mb-1">검색</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder="사용자명, 이메일, 대상ID 검색..."
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+              <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* 액션 유형 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              액션 유형
-            </label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">액션</label>
             <select
               value={selectedAction}
               onChange={(e) => {
@@ -198,17 +282,14 @@ export default function AuditLogPage() {
             >
               <option value="">전체</option>
               {actionTypes.map(action => (
-                <option key={action.value} value={action.value}>
-                  {action.label}
-                </option>
+                <option key={action.value} value={action.value}>{action.label}</option>
               ))}
             </select>
           </div>
 
+          {/* 대상 유형 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              대상 유형
-            </label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">대상</label>
             <select
               value={selectedTargetType}
               onChange={(e) => {
@@ -220,17 +301,35 @@ export default function AuditLogPage() {
             >
               <option value="">전체</option>
               {targetTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
+                <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
           </div>
 
+          {/* 사용자 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              시작일
-            </label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">사용자</label>
+            <select
+              value={selectedUser}
+              onChange={(e) => {
+                setSelectedUser(e.target.value);
+                setPage(1);
+                setFilters(prev => ({ ...prev, page: 1 }));
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="">전체</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* 날짜 필터 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">시작일</label>
             <input
               type="date"
               value={startDate}
@@ -242,11 +341,8 @@ export default function AuditLogPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              종료일
-            </label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">종료일</label>
             <input
               type="date"
               value={endDate}
@@ -260,166 +356,183 @@ export default function AuditLogPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            총 {total.toLocaleString()}건의 로그
-          </p>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
+        {/* 통계 및 액션 */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-gray-500">
+              총 <span className="font-medium text-gray-900">{total.toLocaleString()}</span>건
+              {searchKeyword && filteredLogs.length !== logs.length && (
+                <span className="ml-1">(검색 결과: {filteredLogs.length}건)</span>
+              )}
+            </p>
+            {hasFilters && (
               <button
-                onClick={handleExportCSV}
-                disabled={logs.length === 0}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                onClick={handleResetFilters}
+                className="text-xs text-purple-600 hover:text-purple-800 underline"
               >
-                CSV 다운로드
+                필터 초기화
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* 현재 페이지 내보내기 */}
+            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
+              <button
+                onClick={() => handleExportCSV(false)}
+                disabled={filteredLogs.length === 0 || exporting !== null}
+                className="px-3 py-1.5 text-sm bg-white hover:bg-gray-50 disabled:opacity-50 border-r border-gray-300"
+              >
+                {exporting === 'csv' ? '...' : 'CSV'}
               </button>
               <button
-                onClick={handleExportExcel}
-                disabled={logs.length === 0}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => handleExportExcel(false)}
+                disabled={filteredLogs.length === 0 || exporting !== null}
+                className="px-3 py-1.5 text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
               >
-                Excel 다운로드
+                {exporting === 'excel' ? '...' : 'Excel'}
               </button>
             </div>
-            <button
-              onClick={handleResetFilters}
-              className="text-sm text-purple-600 hover:text-purple-800"
-            >
-              필터 초기화
-            </button>
+
+            {/* 전체 내보내기 */}
+            <div className="flex items-center border border-purple-300 rounded-md overflow-hidden">
+              <span className="px-2 py-1.5 text-xs bg-purple-50 text-purple-700 border-r border-purple-300">
+                전체
+              </span>
+              <button
+                onClick={() => handleExportCSV(true)}
+                disabled={total === 0 || exporting !== null}
+                className="px-3 py-1.5 text-sm bg-white hover:bg-purple-50 disabled:opacity-50 border-r border-purple-300 text-purple-700"
+              >
+                {exporting === 'all-csv' ? '...' : 'CSV'}
+              </button>
+              <button
+                onClick={() => handleExportExcel(true)}
+                disabled={total === 0 || exporting !== null}
+                className="px-3 py-1.5 text-sm bg-white hover:bg-purple-50 disabled:opacity-50 text-purple-700"
+              >
+                {exporting === 'all-excel' ? '...' : 'Excel'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 로그 테이블 */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">
-            로딩 중...
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            로그가 없습니다.
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      시간
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      사용자
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      액션
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      대상
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      상태
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      상세
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                        {new Date(log.created_at).toLocaleString('ko-KR')}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {log.actor?.name || '-'}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            {log.actor?.email || log.actor_user_id.slice(0, 8)}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
-                          {getActionLabel(log.action)}
+      {loading ? (
+        <AuditLogTableSkeleton rows={10} />
+      ) : filteredLogs.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-12 text-center">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">로그 없음</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {hasFilters || searchKeyword ? '검색 조건에 맞는 로그가 없습니다.' : '기록된 로그가 없습니다.'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">시간</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">사용자</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">대상</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상세</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      <div>{new Date(log.created_at).toLocaleDateString('ko-KR')}</div>
+                      <div className="text-xs">{new Date(log.created_at).toLocaleTimeString('ko-KR')}</div>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="font-medium text-gray-900">{log.actor?.name || '-'}</div>
+                      <div className="text-gray-500 text-xs">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
+                        {getActionLabel(log.action)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="text-gray-900">{getTargetTypeLabel(log.target_type)}</div>
+                      <div className="text-gray-500 text-xs font-mono">{log.target_id.slice(0, 8)}...</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {log.success ? (
+                        <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">성공</span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">실패</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {log.error_message ? (
+                        <span className="text-red-600" title={log.error_message}>
+                          {log.error_message.slice(0, 30)}...
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div>
-                          <div className="text-gray-900">
-                            {getTargetTypeLabel(log.target_type)}
-                          </div>
-                          <div className="text-gray-500 text-xs font-mono">
-                            {log.target_id.slice(0, 8)}...
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {log.success ? (
-                          <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">
-                            성공
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">
-                            실패
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {log.error_message ? (
-                          <span className="text-red-600" title={log.error_message}>
-                            {log.error_message.slice(0, 30)}...
-                          </span>
-                        ) : log.meta && Object.keys(log.meta).length > 0 ? (
-                          <details className="cursor-pointer">
-                            <summary className="text-purple-600 text-xs">
-                              상세보기
-                            </summary>
-                            <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto">
-                              {JSON.stringify(log.meta, null, 2)}
-                            </pre>
-                          </details>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ) : log.meta && Object.keys(log.meta).length > 0 ? (
+                        <details className="cursor-pointer">
+                          <summary className="text-purple-600 text-xs">상세보기</summary>
+                          <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto">
+                            {JSON.stringify(log.meta, null, 2)}
+                          </pre>
+                        </details>
+                      ) : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  {page} / {totalPages} 페이지
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page <= 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    이전
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    다음
-                  </button>
-                </div>
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                {((page - 1) * 20) + 1} - {Math.min(page * 20, total)} / {total}
               </div>
-            )}
-          </>
-        )}
-      </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={page <= 1}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                >
+                  처음
+                </button>
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page <= 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                >
+                  이전
+                </button>
+                <span className="px-3 py-1 text-sm">{page} / {totalPages}</span>
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                >
+                  다음
+                </button>
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={page >= totalPages}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                >
+                  마지막
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -306,6 +306,143 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
 }
 
 /**
+ * 케이스 목록 조회 (OPS_ADMIN) - 페이지네이션 및 검색 지원
+ */
+export interface CaseListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  industry?: string;
+}
+
+export interface CaseListResult {
+  cases: Array<{
+    id: string;
+    company_name: string;
+    industry: string;
+    company_size: string;
+    status: string;
+    created_at: string;
+    contact_email: string;
+    assigned_consultant?: { id: string; name: string; email: string } | null;
+    created_by_user?: { id: string; name: string } | null;
+  }>;
+  total: number;
+  totalPages: number;
+  page: number;
+}
+
+export async function fetchCases(params: CaseListParams = {}): Promise<CaseListResult> {
+  const supabase = await createClient();
+
+  const { page = 1, limit = 10, search = '', status = '', industry = '' } = params;
+  const offset = (page - 1) * limit;
+
+  // 기본 쿼리
+  let query = supabase
+    .from('cases')
+    .select(`
+      id,
+      company_name,
+      industry,
+      company_size,
+      status,
+      created_at,
+      contact_email,
+      assigned_consultant:users!cases_assigned_consultant_id_fkey(id, name, email),
+      created_by_user:users!cases_created_by_fkey(id, name)
+    `, { count: 'exact' });
+
+  // 검색 조건
+  if (search) {
+    query = query.or(`company_name.ilike.%${search}%,contact_email.ilike.%${search}%`);
+  }
+
+  // 상태 필터
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  // 업종 필터
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  // 정렬 및 페이지네이션
+  const { data: cases, count, error } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('[fetchCases Error]', error);
+    return { cases: [], total: 0, totalPages: 0, page };
+  }
+
+  const total = count || 0;
+  const totalPages = Math.ceil(total / limit);
+
+  // Supabase 조인 결과를 적절한 형태로 변환
+  const formattedCases = (cases || []).map((c) => ({
+    id: c.id,
+    company_name: c.company_name,
+    industry: c.industry,
+    company_size: c.company_size,
+    status: c.status,
+    created_at: c.created_at,
+    contact_email: c.contact_email,
+    // Supabase는 단일 조인을 배열로 반환할 수 있음
+    assigned_consultant: Array.isArray(c.assigned_consultant)
+      ? c.assigned_consultant[0] || null
+      : c.assigned_consultant,
+    created_by_user: Array.isArray(c.created_by_user)
+      ? c.created_by_user[0] || null
+      : c.created_by_user,
+  }));
+
+  return {
+    cases: formattedCases,
+    total,
+    totalPages,
+    page,
+  };
+}
+
+/**
+ * 케이스 상태 및 업종 목록 조회
+ */
+export async function fetchCaseFilters(): Promise<{
+  statuses: string[];
+  industries: string[];
+}> {
+  const supabase = await createClient();
+
+  // 사용 중인 상태 목록 (고정 값)
+  const statuses = [
+    'NEW',
+    'DIAGNOSED',
+    'MATCH_RECOMMENDED',
+    'ASSIGNED',
+    'INTERVIEWED',
+    'ROADMAP_DRAFTED',
+    'FINALIZED',
+  ];
+
+  // 사용 중인 업종 목록
+  const { data: industries } = await supabase
+    .from('cases')
+    .select('industry')
+    .not('industry', 'is', null);
+
+  const uniqueIndustries = [...new Set(industries?.map((c) => c.industry) || [])].filter(Boolean);
+
+  return {
+    statuses,
+    industries: uniqueIndustries,
+  };
+}
+
+/**
  * 점수 계산 헬퍼 함수
  */
 function calculateScores(

@@ -60,7 +60,7 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
 /**
  * 액션 타입 목록
  */
-export function getActionTypes(): { value: AuditAction; label: string }[] {
+export async function getActionTypes(): Promise<{ value: AuditAction; label: string }[]> {
   return [
     { value: 'USER_APPROVE', label: '사용자 승인' },
     { value: 'USER_SUSPEND', label: '사용자 정지' },
@@ -80,13 +80,16 @@ export function getActionTypes(): { value: AuditAction; label: string }[] {
     { value: 'ROADMAP_ARCHIVE', label: '로드맵 보관' },
     { value: 'DOWNLOAD_PDF', label: 'PDF 다운로드' },
     { value: 'DOWNLOAD_XLSX', label: 'Excel 다운로드' },
+    { value: 'TEMPLATE_CREATE', label: '템플릿 생성' },
+    { value: 'TEMPLATE_UPDATE', label: '템플릿 수정' },
+    { value: 'TEMPLATE_ACTIVATE', label: '템플릿 활성화' },
   ];
 }
 
 /**
  * 대상 타입 목록
  */
-export function getTargetTypes(): { value: string; label: string }[] {
+export async function getTargetTypes(): Promise<{ value: string; label: string }[]> {
   return [
     { value: 'user', label: '사용자' },
     { value: 'case', label: '케이스' },
@@ -94,5 +97,48 @@ export function getTargetTypes(): { value: string; label: string }[] {
     { value: 'matching', label: '매칭' },
     { value: 'interview', label: '인터뷰' },
     { value: 'roadmap', label: '로드맵' },
+    { value: 'template', label: '템플릿' },
   ];
+}
+
+/**
+ * 전체 로그 내보내기용 조회 (최대 10000건)
+ */
+export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 'limit'> = {}) {
+  const supabase = await createClient();
+
+  // 현재 사용자 확인
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { logs: [] };
+  }
+
+  // OPS_ADMIN/SYSTEM_ADMIN 권한 확인
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    return { logs: [] };
+  }
+
+  // 전체 로그 조회 (최대 10000건)
+  const result = await getAuditLogs({ ...filters, page: 1, limit: 10000 });
+  return { logs: result.logs, total: result.total };
+}
+
+/**
+ * 사용자 목록 조회 (필터용)
+ */
+export async function getUsers(): Promise<{ id: string; name: string; email: string }[]> {
+  const supabase = await createClient();
+
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, name, email')
+    .order('name');
+
+  return users || [];
 }
