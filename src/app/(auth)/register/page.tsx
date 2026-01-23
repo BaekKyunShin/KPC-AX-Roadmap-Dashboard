@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { registerUser, saveConsultantProfile } from '../actions';
+import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import {
   User,
   Briefcase,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 
 // 전문분야 옵션
@@ -77,13 +79,38 @@ const COACHING_METHODS = [
   { value: 'HYBRID', label: '혼합형' },
 ];
 
+type RegisterType = 'CONSULTANT' | 'OPS_ADMIN';
+
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registerType, setRegisterType] = useState<RegisterType>('CONSULTANT');
+
+  // 페이지 로드 시 기존 세션 로그아웃
+  useEffect(() => {
+    const clearSession = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          // 기존 세션이 있으면 로그아웃
+          await supabase.auth.signOut();
+        }
+      } catch (err) {
+        console.error('세션 초기화 오류:', err);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    clearSession();
+  }, []);
 
   // Step 1: 기본 정보
   async function handleStep1Submit(e: React.FormEvent<HTMLFormElement>) {
@@ -93,11 +120,19 @@ export default function RegisterPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.set('agreeToTerms', formData.get('agreeToTerms') ? 'true' : 'false');
+    formData.set('registerType', registerType);
 
     const result = await registerUser(formData);
 
     if (result.success && result.data?.userId) {
-      setStep(2);
+      // 운영관리자는 프로필 입력 없이 바로 대시보드로
+      if (registerType === 'OPS_ADMIN') {
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        // 컨설턴트는 2단계로 진행
+        setStep(2);
+      }
     } else {
       setError(result.error || '회원가입에 실패했습니다.');
     }
@@ -105,7 +140,7 @@ export default function RegisterPage() {
     setIsLoading(false);
   }
 
-  // Step 2: 프로필 정보
+  // Step 2: 프로필 정보 (컨설턴트만)
   async function handleStep2Submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -166,6 +201,18 @@ export default function RegisterPage() {
     setIsLoading(false);
   }
 
+  // 초기화 중 로딩 표시
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-2 text-muted-foreground">페이지 준비 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
       {/* Background decoration */}
@@ -181,7 +228,7 @@ export default function RegisterPage() {
             <Sparkles className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">KPC AI 훈련 로드맵</h1>
-          <p className="mt-1 text-muted-foreground">컨설턴트 회원가입</p>
+          <p className="mt-1 text-muted-foreground">회원가입</p>
         </div>
 
         {/* Progress Steps */}
@@ -202,22 +249,26 @@ export default function RegisterPage() {
               </span>
             </div>
 
-            <ChevronRight className="h-5 w-5 text-gray-300" />
+            {registerType === 'CONSULTANT' && (
+              <>
+                <ChevronRight className="h-5 w-5 text-gray-300" />
 
-            <div className="flex items-center gap-2">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
-                  step >= 2
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-300 bg-white text-gray-400'
-                }`}
-              >
-                <Briefcase className="h-5 w-5" />
-              </div>
-              <span className={`text-base font-medium ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-                프로필 등록
-              </span>
-            </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                      step >= 2
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-gray-300 bg-white text-gray-400'
+                    }`}
+                  >
+                    <Briefcase className="h-5 w-5" />
+                  </div>
+                  <span className={`text-base font-medium ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+                    프로필 등록
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -236,6 +287,79 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleStep1Submit} className="space-y-4">
+                {/* 역할 선택 */}
+                <div className="space-y-3">
+                  <Label>
+                    가입 유형 <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label
+                      className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        registerType === 'CONSULTANT'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="registerTypeRadio"
+                        value="CONSULTANT"
+                        checked={registerType === 'CONSULTANT'}
+                        onChange={() => setRegisterType('CONSULTANT')}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                          registerType === 'CONSULTANT'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        <Briefcase className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">컨설턴트</div>
+                        <div className="text-sm text-muted-foreground">기업 AI 교육 컨설팅</div>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                        registerType === 'OPS_ADMIN'
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="registerTypeRadio"
+                        value="OPS_ADMIN"
+                        checked={registerType === 'OPS_ADMIN'}
+                        onChange={() => setRegisterType('OPS_ADMIN')}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                          registerType === 'OPS_ADMIN'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        <Shield className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">운영관리자</div>
+                        <div className="text-sm text-muted-foreground">고객사/프로젝트 관리</div>
+                      </div>
+                    </label>
+                  </div>
+                  {registerType === 'OPS_ADMIN' && (
+                    <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                      운영관리자 계정은 시스템 관리자의 승인이 필요합니다.
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="email">
                     이메일 <span className="text-red-500">*</span>
@@ -343,11 +467,13 @@ export default function RegisterPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       처리 중...
                     </>
-                  ) : (
+                  ) : registerType === 'CONSULTANT' ? (
                     <>
                       다음
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </>
+                  ) : (
+                    '가입 완료'
                   )}
                 </Button>
 
@@ -585,7 +711,7 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          © 2024 KPC 한국생산성본부. All rights reserved.
+          &copy; 2024 KPC 한국생산성본부. All rights reserved.
         </p>
       </div>
     </div>

@@ -42,6 +42,7 @@ export default function Navigation({ user }: NavigationProps) {
   const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
   const isPending = user.role === 'USER_PENDING';
+  const isOpsAdminPending = user.role === 'OPS_ADMIN_PENDING';
 
   const navItems = isOpsAdmin ? OPS_NAV_ITEMS : isConsultant ? CONSULTANT_NAV_ITEMS : [];
 
@@ -49,7 +50,13 @@ export default function Navigation({ user }: NavigationProps) {
     if (isPending)
       return (
         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-          승인 대기
+          컨설턴트 승인 대기
+        </Badge>
+      );
+    if (isOpsAdminPending)
+      return (
+        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+          운영관리자 승인 대기
         </Badge>
       );
     if (isOpsAdmin)

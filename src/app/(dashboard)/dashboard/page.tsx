@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 
 export default async function DashboardPage() {
@@ -26,10 +27,35 @@ export default async function DashboardPage() {
       redirect('/ops/cases');
     case 'CONSULTANT_APPROVED':
       redirect('/consultant/cases');
-    case 'USER_PENDING':
+    case 'USER_PENDING': {
+      // 컨설턴트 프로필 유무 확인
+      const adminSupabase = createAdminClient();
+      const { data: consultantProfile } = await adminSupabase
+        .from('consultant_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
       return (
         <div className="max-w-2xl mx-auto mt-8">
-          <PendingApprovalCard userName={profile.name} userEmail={profile.email} />
+          <PendingApprovalCard
+            userName={profile.name}
+            userEmail={profile.email}
+            userRole="CONSULTANT"
+            hasProfile={!!consultantProfile}
+          />
+        </div>
+      );
+    }
+    case 'OPS_ADMIN_PENDING':
+      return (
+        <div className="max-w-2xl mx-auto mt-8">
+          <PendingApprovalCard
+            userName={profile.name}
+            userEmail={profile.email}
+            userRole="OPS_ADMIN"
+            hasProfile={false}
+          />
         </div>
       );
     default:

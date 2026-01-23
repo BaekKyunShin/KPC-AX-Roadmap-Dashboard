@@ -2,6 +2,7 @@
 export type UserRole =
   | 'PUBLIC'
   | 'USER_PENDING'
+  | 'OPS_ADMIN_PENDING'
   | 'CONSULTANT_APPROVED'
   | 'OPS_ADMIN'
   | 'SYSTEM_ADMIN';

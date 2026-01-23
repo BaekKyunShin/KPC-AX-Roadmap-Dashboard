@@ -66,7 +66,8 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
 
   const getRoleBadge = (role: string) => {
     const badges: Record<string, { bg: string; text: string; label: string }> = {
-      USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '승인 대기' },
+      USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '컨설턴트 승인 대기' },
+      OPS_ADMIN_PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: '운영관리자 승인 대기' },
       CONSULTANT_APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: '승인됨' },
       OPS_ADMIN: { bg: 'bg-purple-100', text: 'text-purple-800', label: '운영관리자' },
       SYSTEM_ADMIN: { bg: 'bg-red-100', text: 'text-red-800', label: '시스템관리자' },
@@ -150,7 +151,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                   {new Date(user.created_at).toLocaleDateString('ko-KR')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {user.role === 'USER_PENDING' && (
+                  {(user.role === 'USER_PENDING' || user.role === 'OPS_ADMIN_PENDING') && (
                     <button
                       onClick={() => handleAction(user.id, 'approve')}
                       disabled={isLoading === user.id}
@@ -159,7 +160,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                       {isLoading === user.id ? '처리 중...' : '승인'}
                     </button>
                   )}
-                  {user.role === 'CONSULTANT_APPROVED' && user.status === 'ACTIVE' && (
+                  {(user.role === 'CONSULTANT_APPROVED' || user.role === 'OPS_ADMIN') && user.status === 'ACTIVE' && (
                     <button
                       onClick={() => handleAction(user.id, 'suspend')}
                       disabled={isLoading === user.id}

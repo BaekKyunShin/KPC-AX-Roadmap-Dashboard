@@ -46,10 +46,12 @@ export async function updateSession(request: NextRequest) {
 
   // 보호된 경로 정의
   const protectedRoutes = ['/dashboard', '/consultant', '/ops'];
-  const authRoutes = ['/login', '/register'];
+  // 회원가입 페이지는 인증된 사용자도 접근 가능 (새 계정 생성을 위해)
+  const authRoutes = ['/login'];
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isRegisterRoute = pathname.startsWith('/register');
 
   // 인증되지 않은 사용자가 보호된 경로 접근 시
   if (!user && isProtectedRoute) {
@@ -59,8 +61,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 인증된 사용자가 로그인/회원가입 페이지 접근 시
-  if (user && isAuthRoute) {
+  // 인증된 사용자가 로그인 페이지 접근 시 (회원가입 페이지는 제외)
+  if (user && isAuthRoute && !isRegisterRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   Clock,
@@ -15,27 +17,41 @@ import {
   Mail,
   Phone,
   HelpCircle,
+  Briefcase,
+  Shield,
+  Edit,
 } from 'lucide-react';
 
 interface PendingApprovalCardProps {
   userName: string;
   userEmail?: string;
-  submittedAt?: string;
+  userRole: 'CONSULTANT' | 'OPS_ADMIN';
+  hasProfile?: boolean;
 }
 
-// 진행 단계 정의
-const steps = [
+// 컨설턴트 진행 단계
+const CONSULTANT_STEPS = [
   { id: 1, label: '가입 완료', icon: CheckCircle2, status: 'completed' },
   { id: 2, label: '프로필 검토', icon: FileCheck, status: 'current' },
   { id: 3, label: '승인 완료', icon: CheckCircle2, status: 'pending' },
   { id: 4, label: '서비스 이용', icon: Sparkles, status: 'pending' },
 ];
 
+// 운영관리자 진행 단계
+const OPS_ADMIN_STEPS = [
+  { id: 1, label: '가입 완료', icon: CheckCircle2, status: 'completed' },
+  { id: 2, label: '관리자 승인', icon: Shield, status: 'current' },
+  { id: 3, label: '서비스 이용', icon: Sparkles, status: 'pending' },
+];
+
 export default function PendingApprovalCard({
   userName,
-  userEmail,
-  submittedAt,
+  userRole,
+  hasProfile = false,
 }: PendingApprovalCardProps) {
+  const isConsultant = userRole === 'CONSULTANT';
+  const steps = isConsultant ? CONSULTANT_STEPS : OPS_ADMIN_STEPS;
+
   return (
     <div className="space-y-6">
       {/* 메인 카드 */}
@@ -48,7 +64,7 @@ export default function PendingApprovalCard({
             <div>
               <CardTitle className="text-xl text-amber-900">승인 대기 중입니다</CardTitle>
               <CardDescription className="text-amber-700">
-                프로필 검토가 진행 중이에요
+                {isConsultant ? '프로필 검토가 진행 중이에요' : '관리자 승인이 진행 중이에요'}
               </CardDescription>
             </div>
           </div>
@@ -57,15 +73,49 @@ export default function PendingApprovalCard({
         <CardContent className="space-y-6">
           {/* 환영 메시지 */}
           <div className="rounded-lg bg-white/60 p-4 backdrop-blur-sm">
-            <p className="text-gray-700">
-              안녕하세요, <span className="font-semibold text-amber-900">{userName}</span>
-              님!
-            </p>
-            <p className="mt-2 text-base text-gray-600">
-              회원가입이 완료되었습니다. 관리자가 프로필을 검토할 예정이며, 승인이 완료되면 AI 훈련
-              로드맵 생성 기능을 이용하실 수 있습니다.
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-gray-700">
+                안녕하세요, <span className="font-semibold text-amber-900">{userName}</span>
+                님!
+              </p>
+              <Badge variant="outline" className={isConsultant ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}>
+                {isConsultant ? (
+                  <>
+                    <Briefcase className="h-3 w-3 mr-1" />
+                    컨설턴트
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-3 w-3 mr-1" />
+                    운영관리자
+                  </>
+                )}
+              </Badge>
+            </div>
+            <p className="text-base text-gray-600">
+              {isConsultant
+                ? '회원가입이 완료되었습니다. 관리자가 프로필을 검토할 예정이며, 승인이 완료되면 AI 훈련 로드맵 생성 기능을 이용하실 수 있습니다.'
+                : '회원가입이 완료되었습니다. 시스템 관리자가 승인하면 케이스 관리 및 사용자 관리 기능을 이용하실 수 있습니다.'}
             </p>
           </div>
+
+          {/* 컨설턴트이고 프로필이 있는 경우 프로필 수정 버튼 */}
+          {isConsultant && hasProfile && (
+            <div className="rounded-lg bg-blue-50 p-4 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-blue-900">프로필 수정</h4>
+                  <p className="text-sm text-blue-700">승인 대기 중에도 프로필을 수정할 수 있습니다.</p>
+                </div>
+                <Link href="/dashboard/profile">
+                  <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-100">
+                    <Edit className="h-4 w-4 mr-2" />
+                    프로필 수정
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* 진행 단계 */}
           <div className="py-2">

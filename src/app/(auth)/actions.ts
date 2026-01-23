@@ -70,8 +70,8 @@ export interface ActionResult {
 /**
  * 회원가입 처리
  * 1. Supabase Auth로 사용자 생성
- * 2. users 테이블에 프로필 생성 (USER_PENDING)
- * 3. consultant_profiles 테이블에 컨설턴트 프로필 생성
+ * 2. users 테이블에 프로필 생성 (역할에 따라 USER_PENDING 또는 OPS_ADMIN_PENDING)
+ * 3. 컨설턴트인 경우 consultant_profiles 테이블에 프로필 생성
  */
 export async function registerUser(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
@@ -83,6 +83,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     confirmPassword: formData.get('confirmPassword') as string,
     name: formData.get('name') as string,
     phone: formData.get('phone') as string,
+    registerType: (formData.get('registerType') as string) || 'CONSULTANT',
     agreeToTerms: formData.get('agreeToTerms') === 'true',
   };
 
@@ -95,13 +96,16 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  const { email, password, name, phone } = validation.data;
+  const { email, password, name, phone, registerType } = validation.data;
+
+  // 역할 결정: 컨설턴트는 USER_PENDING, 운영관리자는 OPS_ADMIN_PENDING
+  const role = registerType === 'OPS_ADMIN' ? 'OPS_ADMIN_PENDING' : 'USER_PENDING';
 
   // Admin API로 직접 사용자 생성 (rate limit 우회)
   let adminSupabase;
   try {
     adminSupabase = createAdminClient();
-  } catch (adminError) {
+  } catch {
     return {
       success: false,
       error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
@@ -141,7 +145,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     email,
     name,
     phone: phone || null,
-    role: 'USER_PENDING',
+    role,
     status: 'ACTIVE',
   });
 
@@ -186,13 +190,13 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     // 로그인 실패해도 회원가입은 성공한 상태이므로 로그인 페이지로 유도
     return {
       success: true,
-      data: { userId: authData.user.id, needsLogin: true },
+      data: { userId: authData.user.id, registerType, needsLogin: true },
     };
   }
 
   return {
     success: true,
-    data: { userId: authData.user.id },
+    data: { userId: authData.user.id, registerType },
   };
 }
 
@@ -287,6 +291,143 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
 }
 
 /**
+ * 컨설턴트 프로필 조회
+ * 현재 로그인한 사용자의 프로필 조회
+ */
+export async function getConsultantProfile(): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !authData?.user) {
+      return {
+        success: false,
+        error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      };
+    }
+
+    const userId = authData.user.id;
+    const adminSupabase = createAdminClient();
+
+    const { data: profile, error: profileError } = await adminSupabase
+      .from('consultant_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError) {
+      if (profileError.code === 'PGRST116') {
+        // 프로필이 없는 경우
+        return {
+          success: true,
+          data: { profile: null },
+        };
+      }
+      return {
+        success: false,
+        error: '프로필 조회에 실패했습니다.',
+      };
+    }
+
+    return {
+      success: true,
+      data: { profile },
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return {
+      success: false,
+      error: `프로필 조회 중 오류: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * 컨설턴트 프로필 수정
+ * 승인 대기 상태에서도 본인 프로필 수정 가능
+ */
+export async function updateConsultantProfile(formData: FormData): Promise<ActionResult> {
+  try {
+    // 1. 현재 사용자 확인
+    const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !authData?.user) {
+      return {
+        success: false,
+        error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      };
+    }
+
+    const userId = authData.user.id;
+
+    // 2. 폼 데이터 파싱
+    const expertiseDomainsStr = formData.get('expertise_domains') as string | null;
+    const availableIndustriesStr = formData.get('available_industries') as string | null;
+    const teachingLevelsStr = formData.get('teaching_levels') as string | null;
+    const coachingMethodsStr = formData.get('coaching_methods') as string | null;
+    const skillTagsStr = formData.get('skill_tags') as string | null;
+
+    const rawData = {
+      expertise_domains: expertiseDomainsStr ? JSON.parse(expertiseDomainsStr) : [],
+      available_industries: availableIndustriesStr ? JSON.parse(availableIndustriesStr) : [],
+      teaching_levels: teachingLevelsStr ? JSON.parse(teachingLevelsStr) : [],
+      coaching_methods: coachingMethodsStr ? JSON.parse(coachingMethodsStr) : [],
+      skill_tags: skillTagsStr ? JSON.parse(skillTagsStr) : [],
+      years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
+      representative_experience: (formData.get('representative_experience') as string) || '',
+      portfolio: (formData.get('portfolio') as string) || '',
+      strengths_constraints: (formData.get('strengths_constraints') as string) || '',
+    };
+
+    // 3. Zod 검증
+    const validation = consultantProfileSchema.safeParse(rawData);
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.errors[0].message,
+      };
+    }
+
+    // 4. Admin 클라이언트로 프로필 업데이트
+    const adminSupabase = createAdminClient();
+
+    const { error: updateError } = await adminSupabase
+      .from('consultant_profiles')
+      .update({
+        expertise_domains: validation.data.expertise_domains,
+        available_industries: validation.data.available_industries,
+        teaching_levels: validation.data.teaching_levels,
+        coaching_methods: validation.data.coaching_methods,
+        skill_tags: validation.data.skill_tags,
+        years_of_experience: validation.data.years_of_experience,
+        representative_experience: validation.data.representative_experience,
+        portfolio: validation.data.portfolio,
+        strengths_constraints: validation.data.strengths_constraints,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: '프로필 수정에 실패했습니다. 다시 시도해주세요.',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return {
+      success: false,
+      error: `프로필 수정 중 오류: ${errorMessage}`,
+    };
+  }
+}
+
+/**
  * 로그인 처리
  */
 export async function loginUser(formData: FormData): Promise<ActionResult> {
@@ -355,7 +496,9 @@ export async function getCurrentUser() {
 }
 
 /**
- * 사용자 승인/정지 (OPS_ADMIN 전용)
+ * 사용자 승인/정지 (OPS_ADMIN/SYSTEM_ADMIN 전용)
+ * - USER_PENDING → CONSULTANT_APPROVED (컨설턴트 승인, OPS_ADMIN/SYSTEM_ADMIN 가능)
+ * - OPS_ADMIN_PENDING → OPS_ADMIN (운영관리자 승인, SYSTEM_ADMIN만 가능)
  */
 export async function updateUserStatus(
   targetUserId: string,
@@ -390,12 +533,42 @@ export async function updateUserStatus(
   // admin 클라이언트로 상태 변경
   const adminSupabase = createAdminClient();
 
+  // 대상 사용자 정보 조회
+  const { data: targetUser } = await adminSupabase
+    .from('users')
+    .select('role')
+    .eq('id', targetUserId)
+    .single();
+
+  if (!targetUser) {
+    return {
+      success: false,
+      error: '대상 사용자를 찾을 수 없습니다.',
+    };
+  }
+
   let updateData: { role?: string; status?: string } = {};
   let auditAction: 'USER_APPROVE' | 'USER_SUSPEND' | 'USER_REACTIVATE';
 
   switch (action) {
     case 'approve':
-      updateData = { role: 'CONSULTANT_APPROVED' };
+      // 운영관리자 승인은 SYSTEM_ADMIN만 가능
+      if (targetUser.role === 'OPS_ADMIN_PENDING') {
+        if (currentUser.role !== 'SYSTEM_ADMIN') {
+          return {
+            success: false,
+            error: '운영관리자 승인은 시스템 관리자만 가능합니다.',
+          };
+        }
+        updateData = { role: 'OPS_ADMIN' };
+      } else if (targetUser.role === 'USER_PENDING') {
+        updateData = { role: 'CONSULTANT_APPROVED' };
+      } else {
+        return {
+          success: false,
+          error: '승인할 수 없는 사용자입니다.',
+        };
+      }
       auditAction = 'USER_APPROVE';
       break;
     case 'suspend':

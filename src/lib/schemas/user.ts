@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const userRoleSchema = z.enum([
   'PUBLIC',
   'USER_PENDING',
+  'OPS_ADMIN_PENDING',
   'CONSULTANT_APPROVED',
   'OPS_ADMIN',
   'SYSTEM_ADMIN',
@@ -18,6 +19,9 @@ export const educationLevelSchema = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCE
 // 코칭 방식
 export const coachingMethodSchema = z.enum(['PBL', 'WORKSHOP', 'MENTORING', 'LECTURE', 'HYBRID']);
 
+// 가입 유형 스키마
+export const registerTypeSchema = z.enum(['CONSULTANT', 'OPS_ADMIN']);
+
 // 회원가입 스키마
 export const registerSchema = z
   .object({
@@ -30,6 +34,7 @@ export const registerSchema = z
     confirmPassword: z.string(),
     name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다.'),
     phone: z.string().optional(),
+    registerType: registerTypeSchema,
     agreeToTerms: z.literal(true, {
       errorMap: () => ({ message: '개인정보 수집·이용에 동의해야 합니다.' }),
     }),
@@ -90,6 +95,7 @@ export const userApprovalSchema = z.object({
 });
 
 // 타입 추출
+export type RegisterType = z.infer<typeof registerTypeSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ConsultantProfileInput = z.infer<typeof consultantProfileSchema>;
