@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FlaskConical, Info, History, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import PendingApprovalCard from '@/components/PendingApprovalCard';
 import TestInputForm from './_components/TestInputForm';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import TestHistoryList from './_components/TestHistoryList';
@@ -172,42 +172,18 @@ export default function TestRoadmapClient({
     setError(null);
   };
 
-  // 미승인 사용자 화면
+  // 미승인 사용자 화면 - PendingApprovalCard 재사용
   if (!isApprovedConsultant) {
+    const userRole = user.role === 'USER_PENDING' ? 'CONSULTANT' : 'OPS_ADMIN';
+
     return (
       <div className="max-w-2xl mx-auto py-8">
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center mb-4">
-              <FlaskConical className="h-6 w-6 text-amber-600" />
-            </div>
-            <CardTitle>테스트 로드맵</CardTitle>
-            <CardDescription>
-              승인된 컨설턴트만 테스트 로드맵을 생성할 수 있습니다.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            {user.role === 'USER_PENDING' ? (
-              <p className="text-gray-600">
-                현재 컨설턴트 승인 대기 중입니다. 승인이 완료되면 이 기능을 사용할 수 있습니다.
-              </p>
-            ) : user.role === 'OPS_ADMIN_PENDING' ? (
-              <p className="text-gray-600">
-                현재 운영관리자 승인 대기 중입니다. 이 기능은 컨설턴트 전용입니다.
-              </p>
-            ) : (
-              <p className="text-gray-600">이 기능은 승인된 컨설턴트 전용입니다.</p>
-            )}
-            <div className="flex justify-center gap-3">
-              <Button variant="outline" asChild>
-                <Link href="/demo">데모 페이지 보기</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/dashboard">대시보드로 이동</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <PendingApprovalCard
+          userName={user.name}
+          userEmail={user.email}
+          userRole={userRole}
+          hasProfile={hasProfile}
+        />
       </div>
     );
   }
