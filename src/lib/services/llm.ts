@@ -1,6 +1,6 @@
 /**
- * LLM 서비스 - OpenAI GPT-5 mini
- * 나중에 다른 LLM으로 교체 가능하도록 인터페이스 분리
+ * LLM 서비스 - OpenAI 호환 API
+ * 다양한 모델 지원 (GPT-4o, GPT-5, o1, o3 등)
  */
 
 export interface LLMMessage {
@@ -24,10 +24,58 @@ export interface LLMConfig {
 }
 
 const DEFAULT_CONFIG: LLMConfig = {
-  model: 'gpt-5-mini', // GPT-5 mini
+  model: 'gpt-5-mini',
   temperature: 0.7,
   maxTokens: 8000,
 };
+
+/**
+ * 모델별 기능 설정
+ * - useMaxCompletionTokens: max_tokens 대신 max_completion_tokens 사용
+ * - supportsTemperature: temperature 파라미터 지원 여부
+ */
+interface ModelCapabilities {
+  useMaxCompletionTokens: boolean;
+  supportsTemperature: boolean;
+}
+
+const MODEL_CAPABILITIES: Record<string, ModelCapabilities> = {
+  // GPT-5 시리즈: max_completion_tokens 사용, temperature 미지원
+  'gpt-5': { useMaxCompletionTokens: true, supportsTemperature: false },
+  'gpt-5-mini': { useMaxCompletionTokens: true, supportsTemperature: false },
+  // GPT-4o 시리즈: max_completion_tokens 사용, temperature 지원
+  'gpt-4o': { useMaxCompletionTokens: true, supportsTemperature: true },
+  'gpt-4o-mini': { useMaxCompletionTokens: true, supportsTemperature: true },
+  // o1/o3 시리즈: max_completion_tokens 사용, temperature 미지원
+  'o1': { useMaxCompletionTokens: true, supportsTemperature: false },
+  'o1-mini': { useMaxCompletionTokens: true, supportsTemperature: false },
+  'o1-preview': { useMaxCompletionTokens: true, supportsTemperature: false },
+  'o3': { useMaxCompletionTokens: true, supportsTemperature: false },
+  'o3-mini': { useMaxCompletionTokens: true, supportsTemperature: false },
+};
+
+// 기본 설정 (레거시 모델용)
+const DEFAULT_CAPABILITIES: ModelCapabilities = {
+  useMaxCompletionTokens: false,
+  supportsTemperature: true,
+};
+
+/**
+ * 모델의 기능 설정 조회
+ */
+function getModelCapabilities(model: string): ModelCapabilities {
+  // 정확히 일치하는 모델 찾기
+  if (MODEL_CAPABILITIES[model]) {
+    return MODEL_CAPABILITIES[model];
+  }
+  // 접두사로 일치하는 모델 찾기 (예: gpt-5-mini-2024-01 → gpt-5-mini)
+  for (const [prefix, capabilities] of Object.entries(MODEL_CAPABILITIES)) {
+    if (model.startsWith(prefix)) {
+      return capabilities;
+    }
+  }
+  return DEFAULT_CAPABILITIES;
+}
 
 /**
  * LLM API 호출
@@ -44,19 +92,30 @@ export async function callLLM(
   }
 
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  const capabilities = getModelCapabilities(finalConfig.model);
+
+  // 모델 기능에 따라 파라미터 구성
+  const requestBody: Record<string, unknown> = {
+    model: finalConfig.model,
+    messages,
+  };
+
+  if (capabilities.supportsTemperature && finalConfig.temperature !== undefined) {
+    requestBody.temperature = finalConfig.temperature;
+  }
+
+  if (finalConfig.maxTokens !== undefined) {
+    const tokenKey = capabilities.useMaxCompletionTokens ? 'max_completion_tokens' : 'max_tokens';
+    requestBody[tokenKey] = finalConfig.maxTokens;
+  }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: finalConfig.model,
-      messages,
-      temperature: finalConfig.temperature,
-      max_tokens: finalConfig.maxTokens,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {

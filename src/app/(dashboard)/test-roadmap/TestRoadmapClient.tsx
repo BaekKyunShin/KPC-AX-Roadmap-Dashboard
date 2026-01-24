@@ -35,6 +35,16 @@ interface TestHistoryItem {
   roadmap_count: number;
 }
 
+/**
+ * 에러 객체를 사용자 친화적 메시지로 변환
+ */
+function formatErrorMessage(err: unknown, defaultMessage: string): string {
+  if (err instanceof Error) {
+    return `오류가 발생했습니다: ${err.message}`;
+  }
+  return defaultMessage;
+}
+
 export default function TestRoadmapClient({
   user,
   isApprovedConsultant,
@@ -59,24 +69,22 @@ export default function TestRoadmapClient({
   // 테스트 기록 로드
   const loadHistory = async () => {
     setHistoryLoading(true);
-    const response = await getTestHistory();
-    if (response.success && response.data) {
-      setHistory(response.data);
+    try {
+      const response = await getTestHistory();
+      if (response.success && response.data) {
+        setHistory(response.data);
+      }
+    } catch (err) {
+      console.error('[TestRoadmap] 기록 로드 중 오류:', err);
+    } finally {
+      setHistoryLoading(false);
     }
-    setHistoryLoading(false);
   };
 
+  // 초기 기록 로드
   useEffect(() => {
     if (isApprovedConsultant) {
-      // IIFE to avoid lint warning about calling setState in effect
-      void (async () => {
-        setHistoryLoading(true);
-        const response = await getTestHistory();
-        if (response.success && response.data) {
-          setHistory(response.data);
-        }
-        setHistoryLoading(false);
-      })();
+      loadHistory();
     }
   }, [isApprovedConsultant]);
 
@@ -85,22 +93,26 @@ export default function TestRoadmapClient({
     setIsLoading(true);
     setError(null);
 
-    const response = await createTestRoadmap(data);
+    try {
+      const response = await createTestRoadmap(data);
 
-    if (response.success && response.data) {
-      setResult({
-        companyName: data.company_name,
-        industry: data.industry,
-        roadmapResult: response.data.result,
-        validation: response.data.validation,
-      });
-      // 기록 새로고침
-      loadHistory();
-    } else {
-      setError(response.error || '로드맵 생성에 실패했습니다.');
+      if (response.success && response.data) {
+        setResult({
+          companyName: data.company_name,
+          industry: data.industry,
+          roadmapResult: response.data.result,
+          validation: response.data.validation,
+        });
+        loadHistory();
+      } else {
+        setError(response.error || '로드맵 생성에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[TestRoadmap] 로드맵 생성 중 오류:', err);
+      setError(formatErrorMessage(err, '로드맵 생성 중 예기치 않은 오류가 발생했습니다.'));
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // 기록에서 로드맵 보기
@@ -108,40 +120,49 @@ export default function TestRoadmapClient({
     setIsLoading(true);
     setError(null);
 
-    const response = await getTestRoadmap(caseId);
+    try {
+      const response = await getTestRoadmap(caseId);
 
-    if (response.success && response.data && response.data.roadmap) {
-      setResult({
-        companyName: response.data.case.company_name,
-        industry: response.data.case.industry,
-        roadmapResult: {
-          diagnosis_summary: response.data.roadmap.diagnosis_summary,
-          roadmap_matrix: response.data.roadmap.roadmap_matrix as RoadmapResult['roadmap_matrix'],
-          pbl_course: response.data.roadmap.pbl_course as RoadmapResult['pbl_course'],
-          courses: response.data.roadmap.courses as RoadmapResult['courses'],
-        },
-        validation: {
-          isValid:
-            response.data.roadmap.free_tool_validated &&
-            response.data.roadmap.time_limit_validated,
-          errors: [],
-          warnings: [],
-        },
-      });
-    } else {
-      setError(response.error || '로드맵을 불러오는데 실패했습니다.');
+      if (response.success && response.data && response.data.roadmap) {
+        const { roadmap } = response.data;
+        setResult({
+          companyName: response.data.case.company_name,
+          industry: response.data.case.industry,
+          roadmapResult: {
+            diagnosis_summary: roadmap.diagnosis_summary,
+            roadmap_matrix: roadmap.roadmap_matrix as RoadmapResult['roadmap_matrix'],
+            pbl_course: roadmap.pbl_course as RoadmapResult['pbl_course'],
+            courses: roadmap.courses as RoadmapResult['courses'],
+          },
+          validation: {
+            isValid: roadmap.free_tool_validated && roadmap.time_limit_validated,
+            errors: [],
+            warnings: [],
+          },
+        });
+      } else {
+        setError(response.error || '로드맵을 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[TestRoadmap] 로드맵 조회 중 오류:', err);
+      setError(formatErrorMessage(err, '로드맵을 불러오는 중 예기치 않은 오류가 발생했습니다.'));
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // 기록 삭제
   const handleDeleteHistory = async (caseId: string) => {
-    const response = await deleteTestCase(caseId);
-    if (response.success) {
-      setHistory(history.filter((item) => item.id !== caseId));
-    } else {
-      setError(response.error || '삭제에 실패했습니다.');
+    try {
+      const response = await deleteTestCase(caseId);
+      if (response.success) {
+        setHistory((prev) => prev.filter((item) => item.id !== caseId));
+      } else {
+        setError(response.error || '삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[TestRoadmap] 삭제 중 오류:', err);
+      setError(formatErrorMessage(err, '삭제 중 예기치 않은 오류가 발생했습니다.'));
     }
   };
 

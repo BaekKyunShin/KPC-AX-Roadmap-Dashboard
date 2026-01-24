@@ -69,40 +69,44 @@ export async function createTestRoadmap(
     }
 
     // 2. 인터뷰 데이터 저장 (간소화된 형식)
-    const { error: interviewError } = await adminSupabase.from('interviews').insert({
-      case_id: newCase.id,
-      interviewer_id: user.id,
-      interview_date: new Date().toISOString().split('T')[0],
-      company_details: {},
-      job_tasks: input.job_tasks.map((task, index) => ({
-        id: `test-task-${index}`,
-        job_category: '테스트',
-        task_name: task.task_name,
-        task_description: task.task_description,
-        current_output: '',
-        current_workflow: '',
-        priority: index + 1,
-      })),
-      pain_points: input.pain_points.map((point, index) => ({
-        id: `test-pain-${index}`,
-        job_task_id: `test-task-0`,
-        description: point.description,
-        severity: point.severity,
-        priority: index + 1,
-      })),
-      constraints: [],
-      improvement_goals: input.improvement_goals.map((goal, index) => ({
-        id: `test-goal-${index}`,
-        job_task_id: `test-task-0`,
-        kpi_name: '개선 목표',
-        goal_description: goal.goal_description,
-        measurement_method: '',
-      })),
-      notes: '',
-      customer_requirements: input.customer_requirements || '',
-    });
+    const { data: newInterview, error: interviewError } = await adminSupabase
+      .from('interviews')
+      .insert({
+        case_id: newCase.id,
+        interviewer_id: user.id,
+        interview_date: new Date().toISOString().split('T')[0],
+        company_details: {},
+        job_tasks: input.job_tasks.map((task, index) => ({
+          id: `test-task-${index}`,
+          job_category: '테스트',
+          task_name: task.task_name,
+          task_description: task.task_description,
+          current_output: '',
+          current_workflow: '',
+          priority: index + 1,
+        })),
+        pain_points: input.pain_points.map((point, index) => ({
+          id: `test-pain-${index}`,
+          job_task_id: `test-task-0`,
+          description: point.description,
+          severity: point.severity,
+          priority: index + 1,
+        })),
+        constraints: [],
+        improvement_goals: input.improvement_goals.map((goal, index) => ({
+          id: `test-goal-${index}`,
+          job_task_id: `test-task-0`,
+          kpi_name: '개선 목표',
+          goal_description: goal.goal_description,
+          measurement_method: '',
+        })),
+        notes: '',
+        customer_requirements: input.customer_requirements || '',
+      })
+      .select('id')
+      .single();
 
-    if (interviewError) {
+    if (interviewError || !newInterview) {
       console.error('[createTestRoadmap] Interview creation error:', interviewError);
       // 케이스 롤백
       await adminSupabase.from('cases').delete().eq('id', newCase.id);

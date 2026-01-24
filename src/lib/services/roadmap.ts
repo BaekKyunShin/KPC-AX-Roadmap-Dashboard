@@ -89,24 +89,21 @@ export async function generateRoadmap(
     throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
   }
 
-  // 케이스 및 관련 데이터 조회
-  const { data: caseData } = await supabase
-    .from('cases')
-    .select(`
-      *,
-      self_assessments(*),
-      interviews(*),
-      assigned_consultant_id
-    `)
-    .eq('id', caseId)
-    .single();
+  // 케이스, 자가진단, 인터뷰 병렬 조회 (성능 최적화)
+  const [caseResult, selfAssessmentResult, interviewResult] = await Promise.all([
+    supabase.from('cases').select('*').eq('id', caseId).single(),
+    supabase.from('self_assessments').select('*').eq('case_id', caseId),
+    supabase.from('interviews').select('*').eq('case_id', caseId),
+  ]);
 
-  if (!caseData) {
+  if (caseResult.error || !caseResult.data) {
+    console.error('[generateRoadmap] 케이스 조회 실패:', caseResult.error);
     throw new Error('케이스를 찾을 수 없습니다.');
   }
 
-  const selfAssessment = caseData.self_assessments?.[0];
-  const interview = caseData.interviews?.[0];
+  const caseData = caseResult.data;
+  const selfAssessment = selfAssessmentResult.data?.[0];
+  const interview = interviewResult.data?.[0];
 
   // 테스트 모드가 아닐 경우에만 자가진단 필수
   if (!selfAssessment && !isTestMode) {
