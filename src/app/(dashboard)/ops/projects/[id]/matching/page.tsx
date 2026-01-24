@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function MatchingPage() {
   const router = useRouter();
   const params = useParams();
-  const caseId = params.id as string;
+  const projectId = params.id as string;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +23,13 @@ export default function MatchingPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ caseId, topN }),
+        body: JSON.stringify({ projectId, topN }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        router.push(`/ops/projects/${caseId}`);
+        router.push(`/ops/projects/${projectId}`);
         router.refresh();
       } else {
         setError(result.error || '매칭 추천 생성에 실패했습니다.');
@@ -45,7 +45,7 @@ export default function MatchingPage() {
     <div className="max-w-md mx-auto mt-8">
       <div className="mb-6">
         <Link
-          href={`/ops/projects/${caseId}`}
+          href={`/ops/projects/${projectId}`}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           ← 프로젝트로 돌아가기

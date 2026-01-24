@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
 
     // 요청 데이터 파싱
     const body = await request.json();
-    const { caseId, topN = 3, preserveStatus = false } = body;
+    const { projectId, topN = 3, preserveStatus = false } = body;
 
-    if (!caseId) {
+    if (!projectId) {
       return NextResponse.json({ success: false, error: '프로젝트 ID가 필요합니다.' }, { status: 400 });
     }
 
     // 매칭 추천 생성
-    const recommendations = await generateMatchingRecommendations(caseId, user.id, {
+    const recommendations = await generateMatchingRecommendations(projectId, user.id, {
       topN,
       preserveStatus,
     });

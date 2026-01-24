@@ -22,11 +22,11 @@ interface Template {
 }
 
 interface SelfAssessmentFormProps {
-  caseId: string;
+  projectId: string;
   template: Template;
 }
 
-export default function SelfAssessmentForm({ caseId, template }: SelfAssessmentFormProps) {
+export default function SelfAssessmentForm({ projectId, template }: SelfAssessmentFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +78,7 @@ export default function SelfAssessmentForm({ caseId, template }: SelfAssessmentF
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.set('project_id', caseId);
+    formData.set('project_id', projectId);
     formData.set('template_id', template.id);
     formData.set(
       'answers',

@@ -24,8 +24,8 @@ interface TestHistoryItem {
 
 interface TestHistoryListProps {
   items: TestHistoryItem[];
-  onView: (caseId: string) => void;
-  onDelete: (caseId: string) => Promise<void>;
+  onView: (projectId: string) => void;
+  onDelete: (projectId: string) => Promise<void>;
 }
 
 export default function TestHistoryList({ items, onView, onDelete }: TestHistoryListProps) {

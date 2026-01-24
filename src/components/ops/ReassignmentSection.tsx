@@ -18,7 +18,7 @@ interface Recommendation {
 }
 
 interface ReassignmentSectionProps {
-  caseData: {
+  projectData: {
     assigned_consultant?: {
       id: string;
       name: string;
@@ -26,7 +26,7 @@ interface ReassignmentSectionProps {
     } | null;
     status: string;
   };
-  caseId: string;
+  projectId: string;
   recommendations: Recommendation[];
   latestAssignment?: {
     assignment_reason: string;
@@ -34,8 +34,8 @@ interface ReassignmentSectionProps {
 }
 
 export default function ReassignmentSection({
-  caseData,
-  caseId,
+  projectData,
+  projectId,
   recommendations,
   latestAssignment,
 }: ReassignmentSectionProps) {
@@ -49,12 +49,12 @@ export default function ReassignmentSection({
     [recommendations]
   );
 
-  if (!caseData.assigned_consultant) {
+  if (!projectData.assigned_consultant) {
     return (
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-lg font-bold text-gray-900 mb-4">컨설턴트 배정</h2>
         <AssignmentForm
-          caseId={caseId}
+          projectId={projectId}
           recommendations={validRecommendations}
         />
       </div>
@@ -69,16 +69,16 @@ export default function ReassignmentSection({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-green-800">
-              현재 배정: <span className="font-bold">{caseData.assigned_consultant.name}</span>
+              현재 배정: <span className="font-bold">{projectData.assigned_consultant.name}</span>
             </p>
-            <p className="text-sm text-green-600">{caseData.assigned_consultant.email}</p>
+            <p className="text-sm text-green-600">{projectData.assigned_consultant.email}</p>
             {latestAssignment && (
               <p className="text-sm text-green-600 mt-1">
                 배정 사유: {latestAssignment.assignment_reason}
               </p>
             )}
           </div>
-          {!['FINALIZED'].includes(caseData.status) && (
+          {!['FINALIZED'].includes(projectData.status) && (
             <button
               type="button"
               onClick={() => setShowReassignForm(!showReassignForm)}
@@ -96,7 +96,7 @@ export default function ReassignmentSection({
             다른 컨설턴트로 재배정합니다. 기존 배정은 이력으로 보관됩니다.
           </p>
           <AssignmentForm
-            caseId={caseId}
+            projectId={projectId}
             recommendations={validRecommendations}
           />
         </div>

@@ -70,13 +70,13 @@ export interface ValidationResult {
 
 /**
  * 로드맵 생성
- * @param caseId - 프로젝트 ID
+ * @param projectId - 프로젝트 ID
  * @param actorUserId - 생성자 user ID
  * @param revisionPrompt - 수정 요청 (선택)
  * @param isTestMode - 테스트 모드 여부 (자가진단 없이 생성)
  */
 export async function generateRoadmap(
-  caseId: string,
+  projectId: string,
   actorUserId: string,
   revisionPrompt?: string,
   isTestMode: boolean = false
@@ -90,18 +90,18 @@ export async function generateRoadmap(
   }
 
   // 프로젝트, 자가진단, 인터뷰 병렬 조회 (성능 최적화)
-  const [caseResult, selfAssessmentResult, interviewResult] = await Promise.all([
-    supabase.from('projects').select('*').eq('id', caseId).single(),
-    supabase.from('self_assessments').select('*').eq('project_id', caseId),
-    supabase.from('interviews').select('*').eq('project_id', caseId),
+  const [projectResult, selfAssessmentResult, interviewResult] = await Promise.all([
+    supabase.from('projects').select('*').eq('id', projectId).single(),
+    supabase.from('self_assessments').select('*').eq('project_id', projectId),
+    supabase.from('interviews').select('*').eq('project_id', projectId),
   ]);
 
-  if (caseResult.error || !caseResult.data) {
-    console.error('[generateRoadmap] 프로젝트 조회 실패:', caseResult.error);
+  if (projectResult.error || !projectResult.data) {
+    console.error('[generateRoadmap] 프로젝트 조회 실패:', projectResult.error);
     throw new Error('프로젝트를 찾을 수 없습니다.');
   }
 
-  const caseData = caseResult.data;
+  const projectData = projectResult.data;
   const selfAssessment = selfAssessmentResult.data?.[0];
   const interview = interviewResult.data?.[0];
 
@@ -116,18 +116,18 @@ export async function generateRoadmap(
 
   // 컨설턴트 프로필 스냅샷
   let consultantSnapshot: ConsultantProfile | null = null;
-  if (caseData.assigned_consultant_id) {
+  if (projectData.assigned_consultant_id) {
     const { data: profile } = await supabase
       .from('consultant_profiles')
       .select('*')
-      .eq('user_id', caseData.assigned_consultant_id)
+      .eq('user_id', projectData.assigned_consultant_id)
       .single();
     consultantSnapshot = profile;
   }
 
   // LLM 프롬프트 생성
   const systemPrompt = buildSystemPrompt();
-  const userPrompt = buildUserPrompt(caseData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
+  const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
   // LLM 호출
   const result = await callLLMForJSON<RoadmapResult>(
@@ -148,7 +148,7 @@ export async function generateRoadmap(
   const { data: latestVersion } = await supabase
     .from('roadmap_versions')
     .select('version_number')
-    .eq('project_id', caseId)
+    .eq('project_id', projectId)
     .order('version_number', { ascending: false })
     .limit(1)
     .single();
@@ -159,7 +159,7 @@ export async function generateRoadmap(
   const { data: newRoadmap, error: insertError } = await supabase
     .from('roadmap_versions')
     .insert({
-      project_id: caseId,
+      project_id: projectId,
       version_number: newVersionNumber,
       status: 'DRAFT',
       consultant_profile_snapshot: consultantSnapshot || {},
@@ -183,7 +183,7 @@ export async function generateRoadmap(
   await supabase
     .from('projects')
     .update({ status: 'ROADMAP_DRAFTED' })
-    .eq('id', caseId);
+    .eq('id', projectId);
 
   // 감사 로그
   await createAuditLog({
@@ -192,7 +192,7 @@ export async function generateRoadmap(
     targetType: 'roadmap',
     targetId: newRoadmap.id,
     meta: {
-      project_id: caseId,
+      project_id: projectId,
       version_number: newVersionNumber,
       has_revision_prompt: !!revisionPrompt,
       validation_passed: validation.isValid,
@@ -282,7 +282,7 @@ RoadmapCell 구조:
  * 사용자 프롬프트 (입력 데이터 포함)
  */
 function buildUserPrompt(
-  caseData: Record<string, unknown>,
+  projectData: Record<string, unknown>,
   selfAssessment: Record<string, unknown> | null | undefined,
   interview: Record<string, unknown>,
   consultantProfile: ConsultantProfile | null,
@@ -291,10 +291,10 @@ function buildUserPrompt(
 ): string {
   let prompt = `## 기업 정보
 
-- 회사명: ${caseData.company_name}
-- 업종: ${caseData.industry}
-- 규모: ${caseData.company_size}
-- 요청사항: ${caseData.customer_comment || '없음'}
+- 회사명: ${projectData.company_name}
+- 업종: ${projectData.industry}
+- 규모: ${projectData.company_size}
+- 요청사항: ${projectData.customer_comment || '없음'}
 ${isTestMode ? '- **테스트 모드**: 컨설턴트 연습용 로드맵입니다.\n' : ''}
 ## 자가진단 결과
 
@@ -450,8 +450,8 @@ export async function finalizeRoadmap(
   }
 
   // 배정된 컨설턴트만 FINAL 가능
-  const caseData = roadmap.projects as { assigned_consultant_id: string };
-  if (caseData.assigned_consultant_id !== actorUserId) {
+  const projectData = roadmap.projects as { assigned_consultant_id: string };
+  if (projectData.assigned_consultant_id !== actorUserId) {
     throw new Error('배정된 컨설턴트만 FINAL 확정할 수 있습니다.');
   }
 
@@ -513,13 +513,13 @@ export async function finalizeRoadmap(
 /**
  * 로드맵 조회
  */
-export async function getRoadmapVersions(caseId: string) {
+export async function getRoadmapVersions(projectId: string) {
   const supabase = createAdminClient();
 
   const { data: versions } = await supabase
     .from('roadmap_versions')
     .select('*')
-    .eq('project_id', caseId)
+    .eq('project_id', projectId)
     .order('version_number', { ascending: false });
 
   return versions || [];
@@ -573,8 +573,8 @@ export async function updateRoadmapManually(
   }
 
   // 배정된 컨설턴트 확인
-  const caseData = roadmap.projects as { assigned_consultant_id: string };
-  if (caseData.assigned_consultant_id !== actorUserId) {
+  const projectData = roadmap.projects as { assigned_consultant_id: string };
+  if (projectData.assigned_consultant_id !== actorUserId) {
     return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.' };
   }
 

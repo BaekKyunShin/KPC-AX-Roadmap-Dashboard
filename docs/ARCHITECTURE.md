@@ -51,7 +51,7 @@ src/
 │   ├── (dashboard)/              # 대시보드 라우트 (인증 필수)
 │   │   ├── consultant/          # 컨설턴트 전용
 │   │   │   ├── projects/          # 배정된 프로젝트 목록
-│   │   │   ├── case/[id]/      # 프로젝트 상세
+│   │   │   ├── projects/[id]/    # 프로젝트 상세
 │   │   │   └── profile/        # 프로필 관리
 │   │   ├── ops/                 # OPS_ADMIN 전용
 │   │   │   ├── users/          # 사용자 관리
@@ -76,7 +76,7 @@ src/
 │   └── roadmap/                 # 로드맵 관련 컴포넌트
 ├── hooks/                        # 커스텀 훅
 │   ├── useAuth.ts
-│   ├── useCase.ts
+│   ├── useProject.ts
 │   └── useRoadmap.ts
 ├── lib/                          # 유틸리티 및 설정
 │   ├── supabase/

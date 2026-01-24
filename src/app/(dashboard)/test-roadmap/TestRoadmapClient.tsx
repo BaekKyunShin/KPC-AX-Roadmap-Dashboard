@@ -10,7 +10,7 @@ import PendingApprovalCard from '@/components/PendingApprovalCard';
 import TestInputForm from './_components/TestInputForm';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import TestHistoryList from './_components/TestHistoryList';
-import { createTestRoadmap, getTestHistory, getTestRoadmap, deleteTestCase } from './actions';
+import { createTestRoadmap, getTestHistory, getTestRoadmap, deleteTestProject } from './actions';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 
@@ -116,18 +116,18 @@ export default function TestRoadmapClient({
   };
 
   // 기록에서 로드맵 보기
-  const handleViewHistory = async (caseId: string) => {
+  const handleViewHistory = async (projectId: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await getTestRoadmap(caseId);
+      const response = await getTestRoadmap(projectId);
 
       if (response.success && response.data && response.data.roadmap) {
         const { roadmap } = response.data;
         setResult({
-          companyName: response.data.case.company_name,
-          industry: response.data.case.industry,
+          companyName: response.data.project.company_name,
+          industry: response.data.project.industry,
           roadmapResult: {
             diagnosis_summary: roadmap.diagnosis_summary,
             roadmap_matrix: roadmap.roadmap_matrix as RoadmapResult['roadmap_matrix'],
@@ -152,11 +152,11 @@ export default function TestRoadmapClient({
   };
 
   // 기록 삭제
-  const handleDeleteHistory = async (caseId: string) => {
+  const handleDeleteHistory = async (projectId: string) => {
     try {
-      const response = await deleteTestCase(caseId);
+      const response = await deleteTestProject(projectId);
       if (response.success) {
-        setHistory((prev) => prev.filter((item) => item.id !== caseId));
+        setHistory((prev) => prev.filter((item) => item.id !== projectId));
       } else {
         setError(response.error || '삭제에 실패했습니다.');
       }

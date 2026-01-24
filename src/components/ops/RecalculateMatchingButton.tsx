@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface RecalculateMatchingButtonProps {
-  caseId: string;
+  projectId: string;
   hasAssignment: boolean;
 }
 
 export default function RecalculateMatchingButton({
-  caseId,
+  projectId,
   hasAssignment,
 }: RecalculateMatchingButtonProps) {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function RecalculateMatchingButton({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          caseId,
+          projectId,
           topN: 3,
           preserveStatus: true, // 기존 상태 유지
         }),

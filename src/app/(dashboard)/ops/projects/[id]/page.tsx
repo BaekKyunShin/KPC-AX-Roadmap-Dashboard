@@ -177,7 +177,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
         ) : template ? (
-          <SelfAssessmentForm caseId={id} template={template} />
+          <SelfAssessmentForm projectId={id} template={template} />
         ) : (
           <p className="text-gray-500">활성화된 자가진단 템플릿이 없습니다.</p>
         )}
@@ -192,7 +192,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <>
               <MatchingRecommendations recommendations={matchingRecommendations} />
               <RecalculateMatchingButton
-                caseId={id}
+                projectId={id}
                 hasAssignment={!!projectData.assigned_consultant}
               />
             </>
@@ -213,8 +213,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {/* 배정 섹션 */}
       {matchingRecommendations && matchingRecommendations.length > 0 && (
         <ReassignmentSection
-          caseData={projectData}
-          caseId={id}
+          projectData={projectData}
+          projectId={id}
           recommendations={matchingRecommendations}
           latestAssignment={assignments?.[0]}
         />

@@ -30,7 +30,7 @@ interface MatchingOptions {
  * 기업 정보 + 자가진단 결과를 바탕으로 Top-N 컨설턴트 추천
  */
 export async function generateMatchingRecommendations(
-  caseId: string,
+  projectId: string,
   actorUserId: string,
   options: MatchingOptions = {}
 ): Promise<CandidateScore[]> {
@@ -38,13 +38,13 @@ export async function generateMatchingRecommendations(
   const supabase = createAdminClient();
 
   // 프로젝트 정보 조회
-  const { data: caseData } = await supabase
+  const { data: projectData } = await supabase
     .from('projects')
     .select('industry, company_size')
-    .eq('id', caseId)
+    .eq('id', projectId)
     .single();
 
-  if (!caseData) {
+  if (!projectData) {
     throw new Error('프로젝트를 찾을 수 없습니다.');
   }
 
@@ -52,7 +52,7 @@ export async function generateMatchingRecommendations(
   const { data: assessment } = await supabase
     .from('self_assessments')
     .select('scores')
-    .eq('project_id', caseId)
+    .eq('project_id', projectId)
     .single();
 
   if (!assessment) {
@@ -75,8 +75,8 @@ export async function generateMatchingRecommendations(
   }
 
   const criteria: MatchingCriteria = {
-    industry: caseData.industry,
-    companySize: caseData.company_size,
+    industry: projectData.industry,
+    companySize: projectData.company_size,
     assessmentScores: assessment.scores,
   };
 
@@ -91,11 +91,11 @@ export async function generateMatchingRecommendations(
     .slice(0, topN);
 
   // 기존 추천 삭제
-  await supabase.from('matching_recommendations').delete().eq('project_id', caseId);
+  await supabase.from('matching_recommendations').delete().eq('project_id', projectId);
 
   // 새 추천 저장
   const recommendations = scoredCandidates.map((candidate, index) => ({
-    project_id: caseId,
+    project_id: projectId,
     candidate_user_id: candidate.userId,
     total_score: candidate.totalScore,
     score_breakdown: candidate.breakdown,
@@ -114,16 +114,16 @@ export async function generateMatchingRecommendations(
   // 프로젝트 상태 업데이트 (preserveStatus가 false이거나 아직 DIAGNOSED 상태일 때만)
   if (!preserveStatus) {
     // 현재 상태 확인
-    const { data: currentCase } = await supabase
+    const { data: currentProject } = await supabase
       .from('projects')
       .select('status')
-      .eq('id', caseId)
+      .eq('id', projectId)
       .single();
 
     // DIAGNOSED 상태일 때만 MATCH_RECOMMENDED로 변경
     // 이미 ASSIGNED 이상이면 상태 유지
-    if (currentCase?.status === 'DIAGNOSED' || currentCase?.status === 'NEW') {
-      await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', caseId);
+    if (currentProject?.status === 'DIAGNOSED' || currentProject?.status === 'NEW') {
+      await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', projectId);
     }
   }
 
@@ -132,7 +132,7 @@ export async function generateMatchingRecommendations(
     actorUserId,
     action: 'MATCHING_EXECUTE',
     targetType: 'project',
-    targetId: caseId,
+    targetId: projectId,
     meta: {
       top_n: topN,
       candidates_count: scoredCandidates.length,

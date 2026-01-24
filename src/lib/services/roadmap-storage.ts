@@ -31,7 +31,7 @@ export async function ensureBucketExists(): Promise<void> {
  */
 export async function saveFinalXLSX(
   roadmapId: string,
-  caseId: string,
+  projectId: string,
   exportData: RoadmapExportData
 ): Promise<string | null> {
   try {
@@ -41,8 +41,8 @@ export async function saveFinalXLSX(
     // XLSX 생성
     const xlsxBuffer = generateXLSX(exportData);
 
-    // 파일 경로: projects/{caseId}/roadmap_final.xlsx
-    const filePath = `projects/${caseId}/roadmap_final.xlsx`;
+    // 파일 경로: projects/{projectId}/roadmap_final.xlsx
+    const filePath = `projects/${projectId}/roadmap_final.xlsx`;
 
     // 기존 파일 삭제 (있으면)
     await supabase.storage.from(BUCKET_NAME).remove([filePath]);
@@ -76,7 +76,7 @@ export async function saveFinalXLSX(
 /**
  * 이전 FINAL 버전의 스토리지 파일 삭제
  */
-export async function cleanupOldFinalFiles(caseId: string): Promise<void> {
+export async function cleanupOldFinalFiles(projectId: string): Promise<void> {
   try {
     const supabase = createAdminClient();
 
@@ -84,7 +84,7 @@ export async function cleanupOldFinalFiles(caseId: string): Promise<void> {
     const { data: oldFinal } = await supabase
       .from('roadmap_versions')
       .select('storage_path_xlsx, storage_path_pdf')
-      .eq('project_id', caseId)
+      .eq('project_id', projectId)
       .eq('status', 'FINAL')
       .single();
 
@@ -105,14 +105,14 @@ export async function cleanupOldFinalFiles(caseId: string): Promise<void> {
 /**
  * 스토리지에서 FINAL XLSX 다운로드 URL 생성
  */
-export async function getFinalXLSXUrl(caseId: string): Promise<string | null> {
+export async function getFinalXLSXUrl(projectId: string): Promise<string | null> {
   try {
     const supabase = createAdminClient();
 
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
       .select('storage_path_xlsx')
-      .eq('project_id', caseId)
+      .eq('project_id', projectId)
       .eq('status', 'FINAL')
       .single();
 
@@ -152,7 +152,7 @@ export async function prepareExportDataServer(roadmapId: string): Promise<Roadma
 
     return {
       companyName: projectData.company_name,
-      caseId: roadmap.project_id,
+      projectId: roadmap.project_id,
       versionNumber: roadmap.version_number,
       status: roadmap.status,
       diagnosisSummary: roadmap.diagnosis_summary,

@@ -4,7 +4,7 @@
 
 /**
  * 서버 액션 에러 로깅
- * @param context 에러 발생 컨텍스트 (예: 'createCase', 'fetchUsers')
+ * @param context 에러 발생 컨텍스트 (예: 'createProject', 'fetchUsers')
  * @param error 에러 객체
  */
 export function logServerError(context: string, error: unknown): void {

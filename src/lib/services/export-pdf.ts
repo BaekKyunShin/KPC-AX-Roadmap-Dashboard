@@ -8,7 +8,7 @@ import type { RoadmapRow, PBLCourse, RoadmapCell } from './roadmap';
 
 export interface RoadmapExportData {
   companyName: string;
-  caseId: string;
+  projectId: string;
   versionNumber: number;
   status: string;
   diagnosisSummary: string;

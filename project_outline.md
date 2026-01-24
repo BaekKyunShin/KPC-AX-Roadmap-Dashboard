@@ -47,7 +47,7 @@
 - 회원가입/로그인(이메일+비밀번호)
 - 운영관리자 승인 후에만 핵심 기능 활성화
 - **컨설턴트 프로필(스킬/전문분야/경력) 사전등록(회원가입 단계)**
-- **기업 요청(케이스) 등록**: 운영관리자가 기업 기본 정보 입력
+- **기업 요청(프로젝트) 등록**: 운영관리자가 기업 기본 정보 입력
 - **고객사 30문항 자가진단 결과 입력(운영관리자)** + 점수화/요약
 - **기업-컨설턴트 매칭 추천** + 운영관리자 최종 배정/변경(이력+사유)
 - 컨설턴트의 현장 인터뷰 입력(정형 + 자유서술)
@@ -76,13 +76,13 @@
 - **USER_PENDING(승인 대기)**: 로그인만 가능, 핵심 기능 차단
 - **CONSULTANT_APPROVED(승인된 컨설턴트/코치)**:
   - 본인 프로필 관리
-  - **배정된 케이스만 접근**
+  - **배정된 프로젝트만 접근**
   - 인터뷰 입력/수정
   - 로드맵 생성·수정·다운로드·FINAL 확정
   - 자가진단 결과는 **조회만**(수정 불가)
 - **OPS_ADMIN(운영 관리자)**:
   - 사용자 승인/정지
-  - 기업 요청(케이스) 생성/관리
+  - 기업 요청(프로젝트) 생성/관리
   - 자가진단 결과 입력/템플릿 관리
   - 매칭 추천 조회 및 배정/변경(사유 기록)
   - 로드맵 열람(감사/품질관리 목적, 읽기 전용)
@@ -125,7 +125,7 @@
 ### 6.2 고객사 자가진단(외부) → 운영관리자 입력(내부)
 
 - 고객사는 30문항 자가진단을 작성해 운영관리자에게 전달(메일/파일/폼 등)합니다.
-- **운영관리자(OPS_ADMIN)가 대시보드에서 케이스를 생성**하고,
+- **운영관리자(OPS_ADMIN)가 대시보드에서 프로젝트를 생성**하고,
   - 기업 기본 정보
   - 자가진단 30문항 응답
   - (선택) 고객 코멘트/요청사항
@@ -266,7 +266,7 @@ Tool DB를 별도로 구축하지 않는 대신, 아래 3겹으로 통제합니�
 
 - 사용자/권한/승인 상태
 - 컨설턴트 프로필(정형 태그 + 서술)
-- 기업 요청(케이스)
+- 기업 요청(프로젝트)
   - 기업 기본 정보
   - 자가진단 응답(원본) + 점수 + 요약
   - 매칭 추천 결과(스코어, 근거)
@@ -281,13 +281,13 @@ Tool DB를 별도로 구축하지 않는 대신, 아래 3겹으로 통제합니�
 
 - `users` (id, email, role, status, created_at …)
 - `consultant_profiles` (user_id, tags[], domains[], years, narrative, availability …)
-- `cases` (id, company_name, industry, size_bucket, created_by_ops, status, assigned_consultant_id …; status 전이 정의 포함)
-  - status(예시): NEW(케이스 생성) → DIAGNOSED(자가진단 입력 완료) → MATCH_RECOMMENDED(매칭 추천 생성) → ASSIGNED(배정 완료) → INTERVIEWED(인터뷰 입력 완료) → ROADMAP_DRAFTED(초안 생성) → FINALIZED(FINAL 확정)
-  - 규칙: 상태 변경은 모두 감사로그에 기록하며, ASSIGNED 이후 배정 변경이 발생하면 “변경 사유”를 필수로 남깁니다.
-- `self_assessments` (case_id, template_version, answers_json, scores_json, summary_text …)
-- `matching_recommendations` (case_id, candidate_user_id, score, rationale_json, created_at …)
-- `interviews` (case_id, interviewer_user_id, structured_json, notes_text …)
-- `roadmap_versions` (case_id, version_no, status(DRAFT/FINAL/ARCHIVED), roadmap_json, courses_json, pbl_json, created_at …)
+- `projects` (id, company_name, industry, size_bucket, created_by_ops, status, assigned_consultant_id …; status 전이 정의 포함)
+  - status(예시): NEW(프로젝트 생성) → DIAGNOSED(자가진단 입력 완료) → MATCH_RECOMMENDED(매칭 추천 생성) → ASSIGNED(배정 완료) → INTERVIEWED(인터뷰 입력 완료) → ROADMAP_DRAFTED(초안 생성) → FINALIZED(FINAL 확정)
+  - 규칙: 상태 변경은 모두 감사로그에 기록하며, ASSIGNED 이후 배정 변경이 발생하면 "변경 사유"를 필수로 남깁니다.
+- `self_assessments` (project_id, template_version, answers_json, scores_json, summary_text …)
+- `matching_recommendations` (project_id, candidate_user_id, score, rationale_json, created_at …)
+- `interviews` (project_id, interviewer_user_id, structured_json, notes_text …)
+- `roadmap_versions` (project_id, version_no, status(DRAFT/FINAL/ARCHIVED), roadmap_json, courses_json, pbl_json, created_at …)
 - `audit_logs` (actor_user_id, action, target_type, target_id, meta_json, success, created_at …)
 - `usage_metrics` (user_id, day, month, llm_calls, tokens_in, tokens_out …)
 
@@ -313,8 +313,8 @@ Tool DB를 별도로 구축하지 않는 대신, 아래 3겹으로 통제합니�
 
 ### 12.2 컨설턴트(CONSULTANT_APPROVED)
 
-- 배정된 케이스 목록
-- 케이스 상세
+- 배정된 프로젝트 목록
+- 프로젝트 상세
   - 기업 기본 정보(읽기)
   - 자가진단 요약(읽기)
   - 인터뷰 입력/수정
@@ -327,8 +327,8 @@ Tool DB를 별도로 구축하지 않는 대신, 아래 3겹으로 통제합니�
 ### 12.3 운영관리자(OPS_ADMIN)
 
 - 사용자 승인/정지
-- 케이스 관리
-  - 케이스 생성(기업정보 입력)
+- 프로젝트 관리
+  - 프로젝트 생성(기업정보 입력)
   - 자가진단 입력/수정(OPS만)
   - 매칭 추천 보기(Top-N + 근거)
   - 배정/변경(사유 기록)
@@ -358,7 +358,7 @@ NxM 표는 모바일에서 그대로 보여주기 어렵기 때문에, 아래를
 아래 이벤트는 반드시 남깁니다.
 
 - 사용자 승인/정지
-- 케이스 생성/수정
+- 프로젝트 생성/수정
 - 자가진단 입력/수정
 - 매칭 실행/배정/변경(사유 포함)
 - 로드맵 생성/수정(새 버전)/FINAL 확정/ARCHIVE
@@ -384,9 +384,9 @@ NxM 표는 모바일에서 그대로 보여주기 어렵기 때문에, 아래를
 
 ## 16. 완료 기준(Definition of Done)
 
-- 운영관리자(OPS_ADMIN)가 **기업 정보 + 자가진단 결과를 직접 입력**해 케이스를 생성할 수 있다.
+- 운영관리자(OPS_ADMIN)가 **기업 정보 + 자가진단 결과를 직접 입력**해 프로젝트를 생성할 수 있다.
 - 시스템이 **자가진단+기업정보 기반 매칭 Top-N**을 제시하고, 운영관리자가 배정/변경(사유 기록)할 수 있다.
-- 승인 컨설턴트는 **배정된 케이스만 접근**하여 자가진단을 조회하고, 현장 인터뷰를 입력할 수 있다.
+- 승인 컨설턴트는 **배정된 프로젝트만 접근**하여 자가진단을 조회하고, 현장 인터뷰를 입력할 수 있다.
 - 인터뷰 입력 후, 시스템이 **NxM 로드맵**을 생성하며 각 셀은 “직무-업무-산출물-개선효과-측정방법-무료툴-시간(≤40h)”을 포함한다.
 - NxM 중 **40시간 PBL 최적 과정 1개(≤40h)** 가 자동 선정되고 상세 계획이 제공된다.
 - 결과는 수정 요청으로 버전이 누적되며(FINAL 덮어쓰기 금지), FINAL은 1개만 유지된다.

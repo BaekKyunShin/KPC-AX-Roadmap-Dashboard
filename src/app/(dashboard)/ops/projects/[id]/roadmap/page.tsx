@@ -23,7 +23,7 @@ interface RoadmapVersion {
 
 export default function OpsRoadmapViewPage() {
   const params = useParams();
-  const caseId = params.id as string;
+  const projectId = params.id as string;
 
   const [loading, setLoading] = useState(true);
   const [versions, setVersions] = useState<RoadmapVersion[]>([]);
@@ -34,7 +34,7 @@ export default function OpsRoadmapViewPage() {
   useEffect(() => {
     async function loadVersions() {
       setLoading(true);
-      const data = await fetchRoadmapVersionsForOps(caseId);
+      const data = await fetchRoadmapVersionsForOps(projectId);
       setVersions(data as RoadmapVersion[]);
       if (data.length > 0) {
         setSelectedVersion(data[0] as RoadmapVersion);
@@ -42,7 +42,7 @@ export default function OpsRoadmapViewPage() {
       setLoading(false);
     }
     loadVersions();
-  }, [caseId]);
+  }, [projectId]);
 
   // 버전 선택
   async function handleVersionSelect(versionId: string) {
@@ -79,7 +79,7 @@ export default function OpsRoadmapViewPage() {
       <div className="flex items-center justify-between">
         <div>
           <Link
-            href={`/ops/projects/${caseId}`}
+            href={`/ops/projects/${projectId}`}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
             ← 프로젝트로 돌아가기

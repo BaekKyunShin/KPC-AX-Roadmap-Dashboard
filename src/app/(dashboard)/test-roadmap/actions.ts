@@ -18,7 +18,7 @@ interface ActionResult<T = void> {
  */
 export async function createTestRoadmap(
   input: TestInputData
-): Promise<ActionResult<{ caseId: string; roadmapId: string; result: RoadmapResult; validation: ValidationResult }>> {
+): Promise<ActionResult<{ projectId: string; roadmapId: string; result: RoadmapResult; validation: ValidationResult }>> {
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
@@ -46,7 +46,7 @@ export async function createTestRoadmap(
 
   try {
     // 1. 테스트 프로젝트 생성
-    const { data: newCase, error: caseError } = await adminSupabase
+    const { data: newProject, error: projectError } = await adminSupabase
       .from('projects')
       .insert({
         company_name: input.company_name,
@@ -63,8 +63,8 @@ export async function createTestRoadmap(
       .select('id')
       .single();
 
-    if (caseError || !newCase) {
-      console.error('[createTestRoadmap] Case creation error:', caseError);
+    if (projectError || !newProject) {
+      console.error('[createTestRoadmap] Project creation error:', projectError);
       return { success: false, error: '테스트 프로젝트 생성에 실패했습니다.' };
     }
 
@@ -72,7 +72,7 @@ export async function createTestRoadmap(
     const { data: newInterview, error: interviewError } = await adminSupabase
       .from('interviews')
       .insert({
-        project_id: newCase.id,
+        project_id: newProject.id,
         interviewer_id: user.id,
         interview_date: new Date().toISOString().split('T')[0],
         company_details: {},
@@ -109,19 +109,19 @@ export async function createTestRoadmap(
     if (interviewError || !newInterview) {
       console.error('[createTestRoadmap] Interview creation error:', interviewError);
       // 프로젝트 롤백
-      await adminSupabase.from('projects').delete().eq('id', newCase.id);
+      await adminSupabase.from('projects').delete().eq('id', newProject.id);
       return { success: false, error: '인터뷰 데이터 저장에 실패했습니다.' };
     }
 
     // 3. 로드맵 생성 (테스트 모드)
-    const roadmapResult = await generateRoadmap(newCase.id, user.id, undefined, true);
+    const roadmapResult = await generateRoadmap(newProject.id, user.id, undefined, true);
 
     // 4. 감사 로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEST_PROJECT_CREATE',
       targetType: 'project',
-      targetId: newCase.id,
+      targetId: newProject.id,
       meta: {
         company_name: input.company_name,
         industry: input.industry,
@@ -135,7 +135,7 @@ export async function createTestRoadmap(
       targetType: 'roadmap',
       targetId: roadmapResult.roadmapId,
       meta: {
-        project_id: newCase.id,
+        project_id: newProject.id,
         is_test_mode: true,
       },
     });
@@ -145,7 +145,7 @@ export async function createTestRoadmap(
     return {
       success: true,
       data: {
-        caseId: newCase.id,
+        projectId: newProject.id,
         roadmapId: roadmapResult.roadmapId,
         result: roadmapResult.result,
         validation: roadmapResult.validation,
@@ -223,9 +223,9 @@ export async function getTestHistory(): Promise<
 /**
  * 테스트 프로젝트의 로드맵 조회
  */
-export async function getTestRoadmap(caseId: string): Promise<
+export async function getTestRoadmap(projectId: string): Promise<
   ActionResult<{
-    case: {
+    project: {
       id: string;
       company_name: string;
       industry: string;
@@ -256,15 +256,15 @@ export async function getTestRoadmap(caseId: string): Promise<
   }
 
   // 프로젝트 조회 (본인이 생성한 테스트 프로젝트만)
-  const { data: caseData, error: caseError } = await supabase
+  const { data: projectData, error: projectError } = await supabase
     .from('projects')
     .select('id, company_name, industry, company_size')
-    .eq('id', caseId)
+    .eq('id', projectId)
     .eq('is_test_mode', true)
     .eq('test_created_by', user.id)
     .single();
 
-  if (caseError || !caseData) {
+  if (projectError || !projectData) {
     return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
   }
 
@@ -272,7 +272,7 @@ export async function getTestRoadmap(caseId: string): Promise<
   const { data: roadmap } = await supabase
     .from('roadmap_versions')
     .select('*')
-    .eq('project_id', caseId)
+    .eq('project_id', projectId)
     .order('version_number', { ascending: false })
     .limit(1)
     .single();
@@ -280,7 +280,7 @@ export async function getTestRoadmap(caseId: string): Promise<
   return {
     success: true,
     data: {
-      case: caseData,
+      project: projectData,
       roadmap: roadmap
         ? {
             id: roadmap.id,
@@ -302,7 +302,7 @@ export async function getTestRoadmap(caseId: string): Promise<
 /**
  * 테스트 프로젝트 삭제
  */
-export async function deleteTestCase(caseId: string): Promise<ActionResult> {
+export async function deleteTestProject(projectId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
@@ -315,26 +315,26 @@ export async function deleteTestCase(caseId: string): Promise<ActionResult> {
   }
 
   // 본인이 생성한 테스트 프로젝트인지 확인
-  const { data: caseData } = await supabase
+  const { data: projectData } = await supabase
     .from('projects')
     .select('id')
-    .eq('id', caseId)
+    .eq('id', projectId)
     .eq('is_test_mode', true)
     .eq('test_created_by', user.id)
     .single();
 
-  if (!caseData) {
+  if (!projectData) {
     return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
   }
 
   // 관련 데이터 삭제 (cascade가 설정되어 있지 않다면 수동 삭제)
-  await adminSupabase.from('roadmap_versions').delete().eq('project_id', caseId);
-  await adminSupabase.from('interviews').delete().eq('project_id', caseId);
+  await adminSupabase.from('roadmap_versions').delete().eq('project_id', projectId);
+  await adminSupabase.from('interviews').delete().eq('project_id', projectId);
 
-  const { error } = await adminSupabase.from('projects').delete().eq('id', caseId);
+  const { error } = await adminSupabase.from('projects').delete().eq('id', projectId);
 
   if (error) {
-    console.error('[deleteTestCase] Error:', error);
+    console.error('[deleteTestProject] Error:', error);
     return { success: false, error: '삭제에 실패했습니다.' };
   }
 
@@ -343,7 +343,7 @@ export async function deleteTestCase(caseId: string): Promise<ActionResult> {
     actorUserId: user.id,
     action: 'TEST_PROJECT_DELETE',
     targetType: 'project',
-    targetId: caseId,
+    targetId: projectId,
     meta: { is_test_mode: true },
   });
 

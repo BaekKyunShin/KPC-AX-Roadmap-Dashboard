@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { fetchConsultantProjects, fetchConsultantProjectFilters, type ConsultantProjectItem } from '../actions';
-import { CaseTableSkeleton } from '@/components/ui/Skeleton';
+import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchInput, SelectFilter, ActiveFilterBadges } from '@/components/ui/SearchInput';
 import {
@@ -143,7 +143,7 @@ export default function ProjectList() {
 
       {/* 테이블 */}
       {loading ? (
-        <CaseTableSkeleton rows={5} />
+        <ProjectTableSkeleton rows={5} />
       ) : projects.length === 0 ? (
         <EmptyState
           icon={

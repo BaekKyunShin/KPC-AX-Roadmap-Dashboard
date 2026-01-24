@@ -45,7 +45,7 @@ const TABS: { key: TabKey; label: string }[] = [
 
 export default function RoadmapPage() {
   const params = useParams();
-  const caseId = params.id as string;
+  const projectId = params.id as string;
 
   // UI 상태
   const [isGenerating, setIsGenerating] = useState(false);
@@ -71,12 +71,12 @@ export default function RoadmapPage() {
 
   // 버전 목록 로드
   const loadVersions = useCallback(async () => {
-    const data = await fetchRoadmapVersions(caseId);
+    const data = await fetchRoadmapVersions(projectId);
     setVersions(data as RoadmapVersion[]);
     if (data.length > 0 && !selectedVersion) {
       setSelectedVersion(data[0] as RoadmapVersion);
     }
-  }, [caseId, selectedVersion]);
+  }, [projectId, selectedVersion]);
 
   useEffect(() => {
     loadVersions();
@@ -88,13 +88,13 @@ export default function RoadmapPage() {
     setError(null);
     setSuccess(null);
 
-    const result = await createRoadmap(caseId, revisionPrompt || undefined);
+    const result = await createRoadmap(projectId, revisionPrompt || undefined);
 
     if (result.success && result.data) {
       setSuccess('로드맵이 생성되었습니다.');
       setRevisionPrompt('');
       // 버전 목록 새로고침
-      const data = await fetchRoadmapVersions(caseId);
+      const data = await fetchRoadmapVersions(projectId);
       setVersions(data as RoadmapVersion[]);
       if (data.length > 0) {
         setSelectedVersion(data[0] as RoadmapVersion);
@@ -126,7 +126,7 @@ export default function RoadmapPage() {
 
     if (result.success) {
       setSuccess('FINAL로 확정되었습니다.');
-      const data = await fetchRoadmapVersions(caseId);
+      const data = await fetchRoadmapVersions(projectId);
       setVersions(data as RoadmapVersion[]);
       const updated = data.find((v) => v.id === selectedVersion.id);
       if (updated) setSelectedVersion(updated as RoadmapVersion);
@@ -276,7 +276,7 @@ export default function RoadmapPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <Link href={`/consultant/projects/${caseId}`} className="text-sm text-gray-500 hover:text-gray-700">
+          <Link href={`/consultant/projects/${projectId}`} className="text-sm text-gray-500 hover:text-gray-700">
             ← 프로젝트로 돌아가기
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵</h1>

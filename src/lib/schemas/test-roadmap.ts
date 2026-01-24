@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// 업종 목록 (기존 case.ts와 동일)
+// 업종 목록 (기존 project.ts와 동일)
 export const industryOptions = [
   '제조업',
   '서비스업',

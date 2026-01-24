@@ -35,7 +35,7 @@ const STEPS = [
 export default function InterviewPage() {
   const router = useRouter();
   const params = useParams();
-  const caseId = params.id as string;
+  const projectId = params.id as string;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -94,7 +94,7 @@ export default function InterviewPage() {
 
     setIsAutoSaving(true);
 
-    const result = await saveInterview(caseId, {
+    const result = await saveInterview(projectId, {
       interview_date: interviewDate,
       company_details: companyDetails,
       job_tasks: jobTasks,
@@ -116,7 +116,7 @@ export default function InterviewPage() {
     }
 
     setIsAutoSaving(false);
-  }, [caseId, interviewDate, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, serializeFormData]);
+  }, [projectId, interviewDate, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, serializeFormData]);
 
   // 디바운스된 자동 저장 설정
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function InterviewPage() {
   // 기존 인터뷰 데이터 로드
   useEffect(() => {
     async function loadInterview() {
-      const data = await getInterview(caseId);
+      const data = await getInterview(projectId);
       if (data) {
         setInterviewDate(data.interview_date);
         setCompanyDetails(data.company_details as CompanyDetails || {
@@ -179,7 +179,7 @@ export default function InterviewPage() {
       setIsFetching(false);
     }
     loadInterview();
-  }, [caseId]);
+  }, [projectId]);
 
   // 스텝 유효성 검사
   const validateStep = (step: number): boolean => {
@@ -248,7 +248,7 @@ export default function InterviewPage() {
       }
     }
 
-    const result = await saveInterview(caseId, {
+    const result = await saveInterview(projectId, {
       interview_date: interviewDate,
       company_details: companyDetails,
       job_tasks: jobTasks,
@@ -262,7 +262,7 @@ export default function InterviewPage() {
     if (result.success) {
       setSuccess('인터뷰가 저장되었습니다.');
       setTimeout(() => {
-        router.push(`/consultant/projects/${caseId}`);
+        router.push(`/consultant/projects/${projectId}`);
         router.refresh();
       }, 1000);
     } else {
@@ -345,7 +345,7 @@ export default function InterviewPage() {
       {/* 헤더 */}
       <div className="mb-6">
         <Link
-          href={`/consultant/projects/${caseId}`}
+          href={`/consultant/projects/${projectId}`}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +438,7 @@ export default function InterviewPage() {
 
           <div className="flex items-center space-x-3">
             <Link
-              href={`/consultant/projects/${caseId}`}
+              href={`/consultant/projects/${projectId}`}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hidden md:block"
             >
               취소

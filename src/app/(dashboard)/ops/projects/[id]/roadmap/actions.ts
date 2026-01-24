@@ -6,7 +6,7 @@ import { getRoadmapVersions, getRoadmapVersion } from '@/lib/services/roadmap';
 /**
  * OPS_ADMIN용 로드맵 버전 목록 조회
  */
-export async function fetchRoadmapVersionsForOps(caseId: string) {
+export async function fetchRoadmapVersionsForOps(projectId: string) {
   try {
     const supabase = await createClient();
 
@@ -24,7 +24,7 @@ export async function fetchRoadmapVersionsForOps(caseId: string) {
       return [];
     }
 
-    return await getRoadmapVersions(caseId);
+    return await getRoadmapVersions(projectId);
   } catch {
     return [];
   }

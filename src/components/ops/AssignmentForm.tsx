@@ -17,11 +17,11 @@ interface Recommendation {
 }
 
 interface AssignmentFormProps {
-  caseId: string;
+  projectId: string;
   recommendations: Recommendation[];
 }
 
-export default function AssignmentForm({ caseId, recommendations }: AssignmentFormProps) {
+export default function AssignmentForm({ projectId, recommendations }: AssignmentFormProps) {
   const router = useRouter();
   const [selectedConsultant, setSelectedConsultant] = useState<string>('');
   const [reason, setReason] = useState<string>('');
@@ -45,7 +45,7 @@ export default function AssignmentForm({ caseId, recommendations }: AssignmentFo
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.set('project_id', caseId);
+    formData.set('project_id', projectId);
     formData.set('consultant_id', selectedConsultant);
     formData.set('assignment_reason', reason);
 
