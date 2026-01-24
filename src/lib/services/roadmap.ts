@@ -70,11 +70,16 @@ export interface ValidationResult {
 
 /**
  * 로드맵 생성
+ * @param caseId - 케이스 ID
+ * @param actorUserId - 생성자 user ID
+ * @param revisionPrompt - 수정 요청 (선택)
+ * @param isTestMode - 테스트 모드 여부 (자가진단 없이 생성)
  */
 export async function generateRoadmap(
   caseId: string,
   actorUserId: string,
-  revisionPrompt?: string
+  revisionPrompt?: string,
+  isTestMode: boolean = false
 ): Promise<{ roadmapId: string; result: RoadmapResult; validation: ValidationResult }> {
   const supabase = createAdminClient();
 
@@ -103,7 +108,8 @@ export async function generateRoadmap(
   const selfAssessment = caseData.self_assessments?.[0];
   const interview = caseData.interviews?.[0];
 
-  if (!selfAssessment) {
+  // 테스트 모드가 아닐 경우에만 자가진단 필수
+  if (!selfAssessment && !isTestMode) {
     throw new Error('자가진단 결과가 없습니다.');
   }
 
@@ -124,7 +130,7 @@ export async function generateRoadmap(
 
   // LLM 프롬프트 생성
   const systemPrompt = buildSystemPrompt();
-  const userPrompt = buildUserPrompt(caseData, selfAssessment, interview, consultantSnapshot, revisionPrompt);
+  const userPrompt = buildUserPrompt(caseData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
   // LLM 호출
   const result = await callLLMForJSON<RoadmapResult>(
@@ -280,10 +286,11 @@ RoadmapCell 구조:
  */
 function buildUserPrompt(
   caseData: Record<string, unknown>,
-  selfAssessment: Record<string, unknown>,
+  selfAssessment: Record<string, unknown> | null | undefined,
   interview: Record<string, unknown>,
   consultantProfile: ConsultantProfile | null,
-  revisionPrompt?: string
+  revisionPrompt?: string,
+  isTestMode: boolean = false
 ): string {
   let prompt = `## 기업 정보
 
@@ -291,12 +298,12 @@ function buildUserPrompt(
 - 업종: ${caseData.industry}
 - 규모: ${caseData.company_size}
 - 요청사항: ${caseData.customer_comment || '없음'}
-
+${isTestMode ? '- **테스트 모드**: 컨설턴트 연습용 로드맵입니다.\n' : ''}
 ## 자가진단 결과
 
-${JSON.stringify(selfAssessment.scores, null, 2)}
+${isTestMode && !selfAssessment ? '(테스트 모드 - 자가진단 결과 없음. 입력된 업무/페인포인트 정보를 기반으로 로드맵을 생성하세요.)' : JSON.stringify(selfAssessment?.scores, null, 2)}
 
-요약: ${selfAssessment.summary_text || '없음'}
+요약: ${isTestMode && !selfAssessment ? '테스트 모드로 자가진단 없이 로드맵 생성' : (selfAssessment?.summary_text || '없음')}
 
 ## 현장 인터뷰 결과
 
@@ -321,12 +328,16 @@ ${interview.notes || '없음'}
 
   if (consultantProfile) {
     prompt += `
-## 담당 컨설턴트 프로필
+## 담당 컨설턴트 프로필${isTestMode ? ' (테스트 모드에서 중요 참조 자료)' : ''}
 
 - 전문분야: ${consultantProfile.expertise_domains.join(', ')}
+- 가능 업종: ${consultantProfile.available_industries?.join(', ') || '미지정'}
 - 강의 가능 레벨: ${consultantProfile.teaching_levels.join(', ')}
 - 코칭 방식: ${consultantProfile.coaching_methods.join(', ')}
 - 역량 태그: ${consultantProfile.skill_tags.join(', ')}
+- 경력: ${consultantProfile.years_of_experience || 0}년
+${isTestMode ? `
+컨설턴트의 전문성을 기반으로 로드맵을 설계하세요.` : ''}
 `;
   }
 

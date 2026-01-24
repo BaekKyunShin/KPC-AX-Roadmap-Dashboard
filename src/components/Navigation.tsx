@@ -15,6 +15,7 @@ import {
   ScrollText,
   Gauge,
   Briefcase,
+  FlaskConical,
   LogOut,
   Menu,
   X,
@@ -33,7 +34,10 @@ const OPS_NAV_ITEMS = [
   { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
 ];
 
-const CONSULTANT_NAV_ITEMS = [{ href: '/consultant/cases', label: '배정된 케이스', icon: Briefcase }];
+const CONSULTANT_NAV_ITEMS = [
+  { href: '/consultant/cases', label: '배정된 케이스', icon: Briefcase },
+  { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
+];
 
 export default function Navigation({ user }: NavigationProps) {
   const pathname = usePathname();

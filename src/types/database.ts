@@ -77,8 +77,11 @@ export interface Case {
   assigned_consultant_id?: string;
   // OPS 입력 추가 정보
   customer_comment?: string; // 고객 코멘트/요청사항
+  // 테스트 모드 (컨설턴트 연습용)
+  is_test_mode: boolean;
+  test_created_by?: string; // 테스트 케이스 생성자 (컨설턴트 user_id)
   // 메타
-  created_by: string; // OPS_ADMIN user_id
+  created_by: string; // OPS_ADMIN user_id (실제 케이스) 또는 컨설턴트 (테스트 케이스)
   created_at: string;
   updated_at: string;
 }
@@ -410,7 +413,10 @@ export type AuditAction =
   | 'DOWNLOAD_XLSX'
   | 'TEMPLATE_CREATE'
   | 'TEMPLATE_UPDATE'
-  | 'TEMPLATE_ACTIVATE';
+  | 'TEMPLATE_ACTIVATE'
+  | 'TEST_CASE_CREATE'
+  | 'TEST_ROADMAP_CREATE'
+  | 'TEST_CASE_DELETE';
 
 // 사용량 메트릭
 export interface UsageMetric {
