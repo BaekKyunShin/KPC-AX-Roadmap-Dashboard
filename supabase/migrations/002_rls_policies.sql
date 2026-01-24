@@ -35,7 +35,7 @@ RETURNS user_status AS $$
   SELECT status FROM users WHERE id = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- 사용자가 특정 케이스에 배정되었는지 확인
+-- 사용자가 특정 프로젝트에 배정되었는지 확인
 CREATE OR REPLACE FUNCTION is_assigned_to_case(p_case_id UUID)
 RETURNS BOOLEAN AS $$
   SELECT EXISTS (
@@ -108,22 +108,22 @@ CREATE POLICY "profiles_update_own" ON consultant_profiles
 -- cases 테이블 RLS 정책
 -- ============================================
 
--- OPS_ADMIN 이상은 모든 케이스 조회 가능
+-- OPS_ADMIN 이상은 모든 프로젝트 조회 가능
 CREATE POLICY "cases_select_ops" ON cases
   FOR SELECT USING (is_ops_admin_or_higher());
 
--- 배정된 컨설턴트는 자신의 케이스만 조회 가능
+-- 배정된 컨설턴트는 자신의 프로젝트만 조회 가능
 CREATE POLICY "cases_select_consultant" ON cases
   FOR SELECT USING (
     is_approved_consultant() AND
     assigned_consultant_id = auth.uid()
   );
 
--- OPS_ADMIN만 케이스 생성 가능
+-- OPS_ADMIN만 프로젝트 생성 가능
 CREATE POLICY "cases_insert_ops" ON cases
   FOR INSERT WITH CHECK (is_ops_admin_or_higher());
 
--- OPS_ADMIN만 케이스 수정 가능
+-- OPS_ADMIN만 프로젝트 수정 가능
 CREATE POLICY "cases_update_ops" ON cases
   FOR UPDATE USING (is_ops_admin_or_higher());
 
@@ -154,7 +154,7 @@ CREATE POLICY "templates_update_ops" ON self_assessment_templates
 CREATE POLICY "assessments_select_ops" ON self_assessments
   FOR SELECT USING (is_ops_admin_or_higher());
 
--- 배정된 컨설턴트는 자신의 케이스 자가진단만 조회 가능
+-- 배정된 컨설턴트는 자신의 프로젝트 자가진단만 조회 가능
 CREATE POLICY "assessments_select_consultant" ON self_assessments
   FOR SELECT USING (
     is_approved_consultant() AND
@@ -216,7 +216,7 @@ CREATE POLICY "assignments_update_ops" ON case_assignments
 CREATE POLICY "interviews_select_ops" ON interviews
   FOR SELECT USING (is_ops_admin_or_higher());
 
--- 배정된 컨설턴트는 자신의 케이스 인터뷰만 조회/입력/수정 가능
+-- 배정된 컨설턴트는 자신의 프로젝트 인터뷰만 조회/입력/수정 가능
 CREATE POLICY "interviews_select_consultant" ON interviews
   FOR SELECT USING (
     is_approved_consultant() AND
@@ -245,7 +245,7 @@ CREATE POLICY "interviews_update_consultant" ON interviews
 CREATE POLICY "roadmaps_select_ops" ON roadmap_versions
   FOR SELECT USING (is_ops_admin_or_higher());
 
--- 배정된 컨설턴트는 자신의 케이스 로드맵만 조회/생성/수정 가능
+-- 배정된 컨설턴트는 자신의 프로젝트 로드맵만 조회/생성/수정 가능
 CREATE POLICY "roadmaps_select_consultant" ON roadmap_versions
   FOR SELECT USING (
     is_approved_consultant() AND

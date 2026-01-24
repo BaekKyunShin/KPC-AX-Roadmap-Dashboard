@@ -21,7 +21,7 @@ CREATE TYPE user_role AS ENUM (
 -- 사용자 상태
 CREATE TYPE user_status AS ENUM ('ACTIVE', 'SUSPENDED');
 
--- 케이스 상태
+-- 프로젝트 상태
 CREATE TYPE case_status AS ENUM (
   'NEW',
   'DIAGNOSED',
@@ -105,7 +105,7 @@ CREATE TABLE consultant_profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 기업 케이스
+-- 기업 프로젝트
 CREATE TABLE cases (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   -- 기업 기본 정보
@@ -168,7 +168,7 @@ CREATE TABLE matching_recommendations (
   UNIQUE(case_id, candidate_user_id)
 );
 
--- 케이스 배정 이력
+-- 프로젝트 배정 이력
 CREATE TABLE case_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
@@ -274,7 +274,7 @@ CREATE INDEX idx_users_email ON users(email);
 -- 컨설턴트 프로필
 CREATE INDEX idx_consultant_profiles_user_id ON consultant_profiles(user_id);
 
--- 케이스
+-- 프로젝트
 CREATE INDEX idx_cases_status ON cases(status);
 CREATE INDEX idx_cases_assigned_consultant ON cases(assigned_consultant_id);
 CREATE INDEX idx_cases_created_by ON cases(created_by);
