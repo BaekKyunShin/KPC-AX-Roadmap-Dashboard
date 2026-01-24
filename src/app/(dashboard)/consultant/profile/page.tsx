@@ -6,7 +6,7 @@ import ProfileForm from '@/components/consultant/ProfileForm';
 import { Loader2 } from 'lucide-react';
 import type { ConsultantProfile } from '@/types/database';
 
-export default function ProfilePage() {
+export default function ConsultantProfilePage() {
   const [profile, setProfile] = useState<ConsultantProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +53,9 @@ export default function ProfilePage() {
   return (
     <ProfileForm
       profile={profile}
-      backUrl="/dashboard"
-      successRedirectUrl="/dashboard"
-      backLabel="돌아가기"
+      backUrl="/consultant/cases"
+      successRedirectUrl="/consultant/cases"
+      backLabel="케이스 목록으로"
     />
   );
 }

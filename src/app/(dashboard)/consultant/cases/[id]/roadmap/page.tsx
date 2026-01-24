@@ -12,7 +12,7 @@ import {
   logDownload,
   editRoadmapManually,
 } from './actions';
-import type { RoadmapRow, PBLCourse, RoadmapCell, ValidationResult } from '@/lib/services/roadmap';
+import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
 import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
 import type { RoadmapVersionStatus } from '@/types/database';
 import CourseEditModal from './_components/CourseEditModal';
@@ -57,7 +57,6 @@ export default function RoadmapPage() {
   // 데이터 상태
   const [versions, setVersions] = useState<RoadmapVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('matrix');
 
@@ -93,7 +92,6 @@ export default function RoadmapPage() {
 
     if (result.success && result.data) {
       setSuccess('로드맵이 생성되었습니다.');
-      setValidation(result.data.validation as ValidationResult);
       setRevisionPrompt('');
       // 버전 목록 새로고침
       const data = await fetchRoadmapVersions(caseId);
@@ -193,9 +191,6 @@ export default function RoadmapPage() {
 
     if (result.success) {
       setSuccess('과정이 수정되었습니다.');
-      if (result.data?.validation) {
-        setValidation(result.data.validation as ValidationResult);
-      }
       const updated = await fetchRoadmapVersion(selectedVersion.id);
       if (updated) setSelectedVersion(updated as RoadmapVersion);
     } else {

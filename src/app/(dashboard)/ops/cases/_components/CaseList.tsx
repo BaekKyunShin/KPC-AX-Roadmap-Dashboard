@@ -99,11 +99,13 @@ export default function CaseList() {
   }, [page, debouncedSearch, status, industry]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadData();
   }, [loadData]);
 
   // 검색어 변경 시 첫 페이지로 리셋
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting page on filter change is intentional
     setPage(1);
   }, [debouncedSearch, status, industry]);
 

@@ -7,8 +7,6 @@ import {
   getRoadmapVersions,
   getRoadmapVersion,
   updateRoadmapManually,
-  type RoadmapResult,
-  type ValidationResult,
   type RoadmapRow,
   type PBLCourse,
   type RoadmapCell,

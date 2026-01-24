@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutUser } from '@/app/(auth)/actions';
@@ -16,10 +16,12 @@ import {
   Gauge,
   Briefcase,
   FlaskConical,
+  UserCog,
   LogOut,
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import type { User } from '@/types/database';
 
@@ -42,6 +44,8 @@ const CONSULTANT_NAV_ITEMS = [
 export default function Navigation({ user }: NavigationProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
@@ -49,6 +53,18 @@ export default function Navigation({ user }: NavigationProps) {
   const isOpsAdminPending = user.role === 'OPS_ADMIN_PENDING';
 
   const navItems = isOpsAdmin ? OPS_NAV_ITEMS : isConsultant ? CONSULTANT_NAV_ITEMS : [];
+
+  // 바깥 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getRoleBadge = () => {
     if (isPending)
@@ -125,28 +141,65 @@ export default function Navigation({ user }: NavigationProps) {
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs">
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-base font-medium text-gray-900">{user.name}</span>
-                <span className="text-sm text-muted-foreground">{user.email}</span>
-              </div>
-              {getRoleBadge()}
+          <div className="hidden md:flex items-center gap-2">
+            {/* User Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs">
+                    {getInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium text-gray-900">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
+                </div>
+                {getRoleBadge()}
+                <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1 z-50">
+                  <div className="px-4 py-3 border-b">
+                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+
+                  {/* 컨설턴트일 때만 프로필 관리 표시 */}
+                  {isConsultant && (
+                    <>
+                      <Link
+                        href="/consultant/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                          pathname === '/consultant/profile'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <UserCog className="h-4 w-4" />
+                        프로필 관리
+                      </Link>
+                      <Separator className="my-1" />
+                    </>
+                  )}
+
+                  <form action={logoutUser}>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      로그아웃
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
-
-            <Separator orientation="vertical" className="h-8" />
-
-            <form action={logoutUser}>
-              <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
-                <LogOut className="h-4 w-4 mr-2" />
-                로그아웃
-              </Button>
-            </form>
           </div>
 
           {/* Mobile Menu Button */}
@@ -206,12 +259,30 @@ export default function Navigation({ user }: NavigationProps) {
               {getRoleBadge()}
             </div>
 
-            <form action={logoutUser}>
-              <Button variant="outline" className="w-full justify-center">
-                <LogOut className="h-4 w-4 mr-2" />
-                로그아웃
-              </Button>
-            </form>
+            <div className="space-y-2">
+              {/* 컨설턴트일 때만 프로필 관리 표시 */}
+              {isConsultant && (
+                <Link
+                  href="/consultant/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    pathname === '/consultant/profile'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'text-gray-700 hover:bg-gray-100 border-gray-200'
+                  }`}
+                >
+                  <UserCog className="h-4 w-4" />
+                  프로필 관리
+                </Link>
+              )}
+
+              <form action={logoutUser}>
+                <Button variant="outline" className="w-full justify-center">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  로그아웃
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
       )}

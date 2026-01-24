@@ -15,7 +15,6 @@ export default function QuotaManagementPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
-  const [month, setMonth] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
   const [editingUser, setEditingUser] = useState<string | null>(null);
@@ -36,7 +35,6 @@ export default function QuotaManagementPage() {
       setUsers(result.users as UsageStats[]);
       setTotalPages(result.totalPages);
       setTotal(result.total);
-      setMonth(result.month || '');
       setLoading(false);
     }
     loadData();
