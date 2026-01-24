@@ -155,6 +155,18 @@ ALTER TABLE interviews RENAME CONSTRAINT interviews_case_id_fkey TO interviews_p
 ALTER TABLE roadmap_versions RENAME CONSTRAINT roadmap_versions_case_id_fkey TO roadmap_versions_project_id_fkey;
 
 -- ============================================
+-- 7.6단계: Primary Key 및 Unique 인덱스 리네이밍
+-- ============================================
+
+-- Primary Key 인덱스
+ALTER INDEX cases_pkey RENAME TO projects_pkey;
+ALTER INDEX case_assignments_pkey RENAME TO project_assignments_pkey;
+
+-- Unique 제약조건 인덱스
+ALTER INDEX self_assessments_case_id_key RENAME TO self_assessments_project_id_key;
+ALTER INDEX interviews_case_id_key RENAME TO interviews_project_id_key;
+
+-- ============================================
 -- 8단계: UNIQUE 제약조건 리네이밍
 -- ============================================
 
