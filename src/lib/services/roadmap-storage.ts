@@ -41,8 +41,8 @@ export async function saveFinalXLSX(
     // XLSX 생성
     const xlsxBuffer = generateXLSX(exportData);
 
-    // 파일 경로: cases/{caseId}/roadmap_final.xlsx
-    const filePath = `cases/${caseId}/roadmap_final.xlsx`;
+    // 파일 경로: projects/{caseId}/roadmap_final.xlsx
+    const filePath = `projects/${caseId}/roadmap_final.xlsx`;
 
     // 기존 파일 삭제 (있으면)
     await supabase.storage.from(BUCKET_NAME).remove([filePath]);

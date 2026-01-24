@@ -185,7 +185,7 @@ export async function getTestHistory(): Promise<
     return { success: false, error: '로그인이 필요합니다.' };
   }
 
-  const { data: cases, error } = await supabase
+  const { data: projects, error } = await supabase
     .from('projects')
     .select(
       `
@@ -209,7 +209,7 @@ export async function getTestHistory(): Promise<
 
   return {
     success: true,
-    data: (cases || []).map((c) => ({
+    data: (projects || []).map((c) => ({
       id: c.id,
       company_name: c.company_name,
       industry: c.industry,
