@@ -129,6 +129,32 @@ ALTER TABLE interviews RENAME COLUMN case_id TO project_id;
 ALTER TABLE roadmap_versions RENAME COLUMN case_id TO project_id;
 
 -- ============================================
+-- 7.5단계: 외래 키 제약조건 리네이밍
+-- ============================================
+
+-- projects 테이블
+ALTER TABLE projects RENAME CONSTRAINT cases_assigned_consultant_id_fkey TO projects_assigned_consultant_id_fkey;
+ALTER TABLE projects RENAME CONSTRAINT cases_created_by_fkey TO projects_created_by_fkey;
+ALTER TABLE projects RENAME CONSTRAINT cases_test_created_by_fkey TO projects_test_created_by_fkey;
+
+-- project_assignments 테이블
+ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_project_id_fkey TO project_assignments_project_id_fkey;
+ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_consultant_id_fkey TO project_assignments_consultant_id_fkey;
+ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_assigned_by_fkey TO project_assignments_assigned_by_fkey;
+
+-- self_assessments 테이블
+ALTER TABLE self_assessments RENAME CONSTRAINT self_assessments_case_id_fkey TO self_assessments_project_id_fkey;
+
+-- matching_recommendations 테이블
+ALTER TABLE matching_recommendations RENAME CONSTRAINT matching_recommendations_case_id_fkey TO matching_recommendations_project_id_fkey;
+
+-- interviews 테이블
+ALTER TABLE interviews RENAME CONSTRAINT interviews_case_id_fkey TO interviews_project_id_fkey;
+
+-- roadmap_versions 테이블
+ALTER TABLE roadmap_versions RENAME CONSTRAINT roadmap_versions_case_id_fkey TO roadmap_versions_project_id_fkey;
+
+-- ============================================
 -- 8단계: UNIQUE 제약조건 리네이밍
 -- ============================================
 
