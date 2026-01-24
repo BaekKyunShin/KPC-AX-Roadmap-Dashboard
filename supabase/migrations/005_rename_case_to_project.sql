@@ -138,7 +138,7 @@ ALTER TABLE projects RENAME CONSTRAINT cases_created_by_fkey TO projects_created
 ALTER TABLE projects RENAME CONSTRAINT cases_test_created_by_fkey TO projects_test_created_by_fkey;
 
 -- project_assignments 테이블
-ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_project_id_fkey TO project_assignments_project_id_fkey;
+ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_case_id_fkey TO project_assignments_project_id_fkey;
 ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_consultant_id_fkey TO project_assignments_consultant_id_fkey;
 ALTER TABLE project_assignments RENAME CONSTRAINT case_assignments_assigned_by_fkey TO project_assignments_assigned_by_fkey;
 
