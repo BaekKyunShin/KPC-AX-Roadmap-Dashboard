@@ -276,8 +276,8 @@ export default function RoadmapPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <Link href={`/consultant/cases/${caseId}`} className="text-sm text-gray-500 hover:text-gray-700">
-            ← 케이스로 돌아가기
+          <Link href={`/consultant/projects/${caseId}`} className="text-sm text-gray-500 hover:text-gray-700">
+            ← 프로젝트로 돌아가기
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵</h1>
         </div>

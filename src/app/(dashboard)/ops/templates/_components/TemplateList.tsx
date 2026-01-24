@@ -5,6 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { SelfAssessmentTemplate } from '@/types/database';
 import { setActiveTemplate, duplicateTemplate } from '../actions';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableActionLink,
+} from '@/components/ui/table';
+
+// =============================================================================
+// Types
+// =============================================================================
 
 interface TemplateWithUsage extends SelfAssessmentTemplate {
   usage_count: number;
@@ -13,6 +26,24 @@ interface TemplateWithUsage extends SelfAssessmentTemplate {
 interface TemplateListProps {
   templates: TemplateWithUsage[];
 }
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const TABLE_COLUMNS = {
+  version: 'w-[10%]',
+  name: 'w-[22%]',
+  questions: 'w-[10%]',
+  usage: 'w-[12%]',
+  status: 'w-[12%]',
+  createdAt: 'w-[14%]',
+  actions: 'w-[20%]',
+} as const;
+
+// =============================================================================
+// Component
+// =============================================================================
 
 export default function TemplateList({ templates }: TemplateListProps) {
   const router = useRouter();
@@ -78,66 +109,50 @@ export default function TemplateList({ templates }: TemplateListProps) {
       )}
 
       <div className="bg-white shadow overflow-hidden rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                버전
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                템플릿 이름
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                문항 수
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                사용 현황
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                상태
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                생성일
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                작업
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className={TABLE_COLUMNS.version}>버전</TableHead>
+              <TableHead className={TABLE_COLUMNS.name}>템플릿 이름</TableHead>
+              <TableHead className={TABLE_COLUMNS.questions}>문항 수</TableHead>
+              <TableHead className={TABLE_COLUMNS.usage}>사용 현황</TableHead>
+              <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+              <TableHead className={TABLE_COLUMNS.createdAt}>생성일</TableHead>
+              <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {templates.map((template) => (
-              <tr key={template.id} className={template.is_active ? 'bg-green-50' : ''}>
-                <td className="px-6 py-4 whitespace-nowrap">
+              <TableRow key={template.id} className={template.is_active ? 'bg-green-50' : ''}>
+                <TableCell>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     v{template.version}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </TableCell>
+                <TableCell>
                   <div>
                     <Link
                       href={`/ops/templates/${template.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      className="font-medium text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
                     >
                       {template.name}
                     </Link>
                     {template.description && (
-                      <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">
+                      <p className="text-xs text-gray-500 mt-1 truncate max-w-xs mx-auto">
                         {template.description}
                       </p>
                     )}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {template.questions?.length || 0}개
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                </TableCell>
+                <TableCell className="text-gray-500">{template.questions?.length || 0}개</TableCell>
+                <TableCell>
                   {template.usage_count > 0 ? (
                     <span className="text-blue-600">{template.usage_count}건 사용</span>
                   ) : (
                     <span className="text-gray-400">미사용</span>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </TableCell>
+                <TableCell>
                   {template.is_active ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       활성
@@ -147,38 +162,40 @@ export default function TemplateList({ templates }: TemplateListProps) {
                       비활성
                     </span>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                </TableCell>
+                <TableCell className="text-gray-500">
                   {new Date(template.created_at).toLocaleDateString('ko-KR')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                  <Link
-                    href={`/ops/templates/${template.id}`}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    상세
-                  </Link>
-                  {!template.is_active && (
-                    <button
-                      onClick={() => handleSetActive(template.id)}
-                      disabled={loading === template.id}
-                      className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-center gap-3">
+                    <Link
+                      href={`/ops/templates/${template.id}`}
+                      className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
                     >
-                      {loading === template.id ? '처리중...' : '활성화'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDuplicate(template.id)}
-                    disabled={loading === template.id}
-                    className="text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                  >
-                    복제
-                  </button>
-                </td>
-              </tr>
+                      상세
+                    </Link>
+                    {!template.is_active && (
+                      <TableActionLink
+                        variant="success"
+                        onClick={() => handleSetActive(template.id)}
+                        disabled={loading === template.id}
+                      >
+                        {loading === template.id ? '처리중...' : '활성화'}
+                      </TableActionLink>
+                    )}
+                    <TableActionLink
+                      variant="secondary"
+                      onClick={() => handleDuplicate(template.id)}
+                      disabled={loading === template.id}
+                    >
+                      복제
+                    </TableActionLink>
+                  </div>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">

@@ -40,9 +40,9 @@ export async function saveInterview(
       };
     }
 
-    // 케이스 접근 권한 확인 (배정된 컨설턴트만)
+    // 프로젝트 접근 권한 확인 (배정된 컨설턴트만)
     const { data: caseData } = await supabase
-      .from('cases')
+      .from('projects')
       .select('id, status, assigned_consultant_id')
       .eq('id', caseId)
       .eq('assigned_consultant_id', user.id)
@@ -51,7 +51,7 @@ export async function saveInterview(
     if (!caseData) {
       return {
         success: false,
-        error: '해당 케이스에 대한 접근 권한이 없습니다.',
+        error: '해당 프로젝트에 대한 접근 권한이 없습니다.',
       };
     }
 
@@ -70,11 +70,11 @@ export async function saveInterview(
     const { data: existingInterview } = await adminSupabase
       .from('interviews')
       .select('id')
-      .eq('case_id', caseId)
+      .eq('project_id', caseId)
       .single();
 
     const interviewData = {
-      case_id: caseId,
+      project_id: caseId,
       interviewer_id: user.id,
       interview_date: validation.data.interview_date,
       company_details: validation.data.company_details,
@@ -116,9 +116,9 @@ export async function saveInterview(
       }
       auditAction = 'INTERVIEW_CREATE';
 
-      // 케이스 상태 업데이트 (최초 인터뷰 입력 시)
+      // 프로젝트 상태 업데이트 (최초 인터뷰 입력 시)
       await adminSupabase
-        .from('cases')
+        .from('projects')
         .update({ status: 'INTERVIEWED' })
         .eq('id', caseId);
     }
@@ -157,7 +157,7 @@ export async function getInterview(caseId: string) {
 
     // 배정된 컨설턴트만 조회 가능
     const { data: caseData } = await supabase
-      .from('cases')
+      .from('projects')
       .select('assigned_consultant_id')
       .eq('id', caseId)
       .single();
@@ -169,7 +169,7 @@ export async function getInterview(caseId: string) {
     const { data: interview } = await supabase
       .from('interviews')
       .select('*')
-      .eq('case_id', caseId)
+      .eq('project_id', caseId)
       .single();
 
     return interview;

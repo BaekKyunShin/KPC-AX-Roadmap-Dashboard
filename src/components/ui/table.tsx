@@ -1,108 +1,157 @@
-"use client"
+'use client';
 
-import * as React from "react"
+import * as React from 'react';
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+// =============================================================================
+// Table Container
+// =============================================================================
+
+function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
+    <div data-slot="table-container" className="relative w-full overflow-x-auto">
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn('w-full table-fixed caption-bottom text-sm divide-y divide-gray-200', className)}
         {...props}
       />
     </div>
-  )
+  );
 }
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return (
-    <thead
-      data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
-      {...props}
-    />
-  )
+// =============================================================================
+// Table Header
+// =============================================================================
+
+function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
+  return <thead data-slot="table-header" className={cn('bg-gray-50', className)} {...props} />;
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+// =============================================================================
+// Table Body
+// =============================================================================
+
+function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      className={cn('bg-white divide-y divide-gray-200', className)}
       {...props}
     />
-  )
+  );
 }
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+// =============================================================================
+// Table Footer
+// =============================================================================
+
+function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn(
-        "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
-        className
-      )}
+      className={cn('bg-muted/50 border-t font-medium [&>tr]:last:border-b-0', className)}
       {...props}
     />
-  )
+  );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+// =============================================================================
+// Table Row
+// =============================================================================
+
+function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
   return (
     <tr
       data-slot="table-row"
-      className={cn(
-        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
-        className
-      )}
+      className={cn('hover:bg-gray-50 transition-colors', className)}
       {...props}
     />
-  )
+  );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+// =============================================================================
+// Table Head (Header Cell)
+// =============================================================================
+
+function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        'px-6 py-3 text-center align-middle text-xs font-medium text-gray-500 uppercase tracking-wider',
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+// =============================================================================
+// Table Cell
+// =============================================================================
+
+function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
   return (
     <td
       data-slot="table-cell"
+      className={cn('px-6 py-4 align-top text-center text-sm', className)}
+      {...props}
+    />
+  );
+}
+
+// =============================================================================
+// Table Caption
+// =============================================================================
+
+function TableCaption({ className, ...props }: React.ComponentProps<'caption'>) {
+  return (
+    <caption
+      data-slot="table-caption"
+      className={cn('text-muted-foreground mt-4 text-sm', className)}
+      {...props}
+    />
+  );
+}
+
+// =============================================================================
+// Action Link (for clickable text in tables)
+// =============================================================================
+
+interface TableActionLinkProps extends React.ComponentProps<'button'> {
+  variant?: 'primary' | 'danger' | 'success' | 'secondary';
+}
+
+function TableActionLink({
+  className,
+  variant = 'primary',
+  ...props
+}: TableActionLinkProps) {
+  const variantStyles = {
+    primary: 'text-blue-600 hover:text-blue-800',
+    danger: 'text-red-600 hover:text-red-800',
+    success: 'text-green-600 hover:text-green-800',
+    secondary: 'text-gray-600 hover:text-gray-800',
+  };
+
+  return (
+    <button
+      data-slot="table-action-link"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        variantStyles[variant],
+        'underline-offset-2 hover:underline cursor-pointer transition-colors duration-150',
+        'disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline',
         className
       )}
       {...props}
     />
-  )
+  );
 }
 
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">) {
-  return (
-    <caption
-      data-slot="table-caption"
-      className={cn("text-muted-foreground mt-4 text-sm", className)}
-      {...props}
-    />
-  )
-}
+// =============================================================================
+// Exports
+// =============================================================================
 
 export {
   Table,
@@ -113,4 +162,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
-}
+  TableActionLink,
+};

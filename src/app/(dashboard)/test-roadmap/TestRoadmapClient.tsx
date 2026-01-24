@@ -209,11 +209,11 @@ export default function TestRoadmapClient({
       {/* 헤더 */}
       <div className="mb-6">
         <Link
-          href="/consultant/cases"
+          href="/consultant/projects"
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center mb-2"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          배정된 케이스로 돌아가기
+          배정된 프로젝트로 돌아가기
         </Link>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">

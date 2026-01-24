@@ -84,7 +84,7 @@ export async function cleanupOldFinalFiles(caseId: string): Promise<void> {
     const { data: oldFinal } = await supabase
       .from('roadmap_versions')
       .select('storage_path_xlsx, storage_path_pdf')
-      .eq('case_id', caseId)
+      .eq('project_id', caseId)
       .eq('status', 'FINAL')
       .single();
 
@@ -112,7 +112,7 @@ export async function getFinalXLSXUrl(caseId: string): Promise<string | null> {
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
       .select('storage_path_xlsx')
-      .eq('case_id', caseId)
+      .eq('project_id', caseId)
       .eq('status', 'FINAL')
       .single();
 
@@ -140,7 +140,7 @@ export async function prepareExportDataServer(roadmapId: string): Promise<Roadma
 
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
-      .select('*, cases!inner(company_name)')
+      .select('*, projects!inner(company_name)')
       .eq('id', roadmapId)
       .single();
 
@@ -148,11 +148,11 @@ export async function prepareExportDataServer(roadmapId: string): Promise<Roadma
       return null;
     }
 
-    const caseData = roadmap.cases as { company_name: string };
+    const projectData = roadmap.projects as { company_name: string };
 
     return {
-      companyName: caseData.company_name,
-      caseId: roadmap.case_id,
+      companyName: projectData.company_name,
+      caseId: roadmap.project_id,
       versionNumber: roadmap.version_number,
       status: roadmap.status,
       diagnosisSummary: roadmap.diagnosis_summary,

@@ -5,10 +5,10 @@ import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import MatchingRecommendations from '@/components/ops/MatchingRecommendations';
 import RecalculateMatchingButton from '@/components/ops/RecalculateMatchingButton';
 import ReassignmentSection from '@/components/ops/ReassignmentSection';
-import { getCaseStatusBadge } from '@/lib/constants/status';
-import type { CaseStatus } from '@/types/database';
+import { getProjectStatusBadge } from '@/lib/constants/status';
+import type { ProjectStatus } from '@/types/database';
 
-export default async function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
@@ -31,17 +31,17 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
     redirect('/dashboard');
   }
 
-  // 케이스 조회
-  const { data: caseData } = await supabase
-    .from('cases')
+  // 프로젝트 조회
+  const { data: projectData } = await supabase
+    .from('projects')
     .select(`
       *,
-      assigned_consultant:users!cases_assigned_consultant_id_fkey(id, name, email)
+      assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
     `)
     .eq('id', id)
     .single();
 
-  if (!caseData) {
+  if (!projectData) {
     notFound();
   }
 
@@ -49,7 +49,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   const { data: selfAssessment } = await supabase
     .from('self_assessments')
     .select('*')
-    .eq('case_id', id)
+    .eq('project_id', id)
     .single();
 
   // 활성 템플릿 조회
@@ -69,36 +69,36 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         consultant_profile:consultant_profiles(*)
       )
     `)
-    .eq('case_id', id)
+    .eq('project_id', id)
     .order('rank', { ascending: true });
 
   // 배정 이력 조회
   const { data: assignments } = await supabase
-    .from('case_assignments')
+    .from('project_assignments')
     .select(`
       *,
-      consultant:users!case_assignments_consultant_id_fkey(id, name, email),
-      assigned_by_user:users!case_assignments_assigned_by_fkey(id, name)
+      consultant:users!project_assignments_consultant_id_fkey(id, name, email),
+      assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
     `)
-    .eq('case_id', id)
+    .eq('project_id', id)
     .order('assigned_at', { ascending: false });
 
-  const statusInfo = getCaseStatusBadge(caseData.status as CaseStatus);
+  const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/ops/cases" className="text-sm text-gray-500 hover:text-gray-700">
-          ← 케이스 목록으로
+        <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
+          ← 프로젝트 목록으로
         </Link>
       </div>
 
-      {/* 케이스 기본 정보 */}
+      {/* 프로젝트 기본 정보 */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{caseData.company_name}</h1>
-            <p className="text-gray-500">{caseData.industry} | {caseData.company_size}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{projectData.company_name}</h1>
+            <p className="text-gray-500">{projectData.industry} | {projectData.company_size}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm ${statusInfo.color}`}>
             {statusInfo.label}
@@ -108,18 +108,18 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500">담당자</h3>
-            <p className="text-gray-900">{caseData.contact_name}</p>
-            <p className="text-sm text-gray-500">{caseData.contact_email}</p>
-            {caseData.contact_phone && (
-              <p className="text-sm text-gray-500">{caseData.contact_phone}</p>
+            <p className="text-gray-900">{projectData.contact_name}</p>
+            <p className="text-sm text-gray-500">{projectData.contact_email}</p>
+            {projectData.contact_phone && (
+              <p className="text-sm text-gray-500">{projectData.contact_phone}</p>
             )}
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">배정 컨설턴트</h3>
-            {caseData.assigned_consultant ? (
+            {projectData.assigned_consultant ? (
               <>
-                <p className="text-gray-900">{caseData.assigned_consultant.name}</p>
-                <p className="text-sm text-gray-500">{caseData.assigned_consultant.email}</p>
+                <p className="text-gray-900">{projectData.assigned_consultant.name}</p>
+                <p className="text-sm text-gray-500">{projectData.assigned_consultant.email}</p>
               </>
             ) : (
               <p className="text-gray-400">미배정</p>
@@ -127,10 +127,10 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {caseData.customer_comment && (
+        {projectData.customer_comment && (
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500">고객 코멘트</h3>
-            <p className="mt-1 text-gray-900">{caseData.customer_comment}</p>
+            <p className="mt-1 text-gray-900">{projectData.customer_comment}</p>
           </div>
         )}
       </div>
@@ -193,14 +193,14 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
               <MatchingRecommendations recommendations={matchingRecommendations} />
               <RecalculateMatchingButton
                 caseId={id}
-                hasAssignment={!!caseData.assigned_consultant}
+                hasAssignment={!!projectData.assigned_consultant}
               />
             </>
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">매칭 추천이 생성되지 않았습니다.</p>
               <Link
-                href={`/ops/cases/${id}/matching`}
+                href={`/ops/projects/${id}/matching`}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
               >
                 매칭 추천 생성
@@ -213,7 +213,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       {/* 배정 섹션 */}
       {matchingRecommendations && matchingRecommendations.length > 0 && (
         <ReassignmentSection
-          caseData={caseData}
+          caseData={projectData}
           caseId={id}
           recommendations={matchingRecommendations}
           latestAssignment={assignments?.[0]}
@@ -255,17 +255,17 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* 로드맵 열람 (읽기 전용) */}
-      {['ROADMAP_DRAFTED', 'FINALIZED'].includes(caseData.status) && (
+      {['ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">AI 교육 로드맵</h2>
           <div className="flex items-center justify-between">
             <p className="text-gray-600">
-              {caseData.status === 'FINALIZED'
+              {projectData.status === 'FINALIZED'
                 ? '최종 확정된 로드맵이 있습니다.'
                 : '로드맵 초안이 생성되었습니다.'}
             </p>
             <Link
-              href={`/ops/cases/${id}/roadmap`}
+              href={`/ops/projects/${id}/roadmap`}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               로드맵 보기 (읽기 전용)

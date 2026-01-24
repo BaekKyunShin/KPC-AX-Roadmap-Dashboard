@@ -37,22 +37,22 @@ export async function generateMatchingRecommendations(
   const { topN = 3, preserveStatus = false } = options;
   const supabase = createAdminClient();
 
-  // 케이스 정보 조회
+  // 프로젝트 정보 조회
   const { data: caseData } = await supabase
-    .from('cases')
+    .from('projects')
     .select('industry, company_size')
     .eq('id', caseId)
     .single();
 
   if (!caseData) {
-    throw new Error('케이스를 찾을 수 없습니다.');
+    throw new Error('프로젝트를 찾을 수 없습니다.');
   }
 
   // 자가진단 결과 조회
   const { data: assessment } = await supabase
     .from('self_assessments')
     .select('scores')
-    .eq('case_id', caseId)
+    .eq('project_id', caseId)
     .single();
 
   if (!assessment) {
@@ -91,11 +91,11 @@ export async function generateMatchingRecommendations(
     .slice(0, topN);
 
   // 기존 추천 삭제
-  await supabase.from('matching_recommendations').delete().eq('case_id', caseId);
+  await supabase.from('matching_recommendations').delete().eq('project_id', caseId);
 
   // 새 추천 저장
   const recommendations = scoredCandidates.map((candidate, index) => ({
-    case_id: caseId,
+    project_id: caseId,
     candidate_user_id: candidate.userId,
     total_score: candidate.totalScore,
     score_breakdown: candidate.breakdown,
@@ -111,11 +111,11 @@ export async function generateMatchingRecommendations(
     throw new Error(`매칭 추천 저장 실패: ${insertError.message}`);
   }
 
-  // 케이스 상태 업데이트 (preserveStatus가 false이거나 아직 DIAGNOSED 상태일 때만)
+  // 프로젝트 상태 업데이트 (preserveStatus가 false이거나 아직 DIAGNOSED 상태일 때만)
   if (!preserveStatus) {
     // 현재 상태 확인
     const { data: currentCase } = await supabase
-      .from('cases')
+      .from('projects')
       .select('status')
       .eq('id', caseId)
       .single();
@@ -123,7 +123,7 @@ export async function generateMatchingRecommendations(
     // DIAGNOSED 상태일 때만 MATCH_RECOMMENDED로 변경
     // 이미 ASSIGNED 이상이면 상태 유지
     if (currentCase?.status === 'DIAGNOSED' || currentCase?.status === 'NEW') {
-      await supabase.from('cases').update({ status: 'MATCH_RECOMMENDED' }).eq('id', caseId);
+      await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', caseId);
     }
   }
 
@@ -131,7 +131,7 @@ export async function generateMatchingRecommendations(
   await createAuditLog({
     actorUserId,
     action: 'MATCHING_EXECUTE',
-    targetType: 'case',
+    targetType: 'project',
     targetId: caseId,
     meta: {
       top_n: topN,

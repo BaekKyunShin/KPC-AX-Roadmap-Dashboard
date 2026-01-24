@@ -28,7 +28,7 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
   );
 }
 
-// 케이스 목록 테이블 스켈레톤
+// 프로젝트 목록 테이블 스켈레톤
 export function CaseTableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="bg-white shadow overflow-hidden rounded-lg">

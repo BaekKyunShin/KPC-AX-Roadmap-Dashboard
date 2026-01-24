@@ -14,7 +14,7 @@ interface ActionResult<T = void> {
 }
 
 /**
- * 테스트 케이스 생성 및 로드맵 생성
+ * 테스트 프로젝트 생성 및 로드맵 생성
  */
 export async function createTestRoadmap(
   input: TestInputData
@@ -45,9 +45,9 @@ export async function createTestRoadmap(
   }
 
   try {
-    // 1. 테스트 케이스 생성
+    // 1. 테스트 프로젝트 생성
     const { data: newCase, error: caseError } = await adminSupabase
-      .from('cases')
+      .from('projects')
       .insert({
         company_name: input.company_name,
         industry: input.industry,
@@ -65,14 +65,14 @@ export async function createTestRoadmap(
 
     if (caseError || !newCase) {
       console.error('[createTestRoadmap] Case creation error:', caseError);
-      return { success: false, error: '테스트 케이스 생성에 실패했습니다.' };
+      return { success: false, error: '테스트 프로젝트 생성에 실패했습니다.' };
     }
 
     // 2. 인터뷰 데이터 저장 (간소화된 형식)
     const { data: newInterview, error: interviewError } = await adminSupabase
       .from('interviews')
       .insert({
-        case_id: newCase.id,
+        project_id: newCase.id,
         interviewer_id: user.id,
         interview_date: new Date().toISOString().split('T')[0],
         company_details: {},
@@ -108,8 +108,8 @@ export async function createTestRoadmap(
 
     if (interviewError || !newInterview) {
       console.error('[createTestRoadmap] Interview creation error:', interviewError);
-      // 케이스 롤백
-      await adminSupabase.from('cases').delete().eq('id', newCase.id);
+      // 프로젝트 롤백
+      await adminSupabase.from('projects').delete().eq('id', newCase.id);
       return { success: false, error: '인터뷰 데이터 저장에 실패했습니다.' };
     }
 
@@ -119,8 +119,8 @@ export async function createTestRoadmap(
     // 4. 감사 로그
     await createAuditLog({
       actorUserId: user.id,
-      action: 'TEST_CASE_CREATE',
-      targetType: 'case',
+      action: 'TEST_PROJECT_CREATE',
+      targetType: 'project',
       targetId: newCase.id,
       meta: {
         company_name: input.company_name,
@@ -135,7 +135,7 @@ export async function createTestRoadmap(
       targetType: 'roadmap',
       targetId: roadmapResult.roadmapId,
       meta: {
-        case_id: newCase.id,
+        project_id: newCase.id,
         is_test_mode: true,
       },
     });
@@ -186,7 +186,7 @@ export async function getTestHistory(): Promise<
   }
 
   const { data: cases, error } = await supabase
-    .from('cases')
+    .from('projects')
     .select(
       `
       id,
@@ -221,7 +221,7 @@ export async function getTestHistory(): Promise<
 }
 
 /**
- * 테스트 케이스의 로드맵 조회
+ * 테스트 프로젝트의 로드맵 조회
  */
 export async function getTestRoadmap(caseId: string): Promise<
   ActionResult<{
@@ -255,9 +255,9 @@ export async function getTestRoadmap(caseId: string): Promise<
     return { success: false, error: '로그인이 필요합니다.' };
   }
 
-  // 케이스 조회 (본인이 생성한 테스트 케이스만)
+  // 프로젝트 조회 (본인이 생성한 테스트 프로젝트만)
   const { data: caseData, error: caseError } = await supabase
-    .from('cases')
+    .from('projects')
     .select('id, company_name, industry, company_size')
     .eq('id', caseId)
     .eq('is_test_mode', true)
@@ -265,14 +265,14 @@ export async function getTestRoadmap(caseId: string): Promise<
     .single();
 
   if (caseError || !caseData) {
-    return { success: false, error: '테스트 케이스를 찾을 수 없습니다.' };
+    return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
   }
 
   // 최신 로드맵 조회
   const { data: roadmap } = await supabase
     .from('roadmap_versions')
     .select('*')
-    .eq('case_id', caseId)
+    .eq('project_id', caseId)
     .order('version_number', { ascending: false })
     .limit(1)
     .single();
@@ -300,7 +300,7 @@ export async function getTestRoadmap(caseId: string): Promise<
 }
 
 /**
- * 테스트 케이스 삭제
+ * 테스트 프로젝트 삭제
  */
 export async function deleteTestCase(caseId: string): Promise<ActionResult> {
   const supabase = await createClient();
@@ -314,9 +314,9 @@ export async function deleteTestCase(caseId: string): Promise<ActionResult> {
     return { success: false, error: '로그인이 필요합니다.' };
   }
 
-  // 본인이 생성한 테스트 케이스인지 확인
+  // 본인이 생성한 테스트 프로젝트인지 확인
   const { data: caseData } = await supabase
-    .from('cases')
+    .from('projects')
     .select('id')
     .eq('id', caseId)
     .eq('is_test_mode', true)
@@ -324,14 +324,14 @@ export async function deleteTestCase(caseId: string): Promise<ActionResult> {
     .single();
 
   if (!caseData) {
-    return { success: false, error: '테스트 케이스를 찾을 수 없습니다.' };
+    return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
   }
 
   // 관련 데이터 삭제 (cascade가 설정되어 있지 않다면 수동 삭제)
-  await adminSupabase.from('roadmap_versions').delete().eq('case_id', caseId);
-  await adminSupabase.from('interviews').delete().eq('case_id', caseId);
+  await adminSupabase.from('roadmap_versions').delete().eq('project_id', caseId);
+  await adminSupabase.from('interviews').delete().eq('project_id', caseId);
 
-  const { error } = await adminSupabase.from('cases').delete().eq('id', caseId);
+  const { error } = await adminSupabase.from('projects').delete().eq('id', caseId);
 
   if (error) {
     console.error('[deleteTestCase] Error:', error);
@@ -341,8 +341,8 @@ export async function deleteTestCase(caseId: string): Promise<ActionResult> {
   // 감사 로그
   await createAuditLog({
     actorUserId: user.id,
-    action: 'TEST_CASE_DELETE',
-    targetType: 'case',
+    action: 'TEST_PROJECT_DELETE',
+    targetType: 'project',
     targetId: caseId,
     meta: { is_test_mode: true },
   });

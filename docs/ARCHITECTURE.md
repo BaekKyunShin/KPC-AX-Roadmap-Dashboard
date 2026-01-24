@@ -15,7 +15,7 @@
 │                    Next.js App Router                       │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │                    API Routes                         │  │
-│  │  /api/auth/*    /api/cases/*    /api/roadmaps/*      │  │
+│  │  /api/auth/*    /api/projects/*    /api/roadmaps/*      │  │
 │  │  /api/users/*   /api/matching/* /api/admin/*         │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
@@ -50,19 +50,19 @@ src/
 │   │   └── layout.tsx
 │   ├── (dashboard)/              # 대시보드 라우트 (인증 필수)
 │   │   ├── consultant/          # 컨설턴트 전용
-│   │   │   ├── cases/          # 배정된 케이스 목록
-│   │   │   ├── case/[id]/      # 케이스 상세
+│   │   │   ├── projects/          # 배정된 프로젝트 목록
+│   │   │   ├── case/[id]/      # 프로젝트 상세
 │   │   │   └── profile/        # 프로필 관리
 │   │   ├── ops/                 # OPS_ADMIN 전용
 │   │   │   ├── users/          # 사용자 관리
-│   │   │   ├── cases/          # 케이스 관리
+│   │   │   ├── projects/          # 프로젝트 관리
 │   │   │   ├── templates/      # 템플릿 관리
 │   │   │   └── audit/          # 감사로그/쿼터
 │   │   └── layout.tsx
 │   ├── api/                      # API Routes
 │   │   ├── auth/
 │   │   ├── users/
-│   │   ├── cases/
+│   │   ├── projects/
 │   │   ├── assessments/
 │   │   ├── matching/
 │   │   ├── interviews/
@@ -85,7 +85,7 @@ src/
 │   │   └── admin.ts            # 서비스 역할 Supabase
 │   ├── schemas/                 # Zod 스키마
 │   │   ├── user.ts
-│   │   ├── case.ts
+│   │   ├── project.ts
 │   │   ├── assessment.ts
 │   │   └── roadmap.ts
 │   ├── services/                # 비즈니스 로직
@@ -111,13 +111,13 @@ src/
               OPS_ADMIN 승인 → CONSULTANT_APPROVED
 ```
 
-### 2. 케이스 생성/배정 플로우
+### 2. 프로젝트 생성/배정 플로우
 
 ```
 OPS_ADMIN                          CONSULTANT
     │                                  │
     ▼                                  │
-케이스 생성 (NEW)                      │
+프로젝트 생성 (NEW)                      │
     │                                  │
     ▼                                  │
 자가진단 입력 (DIAGNOSED)              │
@@ -188,7 +188,7 @@ DRAFT v1 → DRAFT v2 → ... → FINAL
 ```
 스토리지 (Supabase Storage)
 └── roadmaps/
-    └── {case_id}/
+    └── {project_id}/
         ├── final.pdf      # 최신 FINAL만 저장
         └── final.xlsx     # 나머지는 즉시 생성
 ```

@@ -10,8 +10,8 @@ export type UserRole =
 // 사용자 상태
 export type UserStatus = 'ACTIVE' | 'SUSPENDED';
 
-// 케이스 상태
-export type CaseStatus =
+// 프로젝트 상태
+export type ProjectStatus =
   | 'NEW'
   | 'DIAGNOSED'
   | 'MATCH_RECOMMENDED'
@@ -61,8 +61,8 @@ export interface ConsultantProfile {
   updated_at: string;
 }
 
-// 기업 케이스
-export interface Case {
+// 기업 프로젝트
+export interface Project {
   id: string;
   // 기업 기본 정보
   company_name: string;
@@ -73,15 +73,15 @@ export interface Case {
   contact_phone?: string;
   company_address?: string;
   // 상태 관리
-  status: CaseStatus;
+  status: ProjectStatus;
   assigned_consultant_id?: string;
   // OPS 입력 추가 정보
   customer_comment?: string; // 고객 코멘트/요청사항
   // 테스트 모드 (컨설턴트 연습용)
   is_test_mode: boolean;
-  test_created_by?: string; // 테스트 케이스 생성자 (컨설턴트 user_id)
+  test_created_by?: string; // 테스트 프로젝트 생성자 (컨설턴트 user_id)
   // 메타
-  created_by: string; // OPS_ADMIN user_id (실제 케이스) 또는 컨설턴트 (테스트 케이스)
+  created_by: string; // OPS_ADMIN user_id (실제 프로젝트) 또는 컨설턴트 (테스트 프로젝트)
   created_at: string;
   updated_at: string;
 }
@@ -113,7 +113,7 @@ export interface SelfAssessmentQuestion {
 // 자가진단 응답
 export interface SelfAssessment {
   id: string;
-  case_id: string;
+  project_id: string;
   template_id: string;
   template_version: number;
   answers: SelfAssessmentAnswer[];
@@ -144,7 +144,7 @@ export interface SelfAssessmentScore {
 // 매칭 추천
 export interface MatchingRecommendation {
   id: string;
-  case_id: string;
+  project_id: string;
   candidate_user_id: string;
   total_score: number;
   score_breakdown: MatchingScoreBreakdown[];
@@ -161,10 +161,10 @@ export interface MatchingScoreBreakdown {
   explanation: string;
 }
 
-// 케이스 배정 이력
-export interface CaseAssignment {
+// 프로젝트 배정 이력
+export interface ProjectAssignment {
   id: string;
-  case_id: string;
+  project_id: string;
   consultant_id: string;
   assigned_by: string; // OPS_ADMIN user_id
   assignment_reason: string; // 배정 사유
@@ -177,7 +177,7 @@ export interface CaseAssignment {
 // 현장 인터뷰
 export interface Interview {
   id: string;
-  case_id: string;
+  project_id: string;
   interviewer_id: string; // 컨설턴트 user_id
   // 정형 데이터
   interview_date: string;
@@ -244,7 +244,7 @@ export interface ImprovementGoal {
 // 로드맵 버전
 export interface RoadmapVersion {
   id: string;
-  case_id: string;
+  project_id: string;
   version_number: number;
   status: RoadmapVersionStatus;
   // 컨설턴트 프로필 스냅샷 (버전 재현성)
@@ -383,7 +383,7 @@ export interface AuditLog {
   id: string;
   actor_user_id: string;
   action: AuditAction;
-  target_type: string; // 예: 'case', 'user', 'roadmap_version'
+  target_type: string; // 예: 'project', 'user', 'roadmap_version'
   target_id: string;
   meta: Record<string, unknown>; // 추가 정보
   success: boolean;
@@ -396,13 +396,13 @@ export type AuditAction =
   | 'USER_APPROVE'
   | 'USER_SUSPEND'
   | 'USER_REACTIVATE'
-  | 'CASE_CREATE'
-  | 'CASE_UPDATE'
+  | 'PROJECT_CREATE'
+  | 'PROJECT_UPDATE'
   | 'SELF_ASSESSMENT_CREATE'
   | 'SELF_ASSESSMENT_UPDATE'
   | 'MATCHING_EXECUTE'
-  | 'CASE_ASSIGN'
-  | 'CASE_REASSIGN'
+  | 'PROJECT_ASSIGN'
+  | 'PROJECT_REASSIGN'
   | 'INTERVIEW_CREATE'
   | 'INTERVIEW_UPDATE'
   | 'ROADMAP_CREATE'
@@ -414,9 +414,9 @@ export type AuditAction =
   | 'TEMPLATE_CREATE'
   | 'TEMPLATE_UPDATE'
   | 'TEMPLATE_ACTIVATE'
-  | 'TEST_CASE_CREATE'
+  | 'TEST_PROJECT_CREATE'
   | 'TEST_ROADMAP_CREATE'
-  | 'TEST_CASE_DELETE';
+  | 'TEST_PROJECT_DELETE';
 
 // 사용량 메트릭
 export interface UsageMetric {

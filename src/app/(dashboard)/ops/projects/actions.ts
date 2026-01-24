@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createCaseSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/case';
+import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
 
@@ -13,9 +13,9 @@ export interface ActionResult {
 }
 
 /**
- * 케이스 생성 (OPS_ADMIN)
+ * 프로젝트 생성 (OPS_ADMIN)
  */
-export async function createCase(formData: FormData): Promise<ActionResult> {
+export async function createProject(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
 
   // 현재 사용자 확인
@@ -48,15 +48,15 @@ export async function createCase(formData: FormData): Promise<ActionResult> {
   };
 
   // 서버 검증
-  const validation = createCaseSchema.safeParse(rawData);
+  const validation = createProjectSchema.safeParse(rawData);
   if (!validation.success) {
     return { success: false, error: validation.error.errors[0].message };
   }
 
-  // admin 클라이언트로 케이스 생성
+  // admin 클라이언트로 프로젝트 생성
   const adminSupabase = createAdminClient();
-  const { data: newCase, error: insertError } = await adminSupabase
-    .from('cases')
+  const { data: newProject, error: insertError } = await adminSupabase
+    .from('projects')
     .insert({
       ...validation.data,
       status: 'NEW',
@@ -68,28 +68,28 @@ export async function createCase(formData: FormData): Promise<ActionResult> {
   if (insertError) {
     await createAuditLog({
       actorUserId: user.id,
-      action: 'CASE_CREATE',
-      targetType: 'case',
+      action: 'PROJECT_CREATE',
+      targetType: 'project',
       targetId: '00000000-0000-0000-0000-000000000000',
       meta: { company_name: validation.data.company_name },
       success: false,
       errorMessage: insertError.message,
     });
-    return { success: false, error: `케이스 생성 실패: ${insertError.message}` };
+    return { success: false, error: `프로젝트 생성 실패: ${insertError.message}` };
   }
 
   // 감사 로그 기록
   await createAuditLog({
     actorUserId: user.id,
-    action: 'CASE_CREATE',
-    targetType: 'case',
-    targetId: newCase.id,
+    action: 'PROJECT_CREATE',
+    targetType: 'project',
+    targetId: newProject.id,
     meta: { company_name: validation.data.company_name },
   });
 
-  revalidatePath('/ops/cases');
+  revalidatePath('/ops/projects');
 
-  return { success: true, data: { caseId: newCase.id } };
+  return { success: true, data: { projectId: newProject.id } };
 }
 
 /**
@@ -116,7 +116,7 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
   }
 
   // 폼 데이터 파싱
-  const caseId = formData.get('case_id') as string;
+  const projectId = formData.get('project_id') as string;
   const templateId = formData.get('template_id') as string;
   const answersJson = formData.get('answers') as string;
   const summaryText = formData.get('summary_text') as string || undefined;
@@ -129,7 +129,7 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
   }
 
   const rawData = {
-    case_id: caseId,
+    project_id: projectId,
     template_id: templateId,
     answers,
     summary_text: summaryText,
@@ -158,7 +158,7 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
 
   // 자가진단 저장
   const { error: insertError } = await adminSupabase.from('self_assessments').insert({
-    case_id: caseId,
+    project_id: projectId,
     template_id: templateId,
     template_version: template.version,
     answers,
@@ -172,29 +172,29 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
       actorUserId: user.id,
       action: 'SELF_ASSESSMENT_CREATE',
       targetType: 'self_assessment',
-      targetId: caseId,
+      targetId: projectId,
       success: false,
       errorMessage: insertError.message,
     });
     return { success: false, error: `자가진단 저장 실패: ${insertError.message}` };
   }
 
-  // 케이스 상태 업데이트
+  // 프로젝트 상태 업데이트
   await adminSupabase
-    .from('cases')
+    .from('projects')
     .update({ status: 'DIAGNOSED' })
-    .eq('id', caseId);
+    .eq('id', projectId);
 
   // 감사 로그 기록
   await createAuditLog({
     actorUserId: user.id,
     action: 'SELF_ASSESSMENT_CREATE',
     targetType: 'self_assessment',
-    targetId: caseId,
+    targetId: projectId,
     meta: { total_score: scores.total_score },
   });
 
-  revalidatePath(`/ops/cases/${caseId}`);
+  revalidatePath(`/ops/projects/${projectId}`);
 
   return { success: true };
 }
@@ -224,7 +224,7 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
 
   // 폼 데이터 파싱
   const rawData = {
-    case_id: formData.get('case_id') as string,
+    project_id: formData.get('project_id') as string,
     consultant_id: formData.get('consultant_id') as string,
     assignment_reason: formData.get('assignment_reason') as string,
   };
@@ -235,22 +235,22 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
     return { success: false, error: validation.error.errors[0].message };
   }
 
-  const { case_id, consultant_id, assignment_reason } = validation.data;
+  const { project_id, consultant_id, assignment_reason } = validation.data;
 
   const adminSupabase = createAdminClient();
 
   // 기존 배정이 있는지 확인
   const { data: existingAssignment } = await adminSupabase
-    .from('case_assignments')
+    .from('project_assignments')
     .select('id')
-    .eq('case_id', case_id)
+    .eq('project_id', project_id)
     .eq('is_current', true)
     .single();
 
   if (existingAssignment) {
     // 기존 배정 해제
     await adminSupabase
-      .from('case_assignments')
+      .from('project_assignments')
       .update({
         is_current: false,
         unassigned_at: new Date().toISOString(),
@@ -260,8 +260,8 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
   }
 
   // 새 배정 생성
-  const { error: assignError } = await adminSupabase.from('case_assignments').insert({
-    case_id,
+  const { error: assignError } = await adminSupabase.from('project_assignments').insert({
+    project_id,
     consultant_id,
     assigned_by: user.id,
     assignment_reason,
@@ -271,9 +271,9 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
   if (assignError) {
     await createAuditLog({
       actorUserId: user.id,
-      action: 'CASE_ASSIGN',
-      targetType: 'case',
-      targetId: case_id,
+      action: 'PROJECT_ASSIGN',
+      targetType: 'project',
+      targetId: project_id,
       meta: { consultant_id, reason: assignment_reason },
       success: false,
       errorMessage: assignError.message,
@@ -281,34 +281,34 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
     return { success: false, error: `배정 실패: ${assignError.message}` };
   }
 
-  // 케이스 상태 및 배정 컨설턴트 업데이트
+  // 프로젝트 상태 및 배정 컨설턴트 업데이트
   await adminSupabase
-    .from('cases')
+    .from('projects')
     .update({
       status: 'ASSIGNED',
       assigned_consultant_id: consultant_id,
     })
-    .eq('id', case_id);
+    .eq('id', project_id);
 
   // 감사 로그 기록
   await createAuditLog({
     actorUserId: user.id,
-    action: 'CASE_ASSIGN',
-    targetType: 'case',
-    targetId: case_id,
+    action: 'PROJECT_ASSIGN',
+    targetType: 'project',
+    targetId: project_id,
     meta: { consultant_id, reason: assignment_reason },
   });
 
-  revalidatePath(`/ops/cases/${case_id}`);
-  revalidatePath('/ops/cases');
+  revalidatePath(`/ops/projects/${project_id}`);
+  revalidatePath('/ops/projects');
 
   return { success: true };
 }
 
 /**
- * 케이스 목록 조회 (OPS_ADMIN) - 페이지네이션 및 검색 지원
+ * 프로젝트 목록 조회 (OPS_ADMIN) - 페이지네이션 및 검색 지원
  */
-export interface CaseListParams {
+export interface ProjectListParams {
   page?: number;
   limit?: number;
   search?: string;
@@ -316,8 +316,8 @@ export interface CaseListParams {
   industry?: string;
 }
 
-export interface CaseListResult {
-  cases: Array<{
+export interface ProjectListResult {
+  projects: Array<{
     id: string;
     company_name: string;
     industry: string;
@@ -333,7 +333,7 @@ export interface CaseListResult {
   page: number;
 }
 
-export async function fetchCases(params: CaseListParams = {}): Promise<CaseListResult> {
+export async function fetchProjects(params: ProjectListParams = {}): Promise<ProjectListResult> {
   const supabase = await createClient();
 
   const { page = 1, limit = 10, search = '', status = '', industry = '' } = params;
@@ -341,7 +341,7 @@ export async function fetchCases(params: CaseListParams = {}): Promise<CaseListR
 
   // 기본 쿼리
   let query = supabase
-    .from('cases')
+    .from('projects')
     .select(`
       id,
       company_name,
@@ -350,8 +350,8 @@ export async function fetchCases(params: CaseListParams = {}): Promise<CaseListR
       status,
       created_at,
       contact_email,
-      assigned_consultant:users!cases_assigned_consultant_id_fkey(id, name, email),
-      created_by_user:users!cases_created_by_fkey(id, name)
+      assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email),
+      created_by_user:users!projects_created_by_fkey(id, name)
     `, { count: 'exact' });
 
   // 검색 조건
@@ -370,38 +370,38 @@ export async function fetchCases(params: CaseListParams = {}): Promise<CaseListR
   }
 
   // 정렬 및 페이지네이션
-  const { data: cases, count, error } = await query
+  const { data: projects, count, error } = await query
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error('[fetchCases Error]', error);
-    return { cases: [], total: 0, totalPages: 0, page };
+    console.error('[fetchProjects Error]', error);
+    return { projects: [], total: 0, totalPages: 0, page };
   }
 
   const total = count || 0;
   const totalPages = Math.ceil(total / limit);
 
   // Supabase 조인 결과를 적절한 형태로 변환
-  const formattedCases = (cases || []).map((c) => ({
-    id: c.id,
-    company_name: c.company_name,
-    industry: c.industry,
-    company_size: c.company_size,
-    status: c.status,
-    created_at: c.created_at,
-    contact_email: c.contact_email,
+  const formattedProjects = (projects || []).map((p) => ({
+    id: p.id,
+    company_name: p.company_name,
+    industry: p.industry,
+    company_size: p.company_size,
+    status: p.status,
+    created_at: p.created_at,
+    contact_email: p.contact_email,
     // Supabase는 단일 조인을 배열로 반환할 수 있음
-    assigned_consultant: Array.isArray(c.assigned_consultant)
-      ? c.assigned_consultant[0] || null
-      : c.assigned_consultant,
-    created_by_user: Array.isArray(c.created_by_user)
-      ? c.created_by_user[0] || null
-      : c.created_by_user,
+    assigned_consultant: Array.isArray(p.assigned_consultant)
+      ? p.assigned_consultant[0] || null
+      : p.assigned_consultant,
+    created_by_user: Array.isArray(p.created_by_user)
+      ? p.created_by_user[0] || null
+      : p.created_by_user,
   }));
 
   return {
-    cases: formattedCases,
+    projects: formattedProjects,
     total,
     totalPages,
     page,
@@ -409,9 +409,9 @@ export async function fetchCases(params: CaseListParams = {}): Promise<CaseListR
 }
 
 /**
- * 케이스 상태 및 업종 목록 조회
+ * 프로젝트 상태 및 업종 목록 조회
  */
-export async function fetchCaseFilters(): Promise<{
+export async function fetchProjectFilters(): Promise<{
   statuses: string[];
   industries: string[];
 }> {
@@ -430,7 +430,7 @@ export async function fetchCaseFilters(): Promise<{
 
   // 사용 중인 업종 목록
   const { data: industries } = await supabase
-    .from('cases')
+    .from('projects')
     .select('industry')
     .not('industry', 'is', null);
 

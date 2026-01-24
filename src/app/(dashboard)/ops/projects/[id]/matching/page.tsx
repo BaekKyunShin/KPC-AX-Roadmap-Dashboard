@@ -29,7 +29,7 @@ export default function MatchingPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push(`/ops/cases/${caseId}`);
+        router.push(`/ops/projects/${caseId}`);
         router.refresh();
       } else {
         setError(result.error || '매칭 추천 생성에 실패했습니다.');
@@ -45,10 +45,10 @@ export default function MatchingPage() {
     <div className="max-w-md mx-auto mt-8">
       <div className="mb-6">
         <Link
-          href={`/ops/cases/${caseId}`}
+          href={`/ops/projects/${caseId}`}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          ← 케이스로 돌아가기
+          ← 프로젝트로 돌아가기
         </Link>
       </div>
 

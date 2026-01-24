@@ -2,15 +2,41 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { fetchConsultantCases, fetchConsultantCaseFilters, type ConsultantCaseItem } from '../actions';
+import { fetchConsultantProjects, fetchConsultantProjectFilters, type ConsultantProjectItem } from '../actions';
 import { CaseTableSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchInput, SelectFilter, ActiveFilterBadges } from '@/components/ui/SearchInput';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getConsultantCaseStatusBadge } from '@/lib/constants/status';
+import { getConsultantProjectStatusBadge } from '@/lib/constants/status';
 
-export default function CaseList() {
-  const [cases, setCases] = useState<ConsultantCaseItem[]>([]);
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** 테이블 열 설정 */
+const TABLE_COLUMNS = {
+  company: 'w-[20%]',
+  industry: 'w-[18%]',
+  size: 'w-[12%]',
+  status: 'w-[18%]',
+  assignedAt: 'w-[16%]',
+  actions: 'w-[16%]',
+} as const;
+
+// =============================================================================
+// Component
+// =============================================================================
+
+export default function ProjectList() {
+  const [projects, setProjects] = useState<ConsultantProjectItem[]>([]);
   const [consultantName, setConsultantName] = useState('');
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -27,17 +53,17 @@ export default function CaseList() {
 
   // 필터 옵션 로드
   useEffect(() => {
-    fetchConsultantCaseFilters().then(setFilterOptions);
+    fetchConsultantProjectFilters().then(setFilterOptions);
   }, []);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
     setLoading(true);
-    const result = await fetchConsultantCases({
+    const result = await fetchConsultantProjects({
       search: debouncedSearch,
       status,
     });
-    setCases(result.cases);
+    setProjects(result.projects);
     setTotal(result.total);
     setConsultantName(result.consultantName);
     setLoading(false);
@@ -62,8 +88,8 @@ export default function CaseList() {
   const hasFilters = debouncedSearch || status;
 
   // 상태 배지 렌더링
-  const renderStatusBadge = (caseStatus: string, hasInterview: boolean) => {
-    const badge = getConsultantCaseStatusBadge(caseStatus, hasInterview);
+  const renderStatusBadge = (projectStatus: string, hasInterview: boolean) => {
+    const badge = getConsultantProjectStatusBadge(projectStatus, hasInterview);
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>{badge.label}</span>
     );
@@ -83,9 +109,9 @@ export default function CaseList() {
     <div className="space-y-4">
       {/* 헤더 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">배정된 케이스</h1>
+        <h1 className="text-2xl font-bold text-gray-900">배정된 프로젝트</h1>
         <p className="mt-1 text-sm text-gray-500">
-          {consultantName ? `${consultantName}님에게 배정된 케이스 목록입니다.` : '배정된 케이스 목록입니다.'}
+          {consultantName ? `${consultantName}님에게 배정된 프로젝트 목록입니다.` : '배정된 프로젝트 목록입니다.'}
         </p>
       </div>
 
@@ -112,13 +138,13 @@ export default function CaseList() {
 
       {/* 결과 요약 */}
       <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>총 {total.toLocaleString()}개의 케이스</span>
+        <span>총 {total.toLocaleString()}개의 프로젝트</span>
       </div>
 
       {/* 테이블 */}
       {loading ? (
         <CaseTableSkeleton rows={5} />
-      ) : cases.length === 0 ? (
+      ) : projects.length === 0 ? (
         <EmptyState
           icon={
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,8 +156,8 @@ export default function CaseList() {
               />
             </svg>
           }
-          title={hasFilters ? '검색 조건에 맞는 케이스가 없습니다' : '배정된 케이스가 없습니다'}
-          description={hasFilters ? undefined : '운영 관리자가 케이스를 배정하면 여기에 표시됩니다.'}
+          title={hasFilters ? '검색 조건에 맞는 프로젝트가 없습니다' : '배정된 프로젝트가 없습니다'}
+          description={hasFilters ? undefined : '운영 관리자가 프로젝트를 배정하면 여기에 표시됩니다.'}
           action={
             hasFilters && (
               <button onClick={handleResetFilters} className="text-blue-600 hover:text-blue-500">
@@ -142,54 +168,43 @@ export default function CaseList() {
         />
       ) : (
         <div className="bg-white shadow overflow-hidden rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  기업명
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  업종
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  규모
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  상태
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  배정일
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  작업
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {cases.map((caseItem) => (
-                <tr key={caseItem.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{caseItem.company_name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{caseItem.industry}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{caseItem.company_size}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {renderStatusBadge(caseItem.status, caseItem.has_interview)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {caseItem.assigned_at
-                      ? new Date(caseItem.assigned_at).toLocaleDateString('ko-KR')
-                      : new Date(caseItem.created_at).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/consultant/cases/${caseItem.id}`} className="text-blue-600 hover:text-blue-900">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
+                <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
+                <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
+                <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+                <TableHead className={TABLE_COLUMNS.assignedAt}>배정일</TableHead>
+                <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((projectItem) => (
+                <TableRow key={projectItem.id}>
+                  <TableCell>
+                    <div className="text-sm font-medium text-gray-900">{projectItem.company_name}</div>
+                  </TableCell>
+                  <TableCell className="text-gray-500">{projectItem.industry}</TableCell>
+                  <TableCell className="text-gray-500">{projectItem.company_size}</TableCell>
+                  <TableCell>{renderStatusBadge(projectItem.status, projectItem.has_interview)}</TableCell>
+                  <TableCell className="text-gray-500">
+                    {projectItem.assigned_at
+                      ? new Date(projectItem.assigned_at).toLocaleDateString('ko-KR')
+                      : new Date(projectItem.created_at).toLocaleDateString('ko-KR')}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/consultant/projects/${projectItem.id}`}
+                      className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
+                    >
                       상세 보기
                     </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

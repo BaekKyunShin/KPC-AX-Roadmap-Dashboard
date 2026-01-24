@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createCase } from '../actions';
+import { createProject } from '../actions';
 
 const INDUSTRIES = [
   '제조업',
@@ -26,7 +26,7 @@ const COMPANY_SIZES = [
   { value: '500+', label: '500명 이상' },
 ];
 
-export default function NewCasePage() {
+export default function NewProjectPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,12 +37,12 @@ export default function NewCasePage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await createCase(formData);
+    const result = await createProject(formData);
 
-    if (result.success && result.data?.caseId) {
-      router.push(`/ops/cases/${result.data.caseId}`);
+    if (result.success && result.data?.projectId) {
+      router.push(`/ops/projects/${result.data.projectId}`);
     } else {
-      setError(result.error || '케이스 생성에 실패했습니다.');
+      setError(result.error || '프로젝트 생성에 실패했습니다.');
     }
 
     setIsLoading(false);
@@ -51,11 +51,11 @@ export default function NewCasePage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <Link href="/ops/cases" className="text-sm text-gray-500 hover:text-gray-700">
-          ← 케이스 목록으로
+        <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
+          ← 프로젝트 목록으로
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">새 케이스 생성</h1>
-        <p className="mt-1 text-sm text-gray-500">기업 기본 정보를 입력하여 케이스를 생성합니다.</p>
+        <h1 className="mt-2 text-2xl font-bold text-gray-900">새 프로젝트 생성</h1>
+        <p className="mt-1 text-sm text-gray-500">기업 기본 정보를 입력하여 프로젝트를 생성합니다.</p>
       </div>
 
       {error && (
@@ -187,7 +187,7 @@ export default function NewCasePage() {
 
         <div className="flex justify-end space-x-4">
           <Link
-            href="/ops/cases"
+            href="/ops/projects"
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
           >
             취소
@@ -197,7 +197,7 @@ export default function NewCasePage() {
             disabled={isLoading}
             className="px-4 py-2 border border-transparent rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
-            {isLoading ? '생성 중...' : '케이스 생성'}
+            {isLoading ? '생성 중...' : '프로젝트 생성'}
           </button>
         </div>
       </form>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createSelfAssessment } from '@/app/(dashboard)/ops/cases/actions';
+import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
 
 interface Question {
   id: string;
@@ -78,7 +78,7 @@ export default function SelfAssessmentForm({ caseId, template }: SelfAssessmentF
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.set('case_id', caseId);
+    formData.set('project_id', caseId);
     formData.set('template_id', template.id);
     formData.set(
       'answers',

@@ -79,10 +79,10 @@ export default function OpsRoadmapViewPage() {
       <div className="flex items-center justify-between">
         <div>
           <Link
-            href={`/ops/cases/${caseId}`}
+            href={`/ops/projects/${caseId}`}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            ← 케이스로 돌아가기
+            ← 프로젝트로 돌아가기
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵 (읽기 전용)</h1>
           <p className="mt-1 text-sm text-yellow-600">

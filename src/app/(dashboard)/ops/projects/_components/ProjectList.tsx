@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { fetchCases, fetchCaseFilters, type CaseListResult } from '../actions';
+import { fetchProjects, fetchProjectFilters, type ProjectListResult } from '../actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,18 +28,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  ExternalLink,
   Loader2,
   FolderOpen,
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { CASE_STATUS_CONFIG } from '@/lib/constants/status';
-import type { CaseStatus } from '@/types/database';
+import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
+import type { ProjectStatus } from '@/types/database';
 
 const ITEMS_PER_PAGE = 10;
 
-const getStatusBadgeVariant = (status: CaseStatus) => {
-  const config = CASE_STATUS_CONFIG[status];
+const getStatusBadgeVariant = (status: ProjectStatus) => {
+  const config = PROJECT_STATUS_CONFIG[status];
   if (!config) return { className: 'bg-gray-100 text-gray-800', label: status };
 
   const colorMap: Record<string, string> = {
@@ -58,8 +57,8 @@ const getStatusBadgeVariant = (status: CaseStatus) => {
   };
 };
 
-export default function CaseList() {
-  const [cases, setCases] = useState<CaseListResult['cases']>([]);
+export default function ProjectList() {
+  const [projects, setProjects] = useState<ProjectListResult['projects']>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -79,20 +78,20 @@ export default function CaseList() {
 
   // 필터 옵션 로드
   useEffect(() => {
-    fetchCaseFilters().then(setFilterOptions);
+    fetchProjectFilters().then(setFilterOptions);
   }, []);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
     setLoading(true);
-    const result = await fetchCases({
+    const result = await fetchProjects({
       page,
       limit: ITEMS_PER_PAGE,
       search: debouncedSearch,
       status: status === 'all' ? '' : status,
       industry: industry === 'all' ? '' : industry,
     });
-    setCases(result.cases);
+    setProjects(result.projects);
     setTotalPages(result.totalPages);
     setTotal(result.total);
     setLoading(false);
@@ -144,7 +143,7 @@ export default function CaseList() {
                   <SelectItem value="all">모든 상태</SelectItem>
                   {filterOptions.statuses.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {CASE_STATUS_CONFIG[s as CaseStatus]?.label || s}
+                      {PROJECT_STATUS_CONFIG[s as ProjectStatus]?.label || s}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -185,7 +184,7 @@ export default function CaseList() {
               )}
               {status !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  상태: {CASE_STATUS_CONFIG[status as CaseStatus]?.label || status}
+                  상태: {PROJECT_STATUS_CONFIG[status as ProjectStatus]?.label || status}
                   <button onClick={() => setStatus('all')}>
                     <X className="h-3 w-3" />
                   </button>
@@ -206,7 +205,7 @@ export default function CaseList() {
 
       {/* 결과 요약 */}
       <div className="flex items-center justify-between text-base text-muted-foreground">
-        <span>총 {total.toLocaleString()}개의 케이스</span>
+        <span>총 {total.toLocaleString()}개의 프로젝트</span>
         {totalPages > 0 && (
           <span>
             {page} / {totalPages} 페이지
@@ -221,14 +220,14 @@ export default function CaseList() {
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : cases.length === 0 ? (
+          ) : projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <FolderOpen className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">케이스 없음</h3>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">프로젝트 없음</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {hasFilters ? '검색 조건에 맞는 케이스가 없습니다.' : '등록된 케이스가 없습니다.'}
+                {hasFilters ? '검색 조건에 맞는 프로젝트가 없습니다.' : '등록된 프로젝트가 없습니다.'}
               </p>
               {hasFilters && (
                 <Button variant="link" onClick={handleResetFilters} className="mt-2">
@@ -238,63 +237,58 @@ export default function CaseList() {
             </div>
           ) : (
             <>
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[250px]">기업명</TableHead>
-                    <TableHead>업종</TableHead>
-                    <TableHead>상태</TableHead>
-                    <TableHead>배정 컨설턴트</TableHead>
-                    <TableHead>생성일</TableHead>
-                    <TableHead className="text-right">작업</TableHead>
+                    <TableHead className="w-[22%] text-center">기업명</TableHead>
+                    <TableHead className="w-[14%] text-center">업종</TableHead>
+                    <TableHead className="w-[14%] text-center">상태</TableHead>
+                    <TableHead className="w-[18%] text-center">배정 컨설턴트</TableHead>
+                    <TableHead className="w-[16%] text-center">생성일</TableHead>
+                    <TableHead className="w-[16%] text-center">작업</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cases.map((caseItem) => {
-                    const statusInfo = getStatusBadgeVariant(caseItem.status as CaseStatus);
+                  {projects.map((projectItem) => {
+                    const statusInfo = getStatusBadgeVariant(projectItem.status as ProjectStatus);
                     return (
-                      <TableRow key={caseItem.id} className="group">
-                        <TableCell>
+                      <TableRow key={projectItem.id}>
+                        <TableCell className="align-top">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">
-                                {caseItem.company_name}
+                                {projectItem.company_name}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {caseItem.contact_email}
+                                {projectItem.contact_email}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{caseItem.industry}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-muted-foreground text-center align-top">{projectItem.industry}</TableCell>
+                        <TableCell className="text-center align-top">
                           <Badge variant="outline" className={statusInfo.className}>
                             {statusInfo.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {caseItem.assigned_consultant?.name || (
+                        <TableCell className="text-muted-foreground text-center align-top">
+                          {projectItem.assigned_consultant?.name || (
                             <span className="text-gray-400">미배정</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(caseItem.created_at).toLocaleDateString('ko-KR')}
+                        <TableCell className="text-muted-foreground text-center align-top">
+                          {new Date(projectItem.created_at).toLocaleDateString('ko-KR')}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            asChild
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        <TableCell className="text-center align-top">
+                          <Link
+                            href={`/ops/projects/${projectItem.id}`}
+                            className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline cursor-pointer transition-colors duration-150 text-sm"
                           >
-                            <Link href={`/ops/cases/${caseItem.id}`}>
-                              상세보기
-                              <ExternalLink className="ml-1 h-3 w-3" />
-                            </Link>
-                          </Button>
+                            상세보기
+                          </Link>
                         </TableCell>
                       </TableRow>
                     );

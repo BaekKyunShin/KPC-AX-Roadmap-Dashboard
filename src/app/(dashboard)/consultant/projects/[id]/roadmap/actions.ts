@@ -46,19 +46,19 @@ export async function createRoadmap(
       return { success: false, error: '컨설턴트만 로드맵을 생성할 수 있습니다.' };
     }
 
-    // 케이스 접근 권한 확인
+    // 프로젝트 접근 권한 확인
     const { data: caseData } = await supabase
-      .from('cases')
+      .from('projects')
       .select('assigned_consultant_id, status')
       .eq('id', caseId)
       .single();
 
     if (!caseData || caseData.assigned_consultant_id !== user.id) {
-      return { success: false, error: '해당 케이스에 대한 접근 권한이 없습니다.' };
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
     }
 
     if (!['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(caseData.status)) {
-      return { success: false, error: '인터뷰가 완료된 케이스만 로드맵을 생성할 수 있습니다.' };
+      return { success: false, error: '인터뷰가 완료된 프로젝트만 로드맵을 생성할 수 있습니다.' };
     }
 
     // 로드맵 생성
@@ -130,7 +130,7 @@ export async function fetchRoadmapVersions(caseId: string) {
 
     if (profile.role === 'CONSULTANT_APPROVED') {
       const { data: caseData } = await supabase
-        .from('cases')
+        .from('projects')
         .select('assigned_consultant_id')
         .eq('id', caseId)
         .single();
@@ -172,9 +172,9 @@ export async function fetchRoadmapVersion(roadmapId: string) {
 
     if (profile.role === 'CONSULTANT_APPROVED') {
       const { data: caseData } = await supabase
-        .from('cases')
+        .from('projects')
         .select('assigned_consultant_id')
-        .eq('id', roadmap.case_id)
+        .eq('id', roadmap.project_id)
         .single();
 
       if (!caseData || caseData.assigned_consultant_id !== user.id) {
@@ -209,7 +209,7 @@ export async function prepareExportData(roadmapId: string): Promise<{
     // 로드맵 데이터 조회
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
-      .select('*, cases!inner(company_name, assigned_consultant_id)')
+      .select('*, projects!inner(company_name, assigned_consultant_id)')
       .eq('id', roadmapId)
       .single();
 
@@ -228,10 +228,10 @@ export async function prepareExportData(roadmapId: string): Promise<{
       return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
     }
 
-    const caseData = roadmap.cases as { company_name: string; assigned_consultant_id: string };
+    const projectData = roadmap.projects as { company_name: string; assigned_consultant_id: string };
 
     if (profile.role === 'CONSULTANT_APPROVED') {
-      if (caseData.assigned_consultant_id !== user.id) {
+      if (projectData.assigned_consultant_id !== user.id) {
         return { success: false, error: '접근 권한이 없습니다.' };
       }
     } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
@@ -239,8 +239,8 @@ export async function prepareExportData(roadmapId: string): Promise<{
     }
 
     const exportData: RoadmapExportData = {
-      companyName: caseData.company_name,
-      caseId: roadmap.case_id,
+      companyName: projectData.company_name,
+      caseId: roadmap.project_id,
       versionNumber: roadmap.version_number,
       status: roadmap.status,
       diagnosisSummary: roadmap.diagnosis_summary,
@@ -331,7 +331,7 @@ export async function logDownload(
     // 로드맵 정보 조회
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
-      .select('case_id, version_number, status')
+      .select('project_id, version_number, status')
       .eq('id', roadmapId)
       .single();
 
@@ -345,7 +345,7 @@ export async function logDownload(
       targetType: 'roadmap',
       targetId: roadmapId,
       meta: {
-        case_id: roadmap.case_id,
+        project_id: roadmap.project_id,
         version_number: roadmap.version_number,
         status: roadmap.status,
       },

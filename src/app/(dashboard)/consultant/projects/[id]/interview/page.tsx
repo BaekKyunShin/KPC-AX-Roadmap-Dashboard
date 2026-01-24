@@ -262,7 +262,7 @@ export default function InterviewPage() {
     if (result.success) {
       setSuccess('인터뷰가 저장되었습니다.');
       setTimeout(() => {
-        router.push(`/consultant/cases/${caseId}`);
+        router.push(`/consultant/projects/${caseId}`);
         router.refresh();
       }, 1000);
     } else {
@@ -345,13 +345,13 @@ export default function InterviewPage() {
       {/* 헤더 */}
       <div className="mb-6">
         <Link
-          href={`/consultant/cases/${caseId}`}
+          href={`/consultant/projects/${caseId}`}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          케이스로 돌아가기
+          프로젝트로 돌아가기
         </Link>
         <div className="flex items-center justify-between mt-2">
           <h1 className="text-2xl font-bold text-gray-900">현장 인터뷰 입력</h1>
@@ -438,7 +438,7 @@ export default function InterviewPage() {
 
           <div className="flex items-center space-x-3">
             <Link
-              href={`/consultant/cases/${caseId}`}
+              href={`/consultant/projects/${caseId}`}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hidden md:block"
             >
               취소

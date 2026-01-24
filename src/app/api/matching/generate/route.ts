@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const { caseId, topN = 3, preserveStatus = false } = body;
 
     if (!caseId) {
-      return NextResponse.json({ success: false, error: '케이스 ID가 필요합니다.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '프로젝트 ID가 필요합니다.' }, { status: 400 });
     }
 
     // 매칭 추천 생성

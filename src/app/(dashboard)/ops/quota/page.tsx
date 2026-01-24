@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { fetchUsageStats, updateQuota, type UsageStats } from './actions';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableActionLink,
+} from '@/components/ui/table';
 
 // 현재 월을 YYYY-MM 형식으로 반환
 function getCurrentMonth(): string {
@@ -103,10 +112,10 @@ export default function QuotaManagementPage() {
           <p className="mt-1 text-sm text-gray-500">사용자별 LLM 호출 한도를 관리합니다.</p>
         </div>
         <Link
-          href="/ops/cases"
+          href="/ops/projects"
           className="text-sm text-gray-500 hover:text-gray-700"
         >
-          ← 케이스 관리로 돌아가기
+          ← 프로젝트 관리로 돌아가기
         </Link>
       </div>
 
@@ -161,134 +170,120 @@ export default function QuotaManagementPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      사용자
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      역할
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      월간 사용량
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      토큰
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      일일 한도
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      월간 한도
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      작업
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="font-medium text-gray-900">{user.name}</div>
-                          <div className="text-gray-500 text-xs">{user.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          user.role === 'SYSTEM_ADMIN'
-                            ? 'bg-purple-100 text-purple-800'
-                            : user.role === 'OPS_ADMIN'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {user.role === 'SYSTEM_ADMIN' ? '시스템관리자'
-                            : user.role === 'OPS_ADMIN' ? '운영관리자'
-                            : '컨설턴트'}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[18%]">사용자</TableHead>
+                <TableHead className="w-[12%]">역할</TableHead>
+                <TableHead className="w-[18%]">월간 사용량</TableHead>
+                <TableHead className="w-[14%]">토큰</TableHead>
+                <TableHead className="w-[12%]">일일 한도</TableHead>
+                <TableHead className="w-[12%]">월간 한도</TableHead>
+                <TableHead className="w-[14%]">작업</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium text-gray-900">{user.name}</div>
+                      <div className="text-gray-500 text-xs">{user.email}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 text-xs rounded ${
+                      user.role === 'SYSTEM_ADMIN'
+                        ? 'bg-purple-100 text-purple-800'
+                        : user.role === 'OPS_ADMIN'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {user.role === 'SYSTEM_ADMIN' ? '시스템관리자'
+                        : user.role === 'OPS_ADMIN' ? '운영관리자'
+                        : '컨설턴트'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1 inline-block">
+                      <div className="flex items-center justify-between text-sm gap-2">
+                        <span>{user.monthlyUsage.toLocaleString()}회</span>
+                        <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageColor(user.usagePercent)}`}>
+                          {user.usagePercent}%
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>{user.monthlyUsage.toLocaleString()}회</span>
-                            <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageColor(user.usagePercent)}`}>
-                              {user.usagePercent}%
-                            </span>
-                          </div>
-                          <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${getProgressColor(user.usagePercent)}`}
-                              style={{ width: `${Math.min(100, user.usagePercent)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        <div className="text-xs">
-                          <div>입력: {user.tokensIn.toLocaleString()}</div>
-                          <div>출력: {user.tokensOut.toLocaleString()}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingUser === user.id ? (
-                          <input
-                            type="number"
-                            value={editDailyLimit}
-                            onChange={(e) => setEditDailyLimit(Number(e.target.value))}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                            min={1}
-                          />
-                        ) : (
-                          <span className="text-sm">{user.dailyLimit}회</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingUser === user.id ? (
-                          <input
-                            type="number"
-                            value={editMonthlyLimit}
-                            onChange={(e) => setEditMonthlyLimit(Number(e.target.value))}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                            min={1}
-                          />
-                        ) : (
-                          <span className="text-sm">{user.monthlyLimit}회</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editingUser === user.id ? (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={handleSave}
-                              disabled={saving}
-                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                            >
-                              {saving ? '저장 중...' : '저장'}
-                            </button>
-                            <button
-                              onClick={() => setEditingUser(null)}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleEditStart(user)}
-                            className="px-2 py-1 text-xs text-purple-600 hover:text-purple-800"
-                          >
-                            수정
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${getProgressColor(user.usagePercent)}`}
+                          style={{ width: `${Math.min(100, user.usagePercent)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-gray-500">
+                    <div className="text-xs">
+                      <div>입력: {user.tokensIn.toLocaleString()}</div>
+                      <div>출력: {user.tokensOut.toLocaleString()}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {editingUser === user.id ? (
+                      <input
+                        type="number"
+                        value={editDailyLimit}
+                        onChange={(e) => setEditDailyLimit(Number(e.target.value))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        min={1}
+                      />
+                    ) : (
+                      <span className="text-sm">{user.dailyLimit}회</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingUser === user.id ? (
+                      <input
+                        type="number"
+                        value={editMonthlyLimit}
+                        onChange={(e) => setEditMonthlyLimit(Number(e.target.value))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        min={1}
+                      />
+                    ) : (
+                      <span className="text-sm">{user.monthlyLimit}회</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingUser === user.id ? (
+                      <div className="flex justify-center space-x-2">
+                        <TableActionLink
+                          variant="success"
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 no-underline hover:no-underline"
+                        >
+                          {saving ? '저장 중...' : '저장'}
+                        </TableActionLink>
+                        <button
+                          onClick={() => setEditingUser(null)}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors duration-150"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <TableActionLink
+                        variant="primary"
+                        onClick={() => handleEditStart(user)}
+                        className="text-purple-600 hover:text-purple-800 text-xs"
+                      >
+                        수정
+                      </TableActionLink>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
             {/* 페이지네이션 */}
             {totalPages > 1 && (

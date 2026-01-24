@@ -17,7 +17,7 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     ['AI 교육 로드맵'],
     [],
     ['기업명', data.companyName],
-    ['케이스 ID', data.caseId],
+    ['프로젝트 ID', data.caseId],
     ['버전', `v${data.versionNumber}`],
     ['상태', data.status === 'DRAFT' ? '초안' : data.status === 'FINAL' ? '확정' : '보관'],
     ['생성일', new Date(data.createdAt).toLocaleDateString('ko-KR')],

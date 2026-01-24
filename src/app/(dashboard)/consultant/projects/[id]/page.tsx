@@ -6,8 +6,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ConsultantCaseDetailPage({ params }: PageProps) {
-  const { id: caseId } = await params;
+export default async function ConsultantProjectDetailPage({ params }: PageProps) {
+  const { id: projectId } = await params;
   const supabase = await createClient();
 
   const {
@@ -29,9 +29,9 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
     redirect('/dashboard');
   }
 
-  // 케이스 정보 조회 (배정된 컨설턴트만 접근 가능)
-  const { data: caseData } = await supabase
-    .from('cases')
+  // 프로젝트 정보 조회 (배정된 컨설턴트만 접근 가능)
+  const { data: projectData } = await supabase
+    .from('projects')
     .select(`
       *,
       self_assessments(
@@ -52,16 +52,16 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
         customer_requirements
       )
     `)
-    .eq('id', caseId)
+    .eq('id', projectId)
     .eq('assigned_consultant_id', user.id)
     .single();
 
-  if (!caseData) {
+  if (!projectData) {
     notFound();
   }
 
-  const selfAssessment = caseData.self_assessments?.[0];
-  const interview = caseData.interviews?.[0];
+  const selfAssessment = projectData.self_assessments?.[0];
+  const interview = projectData.interviews?.[0];
 
   // 자가진단 점수 요약
   const assessmentScores = selfAssessment?.scores as {
@@ -76,20 +76,20 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
       <div className="flex items-center justify-between">
         <div>
           <Link
-            href="/consultant/cases"
+            href="/consultant/projects"
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            ← 케이스 목록
+            ← 프로젝트 목록
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">{caseData.company_name}</h1>
+          <h1 className="mt-2 text-2xl font-bold text-gray-900">{projectData.company_name}</h1>
           <p className="text-sm text-gray-500">
-            {caseData.industry} · {caseData.company_size}
+            {projectData.industry} · {projectData.company_size}
           </p>
         </div>
         <div className="flex space-x-3">
           {!interview ? (
             <Link
-              href={`/consultant/cases/${caseId}/interview`}
+              href={`/consultant/projects/${projectId}/interview`}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               인터뷰 입력
@@ -97,19 +97,19 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
           ) : (
             <>
               <Link
-                href={`/consultant/cases/${caseId}/interview`}
+                href={`/consultant/projects/${projectId}/interview`}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 인터뷰 수정
               </Link>
               {/* 인터뷰 완료(INTERVIEWED) 이상의 상태에서만 로드맵 버튼 표시 */}
-              {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(caseData.status) && (
+              {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
                 <Link
-                  href={`/consultant/cases/${caseId}/roadmap`}
+                  href={`/consultant/projects/${projectId}/roadmap`}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
-                  {caseData.status === 'INTERVIEWED' ? '로드맵 생성' :
-                   caseData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
+                  {projectData.status === 'INTERVIEWED' ? '로드맵 생성' :
+                   projectData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
                 </Link>
               )}
             </>
@@ -124,38 +124,38 @@ export default async function ConsultantCaseDetailPage({ params }: PageProps) {
           <dl className="space-y-3">
             <div>
               <dt className="text-sm text-gray-500">회사명</dt>
-              <dd className="text-sm font-medium text-gray-900">{caseData.company_name}</dd>
+              <dd className="text-sm font-medium text-gray-900">{projectData.company_name}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">업종</dt>
-              <dd className="text-sm font-medium text-gray-900">{caseData.industry}</dd>
+              <dd className="text-sm font-medium text-gray-900">{projectData.industry}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">규모</dt>
-              <dd className="text-sm font-medium text-gray-900">{caseData.company_size}</dd>
+              <dd className="text-sm font-medium text-gray-900">{projectData.company_size}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">담당자</dt>
-              <dd className="text-sm font-medium text-gray-900">{caseData.contact_name}</dd>
+              <dd className="text-sm font-medium text-gray-900">{projectData.contact_name}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">연락처</dt>
               <dd className="text-sm font-medium text-gray-900">
-                {caseData.contact_email}
-                {caseData.contact_phone && ` · ${caseData.contact_phone}`}
+                {projectData.contact_email}
+                {projectData.contact_phone && ` · ${projectData.contact_phone}`}
               </dd>
             </div>
-            {caseData.company_address && (
+            {projectData.company_address && (
               <div>
                 <dt className="text-sm text-gray-500">주소</dt>
-                <dd className="text-sm font-medium text-gray-900">{caseData.company_address}</dd>
+                <dd className="text-sm font-medium text-gray-900">{projectData.company_address}</dd>
               </div>
             )}
-            {caseData.customer_comment && (
+            {projectData.customer_comment && (
               <div>
                 <dt className="text-sm text-gray-500">고객 요청사항</dt>
                 <dd className="text-sm text-gray-900 whitespace-pre-wrap">
-                  {caseData.customer_comment}
+                  {projectData.customer_comment}
                 </dd>
               </div>
             )}

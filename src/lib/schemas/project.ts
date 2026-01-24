@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// 케이스 상태
-export const caseStatusSchema = z.enum([
+// 프로젝트 상태
+export const projectStatusSchema = z.enum([
   'NEW',
   'DIAGNOSED',
   'MATCH_RECOMMENDED',
@@ -11,8 +11,8 @@ export const caseStatusSchema = z.enum([
   'FINALIZED',
 ]);
 
-// 케이스 생성 스키마
-export const createCaseSchema = z.object({
+// 프로젝트 생성 스키마
+export const createProjectSchema = z.object({
   company_name: z.string().min(2, '회사명을 2자 이상 입력하세요.').max(100),
   industry: z.string().min(1, '업종을 선택하세요.'),
   company_size: z.enum(['1-10', '11-50', '51-100', '101-500', '500+'], {
@@ -25,8 +25,8 @@ export const createCaseSchema = z.object({
   customer_comment: z.string().max(2000).optional(),
 });
 
-// 케이스 수정 스키마
-export const updateCaseSchema = createCaseSchema.partial();
+// 프로젝트 수정 스키마
+export const updateProjectSchema = createProjectSchema.partial();
 
 // 자가진단 응답 스키마
 export const selfAssessmentAnswerSchema = z.object({
@@ -36,7 +36,7 @@ export const selfAssessmentAnswerSchema = z.object({
 
 // 자가진단 입력 스키마
 export const createSelfAssessmentSchema = z.object({
-  case_id: z.string().uuid('유효하지 않은 케이스 ID입니다.'),
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   template_id: z.string().uuid('유효하지 않은 템플릿 ID입니다.'),
   answers: z
     .array(selfAssessmentAnswerSchema)
@@ -52,7 +52,7 @@ export const updateSelfAssessmentSchema = z.object({
 
 // 배정 스키마
 export const assignConsultantSchema = z.object({
-  case_id: z.string().uuid('유효하지 않은 케이스 ID입니다.'),
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   consultant_id: z.string().uuid('유효하지 않은 컨설턴트 ID입니다.'),
   assignment_reason: z
     .string()
@@ -62,7 +62,7 @@ export const assignConsultantSchema = z.object({
 
 // 배정 변경 스키마
 export const reassignConsultantSchema = z.object({
-  case_id: z.string().uuid('유효하지 않은 케이스 ID입니다.'),
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   new_consultant_id: z.string().uuid('유효하지 않은 컨설턴트 ID입니다.'),
   unassignment_reason: z
     .string()
@@ -75,8 +75,8 @@ export const reassignConsultantSchema = z.object({
 });
 
 // 타입 추출
-export type CreateCaseInput = z.infer<typeof createCaseSchema>;
-export type UpdateCaseInput = z.infer<typeof updateCaseSchema>;
+export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type CreateSelfAssessmentInput = z.infer<typeof createSelfAssessmentSchema>;
 export type UpdateSelfAssessmentInput = z.infer<typeof updateSelfAssessmentSchema>;
 export type AssignConsultantInput = z.infer<typeof assignConsultantSchema>;

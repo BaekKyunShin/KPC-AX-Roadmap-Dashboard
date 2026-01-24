@@ -53,9 +53,9 @@ export default function ConsultantProfilePage() {
   return (
     <ProfileForm
       profile={profile}
-      backUrl="/consultant/cases"
-      successRedirectUrl="/consultant/cases"
-      backLabel="케이스 목록으로"
+      backUrl="/consultant/projects"
+      successRedirectUrl="/consultant/projects"
+      backLabel="프로젝트 목록으로"
     />
   );
 }

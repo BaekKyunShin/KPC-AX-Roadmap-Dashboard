@@ -70,7 +70,7 @@ export interface ValidationResult {
 
 /**
  * 로드맵 생성
- * @param caseId - 케이스 ID
+ * @param caseId - 프로젝트 ID
  * @param actorUserId - 생성자 user ID
  * @param revisionPrompt - 수정 요청 (선택)
  * @param isTestMode - 테스트 모드 여부 (자가진단 없이 생성)
@@ -89,16 +89,16 @@ export async function generateRoadmap(
     throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
   }
 
-  // 케이스, 자가진단, 인터뷰 병렬 조회 (성능 최적화)
+  // 프로젝트, 자가진단, 인터뷰 병렬 조회 (성능 최적화)
   const [caseResult, selfAssessmentResult, interviewResult] = await Promise.all([
-    supabase.from('cases').select('*').eq('id', caseId).single(),
-    supabase.from('self_assessments').select('*').eq('case_id', caseId),
-    supabase.from('interviews').select('*').eq('case_id', caseId),
+    supabase.from('projects').select('*').eq('id', caseId).single(),
+    supabase.from('self_assessments').select('*').eq('project_id', caseId),
+    supabase.from('interviews').select('*').eq('project_id', caseId),
   ]);
 
   if (caseResult.error || !caseResult.data) {
-    console.error('[generateRoadmap] 케이스 조회 실패:', caseResult.error);
-    throw new Error('케이스를 찾을 수 없습니다.');
+    console.error('[generateRoadmap] 프로젝트 조회 실패:', caseResult.error);
+    throw new Error('프로젝트를 찾을 수 없습니다.');
   }
 
   const caseData = caseResult.data;
@@ -148,7 +148,7 @@ export async function generateRoadmap(
   const { data: latestVersion } = await supabase
     .from('roadmap_versions')
     .select('version_number')
-    .eq('case_id', caseId)
+    .eq('project_id', caseId)
     .order('version_number', { ascending: false })
     .limit(1)
     .single();
@@ -159,7 +159,7 @@ export async function generateRoadmap(
   const { data: newRoadmap, error: insertError } = await supabase
     .from('roadmap_versions')
     .insert({
-      case_id: caseId,
+      project_id: caseId,
       version_number: newVersionNumber,
       status: 'DRAFT',
       consultant_profile_snapshot: consultantSnapshot || {},
@@ -179,9 +179,9 @@ export async function generateRoadmap(
     throw new Error(`로드맵 저장 실패: ${insertError?.message}`);
   }
 
-  // 케이스 상태 업데이트
+  // 프로젝트 상태 업데이트
   await supabase
-    .from('cases')
+    .from('projects')
     .update({ status: 'ROADMAP_DRAFTED' })
     .eq('id', caseId);
 
@@ -192,7 +192,7 @@ export async function generateRoadmap(
     targetType: 'roadmap',
     targetId: newRoadmap.id,
     meta: {
-      case_id: caseId,
+      project_id: caseId,
       version_number: newVersionNumber,
       has_revision_prompt: !!revisionPrompt,
       validation_passed: validation.isValid,
@@ -441,7 +441,7 @@ export async function finalizeRoadmap(
   // 현재 로드맵 조회
   const { data: roadmap } = await supabase
     .from('roadmap_versions')
-    .select('*, cases!inner(assigned_consultant_id)')
+    .select('*, projects!inner(assigned_consultant_id)')
     .eq('id', roadmapId)
     .single();
 
@@ -450,7 +450,7 @@ export async function finalizeRoadmap(
   }
 
   // 배정된 컨설턴트만 FINAL 가능
-  const caseData = roadmap.cases as { assigned_consultant_id: string };
+  const caseData = roadmap.projects as { assigned_consultant_id: string };
   if (caseData.assigned_consultant_id !== actorUserId) {
     throw new Error('배정된 컨설턴트만 FINAL 확정할 수 있습니다.');
   }
@@ -461,13 +461,13 @@ export async function finalizeRoadmap(
   }
 
   // 기존 FINAL 파일 정리
-  await cleanupOldFinalFiles(roadmap.case_id);
+  await cleanupOldFinalFiles(roadmap.project_id);
 
   // 기존 FINAL → ARCHIVED
   await supabase
     .from('roadmap_versions')
     .update({ status: 'ARCHIVED', storage_path_pdf: null, storage_path_xlsx: null })
-    .eq('case_id', roadmap.case_id)
+    .eq('project_id', roadmap.project_id)
     .eq('status', 'FINAL');
 
   // 현재 로드맵 → FINAL
@@ -480,17 +480,17 @@ export async function finalizeRoadmap(
     })
     .eq('id', roadmapId);
 
-  // 케이스 상태 업데이트
+  // 프로젝트 상태 업데이트
   await supabase
-    .from('cases')
+    .from('projects')
     .update({ status: 'FINALIZED' })
-    .eq('id', roadmap.case_id);
+    .eq('id', roadmap.project_id);
 
   // FINAL 버전 파일 스토리지 저장
   try {
     const exportData = await prepareExportDataServer(roadmapId);
     if (exportData) {
-      await saveFinalXLSX(roadmapId, roadmap.case_id, exportData);
+      await saveFinalXLSX(roadmapId, roadmap.project_id, exportData);
     }
   } catch (storageError) {
     console.error('[finalizeRoadmap] Storage save error:', storageError);
@@ -504,7 +504,7 @@ export async function finalizeRoadmap(
     targetType: 'roadmap',
     targetId: roadmapId,
     meta: {
-      case_id: roadmap.case_id,
+      project_id: roadmap.project_id,
       version_number: roadmap.version_number,
     },
   });
@@ -519,7 +519,7 @@ export async function getRoadmapVersions(caseId: string) {
   const { data: versions } = await supabase
     .from('roadmap_versions')
     .select('*')
-    .eq('case_id', caseId)
+    .eq('project_id', caseId)
     .order('version_number', { ascending: false });
 
   return versions || [];
@@ -559,7 +559,7 @@ export async function updateRoadmapManually(
   // 현재 로드맵 조회
   const { data: roadmap, error: fetchError } = await supabase
     .from('roadmap_versions')
-    .select('*, cases!inner(assigned_consultant_id)')
+    .select('*, projects!inner(assigned_consultant_id)')
     .eq('id', roadmapId)
     .single();
 
@@ -573,7 +573,7 @@ export async function updateRoadmapManually(
   }
 
   // 배정된 컨설턴트 확인
-  const caseData = roadmap.cases as { assigned_consultant_id: string };
+  const caseData = roadmap.projects as { assigned_consultant_id: string };
   if (caseData.assigned_consultant_id !== actorUserId) {
     return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.' };
   }
@@ -614,7 +614,7 @@ export async function updateRoadmapManually(
     targetType: 'roadmap',
     targetId: roadmapId,
     meta: {
-      case_id: roadmap.case_id,
+      project_id: roadmap.project_id,
       version_number: roadmap.version_number,
       edited_fields: Object.keys(updates),
       validation_result: {

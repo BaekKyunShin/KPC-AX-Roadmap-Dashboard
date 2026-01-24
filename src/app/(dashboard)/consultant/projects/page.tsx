@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import CaseList from './_components/CaseList';
+import ProjectList from './_components/ProjectList';
 
-export default async function ConsultantCasesPage() {
+export default async function ConsultantProjectsPage() {
   const supabase = await createClient();
 
   const {
@@ -24,5 +24,5 @@ export default async function ConsultantCasesPage() {
     redirect('/dashboard');
   }
 
-  return <CaseList />;
+  return <ProjectList />;
 }

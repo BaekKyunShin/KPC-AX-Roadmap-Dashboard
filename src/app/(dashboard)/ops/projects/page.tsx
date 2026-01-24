@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import CaseList from './_components/CaseList';
+import ProjectList from './_components/ProjectList';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderKanban } from 'lucide-react';
 
-export default async function OPSCasesPage() {
+export default async function OPSProjectsPage() {
   const supabase = await createClient();
 
   const {
@@ -36,20 +36,20 @@ export default async function OPSCasesPage() {
             <FolderKanban className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">케이스 관리</h1>
-            <p className="text-base text-muted-foreground">기업 케이스를 생성하고 관리합니다</p>
+            <h1 className="text-2xl font-bold text-gray-900">프로젝트 관리</h1>
+            <p className="text-base text-muted-foreground">기업 프로젝트를 생성하고 관리합니다</p>
           </div>
         </div>
         <Button asChild>
-          <Link href="/ops/cases/new">
+          <Link href="/ops/projects/new">
             <Plus className="mr-2 h-4 w-4" />
-            새 케이스 생성
+            새 프로젝트 생성
           </Link>
         </Button>
       </div>
 
-      {/* Case List */}
-      <CaseList />
+      {/* Project List */}
+      <ProjectList />
     </div>
   );
 }

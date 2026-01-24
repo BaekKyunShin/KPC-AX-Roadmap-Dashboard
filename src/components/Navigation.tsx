@@ -30,14 +30,14 @@ interface NavigationProps {
 }
 
 const OPS_NAV_ITEMS = [
-  { href: '/ops/cases', label: '케이스 관리', icon: FolderKanban },
+  { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
   { href: '/ops/users', label: '사용자 관리', icon: Users },
   { href: '/ops/audit', label: '감사로그', icon: ScrollText },
   { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
 ];
 
 const CONSULTANT_NAV_ITEMS = [
-  { href: '/consultant/cases', label: '배정된 케이스', icon: Briefcase },
+  { href: '/consultant/projects', label: '배정된 프로젝트', icon: Briefcase },
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
 ];
 

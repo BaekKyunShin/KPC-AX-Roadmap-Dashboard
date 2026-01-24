@@ -39,6 +39,7 @@ describe('registerSchema', () => {
     password: 'Password123',
     confirmPassword: 'Password123',
     name: '홍길동',
+    registerType: 'CONSULTANT' as const,
     agreeToTerms: true as const,
   };
 

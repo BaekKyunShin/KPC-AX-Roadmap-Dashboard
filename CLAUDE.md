@@ -76,7 +76,7 @@ Supabase Backend
 
 - 역할: PUBLIC, USER_PENDING, CONSULTANT_APPROVED, OPS_ADMIN, SYSTEM_ADMIN
 - RLS 정책으로 데이터베이스 수준 보안 적용 (`docs/RLS.md` 참조)
-- 컨설턴트는 자신에게 배정된 케이스만 접근 가능
+- 컨설턴트는 자신에게 배정된 프로젝트만 접근 가능
 
 **데이터 검증:**
 
@@ -91,7 +91,7 @@ Supabase Backend
 4. 비즈니스 로직 실행
 5. `{ success, data/error }` JSON 반환
 
-**케이스 워크플로우 상태:**
+**프로젝트 워크플로우 상태:**
 
 ```text
 NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP_DRAFTED → FINALIZED

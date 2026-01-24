@@ -24,9 +24,9 @@ export default async function DashboardPage() {
   switch (profile.role) {
     case 'OPS_ADMIN':
     case 'SYSTEM_ADMIN':
-      redirect('/ops/cases');
+      redirect('/ops/projects');
     case 'CONSULTANT_APPROVED':
-      redirect('/consultant/cases');
+      redirect('/consultant/projects');
     case 'USER_PENDING': {
       // 컨설턴트 프로필 유무 확인
       const adminSupabase = createAdminClient();

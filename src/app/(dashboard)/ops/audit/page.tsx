@@ -13,6 +13,14 @@ import {
 } from './actions';
 import type { AuditAction } from '@/types/database';
 import { AuditLogTableSkeleton } from '@/components/ui/Skeleton';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 import * as XLSX from 'xlsx';
 
 export default function AuditLogPage() {
@@ -244,8 +252,8 @@ export default function AuditLogPage() {
           <h1 className="text-2xl font-bold text-gray-900">감사 로그</h1>
           <p className="mt-1 text-sm text-gray-500">시스템 활동 내역을 확인합니다.</p>
         </div>
-        <Link href="/ops/cases" className="text-sm text-gray-500 hover:text-gray-700">
-          ← 케이스 관리로 돌아가기
+        <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
+          ← 프로젝트 관리로 돌아가기
         </Link>
       </div>
 
@@ -434,64 +442,62 @@ export default function AuditLogPage() {
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">시간</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">사용자</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">대상</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상세</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                      <div>{new Date(log.created_at).toLocaleDateString('ko-KR')}</div>
-                      <div className="text-xs">{new Date(log.created_at).toLocaleTimeString('ko-KR')}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">{log.actor?.name || '-'}</div>
-                      <div className="text-gray-500 text-xs">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
-                        {getActionLabel(log.action)}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[14%]">시간</TableHead>
+                <TableHead className="w-[18%]">사용자</TableHead>
+                <TableHead className="w-[16%]">액션</TableHead>
+                <TableHead className="w-[18%]">대상</TableHead>
+                <TableHead className="w-[10%]">상태</TableHead>
+                <TableHead className="w-[24%]">상세</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLogs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="text-gray-500">
+                    <div>{new Date(log.created_at).toLocaleDateString('ko-KR')}</div>
+                    <div className="text-xs">{new Date(log.created_at).toLocaleTimeString('ko-KR')}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium text-gray-900">{log.actor?.name || '-'}</div>
+                    <div className="text-gray-500 text-xs">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
+                      {getActionLabel(log.action)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-gray-900">{getTargetTypeLabel(log.target_type)}</div>
+                    <div className="text-gray-500 text-xs font-mono">{log.target_id.slice(0, 8)}...</div>
+                  </TableCell>
+                  <TableCell>
+                    {log.success ? (
+                      <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">성공</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">실패</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-gray-500">
+                    {log.error_message ? (
+                      <span className="text-red-600" title={log.error_message}>
+                        {log.error_message.slice(0, 30)}...
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="text-gray-900">{getTargetTypeLabel(log.target_type)}</div>
-                      <div className="text-gray-500 text-xs font-mono">{log.target_id.slice(0, 8)}...</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.success ? (
-                        <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">성공</span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">실패</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {log.error_message ? (
-                        <span className="text-red-600" title={log.error_message}>
-                          {log.error_message.slice(0, 30)}...
-                        </span>
-                      ) : log.meta && Object.keys(log.meta).length > 0 ? (
-                        <details className="cursor-pointer">
-                          <summary className="text-purple-600 text-xs">상세보기</summary>
-                          <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto">
-                            {JSON.stringify(log.meta, null, 2)}
-                          </pre>
-                        </details>
-                      ) : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : log.meta && Object.keys(log.meta).length > 0 ? (
+                      <details className="cursor-pointer">
+                        <summary className="text-purple-600 hover:text-purple-800 text-xs underline-offset-2 hover:underline transition-colors duration-150">상세보기</summary>
+                        <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto text-left">
+                          {JSON.stringify(log.meta, null, 2)}
+                        </pre>
+                      </details>
+                    ) : '-'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           {/* 페이지네이션 */}
           {totalPages > 1 && (

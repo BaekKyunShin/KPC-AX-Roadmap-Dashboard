@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { assignConsultant } from '@/app/(dashboard)/ops/cases/actions';
+import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 
 interface Recommendation {
   id: string;
@@ -45,7 +45,7 @@ export default function AssignmentForm({ caseId, recommendations }: AssignmentFo
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.set('case_id', caseId);
+    formData.set('project_id', caseId);
     formData.set('consultant_id', selectedConsultant);
     formData.set('assignment_reason', reason);
 

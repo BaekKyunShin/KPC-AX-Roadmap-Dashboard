@@ -11,8 +11,8 @@
 |------|------|
 | `PUBLIC` | 비로그인 - RLS 적용 안 됨 (Supabase Auth 미인증) |
 | `USER_PENDING` | 승인 대기 - 자신의 정보만 접근 |
-| `CONSULTANT_APPROVED` | 승인된 컨설턴트 - 배정된 케이스만 접근 |
-| `OPS_ADMIN` | 운영 관리자 - 모든 케이스/사용자 관리 |
+| `CONSULTANT_APPROVED` | 승인된 컨설턴트 - 배정된 프로젝트만 접근 |
+| `OPS_ADMIN` | 운영 관리자 - 모든 프로젝트/사용자 관리 |
 | `SYSTEM_ADMIN` | 시스템 관리자 - 모든 권한 |
 
 ## 헬퍼 함수
@@ -24,8 +24,8 @@ get_user_role() RETURNS user_role
 -- 현재 사용자 상태 조회
 get_user_status() RETURNS user_status
 
--- 케이스 배정 여부 확인
-is_assigned_to_case(case_id) RETURNS BOOLEAN
+-- 프로젝트 배정 여부 확인
+is_assigned_to_project(project_id) RETURNS BOOLEAN
 
 -- OPS_ADMIN 이상 확인
 is_ops_admin_or_higher() RETURNS BOOLEAN
@@ -54,7 +54,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | INSERT | 자신의 프로필만 |
 | UPDATE | 자신의 프로필만 |
 
-### cases
+### projects
 
 | 작업 | 조건 |
 |------|------|
@@ -77,7 +77,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 |
-| SELECT (consultant) | 배정된 케이스만 (조회만) |
+| SELECT (consultant) | 배정된 프로젝트만 (조회만) |
 | INSERT | OPS_ADMIN만 |
 | UPDATE | OPS_ADMIN만 |
 
@@ -89,7 +89,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | INSERT | OPS_ADMIN 이상 (시스템 생성) |
 | DELETE | OPS_ADMIN 이상 (재계산 시) |
 
-### case_assignments
+### project_assignments
 
 | 작업 | 조건 |
 |------|------|
@@ -103,7 +103,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 |
-| SELECT (consultant) | 배정된 케이스만 |
+| SELECT (consultant) | 배정된 프로젝트만 |
 | INSERT | 배정된 컨설턴트만 |
 | UPDATE | 배정된 컨설턴트만 (본인 작성) |
 
@@ -112,7 +112,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 (읽기 전용) |
-| SELECT (consultant) | 배정된 케이스만 |
+| SELECT (consultant) | 배정된 프로젝트만 |
 | INSERT | 배정된 컨설턴트만 |
 | UPDATE | 배정된 컨설턴트만 (DRAFT만 수정, FINAL 확정) |
 
@@ -142,16 +142,16 @@ is_approved_consultant() RETURNS BOOLEAN
 
 1. **서비스 역할 키**: 감사 로그, 사용량 메트릭은 서버에서만 삽입
 2. **역할 변경 제한**: 사용자는 자신의 role/status 변경 불가
-3. **케이스 접근 제한**: 컨설턴트는 배정된 케이스만 접근
+3. **프로젝트 접근 제한**: 컨설턴트는 배정된 프로젝트만 접근
 4. **자가진단 보호**: 컨설턴트는 조회만 가능, 수정 불가
 5. **FINAL 확정 제한**: 로드맵 FINAL은 배정된 컨설턴트만 가능
 
 ## 테스트 체크리스트
 
-- [x] USER_PENDING이 케이스 접근 시 차단되는지 확인
-  - 정책: `cases_select_consultant` - `is_approved_consultant()` 함수로 검증
-- [x] 컨설턴트가 배정되지 않은 케이스 접근 시 차단되는지 확인
-  - 정책: `cases_select_consultant` - `assigned_consultant_id = auth.uid()` 검증
+- [x] USER_PENDING이 프로젝트 접근 시 차단되는지 확인
+  - 정책: `projects_select_consultant` - `is_approved_consultant()` 함수로 검증
+- [x] 컨설턴트가 배정되지 않은 프로젝트 접근 시 차단되는지 확인
+  - 정책: `projects_select_consultant` - `assigned_consultant_id = auth.uid()` 검증
 - [x] 컨설턴트가 자가진단 수정 시 차단되는지 확인
   - 정책: `assessments_update_ops` - OPS_ADMIN 이상만 UPDATE 허용
 - [x] OPS_ADMIN이 로드맵 수정 시 차단되는지 확인

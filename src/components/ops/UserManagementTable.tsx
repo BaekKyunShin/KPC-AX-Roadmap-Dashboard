@@ -12,6 +12,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableActionLink,
+} from '@/components/ui/table';
 
 // =============================================================================
 // Types
@@ -31,14 +40,12 @@ type ActionType = 'approve' | 'suspend' | 'reactivate';
 // Constants
 // =============================================================================
 
-/** 레벨 라벨 매핑 */
 const LEVEL_LABELS: Record<string, string> = {
   BEGINNER: '초급',
   INTERMEDIATE: '중급',
   ADVANCED: '고급',
 };
 
-/** 코칭 방식 라벨 매핑 */
 const COACHING_LABELS: Record<string, string> = {
   PBL: 'PBL',
   WORKSHOP: '워크숍',
@@ -47,7 +54,6 @@ const COACHING_LABELS: Record<string, string> = {
   HYBRID: '혼합형',
 };
 
-/** 역할별 뱃지 스타일 */
 const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '컨설턴트 승인 대기' },
   OPS_ADMIN_PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: '운영관리자 승인 대기' },
@@ -56,7 +62,6 @@ const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; label: strin
   SYSTEM_ADMIN: { bg: 'bg-red-100', text: 'text-red-800', label: '시스템관리자' },
 };
 
-/** 테이블 열 설정 */
 const TABLE_COLUMNS = {
   user: 'w-[22%]',
   role: 'w-[18%]',
@@ -64,27 +69,6 @@ const TABLE_COLUMNS = {
   profile: 'w-[14%]',
   joinDate: 'w-[18%]',
   actions: 'w-[18%]',
-} as const;
-
-/** 공통 스타일 */
-const STYLES = {
-  // 테이블 헤더 공통 스타일
-  tableHeader: 'px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider',
-  // 테이블 셀 공통 스타일
-  tableCell: 'px-6 py-4 align-top text-center',
-  // 액션 버튼 기본 스타일
-  actionButton:
-    'underline-offset-2 hover:underline cursor-pointer transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline',
-  // 뱃지 공통 스타일
-  badge: 'px-2 py-1 rounded text-xs',
-} as const;
-
-/** 액션 버튼 색상 */
-const ACTION_BUTTON_COLORS = {
-  approve: 'text-blue-600 hover:text-blue-800',
-  suspend: 'text-red-600 hover:text-red-800',
-  reactivate: 'text-green-600 hover:text-green-800',
-  link: 'text-blue-600 hover:text-blue-800',
 } as const;
 
 // =============================================================================
@@ -137,34 +121,17 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       text: 'text-gray-800',
       label: role,
     };
-    return <span className={`${STYLES.badge} ${style.bg} ${style.text}`}>{style.label}</span>;
+    return (
+      <span className={`px-2 py-1 rounded text-xs ${style.bg} ${style.text}`}>{style.label}</span>
+    );
   };
 
   const getStatusBadge = (status: string) => {
     const isActive = status === 'ACTIVE';
     const colorClasses = isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
     const label = isActive ? '활성' : '정지';
-    return <span className={`${STYLES.badge} ${colorClasses}`}>{label}</span>;
+    return <span className={`px-2 py-1 rounded text-xs ${colorClasses}`}>{label}</span>;
   };
-
-  const getActionButtonClass = (colorKey: keyof typeof ACTION_BUTTON_COLORS) => {
-    return `${ACTION_BUTTON_COLORS[colorKey]} ${STYLES.actionButton}`;
-  };
-
-  const renderActionButton = (
-    userId: string,
-    action: ActionType,
-    label: string,
-    colorKey: keyof typeof ACTION_BUTTON_COLORS
-  ) => (
-    <button
-      onClick={() => handleAction(userId, action)}
-      disabled={isLoading === userId}
-      className={getActionButtonClass(colorKey)}
-    >
-      {isLoading === userId ? '처리 중...' : label}
-    </button>
-  );
 
   const renderUserActions = (user: UserWithProfile) => {
     const { id, role, status } = user;
@@ -174,13 +141,37 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
     const isSuspended = status === 'SUSPENDED';
 
     if (isPending) {
-      return renderActionButton(id, 'approve', '승인', 'approve');
+      return (
+        <TableActionLink
+          variant="primary"
+          onClick={() => handleAction(id, 'approve')}
+          disabled={isLoading === id}
+        >
+          {isLoading === id ? '처리 중...' : '승인'}
+        </TableActionLink>
+      );
     }
     if (isApprovedAndActive) {
-      return renderActionButton(id, 'suspend', '정지', 'suspend');
+      return (
+        <TableActionLink
+          variant="danger"
+          onClick={() => handleAction(id, 'suspend')}
+          disabled={isLoading === id}
+        >
+          {isLoading === id ? '처리 중...' : '정지'}
+        </TableActionLink>
+      );
     }
     if (isSuspended) {
-      return renderActionButton(id, 'reactivate', '활성화', 'reactivate');
+      return (
+        <TableActionLink
+          variant="success"
+          onClick={() => handleAction(id, 'reactivate')}
+          disabled={isLoading === id}
+        >
+          {isLoading === id ? '처리 중...' : '활성화'}
+        </TableActionLink>
+      );
     }
     return null;
   };
@@ -199,72 +190,70 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       )}
 
       {/* 사용자 테이블 */}
-      <div className="bg-white shadow overflow-hidden rounded-lg overflow-x-auto">
-        <table className="w-full table-fixed divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className={`${TABLE_COLUMNS.user} ${STYLES.tableHeader}`}>사용자</th>
-              <th className={`${TABLE_COLUMNS.role} ${STYLES.tableHeader}`}>역할</th>
-              <th className={`${TABLE_COLUMNS.status} ${STYLES.tableHeader}`}>상태</th>
-              <th className={`${TABLE_COLUMNS.profile} ${STYLES.tableHeader}`}>프로필</th>
-              <th className={`${TABLE_COLUMNS.joinDate} ${STYLES.tableHeader}`}>가입일</th>
-              <th className={`${TABLE_COLUMNS.actions} ${STYLES.tableHeader}`}>작업</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      <div className="bg-white shadow overflow-hidden rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className={TABLE_COLUMNS.user}>사용자</TableHead>
+              <TableHead className={TABLE_COLUMNS.role}>역할</TableHead>
+              <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+              <TableHead className={TABLE_COLUMNS.profile}>프로필</TableHead>
+              <TableHead className={TABLE_COLUMNS.joinDate}>가입일</TableHead>
+              <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {users.map((user) => (
-              <tr key={user.id}>
+              <TableRow key={user.id}>
                 {/* 사용자 정보 */}
-                <td className="pl-20 pr-6 py-4 align-top">
+                <TableCell className="pl-20 pr-6 text-left">
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                    {user.phone && <div className="text-sm text-gray-500">{user.phone}</div>}
+                    <div className="font-medium text-gray-900">{user.name}</div>
+                    <div className="text-gray-500">{user.email}</div>
+                    {user.phone && <div className="text-gray-500">{user.phone}</div>}
                   </div>
-                </td>
+                </TableCell>
 
                 {/* 역할 */}
-                <td className={STYLES.tableCell}>{getRoleBadge(user.role)}</td>
+                <TableCell>{getRoleBadge(user.role)}</TableCell>
 
                 {/* 상태 */}
-                <td className={STYLES.tableCell}>{getStatusBadge(user.status)}</td>
+                <TableCell>{getStatusBadge(user.status)}</TableCell>
 
                 {/* 프로필 */}
-                <td className={STYLES.tableCell}>
+                <TableCell>
                   {user.consultant_profile ? (
-                    <button
+                    <TableActionLink
+                      variant="primary"
                       onClick={() => handleProfileClick(user.consultant_profile!, user.name)}
-                      className={`text-sm ${getActionButtonClass('link')}`}
                     >
                       프로필 보기
-                    </button>
+                    </TableActionLink>
                   ) : (
-                    <span className="text-sm text-gray-400">미등록</span>
+                    <span className="text-gray-400">미등록</span>
                   )}
-                </td>
+                </TableCell>
 
                 {/* 가입일 */}
-                <td className={`${STYLES.tableCell} text-sm text-gray-500`}>
+                <TableCell className="text-gray-500">
                   {new Date(user.created_at).toLocaleDateString('ko-KR')}
-                </td>
+                </TableCell>
 
                 {/* 작업 */}
-                <td className={`${STYLES.tableCell} text-sm font-medium`}>
-                  {renderUserActions(user)}
-                </td>
-              </tr>
+                <TableCell className="font-medium">{renderUserActions(user)}</TableCell>
+              </TableRow>
             ))}
 
             {/* 빈 상태 */}
             {users.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-gray-500">
                   등록된 사용자가 없습니다.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* 프로필 상세 모달 */}
@@ -322,7 +311,10 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강의 가능 레벨</h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedProfile.profile.teaching_levels.map((level) => (
-                    <Badge key={level} className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                    <Badge
+                      key={level}
+                      className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                    >
                       {LEVEL_LABELS[level] || level}
                     </Badge>
                   ))}
@@ -334,7 +326,10 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                 <h4 className="text-sm font-medium text-gray-500 mb-2">코칭 방식</h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedProfile.profile.coaching_methods.map((method) => (
-                    <Badge key={method} className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+                    <Badge
+                      key={method}
+                      className="bg-purple-100 text-purple-800 hover:bg-purple-100"
+                    >
                       {COACHING_LABELS[method] || method}
                     </Badge>
                   ))}
