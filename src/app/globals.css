@@ -122,3 +122,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing Page - Custom Cursor */
+.landing-page {
+  cursor: none;
+}
+
+.landing-page * {
+  cursor: none;
+}
+
+/* 모바일/터치 디바이스에서는 기본 커서 유지 */
+@media (hover: none) and (pointer: coarse) {
+  .landing-page,
+  .landing-page * {
+    cursor: auto;
+  }
+}
+
+/* Reduced motion 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  .landing-page * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
