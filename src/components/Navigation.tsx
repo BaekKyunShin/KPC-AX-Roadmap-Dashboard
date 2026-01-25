@@ -109,7 +109,7 @@ export default function Navigation({ user }: NavigationProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="group">
+            <Link href="/" className="group">
               <Logo height={26} className="transition-opacity group-hover:opacity-80" />
             </Link>
 

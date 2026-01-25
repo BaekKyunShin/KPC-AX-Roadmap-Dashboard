@@ -149,7 +149,8 @@
 
 .landing-page a,
 .landing-page button,
-.landing-page [role="button"] {
+.landing-page [role="button"],
+.landing-page a img {
   cursor: pointer !important;
 }
 

@@ -1,10 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+
+// ============================================================================
+// 상수
+// ============================================================================
+
+const SCROLL_THRESHOLD = 50;
+
+const NAV_LINKS = [
+  { href: '#features', label: '서비스 소개' },
+  { href: '#workflow', label: '워크플로우' },
+  { href: '#demo', label: '데모' },
+] as const;
+
+// ============================================================================
+// 메인 컴포넌트
+// ============================================================================
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -12,18 +28,27 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > SCROLL_THRESHOLD);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { href: '#features', label: '서비스 소개' },
-    { href: '#workflow', label: '워크플로우' },
-    { href: '#demo', label: '데모' },
-  ];
+  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+    if (window.location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen((prev) => !prev);
+  }, []);
 
   return (
     <nav
@@ -36,13 +61,18 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" data-cursor-hover>
+          <Link
+            href="/"
+            onClick={handleLogoClick}
+            className="transition-opacity hover:opacity-70"
+            data-cursor-hover
+          >
             <Logo height={26} />
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -70,9 +100,10 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={toggleMobileMenu}
             className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
             data-cursor-hover
+            aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
           >
             {isMobileMenuOpen ? (
               <X className="h-6 w-6 text-gray-600" />
@@ -87,11 +118,11 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t">
           <div className="px-4 py-4 space-y-3">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={closeMobileMenu}
                 className="block py-2 text-gray-600 hover:text-gray-900"
               >
                 {link.label}

@@ -133,7 +133,7 @@ const Subtitle = ({ ref }: SubtitleProps) => (
   >
     기업 진단부터 컨설턴트 매칭, 맞춤형 AI 훈련 로드맵까지
     <br className="hidden sm:block" />
-    KPC가 제공하는 차세대 AI 교육 솔루션
+    KPC가 제공하는 차세대 AI 교육·컨설팅 솔루션
   </p>
 );
 
@@ -149,7 +149,7 @@ const CTAButtons = ({ ref }: CTAButtonsProps) => (
         className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-6 text-base rounded-full"
         data-cursor-hover
       >
-        무료로 시작하기
+        서비스 이용하기
       </Button>
     </Link>
     <a href="#demo">

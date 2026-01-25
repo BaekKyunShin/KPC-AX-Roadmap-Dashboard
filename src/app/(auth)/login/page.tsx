@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 function LoginForm() {
   const router = useRouter();
@@ -123,10 +124,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg mb-4">
-            <Sparkles className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">KPC AI 훈련 로드맵</h1>
+          <Link href="/" className="inline-block mb-4">
+            <Logo height={32} />
+          </Link>
           <p className="mt-1 text-muted-foreground">기업 맞춤형 AI 교육 설계 플랫폼</p>
         </div>
 

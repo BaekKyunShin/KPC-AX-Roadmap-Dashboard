@@ -41,7 +41,7 @@ export function Logo({ className, height = DEFAULT_HEIGHT }: LogoProps) {
       src={LOGO_PATH}
       alt={LOGO_ALT}
       style={{ height: `${height}px`, width: 'auto' }}
-      className={cn('h-auto', className)}
+      className={cn('h-auto cursor-pointer', className)}
     />
   );
 }
