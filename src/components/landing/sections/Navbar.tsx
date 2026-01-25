@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -35,11 +36,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group" data-cursor-hover>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm group-hover:shadow-md transition-shadow">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-semibold text-gray-900">KPC AI 로드맵</span>
+          <Link href="/" data-cursor-hover>
+            <Logo iconSize={22} />
           </Link>
 
           {/* Desktop Navigation */}

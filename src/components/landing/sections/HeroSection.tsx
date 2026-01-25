@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AuroraBackground } from '../AuroraBackground';
+import { LogoBadge } from '@/components/ui/logo';
 
 // ============================================================================
 // 상수
 // ============================================================================
 
-const TITLE_TEXT = 'AI 교육의 새로운 기준';
+const TITLE_TEXT = 'AI 훈련의 새로운 기준';
 const TYPING_INTERVAL_MS = 150;
 
 // ============================================================================
@@ -97,13 +98,10 @@ function useEntranceAnimation(
 // 서브 컴포넌트
 // ============================================================================
 
-function LogoBadge() {
+function HeroLogoBadge() {
   return (
-    <div className="relative flex items-center gap-2 mb-8 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-gray-200/50">
-      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-600 to-indigo-600">
-        <Sparkles className="h-3.5 w-3.5 text-white" />
-      </div>
-      <span className="text-sm font-medium text-gray-700">KPC AI 훈련 로드맵</span>
+    <div className="relative mb-20">
+      <LogoBadge />
     </div>
   );
 }
@@ -115,10 +113,10 @@ interface TitleProps {
 
 function Title({ text, showCursor }: TitleProps) {
   return (
-    <h1 className="relative text-center text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-extrabold text-gray-900 max-w-6xl leading-[1.1] tracking-tighter whitespace-nowrap">
+    <h1 className="relative text-center text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold max-w-6xl leading-[1.1] tracking-tight whitespace-nowrap text-gray-800">
       {text}
       {showCursor && (
-        <span className="inline-block w-[4px] h-[0.85em] bg-gray-900 ml-1 align-middle animate-blink" />
+        <span className="inline-block w-[4px] h-[0.85em] bg-gray-800 ml-1 align-middle animate-blink" />
       )}
     </h1>
   );
@@ -131,7 +129,7 @@ interface SubtitleProps {
 const Subtitle = ({ ref }: SubtitleProps) => (
   <p
     ref={ref}
-    className="relative mt-8 text-center text-lg sm:text-xl text-gray-600 max-w-2xl opacity-0"
+    className="relative mt-6 text-center text-lg sm:text-xl text-gray-600 max-w-2xl opacity-0"
   >
     기업 진단부터 컨설턴트 매칭, 맞춤형 AI 훈련 로드맵까지
     <br className="hidden sm:block" />
@@ -144,7 +142,7 @@ interface CTAButtonsProps {
 }
 
 const CTAButtons = ({ ref }: CTAButtonsProps) => (
-  <div ref={ref} className="relative mt-10 flex flex-col sm:flex-row gap-4 opacity-0">
+  <div ref={ref} className="relative mt-24 flex flex-col sm:flex-row gap-4 opacity-0">
     <Link href="/register">
       <Button
         size="lg"
@@ -205,10 +203,10 @@ export default function HeroSection() {
   });
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-16 overflow-hidden bg-white isolate">
+    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-16 pb-32 overflow-hidden bg-white isolate">
       <AuroraBackground visible={isTypingComplete} />
 
-      <LogoBadge />
+      <HeroLogoBadge />
       <Title text={displayedText} showCursor={!isTypingComplete} />
       <Subtitle ref={subtitleRef} />
       <CTAButtons ref={ctaRef} />

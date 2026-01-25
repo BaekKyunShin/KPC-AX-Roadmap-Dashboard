@@ -5,7 +5,7 @@ import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -70,7 +70,7 @@ export default function FooterSection() {
         <div className="text-center mb-24">
           <h2
             ref={titleRef}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-gray-900 mb-8"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-gray-800 mb-8"
           >
             지금 시작하세요
           </h2>
@@ -102,11 +102,8 @@ export default function FooterSection() {
           <div className="grid md:grid-cols-4 gap-8">
             {/* Logo & Description */}
             <div className="md:col-span-2">
-              <Link href="/" className="flex items-center gap-2 mb-4" data-cursor-hover>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <span className="font-semibold text-gray-900">KPC AI 로드맵</span>
+              <Link href="/" className="mb-4 inline-block" data-cursor-hover>
+                <Logo iconSize={22} />
               </Link>
               <p className="text-gray-600 text-sm max-w-xs">
                 기업 AI 교육 진단, 컨설턴트 매칭, 로드맵 생성을 위한 KPC AI 훈련 확산센터의
@@ -116,7 +113,7 @@ export default function FooterSection() {
 
             {/* Links */}
             <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Product</h4>
+              <h4 className="font-semibold text-gray-800 mb-4">Product</h4>
               <ul className="space-y-2">
                 {footerLinks.product.map((link) => (
                   <li key={link.label}>
@@ -133,7 +130,7 @@ export default function FooterSection() {
             </div>
 
             <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Resources</h4>
+              <h4 className="font-semibold text-gray-800 mb-4">Resources</h4>
               <ul className="space-y-2">
                 {footerLinks.resources.map((link) => (
                   <li key={link.label}>

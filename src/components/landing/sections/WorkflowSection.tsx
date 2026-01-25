@@ -75,7 +75,7 @@ export default function WorkflowSection() {
           <span className="inline-block px-4 py-1.5 bg-orange-50 text-orange-600 text-sm font-medium rounded-full mb-4">
             워크플로우
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-gray-800 mb-4">
             4단계로 완성되는 AI 교육
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
@@ -103,7 +103,7 @@ export default function WorkflowSection() {
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-semibold text-gray-900 mb-2 relative z-10">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2 relative z-10">
                 {step.title}
               </h3>
               <p className="text-gray-600 text-sm relative z-10">{step.description}</p>

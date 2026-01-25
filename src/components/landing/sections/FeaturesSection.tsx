@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Users, Building2, ClipboardCheck, Route, FileText, BarChart3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -77,52 +78,68 @@ export default function FeaturesSection() {
           <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full mb-4">
             서비스 소개
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-gray-900">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-gray-800">
             역할에 맞는 기능을 제공합니다
           </h2>
         </div>
 
-        {/* Feature Cards */}
-        <div ref={cardsRef} className="grid md:grid-cols-2 gap-8 lg:gap-12">
+        {/* Bento Grid Feature Cards */}
+        <div
+          ref={cardsRef}
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-4 md:auto-rows-auto md:grid-cols-2"
+        >
           {features.map((feature, index) => (
             <div
               key={index}
-              className="relative bg-white rounded-3xl p-8 sm:p-10 border border-gray-100 shadow-sm hover:shadow-lg transition-shadow"
+              className={cn(
+                "group/bento row-span-1 flex flex-col justify-between space-y-4 rounded-xl border border-neutral-200 bg-white p-6 sm:p-8 transition duration-200 hover:shadow-xl",
+                "relative overflow-hidden"
+              )}
             >
-              {/* Badge */}
-              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full mb-6">
-                {feature.badge}
-              </span>
+              {/* Gradient overlay on hover */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 transition-opacity duration-300 group-hover/bento:opacity-100" />
 
-              {/* Title */}
-              <h3 className="text-2xl sm:text-3xl font-semibold text-gray-900 whitespace-pre-line mb-4">
-                {feature.title}
-              </h3>
+              {/* Content */}
+              <div className="relative z-10">
+                {/* Badge */}
+                <span className="inline-block px-3 py-1 bg-neutral-100 text-neutral-600 text-xs font-medium rounded-full mb-6">
+                  {feature.badge}
+                </span>
 
-              {/* Description */}
-              <p className="text-gray-600 mb-8">{feature.description}</p>
+                {/* Title & Description with hover animation */}
+                <div className="transition duration-200 group-hover/bento:translate-x-2">
+                  <h3 className="text-2xl sm:text-3xl font-bold text-neutral-800 whitespace-pre-line mb-4">
+                    {feature.title}
+                  </h3>
+                  <p className="text-neutral-600 mb-8">{feature.description}</p>
+                </div>
 
-              {/* Feature Items */}
-              <div className="space-y-4 mb-8">
-                {feature.items.map((item, itemIndex) => (
-                  <div key={itemIndex} className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50">
-                      <item.icon className="h-5 w-5 text-gray-700" />
+                {/* Feature Items */}
+                <div className="space-y-4 mb-8">
+                  {feature.items.map((item, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      className="flex items-center gap-3 transition duration-200 group-hover/bento:translate-x-2"
+                      style={{ transitionDelay: `${itemIndex * 50}ms` }}
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 group-hover/bento:bg-white group-hover/bento:shadow-sm transition-all duration-200">
+                        <item.icon className="h-5 w-5 text-neutral-700" />
+                      </div>
+                      <span className="text-neutral-700 font-medium">{item.label}</span>
                     </div>
-                    <span className="text-gray-700 font-medium">{item.label}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              {/* CTA */}
-              <a
-                href={feature.ctaLink}
-                className="inline-flex items-center gap-2 text-gray-900 font-medium hover:gap-3 transition-all"
-                data-cursor-hover
-              >
-                {feature.cta}
-                <span className="text-lg">→</span>
-              </a>
+                {/* CTA */}
+                <a
+                  href={feature.ctaLink}
+                  className="inline-flex items-center gap-2 text-neutral-900 font-semibold hover:gap-3 transition-all group-hover/bento:translate-x-2"
+                  data-cursor-hover
+                >
+                  {feature.cta}
+                  <span className="text-lg transition-transform duration-200 group-hover/bento:translate-x-1">→</span>
+                </a>
+              </div>
             </div>
           ))}
         </div>
