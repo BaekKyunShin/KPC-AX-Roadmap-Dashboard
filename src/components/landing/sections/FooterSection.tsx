@@ -103,7 +103,7 @@ export default function FooterSection() {
             {/* Logo & Description */}
             <div className="md:col-span-2">
               <Link href="/" className="mb-4 inline-block" data-cursor-hover>
-                <Logo iconSize={22} />
+                <Logo height={24} />
               </Link>
               <p className="text-gray-600 text-sm max-w-xs">
                 기업 AI 교육 진단, 컨설턴트 매칭, 로드맵 생성을 위한 KPC AI 훈련 확산센터의

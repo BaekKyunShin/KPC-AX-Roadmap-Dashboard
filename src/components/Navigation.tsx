@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import {
-  Sparkles,
   FolderKanban,
   Users,
   ScrollText,
@@ -23,6 +22,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 import type { User } from '@/types/database';
 
 interface NavigationProps {
@@ -109,11 +109,8 @@ export default function Navigation({ user }: NavigationProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 shadow-sm group-hover:shadow-md transition-shadow">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <span className="hidden sm:block font-semibold text-gray-900">KPC AI 로드맵</span>
+            <Link href="/dashboard" className="group">
+              <Logo height={26} className="transition-opacity group-hover:opacity-80" />
             </Link>
 
             {/* Desktop Navigation */}

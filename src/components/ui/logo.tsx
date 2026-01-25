@@ -1,89 +1,66 @@
 import { cn } from '@/lib/utils';
 
-interface LogoIconProps {
-  className?: string;
-  size?: number;
-}
-
-/**
- * KPC 로고 아이콘 - 로드맵/경로를 상징하는 미니멀한 디자인
- * 세 개의 노드가 연결된 형태로 AI 훈련 경로를 표현
- */
-export function LogoIcon({ className, size = 24 }: LogoIconProps) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      {/* 연결선 */}
-      <path
-        d="M8 24L16 8L24 24"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* 가로선 */}
-      <path
-        d="M11 18H21"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+// ============================================================================
+// 타입 정의
+// ============================================================================
 
 interface LogoProps {
+  /** 추가 CSS 클래스 */
   className?: string;
-  iconSize?: number;
-  showText?: boolean;
-  textClassName?: string;
+  /** 로고 높이 (px). 너비는 원본 비율에 맞게 자동 계산됨 */
+  height?: number;
 }
 
+interface LogoBadgeProps {
+  /** 추가 CSS 클래스 */
+  className?: string;
+}
+
+// ============================================================================
+// 상수
+// ============================================================================
+
+const LOGO_PATH = '/logo.png';
+const LOGO_ALT = 'KPC AI ROADMAP';
+const DEFAULT_HEIGHT = 28;
+const BADGE_HEIGHT = 24;
+
+// ============================================================================
+// 컴포넌트
+// ============================================================================
+
 /**
- * KPC AI 훈련 로드맵 전체 로고
+ * KPC AI 로드맵 로고
+ *
+ * 원본 이미지 비율을 정확히 유지하기 위해 height만 지정하고 width는 auto로 처리
  */
-export function Logo({
-  className,
-  iconSize = 20,
-  showText = true,
-  textClassName
-}: LogoProps) {
+export function Logo({ className, height = DEFAULT_HEIGHT }: LogoProps) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <LogoIcon size={iconSize} className="text-gray-900" />
-      {showText && (
-        <span className={cn(
-          'text-[17px] tracking-tight text-gray-900',
-          textClassName
-        )}>
-          <span className="font-semibold">KPC</span>
-          <span className="font-normal text-gray-600"> AI 훈련 로드맵</span>
-        </span>
-      )}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={LOGO_PATH}
+      alt={LOGO_ALT}
+      style={{ height: `${height}px`, width: 'auto' }}
+      className={cn('h-auto', className)}
+    />
   );
 }
 
 /**
  * Hero 섹션용 로고 배지
+ *
+ * 둥근 테두리와 배경이 있는 배지 형태의 로고
  */
-export function LogoBadge({ className }: { className?: string }) {
+export function LogoBadge({ className }: LogoBadgeProps) {
   return (
-    <div className={cn(
-      'flex items-center gap-2.5 px-4 py-2 rounded-full border border-gray-200 bg-white/80 backdrop-blur-sm',
-      className
-    )}>
-      <LogoIcon size={18} className="text-gray-900" />
-      <span className="text-[15px] tracking-tight">
-        <span className="font-semibold text-gray-900">KPC</span>
-        <span className="font-normal text-gray-600"> AI 훈련 로드맵</span>
-      </span>
+    <div
+      className={cn(
+        'flex items-center px-5 py-3 rounded-full',
+        'border border-gray-200/80 bg-white/90 backdrop-blur-sm shadow-sm',
+        className
+      )}
+    >
+      <Logo height={BADGE_HEIGHT} />
     </div>
   );
 }

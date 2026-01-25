@@ -37,7 +37,7 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" data-cursor-hover>
-            <Logo iconSize={22} />
+            <Logo height={26} />
           </Link>
 
           {/* Desktop Navigation */}
