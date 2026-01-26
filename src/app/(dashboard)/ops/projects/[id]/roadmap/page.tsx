@@ -21,6 +21,14 @@ interface RoadmapVersion {
   finalized_at: string | null;
 }
 
+type TabKey = 'matrix' | 'pbl' | 'courses';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'matrix', label: '과정 체계도' },
+  { key: 'courses', label: '과정 상세' },
+  { key: 'pbl', label: 'PBL 과정' },
+];
+
 export default function OpsRoadmapViewPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -28,7 +36,7 @@ export default function OpsRoadmapViewPage() {
   const [loading, setLoading] = useState(true);
   const [versions, setVersions] = useState<RoadmapVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<'matrix' | 'pbl' | 'courses'>('matrix');
+  const [activeTab, setActiveTab] = useState<TabKey>('matrix');
 
   // 버전 목록 로드
   useEffect(() => {
@@ -159,14 +167,10 @@ export default function OpsRoadmapViewPage() {
               {/* 탭 */}
               <div className="border-b border-gray-200">
                 <nav className="flex -mb-px">
-                  {[
-                    { key: 'matrix', label: 'NxM 매트릭스' },
-                    { key: 'pbl', label: 'PBL 과정' },
-                    { key: 'courses', label: '과정 상세' },
-                  ].map((tab) => (
+                  {TABS.map((tab) => (
                     <button
                       key={tab.key}
-                      onClick={() => setActiveTab(tab.key as 'matrix' | 'pbl' | 'courses')}
+                      onClick={() => setActiveTab(tab.key)}
                       className={`px-6 py-3 text-sm font-medium border-b-2 ${
                         activeTab === tab.key
                           ? 'border-purple-500 text-purple-600'
@@ -380,17 +384,24 @@ function PBLCourseView({ course }: { course: PBLCourse }) {
   );
 }
 
+// 과정 레벨 스타일 상수
+const LEVEL_COLORS: Record<string, string> = {
+  BEGINNER: 'bg-green-100 text-green-800',
+  INTERMEDIATE: 'bg-yellow-100 text-yellow-800',
+  ADVANCED: 'bg-red-100 text-red-800',
+};
+
+const LEVEL_LABELS: Record<string, string> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
 // 과정 상세 목록 컴포넌트
 function CoursesList({ courses }: { courses: RoadmapCell[] }) {
   if (!courses || courses.length === 0) {
     return <p className="text-gray-500">과정 데이터가 없습니다.</p>;
   }
-
-  const levelColors = {
-    BEGINNER: 'bg-green-100 text-green-800',
-    INTERMEDIATE: 'bg-yellow-100 text-yellow-800',
-    ADVANCED: 'bg-red-100 text-red-800',
-  };
 
   return (
     <div className="space-y-4">
@@ -402,8 +413,8 @@ function CoursesList({ courses }: { courses: RoadmapCell[] }) {
               <p className="text-sm text-gray-500">대상 업무: {course.target_task}</p>
             </div>
             <div className="flex items-center space-x-2">
-              <span className={`px-2 py-1 text-xs rounded ${levelColors[course.level]}`}>
-                {course.level === 'BEGINNER' ? '초급' : course.level === 'INTERMEDIATE' ? '중급' : '고급'}
+              <span className={`px-2 py-1 text-xs rounded ${LEVEL_COLORS[course.level]}`}>
+                {LEVEL_LABELS[course.level]}
               </span>
               <span className="text-sm text-gray-500">{course.recommended_hours}시간</span>
             </div>
@@ -413,12 +424,9 @@ function CoursesList({ courses }: { courses: RoadmapCell[] }) {
             <div>
               <h5 className="text-xs font-medium text-gray-500 uppercase mb-1">커리큘럼</h5>
               <ul className="list-disc list-inside text-gray-600">
-                {course.curriculum?.slice(0, 3).map((item, i) => (
+                {course.curriculum?.map((item, i) => (
                   <li key={i}>{item}</li>
                 ))}
-                {course.curriculum && course.curriculum.length > 3 && (
-                  <li className="text-gray-400">외 {course.curriculum.length - 3}개...</li>
-                )}
               </ul>
             </div>
             <div>

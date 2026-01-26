@@ -120,12 +120,12 @@ export default function TestRoadmapResult({
       {/* 로드맵 탭 */}
       <Tabs defaultValue="matrix" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="matrix">NxM 매트릭스</TabsTrigger>
-          <TabsTrigger value="pbl">PBL 과정</TabsTrigger>
+          <TabsTrigger value="matrix">과정 체계도</TabsTrigger>
           <TabsTrigger value="courses">과정 상세</TabsTrigger>
+          <TabsTrigger value="pbl">PBL 과정</TabsTrigger>
         </TabsList>
 
-        {/* NxM 매트릭스 */}
+        {/* 과정 체계도 */}
         <TabsContent value="matrix">
           <Card>
             <CardHeader>

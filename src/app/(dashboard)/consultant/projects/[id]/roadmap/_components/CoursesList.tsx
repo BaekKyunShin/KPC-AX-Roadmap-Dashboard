@@ -67,12 +67,9 @@ export function CoursesList({ courses, canEdit = false, onEditCourse }: CoursesL
             <div>
               <h5 className="text-xs font-medium text-gray-500 uppercase mb-1">커리큘럼</h5>
               <ul className="list-disc list-inside text-gray-600">
-                {course.curriculum?.slice(0, 3).map((item, i) => (
+                {course.curriculum?.map((item, i) => (
                   <li key={i}>{item}</li>
                 ))}
-                {course.curriculum && course.curriculum.length > 3 && (
-                  <li className="text-gray-400">외 {course.curriculum.length - 3}개...</li>
-                )}
               </ul>
             </div>
             <div>

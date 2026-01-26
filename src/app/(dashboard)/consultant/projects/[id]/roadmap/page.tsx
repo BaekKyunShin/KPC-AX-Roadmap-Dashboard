@@ -38,9 +38,9 @@ interface RoadmapVersion {
 type TabKey = 'matrix' | 'pbl' | 'courses';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'matrix', label: 'NxM 매트릭스' },
-  { key: 'pbl', label: 'PBL 과정' },
+  { key: 'matrix', label: '과정 체계도' },
   { key: 'courses', label: '과정 상세' },
+  { key: 'pbl', label: 'PBL 과정' },
 ];
 
 export default function RoadmapPage() {
