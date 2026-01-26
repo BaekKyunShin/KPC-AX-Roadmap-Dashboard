@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
 
@@ -26,22 +26,40 @@ interface SelfAssessmentFormProps {
   template: Template;
 }
 
+// 상수 정의
+const CIRCLED_NUMBERS = [
+  '①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩',
+  '⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳',
+  '㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚'
+];
+
+const SCALE_5_LABELS = ['매우 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
+const SCALE_5_VALUES = [1, 2, 3, 4, 5] as const;
+const SCALE_10_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+// 유틸리티 함수
+const toCircledNumber = (n: number): string => CIRCLED_NUMBERS[n - 1] || n.toString();
+
+const groupQuestionsByDimension = (questions: Question[]): Record<string, Question[]> => {
+  return questions.reduce((acc, q) => {
+    if (!acc[q.dimension]) {
+      acc[q.dimension] = [];
+    }
+    acc[q.dimension].push(q);
+    return acc;
+  }, {} as Record<string, Question[]>);
+};
+
 export default function SelfAssessmentForm({ projectId, template }: SelfAssessmentFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
 
-  // 질문을 차원별로 그룹화
-  const questionsByDimension = template.questions.reduce(
-    (acc, q) => {
-      if (!acc[q.dimension]) {
-        acc[q.dimension] = [];
-      }
-      acc[q.dimension].push(q);
-      return acc;
-    },
-    {} as Record<string, Question[]>
+  // 질문을 차원별로 그룹화 (메모이제이션)
+  const questionsByDimension = useMemo(
+    () => groupQuestionsByDimension(template.questions),
+    [template.questions]
   );
 
   const handleAnswerChange = (questionId: string, value: number | string) => {
@@ -109,26 +127,28 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
 
   // SCALE_5 렌더링
   const renderScale5 = (question: Question) => (
-    <div>
-      <div className="flex space-x-2">
-        {[1, 2, 3, 4, 5].map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => handleAnswerChange(question.id, value)}
-            className={`w-10 h-10 rounded-full border text-sm font-medium transition-colors ${
-              answers[question.id] === value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-            }`}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
-        <span>매우 그렇지 않다</span>
-        <span>매우 그렇다</span>
+    <div className="w-full">
+      <div className="grid grid-cols-5 gap-2">
+        {SCALE_5_VALUES.map((value) => {
+          const isSelected = answers[question.id] === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => handleAnswerChange(question.id, value)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                isSelected
+                  ? 'bg-blue-50 border-blue-500 text-blue-700'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
+              }`}
+            >
+              <span className={`text-sm font-semibold ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
+                {value}
+              </span>
+              <span className="text-xs">{SCALE_5_LABELS[value - 1]}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -137,20 +157,23 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const renderScale10 = (question: Question) => (
     <div>
       <div className="flex flex-wrap gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => handleAnswerChange(question.id, value)}
-            className={`w-9 h-9 rounded-lg border text-sm font-medium transition-colors ${
-              answers[question.id] === value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-            }`}
-          >
-            {value}
-          </button>
-        ))}
+        {SCALE_10_VALUES.map((value) => {
+          const isSelected = answers[question.id] === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => handleAnswerChange(question.id, value)}
+              className={`w-9 h-9 rounded-lg border text-sm font-medium transition-colors ${
+                isSelected
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+              }`}
+            >
+              {value}
+            </button>
+          );
+        })}
       </div>
       <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
         <span>매우 낮음</span>
@@ -163,26 +186,28 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   // MULTIPLE_CHOICE 렌더링
   const renderMultipleChoice = (question: Question) => (
     <div className="space-y-2">
-      {question.options?.map((option, index) => (
-        <label
-          key={index}
-          className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-            answers[question.id] === index + 1
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300'
-          }`}
-        >
-          <input
-            type="radio"
-            name={`question-${question.id}`}
-            value={index + 1}
-            checked={answers[question.id] === index + 1}
-            onChange={() => handleAnswerChange(question.id, index + 1)}
-            className="h-4 w-4 text-blue-600 border-gray-300"
-          />
-          <span className="ml-3 text-sm text-gray-700">{option}</span>
-        </label>
-      ))}
+      {question.options?.map((option, index) => {
+        const value = index + 1;
+        const isSelected = answers[question.id] === value;
+        return (
+          <label
+            key={index}
+            className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+              isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input
+              type="radio"
+              name={`question-${question.id}`}
+              value={value}
+              checked={isSelected}
+              onChange={() => handleAnswerChange(question.id, value)}
+              className="h-4 w-4 text-blue-600 border-gray-300"
+            />
+            <span className="ml-3 text-sm text-gray-700">{option}</span>
+          </label>
+        );
+      })}
     </div>
   );
 
@@ -272,12 +297,10 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
                       : 'bg-white border border-gray-200'
                   }`}
                 >
-                  <p className="text-sm text-gray-700 mb-3 font-medium">
-                    {question.order}. {question.question_text}
-                    {!isQuestionAnswered(question) && (
-                      <span className="ml-2 text-red-500 text-xs">*필수</span>
-                    )}
-                  </p>
+                  <div className="flex gap-3 mb-3">
+                    <span className="text-xl text-blue-600 flex-shrink-0 mt-[-2px]">{toCircledNumber(question.order)}</span>
+                    <span className="text-sm text-gray-700 font-medium leading-6">{question.question_text}</span>
+                  </div>
                   {renderQuestionInput(question)}
                 </div>
               ))}
