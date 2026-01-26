@@ -506,7 +506,7 @@ export default function AuditLogPage() {
                       </span>
                     ) : log.meta && Object.keys(log.meta).length > 0 ? (
                       <details className="cursor-pointer">
-                        <summary className="text-purple-600 hover:text-purple-800 text-xs underline-offset-2 hover:underline transition-colors duration-150">상세보기</summary>
+                        <summary className="text-purple-600 hover:text-purple-800 text-sm underline-offset-2 hover:underline transition-colors duration-150">상세보기</summary>
                         <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto text-left">
                           {JSON.stringify(log.meta, null, 2)}
                         </pre>

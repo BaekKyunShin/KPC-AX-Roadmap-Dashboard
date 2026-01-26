@@ -272,26 +272,24 @@ export default function QuotaManagementPage() {
                   <TableCell>
                     {editingUser === user.id ? (
                       <div className="flex justify-center space-x-2">
-                        <TableActionLink
-                          variant="success"
+                        <button
                           onClick={handleSave}
                           disabled={saving}
-                          className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 no-underline hover:no-underline"
+                          className="px-2 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                         >
                           {saving ? '저장 중...' : '저장'}
-                        </TableActionLink>
+                        </button>
                         <button
                           onClick={() => setEditingUser(null)}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors duration-150"
+                          className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors duration-150"
                         >
                           취소
                         </button>
                       </div>
                     ) : (
                       <TableActionLink
-                        variant="primary"
                         onClick={() => handleEditStart(user)}
-                        className="text-purple-600 hover:text-purple-800 text-xs"
+                        className="text-purple-600 hover:text-purple-800 text-sm"
                       >
                         수정
                       </TableActionLink>
