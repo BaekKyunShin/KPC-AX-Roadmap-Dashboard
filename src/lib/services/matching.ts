@@ -45,7 +45,7 @@ export async function generateMatchingRecommendations(
     .single();
 
   if (!projectData) {
-    throw new Error('프로젝트를 찾을 수 없습니다.');
+    throw new Error('프로젝트 정보를 찾을 수 없습니다.');
   }
 
   // 자가진단 결과 조회
@@ -56,7 +56,7 @@ export async function generateMatchingRecommendations(
     .single();
 
   if (!assessment) {
-    throw new Error('자가진단 결과를 찾을 수 없습니다.');
+    throw new Error('자가진단이 완료되지 않았습니다. 자가진단을 먼저 진행해주세요.');
   }
 
   // 후보 컨설턴트 조회 (CONSULTANT_APPROVED + ACTIVE)
@@ -71,7 +71,16 @@ export async function generateMatchingRecommendations(
     .eq('status', 'ACTIVE');
 
   if (!candidates || candidates.length === 0) {
-    throw new Error('추천 가능한 컨설턴트가 없습니다.');
+    throw new Error('활성화된 컨설턴트가 없습니다. 컨설턴트를 먼저 등록해주세요.');
+  }
+
+  // 프로필이 있는 컨설턴트만 필터링
+  const candidatesWithProfile = candidates.filter(
+    (c) => c.consultant_profile && c.consultant_profile.length > 0
+  );
+
+  if (candidatesWithProfile.length === 0) {
+    throw new Error('컨설턴트 프로필이 등록되지 않았습니다. 컨설턴트가 프로필을 먼저 작성해야 합니다.');
   }
 
   const criteria: MatchingCriteria = {
@@ -81,8 +90,7 @@ export async function generateMatchingRecommendations(
   };
 
   // 각 후보에 대해 점수 계산
-  const scoredCandidates: CandidateScore[] = candidates
-    .filter((c) => c.consultant_profile && c.consultant_profile.length > 0)
+  const scoredCandidates: CandidateScore[] = candidatesWithProfile
     .map((candidate) => {
       const profile = candidate.consultant_profile[0] as ConsultantProfile;
       return calculateMatchingScore(candidate.id, profile, criteria);
