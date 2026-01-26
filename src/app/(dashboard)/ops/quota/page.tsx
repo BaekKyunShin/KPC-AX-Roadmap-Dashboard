@@ -12,6 +12,7 @@ import {
   TableCell,
   TableActionLink,
 } from '@/components/ui/table';
+import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
 
 // 현재 월을 YYYY-MM 형식으로 반환
 function getCurrentMonth(): string {
@@ -159,12 +160,11 @@ export default function QuotaManagementPage() {
       </div>
 
       {/* 사용량 테이블 */}
+      {loading ? (
+        <QuotaTableSkeleton rows={5} />
+      ) : (
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">
-            로딩 중...
-          </div>
-        ) : users.length === 0 ? (
+        {users.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             데이터가 없습니다.
           </div>
@@ -312,6 +312,7 @@ export default function QuotaManagementPage() {
           </>
         )}
       </div>
+      )}
 
       {/* 범례 */}
       <div className="bg-white shadow rounded-lg p-4">

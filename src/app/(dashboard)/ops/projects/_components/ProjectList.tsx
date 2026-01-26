@@ -28,9 +28,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  Loader2,
   FolderOpen,
 } from 'lucide-react';
+import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -214,13 +214,12 @@ export default function ProjectList() {
       </div>
 
       {/* 테이블 */}
+      {loading ? (
+        <ProjectTableSkeleton rows={5} />
+      ) : (
       <Card>
         <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : projects.length === 0 ? (
+          {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <FolderOpen className="h-8 w-8 text-muted-foreground" />
@@ -350,6 +349,7 @@ export default function ProjectList() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
