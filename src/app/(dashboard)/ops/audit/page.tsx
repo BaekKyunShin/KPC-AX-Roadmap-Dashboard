@@ -28,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Search, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function AuditLogPage() {
@@ -266,27 +268,21 @@ export default function AuditLogPage() {
 
       {/* 필터 */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           {/* 검색 */}
-          <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-gray-500 mb-1">검색</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="사용자명, 이메일, 대상ID 검색..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-              <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="사용자명, 이메일, 대상ID 검색..."
+              className="pl-9"
+            />
           </div>
 
-          {/* 액션 유형 */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">액션</label>
+          {/* 필터 드롭다운들 */}
+          <div className="flex flex-wrap gap-2">
             <Select
               value={selectedAction || 'all'}
               onValueChange={(value) => {
@@ -295,21 +291,17 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="전체" />
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="액션" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">전체</SelectItem>
+                <SelectItem value="all">모든 액션</SelectItem>
                 {actionTypes.map(action => (
                   <SelectItem key={action.value} value={action.value}>{action.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
 
-          {/* 대상 유형 */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">대상</label>
             <Select
               value={selectedTargetType || 'all'}
               onValueChange={(value) => {
@@ -318,21 +310,17 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="전체" />
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="대상" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">전체</SelectItem>
+                <SelectItem value="all">모든 대상</SelectItem>
                 {targetTypes.map(type => (
                   <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
 
-          {/* 사용자 */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">사용자</label>
             <Select
               value={selectedUser || 'all'}
               onValueChange={(value) => {
@@ -341,24 +329,18 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="전체" />
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="사용자" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">전체</SelectItem>
+                <SelectItem value="all">모든 사용자</SelectItem>
                 {users.map(user => (
                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </div>
 
-        {/* 날짜 필터 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">시작일</label>
-            <input
+            <Input
               type="date"
               value={startDate}
               onChange={(e) => {
@@ -366,12 +348,10 @@ export default function AuditLogPage() {
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-[140px]"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">종료일</label>
-            <input
+
+            <Input
               type="date"
               value={endDate}
               onChange={(e) => {
@@ -379,29 +359,29 @@ export default function AuditLogPage() {
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-[140px]"
             />
+
+            {hasFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                title="필터 초기화"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* 통계 및 액션 */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-gray-500">
-              총 <span className="font-medium text-gray-900">{total.toLocaleString()}</span>건
-              {searchKeyword && filteredLogs.length !== logs.length && (
-                <span className="ml-1">(검색 결과: {filteredLogs.length}건)</span>
-              )}
-            </p>
-            {hasFilters && (
-              <button
-                onClick={handleResetFilters}
-                className="text-xs text-purple-600 hover:text-purple-800 underline"
-              >
-                필터 초기화
-              </button>
+          <p className="text-sm text-gray-500">
+            총 <span className="font-medium text-gray-900">{total.toLocaleString()}</span>건
+            {searchKeyword && filteredLogs.length !== logs.length && (
+              <span className="ml-1">(검색 결과: {filteredLogs.length}건)</span>
             )}
-          </div>
+          </p>
 
           <div className="flex items-center gap-2">
             {/* 현재 페이지 내보내기 */}
