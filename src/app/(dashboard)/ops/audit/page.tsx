@@ -29,13 +29,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState<'csv' | 'excel' | 'all-csv' | 'all-excel' | null>(null);
+  const [exporting, setExporting] = useState<'excel' | 'all-excel' | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
@@ -164,56 +164,6 @@ export default function AuditLogPage() {
       '오류메시지': log.error_message || '',
       '상세정보': JSON.stringify(log.meta),
     }));
-  }
-
-  // CSV 내보내기
-  async function handleExportCSV(exportAll = false) {
-    if (exportAll) {
-      setExporting('all-csv');
-      const result = await fetchAllAuditLogs({
-        action: selectedAction || undefined,
-        targetType: selectedTargetType || undefined,
-        actorUserId: selectedUser || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
-      exportToCSV(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.csv`);
-    } else {
-      setExporting('csv');
-      exportToCSV(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.csv`);
-    }
-    setExporting(null);
-  }
-
-  function exportToCSV(logsToExport: AuditLogEntry[], filename: string) {
-    if (logsToExport.length === 0) return;
-
-    const headers = ['시간', '사용자', '이메일', '액션', '대상유형', '대상ID', '상태', '오류메시지', '상세정보'];
-    const rows = logsToExport.map(log => [
-      new Date(log.created_at).toLocaleString('ko-KR'),
-      log.actor?.name || '-',
-      log.actor?.email || log.actor_user_id,
-      getActionLabel(log.action),
-      getTargetTypeLabel(log.target_type),
-      log.target_id,
-      log.success ? '성공' : '실패',
-      log.error_message || '',
-      JSON.stringify(log.meta),
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   }
 
   // Excel 내보내기
@@ -384,44 +334,22 @@ export default function AuditLogPage() {
           </p>
 
           <div className="flex items-center gap-2">
-            {/* 현재 페이지 내보내기 */}
-            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
-              <button
-                onClick={() => handleExportCSV(false)}
-                disabled={filteredLogs.length === 0 || exporting !== null}
-                className="px-3 py-1.5 text-sm bg-white hover:bg-gray-50 disabled:opacity-50 border-r border-gray-300"
-              >
-                {exporting === 'csv' ? '...' : 'CSV'}
-              </button>
-              <button
-                onClick={() => handleExportExcel(false)}
-                disabled={filteredLogs.length === 0 || exporting !== null}
-                className="px-3 py-1.5 text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                {exporting === 'excel' ? '...' : 'Excel'}
-              </button>
-            </div>
-
-            {/* 전체 내보내기 */}
-            <div className="flex items-center border border-purple-300 rounded-md overflow-hidden">
-              <span className="px-2 py-1.5 text-xs bg-purple-50 text-purple-700 border-r border-purple-300">
-                전체
-              </span>
-              <button
-                onClick={() => handleExportCSV(true)}
-                disabled={total === 0 || exporting !== null}
-                className="px-3 py-1.5 text-sm bg-white hover:bg-purple-50 disabled:opacity-50 border-r border-purple-300 text-purple-700"
-              >
-                {exporting === 'all-csv' ? '...' : 'CSV'}
-              </button>
-              <button
-                onClick={() => handleExportExcel(true)}
-                disabled={total === 0 || exporting !== null}
-                className="px-3 py-1.5 text-sm bg-white hover:bg-purple-50 disabled:opacity-50 text-purple-700"
-              >
-                {exporting === 'all-excel' ? '...' : 'Excel'}
-              </button>
-            </div>
+            <button
+              onClick={() => handleExportExcel(false)}
+              disabled={filteredLogs.length === 0 || exporting !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {exporting === 'excel' ? '내보내는 중...' : '현재 페이지 다운로드'}
+            </button>
+            <button
+              onClick={() => handleExportExcel(true)}
+              disabled={total === 0 || exporting !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {exporting === 'all-excel' ? '내보내는 중...' : `전체 목록 다운로드 (${total.toLocaleString()}건)`}
+            </button>
           </div>
         </div>
       </div>
