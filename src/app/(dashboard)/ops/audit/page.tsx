@@ -21,6 +21,13 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import * as XLSX from 'xlsx';
 
 export default function AuditLogPage() {
@@ -280,58 +287,70 @@ export default function AuditLogPage() {
           {/* 액션 유형 */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">액션</label>
-            <select
-              value={selectedAction}
-              onChange={(e) => {
-                setSelectedAction(e.target.value as AuditAction | '');
+            <Select
+              value={selectedAction || 'all'}
+              onValueChange={(value) => {
+                setSelectedAction(value === 'all' ? '' : value as AuditAction);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="">전체</option>
-              {actionTypes.map(action => (
-                <option key={action.value} value={action.value}>{action.label}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                {actionTypes.map(action => (
+                  <SelectItem key={action.value} value={action.value}>{action.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 대상 유형 */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">대상</label>
-            <select
-              value={selectedTargetType}
-              onChange={(e) => {
-                setSelectedTargetType(e.target.value);
+            <Select
+              value={selectedTargetType || 'all'}
+              onValueChange={(value) => {
+                setSelectedTargetType(value === 'all' ? '' : value);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="">전체</option>
-              {targetTypes.map(type => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                {targetTypes.map(type => (
+                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 사용자 */}
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">사용자</label>
-            <select
-              value={selectedUser}
-              onChange={(e) => {
-                setSelectedUser(e.target.value);
+            <Select
+              value={selectedUser || 'all'}
+              onValueChange={(value) => {
+                setSelectedUser(value === 'all' ? '' : value);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="">전체</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="전체" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

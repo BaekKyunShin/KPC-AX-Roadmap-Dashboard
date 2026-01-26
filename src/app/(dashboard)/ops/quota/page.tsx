@@ -12,11 +12,26 @@ import {
   TableCell,
   TableActionLink,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
 
-// 현재 월을 YYYY-MM 형식으로 반환
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7);
+// 월 선택 옵션 생성 (최근 12개월, 로컬 시간 기준)
+function getMonthOptions() {
+  const options: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    options.push(`${year}-${month}`);
+  }
+  return options;
 }
 
 export default function QuotaManagementPage() {
@@ -25,7 +40,8 @@ export default function QuotaManagementPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [monthOptions, setMonthOptions] = useState<string[]>([]);
 
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editDailyLimit, setEditDailyLimit] = useState<number>(0);
@@ -33,14 +49,23 @@ export default function QuotaManagementPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // 클라이언트에서 월 옵션 및 초기값 설정 (hydration 불일치 방지)
+  useEffect(() => {
+    const options = getMonthOptions();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 클라이언트 전용 초기화
+    setMonthOptions(options);
+    setSelectedMonth(options[0]);
+  }, []);
+
   // 데이터 조회
   useEffect(() => {
+    if (!selectedMonth) return;
     async function loadData() {
       setLoading(true);
       const result = await fetchUsageStats({
         page,
         limit: 20,
-        month: selectedMonth || undefined,
+        month: selectedMonth,
       });
       setUsers(result.users as UsageStats[]);
       setTotalPages(result.totalPages);
@@ -49,18 +74,6 @@ export default function QuotaManagementPage() {
     }
     loadData();
   }, [page, selectedMonth]);
-
-  // 월 선택 옵션 생성 (최근 12개월)
-  function getMonthOptions() {
-    const options: string[] = [];
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStr = date.toISOString().slice(0, 7);
-      options.push(monthStr);
-    }
-    return options;
-  }
 
   // 쿼터 수정 시작
   function handleEditStart(user: UsageStats) {
@@ -80,7 +93,7 @@ export default function QuotaManagementPage() {
     if (result.success) {
       setMessage({ type: 'success', text: '쿼터가 수정되었습니다.' });
       // 목록 새로고침
-      const refreshed = await fetchUsageStats({ page, limit: 20, month: selectedMonth || undefined });
+      const refreshed = await fetchUsageStats({ page, limit: 20, month: selectedMonth });
       setUsers(refreshed.users as UsageStats[]);
       setEditingUser(null);
     } else {
@@ -138,20 +151,24 @@ export default function QuotaManagementPage() {
             <label className="text-sm font-medium text-gray-700">
               조회 월:
             </label>
-            <select
+            <Select
               value={selectedMonth}
-              onChange={(e) => {
-                setSelectedMonth(e.target.value);
+              onValueChange={(value) => {
+                setSelectedMonth(value);
                 setPage(1);
               }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              {getMonthOptions().map(m => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="월 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(m => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <p className="text-sm text-gray-500">
             총 {total.toLocaleString()}명의 사용자
