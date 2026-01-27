@@ -14,6 +14,7 @@ export default function CustomCursor() {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 클라이언트 초기화 패턴: 터치 디바이스 확인 후 커서 표시
     setIsVisible(true);
 
     const handleMouseMove = (e: MouseEvent) => {

@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# reference files
+/_reference
+
 # debug
 npm-debug.log*
 yarn-debug.log*

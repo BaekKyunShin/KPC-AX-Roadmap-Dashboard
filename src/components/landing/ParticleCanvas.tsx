@@ -1,237 +1,217 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
-import { createNoise3D } from 'simplex-noise';
+import { useRef, useEffect, useCallback } from 'react';
 
-// 파티클 색상 (antigravity 스타일)
+// 색상 팔레트
 const COLORS = [
-  [0.23, 0.51, 0.96], // blue
-  [0.98, 0.45, 0.09], // orange
-  [0.42, 0.45, 0.50], // gray
-  [0.22, 0.26, 0.32], // darkGray
+  '#4285F4', // 파랑
+  '#5E35B1', // 보라
+  '#7B1FA2', // 마젠타
+  '#C62828', // 빨강
+  '#EF6C00', // 주황
+  '#F9A825', // 노랑
+  '#546E7A', // 회색
 ];
 
-interface ParticleData {
-  positions: Float32Array;
-  colors: Float32Array;
-  sizes: Float32Array;
-  velocities: Float32Array;
-  originalPositions: Float32Array;
-}
-
-function initializeParticles(count: number, width: number, height: number): ParticleData {
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const velocities = new Float32Array(count * 3);
-  const originalPositions = new Float32Array(count * 3);
-
-  for (let i = 0; i < count; i++) {
-    const x = (Math.random() - 0.5) * width * 1.5;
-    const y = (Math.random() - 0.5) * height * 1.5;
-    const z = (Math.random() - 0.5) * 200;
-
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = y;
-    positions[i * 3 + 2] = z;
-
-    originalPositions[i * 3] = x;
-    originalPositions[i * 3 + 1] = y;
-    originalPositions[i * 3 + 2] = z;
-
-    velocities[i * 3] = 0;
-    velocities[i * 3 + 1] = 0;
-    velocities[i * 3 + 2] = 0;
-
-    // 색상 선택
-    const colorChoice = Math.random();
-    let colorIndex = 0;
-    if (colorChoice < 0.5) colorIndex = 0;
-    else if (colorChoice < 0.75) colorIndex = 1;
-    else if (colorChoice < 0.9) colorIndex = 2;
-    else colorIndex = 3;
-
-    const color = COLORS[colorIndex];
-    colors[i * 3] = color[0];
-    colors[i * 3 + 1] = color[1];
-    colors[i * 3 + 2] = color[2];
-
-    sizes[i] = Math.random() * 3 + 1;
-  }
-
-  return { positions, colors, sizes, velocities, originalPositions };
-}
-
-interface ParticleSystemProps {
-  mouseX: number;
-  mouseY: number;
-  count: number;
-}
-
-function ParticleSystem({ mouseX, mouseY, count }: ParticleSystemProps) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const dataRef = useRef<ParticleData | null>(null);
-  const noise3DRef = useRef(createNoise3D());
-  const { size } = useThree();
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // 초기화
-  useEffect(() => {
-    dataRef.current = initializeParticles(count, size.width, size.height);
-    setIsInitialized(true);
-  }, [count, size.width, size.height]);
-
-  // 애니메이션 루프
-  useFrame((state) => {
-    if (!pointsRef.current || !dataRef.current) return;
-
-    const { velocities, originalPositions } = dataRef.current;
-    const noise3D = noise3DRef.current;
-    const time = state.clock.elapsedTime;
-    const positionAttribute = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
-    const posArray = positionAttribute.array as Float32Array;
-
-    const mouseX3D = (mouseX - 0.5) * size.width;
-    const mouseY3D = -(mouseY - 0.5) * size.height;
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-
-      const noiseX = noise3D(posArray[i3] * 0.002, posArray[i3 + 1] * 0.002, time * 0.2);
-      const noiseY = noise3D(posArray[i3] * 0.002 + 100, posArray[i3 + 1] * 0.002, time * 0.2);
-
-      const targetX = originalPositions[i3] + noiseX * 30;
-      const targetY = originalPositions[i3 + 1] + noiseY * 30;
-
-      const dx = posArray[i3] - mouseX3D;
-      const dy = posArray[i3 + 1] - mouseY3D;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const mouseRadius = 150;
-
-      if (dist < mouseRadius && dist > 0) {
-        const force = (1 - dist / mouseRadius) * 2;
-        velocities[i3] += (dx / dist) * force;
-        velocities[i3 + 1] += (dy / dist) * force;
-      }
-
-      velocities[i3] *= 0.95;
-      velocities[i3 + 1] *= 0.95;
-
-      posArray[i3] += (targetX - posArray[i3]) * 0.02 + velocities[i3];
-      posArray[i3 + 1] += (targetY - posArray[i3 + 1]) * 0.02 + velocities[i3 + 1];
-    }
-
-    positionAttribute.needsUpdate = true;
-  });
-
-  if (!isInitialized || !dataRef.current) {
-    return null;
-  }
-
-  const { positions, colors, sizes } = dataRef.current;
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-        <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
-      </bufferGeometry>
-      <shaderMaterial
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        vertexColors
-        uniforms={{
-          uPixelRatio: { value: typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 2) : 1 },
-        }}
-        vertexShader={`
-          attribute float size;
-          varying vec3 vColor;
-          uniform float uPixelRatio;
-
-          void main() {
-            vColor = color;
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = size * uPixelRatio * (300.0 / -mvPosition.z);
-            gl_Position = projectionMatrix * mvPosition;
-          }
-        `}
-        fragmentShader={`
-          varying vec3 vColor;
-
-          void main() {
-            vec2 center = gl_PointCoord - vec2(0.5);
-            float dist = length(center);
-
-            if (dist > 0.5) discard;
-
-            float alpha = 1.0 - smoothstep(0.2, 0.5, dist);
-            gl_FragColor = vec4(vColor, alpha * 0.8);
-          }
-        `}
-      />
-    </points>
-  );
+interface Particle {
+  // 기준 위치 (극좌표)
+  baseAngle: number;
+  baseRadius: number;
+  // 현재 오프셋 (마우스 기준)
+  currentOffsetX: number;
+  currentOffsetY: number;
+  // 개별 부유 효과 (각 파티클 독립적)
+  floatPhaseX: number;
+  floatPhaseY: number;
+  floatSpeedX: number;
+  floatSpeedY: number;
+  floatAmplitudeX: number;
+  floatAmplitudeY: number;
+  // 시각적 속성
+  color: string;
+  rotation: number;
+  rotationSpeed: number;
+  length: number;
+  size: number;
+  alpha: number;
 }
 
 export default function ParticleCanvas() {
-  const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
-  const [particleCount, setParticleCount] = useState(8000);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const mouseRef = useRef({ x: -9999, y: -9999 });
+  const smoothMouseRef = useRef({ x: -9999, y: -9999 });
+  const animationRef = useRef<number>(0);
+  const timeRef = useRef(0);
+  const isMouseInRef = useRef(false);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    setMousePosition({
-      x: e.clientX / window.innerWidth,
-      y: e.clientY / window.innerHeight,
+  // 파티클 초기화 (도넛 형태)
+  const initParticles = useCallback(() => {
+    const particles: Particle[] = [];
+    const count = 200;
+    const innerRadius = 80;
+    const outerRadius = 380;
+
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radiusRange = outerRadius - innerRadius;
+      const radius = innerRadius + Math.sqrt(Math.random()) * radiusRange;
+
+      const isDot = Math.random() < 0.35;
+      const distRatio = (radius - innerRadius) / radiusRange;
+      const alpha = 0.7 - distRatio * 0.35;
+      const size = isDot ? Math.random() * 2 + 1.5 : Math.random() * 1.5 + 1;
+      const length = isDot ? 0 : Math.random() * 12 + 6;
+
+      particles.push({
+        baseAngle: angle,
+        baseRadius: radius,
+        currentOffsetX: Math.cos(angle) * radius,
+        currentOffsetY: Math.sin(angle) * radius,
+        // 개별 부유 효과 - 각 파티클마다 다른 속도와 진폭
+        floatPhaseX: Math.random() * Math.PI * 2,
+        floatPhaseY: Math.random() * Math.PI * 2,
+        floatSpeedX: 0.3 + Math.random() * 0.4, // 느린 속도
+        floatSpeedY: 0.3 + Math.random() * 0.4,
+        floatAmplitudeX: 2 + Math.random() * 4, // 작은 진폭 (2~6px)
+        floatAmplitudeY: 2 + Math.random() * 4,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.01,
+        length,
+        size,
+        alpha,
+      });
+    }
+
+    return particles;
+  }, []);
+
+  const draw = useCallback((ctx: CanvasRenderingContext2D, time: number) => {
+    const dpr = window.devicePixelRatio || 1;
+    const width = ctx.canvas.width / dpr;
+    const height = ctx.canvas.height / dpr;
+
+    ctx.clearRect(0, 0, width * dpr, height * dpr);
+
+    if (!isMouseInRef.current) return;
+
+    const mouseX = smoothMouseRef.current.x;
+    const mouseY = smoothMouseRef.current.y;
+
+    particlesRef.current.forEach((p) => {
+      // 개별 부유 효과 - 각 파티클이 독립적으로 미세하게 떠다님
+      const floatX = Math.sin(time * p.floatSpeedX + p.floatPhaseX) * p.floatAmplitudeX;
+      const floatY = Math.sin(time * p.floatSpeedY + p.floatPhaseY) * p.floatAmplitudeY;
+
+      // 위치 계산 (마우스 기준 + 개별 부유)
+      const x = mouseX + p.currentOffsetX + floatX;
+      const y = mouseY + p.currentOffsetY + floatY;
+
+      // 회전 (천천히)
+      p.rotation += p.rotationSpeed;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = p.alpha;
+
+      if (p.length === 0) {
+        // 점 형태
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      } else {
+        // 선(dash) 형태
+        ctx.rotate(p.rotation);
+        ctx.beginPath();
+        ctx.moveTo(-p.length / 2, 0);
+        ctx.lineTo(p.length / 2, 0);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.size;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+
+      ctx.restore();
     });
   }, []);
 
   useEffect(() => {
-    const updateParticleCount = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    particlesRef.current = initParticles();
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
       const width = window.innerWidth;
-      if (width < 640) {
-        setParticleCount(3000);
-      } else if (width < 1024) {
-        setParticleCount(5000);
-      } else {
-        setParticleCount(8000);
-      }
+      const height = window.innerHeight;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
     };
 
-    updateParticleCount();
-    window.addEventListener('resize', updateParticleCount);
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+      isMouseInRef.current = true;
+    };
+
+    const handleMouseLeave = () => {
+      isMouseInRef.current = false;
+    };
+
+    const handleMouseEnter = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+      smoothMouseRef.current = { x: e.clientX, y: e.clientY };
+      isMouseInRef.current = true;
+    };
+
+    const animate = () => {
+      timeRef.current += 0.016;
+
+      // 마우스 위치 쫀득하게 따라오기
+      const mouseLerp = 0.06;
+      smoothMouseRef.current.x += (mouseRef.current.x - smoothMouseRef.current.x) * mouseLerp;
+      smoothMouseRef.current.y += (mouseRef.current.y - smoothMouseRef.current.y) * mouseLerp;
+
+      draw(ctx, timeRef.current);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
     window.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('mouseenter', handleMouseEnter);
+
+    animate();
 
     return () => {
-      window.removeEventListener('resize', updateParticleCount);
+      window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('mouseenter', handleMouseEnter);
+      cancelAnimationFrame(animationRef.current);
     };
-  }, [handleMouseMove]);
+  }, [initParticles, draw]);
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
-      <Canvas
-        camera={{
-          position: [0, 0, 500],
-          fov: 75,
-          near: 1,
-          far: 2000,
-        }}
-        dpr={[1, 2]}
-        gl={{
-          antialias: false,
-          alpha: true,
-          powerPreference: 'high-performance',
-        }}
-      >
-        <ParticleSystem
-          mouseX={mousePosition.x}
-          mouseY={mousePosition.y}
-          count={particleCount}
-        />
-      </Canvas>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 z-0"
+      style={{
+        background: 'transparent',
+        pointerEvents: 'none',
+      }}
+    />
   );
 }

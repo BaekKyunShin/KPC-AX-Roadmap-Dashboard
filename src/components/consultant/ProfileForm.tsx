@@ -47,6 +47,7 @@ const INDUSTRIES = [
 ];
 
 // 역량 태그 옵션
+// 역량 태그 옵션
 const SKILL_TAGS = [
   '데이터 전처리',
   '업무자동화',
@@ -224,18 +225,17 @@ export default function ProfileForm({
             {/* 전문분야 */}
             <div className="space-y-3">
               <Label>
-                전문분야 <span className="text-red-500">*</span>
+                전문분야 (해결 가능한 과제 중심) <span className="text-red-500">*</span>
               </Label>
               <div className="flex flex-wrap gap-2">
                 {EXPERTISE_DOMAINS.map((domain) => (
                   <Badge
                     key={domain}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
-                      selectedDomains.includes(domain)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'hover:bg-blue-50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedDomains.includes(domain)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'hover:bg-blue-50'
+                      }`}
                     onClick={() => toggleSelection(domain, selectedDomains, setSelectedDomains)}
                   >
                     {domain}
@@ -254,11 +254,10 @@ export default function ProfileForm({
                   <Badge
                     key={industry}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
-                      selectedIndustries.includes(industry)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'hover:bg-blue-50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedIndustries.includes(industry)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'hover:bg-blue-50'
+                      }`}
                     onClick={() => toggleSelection(industry, selectedIndustries, setSelectedIndustries)}
                   >
                     {industry}
@@ -277,11 +276,10 @@ export default function ProfileForm({
                   <Badge
                     key={level.value}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
-                      selectedLevels.includes(level.value)
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'hover:bg-emerald-50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedLevels.includes(level.value)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'hover:bg-emerald-50'
+                      }`}
                     onClick={() => toggleSelection(level.value, selectedLevels, setSelectedLevels)}
                   >
                     {level.label}
@@ -300,11 +298,10 @@ export default function ProfileForm({
                   <Badge
                     key={method.value}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
-                      selectedMethods.includes(method.value)
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'hover:bg-purple-50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedMethods.includes(method.value)
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'hover:bg-purple-50'
+                      }`}
                     onClick={() => toggleSelection(method.value, selectedMethods, setSelectedMethods)}
                   >
                     {method.label}
@@ -323,11 +320,10 @@ export default function ProfileForm({
                   <Badge
                     key={tag}
                     variant="outline"
-                    className={`cursor-pointer transition-colors ${
-                      selectedTags.includes(tag)
-                        ? 'bg-amber-600 text-white border-amber-600'
-                        : 'hover:bg-amber-50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${selectedTags.includes(tag)
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'hover:bg-amber-50'
+                      }`}
                     onClick={() => toggleSelection(tag, selectedTags, setSelectedTags)}
                   >
                     {tag}
@@ -362,7 +358,6 @@ export default function ProfileForm({
                 id="representative_experience"
                 name="representative_experience"
                 rows={4}
-                required
                 defaultValue={profile?.representative_experience || ''}
                 placeholder="주요 프로젝트 경험을 상세히 작성해 주세요. (최소 50자)"
                 className="resize-none"
