@@ -3,6 +3,7 @@ import { callLLMForJSON } from './llm';
 import { createAuditLog } from './audit';
 import { cleanupOldFinalFiles, saveFinalXLSX, prepareExportDataServer } from './roadmap-storage';
 import { checkQuotaExceeded, recordLLMUsage } from './quota';
+import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import type { ConsultantProfile } from '@/types/database';
 
 // 로드맵 매트릭스 셀 타입
@@ -32,25 +33,46 @@ export interface RoadmapRow {
   advanced?: RoadmapCell;
 }
 
-// PBL 최적 과정
+// PBL 최적 과정 (과정 상세에서 선정된 과정)
 export interface PBLCourse {
-  course_name: string;
+  // 선정된 과정 정보 (courses 배열에서 선택)
+  selected_course_name: string; // courses 배열에 있는 과정명과 일치해야 함
+  selected_course_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'; // 선택된 과정의 레벨
+  selected_course_task: string; // 선택된 과정의 대상 업무
+
+  // 선정 이유 (컨설턴트 전문성, 페인포인트, 현실 가능성 종합 고려)
+  selection_rationale: {
+    consultant_expertise_fit: string; // 컨설턴트 전문성 적합도 설명
+    pain_point_alignment: string; // 고객사 페인포인트와의 연관성
+    feasibility_assessment: string; // 현실 가능성 평가
+    summary: string; // 종합 선정 이유 요약
+  };
+
+  // PBL 상세 설계
+  course_name: string; // PBL 과정명 (선정된 과정 기반)
   total_hours: number; // ≤40
   target_tasks: string[]; // 대상 업무들
   target_audience: string;
+
+  // PBL 모듈별 상세 커리큘럼
   curriculum: {
     module_name: string;
     hours: number;
     description: string;
-    practice: string;
+    practice: string; // 구체적인 실습 내용
+    deliverables: string[]; // 각 모듈에서 산출되는 결과물
     tools: {
       name: string;
       free_tier_info: string;
     }[];
   }[];
-  expected_outcomes: string[];
-  measurement_methods: string[];
-  prerequisites: string[];
+
+  // 최종 결과물 및 효과
+  final_deliverables: string[]; // PBL 완료 시 최종 산출물
+  expected_outcomes: string[]; // 기대 효과
+  business_impact: string; // 비즈니스 임팩트/ROI 설명
+  measurement_methods: string[]; // 측정 방법
+  prerequisites: string[]; // 준비물/데이터/권한
 }
 
 // 전체 로드맵 결과
@@ -226,6 +248,14 @@ function buildSystemPrompt(): string {
 
 4. **측정 가능한 성과**: 모든 과정에 명확한 기대 효과와 측정 방법을 포함하세요.
 
+5. **PBL 과정은 반드시 courses에서 선정**:
+   - PBL 과정은 별도로 새로 만드는 것이 아니라, courses 배열에 포함된 과정 중 하나를 선정해야 합니다.
+   - 선정 기준:
+     a. 담당 컨설턴트의 전문성/프로필과의 적합도
+     b. 고객사의 페인포인트 및 요구사항과의 연관성
+     c. 현실 가능성 (교육 인프라, 시간, 인원 등)
+   - 위 기준을 종합적으로 고려하여 가장 효과적인 과정을 PBL로 선정하세요.
+
 ## 출력 형식
 
 반드시 아래 JSON 구조로만 응답하세요. 다른 텍스트 없이 JSON만 출력하세요.
@@ -241,8 +271,19 @@ function buildSystemPrompt(): string {
       "advanced": { /* RoadmapCell 또는 null */ }
     }
   ],
+  "courses": [/* 모든 RoadmapCell 배열 - 먼저 생성 */],
   "pbl_course": {
-    "course_name": "PBL 과정명",
+    /* 중요: courses 배열에서 하나의 과정을 선정하여 PBL로 확장 */
+    "selected_course_name": "선택된 과정명 (courses 배열의 course_name과 정확히 일치해야 함)",
+    "selected_course_level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
+    "selected_course_task": "선택된 과정의 대상 업무",
+    "selection_rationale": {
+      "consultant_expertise_fit": "컨설턴트의 어떤 전문성이 이 과정과 잘 맞는지 설명",
+      "pain_point_alignment": "고객사의 어떤 페인포인트를 이 과정이 해결할 수 있는지 설명",
+      "feasibility_assessment": "이 과정을 PBL로 수행하기에 현실적으로 가능한 이유 (시간, 인프라, 난이도 등)",
+      "summary": "종합적인 선정 이유 2-3문장으로 요약"
+    },
+    "course_name": "PBL: [선택된 과정 기반 PBL 과정명]",
     "total_hours": 40,
     "target_tasks": ["대상 업무1", "대상 업무2"],
     "target_audience": "교육 대상",
@@ -251,15 +292,17 @@ function buildSystemPrompt(): string {
         "module_name": "모듈명",
         "hours": 8,
         "description": "모듈 설명",
-        "practice": "실습 내용",
+        "practice": "구체적인 실습 내용 (어떤 데이터로 무엇을 하는지 상세히)",
+        "deliverables": ["이 모듈에서 산출되는 결과물1", "결과물2"],
         "tools": [{"name": "도구명", "free_tier_info": "무료 범위"}]
       }
     ],
+    "final_deliverables": ["PBL 완료 시 최종 산출물1", "최종 산출물2"],
     "expected_outcomes": ["기대 효과1", "기대 효과2"],
+    "business_impact": "이 PBL을 통해 기대되는 비즈니스 임팩트/ROI 설명",
     "measurement_methods": ["측정 방법1"],
     "prerequisites": ["준비물1"]
-  },
-  "courses": [/* 모든 RoadmapCell 배열 */]
+  }
 }
 
 RoadmapCell 구조:
@@ -275,7 +318,23 @@ RoadmapCell 구조:
   "expected_outcome": "기대 효과",
   "measurement_method": "측정 방법",
   "prerequisites": ["준비물1"]
-}`;
+}
+
+## PBL 과정 상세 작성 지침
+
+PBL 과정은 선정된 과정을 프로젝트 기반 학습으로 심화 확장한 것입니다:
+
+1. **실습 내용 상세화**: 각 모듈의 practice 필드에 구체적으로 어떤 실습을 하는지 명시
+   - 예: "회사의 실제 고객 CS 데이터 100건을 ChatGPT로 감성 분석하여 불만 유형별 분류"
+
+2. **결과물 명시**: 각 모듈별 deliverables와 최종 final_deliverables를 구체적으로 작성
+   - 예: "감성 분석 결과 대시보드", "자동 분류 프롬프트 템플릿", "분석 보고서"
+
+3. **비즈니스 임팩트**: business_impact에 정량적/정성적 효과 기술
+   - 예: "CS 응대 시간 30% 단축 예상", "불만 고객 조기 감지로 이탈률 감소"
+
+4. **현실적 측정 방법**: 실제로 측정 가능한 KPI 제시
+   - 예: "교육 전후 업무 처리 시간 비교", "AI 도구 활용률 주간 모니터링"`;
 }
 
 /**
@@ -356,6 +415,211 @@ ${revisionPrompt}
   return prompt;
 }
 
+// ============================================================================
+// 검증 헬퍼 함수들
+// ============================================================================
+
+interface ToolInfo {
+  name: string;
+  free_tier_info: string;
+}
+
+/**
+ * 도구의 무료 범위 정책 검증
+ */
+function validateToolFreeTier(
+  tool: ToolInfo,
+  contextName?: string
+): { error?: string } {
+  if (!tool.free_tier_info || tool.free_tier_info.trim() === '') {
+    const context = contextName ? ` (${contextName})` : '';
+    return { error: `무료 범위 미표기: ${tool.name}${context}` };
+  }
+
+  const hasPaidKeyword = PAID_TOOL_KEYWORDS.some(kw =>
+    tool.free_tier_info?.toLowerCase().includes(kw.toLowerCase())
+  );
+
+  if (hasPaidKeyword) {
+    return { error: `유료 도구 사용 감지: ${tool.name} - ${tool.free_tier_info}` };
+  }
+
+  return {};
+}
+
+/**
+ * 과정별 도구 검증
+ */
+function validateCourseTools(
+  courses: RoadmapCell[],
+  errors: string[]
+): void {
+  courses.forEach(course => {
+    course.tools?.forEach(tool => {
+      const result = validateToolFreeTier(tool, course.course_name);
+      if (result.error) {
+        errors.push(result.error);
+      }
+    });
+  });
+}
+
+/**
+ * PBL 과정 도구 검증
+ */
+function validatePBLTools(
+  pblCourse: PBLCourse,
+  errors: string[]
+): void {
+  pblCourse.curriculum?.forEach(module => {
+    module.tools?.forEach(tool => {
+      const result = validateToolFreeTier(tool);
+      if (result.error) {
+        errors.push(result.error);
+      }
+    });
+  });
+}
+
+/**
+ * 과정별 시간 제한 검증
+ */
+function validateCourseHours(
+  courses: RoadmapCell[],
+  errors: string[]
+): void {
+  courses.forEach(course => {
+    if (course.recommended_hours > MAX_COURSE_HOURS) {
+      errors.push(
+        `시간 초과: ${course.course_name} (${course.recommended_hours}시간 > ${MAX_COURSE_HOURS}시간)`
+      );
+    }
+  });
+}
+
+/**
+ * PBL 과정 시간 제한 검증
+ */
+function validatePBLHours(
+  pblCourse: PBLCourse,
+  errors: string[]
+): void {
+  if (pblCourse.total_hours > MAX_COURSE_HOURS) {
+    errors.push(
+      `PBL 과정 시간 초과: ${pblCourse.total_hours}시간 > ${MAX_COURSE_HOURS}시간`
+    );
+  }
+
+  const pblTotalHours = pblCourse.curriculum?.reduce((sum, m) => sum + m.hours, 0) || 0;
+  if (pblTotalHours > MAX_COURSE_HOURS) {
+    errors.push(
+      `PBL 모듈 합계 시간 초과: ${pblTotalHours}시간 > ${MAX_COURSE_HOURS}시간`
+    );
+  }
+}
+
+/**
+ * PBL 과정이 courses에서 선정되었는지 검증
+ */
+function validatePBLCourseSelection(
+  pblCourse: PBLCourse,
+  courses: RoadmapCell[],
+  errors: string[],
+  warnings: string[]
+): void {
+  const { selected_course_name, selected_course_level, selected_course_task } = pblCourse;
+
+  if (!selected_course_name) {
+    errors.push('PBL 과정에 선정된 과정명(selected_course_name)이 없습니다.');
+    return;
+  }
+
+  // 완전 일치 검색
+  const matchingCourse = courses.find(
+    course =>
+      course.course_name === selected_course_name &&
+      course.level === selected_course_level &&
+      course.target_task === selected_course_task
+  );
+
+  if (matchingCourse) {
+    return; // 완전 일치하면 검증 통과
+  }
+
+  // 과정명만으로 검색
+  const courseByName = courses.find(c => c.course_name === selected_course_name);
+
+  if (!courseByName) {
+    errors.push(
+      `PBL 선정 과정 "${selected_course_name}"이(가) 과정 상세(courses)에 존재하지 않습니다.`
+    );
+  } else {
+    warnings.push(
+      `PBL 선정 과정의 레벨 또는 업무가 일치하지 않습니다. ` +
+        `선정: ${selected_course_level}/${selected_course_task}, ` +
+        `실제: ${courseByName.level}/${courseByName.target_task}`
+    );
+  }
+}
+
+/**
+ * PBL 선정 이유 검증
+ */
+function validatePBLSelectionRationale(
+  pblCourse: PBLCourse,
+  errors: string[],
+  warnings: string[]
+): void {
+  if (!pblCourse.selection_rationale) {
+    errors.push('PBL 과정 선정 이유(selection_rationale)가 없습니다.');
+    return;
+  }
+
+  const { selection_rationale: rationale } = pblCourse;
+
+  if (!rationale.consultant_expertise_fit) {
+    warnings.push('PBL 선정 이유에 컨설턴트 전문성 적합도 설명이 없습니다.');
+  }
+  if (!rationale.pain_point_alignment) {
+    warnings.push('PBL 선정 이유에 페인포인트 연관성 설명이 없습니다.');
+  }
+  if (!rationale.feasibility_assessment) {
+    warnings.push('PBL 선정 이유에 현실 가능성 평가가 없습니다.');
+  }
+  if (!rationale.summary) {
+    warnings.push('PBL 선정 이유 요약이 없습니다.');
+  }
+}
+
+/**
+ * PBL 상세 필드 검증
+ */
+function validatePBLDetailFields(
+  pblCourse: PBLCourse,
+  warnings: string[]
+): void {
+  if (!pblCourse.final_deliverables || pblCourse.final_deliverables.length === 0) {
+    warnings.push('PBL 최종 산출물(final_deliverables)이 없습니다.');
+  }
+
+  if (!pblCourse.business_impact) {
+    warnings.push('PBL 비즈니스 임팩트(business_impact) 설명이 없습니다.');
+  }
+
+  // 각 모듈의 deliverables 검증
+  pblCourse.curriculum?.forEach((module, idx) => {
+    if (!module.deliverables || module.deliverables.length === 0) {
+      warnings.push(
+        `PBL 모듈 ${idx + 1}(${module.module_name})에 결과물(deliverables)이 없습니다.`
+      );
+    }
+  });
+}
+
+// ============================================================================
+// 메인 검증 함수
+// ============================================================================
+
 /**
  * 로드맵 검증
  */
@@ -364,49 +628,15 @@ export function validateRoadmap(result: RoadmapResult): ValidationResult {
   const warnings: string[] = [];
 
   // 1. 무료 도구 정책 검증
-  const allCourses = [...result.courses];
+  validateCourseTools(result.courses, errors);
   if (result.pbl_course?.curriculum) {
-    result.pbl_course.curriculum.forEach(module => {
-      module.tools?.forEach(tool => {
-        if (!tool.free_tier_info || tool.free_tier_info.trim() === '') {
-          errors.push(`무료 범위 미표기: ${tool.name}`);
-        }
-        // 유료 키워드 검출
-        const paidKeywords = ['구독 필요', '유료', '결제', 'paid', 'premium', 'pro 버전'];
-        if (paidKeywords.some(kw => tool.free_tier_info?.toLowerCase().includes(kw.toLowerCase()))) {
-          errors.push(`유료 도구 사용 감지: ${tool.name} - ${tool.free_tier_info}`);
-        }
-      });
-    });
+    validatePBLTools(result.pbl_course, errors);
   }
 
-  allCourses.forEach(course => {
-    course.tools?.forEach(tool => {
-      if (!tool.free_tier_info || tool.free_tier_info.trim() === '') {
-        errors.push(`무료 범위 미표기: ${tool.name} (${course.course_name})`);
-      }
-      const paidKeywords = ['구독 필요', '유료', '결제', 'paid', 'premium', 'pro 버전'];
-      if (paidKeywords.some(kw => tool.free_tier_info?.toLowerCase().includes(kw.toLowerCase()))) {
-        errors.push(`유료 도구 사용 감지: ${tool.name} - ${tool.free_tier_info}`);
-      }
-    });
-  });
-
-  // 2. 40시간 제한 검증
-  allCourses.forEach(course => {
-    if (course.recommended_hours > 40) {
-      errors.push(`시간 초과: ${course.course_name} (${course.recommended_hours}시간 > 40시간)`);
-    }
-  });
-
-  if (result.pbl_course?.total_hours > 40) {
-    errors.push(`PBL 과정 시간 초과: ${result.pbl_course.total_hours}시간 > 40시간`);
-  }
-
-  // PBL 모듈 합계 확인
-  const pblTotalHours = result.pbl_course?.curriculum?.reduce((sum, m) => sum + m.hours, 0) || 0;
-  if (pblTotalHours > 40) {
-    errors.push(`PBL 모듈 합계 시간 초과: ${pblTotalHours}시간 > 40시간`);
+  // 2. 시간 제한 검증
+  validateCourseHours(result.courses, errors);
+  if (result.pbl_course) {
+    validatePBLHours(result.pbl_course, errors);
   }
 
   // 3. 필수 필드 검증
@@ -420,6 +650,13 @@ export function validateRoadmap(result: RoadmapResult): ValidationResult {
 
   if (!result.pbl_course) {
     errors.push('PBL 과정이 없습니다.');
+  }
+
+  // 4. PBL 과정 상세 검증
+  if (result.pbl_course && result.courses && result.courses.length > 0) {
+    validatePBLCourseSelection(result.pbl_course, result.courses, errors, warnings);
+    validatePBLSelectionRationale(result.pbl_course, errors, warnings);
+    validatePBLDetailFields(result.pbl_course, warnings);
   }
 
   return {

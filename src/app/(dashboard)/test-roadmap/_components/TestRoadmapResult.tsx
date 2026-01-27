@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+import { getLevelLabel, getLevelColorClass } from '@/lib/utils/roadmap';
 
 interface TestRoadmapResultProps {
   result: RoadmapResult;
@@ -203,6 +204,77 @@ export default function TestRoadmapResult({
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* 선정된 과정 정보 */}
+              {result.pbl_course.selected_course_name && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <h4 className="font-medium text-indigo-900 mb-2">선정된 과정</h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-indigo-800">
+                      {result.pbl_course.selected_course_name}
+                    </span>
+                    {result.pbl_course.selected_course_level && (
+                      <Badge variant="outline" className="text-indigo-600 border-indigo-300">
+                        {getLevelLabel(result.pbl_course.selected_course_level)}
+                      </Badge>
+                    )}
+                    {result.pbl_course.selected_course_task && (
+                      <Badge variant="secondary" className="text-indigo-700">
+                        {result.pbl_course.selected_course_task}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 선정 이유 */}
+              {result.pbl_course.selection_rationale && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <h4 className="font-medium text-amber-900 mb-3">PBL 과정 선정 이유</h4>
+                  <div className="space-y-3">
+                    {result.pbl_course.selection_rationale.consultant_expertise_fit && (
+                      <div>
+                        <span className="text-xs font-medium text-amber-800 uppercase">
+                          컨설턴트 전문성 적합도
+                        </span>
+                        <p className="text-sm text-amber-900 mt-0.5">
+                          {result.pbl_course.selection_rationale.consultant_expertise_fit}
+                        </p>
+                      </div>
+                    )}
+                    {result.pbl_course.selection_rationale.pain_point_alignment && (
+                      <div>
+                        <span className="text-xs font-medium text-amber-800 uppercase">
+                          페인포인트 연관성
+                        </span>
+                        <p className="text-sm text-amber-900 mt-0.5">
+                          {result.pbl_course.selection_rationale.pain_point_alignment}
+                        </p>
+                      </div>
+                    )}
+                    {result.pbl_course.selection_rationale.feasibility_assessment && (
+                      <div>
+                        <span className="text-xs font-medium text-amber-800 uppercase">
+                          현실 가능성 평가
+                        </span>
+                        <p className="text-sm text-amber-900 mt-0.5">
+                          {result.pbl_course.selection_rationale.feasibility_assessment}
+                        </p>
+                      </div>
+                    )}
+                    {result.pbl_course.selection_rationale.summary && (
+                      <div className="pt-2 border-t border-amber-200">
+                        <span className="text-xs font-medium text-amber-800 uppercase">
+                          종합 선정 이유
+                        </span>
+                        <p className="text-sm text-amber-900 mt-0.5 font-medium">
+                          {result.pbl_course.selection_rationale.summary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* 대상 */}
               <div>
                 <h4 className="font-medium mb-2">교육 대상</h4>
@@ -235,6 +307,16 @@ export default function TestRoadmapResult({
                       <p className="text-sm text-gray-500">
                         <span className="font-medium">실습:</span> {module.practice}
                       </p>
+                      {module.deliverables && module.deliverables.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-xs font-medium text-green-700 uppercase">모듈 결과물</span>
+                          <ul className="list-disc list-inside text-sm text-green-600 mt-1">
+                            {module.deliverables.map((deliverable, dIndex) => (
+                              <li key={dIndex}>{deliverable}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       {module.tools && module.tools.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {module.tools.map((tool, toolIndex) => (
@@ -251,6 +333,28 @@ export default function TestRoadmapResult({
                   ))}
                 </div>
               </div>
+
+              {/* 최종 산출물 */}
+              {result.pbl_course.final_deliverables && result.pbl_course.final_deliverables.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-medium text-green-900 mb-2">최종 산출물</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    {result.pbl_course.final_deliverables.map((deliverable, index) => (
+                      <li key={index} className="text-sm text-green-800">
+                        {deliverable}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 비즈니스 임팩트 */}
+              {result.pbl_course.business_impact && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">비즈니스 임팩트</h4>
+                  <p className="text-sm text-blue-800">{result.pbl_course.business_impact}</p>
+                </div>
+              )}
 
               {/* 기대 효과 */}
               <div>
@@ -275,6 +379,20 @@ export default function TestRoadmapResult({
                   ))}
                 </ul>
               </div>
+
+              {/* 준비물 */}
+              {result.pbl_course.prerequisites && result.pbl_course.prerequisites.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">준비물</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    {result.pbl_course.prerequisites.map((prereq, index) => (
+                      <li key={index} className="text-sm text-gray-600">
+                        {prereq}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -290,19 +408,9 @@ export default function TestRoadmapResult({
                     <div className="flex gap-2">
                       <Badge
                         variant="outline"
-                        className={
-                          course.level === 'BEGINNER'
-                            ? 'text-green-600 border-green-200'
-                            : course.level === 'INTERMEDIATE'
-                              ? 'text-blue-600 border-blue-200'
-                              : 'text-purple-600 border-purple-200'
-                        }
+                        className={getLevelColorClass(course.level)}
                       >
-                        {course.level === 'BEGINNER'
-                          ? '초급'
-                          : course.level === 'INTERMEDIATE'
-                            ? '중급'
-                            : '고급'}
+                        {getLevelLabel(course.level)}
                       </Badge>
                       <Badge variant="outline">{course.recommended_hours}시간</Badge>
                     </div>

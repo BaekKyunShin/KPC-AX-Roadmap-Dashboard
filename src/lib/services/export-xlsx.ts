@@ -5,14 +5,71 @@
 
 import * as XLSX from 'xlsx';
 import type { RoadmapExportData } from './export-pdf';
+import type { PBLCourse } from './roadmap';
+import { getLevelLabel } from '@/lib/utils/roadmap';
+
+// ============================================================================
+// PBL 데이터 추출 헬퍼 함수들
+// ============================================================================
+
+interface PBLExtendedFields {
+  selected_course_name?: string;
+  selected_course_level?: string;
+  selected_course_task?: string;
+  selection_rationale?: {
+    consultant_expertise_fit?: string;
+    pain_point_alignment?: string;
+    feasibility_assessment?: string;
+    summary?: string;
+  };
+  final_deliverables?: string[];
+  business_impact?: string;
+}
+
+interface PBLModuleExtended {
+  module_name: string;
+  hours: number;
+  description: string;
+  practice: string;
+  deliverables?: string[];
+  tools?: { name: string; free_tier_info: string }[];
+}
 
 /**
- * XLSX 생성
+ * PBL 과정에서 확장 필드 추출
  */
-export function generateXLSX(data: RoadmapExportData): Uint8Array {
-  const workbook = XLSX.utils.book_new();
+function extractPBLExtendedFields(pblCourse: PBLCourse): PBLExtendedFields {
+  const extended = pblCourse as unknown as PBLExtendedFields;
+  return {
+    selected_course_name: extended.selected_course_name,
+    selected_course_level: extended.selected_course_level,
+    selected_course_task: extended.selected_course_task,
+    selection_rationale: extended.selection_rationale,
+    final_deliverables: extended.final_deliverables,
+    business_impact: extended.business_impact,
+  };
+}
 
-  // 시트 1: 개요
+/**
+ * PBL 커리큘럼 모듈에서 확장 필드 추출
+ */
+function extractModuleDeliverables(
+  module: PBLCourse['curriculum'][number]
+): string[] | undefined {
+  const extended = module as unknown as PBLModuleExtended;
+  return extended.deliverables;
+}
+
+// ============================================================================
+// 시트 생성 함수들
+// ============================================================================
+
+/**
+ * 개요 시트 생성
+ */
+function createOverviewSheet(
+  data: RoadmapExportData
+): XLSX.WorkSheet {
   const overviewData = [
     ['AI 교육 로드맵'],
     [],
@@ -26,22 +83,23 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     ['진단 요약'],
     [data.diagnosisSummary],
   ];
-  const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
 
-  // 컬럼 너비 설정
-  overviewSheet['!cols'] = [{ wch: 20 }, { wch: 60 }];
-
-  // 병합 셀 설정
-  overviewSheet['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, // 제목
-    { s: { r: 9, c: 0 }, e: { r: 9, c: 1 } }, // 진단 요약 제목
-    { s: { r: 10, c: 0 }, e: { r: 10, c: 1 } }, // 진단 요약 내용
+  const sheet = XLSX.utils.aoa_to_sheet(overviewData);
+  sheet['!cols'] = [{ wch: 20 }, { wch: 60 }];
+  sheet['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+    { s: { r: 9, c: 0 }, e: { r: 9, c: 1 } },
+    { s: { r: 10, c: 0 }, e: { r: 10, c: 1 } },
   ];
 
-  XLSX.utils.book_append_sheet(workbook, overviewSheet, '개요');
+  return sheet;
+}
 
-  // 시트 2: NxM 매트릭스
-  const matrixHeader = [
+/**
+ * NxM 매트릭스 시트 생성
+ */
+function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
+  const header = [
     '업무',
     '초급 과정',
     '초급 시간',
@@ -51,7 +109,7 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     '고급 시간',
   ];
 
-  const matrixRows = data.roadmapMatrix.map(row => [
+  const rows = data.roadmapMatrix.map(row => [
     row.task_name,
     row.beginner?.course_name || '-',
     row.beginner?.recommended_hours || '-',
@@ -61,72 +119,111 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     row.advanced?.recommended_hours || '-',
   ]);
 
-  const matrixData = [matrixHeader, ...matrixRows];
-  const matrixSheet = XLSX.utils.aoa_to_sheet(matrixData);
-
-  matrixSheet['!cols'] = [
-    { wch: 25 }, // 업무
-    { wch: 30 }, // 초급 과정
-    { wch: 10 }, // 초급 시간
-    { wch: 30 }, // 중급 과정
-    { wch: 10 }, // 중급 시간
-    { wch: 30 }, // 고급 과정
-    { wch: 10 }, // 고급 시간
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  sheet['!cols'] = [
+    { wch: 25 },
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 30 },
+    { wch: 10 },
   ];
 
-  XLSX.utils.book_append_sheet(workbook, matrixSheet, 'NxM 매트릭스');
+  return sheet;
+}
 
-  // 시트 3: PBL 과정
-  const pblOverview = [
+/**
+ * PBL 과정 시트 생성
+ */
+function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
+  const extended = extractPBLExtendedFields(data.pblCourse);
+  const { selection_rationale: rationale } = extended;
+
+  // 선정된 과정 정보
+  const selectionInfo = [
     ['PBL 최적 과정'],
     [],
+    ['[선정된 과정 정보]'],
+    ['선정된 과정명', extended.selected_course_name || '-'],
+    ['선정된 과정 레벨', extended.selected_course_level ? getLevelLabel(extended.selected_course_level) : '-'],
+    ['선정된 과정 업무', extended.selected_course_task || '-'],
+    [],
+    ['[PBL 과정 선정 이유]'],
+    ['컨설턴트 전문성 적합도', rationale?.consultant_expertise_fit || '-'],
+    ['페인포인트 연관성', rationale?.pain_point_alignment || '-'],
+    ['현실 가능성 평가', rationale?.feasibility_assessment || '-'],
+    ['종합 선정 이유', rationale?.summary || '-'],
+    [],
+    ['[PBL 과정 정보]'],
     ['과정명', data.pblCourse.course_name],
     ['총 시간', `${data.pblCourse.total_hours}시간`],
     ['교육 대상', data.pblCourse.target_audience],
     ['대상 업무', data.pblCourse.target_tasks?.join(', ') || '-'],
     [],
-    ['커리큘럼'],
+    ['[커리큘럼]'],
   ];
 
-  const pblCurriculumHeader = ['모듈명', '시간', '설명', '실습', '사용 도구', '무료 범위'];
-  const pblCurriculumRows = data.pblCourse.curriculum?.map(module => [
-    module.module_name,
-    module.hours,
-    module.description,
-    module.practice,
-    module.tools?.map(t => t.name).join(', ') || '-',
-    module.tools?.map(t => t.free_tier_info).join(', ') || '-',
-  ]) || [];
+  // 커리큘럼
+  const curriculumHeader = ['모듈명', '시간', '설명', '실습', '모듈 결과물', '사용 도구', '무료 범위'];
+  const curriculumRows = data.pblCourse.curriculum?.map(module => {
+    const deliverables = extractModuleDeliverables(module);
+    return [
+      module.module_name,
+      module.hours,
+      module.description,
+      module.practice,
+      deliverables?.join(', ') || '-',
+      module.tools?.map(t => t.name).join(', ') || '-',
+      module.tools?.map(t => t.free_tier_info).join(', ') || '-',
+    ];
+  }) || [];
 
-  const pblData = [
-    ...pblOverview,
-    pblCurriculumHeader,
-    ...pblCurriculumRows,
+  // 최종 산출물 및 기타 정보
+  const additionalInfo = [
     [],
-    ['기대 효과'],
+    ['[최종 산출물]'],
+    ...(extended.final_deliverables?.map(d => [d]) || [['(없음)']]),
+    [],
+    ['[비즈니스 임팩트]'],
+    [extended.business_impact || '-'],
+    [],
+    ['[기대 효과]'],
     ...(data.pblCourse.expected_outcomes?.map(o => [o]) || []),
     [],
-    ['측정 방법'],
+    ['[측정 방법]'],
     ...(data.pblCourse.measurement_methods?.map(m => [m]) || []),
     [],
-    ['준비물'],
+    ['[준비물]'],
     ...(data.pblCourse.prerequisites?.map(p => [p]) || []),
   ];
 
-  const pblSheet = XLSX.utils.aoa_to_sheet(pblData);
-  pblSheet['!cols'] = [
+  const pblData = [
+    ...selectionInfo,
+    curriculumHeader,
+    ...curriculumRows,
+    ...additionalInfo,
+  ];
+
+  const sheet = XLSX.utils.aoa_to_sheet(pblData);
+  sheet['!cols'] = [
     { wch: 25 },
     { wch: 10 },
     { wch: 40 },
     { wch: 40 },
+    { wch: 30 },
     { wch: 25 },
     { wch: 30 },
   ];
 
-  XLSX.utils.book_append_sheet(workbook, pblSheet, 'PBL 과정');
+  return sheet;
+}
 
-  // 시트 4: 과정 상세
-  const coursesHeader = [
+/**
+ * 과정 상세 시트 생성
+ */
+function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
+  const header = [
     '과정명',
     '레벨',
     '대상 업무',
@@ -141,9 +238,9 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     '준비물',
   ];
 
-  const coursesRows = data.courses.map(course => [
+  const rows = data.courses.map(course => [
     course.course_name,
-    course.level === 'BEGINNER' ? '초급' : course.level === 'INTERMEDIATE' ? '중급' : '고급',
+    getLevelLabel(course.level),
     course.target_task,
     course.target_audience,
     course.recommended_hours,
@@ -156,27 +253,29 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     course.prerequisites?.join(', ') || '-',
   ]);
 
-  const coursesData = [coursesHeader, ...coursesRows];
-  const coursesSheet = XLSX.utils.aoa_to_sheet(coursesData);
-
-  coursesSheet['!cols'] = [
-    { wch: 25 }, // 과정명
-    { wch: 8 },  // 레벨
-    { wch: 20 }, // 대상 업무
-    { wch: 15 }, // 교육 대상
-    { wch: 10 }, // 권장 시간
-    { wch: 40 }, // 커리큘럼
-    { wch: 40 }, // 실습/과제
-    { wch: 25 }, // 사용 도구
-    { wch: 30 }, // 무료 범위
-    { wch: 30 }, // 기대 효과
-    { wch: 25 }, // 측정 방법
-    { wch: 25 }, // 준비물
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  sheet['!cols'] = [
+    { wch: 25 },
+    { wch: 8 },
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 10 },
+    { wch: 40 },
+    { wch: 40 },
+    { wch: 25 },
+    { wch: 30 },
+    { wch: 30 },
+    { wch: 25 },
+    { wch: 25 },
   ];
 
-  XLSX.utils.book_append_sheet(workbook, coursesSheet, '과정 상세');
+  return sheet;
+}
 
-  // 시트 5: 도구 목록 (무료 범위 정리)
+/**
+ * 도구 목록 시트 생성
+ */
+function createToolsSheet(data: RoadmapExportData): XLSX.WorkSheet {
   const toolsSet = new Map<string, string>();
 
   // 모든 과정에서 도구 수집
@@ -197,20 +296,39 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
     });
   });
 
-  const toolsHeader = ['도구명', '무료 범위'];
-  const toolsRows = Array.from(toolsSet.entries()).map(([name, info]) => [name, info]);
+  const header = ['도구명', '무료 범위'];
+  const rows = Array.from(toolsSet.entries()).map(([name, info]) => [name, info]);
+
   const toolsData = [
     ['사용 도구 및 무료 범위'],
     [],
-    toolsHeader,
-    ...toolsRows,
+    header,
+    ...rows,
   ];
 
-  const toolsSheet = XLSX.utils.aoa_to_sheet(toolsData);
-  toolsSheet['!cols'] = [{ wch: 25 }, { wch: 50 }];
-  toolsSheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  const sheet = XLSX.utils.aoa_to_sheet(toolsData);
+  sheet['!cols'] = [{ wch: 25 }, { wch: 50 }];
+  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
 
-  XLSX.utils.book_append_sheet(workbook, toolsSheet, '도구 목록');
+  return sheet;
+}
+
+// ============================================================================
+// 메인 함수
+// ============================================================================
+
+/**
+ * XLSX 생성
+ */
+export function generateXLSX(data: RoadmapExportData): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+
+  // 시트 추가
+  XLSX.utils.book_append_sheet(workbook, createOverviewSheet(data), '개요');
+  XLSX.utils.book_append_sheet(workbook, createMatrixSheet(data), 'NxM 매트릭스');
+  XLSX.utils.book_append_sheet(workbook, createPBLSheet(data), 'PBL 과정');
+  XLSX.utils.book_append_sheet(workbook, createCoursesSheet(data), '과정 상세');
+  XLSX.utils.book_append_sheet(workbook, createToolsSheet(data), '도구 목록');
 
   // Uint8Array로 변환
   const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
@@ -222,6 +340,7 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
  */
 export function downloadXLSX(data: RoadmapExportData, filename: string): void {
   const buffer = generateXLSX(data);
+
   // 새 ArrayBuffer로 복사하여 Blob 생성
   const newBuffer = new ArrayBuffer(buffer.length);
   const view = new Uint8Array(newBuffer);
