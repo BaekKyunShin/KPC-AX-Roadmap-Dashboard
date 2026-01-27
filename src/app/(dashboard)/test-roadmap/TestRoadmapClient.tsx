@@ -22,7 +22,8 @@ interface TestRoadmapClientProps {
     role: string;
     status: string;
   };
-  isApprovedConsultant: boolean;
+  /** 테스트 로드맵 기능에 접근 가능한지 여부 (승인된 컨설턴트 또는 운영관리자) */
+  canAccess: boolean;
   hasProfile: boolean;
 }
 
@@ -47,9 +48,12 @@ function formatErrorMessage(err: unknown, defaultMessage: string): string {
 
 export default function TestRoadmapClient({
   user,
-  isApprovedConsultant,
+  canAccess,
   hasProfile,
 }: TestRoadmapClientProps) {
+  // 역할 기반 분기를 위한 플래그
+  const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
+
   const [activeTab, setActiveTab] = useState('create');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,10 +87,10 @@ export default function TestRoadmapClient({
 
   // 초기 기록 로드
   useEffect(() => {
-    if (isApprovedConsultant) {
+    if (canAccess) {
       loadHistory();
     }
-  }, [isApprovedConsultant]);
+  }, [canAccess]);
 
   // 테스트 로드맵 생성
   const handleSubmit = async (data: TestInputData) => {
@@ -173,7 +177,7 @@ export default function TestRoadmapClient({
   };
 
   // 미승인 사용자 화면 - PendingApprovalCard 재사용
-  if (!isApprovedConsultant) {
+  if (!canAccess) {
     const userRole = user.role === 'USER_PENDING' ? 'CONSULTANT' : 'OPS_ADMIN';
 
     return (
@@ -203,17 +207,21 @@ export default function TestRoadmapClient({
     );
   }
 
+  // 역할에 따른 프로젝트 페이지 경로 결정
+  const projectsHref = isOpsAdmin ? '/ops/projects' : '/consultant/projects';
+  const projectsLabel = isOpsAdmin ? '프로젝트 관리로 돌아가기' : '배정된 프로젝트로 돌아가기';
+
   // 메인 화면
   return (
     <div className="max-w-4xl mx-auto py-6">
       {/* 헤더 */}
       <div className="mb-6">
         <Link
-          href="/consultant/projects"
+          href={projectsHref}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center mb-2"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          배정된 프로젝트로 돌아가기
+          {projectsLabel}
         </Link>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">

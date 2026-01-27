@@ -13,6 +13,9 @@ interface ActionResult<T = void> {
   error?: string;
 }
 
+/** 테스트 로드맵 기능에 접근 가능한 역할 목록 */
+const ALLOWED_ROLES_FOR_TEST_ROADMAP = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
+
 /**
  * 테스트 프로젝트 생성 및 로드맵 생성
  */
@@ -31,11 +34,15 @@ export async function createTestRoadmap(
     return { success: false, error: '로그인이 필요합니다.' };
   }
 
-  // 역할 확인
+  // 역할 확인 (승인된 컨설턴트 또는 운영관리자)
   const { data: profile } = await supabase.from('users').select('role, status').eq('id', user.id).single();
 
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED' || profile.status !== 'ACTIVE') {
-    return { success: false, error: '승인된 컨설턴트만 테스트 로드맵을 생성할 수 있습니다.' };
+  if (
+    !profile ||
+    !ALLOWED_ROLES_FOR_TEST_ROADMAP.includes(profile.role as (typeof ALLOWED_ROLES_FOR_TEST_ROADMAP)[number]) ||
+    profile.status !== 'ACTIVE'
+  ) {
+    return { success: false, error: '승인된 컨설턴트 또는 운영관리자만 테스트 로드맵을 생성할 수 있습니다.' };
   }
 
   // 입력 검증

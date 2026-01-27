@@ -34,6 +34,7 @@ const OPS_NAV_ITEMS = [
   { href: '/ops/users', label: '사용자 관리', icon: Users },
   { href: '/ops/audit', label: '감사로그', icon: ScrollText },
   { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
+  { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
 ];
 
 const CONSULTANT_NAV_ITEMS = [

@@ -29,11 +29,14 @@ export default async function TestRoadmapPage() {
     redirect('/login');
   }
 
-  // 승인된 컨설턴트만 접근 가능
+  // 승인된 컨설턴트 또는 운영관리자만 접근 가능
   const isApprovedConsultant =
     profile.role === 'CONSULTANT_APPROVED' && profile.status === 'ACTIVE';
+  const isOpsAdmin =
+    (profile.role === 'OPS_ADMIN' || profile.role === 'SYSTEM_ADMIN') && profile.status === 'ACTIVE';
+  const canAccessTestRoadmap = isApprovedConsultant || isOpsAdmin;
 
-  // 컨설턴트 프로필 조회 (승인된 컨설턴트인 경우)
+  // 컨설턴트 프로필 조회 (승인된 컨설턴트인 경우에만)
   let consultantProfile = null;
   if (isApprovedConsultant) {
     const { data: profileData } = await supabase
@@ -47,8 +50,8 @@ export default async function TestRoadmapPage() {
   return (
     <TestRoadmapClient
       user={profile}
-      isApprovedConsultant={isApprovedConsultant}
-      hasProfile={!!consultantProfile}
+      canAccess={canAccessTestRoadmap}
+      hasProfile={isApprovedConsultant ? !!consultantProfile : true}
     />
   );
 }
