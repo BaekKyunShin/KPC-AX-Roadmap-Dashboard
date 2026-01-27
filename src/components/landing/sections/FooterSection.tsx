@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Mail, Phone, ExternalLink } from 'lucide-react';
+import { Mail, Phone, ExternalLink, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import {
@@ -21,13 +21,58 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================================================
+// 타입 정의
+// ============================================================================
+
+interface ContactLink {
+  type: 'email' | 'phone';
+  value: string;
+  hoverColor: string;
+}
+
+interface ContactPerson {
+  id: string;
+  label: string;
+  name: string;
+  description: string;
+  links: ContactLink[];
+}
+
+// ============================================================================
 // 상수
 // ============================================================================
 
-const CONTACT_INFO = {
-  email: 'ykkim@kpc.or.kr',
-  phone: '02-398-4311',
-} as const;
+const CONTACT_PERSONS: ContactPerson[] = [
+  {
+    id: 'operations',
+    label: '운영 담당자',
+    name: '김유근 연구원',
+    description: '서비스 이용 및 컨설턴트 배정 관련',
+    links: [
+      { type: 'email', value: 'ykkim@kpc.or.kr', hoverColor: 'hover:text-blue-600' },
+      { type: 'phone', value: '02-398-4311', hoverColor: 'hover:text-green-600' },
+    ],
+  },
+  {
+    id: 'developer',
+    label: '개발자',
+    name: '신백균 팀장',
+    description: '개발 관련 문의 및 기술 협업 제안',
+    links: [
+      { type: 'email', value: 'bkshin@kpc.or.kr', hoverColor: 'hover:text-purple-600' },
+    ],
+  },
+];
+
+const CONTACT_LINK_ICONS: Record<ContactLink['type'], LucideIcon> = {
+  email: Mail,
+  phone: Phone,
+};
+
+const CONTACT_LINK_HREF_PREFIX: Record<ContactLink['type'], string> = {
+  email: 'mailto:',
+  phone: 'tel:',
+};
 
 const KPC_HOMEPAGE_URL = 'https://www.kpc.or.kr';
 
@@ -58,6 +103,38 @@ const ANIMATION_CONFIG = {
 // 서브 컴포넌트
 // ============================================================================
 
+interface ContactCardProps {
+  person: ContactPerson;
+}
+
+function ContactCard({ person }: ContactCardProps) {
+  return (
+    <div className="rounded-xl border border-gray-200 p-4">
+      <div className="mb-4">
+        <p className="text-xs text-gray-500 mb-1">{person.label}</p>
+        <h4 className="text-base font-semibold text-gray-900">{person.name}</h4>
+        <p className="text-sm text-gray-500 mt-1">{person.description}</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {person.links.map((link) => {
+          const Icon = CONTACT_LINK_ICONS[link.type];
+          const hrefPrefix = CONTACT_LINK_HREF_PREFIX[link.type];
+          return (
+            <a
+              key={`${link.type}-${link.value}`}
+              href={`${hrefPrefix}${link.value}`}
+              className={`flex items-center gap-2 text-sm text-gray-600 ${link.hoverColor} transition-colors`}
+            >
+              <Icon className="h-4 w-4" />
+              {link.value}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface ContactDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -78,34 +155,13 @@ function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
         <DialogHeader>
           <DialogTitle>문의하기</DialogTitle>
           <DialogDescription>
-            서비스 관련 문의가 있으시면 아래 연락처로 연락해 주세요.
+            문의 유형에 따라 아래 연락처로 연락해 주세요.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <a
-            href={`mailto:${CONTACT_INFO.email}`}
-            className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-              <Mail className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">이메일</p>
-              <p className="text-sm text-blue-600">{CONTACT_INFO.email}</p>
-            </div>
-          </a>
-          <a
-            href={`tel:${CONTACT_INFO.phone}`}
-            className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-              <Phone className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">전화</p>
-              <p className="text-sm text-green-600">{CONTACT_INFO.phone}</p>
-            </div>
-          </a>
+        <div className="space-y-5 pt-4">
+          {CONTACT_PERSONS.map((person) => (
+            <ContactCard key={person.id} person={person} />
+          ))}
         </div>
       </DialogContent>
     </Dialog>
