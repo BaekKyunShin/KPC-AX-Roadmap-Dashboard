@@ -238,7 +238,7 @@ export default function QuotaManagementPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-gray-500">
-                    <div className="text-xs">
+                    <div className="text-sm">
                       <div>입력: {user.tokensIn.toLocaleString()}</div>
                       <div>출력: {user.tokensOut.toLocaleString()}</div>
                     </div>
