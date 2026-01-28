@@ -365,10 +365,10 @@ export default function RoadmapPage() {
                   <div className="flex items-center space-x-3">
                     <h2 className="text-lg font-semibold text-gray-900">버전 {selectedVersion.version_number}</h2>
                     {renderStatusBadge(selectedVersion.status)}
-                    {selectedVersion.free_tool_validated && selectedVersion.time_limit_validated ? (
-                      <span className="text-xs text-green-600">✓ 검증 통과</span>
-                    ) : (
-                      <span className="text-xs text-red-600">✗ 검증 실패</span>
+                    {!(selectedVersion.free_tool_validated && selectedVersion.time_limit_validated) && (
+                      <span className="text-xs text-amber-600">
+                        검토 필요 사항({[!selectedVersion.free_tool_validated, !selectedVersion.time_limit_validated].filter(Boolean).length}건)
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">

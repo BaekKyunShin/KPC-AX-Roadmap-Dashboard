@@ -26,7 +26,7 @@ export interface ConsultantProjectListResult {
 }
 
 /**
- * 컨설턴트에게 배정된 프로젝트 목록 조회
+ * 컨설턴트의 담당 프로젝트 목록 조회
  */
 export async function fetchConsultantProjects(
   params: ConsultantProjectListParams = {}
@@ -55,7 +55,7 @@ export async function fetchConsultantProjects(
     return { projects: [], total: 0, consultantName: '' };
   }
 
-  // 배정된 프로젝트 목록 조회
+  // 담당 프로젝트 목록 조회
   let query = supabase
     .from('projects')
     .select(

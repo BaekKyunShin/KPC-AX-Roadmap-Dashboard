@@ -57,7 +57,7 @@ const FEATURES: Feature[] = [
   {
     category: '컨설턴트',
     title: '전문가와 함께하는\nAI 교육 설계',
-    description: '배정된 프로젝트를 관리하고 현장 인터뷰를 통해 기업 맞춤형 로드맵을 생성합니다.',
+    description: '담당 프로젝트를 관리하고 현장 인터뷰를 통해 기업 맞춤형 로드맵을 생성합니다.',
     items: [
       { icon: SearchCheck, label: '현장 인터뷰를 통한 기업진단' },
       { icon: Sparkles, label: '최적화된 맞춤형 AI 로드맵 제공' },
