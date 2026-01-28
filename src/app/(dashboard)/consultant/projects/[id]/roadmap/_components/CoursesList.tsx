@@ -29,7 +29,7 @@ export function CoursesList({ courses, canEdit = false, onEditCourse }: CoursesL
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 break-keep">
       {courses.map((course, idx) => (
         <div key={idx} className="border border-gray-200 rounded-lg p-4">
           {/* 헤더 */}

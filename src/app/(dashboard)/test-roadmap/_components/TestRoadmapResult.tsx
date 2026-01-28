@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, XCircle, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react';
+import { ChevronDown, ChevronUp, FlaskConical, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,8 +26,10 @@ export default function TestRoadmapResult({
 }: TestRoadmapResultProps) {
   const [showValidation, setShowValidation] = useState(false);
 
+  const hasValidationNotes = validation.errors.length > 0 || validation.warnings.length > 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 break-keep">
       {/* 테스트 모드 배너 */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
         <FlaskConical className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -50,63 +52,6 @@ export default function TestRoadmapResult({
           새 테스트 시작
         </Button>
       </div>
-
-      {/* 검증 결과 */}
-      <Card>
-        <CardHeader
-          className="cursor-pointer"
-          onClick={() => setShowValidation(!showValidation)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {validation.isValid ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
-              )}
-              <CardTitle className="text-lg">
-                검증 결과: {validation.isValid ? '통과' : '오류 있음'}
-              </CardTitle>
-            </div>
-            {showValidation ? (
-              <ChevronUp className="h-5 w-5 text-gray-400" />
-            ) : (
-              <ChevronDown className="h-5 w-5 text-gray-400" />
-            )}
-          </div>
-        </CardHeader>
-        {showValidation && (
-          <CardContent>
-            {validation.errors.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium text-red-700 mb-2">오류</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {validation.errors.map((error, index) => (
-                    <li key={index} className="text-sm text-red-600">
-                      {error}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {validation.warnings.length > 0 && (
-              <div>
-                <h4 className="font-medium text-amber-700 mb-2">경고</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {validation.warnings.map((warning, index) => (
-                    <li key={index} className="text-sm text-amber-600">
-                      {warning}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {validation.errors.length === 0 && validation.warnings.length === 0 && (
-              <p className="text-sm text-green-600">모든 검증을 통과했습니다.</p>
-            )}
-          </CardContent>
-        )}
-      </Card>
 
       {/* 진단 요약 */}
       <Card>
@@ -487,6 +432,46 @@ export default function TestRoadmapResult({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* 참고사항 (검증 결과) - 하단에 부드럽게 표시 */}
+      {hasValidationNotes && (
+        <div className="border border-gray-200 rounded-lg">
+          <button
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            onClick={() => setShowValidation(!showValidation)}
+          >
+            <div className="flex items-center gap-2 text-amber-600">
+              <Info className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                검토 필요 사항({validation.errors.length + validation.warnings.length}건)
+              </span>
+            </div>
+            {showValidation ? (
+              <ChevronUp className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            )}
+          </button>
+          {showValidation && (
+            <div className="px-4 pb-4 space-y-3">
+              <ul className="space-y-1">
+                {validation.errors.map((error, index) => (
+                  <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                    <span className="text-gray-400">•</span>
+                    {error}
+                  </li>
+                ))}
+                {validation.warnings.map((warning, index) => (
+                  <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                    <span className="text-gray-400">•</span>
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

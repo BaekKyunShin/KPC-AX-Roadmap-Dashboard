@@ -230,7 +230,7 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto break-keep">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -295,7 +295,7 @@ function PBLCourseView({ course }: { course: PBLCourse }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 break-keep">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">{course.course_name}</h3>
         <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
@@ -399,7 +399,7 @@ function CoursesList({ courses }: { courses: RoadmapCell[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 break-keep">
       {courses.map((course, idx) => (
         <div key={idx} className="border border-gray-200 rounded-lg p-4">
           <div className="flex items-start justify-between mb-3">

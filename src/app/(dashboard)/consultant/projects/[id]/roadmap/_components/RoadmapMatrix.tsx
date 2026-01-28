@@ -93,7 +93,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
   };
 
   return (
-    <>
+    <div className="break-keep">
       {/* 데스크톱: 테이블 뷰 */}
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -179,6 +179,6 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
           })}
         </div>
       </div>
-    </>
+    </div>
   );
 }

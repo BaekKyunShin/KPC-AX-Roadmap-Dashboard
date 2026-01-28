@@ -16,7 +16,7 @@ export function PBLCourseView({ course }: PBLCourseViewProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 break-keep">
       {/* 선정된 과정 정보 */}
       {course.selected_course_name && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
