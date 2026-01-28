@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Check, ExternalLink, Monitor } from 'lucide-react';
+import { Check, ExternalLink, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 // =============================================================================
 // 타입 정의
@@ -25,6 +26,8 @@ interface RoadmapLoadingOverlayProps {
   companyName?: string;
   /** 프로필 관리 페이지 경로 */
   profileHref?: string;
+  /** 취소 버튼 클릭 시 호출되는 콜백 */
+  onCancel?: () => void;
 }
 
 // =============================================================================
@@ -204,7 +207,7 @@ interface StepIndicatorProps {
 
 function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-center mb-8">
+    <div className="flex items-center justify-center mb-6">
       {steps.map((step, index) => {
         const isCompleted = index < currentStep;
         const isActive = index === currentStep;
@@ -214,22 +217,24 @@ function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
           <div key={step.id} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
                   isCompleted
                     ? 'bg-purple-600 text-white'
                     : isActive
-                      ? 'bg-purple-600 text-white ring-4 ring-purple-200 animate-pulse'
-                      : 'bg-gray-200 text-gray-500'
+                      ? 'bg-purple-600 text-white ring-4 ring-purple-100'
+                      : 'bg-gray-100 text-gray-400'
                 }`}
               >
                 {isCompleted ? (
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
+                ) : isActive ? (
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                 ) : (
-                  <span className="text-sm font-medium">{step.id}</span>
+                  <span className="text-xs font-medium">{step.id}</span>
                 )}
               </div>
               <span
-                className={`mt-2 text-xs font-medium ${
+                className={`mt-1.5 text-xs font-medium whitespace-nowrap ${
                   isPending ? 'text-gray-400' : 'text-purple-600'
                 }`}
               >
@@ -239,7 +244,7 @@ function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
 
             {index < steps.length - 1 && (
               <div
-                className={`w-16 h-0.5 mx-2 mb-6 transition-colors duration-300 ${
+                className={`w-12 h-0.5 mx-1.5 mb-5 transition-colors duration-300 ${
                   isCompleted ? 'bg-purple-600' : 'bg-gray-200'
                 }`}
               />
@@ -258,18 +263,19 @@ interface ProgressBarProps {
 
 function ProgressBar({ message, progress }: ProgressBarProps) {
   return (
-    <div className="bg-gray-50 rounded-lg p-6 mb-6">
-      <p className="text-sm text-gray-700 text-center mb-4">{message}</p>
-      <div className="relative">
+    <div className="bg-gray-50 rounded-xl p-5 mb-5">
+      <p className="text-sm text-gray-600 text-center mb-3">{message}</p>
+      <div className="relative pt-1">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-purple-600">진행률</span>
+          <span className="text-xs font-medium text-purple-600">{Math.round(progress)}%</span>
+        </div>
         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-purple-600 rounded-full transition-all duration-300 ease-out"
+            className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className="absolute right-0 -top-6 text-xs text-gray-500">
-          {Math.round(progress)}%
-        </span>
       </div>
     </div>
   );
@@ -287,12 +293,16 @@ function TipCard({ tip, title, isFading, showProfileLink, profileHref }: TipCard
   const fadeClass = isFading ? 'opacity-0' : 'opacity-100';
 
   return (
-    <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+    <div className="bg-purple-50/70 rounded-xl p-4 border border-purple-100">
       <div className="flex items-start gap-3">
-        <span className="text-lg flex-shrink-0">💡</span>
-        <div className="flex-1 min-h-[60px]">
-          <p className="text-xs font-medium text-purple-800 mb-1">{title}</p>
-          <p className={`text-sm text-purple-700 transition-opacity duration-300 ${fadeClass}`}>
+        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+          <span className="text-sm">💡</span>
+        </div>
+        <div className="flex-1 min-h-[52px]">
+          <p className="text-xs font-semibold text-purple-700 mb-1">{title}</p>
+          <p
+            className={`text-sm text-gray-600 leading-relaxed transition-opacity duration-300 ${fadeClass}`}
+          >
             {tip.message}
           </p>
           {showProfileLink && tip.hasProfileLink && (
@@ -300,9 +310,8 @@ function TipCard({ tip, title, isFading, showProfileLink, profileHref }: TipCard
               href={profileHref}
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1 mt-2 text-sm text-purple-600 hover:text-purple-800 hover:underline transition-opacity duration-300 ${fadeClass}`}
+              className={`inline-flex items-center gap-1 mt-2 text-xs font-medium text-purple-600 hover:text-purple-800 transition-all duration-300 ${fadeClass}`}
             >
-              <span>👉</span>
               <span>프로필 관리</span>
               <ExternalLink className="w-3 h-3" />
             </Link>
@@ -320,15 +329,45 @@ interface TipIndicatorProps {
 
 function TipIndicator({ totalCount, currentIndex }: TipIndicatorProps) {
   return (
-    <div className="flex justify-center gap-1.5 mt-4">
+    <div className="flex justify-center gap-1.5 mt-3">
       {Array.from({ length: totalCount }).map((_, index) => (
         <div
           key={index}
           className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-            index === currentIndex ? 'bg-purple-600' : 'bg-gray-300'
+            index === currentIndex ? 'bg-purple-500' : 'bg-gray-300'
           }`}
         />
       ))}
+    </div>
+  );
+}
+
+interface CancelConfirmDialogProps {
+  onConfirm: () => void;
+  onDismiss: () => void;
+}
+
+function CancelConfirmDialog({ onConfirm, onDismiss }: CancelConfirmDialogProps) {
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/30">
+      <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-2">생성을 취소하시겠습니까?</h3>
+        <p className="text-sm text-gray-500 mb-5">
+          진행 중인 로드맵 생성이 중단되며, 입력한 내용은 유지됩니다.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onDismiss} className="flex-1">
+            계속 생성
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            className="flex-1 bg-red-500 hover:bg-red-600"
+          >
+            생성 취소
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -341,8 +380,11 @@ export default function RoadmapLoadingOverlay({
   isTestMode,
   companyName = '',
   profileHref = '/consultant/profile',
+  onCancel,
 }: RoadmapLoadingOverlayProps) {
   const { currentStep, progress } = useProgress();
+  const [isVisible, setIsVisible] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const tips = isTestMode ? TEST_TIPS : REAL_TIPS;
   const { currentTipIndex, isFading } = useTipRotation(tips.length);
@@ -352,34 +394,96 @@ export default function RoadmapLoadingOverlay({
     [isTestMode, companyName]
   );
 
+  // 마운트 시 애니메이션
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
   const currentTip = tips[currentTipIndex];
   const tipTitle = isTestMode ? '컨설턴트 Tip' : '안내';
 
+  const handleCancelClick = () => {
+    setShowCancelConfirm(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onCancel?.();
+    }, 200);
+  };
+
+  const handleCancelDismiss = () => {
+    setShowCancelConfirm(false);
+  };
+
   return (
-    <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="max-w-lg w-full mx-4">
-        {/* 헤더 */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
-            <Monitor className="w-8 h-8 text-purple-600 animate-pulse" />
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
+        isVisible ? 'bg-black/40 backdrop-blur-sm' : 'bg-transparent'
+      }`}
+    >
+      {/* 모달 카드 */}
+      <div
+        className={`relative w-full max-w-md bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
+          isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+        }`}
+      >
+        {/* 닫기 버튼 (우측 상단) */}
+        {onCancel && (
+          <button
+            onClick={handleCancelClick}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors z-10"
+            aria-label="취소"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        )}
+
+        <div className="p-6 pt-8">
+          {/* 헤더 */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 mb-4 shadow-lg shadow-purple-200">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">AI 로드맵 생성 중</h2>
+            <p className="text-sm text-gray-500 mt-1">잠시만 기다려 주세요</p>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">AI 로드맵 생성 중</h2>
+
+          <StepIndicator steps={STEPS} currentStep={currentStep} />
+
+          <ProgressBar message={stepMessages[currentStep]} progress={progress} />
+
+          <TipCard
+            tip={currentTip}
+            title={tipTitle}
+            isFading={isFading}
+            showProfileLink={isTestMode}
+            profileHref={profileHref}
+          />
+
+          <TipIndicator totalCount={tips.length} currentIndex={currentTipIndex} />
+
+          {/* 취소 버튼 */}
+          {onCancel && (
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <Button
+                variant="ghost"
+                onClick={handleCancelClick}
+                className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              >
+                생성 취소
+              </Button>
+            </div>
+          )}
         </div>
-
-        <StepIndicator steps={STEPS} currentStep={currentStep} />
-
-        <ProgressBar message={stepMessages[currentStep]} progress={progress} />
-
-        <TipCard
-          tip={currentTip}
-          title={tipTitle}
-          isFading={isFading}
-          showProfileLink={isTestMode}
-          profileHref={profileHref}
-        />
-
-        <TipIndicator totalCount={tips.length} currentIndex={currentTipIndex} />
       </div>
+
+      {/* 취소 확인 다이얼로그 */}
+      {showCancelConfirm && (
+        <CancelConfirmDialog onConfirm={handleConfirmCancel} onDismiss={handleCancelDismiss} />
+      )}
     </div>
   );
 }

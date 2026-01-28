@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { Download, FileText, Loader2 } from 'lucide-react';
 import {
   createRoadmap,
   confirmFinalRoadmap,
@@ -279,18 +280,13 @@ export default function RoadmapPage() {
   const canEdit = selectedVersion?.status === 'DRAFT';
   const canFinalize = canEdit && selectedVersion?.free_tool_validated && selectedVersion?.time_limit_validated;
 
-  // 로딩 오버레이 표시
-  if (isGenerating) {
-    return (
-      <RoadmapLoadingOverlay
-        isTestMode={false}
-        companyName={companyName}
-        profileHref="/consultant/profile"
-      />
-    );
-  }
+  // 로드맵 생성 취소
+  const handleCancelGeneration = () => {
+    setIsGenerating(false);
+  };
 
   return (
+    <>
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
@@ -447,21 +443,29 @@ export default function RoadmapPage() {
         onSave={handleSaveCourse}
       />
     </div>
+
+      {/* 로딩 오버레이 */}
+      {isGenerating && (
+        <RoadmapLoadingOverlay
+          isTestMode={false}
+          companyName={companyName}
+          profileHref="/consultant/profile"
+          onCancel={handleCancelGeneration}
+        />
+      )}
+    </>
   );
 }
 
 // 다운로드 버튼 컴포넌트
-function DownloadButton({
-  onClick,
-  loading,
-  type,
-  disabled,
-}: {
+interface DownloadButtonProps {
   onClick: () => void;
   loading: boolean;
   type: 'PDF' | 'Excel';
   disabled: boolean;
-}) {
+}
+
+function DownloadButton({ onClick, loading, type, disabled }: DownloadButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -469,21 +473,13 @@ function DownloadButton({
       className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 text-sm flex items-center"
     >
       {loading ? (
-        <span>다운로드 중...</span>
+        <>
+          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+          <span>다운로드 중...</span>
+        </>
       ) : (
         <>
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={
-                type === 'PDF'
-                  ? 'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
-                  : 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
-              }
-            />
-          </svg>
+          <Download className="w-4 h-4 mr-1" />
           {type}
         </>
       )}
@@ -495,14 +491,7 @@ function DownloadButton({
 function EmptyRoadmapState() {
   return (
     <div className="bg-white shadow rounded-lg p-12 text-center">
-      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        />
-      </svg>
+      <FileText className="mx-auto h-12 w-12 text-gray-400" />
       <h3 className="mt-2 text-sm font-medium text-gray-900">로드맵이 없습니다</h3>
       <p className="mt-1 text-sm text-gray-500">왼쪽의 &quot;로드맵 생성&quot; 버튼을 클릭하여 AI 로드맵을 생성하세요.</p>
     </div>

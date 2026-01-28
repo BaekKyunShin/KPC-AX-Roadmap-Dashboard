@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FlaskConical, Info, History, ArrowLeft } from 'lucide-react';
+import { FlaskConical, Info, History, ArrowLeft, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,10 @@ import TestHistoryList from './_components/TestHistoryList';
 import { createTestRoadmap, getTestHistory, getTestRoadmap, deleteTestProject } from './actions';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+
+// =============================================================================
+// 타입 정의
+// =============================================================================
 
 interface TestRoadmapClientProps {
   user: {
@@ -37,6 +41,24 @@ interface TestHistoryItem {
   roadmap_count: number;
 }
 
+interface MainContentProps {
+  isOpsAdmin: boolean;
+  hasProfile: boolean;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  history: TestHistoryItem[];
+  historyLoading: boolean;
+  error: string | null;
+  isLoading: boolean;
+  onSubmit: (data: TestInputData) => Promise<void>;
+  onViewHistory: (projectId: string) => Promise<void>;
+  onDeleteHistory: (projectId: string) => Promise<void>;
+}
+
+// =============================================================================
+// 유틸리티 함수
+// =============================================================================
+
 /**
  * 에러 객체를 사용자 친화적 메시지로 변환
  */
@@ -47,12 +69,133 @@ function formatErrorMessage(err: unknown, defaultMessage: string): string {
   return defaultMessage;
 }
 
+// =============================================================================
+// 하위 컴포넌트
+// =============================================================================
+
+/**
+ * 메인 콘텐츠 컴포넌트 (폼, 탭, 기록 등)
+ */
+function MainContent({
+  isOpsAdmin,
+  hasProfile,
+  activeTab,
+  setActiveTab,
+  history,
+  historyLoading,
+  error,
+  isLoading,
+  onSubmit,
+  onViewHistory,
+  onDeleteHistory,
+}: MainContentProps) {
+  const projectsHref = isOpsAdmin ? '/ops/projects' : '/consultant/projects';
+  const projectsLabel = isOpsAdmin ? '프로젝트 관리로 돌아가기' : '담당 프로젝트로 돌아가기';
+
+  return (
+    <div className="max-w-4xl mx-auto py-6">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <Link
+          href={projectsHref}
+          className="text-sm text-gray-500 hover:text-gray-700 flex items-center mb-2"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          {projectsLabel}
+        </Link>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+            <FlaskConical className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">테스트 로드맵</h1>
+            <p className="text-gray-500">시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 안내 */}
+      <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>테스트 모드 안내</AlertTitle>
+        <AlertDescription>
+          테스트 로드맵은 실제 기업 진단 결과 없이 입력한 정보만으로 생성됩니다. 실제 컨설팅 시에는
+          진단 결과와 현장 인터뷰 데이터를 바탕으로 더 정확한 로드맵이 생성됩니다.
+        </AlertDescription>
+      </Alert>
+
+      {/* 에러 표시 */}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* 프로필 미등록 경고 */}
+      {!hasProfile && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>컨설턴트 프로필 미등록</AlertTitle>
+          <AlertDescription>
+            컨설턴트 프로필이 등록되지 않았습니다. 프로필 정보가 로드맵 생성에 활용되므로 먼저
+            프로필을 등록해주세요.
+            <Link href="/dashboard/profile" className="ml-2 underline">
+              프로필 등록하기
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* 탭 */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="create" className="flex items-center gap-2">
+            <FlaskConical className="h-4 w-4" />새 테스트
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            테스트 기록 ({history.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="create">
+          <TestInputForm onSubmit={onSubmit} isLoading={isLoading} />
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle>테스트 기록</CardTitle>
+              <CardDescription>최근 생성한 테스트 로드맵 기록입니다. (최대 10개)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {historyLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 text-blue-600 mx-auto animate-spin" />
+                </div>
+              ) : (
+                <TestHistoryList
+                  items={history}
+                  onView={onViewHistory}
+                  onDelete={onDeleteHistory}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// =============================================================================
+// 메인 컴포넌트
+// =============================================================================
+
 export default function TestRoadmapClient({
   user,
   canAccess,
   hasProfile,
 }: TestRoadmapClientProps) {
-  // 역할 기반 분기를 위한 플래그
   const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
 
   const [activeTab, setActiveTab] = useState('create');
@@ -177,7 +320,12 @@ export default function TestRoadmapClient({
     setError(null);
   };
 
-  // 미승인 사용자 화면 - PendingApprovalCard 재사용
+  // 로드맵 생성 취소
+  const handleCancelGeneration = () => {
+    setIsLoading(false);
+  };
+
+  // 미승인 사용자 화면
   if (!canAccess) {
     const userRole = user.role === 'USER_PENDING' ? 'CONSULTANT' : 'OPS_ADMIN';
 
@@ -191,11 +339,6 @@ export default function TestRoadmapClient({
         />
       </div>
     );
-  }
-
-  // 로딩 화면
-  if (isLoading) {
-    return <RoadmapLoadingOverlay isTestMode={true} profileHref="/consultant/profile" />;
   }
 
   // 결과 화면
@@ -213,120 +356,31 @@ export default function TestRoadmapClient({
     );
   }
 
-  // 역할에 따른 프로젝트 페이지 경로 결정
-  const projectsHref = isOpsAdmin ? '/ops/projects' : '/consultant/projects';
-  const projectsLabel = isOpsAdmin ? '프로젝트 관리로 돌아가기' : '담당 프로젝트로 돌아가기';
-
-  // 메인 화면
+  // 메인 화면 (로딩 시 오버레이와 함께 표시)
   return (
-    <div className="max-w-4xl mx-auto py-6">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <Link
-          href={projectsHref}
-          className="text-sm text-gray-500 hover:text-gray-700 flex items-center mb-2"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          {projectsLabel}
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-            <FlaskConical className="h-5 w-5 text-amber-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">테스트 로드맵</h1>
-            <p className="text-gray-500">시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다.</p>
-          </div>
-        </div>
-      </div>
+    <>
+      <MainContent
+        isOpsAdmin={isOpsAdmin}
+        hasProfile={hasProfile}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        history={history}
+        historyLoading={historyLoading}
+        error={error}
+        isLoading={isLoading}
+        onSubmit={handleSubmit}
+        onViewHistory={handleViewHistory}
+        onDeleteHistory={handleDeleteHistory}
+      />
 
-      {/* 안내 */}
-      <Alert className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertTitle>테스트 모드 안내</AlertTitle>
-        <AlertDescription>
-          테스트 로드맵은 실제 기업 진단 결과 없이 입력한 정보만으로 생성됩니다. 실제 컨설팅 시에는
-          진단 결과와 현장 인터뷰 데이터를 바탕으로 더 정확한 로드맵이 생성됩니다.
-        </AlertDescription>
-      </Alert>
-
-      {/* 에러 표시 */}
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* 로딩 오버레이 */}
+      {isLoading && (
+        <RoadmapLoadingOverlay
+          isTestMode={true}
+          profileHref="/consultant/profile"
+          onCancel={handleCancelGeneration}
+        />
       )}
-
-      {/* 프로필 미등록 경고 */}
-      {!hasProfile && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTitle>컨설턴트 프로필 미등록</AlertTitle>
-          <AlertDescription>
-            컨설턴트 프로필이 등록되지 않았습니다. 프로필 정보가 로드맵 생성에 활용되므로 먼저
-            프로필을 등록해주세요.
-            <Link href="/dashboard/profile" className="ml-2 underline">
-              프로필 등록하기
-            </Link>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* 탭 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4" />새 테스트
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            테스트 기록 ({history.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="create">
-          <TestInputForm onSubmit={handleSubmit} isLoading={isLoading} />
-        </TabsContent>
-
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>테스트 기록</CardTitle>
-              <CardDescription>최근 생성한 테스트 로드맵 기록입니다. (최대 10개)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {historyLoading ? (
-                <div className="text-center py-8">
-                  <svg
-                    className="animate-spin h-8 w-8 text-blue-600 mx-auto"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <TestHistoryList
-                  items={history}
-                  onView={handleViewHistory}
-                  onDelete={handleDeleteHistory}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+    </>
   );
 }
