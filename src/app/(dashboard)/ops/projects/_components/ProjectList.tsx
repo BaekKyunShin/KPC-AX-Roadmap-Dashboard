@@ -134,9 +134,9 @@ export default function ProjectList() {
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
                 <SelectContent>
@@ -150,7 +150,7 @@ export default function ProjectList() {
               </Select>
 
               <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="업종" />
                 </SelectTrigger>
                 <SelectContent>
@@ -218,7 +218,7 @@ export default function ProjectList() {
         <ProjectTableSkeleton rows={5} />
       ) : (
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -236,15 +236,15 @@ export default function ProjectList() {
             </div>
           ) : (
             <>
-              <Table className="table-fixed w-full">
+              <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[22%] text-center">기업명</TableHead>
-                    <TableHead className="w-[14%] text-center">업종</TableHead>
-                    <TableHead className="w-[14%] text-center">상태</TableHead>
-                    <TableHead className="w-[18%] text-center">배정 컨설턴트</TableHead>
-                    <TableHead className="w-[16%] text-center">생성일</TableHead>
-                    <TableHead className="w-[16%] text-center">작업</TableHead>
+                    <TableHead className="min-w-[180px] text-center">기업명</TableHead>
+                    <TableHead className="min-w-[100px] text-center">업종</TableHead>
+                    <TableHead className="min-w-[100px] text-center">상태</TableHead>
+                    <TableHead className="min-w-[140px] text-center">배정 컨설턴트</TableHead>
+                    <TableHead className="min-w-[100px] text-center">생성일</TableHead>
+                    <TableHead className="min-w-[80px] text-center">작업</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

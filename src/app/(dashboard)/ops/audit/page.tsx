@@ -232,7 +232,7 @@ export default function AuditLogPage() {
           </div>
 
           {/* 필터 드롭다운들 */}
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             <Select
               value={selectedAction || 'all'}
               onValueChange={(value) => {
@@ -241,7 +241,7 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="액션" />
               </SelectTrigger>
               <SelectContent>
@@ -260,7 +260,7 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="대상" />
               </SelectTrigger>
               <SelectContent>
@@ -279,7 +279,7 @@ export default function AuditLogPage() {
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="사용자" />
               </SelectTrigger>
               <SelectContent>
@@ -298,7 +298,7 @@ export default function AuditLogPage() {
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
             />
 
             <Input
@@ -309,13 +309,13 @@ export default function AuditLogPage() {
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
               }}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
             />
 
             {hasFilters && (
               <button
                 onClick={handleResetFilters}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors col-span-2 sm:col-span-1 flex items-center justify-center"
                 title="필터 초기화"
               >
                 <X className="h-4 w-4" />
@@ -368,16 +368,16 @@ export default function AuditLogPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <Table>
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[14%]">시간</TableHead>
-                <TableHead className="w-[18%]">사용자</TableHead>
-                <TableHead className="w-[16%]">액션</TableHead>
-                <TableHead className="w-[18%]">대상</TableHead>
-                <TableHead className="w-[10%]">상태</TableHead>
-                <TableHead className="w-[24%]">상세</TableHead>
+                <TableHead className="min-w-[100px]">시간</TableHead>
+                <TableHead className="min-w-[140px]">사용자</TableHead>
+                <TableHead className="min-w-[120px]">액션</TableHead>
+                <TableHead className="min-w-[140px]">대상</TableHead>
+                <TableHead className="min-w-[80px]">상태</TableHead>
+                <TableHead className="min-w-[180px]">상세</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

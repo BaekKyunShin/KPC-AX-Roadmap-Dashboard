@@ -158,7 +158,7 @@ export default function QuotaManagementPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="월 선택" />
               </SelectTrigger>
               <SelectContent>
@@ -180,23 +180,23 @@ export default function QuotaManagementPage() {
       {loading ? (
         <QuotaTableSkeleton rows={5} />
       ) : (
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         {users.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             데이터가 없습니다.
           </div>
         ) : (
           <>
-          <Table>
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[18%]">사용자</TableHead>
-                <TableHead className="w-[12%]">역할</TableHead>
-                <TableHead className="w-[18%]">월간 사용량</TableHead>
-                <TableHead className="w-[14%]">토큰</TableHead>
-                <TableHead className="w-[12%]">일일 한도</TableHead>
-                <TableHead className="w-[12%]">월간 한도</TableHead>
-                <TableHead className="w-[14%]">작업</TableHead>
+                <TableHead className="min-w-[140px]">사용자</TableHead>
+                <TableHead className="min-w-[100px]">역할</TableHead>
+                <TableHead className="min-w-[160px]">월간 사용량</TableHead>
+                <TableHead className="min-w-[120px]">토큰</TableHead>
+                <TableHead className="min-w-[100px]">일일 한도</TableHead>
+                <TableHead className="min-w-[100px]">월간 한도</TableHead>
+                <TableHead className="min-w-[100px]">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -229,7 +229,7 @@ export default function QuotaManagementPage() {
                           {user.usagePercent}%
                         </span>
                       </div>
-                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="w-24 sm:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${getProgressColor(user.usagePercent)}`}
                           style={{ width: `${Math.min(100, user.usagePercent)}%` }}
@@ -249,7 +249,7 @@ export default function QuotaManagementPage() {
                         type="number"
                         value={editDailyLimit}
                         onChange={(e) => setEditDailyLimit(Number(e.target.value))}
-                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-16 sm:w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                         min={1}
                       />
                     ) : (
@@ -262,7 +262,7 @@ export default function QuotaManagementPage() {
                         type="number"
                         value={editMonthlyLimit}
                         onChange={(e) => setEditMonthlyLimit(Number(e.target.value))}
-                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-16 sm:w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                         min={1}
                       />
                     ) : (

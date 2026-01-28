@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
 
 function LoginForm() {
   const router = useRouter();
@@ -115,11 +116,7 @@ function LoadingForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
-      </div>
+      <AuthBackgroundDecoration animated />
 
       <div className="w-full max-w-md relative">
         {/* Logo & Title */}

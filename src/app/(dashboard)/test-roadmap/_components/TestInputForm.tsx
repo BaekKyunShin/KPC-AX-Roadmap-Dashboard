@@ -278,7 +278,7 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
                   value={point.severity}
                   onValueChange={(value) => updatePainPoint(index, 'severity', value)}
                 >
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full md:w-[120px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

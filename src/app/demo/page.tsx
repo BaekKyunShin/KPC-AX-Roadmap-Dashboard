@@ -160,7 +160,7 @@ export default function DemoPage() {
         {/* 기업 정보 */}
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">기업 정보 (샘플)</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500">기업명</p>
               <p className="font-medium">{SAMPLE_COMPANY.name}</p>

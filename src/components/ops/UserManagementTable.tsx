@@ -63,12 +63,12 @@ const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; label: strin
 };
 
 const TABLE_COLUMNS = {
-  user: 'w-[22%]',
-  role: 'w-[18%]',
-  status: 'w-[10%]',
-  profile: 'w-[14%]',
-  joinDate: 'w-[18%]',
-  actions: 'w-[18%]',
+  user: 'min-w-[160px]',
+  role: 'min-w-[120px]',
+  status: 'min-w-[80px]',
+  profile: 'min-w-[100px]',
+  joinDate: 'min-w-[100px]',
+  actions: 'min-w-[100px]',
 } as const;
 
 // =============================================================================
@@ -190,8 +190,8 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       )}
 
       {/* 사용자 테이블 */}
-      <div className="bg-white shadow overflow-hidden rounded-lg">
-        <Table>
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead className={TABLE_COLUMNS.user}>사용자</TableHead>

@@ -34,6 +34,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
 
 type RegisterType = 'CONSULTANT' | 'OPS_ADMIN';
 
@@ -272,11 +273,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30" />
-      </div>
+      <AuthBackgroundDecoration />
 
       <div className="max-w-2xl mx-auto relative">
         {/* Logo & Title */}

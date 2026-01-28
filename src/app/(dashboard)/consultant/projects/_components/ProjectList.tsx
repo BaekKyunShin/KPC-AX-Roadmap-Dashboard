@@ -21,14 +21,14 @@ import { getConsultantProjectStatusBadge } from '@/lib/constants/status';
 // Constants
 // =============================================================================
 
-/** 테이블 열 설정 */
+/** 테이블 열 설정 - 데스크톱 전용 (모바일에서는 카드 레이아웃 사용) */
 const TABLE_COLUMNS = {
-  company: 'w-[20%]',
-  industry: 'w-[18%]',
-  size: 'w-[12%]',
-  status: 'w-[18%]',
-  assignedAt: 'w-[16%]',
-  actions: 'w-[16%]',
+  company: 'min-w-[140px]',
+  industry: 'min-w-[100px]',
+  size: 'min-w-[80px]',
+  status: 'min-w-[100px]',
+  assignedAt: 'min-w-[100px]',
+  actions: 'min-w-[80px]',
 } as const;
 
 // =============================================================================
@@ -109,9 +109,9 @@ export default function ProjectList() {
     <div className="space-y-4">
       {/* 헤더 */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">배정된 프로젝트</h1>
+        <h1 className="text-2xl font-bold text-gray-900">담당 프로젝트</h1>
         <p className="mt-1 text-sm text-gray-500">
-          {consultantName ? `${consultantName}님에게 배정된 프로젝트 목록입니다.` : '배정된 프로젝트 목록입니다.'}
+          {consultantName ? `${consultantName}님의 담당 프로젝트 목록입니다.` : '담당 프로젝트 목록입니다.'}
         </p>
       </div>
 
@@ -156,7 +156,7 @@ export default function ProjectList() {
               />
             </svg>
           }
-          title={hasFilters ? '검색 조건에 맞는 프로젝트가 없습니다' : '배정된 프로젝트가 없습니다'}
+          title={hasFilters ? '검색 조건에 맞는 프로젝트가 없습니다' : '담당 프로젝트가 없습니다'}
           description={hasFilters ? undefined : '운영 관리자가 프로젝트를 배정하면 여기에 표시됩니다.'}
           action={
             hasFilters && (
@@ -167,8 +167,8 @@ export default function ProjectList() {
           }
         />
       ) : (
-        <div className="bg-white shadow overflow-hidden rounded-lg">
-          <Table>
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
