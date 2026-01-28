@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
+
 // 업종 목록 (기존 project.ts와 동일)
 export const industryOptions = [
   '제조업',
@@ -14,8 +16,8 @@ export const industryOptions = [
   '기타',
 ] as const;
 
-// 기업 규모 목록
-export const companySizeOptions = ['1-10', '11-50', '51-100', '101-500', '500+'] as const;
+// 기업 규모 목록 - 공통 상수에서 re-export
+export const companySizeOptions = COMPANY_SIZE_VALUES;
 
 // 세부 업무 스키마
 export const testJobTaskSchema = z.object({

@@ -22,19 +22,12 @@ import {
   type TestPainPoint,
   type TestImprovementGoal,
 } from '@/lib/schemas/test-roadmap';
+import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 
 interface TestInputFormProps {
   onSubmit: (data: TestInputData) => Promise<void>;
   isLoading: boolean;
 }
-
-const companySizeLabels: Record<string, string> = {
-  '1-10': '1~10명 (소기업)',
-  '11-50': '11~50명 (소기업)',
-  '51-100': '51~100명 (중소기업)',
-  '101-500': '101~500명 (중견기업)',
-  '500+': '500명 이상 (대기업)',
-};
 
 export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProps) {
   // 기업 기본정보
@@ -202,7 +195,7 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
                 <SelectContent>
                   {companySizeOptions.map((option) => (
                     <SelectItem key={option} value={option}>
-                      {companySizeLabels[option]}
+                      {COMPANY_SIZE_LABELS[option]}
                     </SelectItem>
                   ))}
                 </SelectContent>

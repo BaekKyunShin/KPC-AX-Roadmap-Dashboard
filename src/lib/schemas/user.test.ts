@@ -137,7 +137,7 @@ describe('consultantProfileSchema', () => {
       '대기업 제조사에서 AI 기반 품질관리 시스템 구축 프로젝트를 수행했습니다. 데이터 수집부터 모델 배포까지 전 과정을 담당했습니다.',
     portfolio:
       '삼성전자, LG전자 등 대기업 교육 다수 진행. 중소기업 AI 도입 컨설팅 10건 이상 수행.',
-    strengths_constraints: '제조업 도메인 전문성 강점. 금융권 경험은 제한적임.',
+    strengths_constraints: '제조업 도메인 전문성이 강점입니다. 특히 품질관리와 생산 프로세스 개선에 강합니다. 금융권 경험은 제한적임.',
   };
 
   it('should accept valid consultant profile', () => {

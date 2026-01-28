@@ -67,7 +67,7 @@ export interface Project {
   // 기업 기본 정보
   company_name: string;
   industry: string;
-  company_size: string; // 기업 규모 (예: '10-50', '50-100', '100-500', '500+')
+  company_size: string; // 기업 규모 (예: '1-9', '10-49', '50-299', '300-999', '1000+')
   contact_name: string;
   contact_email: string;
   contact_phone?: string;

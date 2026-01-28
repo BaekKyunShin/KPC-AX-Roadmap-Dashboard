@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+
+import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
 import {
   projectStatusSchema,
   createProjectSchema,
@@ -35,7 +37,7 @@ describe('createProjectSchema', () => {
   const validProject = {
     company_name: '테스트 기업',
     industry: '제조업',
-    company_size: '51-100' as const,
+    company_size: '50-299' as const,
     contact_name: '홍길동',
     contact_email: 'hong@test.com',
   };
@@ -71,8 +73,7 @@ describe('createProjectSchema', () => {
   });
 
   it('should accept all valid company sizes', () => {
-    const sizes = ['1-10', '11-50', '51-100', '101-500', '500+'] as const;
-    sizes.forEach((size) => {
+    COMPANY_SIZE_VALUES.forEach((size) => {
       const result = createProjectSchema.safeParse({ ...validProject, company_size: size });
       expect(result.success).toBe(true);
     });

@@ -7,7 +7,7 @@ import Link from 'next/link';
 const SAMPLE_COMPANY = {
   name: '(주)샘플제조',
   industry: '제조업',
-  size: '중견기업 (100-300명)',
+  size: '중견기업 (500명)',
 };
 
 const SAMPLE_MATRIX = [

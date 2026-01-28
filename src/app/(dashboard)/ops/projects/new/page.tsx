@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
 import { createProject } from '../actions';
 
 const INDUSTRIES = [
@@ -16,14 +18,6 @@ const INDUSTRIES = [
   '교육',
   '공공/정부',
   '기타',
-];
-
-const COMPANY_SIZES = [
-  { value: '1-10', label: '1-10명' },
-  { value: '11-50', label: '11-50명' },
-  { value: '51-100', label: '51-100명' },
-  { value: '101-500', label: '101-500명' },
-  { value: '500+', label: '500명 이상' },
 ];
 
 export default function NewProjectPage() {
@@ -108,7 +102,7 @@ export default function NewProjectPage() {
             className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">선택하세요</option>
-            {COMPANY_SIZES.map((size) => (
+            {COMPANY_SIZE_OPTIONS.map((size) => (
               <option key={size.value} value={size.value}>
                 {size.label}
               </option>

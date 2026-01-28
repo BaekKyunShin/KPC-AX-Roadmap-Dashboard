@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
+
 // 프로젝트 상태
 export const projectStatusSchema = z.enum([
   'NEW',
@@ -15,7 +17,7 @@ export const projectStatusSchema = z.enum([
 export const createProjectSchema = z.object({
   company_name: z.string().min(2, '회사명을 2자 이상 입력하세요.').max(100),
   industry: z.string().min(1, '업종을 선택하세요.'),
-  company_size: z.enum(['1-10', '11-50', '51-100', '101-500', '500+'], {
+  company_size: z.enum(COMPANY_SIZE_VALUES, {
     errorMap: () => ({ message: '기업 규모를 선택하세요.' }),
   }),
   contact_name: z.string().min(2, '담당자명을 2자 이상 입력하세요.').max(50),
