@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, Eye, Clock, Building2 } from 'lucide-react';
+import { Trash2, Eye, Clock, Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,21 +24,40 @@ interface TestHistoryItem {
 
 interface TestHistoryListProps {
   items: TestHistoryItem[];
-  onView: (projectId: string) => void;
+  onView: (projectId: string) => void | Promise<void>;
   onDelete: (projectId: string) => Promise<void>;
 }
 
 export default function TestHistoryList({ items, onView, onDelete }: TestHistoryListProps) {
+  // 삭제 관련 상태
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 보기 로딩 상태 (현재 로드 중인 항목 ID)
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  // 로딩 중일 때 모든 버튼 비활성화
+  const isAnyLoading = loadingId !== null;
+
+  const handleView = async (projectId: string) => {
+    setLoadingId(projectId);
+    try {
+      await onView(projectId);
+    } finally {
+      setLoadingId(null);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
 
     setIsDeleting(true);
-    await onDelete(deleteId);
-    setIsDeleting(false);
-    setDeleteId(null);
+    try {
+      await onDelete(deleteId);
+    } finally {
+      setIsDeleting(false);
+      setDeleteId(null);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -83,15 +102,30 @@ export default function TestHistoryList({ items, onView, onDelete }: TestHistory
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => onView(item.id)}>
-                <Eye className="h-4 w-4 mr-1" />
-                보기
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleView(item.id)}
+                disabled={isAnyLoading}
+              >
+                {loadingId === item.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    불러오는 중...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    보기
+                  </>
+                )}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 onClick={() => setDeleteId(item.id)}
+                disabled={isAnyLoading}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -41,6 +41,14 @@ interface TestHistoryItem {
   roadmap_count: number;
 }
 
+/** 로드맵 결과 및 메타데이터 */
+interface TestRoadmapResultData {
+  companyName: string;
+  industry: string;
+  roadmapResult: RoadmapResult;
+  validation: ValidationResult;
+}
+
 interface MainContentProps {
   isOpsAdmin: boolean;
   hasProfile: boolean;
@@ -49,7 +57,8 @@ interface MainContentProps {
   history: TestHistoryItem[];
   historyLoading: boolean;
   error: string | null;
-  isLoading: boolean;
+  /** 폼 제출 중 여부 (폼 비활성화에 사용) */
+  isSubmitting: boolean;
   onSubmit: (data: TestInputData) => Promise<void>;
   onViewHistory: (projectId: string) => Promise<void>;
   onDeleteHistory: (projectId: string) => Promise<void>;
@@ -84,7 +93,7 @@ function MainContent({
   history,
   historyLoading,
   error,
-  isLoading,
+  isSubmitting,
   onSubmit,
   onViewHistory,
   onDeleteHistory,
@@ -158,7 +167,7 @@ function MainContent({
         </TabsList>
 
         <TabsContent value="create">
-          <TestInputForm onSubmit={onSubmit} isLoading={isLoading} />
+          <TestInputForm onSubmit={onSubmit} isLoading={isSubmitting} />
         </TabsContent>
 
         <TabsContent value="history">
@@ -199,16 +208,16 @@ export default function TestRoadmapClient({
   const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
 
   const [activeTab, setActiveTab] = useState('create');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 로딩 상태
+  // - isSubmitting: 폼 제출 중 (폼 비활성화에 사용)
+  // - isGenerating: LLM 생성 중 (전체 화면 오버레이 표시에 사용)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // 결과 상태
-  const [result, setResult] = useState<{
-    companyName: string;
-    industry: string;
-    roadmapResult: RoadmapResult;
-    validation: ValidationResult;
-  } | null>(null);
+  const [result, setResult] = useState<TestRoadmapResultData | null>(null);
 
   // 테스트 기록
   const [history, setHistory] = useState<TestHistoryItem[]>([]);
@@ -236,9 +245,10 @@ export default function TestRoadmapClient({
     }
   }, [canAccess]);
 
-  // 테스트 로드맵 생성
+  // 테스트 로드맵 생성 (LLM 호출)
   const handleSubmit = async (data: TestInputData) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
+    setIsGenerating(true);
     setError(null);
 
     try {
@@ -259,13 +269,14 @@ export default function TestRoadmapClient({
       console.error('[TestRoadmap] 로드맵 생성 중 오류:', err);
       setError(formatErrorMessage(err, '로드맵 생성 중 예기치 않은 오류가 발생했습니다.'));
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
+      setIsGenerating(false);
     }
   };
 
-  // 기록에서 로드맵 보기
+  // 기록에서 로드맵 보기 (DB 조회만, LLM 호출 없음)
+  // 버튼 로딩 상태는 TestHistoryList에서 자체 관리
   const handleViewHistory = async (projectId: string) => {
-    setIsLoading(true);
     setError(null);
 
     try {
@@ -294,8 +305,6 @@ export default function TestRoadmapClient({
     } catch (err) {
       console.error('[TestRoadmap] 로드맵 조회 중 오류:', err);
       setError(formatErrorMessage(err, '로드맵을 불러오는 중 예기치 않은 오류가 발생했습니다.'));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -322,7 +331,8 @@ export default function TestRoadmapClient({
 
   // 로드맵 생성 취소
   const handleCancelGeneration = () => {
-    setIsLoading(false);
+    setIsSubmitting(false);
+    setIsGenerating(false);
   };
 
   // 미승인 사용자 화면
@@ -367,14 +377,14 @@ export default function TestRoadmapClient({
         history={history}
         historyLoading={historyLoading}
         error={error}
-        isLoading={isLoading}
+        isSubmitting={isSubmitting}
         onSubmit={handleSubmit}
         onViewHistory={handleViewHistory}
         onDeleteHistory={handleDeleteHistory}
       />
 
-      {/* 로딩 오버레이 */}
-      {isLoading && (
+      {/* 로딩 오버레이 - LLM 생성 중일 때만 표시 */}
+      {isGenerating && (
         <RoadmapLoadingOverlay
           isTestMode={true}
           profileHref="/consultant/profile"
