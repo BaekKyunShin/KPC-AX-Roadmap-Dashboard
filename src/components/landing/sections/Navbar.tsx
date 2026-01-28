@@ -2,9 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+
+// ============================================================================
+// 타입
+// ============================================================================
+
+interface NavLink {
+  readonly href: string;
+  readonly label: string;
+}
 
 // ============================================================================
 // 상수
@@ -12,11 +21,73 @@ import { Logo } from '@/components/ui/logo';
 
 const SCROLL_THRESHOLD = 50;
 
-const NAV_LINKS = [
+const NAV_LINKS: readonly NavLink[] = [
   { href: '#features', label: '서비스 소개' },
   { href: '#workflow', label: '워크플로우' },
   { href: '#demo', label: '데모' },
 ] as const;
+
+const MOBILE_MENU_TRANSITION = 'transition-all duration-300 ease-in-out';
+
+// ============================================================================
+// 서브 컴포넌트
+// ============================================================================
+
+interface MobileNavLinkProps {
+  link: NavLink;
+  onClick: () => void;
+}
+
+function MobileNavLink({ link, onClick }: MobileNavLinkProps) {
+  return (
+    <a
+      href={link.href}
+      onClick={onClick}
+      className="flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+    >
+      <span className="font-medium">{link.label}</span>
+      <ChevronRight className="w-4 h-4 text-gray-400" />
+    </a>
+  );
+}
+
+interface MobileMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
+  return (
+    <div
+      className={`md:hidden overflow-hidden ${MOBILE_MENU_TRANSITION} ${
+        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+      }`}
+    >
+      <div className="bg-white border-t border-gray-200 shadow-xl">
+        {/* Navigation Links */}
+        <div className="divide-y divide-gray-100">
+          {NAV_LINKS.map((link) => (
+            <MobileNavLink key={link.href} link={link} onClick={onClose} />
+          ))}
+        </div>
+
+        {/* CTA Buttons */}
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-4 flex flex-col gap-3">
+          <Link href="/login" onClick={onClose}>
+            <Button variant="outline" className="w-full h-11 text-base">
+              로그인
+            </Button>
+          </Link>
+          <Link href="/register" onClick={onClose}>
+            <Button className="w-full h-11 text-base bg-gray-900 hover:bg-gray-800 text-white">
+              회원가입
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // 메인 컴포넌트
@@ -115,34 +186,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t">
-          <div className="px-4 py-4 space-y-3">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={closeMobileMenu}
-                className="block py-2 text-gray-600 hover:text-gray-900"
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="pt-3 flex flex-col gap-2">
-              <Link href="/login">
-                <Button variant="outline" className="w-full">
-                  로그인
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white">
-                  회원가입
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
     </nav>
   );
 }
