@@ -32,13 +32,13 @@ interface TemplateListProps {
 // =============================================================================
 
 const TABLE_COLUMNS = {
-  version: 'w-[10%]',
-  name: 'w-[22%]',
-  questions: 'w-[10%]',
-  usage: 'w-[12%]',
-  status: 'w-[12%]',
-  createdAt: 'w-[14%]',
-  actions: 'w-[20%]',
+  version: 'min-w-[80px]',
+  name: 'min-w-[160px]',
+  questions: 'min-w-[80px]',
+  usage: 'min-w-[100px]',
+  status: 'min-w-[80px]',
+  createdAt: 'min-w-[100px]',
+  actions: 'min-w-[140px]',
 } as const;
 
 // =============================================================================
@@ -108,8 +108,8 @@ export default function TemplateList({ templates }: TemplateListProps) {
         </div>
       )}
 
-      <div className="bg-white shadow overflow-hidden rounded-lg">
-        <Table>
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <Table className="min-w-[750px]">
           <TableHeader>
             <TableRow>
               <TableHead className={TABLE_COLUMNS.version}>버전</TableHead>

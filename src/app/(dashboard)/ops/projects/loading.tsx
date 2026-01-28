@@ -45,15 +45,15 @@ export default function ProjectsLoading() {
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Select disabled>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue placeholder="모든 상태" />
                   </SelectTrigger>
                 </Select>
 
                 <Select disabled>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue placeholder="모든 업종" />
                   </SelectTrigger>
                 </Select>

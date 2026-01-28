@@ -120,7 +120,7 @@ function PainPointsSkeleton() {
         <div className="flex gap-3 items-start">
           <div className="flex-1 grid gap-3 md:grid-cols-[1fr_auto]">
             <InputSkeleton />
-            <Skeleton className="h-10 w-[120px]" />
+            <Skeleton className="h-10 w-full md:w-[120px]" />
           </div>
           <Skeleton className="h-10 w-10 shrink-0" />
         </div>
