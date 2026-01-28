@@ -182,17 +182,21 @@ export default function RegisterPage() {
 
     const serverResult = await registerUser(submitFormData);
 
-    if (serverResult.success && serverResult.data?.userId) {
-      if (registerType === 'OPS_ADMIN') {
-        router.push('/dashboard');
-        router.refresh();
-      } else {
-        setStep(2);
-      }
-    } else {
+    // 회원가입 실패 시 에러 표시 후 종료
+    if (!serverResult.success || !serverResult.data?.userId) {
       setServerError(serverResult.error || '회원가입에 실패했습니다.');
+      setIsLoading(false);
+      return;
     }
 
+    // 운영관리자는 바로 대시보드로 이동 (로딩 상태 유지)
+    if (registerType === 'OPS_ADMIN') {
+      router.push('/dashboard');
+      return;
+    }
+
+    // 컨설턴트는 2단계(프로필 입력)로 진행
+    setStep(2);
     setIsLoading(false);
   }
 
@@ -245,18 +249,20 @@ export default function RegisterPage() {
     try {
       const serverResult = await saveConsultantProfile(formData);
 
-      if (serverResult.success) {
-        router.push('/dashboard');
-        router.refresh();
-      } else {
+      // 프로필 저장 실패 시 에러 표시 후 종료
+      if (!serverResult.success) {
         setServerError(serverResult.error || '프로필 저장에 실패했습니다.');
+        setIsLoading(false);
+        return;
       }
+
+      // 프로필 저장 성공 시 대시보드로 이동 (로딩 상태 유지)
+      router.push('/dashboard');
     } catch (err) {
       console.error('프로필 저장 오류:', err);
       setServerError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   // 초기화 중 로딩 표시
