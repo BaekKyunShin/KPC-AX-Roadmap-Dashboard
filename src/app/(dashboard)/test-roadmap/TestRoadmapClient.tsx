@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
+import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import TestInputForm from './_components/TestInputForm';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import TestHistoryList from './_components/TestHistoryList';
@@ -192,6 +193,11 @@ export default function TestRoadmapClient({
     );
   }
 
+  // 로딩 화면
+  if (isLoading) {
+    return <RoadmapLoadingOverlay isTestMode={true} profileHref="/consultant/profile" />;
+  }
+
   // 결과 화면
   if (result) {
     return (
@@ -209,7 +215,7 @@ export default function TestRoadmapClient({
 
   // 역할에 따른 프로젝트 페이지 경로 결정
   const projectsHref = isOpsAdmin ? '/ops/projects' : '/consultant/projects';
-  const projectsLabel = isOpsAdmin ? '프로젝트 관리로 돌아가기' : '배정된 프로젝트로 돌아가기';
+  const projectsLabel = isOpsAdmin ? '프로젝트 관리로 돌아가기' : '담당 프로젝트로 돌아가기';
 
   // 메인 화면
   return (

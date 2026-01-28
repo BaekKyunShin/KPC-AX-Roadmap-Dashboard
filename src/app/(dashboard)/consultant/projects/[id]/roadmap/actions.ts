@@ -20,6 +20,12 @@ export interface ActionResult {
   data?: Record<string, unknown>;
 }
 
+export interface ProjectInfoResult {
+  success: boolean;
+  data?: { companyName: string };
+  error?: string;
+}
+
 /**
  * 로드맵 생성
  */
@@ -309,6 +315,60 @@ export async function editRoadmapManually(
     return {
       success: false,
       error: error instanceof Error ? error.message : '로드맵 편집에 실패했습니다.',
+    };
+  }
+}
+
+/**
+ * 프로젝트 기본 정보 조회 (회사명 등)
+ */
+export async function fetchProjectInfo(projectId: string): Promise<ProjectInfoResult> {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: '로그인이 필요합니다.' };
+    }
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('company_name, assigned_consultant_id')
+      .eq('id', projectId)
+      .single();
+
+    if (!project) {
+      return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+    }
+
+    // 접근 권한 확인
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
+    }
+
+    if (profile.role === 'CONSULTANT_APPROVED') {
+      if (project.assigned_consultant_id !== user.id) {
+        return { success: false, error: '접근 권한이 없습니다.' };
+      }
+    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+      return { success: false, error: '접근 권한이 없습니다.' };
+    }
+
+    return {
+      success: true,
+      data: { companyName: project.company_name },
+    };
+  } catch (error) {
+    console.error('[fetchProjectInfo Error]', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '프로젝트 정보 조회에 실패했습니다.',
     };
   }
 }

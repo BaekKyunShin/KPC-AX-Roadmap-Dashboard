@@ -8,10 +8,12 @@ import {
   confirmFinalRoadmap,
   fetchRoadmapVersions,
   fetchRoadmapVersion,
+  fetchProjectInfo,
   prepareExportData,
   logDownload,
   editRoadmapManually,
 } from './actions';
+import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
 import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
 import type { RoadmapVersionStatus } from '@/types/database';
@@ -59,6 +61,7 @@ export default function RoadmapPage() {
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('matrix');
+  const [companyName, setCompanyName] = useState<string>('');
 
   // 편집 모드 상태
   const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
@@ -78,9 +81,18 @@ export default function RoadmapPage() {
     }
   }, [projectId, selectedVersion]);
 
+  // 프로젝트 정보 로드
+  const loadProjectInfo = useCallback(async () => {
+    const result = await fetchProjectInfo(projectId);
+    if (result.success && result.data) {
+      setCompanyName(result.data.companyName);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     loadVersions();
-  }, [loadVersions]);
+    loadProjectInfo();
+  }, [loadVersions, loadProjectInfo]);
 
   // 로드맵 생성
   const handleGenerate = async () => {
@@ -266,6 +278,17 @@ export default function RoadmapPage() {
 
   const canEdit = selectedVersion?.status === 'DRAFT';
   const canFinalize = canEdit && selectedVersion?.free_tool_validated && selectedVersion?.time_limit_validated;
+
+  // 로딩 오버레이 표시
+  if (isGenerating) {
+    return (
+      <RoadmapLoadingOverlay
+        isTestMode={false}
+        companyName={companyName}
+        profileHref="/consultant/profile"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
