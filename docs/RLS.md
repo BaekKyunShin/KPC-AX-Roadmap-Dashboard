@@ -11,7 +11,7 @@
 |------|------|
 | `PUBLIC` | 비로그인 - RLS 적용 안 됨 (Supabase Auth 미인증) |
 | `USER_PENDING` | 승인 대기 - 자신의 정보만 접근 |
-| `CONSULTANT_APPROVED` | 승인된 컨설턴트 - 배정된 프로젝트만 접근 |
+| `CONSULTANT_APPROVED` | 승인된 컨설턴트 - 담당 프로젝트만 접근 |
 | `OPS_ADMIN` | 운영 관리자 - 모든 프로젝트/사용자 관리 |
 | `SYSTEM_ADMIN` | 시스템 관리자 - 모든 권한 |
 
@@ -59,9 +59,13 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 |
-| SELECT (consultant) | 배정된 컨설턴트만 |
-| INSERT | OPS_ADMIN 이상 |
-| UPDATE | OPS_ADMIN 이상 |
+| SELECT (consultant) | 담당 컨설턴트만 |
+| SELECT (test) | 본인이 생성한 테스트 프로젝트 |
+| INSERT (ops) | OPS_ADMIN 이상 |
+| INSERT (test) | 승인된 컨설턴트 (테스트 모드) |
+| UPDATE (ops) | OPS_ADMIN 이상 |
+| UPDATE (test) | 본인이 생성한 테스트 프로젝트 |
+| DELETE (test) | 본인이 생성한 테스트 프로젝트 |
 
 ### self_assessment_templates
 
@@ -77,7 +81,7 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 |
-| SELECT (consultant) | 배정된 프로젝트만 (조회만) |
+| SELECT (consultant) | 담당 프로젝트만 (조회만) |
 | INSERT | OPS_ADMIN만 |
 | UPDATE | OPS_ADMIN만 |
 
@@ -103,18 +107,24 @@ is_approved_consultant() RETURNS BOOLEAN
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 |
-| SELECT (consultant) | 배정된 프로젝트만 |
-| INSERT | 배정된 컨설턴트만 |
-| UPDATE | 배정된 컨설턴트만 (본인 작성) |
+| SELECT (consultant) | 담당 프로젝트만 |
+| SELECT (test) | 본인이 생성한 테스트 프로젝트 |
+| INSERT (consultant) | 배정된 컨설턴트만 |
+| INSERT (test) | 본인이 생성한 테스트 프로젝트 |
+| UPDATE (consultant) | 배정된 컨설턴트만 (본인 작성) |
+| UPDATE (test) | 본인이 생성한 테스트 프로젝트 |
 
 ### roadmap_versions
 
 | 작업 | 조건 |
 |------|------|
 | SELECT (ops) | OPS_ADMIN 이상 (읽기 전용) |
-| SELECT (consultant) | 배정된 프로젝트만 |
-| INSERT | 배정된 컨설턴트만 |
-| UPDATE | 배정된 컨설턴트만 (DRAFT만 수정, FINAL 확정) |
+| SELECT (consultant) | 담당 프로젝트만 |
+| SELECT (test) | 본인이 생성한 테스트 프로젝트 |
+| INSERT (consultant) | 배정된 컨설턴트만 |
+| INSERT (test) | 본인이 생성한 테스트 프로젝트 |
+| UPDATE (consultant) | 배정된 컨설턴트만 (DRAFT만 수정, FINAL 확정) |
+| UPDATE (test) | 본인이 생성한 테스트 프로젝트 |
 
 ### audit_logs
 
@@ -138,13 +148,29 @@ is_approved_consultant() RETURNS BOOLEAN
 | SELECT (own) | 자신의 쿼터 |
 | SELECT/UPDATE/INSERT | OPS_ADMIN 이상 |
 
+## 테스트 모드 정책
+
+테스트 모드는 컨설턴트가 연습용으로 로드맵을 생성할 수 있는 기능입니다.
+
+**특징:**
+- `is_test_mode = true`인 프로젝트는 테스트 프로젝트로 분류
+- `test_created_by` 컬럼으로 생성자 추적
+- 본인이 생성한 테스트 프로젝트만 조회/수정/삭제 가능
+- OPS_ADMIN도 테스트 프로젝트 접근 가능 (관리 목적)
+
+**적용 테이블:**
+- `projects` - 테스트 프로젝트 CRUD
+- `interviews` - 테스트 프로젝트 인터뷰
+- `roadmap_versions` - 테스트 프로젝트 로드맵
+
 ## 보안 고려사항
 
 1. **서비스 역할 키**: 감사 로그, 사용량 메트릭은 서버에서만 삽입
 2. **역할 변경 제한**: 사용자는 자신의 role/status 변경 불가
-3. **프로젝트 접근 제한**: 컨설턴트는 배정된 프로젝트만 접근
+3. **프로젝트 접근 제한**: 컨설턴트는 담당 프로젝트만 접근
 4. **자가진단 보호**: 컨설턴트는 조회만 가능, 수정 불가
 5. **FINAL 확정 제한**: 로드맵 FINAL은 배정된 컨설턴트만 가능
+6. **테스트 모드 격리**: 테스트 프로젝트는 생성자만 접근 가능
 
 ## 테스트 체크리스트
 
@@ -158,5 +184,13 @@ is_approved_consultant() RETURNS BOOLEAN
   - 정책: `roadmaps_update_consultant` - 배정된 컨설턴트만 UPDATE 허용
 - [x] 배정된 컨설턴트만 FINAL 확정 가능한지 확인
   - 정책: `roadmaps_update_consultant` - `finalized_by = auth.uid()` 검증
+- [x] 테스트 프로젝트가 생성자에게만 접근 가능한지 확인
+  - 정책: `projects_select_test_own` - `test_created_by = auth.uid()` 검증
 
-> **참고**: 위 정책들은 `supabase/migrations/002_rls_policies.sql`에 구현됨
+## 마이그레이션 파일
+
+| 파일 | 설명 |
+|------|------|
+| `002_rls_policies.sql` | 기본 RLS 정책 |
+| `004_test_roadmap.sql` | 테스트 모드 RLS 정책 |
+| `005_rename_case_to_project.sql` | cases → projects 리네이밍 및 정책 재생성 |

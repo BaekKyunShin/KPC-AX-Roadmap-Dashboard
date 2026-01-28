@@ -177,3 +177,97 @@
 - usage_metrics 테이블로 집계
 - user_quotas 테이블로 상한 관리
 - 초과 시 생성/수정 차단
+
+---
+
+## ADR-011: Server Actions 우선 사용
+
+**날짜**: 2025-01-24
+
+**결정**: API Routes 대신 Server Actions를 기본 데이터 처리 방식으로 사용
+
+**이유**:
+- Next.js App Router의 권장 패턴
+- 타입 안전성 향상 (클라이언트-서버 간 타입 공유)
+- 보일러플레이트 감소
+- 자동 재검증 및 캐시 무효화
+
+**구현**:
+- 각 라우트의 `actions.ts` 파일에 Server Actions 정의
+- `ActionResult<T>` 타입으로 일관된 응답 형식
+- API Routes는 스트리밍/외부 호출 필요시에만 사용
+
+**예외**:
+- `/api/matching/generate` - 복잡한 매칭 로직
+
+---
+
+## ADR-012: LLM 추상화 레이어
+
+**날짜**: 2025-01-25
+
+**결정**: LLM API 호출을 `lib/services/llm.ts`로 추상화
+
+**이유**:
+- 다양한 모델 지원 (GPT-4o, GPT-5, o1, o3 등)
+- 모델별 파라미터 차이 처리 (max_tokens vs max_completion_tokens)
+- JSON 파싱 재시도 로직 통합
+- API 키/엔드포인트 관리 중앙화
+
+**구현**:
+- `callLLM()` - 기본 LLM 호출
+- `callLLMForJSON<T>()` - JSON 응답 요청 (자동 재시도)
+- `MODEL_CAPABILITIES` - 모델별 기능 설정
+
+**지원 모델**:
+- GPT-4o, GPT-4o-mini
+- GPT-5, GPT-5-mini
+- o1, o1-mini, o1-preview
+- o3, o3-mini
+
+---
+
+## ADR-013: 테스트 로드맵 기능
+
+**날짜**: 2025-01-26
+
+**결정**: 컨설턴트가 연습용 로드맵을 생성할 수 있는 테스트 모드 제공
+
+**이유**:
+- 컨설턴트 온보딩/연습 지원
+- 실제 프로젝트 데이터 오염 방지
+- 시스템 기능 검증 용이
+
+**구현**:
+- `projects.is_test_mode` - 테스트 프로젝트 구분
+- `projects.test_created_by` - 생성자 추적
+- 별도 RLS 정책으로 접근 제어
+- `/test-roadmap` 전용 페이지
+
+**제약**:
+- 테스트 프로젝트는 생성자만 접근 가능
+- OPS_ADMIN도 관리 목적으로 접근 가능
+- 실제 프로젝트와 명확히 구분 (UI 표시)
+
+---
+
+## ADR-014: 케이스에서 프로젝트로 용어 변경
+
+**날짜**: 2025-01-27
+
+**결정**: 데이터베이스 및 코드에서 "case"를 "project"로 변경
+
+**이유**:
+- 비즈니스 용어와 일치 (고객사에서 "프로젝트"로 인식)
+- 코드 가독성 향상
+- JavaScript 예약어 충돌 방지 (`case` 키워드)
+
+**변경 범위**:
+- DB: `cases` → `projects`, `case_assignments` → `project_assignments`
+- 컬럼: `case_id` → `project_id`
+- 함수: `is_assigned_to_case()` → `is_assigned_to_project()`
+- 코드: 모든 변수명/타입명 변경
+
+**마이그레이션**:
+- `005_rename_case_to_project.sql`로 일괄 변경
+- RLS 정책 재생성 포함

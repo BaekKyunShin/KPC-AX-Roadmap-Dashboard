@@ -22,6 +22,7 @@ npm run format           # Prettier 포맷팅
 npm run test             # 테스트 실행 (Vitest)
 npm run test:watch       # 테스트 워치 모드
 npm run test:coverage    # 커버리지 리포트 생성
+npm run validate         # typecheck + lint + test 통합 검증
 ```
 
 **데이터베이스 마이그레이션:** `supabase/migrations/` 폴더의 SQL 파일을 Supabase CLI (`supabase db push`) 또는 SQL Editor에서 순차적으로 실행
@@ -31,31 +32,38 @@ npm run test:coverage    # 커버리지 리포트 생성
 ```text
 Next.js App Router (src/app/)
          │
-         ├── Route Groups
-         │   ├── (public)/     → 랜딩, 데모 (인증 불필요)
-         │   ├── (auth)/       → 로그인, 회원가입
-         │   └── (dashboard)/  → 인증 필요 라우트
-         │       ├── consultant/  → 컨설턴트 전용 UI
-         │       └── ops/         → 운영관리자 전용 UI
+         ├── 공개 라우트
+         │   ├── page.tsx        → 랜딩 페이지
+         │   └── demo/           → 샘플 데모
          │
-         ├── API Routes (src/app/api/)
+         ├── Route Groups
+         │   ├── (auth)/         → 로그인, 회원가입
+         │   └── (dashboard)/    → 인증 필요 라우트
+         │       ├── consultant/ → 컨설턴트 전용 UI
+         │       ├── ops/        → 운영관리자 전용 UI
+         │       └── test-roadmap/ → 테스트 로드맵 (개발용)
+         │
+         ├── API Routes (src/app/api/) → 최소화 (Server Actions 우선)
          │
          └── middleware.ts → 세션 관리
                  │
                  ▼
 Service Layer (src/lib/services/)
-    ├── roadmap.ts      → LLM 로드맵 생성
-    ├── matching.ts     → 컨설턴트 매칭 알고리즘
-    ├── quota.ts        → 일별/월별 LLM 호출 제한
-    ├── audit.ts        → 이벤트 로깅
-    ├── export-pdf.ts   → PDF 생성 (jspdf)
-    └── export-xlsx.ts  → Excel 생성 (xlsx)
+    ├── roadmap.ts          → LLM 로드맵 생성
+    ├── roadmap-storage.ts  → 로드맵 저장소 관리
+    ├── llm.ts              → LLM API 호출 추상화
+    ├── matching.ts         → 컨설턴트 매칭 알고리즘
+    ├── quota.ts            → 일별/월별 LLM 호출 제한
+    ├── audit.ts            → 이벤트 로깅
+    ├── export-pdf.ts       → PDF 생성 (jspdf)
+    └── export-xlsx.ts      → Excel 생성 (xlsx)
                  │
                  ▼
 Supabase Clients (src/lib/supabase/)
     ├── client.ts       → 브라우저용 (anon key)
     ├── server.ts       → 서버/SSR용 (세션 갱신 포함)
-    └── admin.ts        → 서비스 역할 (RLS 우회, 내부 작업용)
+    ├── admin.ts        → 서비스 역할 (RLS 우회, 내부 작업용)
+    └── middleware.ts   → 미들웨어용
                  │
                  ▼
 Supabase Backend
@@ -66,30 +74,37 @@ Supabase Backend
 
 ## 주요 패턴
 
-**Supabase 클라이언트 3종:**
+**Server Actions 우선:**
+
+- API Routes 대신 Server Actions를 우선 사용
+- 각 라우트의 `actions.ts` 파일에 정의
+- API Routes는 스트리밍이나 외부 호출이 필요한 경우에만 사용
+
+**Supabase 클라이언트 4종:**
 
 - `client.ts` - 브라우저 측, anon key 사용
-- `server.ts` - 서버/SSR용, 세션 갱신 포함 (Server Components와 API routes에서 사용)
+- `server.ts` - 서버/SSR용, 세션 갱신 포함 (Server Components와 Server Actions에서 사용)
 - `admin.ts` - 서비스 역할, RLS 우회 (내부 작업 전용)
+- `middleware.ts` - 미들웨어에서 세션 확인용
 
 **역할 기반 접근 제어 (RBAC):**
 
 - 역할: PUBLIC, USER_PENDING, CONSULTANT_APPROVED, OPS_ADMIN, SYSTEM_ADMIN
 - RLS 정책으로 데이터베이스 수준 보안 적용 (`docs/RLS.md` 참조)
-- 컨설턴트는 자신에게 배정된 프로젝트만 접근 가능
+- 컨설턴트는 자신의 담당 프로젝트만 접근 가능
 
 **데이터 검증:**
 
 - 모든 입력은 `src/lib/schemas/`의 Zod 스키마로 검증
 - 스키마와 테스트 파일(`.test.ts`)은 같은 위치에 배치
 
-**API Route 패턴:**
+**Server Action 패턴:**
 
 1. 세션 확인
 2. 역할 권한 검사
 3. Zod로 입력 검증
 4. 비즈니스 로직 실행
-5. `{ success, data/error }` JSON 반환
+5. `ActionResult<T>` 타입으로 반환 (`src/lib/types/action-result.ts`)
 
 **프로젝트 워크플로우 상태:**
 
@@ -105,18 +120,29 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 
 ## 기술 스택
 
-- **프레임워크:** Next.js 16 (App Router) + TypeScript (strict 모드)
+- **프레임워크:** Next.js 16.x (App Router) + TypeScript 5.x (strict 모드)
 - **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Storage)
-- **스타일링:** Tailwind CSS 4
+- **스타일링:** Tailwind CSS 4.x
+- **UI 컴포넌트:** Radix UI + shadcn/ui
 - **검증:** Zod
 - **테스트:** Vitest + React Testing Library
-- **내보내기:** jspdf, xlsx
+- **내보내기:** jspdf + jspdf-autotable, xlsx (SheetJS)
 
 ## 환경 변수
 
-**필수:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_API_KEY`
+**필수:**
 
-**선택:** `LLM_API_BASE_URL`, `DAILY_LLM_CALL_LIMIT` (기본값: 100), `MONTHLY_LLM_CALL_LIMIT` (기본값: 2000)
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase 프로젝트 URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase 익명 키
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase 서비스 역할 키 (서버 전용)
+- `LLM_API_KEY` - LLM API 키 (서버 전용)
+
+**선택:**
+
+- `LLM_API_BASE_URL` - LLM API 기본 URL (기본값: OpenAI 호환)
+- `DAILY_LLM_CALL_LIMIT` - 일별 LLM 호출 제한 (기본값: 100)
+- `MONTHLY_LLM_CALL_LIMIT` - 월별 LLM 호출 제한 (기본값: 2000)
+- `NEXT_PUBLIC_APP_URL` - 앱 URL (기본값: http://localhost:3000)
 
 ## 커밋 메시지 규칙
 
@@ -162,10 +188,13 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 1. **타입 체크**: `npm run typecheck` 실행하여 TypeScript 오류 없음 확인
 2. **빌드 검증**: `npm run build` 실행하여 프로덕션 빌드 성공 확인
 3. **린트 검사**: `npm run lint` 실행하여 코드 품질 문제 없음 확인
-4. **Server Actions 주의사항**:
-   - Server Action 함수의 반환 타입이 `ActionResult` 인터페이스와 일치하는지 확인
-   - Supabase 쿼리 후 `.select().single()` 사용 시 에러 처리 철저히 할 것
-   - 직렬화 불가능한 객체(Date, Map 등)를 반환하지 않도록 주의
+4. **통합 검증**: `npm run validate` 실행하여 typecheck + lint + test 한 번에 확인
+
+**Server Actions 주의사항:**
+
+- Server Action 함수의 반환 타입이 `ActionResult` 인터페이스와 일치하는지 확인
+- Supabase 쿼리 후 `.select().single()` 사용 시 에러 처리 철저히 할 것
+- 직렬화 불가능한 객체(Date, Map 등)를 반환하지 않도록 주의
 
 **오류 발생 시:**
 
@@ -178,3 +207,5 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 - `docs/ARCHITECTURE.md` - 시스템 다이어그램 및 데이터 흐름
 - `docs/RLS.md` - Row-Level Security 정책
 - `docs/DECISIONS.md` - 아키텍처 결정 기록 (ADR)
+- `docs/CONSULTANT_PROFILE_SPEC.md` - 컨설턴트 프로필 명세
+- `docs/PROJECT_OUTLINE.md` - 초기 기획서 (아카이브)
