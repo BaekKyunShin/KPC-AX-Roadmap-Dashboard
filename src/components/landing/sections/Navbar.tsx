@@ -51,6 +51,23 @@ function MobileNavLink({ link, onClick }: MobileNavLinkProps) {
   );
 }
 
+interface MobileMenuOverlayProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function MobileMenuOverlay({ isOpen, onClose }: MobileMenuOverlayProps) {
+  return (
+    <div
+      className={`md:hidden fixed inset-0 bg-black/20 z-40 ${MOBILE_MENU_TRANSITION} ${
+        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
+      onClick={onClose}
+      aria-hidden="true"
+    />
+  );
+}
+
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,7 +80,7 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
       }`}
     >
-      <div className="bg-white border-t border-gray-200 shadow-xl">
+      <div className="bg-white border-t border-gray-200">
         {/* Navigation Links */}
         <div className="divide-y divide-gray-100">
           {NAV_LINKS.map((link) => (
@@ -122,14 +139,18 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm'
-          : 'bg-transparent'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <>
+      {/* Mobile Menu Overlay */}
+      <MobileMenuOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
+
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isScrolled
+            ? 'bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link
@@ -185,8 +206,9 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
-    </nav>
+        {/* Mobile Menu */}
+        <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
+      </nav>
+    </>
   );
 }
