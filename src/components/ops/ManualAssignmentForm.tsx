@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import ConsultantSelector from './ConsultantSelector';
 import { AlertMessage, CloseIcon } from './assignment';
@@ -27,7 +26,6 @@ const MAX_REASON_LENGTH = 500;
 // ============================================================================
 
 export default function ManualAssignmentForm({ projectId }: ManualAssignmentFormProps) {
-  const router = useRouter();
   const [selectedConsultant, setSelectedConsultant] = useState<ConsultantCandidate | null>(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -52,22 +50,28 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
 
       setIsLoading(true);
 
-      const formData = new FormData();
-      formData.set('project_id', projectId);
-      formData.set('consultant_id', selectedConsultant.id);
-      formData.set('assignment_reason', reason);
+      try {
+        const formData = new FormData();
+        formData.set('project_id', projectId);
+        formData.set('consultant_id', selectedConsultant.id);
+        formData.set('assignment_reason', reason);
 
-      const result = await assignConsultant(formData);
+        const result = await assignConsultant(formData);
 
-      if (result.success) {
-        router.refresh();
-      } else {
-        setError(result.error || '배정에 실패했습니다.');
+        if (result.success) {
+          // 성공 시 페이지 새로고침으로 업데이트된 데이터 표시
+          window.location.reload();
+        } else {
+          setError(result.error || '배정에 실패했습니다.');
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('컨설턴트 배정 오류:', err);
+        setError('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     },
-    [selectedConsultant, reason, projectId, router]
+    [selectedConsultant, reason, projectId]
   );
 
   // 컨설턴트 선택
