@@ -65,3 +65,37 @@ export const PAID_TOOL_KEYWORDS = [
 
 /** 최대 과정 시간 제한 */
 export const MAX_COURSE_HOURS = 40;
+
+// ============================================================================
+// 내보내기(Export)용 포맷 헬퍼 함수
+// ============================================================================
+
+/**
+ * 매트릭스 셀의 과정명들을 줄바꿈으로 합침 (PDF/XLSX 내보내기용)
+ */
+export function formatMatrixCourseNames(
+  courses: { course_name: string }[] | undefined
+): string {
+  if (!courses || courses.length === 0) return '-';
+  return courses.map(c => c.course_name).join('\n');
+}
+
+/**
+ * 매트릭스 셀의 과정 시간들을 줄바꿈으로 합침 (PDF 내보내기용, 시간 단위 포함)
+ */
+export function formatMatrixCourseHoursWithUnit(
+  courses: { recommended_hours: number }[] | undefined
+): string {
+  if (!courses || courses.length === 0) return '-';
+  return courses.map(c => `${c.recommended_hours}h`).join('\n');
+}
+
+/**
+ * 매트릭스 셀의 과정 시간들을 줄바꿈으로 합침 (XLSX 내보내기용, 숫자만)
+ */
+export function formatMatrixCourseHours(
+  courses: { recommended_hours: number }[] | undefined
+): string {
+  if (!courses || courses.length === 0) return '-';
+  return courses.map(c => c.recommended_hours).join('\n');
+}

@@ -18,13 +18,30 @@ const TAB_CONFIG: Record<Level, { label: string; bgColor: string; textColor: str
 };
 
 /**
- * 매트릭스 셀 컴포넌트
+ * 단일 과정 표시 컴포넌트
  */
-function CourseCell({ course }: { course: RoadmapMatrixCell }) {
+function SingleCourse({ course }: { course: RoadmapMatrixCell }) {
   return (
     <div className="text-xs">
       <div className="font-medium text-gray-900">{course.course_name}</div>
       <div className="text-gray-500">{course.recommended_hours}시간</div>
+    </div>
+  );
+}
+
+/**
+ * 매트릭스 셀 컴포넌트 (여러 과정 지원)
+ */
+function CourseCell({ courses }: { courses: RoadmapMatrixCell[] }) {
+  if (courses.length === 0) {
+    return <span className="text-gray-400 text-xs">-</span>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {courses.map((course, idx) => (
+        <SingleCourse key={idx} course={course} />
+      ))}
     </div>
   );
 }
@@ -61,18 +78,19 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
     return <p className="text-gray-500">매트릭스 데이터가 없습니다.</p>;
   }
 
-  const renderMatrixCell = (course: RoadmapMatrixCell | null | undefined, rowIndex: number, level: Level, bgColor: string) => (
-    <td className={`px-4 py-3 ${bgColor}`}>
-      {course ? (
+  const renderMatrixCell = (courses: RoadmapMatrixCell[] | undefined, rowIndex: number, level: Level, bgColor: string) => {
+    const courseList = courses || [];
+    return (
+      <td className={`px-4 py-3 ${bgColor}`}>
         <div className="flex items-center justify-between group">
-          <CourseCell course={course} />
-          {canEdit && onEditCourse && <EditButton onClick={() => onEditCourse(rowIndex, level)} />}
+          <CourseCell courses={courseList} />
+          {canEdit && onEditCourse && courseList.length > 0 && (
+            <EditButton onClick={() => onEditCourse(rowIndex, level)} />
+          )}
         </div>
-      ) : (
-        <span className="text-gray-400 text-xs">-</span>
-      )}
-    </td>
-  );
+      </td>
+    );
+  };
 
   return (
     <>
@@ -122,7 +140,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
         {/* 카드 리스트 */}
         <div className="space-y-3">
           {matrix.map((row, rowIndex) => {
-            const course = row[mobileTab];
+            const courses = row[mobileTab] || [];
             return (
               <div key={row.task_id} className={`p-4 rounded-lg border ${TAB_CONFIG[mobileTab].bgColor}`}>
                 <div className="flex items-start justify-between">
@@ -130,7 +148,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
                     <div className="text-xs text-gray-500 mb-1">업무</div>
                     <div className="font-medium text-gray-900 mb-2">{row.task_name}</div>
                   </div>
-                  {canEdit && course && onEditCourse && (
+                  {canEdit && courses.length > 0 && onEditCourse && (
                     <button
                       onClick={() => onEditCourse(rowIndex, mobileTab)}
                       className="p-2 text-gray-400 hover:text-purple-600"
@@ -147,11 +165,12 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
                     </button>
                   )}
                 </div>
-                {course ? (
-                  <>
-                    <div className="text-sm font-medium text-gray-800">{course.course_name}</div>
-                    <div className="text-xs text-gray-500 mt-1">{course.recommended_hours}시간</div>
-                  </>
+                {courses.length > 0 ? (
+                  <div className="space-y-2">
+                    {courses.map((course, idx) => (
+                      <SingleCourse key={idx} course={course} />
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-sm text-gray-400">해당 레벨 과정 없음</div>
                 )}

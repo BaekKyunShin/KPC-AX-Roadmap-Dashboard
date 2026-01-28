@@ -6,7 +6,11 @@
 import * as XLSX from 'xlsx';
 import type { RoadmapExportData } from './export-pdf';
 import type { PBLCourse } from './roadmap';
-import { getLevelLabel } from '@/lib/utils/roadmap';
+import {
+  getLevelLabel,
+  formatMatrixCourseNames,
+  formatMatrixCourseHours,
+} from '@/lib/utils/roadmap';
 
 // ============================================================================
 // PBL 데이터 추출 헬퍼 함수들
@@ -111,12 +115,12 @@ function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
 
   const rows = data.roadmapMatrix.map(row => [
     row.task_name,
-    row.beginner?.course_name || '-',
-    row.beginner?.recommended_hours || '-',
-    row.intermediate?.course_name || '-',
-    row.intermediate?.recommended_hours || '-',
-    row.advanced?.course_name || '-',
-    row.advanced?.recommended_hours || '-',
+    formatMatrixCourseNames(row.beginner),
+    formatMatrixCourseHours(row.beginner),
+    formatMatrixCourseNames(row.intermediate),
+    formatMatrixCourseHours(row.intermediate),
+    formatMatrixCourseNames(row.advanced),
+    formatMatrixCourseHours(row.advanced),
   ]);
 
   const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);

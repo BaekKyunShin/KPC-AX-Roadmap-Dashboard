@@ -151,30 +151,42 @@ export default function TestRoadmapResult({
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="border p-3 font-medium">{row.task_name}</td>
                         <td className="border p-3 text-center">
-                          {row.beginner ? (
-                            <div className="text-sm">
-                              <p className="font-medium">{row.beginner.course_name}</p>
-                              <p className="text-gray-500">{row.beginner.recommended_hours}시간</p>
+                          {row.beginner && row.beginner.length > 0 ? (
+                            <div className="space-y-2">
+                              {row.beginner.map((course, idx) => (
+                                <div key={idx} className="text-sm">
+                                  <p className="font-medium">{course.course_name}</p>
+                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
                         <td className="border p-3 text-center">
-                          {row.intermediate ? (
-                            <div className="text-sm">
-                              <p className="font-medium">{row.intermediate.course_name}</p>
-                              <p className="text-gray-500">{row.intermediate.recommended_hours}시간</p>
+                          {row.intermediate && row.intermediate.length > 0 ? (
+                            <div className="space-y-2">
+                              {row.intermediate.map((course, idx) => (
+                                <div key={idx} className="text-sm">
+                                  <p className="font-medium">{course.course_name}</p>
+                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
                         <td className="border p-3 text-center">
-                          {row.advanced ? (
-                            <div className="text-sm">
-                              <p className="font-medium">{row.advanced.course_name}</p>
-                              <p className="text-gray-500">{row.advanced.recommended_hours}시간</p>
+                          {row.advanced && row.advanced.length > 0 ? (
+                            <div className="space-y-2">
+                              {row.advanced.map((course, idx) => (
+                                <div key={idx} className="text-sm">
+                                  <p className="font-medium">{course.course_name}</p>
+                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>

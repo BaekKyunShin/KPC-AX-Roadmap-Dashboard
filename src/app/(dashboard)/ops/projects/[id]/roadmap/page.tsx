@@ -255,25 +255,13 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
                 {row.task_name}
               </td>
               <td className="px-4 py-3 bg-green-50">
-                {row.beginner ? (
-                  <CourseCell course={row.beginner} />
-                ) : (
-                  <span className="text-gray-400 text-xs">-</span>
-                )}
+                <CourseCell courses={row.beginner || []} />
               </td>
               <td className="px-4 py-3 bg-yellow-50">
-                {row.intermediate ? (
-                  <CourseCell course={row.intermediate} />
-                ) : (
-                  <span className="text-gray-400 text-xs">-</span>
-                )}
+                <CourseCell courses={row.intermediate || []} />
               </td>
               <td className="px-4 py-3 bg-red-50">
-                {row.advanced ? (
-                  <CourseCell course={row.advanced} />
-                ) : (
-                  <span className="text-gray-400 text-xs">-</span>
-                )}
+                <CourseCell courses={row.advanced || []} />
               </td>
             </tr>
           ))}
@@ -283,12 +271,19 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
   );
 }
 
-// 매트릭스 셀 컴포넌트
-function CourseCell({ course }: { course: RoadmapMatrixCell }) {
+// 매트릭스 셀 컴포넌트 (여러 과정 지원)
+function CourseCell({ courses }: { courses: RoadmapMatrixCell[] }) {
+  if (courses.length === 0) {
+    return <span className="text-gray-400 text-xs">-</span>;
+  }
   return (
-    <div className="text-xs">
-      <div className="font-medium text-gray-900">{course.course_name}</div>
-      <div className="text-gray-500">{course.recommended_hours}시간</div>
+    <div className="space-y-2">
+      {courses.map((course, idx) => (
+        <div key={idx} className="text-xs">
+          <div className="font-medium text-gray-900">{course.course_name}</div>
+          <div className="text-gray-500">{course.recommended_hours}시간</div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -149,11 +149,12 @@ export default function RoadmapPage() {
   const handleEditMatrixCourse = (rowIndex: number, level: 'beginner' | 'intermediate' | 'advanced') => {
     if (!selectedVersion || selectedVersion.status !== 'DRAFT') return;
     const row = selectedVersion.roadmap_matrix[rowIndex];
-    const matrixCell = row[level];
-    if (matrixCell) {
-      // courses에서 해당 과정 찾기
+    const coursesInCell = row[level] || [];
+    if (coursesInCell.length > 0) {
+      // 첫 번째 과정 선택 (여러 과정이 있으면 첫 번째)
+      const firstCourse = coursesInCell[0];
       const courseIndex = selectedVersion.courses.findIndex(
-        (c) => c.course_name === matrixCell.course_name
+        (c) => c.course_name === firstCourse.course_name
       );
       if (courseIndex !== -1) {
         setEditingCourse(selectedVersion.courses[courseIndex]);

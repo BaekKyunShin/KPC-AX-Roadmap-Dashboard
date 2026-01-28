@@ -5,7 +5,11 @@
  */
 
 import type { RoadmapRow, PBLCourse, RoadmapCell } from './roadmap';
-import { getLevelLabelEn } from '@/lib/utils/roadmap';
+import {
+  getLevelLabelEn,
+  formatMatrixCourseNames,
+  formatMatrixCourseHoursWithUnit,
+} from '@/lib/utils/roadmap';
 
 export interface RoadmapExportData {
   companyName: string;
@@ -141,12 +145,12 @@ export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
 
   const matrixData = data.roadmapMatrix.map(row => [
     row.task_name,
-    row.beginner?.course_name || '-',
-    row.beginner ? `${row.beginner.recommended_hours}h` : '-',
-    row.intermediate?.course_name || '-',
-    row.intermediate ? `${row.intermediate.recommended_hours}h` : '-',
-    row.advanced?.course_name || '-',
-    row.advanced ? `${row.advanced.recommended_hours}h` : '-',
+    formatMatrixCourseNames(row.beginner),
+    formatMatrixCourseHoursWithUnit(row.beginner),
+    formatMatrixCourseNames(row.intermediate),
+    formatMatrixCourseHoursWithUnit(row.intermediate),
+    formatMatrixCourseNames(row.advanced),
+    formatMatrixCourseHoursWithUnit(row.advanced),
   ]);
 
   autoTable(doc, {

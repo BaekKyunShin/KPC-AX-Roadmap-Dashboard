@@ -30,13 +30,13 @@ export interface RoadmapMatrixCell {
   recommended_hours: number;
 }
 
-// 로드맵 행 (업무별) - 간소화된 매트릭스 셀 사용
+// 로드맵 행 (업무별) - 한 셀에 여러 과정 가능
 export interface RoadmapRow {
   task_id: string;
   task_name: string;
-  beginner?: RoadmapMatrixCell;
-  intermediate?: RoadmapMatrixCell;
-  advanced?: RoadmapMatrixCell;
+  beginner: RoadmapMatrixCell[]; // 한 셀에 여러 과정 가능
+  intermediate: RoadmapMatrixCell[];
+  advanced: RoadmapMatrixCell[];
 }
 
 // PBL 최적 과정 (과정 상세에서 선정된 과정)
@@ -98,6 +98,7 @@ export interface RoadmapResult {
 
 /**
  * courses 배열에서 roadmap_matrix 자동 생성
+ * 한 셀에 여러 과정이 있을 수 있음
  */
 function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
   // 업무별로 그룹화
@@ -110,6 +111,9 @@ function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
       taskMap.set(taskKey, {
         task_id: `task_${index + 1}`,
         task_name: taskKey,
+        beginner: [],
+        intermediate: [],
+        advanced: [],
       });
     }
 
@@ -119,16 +123,16 @@ function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
       recommended_hours: course.recommended_hours,
     };
 
-    // 레벨에 따라 배치
+    // 레벨에 따라 배열에 추가
     switch (course.level) {
       case 'BEGINNER':
-        row.beginner = matrixCell;
+        row.beginner.push(matrixCell);
         break;
       case 'INTERMEDIATE':
-        row.intermediate = matrixCell;
+        row.intermediate.push(matrixCell);
         break;
       case 'ADVANCED':
-        row.advanced = matrixCell;
+        row.advanced.push(matrixCell);
         break;
     }
   });
@@ -295,33 +299,45 @@ function buildSystemPrompt(): string {
 
 ## 핵심 원칙
 
-1. **무료 도구 전제**: 모든 교육에서 사용하는 도구는 반드시 무료 범위 내에서 사용 가능해야 합니다.
+1. **업무(target_task) 제한 - 매우 중요**:
+   - courses의 target_task는 반드시 인터뷰의 "세부업무(job_tasks)"에 입력된 업무만 사용해야 합니다.
+   - 페인포인트나 개선목표에서 업무를 추가로 생성하지 마세요.
+   - 입력된 업무 외의 업무를 만들어내면 안 됩니다.
+
+2. **셀 채우기 (권장)**:
+   - 각 업무(target_task)별로 초급(BEGINNER), 중급(INTERMEDIATE), 고급(ADVANCED) 과정을 가급적 모두 생성하세요.
+   - 빈 셀을 최소화하되, 해당 업무×레벨에 적합한 과정이 정말 없다면 비워둘 수 있습니다.
+   - 한 셀(업무×레벨)에 여러 과정을 배치할 수 있습니다.
+
+3. **무료 도구 전제**: 모든 교육에서 사용하는 도구는 반드시 무료 범위 내에서 사용 가능해야 합니다.
    - 각 도구마다 "무료 범위"를 명확히 표기해야 합니다.
    - 예: "ChatGPT (무료: 일 제한 있음)", "Google Sheets (무료: 전체 기능)"
    - 유료 전용 도구는 사용하지 마세요.
 
-2. **40시간 제한**: 각 과정의 권장 시간은 가급적 40시간 이하여야 합니다.
+4. **40시간 제한**: 각 과정의 권장 시간은 가급적 40시간 이하여야 합니다.
    - PBL 과정 전체 합계도 40시간 이하여야 합니다.
    - 필요에 따라 40시간 이상이 될 수도 있지만, 그렇더라도 무조건 50시간 이하여야 합니다.
 
-3. **실용성 중심**: 이론보다 실습 중심의 커리큘럼을 설계하세요.
+5. **실용성 중심**: 이론보다 실습 중심의 커리큘럼을 설계하세요.
 
-4. **측정 가능한 성과**: 모든 과정에 명확한 기대 효과와 측정 방법을 포함하세요.
+6. **측정 가능한 성과**: 모든 과정에 명확한 기대 효과와 측정 방법을 포함하세요.
 
-5. **PBL 과정은 반드시 courses에서 선정**:
+7. **PBL 과정은 반드시 courses에서 선정**:
    - PBL 과정은 별도로 새로 만드는 것이 아니라, courses 배열에 포함된 과정 중 하나를 선정해야 합니다.
+   - **PBL 과정의 시간(total_hours)은 선정된 과정의 recommended_hours와 동일해야 합니다.**
    - 선정 기준:
      a. 담당 컨설턴트의 전문성/프로필과의 적합도
      b. 고객사의 페인포인트 및 요구사항과의 연관성
      c. 현실 가능성 (교육 인프라, 시간, 인원 등)
    - 위 기준을 종합적으로 고려하여 가장 효과적인 과정을 PBL로 선정하세요.
+   - PBL은 선정된 과정을 더 구체화/상세화한 것이므로, 기본 정보(시간, 대상 등)는 동일해야 합니다.
 
-6. **교육 난이도 원칙**:                                         
-   - 원칙적으로, 비개발자도 즉시 활용 가능한 노코드/로우코드 도구 중심으로 설계해야 합니다.                                                    
-   - 코딩/프로그래밍이 필요한 교육은 다음 경우에만 포함:         
-     a. 고객사가 명시적으로 요청한 경우                          
-     b. 인터뷰 결과 기술 수준이 높다고 판단되는 경우             
-     c. 업무 특성상 코딩이 필수적인 경우                         
+8. **교육 난이도 원칙**:
+   - 원칙적으로, 비개발자도 즉시 활용 가능한 노코드/로우코드 도구 중심으로 설계해야 합니다.
+   - 코딩/프로그래밍이 필요한 교육은 다음 경우에만 포함:
+     a. 고객사가 명시적으로 요청한 경우
+     b. 인터뷰 결과 기술 수준이 높다고 판단되는 경우
+     c. 업무 특성상 코딩이 필수적인 경우
    - 코딩 교육 포함 시에도 ADVANCED 레벨에 배치하고, BEGINNER/INTERMEDIATE는 노코드 중심 유지      
 
 ## 출력 형식
@@ -330,7 +346,7 @@ function buildSystemPrompt(): string {
 중요: roadmap_matrix는 출력하지 마세요. courses와 pbl_course만 출력합니다.
 
 {
-  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (2~4문장)",
+  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (3~4문장)",
   "courses": [/* 모든 과정 상세 배열 (RoadmapCell[]) */],
   "pbl_course": {
     /* 중요: courses 배열에서 하나의 과정을 선정하여 PBL로 확장 */
