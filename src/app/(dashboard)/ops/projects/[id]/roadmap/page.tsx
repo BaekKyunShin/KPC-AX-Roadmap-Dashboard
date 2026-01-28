@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { fetchRoadmapVersionsForOps, fetchRoadmapVersionForOps } from './actions';
-import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
+import type { RoadmapRow, PBLCourse, RoadmapCell, RoadmapMatrixCell } from '@/lib/services/roadmap';
 
 interface RoadmapVersion {
   id: string;
@@ -284,7 +284,7 @@ function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
 }
 
 // 매트릭스 셀 컴포넌트
-function CourseCell({ course }: { course: RoadmapCell }) {
+function CourseCell({ course }: { course: RoadmapMatrixCell }) {
   return (
     <div className="text-xs">
       <div className="font-medium text-gray-900">{course.course_name}</div>

@@ -26,7 +26,7 @@ export interface LLMConfig {
 const DEFAULT_CONFIG: LLMConfig = {
   model: 'gpt-5-mini',
   temperature: 0.7,
-  maxTokens: 8000,
+  maxTokens: 20000,
 };
 
 /**

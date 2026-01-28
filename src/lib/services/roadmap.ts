@@ -6,7 +6,7 @@ import { checkQuotaExceeded, recordLLMUsage } from './quota';
 import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import type { ConsultantProfile } from '@/types/database';
 
-// 로드맵 매트릭스 셀 타입
+// 과정 상세 타입 (courses 배열용)
 export interface RoadmapCell {
   course_name: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
@@ -24,13 +24,19 @@ export interface RoadmapCell {
   prerequisites: string[]; // 준비물/데이터/권한
 }
 
-// 로드맵 행 (업무별)
+// 로드맵 매트릭스 셀 타입 (간소화된 버전 - UI 표시용)
+export interface RoadmapMatrixCell {
+  course_name: string;
+  recommended_hours: number;
+}
+
+// 로드맵 행 (업무별) - 간소화된 매트릭스 셀 사용
 export interface RoadmapRow {
   task_id: string;
   task_name: string;
-  beginner?: RoadmapCell;
-  intermediate?: RoadmapCell;
-  advanced?: RoadmapCell;
+  beginner?: RoadmapMatrixCell;
+  intermediate?: RoadmapMatrixCell;
+  advanced?: RoadmapMatrixCell;
 }
 
 // PBL 최적 과정 (과정 상세에서 선정된 과정)
@@ -75,12 +81,59 @@ export interface PBLCourse {
   prerequisites: string[]; // 준비물/데이터/권한
 }
 
-// 전체 로드맵 결과
-export interface RoadmapResult {
+// LLM 출력용 로드맵 결과 (roadmap_matrix 없음)
+interface LLMRoadmapResult {
   diagnosis_summary: string;
-  roadmap_matrix: RoadmapRow[];
   pbl_course: PBLCourse;
   courses: RoadmapCell[]; // 모든 과정 상세 리스트
+}
+
+// 전체 로드맵 결과 (UI/DB용 - roadmap_matrix 포함)
+export interface RoadmapResult {
+  diagnosis_summary: string;
+  roadmap_matrix: RoadmapRow[]; // courses에서 자동 생성
+  pbl_course: PBLCourse;
+  courses: RoadmapCell[]; // 모든 과정 상세 리스트
+}
+
+/**
+ * courses 배열에서 roadmap_matrix 자동 생성
+ */
+function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
+  // 업무별로 그룹화
+  const taskMap = new Map<string, RoadmapRow>();
+
+  courses.forEach((course, index) => {
+    const taskKey = course.target_task;
+
+    if (!taskMap.has(taskKey)) {
+      taskMap.set(taskKey, {
+        task_id: `task_${index + 1}`,
+        task_name: taskKey,
+      });
+    }
+
+    const row = taskMap.get(taskKey)!;
+    const matrixCell: RoadmapMatrixCell = {
+      course_name: course.course_name,
+      recommended_hours: course.recommended_hours,
+    };
+
+    // 레벨에 따라 배치
+    switch (course.level) {
+      case 'BEGINNER':
+        row.beginner = matrixCell;
+        break;
+      case 'INTERMEDIATE':
+        row.intermediate = matrixCell;
+        break;
+      case 'ADVANCED':
+        row.advanced = matrixCell;
+        break;
+    }
+  });
+
+  return Array.from(taskMap.values());
 }
 
 // 검증 결과
@@ -151,17 +204,23 @@ export async function generateRoadmap(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
-  // LLM 호출
-  const result = await callLLMForJSON<RoadmapResult>(
+  // LLM 호출 (roadmap_matrix 없이 courses만 생성)
+  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: 0.7, maxTokens: 8000 }
+    { temperature: 0.7 } // maxTokens는 기본값(20000) 사용
   );
 
   // 사용량 기록
   await recordLLMUsage(actorUserId);
+
+  // courses에서 roadmap_matrix 자동 생성
+  const result: RoadmapResult = {
+    ...llmResult,
+    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
+  };
 
   // 검증
   const validation = validateRoadmap(result);
@@ -238,11 +297,12 @@ function buildSystemPrompt(): string {
 
 1. **무료 도구 전제**: 모든 교육에서 사용하는 도구는 반드시 무료 범위 내에서 사용 가능해야 합니다.
    - 각 도구마다 "무료 범위"를 명확히 표기해야 합니다.
-   - 예: "ChatGPT (무료: GPT-3.5, 일 제한 있음)", "Google Sheets (무료: 전체 기능)"
+   - 예: "ChatGPT (무료: 일 제한 있음)", "Google Sheets (무료: 전체 기능)"
    - 유료 전용 도구는 사용하지 마세요.
 
-2. **40시간 제한**: 각 과정의 권장 시간은 40시간을 초과할 수 없습니다.
+2. **40시간 제한**: 각 과정의 권장 시간은 가급적 40시간 이하여야 합니다.
    - PBL 과정 전체 합계도 40시간 이하여야 합니다.
+   - 필요에 따라 40시간 이상이 될 수도 있지만, 그렇더라도 무조건 50시간 이하여야 합니다.
 
 3. **실용성 중심**: 이론보다 실습 중심의 커리큘럼을 설계하세요.
 
@@ -256,22 +316,22 @@ function buildSystemPrompt(): string {
      c. 현실 가능성 (교육 인프라, 시간, 인원 등)
    - 위 기준을 종합적으로 고려하여 가장 효과적인 과정을 PBL로 선정하세요.
 
+6. **교육 난이도 원칙**:                                         
+   - 원칙적으로, 비개발자도 즉시 활용 가능한 노코드/로우코드 도구 중심으로 설계해야 합니다.                                                    
+   - 코딩/프로그래밍이 필요한 교육은 다음 경우에만 포함:         
+     a. 고객사가 명시적으로 요청한 경우                          
+     b. 인터뷰 결과 기술 수준이 높다고 판단되는 경우             
+     c. 업무 특성상 코딩이 필수적인 경우                         
+   - 코딩 교육 포함 시에도 ADVANCED 레벨에 배치하고, BEGINNER/INTERMEDIATE는 노코드 중심 유지      
+
 ## 출력 형식
 
 반드시 아래 JSON 구조로만 응답하세요. 다른 텍스트 없이 JSON만 출력하세요.
+중요: roadmap_matrix는 출력하지 마세요. courses와 pbl_course만 출력합니다.
 
 {
-  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (2-3문장)",
-  "roadmap_matrix": [
-    {
-      "task_id": "업무 ID",
-      "task_name": "업무명",
-      "beginner": { /* RoadmapCell 또는 null */ },
-      "intermediate": { /* RoadmapCell 또는 null */ },
-      "advanced": { /* RoadmapCell 또는 null */ }
-    }
-  ],
-  "courses": [/* 모든 RoadmapCell 배열 - 먼저 생성 */],
+  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (2~4문장)",
+  "courses": [/* 모든 과정 상세 배열 (RoadmapCell[]) */],
   "pbl_course": {
     /* 중요: courses 배열에서 하나의 과정을 선정하여 PBL로 확장 */
     "selected_course_name": "선택된 과정명 (courses 배열의 course_name과 정확히 일치해야 함)",
@@ -281,7 +341,7 @@ function buildSystemPrompt(): string {
       "consultant_expertise_fit": "컨설턴트의 어떤 전문성이 이 과정과 잘 맞는지 설명",
       "pain_point_alignment": "고객사의 어떤 페인포인트를 이 과정이 해결할 수 있는지 설명",
       "feasibility_assessment": "이 과정을 PBL로 수행하기에 현실적으로 가능한 이유 (시간, 인프라, 난이도 등)",
-      "summary": "종합적인 선정 이유 2-3문장으로 요약"
+      "summary": "종합적인 선정 이유 2~3문장으로 요약"
     },
     "course_name": "PBL: [선택된 과정 기반 PBL 과정명]",
     "total_hours": 40,
@@ -556,8 +616,8 @@ function validatePBLCourseSelection(
   } else {
     warnings.push(
       `PBL 선정 과정의 레벨 또는 업무가 일치하지 않습니다. ` +
-        `선정: ${selected_course_level}/${selected_course_task}, ` +
-        `실제: ${courseByName.level}/${courseByName.target_task}`
+      `선정: ${selected_course_level}/${selected_course_task}, ` +
+      `실제: ${courseByName.level}/${courseByName.target_task}`
     );
   }
 }
@@ -816,11 +876,15 @@ export async function updateRoadmapManually(
   }
 
   // 새 데이터 구성
+  const newCourses = updates.courses ?? roadmap.courses;
   const newResult: RoadmapResult = {
     diagnosis_summary: updates.diagnosis_summary ?? roadmap.diagnosis_summary,
-    roadmap_matrix: updates.roadmap_matrix ?? roadmap.roadmap_matrix,
+    // courses가 업데이트되면 roadmap_matrix 자동 재생성
+    roadmap_matrix: updates.courses
+      ? buildRoadmapMatrixFromCourses(newCourses)
+      : (updates.roadmap_matrix ?? roadmap.roadmap_matrix),
     pbl_course: updates.pbl_course ?? roadmap.pbl_course,
-    courses: updates.courses ?? roadmap.courses,
+    courses: newCourses,
   };
 
   // 검증 실행

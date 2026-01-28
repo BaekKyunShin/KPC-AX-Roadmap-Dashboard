@@ -145,14 +145,20 @@ export default function RoadmapPage() {
     }
   };
 
-  // 과정 편집 (매트릭스)
+  // 과정 편집 (매트릭스) - 매트릭스 셀의 course_name으로 courses에서 해당 과정을 찾아 편집
   const handleEditMatrixCourse = (rowIndex: number, level: 'beginner' | 'intermediate' | 'advanced') => {
     if (!selectedVersion || selectedVersion.status !== 'DRAFT') return;
     const row = selectedVersion.roadmap_matrix[rowIndex];
-    const course = row[level];
-    if (course) {
-      setEditingCourse(course);
-      setEditingCourseContext({ type: 'matrix', rowIndex, level });
+    const matrixCell = row[level];
+    if (matrixCell) {
+      // courses에서 해당 과정 찾기
+      const courseIndex = selectedVersion.courses.findIndex(
+        (c) => c.course_name === matrixCell.course_name
+      );
+      if (courseIndex !== -1) {
+        setEditingCourse(selectedVersion.courses[courseIndex]);
+        setEditingCourseContext({ type: 'courses', courseIndex });
+      }
     }
   };
 
@@ -166,28 +172,17 @@ export default function RoadmapPage() {
     }
   };
 
-  // 과정 편집 저장
+  // 과정 편집 저장 - courses 배열만 수정 (roadmap_matrix는 서버에서 자동 재생성)
   const handleSaveCourse = async (updatedCourse: RoadmapCell) => {
     if (!selectedVersion || !editingCourseContext) return;
+    if (editingCourseContext.courseIndex === undefined) return;
 
     setError(null);
 
-    const updates: { roadmap_matrix?: RoadmapRow[]; courses?: RoadmapCell[] } = {};
+    const newCourses = [...selectedVersion.courses];
+    newCourses[editingCourseContext.courseIndex] = updatedCourse;
 
-    if (editingCourseContext.type === 'matrix' && editingCourseContext.rowIndex !== undefined && editingCourseContext.level) {
-      const newMatrix = [...selectedVersion.roadmap_matrix];
-      newMatrix[editingCourseContext.rowIndex] = {
-        ...newMatrix[editingCourseContext.rowIndex],
-        [editingCourseContext.level]: updatedCourse,
-      };
-      updates.roadmap_matrix = newMatrix;
-    } else if (editingCourseContext.type === 'courses' && editingCourseContext.courseIndex !== undefined) {
-      const newCourses = [...selectedVersion.courses];
-      newCourses[editingCourseContext.courseIndex] = updatedCourse;
-      updates.courses = newCourses;
-    }
-
-    const result = await editRoadmapManually(selectedVersion.id, updates);
+    const result = await editRoadmapManually(selectedVersion.id, { courses: newCourses });
 
     if (result.success) {
       setSuccess('과정이 수정되었습니다.');

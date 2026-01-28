@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { RoadmapRow, RoadmapCell } from '@/lib/services/roadmap';
+import type { RoadmapRow, RoadmapMatrixCell } from '@/lib/services/roadmap';
 
 interface RoadmapMatrixProps {
   matrix: RoadmapRow[];
@@ -20,7 +20,7 @@ const TAB_CONFIG: Record<Level, { label: string; bgColor: string; textColor: str
 /**
  * 매트릭스 셀 컴포넌트
  */
-function CourseCell({ course }: { course: RoadmapCell }) {
+function CourseCell({ course }: { course: RoadmapMatrixCell }) {
   return (
     <div className="text-xs">
       <div className="font-medium text-gray-900">{course.course_name}</div>
@@ -61,7 +61,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
     return <p className="text-gray-500">매트릭스 데이터가 없습니다.</p>;
   }
 
-  const renderMatrixCell = (course: RoadmapCell | null | undefined, rowIndex: number, level: Level, bgColor: string) => (
+  const renderMatrixCell = (course: RoadmapMatrixCell | null | undefined, rowIndex: number, level: Level, bgColor: string) => (
     <td className={`px-4 py-3 ${bgColor}`}>
       {course ? (
         <div className="flex items-center justify-between group">
