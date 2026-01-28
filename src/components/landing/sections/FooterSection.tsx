@@ -46,7 +46,7 @@ const CONTACT_PERSONS: ContactPerson[] = [
   {
     id: 'operations',
     label: '운영 담당자',
-    name: '김유근 연구원',
+    name: '김유근 위원',
     description: '서비스 이용 및 컨설턴트 배정 관련',
     links: [
       { type: 'email', value: 'ykkim@kpc.or.kr', hoverColor: 'hover:text-blue-600' },
