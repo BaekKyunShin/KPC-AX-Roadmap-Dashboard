@@ -59,7 +59,7 @@ interface MobileMenuOverlayProps {
 function MobileMenuOverlay({ isOpen, onClose }: MobileMenuOverlayProps) {
   return (
     <div
-      className={`md:hidden fixed inset-0 bg-black/20 z-40 ${MOBILE_MENU_TRANSITION} ${
+      className={`md:hidden fixed inset-0 bg-black/35 z-40 ${MOBILE_MENU_TRANSITION} ${
         isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
       onClick={onClose}
