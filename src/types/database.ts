@@ -24,7 +24,7 @@ export type ProjectStatus =
 export type RoadmapVersionStatus = 'DRAFT' | 'FINAL' | 'ARCHIVED';
 
 // 교육 레벨
-export type EducationLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+export type EducationLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'LEADER';
 
 // 코칭 방식
 export type CoachingMethod = 'PBL' | 'WORKSHOP' | 'MENTORING' | 'LECTURE' | 'HYBRID';

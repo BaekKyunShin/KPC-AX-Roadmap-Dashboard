@@ -266,13 +266,26 @@ function calculateSkillScore(
     ?.filter((d) => d.score / d.max_score < 0.6)
     .map((d) => d.dimension) || [];
 
-  // 스킬과 차원 매핑
+  // 스킬과 차원 매핑 (새로운 스킬 태그 반영)
   const skillDimensionMap: Record<string, string[]> = {
-    '데이터 전처리': ['데이터 활용'],
-    '업무자동화': ['업무 프로세스'],
-    'AI 도구 활용': ['AI 활용 현황'],
+    // AI 도구 관련
+    '생성형 AI 활용 (ChatGPT, Claude, Gemini 등)': ['AI 활용 현황'],
+    '프롬프트 엔지니어링': ['AI 활용 현황'],
+    'AI 코딩 도구 (클로드코드, 코덱스, 안티그래비티, 커서AI 등)': ['AI 활용 현황'],
+    '협업 도구 AI 활용 (Notion AI, Copilot for M365, Slack AI 등)': ['AI 활용 현황', '업무 프로세스'],
+    'AI 디자인 도구 활용 (Midjourney, Canva AI, Figma AI 등)': ['AI 활용 현황'],
+    // 데이터/프로세스 관련
+    '데이터 수집/정제': ['데이터 활용'],
+    '데이터 시각화': ['데이터 활용'],
+    '업무 자동화 (RPA/노코드)': ['업무 프로세스'],
+    '워크플로우 설계': ['업무 프로세스'],
     '프로세스 개선': ['업무 프로세스'],
-    '교육/코칭': ['조직 역량'],
+    '문서/보고서 작성': ['업무 프로세스'],
+    '품질/통계 분석': ['데이터 활용'],
+    // 조직/전략 관련
+    '변화관리/내재화': ['조직 역량'],
+    'AI 전략/거버넌스': ['조직 역량', 'AI 활용 현황'],
+    '보안/컴플라이언스': ['조직 역량'],
   };
 
   let matchCount = 0;
@@ -283,7 +296,7 @@ function calculateSkillScore(
     }
   }
 
-  const score = Math.min(20, matchCount * 5 + skills.length * 2);
+  const score = Math.min(20, matchCount * 4 + skills.length);
   return {
     score,
     explanation: `${skills.length}개 역량 보유, 약점 영역 ${matchCount}개 매칭`,
@@ -294,10 +307,14 @@ function calculateLevelScore(
   levels: string[]
 ): { score: number; explanation: string } {
   // 다양한 레벨 커버 가능 시 가점
-  const score = Math.min(15, levels.length * 5);
-  const levelLabels = levels.map((l) =>
-    l === 'BEGINNER' ? '초급' : l === 'INTERMEDIATE' ? '중급' : '고급'
-  );
+  const score = Math.min(15, levels.length * 4);
+  const levelLabelMap: Record<string, string> = {
+    BEGINNER: '입문',
+    INTERMEDIATE: '실무',
+    ADVANCED: '심화',
+    LEADER: '리더',
+  };
+  const levelLabels = levels.map((l) => levelLabelMap[l] || l);
   return {
     score,
     explanation: `${levelLabels.join(', ')} 레벨 강의 가능`,

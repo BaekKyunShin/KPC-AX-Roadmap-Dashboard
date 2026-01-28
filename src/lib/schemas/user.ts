@@ -14,7 +14,7 @@ export const userRoleSchema = z.enum([
 export const userStatusSchema = z.enum(['ACTIVE', 'SUSPENDED']);
 
 // 교육 레벨
-export const educationLevelSchema = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
+export const educationLevelSchema = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'LEADER']);
 
 // 코칭 방식
 export const coachingMethodSchema = z.enum(['PBL', 'WORKSHOP', 'MENTORING', 'LECTURE', 'HYBRID']);
@@ -55,19 +55,19 @@ export const consultantProfileSchema = z.object({
   // 정형 데이터 (필수)
   expertise_domains: z
     .array(z.string())
-    .min(1, '전문분야를 최소 1개 이상 선택하세요.'),
+    .min(1, 'AI 적용 가능 업무를 최소 1개 이상 선택하세요.'),
   available_industries: z
     .array(z.string())
-    .min(1, '가능 업종을 최소 1개 이상 선택하세요.'),
+    .min(1, 'AI 훈련 가능 산업을 최소 1개 이상 선택하세요.'),
   teaching_levels: z
     .array(educationLevelSchema)
-    .min(1, '강의 가능 레벨을 최소 1개 이상 선택하세요.'),
+    .min(1, '교육 대상 수준을 최소 1개 이상 선택하세요.'),
   coaching_methods: z
     .array(coachingMethodSchema)
-    .min(1, '코칭 방식을 최소 1개 이상 선택하세요.'),
+    .min(1, '선호 교육 방식을 최소 1개 이상 선택하세요.'),
   skill_tags: z
     .array(z.string())
-    .min(1, '역량 태그를 최소 1개 이상 선택하세요.'),
+    .min(1, '보유 역량을 최소 1개 이상 선택하세요.'),
   years_of_experience: z
     .number()
     .min(0, '경력 연수는 0 이상이어야 합니다.')
@@ -75,16 +75,16 @@ export const consultantProfileSchema = z.object({
   // 서술 데이터 (필수)
   representative_experience: z
     .string()
-    .min(50, '대표 수행경험을 최소 50자 이상 작성하세요.')
-    .max(2000, '대표 수행경험은 2000자 이하여야 합니다.'),
+    .min(50, '경력 사항을 최소 50자 이상 작성하세요.')
+    .max(2000, '경력 사항은 2000자 이하여야 합니다.'),
   portfolio: z
     .string()
-    .min(30, '포트폴리오를 최소 30자 이상 작성하세요.')
-    .max(2000, '포트폴리오는 2000자 이하여야 합니다.'),
+    .min(50, '강의/컨설팅 포트폴리오를 최소 50자 이상 작성하세요.')
+    .max(2000, '강의/컨설팅 포트폴리오는 2000자 이하여야 합니다.'),
   strengths_constraints: z
     .string()
-    .min(20, '강점/제약을 최소 20자 이상 작성하세요.')
-    .max(1000, '강점/제약은 1000자 이하여야 합니다.'),
+    .min(50, '강점/제약을 최소 50자 이상 작성하세요.')
+    .max(2000, '강점/제약은 2000자 이하여야 합니다.'),
 });
 
 // 사용자 승인 스키마
