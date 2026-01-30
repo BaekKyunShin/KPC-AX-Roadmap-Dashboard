@@ -6,10 +6,11 @@ import { generateTestRoadmap, type RoadmapResult, type ValidationResult } from '
 import { createAuditLog } from '@/lib/services/audit';
 import { callLLMForJSON } from '@/lib/services/llm';
 import type { SttInsights } from '@/lib/schemas/interview';
-import {
-  MAX_STT_FILE_SIZE_BYTES,
-  STT_EXTRACTION_TEMPERATURE,
-} from '@/lib/constants/stt';
+import { MAX_STT_FILE_SIZE_BYTES, STT_EXTRACTION_TEMPERATURE } from '@/lib/constants/stt';
+
+// =============================================================================
+// 타입 정의
+// =============================================================================
 
 interface ActionResult<T = void> {
   success: boolean;
@@ -17,8 +18,18 @@ interface ActionResult<T = void> {
   error?: string;
 }
 
+type TestRoadmapRole = 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN';
+
+// =============================================================================
+// 상수
+// =============================================================================
+
 /** 테스트 로드맵 기능에 접근 가능한 역할 목록 */
-const ALLOWED_ROLES_FOR_TEST_ROADMAP = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
+const ALLOWED_ROLES: readonly TestRoadmapRole[] = [
+  'CONSULTANT_APPROVED',
+  'OPS_ADMIN',
+  'SYSTEM_ADMIN',
+];
 
 /** STT 인사이트 추출용 시스템 프롬프트 */
 const STT_EXTRACTION_SYSTEM_PROMPT = `당신은 AI 교육 로드맵 수립을 위한 인터뷰 분석 전문가입니다.
@@ -49,24 +60,15 @@ JSON 형식으로 출력하세요. 해당 사항이 없으면 빈 배열 또는 
   "주요_인용": ["\\"...\\"", "\\"...\\""]
 }`;
 
+// =============================================================================
+// 헬퍼 함수
+// =============================================================================
+
 /**
- * STT 텍스트에서 로드맵에 필요한 정보 추출
+ * 역할이 테스트 로드맵 기능에 접근 가능한지 확인
  */
-async function extractInsightsFromStt(sttText: string): Promise<SttInsights> {
-  const userPrompt = `## 인터뷰 녹취록
-
-${sttText}
-
-위 녹취록에서 AI 교육 로드맵 수립에 필요한 정보를 추출해주세요.
-반드시 JSON 형식으로만 응답하세요.`;
-
-  return callLLMForJSON<SttInsights>(
-    [
-      { role: 'system', content: STT_EXTRACTION_SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt },
-    ],
-    { temperature: STT_EXTRACTION_TEMPERATURE }
-  );
+function isAllowedRole(role: string): role is TestRoadmapRole {
+  return ALLOWED_ROLES.includes(role as TestRoadmapRole);
 }
 
 /**
@@ -88,6 +90,30 @@ function validateSttTextSize(sttText: string): { valid: true } | { valid: false;
 }
 
 /**
+ * STT 텍스트에서 로드맵에 필요한 정보 추출
+ */
+async function extractInsightsFromStt(sttText: string): Promise<SttInsights> {
+  const userPrompt = `## 인터뷰 녹취록
+
+${sttText}
+
+위 녹취록에서 AI 교육 로드맵 수립에 필요한 정보를 추출해주세요.
+반드시 JSON 형식으로만 응답하세요.`;
+
+  return callLLMForJSON<SttInsights>(
+    [
+      { role: 'system', content: STT_EXTRACTION_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    { temperature: STT_EXTRACTION_TEMPERATURE }
+  );
+}
+
+// =============================================================================
+// Server Action
+// =============================================================================
+
+/**
  * 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
  */
 export async function createTestRoadmap(
@@ -95,7 +121,7 @@ export async function createTestRoadmap(
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   const supabase = await createClient();
 
-  // 인증 확인
+  // 1. 인증 확인
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -104,53 +130,58 @@ export async function createTestRoadmap(
     return { success: false, error: '로그인이 필요합니다.' };
   }
 
-  // 역할 확인 (승인된 컨설턴트 또는 운영관리자)
-  const { data: profile } = await supabase.from('users').select('role, status').eq('id', user.id).single();
+  // 2. 역할 확인
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, status')
+    .eq('id', user.id)
+    .single();
 
-  if (
-    !profile ||
-    !ALLOWED_ROLES_FOR_TEST_ROADMAP.includes(profile.role as (typeof ALLOWED_ROLES_FOR_TEST_ROADMAP)[number]) ||
-    profile.status !== 'ACTIVE'
-  ) {
-    return { success: false, error: '승인된 컨설턴트 또는 운영관리자만 테스트 로드맵을 생성할 수 있습니다.' };
+  if (!profile || !isAllowedRole(profile.role) || profile.status !== 'ACTIVE') {
+    return {
+      success: false,
+      error: '승인된 컨설턴트 또는 운영관리자만 테스트 로드맵을 생성할 수 있습니다.',
+    };
   }
 
-  // 입력 검증
-  const validation = testInputSchema.safeParse(input);
-  if (!validation.success) {
-    return { success: false, error: validation.error.errors[0].message };
+  // 3. 입력 검증
+  const inputValidation = testInputSchema.safeParse(input);
+  if (!inputValidation.success) {
+    return { success: false, error: inputValidation.error.errors[0].message };
   }
 
   try {
-    // 컨설턴트 프로필 조회 (있으면 로드맵 생성에 활용)
+    // 4. 컨설턴트 프로필 조회
     const { data: consultantProfile } = await supabase
       .from('consultant_profiles')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    // STT 텍스트가 있으면 인사이트 추출
+    // 5. STT 인사이트 추출 (텍스트가 있는 경우)
     let sttInsights: SttInsights | undefined;
     if (input.stt_text) {
-      // 크기 검증
       const sizeValidation = validateSttTextSize(input.stt_text);
       if (!sizeValidation.valid) {
         return { success: false, error: sizeValidation.error };
       }
-
-      // LLM으로 인사이트 추출
       sttInsights = await extractInsightsFromStt(input.stt_text);
     }
 
-    // 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
-    const roadmapResult = await generateTestRoadmap(input, user.id, consultantProfile, sttInsights);
+    // 6. 로드맵 생성
+    const roadmapResult = await generateTestRoadmap(
+      input,
+      user.id,
+      consultantProfile,
+      sttInsights
+    );
 
-    // 감사 로그 (테스트 로드맵 생성 기록)
+    // 7. 감사 로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEST_ROADMAP_CREATE',
       targetType: 'roadmap',
-      targetId: 'test-mode', // 실제 ID 없음
+      targetId: 'test-mode',
       meta: {
         company_name: input.company_name,
         industry: input.industry,
