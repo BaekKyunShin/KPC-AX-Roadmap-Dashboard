@@ -1,11 +1,15 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { testInputSchema, type TestInputData } from '@/lib/schemas/test-roadmap';
-import { generateRoadmap, type RoadmapResult, type ValidationResult } from '@/lib/services/roadmap';
+import { generateTestRoadmap, type RoadmapResult, type ValidationResult } from '@/lib/services/roadmap';
 import { createAuditLog } from '@/lib/services/audit';
-import { revalidatePath } from 'next/cache';
+import { callLLMForJSON } from '@/lib/services/llm';
+import type { SttInsights } from '@/lib/schemas/interview';
+import {
+  MAX_STT_FILE_SIZE_BYTES,
+  STT_EXTRACTION_TEMPERATURE,
+} from '@/lib/constants/stt';
 
 interface ActionResult<T = void> {
   success: boolean;
@@ -16,14 +20,80 @@ interface ActionResult<T = void> {
 /** 테스트 로드맵 기능에 접근 가능한 역할 목록 */
 const ALLOWED_ROLES_FOR_TEST_ROADMAP = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
+/** STT 인사이트 추출용 시스템 프롬프트 */
+const STT_EXTRACTION_SYSTEM_PROMPT = `당신은 AI 교육 로드맵 수립을 위한 인터뷰 분석 전문가입니다.
+
+다음은 기업 현장 인터뷰 녹취록입니다.
+컨설턴트가 별도로 정리한 핵심 정보(세부업무, 페인포인트, 개선목표 등) 외에
+추가로 로드맵 수립에 참고할 만한 정보를 추출해주세요.
+
+## 추출 항목
+
+1. **추가_업무**: 인터뷰에서 언급되었으나 놓치기 쉬운 세부 업무
+2. **추가_페인포인트**: 명시적으로 말하지 않았지만 드러나는 어려움
+3. **숨은_니즈**: 직접 요청하진 않았지만 기대하는 것
+4. **조직_맥락**: 교육 방식 선호, 변화 수용도, 의사결정 구조 등
+5. **AI_태도**: AI 도입에 대한 기대, 우려, 과거 경험
+6. **주요_인용**: 로드맵 설계에 참고할 만한 인터뷰이의 핵심 발언
+
+## 출력 형식
+
+JSON 형식으로 출력하세요. 해당 사항이 없으면 빈 배열 또는 빈 문자열로 표시합니다.
+
+{
+  "추가_업무": ["...", "..."],
+  "추가_페인포인트": ["...", "..."],
+  "숨은_니즈": ["...", "..."],
+  "조직_맥락": "...",
+  "AI_태도": "...",
+  "주요_인용": ["\\"...\\"", "\\"...\\""]
+}`;
+
 /**
- * 테스트 프로젝트 생성 및 로드맵 생성
+ * STT 텍스트에서 로드맵에 필요한 정보 추출
+ */
+async function extractInsightsFromStt(sttText: string): Promise<SttInsights> {
+  const userPrompt = `## 인터뷰 녹취록
+
+${sttText}
+
+위 녹취록에서 AI 교육 로드맵 수립에 필요한 정보를 추출해주세요.
+반드시 JSON 형식으로만 응답하세요.`;
+
+  return callLLMForJSON<SttInsights>(
+    [
+      { role: 'system', content: STT_EXTRACTION_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    { temperature: STT_EXTRACTION_TEMPERATURE }
+  );
+}
+
+/**
+ * STT 텍스트 크기 검증
+ */
+function validateSttTextSize(sttText: string): { valid: true } | { valid: false; error: string } {
+  const textBytes = new TextEncoder().encode(sttText).length;
+
+  if (textBytes > MAX_STT_FILE_SIZE_BYTES) {
+    const currentSizeKB = Math.round(textBytes / 1024);
+    const maxSizeKB = Math.round(MAX_STT_FILE_SIZE_BYTES / 1024);
+    return {
+      valid: false,
+      error: `파일 크기가 너무 큽니다. 최대 ${maxSizeKB}KB까지 업로드 가능합니다. (현재: ${currentSizeKB}KB)`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
  */
 export async function createTestRoadmap(
   input: TestInputData
-): Promise<ActionResult<{ projectId: string; roadmapId: string; result: RoadmapResult; validation: ValidationResult }>> {
+): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   const supabase = await createClient();
-  const adminSupabase = createAdminClient();
 
   // 인증 확인
   const {
@@ -52,108 +122,47 @@ export async function createTestRoadmap(
   }
 
   try {
-    // 1. 테스트 프로젝트 생성
-    const { data: newProject, error: projectError } = await adminSupabase
-      .from('projects')
-      .insert({
-        company_name: input.company_name,
-        industry: input.industry,
-        company_size: input.company_size,
-        contact_name: '테스트',
-        contact_email: 'test@test.com',
-        status: 'INTERVIEWED', // 인터뷰 완료 상태로 시작
-        is_test_mode: true,
-        test_created_by: user.id,
-        created_by: user.id,
-        assigned_consultant_id: user.id, // 본인에게 배정
-      })
-      .select('id')
+    // 컨설턴트 프로필 조회 (있으면 로드맵 생성에 활용)
+    const { data: consultantProfile } = await supabase
+      .from('consultant_profiles')
+      .select('*')
+      .eq('user_id', user.id)
       .single();
 
-    if (projectError || !newProject) {
-      console.error('[createTestRoadmap] Project creation error:', projectError);
-      return { success: false, error: '테스트 프로젝트 생성에 실패했습니다.' };
+    // STT 텍스트가 있으면 인사이트 추출
+    let sttInsights: SttInsights | undefined;
+    if (input.stt_text) {
+      // 크기 검증
+      const sizeValidation = validateSttTextSize(input.stt_text);
+      if (!sizeValidation.valid) {
+        return { success: false, error: sizeValidation.error };
+      }
+
+      // LLM으로 인사이트 추출
+      sttInsights = await extractInsightsFromStt(input.stt_text);
     }
 
-    // 2. 인터뷰 데이터 저장 (간소화된 형식)
-    const { data: newInterview, error: interviewError } = await adminSupabase
-      .from('interviews')
-      .insert({
-        project_id: newProject.id,
-        interviewer_id: user.id,
-        interview_date: new Date().toISOString().split('T')[0],
-        company_details: {},
-        job_tasks: input.job_tasks.map((task, index) => ({
-          id: `test-task-${index}`,
-          job_category: '테스트',
-          task_name: task.task_name,
-          task_description: task.task_description,
-          current_output: '',
-          current_workflow: '',
-          priority: index + 1,
-        })),
-        pain_points: input.pain_points.map((point, index) => ({
-          id: `test-pain-${index}`,
-          job_task_id: `test-task-0`,
-          description: point.description,
-          severity: point.severity,
-          priority: index + 1,
-        })),
-        constraints: [],
-        improvement_goals: input.improvement_goals.map((goal, index) => ({
-          id: `test-goal-${index}`,
-          job_task_id: `test-task-0`,
-          kpi_name: '개선 목표',
-          goal_description: goal.goal_description,
-          measurement_method: '',
-        })),
-        notes: '',
-        customer_requirements: input.customer_requirements || '',
-      })
-      .select('id')
-      .single();
+    // 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
+    const roadmapResult = await generateTestRoadmap(input, user.id, consultantProfile, sttInsights);
 
-    if (interviewError || !newInterview) {
-      console.error('[createTestRoadmap] Interview creation error:', interviewError);
-      // 프로젝트 롤백
-      await adminSupabase.from('projects').delete().eq('id', newProject.id);
-      return { success: false, error: '인터뷰 데이터 저장에 실패했습니다.' };
-    }
-
-    // 3. 로드맵 생성 (테스트 모드)
-    const roadmapResult = await generateRoadmap(newProject.id, user.id, undefined, true);
-
-    // 4. 감사 로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEST_PROJECT_CREATE',
-      targetType: 'project',
-      targetId: newProject.id,
-      meta: {
-        company_name: input.company_name,
-        industry: input.industry,
-        is_test_mode: true,
-      },
-    });
-
+    // 감사 로그 (테스트 로드맵 생성 기록)
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEST_ROADMAP_CREATE',
       targetType: 'roadmap',
-      targetId: roadmapResult.roadmapId,
+      targetId: 'test-mode', // 실제 ID 없음
       meta: {
-        project_id: newProject.id,
+        company_name: input.company_name,
+        industry: input.industry,
         is_test_mode: true,
+        no_db_save: true,
+        has_stt_insights: !!sttInsights,
       },
     });
-
-    revalidatePath('/test-roadmap');
 
     return {
       success: true,
       data: {
-        projectId: newProject.id,
-        roadmapId: roadmapResult.roadmapId,
         result: roadmapResult.result,
         validation: roadmapResult.validation,
       },
@@ -165,196 +174,4 @@ export async function createTestRoadmap(
       error: error instanceof Error ? error.message : '로드맵 생성 중 오류가 발생했습니다.',
     };
   }
-}
-
-/**
- * 테스트 기록 조회
- */
-export async function getTestHistory(): Promise<
-  ActionResult<
-    {
-      id: string;
-      company_name: string;
-      industry: string;
-      company_size: string;
-      created_at: string;
-      roadmap_count: number;
-    }[]
-  >
-> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: '로그인이 필요합니다.' };
-  }
-
-  const { data: projects, error } = await supabase
-    .from('projects')
-    .select(
-      `
-      id,
-      company_name,
-      industry,
-      company_size,
-      created_at,
-      roadmap_versions(count)
-    `
-    )
-    .eq('is_test_mode', true)
-    .eq('test_created_by', user.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  if (error) {
-    console.error('[getTestHistory] Error:', error);
-    return { success: false, error: '테스트 기록 조회에 실패했습니다.' };
-  }
-
-  return {
-    success: true,
-    data: (projects || []).map((c) => ({
-      id: c.id,
-      company_name: c.company_name,
-      industry: c.industry,
-      company_size: c.company_size,
-      created_at: c.created_at,
-      roadmap_count: Array.isArray(c.roadmap_versions) ? c.roadmap_versions.length : 0,
-    })),
-  };
-}
-
-/**
- * 테스트 프로젝트의 로드맵 조회
- */
-export async function getTestRoadmap(projectId: string): Promise<
-  ActionResult<{
-    project: {
-      id: string;
-      company_name: string;
-      industry: string;
-      company_size: string;
-    };
-    roadmap: {
-      id: string;
-      version_number: number;
-      status: string;
-      diagnosis_summary: string;
-      roadmap_matrix: unknown;
-      pbl_course: unknown;
-      courses: unknown;
-      free_tool_validated: boolean;
-      time_limit_validated: boolean;
-      created_at: string;
-    } | null;
-  }>
-> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: '로그인이 필요합니다.' };
-  }
-
-  // 프로젝트 조회 (본인이 생성한 테스트 프로젝트만)
-  const { data: projectData, error: projectError } = await supabase
-    .from('projects')
-    .select('id, company_name, industry, company_size')
-    .eq('id', projectId)
-    .eq('is_test_mode', true)
-    .eq('test_created_by', user.id)
-    .single();
-
-  if (projectError || !projectData) {
-    return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
-  }
-
-  // 최신 로드맵 조회
-  const { data: roadmap } = await supabase
-    .from('roadmap_versions')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('version_number', { ascending: false })
-    .limit(1)
-    .single();
-
-  return {
-    success: true,
-    data: {
-      project: projectData,
-      roadmap: roadmap
-        ? {
-            id: roadmap.id,
-            version_number: roadmap.version_number,
-            status: roadmap.status,
-            diagnosis_summary: roadmap.diagnosis_summary,
-            roadmap_matrix: roadmap.roadmap_matrix,
-            pbl_course: roadmap.pbl_course,
-            courses: roadmap.courses,
-            free_tool_validated: roadmap.free_tool_validated,
-            time_limit_validated: roadmap.time_limit_validated,
-            created_at: roadmap.created_at,
-          }
-        : null,
-    },
-  };
-}
-
-/**
- * 테스트 프로젝트 삭제
- */
-export async function deleteTestProject(projectId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const adminSupabase = createAdminClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: '로그인이 필요합니다.' };
-  }
-
-  // 본인이 생성한 테스트 프로젝트인지 확인
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('is_test_mode', true)
-    .eq('test_created_by', user.id)
-    .single();
-
-  if (!projectData) {
-    return { success: false, error: '테스트 프로젝트를 찾을 수 없습니다.' };
-  }
-
-  // 관련 데이터 삭제 (cascade가 설정되어 있지 않다면 수동 삭제)
-  await adminSupabase.from('roadmap_versions').delete().eq('project_id', projectId);
-  await adminSupabase.from('interviews').delete().eq('project_id', projectId);
-
-  const { error } = await adminSupabase.from('projects').delete().eq('id', projectId);
-
-  if (error) {
-    console.error('[deleteTestProject] Error:', error);
-    return { success: false, error: '삭제에 실패했습니다.' };
-  }
-
-  // 감사 로그
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'TEST_PROJECT_DELETE',
-    targetType: 'project',
-    targetId: projectId,
-    meta: { is_test_mode: true },
-  });
-
-  revalidatePath('/test-roadmap');
-
-  return { success: true };
 }

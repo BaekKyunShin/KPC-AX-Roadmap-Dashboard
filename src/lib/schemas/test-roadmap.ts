@@ -70,6 +70,9 @@ export const testInputSchema = z.object({
 
   // 선택적
   customer_requirements: z.string().max(2000).optional(),
+
+  // STT 텍스트 (선택) - 인터뷰 녹취록
+  stt_text: z.string().optional(),
 });
 
 // 타입 추출

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, Building2, Briefcase, AlertTriangle, Target } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Building2, Briefcase, AlertTriangle, Target, Upload, FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,11 @@ import {
   type TestImprovementGoal,
 } from '@/lib/schemas/test-roadmap';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
+import {
+  MAX_STT_FILE_SIZE_BYTES,
+  MAX_STT_FILE_SIZE_KB,
+  ALLOWED_STT_FILE_EXTENSIONS,
+} from '@/lib/constants/stt';
 
 interface TestInputFormProps {
   onSubmit: (data: TestInputData) => Promise<void>;
@@ -52,6 +57,12 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
 
   // 추가 요구사항
   const [customerRequirements, setCustomerRequirements] = useState('');
+
+  // STT 텍스트
+  const [sttText, setSttText] = useState<string | null>(null);
+  const [sttFileName, setSttFileName] = useState<string | null>(null);
+  const [sttError, setSttError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 유효성 검사
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -89,9 +100,54 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
       pain_points: painPoints.filter((p) => p.description.trim()),
       improvement_goals: improvementGoals.filter((g) => g.goal_description.trim()),
       customer_requirements: customerRequirements.trim() || undefined,
+      stt_text: sttText || undefined,
     };
 
     await onSubmit(data);
+  };
+
+  // STT 파일 업로드 핸들러
+  const handleSttFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSttError(null);
+
+    // 파일 형식 체크
+    const hasValidExtension = ALLOWED_STT_FILE_EXTENSIONS.some(ext =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+    if (!hasValidExtension) {
+      setSttError('txt 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    // 파일 크기 체크
+    if (file.size > MAX_STT_FILE_SIZE_BYTES) {
+      const currentSizeKB = Math.round(file.size / 1024);
+      setSttError(`파일 크기가 너무 큽니다. 최대 ${MAX_STT_FILE_SIZE_KB}KB까지 업로드 가능합니다. (현재: ${currentSizeKB}KB)`);
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setSttText(text);
+      setSttFileName(file.name);
+    } catch {
+      setSttError('파일을 읽는 중 오류가 발생했습니다.');
+    }
+
+    // 파일 입력 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // STT 파일 삭제
+  const handleSttRemove = () => {
+    setSttText(null);
+    setSttFileName(null);
+    setSttError(null);
   };
 
   // 업무 추가/삭제
@@ -363,6 +419,74 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
             placeholder="예: 특정 도구 선호, 교육 일정 제약 등"
             rows={3}
           />
+        </CardContent>
+      </Card>
+
+      {/* STT 녹취록 (선택) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            인터뷰 녹취록 (선택)
+          </CardTitle>
+          <CardDescription>
+            인터뷰 녹음을 STT로 변환한 텍스트 파일을 업로드하면, AI가 추가 인사이트를 추출하여 로드맵 생성에 활용합니다.
+            <span className="text-xs text-gray-400 ml-2">최대 {MAX_STT_FILE_SIZE_KB}KB</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sttError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+              {sttError}
+            </div>
+          )}
+
+          {!sttText ? (
+            <label className="block cursor-pointer">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ALLOWED_STT_FILE_EXTENSIONS.join(',')}
+                onChange={handleSttFileChange}
+                disabled={isLoading}
+                className="hidden"
+              />
+              <div className={`flex items-center justify-center px-4 py-6 border-2 border-dashed rounded-lg transition-colors ${
+                isLoading
+                  ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                  : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+              }`}>
+                <div className="flex items-center text-gray-600">
+                  <Upload className="w-5 h-5 mr-2" />
+                  <span>txt 파일을 클릭하여 업로드</span>
+                </div>
+              </div>
+            </label>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-green-500 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">파일 업로드 완료</p>
+                    <p className="text-xs text-green-600">{sttFileName}</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleSttRemove}
+                  className="text-green-600 hover:text-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-green-700">
+                로드맵 생성 시 AI가 녹취록에서 추가 인사이트를 추출합니다.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

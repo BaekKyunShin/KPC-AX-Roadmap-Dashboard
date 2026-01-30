@@ -373,6 +373,108 @@ export async function generateRoadmap(
   };
 }
 
+// ============================================================================
+// 테스트 전용 함수 (DB 저장 없음)
+// ============================================================================
+
+/** 테스트 로드맵 생성용 입력 데이터 */
+export interface TestRoadmapInput {
+  company_name: string;
+  industry: string;
+  company_size: string;
+  job_tasks: { task_name: string; task_description: string }[];
+  pain_points: { description: string; severity: string }[];
+  improvement_goals: { goal_description: string }[];
+  customer_requirements?: string;
+}
+
+/**
+ * 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
+ *
+ * 테스트/연습 목적으로 사용되며, 프로젝트나 로드맵 버전을 DB에 저장하지 않습니다.
+ */
+export async function generateTestRoadmap(
+  input: TestRoadmapInput,
+  actorUserId: string,
+  consultantProfile: ConsultantProfile | null,
+  sttInsights?: SttInsights
+): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
+  // 쿼터 확인
+  const quotaCheck = await checkQuotaExceeded(actorUserId);
+  if (quotaCheck.exceeded) {
+    throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
+  }
+
+  // 프로젝트/인터뷰 데이터 직접 구성 (DB 조회 없이)
+  const projectData = {
+    company_name: input.company_name,
+    industry: input.industry,
+    company_size: input.company_size,
+    customer_comment: input.customer_requirements || '',
+  };
+
+  const interview = {
+    job_tasks: input.job_tasks.map((task, index) => ({
+      id: `test-task-${index}`,
+      job_category: '테스트',
+      task_name: task.task_name,
+      task_description: task.task_description,
+      current_output: '',
+      current_workflow: '',
+      priority: index + 1,
+    })),
+    pain_points: input.pain_points.map((point, index) => ({
+      id: `test-pain-${index}`,
+      job_task_id: 'test-task-0',
+      description: point.description,
+      severity: point.severity,
+      priority: index + 1,
+    })),
+    constraints: [],
+    improvement_goals: input.improvement_goals.map((goal, index) => ({
+      id: `test-goal-${index}`,
+      job_task_id: 'test-task-0',
+      kpi_name: '개선 목표',
+      goal_description: goal.goal_description,
+      measurement_method: '',
+    })),
+    notes: '',
+    customer_requirements: input.customer_requirements || '',
+    stt_insights: sttInsights || null,
+  };
+
+  // LLM 프롬프트 생성 (isTestMode = true, selfAssessment = null)
+  const systemPrompt = buildSystemPrompt();
+  const userPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
+
+  // LLM 호출
+  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    { temperature: 0.7 }
+  );
+
+  // 사용량 기록
+  await recordLLMUsage(actorUserId);
+
+  // courses에서 roadmap_matrix 자동 생성
+  const result: RoadmapResult = {
+    ...llmResult,
+    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
+  };
+
+  // 검증
+  const validation = validateRoadmap(result);
+
+  // DB 저장 없이 결과만 반환
+  return {
+    result,
+    validation,
+  };
+}
+
 /**
  * 시스템 프롬프트
  */
