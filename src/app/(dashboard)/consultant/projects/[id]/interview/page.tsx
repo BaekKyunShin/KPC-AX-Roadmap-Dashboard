@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { saveInterview, getInterview } from './actions';
+import { saveInterview, getInterview, processSttFile, deleteSttInsights } from './actions';
 import {
   type JobTask,
   type PainPoint,
   type Constraint,
   type ImprovementGoal,
   type CompanyDetails,
+  type SttInsights,
   createEmptyJobTask,
   createEmptyPainPoint,
   createEmptyImprovementGoal,
@@ -64,6 +65,8 @@ export default function InterviewPage() {
   const [improvementGoals, setImprovementGoals] = useState<ImprovementGoal[]>([createEmptyImprovementGoal()]);
   const [notes, setNotes] = useState('');
   const [customerRequirements, setCustomerRequirements] = useState('');
+  const [sttInsights, setSttInsights] = useState<SttInsights | null>(null);
+  const [isProcessingStt, setIsProcessingStt] = useState(false);
 
   // Auto-save timer ref
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -160,6 +163,7 @@ export default function InterviewPage() {
         setImprovementGoals((data.improvement_goals as ImprovementGoal[]) || [createEmptyImprovementGoal()]);
         setNotes(data.notes || '');
         setCustomerRequirements(data.customer_requirements || '');
+        setSttInsights((data.stt_insights as SttInsights) || null);
 
         // 기존 데이터가 있으면 모든 스텝을 완료로 표시
         setCompletedSteps([1, 2, 3, 4, 5, 6]);
@@ -272,6 +276,39 @@ export default function InterviewPage() {
     setIsLoading(false);
   }
 
+  // STT 파일 업로드 핸들러
+  const handleSttFileUpload = async (text: string) => {
+    setIsProcessingStt(true);
+    try {
+      const result = await processSttFile(projectId, text);
+      if (result.success && result.insights) {
+        setSttInsights(result.insights);
+      } else {
+        throw new Error(result.error || 'STT 처리에 실패했습니다.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'STT 처리 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setIsProcessingStt(false);
+    }
+  };
+
+  // STT 인사이트 삭제 핸들러
+  const handleSttInsightsDelete = async () => {
+    try {
+      const result = await deleteSttInsights(projectId);
+      if (result.success) {
+        setSttInsights(null);
+      } else {
+        throw new Error(result.error || '삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'STT 인사이트 삭제 중 오류가 발생했습니다.');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   // 현재 스텝 컨텐츠 렌더링
   const renderStepContent = () => {
     switch (currentStep) {
@@ -317,8 +354,12 @@ export default function InterviewPage() {
           <StepAdditionalInfo
             customerRequirements={customerRequirements}
             notes={notes}
+            sttInsights={sttInsights}
             onCustomerRequirementsChange={setCustomerRequirements}
             onNotesChange={setNotes}
+            onSttFileUpload={handleSttFileUpload}
+            onSttInsightsDelete={handleSttInsightsDelete}
+            isProcessingStt={isProcessingStt}
           />
         );
       default:

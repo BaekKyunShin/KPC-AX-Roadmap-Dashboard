@@ -52,6 +52,16 @@ export const companyDetailsSchema = z.object({
   training_history: z.string().optional(), // 기존 교육 이력
 });
 
+// STT 인사이트 스키마 (LLM 추출 결과)
+export const sttInsightsSchema = z.object({
+  추가_업무: z.array(z.string()).optional(),
+  추가_페인포인트: z.array(z.string()).optional(),
+  숨은_니즈: z.array(z.string()).optional(),
+  조직_맥락: z.string().optional(),
+  AI_태도: z.string().optional(),
+  주요_인용: z.array(z.string()).optional(),
+});
+
 // 인터뷰 전체 스키마
 export const interviewSchema = z.object({
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
@@ -62,6 +72,7 @@ export const interviewSchema = z.object({
   improvement_goals: z.array(improvementGoalSchema).min(1, '최소 1개 이상의 개선 목표를 입력하세요.'),
   notes: z.string().optional(), // 추가 메모
   customer_requirements: z.string().optional(), // 기업 요구사항
+  stt_insights: sttInsightsSchema.optional(), // STT에서 추출한 인사이트
 });
 
 // 타입 추출
@@ -70,6 +81,7 @@ export type PainPoint = z.infer<typeof painPointSchema>;
 export type Constraint = z.infer<typeof constraintSchema>;
 export type ImprovementGoal = z.infer<typeof improvementGoalSchema>;
 export type CompanyDetails = z.infer<typeof companyDetailsSchema>;
+export type SttInsights = z.infer<typeof sttInsightsSchema>;
 export type InterviewInput = z.infer<typeof interviewSchema>;
 
 // 빈 항목 생성 헬퍼
