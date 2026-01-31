@@ -14,7 +14,7 @@ import {
   logDownload,
   editRoadmapManually,
 } from './actions';
-import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
+import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
 import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
 import type { RoadmapVersionStatus } from '@/types/database';
@@ -52,6 +52,7 @@ export default function RoadmapPage() {
 
   // UI 상태
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isDownloading, setIsDownloading] = useState<'PDF' | 'XLSX' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export default function RoadmapPage() {
   // 로드맵 생성
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setIsGenerationComplete(false);
     setError(null);
     setSuccess(null);
 
@@ -112,11 +114,16 @@ export default function RoadmapPage() {
       if (data.length > 0) {
         setSelectedVersion(data[0] as RoadmapVersion);
       }
+      // 성공 시 100% 표시 후 오버레이 닫기
+      setIsGenerationComplete(true);
+      setTimeout(() => {
+        setIsGenerating(false);
+        setIsGenerationComplete(false);
+      }, COMPLETION_DELAY_MS);
     } else {
       setError(result.error || '로드맵 생성에 실패했습니다.');
+      setIsGenerating(false);
     }
-
-    setIsGenerating(false);
   };
 
   // FINAL 확정
@@ -283,6 +290,7 @@ export default function RoadmapPage() {
   // 로드맵 생성 취소
   const handleCancelGeneration = () => {
     setIsGenerating(false);
+    setIsGenerationComplete(false);
   };
 
   return (
@@ -451,6 +459,7 @@ export default function RoadmapPage() {
           companyName={companyName}
           profileHref="/consultant/profile"
           onCancel={handleCancelGeneration}
+          isCompleted={isGenerationComplete}
         />
       )}
     </>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check, ExternalLink, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ interface RoadmapLoadingOverlayProps {
   profileHref?: string;
   /** 취소 버튼 클릭 시 호출되는 콜백 */
   onCancel?: () => void;
+  /** 생성 완료 여부 (true면 100%로 즉시 전환) */
+  isCompleted?: boolean;
 }
 
 // =============================================================================
@@ -40,32 +42,51 @@ const STEPS: readonly Step[] = [
   { id: 3, label: '로드맵 구성' },
 ] as const;
 
-/** 각 단계별 소요 시간 (밀리초) */
-const STEP_DURATIONS_MS = {
-  STEP_1: 25000,
-  STEP_2: 35000,
-  STEP_3: 30000,
+/**
+ * 각 단계별 소요 시간 (밀리초)
+ * - 요구사항 분석: 36초
+ * - 교육과정 설계: 51초
+ * - 로드맵 구성: 43초
+ * - 총 130초
+ */
+const STEP_DURATIONS_MS = [36000, 51000, 43000] as const;
+
+const TOTAL_DURATION_MS = STEP_DURATIONS_MS.reduce<number>((a, b) => a + b, 0);
+
+/** 팁 관련 타이밍 설정 (밀리초) */
+const TIP_CONFIG = {
+  /** 팁 전환 간격 */
+  INTERVAL_MS: 9000,
+  /** 팁 페이드 애니메이션 지속 시간 */
+  FADE_DURATION_MS: 300,
 } as const;
-
-const STEP_DURATIONS = [
-  STEP_DURATIONS_MS.STEP_1,
-  STEP_DURATIONS_MS.STEP_2,
-  STEP_DURATIONS_MS.STEP_3,
-];
-
-const TOTAL_DURATION_MS = STEP_DURATIONS.reduce((a, b) => a + b, 0);
-
-/** 팁 전환 간격 (밀리초) */
-const TIP_INTERVAL_MS = 9000;
 
 /** 프로그레스 업데이트 간격 (밀리초) */
 const PROGRESS_UPDATE_INTERVAL_MS = 100;
 
-/** 팁 페이드 애니메이션 지속 시간 (밀리초) */
-const TIP_FADE_DURATION_MS = 300;
+/** 프로그레스 바 설정 */
+const PROGRESS_CONFIG = {
+  /** 진행 중 최대값 (완료 전까지 99%로 제한) */
+  MAX_PERCENT: 99,
+  /** 완료 시 값 */
+  COMPLETED_PERCENT: 100,
+  /** 완료 애니메이션 소요 시간 (밀리초) - 현재 진행률에서 100%까지 */
+  COMPLETION_ANIMATION_MS: 1500,
+  /** 후반부 속도 감소 설정 */
+  EASING: {
+    /** 속도 감소가 시작되는 진행률 (%) */
+    THRESHOLD_PERCENT: 80,
+    /** 해당 진행률에 도달하는 데 사용되는 시간 비율 (0~1) */
+    THRESHOLD_TIME_RATIO: 0.6,
+  },
+} as const;
 
-/** 프로그레스 최대값 (완료 전까지 99%로 제한) */
-const MAX_PROGRESS_PERCENT = 99;
+/** 100% 도달 후 오버레이 닫기 전 대기 시간 (밀리초) */
+const COMPLETION_HOLD_MS = 500;
+
+/** 완료 후 오버레이 닫기까지 총 딜레이 (애니메이션 + 대기) */
+export const COMPLETION_DELAY_MS =
+  PROGRESS_CONFIG.COMPLETION_ANIMATION_MS + COMPLETION_HOLD_MS;
 
 // 단계별 상태 메시지 (테스트용)
 const TEST_STEP_MESSAGES: readonly string[] = [
@@ -135,13 +156,47 @@ function createRealStepMessages(companyName: string): string[] {
  */
 function calculateCurrentStep(elapsedMs: number): number {
   let accumulatedTime = 0;
-  for (let i = 0; i < STEP_DURATIONS.length; i++) {
-    accumulatedTime += STEP_DURATIONS[i];
+  for (let i = 0; i < STEP_DURATIONS_MS.length; i++) {
+    accumulatedTime += STEP_DURATIONS_MS[i];
     if (elapsedMs < accumulatedTime) {
       return i;
     }
   }
-  return STEP_DURATIONS.length - 1;
+  return STEP_DURATIONS_MS.length - 1;
+}
+
+/**
+ * 후반부 속도 감소가 적용된 진행률 계산
+ *
+ * 시간 비율에 따른 진행률을 비선형으로 계산하여
+ * 후반부(80% 이후)에서 진행 속도가 느려지도록 함
+ *
+ * @param timeRatio 경과 시간 비율 (0~1)
+ * @returns 진행률 (0~99)
+ */
+function calculateEasedProgress(timeRatio: number): number {
+  const { THRESHOLD_PERCENT, THRESHOLD_TIME_RATIO } = PROGRESS_CONFIG.EASING;
+  const clampedTimeRatio = Math.min(timeRatio, 1);
+
+  if (clampedTimeRatio <= THRESHOLD_TIME_RATIO) {
+    // 0~60% 시간 → 0~80% 진행 (빠른 구간)
+    return (clampedTimeRatio / THRESHOLD_TIME_RATIO) * THRESHOLD_PERCENT;
+  }
+
+  // 60~100% 시간 → 80~99% 진행 (느린 구간)
+  const remainingTimeRatio =
+    (clampedTimeRatio - THRESHOLD_TIME_RATIO) / (1 - THRESHOLD_TIME_RATIO);
+  return THRESHOLD_PERCENT + remainingTimeRatio * (PROGRESS_CONFIG.MAX_PERCENT - THRESHOLD_PERCENT);
+}
+
+/**
+ * 선형 보간 (Linear Interpolation)
+ * @param start 시작 값
+ * @param end 종료 값
+ * @param ratio 보간 비율 (0~1)
+ */
+function lerp(start: number, end: number, ratio: number): number {
+  return start + (end - start) * ratio;
 }
 
 // =============================================================================
@@ -150,27 +205,68 @@ function calculateCurrentStep(elapsedMs: number): number {
 
 /**
  * 프로그레스 및 단계 상태 관리 훅
+ *
+ * 두 가지 모드로 동작:
+ * 1. 일반 진행: 시간 기반으로 0% → 99%까지 easing 적용하여 진행
+ * 2. 완료 애니메이션: isCompleted가 true가 되면 현재 값에서 100%까지 점진적 증가
+ *
+ * @param isCompleted 생성 완료 여부
  */
-function useProgress() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [progress, setProgress] = useState(0);
+function useProgress(isCompleted: boolean) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [isAnimatingCompletion, setIsAnimatingCompletion] = useState(false);
 
+  // 완료 애니메이션 시작 시점의 진행률 저장 (클로저 문제 방지)
+  const animationStartProgressRef = useRef(0);
+
+  // 일반 진행 (완료 전, 시간 기반 0% → 99%)
   useEffect(() => {
+    if (isCompleted || isAnimatingCompletion) return;
+
     const startTime = Date.now();
 
-    const updateProgress = () => {
+    const tick = () => {
       const elapsed = Date.now() - startTime;
-      const newProgress = Math.min((elapsed / TOTAL_DURATION_MS) * 100, MAX_PROGRESS_PERCENT);
-
-      setProgress(newProgress);
-      setCurrentStep(calculateCurrentStep(elapsed));
+      setProgressPercent(calculateEasedProgress(elapsed / TOTAL_DURATION_MS));
+      setStepIndex(calculateCurrentStep(elapsed));
     };
 
-    const intervalId = setInterval(updateProgress, PROGRESS_UPDATE_INTERVAL_MS);
+    const intervalId = setInterval(tick, PROGRESS_UPDATE_INTERVAL_MS);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [isCompleted, isAnimatingCompletion]);
 
-  return { currentStep, progress };
+  // 완료 애니메이션 (현재 진행률 → 100%)
+  useEffect(() => {
+    if (!isCompleted || isAnimatingCompletion) return;
+
+    // 애니메이션 시작 시점의 진행률 캡처
+    animationStartProgressRef.current = progressPercent;
+    setIsAnimatingCompletion(true);
+
+    const startTime = Date.now();
+    const { COMPLETION_ANIMATION_MS, COMPLETED_PERCENT } = PROGRESS_CONFIG;
+
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
+      const ratio = Math.min(elapsed / COMPLETION_ANIMATION_MS, 1);
+      const newProgress = lerp(animationStartProgressRef.current, COMPLETED_PERCENT, ratio);
+      setProgressPercent(newProgress);
+    };
+
+    const intervalId = setInterval(tick, PROGRESS_UPDATE_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- progressPercent는 시작 시점에만 캡처
+  }, [isCompleted, isAnimatingCompletion]);
+
+  const lastStepIndex = STEPS.length - 1;
+  const hasReachedComplete = progressPercent >= PROGRESS_CONFIG.COMPLETED_PERCENT;
+
+  return {
+    step: isCompleted ? lastStepIndex : stepIndex,
+    progress: progressPercent,
+    isAllStepsCompleted: isCompleted && hasReachedComplete,
+  };
 }
 
 /**
@@ -185,11 +281,11 @@ function useTipRotation(tipCount: number) {
     setTimeout(() => {
       setCurrentTipIndex((prev) => (prev + 1) % tipCount);
       setIsFading(false);
-    }, TIP_FADE_DURATION_MS);
+    }, TIP_CONFIG.FADE_DURATION_MS);
   }, [tipCount]);
 
   useEffect(() => {
-    const intervalId = setInterval(rotateTip, TIP_INTERVAL_MS);
+    const intervalId = setInterval(rotateTip, TIP_CONFIG.INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [rotateTip]);
 
@@ -203,15 +299,17 @@ function useTipRotation(tipCount: number) {
 interface StepIndicatorProps {
   steps: readonly Step[];
   currentStep: number;
+  /** 모든 단계 완료 여부 (true면 모든 단계를 완료 상태로 표시) */
+  isAllCompleted?: boolean;
 }
 
-function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
+function StepIndicator({ steps, currentStep, isAllCompleted = false }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-center mb-6">
       {steps.map((step, index) => {
-        const isCompleted = index < currentStep;
-        const isActive = index === currentStep;
-        const isPending = index > currentStep;
+        const isCompleted = isAllCompleted || index < currentStep;
+        const isActive = !isAllCompleted && index === currentStep;
+        const isPending = !isAllCompleted && index > currentStep;
 
         return (
           <div key={step.id} className="flex items-center">
@@ -381,8 +479,9 @@ export default function RoadmapLoadingOverlay({
   companyName = '',
   profileHref = '/consultant/profile',
   onCancel,
+  isCompleted = false,
 }: RoadmapLoadingOverlayProps) {
-  const { currentStep, progress } = useProgress();
+  const { step, progress, isAllStepsCompleted } = useProgress(isCompleted);
   const [isVisible, setIsVisible] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -451,9 +550,9 @@ export default function RoadmapLoadingOverlay({
             <p className="text-sm text-gray-500 mt-1">잠시만 기다려 주세요</p>
           </div>
 
-          <StepIndicator steps={STEPS} currentStep={currentStep} />
+          <StepIndicator steps={STEPS} currentStep={step} isAllCompleted={isAllStepsCompleted} />
 
-          <ProgressBar message={stepMessages[currentStep]} progress={progress} />
+          <ProgressBar message={stepMessages[step]} progress={progress} />
 
           <TipCard
             tip={currentTip}
