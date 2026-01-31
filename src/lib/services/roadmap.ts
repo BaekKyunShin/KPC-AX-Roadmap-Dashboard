@@ -480,6 +480,77 @@ export async function generateTestRoadmap(
 }
 
 /**
+ * 테스트 로드맵 수정 요청 (DB 저장 없이 LLM 결과만 반환)
+ *
+ * 기존 로드맵 결과와 수정 요청을 받아서 수정된 로드맵을 생성합니다.
+ */
+export async function reviseTestRoadmap(
+  input: TestRoadmapInput,
+  previousResult: RoadmapResult,
+  revisionPrompt: string,
+  actorUserId: string,
+  consultantProfile: ConsultantProfile | null
+): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
+  // 1. 쿼터 확인
+  const quotaCheck = await checkQuotaExceeded(actorUserId);
+  if (quotaCheck.exceeded) {
+    throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
+  }
+
+  // 2. 데이터 구성
+  const projectData = buildTestProjectData(input);
+  const interview = buildTestInterviewData(input);
+
+  // 3. 수정 요청 프롬프트 구성
+  const systemPrompt = buildSystemPrompt();
+  const baseUserPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
+
+  const revisionUserPrompt = `${baseUserPrompt}
+
+## 기존 로드맵 결과
+
+아래는 이전에 생성된 로드맵입니다. 이 로드맵을 기반으로 수정 요청을 반영해주세요.
+
+### 진단 요약
+${previousResult.diagnosis_summary}
+
+### 기존 과정 목록
+${JSON.stringify(previousResult.courses, null, 2)}
+
+### 기존 PBL 과정
+${JSON.stringify(previousResult.pbl_course, null, 2)}
+
+## 수정 요청
+
+사용자가 다음과 같은 수정을 요청했습니다:
+${revisionPrompt}
+
+위 수정 요청을 반영하여 로드맵을 재생성해주세요. 수정 요청에 언급되지 않은 부분은 기존 내용을 유지해도 됩니다.
+단, 최종 출력은 반드시 완전한 JSON 형식으로 전체 로드맵을 출력해야 합니다.`;
+
+  // 4. LLM 호출
+  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
+    [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: revisionUserPrompt },
+    ],
+    { temperature: 0.7 }
+  );
+
+  // 5. 사용량 기록
+  await recordLLMUsage(actorUserId);
+
+  // 6. 결과 생성 및 검증
+  const result: RoadmapResult = {
+    ...llmResult,
+    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
+  };
+  const validation = validateRoadmap(result);
+
+  return { result, validation };
+}
+
+/**
  * 시스템 프롬프트
  */
 function buildSystemPrompt(): string {
