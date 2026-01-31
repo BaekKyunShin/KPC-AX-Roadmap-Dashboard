@@ -418,6 +418,7 @@ export type AuditAction =
   | 'TEMPLATE_ACTIVATE'
   | 'TEST_PROJECT_CREATE'
   | 'TEST_ROADMAP_CREATE'
+  | 'TEST_ROADMAP_REVISE'
   | 'TEST_PROJECT_DELETE';
 
 // 사용량 메트릭

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, FlaskConical, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, FlaskConical, Info, Loader2, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+import type { RoadmapResult, ValidationResult, RoadmapCell } from '@/lib/services/roadmap';
 import { getLevelLabel, getLevelColorClass } from '@/lib/utils/roadmap';
 
 interface TestRoadmapResultProps {
@@ -15,6 +15,10 @@ interface TestRoadmapResultProps {
   companyName: string;
   industry: string;
   onReset: () => void;
+  // 수정 기능 관련 props
+  onRevisionRequest?: (revisionPrompt: string) => Promise<void>;
+  onEditCourse?: (courseIndex: number) => void;
+  isRevising?: boolean;
 }
 
 export default function TestRoadmapResult({
@@ -23,10 +27,29 @@ export default function TestRoadmapResult({
   companyName,
   industry,
   onReset,
+  onRevisionRequest,
+  onEditCourse,
+  isRevising = false,
 }: TestRoadmapResultProps) {
   const [showValidation, setShowValidation] = useState(false);
+  const [revisionPrompt, setRevisionPrompt] = useState('');
+  const [revisionError, setRevisionError] = useState<string | null>(null);
 
   const hasValidationNotes = validation.errors.length > 0 || validation.warnings.length > 0;
+  const canEdit = !!onEditCourse;
+  const canRevise = !!onRevisionRequest;
+
+  const handleRevisionSubmit = async () => {
+    if (!revisionPrompt.trim()) {
+      setRevisionError('수정 요청 내용을 입력해주세요.');
+      return;
+    }
+    setRevisionError(null);
+    if (onRevisionRequest) {
+      await onRevisionRequest(revisionPrompt);
+      setRevisionPrompt('');
+    }
+  };
 
   return (
     <div className="space-y-6 break-keep">
@@ -53,6 +76,50 @@ export default function TestRoadmapResult({
         </Button>
       </div>
 
+      {/* 수정 요청 섹션 */}
+      {canRevise && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              수정 요청
+            </CardTitle>
+            <CardDescription>
+              로드맵 수정이 필요하면 요청 내용을 입력하세요. AI가 수정 사항을 반영하여 새 로드맵을 생성합니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              value={revisionPrompt}
+              onChange={(e) => setRevisionPrompt(e.target.value)}
+              placeholder="예: 초급 과정에 Python 기초 내용을 추가해주세요. / 고급 과정의 시간을 30시간으로 줄여주세요."
+              rows={3}
+              disabled={isRevising}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {revisionError && (
+              <p className="mt-2 text-sm text-red-600">{revisionError}</p>
+            )}
+            <div className="mt-3 flex justify-end">
+              <Button
+                onClick={handleRevisionSubmit}
+                disabled={isRevising || !revisionPrompt.trim()}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isRevising ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    수정 중...
+                  </>
+                ) : (
+                  '수정 요청 반영'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 진단 요약 */}
       <Card>
         <CardHeader>
@@ -78,6 +145,7 @@ export default function TestRoadmapResult({
               <CardTitle>업무별 교육 로드맵 매트릭스</CardTitle>
               <CardDescription>
                 세부업무별 초급/중급/고급 교육 과정을 확인하세요.
+                {canEdit && ' 과정을 클릭하여 편집할 수 있습니다.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -92,51 +160,27 @@ export default function TestRoadmapResult({
                     </tr>
                   </thead>
                   <tbody>
-                    {result.roadmap_matrix.map((row, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                    {result.roadmap_matrix.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-gray-50">
                         <td className="border p-3 font-medium">{row.task_name}</td>
-                        <td className="border p-3 text-center">
-                          {row.beginner && row.beginner.length > 0 ? (
-                            <div className="space-y-2">
-                              {row.beginner.map((course, idx) => (
-                                <div key={idx} className="text-sm">
-                                  <p className="font-medium">{course.course_name}</p>
-                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="border p-3 text-center">
-                          {row.intermediate && row.intermediate.length > 0 ? (
-                            <div className="space-y-2">
-                              {row.intermediate.map((course, idx) => (
-                                <div key={idx} className="text-sm">
-                                  <p className="font-medium">{course.course_name}</p>
-                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="border p-3 text-center">
-                          {row.advanced && row.advanced.length > 0 ? (
-                            <div className="space-y-2">
-                              {row.advanced.map((course, idx) => (
-                                <div key={idx} className="text-sm">
-                                  <p className="font-medium">{course.course_name}</p>
-                                  <p className="text-gray-500">{course.recommended_hours}시간</p>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
+                        <MatrixCell
+                          courses={row.beginner}
+                          allCourses={result.courses}
+                          canEdit={canEdit}
+                          onEditCourse={onEditCourse}
+                        />
+                        <MatrixCell
+                          courses={row.intermediate}
+                          allCourses={result.courses}
+                          canEdit={canEdit}
+                          onEditCourse={onEditCourse}
+                        />
+                        <MatrixCell
+                          courses={row.advanced}
+                          allCourses={result.courses}
+                          canEdit={canEdit}
+                          onEditCourse={onEditCourse}
+                        />
                       </tr>
                     ))}
                   </tbody>
@@ -358,76 +402,13 @@ export default function TestRoadmapResult({
         <TabsContent value="courses">
           <div className="space-y-4">
             {result.courses.map((course, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{course.course_name}</CardTitle>
-                    <div className="flex gap-2">
-                      <Badge
-                        variant="outline"
-                        className={getLevelColorClass(course.level)}
-                      >
-                        {getLevelLabel(course.level)}
-                      </Badge>
-                      <Badge variant="outline">{course.recommended_hours}시간</Badge>
-                    </div>
-                  </div>
-                  <CardDescription>대상 업무: {course.target_task}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h5 className="font-medium text-sm mb-1">교육 대상</h5>
-                    <p className="text-sm text-gray-600">{course.target_audience}</p>
-                  </div>
-
-                  <div>
-                    <h5 className="font-medium text-sm mb-1">커리큘럼</h5>
-                    <ul className="list-disc list-inside space-y-1">
-                      {course.curriculum.map((item, itemIndex) => (
-                        <li key={itemIndex} className="text-sm text-gray-600">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h5 className="font-medium text-sm mb-1">실습/과제</h5>
-                    <ul className="list-disc list-inside space-y-1">
-                      {course.practice_assignments.map((item, itemIndex) => (
-                        <li key={itemIndex} className="text-sm text-gray-600">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h5 className="font-medium text-sm mb-1">사용 도구</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {course.tools.map((tool, toolIndex) => (
-                        <Badge key={toolIndex} variant="secondary" className="text-xs">
-                          {tool.name}
-                          {tool.free_tier_info && (
-                            <span className="text-gray-400 ml-1">({tool.free_tier_info})</span>
-                          )}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="font-medium text-sm mb-1">기대 효과</h5>
-                      <p className="text-sm text-gray-600">{course.expected_outcome}</p>
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-sm mb-1">측정 방법</h5>
-                      <p className="text-sm text-gray-600">{course.measurement_method}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <CourseCard
+                key={index}
+                course={course}
+                index={index}
+                canEdit={canEdit}
+                onEdit={onEditCourse}
+              />
             ))}
           </div>
         </TabsContent>
@@ -473,5 +454,139 @@ export default function TestRoadmapResult({
         </div>
       )}
     </div>
+  );
+}
+
+// =============================================================================
+// 하위 컴포넌트
+// =============================================================================
+
+interface MatrixCellProps {
+  courses: { course_name: string; recommended_hours: number }[] | undefined;
+  allCourses: RoadmapCell[];
+  canEdit: boolean;
+  onEditCourse?: (courseIndex: number) => void;
+}
+
+function MatrixCell({ courses, allCourses, canEdit, onEditCourse }: MatrixCellProps) {
+  if (!courses || courses.length === 0) {
+    return <td className="border p-3 text-center"><span className="text-gray-400">-</span></td>;
+  }
+
+  const handleClick = (courseName: string) => {
+    if (!canEdit || !onEditCourse) return;
+    const courseIndex = allCourses.findIndex((c) => c.course_name === courseName);
+    if (courseIndex !== -1) {
+      onEditCourse(courseIndex);
+    }
+  };
+
+  return (
+    <td className="border p-3 text-center">
+      <div className="space-y-2">
+        {courses.map((course, idx) => (
+          <div
+            key={idx}
+            className={`text-sm ${canEdit ? 'cursor-pointer hover:bg-gray-100 rounded p-1 -m-1' : ''}`}
+            onClick={() => handleClick(course.course_name)}
+          >
+            <p className="font-medium">{course.course_name}</p>
+            <p className="text-gray-500">{course.recommended_hours}시간</p>
+          </div>
+        ))}
+      </div>
+    </td>
+  );
+}
+
+interface CourseCardProps {
+  course: RoadmapCell;
+  index: number;
+  canEdit: boolean;
+  onEdit?: (courseIndex: number) => void;
+}
+
+function CourseCard({ course, index, canEdit, onEdit }: CourseCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{course.course_name}</CardTitle>
+          <div className="flex gap-2 items-center">
+            {canEdit && onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(index)}
+                className="text-gray-400 hover:text-purple-600"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            <Badge
+              variant="outline"
+              className={getLevelColorClass(course.level)}
+            >
+              {getLevelLabel(course.level)}
+            </Badge>
+            <Badge variant="outline">{course.recommended_hours}시간</Badge>
+          </div>
+        </div>
+        <CardDescription>대상 업무: {course.target_task}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <h5 className="font-medium text-sm mb-1">교육 대상</h5>
+          <p className="text-sm text-gray-600">{course.target_audience}</p>
+        </div>
+
+        <div>
+          <h5 className="font-medium text-sm mb-1">커리큘럼</h5>
+          <ul className="list-disc list-inside space-y-1">
+            {course.curriculum.map((item, itemIndex) => (
+              <li key={itemIndex} className="text-sm text-gray-600">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h5 className="font-medium text-sm mb-1">실습/과제</h5>
+          <ul className="list-disc list-inside space-y-1">
+            {course.practice_assignments.map((item, itemIndex) => (
+              <li key={itemIndex} className="text-sm text-gray-600">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h5 className="font-medium text-sm mb-1">사용 도구</h5>
+          <div className="flex flex-wrap gap-2">
+            {course.tools.map((tool, toolIndex) => (
+              <Badge key={toolIndex} variant="secondary" className="text-xs">
+                {tool.name}
+                {tool.free_tier_info && (
+                  <span className="text-gray-400 ml-1">({tool.free_tier_info})</span>
+                )}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h5 className="font-medium text-sm mb-1">기대 효과</h5>
+            <p className="text-sm text-gray-600">{course.expected_outcome}</p>
+          </div>
+          <div>
+            <h5 className="font-medium text-sm mb-1">측정 방법</h5>
+            <p className="text-sm text-gray-600">{course.measurement_method}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

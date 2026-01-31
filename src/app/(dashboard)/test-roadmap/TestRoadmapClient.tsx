@@ -9,9 +9,11 @@ import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import TestInputForm from './_components/TestInputForm';
 import TestRoadmapResult from './_components/TestRoadmapResult';
-import { createTestRoadmap } from './actions';
+import CourseEditModal from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/CourseEditModal';
+import { createTestRoadmap, reviseTestRoadmap } from './actions';
+import { buildRoadmapMatrixFromCourses, validateCourseClient } from '@/lib/utils/roadmap-client';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
-import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+import type { RoadmapResult, ValidationResult, RoadmapCell } from '@/lib/services/roadmap';
 
 // =============================================================================
 // 타입 정의
@@ -198,10 +200,20 @@ export default function TestRoadmapClient({
 }: TestRoadmapClientProps) {
   const isOpsAdmin = isAdminRole(user.role);
 
+  // 기본 상태
   const [error, setError] = useState<string | null>(null);
   const [generationState, setGenerationState] = useState<GenerationState>(INITIAL_GENERATION_STATE);
   const [result, setResult] = useState<TestRoadmapResultData | null>(null);
 
+  // 수정 기능을 위한 상태
+  const [originalInput, setOriginalInput] = useState<TestInputData | null>(null);
+  const [isRevising, setIsRevising] = useState(false);
+
+  // 과정 편집 모달 상태
+  const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
+  const [editingCourseIndex, setEditingCourseIndex] = useState<number | null>(null);
+
+  // 로드맵 최초 생성
   const handleSubmit = useCallback(async (data: TestInputData) => {
     setGenerationState({ isSubmitting: true, isGenerating: true, isComplete: false });
     setError(null);
@@ -216,6 +228,7 @@ export default function TestRoadmapClient({
           roadmapResult: response.data.result,
           validation: response.data.validation,
         });
+        setOriginalInput(data); // 원본 입력 저장
         setGenerationState((prev) => ({ ...prev, isSubmitting: false, isComplete: true }));
         setTimeout(() => {
           setGenerationState(INITIAL_GENERATION_STATE);
@@ -231,11 +244,91 @@ export default function TestRoadmapClient({
     }
   }, []);
 
+  // 수정 요청 (LLM 재호출)
+  const handleRevisionRequest = useCallback(async (revisionPrompt: string) => {
+    if (!originalInput || !result) return;
+
+    setIsRevising(true);
+    setError(null);
+
+    try {
+      const response = await reviseTestRoadmap(
+        originalInput,
+        result.roadmapResult,
+        revisionPrompt
+      );
+
+      if (response.success && response.data) {
+        setResult({
+          ...result,
+          roadmapResult: response.data.result,
+          validation: response.data.validation,
+        });
+      } else {
+        setError(response.error || '로드맵 수정에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[TestRoadmap] 수정 요청 중 오류:', err);
+      setError(formatErrorMessage(err, '로드맵 수정 중 예기치 않은 오류가 발생했습니다.'));
+    } finally {
+      setIsRevising(false);
+    }
+  }, [originalInput, result]);
+
+  // 과정 편집 시작
+  const handleEditCourse = useCallback((courseIndex: number) => {
+    if (!result) return;
+    const course = result.roadmapResult.courses[courseIndex];
+    if (course) {
+      setEditingCourse({ ...course });
+      setEditingCourseIndex(courseIndex);
+    }
+  }, [result]);
+
+  // 과정 편집 저장 (클라이언트 상태만 업데이트)
+  const handleSaveCourse = useCallback((updatedCourse: RoadmapCell) => {
+    if (!result || editingCourseIndex === null) return;
+
+    // 클라이언트 측 검증
+    const validation = validateCourseClient(updatedCourse);
+    if (!validation.isValid) {
+      setError(validation.errors.join('\n'));
+      return;
+    }
+
+    // courses 배열 업데이트
+    const newCourses = [...result.roadmapResult.courses];
+    newCourses[editingCourseIndex] = updatedCourse;
+
+    // roadmap_matrix 재생성
+    const newMatrix = buildRoadmapMatrixFromCourses(newCourses);
+
+    // result 업데이트
+    setResult({
+      ...result,
+      roadmapResult: {
+        ...result.roadmapResult,
+        courses: newCourses,
+        roadmap_matrix: newMatrix,
+      },
+    });
+
+    // 모달 닫기
+    setEditingCourse(null);
+    setEditingCourseIndex(null);
+    setError(null);
+  }, [result, editingCourseIndex]);
+
+  // 초기화
   const handleReset = useCallback(() => {
     setResult(null);
+    setOriginalInput(null);
     setError(null);
+    setEditingCourse(null);
+    setEditingCourseIndex(null);
   }, []);
 
+  // 생성 취소
   const handleCancelGeneration = useCallback(() => {
     setGenerationState(INITIAL_GENERATION_STATE);
   }, []);
@@ -258,15 +351,46 @@ export default function TestRoadmapClient({
   // 결과 화면
   if (result) {
     return (
-      <div className="max-w-5xl mx-auto py-6">
-        <TestRoadmapResult
-          result={result.roadmapResult}
-          validation={result.validation}
-          companyName={result.companyName}
-          industry={result.industry}
-          onReset={handleReset}
+      <>
+        <div className="max-w-5xl mx-auto py-6">
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <TestRoadmapResult
+            result={result.roadmapResult}
+            validation={result.validation}
+            companyName={result.companyName}
+            industry={result.industry}
+            onReset={handleReset}
+            onRevisionRequest={handleRevisionRequest}
+            onEditCourse={handleEditCourse}
+            isRevising={isRevising}
+          />
+        </div>
+
+        {/* 과정 편집 모달 */}
+        <CourseEditModal
+          isOpen={!!editingCourse}
+          course={editingCourse}
+          onClose={() => {
+            setEditingCourse(null);
+            setEditingCourseIndex(null);
+          }}
+          onSave={handleSaveCourse}
         />
-      </div>
+
+        {/* 수정 요청 중 로딩 오버레이 */}
+        {isRevising && (
+          <RoadmapLoadingOverlay
+            isTestMode={true}
+            profileHref="/consultant/profile"
+            onCancel={() => setIsRevising(false)}
+            isCompleted={false}
+          />
+        )}
+      </>
     );
   }
 
