@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronUp, FlaskConical, Info, Loader2, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RoadmapResult, ValidationResult, RoadmapCell } from '@/lib/services/roadmap';
 import { getLevelLabel, getLevelColorClass } from '@/lib/utils/roadmap';
 
+// =============================================================================
+// 타입 정의
+// =============================================================================
+
 interface TestRoadmapResultProps {
   result: RoadmapResult;
   validation: ValidationResult;
   companyName: string;
   industry: string;
   onReset: () => void;
-  // 수정 기능 관련 props
   onRevisionRequest?: (revisionPrompt: string) => Promise<void>;
   onEditCourse?: (courseIndex: number) => void;
   isRevising?: boolean;
 }
+
+// =============================================================================
+// 메인 컴포넌트
+// =============================================================================
 
 export default function TestRoadmapResult({
   result,
@@ -31,25 +38,9 @@ export default function TestRoadmapResult({
   onEditCourse,
   isRevising = false,
 }: TestRoadmapResultProps) {
-  const [showValidation, setShowValidation] = useState(false);
-  const [revisionPrompt, setRevisionPrompt] = useState('');
-  const [revisionError, setRevisionError] = useState<string | null>(null);
-
   const hasValidationNotes = validation.errors.length > 0 || validation.warnings.length > 0;
   const canEdit = !!onEditCourse;
   const canRevise = !!onRevisionRequest;
-
-  const handleRevisionSubmit = async () => {
-    if (!revisionPrompt.trim()) {
-      setRevisionError('수정 요청 내용을 입력해주세요.');
-      return;
-    }
-    setRevisionError(null);
-    if (onRevisionRequest) {
-      await onRevisionRequest(revisionPrompt);
-      setRevisionPrompt('');
-    }
-  };
 
   return (
     <div className="space-y-6 break-keep">
@@ -75,50 +66,6 @@ export default function TestRoadmapResult({
           새 테스트 시작
         </Button>
       </div>
-
-      {/* 수정 요청 섹션 */}
-      {canRevise && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              수정 요청
-            </CardTitle>
-            <CardDescription>
-              로드맵 수정이 필요하면 요청 내용을 입력하세요. AI가 수정 사항을 반영하여 새 로드맵을 생성합니다.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <textarea
-              value={revisionPrompt}
-              onChange={(e) => setRevisionPrompt(e.target.value)}
-              placeholder="예: 초급 과정에 Python 기초 내용을 추가해주세요. / 고급 과정의 시간을 30시간으로 줄여주세요."
-              rows={3}
-              disabled={isRevising}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-            />
-            {revisionError && (
-              <p className="mt-2 text-sm text-red-600">{revisionError}</p>
-            )}
-            <div className="mt-3 flex justify-end">
-              <Button
-                onClick={handleRevisionSubmit}
-                disabled={isRevising || !revisionPrompt.trim()}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {isRevising ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    수정 중...
-                  </>
-                ) : (
-                  '수정 요청 반영'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* 진단 요약 */}
       <Card>
@@ -414,44 +361,15 @@ export default function TestRoadmapResult({
         </TabsContent>
       </Tabs>
 
-      {/* 참고사항 (검증 결과) - 하단에 부드럽게 표시 */}
-      {hasValidationNotes && (
-        <div className="border border-gray-200 rounded-lg">
-          <button
-            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-            onClick={() => setShowValidation(!showValidation)}
-          >
-            <div className="flex items-center gap-2 text-amber-600">
-              <Info className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                검토 필요 사항({validation.errors.length + validation.warnings.length}건)
-              </span>
-            </div>
-            {showValidation ? (
-              <ChevronUp className="h-4 w-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            )}
-          </button>
-          {showValidation && (
-            <div className="px-4 pb-4 space-y-3">
-              <ul className="space-y-1">
-                {validation.errors.map((error, index) => (
-                  <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-gray-400">•</span>
-                    {error}
-                  </li>
-                ))}
-                {validation.warnings.map((warning, index) => (
-                  <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-gray-400">•</span>
-                    {warning}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+      {/* 검토 필요 사항 */}
+      {hasValidationNotes && <ValidationNotesSection validation={validation} />}
+
+      {/* 수정 요청 섹션 */}
+      {canRevise && (
+        <RevisionRequestSection
+          onRevisionRequest={onRevisionRequest!}
+          isRevising={isRevising}
+        />
       )}
     </div>
   );
@@ -460,6 +378,132 @@ export default function TestRoadmapResult({
 // =============================================================================
 // 하위 컴포넌트
 // =============================================================================
+
+// -----------------------------------------------------------------------------
+// 검토 필요 사항 섹션
+// -----------------------------------------------------------------------------
+
+interface ValidationNotesSectionProps {
+  validation: ValidationResult;
+}
+
+function ValidationNotesSection({ validation }: ValidationNotesSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const totalCount = validation.errors.length + validation.warnings.length;
+  const allItems = [...validation.errors, ...validation.warnings];
+
+  const handleToggle = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <button
+        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+        onClick={handleToggle}
+      >
+        <div className="flex items-center gap-2 text-amber-600">
+          <Info className="h-4 w-4" />
+          <span className="text-sm font-medium">검토 필요 사항({totalCount}건)</span>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        )}
+      </button>
+      {isExpanded && (
+        <div className="px-4 pb-4 space-y-3">
+          <ul className="space-y-1">
+            {allItems.map((item, index) => (
+              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                <span className="text-gray-400">•</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// 수정 요청 섹션
+// -----------------------------------------------------------------------------
+
+interface RevisionRequestSectionProps {
+  onRevisionRequest: (revisionPrompt: string) => Promise<void>;
+  isRevising: boolean;
+}
+
+function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionRequestSectionProps) {
+  const [revisionPrompt, setRevisionPrompt] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmedPrompt = revisionPrompt.trim();
+    if (!trimmedPrompt) {
+      setError('수정 요청 내용을 입력해주세요.');
+      return;
+    }
+    setError(null);
+    await onRevisionRequest(trimmedPrompt);
+    setRevisionPrompt('');
+  }, [revisionPrompt, onRevisionRequest]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setRevisionPrompt(e.target.value);
+  }, []);
+
+  const isSubmitDisabled = isRevising || !revisionPrompt.trim();
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Pencil className="h-4 w-4" />
+          수정 요청
+        </CardTitle>
+        <CardDescription>
+          로드맵 수정이 필요하면 요청 내용을 입력하세요. AI가 수정 사항을 반영하여 새 로드맵을
+          생성합니다.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <textarea
+          value={revisionPrompt}
+          onChange={handleChange}
+          placeholder="예: 초급 과정에 Python 기초 내용을 추가해주세요. / 고급 과정의 시간을 30시간으로 줄여주세요."
+          rows={3}
+          disabled={isRevising}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <div className="mt-3 flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {isRevising ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                수정 중...
+              </>
+            ) : (
+              '수정 요청 반영'
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// 매트릭스 셀
+// -----------------------------------------------------------------------------
 
 interface MatrixCellProps {
   courses: { course_name: string; recommended_hours: number }[] | undefined;
@@ -498,6 +542,10 @@ function MatrixCell({ courses, allCourses, canEdit, onEditCourse }: MatrixCellPr
     </td>
   );
 }
+
+// -----------------------------------------------------------------------------
+// 과정 카드
+// -----------------------------------------------------------------------------
 
 interface CourseCardProps {
   course: RoadmapCell;
