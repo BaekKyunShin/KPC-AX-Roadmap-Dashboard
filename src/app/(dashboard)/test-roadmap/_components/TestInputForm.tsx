@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TagInput } from '@/components/ui/tag-input';
 import {
   industryOptions,
   companySizeOptions,
@@ -23,6 +24,7 @@ import {
   type TestImprovementGoal,
 } from '@/lib/schemas/test-roadmap';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
+import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import {
   MAX_STT_FILE_SIZE_BYTES,
   MAX_STT_FILE_SIZE_KB,
@@ -38,6 +40,7 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
   // 기업 기본정보
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState<string>('');
+  const [subIndustries, setSubIndustries] = useState<string[]>([]);
   const [companySize, setCompanySize] = useState<string>('');
 
   // 업무
@@ -95,6 +98,7 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
     const data: TestInputData = {
       company_name: companyName.trim(),
       industry: industry as TestInputData['industry'],
+      sub_industries: subIndustries.length > 0 ? subIndustries : undefined,
       company_size: companySize as TestInputData['company_size'],
       job_tasks: jobTasks.filter((t) => t.task_name.trim() && t.task_description.trim()),
       pain_points: painPoints.filter((p) => p.description.trim()),
@@ -212,8 +216,9 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
           </CardTitle>
           <CardDescription>테스트용 기업 정보를 입력하세요.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+        <CardContent className="space-y-6">
+          {/* 회사명, 기업 규모 */}
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="companyName">회사명 *</Label>
               <Input
@@ -225,22 +230,6 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
               {errors.companyName && (
                 <p className="text-sm text-red-500">{errors.companyName}</p>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="industry">업종 *</Label>
-              <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="업종 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {industryOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.industry && <p className="text-sm text-red-500">{errors.industry}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="companySize">기업 규모 *</Label>
@@ -259,6 +248,43 @@ export default function TestInputForm({ onSubmit, isLoading }: TestInputFormProp
               {errors.companySize && (
                 <p className="text-sm text-red-500">{errors.companySize}</p>
               )}
+            </div>
+          </div>
+
+          {/* 업종 + 세부 업종 그룹 */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="industry">업종 *</Label>
+              <Select value={industry} onValueChange={setIndustry}>
+                <SelectTrigger className="md:w-1/2">
+                  <SelectValue placeholder="업종 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industryOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.industry && <p className="text-sm text-red-500">{errors.industry}</p>}
+            </div>
+
+            {/* 세부 업종 */}
+            <div className="space-y-2 pl-4 border-l-2 border-gray-200">
+              <Label>
+                세부 업종 <span className="text-gray-400 font-normal">(선택)</span>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                더 구체적인 업종을 입력해주세요. (예: 반도체, 디스플레이, 자동차 부품, 식품 등)
+              </p>
+              <TagInput
+                value={subIndustries}
+                onChange={setSubIndustries}
+                placeholder="세부 업종 입력 후 Enter 또는 추가 버튼"
+                maxTags={SUB_INDUSTRY_CONSTRAINTS.maxTags}
+                maxLength={SUB_INDUSTRY_CONSTRAINTS.maxLength}
+              />
             </div>
           </div>
         </CardContent>

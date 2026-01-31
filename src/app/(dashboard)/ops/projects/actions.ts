@@ -36,9 +36,20 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   }
 
   // 폼 데이터 파싱
+  const subIndustriesStr = formData.get('sub_industries') as string | null;
+  let subIndustries: string[] = [];
+  try {
+    if (subIndustriesStr) {
+      subIndustries = JSON.parse(subIndustriesStr);
+    }
+  } catch {
+    // JSON 파싱 실패 시 빈 배열
+  }
+
   const rawData = {
     company_name: formData.get('company_name') as string,
     industry: formData.get('industry') as string,
+    sub_industries: subIndustries.length > 0 ? subIndustries : undefined,
     company_size: formData.get('company_size') as string,
     contact_name: formData.get('contact_name') as string,
     contact_email: formData.get('contact_email') as string,

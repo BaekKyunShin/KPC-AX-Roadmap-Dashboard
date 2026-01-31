@@ -381,6 +381,7 @@ export async function generateRoadmap(
 export interface TestRoadmapInput {
   company_name: string;
   industry: string;
+  sub_industries?: string[];
   company_size: string;
   job_tasks: { task_name: string; task_description: string }[];
   pain_points: { description: string; severity: string }[];
@@ -393,6 +394,7 @@ function buildTestProjectData(input: TestRoadmapInput) {
   return {
     company_name: input.company_name,
     industry: input.industry,
+    sub_industries: input.sub_industries || [],
     company_size: input.company_size,
     customer_comment: input.customer_requirements || '',
   };
@@ -610,10 +612,16 @@ function buildUserPrompt(
   revisionPrompt?: string,
   isTestMode: boolean = false
 ): string {
+  // 세부 업종 추출
+  const subIndustries = Array.isArray(projectData.sub_industries)
+    ? projectData.sub_industries
+    : [];
+
   let prompt = `## 기업 정보
 
 - 회사명: ${projectData.company_name}
 - 업종: ${projectData.industry}
+- 세부 업종: ${subIndustries.length > 0 ? subIndustries.join(', ') : '미지정'}
 - 규모: ${projectData.company_size}
 - 요청사항: ${projectData.customer_comment || '없음'}
 ${isTestMode ? '- **테스트 모드**: 컨설턴트 연습용 로드맵입니다.\n' : ''}
@@ -646,11 +654,16 @@ ${buildSttInsightsSection(interview)}
 `;
 
   if (consultantProfile) {
+    const consultantSubIndustries = Array.isArray(consultantProfile.sub_industries)
+      ? consultantProfile.sub_industries
+      : [];
+
     prompt += `
 ## 담당 컨설턴트 프로필${isTestMode ? ' (테스트 모드에서 중요 참조 자료)' : ''}
 
 - 전문분야: ${consultantProfile.expertise_domains.join(', ')}
 - 가능 업종: ${consultantProfile.available_industries?.join(', ') || '미지정'}
+- 선호 세부 업종: ${consultantSubIndustries.length > 0 ? consultantSubIndustries.join(', ') : '미지정'}
 - 강의 가능 레벨: ${consultantProfile.teaching_levels.join(', ')}
 - 코칭 방식: ${consultantProfile.coaching_methods.join(', ')}
 - 역량 태그: ${consultantProfile.skill_tags.join(', ')}

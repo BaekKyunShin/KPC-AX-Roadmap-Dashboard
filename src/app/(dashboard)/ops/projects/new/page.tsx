@@ -5,25 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
+import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+import { TagInput } from '@/components/ui/tag-input';
 import { createProject } from '../actions';
-
-const INDUSTRIES = [
-  '제조업',
-  '서비스업',
-  '유통/물류',
-  'IT/소프트웨어',
-  '금융/보험',
-  '건설/부동산',
-  '의료/헬스케어',
-  '교육',
-  '공공/정부',
-  '기타',
-];
 
 export default function NewProjectPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [subIndustries, setSubIndustries] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,6 +21,8 @@ export default function NewProjectPage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    // 세부 업종을 JSON 문자열로 추가
+    formData.set('sub_industries', JSON.stringify(subIndustries));
     const result = await createProject(formData);
 
     if (result.success && result.data?.projectId) {
@@ -59,55 +51,78 @@ export default function NewProjectPage() {
       )}
 
       <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
-        <div>
-          <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
-            회사명 *
-          </label>
-          <input
-            id="company_name"
-            name="company_name"
-            type="text"
-            required
-            className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
+        {/* 회사명, 기업 규모 */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
+              회사명 *
+            </label>
+            <input
+              id="company_name"
+              name="company_name"
+              type="text"
+              required
+              className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="company_size" className="block text-sm font-medium text-gray-700">
+              기업 규모 *
+            </label>
+            <select
+              id="company_size"
+              name="company_size"
+              required
+              className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">선택하세요</option>
+              {COMPANY_SIZE_OPTIONS.map((size) => (
+                <option key={size.value} value={size.value}>
+                  {size.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
-            업종 *
-          </label>
-          <select
-            id="industry"
-            name="industry"
-            required
-            className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">선택하세요</option>
-            {INDUSTRIES.map((industry) => (
-              <option key={industry} value={industry}>
-                {industry}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* 업종 + 세부 업종 그룹 */}
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
+              업종 *
+            </label>
+            <select
+              id="industry"
+              name="industry"
+              required
+              className="mt-1 block w-full md:w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">선택하세요</option>
+              {PROJECT_INDUSTRIES.map((industry) => (
+                <option key={industry} value={industry}>
+                  {industry}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label htmlFor="company_size" className="block text-sm font-medium text-gray-700">
-            기업 규모 *
-          </label>
-          <select
-            id="company_size"
-            name="company_size"
-            required
-            className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">선택하세요</option>
-            {COMPANY_SIZE_OPTIONS.map((size) => (
-              <option key={size.value} value={size.value}>
-                {size.label}
-              </option>
-            ))}
-          </select>
+          {/* 세부 업종 */}
+          <div className="pl-4 border-l-2 border-gray-200">
+            <label className="block text-sm font-medium text-gray-700">
+              세부 업종 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <p className="text-sm text-gray-500 mt-1 mb-2">
+              더 구체적인 업종을 입력해주세요. (예: 반도체, 디스플레이, 자동차 부품, 식품 등)
+            </p>
+            <TagInput
+              value={subIndustries}
+              onChange={setSubIndustries}
+              placeholder="세부 업종 입력 후 Enter 또는 추가 버튼"
+              maxTags={SUB_INDUSTRY_CONSTRAINTS.maxTags}
+              maxLength={SUB_INDUSTRY_CONSTRAINTS.maxLength}
+            />
+          </div>
         </div>
 
         <div className="border-t pt-6">

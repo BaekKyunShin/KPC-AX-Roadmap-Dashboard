@@ -4,6 +4,7 @@ import type { ConsultantProfile, SelfAssessmentScore } from '@/types/database';
 
 interface MatchingCriteria {
   industry: string;
+  subIndustries: string[];
   companySize: string;
   assessmentScores: SelfAssessmentScore;
 }
@@ -25,6 +26,28 @@ interface MatchingOptions {
   preserveStatus?: boolean; // 재계산 시 기존 상태 유지
 }
 
+/** 점수 계산 결과 타입 */
+interface ScoreResult {
+  score: number;
+  explanation: string;
+}
+
+/** 관련 업종 매핑 */
+const RELATED_INDUSTRIES: Record<string, string[]> = {
+  '제조업': ['유통/물류', 'IT/소프트웨어'],
+  '서비스업': ['유통/물류', '금융/보험'],
+  '유통/물류': ['제조업', '서비스업'],
+  'IT/소프트웨어': ['제조업', '서비스업'],
+};
+
+/** 레벨 라벨 매핑 */
+const LEVEL_LABEL_MAP: Record<string, string> = {
+  BEGINNER: '입문',
+  INTERMEDIATE: '실무',
+  ADVANCED: '심화',
+  LEADER: '리더',
+};
+
 /**
  * 매칭 추천 생성
  * 기업 정보 + 자가진단 결과를 바탕으로 Top-N 컨설턴트 추천
@@ -40,7 +63,7 @@ export async function generateMatchingRecommendations(
   // 프로젝트 정보 조회
   const { data: projectData } = await supabase
     .from('projects')
-    .select('industry, company_size')
+    .select('industry, sub_industries, company_size')
     .eq('id', projectId)
     .single();
 
@@ -85,6 +108,7 @@ export async function generateMatchingRecommendations(
 
   const criteria: MatchingCriteria = {
     industry: projectData.industry,
+    subIndustries: projectData.sub_industries || [],
     companySize: projectData.company_size,
     assessmentScores: assessment.scores,
   };
@@ -164,17 +188,30 @@ function calculateMatchingScore(
   let totalScore = 0;
   const maxTotal = 100;
 
-  // 1. 업종 적합성 (25점)
+  // 1. 업종 적합성 (20점)
   const industryScore = calculateIndustryScore(profile.available_industries, criteria.industry);
   breakdown.push({
     criteria: '업종 적합성',
     score: industryScore,
-    maxScore: 25,
+    maxScore: 20,
     explanation: profile.available_industries.includes(criteria.industry)
       ? `${criteria.industry} 업종 경험 있음`
       : '해당 업종 직접 경험 없음',
   });
   totalScore += industryScore;
+
+  // 1-1. 세부 업종 적합성 (5점)
+  const subIndustryScore = calculateSubIndustryScore(
+    profile.sub_industries || [],
+    criteria.subIndustries
+  );
+  breakdown.push({
+    criteria: '세부 업종 적합성',
+    score: subIndustryScore.score,
+    maxScore: 5,
+    explanation: subIndustryScore.explanation,
+  });
+  totalScore += subIndustryScore.score;
 
   // 2. 전문분야 일치도 (20점)
   const expertiseScore = calculateExpertiseScore(profile.expertise_domains);
@@ -228,39 +265,76 @@ function calculateMatchingScore(
 }
 
 function calculateIndustryScore(industries: string[], targetIndustry: string): number {
+  // 정확히 일치하는 업종이 있으면 만점
   if (industries.includes(targetIndustry)) {
-    return 25;
+    return 20;
   }
-  // 관련 업종이 있으면 부분 점수
-  const relatedIndustries: Record<string, string[]> = {
-    '제조업': ['유통/물류', 'IT/소프트웨어'],
-    '서비스업': ['유통/물류', '금융/보험'],
-    '유통/물류': ['제조업', '서비스업'],
-    'IT/소프트웨어': ['제조업', '서비스업'],
-  };
 
-  const related = relatedIndustries[targetIndustry] || [];
+  // 관련 업종이 있으면 부분 점수
+  const related = RELATED_INDUSTRIES[targetIndustry] || [];
   if (industries.some((i) => related.includes(i))) {
-    return 15;
+    return 12;
   }
-  return 5;
+
+  return 4;
 }
 
-function calculateExpertiseScore(
-  domains: string[]
-): { score: number; explanation: string } {
-  // 다양한 전문분야 보유 시 가점
+function calculateSubIndustryScore(
+  consultantSubIndustries: string[],
+  projectSubIndustries: string[]
+): ScoreResult {
+  // 프로젝트에 세부 업종이 없으면 기본 점수 부여
+  if (projectSubIndustries.length === 0) {
+    return { score: 3, explanation: '기업 세부 업종 미지정' };
+  }
+
+  // 컨설턴트에 세부 업종이 없으면 낮은 점수
+  if (consultantSubIndustries.length === 0) {
+    return { score: 1, explanation: '컨설턴트 세부 업종 미지정' };
+  }
+
+  // 대소문자 무시 비교를 위한 정규화
+  const normalizedProject = projectSubIndustries.map((p) => p.toLowerCase());
+
+  // 정확히 일치하는 세부 업종 찾기
+  const exactMatches = consultantSubIndustries.filter((ci) =>
+    normalizedProject.includes(ci.toLowerCase())
+  );
+
+  if (exactMatches.length > 0) {
+    return { score: 5, explanation: `세부 업종 일치: ${exactMatches.join(', ')}` };
+  }
+
+  // 부분 일치 (키워드 포함) 찾기
+  const partialMatches = consultantSubIndustries.filter((ci) => {
+    const ciLower = ci.toLowerCase();
+    return normalizedProject.some(
+      (pi) => pi.includes(ciLower) || ciLower.includes(pi)
+    );
+  });
+
+  if (partialMatches.length > 0) {
+    return { score: 3, explanation: `세부 업종 유사: ${partialMatches.join(', ')}` };
+  }
+
+  return { score: 1, explanation: '세부 업종 일치 없음' };
+}
+
+function calculateExpertiseScore(domains: string[]): ScoreResult {
   const score = Math.min(20, domains.length * 4);
+  const domainSummary = domains.length > 3
+    ? `${domains.slice(0, 3).join(', ')} 등`
+    : domains.join(', ');
   return {
     score,
-    explanation: `${domains.length}개 전문분야 보유 (${domains.slice(0, 3).join(', ')}${domains.length > 3 ? ' 등' : ''})`,
+    explanation: `${domains.length}개 전문분야 보유 (${domainSummary})`,
   };
 }
 
 function calculateSkillScore(
   skills: string[],
   assessmentScores: SelfAssessmentScore
-): { score: number; explanation: string } {
+): ScoreResult {
   // 자가진단 점수가 낮은 영역과 매칭되는 스킬 확인
   const lowScoreDimensions = assessmentScores.dimension_scores
     ?.filter((d) => d.score / d.max_score < 0.6)
@@ -303,45 +377,26 @@ function calculateSkillScore(
   };
 }
 
-function calculateLevelScore(
-  levels: string[]
-): { score: number; explanation: string } {
-  // 다양한 레벨 커버 가능 시 가점
+function calculateLevelScore(levels: string[]): ScoreResult {
   const score = Math.min(15, levels.length * 4);
-  const levelLabelMap: Record<string, string> = {
-    BEGINNER: '입문',
-    INTERMEDIATE: '실무',
-    ADVANCED: '심화',
-    LEADER: '리더',
-  };
-  const levelLabels = levels.map((l) => levelLabelMap[l] || l);
+  const levelLabels = levels.map((l) => LEVEL_LABEL_MAP[l] || l);
   return {
     score,
     explanation: `${levelLabels.join(', ')} 레벨 강의 가능`,
   };
 }
 
-function calculateExperienceScore(
-  years: number
-): { score: number; explanation: string } {
-  let score: number;
-  let explanation: string;
-
+function calculateExperienceScore(years: number): ScoreResult {
   if (years >= 10) {
-    score = 20;
-    explanation = `${years}년 경력 (시니어급)`;
-  } else if (years >= 5) {
-    score = 15;
-    explanation = `${years}년 경력 (중급)`;
-  } else if (years >= 2) {
-    score = 10;
-    explanation = `${years}년 경력 (주니어급)`;
-  } else {
-    score = 5;
-    explanation = `${years}년 경력`;
+    return { score: 20, explanation: `${years}년 경력 (시니어급)` };
   }
-
-  return { score, explanation };
+  if (years >= 5) {
+    return { score: 15, explanation: `${years}년 경력 (중급)` };
+  }
+  if (years >= 2) {
+    return { score: 10, explanation: `${years}년 경력 (주니어급)` };
+  }
+  return { score: 5, explanation: `${years}년 경력` };
 }
 
 function generateRationale(

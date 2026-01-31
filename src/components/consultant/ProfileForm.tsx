@@ -19,6 +19,8 @@ import {
   SKILL_TAGS,
   PROFILE_PLACEHOLDERS,
 } from '@/lib/constants/profile-options';
+import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+import { TagInput } from '@/components/ui/tag-input';
 import type { ConsultantProfile } from '@/types/database';
 
 interface ProfileFormProps {
@@ -43,6 +45,9 @@ export default function ProfileForm({
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
     profile?.available_industries || []
   );
+  const [subIndustries, setSubIndustries] = useState<string[]>(
+    profile?.sub_industries || []
+  );
   const [selectedDomains, setSelectedDomains] = useState<string[]>(
     profile?.expertise_domains || []
   );
@@ -66,6 +71,7 @@ export default function ProfileForm({
     const formData = new FormData(form);
     formData.set('expertise_domains', JSON.stringify(selectedDomains));
     formData.set('available_industries', JSON.stringify(selectedIndustries));
+    formData.set('sub_industries', JSON.stringify(subIndustries));
     formData.set('teaching_levels', JSON.stringify(selectedLevels));
     formData.set('coaching_methods', JSON.stringify(selectedMethods));
     formData.set('skill_tags', JSON.stringify(selectedTags));
@@ -179,6 +185,25 @@ export default function ProfileForm({
               onSelectionChange={setSelectedIndustries}
               color="blue"
             />
+
+            {/* 1-1. 선호 세부 업종 */}
+            <div className="space-y-2 ml-6 border-l-2 border-blue-200 pl-4">
+              <div>
+                <Label className="text-sm font-medium">
+                  선호 세부 업종 <span className="text-muted-foreground">(선택)</span>
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  더 구체적인 업종을 입력해주세요. 세부 업종을 추가하면 더 정확한 매칭이 가능합니다. (예: 반도체, 디스플레이, 자동차 부품, 식품 등)
+                </p>
+              </div>
+              <TagInput
+                value={subIndustries}
+                onChange={setSubIndustries}
+                placeholder="세부 업종 입력 후 Enter 또는 추가 버튼"
+                maxTags={SUB_INDUSTRY_CONSTRAINTS.maxTags}
+                maxLength={SUB_INDUSTRY_CONSTRAINTS.maxLength}
+              />
+            </div>
 
             {/* 2. AI 적용 가능 업무 */}
             <BadgeSelector

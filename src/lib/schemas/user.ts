@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+
 // 사용자 역할
 export const userRoleSchema = z.enum([
   'PUBLIC',
@@ -59,6 +61,10 @@ export const consultantProfileSchema = z.object({
   available_industries: z
     .array(z.string())
     .min(1, 'AI 훈련 가능 산업을 최소 1개 이상 선택하세요.'),
+  sub_industries: z
+    .array(z.string().max(SUB_INDUSTRY_CONSTRAINTS.maxLength))
+    .max(SUB_INDUSTRY_CONSTRAINTS.maxTags)
+    .optional(),
   teaching_levels: z
     .array(educationLevelSchema)
     .min(1, '교육 대상 수준을 최소 1개 이상 선택하세요.'),

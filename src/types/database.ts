@@ -48,6 +48,7 @@ export interface ConsultantProfile {
   // 정형 데이터
   expertise_domains: string[]; // 전문분야
   available_industries: string[]; // 가능 업종
+  sub_industries?: string[]; // 선호 세부 업종
   teaching_levels: EducationLevel[]; // 강의 가능 레벨
   coaching_methods: CoachingMethod[]; // 코칭 방식
   skill_tags: string[]; // 역량 태그
@@ -67,6 +68,7 @@ export interface Project {
   // 기업 기본 정보
   company_name: string;
   industry: string;
+  sub_industries?: string[]; // 세부 업종
   company_size: string; // 기업 규모 (예: '1-9', '10-49', '50-299', '300-999', '1000+')
   contact_name: string;
   contact_email: string;

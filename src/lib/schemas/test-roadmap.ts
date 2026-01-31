@@ -1,23 +1,19 @@
 import { z } from 'zod';
 
 import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
+import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 
-// 업종 목록 (기존 project.ts와 동일)
-export const industryOptions = [
-  '제조업',
-  '서비스업',
-  'IT/소프트웨어',
-  '유통/물류',
-  '금융/보험',
-  '건설/부동산',
-  '의료/헬스케어',
-  '교육',
-  '공공/정부',
-  '기타',
-] as const;
+// 업종 목록 - 공통 상수에서 re-export
+export const industryOptions = PROJECT_INDUSTRIES;
 
 // 기업 규모 목록 - 공통 상수에서 re-export
 export const companySizeOptions = COMPANY_SIZE_VALUES;
+
+// 세부 업종 스키마 (재사용 가능)
+const subIndustriesSchema = z
+  .array(z.string().max(SUB_INDUSTRY_CONSTRAINTS.maxLength))
+  .max(SUB_INDUSTRY_CONSTRAINTS.maxTags)
+  .optional();
 
 // 세부 업무 스키마
 export const testJobTaskSchema = z.object({
@@ -48,6 +44,7 @@ export const testInputSchema = z.object({
   industry: z.enum(industryOptions, {
     errorMap: () => ({ message: '업종을 선택하세요.' }),
   }),
+  sub_industries: subIndustriesSchema,
   company_size: z.enum(companySizeOptions, {
     errorMap: () => ({ message: '기업 규모를 선택하세요.' }),
   }),

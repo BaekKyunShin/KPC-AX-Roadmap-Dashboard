@@ -68,6 +68,36 @@ export interface ActionResult {
 }
 
 /**
+ * JSON 문자열을 안전하게 파싱하여 배열로 반환
+ */
+function parseJsonArray(jsonStr: string | null): string[] {
+  if (!jsonStr) return [];
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 컨설턴트 프로필 폼 데이터 파싱
+ */
+function parseConsultantProfileFormData(formData: FormData) {
+  return {
+    expertise_domains: parseJsonArray(formData.get('expertise_domains') as string | null),
+    available_industries: parseJsonArray(formData.get('available_industries') as string | null),
+    sub_industries: parseJsonArray(formData.get('sub_industries') as string | null),
+    teaching_levels: parseJsonArray(formData.get('teaching_levels') as string | null),
+    coaching_methods: parseJsonArray(formData.get('coaching_methods') as string | null),
+    skill_tags: parseJsonArray(formData.get('skill_tags') as string | null),
+    years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
+    representative_experience: (formData.get('representative_experience') as string) || '',
+    portfolio: (formData.get('portfolio') as string) || '',
+    strengths_constraints: (formData.get('strengths_constraints') as string) || '',
+  };
+}
+
+/**
  * 회원가입 처리
  * 1. Supabase Auth로 사용자 생성
  * 2. users 테이블에 프로필 생성 (역할에 따라 USER_PENDING 또는 OPS_ADMIN_PENDING)
@@ -219,26 +249,8 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
 
     const userId = authData.user.id;
 
-    // 2. 폼 데이터 파싱
-    const expertiseDomainsStr = formData.get('expertise_domains') as string | null;
-    const availableIndustriesStr = formData.get('available_industries') as string | null;
-    const teachingLevelsStr = formData.get('teaching_levels') as string | null;
-    const coachingMethodsStr = formData.get('coaching_methods') as string | null;
-    const skillTagsStr = formData.get('skill_tags') as string | null;
-
-    const rawData = {
-      expertise_domains: expertiseDomainsStr ? JSON.parse(expertiseDomainsStr) : [],
-      available_industries: availableIndustriesStr ? JSON.parse(availableIndustriesStr) : [],
-      teaching_levels: teachingLevelsStr ? JSON.parse(teachingLevelsStr) : [],
-      coaching_methods: coachingMethodsStr ? JSON.parse(coachingMethodsStr) : [],
-      skill_tags: skillTagsStr ? JSON.parse(skillTagsStr) : [],
-      years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
-      representative_experience: (formData.get('representative_experience') as string) || '',
-      portfolio: (formData.get('portfolio') as string) || '',
-      strengths_constraints: (formData.get('strengths_constraints') as string) || '',
-    };
-
-    // 3. Zod 검증
+    // 2. 폼 데이터 파싱 및 검증
+    const rawData = parseConsultantProfileFormData(formData);
     const validation = consultantProfileSchema.safeParse(rawData);
     if (!validation.success) {
       return {
@@ -247,22 +259,14 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
       };
     }
 
-    // 4. Admin 클라이언트로 프로필 삽입
+    // 3. Admin 클라이언트로 프로필 삽입
     const adminSupabase = createAdminClient();
-
     const { error: insertError } = await adminSupabase
       .from('consultant_profiles')
       .insert({
         user_id: userId,
-        expertise_domains: validation.data.expertise_domains,
-        available_industries: validation.data.available_industries,
-        teaching_levels: validation.data.teaching_levels,
-        coaching_methods: validation.data.coaching_methods,
-        skill_tags: validation.data.skill_tags,
-        years_of_experience: validation.data.years_of_experience,
-        representative_experience: validation.data.representative_experience,
-        portfolio: validation.data.portfolio,
-        strengths_constraints: validation.data.strengths_constraints,
+        ...validation.data,
+        sub_industries: validation.data.sub_industries || [],
       });
 
     if (insertError) {
@@ -361,26 +365,8 @@ export async function updateConsultantProfile(formData: FormData): Promise<Actio
 
     const userId = authData.user.id;
 
-    // 2. 폼 데이터 파싱
-    const expertiseDomainsStr = formData.get('expertise_domains') as string | null;
-    const availableIndustriesStr = formData.get('available_industries') as string | null;
-    const teachingLevelsStr = formData.get('teaching_levels') as string | null;
-    const coachingMethodsStr = formData.get('coaching_methods') as string | null;
-    const skillTagsStr = formData.get('skill_tags') as string | null;
-
-    const rawData = {
-      expertise_domains: expertiseDomainsStr ? JSON.parse(expertiseDomainsStr) : [],
-      available_industries: availableIndustriesStr ? JSON.parse(availableIndustriesStr) : [],
-      teaching_levels: teachingLevelsStr ? JSON.parse(teachingLevelsStr) : [],
-      coaching_methods: coachingMethodsStr ? JSON.parse(coachingMethodsStr) : [],
-      skill_tags: skillTagsStr ? JSON.parse(skillTagsStr) : [],
-      years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
-      representative_experience: (formData.get('representative_experience') as string) || '',
-      portfolio: (formData.get('portfolio') as string) || '',
-      strengths_constraints: (formData.get('strengths_constraints') as string) || '',
-    };
-
-    // 3. Zod 검증
+    // 2. 폼 데이터 파싱 및 검증
+    const rawData = parseConsultantProfileFormData(formData);
     const validation = consultantProfileSchema.safeParse(rawData);
     if (!validation.success) {
       return {
@@ -389,21 +375,13 @@ export async function updateConsultantProfile(formData: FormData): Promise<Actio
       };
     }
 
-    // 4. Admin 클라이언트로 프로필 업데이트
+    // 3. Admin 클라이언트로 프로필 업데이트
     const adminSupabase = createAdminClient();
-
     const { error: updateError } = await adminSupabase
       .from('consultant_profiles')
       .update({
-        expertise_domains: validation.data.expertise_domains,
-        available_industries: validation.data.available_industries,
-        teaching_levels: validation.data.teaching_levels,
-        coaching_methods: validation.data.coaching_methods,
-        skill_tags: validation.data.skill_tags,
-        years_of_experience: validation.data.years_of_experience,
-        representative_experience: validation.data.representative_experience,
-        portfolio: validation.data.portfolio,
-        strengths_constraints: validation.data.strengths_constraints,
+        ...validation.data,
+        sub_industries: validation.data.sub_industries || [],
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
