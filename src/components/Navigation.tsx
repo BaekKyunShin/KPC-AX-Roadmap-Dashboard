@@ -25,9 +25,46 @@ import {
 import { Logo } from '@/components/ui/logo';
 import type { User } from '@/types/database';
 
+// =============================================================================
+// Types
+// =============================================================================
+
 interface NavigationProps {
   user: User;
 }
+
+interface RoleBadgeConfig {
+  label: string;
+  className: string;
+}
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** 역할별 배지 스타일 설정 */
+const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
+  USER_PENDING: {
+    label: '컨설턴트 승인 대기',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  OPS_ADMIN_PENDING: {
+    label: '운영관리자 승인 대기',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  SYSTEM_ADMIN: {
+    label: '시스템관리자',
+    className: 'bg-red-50 text-red-700 border-red-200',
+  },
+  OPS_ADMIN: {
+    label: '운영관리자',
+    className: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
+  CONSULTANT_APPROVED: {
+    label: '컨설턴트',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+};
 
 const OPS_NAV_ITEMS = [
   { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
@@ -51,8 +88,6 @@ export default function Navigation({ user }: NavigationProps) {
   const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
-  const isPending = user.role === 'USER_PENDING';
-  const isOpsAdminPending = user.role === 'OPS_ADMIN_PENDING';
 
   const navItems = isOpsAdmin ? OPS_NAV_ITEMS : isConsultant ? CONSULTANT_NAV_ITEMS : [];
 
@@ -69,36 +104,16 @@ export default function Navigation({ user }: NavigationProps) {
   }, []);
 
   const getRoleBadge = () => {
-    if (isPending)
+    const config = ROLE_BADGE_CONFIG[user.role];
+
+    if (config) {
       return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-          컨설턴트 승인 대기
+        <Badge variant="outline" className={config.className}>
+          {config.label}
         </Badge>
       );
-    if (isOpsAdminPending)
-      return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-          운영관리자 승인 대기
-        </Badge>
-      );
-    if (isSystemAdmin)
-      return (
-        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-          시스템관리자
-        </Badge>
-      );
-    if (isOpsAdmin)
-      return (
-        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-          운영관리자
-        </Badge>
-      );
-    if (isConsultant)
-      return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-          컨설턴트
-        </Badge>
-      );
+    }
+
     return <Badge variant="outline">{user.role}</Badge>;
   };
 

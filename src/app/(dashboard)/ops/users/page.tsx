@@ -3,6 +3,32 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import UserManagementTable from '@/components/ops/UserManagementTable';
 
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** 이 페이지에 접근 가능한 역할 */
+const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
+
+/** 운영관리자가 관리할 수 있는 역할 (컨설턴트만) */
+const OPS_ADMIN_TARGET_ROLES = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
+
+/** 시스템관리자가 관리할 수 있는 역할 (컨설턴트 + 운영관리자) */
+const SYSTEM_ADMIN_TARGET_ROLES = [
+  ...OPS_ADMIN_TARGET_ROLES,
+  'OPS_ADMIN_PENDING',
+  'OPS_ADMIN',
+] as const;
+
+const PAGE_DESCRIPTIONS = {
+  SYSTEM_ADMIN: '컨설턴트 및 운영관리자의 승인/정지 및 상태를 관리합니다.',
+  OPS_ADMIN: '컨설턴트 승인/정지 및 상태를 관리합니다.',
+} as const;
+
+// =============================================================================
+// Page Component
+// =============================================================================
+
 export default async function UsersPage() {
   const supabase = await createClient();
 
@@ -21,20 +47,18 @@ export default async function UsersPage() {
     .eq('id', user.id)
     .single();
 
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+  const isAllowedRole =
+    currentUser && ALLOWED_ROLES.includes(currentUser.role as (typeof ALLOWED_ROLES)[number]);
+
+  if (!isAllowedRole) {
     redirect('/dashboard');
   }
 
+  const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
+  const targetRoles = isSystemAdmin ? SYSTEM_ADMIN_TARGET_ROLES : OPS_ADMIN_TARGET_ROLES;
+
   // Admin 클라이언트 생성 (RLS 우회)
   const adminSupabase = createAdminClient();
-
-  // 역할별 관리 대상 필터링
-  // - 운영관리자(OPS_ADMIN): 컨설턴트만 관리
-  // - 시스템관리자(SYSTEM_ADMIN): 컨설턴트 + 운영관리자 모두 관리
-  const targetRoles =
-    currentUser.role === 'SYSTEM_ADMIN'
-      ? ['USER_PENDING', 'CONSULTANT_APPROVED', 'OPS_ADMIN_PENDING', 'OPS_ADMIN']
-      : ['USER_PENDING', 'CONSULTANT_APPROVED'];
 
   // 사용자 목록 조회 (admin 클라이언트로 RLS 우회)
   const { data: usersData, error: usersError } = await adminSupabase
@@ -67,10 +91,9 @@ export default async function UsersPage() {
     consultant_profile: profileMap.get(user.id) || null,
   }));
 
-  const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
   const pageDescription = isSystemAdmin
-    ? '컨설턴트 및 운영관리자의 승인/정지 및 상태를 관리합니다.'
-    : '컨설턴트 승인/정지 및 상태를 관리합니다.';
+    ? PAGE_DESCRIPTIONS.SYSTEM_ADMIN
+    : PAGE_DESCRIPTIONS.OPS_ADMIN;
 
   return (
     <div>
