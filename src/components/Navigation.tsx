@@ -48,7 +48,8 @@ export default function Navigation({ user }: NavigationProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const isOpsAdmin = user.role === 'OPS_ADMIN' || user.role === 'SYSTEM_ADMIN';
+  const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
+  const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
   const isPending = user.role === 'USER_PENDING';
   const isOpsAdminPending = user.role === 'OPS_ADMIN_PENDING';
@@ -78,6 +79,12 @@ export default function Navigation({ user }: NavigationProps) {
       return (
         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
           운영관리자 승인 대기
+        </Badge>
+      );
+    if (isSystemAdmin)
+      return (
+        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+          시스템관리자
         </Badge>
       );
     if (isOpsAdmin)

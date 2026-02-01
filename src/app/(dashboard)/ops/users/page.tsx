@@ -28,10 +28,19 @@ export default async function UsersPage() {
   // Admin 클라이언트 생성 (RLS 우회)
   const adminSupabase = createAdminClient();
 
+  // 역할별 관리 대상 필터링
+  // - 운영관리자(OPS_ADMIN): 컨설턴트만 관리
+  // - 시스템관리자(SYSTEM_ADMIN): 컨설턴트 + 운영관리자 모두 관리
+  const targetRoles =
+    currentUser.role === 'SYSTEM_ADMIN'
+      ? ['USER_PENDING', 'CONSULTANT_APPROVED', 'OPS_ADMIN_PENDING', 'OPS_ADMIN']
+      : ['USER_PENDING', 'CONSULTANT_APPROVED'];
+
   // 사용자 목록 조회 (admin 클라이언트로 RLS 우회)
   const { data: usersData, error: usersError } = await adminSupabase
     .from('users')
     .select('*')
+    .in('role', targetRoles)
     .order('created_at', { ascending: false });
 
   if (usersError) {
@@ -58,14 +67,17 @@ export default async function UsersPage() {
     consultant_profile: profileMap.get(user.id) || null,
   }));
 
+  const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
+  const pageDescription = isSystemAdmin
+    ? '컨설턴트 및 운영관리자의 승인/정지 및 상태를 관리합니다.'
+    : '컨설턴트 승인/정지 및 상태를 관리합니다.';
+
   return (
     <div>
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">사용자 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            컨설턴트 승인/정지 및 상태를 관리합니다.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">{pageDescription}</p>
         </div>
       </div>
 
