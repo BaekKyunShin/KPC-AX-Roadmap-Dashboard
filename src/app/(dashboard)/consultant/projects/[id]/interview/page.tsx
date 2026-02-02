@@ -17,6 +17,7 @@ import {
   createEmptyPainPoint,
   createEmptyImprovementGoal,
 } from '@/lib/schemas/interview';
+import { INTERVIEW_STEPS, REQUIRED_STEP_IDS } from '@/lib/constants/interview-steps';
 
 import InterviewStepper from './_components/InterviewStepper';
 import StepBasicInfo from './_components/StepBasicInfo';
@@ -25,15 +26,6 @@ import StepJobTasks from './_components/StepJobTasks';
 import StepPainPoints from './_components/StepPainPoints';
 import StepConstraintsGoals from './_components/StepConstraintsGoals';
 import StepSummary from './_components/StepSummary';
-
-const STEPS = [
-  { id: 1, name: '기본 정보', shortName: '기본' },
-  { id: 2, name: '시스템/AI 활용 경험', shortName: 'AI' },
-  { id: 3, name: '세부업무', shortName: '업무' },
-  { id: 4, name: '페인포인트', shortName: '페인' },
-  { id: 5, name: '목표/제약', shortName: '목표' },
-  { id: 6, name: '확인', shortName: '확인' },
-];
 
 export default function InterviewPage() {
   const router = useRouter();
@@ -209,13 +201,12 @@ export default function InterviewPage() {
   };
 
   // 필수 스텝 완료 여부 (저장 버튼 활성화 조건)
-  const requiredSteps = [1, 3, 4, 5];
-  const isAllRequiredStepsValid = requiredSteps.every(step => validateStep(step));
-  const incompleteRequiredSteps = requiredSteps.filter(step => !validateStep(step));
+  const isAllRequiredStepsValid = REQUIRED_STEP_IDS.every(step => validateStep(step));
+  const incompleteRequiredSteps = REQUIRED_STEP_IDS.filter(step => !validateStep(step));
 
   // 다음 스텝으로 이동 (유효성 검사 없이 자유롭게 이동 가능)
   const goToNextStep = () => {
-    if (currentStep < STEPS.length) {
+    if (currentStep < INTERVIEW_STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -454,7 +445,7 @@ export default function InterviewPage() {
       {/* 스테퍼 */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
         <InterviewStepper
-          steps={STEPS}
+          steps={[...INTERVIEW_STEPS]}
           currentStep={currentStep}
           onStepClick={handleStepClick}
           completedSteps={completedSteps}
@@ -494,7 +485,7 @@ export default function InterviewPage() {
               취소
             </Link>
 
-            {currentStep < STEPS.length ? (
+            {currentStep < INTERVIEW_STEPS.length ? (
               <button
                 type="button"
                 onClick={goToNextStep}

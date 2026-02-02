@@ -7,8 +7,9 @@ import type {
   PainPoint,
   Constraint,
   ImprovementGoal,
-  SttInsights,
-} from '@/lib/schemas/interview';
+} from '@/lib/schemas/test-roadmap';
+import type { SttInsights } from '@/lib/schemas/interview';
+import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import {
   SummarySection,
   SeverityBadge,
@@ -17,7 +18,13 @@ import {
   formatKoreanDate,
 } from '@/components/interview/SummaryComponents';
 
-interface StepSummaryProps {
+interface TestStepSummaryProps {
+  // 기업 기본정보 (테스트 전용)
+  companyName: string;
+  industry: string;
+  subIndustries: string[];
+  companySize: string;
+  // 인터뷰 데이터
   interviewDate: string;
   participants: InterviewParticipant[];
   companyDetails: CompanyDetails;
@@ -30,7 +37,11 @@ interface StepSummaryProps {
   onEditStep: (step: number) => void;
 }
 
-export default function StepSummary({
+export default function TestStepSummary({
+  companyName,
+  industry,
+  subIndustries,
+  companySize,
   interviewDate,
   participants,
   companyDetails,
@@ -41,7 +52,7 @@ export default function StepSummary({
   notes,
   sttInsights,
   onEditStep,
-}: StepSummaryProps) {
+}: TestStepSummaryProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -59,8 +70,39 @@ export default function StepSummary({
         <StatCard value={improvementGoals.length} label="개선목표" colorScheme="green" />
       </div>
 
-      {/* Step 1: 기본 정보 */}
-      <SummarySection title="기본 정보" onEdit={() => onEditStep(1)}>
+      {/* Step 1: 기업 기본정보 + 인터뷰 기본정보 */}
+      <SummarySection title="기업 기본정보" onEdit={() => onEditStep(1)} isTestSection>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <span className="text-xs text-gray-500">회사명</span>
+              <p className="text-sm font-medium">{companyName}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500">업종</span>
+              <p className="text-sm font-medium">{industry}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500">기업 규모</span>
+              <p className="text-sm font-medium">{COMPANY_SIZE_LABELS[companySize as keyof typeof COMPANY_SIZE_LABELS] || companySize}</p>
+            </div>
+            {subIndustries.length > 0 && (
+              <div>
+                <span className="text-xs text-gray-500">세부 업종</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {subIndustries.map((sub) => (
+                    <span key={sub} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </SummarySection>
+
+      <SummarySection title="인터뷰 기본정보" onEdit={() => onEditStep(1)}>
         <div className="space-y-3">
           <div>
             <span className="text-xs text-gray-500">인터뷰 날짜</span>
@@ -194,10 +236,12 @@ export default function StepSummary({
       </SummarySection>
 
       {/* 최종 확인 메시지 */}
-      <InfoBox title="저장 준비 완료">
+      <InfoBox title="로드맵 생성 준비 완료">
         <p>
-          모든 내용을 확인하셨다면 &quot;저장&quot; 버튼을 클릭하여 인터뷰를 완료하세요.
-          저장 후에도 언제든지 수정할 수 있습니다.
+          모든 내용을 확인하셨다면 &quot;테스트 로드맵 생성&quot; 버튼을 클릭하세요.
+          <strong className="block mt-1 text-amber-700">
+            테스트 결과는 저장되지 않으며, 페이지를 떠나면 사라집니다.
+          </strong>
         </p>
       </InfoBox>
     </div>

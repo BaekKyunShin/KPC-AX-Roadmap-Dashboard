@@ -116,6 +116,51 @@ function formatError(error: unknown, defaultMessage: string): string {
   return error instanceof Error ? error.message : defaultMessage;
 }
 
+/**
+ * TestInputData를 roadmap 서비스용 데이터로 변환
+ */
+function convertToRoadmapInput(input: TestInputData) {
+  return {
+    company_name: input.company_name,
+    industry: input.industry,
+    sub_industries: input.sub_industries,
+    company_size: input.company_size,
+    // 인터뷰 데이터
+    interview_date: input.interview_date,
+    participants: input.participants,
+    company_details: input.company_details,
+    job_tasks: input.job_tasks.map((task, index) => ({
+      id: task.id || `test-task-${index}`,
+      task_name: task.task_name,
+      task_description: task.task_description,
+    })),
+    pain_points: input.pain_points.map((point, index) => ({
+      id: point.id || `test-pain-${index}`,
+      description: point.description,
+      severity: point.severity,
+      related_task_ids: point.related_task_ids || [],
+    })),
+    constraints: input.constraints?.map((constraint, index) => ({
+      id: constraint.id || `test-constraint-${index}`,
+      type: constraint.type,
+      description: constraint.description,
+      severity: constraint.severity,
+      workaround: constraint.workaround || '',
+    })) || [],
+    improvement_goals: input.improvement_goals.map((goal, index) => ({
+      id: goal.id || `test-goal-${index}`,
+      goal_description: goal.goal_description,
+      kpi: goal.kpi || '',
+      measurement_method: goal.measurement_method || '',
+      target_value: goal.target_value || '',
+      before_value: goal.before_value || '',
+      related_task_ids: goal.related_task_ids || [],
+    })),
+    notes: input.notes || '',
+    customer_requirements: input.customer_requirements || '',
+  };
+}
+
 // =============================================================================
 // Server Action
 // =============================================================================
@@ -153,9 +198,10 @@ export async function createTestRoadmap(
       sttInsights = await extractInsightsFromStt(input.stt_text);
     }
 
-    // 5. 로드맵 생성
+    // 5. 데이터 변환 및 로드맵 생성
+    const roadmapInput = convertToRoadmapInput(input);
     const roadmapResult = await generateTestRoadmap(
-      input,
+      roadmapInput,
       user.id,
       consultantProfile,
       sttInsights
@@ -216,9 +262,10 @@ export async function reviseTestRoadmap(
     // 3. 컨설턴트 프로필 조회
     const consultantProfile = await getConsultantProfile(supabase, user.id);
 
-    // 4. 로드맵 수정 요청
+    // 4. 데이터 변환 및 로드맵 수정 요청
+    const roadmapInput = convertToRoadmapInput(input);
     const roadmapResult = await reviseTestRoadmapService(
-      input,
+      roadmapInput,
       previousResult,
       revisionPrompt,
       user.id,
