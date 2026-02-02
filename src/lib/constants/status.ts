@@ -23,7 +23,7 @@ export const PROJECT_WORKFLOW_STEPS: WorkflowStep[] = [
   { key: 'new', label: '신규 등록 완료', statuses: ['NEW'] },
   { key: 'diagnosed', label: '진단결과 입력 완료', statuses: ['DIAGNOSED', 'MATCH_RECOMMENDED'] },
   { key: 'assigned', label: '컨설턴트 배정 완료', statuses: ['ASSIGNED'] },
-  { key: 'interviewed', label: '인터뷰 완료', statuses: ['INTERVIEWED'] },
+  { key: 'interviewed', label: '현장 인터뷰 완료', statuses: ['INTERVIEWED'] },
   { key: 'drafted', label: '로드맵 초안 완료', statuses: ['ROADMAP_DRAFTED'] },
   { key: 'finalized', label: '로드맵 최종 확정', statuses: ['FINALIZED'] },
 ];
@@ -59,7 +59,7 @@ export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color
   DIAGNOSED: { label: '진단결과 입력 완료', color: 'bg-blue-100 text-blue-800' },
   MATCH_RECOMMENDED: { label: '진단결과 입력 완료', color: 'bg-blue-100 text-blue-800' },
   ASSIGNED: { label: '컨설턴트 배정 완료', color: 'bg-green-100 text-green-800' },
-  INTERVIEWED: { label: '인터뷰 완료', color: 'bg-yellow-100 text-yellow-800' },
+  INTERVIEWED: { label: '현장 인터뷰 완료', color: 'bg-yellow-100 text-yellow-800' },
   ROADMAP_DRAFTED: { label: '로드맵 초안 완료', color: 'bg-orange-100 text-orange-800' },
   FINALIZED: { label: '로드맵 최종 확정', color: 'bg-emerald-100 text-emerald-800' },
 };

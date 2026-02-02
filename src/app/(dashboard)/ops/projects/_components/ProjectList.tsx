@@ -198,7 +198,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
               )}
               {statusFilter && statusFilter.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
-                  카드 필터: {statusFilter.map(s => PROJECT_STATUS_CONFIG[s]?.label || s).join(', ')}
+                  카드 필터: {[...new Set(statusFilter.map(s => PROJECT_STATUS_CONFIG[s]?.label || s))].join(', ')}
                 </Badge>
               )}
               {industry !== DEFAULT_FILTER_VALUE && (

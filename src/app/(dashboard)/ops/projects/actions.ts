@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
-import { PROJECT_STALL_THRESHOLDS, ALL_PROJECT_STATUSES } from '@/lib/constants/status';
+import { PROJECT_STALL_THRESHOLDS, ALL_PROJECT_STATUSES, getWorkflowStepIndex } from '@/lib/constants/status';
 
 /** 1일을 밀리초로 환산한 값 */
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -1007,48 +1007,39 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .limit(1)
     .single();
 
-  // 상태 순서 정의 (ALL_PROJECT_STATUSES에서 파생)
-  const currentStatusIndex = ALL_PROJECT_STATUSES.indexOf(project.status);
+  // 워크플로우 단계 인덱스 (DIAGNOSED와 MATCH_RECOMMENDED는 같은 단계)
+  const currentStepIndex = getWorkflowStepIndex(project.status);
 
-  // 타임라인 구성
+  // 타임라인 구성 (6단계 - 워크플로우 기준)
   const steps: ProjectTimelineStep[] = [
     {
       step: 'NEW',
-      label: '프로젝트 생성',
+      label: '신규 프로젝트 생성',
       date: project.created_at,
-      isCompleted: currentStatusIndex >= 0,
-      isCurrent: project.status === 'NEW',
+      isCompleted: currentStepIndex >= 0,
+      isCurrent: currentStepIndex === 0,
     },
     {
       step: 'DIAGNOSED',
-      label: '자가진단 완료',
-      date: selfAssessment?.created_at || null,
+      label: '자가진단결과 입력',
+      date: selfAssessment?.created_at || matchingRecommendation?.created_at || null,
       detail: selfAssessment?.scores?.total_score
-        ? `총점: ${selfAssessment.scores.total_score}점`
+        ? `총점: ${Math.round(selfAssessment.scores.total_score)}점`
         : undefined,
-      isCompleted: currentStatusIndex >= 1,
-      isCurrent: project.status === 'DIAGNOSED',
-    },
-    {
-      step: 'MATCH_RECOMMENDED',
-      label: '매칭 추천 완료',
-      date: matchingRecommendation?.created_at || null,
-      isCompleted: currentStatusIndex >= 2,
-      isCurrent: project.status === 'MATCH_RECOMMENDED',
+      isCompleted: currentStepIndex >= 1,
+      isCurrent: currentStepIndex === 1,
     },
     {
       step: 'ASSIGNED',
       label: '컨설턴트 배정',
       date: assignment?.assigned_at || null,
       detail: assignment?.consultant
-        ? `담당: ${(assignment.consultant as { name: string } | { name: string }[])
-            ? (Array.isArray(assignment.consultant)
-              ? (assignment.consultant as { name: string }[])[0]?.name
-              : (assignment.consultant as { name: string }).name)
-            : ''}`
+        ? `담당: ${Array.isArray(assignment.consultant)
+            ? (assignment.consultant[0] as { name: string })?.name ?? ''
+            : (assignment.consultant as { name: string }).name}`
         : undefined,
-      isCompleted: currentStatusIndex >= 3,
-      isCurrent: project.status === 'ASSIGNED',
+      isCompleted: currentStepIndex >= 2,
+      isCurrent: currentStepIndex === 2,
     },
     {
       step: 'INTERVIEWED',
@@ -1057,25 +1048,25 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
       detail: interview?.interview_date
         ? `인터뷰 일자: ${new Date(interview.interview_date).toLocaleDateString('ko-KR')}`
         : undefined,
-      isCompleted: currentStatusIndex >= 4,
-      isCurrent: project.status === 'INTERVIEWED',
+      isCompleted: currentStepIndex >= 3,
+      isCurrent: currentStepIndex === 3,
     },
     {
       step: 'ROADMAP_DRAFTED',
-      label: '로드맵 생성',
+      label: '로드맵 초안 생성',
       date: roadmapDraft?.created_at || null,
       detail: roadmapDraft?.version_number
         ? `버전 ${roadmapDraft.version_number}`
         : undefined,
-      isCompleted: currentStatusIndex >= 5,
-      isCurrent: project.status === 'ROADMAP_DRAFTED',
+      isCompleted: currentStepIndex >= 4,
+      isCurrent: currentStepIndex === 4,
     },
     {
       step: 'FINALIZED',
-      label: '최종 확정',
+      label: '로드맵 최종 확정',
       date: roadmapFinal?.finalized_at || null,
-      isCompleted: currentStatusIndex >= 6,
-      isCurrent: project.status === 'FINALIZED',
+      isCompleted: currentStepIndex >= 5,
+      isCurrent: currentStepIndex === 5,
     },
   ];
 
