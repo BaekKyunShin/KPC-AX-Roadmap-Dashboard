@@ -377,15 +377,33 @@ export async function generateRoadmap(
 // 테스트 전용 함수 (DB 저장 없음)
 // ============================================================================
 
-/** 테스트 로드맵 생성용 입력 데이터 */
+/** 테스트 로드맵 생성용 입력 데이터 (실제 인터뷰와 동일한 구조) */
 export interface TestRoadmapInput {
+  // 기업 기본정보
   company_name: string;
   industry: string;
   sub_industries?: string[];
   company_size: string;
-  job_tasks: { task_name: string; task_description: string }[];
-  pain_points: { description: string; severity: string }[];
-  improvement_goals: { goal_description: string }[];
+  // 인터뷰 데이터
+  interview_date: string;
+  participants: { id: string; name: string; position?: string }[];
+  company_details: {
+    systems_and_tools?: string[];
+    ai_experience: string;
+  };
+  job_tasks: { id: string; task_name: string; task_description: string }[];
+  pain_points: { id: string; description: string; severity: string; related_task_ids?: string[] }[];
+  constraints?: { id: string; type: string; description: string; severity: string; workaround?: string }[];
+  improvement_goals: {
+    id: string;
+    goal_description: string;
+    kpi?: string;
+    measurement_method?: string;
+    target_value?: string;
+    before_value?: string;
+    related_task_ids?: string[];
+  }[];
+  notes?: string;
   customer_requirements?: string;
 }
 
@@ -400,11 +418,14 @@ function buildTestProjectData(input: TestRoadmapInput) {
   };
 }
 
-/** 테스트용 인터뷰 데이터 구성 */
+/** 테스트용 인터뷰 데이터 구성 (실제 인터뷰와 동일한 구조) */
 function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsights) {
   return {
+    interview_date: input.interview_date,
+    participants: input.participants,
+    company_details: input.company_details,
     job_tasks: input.job_tasks.map((task, index) => ({
-      id: `test-task-${index}`,
+      id: task.id || `test-task-${index}`,
       job_category: '테스트',
       task_name: task.task_name,
       task_description: task.task_description,
@@ -413,21 +434,29 @@ function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsigh
       priority: index + 1,
     })),
     pain_points: input.pain_points.map((point, index) => ({
-      id: `test-pain-${index}`,
-      job_task_id: 'test-task-0',
+      id: point.id || `test-pain-${index}`,
+      job_task_id: point.related_task_ids?.[0] || 'test-task-0',
       description: point.description,
       severity: point.severity,
       priority: index + 1,
     })),
-    constraints: [],
+    constraints: input.constraints?.map((constraint, index) => ({
+      id: constraint.id || `test-constraint-${index}`,
+      type: constraint.type,
+      description: constraint.description,
+      severity: constraint.severity,
+      workaround: constraint.workaround || '',
+    })) || [],
     improvement_goals: input.improvement_goals.map((goal, index) => ({
-      id: `test-goal-${index}`,
-      job_task_id: 'test-task-0',
-      kpi_name: '개선 목표',
+      id: goal.id || `test-goal-${index}`,
+      job_task_id: goal.related_task_ids?.[0] || 'test-task-0',
+      kpi_name: goal.kpi || '개선 목표',
       goal_description: goal.goal_description,
-      measurement_method: '',
+      measurement_method: goal.measurement_method || '',
+      target_value: goal.target_value || '',
+      before_value: goal.before_value || '',
     })),
-    notes: '',
+    notes: input.notes || '',
     customer_requirements: input.customer_requirements || '',
     stt_insights: sttInsights || null,
   };

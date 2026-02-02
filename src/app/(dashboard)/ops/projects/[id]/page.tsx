@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
+import ProjectTimeline from '../_components/ProjectTimeline';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 
@@ -131,6 +132,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <p className="mt-1 text-gray-900 break-keep">{projectData.customer_comment}</p>
           </div>
         )}
+      </div>
+
+      {/* 진행 타임라인 */}
+      <div className="mb-6">
+        <ProjectTimeline projectId={id} />
       </div>
 
       {/* 자가진단 섹션 */}

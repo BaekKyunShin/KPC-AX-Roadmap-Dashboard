@@ -1,19 +1,68 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Play, Monitor } from 'lucide-react';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+const demoSlides = [
+  {
+    id: 'diagnosis',
+    label: '기업 자가 진단',
+    image: '/demo/diagnosis.png',
+  },
+  {
+    id: 'interview',
+    label: '인터뷰 기입',
+    image: '/demo/matching.png', // TODO: interview.png로 교체
+  },
+  {
+    id: 'curriculum',
+    label: '과정 체계도',
+    image: '/demo/roadmap.png', // TODO: curriculum.png로 교체
+  },
+  {
+    id: 'course-detail',
+    label: '과정 상세',
+    image: '/demo/diagnosis.png', // TODO: course-detail.png로 교체
+  },
+  {
+    id: 'pbl',
+    label: 'PBL',
+    image: '/demo/matching.png', // TODO: pbl.png로 교체
+  },
+];
+
+const SLIDE_DURATION = 4000; // 4초마다 전환
+
 export default function DemoSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const mockupRef = useRef<HTMLDivElement>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
+  const goToSlide = useCallback((index: number) => {
+    setCurrentIndex(index);
+  }, []);
+
+  // 자동 슬라이드 전환
+  useEffect(() => {
+    if (isPaused) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % demoSlides.length);
+    }, SLIDE_DURATION);
+
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  // GSAP 애니메이션
   useEffect(() => {
     gsap.fromTo(
       contentRef.current,
@@ -59,7 +108,7 @@ export default function DemoSection() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
-        <div ref={contentRef} className="text-center mb-16">
+        <div ref={contentRef} className="text-center mb-12">
           <span className="inline-block px-4 py-1.5 bg-blue-500/10 text-blue-400 text-sm font-medium rounded-full mb-4 border border-blue-500/20">
             제품 데모
           </span>
@@ -71,10 +120,12 @@ export default function DemoSection() {
           </p>
         </div>
 
-        {/* Mockup */}
+        {/* Mockup with Slideshow */}
         <div
           ref={mockupRef}
-          className="relative max-w-5xl mx-auto"
+          className="max-w-5xl mx-auto"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
         >
           {/* Browser Frame */}
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -92,40 +143,71 @@ export default function DemoSection() {
               </div>
             </div>
 
-            {/* Content Area */}
-            <div className="bg-gray-100 aspect-video flex items-center justify-center">
-              <div className="text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="p-4 bg-white rounded-2xl shadow-lg">
-                    <Monitor className="h-16 w-16 text-gray-400" />
-                  </div>
-                </div>
-                <p className="text-gray-500 text-sm">
-                  대시보드 스크린샷 또는 데모 영상
-                </p>
-                <button
-                  className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors"
-                  data-cursor-hover
+            {/* Content Area - Slideshow */}
+            <div className="bg-white relative" style={{ aspectRatio: '16/10' }}>
+              {demoSlides.map((slide, index) => (
+                <div
+                  key={slide.id}
+                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                    index === currentIndex ? 'opacity-100' : 'opacity-0'
+                  }`}
                 >
-                  <Play className="h-4 w-4" />
-                  <span className="text-sm font-medium">데모 영상 보기</span>
-                </button>
-              </div>
+                  <Image
+                    src={slide.image}
+                    alt={slide.label}
+                    fill
+                    className="object-cover object-top"
+                    unoptimized
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Floating Elements */}
-          <div className="absolute -left-4 top-1/4 bg-blue-500/10 backdrop-blur-sm border border-blue-500/20 rounded-xl p-4 hidden lg:block">
-            <div className="text-blue-400 text-sm font-medium">AI 로드맵 생성</div>
-            <div className="text-white text-2xl font-bold">98%</div>
-            <div className="text-gray-400 text-xs">정확도</div>
+          {/* Slide Indicators */}
+          <div className="flex justify-center items-center gap-3 mt-6">
+            {demoSlides.map((slide, index) => (
+              <button
+                key={slide.id}
+                onClick={() => goToSlide(index)}
+                className="group flex flex-col items-center gap-2"
+                data-cursor-hover
+              >
+                <span
+                  className={`text-xs font-medium transition-colors ${
+                    index === currentIndex ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300'
+                  }`}
+                >
+                  {slide.label}
+                </span>
+                <div
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    index === currentIndex
+                      ? 'w-8 bg-blue-500'
+                      : 'w-4 bg-gray-600 group-hover:bg-gray-500'
+                  }`}
+                />
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div className="absolute -right-4 top-1/3 bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 rounded-xl p-4 hidden lg:block">
-            <div className="text-orange-400 text-sm font-medium">컨설턴트 매칭</div>
-            <div className="text-white text-2xl font-bold">24h</div>
-            <div className="text-gray-400 text-xs">평균 매칭 시간</div>
-          </div>
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-12">
+          <Link
+            href="/demo"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium"
+            data-cursor-hover
+          >
+            샘플 데모 보기
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-transparent text-white rounded-full border border-gray-600 hover:bg-gray-800 transition-colors font-medium"
+            data-cursor-hover
+          >
+            무료로 시작하기
+          </Link>
         </div>
       </div>
     </section>

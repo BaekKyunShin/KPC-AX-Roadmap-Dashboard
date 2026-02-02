@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import ProjectList from './_components/ProjectList';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderKanban } from 'lucide-react';
+import ProjectManagementTabs from './_components/ProjectManagementTabs';
 
 export default async function OPSProjectsPage() {
   const supabase = await createClient();
@@ -48,8 +48,8 @@ export default async function OPSProjectsPage() {
         </Button>
       </div>
 
-      {/* Project List */}
-      <ProjectList />
+      {/* Stats + Tabs */}
+      <ProjectManagementTabs />
     </div>
   );
 }
