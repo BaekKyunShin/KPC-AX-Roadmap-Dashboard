@@ -5,11 +5,39 @@ import {
   constraintSchema,
   improvementGoalSchema,
   interviewSchema,
+  interviewParticipantSchema,
   createEmptyJobTask,
   createEmptyPainPoint,
   createEmptyConstraint,
   createEmptyImprovementGoal,
+  createEmptyParticipant,
 } from './interview';
+
+describe('interviewParticipantSchema', () => {
+  const validParticipant = {
+    id: 'p-1',
+    name: '홍길동',
+    position: '팀장',
+  };
+
+  it('should accept valid participant', () => {
+    const result = interviewParticipantSchema.safeParse(validParticipant);
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept participant without position', () => {
+    const result = interviewParticipantSchema.safeParse({
+      id: 'p-1',
+      name: '홍길동',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty name', () => {
+    const result = interviewParticipantSchema.safeParse({ ...validParticipant, name: '' });
+    expect(result.success).toBe(false);
+  });
+});
 
 describe('jobTaskSchema', () => {
   const validTask = {
@@ -23,17 +51,6 @@ describe('jobTaskSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept task with optional fields', () => {
-    const result = jobTaskSchema.safeParse({
-      ...validTask,
-      current_output: '엑셀 파일',
-      current_workflow: '수동 입력 후 검토',
-      frequency: 'DAILY',
-      time_spent_hours: 2,
-    });
-    expect(result.success).toBe(true);
-  });
-
   it('should reject empty task name', () => {
     const result = jobTaskSchema.safeParse({ ...validTask, task_name: '' });
     expect(result.success).toBe(false);
@@ -43,19 +60,6 @@ describe('jobTaskSchema', () => {
     const result = jobTaskSchema.safeParse({ ...validTask, task_description: '' });
     expect(result.success).toBe(false);
   });
-
-  it('should reject negative time_spent_hours', () => {
-    const result = jobTaskSchema.safeParse({ ...validTask, time_spent_hours: -1 });
-    expect(result.success).toBe(false);
-  });
-
-  it('should accept all valid frequencies', () => {
-    const frequencies = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'AD_HOC'] as const;
-    frequencies.forEach((frequency) => {
-      const result = jobTaskSchema.safeParse({ ...validTask, frequency });
-      expect(result.success).toBe(true);
-    });
-  });
 });
 
 describe('painPointSchema', () => {
@@ -63,7 +67,6 @@ describe('painPointSchema', () => {
     id: 'pp-1',
     description: '데이터 입력 오류가 자주 발생함',
     severity: 'HIGH' as const,
-    priority: 1,
   };
 
   it('should accept valid pain point', () => {
@@ -75,23 +78,12 @@ describe('painPointSchema', () => {
     const result = painPointSchema.safeParse({
       ...validPainPoint,
       related_task_ids: ['task-1', 'task-2'],
-      impact: '월 20시간 손실',
     });
     expect(result.success).toBe(true);
   });
 
   it('should reject empty description', () => {
     const result = painPointSchema.safeParse({ ...validPainPoint, description: '' });
-    expect(result.success).toBe(false);
-  });
-
-  it('should reject priority below 1', () => {
-    const result = painPointSchema.safeParse({ ...validPainPoint, priority: 0 });
-    expect(result.success).toBe(false);
-  });
-
-  it('should reject priority above 10', () => {
-    const result = painPointSchema.safeParse({ ...validPainPoint, priority: 11 });
     expect(result.success).toBe(false);
   });
 
@@ -163,9 +155,16 @@ describe('improvementGoalSchema', () => {
 describe('interviewSchema', () => {
   const validInterview = {
     interview_date: '2024-01-15',
+    participants: [
+      {
+        id: 'p-1',
+        name: '홍길동',
+        position: '팀장',
+      },
+    ],
     company_details: {
-      department: '영업팀',
-      team_size: 10,
+      systems_and_tools: ['ERP', 'CRM', 'MS Office'],
+      ai_experience: '경험 없음',
     },
     job_tasks: [
       {
@@ -179,7 +178,6 @@ describe('interviewSchema', () => {
         id: 'pp-1',
         description: '수작업으로 인한 오류',
         severity: 'HIGH' as const,
-        priority: 1,
       },
     ],
     improvement_goals: [
@@ -200,6 +198,11 @@ describe('interviewSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('should reject empty participants array', () => {
+    const result = interviewSchema.safeParse({ ...validInterview, participants: [] });
+    expect(result.success).toBe(false);
+  });
+
   it('should reject empty job_tasks array', () => {
     const result = interviewSchema.safeParse({ ...validInterview, job_tasks: [] });
     expect(result.success).toBe(false);
@@ -217,13 +220,27 @@ describe('interviewSchema', () => {
 });
 
 describe('helper functions', () => {
+  describe('createEmptyParticipant', () => {
+    it('should create a valid empty participant', () => {
+      const participant = createEmptyParticipant();
+      expect(participant.id).toBeDefined();
+      expect(participant.name).toBe('');
+      expect(participant.position).toBe('');
+    });
+
+    it('should create unique IDs', () => {
+      const p1 = createEmptyParticipant();
+      const p2 = createEmptyParticipant();
+      expect(p1.id).not.toBe(p2.id);
+    });
+  });
+
   describe('createEmptyJobTask', () => {
     it('should create a valid empty job task', () => {
       const task = createEmptyJobTask();
       expect(task.id).toBeDefined();
       expect(task.task_name).toBe('');
       expect(task.task_description).toBe('');
-      expect(task.frequency).toBe('DAILY');
     });
 
     it('should create unique IDs', () => {
@@ -239,7 +256,6 @@ describe('helper functions', () => {
       expect(pp.id).toBeDefined();
       expect(pp.description).toBe('');
       expect(pp.severity).toBe('MEDIUM');
-      expect(pp.priority).toBe(5);
     });
   });
 

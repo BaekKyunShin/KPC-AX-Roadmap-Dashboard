@@ -63,7 +63,8 @@ async function verifyProjectAccess(
 
 export async function saveInterview(
   projectId: string,
-  data: InterviewInput
+  data: InterviewInput,
+  options?: { skipValidation?: boolean }
 ): Promise<ActionResult> {
   try {
     const supabase = await createClient();
@@ -97,32 +98,42 @@ export async function saveInterview(
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
     }
 
-    // 데이터 검증
-    const validation = interviewSchema.safeParse(data);
-    if (!validation.success) {
-      return { success: false, error: validation.error.errors[0].message };
+    // 데이터 검증 (skipValidation이 true면 자동 저장 모드 - 검증 건너뜀)
+    let validatedData = data;
+    if (!options?.skipValidation) {
+      const validation = interviewSchema.safeParse(data);
+      if (!validation.success) {
+        return { success: false, error: validation.error.errors[0].message };
+      }
+      validatedData = validation.data;
     }
 
     const adminSupabase = createAdminClient();
 
-    // 기존 인터뷰 확인
-    const { data: existingInterview } = await adminSupabase
+    // 기존 인터뷰 확인 (maybeSingle을 사용하여 없는 경우에도 에러 없이 null 반환)
+    const { data: existingInterview, error: fetchError } = await adminSupabase
       .from('interviews')
       .select('id')
       .eq('project_id', projectId)
-      .single();
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[saveInterview Fetch Error]', fetchError);
+      return { success: false, error: `기존 인터뷰 확인 실패: ${fetchError.message}` };
+    }
 
     const interviewData = {
       project_id: projectId,
       interviewer_id: user.id,
-      interview_date: validation.data.interview_date,
-      company_details: validation.data.company_details,
-      job_tasks: validation.data.job_tasks,
-      pain_points: validation.data.pain_points,
-      constraints: validation.data.constraints || [],
-      improvement_goals: validation.data.improvement_goals,
-      notes: validation.data.notes || '',
-      customer_requirements: validation.data.customer_requirements || '',
+      interview_date: validatedData.interview_date,
+      participants: validatedData.participants,
+      company_details: validatedData.company_details,
+      job_tasks: validatedData.job_tasks,
+      pain_points: validatedData.pain_points,
+      constraints: validatedData.constraints || [],
+      improvement_goals: validatedData.improvement_goals,
+      notes: validatedData.notes || '',
+      customer_requirements: validatedData.customer_requirements || '',
     };
 
     let auditAction: 'INTERVIEW_CREATE' | 'INTERVIEW_UPDATE';
@@ -134,7 +145,8 @@ export async function saveInterview(
         .eq('id', existingInterview.id);
 
       if (updateError) {
-        return { success: false, error: '인터뷰 수정에 실패했습니다.' };
+        console.error('[saveInterview Update Error]', updateError);
+        return { success: false, error: `인터뷰 수정 실패: ${updateError.message}` };
       }
       auditAction = 'INTERVIEW_UPDATE';
     } else {
@@ -143,7 +155,8 @@ export async function saveInterview(
         .insert(interviewData);
 
       if (insertError) {
-        return { success: false, error: '인터뷰 저장에 실패했습니다.' };
+        console.error('[saveInterview Insert Error]', insertError);
+        return { success: false, error: `인터뷰 저장 실패: ${insertError.message}` };
       }
       auditAction = 'INTERVIEW_CREATE';
 
@@ -161,9 +174,9 @@ export async function saveInterview(
       targetType: 'interview',
       targetId: projectId,
       meta: {
-        job_tasks_count: validation.data.job_tasks.length,
-        pain_points_count: validation.data.pain_points.length,
-        goals_count: validation.data.improvement_goals.length,
+        job_tasks_count: validatedData.job_tasks.length,
+        pain_points_count: validatedData.pain_points.length,
+        goals_count: validatedData.improvement_goals.length,
       },
     });
 
