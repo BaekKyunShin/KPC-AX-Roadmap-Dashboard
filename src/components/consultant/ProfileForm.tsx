@@ -55,16 +55,24 @@ export default function ProfileForm({
   const [selectedMethods, setSelectedMethods] = useState<string[]>(profile?.coaching_methods || []);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile?.skill_tags || []);
 
+  // 필수 선택 항목 정의
+  const requiredSelections = [
+    { items: selectedIndustries, label: 'AI 훈련 가능 산업' },
+    { items: selectedDomains, label: 'AI 적용 가능 업무' },
+    { items: selectedLevels, label: '교육 대상 수준' },
+    { items: selectedMethods, label: '선호 교육 방식' },
+    { items: selectedTags, label: '보유 역량' },
+  ];
+
   // 필수 항목 검증
   const validateSelections = (): string | null => {
-    if (selectedIndustries.length === 0)
-      return 'AI 훈련 가능 산업을 최소 1개 이상 선택해주세요.';
-    if (selectedDomains.length === 0) return 'AI 적용 가능 업무를 최소 1개 이상 선택해주세요.';
-    if (selectedLevels.length === 0) return '교육 대상 수준을 최소 1개 이상 선택해주세요.';
-    if (selectedMethods.length === 0) return '선호 교육 방식을 최소 1개 이상 선택해주세요.';
-    if (selectedTags.length === 0) return '보유 역량을 최소 1개 이상 선택해주세요.';
-    return null;
+    const emptySelection = requiredSelections.find((s) => s.items.length === 0);
+    return emptySelection ? `${emptySelection.label}을 최소 1개 이상 선택해주세요.` : null;
   };
+
+  // 필수 선택 항목 완료 여부 및 미선택 수
+  const unselectedCount = requiredSelections.filter((s) => s.items.length === 0).length;
+  const isSelectionsValid = unselectedCount === 0;
 
   // 폼 데이터 준비
   const prepareFormData = (form: HTMLFormElement): FormData => {
@@ -339,28 +347,35 @@ export default function ProfileForm({
             </div>
 
             {/* 버튼 영역 */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(backUrl)}
-                disabled={isSaving}
-              >
-                취소
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {savingText}
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {submitButtonText}
-                  </>
-                )}
-              </Button>
+            <div className="space-y-3 pt-4">
+              {!isSelectionsValid && (
+                <p className="text-sm text-amber-600">
+                  필수 선택 항목 {unselectedCount}개 미선택
+                </p>
+              )}
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(backUrl)}
+                  disabled={isSaving}
+                >
+                  취소
+                </Button>
+                <Button type="submit" disabled={isSaving || !isSelectionsValid}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {savingText}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {submitButtonText}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>

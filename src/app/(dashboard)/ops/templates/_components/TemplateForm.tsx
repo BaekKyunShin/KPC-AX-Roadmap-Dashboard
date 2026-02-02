@@ -169,6 +169,9 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="예: 제조업 AI 성숙도 진단 v2"
           />
+          {!name.trim() && (
+            <p className="mt-1 text-xs text-amber-600">템플릿 이름을 입력해주세요</p>
+          )}
         </div>
 
         <div>
@@ -320,8 +323,8 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
         </Link>
         <button
           type="submit"
-          disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          disabled={loading || !name.trim()}
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? '저장 중...' : mode === 'create' ? '생성' : '저장'}
         </button>

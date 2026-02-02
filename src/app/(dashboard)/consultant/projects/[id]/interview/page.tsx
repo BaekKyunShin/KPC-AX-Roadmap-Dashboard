@@ -208,6 +208,11 @@ export default function InterviewPage() {
     }
   };
 
+  // 필수 스텝 완료 여부 (저장 버튼 활성화 조건)
+  const requiredSteps = [1, 3, 4, 5];
+  const isAllRequiredStepsValid = requiredSteps.every(step => validateStep(step));
+  const incompleteRequiredSteps = requiredSteps.filter(step => !validateStep(step));
+
   // 다음 스텝으로 이동 (유효성 검사 없이 자유롭게 이동 가능)
   const goToNextStep = () => {
     if (currentStep < STEPS.length) {
@@ -236,15 +241,13 @@ export default function InterviewPage() {
     setSuccess(null);
     setIsLoading(true);
 
-    // 필수 스텝(1,3,4,5) 유효성 검사
-    const requiredSteps = [1, 3, 4, 5];
-    for (const step of requiredSteps) {
-      if (!validateStep(step)) {
-        setCurrentStep(step);
-        setError('필수 항목을 입력해주세요.');
-        setIsLoading(false);
-        return;
-      }
+    // 필수 스텝 유효성 검사 (requiredSteps는 상단에서 정의됨)
+    const firstIncompleteStep = incompleteRequiredSteps[0];
+    if (firstIncompleteStep) {
+      setCurrentStep(firstIncompleteStep);
+      setError('필수 항목을 입력해주세요.');
+      setIsLoading(false);
+      return;
     }
 
     const result = await saveInterview(projectId, {
@@ -503,29 +506,36 @@ export default function InterviewPage() {
                 </svg>
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium flex items-center"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    저장 중...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    저장
-                  </>
+              <div className="flex items-center gap-3">
+                {!isAllRequiredStepsValid && (
+                  <span className="text-sm text-amber-600">
+                    {incompleteRequiredSteps.length}개 필수 단계 미완료
+                  </span>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isLoading || !isAllRequiredStepsValid}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center"
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      저장 중...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      저장
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { ReasonLengthHint, REASON_LENGTH } from './assignment';
 
 // ============================================================================
 // 타입 정의
@@ -23,13 +24,6 @@ interface AssignmentFormProps {
   projectId: string;
   recommendations: Recommendation[];
 }
-
-// ============================================================================
-// 상수
-// ============================================================================
-
-const MIN_REASON_LENGTH = 10;
-const MAX_REASON_LENGTH = 500;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -57,8 +51,8 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
       return;
     }
 
-    if (reason.length < MIN_REASON_LENGTH) {
-      setError(`배정 사유를 ${MIN_REASON_LENGTH}자 이상 입력하세요.`);
+    if (reason.length < REASON_LENGTH.MIN) {
+      setError(`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요.`);
       return;
     }
 
@@ -120,13 +114,11 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
-          maxLength={MAX_REASON_LENGTH}
+          maxLength={REASON_LENGTH.MAX}
           className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          placeholder={`배정 사유를 ${MIN_REASON_LENGTH}자 이상 입력하세요. (예: 해당 업종 경험이 풍부하고 일정 조율이 가능함)`}
+          placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 경험이 풍부하고 일정 조율이 가능함)`}
         />
-        <p className="mt-1 text-xs text-gray-500">
-          {reason.length}/{MAX_REASON_LENGTH}자
-        </p>
+        <ReasonLengthHint currentLength={reason.length} />
       </div>
 
       {/* 선택한 컨설턴트 요약 */}
@@ -138,7 +130,7 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isLoading || !selectedConsultantId}
+          disabled={isLoading || !selectedConsultantId || reason.length < REASON_LENGTH.MIN}
           className="px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? '배정 중...' : '컨설턴트 배정'}

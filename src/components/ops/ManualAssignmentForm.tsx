@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import ConsultantSelector from './ConsultantSelector';
-import { AlertMessage, CloseIcon } from './assignment';
+import { AlertMessage, CloseIcon, ReasonLengthHint, REASON_LENGTH } from './assignment';
 import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
 
 // ============================================================================
@@ -13,13 +13,6 @@ import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions
 interface ManualAssignmentFormProps {
   projectId: string;
 }
-
-// ============================================================================
-// 상수
-// ============================================================================
-
-const MIN_REASON_LENGTH = 10;
-const MAX_REASON_LENGTH = 500;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -43,8 +36,8 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
         return;
       }
 
-      if (reason.length < MIN_REASON_LENGTH) {
-        setError(`배정 사유를 ${MIN_REASON_LENGTH}자 이상 입력하세요.`);
+      if (reason.length < REASON_LENGTH.MIN) {
+        setError(`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요.`);
         return;
       }
 
@@ -114,20 +107,18 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
-          maxLength={MAX_REASON_LENGTH}
+          maxLength={REASON_LENGTH.MAX}
           className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          placeholder={`배정 사유를 ${MIN_REASON_LENGTH}자 이상 입력하세요. (예: 해당 업종 전문가로 기업 요청에 의한 수동 배정)`}
+          placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 전문가로 기업 요청에 의한 수동 배정)`}
         />
-        <p className="mt-1 text-xs text-gray-500">
-          {reason.length}/{MAX_REASON_LENGTH}자
-        </p>
+        <ReasonLengthHint currentLength={reason.length} />
       </div>
 
       {/* 제출 버튼 */}
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isLoading || !selectedConsultant}
+          disabled={isLoading || !selectedConsultant || reason.length < REASON_LENGTH.MIN}
           className="px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? '배정 중...' : '컨설턴트 배정'}
