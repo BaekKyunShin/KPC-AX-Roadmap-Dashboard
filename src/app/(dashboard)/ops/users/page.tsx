@@ -16,7 +16,6 @@ const OPS_ADMIN_TARGET_ROLES = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
 /** 시스템관리자가 관리할 수 있는 역할 (컨설턴트 + 운영관리자) */
 const SYSTEM_ADMIN_TARGET_ROLES = [
   ...OPS_ADMIN_TARGET_ROLES,
-  'OPS_ADMIN_PENDING',
   'OPS_ADMIN',
 ] as const;
 

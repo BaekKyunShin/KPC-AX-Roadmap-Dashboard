@@ -45,11 +45,7 @@ interface RoleBadgeConfig {
 /** 역할별 배지 스타일 설정 */
 const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   USER_PENDING: {
-    label: '컨설턴트 승인 대기',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  OPS_ADMIN_PENDING: {
-    label: '운영관리자 승인 대기',
+    label: '승인 대기',
     className: 'bg-amber-50 text-amber-700 border-amber-200',
   },
   SYSTEM_ADMIN: {
@@ -79,6 +75,29 @@ const CONSULTANT_NAV_ITEMS = [
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
 ];
 
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/** 이름에서 이니셜 추출 (최대 2글자) */
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/** 역할에 해당하는 배지 설정 반환 */
+function getRoleBadgeConfig(role: string): RoleBadgeConfig | null {
+  return ROLE_BADGE_CONFIG[role] || null;
+}
+
+// =============================================================================
+// Component
+// =============================================================================
+
 export default function Navigation({ user }: NavigationProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -103,8 +122,8 @@ export default function Navigation({ user }: NavigationProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getRoleBadge = () => {
-    const config = ROLE_BADGE_CONFIG[user.role];
+  const renderRoleBadge = () => {
+    const config = getRoleBadgeConfig(user.role);
 
     if (config) {
       return (
@@ -115,15 +134,6 @@ export default function Navigation({ user }: NavigationProps) {
     }
 
     return <Badge variant="outline">{user.role}</Badge>;
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   return (
@@ -177,7 +187,7 @@ export default function Navigation({ user }: NavigationProps) {
                   <span className="text-sm font-medium text-gray-900">{user.name}</span>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
-                {getRoleBadge()}
+                {renderRoleBadge()}
                 <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -276,7 +286,7 @@ export default function Navigation({ user }: NavigationProps) {
                 <div className="text-base font-medium text-gray-900">{user.name}</div>
                 <div className="text-sm text-muted-foreground">{user.email}</div>
               </div>
-              {getRoleBadge()}
+              {renderRoleBadge()}
             </div>
 
             <div className="space-y-2">
