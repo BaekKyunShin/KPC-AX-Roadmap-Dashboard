@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchProjects, fetchProjectFilters, type ProjectListResult } from '../actions';
+import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline } from '../actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,40 +34,27 @@ import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
+import MiniStepper from './MiniStepper';
 
 const ITEMS_PER_PAGE = 10;
+const MAX_VISIBLE_PAGES = 5;
+const DEFAULT_FILTER_VALUE = 'all';
 
-const getStatusBadgeVariant = (status: ProjectStatus) => {
-  const config = PROJECT_STATUS_CONFIG[status];
-  if (!config) return { className: 'bg-gray-100 text-gray-800', label: status };
+interface ProjectListProps {
+  statusFilter?: ProjectStatus[] | null;
+}
 
-  const colorMap: Record<string, string> = {
-    'bg-gray-100 text-gray-800': 'bg-gray-100 text-gray-700 border-gray-200',
-    'bg-blue-100 text-blue-800': 'bg-blue-50 text-blue-700 border-blue-200',
-    'bg-yellow-100 text-yellow-800': 'bg-amber-50 text-amber-700 border-amber-200',
-    'bg-purple-100 text-purple-800': 'bg-purple-50 text-purple-700 border-purple-200',
-    'bg-indigo-100 text-indigo-800': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    'bg-cyan-100 text-cyan-800': 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    'bg-green-100 text-green-800': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  };
-
-  return {
-    className: colorMap[config.color] || 'bg-gray-100 text-gray-700 border-gray-200',
-    label: config.label,
-  };
-};
-
-export default function ProjectList() {
-  const [projects, setProjects] = useState<ProjectListResult['projects']>([]);
+export default function ProjectList({ statusFilter }: ProjectListProps) {
+  const [projects, setProjects] = useState<ProjectWithTimeline[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // 필터 상태
+  // 필터 상태 - 내부 상태는 단일 상태 선택용 (드롭다운)
   const [searchInput, setSearchInput] = useState('');
-  const [status, setStatus] = useState('all');
-  const [industry, setIndustry] = useState('all');
+  const [internalStatus, setInternalStatus] = useState<string>(DEFAULT_FILTER_VALUE);
+  const [industry, setIndustry] = useState(DEFAULT_FILTER_VALUE);
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // 필터 옵션
@@ -81,21 +68,39 @@ export default function ProjectList() {
     fetchProjectFilters().then(setFilterOptions);
   }, []);
 
+  // 외부 statusFilter 변경 시 반영 및 페이지 리셋
+  useEffect(() => {
+    if (statusFilter !== undefined) {
+      // 외부에서 배열로 들어오면 내부 상태 초기화 (카드 필터 사용 중)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external filter is intentional
+      setInternalStatus(DEFAULT_FILTER_VALUE);
+      setPage(1);
+    }
+  }, [statusFilter]);
+
+  // 실제 적용할 상태 필터 결정 (외부 prop 우선, 없으면 내부 상태)
+  const effectiveStatuses = useMemo(() => {
+    if (statusFilter !== null && statusFilter !== undefined) {
+      return statusFilter;
+    }
+    return internalStatus === DEFAULT_FILTER_VALUE ? undefined : [internalStatus as ProjectStatus];
+  }, [statusFilter, internalStatus]);
+
   // 데이터 로드
   const loadData = useCallback(async () => {
     setLoading(true);
-    const result = await fetchProjects({
+    const result = await fetchProjectsWithTimeline({
       page,
       limit: ITEMS_PER_PAGE,
       search: debouncedSearch,
-      status: status === 'all' ? '' : status,
-      industry: industry === 'all' ? '' : industry,
+      statuses: effectiveStatuses,
+      industry: industry === DEFAULT_FILTER_VALUE ? '' : industry,
     });
     setProjects(result.projects);
     setTotalPages(result.totalPages);
     setTotal(result.total);
     setLoading(false);
-  }, [page, debouncedSearch, status, industry]);
+  }, [page, debouncedSearch, effectiveStatuses, industry]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
@@ -106,17 +111,18 @@ export default function ProjectList() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting page on filter change is intentional
     setPage(1);
-  }, [debouncedSearch, status, industry]);
+  }, [debouncedSearch, internalStatus, industry, statusFilter]);
 
   // 필터 초기화
   const handleResetFilters = () => {
     setSearchInput('');
-    setStatus('all');
-    setIndustry('all');
+    setInternalStatus(DEFAULT_FILTER_VALUE);
+    setIndustry(DEFAULT_FILTER_VALUE);
     setPage(1);
   };
 
-  const hasFilters = debouncedSearch || status !== 'all' || industry !== 'all';
+  // 외부 필터(카드) 또는 내부 필터(드롭다운) 활성화 여부
+  const hasFilters = debouncedSearch || internalStatus !== DEFAULT_FILTER_VALUE || industry !== DEFAULT_FILTER_VALUE || (statusFilter && statusFilter.length > 0);
 
   return (
     <div className="space-y-4">
@@ -135,12 +141,12 @@ export default function ProjectList() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={internalStatus} onValueChange={setInternalStatus}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">모든 상태</SelectItem>
+                  <SelectItem value={DEFAULT_FILTER_VALUE}>모든 상태</SelectItem>
                   {filterOptions.statuses.map((s) => (
                     <SelectItem key={s} value={s}>
                       {PROJECT_STATUS_CONFIG[s as ProjectStatus]?.label || s}
@@ -154,7 +160,7 @@ export default function ProjectList() {
                   <SelectValue placeholder="업종" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">모든 업종</SelectItem>
+                  <SelectItem value={DEFAULT_FILTER_VALUE}>모든 업종</SelectItem>
                   {filterOptions.industries.map((ind) => (
                     <SelectItem key={ind} value={ind}>
                       {ind}
@@ -182,18 +188,23 @@ export default function ProjectList() {
                   </button>
                 </Badge>
               )}
-              {status !== 'all' && (
+              {internalStatus !== DEFAULT_FILTER_VALUE && (
                 <Badge variant="secondary" className="gap-1">
-                  상태: {PROJECT_STATUS_CONFIG[status as ProjectStatus]?.label || status}
-                  <button onClick={() => setStatus('all')}>
+                  상태: {PROJECT_STATUS_CONFIG[internalStatus as ProjectStatus]?.label || internalStatus}
+                  <button onClick={() => setInternalStatus(DEFAULT_FILTER_VALUE)}>
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               )}
-              {industry !== 'all' && (
+              {statusFilter && statusFilter.length > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  카드 필터: {statusFilter.map(s => PROJECT_STATUS_CONFIG[s]?.label || s).join(', ')}
+                </Badge>
+              )}
+              {industry !== DEFAULT_FILTER_VALUE && (
                 <Badge variant="secondary" className="gap-1">
                   업종: {industry}
-                  <button onClick={() => setIndustry('all')}>
+                  <button onClick={() => setIndustry(DEFAULT_FILTER_VALUE)}>
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -217,8 +228,7 @@ export default function ProjectList() {
       {loading ? (
         <ProjectTableSkeleton rows={5} />
       ) : (
-      <Card>
-        <CardContent className="p-0 overflow-x-auto">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -236,21 +246,19 @@ export default function ProjectList() {
             </div>
           ) : (
             <>
-              <Table className="min-w-[800px]">
+              <Table className="min-w-[900px]">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="min-w-[180px] text-center">기업명</TableHead>
-                    <TableHead className="min-w-[100px] text-center">업종</TableHead>
-                    <TableHead className="min-w-[100px] text-center">상태</TableHead>
-                    <TableHead className="min-w-[140px] text-center">배정 컨설턴트</TableHead>
-                    <TableHead className="min-w-[100px] text-center">생성일</TableHead>
-                    <TableHead className="min-w-[80px] text-center">작업</TableHead>
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">기업명</TableHead>
+                    <TableHead className="min-w-[80px]">업종</TableHead>
+                    <TableHead className="min-w-[180px] text-center">진행 상태</TableHead>
+                    <TableHead className="min-w-[100px]">담당 컨설턴트</TableHead>
+                    <TableHead className="min-w-[110px]">프로젝트 생성일</TableHead>
+                    <TableHead className="min-w-[70px]">작업</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {projects.map((projectItem) => {
-                    const statusInfo = getStatusBadgeVariant(projectItem.status as ProjectStatus);
-                    return (
+                  {projects.map((projectItem) => (
                       <TableRow key={projectItem.id}>
                         <TableCell className="align-top">
                           <div className="flex items-center gap-3">
@@ -267,21 +275,26 @@ export default function ProjectList() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-center align-top">{projectItem.industry}</TableCell>
-                        <TableCell className="text-center align-top">
-                          <Badge variant="outline" className={statusInfo.className}>
-                            {statusInfo.label}
-                          </Badge>
+                        <TableCell className="text-muted-foreground align-top">{projectItem.industry}</TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex justify-center">
+                            <MiniStepper
+                              status={projectItem.status as ProjectStatus}
+                              daysInCurrentStatus={projectItem.days_in_current_status}
+                              showLabel={true}
+                              showDays={true}
+                            />
+                          </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-center align-top">
+                        <TableCell className="text-muted-foreground align-top">
                           {projectItem.assigned_consultant?.name || (
                             <span className="text-gray-400">미배정</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-center align-top">
+                        <TableCell className="text-muted-foreground align-top">
                           {new Date(projectItem.created_at).toLocaleDateString('ko-KR')}
                         </TableCell>
-                        <TableCell className="text-center align-top">
+                        <TableCell className="align-top">
                           <Link
                             href={`/ops/projects/${projectItem.id}`}
                             className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline cursor-pointer transition-colors duration-150 text-sm"
@@ -290,8 +303,7 @@ export default function ProjectList() {
                           </Link>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                    ))}
                 </TableBody>
               </Table>
 
@@ -311,16 +323,17 @@ export default function ProjectList() {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    {Array.from({ length: Math.min(MAX_VISIBLE_PAGES, totalPages) }, (_, i) => {
                       let pageNum;
-                      if (totalPages <= 5) {
+                      const middlePage = Math.ceil(MAX_VISIBLE_PAGES / 2);
+                      if (totalPages <= MAX_VISIBLE_PAGES) {
                         pageNum = i + 1;
-                      } else if (page <= 3) {
+                      } else if (page <= middlePage) {
                         pageNum = i + 1;
-                      } else if (page >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
+                      } else if (page >= totalPages - (middlePage - 1)) {
+                        pageNum = totalPages - MAX_VISIBLE_PAGES + 1 + i;
                       } else {
-                        pageNum = page - 2 + i;
+                        pageNum = page - (middlePage - 1) + i;
                       }
                       return (
                         <Button
@@ -347,8 +360,7 @@ export default function ProjectList() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+      </div>
       )}
     </div>
   );
