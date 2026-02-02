@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { COPYRIGHT_TEXT } from '@/lib/constants';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -141,6 +142,26 @@ interface ContactDialogProps {
 }
 
 function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Hydration 불일치를 방지하기 위한 표준 패턴
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  // SSR 중에는 버튼만 렌더링하여 hydration 불일치 방지
+  if (!mounted) {
+    return (
+      <button
+        className="text-gray-600 text-sm hover:text-gray-900 transition-colors"
+        data-cursor-hover
+      >
+        문의하기
+      </button>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -293,9 +314,7 @@ export default function FooterSection() {
 
           {/* Bottom */}
           <div className="flex flex-col sm:flex-row justify-center items-center mt-12 pt-8 border-t border-gray-100">
-            <p className="text-gray-500 text-sm">
-              © 2026 KPC 한국생산성본부 · Developed by Baek Kyun Shin
-            </p>
+            <p className="text-gray-500 text-sm">{COPYRIGHT_TEXT}</p>
           </div>
         </div>
       </div>

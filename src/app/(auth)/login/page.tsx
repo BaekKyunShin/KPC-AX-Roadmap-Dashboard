@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
+import { COPYRIGHT_TEXT } from '@/lib/constants';
 
 function LoginForm() {
   const router = useRouter();
@@ -151,9 +152,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          © 2026 KPC 한국생산성본부 · Developed by Baek Kyun Shin
-        </p>
+        <p className="mt-8 text-center text-sm text-muted-foreground">{COPYRIGHT_TEXT}</p>
       </div>
     </div>
   );

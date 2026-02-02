@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
+import { COPYRIGHT_TEXT } from '@/lib/constants';
 
 type RegisterType = 'CONSULTANT' | 'OPS_ADMIN';
 
@@ -384,9 +385,7 @@ export default function RegisterPage() {
         )}
 
         {/* Footer */}
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          &copy; 2026 KPC 한국생산성본부 · Developed by Baek Kyun Shin
-        </p>
+        <p className="mt-8 text-center text-sm text-muted-foreground">{COPYRIGHT_TEXT}</p>
       </div>
     </div>
   );
