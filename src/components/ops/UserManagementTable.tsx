@@ -351,7 +351,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 대표 수행경험 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">대표 수행경험/프로젝트</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
                   {selectedProfile.profile.representative_experience}
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 포트폴리오 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강의 포트폴리오</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
                   {selectedProfile.profile.portfolio}
                 </p>
               </div>
@@ -367,7 +367,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 강점/제약 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강점/제약</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
                   {selectedProfile.profile.strengths_constraints}
                 </p>
               </div>

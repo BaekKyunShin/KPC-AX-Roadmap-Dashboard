@@ -258,10 +258,10 @@ export default function ProjectList() {
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 break-keep">
                                 {projectItem.company_name}
                               </div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-sm text-muted-foreground break-all">
                                 {projectItem.contact_email}
                               </div>
                             </div>

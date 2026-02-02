@@ -183,7 +183,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
             placeholder="템플릿에 대한 간단한 설명"
           />
         </div>
@@ -305,7 +305,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                   onChange={(e) => handleQuestionChange(index, 'question_text', e.target.value)}
                   required
                   rows={2}
-                  className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+                  className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md break-keep"
                   placeholder="질문 내용을 입력하세요"
                 />
               </div>

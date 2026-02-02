@@ -299,7 +299,7 @@ export default function ProfileForm({
                 rows={4}
                 defaultValue={profile?.representative_experience || ''}
                 placeholder={PROFILE_PLACEHOLDERS.representative_experience}
-                className="resize-none"
+                className="resize-none break-keep"
               />
             </div>
 
@@ -321,7 +321,7 @@ export default function ProfileForm({
                 required
                 defaultValue={profile?.portfolio || ''}
                 placeholder={PROFILE_PLACEHOLDERS.portfolio}
-                className="resize-none"
+                className="resize-none break-keep"
               />
             </div>
 
@@ -342,7 +342,7 @@ export default function ProfileForm({
                 required
                 defaultValue={profile?.strengths_constraints || ''}
                 placeholder={PROFILE_PLACEHOLDERS.strengths_constraints}
-                className="resize-none"
+                className="resize-none break-keep"
               />
             </div>
 

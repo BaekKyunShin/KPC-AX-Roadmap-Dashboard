@@ -115,7 +115,7 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
           onChange={(e) => setReason(e.target.value)}
           rows={3}
           maxLength={REASON_LENGTH.MAX}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
           placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 경험이 풍부하고 일정 조율이 가능함)`}
         />
         <ReasonLengthHint currentLength={reason.length} />

@@ -219,7 +219,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
         onChange={(e) => handleAnswerChange(question.id, e.target.value)}
         rows={3}
         placeholder="답변을 입력하세요..."
-        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm break-keep"
       />
       <p className="mt-1 text-xs text-gray-400">
         {((answers[question.id] as string) || '').length}자
@@ -299,7 +299,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
                 >
                   <div className="flex gap-3 mb-3">
                     <span className="text-xl text-blue-600 flex-shrink-0 mt-[-2px]">{toCircledNumber(question.order)}</span>
-                    <span className="text-sm text-gray-700 font-medium leading-6">{question.question_text}</span>
+                    <span className="text-sm text-gray-700 font-medium leading-6 break-keep">{question.question_text}</span>
                   </div>
                   {renderQuestionInput(question)}
                 </div>
@@ -316,7 +316,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
           id="summary_text"
           name="summary_text"
           rows={3}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
           placeholder="추가 코멘트나 요약을 입력하세요."
         />
       </div>

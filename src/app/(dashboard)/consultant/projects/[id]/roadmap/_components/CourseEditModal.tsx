@@ -166,7 +166,7 @@ export default function CourseEditModal({
                 value={(currentFormData.curriculum || []).join('\n')}
                 onChange={(e) => handleArrayChange('curriculum', e.target.value)}
                 rows={4}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm break-keep"
                 placeholder="모듈 1: 개요&#10;모듈 2: 실습"
               />
             </div>
@@ -180,7 +180,7 @@ export default function CourseEditModal({
                 value={(currentFormData.practice_assignments || []).join('\n')}
                 onChange={(e) => handleArrayChange('practice_assignments', e.target.value)}
                 rows={3}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm break-keep"
                 placeholder="실습 1: 데이터 분석&#10;과제 1: 보고서 작성"
               />
             </div>
@@ -241,7 +241,7 @@ export default function CourseEditModal({
                   value={currentFormData.expected_outcome || ''}
                   onChange={(e) => handleChange('expected_outcome', e.target.value)}
                   rows={2}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm break-keep"
                 />
               </div>
               <div>
@@ -250,7 +250,7 @@ export default function CourseEditModal({
                   value={currentFormData.measurement_method || ''}
                   onChange={(e) => handleChange('measurement_method', e.target.value)}
                   rows={2}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm break-keep"
                 />
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function CourseEditModal({
                 value={(currentFormData.prerequisites || []).join('\n')}
                 onChange={(e) => handleArrayChange('prerequisites', e.target.value)}
                 rows={2}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm break-keep"
               />
             </div>
 

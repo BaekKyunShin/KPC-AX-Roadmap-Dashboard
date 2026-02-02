@@ -128,7 +128,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         {projectData.customer_comment && (
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500">고객 코멘트</h3>
-            <p className="mt-1 text-gray-900">{projectData.customer_comment}</p>
+            <p className="mt-1 text-gray-900 break-keep">{projectData.customer_comment}</p>
           </div>
         )}
       </div>
@@ -208,7 +208,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 {selfAssessment.summary_text && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <h3 className="text-xs font-medium text-gray-500 mb-1">요약</h3>
-                    <p className="text-sm text-gray-700">{selfAssessment.summary_text}</p>
+                    <p className="text-sm text-gray-700 break-keep">{selfAssessment.summary_text}</p>
                   </div>
                 )}
               </div>
@@ -248,9 +248,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                         <span className="ml-2 text-xs text-green-600">(현재)</span>
                       )}
                     </p>
-                    <p className="text-sm text-gray-500">배정: {assignment.assignment_reason}</p>
+                    <p className="text-sm text-gray-500 break-keep">배정: {assignment.assignment_reason}</p>
                     {assignment.unassignment_reason && (
-                      <p className="text-sm text-red-500">해제: {assignment.unassignment_reason}</p>
+                      <p className="text-sm text-red-500 break-keep">해제: {assignment.unassignment_reason}</p>
                     )}
                   </div>
                   <div className="text-right text-sm text-gray-500">

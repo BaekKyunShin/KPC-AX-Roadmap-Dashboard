@@ -409,13 +409,13 @@ export default function AuditLogPage() {
                   </TableCell>
                   <TableCell className="text-gray-500">
                     {log.error_message ? (
-                      <span className="text-red-600" title={log.error_message}>
+                      <span className="text-red-600 break-all" title={log.error_message}>
                         {log.error_message.slice(0, 30)}...
                       </span>
                     ) : log.meta && Object.keys(log.meta).length > 0 ? (
                       <details className="cursor-pointer">
                         <summary className="text-purple-600 hover:text-purple-800 text-sm underline-offset-2 hover:underline transition-colors duration-150">상세보기</summary>
-                        <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto text-left">
+                        <pre className="mt-1 text-xs bg-gray-50 p-2 rounded max-w-xs overflow-auto text-left break-all whitespace-pre-wrap">
                           {JSON.stringify(log.meta, null, 2)}
                         </pre>
                       </details>
