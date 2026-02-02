@@ -5,12 +5,14 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { saveInterview, getInterview, processSttFile, deleteSttInsights } from './actions';
 import {
+  type InterviewParticipant,
   type JobTask,
   type PainPoint,
   type Constraint,
   type ImprovementGoal,
   type CompanyDetails,
   type SttInsights,
+  createEmptyParticipant,
   createEmptyJobTask,
   createEmptyPainPoint,
   createEmptyImprovementGoal,
@@ -22,15 +24,15 @@ import StepCompanyDetails from './_components/StepCompanyDetails';
 import StepJobTasks from './_components/StepJobTasks';
 import StepPainPoints from './_components/StepPainPoints';
 import StepConstraintsGoals from './_components/StepConstraintsGoals';
-import StepAdditionalInfo from './_components/StepAdditionalInfo';
+import StepSummary from './_components/StepSummary';
 
 const STEPS = [
   { id: 1, name: '기본 정보', shortName: '기본' },
-  { id: 2, name: '기업 세부 정보', shortName: '기업' },
+  { id: 2, name: '시스템/AI 활용 경험', shortName: 'AI' },
   { id: 3, name: '세부업무', shortName: '업무' },
   { id: 4, name: '페인포인트', shortName: '페인' },
-  { id: 5, name: '제약 및 목표', shortName: '목표' },
-  { id: 6, name: '추가 정보', shortName: '추가' },
+  { id: 5, name: '목표/제약', shortName: '목표' },
+  { id: 6, name: '확인', shortName: '확인' },
 ];
 
 export default function InterviewPage() {
@@ -50,14 +52,10 @@ export default function InterviewPage() {
 
   // Form state
   const [interviewDate, setInterviewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [participants, setParticipants] = useState<InterviewParticipant[]>([createEmptyParticipant()]);
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
-    department: '',
-    team_size: undefined,
-    main_systems: [],
-    data_sources: [],
-    current_tools: [],
+    systems_and_tools: [],
     ai_experience: '',
-    training_history: '',
   });
   const [jobTasks, setJobTasks] = useState<JobTask[]>([createEmptyJobTask()]);
   const [painPoints, setPainPoints] = useState<PainPoint[]>([createEmptyPainPoint()]);
@@ -76,6 +74,7 @@ export default function InterviewPage() {
   const serializeFormData = useCallback(() => {
     return JSON.stringify({
       interviewDate,
+      participants,
       companyDetails,
       jobTasks,
       painPoints,
@@ -84,7 +83,7 @@ export default function InterviewPage() {
       notes,
       customerRequirements,
     });
-  }, [interviewDate, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements]);
+  }, [interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements]);
 
   // 자동 저장 함수
   const autoSave = useCallback(async () => {
@@ -97,8 +96,10 @@ export default function InterviewPage() {
 
     setIsAutoSaving(true);
 
+    // 자동 저장 시에는 유효성 검사 건너뜀 (작성 중인 데이터 보존 목적)
     const result = await saveInterview(projectId, {
       interview_date: interviewDate,
+      participants,
       company_details: companyDetails,
       job_tasks: jobTasks,
       pain_points: painPoints,
@@ -106,31 +107,30 @@ export default function InterviewPage() {
       improvement_goals: improvementGoals,
       notes,
       customer_requirements: customerRequirements,
-    });
+    }, { skipValidation: true });
 
     if (result.success) {
       lastFormDataRef.current = currentFormData;
       setLastSaved(new Date());
       setAutoSaveError(null);
     } else {
-      setAutoSaveError('자동 저장에 실패했습니다. 인터넷 연결을 확인해주세요.');
-      // 5초 후 에러 메시지 자동 제거
-      setTimeout(() => setAutoSaveError(null), 5000);
+      // 실제 에러 메시지를 콘솔에 출력하고 사용자에게 표시
+      console.error('[Auto-save Error]', result.error);
+      setAutoSaveError(result.error || '자동 저장에 실패했습니다.');
+      setTimeout(() => setAutoSaveError(null), 8000);
     }
 
     setIsAutoSaving(false);
-  }, [projectId, interviewDate, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, serializeFormData]);
+  }, [projectId, interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, serializeFormData]);
 
   // 디바운스된 자동 저장 설정
   useEffect(() => {
     if (isFetching) return;
 
-    // 이전 타이머 클리어
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
 
-    // 새로운 타이머 설정 (3초 후 자동 저장)
     autoSaveTimerRef.current = setTimeout(() => {
       autoSave();
     }, 3000);
@@ -140,7 +140,7 @@ export default function InterviewPage() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [interviewDate, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, isFetching, autoSave]);
+  }, [interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, isFetching, autoSave]);
 
   // 기존 인터뷰 데이터 로드
   useEffect(() => {
@@ -148,19 +148,20 @@ export default function InterviewPage() {
       const data = await getInterview(projectId);
       if (data) {
         setInterviewDate(data.interview_date);
+        // 빈 배열인 경우에도 기본 폼을 표시하도록 length 체크
+        const loadedParticipants = data.participants as InterviewParticipant[];
+        setParticipants(loadedParticipants?.length > 0 ? loadedParticipants : [createEmptyParticipant()]);
         setCompanyDetails(data.company_details as CompanyDetails || {
-          department: '',
-          team_size: undefined,
-          main_systems: [],
-          data_sources: [],
-          current_tools: [],
+          systems_and_tools: [],
           ai_experience: '',
-          training_history: '',
         });
-        setJobTasks((data.job_tasks as JobTask[]) || [createEmptyJobTask()]);
-        setPainPoints((data.pain_points as PainPoint[]) || [createEmptyPainPoint()]);
+        const loadedJobTasks = data.job_tasks as JobTask[];
+        setJobTasks(loadedJobTasks?.length > 0 ? loadedJobTasks : [createEmptyJobTask()]);
+        const loadedPainPoints = data.pain_points as PainPoint[];
+        setPainPoints(loadedPainPoints?.length > 0 ? loadedPainPoints : [createEmptyPainPoint()]);
         setConstraints((data.constraints as Constraint[]) || []);
-        setImprovementGoals((data.improvement_goals as ImprovementGoal[]) || [createEmptyImprovementGoal()]);
+        const loadedGoals = data.improvement_goals as ImprovementGoal[];
+        setImprovementGoals(loadedGoals?.length > 0 ? loadedGoals : [createEmptyImprovementGoal()]);
         setNotes(data.notes || '');
         setCustomerRequirements(data.customer_requirements || '');
         setSttInsights((data.stt_insights as SttInsights) || null);
@@ -168,9 +169,9 @@ export default function InterviewPage() {
         // 기존 데이터가 있으면 모든 스텝을 완료로 표시
         setCompletedSteps([1, 2, 3, 4, 5, 6]);
 
-        // 직렬화된 데이터 저장 (자동저장 비교용)
         lastFormDataRef.current = JSON.stringify({
           interviewDate: data.interview_date,
+          participants: data.participants,
           companyDetails: data.company_details,
           jobTasks: data.job_tasks,
           painPoints: data.pain_points,
@@ -189,9 +190,10 @@ export default function InterviewPage() {
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        return !!interviewDate;
+        return !!interviewDate && participants.length > 0 && participants.every(p => p.name.trim() !== '');
       case 2:
-        return true; // 기업 정보는 선택 사항
+        // AI 도구 사용 경험은 필수
+        return !!companyDetails.ai_experience?.trim();
       case 3:
         return jobTasks.length > 0 && jobTasks.every(t => t.task_name && t.task_description);
       case 4:
@@ -199,24 +201,17 @@ export default function InterviewPage() {
       case 5:
         return improvementGoals.length > 0 && improvementGoals.every(g => g.goal_description);
       case 6:
-        return true; // 추가 정보는 선택 사항
+        // 확인 페이지: 이전 필수 스텝(1~5)이 모두 완료되었을 때만 완료
+        return [1, 2, 3, 4, 5].every(s => validateStep(s));
       default:
         return false;
     }
   };
 
-  // 다음 스텝으로 이동
+  // 다음 스텝으로 이동 (유효성 검사 없이 자유롭게 이동 가능)
   const goToNextStep = () => {
-    if (validateStep(currentStep)) {
-      if (!completedSteps.includes(currentStep)) {
-        setCompletedSteps([...completedSteps, currentStep]);
-      }
-      if (currentStep < STEPS.length) {
-        setCurrentStep(currentStep + 1);
-      }
-    } else {
-      setError('필수 항목을 입력해주세요.');
-      setTimeout(() => setError(null), 3000);
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
     }
   };
 
@@ -229,7 +224,6 @@ export default function InterviewPage() {
 
   // 스텝 클릭 핸들러
   const handleStepClick = (step: number) => {
-    // 현재 스텝이 유효하면 완료로 표시
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
@@ -242,8 +236,9 @@ export default function InterviewPage() {
     setSuccess(null);
     setIsLoading(true);
 
-    // 모든 스텝 유효성 검사
-    for (let step = 1; step <= STEPS.length; step++) {
+    // 필수 스텝(1,3,4,5) 유효성 검사
+    const requiredSteps = [1, 3, 4, 5];
+    for (const step of requiredSteps) {
       if (!validateStep(step)) {
         setCurrentStep(step);
         setError('필수 항목을 입력해주세요.');
@@ -254,6 +249,7 @@ export default function InterviewPage() {
 
     const result = await saveInterview(projectId, {
       interview_date: interviewDate,
+      participants,
       company_details: companyDetails,
       job_tasks: jobTasks,
       pain_points: painPoints,
@@ -316,7 +312,9 @@ export default function InterviewPage() {
         return (
           <StepBasicInfo
             interviewDate={interviewDate}
+            participants={participants}
             onInterviewDateChange={setInterviewDate}
+            onParticipantsChange={setParticipants}
           />
         );
       case 2:
@@ -345,21 +343,29 @@ export default function InterviewPage() {
           <StepConstraintsGoals
             constraints={constraints}
             improvementGoals={improvementGoals}
-            onConstraintsChange={setConstraints}
-            onImprovementGoalsChange={setImprovementGoals}
-          />
-        );
-      case 6:
-        return (
-          <StepAdditionalInfo
-            customerRequirements={customerRequirements}
             notes={notes}
             sttInsights={sttInsights}
-            onCustomerRequirementsChange={setCustomerRequirements}
+            onConstraintsChange={setConstraints}
+            onImprovementGoalsChange={setImprovementGoals}
             onNotesChange={setNotes}
             onSttFileUpload={handleSttFileUpload}
             onSttInsightsDelete={handleSttInsightsDelete}
             isProcessingStt={isProcessingStt}
+          />
+        );
+      case 6:
+        return (
+          <StepSummary
+            interviewDate={interviewDate}
+            participants={participants}
+            companyDetails={companyDetails}
+            jobTasks={jobTasks}
+            painPoints={painPoints}
+            constraints={constraints}
+            improvementGoals={improvementGoals}
+            notes={notes}
+            sttInsights={sttInsights}
+            onEditStep={handleStepClick}
           />
         );
       default:
@@ -396,10 +402,9 @@ export default function InterviewPage() {
         </Link>
         <div className="flex items-center justify-between mt-2">
           <h1 className="text-2xl font-bold text-gray-900">현장 인터뷰 입력</h1>
-          {/* 자동 저장 상태 */}
           <div className="text-sm flex items-center">
             {autoSaveError ? (
-              <span className="text-red-500 flex items-center">
+              <span className="text-red-500 flex items-center" title={autoSaveError}>
                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
@@ -418,7 +423,7 @@ export default function InterviewPage() {
                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                {lastSaved.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 저장됨
+                {lastSaved.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 자동 저장됨
               </span>
             ) : null}
           </div>
@@ -450,6 +455,7 @@ export default function InterviewPage() {
           currentStep={currentStep}
           onStepClick={handleStepClick}
           completedSteps={completedSteps}
+          validateStep={validateStep}
         />
       </div>
 
@@ -458,7 +464,7 @@ export default function InterviewPage() {
         {renderStepContent()}
       </div>
 
-      {/* 네비게이션 버튼 - 고정 위치 (모바일 최적화) */}
+      {/* 네비게이션 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:relative md:border-0 md:p-0 md:bg-transparent">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <button
