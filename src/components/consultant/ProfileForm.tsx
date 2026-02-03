@@ -28,6 +28,12 @@ interface ProfileFormProps {
   backUrl: string;
   successRedirectUrl: string;
   backLabel?: string;
+  /** 회원가입 모드 ('registration')일 때 헤더/취소버튼 숨김, 외부 래퍼 제거 */
+  variant?: 'default' | 'registration';
+  /** 회원가입 완료 알림 표시 여부 */
+  showRegistrationAlert?: boolean;
+  /** Card 컴포넌트에 적용할 추가 클래스 */
+  cardClassName?: string;
 }
 
 export default function ProfileForm({
@@ -35,8 +41,13 @@ export default function ProfileForm({
   backUrl,
   successRedirectUrl,
   backLabel = '돌아가기',
+  variant = 'default',
+  showRegistrationAlert = false,
+  cardClassName,
 }: ProfileFormProps) {
   const router = useRouter();
+
+  // UI 상태
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -45,15 +56,17 @@ export default function ProfileForm({
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
     profile?.available_industries || []
   );
-  const [subIndustries, setSubIndustries] = useState<string[]>(
-    profile?.sub_industries || []
-  );
+  const [subIndustries, setSubIndustries] = useState<string[]>(profile?.sub_industries || []);
   const [selectedDomains, setSelectedDomains] = useState<string[]>(
     profile?.expertise_domains || []
   );
   const [selectedLevels, setSelectedLevels] = useState<string[]>(profile?.teaching_levels || []);
   const [selectedMethods, setSelectedMethods] = useState<string[]>(profile?.coaching_methods || []);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile?.skill_tags || []);
+
+  // 파생 상태
+  const isRegistrationMode = variant === 'registration';
+  const isCreateMode = !profile;
 
   // 필수 선택 항목 정의
   const requiredSelections = [
@@ -129,36 +142,40 @@ export default function ProfileForm({
     setIsSaving(false);
   }
 
-  const isCreateMode = !profile;
-  const pageTitle = isCreateMode ? '프로필 등록' : '프로필 관리';
-  const pageDescription = isCreateMode
-    ? '컨설턴트 프로필을 등록해주세요. 프로필이 상세할수록 적합한 기업과 매칭될 확률이 높아집니다. 각 항목은 복수 선택이 가능하니 가급적 다양하게 선택해주세요.'
-    : '컨설턴트 프로필 정보를 수정할 수 있습니다.';
-  const cardTitle = isCreateMode ? '컨설턴트 프로필 등록' : '컨설턴트 프로필';
-  const cardDescription = isCreateMode
-    ? '모든 항목을 입력해주세요. * 표시는 필수 항목입니다.'
-    : '프로필이 상세할수록 적합한 기업과 매칭될 확률이 높아집니다. 각 항목은 복수 선택이 가능하니 가급적 다양하게 선택해주세요.';
-  const submitButtonText = isCreateMode ? '프로필 등록' : '저장';
-  const savingText = isCreateMode ? '등록 중...' : '저장 중...';
+  // UI 텍스트 (모드에 따라 분기)
+  const uiText = {
+    pageTitle: isCreateMode ? '프로필 등록' : '프로필 관리',
+    pageDescription: isCreateMode
+      ? '컨설턴트 프로필을 등록해주세요. 프로필이 상세할수록 적합한 기업과 매칭될 확률이 높아집니다. 각 항목은 복수 선택이 가능하니 가급적 다양하게 선택해주세요.'
+      : '컨설턴트 프로필 정보를 수정할 수 있습니다.',
+    cardTitle: isCreateMode ? '컨설턴트 프로필 등록' : '컨설턴트 프로필',
+    cardDescription: isCreateMode
+      ? '모든 항목을 입력해주세요. * 표시는 필수 항목입니다.'
+      : '프로필이 상세할수록 적합한 기업과 매칭될 확률이 높아집니다. 각 항목은 복수 선택이 가능하니 가급적 다양하게 선택해주세요.',
+    submitButton: isRegistrationMode ? '가입 완료' : isCreateMode ? '프로필 등록' : '저장',
+    savingButton: isCreateMode ? '등록 중...' : '저장 중...',
+  };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* 헤더 영역 */}
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.push(backUrl)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {backLabel}
-        </Button>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
-            <User className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
-            <p className="text-sm text-muted-foreground">{pageDescription}</p>
+    <div className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}>
+      {/* 헤더 영역 - 회원가입 모드에서는 숨김 */}
+      {!isRegistrationMode && (
+        <div className="mb-6">
+          <Button variant="ghost" onClick={() => router.push(backUrl)} className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {backLabel}
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
+              <User className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{uiText.pageTitle}</h1>
+              <p className="text-sm text-muted-foreground">{uiText.pageDescription}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 알림 메시지 */}
       {error && (
@@ -176,13 +193,23 @@ export default function ProfileForm({
       )}
 
       {/* 프로필 폼 */}
-      <Card>
+      <Card className={cardClassName}>
         <CardHeader>
-          <CardTitle>{cardTitle}</CardTitle>
-          <CardDescription>{cardDescription}</CardDescription>
+          <CardTitle>{uiText.cardTitle}</CardTitle>
+          <CardDescription>{uiText.cardDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-9">
+            {/* 회원가입 완료 알림 */}
+            {showRegistrationAlert && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  기본 정보 등록이 완료되었습니다. 컨설턴트 프로필을 입력하시면 가입이 완료됩니다.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* 1. AI 훈련 가능 산업 */}
             <BadgeSelector
               number={1}
@@ -354,24 +381,31 @@ export default function ProfileForm({
                 </p>
               )}
               <div className="flex gap-3">
+                {/* 취소 버튼 - 회원가입 모드에서는 숨김 */}
+                {!isRegistrationMode && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push(backUrl)}
+                    disabled={isSaving}
+                  >
+                    취소
+                  </Button>
+                )}
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push(backUrl)}
-                  disabled={isSaving}
+                  type="submit"
+                  disabled={isSaving || !isSelectionsValid}
+                  className={isRegistrationMode ? 'w-full' : undefined}
                 >
-                  취소
-                </Button>
-                <Button type="submit" disabled={isSaving || !isSelectionsValid}>
                   {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {savingText}
+                      {uiText.savingButton}
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      {submitButtonText}
+                      {uiText.submitButton}
                     </>
                   )}
                 </Button>
