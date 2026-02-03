@@ -7,7 +7,7 @@ import {
   fetchConsultantProjectFilters,
   type ConsultantProjectItem,
 } from '../actions';
-import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
+import { ConsultantProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import {
 import { Search, X, ClipboardList } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getConsultantProjectStatusBadge } from '@/lib/constants/status';
+import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
 // =============================================================================
 // Types
@@ -135,6 +136,10 @@ function FilterBadge({
  */
 function ProjectRow({ project }: { project: ConsultantProjectItem }) {
   const displayDate = project.assigned_at || project.created_at;
+  const companySizeLabel = COMPANY_SIZE_LABELS[project.company_size as CompanySizeValue]
+    ?.replace(/\d+[~,]?\d*명\s*/, '')
+    ?.replace(/[()]/g, '')
+    || project.company_size;
 
   return (
     <TableRow>
@@ -144,7 +149,7 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         </div>
       </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
-      <TableCell className="text-muted-foreground">{project.company_size}</TableCell>
+      <TableCell className="text-muted-foreground">{companySizeLabel}</TableCell>
       <TableCell>
         <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
       </TableCell>
@@ -310,7 +315,7 @@ export default function ProjectList() {
 
       {/* 테이블 */}
       {loading ? (
-        <ProjectTableSkeleton rows={5} />
+        <ConsultantProjectTableSkeleton rows={5} />
       ) : (
         <Card>
           <CardContent className="p-0 overflow-x-auto">

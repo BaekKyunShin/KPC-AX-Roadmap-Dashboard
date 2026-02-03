@@ -14,6 +14,7 @@ import {
   DEFAULT_TOP_N,
 } from './assignment';
 import type { TabType } from './assignment';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 // ============================================================================
 // 타입 정의
@@ -293,37 +294,44 @@ export default function AssignmentTabSection({
   // 이미 배정된 경우
   if (projectData.assigned_consultant) {
     return (
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">컨설턴트 배정</h2>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">컨설턴트 배정</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CurrentAssignmentInfo
+            consultant={projectData.assigned_consultant}
+            assignmentReason={latestAssignment?.assignment_reason}
+            canReassign={!['FINALIZED'].includes(projectData.status)}
+            showReassignForm={showReassignForm}
+            onToggleReassign={() => setShowReassignForm(!showReassignForm)}
+          />
 
-        <CurrentAssignmentInfo
-          consultant={projectData.assigned_consultant}
-          assignmentReason={latestAssignment?.assignment_reason}
-          canReassign={!['FINALIZED'].includes(projectData.status)}
-          showReassignForm={showReassignForm}
-          onToggleReassign={() => setShowReassignForm(!showReassignForm)}
-        />
-
-        {showReassignForm && (
-          <div className="border-t pt-4">
-            <p className="text-sm text-orange-600 mb-4">
-              다른 컨설턴트로 재배정합니다. 기존 배정은 이력으로 보관됩니다.
-            </p>
-            <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
-            {renderTabContent()}
-          </div>
-        )}
-      </div>
+          {showReassignForm && (
+            <div className="border-t pt-4">
+              <p className="text-sm text-orange-600 mb-4">
+                다른 컨설턴트로 재배정합니다. 기존 배정은 이력으로 보관됩니다.
+              </p>
+              <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
+              {renderTabContent()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
   // 아직 배정되지 않은 경우
   return (
-    <div className="bg-white shadow rounded-lg p-6 mb-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">컨설턴트 배정</h2>
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
-      {renderTabContent()}
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">컨설턴트 배정</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} tabs={tabs} />
+        {renderTabContent()}
+      </CardContent>
+    </Card>
   );
 }
 

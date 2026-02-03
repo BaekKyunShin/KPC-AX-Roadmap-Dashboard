@@ -18,48 +18,150 @@ interface TableSkeletonProps {
   rows?: number;
 }
 
+/** 테이블 컬럼 설정 */
+interface TableColumnConfig {
+  header: string;
+  width: string;
+}
+
+/** 테이블 설정 (컬럼 + 최소 너비) */
+interface TableConfig {
+  columns: TableColumnConfig[];
+  minWidth: string;
+}
+
 // ============================================================================
-// 공통 스타일 상수
+// 스타일 상수
 // ============================================================================
 
-const TABLE_WRAPPER_STYLES = 'bg-white shadow overflow-hidden rounded-lg animate-pulse';
-const TABLE_STYLES = 'min-w-full divide-y divide-gray-200';
-const THEAD_STYLES = 'bg-gray-50';
-const TBODY_STYLES = 'bg-white divide-y divide-gray-200';
-const TH_STYLES = 'text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
-const TD_STYLES = 'whitespace-nowrap';
-
-// 셀 패딩 변형
-const CELL_PADDING = {
-  default: 'px-6 py-4',
-  compact: 'px-4 py-3',
-  header: 'px-6 py-3',
-  headerCompact: 'px-4 py-3',
-} as const;
-
-// 스켈레톤 바 스타일
+/** 스켈레톤 바 스타일 */
 const SKELETON_BAR = {
   primary: 'bg-gray-200 rounded',
   secondary: 'bg-gray-100 rounded',
 } as const;
 
+/** 테이블 공통 스타일 */
+const TABLE_STYLES = {
+  wrapper: 'relative w-full overflow-x-auto bg-white shadow rounded-lg animate-pulse',
+  table: 'w-full table-fixed caption-bottom text-sm divide-y divide-gray-200',
+  thead: 'bg-gray-50',
+  theadMuted: 'bg-muted/50',
+  tbody: 'bg-white divide-y divide-gray-200',
+  /** 실제 TableHead 컴포넌트와 동일한 스타일 */
+  th: 'px-6 py-3 text-center align-middle text-sm font-medium text-gray-500 uppercase tracking-wider',
+  /** 실제 TableCell 컴포넌트와 동일한 스타일 */
+  td: 'px-6 py-4 align-top text-center text-sm',
+} as const;
+
+/** 카드 공통 스타일 */
+const CARD_STYLES = {
+  base: 'bg-white shadow rounded-lg animate-pulse',
+  padding: {
+    default: 'p-6',
+    compact: 'p-4',
+  },
+} as const;
+
+/** 프로젝트 워크플로우 단계 수 (MiniStepper와 일치) */
+const PROJECT_WORKFLOW_STEP_COUNT = 6;
+
+// ============================================================================
+// 테이블별 설정
+// ============================================================================
+
+/** OPS 프로젝트 테이블 설정 (ops/projects) */
+const PROJECT_TABLE: TableConfig = {
+  columns: [
+    { header: '기업명', width: 'min-w-[180px]' },
+    { header: '업종', width: 'min-w-[80px]' },
+    { header: '진행 상태', width: 'min-w-[180px]' },
+    { header: '담당 컨설턴트', width: 'min-w-[100px]' },
+    { header: '프로젝트 생성일', width: 'min-w-[110px]' },
+    { header: '작업', width: 'min-w-[70px]' },
+  ],
+  minWidth: 'min-w-[900px]',
+};
+
+/** 컨설턴트 프로젝트 테이블 설정 (consultant/projects) */
+const CONSULTANT_PROJECT_TABLE: TableConfig = {
+  columns: [
+    { header: '기업명', width: 'min-w-[140px]' },
+    { header: '업종', width: 'min-w-[100px]' },
+    { header: '규모', width: 'min-w-[80px]' },
+    { header: '상태', width: 'min-w-[100px]' },
+    { header: '배정일', width: 'min-w-[100px]' },
+    { header: '작업', width: 'min-w-[80px]' },
+  ],
+  minWidth: 'min-w-[700px]',
+};
+
+/** 감사로그 테이블 설정 (ops/audit) */
+const AUDIT_LOG_TABLE: TableConfig = {
+  columns: [
+    { header: '시간', width: 'min-w-[100px]' },
+    { header: '사용자', width: 'min-w-[140px]' },
+    { header: '액션', width: 'min-w-[120px]' },
+    { header: '대상', width: 'min-w-[140px]' },
+    { header: '상태', width: 'min-w-[80px]' },
+    { header: '상세', width: 'min-w-[180px]' },
+  ],
+  minWidth: 'min-w-[800px]',
+};
+
+/** 사용자 관리 테이블 설정 (ops/users) */
+const USER_TABLE: TableConfig = {
+  columns: [
+    { header: '사용자', width: 'min-w-[160px]' },
+    { header: '역할', width: 'min-w-[120px]' },
+    { header: '상태', width: 'min-w-[80px]' },
+    { header: '프로필', width: 'min-w-[100px]' },
+    { header: '가입일', width: 'min-w-[100px]' },
+    { header: '작업', width: 'min-w-[100px]' },
+  ],
+  minWidth: 'min-w-[700px]',
+};
+
+/** 쿼터 관리 테이블 설정 (ops/quota) */
+const QUOTA_TABLE: TableConfig = {
+  columns: [
+    { header: '사용자', width: 'min-w-[140px]' },
+    { header: '역할', width: 'min-w-[100px]' },
+    { header: '월간 사용량', width: 'min-w-[160px]' },
+    { header: '토큰', width: 'min-w-[120px]' },
+    { header: '일일 한도', width: 'min-w-[100px]' },
+    { header: '월간 한도', width: 'min-w-[100px]' },
+    { header: '작업', width: 'min-w-[100px]' },
+  ],
+  minWidth: 'min-w-[800px]',
+};
+
 // ============================================================================
 // 헬퍼 함수
 // ============================================================================
 
-/**
- * 테이블 헤더를 렌더링합니다.
- */
-function renderTableHeaders(
-  headers: readonly string[],
-  cellPadding: string = CELL_PADDING.header
-) {
+/** 지정된 개수만큼 요소를 생성 */
+function renderItems(count: number, renderItem: (index: number) => React.ReactNode) {
+  return Array.from({ length: count }, (_, i) => renderItem(i));
+}
+
+// ============================================================================
+// 공통 내부 컴포넌트
+// ============================================================================
+
+/** 테이블 헤더 렌더링 */
+function TableSkeletonHeader({
+  columns,
+  theadClassName = TABLE_STYLES.thead,
+}: {
+  columns: TableColumnConfig[];
+  theadClassName?: string;
+}) {
   return (
-    <thead className={THEAD_STYLES}>
+    <thead className={theadClassName}>
       <tr>
-        {headers.map((header) => (
-          <th key={header} className={`${cellPadding} ${TH_STYLES}`}>
-            {header}
+        {columns.map((col) => (
+          <th key={col.header} className={`${TABLE_STYLES.th} ${col.width}`}>
+            {col.header}
           </th>
         ))}
       </tr>
@@ -67,33 +169,71 @@ function renderTableHeaders(
   );
 }
 
-/**
- * 지정된 개수만큼 행을 생성합니다.
- */
-function renderRows(count: number, renderRow: (index: number) => React.ReactNode) {
-  return Array.from({ length: count }, (_, i) => renderRow(i));
+/** 테이블 래퍼 */
+function TableSkeletonWrapper({
+  minWidth,
+  children,
+}: {
+  minWidth: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={TABLE_STYLES.wrapper}>
+      <table className={`${TABLE_STYLES.table} ${minWidth}`}>{children}</table>
+    </div>
+  );
+}
+
+/** MiniStepper 스켈레톤 (워크플로우 단계 스텝퍼) */
+function MiniStepperSkeleton() {
+  const lastStepIndex = PROJECT_WORKFLOW_STEP_COUNT - 1;
+
+  return (
+    <div className="flex flex-col gap-1 items-center">
+      <div className="flex items-center gap-0.5">
+        {renderItems(PROJECT_WORKFLOW_STEP_COUNT, (i) => (
+          <div key={i} className="flex items-center">
+            <div className={`h-2.5 w-2.5 rounded-full ${SKELETON_BAR.primary}`} />
+            {i < lastStepIndex && <div className={`h-0.5 w-2 ${SKELETON_BAR.secondary}`} />}
+          </div>
+        ))}
+      </div>
+      <div className={`h-3 w-20 ${SKELETON_BAR.secondary}`} />
+    </div>
+  );
+}
+
+/** 스켈레톤 바 (텍스트/배지 등) */
+function SkeletonBar({
+  height,
+  width,
+  variant = 'primary',
+  className = '',
+}: {
+  height: string;
+  width: string;
+  variant?: 'primary' | 'secondary';
+  className?: string;
+}) {
+  return <div className={`${height} ${width} ${SKELETON_BAR[variant]} ${className}`} />;
 }
 
 // ============================================================================
 // 기본 스켈레톤 컴포넌트
 // ============================================================================
 
-/**
- * 기본 스켈레톤 컴포넌트
- */
+/** 기본 스켈레톤 컴포넌트 */
 export function Skeleton({ className = '' }: SkeletonProps) {
   return <div className={`animate-pulse ${SKELETON_BAR.primary} ${className}`} />;
 }
 
-/**
- * 테이블 행 스켈레톤 (단일 행)
- */
+/** 테이블 행 스켈레톤 (단일 행) */
 export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
   return (
     <tr>
-      {Array.from({ length: columns }, (_, i) => (
-        <td key={i} className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-          <div className={`h-4 w-3/4 ${SKELETON_BAR.primary}`} />
+      {renderItems(columns, (i) => (
+        <td key={i} className={TABLE_STYLES.td}>
+          <SkeletonBar height="h-4" width="w-3/4" className="mx-auto" />
         </td>
       ))}
     </tr>
@@ -104,172 +244,231 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
 // 테이블 스켈레톤 컴포넌트
 // ============================================================================
 
-const PROJECT_TABLE_HEADERS = ['기업명', '업종', '상태', '배정 컨설턴트', '생성일', '작업'] as const;
-
-/**
- * 프로젝트 목록 테이블 스켈레톤
- */
+/** OPS 프로젝트 목록 테이블 스켈레톤 */
 export function ProjectTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+  const { columns, minWidth } = PROJECT_TABLE;
+
   return (
-    <div className={TABLE_WRAPPER_STYLES}>
-      <table className={TABLE_STYLES}>
-        {renderTableHeaders(PROJECT_TABLE_HEADERS)}
-        <tbody className={TBODY_STYLES}>
-          {renderRows(rows, (i) => (
-            <tr key={i}>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-32 mb-2 ${SKELETON_BAR.primary}`} />
-                <div className={`h-3 w-40 ${SKELETON_BAR.secondary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-20 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-6 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-24 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-20 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES} text-right`}>
-                <div className={`h-4 w-16 ml-auto ${SKELETON_BAR.primary}`} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 기업명: 아이콘 + 회사명/이메일 */}
+            <td className={`${TABLE_STYLES.td} ${columns[0].width}`}>
+              <div className="flex items-center gap-3 justify-center">
+                <div className={`h-9 w-9 shrink-0 rounded-lg ${SKELETON_BAR.primary}`} />
+                <div className="text-left">
+                  <SkeletonBar height="h-4" width="w-28" className="mb-2" />
+                  <SkeletonBar height="h-3" width="w-36" variant="secondary" />
+                </div>
+              </div>
+            </td>
+            {/* 업종 */}
+            <td className={`${TABLE_STYLES.td} ${columns[1].width}`}>
+              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+            </td>
+            {/* 진행 상태: MiniStepper */}
+            <td className={`${TABLE_STYLES.td} ${columns[2].width}`}>
+              <div className="flex justify-center">
+                <MiniStepperSkeleton />
+              </div>
+            </td>
+            {/* 담당 컨설턴트 */}
+            <td className={`${TABLE_STYLES.td} ${columns[3].width}`}>
+              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+            </td>
+            {/* 프로젝트 생성일 */}
+            <td className={`${TABLE_STYLES.td} ${columns[4].width}`}>
+              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+            </td>
+            {/* 작업 */}
+            <td className={`${TABLE_STYLES.td} ${columns[5].width}`}>
+              <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
   );
 }
 
-const AUDIT_LOG_TABLE_HEADERS = ['일시', '사용자', '액션', '대상', '상세', 'IP'] as const;
+/** 컨설턴트 담당 프로젝트 테이블 스켈레톤 */
+export function ConsultantProjectTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+  const { columns, minWidth } = CONSULTANT_PROJECT_TABLE;
 
-/**
- * 감사로그 테이블 스켈레톤
- */
+  return (
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} theadClassName={TABLE_STYLES.theadMuted} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 기업명 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+            </td>
+            {/* 업종 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+            </td>
+            {/* 규모 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
+            </td>
+            {/* 상태: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+            </td>
+            {/* 배정일 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+            </td>
+            {/* 작업 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
+  );
+}
+
+/** 감사로그 테이블 스켈레톤 */
 export function AuditLogTableSkeleton({ rows = 10 }: TableSkeletonProps) {
+  const { columns, minWidth } = AUDIT_LOG_TABLE;
+
   return (
-    <div className={TABLE_WRAPPER_STYLES}>
-      <table className={TABLE_STYLES}>
-        {renderTableHeaders(AUDIT_LOG_TABLE_HEADERS, CELL_PADDING.headerCompact)}
-        <tbody className={TBODY_STYLES}>
-          {renderRows(rows, (i) => (
-            <tr key={i}>
-              <td className={`${CELL_PADDING.compact} ${TD_STYLES}`}>
-                <div className={`h-3 w-24 mb-1 ${SKELETON_BAR.primary}`} />
-                <div className={`h-3 w-16 ${SKELETON_BAR.secondary}`} />
-              </td>
-              <td className={`${CELL_PADDING.compact} ${TD_STYLES}`}>
-                <div className={`h-4 w-20 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.compact} ${TD_STYLES}`}>
-                <div className={`h-5 w-24 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.compact} ${TD_STYLES}`}>
-                <div className={`h-4 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={CELL_PADDING.compact}>
-                <div className={`h-4 w-32 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.compact} ${TD_STYLES}`}>
-                <div className={`h-4 w-24 ${SKELETON_BAR.primary}`} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 시간: 날짜 + 시간 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-3" width="w-20" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-16" variant="secondary" className="mx-auto" />
+            </td>
+            {/* 사용자: 이름 + 이메일 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-24" variant="secondary" className="mx-auto" />
+            </td>
+            {/* 액션: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+            </td>
+            {/* 대상: 타입 + ID */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-20" variant="secondary" className="mx-auto" />
+            </td>
+            {/* 상태: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
+            </td>
+            {/* 상세 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
   );
 }
 
-const USER_TABLE_HEADERS = ['사용자', '역할', '상태', '가입일', '작업'] as const;
-
-/**
- * 사용자 관리 테이블 스켈레톤
- */
+/** 사용자 관리 테이블 스켈레톤 */
 export function UserTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+  const { columns, minWidth } = USER_TABLE;
+
   return (
-    <div className={TABLE_WRAPPER_STYLES}>
-      <table className={TABLE_STYLES}>
-        {renderTableHeaders(USER_TABLE_HEADERS)}
-        <tbody className={TBODY_STYLES}>
-          {renderRows(rows, (i) => (
-            <tr key={i}>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className="flex items-center">
-                  <div className={`h-10 w-10 rounded-full ${SKELETON_BAR.primary}`} />
-                  <div className="ml-4">
-                    <div className={`h-4 w-24 mb-2 ${SKELETON_BAR.primary}`} />
-                    <div className={`h-3 w-32 ${SKELETON_BAR.secondary}`} />
-                  </div>
-                </div>
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-5 w-20 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-5 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-24 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-8 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 사용자: 이름 + 이메일 */}
+            <td className={TABLE_STYLES.td}>
+              <div className="text-left pl-14">
+                <SkeletonBar height="h-4" width="w-20" className="mb-1" />
+                <SkeletonBar height="h-3" width="w-32" variant="secondary" />
+              </div>
+            </td>
+            {/* 역할: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-24" className="mx-auto" />
+            </td>
+            {/* 상태: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
+            </td>
+            {/* 프로필 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+            </td>
+            {/* 가입일 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+            </td>
+            {/* 작업 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
   );
 }
 
-const QUOTA_TABLE_HEADERS = ['사용자', '역할', '월간 사용량', '토큰', '일일 한도', '월간 한도', '작업'] as const;
-
-/**
- * 쿼터 관리 테이블 스켈레톤
- */
+/** 쿼터 관리 테이블 스켈레톤 */
 export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+  const { columns, minWidth } = QUOTA_TABLE;
+
   return (
-    <div className={TABLE_WRAPPER_STYLES}>
-      <table className={TABLE_STYLES}>
-        {renderTableHeaders(QUOTA_TABLE_HEADERS)}
-        <tbody className={TBODY_STYLES}>
-          {renderRows(rows, (i) => (
-            <tr key={i}>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-24 mb-2 ${SKELETON_BAR.primary}`} />
-                <div className={`h-3 w-32 ${SKELETON_BAR.secondary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-5 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className="space-y-2">
-                  <div className={`h-4 w-20 ${SKELETON_BAR.primary}`} />
-                  <div className={`h-2 w-32 ${SKELETON_BAR.primary}`} />
-                </div>
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-3 w-16 mb-1 ${SKELETON_BAR.primary}`} />
-                <div className={`h-3 w-16 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-12 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-4 w-12 ${SKELETON_BAR.primary}`} />
-              </td>
-              <td className={`${CELL_PADDING.default} ${TD_STYLES}`}>
-                <div className={`h-6 w-12 ${SKELETON_BAR.primary}`} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 사용자: 이름 + 이메일 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-20" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-28" variant="secondary" className="mx-auto" />
+            </td>
+            {/* 역할: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+            </td>
+            {/* 월간 사용량: 수치 + 프로그레스바 */}
+            <td className={TABLE_STYLES.td}>
+              <div className="inline-block">
+                <SkeletonBar height="h-4" width="w-20" className="mb-1" />
+                <SkeletonBar height="h-2" width="w-28" variant="secondary" />
+              </div>
+            </td>
+            {/* 토큰: 입력/출력 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-3" width="w-20" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-20" className="mx-auto" />
+            </td>
+            {/* 일일 한도 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+            </td>
+            {/* 월간 한도 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+            </td>
+            {/* 작업 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
   );
 }
 
@@ -277,50 +476,46 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
 // 기타 스켈레톤 컴포넌트
 // ============================================================================
 
-/**
- * 카드 스켈레톤
- */
+/** 카드 스켈레톤 */
 export function CardSkeleton() {
   return (
-    <div className="bg-white shadow rounded-lg p-6 animate-pulse">
-      <div className={`h-4 w-1/4 mb-4 ${SKELETON_BAR.primary}`} />
+    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default}`}>
+      <SkeletonBar height="h-4" width="w-1/4" className="mb-4" />
       <div className="space-y-3">
-        <div className={`h-4 w-full ${SKELETON_BAR.primary}`} />
-        <div className={`h-4 w-5/6 ${SKELETON_BAR.primary}`} />
-        <div className={`h-4 w-4/6 ${SKELETON_BAR.primary}`} />
+        <SkeletonBar height="h-4" width="w-full" />
+        <SkeletonBar height="h-4" width="w-5/6" />
+        <SkeletonBar height="h-4" width="w-4/6" />
       </div>
     </div>
   );
 }
 
-/**
- * 상세 페이지 스켈레톤
- */
+/** 상세 페이지 스켈레톤 */
 export function DetailPageSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <div className={`h-4 w-24 mb-2 ${SKELETON_BAR.primary}`} />
-          <div className={`h-8 w-48 ${SKELETON_BAR.primary}`} />
+          <SkeletonBar height="h-4" width="w-24" className="mb-2" />
+          <SkeletonBar height="h-8" width="w-48" />
         </div>
         <div className="flex space-x-3">
-          <div className={`h-10 w-24 ${SKELETON_BAR.primary}`} />
-          <div className={`h-10 w-24 ${SKELETON_BAR.primary}`} />
+          <SkeletonBar height="h-10" width="w-24" />
+          <SkeletonBar height="h-10" width="w-24" />
         </div>
       </div>
 
       {/* 정보 카드들 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[0, 1].map((cardIndex) => (
-          <div key={cardIndex} className="bg-white shadow rounded-lg p-6">
-            <div className={`h-5 w-32 mb-4 ${SKELETON_BAR.primary}`} />
+        {renderItems(2, (cardIndex) => (
+          <div key={cardIndex} className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default}`}>
+            <SkeletonBar height="h-5" width="w-32" className="mb-4" />
             <div className="space-y-3">
-              {renderRows(4, (i) => (
+              {renderItems(4, (i) => (
                 <div key={i} className="flex justify-between">
-                  <div className={`h-4 w-20 ${SKELETON_BAR.primary}`} />
-                  <div className={`h-4 w-32 ${SKELETON_BAR.primary}`} />
+                  <SkeletonBar height="h-4" width="w-20" />
+                  <SkeletonBar height="h-4" width="w-32" />
                 </div>
               ))}
             </div>
@@ -331,28 +526,24 @@ export function DetailPageSkeleton() {
   );
 }
 
-/**
- * 통계 카드 스켈레톤
- */
+/** 통계 카드 스켈레톤 */
 export function StatsCardSkeleton() {
   return (
-    <div className="bg-white shadow rounded-lg p-4 animate-pulse">
-      <div className={`h-4 w-20 mb-2 ${SKELETON_BAR.primary}`} />
-      <div className={`h-8 w-16 ${SKELETON_BAR.primary}`} />
+    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
+      <SkeletonBar height="h-4" width="w-20" className="mb-2" />
+      <SkeletonBar height="h-8" width="w-16" />
     </div>
   );
 }
 
-/**
- * 페이지네이션 스켈레톤
- */
+/** 페이지네이션 스켈레톤 */
 export function PaginationSkeleton() {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 animate-pulse">
-      <div className={`h-4 w-32 ${SKELETON_BAR.primary}`} />
+      <SkeletonBar height="h-4" width="w-32" />
       <div className="flex space-x-2">
-        <div className={`h-8 w-16 ${SKELETON_BAR.primary}`} />
-        <div className={`h-8 w-16 ${SKELETON_BAR.primary}`} />
+        <SkeletonBar height="h-8" width="w-16" />
+        <SkeletonBar height="h-8" width="w-16" />
       </div>
     </div>
   );

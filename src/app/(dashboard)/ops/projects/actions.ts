@@ -931,11 +931,23 @@ export interface ProjectTimelineStep {
   isCurrent: boolean;
 }
 
+export interface ProjectAssignmentHistory {
+  id: string;
+  consultant: { id: string; name: string; email: string } | null;
+  assigned_by_user: { id: string; name: string } | null;
+  assignment_reason: string;
+  is_current: boolean;
+  assigned_at: string;
+  unassigned_at: string | null;
+  unassignment_reason: string | null;
+}
+
 export interface ProjectTimeline {
   projectId: string;
   companyName: string;
   currentStatus: string;
   steps: ProjectTimelineStep[];
+  assignments: ProjectAssignmentHistory[];
 }
 
 export async function fetchProjectTimeline(projectId: string): Promise<ProjectTimeline | null> {
@@ -971,13 +983,29 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .limit(1)
     .single();
 
-  // 배정 정보
+  // 현재 배정 정보 (타임라인 단계용)
   const { data: assignment } = await supabase
     .from('project_assignments')
     .select('assigned_at, consultant:users!project_assignments_consultant_id_fkey(name)')
     .eq('project_id', projectId)
     .eq('is_current', true)
     .single();
+
+  // 전체 배정 이력 (타임라인 상세 표시용)
+  const { data: allAssignments } = await supabase
+    .from('project_assignments')
+    .select(`
+      id,
+      assignment_reason,
+      is_current,
+      assigned_at,
+      unassigned_at,
+      unassignment_reason,
+      consultant:users!project_assignments_consultant_id_fkey(id, name, email),
+      assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
+    `)
+    .eq('project_id', projectId)
+    .order('assigned_at', { ascending: false });
 
   // 인터뷰 정보
   const { data: interview } = await supabase
@@ -1011,13 +1039,17 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   const currentStepIndex = getWorkflowStepIndex(project.status);
 
   // 타임라인 구성 (6단계 - 워크플로우 기준)
+  // - isCompleted: 해당 단계까지 완료됨 (currentStepIndex >= stepIndex)
+  // - isCurrent: 다음에 해야 할 단계 (currentStepIndex + 1 === stepIndex)
+  //   예) status가 ASSIGNED(2)면 → INTERVIEWED(3)가 current
+  //   예) status가 FINALIZED(5)면 → 모든 단계 완료, current 없음
   const steps: ProjectTimelineStep[] = [
     {
       step: 'NEW',
       label: '신규 프로젝트 생성',
       date: project.created_at,
       isCompleted: currentStepIndex >= 0,
-      isCurrent: currentStepIndex === 0,
+      isCurrent: currentStepIndex + 1 === 0, // 항상 false (이전 단계가 없음)
     },
     {
       step: 'DIAGNOSED',
@@ -1027,7 +1059,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
         ? `총점: ${Math.round(selfAssessment.scores.total_score)}점`
         : undefined,
       isCompleted: currentStepIndex >= 1,
-      isCurrent: currentStepIndex === 1,
+      isCurrent: currentStepIndex + 1 === 1, // NEW(0)일 때 current
     },
     {
       step: 'ASSIGNED',
@@ -1039,7 +1071,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
             : (assignment.consultant as { name: string }).name}`
         : undefined,
       isCompleted: currentStepIndex >= 2,
-      isCurrent: currentStepIndex === 2,
+      isCurrent: currentStepIndex + 1 === 2, // DIAGNOSED(1)일 때 current
     },
     {
       step: 'INTERVIEWED',
@@ -1049,7 +1081,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
         ? `인터뷰 일자: ${new Date(interview.interview_date).toLocaleDateString('ko-KR')}`
         : undefined,
       isCompleted: currentStepIndex >= 3,
-      isCurrent: currentStepIndex === 3,
+      isCurrent: currentStepIndex + 1 === 3, // ASSIGNED(2)일 때 current
     },
     {
       step: 'ROADMAP_DRAFTED',
@@ -1059,22 +1091,39 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
         ? `버전 ${roadmapDraft.version_number}`
         : undefined,
       isCompleted: currentStepIndex >= 4,
-      isCurrent: currentStepIndex === 4,
+      isCurrent: currentStepIndex + 1 === 4, // INTERVIEWED(3)일 때 current
     },
     {
       step: 'FINALIZED',
       label: '로드맵 최종 확정',
       date: roadmapFinal?.finalized_at || null,
       isCompleted: currentStepIndex >= 5,
-      isCurrent: currentStepIndex === 5,
+      isCurrent: currentStepIndex + 1 === 5, // ROADMAP_DRAFTED(4)일 때 current
     },
   ];
+
+  // 배정 이력 데이터 변환
+  const assignments: ProjectAssignmentHistory[] = (allAssignments || []).map((a) => ({
+    id: a.id,
+    consultant: Array.isArray(a.consultant)
+      ? (a.consultant[0] as { id: string; name: string; email: string } | null)
+      : (a.consultant as { id: string; name: string; email: string } | null),
+    assigned_by_user: Array.isArray(a.assigned_by_user)
+      ? (a.assigned_by_user[0] as { id: string; name: string } | null)
+      : (a.assigned_by_user as { id: string; name: string } | null),
+    assignment_reason: a.assignment_reason,
+    is_current: a.is_current,
+    assigned_at: a.assigned_at,
+    unassigned_at: a.unassigned_at,
+    unassignment_reason: a.unassignment_reason,
+  }));
 
   return {
     projectId: project.id,
     companyName: project.company_name,
     currentStatus: project.status,
     steps,
+    assignments,
   };
 }
 

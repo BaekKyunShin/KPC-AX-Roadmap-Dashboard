@@ -14,7 +14,7 @@ import {
   type ConsultantProgress,
   type StalledProject,
 } from '../actions';
-import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
+import { PROJECT_STATUS_CONFIG, PROJECT_WORKFLOW_STEPS } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 import {
   PieChart,
@@ -34,24 +34,135 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-// 상태별 차트 색상
-const STATUS_COLORS: Record<ProjectStatus, string> = {
-  NEW: '#9CA3AF',
-  DIAGNOSED: '#3B82F6',
-  MATCH_RECOMMENDED: '#8B5CF6',
-  ASSIGNED: '#22C55E',
-  INTERVIEWED: '#F59E0B',
-  ROADMAP_DRAFTED: '#F97316',
-  FINALIZED: '#10B981',
+// ============================================================================
+// 상수 정의
+// ============================================================================
+
+/** 워크플로우 단계별 차트 색상 */
+const WORKFLOW_STEP_COLORS: Record<string, string> = {
+  new: '#9CA3AF',        // 신규 등록 완료 - 회색
+  diagnosed: '#3B82F6',  // 진단결과 입력 완료 - 파랑
+  assigned: '#22C55E',   // 컨설턴트 배정 완료 - 초록
+  interviewed: '#F59E0B', // 현장 인터뷰 완료 - 주황
+  drafted: '#F97316',    // 로드맵 초안 완료 - 오렌지
+  finalized: '#10B981',  // 로드맵 최종 확정 - 에메랄드
 };
 
-// 컨설턴트 진행 상태 색상
+/** 컨설턴트 진행 상태 색상 */
 const PROGRESS_COLORS = {
   assigned: '#F59E0B',
   interviewing: '#3B82F6',
   drafting: '#8B5CF6',
   completed: '#10B981',
-};
+} as const;
+
+/** 진행 상태 세그먼트 순서 및 라벨 */
+const PROGRESS_SEGMENTS: Array<{
+  key: keyof typeof PROGRESS_COLORS;
+  label: string;
+}> = [
+  { key: 'assigned', label: '배정대기' },
+  { key: 'interviewing', label: '인터뷰' },
+  { key: 'drafting', label: '로드맵작업' },
+  { key: 'completed', label: '완료' },
+];
+
+/** 스켈레톤 표시 항목 수 */
+const SKELETON_COUNTS = {
+  chartCards: 2,
+  legendItems: 4,
+  consultantRows: 3,
+  stalledProjectRows: 3,
+} as const;
+
+/** 스켈레톤 색상 */
+const SKELETON_COLORS = {
+  primary: 'bg-gray-200',
+  secondary: 'bg-gray-100',
+} as const;
+
+// ============================================================================
+// 하위 컴포넌트
+// ============================================================================
+
+/** 대시보드 로딩 스켈레톤 */
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* 첫 번째 행: 상태별 분포 + 월별 추이 (2컬럼) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {Array.from({ length: SKELETON_COUNTS.chartCards }, (_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <div className={`h-6 w-40 ${SKELETON_COLORS.primary} rounded`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`h-[200px] ${SKELETON_COLORS.secondary} rounded`} />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      {/* 두 번째 행: 컨설턴트별 현황 (전체 너비) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className={`h-6 w-48 ${SKELETON_COLORS.primary} rounded`} />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              {Array.from({ length: SKELETON_COUNTS.legendItems }, (_, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <div className={`h-3 w-3 ${SKELETON_COLORS.primary} rounded`} />
+                  <div className={`h-3 w-12 ${SKELETON_COLORS.secondary} rounded`} />
+                </div>
+              ))}
+            </div>
+            {Array.from({ length: SKELETON_COUNTS.consultantRows }, (_, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="flex justify-between">
+                  <div className={`h-4 w-20 ${SKELETON_COLORS.primary} rounded`} />
+                  <div className={`h-4 w-16 ${SKELETON_COLORS.secondary} rounded`} />
+                </div>
+                <div className={`h-6 ${SKELETON_COLORS.secondary} rounded-md`} />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      {/* 세 번째 행: 주의 필요 프로젝트 (전체 너비) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className={`h-6 w-36 ${SKELETON_COLORS.primary} rounded`} />
+          <div className={`h-4 w-56 ${SKELETON_COLORS.secondary} rounded mt-1`} />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Array.from({ length: SKELETON_COUNTS.stalledProjectRows }, (_, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-3">
+                  <div className={`h-2 w-2 ${SKELETON_COLORS.primary} rounded-full`} />
+                  <div>
+                    <div className={`h-4 w-24 ${SKELETON_COLORS.primary} rounded mb-1`} />
+                    <div className={`h-3 w-32 ${SKELETON_COLORS.secondary} rounded`} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className={`h-5 w-16 ${SKELETON_COLORS.primary} rounded`} />
+                  <div className={`h-4 w-12 ${SKELETON_COLORS.secondary} rounded`} />
+                  <div className={`h-4 w-4 ${SKELETON_COLORS.primary} rounded`} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// 메인 컴포넌트
+// ============================================================================
 
 export default function ProjectDashboard() {
   const [stats, setStats] = useState<ProjectStats | null>(null);
@@ -76,29 +187,22 @@ export default function ProjectDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="grid gap-6 md:grid-cols-2">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-6 w-32 bg-gray-200 rounded" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-48 bg-gray-100 rounded" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
-  // 파이 차트 데이터 변환
+  // 파이 차트 데이터 변환 (워크플로우 단계별로 합산, 순서대로 정렬)
   const pieChartData = stats
-    ? Object.entries(stats.byStatus).map(([status, count]) => ({
-        name: PROJECT_STATUS_CONFIG[status as ProjectStatus]?.label || status,
-        value: count,
-        status: status as ProjectStatus,
-      }))
+    ? PROJECT_WORKFLOW_STEPS.map((step) => {
+        // 해당 워크플로우 단계에 속한 모든 상태의 카운트 합산
+        const count = step.statuses.reduce((sum, status) => {
+          return sum + (stats.byStatus[status] || 0);
+        }, 0);
+        return {
+          name: step.label,
+          value: count,
+          stepKey: step.key,
+        };
+      }).filter((item) => item.value > 0) // 0인 항목 제외
     : [];
 
   return (
@@ -130,7 +234,7 @@ export default function ProjectDashboard() {
                       {pieChartData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={STATUS_COLORS[entry.status]}
+                          fill={WORKFLOW_STEP_COLORS[entry.stepKey]}
                         />
                       ))}
                     </Pie>
@@ -142,13 +246,13 @@ export default function ProjectDashboard() {
                 <div className="flex-1 space-y-1.5">
                   {pieChartData.map((item) => (
                     <div
-                      key={item.status}
+                      key={item.stepKey}
                       className="flex items-center justify-between text-sm"
                     >
                       <div className="flex items-center gap-2">
                         <div
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: STATUS_COLORS[item.status] }}
+                          style={{ backgroundColor: WORKFLOW_STEP_COLORS[item.stepKey] }}
                         />
                         <span className="text-muted-foreground">{item.name}</span>
                       </div>
@@ -225,22 +329,15 @@ export default function ProjectDashboard() {
             <div className="space-y-4">
               {/* 범례 */}
               <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded" style={{ backgroundColor: PROGRESS_COLORS.assigned }} />
-                  <span className="text-muted-foreground">배정대기</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded" style={{ backgroundColor: PROGRESS_COLORS.interviewing }} />
-                  <span className="text-muted-foreground">인터뷰</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded" style={{ backgroundColor: PROGRESS_COLORS.drafting }} />
-                  <span className="text-muted-foreground">로드맵작업</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded" style={{ backgroundColor: PROGRESS_COLORS.completed }} />
-                  <span className="text-muted-foreground">완료</span>
-                </div>
+                {PROGRESS_SEGMENTS.map((segment) => (
+                  <div key={segment.key} className="flex items-center gap-1.5">
+                    <div
+                      className="h-3 w-3 rounded"
+                      style={{ backgroundColor: PROGRESS_COLORS[segment.key] }}
+                    />
+                    <span className="text-muted-foreground">{segment.label}</span>
+                  </div>
+                ))}
               </div>
 
               {/* 컨설턴트 목록 */}
@@ -258,50 +355,22 @@ export default function ProjectDashboard() {
                         </span>
                       </div>
                       <div className="flex h-6 overflow-hidden rounded-md bg-gray-100">
-                        {consultant.assigned > 0 && (
-                          <div
-                            className="flex items-center justify-center text-xs text-white"
-                            style={{
-                              width: `${(consultant.assigned / consultant.total) * widthPercent}%`,
-                              backgroundColor: PROGRESS_COLORS.assigned,
-                            }}
-                          >
-                            {consultant.assigned}
-                          </div>
-                        )}
-                        {consultant.interviewing > 0 && (
-                          <div
-                            className="flex items-center justify-center text-xs text-white"
-                            style={{
-                              width: `${(consultant.interviewing / consultant.total) * widthPercent}%`,
-                              backgroundColor: PROGRESS_COLORS.interviewing,
-                            }}
-                          >
-                            {consultant.interviewing}
-                          </div>
-                        )}
-                        {consultant.drafting > 0 && (
-                          <div
-                            className="flex items-center justify-center text-xs text-white"
-                            style={{
-                              width: `${(consultant.drafting / consultant.total) * widthPercent}%`,
-                              backgroundColor: PROGRESS_COLORS.drafting,
-                            }}
-                          >
-                            {consultant.drafting}
-                          </div>
-                        )}
-                        {consultant.completed > 0 && (
-                          <div
-                            className="flex items-center justify-center text-xs text-white"
-                            style={{
-                              width: `${(consultant.completed / consultant.total) * widthPercent}%`,
-                              backgroundColor: PROGRESS_COLORS.completed,
-                            }}
-                          >
-                            {consultant.completed}
-                          </div>
-                        )}
+                        {PROGRESS_SEGMENTS.map((segment) => {
+                          const count = consultant[segment.key];
+                          if (count <= 0) return null;
+                          return (
+                            <div
+                              key={segment.key}
+                              className="flex items-center justify-center text-xs text-white"
+                              style={{
+                                width: `${(count / consultant.total) * widthPercent}%`,
+                                backgroundColor: PROGRESS_COLORS[segment.key],
+                              }}
+                            >
+                              {count}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

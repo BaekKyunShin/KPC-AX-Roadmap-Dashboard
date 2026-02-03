@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -70,6 +71,12 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
     dimension_scores?: Array<{ dimension: string; score: number; max_score: number }>;
   } | null;
 
+  // 기업 규모 라벨 변환
+  const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
+    ?.replace(/\d+[~,]?\d*명\s*/, '')
+    ?.replace(/[()]/g, '')
+    || projectData.company_size;
+
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -83,7 +90,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-gray-900">{projectData.company_name}</h1>
           <p className="text-sm text-gray-500">
-            {projectData.industry} · {projectData.company_size}
+            {projectData.industry} · {companySizeLabel}
           </p>
         </div>
         <div className="flex space-x-3">
@@ -132,7 +139,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
             </div>
             <div>
               <dt className="text-sm text-gray-500">규모</dt>
-              <dd className="text-sm font-medium text-gray-900">{projectData.company_size}</dd>
+              <dd className="text-sm font-medium text-gray-900">{companySizeLabel}</dd>
             </div>
             <div>
               <dt className="text-sm text-gray-500">담당자</dt>
