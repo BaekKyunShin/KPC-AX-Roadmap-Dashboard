@@ -8,6 +8,7 @@ import {
   MAX_STT_FILE_SIZE_KB,
   ALLOWED_STT_FILE_EXTENSIONS,
 } from '@/lib/constants/stt';
+import FillExampleButton from './FillExampleButton';
 
 // 자동차 부품 품질관리 개선 목표 예시 텍스트 (1차 협력사 품질팀 시나리오)
 const EXAMPLE_GOALS_TEXT = `1. 입고 검사 데이터 입력 시간 50% 단축 (현재 일 2시간 → 목표 1시간). 2차 협력사 성적서를 Excel에 수기 입력하는 작업 자동화.
@@ -138,17 +139,7 @@ export default function StepConstraintsGoals({
               AI 도입을 통해 달성하고자 하는 목표를 입력해주세요.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={fillGoalExample}
-            className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-            title="예시 채우기"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            예시
-          </button>
+          <FillExampleButton onClick={fillGoalExample} />
         </div>
 
         <textarea
@@ -174,17 +165,7 @@ export default function StepConstraintsGoals({
               AI 도입 시 고려해야 할 제약사항을 입력해주세요. (선택)
             </p>
           </div>
-          <button
-            type="button"
-            onClick={fillConstraintExample}
-            className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-            title="예시 채우기"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            예시
-          </button>
+          <FillExampleButton onClick={fillConstraintExample} />
         </div>
 
         <textarea
