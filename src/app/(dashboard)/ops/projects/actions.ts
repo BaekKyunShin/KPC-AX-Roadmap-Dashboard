@@ -872,7 +872,7 @@ export interface StalledProject {
   severity: 'high' | 'medium'; // 14일 이상: high, 7-13일: medium
 }
 
-export async function fetchStalledProjects(minDays: number = 7): Promise<StalledProject[]> {
+export async function fetchStalledProjects(minDays: number = PROJECT_STALL_THRESHOLDS.DASHBOARD_MIN): Promise<StalledProject[]> {
   const supabase = await createClient();
 
   // 완료되지 않은 프로젝트 조회

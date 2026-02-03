@@ -2,10 +2,15 @@ import type { ProjectStatus, RoadmapVersionStatus, UserStatus } from '@/types/da
 
 /**
  * 프로젝트 진행 상태 경고 기준 (일수)
+ * - 대시보드 정체 프로젝트 표시 기준: 20일 이상
  */
 export const PROJECT_STALL_THRESHOLDS = {
-  WARNING: 7,   // 주의 (주황색)
-  SEVERE: 14,   // 심각 (빨간색)
+  /** 대시보드 정체 프로젝트 표시 최소 기준 */
+  DASHBOARD_MIN: 20,
+  /** 주의 기준 (주황색) - 20~29일 */
+  WARNING: 20,
+  /** 심각 기준 (빨간색) - 30일 이상 */
+  SEVERE: 30,
 } as const;
 
 /**
@@ -89,6 +94,19 @@ export const ROADMAP_VERSION_STATUS_CONFIG: Record<RoadmapVersionStatus, { label
 export const USER_STATUS_CONFIG: Record<UserStatus, { label: string; color: string }> = {
   ACTIVE: { label: '활성', color: 'bg-green-100 text-green-800' },
   SUSPENDED: { label: '정지', color: 'bg-red-100 text-red-800' },
+};
+
+/**
+ * 정체 프로젝트 상태별 표시 문구
+ * - 대시보드에서 정체 프로젝트 카드에 사용
+ */
+export const STALLED_STATUS_MESSAGES: Partial<Record<ProjectStatus, string>> = {
+  NEW: '신규 등록 후',
+  DIAGNOSED: '진단결과 입력 후',
+  MATCH_RECOMMENDED: '진단결과 입력 후',
+  ASSIGNED: '컨설턴트 배정 후',
+  INTERVIEWED: '현장 인터뷰 후',
+  ROADMAP_DRAFTED: '로드맵 초안 작성 후',
 };
 
 /**
