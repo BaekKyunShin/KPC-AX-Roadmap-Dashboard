@@ -10,14 +10,17 @@ import UserManagementTable from '@/components/ops/UserManagementTable';
 /** 이 페이지에 접근 가능한 역할 */
 const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
+/** 컨설턴트 관련 역할 (승인 대기 + 승인됨) */
+const CONSULTANT_ROLES = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
+
+/** 운영관리자 관련 역할 (승인 대기 + 승인됨) */
+const OPS_ADMIN_ROLES = ['OPS_ADMIN_PENDING', 'OPS_ADMIN'] as const;
+
 /** 운영관리자가 관리할 수 있는 역할 (컨설턴트만) */
-const OPS_ADMIN_TARGET_ROLES = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
+const OPS_ADMIN_TARGET_ROLES = CONSULTANT_ROLES;
 
 /** 시스템관리자가 관리할 수 있는 역할 (컨설턴트 + 운영관리자) */
-const SYSTEM_ADMIN_TARGET_ROLES = [
-  ...OPS_ADMIN_TARGET_ROLES,
-  'OPS_ADMIN',
-] as const;
+const SYSTEM_ADMIN_TARGET_ROLES = [...CONSULTANT_ROLES, ...OPS_ADMIN_ROLES] as const;
 
 const PAGE_DESCRIPTIONS = {
   SYSTEM_ADMIN: '컨설턴트 및 운영관리자의 승인/정지 및 상태를 관리합니다.',
