@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { FlaskConical, Info, ArrowLeft } from 'lucide-react';
+import { FlaskConical, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { PageHeader } from '@/components/ui/page-header';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import TestRoadmapResult from './_components/TestRoadmapResult';
@@ -104,31 +105,20 @@ function getProjectsLink(isOpsAdmin: boolean): { href: string; label: string } {
 // 하위 컴포넌트
 // =============================================================================
 
-interface PageHeaderProps {
+interface TestPageHeaderProps {
   isOpsAdmin: boolean;
 }
 
-function PageHeader({ isOpsAdmin }: PageHeaderProps) {
+function TestPageHeader({ isOpsAdmin }: TestPageHeaderProps) {
   const { href, label } = getProjectsLink(isOpsAdmin);
 
   return (
     <div className="mb-6">
-      <Link
-        href={href}
-        className="text-sm text-gray-500 hover:text-gray-700 flex items-center mb-2"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        {label}
-      </Link>
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-          <FlaskConical className="h-5 w-5 text-amber-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">테스트 로드맵</h1>
-          <p className="text-gray-500">시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="테스트 로드맵"
+        description="시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다."
+        backLink={{ href, label }}
+      />
     </div>
   );
 }
@@ -587,7 +577,7 @@ export default function TestRoadmapClient({
   return (
     <>
       <div className="max-w-4xl mx-auto py-6 pb-24">
-        <PageHeader isOpsAdmin={isOpsAdmin} />
+        <TestPageHeader isOpsAdmin={isOpsAdmin} />
         <TestModeNotice />
 
         {error && (

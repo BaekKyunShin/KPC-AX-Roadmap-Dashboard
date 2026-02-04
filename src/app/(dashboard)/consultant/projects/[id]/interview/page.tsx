@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { saveInterview, getInterview, processSttFile, deleteSttInsights } from './actions';
+import { PageHeader } from '@/components/ui/page-header';
 import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import {
   type InterviewParticipant,
@@ -405,43 +406,37 @@ export default function InterviewPage() {
     <div className="max-w-4xl mx-auto pb-24">
       {/* 헤더 */}
       <div className="mb-6">
-        <Link
-          href={`/consultant/projects/${projectId}`}
-          className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
-        >
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          프로젝트로 돌아가기
-        </Link>
-        <div className="flex items-center justify-between mt-2">
-          <h1 className="text-2xl font-bold text-gray-900">현장 인터뷰 입력</h1>
-          <div className="text-sm flex items-center">
-            {autoSaveError ? (
-              <span className="text-red-500 flex items-center" title={autoSaveError}>
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                저장 실패
-              </span>
-            ) : isAutoSaving ? (
-              <span className="text-gray-500 flex items-center">
-                <svg className="animate-spin h-4 w-4 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                저장 중...
-              </span>
-            ) : lastSaved ? (
-              <span className="text-green-600 flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                {lastSaved.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 자동 저장됨
-              </span>
-            ) : null}
-          </div>
-        </div>
+        <PageHeader
+          title="현장 인터뷰 입력"
+          backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
+          actions={
+            <div className="text-sm flex items-center">
+              {autoSaveError ? (
+                <span className="text-red-500 flex items-center" title={autoSaveError}>
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  저장 실패
+                </span>
+              ) : isAutoSaving ? (
+                <span className="text-gray-500 flex items-center">
+                  <svg className="animate-spin h-4 w-4 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  저장 중...
+                </span>
+              ) : lastSaved ? (
+                <span className="text-green-600 flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  {lastSaved.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 자동 저장됨
+                </span>
+              ) : null}
+            </div>
+          }
+        />
       </div>
 
       {/* 알림 */}

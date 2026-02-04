@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { PageHeader } from '@/components/ui/page-header';
 import TemplateForm from '../_components/TemplateForm';
 
 export default async function NewTemplatePage() {
@@ -25,14 +26,12 @@ export default async function NewTemplatePage() {
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">새 템플릿 생성</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          자가진단 문항 템플릿을 생성합니다.
-        </p>
-      </div>
-
+    <div className="space-y-6">
+      <PageHeader
+        title="새 템플릿 생성"
+        description="자가진단 문항 템플릿을 생성합니다."
+        backLink={{ href: '/ops/templates', label: '템플릿 목록으로' }}
+      />
       <TemplateForm mode="create" />
     </div>
   );

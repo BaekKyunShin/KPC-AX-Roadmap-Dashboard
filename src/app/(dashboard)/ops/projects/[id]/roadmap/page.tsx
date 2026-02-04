@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { FileText } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { fetchRoadmapVersionsForOps, fetchRoadmapVersionForOps } from './actions';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
@@ -79,21 +79,11 @@ export default function OpsRoadmapViewPage() {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link
-            href={`/ops/projects/${projectId}`}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            ← 프로젝트로 돌아가기
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            품질 관리 및 감사 목적으로 열람합니다.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="AI 교육 로드맵"
+        description="품질 관리 및 감사 목적으로 열람합니다."
+        backLink={{ href: `/ops/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
+      />
 
       {/* 에러/성공 메시지 */}
       {downloadError && (

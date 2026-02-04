@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
 interface PageProps {
@@ -80,49 +81,42 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link
-            href="/consultant/projects"
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            ← 프로젝트 목록
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">{projectData.company_name}</h1>
-          <p className="text-sm text-gray-500">
-            {projectData.industry} · {companySizeLabel}
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          {!interview ? (
-            <Link
-              href={`/consultant/projects/${projectId}/interview`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              인터뷰 입력
-            </Link>
-          ) : (
-            <>
+      <PageHeader
+        title={projectData.company_name}
+        description={`${projectData.industry} · ${companySizeLabel}`}
+        backLink={{ href: '/consultant/projects', label: '프로젝트 목록' }}
+        actions={
+          <div className="flex space-x-3">
+            {!interview ? (
               <Link
                 href={`/consultant/projects/${projectId}/interview`}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                인터뷰 수정
+                인터뷰 입력
               </Link>
-              {/* 인터뷰 완료(INTERVIEWED) 이상의 상태에서만 로드맵 버튼 표시 */}
-              {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
+            ) : (
+              <>
                 <Link
-                  href={`/consultant/projects/${projectId}/roadmap`}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  href={`/consultant/projects/${projectId}/interview`}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
-                  {projectData.status === 'INTERVIEWED' ? '로드맵 생성' :
-                   projectData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
+                  인터뷰 수정
                 </Link>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                {/* 인터뷰 완료(INTERVIEWED) 이상의 상태에서만 로드맵 버튼 표시 */}
+                {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
+                  <Link
+                    href={`/consultant/projects/${projectId}/roadmap`}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    {projectData.status === 'INTERVIEWED' ? '로드맵 생성' :
+                     projectData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 기업 정보 */}

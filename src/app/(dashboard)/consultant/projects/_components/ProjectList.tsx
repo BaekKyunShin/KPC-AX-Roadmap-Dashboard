@@ -9,6 +9,7 @@ import {
 } from '../actions';
 import { ConsultantProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -236,11 +237,7 @@ export default function ProjectList() {
 
   return (
     <div className="space-y-4">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">담당 프로젝트</h1>
-        <p className="mt-1 text-sm text-gray-500">{headerDescription}</p>
-      </div>
+      <PageHeader title="담당 프로젝트" description={headerDescription} />
 
       {/* 검색 및 필터 */}
       <Card>

@@ -1,8 +1,9 @@
-import { FlaskConical, Info, ArrowLeft } from 'lucide-react';
+import { FlaskConical, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/page-header';
 
 // ============================================================================
 // 로컬 헬퍼 컴포넌트
@@ -181,19 +182,10 @@ export default function TestRoadmapLoading() {
     <div className="max-w-4xl mx-auto py-6">
       {/* 헤더 */}
       <div className="mb-6">
-        <div className="text-sm text-gray-400 flex items-center mb-2">
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          <Skeleton className="h-4 w-36" />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-            <FlaskConical className="h-5 w-5 text-amber-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">테스트 로드맵</h1>
-            <p className="text-gray-500">시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다.</p>
-          </div>
-        </div>
+        <PageHeader
+          title="테스트 로드맵"
+          description="시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다."
+        />
       </div>
 
       {/* 안내 */}

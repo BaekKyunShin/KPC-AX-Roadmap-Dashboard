@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { AuditLogTableSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/page-header';
 
 // 공통 스타일 상수
 const DISABLED_INPUT_STYLES = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50';
@@ -9,16 +9,10 @@ const LABEL_STYLES = 'block text-xs font-medium text-gray-500 mb-1';
 export default function AuditLoading() {
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">감사 로그</h1>
-          <p className="mt-1 text-sm text-gray-500">시스템 활동 내역을 확인합니다.</p>
-        </div>
-        <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
-          ← 프로젝트 관리로 돌아가기
-        </Link>
-      </div>
+      <PageHeader
+        title="감사 로그"
+        description="시스템 활동 내역을 확인합니다."
+      />
 
       {/* 필터 */}
       <div className="bg-white shadow rounded-lg p-4">

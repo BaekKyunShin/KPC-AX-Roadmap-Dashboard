@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { FileText } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   createRoadmap,
   confirmFinalRoadmap,
@@ -241,15 +241,10 @@ export default function RoadmapPage() {
   return (
     <>
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href={`/consultant/projects/${projectId}`} className="text-sm text-gray-500 hover:text-gray-700">
-            ← 프로젝트로 돌아가기
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵</h1>
-        </div>
-      </div>
+      <PageHeader
+        title="AI 교육 로드맵"
+        backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
+      />
 
       {/* 알림 */}
       {displayError && (

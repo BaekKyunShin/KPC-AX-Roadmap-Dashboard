@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
 import ProjectTimeline from '../_components/ProjectTimeline';
+import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -95,14 +96,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      {/* 뒤로 가기 */}
-      <Link
-        href="/ops/projects"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        프로젝트 목록
-      </Link>
+      <PageHeader
+        title={projectData.company_name}
+        description={`${projectData.industry} · ${companySizeLabel}`}
+        backLink={{ href: '/ops/projects', label: '프로젝트 목록' }}
+      />
 
       {/* 기업 정보 카드 - 컴팩트 2컬럼 레이아웃 */}
       <Card>

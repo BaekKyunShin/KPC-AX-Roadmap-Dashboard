@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * 현재 월을 YYYY-MM 형식으로 반환
@@ -13,21 +13,10 @@ export default function QuotaLoading() {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">쿼터 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            사용자별 LLM 호출 한도를 관리합니다.
-          </p>
-        </div>
-        <Link
-          href="/ops/projects"
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 프로젝트 관리로 돌아가기
-        </Link>
-      </div>
+      <PageHeader
+        title="쿼터 관리"
+        description="사용자별 LLM 호출 한도를 관리합니다."
+      />
 
       {/* 필터 */}
       <div className="bg-white shadow rounded-lg p-4">

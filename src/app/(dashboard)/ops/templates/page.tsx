@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { PageHeader } from '@/components/ui/page-header';
 import TemplateList from './_components/TemplateList';
 
 export default async function TemplatesPage() {
@@ -43,24 +44,19 @@ export default async function TemplatesPage() {
   );
 
   return (
-    <div>
-      <div className="sm:flex sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">자가진단 템플릿 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            자가진단 문항 템플릿을 관리합니다. 활성화된 템플릿이 새 자가진단에 사용됩니다.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
+    <div className="space-y-6">
+      <PageHeader
+        title="자가진단 템플릿 관리"
+        description="자가진단 문항 템플릿을 관리합니다. 활성화된 템플릿이 새 자가진단에 사용됩니다."
+        actions={
           <Link
             href="/ops/templates/new"
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             + 새 템플릿 생성
           </Link>
-        </div>
-      </div>
-
+        }
+      />
       <TemplateList templates={templatesWithUsage} />
     </div>
   );

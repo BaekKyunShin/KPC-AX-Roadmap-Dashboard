@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
@@ -45,11 +46,11 @@ export default function NewProjectPage() {
   return (
     <div ref={formContainerRef} className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
-          ← 프로젝트 목록으로
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">새 프로젝트 생성</h1>
-        <p className="mt-1 text-sm text-gray-500">기업 기본 정보를 입력하여 프로젝트를 생성합니다.</p>
+        <PageHeader
+          title="새 프로젝트 생성"
+          description="기업 기본 정보를 입력하여 프로젝트를 생성합니다."
+          backLink={{ href: '/ops/projects', label: '프로젝트 목록으로' }}
+        />
       </div>
 
       {error && (

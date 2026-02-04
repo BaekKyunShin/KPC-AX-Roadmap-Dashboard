@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { PageHeader } from '@/components/ui/page-header';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 
 export default async function DashboardPage() {
@@ -60,9 +61,11 @@ export default async function DashboardPage() {
       );
     default:
       return (
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
-          <p className="mt-2 text-gray-600">환영합니다, {profile.name}님!</p>
+        <div className="py-12">
+          <PageHeader
+            title="대시보드"
+            description={`환영합니다, ${profile.name}님!`}
+          />
         </div>
       );
   }

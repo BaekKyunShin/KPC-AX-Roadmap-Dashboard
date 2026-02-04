@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { PageHeader } from '@/components/ui/page-header';
 import TemplateForm from '../_components/TemplateForm';
 import TemplatePreview from '../_components/TemplatePreview';
 
@@ -48,27 +49,24 @@ export default async function TemplateDetailPage({ params }: PageProps) {
     .eq('template_id', id);
 
   return (
-    <div>
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              템플릿 상세 - v{template.version}
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {template.name}
-              {template.is_active && (
-                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  활성
-                </span>
-              )}
-            </p>
+    <div className="space-y-6">
+      <PageHeader
+        title={`템플릿 상세 - v${template.version}`}
+        description={template.name}
+        backLink={{ href: '/ops/templates', label: '템플릿 목록으로' }}
+        actions={
+          <div className="flex items-center gap-2">
+            {template.is_active && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                활성
+              </span>
+            )}
+            <span className="text-sm text-gray-500">
+              사용 현황: <span className="font-medium">{usageCount || 0}건</span>
+            </span>
           </div>
-          <div className="text-sm text-gray-500">
-            사용 현황: <span className="font-medium">{usageCount || 0}건</span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
