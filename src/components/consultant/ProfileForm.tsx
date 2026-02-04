@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
+import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ export default function ProfileForm({
   cardClassName,
 }: ProfileFormProps) {
   const router = useRouter();
+  const formContainerRef = useRef<HTMLDivElement>(null);
 
   // UI 상태
   const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +110,10 @@ export default function ProfileForm({
     const validationError = validateSelections();
     if (validationError) {
       setError(validationError);
+
+      // Toast 알림 + 스크롤
+      showErrorToast('입력 확인 필요', validationError);
+      scrollToElement(formContainerRef);
       return;
     }
 
@@ -121,22 +127,36 @@ export default function ProfileForm({
         : await saveConsultantProfile(formData);
 
       if (result.success) {
-        setSuccess(
-          profile ? '프로필이 성공적으로 수정되었습니다.' : '프로필이 성공적으로 등록되었습니다.'
-        );
+        const successMessage = profile
+          ? '프로필이 성공적으로 수정되었습니다.'
+          : '프로필이 성공적으로 등록되었습니다.';
+        setSuccess(successMessage);
+
+        // 성공 Toast
+        showSuccessToast(profile ? '프로필 수정 완료' : '프로필 등록 완료', successMessage);
+
         setTimeout(() => {
           router.push(successRedirectUrl);
           router.refresh();
         }, 2000);
       } else {
-        setError(
+        const errorMessage =
           result.error ||
-            (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.')
-        );
+          (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
+        setError(errorMessage);
+
+        // 에러 Toast + 스크롤
+        showErrorToast(profile ? '프로필 수정 실패' : '프로필 등록 실패', errorMessage);
+        scrollToElement(formContainerRef);
       }
     } catch (err) {
       console.error('프로필 저장 오류:', err);
-      setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      const errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      setError(errorMessage);
+
+      // 에러 Toast + 스크롤
+      showErrorToast('서버 오류', errorMessage);
+      scrollToElement(formContainerRef);
     }
 
     setIsSaving(false);
@@ -157,7 +177,7 @@ export default function ProfileForm({
   };
 
   return (
-    <div className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}>
+    <div ref={formContainerRef} className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}>
       {/* 헤더 영역 - 회원가입 모드에서는 숨김 */}
       {!isRegistrationMode && (
         <div className="mb-6">

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { registerUser } from '../actions';
 import { createClient } from '@/lib/supabase/client';
 import { registerSchema } from '@/lib/schemas/user';
+import { showErrorToast, scrollToPageTop, scrollToFirstError } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,20 +80,6 @@ export default function RegisterPage() {
     clearSession();
   }, []);
 
-  // 에러 발생 시 첫 번째 에러 필드로 스크롤
-  function scrollToFirstError() {
-    setTimeout(() => {
-      const firstErrorElement = formRef.current?.querySelector('[data-error="true"]');
-      if (firstErrorElement) {
-        firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const input = firstErrorElement.querySelector('input, textarea');
-        if (input) {
-          (input as HTMLElement).focus();
-        }
-      }
-    }, 100);
-  }
-
   // Step 1: 기본 정보 제출
   async function handleStep1Submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -121,7 +108,11 @@ export default function RegisterPage() {
         }
       });
       setStep1Errors(errors);
-      scrollToFirstError();
+
+      // Toast 알림 + 스크롤
+      const errorCount = Object.keys(errors).length;
+      showErrorToast(`${errorCount}개 항목을 확인해주세요`, '입력 내용을 확인 후 다시 시도해주세요.');
+      scrollToFirstError(formRef);
       return;
     }
 
@@ -140,8 +131,13 @@ export default function RegisterPage() {
 
     // 회원가입 실패 시 에러 표시 후 종료
     if (!serverResult.success || !serverResult.data?.userId) {
-      setServerError(serverResult.error || '회원가입에 실패했습니다.');
+      const errorMessage = serverResult.error || '회원가입에 실패했습니다.';
+      setServerError(errorMessage);
       setIsLoading(false);
+
+      // Toast 알림 + 상단으로 스크롤
+      showErrorToast('회원가입 실패', errorMessage);
+      scrollToPageTop();
       return;
     }
 
@@ -480,6 +476,16 @@ function Step1Form({
               <FieldError message={step1Errors.agreeToTerms} />
             </div>
           </div>
+
+          {/* 에러 요약 표시 (제출 버튼 근처) */}
+          {Object.keys(step1Errors).length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-red-50 border border-red-200 rounded-lg px-4 py-3 mt-4">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>
+                위 <strong>{Object.keys(step1Errors).length}개</strong> 항목을 확인해주세요
+              </span>
+            </div>
+          )}
 
           <Button type="submit" disabled={isLoading} className="w-full h-11 mt-4">
             {isLoading ? (

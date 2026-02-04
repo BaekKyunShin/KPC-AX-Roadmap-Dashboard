@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
+import { showErrorToast, showSuccessToast } from '@/lib/utils';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ============================================================================
@@ -300,6 +301,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const goNext = () => {
     if (!isCurrentStepComplete) {
       setError('현재 단계의 모든 문항에 응답해 주세요.');
+      showErrorToast('입력 확인 필요', '현재 단계의 모든 문항에 응답해 주세요.');
       return;
     }
     goToStep(currentStep + 1);
@@ -327,7 +329,9 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
       if (stepIndex !== -1) {
         setCurrentStep(stepIndex);
       }
-      setError(`${unansweredQuestions.length}개의 미응답 질문이 있습니다.`);
+      const errorMessage = `${unansweredQuestions.length}개의 미응답 질문이 있습니다.`;
+      setError(errorMessage);
+      showErrorToast('입력 확인 필요', errorMessage);
       return;
     }
 
@@ -349,9 +353,12 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     const result = await createSelfAssessment(formData);
 
     if (result.success) {
+      showSuccessToast('자가진단 완료', '자가진단이 성공적으로 저장되었습니다.');
       router.refresh();
     } else {
-      setError(result.error || '자가진단 저장에 실패했습니다.');
+      const errorMessage = result.error || '자가진단 저장에 실패했습니다.';
+      setError(errorMessage);
+      showErrorToast('저장 실패', errorMessage);
     }
 
     setIsLoading(false);

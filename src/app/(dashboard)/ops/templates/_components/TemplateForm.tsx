@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { createTemplate, updateTemplate } from '../actions';
+import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 
 interface TemplateFormProps {
   mode: 'create' | 'edit';
@@ -41,6 +42,7 @@ function createEmptyQuestion(order: number): SelfAssessmentQuestion {
 
 export default function TemplateForm({ mode, template, isInUse }: TemplateFormProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
   const handleRemoveQuestion = (index: number) => {
     if (questions.length === 1) {
       setError('최소 1개의 질문이 필요합니다.');
+      showErrorToast('삭제 불가', '최소 1개의 질문이 필요합니다.');
       return;
     }
     const newQuestions = questions.filter((_, i) => i !== index);
@@ -110,17 +113,22 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     const result = mode === 'create' ? await createTemplate(formData) : await updateTemplate(formData);
 
     if (!result.success) {
-      setError(result.error || '저장에 실패했습니다.');
+      const errorMessage = result.error || '저장에 실패했습니다.';
+      setError(errorMessage);
       setLoading(false);
+
+      // Toast 알림 + 스크롤
+      showErrorToast('저장 실패', errorMessage);
+      scrollToElement(formRef);
       return;
     }
 
     const data = result.data as { message?: string; id?: string };
-    if (data?.message) {
-      setSuccess(data.message);
-    } else {
-      setSuccess('저장되었습니다.');
-    }
+    const successMessage = data?.message || '저장되었습니다.';
+    setSuccess(successMessage);
+
+    // 성공 Toast
+    showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
 
     setLoading(false);
 
@@ -132,7 +140,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{error}</p>

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
+import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import { createProject } from '../actions';
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const formContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [subIndustries, setSubIndustries] = useState<string[]>([]);
@@ -26,16 +28,22 @@ export default function NewProjectPage() {
     const result = await createProject(formData);
 
     if (result.success && result.data?.projectId) {
+      showSuccessToast('프로젝트 생성 완료', '프로젝트가 성공적으로 생성되었습니다.');
       router.push(`/ops/projects/${result.data.projectId}`);
     } else {
-      setError(result.error || '프로젝트 생성에 실패했습니다.');
+      const errorMessage = result.error || '프로젝트 생성에 실패했습니다.';
+      setError(errorMessage);
+
+      // Toast 알림 + 스크롤
+      showErrorToast('프로젝트 생성 실패', errorMessage);
+      scrollToElement(formContainerRef);
     }
 
     setIsLoading(false);
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div ref={formContainerRef} className="max-w-2xl mx-auto">
       <div className="mb-6">
         <Link href="/ops/projects" className="text-sm text-gray-500 hover:text-gray-700">
           ← 프로젝트 목록으로

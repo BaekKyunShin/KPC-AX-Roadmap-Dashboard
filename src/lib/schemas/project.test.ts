@@ -57,8 +57,8 @@ describe('createProjectSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject short company name', () => {
-    const result = createProjectSchema.safeParse({ ...validProject, company_name: '테' });
+  it('should reject empty company name', () => {
+    const result = createProjectSchema.safeParse({ ...validProject, company_name: '' });
     expect(result.success).toBe(false);
   });
 

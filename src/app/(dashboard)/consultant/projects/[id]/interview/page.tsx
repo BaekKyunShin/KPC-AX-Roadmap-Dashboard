@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { saveInterview, getInterview, processSttFile, deleteSttInsights } from './actions';
+import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import {
   type InterviewParticipant,
   type JobTask,
@@ -238,6 +239,10 @@ export default function InterviewPage() {
       setCurrentStep(firstIncompleteStep);
       setError('필수 항목을 입력해주세요.');
       setIsLoading(false);
+
+      // Toast 알림 + 스크롤
+      showErrorToast('입력 확인 필요', `${incompleteRequiredSteps.length}개 필수 단계를 완료해주세요.`);
+      scrollToPageTop(0);
       return;
     }
 
@@ -255,12 +260,21 @@ export default function InterviewPage() {
 
     if (result.success) {
       setSuccess('인터뷰가 저장되었습니다.');
+
+      // 성공 Toast
+      showSuccessToast('저장 완료', '인터뷰가 성공적으로 저장되었습니다.');
+
       setTimeout(() => {
         router.push(`/consultant/projects/${projectId}`);
         router.refresh();
       }, 1000);
     } else {
-      setError(result.error || '저장에 실패했습니다.');
+      const errorMessage = result.error || '저장에 실패했습니다.';
+      setError(errorMessage);
+
+      // 에러 Toast + 스크롤
+      showErrorToast('저장 실패', errorMessage);
+      scrollToPageTop(0);
     }
 
     setIsLoading(false);
@@ -273,11 +287,14 @@ export default function InterviewPage() {
       const result = await processSttFile(projectId, text);
       if (result.success && result.insights) {
         setSttInsights(result.insights);
+        showSuccessToast('STT 분석 완료', '음성 인식 결과가 성공적으로 처리되었습니다.');
       } else {
         throw new Error(result.error || 'STT 처리에 실패했습니다.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'STT 처리 중 오류가 발생했습니다.');
+      const errorMessage = err instanceof Error ? err.message : 'STT 처리 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      showErrorToast('STT 처리 실패', errorMessage);
       setTimeout(() => setError(null), 5000);
     } finally {
       setIsProcessingStt(false);
@@ -290,11 +307,14 @@ export default function InterviewPage() {
       const result = await deleteSttInsights(projectId);
       if (result.success) {
         setSttInsights(null);
+        showSuccessToast('삭제 완료', 'STT 인사이트가 삭제되었습니다.');
       } else {
         throw new Error(result.error || '삭제에 실패했습니다.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'STT 인사이트 삭제 중 오류가 발생했습니다.');
+      const errorMessage = err instanceof Error ? err.message : 'STT 인사이트 삭제 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      showErrorToast('삭제 실패', errorMessage);
       setTimeout(() => setError(null), 5000);
     }
   };

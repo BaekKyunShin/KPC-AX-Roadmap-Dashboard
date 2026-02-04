@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { loginUser } from '../actions';
+import { showErrorToast } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +36,11 @@ function LoginForm() {
       router.push(redirectTo);
       router.refresh();
     } else {
-      setError(result.error || '로그인에 실패했습니다.');
+      const errorMessage = result.error || '로그인에 실패했습니다.';
+      setError(errorMessage);
+
+      // Toast 알림
+      showErrorToast('로그인 실패', errorMessage);
     }
 
     setIsLoading(false);

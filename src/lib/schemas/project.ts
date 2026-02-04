@@ -16,7 +16,7 @@ export const projectStatusSchema = z.enum([
 
 // 프로젝트 생성 스키마
 export const createProjectSchema = z.object({
-  company_name: z.string().min(2, '회사명을 2자 이상 입력하세요.').max(100),
+  company_name: z.string().min(1, '회사명을 입력하세요.').max(100),
   industry: z.string().min(1, '업종을 선택하세요.'),
   sub_industries: z
     .array(z.string().max(SUB_INDUSTRY_CONSTRAINTS.maxLength))
