@@ -44,6 +44,8 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --animate-aurora: aurora 60s linear infinite;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
   @keyframes aurora {
     from {
       background-position:
@@ -54,6 +56,22 @@
       background-position:
         350% 50%,
         350% 50%;
+    }
+  }
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
     }
   }
 }
@@ -180,5 +198,35 @@ html {
 
 .animate-blink {
   animation: blink 1s infinite;
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    #e5e7eb 0%,
+    #f3f4f6 50%,
+    #e5e7eb 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Shimmer with stagger delay variants */
+.animate-shimmer-delay-1 {
+  animation-delay: 0.15s;
+}
+
+.animate-shimmer-delay-2 {
+  animation-delay: 0.3s;
 }
 
