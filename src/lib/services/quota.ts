@@ -4,6 +4,8 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getManageableRoles } from '@/lib/constants/status';
+import type { UserRole } from '@/types/database';
 
 // 기본 쿼터 설정
 const DEFAULT_DAILY_LIMIT = 100;
@@ -219,23 +221,44 @@ export async function updateUserQuota(
 }
 
 /**
- * 전체 사용자 사용량 통계 조회 (OPS_ADMIN)
+ * 전체 사용자 사용량 통계 조회 (OPS_ADMIN/SYSTEM_ADMIN)
+ * - SYSTEM_ADMIN: 운영관리자 + 컨설턴트 조회 가능
+ * - OPS_ADMIN: 컨설턴트만 조회 가능
  */
 export async function getAllUsersUsage(options: {
   page?: number;
   limit?: number;
   month?: string;
+  currentUserRole: UserRole;
 }) {
   const supabase = createAdminClient();
-  const { page = 1, limit = 20, month: targetMonth } = options;
+  const { page = 1, limit = 20, month: targetMonth, currentUserRole } = options;
   const { month: currentMonth } = getKSTDateTime();
   const month = targetMonth || currentMonth;
+
+  // 현재 사용자 역할에 따라 조회 가능한 역할 결정
+  const manageableRoles = getManageableRoles(currentUserRole);
+  // 승인 대기 역할은 제외하고 승인된 역할만 조회
+  const targetRoles = manageableRoles.filter(role =>
+    role === 'CONSULTANT_APPROVED' || role === 'OPS_ADMIN'
+  );
+
+  if (targetRoles.length === 0) {
+    return {
+      users: [],
+      total: 0,
+      page,
+      limit,
+      totalPages: 0,
+      month,
+    };
+  }
 
   // 사용자 목록 조회
   const { data: users, count } = await supabase
     .from('users')
     .select('id, name, email, role, status', { count: 'exact' })
-    .in('role', ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'])
+    .in('role', targetRoles)
     .order('name', { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
 
@@ -246,6 +269,7 @@ export async function getAllUsersUsage(options: {
       page,
       limit,
       totalPages: 0,
+      month,
     };
   }
 

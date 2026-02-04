@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { AuditAction } from '@/types/database';
+import { CONSULTANT_ROLES } from '@/lib/constants/status';
+import type { AuditAction, UserRole } from '@/types/database';
 
 interface AuditLogParams {
   actorUserId: string;
@@ -48,6 +49,8 @@ export async function createAuditLog({
 
 /**
  * 감사 로그 조회 (OPS_ADMIN 이상)
+ * - SYSTEM_ADMIN: 전체 로그 조회 가능
+ * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */
 export async function getAuditLogs(options: {
   page?: number;
@@ -57,15 +60,41 @@ export async function getAuditLogs(options: {
   actorUserId?: string;
   startDate?: string;
   endDate?: string;
+  currentUserRole?: UserRole;
 }) {
   const supabase = createAdminClient();
-  const { page = 1, limit = 50, action, targetType, actorUserId, startDate, endDate } = options;
+  const { page = 1, limit = 50, action, targetType, actorUserId, startDate, endDate, currentUserRole } = options;
+
+  // OPS_ADMIN인 경우, 컨설턴트 사용자 ID 목록 조회
+  let consultantUserIds: string[] | null = null;
+  if (currentUserRole === 'OPS_ADMIN') {
+    const { data: consultants } = await supabase
+      .from('users')
+      .select('id')
+      .in('role', [...CONSULTANT_ROLES]);
+    consultantUserIds = consultants?.map(c => c.id) || [];
+  }
 
   let query = supabase
     .from('audit_logs')
     .select('*, actor:users!actor_user_id(id, name, email)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
+
+  // OPS_ADMIN은 컨설턴트가 수행한 로그만 조회
+  if (consultantUserIds !== null) {
+    if (consultantUserIds.length === 0) {
+      // 컨설턴트가 없으면 빈 결과 반환
+      return {
+        logs: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
+    query = query.in('actor_user_id', consultantUserIds);
+  }
 
   if (action) {
     query = query.eq('action', action);

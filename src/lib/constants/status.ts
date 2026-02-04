@@ -1,4 +1,55 @@
-import type { ProjectStatus, RoadmapVersionStatus, UserStatus } from '@/types/database';
+import type { ProjectStatus, RoadmapVersionStatus, UserRole, UserStatus } from '@/types/database';
+
+// =============================================================================
+// 역할 기반 접근 제어 상수
+// =============================================================================
+
+/** 컨설턴트 관련 역할 (승인 대기 + 승인됨) */
+export const CONSULTANT_ROLES: readonly UserRole[] = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
+
+/** 운영관리자 관련 역할 (승인 대기 + 승인됨) */
+export const OPS_ADMIN_ROLES: readonly UserRole[] = ['OPS_ADMIN_PENDING', 'OPS_ADMIN'] as const;
+
+/** 운영관리자가 관리할 수 있는 역할 (컨설턴트만) */
+export const OPS_ADMIN_MANAGEABLE_ROLES: readonly UserRole[] = CONSULTANT_ROLES;
+
+/** 시스템관리자가 관리할 수 있는 역할 (컨설턴트 + 운영관리자) */
+export const SYSTEM_ADMIN_MANAGEABLE_ROLES: readonly UserRole[] = [...CONSULTANT_ROLES, ...OPS_ADMIN_ROLES] as const;
+
+/** OPS 관리 권한이 있는 역할 (운영관리자 + 시스템관리자) */
+export const OPS_MANAGER_ROLES: readonly UserRole[] = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
+
+/**
+ * OPS 관리 권한이 있는지 확인
+ */
+export function isOpsManager(role: UserRole): boolean {
+  return OPS_MANAGER_ROLES.includes(role);
+}
+
+/**
+ * 현재 사용자 역할에 따라 관리 가능한 역할 목록 반환
+ */
+export function getManageableRoles(currentUserRole: UserRole): readonly UserRole[] {
+  if (currentUserRole === 'SYSTEM_ADMIN') {
+    return SYSTEM_ADMIN_MANAGEABLE_ROLES;
+  }
+  if (currentUserRole === 'OPS_ADMIN') {
+    return OPS_ADMIN_MANAGEABLE_ROLES;
+  }
+  return [];
+}
+
+/**
+ * 현재 사용자가 대상 사용자를 관리할 수 있는지 확인
+ */
+export function canManageUser(currentUserRole: UserRole, targetUserRole: UserRole): boolean {
+  const manageableRoles = getManageableRoles(currentUserRole);
+  return manageableRoles.includes(targetUserRole);
+}
+
+// =============================================================================
+// 프로젝트 상태 관련 상수
+// =============================================================================
 
 /**
  * 프로젝트 진행 상태 경고 기준 (일수)

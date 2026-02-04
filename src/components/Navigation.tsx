@@ -21,6 +21,7 @@ import {
   X,
   ChevronRight,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import type { User } from '@/types/database';
@@ -62,12 +63,18 @@ const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   },
 };
 
+/** 운영관리자 + 시스템관리자 공통 메뉴 */
 const OPS_NAV_ITEMS = [
   { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
   { href: '/ops/users', label: '사용자 관리', icon: Users },
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
   { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
   { href: '/ops/audit', label: '감사로그', icon: ScrollText },
+];
+
+/** 시스템관리자 전용 메뉴 */
+const SYSTEM_ADMIN_ONLY_ITEMS = [
+  { href: '/ops/templates', label: '템플릿 관리', icon: ClipboardList },
 ];
 
 const CONSULTANT_NAV_ITEMS = [
@@ -108,7 +115,16 @@ export default function Navigation({ user }: NavigationProps) {
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
 
-  const navItems = isOpsAdmin ? OPS_NAV_ITEMS : isConsultant ? CONSULTANT_NAV_ITEMS : [];
+  // 시스템관리자: 공통 메뉴 + 전용 메뉴
+  // 운영관리자: 공통 메뉴만
+  // 컨설턴트: 컨설턴트 메뉴
+  const navItems = isSystemAdmin
+    ? [...OPS_NAV_ITEMS, ...SYSTEM_ADMIN_ONLY_ITEMS]
+    : isOpsAdmin
+      ? OPS_NAV_ITEMS
+      : isConsultant
+        ? CONSULTANT_NAV_ITEMS
+        : [];
 
   // 바깥 클릭 시 드롭다운 닫기
   useEffect(() => {

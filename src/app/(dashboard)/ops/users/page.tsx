@@ -2,6 +2,11 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import UserManagementTable from '@/components/ops/UserManagementTable';
+import { PageHeader } from '@/components/ui/page-header';
+import {
+  OPS_ADMIN_MANAGEABLE_ROLES,
+  SYSTEM_ADMIN_MANAGEABLE_ROLES,
+} from '@/lib/constants/status';
 
 // =============================================================================
 // Constants
@@ -10,22 +15,8 @@ import UserManagementTable from '@/components/ops/UserManagementTable';
 /** 이 페이지에 접근 가능한 역할 */
 const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
-/** 컨설턴트 관련 역할 (승인 대기 + 승인됨) */
-const CONSULTANT_ROLES = ['USER_PENDING', 'CONSULTANT_APPROVED'] as const;
-
-/** 운영관리자 관련 역할 (승인 대기 + 승인됨) */
-const OPS_ADMIN_ROLES = ['OPS_ADMIN_PENDING', 'OPS_ADMIN'] as const;
-
-/** 운영관리자가 관리할 수 있는 역할 (컨설턴트만) */
-const OPS_ADMIN_TARGET_ROLES = CONSULTANT_ROLES;
-
-/** 시스템관리자가 관리할 수 있는 역할 (컨설턴트 + 운영관리자) */
-const SYSTEM_ADMIN_TARGET_ROLES = [...CONSULTANT_ROLES, ...OPS_ADMIN_ROLES] as const;
-
-const PAGE_DESCRIPTIONS = {
-  SYSTEM_ADMIN: '컨설턴트 및 운영관리자의 승인/정지 및 상태를 관리합니다.',
-  OPS_ADMIN: '컨설턴트 승인/정지 및 상태를 관리합니다.',
-} as const;
+/** 페이지 설명 (로딩 상태와 일관성 유지를 위해 통일) */
+const PAGE_DESCRIPTION = '컨설턴트 승인/정지 및 상태를 관리합니다.';
 
 // =============================================================================
 // Page Component
@@ -57,7 +48,7 @@ export default async function UsersPage() {
   }
 
   const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
-  const targetRoles = isSystemAdmin ? SYSTEM_ADMIN_TARGET_ROLES : OPS_ADMIN_TARGET_ROLES;
+  const targetRoles = isSystemAdmin ? SYSTEM_ADMIN_MANAGEABLE_ROLES : OPS_ADMIN_MANAGEABLE_ROLES;
 
   // Admin 클라이언트 생성 (RLS 우회)
   const adminSupabase = createAdminClient();
@@ -93,19 +84,9 @@ export default async function UsersPage() {
     consultant_profile: profileMap.get(user.id) || null,
   }));
 
-  const pageDescription = isSystemAdmin
-    ? PAGE_DESCRIPTIONS.SYSTEM_ADMIN
-    : PAGE_DESCRIPTIONS.OPS_ADMIN;
-
   return (
-    <div>
-      <div className="sm:flex sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">사용자 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">{pageDescription}</p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
+      <PageHeader title="사용자 관리" description={PAGE_DESCRIPTION} />
       <UserManagementTable users={users || []} />
     </div>
   );

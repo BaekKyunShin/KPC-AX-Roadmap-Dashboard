@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getAuditLogs } from '@/lib/services/audit';
-import type { AuditAction } from '@/types/database';
+import { CONSULTANT_ROLES } from '@/lib/constants/status';
+import type { AuditAction, UserRole } from '@/types/database';
 
 export interface AuditLogFilters {
   page?: number;
@@ -33,6 +34,8 @@ export interface AuditLogEntry {
 
 /**
  * 감사 로그 조회
+ * - SYSTEM_ADMIN: 전체 로그 조회 가능
+ * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */
 export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
   const supabase = await createClient();
@@ -54,7 +57,10 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
     return { logs: [], total: 0, page: 1, limit: 50, totalPages: 0 };
   }
 
-  return await getAuditLogs(filters);
+  return await getAuditLogs({
+    ...filters,
+    currentUserRole: profile.role as UserRole,
+  });
 }
 
 /**
@@ -103,6 +109,8 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
 
 /**
  * 전체 로그 내보내기용 조회 (최대 10000건)
+ * - SYSTEM_ADMIN: 전체 로그 조회 가능
+ * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */
 export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 'limit'> = {}) {
   const supabase = await createClient();
@@ -125,20 +133,51 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
   }
 
   // 전체 로그 조회 (최대 10000건)
-  const result = await getAuditLogs({ ...filters, page: 1, limit: 10000 });
+  const result = await getAuditLogs({
+    ...filters,
+    page: 1,
+    limit: 10000,
+    currentUserRole: profile.role as UserRole,
+  });
   return { logs: result.logs, total: result.total };
 }
 
 /**
  * 사용자 목록 조회 (필터용)
+ * - SYSTEM_ADMIN: 전체 사용자 조회 가능
+ * - OPS_ADMIN: 컨설턴트만 조회 가능
  */
 export async function getUsers(): Promise<{ id: string; name: string; email: string }[]> {
   const supabase = await createClient();
 
-  const { data: users } = await supabase
+  // 현재 사용자 확인
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+
+  // 현재 사용자 역할 확인
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    return [];
+  }
+
+  // SYSTEM_ADMIN은 전체 사용자, OPS_ADMIN은 컨설턴트만
+  let query = supabase
     .from('users')
     .select('id, name, email')
     .order('name');
+
+  if (profile.role === 'OPS_ADMIN') {
+    query = query.in('role', [...CONSULTANT_ROLES]);
+  }
+
+  const { data: users } = await query;
 
   return users || [];
 }
