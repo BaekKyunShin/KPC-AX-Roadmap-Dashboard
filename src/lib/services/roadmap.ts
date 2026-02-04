@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { callLLMForJSON } from './llm';
 import { createAuditLog } from './audit';
-import { cleanupOldFinalFiles, saveFinalXLSX, prepareExportDataServer } from './roadmap-storage';
 import { checkQuotaExceeded, recordLLMUsage } from './quota';
 import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import type { ConsultantProfile } from '@/types/database';
@@ -1073,13 +1072,10 @@ export async function finalizeRoadmap(
     throw new Error('검증을 통과하지 못한 로드맵은 FINAL 확정할 수 없습니다.');
   }
 
-  // 기존 FINAL 파일 정리
-  await cleanupOldFinalFiles(roadmap.project_id);
-
   // 기존 FINAL → ARCHIVED
   await supabase
     .from('roadmap_versions')
-    .update({ status: 'ARCHIVED', storage_path_pdf: null, storage_path_xlsx: null })
+    .update({ status: 'ARCHIVED' })
     .eq('project_id', roadmap.project_id)
     .eq('status', 'FINAL');
 
@@ -1098,17 +1094,6 @@ export async function finalizeRoadmap(
     .from('projects')
     .update({ status: 'FINALIZED' })
     .eq('id', roadmap.project_id);
-
-  // FINAL 버전 파일 스토리지 저장
-  try {
-    const exportData = await prepareExportDataServer(roadmapId);
-    if (exportData) {
-      await saveFinalXLSX(roadmapId, roadmap.project_id, exportData);
-    }
-  } catch (storageError) {
-    console.error('[finalizeRoadmap] Storage save error:', storageError);
-    // 스토리지 저장 실패해도 FINAL 확정은 성공으로 처리
-  }
 
   // 감사 로그
   await createAuditLog({

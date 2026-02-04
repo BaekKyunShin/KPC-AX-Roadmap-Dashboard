@@ -3,56 +3,44 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import { fetchRoadmapVersionsForOps, fetchRoadmapVersionForOps } from './actions';
-import { prepareExportData, logDownload } from '@/lib/actions/roadmap-export';
+import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
-import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
-import type { RoadmapVersionStatus } from '@/types/database';
-import type { RoadmapRow, PBLCourse, RoadmapCell, RoadmapMatrixCell } from '@/lib/services/roadmap';
-
-interface RoadmapVersion {
-  id: string;
-  version_number: number;
-  status: RoadmapVersionStatus;
-  diagnosis_summary: string;
-  roadmap_matrix: RoadmapRow[];
-  pbl_course: PBLCourse;
-  courses: RoadmapCell[];
-  free_tool_validated: boolean;
-  time_limit_validated: boolean;
-  revision_prompt: string | null;
-  created_at: string;
-  finalized_at: string | null;
-}
-
-type TabKey = 'matrix' | 'pbl' | 'courses';
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'matrix', label: '과정 체계도' },
-  { key: 'courses', label: '과정 상세' },
-  { key: 'pbl', label: 'PBL 과정' },
-];
+import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
+import { CoursesList } from '@/components/roadmap/CoursesList';
+import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
+import { ROADMAP_TABS } from '@/types/roadmap-ui';
+import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
 
 export default function OpsRoadmapViewPage() {
   const params = useParams();
   const projectId = params.id as string;
 
   const [loading, setLoading] = useState(true);
-  const [versions, setVersions] = useState<RoadmapVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('matrix');
-  const [isDownloading, setIsDownloading] = useState<'PDF' | 'XLSX' | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [versions, setVersions] = useState<RoadmapVersionUI[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(null);
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
+
+  // 다운로드 훅
+  const {
+    isDownloading,
+    error: downloadError,
+    success: downloadSuccess,
+    downloadPDF,
+    downloadXLSX,
+    clearMessages,
+  } = useRoadmapDownload();
 
   // 버전 목록 로드
   useEffect(() => {
     async function loadVersions() {
       setLoading(true);
       const data = await fetchRoadmapVersionsForOps(projectId);
-      setVersions(data as RoadmapVersion[]);
+      setVersions(data as RoadmapVersionUI[]);
       if (data.length > 0) {
-        setSelectedVersion(data[0] as RoadmapVersion);
+        setSelectedVersion(data[0] as RoadmapVersionUI);
       }
       setLoading(false);
     }
@@ -63,76 +51,22 @@ export default function OpsRoadmapViewPage() {
   async function handleVersionSelect(versionId: string) {
     const version = await fetchRoadmapVersionForOps(versionId);
     if (version) {
-      setSelectedVersion(version as RoadmapVersion);
+      setSelectedVersion(version as RoadmapVersionUI);
     }
   }
 
   // PDF 다운로드
-  const handleDownloadPDF = async () => {
-    if (!selectedVersion) return;
-    setIsDownloading('PDF');
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const result = await prepareExportData(selectedVersion.id);
-      if (!result.success || !result.data) {
-        setError(result.error || 'PDF 준비에 실패했습니다.');
-        return;
-      }
-
-      const { generatePDF } = await import('@/lib/services/export-pdf');
-      const blob = await generatePDF(result.data);
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `roadmap_${result.data.companyName}_v${result.data.versionNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      await logDownload(selectedVersion.id, 'PDF');
-      setSuccess('PDF 다운로드가 완료되었습니다.');
-    } catch (err) {
-      console.error('[PDF Download Error]', err);
-      setError('PDF 생성에 실패했습니다.');
-    } finally {
-      setIsDownloading(null);
+  const handleDownloadPDF = () => {
+    if (selectedVersion) {
+      downloadPDF(selectedVersion.id);
     }
   };
 
   // XLSX 다운로드
-  const handleDownloadXLSX = async () => {
-    if (!selectedVersion) return;
-    setIsDownloading('XLSX');
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const result = await prepareExportData(selectedVersion.id);
-      if (!result.success || !result.data) {
-        setError(result.error || 'XLSX 준비에 실패했습니다.');
-        return;
-      }
-
-      const { downloadXLSX } = await import('@/lib/services/export-xlsx');
-      downloadXLSX(result.data, `roadmap_${result.data.companyName}_v${result.data.versionNumber}.xlsx`);
-
-      await logDownload(selectedVersion.id, 'XLSX');
-      setSuccess('Excel 다운로드가 완료되었습니다.');
-    } catch (err) {
-      console.error('[XLSX Download Error]', err);
-      setError('Excel 생성에 실패했습니다.');
-    } finally {
-      setIsDownloading(null);
+  const handleDownloadXLSX = () => {
+    if (selectedVersion) {
+      downloadXLSX(selectedVersion.id);
     }
-  };
-
-  const renderStatusBadge = (status: RoadmapVersionStatus) => {
-    const config = ROADMAP_VERSION_STATUS_CONFIG[status];
-    return <span className={`px-2 py-1 text-xs rounded ${config.color}`}>{config.label}</span>;
   };
 
   if (loading) {
@@ -162,22 +96,22 @@ export default function OpsRoadmapViewPage() {
       </div>
 
       {/* 에러/성공 메시지 */}
-      {error && (
+      {downloadError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-          {error}
+          {downloadError}
           <button
-            onClick={() => setError(null)}
+            onClick={clearMessages}
             className="absolute top-0 right-0 p-3 text-red-500 hover:text-red-700"
           >
             ×
           </button>
         </div>
       )}
-      {success && (
+      {downloadSuccess && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
-          {success}
+          {downloadSuccess}
           <button
-            onClick={() => setSuccess(null)}
+            onClick={clearMessages}
             className="absolute top-0 right-0 p-3 text-green-500 hover:text-green-700"
           >
             ×
@@ -204,7 +138,7 @@ export default function OpsRoadmapViewPage() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">v{v.version_number}</span>
-                        {renderStatusBadge(v.status)}
+                        <RoadmapStatusBadge status={v.status} />
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         {new Date(v.created_at).toLocaleDateString('ko-KR')}
@@ -230,7 +164,7 @@ export default function OpsRoadmapViewPage() {
                     <h2 className="text-lg font-semibold text-gray-900">
                       버전 {selectedVersion.version_number}
                     </h2>
-                    {renderStatusBadge(selectedVersion.status)}
+                    <RoadmapStatusBadge status={selectedVersion.status} />
                     {selectedVersion.free_tool_validated && selectedVersion.time_limit_validated ? (
                       <span className="text-xs text-green-600">✓ 검증 통과</span>
                     ) : (
@@ -267,7 +201,7 @@ export default function OpsRoadmapViewPage() {
               {/* 탭 */}
               <div className="border-b border-gray-200">
                 <nav className="flex -mb-px">
-                  {TABS.map((tab) => (
+                  {ROADMAP_TABS.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
@@ -298,19 +232,7 @@ export default function OpsRoadmapViewPage() {
             </div>
           ) : (
             <div className="bg-white shadow rounded-lg p-12 text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">로드맵이 없습니다</h3>
               <p className="mt-1 text-sm text-gray-500">
                 아직 컨설턴트가 로드맵을 생성하지 않았습니다.
@@ -319,234 +241,6 @@ export default function OpsRoadmapViewPage() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// NxM 매트릭스 컴포넌트
-function RoadmapMatrix({ matrix }: { matrix: RoadmapRow[] }) {
-  if (!matrix || matrix.length === 0) {
-    return <p className="text-gray-500">매트릭스 데이터가 없습니다.</p>;
-  }
-
-  return (
-    <div className="overflow-x-auto break-keep">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-              업무
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-green-600 uppercase bg-green-50">
-              초급
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-yellow-600 uppercase bg-yellow-50">
-              중급
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-red-600 uppercase bg-red-50">
-              고급
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {matrix.map((row) => (
-            <tr key={row.task_id}>
-              <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                {row.task_name}
-              </td>
-              <td className="px-4 py-3 bg-green-50">
-                <CourseCell courses={row.beginner || []} />
-              </td>
-              <td className="px-4 py-3 bg-yellow-50">
-                <CourseCell courses={row.intermediate || []} />
-              </td>
-              <td className="px-4 py-3 bg-red-50">
-                <CourseCell courses={row.advanced || []} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// 매트릭스 셀 컴포넌트 (여러 과정 지원)
-function CourseCell({ courses }: { courses: RoadmapMatrixCell[] }) {
-  if (courses.length === 0) {
-    return <span className="text-gray-400 text-xs">-</span>;
-  }
-  return (
-    <div className="space-y-2">
-      {courses.map((course, idx) => (
-        <div key={idx} className="text-xs">
-          <div className="font-medium text-gray-900">{course.course_name}</div>
-          <div className="text-gray-500">{course.recommended_hours}시간</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// PBL 과정 컴포넌트
-function PBLCourseView({ course }: { course: PBLCourse }) {
-  if (!course) {
-    return <p className="text-gray-500">PBL 과정 데이터가 없습니다.</p>;
-  }
-
-  return (
-    <div className="space-y-6 break-keep">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">{course.course_name}</h3>
-        <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-          <span>총 {course.total_hours}시간</span>
-          <span>대상: {course.target_audience}</span>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">대상 업무</h4>
-        <div className="flex flex-wrap gap-2">
-          {course.target_tasks?.map((task, idx) => (
-            <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
-              {task}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">커리큘럼</h4>
-        <div className="space-y-3">
-          {course.curriculum?.map((module, idx) => (
-            <div key={idx} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-gray-900">{module.module_name}</span>
-                <span className="text-sm text-gray-500">{module.hours}시간</span>
-              </div>
-              <p className="text-sm text-gray-600">{module.description}</p>
-              {module.practice && (
-                <p className="mt-2 text-sm text-blue-600">실습: {module.practice}</p>
-              )}
-              {module.tools && module.tools.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {module.tools.map((tool, tidx) => (
-                    <span
-                      key={tidx}
-                      className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded"
-                      title={tool.free_tier_info}
-                    >
-                      {tool.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">기대 효과</h4>
-          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-            {course.expected_outcomes?.map((outcome, idx) => (
-              <li key={idx}>{outcome}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">측정 방법</h4>
-          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-            {course.measurement_methods?.map((method, idx) => (
-              <li key={idx}>{method}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {course.prerequisites && course.prerequisites.length > 0 && (
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">준비물</h4>
-          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-            {course.prerequisites.map((prereq, idx) => (
-              <li key={idx}>{prereq}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// 과정 레벨 스타일 상수
-const LEVEL_COLORS: Record<string, string> = {
-  BEGINNER: 'bg-green-100 text-green-800',
-  INTERMEDIATE: 'bg-yellow-100 text-yellow-800',
-  ADVANCED: 'bg-red-100 text-red-800',
-};
-
-const LEVEL_LABELS: Record<string, string> = {
-  BEGINNER: '초급',
-  INTERMEDIATE: '중급',
-  ADVANCED: '고급',
-};
-
-// 과정 상세 목록 컴포넌트
-function CoursesList({ courses }: { courses: RoadmapCell[] }) {
-  if (!courses || courses.length === 0) {
-    return <p className="text-gray-500">과정 데이터가 없습니다.</p>;
-  }
-
-  return (
-    <div className="space-y-4 break-keep">
-      {courses.map((course, idx) => (
-        <div key={idx} className="border border-gray-200 rounded-lg p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h4 className="font-medium text-gray-900">{course.course_name}</h4>
-              <p className="text-sm text-gray-500">대상 업무: {course.target_task}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className={`px-2 py-1 text-xs rounded ${LEVEL_COLORS[course.level]}`}>
-                {LEVEL_LABELS[course.level]}
-              </span>
-              <span className="text-sm text-gray-500">{course.recommended_hours}시간</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h5 className="text-xs font-medium text-gray-500 uppercase mb-1">커리큘럼</h5>
-              <ul className="list-disc list-inside text-gray-600">
-                {course.curriculum?.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h5 className="text-xs font-medium text-gray-500 uppercase mb-1">사용 도구</h5>
-              <div className="flex flex-wrap gap-1">
-                {course.tools?.map((tool, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded"
-                    title={tool.free_tier_info}
-                  >
-                    {tool.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">기대효과:</span> {course.expected_outcome}
-            </p>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

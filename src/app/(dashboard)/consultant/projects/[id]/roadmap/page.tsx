@@ -12,39 +12,17 @@ import {
   fetchProjectInfo,
   editRoadmapManually,
 } from './actions';
-import { prepareExportData, logDownload } from '@/lib/actions/roadmap-export';
+import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
-import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
-import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
-import type { RoadmapVersionStatus } from '@/types/database';
+import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
+import { CoursesList } from '@/components/roadmap/CoursesList';
+import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
+import type { RoadmapCell } from '@/lib/services/roadmap';
+import { ROADMAP_TABS } from '@/types/roadmap-ui';
+import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
 import CourseEditModal from './_components/CourseEditModal';
-import { RoadmapMatrix } from './_components/RoadmapMatrix';
-import { PBLCourseView } from './_components/PBLCourseView';
-import { CoursesList } from './_components/CoursesList';
-
-interface RoadmapVersion {
-  id: string;
-  version_number: number;
-  status: RoadmapVersionStatus;
-  diagnosis_summary: string;
-  roadmap_matrix: RoadmapRow[];
-  pbl_course: PBLCourse;
-  courses: RoadmapCell[];
-  free_tool_validated: boolean;
-  time_limit_validated: boolean;
-  revision_prompt: string | null;
-  created_at: string;
-  finalized_at: string | null;
-}
-
-type TabKey = 'matrix' | 'pbl' | 'courses';
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'matrix', label: '과정 체계도' },
-  { key: 'courses', label: '과정 상세' },
-  { key: 'pbl', label: 'PBL 과정' },
-];
 
 export default function RoadmapPage() {
   const params = useParams();
@@ -54,15 +32,14 @@ export default function RoadmapPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isDownloading, setIsDownloading] = useState<'PDF' | 'XLSX' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   // 데이터 상태
-  const [versions, setVersions] = useState<RoadmapVersion[]>([]);
-  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
+  const [versions, setVersions] = useState<RoadmapVersionUI[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
-  const [activeTab, setActiveTab] = useState<TabKey>('matrix');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
   const [companyName, setCompanyName] = useState<string>('');
 
   // 편집 모드 상태
@@ -74,12 +51,22 @@ export default function RoadmapPage() {
     courseIndex?: number;
   } | null>(null);
 
+  // 다운로드 훅
+  const {
+    isDownloading,
+    error: downloadError,
+    success: downloadSuccess,
+    downloadPDF,
+    downloadXLSX,
+    clearMessages: clearDownloadMessages,
+  } = useRoadmapDownload();
+
   // 버전 목록 로드
   const loadVersions = useCallback(async () => {
     const data = await fetchRoadmapVersions(projectId);
-    setVersions(data as RoadmapVersion[]);
+    setVersions(data as RoadmapVersionUI[]);
     if (data.length > 0 && !selectedVersion) {
-      setSelectedVersion(data[0] as RoadmapVersion);
+      setSelectedVersion(data[0] as RoadmapVersionUI);
     }
   }, [projectId, selectedVersion]);
 
@@ -92,6 +79,7 @@ export default function RoadmapPage() {
   }, [projectId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadVersions();
     loadProjectInfo();
   }, [loadVersions, loadProjectInfo]);
@@ -110,9 +98,9 @@ export default function RoadmapPage() {
       setRevisionPrompt('');
       // 버전 목록 새로고침
       const data = await fetchRoadmapVersions(projectId);
-      setVersions(data as RoadmapVersion[]);
+      setVersions(data as RoadmapVersionUI[]);
       if (data.length > 0) {
-        setSelectedVersion(data[0] as RoadmapVersion);
+        setSelectedVersion(data[0] as RoadmapVersionUI);
       }
       // 성공 시 100% 표시 후 오버레이 닫기
       setIsGenerationComplete(true);
@@ -147,9 +135,9 @@ export default function RoadmapPage() {
     if (result.success) {
       setSuccess('FINAL로 확정되었습니다.');
       const data = await fetchRoadmapVersions(projectId);
-      setVersions(data as RoadmapVersion[]);
+      setVersions(data as RoadmapVersionUI[]);
       const updated = data.find((v) => v.id === selectedVersion.id);
-      if (updated) setSelectedVersion(updated as RoadmapVersion);
+      if (updated) setSelectedVersion(updated as RoadmapVersionUI);
     } else {
       setError(result.error || 'FINAL 확정에 실패했습니다.');
     }
@@ -161,7 +149,7 @@ export default function RoadmapPage() {
   const handleVersionSelect = async (versionId: string) => {
     const version = await fetchRoadmapVersion(versionId);
     if (version) {
-      setSelectedVersion(version as RoadmapVersion);
+      setSelectedVersion(version as RoadmapVersionUI);
     }
   };
 
@@ -208,7 +196,7 @@ export default function RoadmapPage() {
     if (result.success) {
       setSuccess('과정이 수정되었습니다.');
       const updated = await fetchRoadmapVersion(selectedVersion.id);
-      if (updated) setSelectedVersion(updated as RoadmapVersion);
+      if (updated) setSelectedVersion(updated as RoadmapVersionUI);
     } else {
       setError(result.error || '과정 수정에 실패했습니다.');
     }
@@ -218,70 +206,17 @@ export default function RoadmapPage() {
   };
 
   // PDF 다운로드
-  const handleDownloadPDF = async () => {
-    if (!selectedVersion) return;
-    setIsDownloading('PDF');
-    setError(null);
-
-    try {
-      const result = await prepareExportData(selectedVersion.id);
-      if (!result.success || !result.data) {
-        setError(result.error || 'PDF 준비에 실패했습니다.');
-        return;
-      }
-
-      const { generatePDF } = await import('@/lib/services/export-pdf');
-      const blob = await generatePDF(result.data);
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `roadmap_${result.data.companyName}_v${result.data.versionNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      await logDownload(selectedVersion.id, 'PDF');
-      setSuccess('PDF 다운로드가 완료되었습니다.');
-    } catch (err) {
-      console.error('[PDF Download Error]', err);
-      setError('PDF 생성에 실패했습니다.');
-    } finally {
-      setIsDownloading(null);
+  const handleDownloadPDF = () => {
+    if (selectedVersion) {
+      downloadPDF(selectedVersion.id);
     }
   };
 
   // XLSX 다운로드
-  const handleDownloadXLSX = async () => {
-    if (!selectedVersion) return;
-    setIsDownloading('XLSX');
-    setError(null);
-
-    try {
-      const result = await prepareExportData(selectedVersion.id);
-      if (!result.success || !result.data) {
-        setError(result.error || 'XLSX 준비에 실패했습니다.');
-        return;
-      }
-
-      const { downloadXLSX } = await import('@/lib/services/export-xlsx');
-      downloadXLSX(result.data, `roadmap_${result.data.companyName}_v${result.data.versionNumber}.xlsx`);
-
-      await logDownload(selectedVersion.id, 'XLSX');
-      setSuccess('Excel 다운로드가 완료되었습니다.');
-    } catch (err) {
-      console.error('[XLSX Download Error]', err);
-      setError('Excel 생성에 실패했습니다.');
-    } finally {
-      setIsDownloading(null);
+  const handleDownloadXLSX = () => {
+    if (selectedVersion) {
+      downloadXLSX(selectedVersion.id);
     }
-  };
-
-  // 상태 배지 렌더링
-  const renderStatusBadge = (status: RoadmapVersionStatus) => {
-    const config = ROADMAP_VERSION_STATUS_CONFIG[status];
-    return <span className={`px-2 py-1 text-xs rounded ${config.color}`}>{config.label}</span>;
   };
 
   const canEdit = selectedVersion?.status === 'DRAFT';
@@ -291,6 +226,16 @@ export default function RoadmapPage() {
   const handleCancelGeneration = () => {
     setIsGenerating(false);
     setIsGenerationComplete(false);
+  };
+
+  // 에러 메시지 통합 (로컬 에러 또는 다운로드 에러)
+  const displayError = error || downloadError;
+  const displaySuccess = success || downloadSuccess;
+
+  const clearAllMessages = () => {
+    setError(null);
+    setSuccess(null);
+    clearDownloadMessages();
   };
 
   return (
@@ -307,8 +252,18 @@ export default function RoadmapPage() {
       </div>
 
       {/* 알림 */}
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-      {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>}
+      {displayError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          {displayError}
+          <button onClick={clearAllMessages} className="absolute top-0 right-0 p-3 text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+      {displaySuccess && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
+          {displaySuccess}
+          <button onClick={clearAllMessages} className="absolute top-0 right-0 p-3 text-green-500 hover:text-green-700">×</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 왼쪽: 생성 및 버전 목록 */}
@@ -350,7 +305,7 @@ export default function RoadmapPage() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">v{v.version_number}</span>
-                        {renderStatusBadge(v.status)}
+                        <RoadmapStatusBadge status={v.status} />
                       </div>
                       <div className="text-xs text-gray-500 mt-1">{new Date(v.created_at).toLocaleDateString('ko-KR')}</div>
                     </button>
@@ -372,7 +327,7 @@ export default function RoadmapPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <h2 className="text-lg font-semibold text-gray-900">버전 {selectedVersion.version_number}</h2>
-                    {renderStatusBadge(selectedVersion.status)}
+                    <RoadmapStatusBadge status={selectedVersion.status} />
                     {!(selectedVersion.free_tool_validated && selectedVersion.time_limit_validated) && (
                       <span className="text-xs text-amber-600">
                         검토 필요 사항({[!selectedVersion.free_tool_validated, !selectedVersion.time_limit_validated].filter(Boolean).length}건)
@@ -407,7 +362,7 @@ export default function RoadmapPage() {
               {/* 탭 */}
               <div className="border-b border-gray-200">
                 <nav className="flex -mb-px">
-                  {TABS.map((tab) => (
+                  {ROADMAP_TABS.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
