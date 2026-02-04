@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { fetchRoadmapVersionsForOps, fetchRoadmapVersionForOps } from './actions';
+import { prepareExportData, logDownload } from '@/lib/actions/roadmap-export';
+import { DownloadButton } from '@/components/roadmap/DownloadButton';
+import { ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
+import type { RoadmapVersionStatus } from '@/types/database';
 import type { RoadmapRow, PBLCourse, RoadmapCell, RoadmapMatrixCell } from '@/lib/services/roadmap';
 
 interface RoadmapVersion {
   id: string;
   version_number: number;
-  status: 'DRAFT' | 'FINAL' | 'ARCHIVED';
+  status: RoadmapVersionStatus;
   diagnosis_summary: string;
   roadmap_matrix: RoadmapRow[];
   pbl_course: PBLCourse;
@@ -37,6 +41,9 @@ export default function OpsRoadmapViewPage() {
   const [versions, setVersions] = useState<RoadmapVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersion | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('matrix');
+  const [isDownloading, setIsDownloading] = useState<'PDF' | 'XLSX' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // 버전 목록 로드
   useEffect(() => {
@@ -60,17 +67,72 @@ export default function OpsRoadmapViewPage() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'DRAFT':
-        return <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">초안</span>;
-      case 'FINAL':
-        return <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">확정</span>;
-      case 'ARCHIVED':
-        return <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">보관</span>;
-      default:
-        return null;
+  // PDF 다운로드
+  const handleDownloadPDF = async () => {
+    if (!selectedVersion) return;
+    setIsDownloading('PDF');
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await prepareExportData(selectedVersion.id);
+      if (!result.success || !result.data) {
+        setError(result.error || 'PDF 준비에 실패했습니다.');
+        return;
+      }
+
+      const { generatePDF } = await import('@/lib/services/export-pdf');
+      const blob = await generatePDF(result.data);
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `roadmap_${result.data.companyName}_v${result.data.versionNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      await logDownload(selectedVersion.id, 'PDF');
+      setSuccess('PDF 다운로드가 완료되었습니다.');
+    } catch (err) {
+      console.error('[PDF Download Error]', err);
+      setError('PDF 생성에 실패했습니다.');
+    } finally {
+      setIsDownloading(null);
     }
+  };
+
+  // XLSX 다운로드
+  const handleDownloadXLSX = async () => {
+    if (!selectedVersion) return;
+    setIsDownloading('XLSX');
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await prepareExportData(selectedVersion.id);
+      if (!result.success || !result.data) {
+        setError(result.error || 'XLSX 준비에 실패했습니다.');
+        return;
+      }
+
+      const { downloadXLSX } = await import('@/lib/services/export-xlsx');
+      downloadXLSX(result.data, `roadmap_${result.data.companyName}_v${result.data.versionNumber}.xlsx`);
+
+      await logDownload(selectedVersion.id, 'XLSX');
+      setSuccess('Excel 다운로드가 완료되었습니다.');
+    } catch (err) {
+      console.error('[XLSX Download Error]', err);
+      setError('Excel 생성에 실패했습니다.');
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
+  const renderStatusBadge = (status: RoadmapVersionStatus) => {
+    const config = ROADMAP_VERSION_STATUS_CONFIG[status];
+    return <span className={`px-2 py-1 text-xs rounded ${config.color}`}>{config.label}</span>;
   };
 
   if (loading) {
@@ -92,12 +154,36 @@ export default function OpsRoadmapViewPage() {
           >
             ← 프로젝트로 돌아가기
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵 (읽기 전용)</h1>
-          <p className="mt-1 text-sm text-yellow-600">
-            * 운영관리자는 품질 관리/감사 목적으로 열람만 가능합니다.
+          <h1 className="mt-2 text-2xl font-bold text-gray-900">AI 교육 로드맵</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            품질 관리 및 감사 목적으로 열람합니다.
           </p>
         </div>
       </div>
+
+      {/* 에러/성공 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="absolute top-0 right-0 p-3 text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
+          {success}
+          <button
+            onClick={() => setSuccess(null)}
+            className="absolute top-0 right-0 p-3 text-green-500 hover:text-green-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 왼쪽: 버전 목록 */}
@@ -118,7 +204,7 @@ export default function OpsRoadmapViewPage() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">v{v.version_number}</span>
-                        {getStatusBadge(v.status)}
+                        {renderStatusBadge(v.status)}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         {new Date(v.created_at).toLocaleDateString('ko-KR')}
@@ -144,12 +230,26 @@ export default function OpsRoadmapViewPage() {
                     <h2 className="text-lg font-semibold text-gray-900">
                       버전 {selectedVersion.version_number}
                     </h2>
-                    {getStatusBadge(selectedVersion.status)}
+                    {renderStatusBadge(selectedVersion.status)}
                     {selectedVersion.free_tool_validated && selectedVersion.time_limit_validated ? (
                       <span className="text-xs text-green-600">✓ 검증 통과</span>
                     ) : (
                       <span className="text-xs text-red-600">✗ 검증 실패</span>
                     )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DownloadButton
+                      onClick={handleDownloadPDF}
+                      loading={isDownloading === 'PDF'}
+                      type="PDF"
+                      disabled={isDownloading !== null}
+                    />
+                    <DownloadButton
+                      onClick={handleDownloadXLSX}
+                      loading={isDownloading === 'XLSX'}
+                      type="Excel"
+                      disabled={isDownloading !== null}
+                    />
                   </div>
                 </div>
 
