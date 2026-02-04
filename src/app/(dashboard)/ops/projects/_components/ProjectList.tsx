@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline } from '../actions';
+import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,10 +58,10 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // 필터 옵션
-  const [filterOptions, setFilterOptions] = useState<{
-    statuses: string[];
-    industries: string[];
-  }>({ statuses: [], industries: [] });
+  const [filterOptions, setFilterOptions] = useState<ProjectFilterOptions>({
+    statuses: [],
+    industries: [],
+  });
 
   // 필터 옵션 로드
   useEffect(() => {
@@ -78,13 +78,21 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     }
   }, [statusFilter]);
 
+  // 선택된 상태 필터 옵션 (드롭다운 선택)
+  const selectedStatusOption = useMemo(() => {
+    if (internalStatus === DEFAULT_FILTER_VALUE) {
+      return null;
+    }
+    return filterOptions.statuses.find((opt) => opt.value === internalStatus) ?? null;
+  }, [internalStatus, filterOptions.statuses]);
+
   // 실제 적용할 상태 필터 결정 (외부 prop 우선, 없으면 내부 상태)
   const effectiveStatuses = useMemo(() => {
     if (statusFilter !== null && statusFilter !== undefined) {
       return statusFilter;
     }
-    return internalStatus === DEFAULT_FILTER_VALUE ? undefined : [internalStatus as ProjectStatus];
-  }, [statusFilter, internalStatus]);
+    return selectedStatusOption?.statuses;
+  }, [statusFilter, selectedStatusOption]);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
@@ -147,9 +155,9 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={DEFAULT_FILTER_VALUE}>모든 상태</SelectItem>
-                  {filterOptions.statuses.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {PROJECT_STATUS_CONFIG[s as ProjectStatus]?.label || s}
+                  {filterOptions.statuses.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -188,9 +196,9 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                   </button>
                 </Badge>
               )}
-              {internalStatus !== DEFAULT_FILTER_VALUE && (
+              {selectedStatusOption && (
                 <Badge variant="secondary" className="gap-1">
-                  상태: {PROJECT_STATUS_CONFIG[internalStatus as ProjectStatus]?.label || internalStatus}
+                  상태: {selectedStatusOption.label}
                   <button onClick={() => setInternalStatus(DEFAULT_FILTER_VALUE)}>
                     <X className="h-3 w-3" />
                   </button>

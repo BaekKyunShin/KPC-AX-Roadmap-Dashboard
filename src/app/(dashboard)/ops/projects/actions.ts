@@ -5,7 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
-import { PROJECT_STALL_THRESHOLDS, ALL_PROJECT_STATUSES, getWorkflowStepIndex } from '@/lib/constants/status';
+import {
+  PROJECT_STALL_THRESHOLDS,
+  getWorkflowStepIndex,
+  getStatusFilterOptions,
+  type StatusFilterOption,
+} from '@/lib/constants/status';
 
 /** 1일을 밀리초로 환산한 값 */
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -424,17 +429,20 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
   };
 }
 
+/** 프로젝트 필터 옵션 반환 타입 */
+export interface ProjectFilterOptions {
+  statuses: StatusFilterOption[];
+  industries: string[];
+}
+
 /**
  * 프로젝트 상태 및 업종 목록 조회
  */
-export async function fetchProjectFilters(): Promise<{
-  statuses: string[];
-  industries: string[];
-}> {
+export async function fetchProjectFilters(): Promise<ProjectFilterOptions> {
   const supabase = await createClient();
 
-  // 사용 중인 상태 목록 (ALL_PROJECT_STATUSES에서 파생)
-  const statuses = [...ALL_PROJECT_STATUSES];
+  // 워크플로우 단계 기반 상태 옵션 (중복 라벨 없음)
+  const statuses = getStatusFilterOptions();
 
   // 사용 중인 업종 목록
   const { data: industries } = await supabase

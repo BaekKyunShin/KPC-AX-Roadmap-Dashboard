@@ -57,6 +57,31 @@ export function getWorkflowStepLabel(status: ProjectStatus): string {
 }
 
 /**
+ * 상태 필터 옵션 타입
+ * - 드롭다운 필터에서 워크플로우 단계별로 상태를 그룹화하여 표시
+ */
+export interface StatusFilterOption {
+  /** 워크플로우 단계 키 (e.g., 'new', 'diagnosed') */
+  value: string;
+  /** 표시 라벨 */
+  label: string;
+  /** 해당 단계에 포함된 프로젝트 상태 목록 */
+  statuses: ProjectStatus[];
+}
+
+/**
+ * 워크플로우 단계를 필터 옵션으로 변환
+ * - 드롭다운에서 중복 라벨 없이 표시하기 위해 사용
+ */
+export function getStatusFilterOptions(): StatusFilterOption[] {
+  return PROJECT_WORKFLOW_STEPS.map((step) => ({
+    value: step.key,
+    label: step.label,
+    statuses: step.statuses,
+  }));
+}
+
+/**
  * 프로젝트 상태 설정 (OPS 관리자용 - 전체 상태)
  */
 export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string }> = {
