@@ -247,10 +247,11 @@ export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
 
   const curriculumData = data.pblCourse.curriculum?.map(module => {
     const deliverables = extractModuleDeliverables(module);
+    const details = module.details?.join('\n- ') || '-';
     return [
       module.module_name,
       `${module.hours}h`,
-      module.description,
+      details.startsWith('-') ? details : `- ${details}`,
       module.practice,
       deliverables?.join(', ') || '-',
       module.tools?.map(t => t.name).join(', ') || '-',

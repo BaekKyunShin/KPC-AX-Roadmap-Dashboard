@@ -87,15 +87,22 @@ ${formatSttInsights(sttInsights)}
 `;
 }
 
+// 커리큘럼 모듈 타입 (courses용)
+export interface CurriculumModule {
+  module_name: string; // 모듈명
+  hours: number; // 모듈 시간 (각 모듈마다 다를 수 있음)
+  details: string[]; // 세부 커리큘럼 (개조식, 2~5개)
+  practice: string; // 실습/과제 내용
+}
+
 // 과정 상세 타입 (courses 배열용)
 export interface RoadmapCell {
   course_name: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   target_task: string; // 대상 업무
   target_audience: string; // 교육 대상
-  recommended_hours: number; // 권장 시간 (≤40)
-  curriculum: string[]; // 커리큘럼 항목
-  practice_assignments: string[]; // 실습/과제
+  recommended_hours: number; // 권장 시간 (= curriculum 모듈 시간 합계)
+  curriculum: CurriculumModule[]; // 커리큘럼 모듈 배열
   tools: {
     name: string;
     free_tier_info: string; // 무료 범위 표기 (필수)
@@ -120,6 +127,17 @@ export interface RoadmapRow {
   advanced: RoadmapMatrixCell[];
 }
 
+// PBL 커리큘럼 모듈 타입 (courses의 CurriculumModule 확장)
+export interface PBLCurriculumModule extends CurriculumModule {
+  // CurriculumModule 기본 필드: module_name, hours, details, practice
+  // PBL 확장 필드:
+  deliverables: string[]; // 각 모듈에서 산출되는 결과물
+  tools: {
+    name: string;
+    free_tier_info: string;
+  }[];
+}
+
 // PBL 최적 과정 (과정 상세에서 선정된 과정)
 export interface PBLCourse {
   // 선정된 과정 정보 (courses 배열에서 선택)
@@ -135,24 +153,17 @@ export interface PBLCourse {
     summary: string; // 종합 선정 이유 요약
   };
 
-  // PBL 상세 설계
+  // PBL 상세 설계 (선정된 과정과 기본 구조 동일)
   course_name: string; // PBL 과정명 (선정된 과정 기반)
-  total_hours: number; // ≤40
+  total_hours: number; // = curriculum 모듈 시간 합계 (선정된 과정의 recommended_hours와 동일)
   target_tasks: string[]; // 대상 업무들
   target_audience: string;
 
-  // PBL 모듈별 상세 커리큘럼
-  curriculum: {
-    module_name: string;
-    hours: number;
-    description: string;
-    practice: string; // 구체적인 실습 내용
-    deliverables: string[]; // 각 모듈에서 산출되는 결과물
-    tools: {
-      name: string;
-      free_tier_info: string;
-    }[];
-  }[];
+  // PBL 커리큘럼 (선정된 과정의 curriculum 기반 + PBL 상세화)
+  // - module_name, hours, details: 선정된 과정과 동일
+  // - practice: 더 구체적인 실습 내용으로 확장
+  // - deliverables, tools: PBL 전용 상세 정보
+  curriculum: PBLCurriculumModule[];
 
   // 최종 결과물 및 효과
   final_deliverables: string[]; // PBL 완료 시 최종 산출물
@@ -176,6 +187,59 @@ export interface RoadmapResult {
   pbl_course: PBLCourse;
   courses: RoadmapCell[]; // 모든 과정 상세 리스트
 }
+
+// ============================================================================
+// 시간 계산 유틸리티
+// ============================================================================
+
+/** 커리큘럼 모듈 배열의 시간 합계 계산 */
+function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
+  if (!curriculum || curriculum.length === 0) return 0;
+  return curriculum.reduce((sum, module) => sum + (module.hours || 0), 0);
+}
+
+// ============================================================================
+// 시간 보정 함수
+// ============================================================================
+
+/**
+ * courses의 recommended_hours를 커리큘럼 모듈 시간 합계로 보정
+ */
+function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
+  return courses.map(course => {
+    const modulesTotal = sumModuleHours(course.curriculum);
+    if (modulesTotal === 0 || course.recommended_hours === modulesTotal) {
+      return course;
+    }
+    return { ...course, recommended_hours: modulesTotal };
+  });
+}
+
+/**
+ * PBL 과정의 total_hours를 모듈 시간 합계로 보정
+ */
+function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
+  const modulesTotal = sumModuleHours(pblCourse.curriculum);
+  if (modulesTotal === 0 || pblCourse.total_hours === modulesTotal) {
+    return pblCourse;
+  }
+  return { ...pblCourse, total_hours: modulesTotal };
+}
+
+/**
+ * LLM 출력 결과의 시간을 자동 보정
+ */
+function normalizeRoadmapHours(llmResult: LLMRoadmapResult): LLMRoadmapResult {
+  return {
+    ...llmResult,
+    courses: normalizeCoursesHours(llmResult.courses),
+    pbl_course: normalizePBLHours(llmResult.pbl_course),
+  };
+}
+
+// ============================================================================
+// 로드맵 매트릭스 생성
+// ============================================================================
 
 /**
  * courses 배열에서 roadmap_matrix 자동 생성
@@ -290,7 +354,7 @@ export async function generateRoadmap(
   const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
   // LLM 호출 (roadmap_matrix 없이 courses만 생성)
-  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
+  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -300,6 +364,9 @@ export async function generateRoadmap(
 
   // 사용량 기록
   await recordLLMUsage(actorUserId);
+
+  // 시간 보정 적용 (recommended_hours와 커리큘럼 시간 일치시키기)
+  const llmResult = normalizeRoadmapHours(rawLlmResult);
 
   // courses에서 roadmap_matrix 자동 생성
   const result: RoadmapResult = {
@@ -486,7 +553,7 @@ export async function generateTestRoadmap(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
 
-  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
+  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -497,7 +564,10 @@ export async function generateTestRoadmap(
   // 4. 사용량 기록
   await recordLLMUsage(actorUserId);
 
-  // 5. 결과 생성 및 검증
+  // 5. 시간 보정 적용
+  const llmResult = normalizeRoadmapHours(rawLlmResult);
+
+  // 6. 결과 생성 및 검증
   const result: RoadmapResult = {
     ...llmResult,
     roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
@@ -557,7 +627,7 @@ ${revisionPrompt}
 단, 최종 출력은 반드시 완전한 JSON 형식으로 전체 로드맵을 출력해야 합니다.`;
 
   // 4. LLM 호출
-  const llmResult = await callLLMForJSON<LLMRoadmapResult>(
+  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: revisionUserPrompt },
@@ -568,7 +638,10 @@ ${revisionPrompt}
   // 5. 사용량 기록
   await recordLLMUsage(actorUserId);
 
-  // 6. 결과 생성 및 검증
+  // 6. 시간 보정 적용
+  const llmResult = normalizeRoadmapHours(rawLlmResult);
+
+  // 7. 결과 생성 및 검증
   const result: RoadmapResult = {
     ...llmResult,
     roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
@@ -605,21 +678,30 @@ function buildSystemPrompt(): string {
    - PBL 과정 전체 합계도 40시간 이하여야 합니다.
    - 필요에 따라 40시간 이상이 될 수도 있지만, 그렇더라도 무조건 50시간 이하여야 합니다.
 
-5. **실용성 중심**: 이론보다 실습 중심의 커리큘럼을 설계하세요.
+5. **시간 일관성 - 매우 중요**:
+   - 각 모듈은 실제 필요한 시간을 개별적으로 배정합니다 (균등 분배 불필요).
+   - 예: 5개 모듈이 [6H, 10H, 8H, 12H, 4H]처럼 다양할 수 있음
+   - **courses**: recommended_hours = curriculum 배열의 각 모듈 hours 합계
+   - **PBL 과정**: total_hours = curriculum 배열의 각 모듈 hours 합계
+   - 절대 불일치하면 안 됩니다!
 
-6. **측정 가능한 성과**: 모든 과정에 명확한 기대 효과와 측정 방법을 포함하세요.
+6. **실용성 중심**: 이론보다 실습 중심의 커리큘럼을 설계하세요.
 
-7. **PBL 과정은 반드시 courses에서 선정**:
+7. **측정 가능한 성과**: 모든 과정에 명확한 기대 효과와 측정 방법을 포함하세요.
+
+8. **PBL 과정은 반드시 courses에서 선정 - 매우 중요**:
    - PBL 과정은 별도로 새로 만드는 것이 아니라, courses 배열에 포함된 과정 중 하나를 선정해야 합니다.
-   - **PBL 과정의 시간(total_hours)은 선정된 과정의 recommended_hours와 동일해야 합니다.**
    - 선정 기준:
      a. 담당 컨설턴트의 전문성/프로필과의 적합도
      b. 고객사의 페인포인트 및 요구사항과의 연관성
      c. 현실 가능성 (교육 인프라, 시간, 인원 등)
-   - 위 기준을 종합적으로 고려하여 가장 효과적인 과정을 PBL로 선정하세요.
-   - PBL은 선정된 과정을 더 구체화/상세화한 것이므로, 기본 정보(시간, 대상 등)는 동일해야 합니다.
+   - **PBL과 선정된 과정의 일치 규칙**:
+     - total_hours = 선정된 과정의 recommended_hours (동일해야 함)
+     - curriculum의 모듈 구조(module_name, hours, details)는 선정된 과정과 완전히 동일
+     - PBL에서는 practice를 더 구체화하고, deliverables와 tools를 추가로 작성
+   - PBL은 선정된 과정을 프로젝트 기반으로 상세화한 것이므로, 기본 골격은 반드시 동일해야 합니다.
 
-8. **교육 난이도 원칙**:
+9. **교육 난이도 원칙**:
    - 원칙적으로, 비개발자도 즉시 활용 가능한 노코드/로우코드 도구 중심으로 설계해야 합니다.
    - 코딩/프로그래밍이 필요한 교육은 다음 경우에만 포함:
      a. 고객사가 명시적으로 요청한 경우
@@ -652,10 +734,12 @@ function buildSystemPrompt(): string {
     "target_audience": "교육 대상",
     "curriculum": [
       {
-        "module_name": "모듈명",
-        "hours": 8,
-        "description": "모듈 설명",
-        "practice": "구체적인 실습 내용 (어떤 데이터로 무엇을 하는지 상세히)",
+        /* 기본 구조는 선정된 과정의 curriculum과 동일 */
+        "module_name": "모듈명", /* 선정된 과정과 동일 */
+        "hours": 8, /* 선정된 과정과 동일 */
+        "details": ["세부 커리큘럼1", "세부 커리큘럼2"], /* 선정된 과정과 동일 */
+        /* PBL 확장 필드 */
+        "practice": "구체적인 실습 내용 (어떤 데이터로 무엇을 하는지 더 상세히)",
         "deliverables": ["이 모듈에서 산출되는 결과물1", "결과물2"],
         "tools": [{"name": "도구명", "free_tier_info": "무료 범위"}]
       }
@@ -674,9 +758,31 @@ RoadmapCell 구조:
   "level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED",
   "target_task": "대상 업무",
   "target_audience": "교육 대상",
-  "recommended_hours": 8,
-  "curriculum": ["항목1", "항목2"],
-  "practice_assignments": ["실습1", "과제1"],
+  "recommended_hours": 24, /* = curriculum 모듈 hours 합계 */
+  "curriculum": [
+    {
+      "module_name": "모듈명 1",
+      "hours": 6, /* 각 모듈마다 실제 필요한 시간 배정 (균등 분배 불필요) */
+      "details": [
+        "세부 커리큘럼 1",
+        "세부 커리큘럼 2",
+        "세부 커리큘럼 3"
+      ], /* 개조식 2~5개 */
+      "practice": "실습/과제 내용"
+    },
+    {
+      "module_name": "모듈명 2",
+      "hours": 10, /* 필요에 따라 다른 시간 */
+      "details": ["세부 항목1", "세부 항목2"],
+      "practice": "실습 내용"
+    },
+    {
+      "module_name": "모듈명 3",
+      "hours": 8,
+      "details": ["세부 항목1", "세부 항목2", "세부 항목3"],
+      "practice": "실습 내용"
+    }
+  ],
   "tools": [{"name": "도구명", "free_tier_info": "무료 범위 설명"}],
   "expected_outcome": "기대 효과",
   "measurement_method": "측정 방법",
@@ -687,17 +793,24 @@ RoadmapCell 구조:
 
 PBL 과정은 선정된 과정을 프로젝트 기반 학습으로 심화 확장한 것입니다:
 
-1. **실습 내용 상세화**: 각 모듈의 practice 필드에 구체적으로 어떤 실습을 하는지 명시
-   - 예: "회사의 실제 고객 CS 데이터 100건을 ChatGPT로 감성 분석하여 불만 유형별 분류"
+1. **선정된 과정과의 일치 (필수)**:
+   - module_name, hours, details는 선정된 과정의 curriculum과 완전히 동일해야 함
+   - 모듈 수, 모듈명, 각 모듈 시간, 세부 커리큘럼이 모두 일치
+   - total_hours = recommended_hours (선정된 과정과 동일)
 
-2. **결과물 명시**: 각 모듈별 deliverables와 최종 final_deliverables를 구체적으로 작성
-   - 예: "감성 분석 결과 대시보드", "자동 분류 프롬프트 템플릿", "분석 보고서"
+2. **PBL 확장 필드 작성**:
+   - practice: 선정된 과정보다 더 구체적인 실습 내용 (어떤 데이터로 무엇을 하는지 상세히)
+     - 예: "회사의 실제 고객 CS 데이터 100건을 ChatGPT로 감성 분석하여 불만 유형별 분류"
+   - deliverables: 각 모듈에서 산출되는 구체적인 결과물
+     - 예: "감성 분석 결과 대시보드", "자동 분류 프롬프트 템플릿"
+   - tools: 해당 모듈에서 사용하는 도구와 무료 범위
 
-3. **비즈니스 임팩트**: business_impact에 정량적/정성적 효과 기술
-   - 예: "CS 응대 시간 30% 단축 예상", "불만 고객 조기 감지로 이탈률 감소"
-
-4. **현실적 측정 방법**: 실제로 측정 가능한 KPI 제시
-   - 예: "교육 전후 업무 처리 시간 비교", "AI 도구 활용률 주간 모니터링"`;
+3. **최종 결과물 및 효과**:
+   - final_deliverables: PBL 완료 시 최종 산출물 (모듈별 결과물의 통합)
+   - business_impact: 정량적/정성적 비즈니스 효과
+     - 예: "CS 응대 시간 30% 단축 예상", "불만 고객 조기 감지로 이탈률 감소"
+   - measurement_methods: 실제로 측정 가능한 KPI
+     - 예: "교육 전후 업무 처리 시간 비교", "AI 도구 활용률 주간 모니터링"`;
 }
 
 /**
@@ -857,38 +970,55 @@ function validatePBLTools(
 }
 
 /**
- * 과정별 시간 제한 검증
+ * 과정별 시간 제한 및 일관성 검증
  */
 function validateCourseHours(
   courses: RoadmapCell[],
-  errors: string[]
+  errors: string[],
+  warnings: string[]
 ): void {
   courses.forEach(course => {
-    if (course.recommended_hours > MAX_COURSE_HOURS) {
-      errors.push(
-        `시간 초과: ${course.course_name} (${course.recommended_hours}시간 > ${MAX_COURSE_HOURS}시간)`
+    const { course_name, recommended_hours, curriculum } = course;
+
+    // 1. 시간 초과 검증
+    if (recommended_hours > MAX_COURSE_HOURS) {
+      errors.push(`시간 초과: ${course_name} (${recommended_hours}시간 > ${MAX_COURSE_HOURS}시간)`);
+    }
+
+    // 2. 시간 일관성 검증 (recommended_hours = 모듈 시간 합계)
+    const modulesTotal = sumModuleHours(curriculum);
+    if (modulesTotal > 0 && recommended_hours !== modulesTotal) {
+      warnings.push(
+        `시간 불일치: ${course_name} - recommended_hours(${recommended_hours}시간)와 ` +
+        `모듈 시간 합계(${modulesTotal}시간)가 다릅니다.`
       );
     }
   });
 }
 
 /**
- * PBL 과정 시간 제한 검증
+ * PBL 과정 시간 제한 및 일관성 검증
  */
 function validatePBLHours(
   pblCourse: PBLCourse,
-  errors: string[]
+  errors: string[],
+  warnings: string[]
 ): void {
-  if (pblCourse.total_hours > MAX_COURSE_HOURS) {
-    errors.push(
-      `PBL 과정 시간 초과: ${pblCourse.total_hours}시간 > ${MAX_COURSE_HOURS}시간`
-    );
+  const { total_hours, curriculum } = pblCourse;
+  const modulesTotal = sumModuleHours(curriculum);
+
+  // 1. 시간 초과 검증
+  if (total_hours > MAX_COURSE_HOURS) {
+    errors.push(`PBL 과정 시간 초과: ${total_hours}시간 > ${MAX_COURSE_HOURS}시간`);
+  }
+  if (modulesTotal > MAX_COURSE_HOURS) {
+    errors.push(`PBL 모듈 합계 시간 초과: ${modulesTotal}시간 > ${MAX_COURSE_HOURS}시간`);
   }
 
-  const pblTotalHours = pblCourse.curriculum?.reduce((sum, m) => sum + m.hours, 0) || 0;
-  if (pblTotalHours > MAX_COURSE_HOURS) {
-    errors.push(
-      `PBL 모듈 합계 시간 초과: ${pblTotalHours}시간 > ${MAX_COURSE_HOURS}시간`
+  // 2. 시간 일관성 검증 (total_hours와 모듈 합계 일치 여부)
+  if (modulesTotal > 0 && total_hours !== modulesTotal) {
+    warnings.push(
+      `PBL 시간 불일치: total_hours(${total_hours}시간)와 모듈 합계(${modulesTotal}시간)가 다릅니다.`
     );
   }
 }
@@ -1008,10 +1138,10 @@ export function validateRoadmap(result: RoadmapResult): ValidationResult {
     validatePBLTools(result.pbl_course, errors);
   }
 
-  // 2. 시간 제한 검증
-  validateCourseHours(result.courses, errors);
+  // 2. 시간 제한 및 일관성 검증
+  validateCourseHours(result.courses, errors, warnings);
   if (result.pbl_course) {
-    validatePBLHours(result.pbl_course, errors);
+    validatePBLHours(result.pbl_course, errors, warnings);
   }
 
   // 3. 필수 필드 검증

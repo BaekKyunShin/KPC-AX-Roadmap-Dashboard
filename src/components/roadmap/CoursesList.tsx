@@ -71,12 +71,6 @@ function formatHours(hours: number): string {
   return `${hours}H`;
 }
 
-/** 커리큘럼 항목 수에 따라 시간 배분 */
-function calculateModuleHours(totalHours: number, moduleCount: number): number {
-  if (moduleCount === 0) return 0;
-  return Math.round(totalHours / moduleCount);
-}
-
 /** 레벨에 해당하는 Badge 색상 클래스 반환 */
 function getLevelBadgeColor(level: string): string {
   return LEVEL_BADGE_COLORS[level as CourseLevel] || 'bg-gray-100 text-gray-800 border-gray-200';
@@ -164,9 +158,6 @@ function CourseProfileTable({ course }: { course: RoadmapCell }) {
 
 function CurriculumTable({ course }: { course: RoadmapCell }) {
   const curriculum = course.curriculum || [];
-  const practiceAssignments = course.practice_assignments || [];
-  const moduleHours = calculateModuleHours(course.recommended_hours, curriculum.length);
-  const hasExtraPractice = practiceAssignments.length > curriculum.length;
 
   if (curriculum.length === 0) {
     return <p className="text-gray-500 text-sm py-2">커리큘럼 정보가 없습니다.</p>;
@@ -185,38 +176,34 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {curriculum.map((item, idx) => (
+          {curriculum.map((module, idx) => (
             <tr key={idx} className="hover:bg-indigo-50/30">
-              <td className="px-4 py-3 text-center font-medium text-indigo-600 whitespace-nowrap">
-                {formatHours(moduleHours)}
+              <td className="px-4 py-3 text-center font-medium text-indigo-600 whitespace-nowrap align-top">
+                {formatHours(module.hours)}
               </td>
-              <td className="px-4 py-3 text-left">
-                <span className="text-gray-900 break-keep">{item}</span>
+              <td className="px-4 py-3 text-left align-top">
+                <div className="space-y-1">
+                  <span className="text-gray-900 font-medium break-keep">{module.module_name}</span>
+                  {module.details && module.details.length > 0 && (
+                    <ul className="ml-3 mt-1 space-y-0.5">
+                      {module.details.map((detail, detailIdx) => (
+                        <li key={detailIdx} className="text-gray-600 text-sm break-keep">
+                          - {detail}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </td>
-              <td className="px-4 py-3 text-left text-gray-600">
-                {practiceAssignments[idx] ? (
-                  <span className="break-keep">{practiceAssignments[idx]}</span>
+              <td className="px-4 py-3 text-left text-gray-600 align-top">
+                {module.practice ? (
+                  <span className="break-keep">{module.practice}</span>
                 ) : (
                   <span className="text-gray-400">-</span>
                 )}
               </td>
             </tr>
           ))}
-          {hasExtraPractice && (
-            <tr className="bg-amber-50/50">
-              <td className="px-4 py-3 text-center font-medium text-amber-600">-</td>
-              <td className="px-4 py-3 text-left text-gray-500 italic">추가 실습/과제</td>
-              <td className="px-4 py-3 text-left">
-                <ul className="list-disc list-inside text-gray-600 space-y-1">
-                  {practiceAssignments.slice(curriculum.length).map((item, idx) => (
-                    <li key={idx} className="break-keep">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
     </div>

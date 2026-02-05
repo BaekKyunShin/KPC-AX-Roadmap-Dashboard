@@ -169,13 +169,14 @@ function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
   ];
 
   // 커리큘럼
-  const curriculumHeader = ['모듈명', '시간', '설명', '실습', '모듈 결과물', '사용 도구', '무료 범위'];
+  const curriculumHeader = ['모듈명', '시간', '세부 커리큘럼', '실습', '모듈 결과물', '사용 도구', '무료 범위'];
   const curriculumRows = data.pblCourse.curriculum?.map(module => {
     const deliverables = extractModuleDeliverables(module);
+    const details = module.details?.map(d => `- ${d}`).join('\n') || '-';
     return [
       module.module_name,
       module.hours,
-      module.description,
+      details,
       module.practice,
       deliverables?.join(', ') || '-',
       module.tools?.map(t => t.name).join(', ') || '-',
@@ -242,20 +243,33 @@ function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
     '준비물',
   ];
 
-  const rows = data.courses.map(course => [
-    course.course_name,
-    getLevelLabel(course.level),
-    course.target_task,
-    course.target_audience,
-    course.recommended_hours,
-    course.curriculum?.join('\n') || '-',
-    course.practice_assignments?.join('\n') || '-',
-    course.tools?.map(t => t.name).join(', ') || '-',
-    course.tools?.map(t => t.free_tier_info).join(', ') || '-',
-    course.expected_outcome,
-    course.measurement_method,
-    course.prerequisites?.join(', ') || '-',
-  ]);
+  const rows = data.courses.map(course => {
+    // 커리큘럼 모듈을 문자열로 변환
+    const curriculumStr = course.curriculum?.map(m => {
+      const details = m.details?.map(d => `  - ${d}`).join('\n') || '';
+      return `[${m.hours}H] ${m.module_name}${details ? '\n' + details : ''}`;
+    }).join('\n\n') || '-';
+
+    // 실습/과제를 문자열로 변환
+    const practiceStr = course.curriculum?.map(m =>
+      m.practice ? `[${m.module_name}] ${m.practice}` : null
+    ).filter(Boolean).join('\n') || '-';
+
+    return [
+      course.course_name,
+      getLevelLabel(course.level),
+      course.target_task,
+      course.target_audience,
+      course.recommended_hours,
+      curriculumStr,
+      practiceStr,
+      course.tools?.map(t => t.name).join(', ') || '-',
+      course.tools?.map(t => t.free_tier_info).join(', ') || '-',
+      course.expected_outcome,
+      course.measurement_method,
+      course.prerequisites?.join(', ') || '-',
+    ];
+  });
 
   const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
   sheet['!cols'] = [

@@ -101,7 +101,13 @@ export function PBLCourseView({ course }: PBLCourseViewProps) {
                 <span className="font-medium text-gray-900">{module.module_name}</span>
                 <span className="text-sm text-gray-500">{module.hours}시간</span>
               </div>
-              <p className="text-sm text-gray-600">{module.description}</p>
+              {module.details && module.details.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {module.details.map((detail, detailIdx) => (
+                    <li key={detailIdx} className="text-sm text-gray-600">- {detail}</li>
+                  ))}
+                </ul>
+              )}
               {module.practice && (
                 <div className="mt-2">
                   <span className="text-xs font-medium text-blue-700 uppercase">실습</span>
