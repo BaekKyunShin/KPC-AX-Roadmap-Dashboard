@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { generateMatchingRecommendations } from '@/lib/services/matching';
+import { generateLLMMatchingRecommendations } from '@/lib/services/matching';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '프로젝트 ID가 필요합니다.' }, { status: 400 });
     }
 
-    // 매칭 추천 생성
-    const recommendations = await generateMatchingRecommendations(projectId, user.id, {
+    // LLM 기반 매칭 추천 생성
+    const recommendations = await generateLLMMatchingRecommendations(projectId, user.id, {
       topN,
       preserveStatus,
     });
