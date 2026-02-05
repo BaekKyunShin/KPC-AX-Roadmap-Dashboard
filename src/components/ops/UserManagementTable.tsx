@@ -71,6 +71,10 @@ const TABLE_COLUMNS = {
   actions: 'min-w-[100px]',
 } as const;
 
+/** 프로필 모달 내 서술형 텍스트 영역 스타일 */
+const PROFILE_TEXT_AREA_CLASSES =
+  'text-sm text-gray-700 whitespace-pre-wrap break-words bg-gray-50 p-3 rounded-lg';
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -357,7 +361,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 대표 수행경험 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">대표 수행경험/프로젝트</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
+                <p className={PROFILE_TEXT_AREA_CLASSES}>
                   {selectedProfile.profile.representative_experience}
                 </p>
               </div>
@@ -365,7 +369,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 포트폴리오 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강의 포트폴리오</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
+                <p className={PROFILE_TEXT_AREA_CLASSES}>
                   {selectedProfile.profile.portfolio}
                 </p>
               </div>
@@ -373,7 +377,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 강점/제약 */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">강점/제약</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-keep bg-gray-50 p-3 rounded-lg">
+                <p className={PROFILE_TEXT_AREA_CLASSES}>
                   {selectedProfile.profile.strengths_constraints}
                 </p>
               </div>
