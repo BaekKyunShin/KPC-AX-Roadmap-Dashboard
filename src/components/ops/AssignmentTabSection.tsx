@@ -9,6 +9,8 @@ import {
   TabNavigation,
   TAB_DESCRIPTIONS,
   DEFAULT_TOP_N,
+  REASON_LENGTH,
+  ASSIGN_BUTTON_STYLE,
 } from './assignment';
 import type { TabType } from './assignment';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -429,8 +431,8 @@ export default function AssignmentTabSection({
     if (!hasRecommendations) {
       return (
         <EmptyState
-          icon={<Sparkles className="h-6 w-6 text-purple-500" />}
-          iconBgColor="bg-purple-100"
+          icon={<Sparkles className="h-6 w-6 text-blue-500" />}
+          iconBgColor="bg-blue-100"
           title="아직 자동 매칭이 실행되지 않았습니다."
           error={generateError}
           onDismissError={handleDismissError}
@@ -438,7 +440,7 @@ export default function AssignmentTabSection({
             <button
               onClick={handleGenerateMatching}
               disabled={isGenerating}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               <Sparkles className="h-4 w-4" />
               컨설턴트 자동 매칭
@@ -548,10 +550,10 @@ function AIMatchingLoader({ onCancel }: { onCancel: () => void }) {
         {/* AI 아이콘 애니메이션 */}
         <div className="relative w-20 h-20 mx-auto mb-6">
           {/* 외부 원 - 회전 */}
-          <div className="absolute inset-0 rounded-full border-2 border-purple-200 border-t-purple-500 animate-spin" />
+          <div className="absolute inset-0 rounded-full border-2 border-blue-200 border-t-blue-500 animate-spin" />
           {/* 내부 원 - 펄스 */}
-          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
-            <Sparkles className="h-8 w-8 text-purple-500 animate-pulse" />
+          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+            <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
           </div>
         </div>
 
@@ -566,9 +568,9 @@ function AIMatchingLoader({ onCancel }: { onCancel: () => void }) {
 
         {/* 진행 상태 표시 */}
         <div className="flex items-center justify-center gap-1.5 mb-6">
-          <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
 
         {/* 취소 버튼 */}
@@ -652,7 +654,7 @@ function RecommendationResults({
   const router = useRouter();
 
   const handleAssign = async () => {
-    if (!selectedId || reason.length < 10) return;
+    if (!selectedId || reason.length < REASON_LENGTH.MIN) return;
 
     setIsSubmitting(true);
     try {
@@ -696,27 +698,29 @@ function RecommendationResults({
       {selectedId && (
         <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            배정 사유 <span className="text-gray-400 font-normal">(10자 이상)</span>
+            배정 사유 <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
           </label>
           <div className="relative">
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="해당 컨설턴트를 배정하는 사유를 입력해주세요."
+              maxLength={REASON_LENGTH.MAX}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               rows={2}
             />
             <div className="absolute right-2 bottom-2">
-              <span className={cn('text-xs', reason.length >= 10 ? 'text-gray-400' : 'text-orange-500')}>
-                {reason.length}/500{reason.length < 10 && ` (${10 - reason.length}자 더)`}
+              <span className={cn('text-xs', reason.length >= REASON_LENGTH.MIN ? 'text-gray-400' : 'text-orange-500')}>
+                {reason.length}/{REASON_LENGTH.MAX}
+                {reason.length < REASON_LENGTH.MIN && ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
               </span>
             </div>
           </div>
           <div className="flex justify-end mt-3">
             <button
               onClick={handleAssign}
-              disabled={isSubmitting || reason.length < 10}
-              className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200 active:translate-y-0 active:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              disabled={isSubmitting || reason.length < REASON_LENGTH.MIN}
+              className={ASSIGN_BUTTON_STYLE}
             >
               {isSubmitting ? '배정 중...' : '배정하기'}
             </button>

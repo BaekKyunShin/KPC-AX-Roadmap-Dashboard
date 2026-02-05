@@ -26,13 +26,13 @@ export default function TabNavigation({ activeTab, onTabChange, tabs }: TabNavig
               onClick={() => onTabChange(tab.id)}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
-                  ? 'border-purple-500 text-purple-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               {tab.label}
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">
+                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
                   {tab.badge}명
                 </span>
               )}

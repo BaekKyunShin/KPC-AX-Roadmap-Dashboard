@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import ConsultantSelector from './ConsultantSelector';
-import { AlertMessage, CloseIcon, ReasonLengthHint, REASON_LENGTH } from './assignment';
+import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './assignment';
+import { cn } from '@/lib/utils';
 import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
 
 // ============================================================================
@@ -22,50 +23,45 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
   const [selectedConsultant, setSelectedConsultant] = useState<ConsultantCandidate | null>(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 폼 제출
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      setError(null);
+  const handleSubmit = useCallback(async () => {
+    setError(null);
 
-      // 유효성 검사
-      if (!selectedConsultant) {
-        setError('배정할 컨설턴트를 선택하세요.');
-        return;
+    // 유효성 검사
+    if (!selectedConsultant) {
+      setError('배정할 컨설턴트를 선택하세요.');
+      return;
+    }
+
+    if (reason.length < REASON_LENGTH.MIN) {
+      setError(`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요.`);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.set('project_id', projectId);
+      formData.set('consultant_id', selectedConsultant.id);
+      formData.set('assignment_reason', reason);
+
+      const result = await assignConsultant(formData);
+
+      if (result.success) {
+        window.location.reload();
+      } else {
+        setError(result.error || '배정에 실패했습니다.');
+        setIsSubmitting(false);
       }
-
-      if (reason.length < REASON_LENGTH.MIN) {
-        setError(`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요.`);
-        return;
-      }
-
-      setIsLoading(true);
-
-      try {
-        const formData = new FormData();
-        formData.set('project_id', projectId);
-        formData.set('consultant_id', selectedConsultant.id);
-        formData.set('assignment_reason', reason);
-
-        const result = await assignConsultant(formData);
-
-        if (result.success) {
-          // 성공 시 페이지 새로고침으로 업데이트된 데이터 표시
-          window.location.reload();
-        } else {
-          setError(result.error || '배정에 실패했습니다.');
-          setIsLoading(false);
-        }
-      } catch (err) {
-        console.error('컨설턴트 배정 오류:', err);
-        setError('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-        setIsLoading(false);
-      }
-    },
-    [selectedConsultant, reason, projectId]
-  );
+    } catch (err) {
+      console.error('컨설턴트 배정 오류:', err);
+      setError('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setIsSubmitting(false);
+    }
+  }, [selectedConsultant, reason, projectId]);
 
   // 컨설턴트 선택
   const handleSelectConsultant = useCallback((consultant: ConsultantCandidate | null) => {
@@ -73,13 +69,10 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
     setError(null);
   }, []);
 
-  // 선택 해제
-  const handleClearSelection = useCallback(() => {
-    setSelectedConsultant(null);
-  }, []);
+  const isValid = selectedConsultant && reason.length >= REASON_LENGTH.MIN;
 
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       {/* 에러 메시지 */}
       {error && <AlertMessage message={error} onDismiss={() => setError(null)} variant="error" />}
 
@@ -92,73 +85,45 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
         />
       </div>
 
-      {/* 선택된 컨설턴트 요약 */}
+      {/* 배정 사유 입력 (선택 시 표시) */}
       {selectedConsultant && (
-        <SelectedConsultantSummary consultant={selectedConsultant} onClear={handleClearSelection} />
-      )}
-
-      {/* 배정 사유 */}
-      <div className="mb-4">
-        <label htmlFor="manual_assignment_reason" className="block text-sm font-medium text-gray-700 mb-2">
-          배정 사유 *
-        </label>
-        <textarea
-          id="manual_assignment_reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          maxLength={REASON_LENGTH.MAX}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 전문가로 기업 요청에 의한 수동 배정)`}
-        />
-        <ReasonLengthHint currentLength={reason.length} />
-      </div>
-
-      {/* 제출 버튼 */}
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={isLoading || !selectedConsultant || reason.length < REASON_LENGTH.MIN}
-          className="px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? '배정 중...' : '컨설턴트 배정'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// ============================================================================
-// 하위 컴포넌트
-// ============================================================================
-
-interface SelectedConsultantSummaryProps {
-  consultant: ConsultantCandidate;
-  onClear: () => void;
-}
-
-function SelectedConsultantSummary({ consultant, onClear }: SelectedConsultantSummaryProps) {
-  const profile = consultant.consultant_profile;
-
-  return (
-    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="font-medium text-blue-900">선택된 컨설턴트: {consultant.name}</p>
-          <p className="text-sm text-blue-700">{consultant.email}</p>
-          {profile && (
-            <div className="mt-2 text-sm text-blue-600">
-              {profile.available_industries.length > 0 && (
-                <p>업종: {profile.available_industries.join(', ')}</p>
-              )}
-              {profile.years_of_experience > 0 && <p>경력: {profile.years_of_experience}년</p>}
+        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            배정 사유 <span className="text-gray-400 font-normal">({REASON_LENGTH.MIN}자 이상)</span>
+          </label>
+          <div className="relative">
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="해당 컨설턴트를 배정하는 사유를 입력해주세요."
+              maxLength={REASON_LENGTH.MAX}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              rows={2}
+            />
+            <div className="absolute right-2 bottom-2">
+              <span
+                className={cn(
+                  'text-xs',
+                  reason.length >= REASON_LENGTH.MIN ? 'text-gray-400' : 'text-orange-500'
+                )}
+              >
+                {reason.length}/{REASON_LENGTH.MAX}
+                {reason.length < REASON_LENGTH.MIN && ` (${REASON_LENGTH.MIN - reason.length}자 더)`}
+              </span>
             </div>
-          )}
+          </div>
+          <div className="flex justify-end mt-3">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isValid}
+              className={ASSIGN_BUTTON_STYLE}
+            >
+              {isSubmitting ? '배정 중...' : '배정하기'}
+            </button>
+          </div>
         </div>
-        <button type="button" onClick={onClear} className="text-blue-600 hover:text-blue-800">
-          <CloseIcon className="w-5 h-5" />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

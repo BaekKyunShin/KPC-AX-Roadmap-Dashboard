@@ -281,7 +281,6 @@ function FilterPanel({
           items={filterOptions.industries}
           selectedItems={selectedIndustries}
           onToggle={onToggleIndustry}
-          activeColor="blue"
         />
       )}
 
@@ -292,7 +291,6 @@ function FilterPanel({
           items={filterOptions.skills}
           selectedItems={selectedSkills}
           onToggle={onToggleSkill}
-          activeColor="purple"
         />
       )}
     </div>
@@ -304,15 +302,12 @@ interface FilterSectionProps {
   items: string[];
   selectedItems: string[];
   onToggle: (item: string) => void;
-  activeColor: 'blue' | 'purple';
 }
 
-function FilterSection({ title, items, selectedItems, onToggle, activeColor }: FilterSectionProps) {
-  const activeStyles = {
-    blue: 'bg-blue-100 text-blue-800 border-blue-300',
-    purple: 'bg-purple-100 text-purple-800 border-purple-300',
-  };
+/** 필터 선택 시 활성 스타일 */
+const FILTER_ACTIVE_STYLE = 'bg-blue-100 text-blue-800 border-blue-300';
 
+function FilterSection({ title, items, selectedItems, onToggle }: FilterSectionProps) {
   return (
     <div>
       <p className="text-xs font-medium text-gray-500 mb-2">{title}</p>
@@ -324,7 +319,7 @@ function FilterSection({ title, items, selectedItems, onToggle, activeColor }: F
             onClick={() => onToggle(item)}
             className={`px-2 py-1 text-xs rounded-full border ${
               selectedItems.includes(item)
-                ? activeStyles[activeColor]
+                ? FILTER_ACTIVE_STYLE
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
             }`}
           >
@@ -420,7 +415,7 @@ function ConsultantProfileInfo({
           </span>
         )}
         {profile.teaching_levels.length > 0 && (
-          <span className="text-purple-600">
+          <span className="text-blue-600">
             {profile.teaching_levels.map(getLevelLabel).join('/')}
           </span>
         )}
