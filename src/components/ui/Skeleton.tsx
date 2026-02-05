@@ -30,19 +30,27 @@ interface TableConfig {
   minWidth: string;
 }
 
+/** 스켈레톤 바 props */
+interface SkeletonBarProps {
+  height: string;
+  width: string;
+  variant?: 'primary' | 'secondary';
+  className?: string;
+}
+
 // ============================================================================
 // 스타일 상수
 // ============================================================================
 
-/** 스켈레톤 바 스타일 */
+/** 스켈레톤 바 스타일 (shimmer 애니메이션 적용) */
 const SKELETON_BAR = {
-  primary: 'bg-gray-200 rounded',
-  secondary: 'bg-gray-100 rounded',
+  primary: 'animate-shimmer rounded',
+  secondary: 'animate-shimmer rounded opacity-70',
 } as const;
 
 /** 테이블 공통 스타일 */
 const TABLE_STYLES = {
-  wrapper: 'relative w-full overflow-x-auto bg-white shadow rounded-lg animate-pulse',
+  wrapper: 'relative w-full overflow-x-auto bg-white shadow rounded-lg',
   table: 'w-full table-fixed caption-bottom text-sm divide-y divide-gray-200',
   thead: 'bg-gray-50',
   theadMuted: 'bg-muted/50',
@@ -55,7 +63,7 @@ const TABLE_STYLES = {
 
 /** 카드 공통 스타일 */
 const CARD_STYLES = {
-  base: 'bg-white shadow rounded-lg animate-pulse',
+  base: 'bg-white shadow rounded-lg',
   padding: {
     default: 'p-6',
     compact: 'p-4',
@@ -135,6 +143,20 @@ const QUOTA_TABLE: TableConfig = {
   minWidth: 'min-w-[800px]',
 };
 
+/** 템플릿 관리 테이블 설정 (ops/templates) */
+const TEMPLATE_TABLE: TableConfig = {
+  columns: [
+    { header: '버전', width: 'min-w-[80px]' },
+    { header: '템플릿 이름', width: 'min-w-[160px]' },
+    { header: '문항 수', width: 'min-w-[80px]' },
+    { header: '사용 현황', width: 'min-w-[100px]' },
+    { header: '상태', width: 'min-w-[80px]' },
+    { header: '생성일', width: 'min-w-[100px]' },
+    { header: '작업', width: 'min-w-[140px]' },
+  ],
+  minWidth: 'min-w-[750px]',
+};
+
 // ============================================================================
 // 헬퍼 함수
 // ============================================================================
@@ -204,17 +226,7 @@ function MiniStepperSkeleton() {
 }
 
 /** 스켈레톤 바 (텍스트/배지 등) */
-function SkeletonBar({
-  height,
-  width,
-  variant = 'primary',
-  className = '',
-}: {
-  height: string;
-  width: string;
-  variant?: 'primary' | 'secondary';
-  className?: string;
-}) {
+function SkeletonBar({ height, width, variant = 'primary', className = '' }: SkeletonBarProps) {
   return <div className={`${height} ${width} ${SKELETON_BAR[variant]} ${className}`} />;
 }
 
@@ -224,7 +236,7 @@ function SkeletonBar({
 
 /** 기본 스켈레톤 컴포넌트 */
 export function Skeleton({ className = '' }: SkeletonProps) {
-  return <div className={`animate-pulse ${SKELETON_BAR.primary} ${className}`} />;
+  return <div className={`${SKELETON_BAR.primary} ${className}`} />;
 }
 
 /** 테이블 행 스켈레톤 (단일 행) */
@@ -472,6 +484,56 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   );
 }
 
+/** 템플릿 관리 테이블 스켈레톤 */
+export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+  const { columns, minWidth } = TEMPLATE_TABLE;
+
+  return (
+    <TableSkeletonWrapper minWidth={minWidth}>
+      <TableSkeletonHeader columns={columns} />
+      <tbody className={TABLE_STYLES.tbody}>
+        {renderItems(rows, (i) => (
+          <tr key={i}>
+            {/* 버전: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-5" width="w-10" className="mx-auto" />
+            </td>
+            {/* 템플릿 이름 + 설명 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-28" className="mb-1 mx-auto" />
+              <SkeletonBar height="h-3" width="w-36" variant="secondary" className="mx-auto" />
+            </td>
+            {/* 문항 수 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
+            </td>
+            {/* 사용 현황 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+            </td>
+            {/* 상태: 배지 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-5" width="w-12" className="mx-auto" />
+            </td>
+            {/* 생성일 */}
+            <td className={TABLE_STYLES.td}>
+              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+            </td>
+            {/* 작업 */}
+            <td className={TABLE_STYLES.td}>
+              <div className="flex items-center justify-center gap-3">
+                <SkeletonBar height="h-4" width="w-8" />
+                <SkeletonBar height="h-4" width="w-12" />
+                <SkeletonBar height="h-4" width="w-8" />
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </TableSkeletonWrapper>
+  );
+}
+
 // ============================================================================
 // 기타 스켈레톤 컴포넌트
 // ============================================================================
@@ -493,7 +555,7 @@ export function CardSkeleton() {
 /** 상세 페이지 스켈레톤 */
 export function DetailPageSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
@@ -539,7 +601,7 @@ export function StatsCardSkeleton() {
 /** 페이지네이션 스켈레톤 */
 export function PaginationSkeleton() {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 animate-pulse">
+    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
       <SkeletonBar height="h-4" width="w-32" />
       <div className="flex space-x-2">
         <SkeletonBar height="h-8" width="w-16" />
@@ -547,4 +609,167 @@ export function PaginationSkeleton() {
       </div>
     </div>
   );
+}
+
+// ============================================================================
+// 로드맵 스켈레톤 컴포넌트
+// ============================================================================
+
+/** 로드맵 버전 히스토리 카드 스켈레톤 */
+function VersionHistorySkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
+      <SkeletonBar height="h-4" width="w-24" className="mb-3" />
+      <div className="space-y-2">
+        {renderItems(rows, (i) => (
+          <div key={i} className="px-3 py-2 rounded bg-gray-50">
+            <div className="flex items-center justify-between mb-1">
+              <SkeletonBar height="h-4" width="w-8" />
+              <SkeletonBar height="h-5" width="w-14" />
+            </div>
+            <SkeletonBar height="h-3" width="w-20" variant="secondary" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 로드맵 생성 카드 스켈레톤 (컨설턴트용) */
+function RoadmapGenerateCardSkeleton() {
+  return (
+    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
+      <SkeletonBar height="h-4" width="w-20" className="mb-3" />
+      <SkeletonBar height="h-20" width="w-full" className="mb-2" />
+      <SkeletonBar height="h-9" width="w-full" />
+    </div>
+  );
+}
+
+/** 로드맵 매트릭스 스켈레톤 */
+function RoadmapMatrixSkeleton() {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[800px] table-fixed border-collapse">
+        <thead>
+          <tr>
+            <th className="w-[100px] px-3 py-2 text-left text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200">
+              <SkeletonBar height="h-4" width="w-16" />
+            </th>
+            {['초급', '중급', '고급'].map((level) => (
+              <th key={level} className="px-3 py-2 text-center text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200">
+                {level}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {renderItems(4, (rowIndex) => (
+            <tr key={rowIndex}>
+              <td className="px-3 py-3 text-sm font-medium text-gray-900 bg-gray-50 border border-gray-200">
+                <SkeletonBar height="h-4" width="w-20" />
+              </td>
+              {renderItems(3, (colIndex) => (
+                <td key={colIndex} className="px-3 py-3 border border-gray-200 align-top">
+                  <div className="space-y-2">
+                    {renderItems(rowIndex % 2 === 0 ? 2 : 1, (i) => (
+                      <div key={i} className="p-2 bg-gray-50 rounded">
+                        <SkeletonBar height="h-4" width="w-full" className="mb-1" />
+                        <SkeletonBar height="h-3" width="w-16" variant="secondary" />
+                      </div>
+                    ))}
+                  </div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 로드맵 내용 영역 스켈레톤 */
+function RoadmapContentSkeleton() {
+  return (
+    <div className={CARD_STYLES.base}>
+      {/* 버전 헤더 */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <SkeletonBar height="h-6" width="w-20" />
+            <SkeletonBar height="h-5" width="w-14" />
+            <SkeletonBar height="h-4" width="w-24" variant="secondary" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <SkeletonBar height="h-9" width="w-24" />
+            <SkeletonBar height="h-9" width="w-24" />
+            <SkeletonBar height="h-9" width="w-28" />
+          </div>
+        </div>
+        <SkeletonBar height="h-4" width="w-3/4" className="mt-3" />
+      </div>
+
+      {/* 탭 */}
+      <div className="border-b border-gray-200">
+        <div className="flex -mb-px">
+          {renderItems(3, (i) => (
+            <div key={i} className="px-6 py-3">
+              <SkeletonBar height="h-4" width="w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 내용 */}
+      <div className="p-6">
+        <RoadmapMatrixSkeleton />
+      </div>
+    </div>
+  );
+}
+
+/** 로드맵 페이지 스켈레톤 공통 레이아웃 */
+function RoadmapPageSkeletonBase({
+  showDescription = false,
+  showGenerateCard = false,
+}: {
+  showDescription?: boolean;
+  showGenerateCard?: boolean;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div>
+        <SkeletonBar height="h-4" width="w-32" className="mb-2" />
+        <SkeletonBar height="h-8" width="w-48" />
+        {showDescription && (
+          <SkeletonBar height="h-4" width="w-64" className="mt-1" variant="secondary" />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* 왼쪽: 생성 카드(선택) + 버전 목록 */}
+        <div className="lg:col-span-1 space-y-4">
+          {showGenerateCard && <RoadmapGenerateCardSkeleton />}
+          <VersionHistorySkeleton />
+        </div>
+
+        {/* 오른쪽: 로드맵 내용 */}
+        <div className="lg:col-span-3">
+          <RoadmapContentSkeleton />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 로드맵 페이지 스켈레톤 (컨설턴트용 - 생성 버튼 포함) */
+export function RoadmapPageSkeleton() {
+  return <RoadmapPageSkeletonBase showGenerateCard />;
+}
+
+/** 로드맵 페이지 스켈레톤 (OPS용 - 읽기 전용) */
+export function OpsRoadmapPageSkeleton() {
+  return <RoadmapPageSkeletonBase showDescription />;
 }

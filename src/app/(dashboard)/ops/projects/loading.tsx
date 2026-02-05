@@ -57,8 +57,8 @@ export default function ProjectsLoading() {
 
         {/* 결과 요약 스켈레톤 */}
         <div className="flex items-center justify-between text-base text-muted-foreground">
-          <span className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
-          <span className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+          <span className="h-5 w-32 animate-shimmer rounded" />
+          <span className="h-5 w-24 animate-shimmer rounded" />
         </div>
 
         {/* 테이블 스켈레톤 */}

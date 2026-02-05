@@ -163,16 +163,16 @@ function sortConsultantData(
 /** 대시보드 로딩 스켈레톤 */
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="space-y-6">
       {/* 차트 영역 스켈레톤 */}
       <div className="grid gap-6 md:grid-cols-2">
         {[1, 2].map((i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
-              <div className="h-6 w-40 bg-gray-200 rounded" />
+              <div className="h-6 w-40 animate-shimmer rounded" />
             </CardHeader>
             <CardContent>
-              <div className="h-[200px] bg-gray-100 rounded" />
+              <div className="h-[200px] animate-shimmer rounded" />
             </CardContent>
           </Card>
         ))}
@@ -180,19 +180,19 @@ function DashboardSkeleton() {
       {/* 컨설턴트 테이블 스켈레톤 */}
       <Card>
         <CardHeader className="pb-2">
-          <div className="h-6 w-48 bg-gray-200 rounded" />
+          <div className="h-6 w-48 animate-shimmer rounded" />
         </CardHeader>
         <CardContent>
-          <div className="h-[200px] bg-gray-100 rounded" />
+          <div className="h-[200px] animate-shimmer rounded" />
         </CardContent>
       </Card>
       {/* 정체 프로젝트 스켈레톤 */}
       <Card>
         <CardHeader className="pb-2">
-          <div className="h-6 w-36 bg-gray-200 rounded" />
+          <div className="h-6 w-36 animate-shimmer rounded" />
         </CardHeader>
         <CardContent>
-          <div className="h-[140px] bg-gray-100 rounded" />
+          <div className="h-[140px] animate-shimmer rounded" />
         </CardContent>
       </Card>
     </div>

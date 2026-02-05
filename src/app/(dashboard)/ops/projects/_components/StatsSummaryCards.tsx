@@ -145,14 +145,14 @@ export default function StatsSummaryCards({
         {STAT_CARDS.map((card) => (
           <div
             key={card.key}
-            className="animate-pulse rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+            className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
           >
             <div className="flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-gray-100" />
-                <div className="h-7 w-10 rounded bg-gray-100" />
+                <div className="h-8 w-8 rounded-lg animate-shimmer" />
+                <div className="h-7 w-10 rounded animate-shimmer" />
               </div>
-              <div className="h-4 w-16 rounded bg-gray-100" />
+              <div className="h-4 w-16 rounded animate-shimmer" />
             </div>
           </div>
         ))}

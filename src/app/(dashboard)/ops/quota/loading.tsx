@@ -32,7 +32,7 @@ export default function QuotaLoading() {
             </select>
           </div>
           <p className="text-sm text-gray-500">
-            <span className="inline-block h-4 w-24 bg-gray-200 rounded animate-pulse" />
+            <span className="inline-block h-4 w-24 animate-shimmer rounded" />
           </p>
         </div>
       </div>

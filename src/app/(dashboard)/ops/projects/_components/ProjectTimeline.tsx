@@ -16,10 +16,10 @@ import { Check, MapPin } from 'lucide-react';
 /** 프로젝트 워크플로우 단계 수 */
 const WORKFLOW_STEP_COUNT = 6;
 
-/** 스켈레톤 색상 */
-const SKELETON_COLORS = {
-  primary: 'bg-gray-200',
-  secondary: 'bg-gray-100',
+/** 스켈레톤 스타일 (shimmer 애니메이션) */
+const SKELETON_STYLES = {
+  primary: 'animate-shimmer',
+  secondary: 'animate-shimmer opacity-70',
   border: 'border-gray-100',
 } as const;
 
@@ -56,32 +56,32 @@ function TimelineSkeleton() {
       <TimelineCardHeader />
       <CardContent>
         {/* 데스크톱: 가로 타임라인 */}
-        <div className="hidden md:block animate-pulse">
+        <div className="hidden md:block">
           <div className="flex">
             {Array.from({ length: WORKFLOW_STEP_COUNT }, (_, i) => (
               <div key={i} className="flex-1 relative">
                 {i < lastStepIndex && (
-                  <div className={`absolute top-5 left-1/2 w-full h-0.5 ${SKELETON_COLORS.primary} -translate-y-1/2`} />
+                  <div className={`absolute top-5 left-1/2 w-full h-0.5 ${SKELETON_STYLES.primary} -translate-y-1/2`} />
                 )}
                 <div className="flex justify-center">
-                  <div className={`relative z-10 h-10 w-10 rounded-full ${SKELETON_COLORS.primary} border-2 ${SKELETON_COLORS.border}`} />
+                  <div className={`relative z-10 h-10 w-10 rounded-full ${SKELETON_STYLES.primary} border-2 ${SKELETON_STYLES.border}`} />
                 </div>
                 <div className="mt-3 flex flex-col items-center">
-                  <div className={`h-3 w-16 ${SKELETON_COLORS.primary} rounded`} />
+                  <div className={`h-3 w-16 ${SKELETON_STYLES.primary} rounded`} />
                 </div>
               </div>
             ))}
           </div>
         </div>
         {/* 모바일: 세로 타임라인 */}
-        <div className="md:hidden animate-pulse">
+        <div className="md:hidden">
           <div className="relative pl-8">
-            <div className={`absolute left-[15px] top-0 bottom-0 w-0.5 ${SKELETON_COLORS.primary}`} />
+            <div className={`absolute left-[15px] top-0 bottom-0 w-0.5 ${SKELETON_STYLES.primary}`} />
             {Array.from({ length: WORKFLOW_STEP_COUNT }, (_, i) => (
               <div key={i} className="relative pb-6 last:pb-0">
-                <div className={`absolute left-0 h-8 w-8 rounded-full ${SKELETON_COLORS.primary} border-2 ${SKELETON_COLORS.border}`} />
+                <div className={`absolute left-0 h-8 w-8 rounded-full ${SKELETON_STYLES.primary} border-2 ${SKELETON_STYLES.border}`} />
                 <div className="ml-2">
-                  <div className={`h-4 w-24 ${SKELETON_COLORS.primary} rounded`} />
+                  <div className={`h-4 w-24 ${SKELETON_STYLES.primary} rounded`} />
                 </div>
               </div>
             ))}

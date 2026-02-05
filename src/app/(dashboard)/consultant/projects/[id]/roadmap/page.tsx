@@ -23,12 +23,14 @@ import type { RoadmapCell } from '@/lib/services/roadmap';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
 import CourseEditModal from './_components/CourseEditModal';
+import { RoadmapPageSkeleton } from '@/components/ui/Skeleton';
 
 export default function RoadmapPage() {
   const params = useParams();
   const projectId = params.id as string;
 
   // UI 상태
+  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -79,9 +81,12 @@ export default function RoadmapPage() {
   }, [projectId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadVersions();
-    loadProjectInfo();
+    async function loadInitialData() {
+      setIsLoading(true);
+      await Promise.all([loadVersions(), loadProjectInfo()]);
+      setIsLoading(false);
+    }
+    loadInitialData();
   }, [loadVersions, loadProjectInfo]);
 
   // 로드맵 생성
@@ -237,6 +242,10 @@ export default function RoadmapPage() {
     setSuccess(null);
     clearDownloadMessages();
   };
+
+  if (isLoading) {
+    return <RoadmapPageSkeleton />;
+  }
 
   return (
     <>

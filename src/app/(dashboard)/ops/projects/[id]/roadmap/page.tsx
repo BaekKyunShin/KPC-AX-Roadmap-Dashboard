@@ -13,6 +13,7 @@ import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
+import { OpsRoadmapPageSkeleton } from '@/components/ui/Skeleton';
 
 export default function OpsRoadmapViewPage() {
   const params = useParams();
@@ -70,11 +71,7 @@ export default function OpsRoadmapViewPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">로딩 중...</div>
-      </div>
-    );
+    return <OpsRoadmapPageSkeleton />;
   }
 
   return (

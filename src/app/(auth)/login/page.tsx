@@ -105,16 +105,16 @@ function LoginForm() {
 
 function LoadingForm() {
   return (
-    <div className="space-y-4 animate-pulse">
+    <div className="space-y-4">
       <div className="space-y-2">
-        <div className="h-4 bg-muted rounded w-16"></div>
-        <div className="h-11 bg-muted rounded w-full"></div>
+        <div className="h-4 animate-shimmer rounded w-16"></div>
+        <div className="h-11 animate-shimmer rounded w-full"></div>
       </div>
       <div className="space-y-2">
-        <div className="h-4 bg-muted rounded w-16"></div>
-        <div className="h-11 bg-muted rounded w-full"></div>
+        <div className="h-4 animate-shimmer rounded w-16"></div>
+        <div className="h-11 animate-shimmer rounded w-full"></div>
       </div>
-      <div className="h-11 bg-muted rounded w-full mt-6"></div>
+      <div className="h-11 animate-shimmer rounded w-full mt-6"></div>
     </div>
   );
 }
