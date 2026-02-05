@@ -6,6 +6,13 @@ import Link from 'next/link';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { createTemplate, updateTemplate } from '../actions';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface TemplateFormProps {
   mode: 'create' | 'edit';
@@ -260,34 +267,40 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500">차원</label>
-                  <select
+                  <Select
                     value={question.dimension}
-                    onChange={(e) => handleQuestionChange(index, 'dimension', e.target.value)}
-                    className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+                    onValueChange={(value) => handleQuestionChange(index, 'dimension', value)}
                   >
-                    {DIMENSIONS.map((dim) => (
-                      <option key={dim} value={dim}>
-                        {dim}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIMENSIONS.map((dim) => (
+                        <SelectItem key={dim} value={dim}>
+                          {dim}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-500">유형</label>
-                  <select
+                  <Select
                     value={question.question_type}
-                    onChange={(e) =>
-                      handleQuestionChange(index, 'question_type', e.target.value)
-                    }
-                    className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+                    onValueChange={(value) => handleQuestionChange(index, 'question_type', value)}
                   >
-                    {QUESTION_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUESTION_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

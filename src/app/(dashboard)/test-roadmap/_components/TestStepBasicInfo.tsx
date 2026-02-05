@@ -9,6 +9,13 @@ import {
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface TestStepBasicInfoProps {
   // 기업 기본정보 (테스트 전용)
@@ -90,18 +97,18 @@ export default function TestStepBasicInfo({
               <label className="block text-sm font-medium text-gray-700">
                 기업 규모 <span className="text-red-500">*</span>
               </label>
-              <select
-                value={companySize}
-                onChange={(e) => onCompanySizeChange(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">규모 선택</option>
-                {companySizeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {COMPANY_SIZE_LABELS[option]}
-                  </option>
-                ))}
-              </select>
+              <Select value={companySize} onValueChange={onCompanySizeChange}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="규모 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companySizeOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {COMPANY_SIZE_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -111,18 +118,18 @@ export default function TestStepBasicInfo({
               <label className="block text-sm font-medium text-gray-700">
                 업종 <span className="text-red-500">*</span>
               </label>
-              <select
-                value={industry}
-                onChange={(e) => onIndustryChange(e.target.value)}
-                className="mt-1 block w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">업종 선택</option>
-                {industryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <Select value={industry} onValueChange={onIndustryChange}>
+                <SelectTrigger className="mt-1 w-full md:w-1/2">
+                  <SelectValue placeholder="업종 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industryOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* 세부 업종 */}

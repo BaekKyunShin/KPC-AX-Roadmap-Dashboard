@@ -9,6 +9,13 @@ import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { createProject } from '../actions';
 
 export default function NewProjectPage() {
@@ -17,14 +24,32 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [subIndustries, setSubIndustries] = useState<string[]>([]);
+  const [companySize, setCompanySize] = useState<string>('');
+  const [industry, setIndustry] = useState<string>('');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    // Select 컴포넌트 값 검증 (Radix Select는 HTML required를 지원하지 않음)
+    if (!companySize) {
+      setError('기업 규모를 선택하세요.');
+      showErrorToast('입력 오류', '기업 규모를 선택하세요.');
+      scrollToElement(formContainerRef);
+      return;
+    }
+    if (!industry) {
+      setError('업종을 선택하세요.');
+      showErrorToast('입력 오류', '업종을 선택하세요.');
+      scrollToElement(formContainerRef);
+      return;
+    }
+
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    // 세부 업종을 JSON 문자열로 추가
+    formData.set('company_size', companySize);
+    formData.set('industry', industry);
     formData.set('sub_industries', JSON.stringify(subIndustries));
     const result = await createProject(formData);
 
@@ -79,19 +104,18 @@ export default function NewProjectPage() {
             <label htmlFor="company_size" className="block text-sm font-medium text-gray-700">
               기업 규모 *
             </label>
-            <select
-              id="company_size"
-              name="company_size"
-              required
-              className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">선택하세요</option>
-              {COMPANY_SIZE_OPTIONS.map((size) => (
-                <option key={size.value} value={size.value}>
-                  {size.label}
-                </option>
-              ))}
-            </select>
+            <Select value={companySize} onValueChange={setCompanySize}>
+              <SelectTrigger className="mt-1 w-full">
+                <SelectValue placeholder="선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {COMPANY_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size.value} value={size.value}>
+                    {size.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -101,19 +125,18 @@ export default function NewProjectPage() {
             <label htmlFor="industry" className="block text-sm font-medium text-gray-700">
               업종 *
             </label>
-            <select
-              id="industry"
-              name="industry"
-              required
-              className="mt-1 block w-full md:w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">선택하세요</option>
-              {PROJECT_INDUSTRIES.map((industry) => (
-                <option key={industry} value={industry}>
-                  {industry}
-                </option>
-              ))}
-            </select>
+            <Select value={industry} onValueChange={setIndustry}>
+              <SelectTrigger className="mt-1 w-full md:w-1/2">
+                <SelectValue placeholder="선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECT_INDUSTRIES.map((ind) => (
+                  <SelectItem key={ind} value={ind}>
+                    {ind}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 세부 업종 */}

@@ -1,5 +1,13 @@
 'use client';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -50,6 +58,8 @@ interface SelectFilterProps {
   placeholder?: string;
 }
 
+const ALL_VALUE = '__ALL__';
+
 /**
  * 셀렉트 필터 컴포넌트
  */
@@ -60,21 +70,29 @@ export function SelectFilter({
   label = '필터',
   placeholder = '전체',
 }: SelectFilterProps) {
+  // Radix Select는 빈 문자열을 유효한 값으로 인식하지 않으므로 센티넬 값 사용
+  const selectValue = value === '' ? ALL_VALUE : value;
+
+  const handleValueChange = (newValue: string) => {
+    onChange(newValue === ALL_VALUE ? '' : newValue);
+  };
+
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <Select value={selectValue} onValueChange={handleValueChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_VALUE}>{placeholder}</SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
