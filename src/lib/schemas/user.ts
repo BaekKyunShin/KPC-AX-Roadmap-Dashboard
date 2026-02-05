@@ -78,6 +78,10 @@ export const consultantProfileSchema = z.object({
     .number()
     .min(0, '경력 연수는 0 이상이어야 합니다.')
     .max(50, '경력 연수는 50년 이하여야 합니다.'),
+  affiliation: z
+    .string()
+    .min(1, '소속을 입력하세요.')
+    .max(50, '소속은 50자 이하여야 합니다.'),
   // 서술 데이터 (필수)
   representative_experience: z
     .string()

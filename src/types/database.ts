@@ -53,6 +53,7 @@ export interface ConsultantProfile {
   coaching_methods: CoachingMethod[]; // 코칭 방식
   skill_tags: string[]; // 역량 태그
   years_of_experience: number; // 경력 연수
+  affiliation: string; // 소속
   // 서술 데이터
   representative_experience: string; // 대표 수행경험
   portfolio: string; // 포트폴리오

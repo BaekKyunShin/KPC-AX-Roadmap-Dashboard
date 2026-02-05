@@ -269,6 +269,12 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               {/* 기본 정보 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">소속</h4>
+                  <p className="text-base font-semibold">
+                    {selectedProfile.profile.affiliation || '-'}
+                  </p>
+                </div>
+                <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-1">경력 연수</h4>
                   <p className="text-base font-semibold">
                     {selectedProfile.profile.years_of_experience}년

@@ -91,6 +91,7 @@ function parseConsultantProfileFormData(formData: FormData) {
     coaching_methods: parseJsonArray(formData.get('coaching_methods') as string | null),
     skill_tags: parseJsonArray(formData.get('skill_tags') as string | null),
     years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
+    affiliation: ((formData.get('affiliation') as string) || '').trim(),
     representative_experience: (formData.get('representative_experience') as string) || '',
     portfolio: (formData.get('portfolio') as string) || '',
     strengths_constraints: (formData.get('strengths_constraints') as string) || '',

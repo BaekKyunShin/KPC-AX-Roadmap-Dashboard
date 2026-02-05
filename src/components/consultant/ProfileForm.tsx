@@ -230,9 +230,31 @@ export default function ProfileForm({
               </Alert>
             )}
 
-            {/* 1. AI 훈련 가능 산업 */}
+            {/* 1. 소속 */}
+            <div className="space-y-2">
+              <div>
+                <Label htmlFor="affiliation">
+                  1. 소속 <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  현재 소속된 회사 또는 기관명을 입력해주세요.
+                  <span className="text-muted-foreground/70"> (소속이 없는 경우 &apos;프리랜서&apos;로 입력)</span>
+                </p>
+              </div>
+              <Input
+                id="affiliation"
+                name="affiliation"
+                type="text"
+                required
+                defaultValue={profile?.affiliation || ''}
+                placeholder="예: ABC컨설팅, 프리랜서"
+                className="h-11"
+              />
+            </div>
+
+            {/* 2. AI 훈련 가능 산업 */}
             <BadgeSelector
-              number={1}
+              number={2}
               label="AI 훈련 가능 산업"
               description="AI 훈련/코칭을 수행할 수 있는 산업을 선택해주세요."
               options={INDUSTRIES}
@@ -241,7 +263,7 @@ export default function ProfileForm({
               color="blue"
             />
 
-            {/* 1-1. 선호 세부 업종 */}
+            {/* 2-1. 선호 세부 업종 */}
             <div className="space-y-2 ml-6 border-l-2 border-blue-200 pl-4">
               <div>
                 <Label className="text-sm font-medium">
@@ -260,9 +282,9 @@ export default function ProfileForm({
               />
             </div>
 
-            {/* 2. AI 적용 가능 업무 */}
+            {/* 3. AI 적용 가능 업무 */}
             <BadgeSelector
-              number={2}
+              number={3}
               label="AI 적용 가능 업무"
               description="AI를 활용해 개선할 수 있는 업무 영역을 선택해주세요."
               options={EXPERTISE_DOMAINS}
@@ -271,9 +293,9 @@ export default function ProfileForm({
               color="indigo"
             />
 
-            {/* 3. 교육 대상 수준 */}
+            {/* 4. 교육 대상 수준 */}
             <BadgeSelector
-              number={3}
+              number={4}
               label="교육 대상 수준"
               description="교육 가능한 학습자의 AI 활용 수준을 선택해주세요."
               options={TEACHING_LEVELS}
@@ -283,9 +305,9 @@ export default function ProfileForm({
               showOptionDescriptions
             />
 
-            {/* 4. 선호 교육 방식 */}
+            {/* 5. 선호 교육 방식 */}
             <BadgeSelector
-              number={4}
+              number={5}
               label="선호 교육 방식"
               description="주로 활용하는 교육/코칭 방식을 선택해주세요."
               options={COACHING_METHODS}
@@ -294,9 +316,9 @@ export default function ProfileForm({
               color="purple"
             />
 
-            {/* 5. 보유 역량 */}
+            {/* 6. 보유 역량 */}
             <BadgeSelector
-              number={5}
+              number={6}
               label="보유 역량"
               description="본인이 보유한 핵심 역량을 모두 선택해주세요."
               options={SKILL_TAGS}
@@ -305,11 +327,11 @@ export default function ProfileForm({
               color="amber"
             />
 
-            {/* 6. AI 교육/컨설팅 경력 */}
+            {/* 7. AI 교육/컨설팅 경력 */}
             <div className="space-y-2">
               <div>
                 <Label htmlFor="years_of_experience">
-                  6. AI 교육/컨설팅 경력 <span className="text-red-500">*</span>
+                  7. AI 교육/컨설팅 경력 <span className="text-red-500">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
                   AI 관련 교육 또는 컨설팅 경력을 입력해주세요.
@@ -330,11 +352,11 @@ export default function ProfileForm({
               </div>
             </div>
 
-            {/* 7. 경력 사항 */}
+            {/* 8. 경력 사항 */}
             <div className="space-y-2">
               <div>
                 <Label htmlFor="representative_experience">
-                  7. 경력 사항 <span className="text-red-500">*</span>
+                  8. 경력 사항 <span className="text-red-500">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
                   이전 직장, 근무 기간, 담당 업무 등 경력을 작성해주세요.
@@ -350,11 +372,11 @@ export default function ProfileForm({
               />
             </div>
 
-            {/* 8. 강의/컨설팅 포트폴리오 */}
+            {/* 9. 강의/컨설팅 포트폴리오 */}
             <div className="space-y-2">
               <div>
                 <Label htmlFor="portfolio">
-                  8. 강의/컨설팅 포트폴리오 <span className="text-red-500">*</span>
+                  9. 강의/컨설팅 포트폴리오 <span className="text-red-500">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
                   진행했던 강의, 워크숍, 컨설팅 등을 작성해주세요. 자세히 작성할수록 매칭 건수가
@@ -372,11 +394,11 @@ export default function ProfileForm({
               />
             </div>
 
-            {/* 9. 강점/제약 */}
+            {/* 10. 강점/제약 */}
             <div className="space-y-2">
               <div>
                 <Label htmlFor="strengths_constraints">
-                  9. 강점/제약 <span className="text-red-500">*</span>
+                  10. 강점/제약 <span className="text-red-500">*</span>
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
                   본인의 강점과 제약사항을 작성해주세요.

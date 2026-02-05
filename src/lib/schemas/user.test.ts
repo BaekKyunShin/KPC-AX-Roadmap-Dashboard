@@ -133,6 +133,7 @@ describe('consultantProfileSchema', () => {
     coaching_methods: ['PBL', 'WORKSHOP'] as const,
     skill_tags: ['Python', '데이터 전처리'],
     years_of_experience: 5,
+    affiliation: 'ABC컨설팅',
     representative_experience:
       '대기업 제조사에서 AI 기반 품질관리 시스템 구축 프로젝트를 수행했습니다. 데이터 수집부터 모델 배포까지 전 과정을 담당했습니다.',
     portfolio:
@@ -183,6 +184,30 @@ describe('consultantProfileSchema', () => {
       representative_experience: '짧은 경험',
     });
     expect(result.success).toBe(false);
+  });
+
+  it('should reject empty affiliation', () => {
+    const result = consultantProfileSchema.safeParse({
+      ...validProfile,
+      affiliation: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject affiliation over 50 characters', () => {
+    const result = consultantProfileSchema.safeParse({
+      ...validProfile,
+      affiliation: 'A'.repeat(51),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept affiliation with 50 characters', () => {
+    const result = consultantProfileSchema.safeParse({
+      ...validProfile,
+      affiliation: 'A'.repeat(50),
+    });
+    expect(result.success).toBe(true);
   });
 });
 
