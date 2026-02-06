@@ -73,7 +73,7 @@ const TABLE_COLUMNS = {
 
 /** 프로필 모달 내 서술형 텍스트 영역 스타일 */
 const PROFILE_TEXT_AREA_CLASSES =
-  'text-sm text-gray-700 whitespace-pre-wrap break-words bg-gray-50 p-3 rounded-lg';
+  'text-sm text-gray-700 whitespace-pre-wrap break-keep break-words bg-gray-50 p-3 rounded-lg';
 
 // =============================================================================
 // Component
@@ -269,7 +269,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
           </DialogHeader>
 
           {selectedProfile?.profile && (
-            <div className="space-y-6 mt-4">
+            <div className="space-y-6 mt-4 min-w-0">
               {/* 기본 정보 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>

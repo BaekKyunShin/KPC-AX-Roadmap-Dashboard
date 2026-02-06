@@ -144,7 +144,7 @@ export default function TestStepSummary({
           {companyDetails.ai_experience && (
             <div>
               <span className="text-xs text-gray-500">AI 도구 사용 경험</span>
-              <p className="text-sm whitespace-pre-line break-keep">{companyDetails.ai_experience}</p>
+              <p className="text-sm whitespace-pre-line break-keep break-words">{companyDetails.ai_experience}</p>
             </div>
           )}
         </div>
@@ -177,7 +177,7 @@ export default function TestStepSummary({
               </span>
               <div className="flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm break-keep">{point.description}</p>
+                  <p className="text-sm break-keep break-words">{point.description}</p>
                   <SeverityBadge severity={point.severity} />
                 </div>
               </div>
@@ -193,7 +193,7 @@ export default function TestStepSummary({
           {improvementGoals[0]?.goal_description && (
             <div>
               <span className="text-xs text-gray-500 block mb-2">개선 목표</span>
-              <p className="text-sm bg-green-50 p-3 rounded-lg whitespace-pre-line break-keep">
+              <p className="text-sm bg-green-50 p-3 rounded-lg whitespace-pre-line break-keep break-words">
                 {improvementGoals[0].goal_description}
               </p>
             </div>
@@ -203,7 +203,7 @@ export default function TestStepSummary({
           {constraints[0]?.description && (
             <div>
               <span className="text-xs text-gray-500 block mb-2">제약사항</span>
-              <p className="text-sm bg-gray-50 p-3 rounded-lg whitespace-pre-line break-keep">
+              <p className="text-sm bg-gray-50 p-3 rounded-lg whitespace-pre-line break-keep break-words">
                 {constraints[0].description}
               </p>
             </div>
@@ -213,7 +213,7 @@ export default function TestStepSummary({
           {notes && (
             <div>
               <span className="text-xs text-gray-500 block mb-1">메모</span>
-              <p className="text-sm bg-gray-50 p-2 rounded whitespace-pre-line break-keep">{notes}</p>
+              <p className="text-sm bg-gray-50 p-2 rounded whitespace-pre-line break-keep break-words">{notes}</p>
             </div>
           )}
 

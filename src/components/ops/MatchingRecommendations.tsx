@@ -112,7 +112,7 @@ export default function MatchingRecommendations({ recommendations }: MatchingRec
             </div>
 
             {/* 근거 */}
-            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded break-keep">
+            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded break-keep break-words">
               <strong>추천 근거:</strong> {rec.rationale}
             </div>
           </div>

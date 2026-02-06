@@ -372,7 +372,7 @@ export function CoursesList({ courses, canEdit = false, onEditCourse }: CoursesL
   }
 
   return (
-    <div className="space-y-6 break-keep">
+    <div className="space-y-6 break-keep break-words">
       {courses.map((course, idx) => (
         <CourseCard
           key={idx}

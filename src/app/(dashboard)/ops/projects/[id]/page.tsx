@@ -158,7 +158,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-start gap-2">
                 <span className="text-xs text-gray-500 flex-shrink-0 pt-0.5">고객 코멘트/요청사항</span>
-                <p className="text-sm text-gray-700 break-keep">{projectData.customer_comment}</p>
+                <p className="text-sm text-gray-700 break-keep break-words">{projectData.customer_comment}</p>
               </div>
             </div>
           )}
