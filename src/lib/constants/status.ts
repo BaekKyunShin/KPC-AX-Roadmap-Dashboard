@@ -170,6 +170,7 @@ export const ROADMAP_VERSION_STATUS_CONFIG: Record<RoadmapVersionStatus, { label
 export const USER_STATUS_CONFIG: Record<UserStatus, { label: string; color: string }> = {
   ACTIVE: { label: '활성', color: 'bg-green-100 text-green-800' },
   SUSPENDED: { label: '정지', color: 'bg-red-100 text-red-800' },
+  WITHDRAWN: { label: '탈퇴', color: 'bg-gray-100 text-gray-800' },
 };
 
 /**

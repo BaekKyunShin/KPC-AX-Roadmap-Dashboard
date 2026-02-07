@@ -13,7 +13,7 @@ export const userRoleSchema = z.enum([
 ]);
 
 // 사용자 상태
-export const userStatusSchema = z.enum(['ACTIVE', 'SUSPENDED']);
+export const userStatusSchema = z.enum(['ACTIVE', 'SUSPENDED', 'WITHDRAWN']);
 
 // 교육 레벨
 export const educationLevelSchema = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'LEADER']);
@@ -24,15 +24,18 @@ export const coachingMethodSchema = z.enum(['PBL', 'WORKSHOP', 'MENTORING', 'LEC
 // 가입 유형 스키마
 export const registerTypeSchema = z.enum(['CONSULTANT', 'OPS_ADMIN']);
 
+// 비밀번호 공통 규칙 (회원가입, 비밀번호 변경에서 공유)
+const passwordSchema = z
+  .string()
+  .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
+  .regex(/[a-zA-Z]/, '비밀번호에 영문자가 포함되어야 합니다.')
+  .regex(/[0-9]/, '비밀번호에 숫자가 포함되어야 합니다.');
+
 // 회원가입 스키마
 export const registerSchema = z
   .object({
     email: z.string().email('유효한 이메일 주소를 입력하세요.'),
-    password: z
-      .string()
-      .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
-      .regex(/[a-zA-Z]/, '비밀번호에 영문자가 포함되어야 합니다.')
-      .regex(/[0-9]/, '비밀번호에 숫자가 포함되어야 합니다.'),
+    password: passwordSchema,
     confirmPassword: z.string(),
     name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다.'),
     phone: z.string().optional(),
@@ -104,9 +107,35 @@ export const userApprovalSchema = z.object({
   reason: z.string().optional(),
 });
 
+// 비밀번호 변경 스키마
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, '현재 비밀번호를 입력해주세요.'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['confirmPassword'],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: '새 비밀번호는 현재 비밀번호와 달라야 합니다.',
+    path: ['newPassword'],
+  });
+
+// 회원탈퇴 스키마
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, '비밀번호를 입력해주세요.'),
+  confirmText: z.literal('회원탈퇴', {
+    errorMap: () => ({ message: '"회원탈퇴"를 정확히 입력해주세요.' }),
+  }),
+});
+
 // 타입 추출
 export type RegisterType = z.infer<typeof registerTypeSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ConsultantProfileInput = z.infer<typeof consultantProfileSchema>;
 export type UserApprovalInput = z.infer<typeof userApprovalSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

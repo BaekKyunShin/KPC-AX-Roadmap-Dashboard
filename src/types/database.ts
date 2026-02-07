@@ -8,7 +8,7 @@ export type UserRole =
   | 'SYSTEM_ADMIN';
 
 // 사용자 상태
-export type UserStatus = 'ACTIVE' | 'SUSPENDED';
+export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'WITHDRAWN';
 
 // 프로젝트 상태
 export type ProjectStatus =
@@ -420,7 +420,8 @@ export type AuditAction =
   | 'TEST_PROJECT_CREATE'
   | 'TEST_ROADMAP_CREATE'
   | 'TEST_ROADMAP_REVISE'
-  | 'TEST_PROJECT_DELETE';
+  | 'TEST_PROJECT_DELETE'
+  | 'USER_WITHDRAW';
 
 // 사용량 메트릭
 export interface UsageMetric {

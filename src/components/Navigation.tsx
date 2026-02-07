@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ChevronDown,
   ClipboardList,
+  Settings,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import type { User } from '@/types/database';
@@ -217,22 +218,34 @@ export default function Navigation({ user }: NavigationProps) {
 
                   {/* 컨설턴트일 때만 프로필 관리 표시 */}
                   {isConsultant && (
-                    <>
-                      <Link
-                        href="/consultant/profile"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                          pathname === '/consultant/profile'
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <UserCog className="h-4 w-4" />
-                        프로필 관리
-                      </Link>
-                      <Separator className="my-1" />
-                    </>
+                    <Link
+                      href="/consultant/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                        pathname === '/consultant/profile'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <UserCog className="h-4 w-4" />
+                      프로필 관리
+                    </Link>
                   )}
+
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                      pathname === '/dashboard/settings'
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Settings className="h-4 w-4" />
+                    계정 설정
+                  </Link>
+
+                  <Separator className="my-1" />
 
                   <form action={logoutUser}>
                     <button
@@ -321,6 +334,19 @@ export default function Navigation({ user }: NavigationProps) {
                   프로필 관리
                 </Link>
               )}
+
+              <Link
+                href="/dashboard/settings"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  pathname === '/dashboard/settings'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'text-gray-700 hover:bg-gray-100 border-gray-200'
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+                계정 설정
+              </Link>
 
               <form action={logoutUser}>
                 <Button variant="outline" className="w-full justify-center">
