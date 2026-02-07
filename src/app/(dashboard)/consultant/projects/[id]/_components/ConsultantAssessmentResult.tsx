@@ -13,10 +13,9 @@ import {
 
 interface Props {
   scores: SelfAssessmentScores;
-  createdAt?: string;
 }
 
-export function ConsultantAssessmentResult({ scores, createdAt }: Props) {
+export function ConsultantAssessmentResult({ scores }: Props) {
   const totalScore = Math.round(scores.total_score || 0);
   const maxScore = Math.round(scores.max_possible_score || 100);
   const pct = Math.round((totalScore / maxScore) * 100);
@@ -48,18 +47,11 @@ export function ConsultantAssessmentResult({ scores, createdAt }: Props) {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${totalColor.light} ${totalColor.text}`}
-          >
-            {pct}%
-          </span>
-          {createdAt && (
-            <span className="text-xs text-gray-400">
-              {new Date(createdAt).toLocaleDateString('ko-KR')} 진단
-            </span>
-          )}
-        </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${totalColor.light} ${totalColor.text}`}
+        >
+          {pct}%
+        </span>
       </div>
 
       {/* 하단: 항목별 PieChart 일렬 */}

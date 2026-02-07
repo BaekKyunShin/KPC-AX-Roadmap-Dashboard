@@ -164,12 +164,16 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
 
         {/* 자가진단 결과 */}
         <div className="lg:col-span-3 flex flex-col bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">자가진단 결과</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
+            {selfAssessment?.created_at && (
+              <span className="text-sm text-gray-500">
+                {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
+              </span>
+            )}
+          </div>
           {selfAssessment && assessmentScores ? (
-            <ConsultantAssessmentResult
-              scores={assessmentScores}
-              createdAt={selfAssessment.created_at}
-            />
+            <ConsultantAssessmentResult scores={assessmentScores} />
           ) : (
             <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
           )}

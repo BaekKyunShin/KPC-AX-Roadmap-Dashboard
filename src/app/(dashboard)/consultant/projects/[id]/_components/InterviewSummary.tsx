@@ -73,7 +73,7 @@ export function InterviewSummary({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">인터뷰 정보</h2>
         <span className="text-sm text-gray-500">
-          {new Date(interviewDate).toLocaleDateString('ko-KR')}
+          {new Date(interviewDate).toLocaleDateString('ko-KR')} 인터뷰
         </span>
       </div>
 
