@@ -55,16 +55,16 @@ KPC(한국생산성본부) AI 훈련 확산센터에서 사용하는 **기업 AI
 
 ```mermaid
 flowchart TD
-    subgraph OPS["운영관리자(OPS_ADMIN) 영역"]
-        A["1. 프로젝트 생성\n(기업 기본정보)"] --> B["2. 자가진단 입력\n(30문항 응답)"]
-        B --> C["3. 매칭 추천\n(Top-3 추천)"]
-        C --> D["4. 컨설턴트 배정\n(사유 기록)"]
+    subgraph OPS["운영관리자 영역"]
+        A["1. 프로젝트 생성<br>(기업 기본정보)"] --> B["2. 자가진단 입력<br>(30문항 응답)"]
+        B --> C["3. 매칭 추천<br>(Top-3 추천)"]
+        C --> D["4. 컨설턴트 배정<br>(사유 기록)"]
     end
 
-    subgraph CONSULTANT["컨설턴트(CONSULTANT) 영역"]
-        E["5. 현장 인터뷰\n(직무, 페인포인트)"] --> F["6. 로드맵 생성\n(LLM 기반)"]
-        F --> G["7. 수정/보완\n(버전 누적)"]
-        G --> H["8. FINAL 확정 + 내보내기\n(PDF / XLSX)"]
+    subgraph CON["컨설턴트 영역"]
+        E["5. 현장 인터뷰<br>(직무, 페인포인트)"] --> F["6. 로드맵 생성<br>(LLM 기반)"]
+        F --> G["7. 수정 / 보완<br>(버전 누적)"]
+        G --> H["8. FINAL 확정 + 내보내기<br>(PDF / XLSX)"]
     end
 
     D --> E
@@ -74,12 +74,12 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["NEW\n프로젝트 생성"] --> B["DIAGNOSED\n자가진단 완료"]
-    B --> C["MATCH_RECOMMENDED\n매칭 추천 생성"]
-    C --> D["ASSIGNED\n컨설턴트 배정"]
-    D --> E["INTERVIEWED\n인터뷰 제출"]
-    E --> F["ROADMAP_DRAFTED\n로드맵 초안 생성"]
-    F --> G["FINALIZED\n최종 확정"]
+    A["NEW"] --> B["DIAGNOSED"]
+    B --> C["MATCH_<br>RECOMMENDED"]
+    C --> D["ASSIGNED"]
+    D --> E["INTERVIEWED"]
+    E --> F["ROADMAP_<br>DRAFTED"]
+    F --> G["FINALIZED"]
 ```
 
 ---
@@ -337,26 +337,26 @@ ai-roadmap-dashboard/
 ```mermaid
 flowchart TD
     subgraph CLIENT["클라이언트 (브라우저)"]
-        L["Landing Page\n(Three.js / GSAP)"]
-        AU["Auth Pages\n(Login / Register)"]
-        DA["Dashboard Pages\n(역할별 라우팅)"]
+        L["Landing Page<br>Three.js / GSAP"]
+        AU["Auth Pages<br>Login / Register"]
+        DA["Dashboard Pages<br>역할별 라우팅"]
     end
 
     subgraph NEXT["Next.js App Router"]
-        SC["Server Components"] --- SA["Server Actions\n(주요 데이터 흐름)"]
-        SA --- AR["API Routes\n(스트리밍 등)"]
-        MW["middleware.ts\n(세션 관리)"] --- ZD["Zod Schemas\n(입력 검증)"]
-        ZD --- SV["Services\n(비즈니스 로직)"]
+        SC["Server Components"] --- SA["Server Actions"]
+        SA --- AR["API Routes"]
+        MW["middleware.ts"] --- ZD["Zod Schemas"]
+        ZD --- SV["Services"]
     end
 
     subgraph SUPA["Supabase 백엔드"]
-        PG["PostgreSQL\n+ RLS 정책"]
-        ATH["Auth\n(인증 / 세션)"]
-        ST["Storage\n(파일 저장)"]
+        PG["PostgreSQL + RLS"]
+        ATH["Auth"]
+        ST["Storage"]
     end
 
     subgraph EXT["외부 서비스"]
-        LLM["LLM API\n(OpenAI 호환)\n로드맵 생성, 인사이트 추출"]
+        LLM["LLM API (OpenAI 호환)"]
     end
 
     CLIENT --> NEXT
@@ -395,12 +395,11 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    PUBLIC["PUBLIC\n랜딩, 데모 열람만 가능"]
-    PUBLIC -- "회원가입" --> PENDING["USER_PENDING\n승인 대기, 기능 접근 불가"]
-    PENDING -- "운영관리자 신청" --> OPS_PENDING["OPS_ADMIN_PENDING\n운영관리자 승인 대기"]
-    OPS_PENDING -- "SYSTEM_ADMIN 승인" --> OPS["OPS_ADMIN\n프로젝트 관리, 사용자 승인"]
-    PENDING -- "컨설턴트 승인" --> CONSULTANT["CONSULTANT_APPROVED\n담당 프로젝트, 로드맵 생성"]
-    SYSTEM["SYSTEM_ADMIN\n전체 시스템 관리"]
+    PUBLIC["PUBLIC"] -- "회원가입" --> PENDING["USER_PENDING"]
+    PENDING -- "운영관리자 신청" --> OPS_PENDING["OPS_ADMIN_PENDING"]
+    OPS_PENDING -- "SYSTEM_ADMIN 승인" --> OPS["OPS_ADMIN"]
+    PENDING -- "컨설턴트 승인" --> CONSULTANT["CONSULTANT_APPROVED"]
+    SYSTEM["SYSTEM_ADMIN"]
 ```
 
 | 역할 | 접근 가능 영역 |
@@ -450,9 +449,9 @@ LLM이 생성하는 AI 교육 로드맵은 다음 구성요소를 포함합니�
 
 ```mermaid
 flowchart LR
-    DRAFT["DRAFT\n(무제한 생성)"] --> FINAL["FINAL\n(1개만 유지)"]
-    FINAL --> ARCHIVED["ARCHIVED\n(이전 FINAL)"]
-    FINAL --> EXPORT["PDF / XLSX\n내보내기"]
+    DRAFT["DRAFT<br>무제한 생성"] --> FINAL["FINAL<br>1개만 유지"]
+    FINAL --> ARCHIVED["ARCHIVED<br>이전 FINAL"]
+    FINAL --> EXPORT["PDF / XLSX 내보내기"]
 ```
 
 ---
