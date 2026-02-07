@@ -1,24 +1,11 @@
-interface DimensionScore {
-  dimension: string;
-  score: number;
-  max_score: number;
-}
-
-interface SelfAssessmentScores {
-  total_score?: number;
-  max_possible_score?: number;
-  dimension_scores?: DimensionScore[];
-}
+import {
+  type SelfAssessmentScores,
+  getScoreColor,
+} from '@/lib/constants/score-color';
 
 interface SelfAssessmentResultProps {
   scores: SelfAssessmentScores;
   createdAt?: string;
-}
-
-function getScoreColor(pct: number) {
-  if (pct > 60) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' };
-  if (pct >= 30) return { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-50' };
-  return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' };
 }
 
 export function SelfAssessmentResult({ scores, createdAt }: SelfAssessmentResultProps) {

@@ -2,8 +2,9 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
-import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
+import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -67,11 +68,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
   const interview = projectData.interviews;
 
   // 자가진단 점수 요약
-  const assessmentScores = selfAssessment?.scores as {
-    total_score?: number;
-    max_possible_score?: number;
-    dimension_scores?: Array<{ dimension: string; score: number; max_score: number }>;
-  } | null;
+  const assessmentScores = selfAssessment?.scores as SelfAssessmentScores | null;
 
   // 기업 규모 라벨 변환
   const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
@@ -119,9 +116,9 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 기업 정보 */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">기업 정보</h2>
           <dl className="space-y-3">
             <div>
@@ -165,10 +162,10 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         </div>
 
         {/* 자가진단 결과 */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="lg:col-span-3 flex flex-col bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">자가진단 결과</h2>
           {selfAssessment && assessmentScores ? (
-            <SelfAssessmentResult
+            <ConsultantAssessmentResult
               scores={assessmentScores}
               createdAt={selfAssessment.created_at}
             />
