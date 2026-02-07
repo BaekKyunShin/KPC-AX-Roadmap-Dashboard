@@ -135,10 +135,9 @@ const QUOTA_TABLE: TableConfig = {
     { header: '사용자', width: 'min-w-[140px]' },
     { header: '역할', width: 'min-w-[100px]' },
     { header: '월간 사용량', width: 'min-w-[160px]' },
-    { header: '토큰', width: 'min-w-[120px]' },
     { header: '일일 한도', width: 'min-w-[100px]' },
     { header: '월간 한도', width: 'min-w-[100px]' },
-    { header: '작업', width: 'min-w-[100px]' },
+    { header: '한도 설정', width: 'min-w-[100px]' },
   ],
   minWidth: 'min-w-[800px]',
 };
@@ -460,11 +459,6 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
                 <SkeletonBar height="h-2" width="w-28" variant="secondary" />
               </div>
             </td>
-            {/* 토큰: 입력/출력 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-3" width="w-20" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-20" className="mx-auto" />
-            </td>
             {/* 일일 한도 */}
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
@@ -473,7 +467,7 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
             </td>
-            {/* 작업 */}
+            {/* 한도 설정 */}
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
             </td>

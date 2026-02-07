@@ -151,9 +151,9 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 **선택:**
 
 - `LLM_API_BASE_URL` - LLM API 기본 URL (기본값: OpenAI 호환)
-- `DAILY_LLM_CALL_LIMIT` - 일별 LLM 호출 제한 (기본값: 100)
-- `MONTHLY_LLM_CALL_LIMIT` - 월별 LLM 호출 제한 (기본값: 2000)
-- `NEXT_PUBLIC_APP_URL` - 앱 URL (기본값: http://localhost:3000)
+- `DAILY_LLM_CALL_LIMIT` - 일별 LLM 호출 제한 (기본값: 50)
+- `MONTHLY_LLM_CALL_LIMIT` - 월별 LLM 호출 제한 (기본값: 500)
+- `NEXT_PUBLIC_APP_URL` - 앱 URL (기본값: <http://localhost:3000>)
 
 ## 커밋 메시지 규칙
 
@@ -191,6 +191,57 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 - 산업 분야 가중치 누락 문제 해결
 - calculateScore 함수에 industryWeight 반영
 ```
+
+## 스킬 자동 매칭 규칙
+
+- 슬래시 커맨드 없이 자연어로 요청하더라도, 아래 조건에 해당하면 반드시 해당 스킬을 호출(Skill 도구 사용)한 뒤 그 절차에 따라 작업할 것.
+- 스킬을 읽었는지 여부를 작업 시작 시 사용자에게 알릴 것.
+
+**요청 기반 — 사용자가 해당 작업을 요청할 때:**
+
+| 조건 | 스킬 |
+|------|------|
+| 리팩터링/리팩토링/코드 정리를 요청할 때 | `refactoring` |
+| 버그 수정, 오류 원인 분석, 디버깅, 기능 이상 점검 등을 요청할 때 | `systematic-debugging` |
+
+**파일 기반 — 해당 영역의 코드를 생성하거나 수정할 때:**
+
+| 조건 | 스킬 |
+|------|------|
+| UI 컴포넌트, 페이지 등 프론트엔드 코드를 수정할 때 | `frontend-guide` |
+| Server Action (`actions.ts`) 파일을 수정할 때 | `check-server-action` |
+| SQL 마이그레이션, RLS 정책, DB 함수를 작성할 때 | `supabase-dev` |
+
+**단계 기반 — 작업 흐름의 특정 시점에서:**
+
+| 조건 | 스킬 |
+|------|------|
+| 기능 구현, 기능 추가, 버그 수정 등 코드를 작성할 때 (구현 전 테스트 먼저) | `test-driven-development` |
+| 작업 완료를 선언하거나 빌드하기 직전 | `verification-before-completion` |
+
+**경량 작업 예외 — 다음의 경우 스킬 호출을 생략할 수 있음:**
+
+- 상수값 변경, 텍스트/라벨 수정, 오타 수정 등 단순 변경
+- 주석 추가/수정, import 정리 등 로직 변경 없는 작업
+- 단, 사소해 보여도 여러 파일에 걸친 변경이면 스킬 호출
+
+**스킬 간 우선순위 — 여러 스킬이 동시에 해당될 때 적용 순서:**
+
+1. `systematic-debugging` (원인 파악이 먼저)
+2. `test-driven-development` (테스트 작성 후 구현)
+3. 파일 기반 스킬 (`frontend-guide`, `check-server-action`, `supabase-dev`)
+4. `refactoring` (동작하는 코드가 있은 후 정리)
+5. `verification-before-completion` (항상 마지막)
+
+**사용자 오버라이드:**
+
+- 사용자가 "스킬 없이", "빠르게", "간단히" 등 명시적으로 스킵을 요청하면 스킬 호출 생략 가능
+- 이 경우에도 `verification-before-completion`은 권장 (생략 가능하지만 알림은 할 것)
+
+**공통 규칙:**
+
+- 하나의 작업에 여러 스킬이 해당되면 위 우선순위에 따라 모두 호출
+- 스킬 호출 후 그 지침을 따르되, 작업 컨텍스트에 맞게 적용
 
 ## 코드 품질 지침
 

@@ -184,10 +184,9 @@ export default function QuotaManagementPage() {
                 <TableHead className="min-w-[140px]">사용자</TableHead>
                 <TableHead className="min-w-[100px]">역할</TableHead>
                 <TableHead className="min-w-[160px]">월간 사용량</TableHead>
-                <TableHead className="min-w-[120px]">토큰</TableHead>
                 <TableHead className="min-w-[100px]">일일 한도</TableHead>
                 <TableHead className="min-w-[100px]">월간 한도</TableHead>
-                <TableHead className="min-w-[100px]">작업</TableHead>
+                <TableHead className="min-w-[100px]">한도 설정</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,12 +225,6 @@ export default function QuotaManagementPage() {
                           style={{ width: `${Math.min(100, user.usagePercent)}%` }}
                         />
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-500">
-                    <div className="text-sm">
-                      <div>입력: {user.tokensIn.toLocaleString()}</div>
-                      <div>출력: {user.tokensOut.toLocaleString()}</div>
                     </div>
                   </TableCell>
                   <TableCell>

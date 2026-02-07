@@ -13,8 +13,6 @@ export interface UsageStats {
   role: string;
   status: string;
   monthlyUsage: number;
-  tokensIn: number;
-  tokensOut: number;
   dailyLimit: number;
   monthlyLimit: number;
   usagePercent: number;

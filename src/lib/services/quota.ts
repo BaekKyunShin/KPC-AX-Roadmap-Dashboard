@@ -8,8 +8,8 @@ import { getManageableRoles } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 
 // 기본 쿼터 설정
-const DEFAULT_DAILY_LIMIT = 100;
-const DEFAULT_MONTHLY_LIMIT = 2000;
+const DEFAULT_DAILY_LIMIT = 50;
+const DEFAULT_MONTHLY_LIMIT = 500;
 
 interface UsageMetrics {
   daily: number;
@@ -278,7 +278,7 @@ export async function getAllUsersUsage(options: {
   // 월별 사용량 조회
   const { data: monthlyUsage } = await supabase
     .from('usage_metrics')
-    .select('user_id, llm_calls, tokens_in, tokens_out')
+    .select('user_id, llm_calls')
     .in('user_id', userIds)
     .eq('month', month);
 
@@ -289,14 +289,10 @@ export async function getAllUsersUsage(options: {
     .in('user_id', userIds);
 
   // 사용량 맵 생성
-  const usageMap = new Map<string, { llmCalls: number; tokensIn: number; tokensOut: number }>();
+  const usageMap = new Map<string, number>();
   monthlyUsage?.forEach(m => {
-    const existing = usageMap.get(m.user_id) || { llmCalls: 0, tokensIn: 0, tokensOut: 0 };
-    usageMap.set(m.user_id, {
-      llmCalls: existing.llmCalls + m.llm_calls,
-      tokensIn: existing.tokensIn + m.tokens_in,
-      tokensOut: existing.tokensOut + m.tokens_out,
-    });
+    const existing = usageMap.get(m.user_id) || 0;
+    usageMap.set(m.user_id, existing + m.llm_calls);
   });
 
   // 쿼터 맵 생성
@@ -310,7 +306,7 @@ export async function getAllUsersUsage(options: {
 
   // 결과 조합
   const result = users.map(user => {
-    const usage = usageMap.get(user.id) || { llmCalls: 0, tokensIn: 0, tokensOut: 0 };
+    const llmCalls = usageMap.get(user.id) || 0;
     const quota = quotaMap.get(user.id) || {
       dailyLimit: DEFAULT_DAILY_LIMIT,
       monthlyLimit: DEFAULT_MONTHLY_LIMIT,
@@ -318,12 +314,10 @@ export async function getAllUsersUsage(options: {
 
     return {
       ...user,
-      monthlyUsage: usage.llmCalls,
-      tokensIn: usage.tokensIn,
-      tokensOut: usage.tokensOut,
+      monthlyUsage: llmCalls,
       dailyLimit: quota.dailyLimit,
       monthlyLimit: quota.monthlyLimit,
-      usagePercent: Math.round((usage.llmCalls / quota.monthlyLimit) * 100),
+      usagePercent: Math.round((llmCalls / quota.monthlyLimit) * 100),
     };
   });
 
