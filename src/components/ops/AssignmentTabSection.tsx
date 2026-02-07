@@ -659,9 +659,9 @@ function RecommendationResults({
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('projectId', projectId);
-      formData.append('consultantId', selectedId);
-      formData.append('reason', reason);
+      formData.append('project_id', projectId);
+      formData.append('consultant_id', selectedId);
+      formData.append('assignment_reason', reason);
 
       const { assignConsultant } = await import('@/app/(dashboard)/ops/projects/actions');
       const result = await assignConsultant(formData);
