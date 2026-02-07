@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
+import { InterviewSummary } from './_components/InterviewSummary';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -177,88 +178,16 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
 
       {/* 인터뷰 정보 - 자가진단 카드 아래 */}
       {interview && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">인터뷰 정보</h2>
-            <span className="text-sm text-gray-500">
-              {new Date(interview.interview_date).toLocaleDateString('ko-KR')}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 세부업무 */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">세부업무</h3>
-              <ul className="space-y-2">
-                {(interview.job_tasks as Array<{ task_name: string; task_description: string }>)?.map(
-                  (task, idx) => (
-                    <li key={idx} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                      <span className="font-medium">{task.task_name}</span>
-                      {task.task_description && (
-                        <p className="text-xs text-gray-500 mt-1">{task.task_description}</p>
-                      )}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-
-            {/* 페인포인트 */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">페인포인트</h3>
-              <ul className="space-y-2">
-                {(interview.pain_points as Array<{ description: string; severity: string; priority: number }>)?.map(
-                  (point, idx) => (
-                    <li key={idx} className="text-sm bg-red-50 p-2 rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-700">{point.description}</span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded ${
-                            point.severity === 'HIGH'
-                              ? 'bg-red-100 text-red-800'
-                              : point.severity === 'MEDIUM'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {point.severity}
-                        </span>
-                      </div>
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-
-            {/* 개선 목표 */}
-            <div className="md:col-span-2">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">개선 목표</h3>
-              <ul className="space-y-2">
-                {(interview.improvement_goals as Array<{ goal_description: string; kpi?: string; target_value?: string }>)?.map(
-                  (goal, idx) => (
-                    <li key={idx} className="text-sm bg-green-50 p-2 rounded">
-                      <span className="text-gray-700">{goal.goal_description}</span>
-                      {goal.kpi && (
-                        <span className="ml-2 text-xs text-green-600">
-                          KPI: {goal.kpi} {goal.target_value && `→ ${goal.target_value}`}
-                        </span>
-                      )}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          </div>
-
-          {interview.customer_requirements && (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="text-sm font-medium text-gray-700 mb-1">기업 요구사항</h3>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                {interview.customer_requirements}
-              </p>
-            </div>
-          )}
-        </div>
+        <InterviewSummary
+          interviewDate={interview.interview_date}
+          companyDetails={interview.company_details as { systems_and_tools?: string[]; ai_experience?: string } | null}
+          jobTasks={(interview.job_tasks as Array<{ task_name: string; task_description: string }>) ?? []}
+          painPoints={(interview.pain_points as Array<{ description: string; severity: string }>) ?? []}
+          improvementGoals={(interview.improvement_goals as Array<{ goal_description: string; kpi?: string; target_value?: string }>) ?? []}
+          constraints={(interview.constraints as Array<{ description: string }>) ?? []}
+          notes={(interview.notes as string) ?? null}
+          customerRequirements={(interview.customer_requirements as string) ?? null}
+        />
       )}
     </div>
   );
