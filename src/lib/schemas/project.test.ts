@@ -105,14 +105,6 @@ describe('createSelfAssessmentSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept assessment with summary text', () => {
-    const result = createSelfAssessmentSchema.safeParse({
-      ...validAssessment,
-      summary_text: '진단 요약입니다.',
-    });
-    expect(result.success).toBe(true);
-  });
-
   it('should reject invalid project_id UUID', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,

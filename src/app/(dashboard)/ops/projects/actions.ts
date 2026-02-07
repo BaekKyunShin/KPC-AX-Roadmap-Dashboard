@@ -139,7 +139,6 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
   const projectId = formData.get('project_id') as string;
   const templateId = formData.get('template_id') as string;
   const answersJson = formData.get('answers') as string;
-  const summaryText = formData.get('summary_text') as string || undefined;
 
   let answers;
   try {
@@ -152,7 +151,6 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
     project_id: projectId,
     template_id: templateId,
     answers,
-    summary_text: summaryText,
   };
 
   // 서버 검증
@@ -183,7 +181,6 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
     template_version: template.version,
     answers,
     scores,
-    summary_text: summaryText,
     created_by: user.id,
   });
 

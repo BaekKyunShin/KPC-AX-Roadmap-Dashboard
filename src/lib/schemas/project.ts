@@ -48,13 +48,11 @@ export const createSelfAssessmentSchema = z.object({
   answers: z
     .array(selfAssessmentAnswerSchema)
     .min(1, '최소 1개 이상의 응답이 필요합니다.'),
-  summary_text: z.string().max(2000).optional(),
 });
 
 // 자가진단 수정 스키마
 export const updateSelfAssessmentSchema = z.object({
   answers: z.array(selfAssessmentAnswerSchema).optional(),
-  summary_text: z.string().max(2000).optional(),
 });
 
 // 배정 스키마

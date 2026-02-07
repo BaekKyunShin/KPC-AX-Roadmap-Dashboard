@@ -121,7 +121,6 @@ export interface SelfAssessment {
   template_version: number;
   answers: SelfAssessmentAnswer[];
   scores: SelfAssessmentScore;
-  summary_text?: string;
   created_by: string; // OPS_ADMIN user_id
   created_at: string;
   updated_at: string;
