@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Menu, X, ChevronRight } from 'lucide-react';
+import { Menu, X, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+import { createClient } from '@/lib/supabase/client';
 
 // ============================================================================
 // 타입
@@ -68,12 +69,66 @@ function MobileMenuOverlay({ isOpen, onClose }: MobileMenuOverlayProps) {
   );
 }
 
+interface AuthButtonsProps {
+  isLoggedIn: boolean;
+  variant: 'desktop' | 'mobile';
+  onNavigate?: () => void;
+}
+
+function AuthButtons({ isLoggedIn, variant, onNavigate }: AuthButtonsProps) {
+  if (isLoggedIn) {
+    return (
+      <Link href="/dashboard" onClick={onNavigate}>
+        <Button
+          className={
+            variant === 'desktop'
+              ? 'text-sm bg-gray-900 hover:bg-gray-800 text-white'
+              : 'w-full h-11 text-base bg-gray-900 hover:bg-gray-800 text-white'
+          }
+          data-cursor-hover={variant === 'desktop' || undefined}
+        >
+          <LayoutDashboard className="mr-2 h-4 w-4" />
+          대시보드
+        </Button>
+      </Link>
+    );
+  }
+
+  return (
+    <>
+      <Link href="/login" onClick={onNavigate}>
+        <Button
+          variant={variant === 'desktop' ? 'ghost' : 'outline'}
+          className={variant === 'desktop' ? 'text-sm' : 'w-full h-11 text-base'}
+          data-cursor-hover={variant === 'desktop' || undefined}
+        >
+          로그인
+        </Button>
+      </Link>
+      <Link href="/register" onClick={onNavigate}>
+        <Button
+          className={
+            variant === 'desktop'
+              ? 'text-sm bg-gray-900 hover:bg-gray-800 text-white'
+              : 'w-full h-11 text-base bg-gray-900 hover:bg-gray-800 text-white'
+          }
+          data-cursor-hover={variant === 'desktop' || undefined}
+        >
+          회원가입
+        </Button>
+      </Link>
+    </>
+  );
+}
+
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  isLoggedIn: boolean;
+  isAuthChecked: boolean;
 }
 
-function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
+function MobileMenu({ isOpen, onClose, isLoggedIn, isAuthChecked }: MobileMenuProps) {
   return (
     <div
       className={`md:hidden overflow-hidden ${MOBILE_MENU_TRANSITION} ${
@@ -90,16 +145,9 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
         {/* CTA Buttons */}
         <div className="border-t border-gray-200 bg-gray-50 px-4 py-4 flex flex-col gap-3">
-          <Link href="/login" onClick={onClose}>
-            <Button variant="outline" className="w-full h-11 text-base">
-              로그인
-            </Button>
-          </Link>
-          <Link href="/register" onClick={onClose}>
-            <Button className="w-full h-11 text-base bg-gray-900 hover:bg-gray-800 text-white">
-              회원가입
-            </Button>
-          </Link>
+          {isAuthChecked && (
+            <AuthButtons isLoggedIn={isLoggedIn} variant="mobile" onNavigate={onClose} />
+          )}
         </div>
       </div>
     </div>
@@ -113,6 +161,26 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+      setIsAuthChecked(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+      setIsAuthChecked(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -151,63 +219,56 @@ export default function Navbar() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            onClick={handleLogoClick}
-            className="transition-opacity hover:opacity-70"
-            data-cursor-hover
-          >
-            <Logo height={26} />
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                data-cursor-hover
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" className="text-sm" data-cursor-hover>
-                로그인
-              </Button>
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <Link
+              href="/"
+              onClick={handleLogoClick}
+              className="transition-opacity hover:opacity-70"
+              data-cursor-hover
+            >
+              <Logo height={26} />
             </Link>
-            <Link href="/register">
-              <Button className="text-sm bg-gray-900 hover:bg-gray-800 text-white" data-cursor-hover>
-                회원가입
-              </Button>
-            </Link>
-          </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={toggleMobileMenu}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            data-cursor-hover
-            aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6 text-gray-600" />
-            ) : (
-              <Menu className="h-6 w-6 text-gray-600" />
-            )}
-          </button>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-8">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  data-cursor-hover
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+
+            {/* Desktop CTA */}
+            <div className="hidden md:flex items-center gap-3">
+              {isAuthChecked && (
+                <AuthButtons isLoggedIn={isLoggedIn} variant="desktop" />
+              )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={toggleMobileMenu}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              data-cursor-hover
+              aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6 text-gray-600" />
+              ) : (
+                <Menu className="h-6 w-6 text-gray-600" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
 
         {/* Mobile Menu */}
-        <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
+        <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} isLoggedIn={isLoggedIn} isAuthChecked={isAuthChecked} />
       </nav>
     </>
   );
