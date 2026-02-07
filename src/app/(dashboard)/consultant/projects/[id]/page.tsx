@@ -39,8 +39,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
       self_assessments(
         id,
         scores,
-        summary_text,
-        template_version
+        created_at
       ),
       interviews(
         id,
@@ -62,13 +61,14 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
     notFound();
   }
 
-  const selfAssessment = projectData.self_assessments?.[0];
-  const interview = projectData.interviews?.[0];
+  // UNIQUE 제약조건(1:1 관계)으로 PostgREST가 단일 객체를 반환
+  const selfAssessment = projectData.self_assessments;
+  const interview = projectData.interviews;
 
   // 자가진단 점수 요약
   const assessmentScores = selfAssessment?.scores as {
     total_score?: number;
-    max_score?: number;
+    max_possible_score?: number;
     dimension_scores?: Array<{ dimension: string; score: number; max_score: number }>;
   } | null;
 
@@ -166,61 +166,18 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         {/* 자가진단 결과 */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">자가진단 결과</h2>
-          {selfAssessment ? (
-            <div className="space-y-4">
-              {/* 총점 */}
-              {assessmentScores && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-sm text-blue-600">총점</div>
-                  <div className="text-2xl font-bold text-blue-900">
-                    {assessmentScores.total_score} / {assessmentScores.max_score}
-                  </div>
-                  <div className="text-sm text-blue-600">
-                    ({Math.round(((assessmentScores.total_score || 0) / (assessmentScores.max_score || 1)) * 100)}%)
-                  </div>
-                </div>
-              )}
-
-              {/* 차원별 점수 */}
-              {assessmentScores?.dimension_scores && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-700">영역별 점수</h3>
-                  {assessmentScores.dimension_scores.map((dim) => (
-                    <div key={dim.dimension} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">{dim.dimension}</span>
-                      <div className="flex items-center">
-                        <div className="w-24 bg-gray-200 rounded-full h-2 mr-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${(dim.score / dim.max_score) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-900 w-16 text-right">
-                          {dim.score}/{dim.max_score}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 요약 */}
-              {selfAssessment.summary_text && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">요약</h3>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                    {selfAssessment.summary_text}
-                  </p>
-                </div>
-              )}
-            </div>
+          {selfAssessment && assessmentScores ? (
+            <SelfAssessmentResult
+              scores={assessmentScores}
+              createdAt={selfAssessment.created_at}
+            />
           ) : (
             <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
           )}
         </div>
       </div>
 
-      {/* 인터뷰 정보 */}
+      {/* 인터뷰 정보 - 자가진단 카드 아래 */}
       {interview && (
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
@@ -305,6 +262,93 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// 자가진단 결과 표시 컴포넌트
+function SelfAssessmentResult({ scores, createdAt }: {
+  scores: {
+    total_score?: number;
+    max_possible_score?: number;
+    dimension_scores?: Array<{ dimension: string; score: number; max_score: number }>;
+  };
+  createdAt?: string;
+}) {
+  const totalScore = Math.round(scores.total_score || 0);
+  const maxScore = Math.round(scores.max_possible_score || 100);
+  const percentage = Math.round((totalScore / maxScore) * 100);
+
+  const getScoreColor = (pct: number) => {
+    if (pct > 60) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' };
+    if (pct >= 30) return { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-50' };
+    return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' };
+  };
+
+  const totalColor = getScoreColor(percentage);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* 좌측: 종합 점수 */}
+        <div className="lg:col-span-5">
+          <div className="h-full p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <h3 className="text-sm font-medium text-gray-500 mb-3">종합 점수</h3>
+            <div className="flex items-end gap-2 mb-3">
+              <span className="text-4xl font-bold text-gray-900">{totalScore}</span>
+              <span className="text-lg text-gray-400 mb-1">/ {maxScore}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-3">
+              <div
+                className={`h-2.5 rounded-full ${totalColor.bg} transition-all duration-500`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={`px-2.5 py-0.5 rounded-full text-sm font-medium ${totalColor.light} ${totalColor.text}`}>
+                {percentage}%
+              </span>
+              {createdAt && (
+                <span className="text-xs text-gray-400">
+                  {new Date(createdAt).toLocaleDateString('ko-KR')} 진단
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 우측: 항목별 점수 */}
+        {scores.dimension_scores && (
+          <div className="lg:col-span-7">
+            <div className="h-full p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-3">항목별 점수</h3>
+              <div className="space-y-2.5">
+                {scores.dimension_scores.map((ds) => {
+                  const dimScore = Math.round(ds.score);
+                  const dimMax = Math.round(ds.max_score);
+                  const dimPct = Math.round((dimScore / dimMax) * 100);
+                  const dimColor = getScoreColor(dimPct);
+
+                  return (
+                    <div key={ds.dimension} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-700 w-28 truncate">{ds.dimension}</span>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${dimColor.bg}`}
+                          style={{ width: `${dimPct}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-600 w-16 text-right">{dimScore}/{dimMax}</span>
+                      <span className={`text-sm font-medium w-12 text-right ${dimColor.text}`}>{dimPct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
