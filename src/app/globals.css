@@ -155,6 +155,13 @@
   }
 }
 
+/* 버튼 요소에 pointer cursor 적용 — @layer 밖에 선언하여 Tailwind 레이어보다 우선 */
+/* :not(:disabled)로 비활성 버튼 제외 → disabled:cursor-not-allowed 유틸리티와 충돌 방지 */
+button:not(:disabled),
+[role="button"] {
+  cursor: pointer;
+}
+
 .font-pretendard {
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
 }
