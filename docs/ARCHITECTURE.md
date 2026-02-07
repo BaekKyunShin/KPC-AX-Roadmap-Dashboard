@@ -49,6 +49,7 @@ src/
 │   │   ├── register/
 │   │   └── actions.ts
 │   ├── (dashboard)/              # 대시보드 라우트 (인증 필수)
+│   │   ├── dashboard/            # 공통 대시보드 + 프로필
 │   │   ├── consultant/           # 컨설턴트 전용
 │   │   │   ├── profile/          # 프로필 관리
 │   │   │   └── projects/         # 담당 프로젝트
@@ -57,35 +58,34 @@ src/
 │   │   │           └── roadmap/    # 로드맵 생성/관리
 │   │   ├── ops/                  # OPS_ADMIN 전용
 │   │   │   ├── projects/         # 프로젝트 관리
-│   │   │   │   └── [id]/
-│   │   │   │       ├── matching/ # 매칭 추천/배정
+│   │   │   │   ├── new/          # 프로젝트 생성
+│   │   │   │   └── [id]/         # 진단/배정/로드맵
 │   │   │   │       └── roadmap/  # 로드맵 열람 (읽기 전용)
 │   │   │   ├── users/            # 사용자 관리/승인
 │   │   │   ├── templates/        # 자가진단 템플릿 관리
 │   │   │   ├── quota/            # 쿼터 관리
 │   │   │   └── audit/            # 감사로그
-│   │   └── test-roadmap/         # 테스트 로드맵 (개발용)
+│   │   └── test-roadmap/         # 테스트 로드맵 (컨설턴트 연습용)
 │   ├── api/                      # API Routes (최소화)
 │   │   └── matching/generate/    # 매칭 추천 생성
 │   ├── layout.tsx
 │   └── middleware.ts             # 인증 미들웨어
 ├── components/                   # 재사용 컴포넌트
-│   ├── ui/                       # 기본 UI (button, input, card 등)
+│   ├── ui/                       # 기본 UI (button, input, card, dialog 등)
 │   ├── landing/                  # 랜딩 페이지 컴포넌트
 │   │   ├── sections/             # 섹션별 컴포넌트
 │   │   └── hooks/                # 랜딩 전용 훅
+│   ├── auth/                     # 인증 관련 컴포넌트
 │   ├── consultant/               # 컨설턴트 UI 컴포넌트
-│   │   ├── BadgeSelector.tsx
-│   │   └── ProfileForm.tsx
 │   ├── ops/                      # 운영관리자 UI 컴포넌트
-│   │   ├── UserManagementTable.tsx
-│   │   ├── SelfAssessmentForm.tsx
-│   │   ├── MatchingRecommendations.tsx
 │   │   └── assignment/           # 배정 관련 컴포넌트
+│   ├── roadmap/                  # 로드맵 공통 컴포넌트
+│   ├── interview/                # 인터뷰 공통 컴포넌트
 │   ├── Navigation.tsx
 │   └── PendingApprovalCard.tsx
 ├── hooks/                        # 공용 커스텀 훅
-│   └── useDebounce.ts
+│   ├── useDebounce.ts
+│   └── useRoadmapDownload.ts
 ├── lib/                          # 유틸리티 및 설정
 │   ├── supabase/
 │   │   ├── client.ts             # 클라이언트 (anon key)
@@ -102,24 +102,36 @@ src/
 │   │   └── test-roadmap.ts
 │   ├── services/                 # 비즈니스 로직
 │   │   ├── roadmap.ts            # LLM 로드맵 생성
-│   │   ├── roadmap-storage.ts    # 로드맵 저장소 관리
 │   │   ├── llm.ts                # LLM API 호출 추상화
 │   │   ├── matching.ts           # 컨설턴트 매칭 알고리즘
+│   │   ├── stt.ts                # STT 인사이트 추출
 │   │   ├── quota.ts              # 일별/월별 LLM 호출 제한
 │   │   ├── audit.ts              # 이벤트 로깅
 │   │   ├── export-pdf.ts         # PDF 생성 (jspdf)
 │   │   └── export-xlsx.ts        # Excel 생성 (xlsx)
 │   ├── constants/                # 상수 정의
+│   │   ├── status.ts             # 역할/상태 상수 및 헬퍼 함수
+│   │   ├── industry.ts           # 업종 분류
 │   │   ├── company-size.ts       # 기업 규모 분류
-│   │   ├── consultant-options.ts # 컨설턴트 프로필 옵션
-│   │   ├── profile-options.ts    # 프로필 옵션
-│   │   └── status.ts             # 상태값 정의
+│   │   ├── profile-options.ts    # 컨설턴트 프로필 옵션
+│   │   ├── interview-steps.ts    # 인터뷰 단계
+│   │   ├── site.ts               # 사이트 메타 정보
+│   │   └── stt.ts                # STT 관련 상수
+│   ├── actions/                  # 공유 Server Actions 헬퍼
+│   │   └── roadmap-export.ts     # 로드맵 내보내기
 │   ├── types/                    # TypeScript 타입
 │   │   └── action-result.ts      # Server Action 결과 타입
 │   ├── utils/                    # 유틸리티 함수
 │   │   ├── error.ts              # 에러 처리
-│   │   └── roadmap.ts            # 로드맵 유틸리티
-│   └── utils.ts                  # 공용 유틸리티
+│   │   ├── toast.ts              # 토스트 알림
+│   │   ├── roadmap.ts            # 로드맵 유틸리티 (서버)
+│   │   ├── roadmap-client.ts     # 로드맵 유틸리티 (클라이언트)
+│   │   └── scroll.ts             # 스크롤 유틸리티
+│   └── data/                     # 정적 데이터
+│       └── demo-sample.ts        # 데모 샘플 데이터
+├── types/                        # 전역 타입 정의
+│   ├── database.ts               # DB 테이블 인터페이스
+│   └── roadmap-ui.ts             # 로드맵 UI 타입
 └── middleware.ts                 # 루트 미들웨어
 ```
 
@@ -128,10 +140,15 @@ src/
 ### 1. 회원가입/승인 플로우
 
 ```
-사용자 → 회원가입 → USER_PENDING
-                         │
-                         ▼
-              OPS_ADMIN 승인 → CONSULTANT_APPROVED
+컨설턴트     → 회원가입 → USER_PENDING
+                              │
+                              ▼
+                   OPS_ADMIN 승인 → CONSULTANT_APPROVED
+
+운영관리자   → 회원가입 → OPS_ADMIN_PENDING
+                              │
+                              ▼
+                  SYSTEM_ADMIN 승인 → OPS_ADMIN
 ```
 
 ### 2. 프로젝트 생성/배정 플로우

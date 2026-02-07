@@ -271,3 +271,113 @@
 **마이그레이션**:
 - `005_rename_case_to_project.sql`로 일괄 변경
 - RLS 정책 재생성 포함
+
+---
+
+## ADR-015: STT 인사이트 추출
+
+**날짜**: 2025-01-28
+
+**결정**: 인터뷰 녹취록(STT 텍스트)에서 LLM으로 구조화된 인사이트를 추출하여 저장
+
+**이유**:
+- 컨설턴트가 수동 정리한 정보 외에 놓치기 쉬운 정보 보완
+- 추가 업무, 숨은 니즈, 조직 맥락, AI 태도 등 로드맵 품질에 영향을 주는 정보 추출
+- 정형 데이터와 결합하여 더 정밀한 로드맵 생성 가능
+
+**구현**:
+- `interviews.stt_insights` JSONB 컬럼 추가
+- `lib/services/stt.ts` - LLM 기반 인사이트 추출 서비스
+- GIN 인덱스로 존재 여부 필터링 최적화
+- 마이그레이션: `008_add_stt_insights.sql`
+
+---
+
+## ADR-016: 세부 업종 필드 추가
+
+**날짜**: 2025-01-29
+
+**결정**: 컨설턴트 프로필과 프로젝트에 세부 업종(sub_industries) 필드 추가
+
+**이유**:
+- 대분류 업종만으로는 매칭 정밀도가 부족
+- 예: 같은 '제조업'이라도 자동차, 반도체, 식품 등 세부 업종에 따라 필요 역량이 다름
+- 세부 업종 기반 매칭으로 컨설턴트-기업 적합도 향상
+
+**구현**:
+- `consultant_profiles.sub_industries` TEXT[] 컬럼 추가
+- `projects.sub_industries` TEXT[] 컬럼 추가
+- GIN 인덱스로 배열 검색 최적화
+- 마이그레이션: `009_add_sub_industries.sql`
+
+---
+
+## ADR-017: 인터뷰 참석자 정보
+
+**날짜**: 2025-01-30
+
+**결정**: 인터뷰에 참석한 기업 담당자 정보를 별도 컬럼으로 저장
+
+**이유**:
+- 인터뷰 참석자(이름, 직급)가 로드맵에 반영되어야 함
+- 교육 대상자 정보를 명확히 기록하여 맞춤형 로드맵 생성 지원
+- 감사 추적 및 리포트에 참석자 정보 필요
+
+**구현**:
+- `interviews.participants` JSONB 컬럼 추가 (id, name, position 배열)
+- 마이그레이션: `010_add_interview_participants.sql`
+
+---
+
+## ADR-018: OPS_ADMIN_PENDING 역할 추가
+
+**날짜**: 2025-02-01
+
+**결정**: 운영관리자 회원가입 시 승인 대기 상태를 위한 `OPS_ADMIN_PENDING` 역할 추가
+
+**이유**:
+- 기존에는 컨설턴트(USER_PENDING)만 승인 플로우가 존재
+- 운영관리자도 무분별한 가입을 방지하기 위해 승인 플로우 필요
+- OPS_ADMIN은 컨설턴트만 승인, SYSTEM_ADMIN은 운영관리자까지 승인하는 역할 분리
+
+**구현**:
+- `user_role` ENUM에 `OPS_ADMIN_PENDING` 값 추가
+- `lib/constants/status.ts`에 역할 그룹 상수 추가 (CONSULTANT_ROLES, OPS_ADMIN_ROLES)
+- `getManageableRoles()`, `canManageUser()` 헬퍼 함수로 승인 가능 역할 판별
+- 마이그레이션: `011_add_ops_admin_pending_role.sql`
+
+---
+
+## ADR-019: 컨설턴트 프로필 소속 필드 추가
+
+**날짜**: 2025-02-02
+
+**결정**: 컨설턴트 프로필에 소속(affiliation) 필드 추가
+
+**이유**:
+- 소속 정보가 기업의 컨설턴트 신뢰도 판단에 영향
+- 프리랜서와 기관 소속 컨설턴트 구분 필요
+- 프로필 명세(CONSULTANT_PROFILE_SPEC.md)에 이미 정의되어 있었으나 DB 스키마에 누락
+
+**구현**:
+- `consultant_profiles.affiliation` TEXT NOT NULL 컬럼 추가
+- 기존 레코드는 마이그레이션에서 '프리랜서'로 기본값 설정 후 DEFAULT 제거
+- 마이그레이션: `012_add_consultant_affiliation.sql`
+
+---
+
+## ADR-020: 회원탈퇴 기능 추가
+
+**날짜**: 2025-02-05
+
+**결정**: 사용자 상태에 `WITHDRAWN` 추가, 감사로그에 `USER_WITHDRAW` 액션 추가
+
+**이유**:
+- 개인정보보호법 준수 (사용자의 탈퇴 권리 보장)
+- 탈퇴 시 데이터 삭제가 아닌 상태 전환으로 감사 추적 유지
+- ACTIVE → WITHDRAWN 전환으로 재가입 관리 가능
+
+**구현**:
+- `user_status` ENUM에 `WITHDRAWN` 값 추가
+- `audit_action` ENUM에 `USER_WITHDRAW` 값 추가
+- 마이그레이션: `013_add_user_withdrawal.sql`

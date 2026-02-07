@@ -10,10 +10,19 @@
 | 역할 | 설명 |
 |------|------|
 | `PUBLIC` | 비로그인 - RLS 적용 안 됨 (Supabase Auth 미인증) |
-| `USER_PENDING` | 승인 대기 - 자신의 정보만 접근 |
+| `USER_PENDING` | 컨설턴트 승인 대기 - 자신의 정보만 접근 |
+| `OPS_ADMIN_PENDING` | 운영관리자 승인 대기 - 자신의 정보만 접근 |
 | `CONSULTANT_APPROVED` | 승인된 컨설턴트 - 담당 프로젝트만 접근 |
 | `OPS_ADMIN` | 운영 관리자 - 모든 프로젝트/사용자 관리 |
 | `SYSTEM_ADMIN` | 시스템 관리자 - 모든 권한 |
+
+## 사용자 상태
+
+| 상태 | 설명 |
+|------|------|
+| `ACTIVE` | 활성 |
+| `SUSPENDED` | 정지 |
+| `WITHDRAWN` | 탈퇴 |
 
 ## 헬퍼 함수
 
@@ -194,3 +203,5 @@ is_approved_consultant() RETURNS BOOLEAN
 | `002_rls_policies.sql` | 기본 RLS 정책 |
 | `004_test_roadmap.sql` | 테스트 모드 RLS 정책 |
 | `005_rename_case_to_project.sql` | cases → projects 리네이밍 및 정책 재생성 |
+| `011_add_ops_admin_pending_role.sql` | `OPS_ADMIN_PENDING` 역할 ENUM 추가 |
+| `013_add_user_withdrawal.sql` | `WITHDRAWN` 상태, `USER_WITHDRAW` 감사 액션 추가 |

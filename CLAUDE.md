@@ -19,6 +19,7 @@ npm run lint             # ESLint 검사
 npm run lint:fix         # 린트 오류 자동 수정
 npm run typecheck        # TypeScript 타입 검사
 npm run format           # Prettier 포맷팅
+npm run format:check     # 포맷팅 검사 (CI용)
 npm run test             # 테스트 실행 (Vitest)
 npm run test:watch       # 테스트 워치 모드
 npm run test:coverage    # 커버리지 리포트 생성
@@ -39,24 +40,31 @@ Next.js App Router (src/app/)
          ├── Route Groups
          │   ├── (auth)/         → 로그인, 회원가입
          │   └── (dashboard)/    → 인증 필요 라우트
-         │       ├── consultant/ → 컨설턴트 전용 UI
-         │       ├── ops/        → 운영관리자 전용 UI
-         │       └── test-roadmap/ → 테스트 로드맵 (개발용)
+         │       ├── dashboard/    → 공통 대시보드 + 프로필
+         │       ├── consultant/   → 컨설턴트 전용 (프로필, 프로젝트, 인터뷰, 로드맵)
+         │       ├── ops/          → 운영관리자 전용 (프로젝트, 사용자, 템플릿, 감사로그, 쿼터)
+         │       └── test-roadmap/ → 테스트 로드맵 (컨설턴트 연습용)
          │
          ├── API Routes (src/app/api/) → 최소화 (Server Actions 우선)
          │
          └── middleware.ts → 세션 관리
                  │
                  ▼
-Service Layer (src/lib/services/)
-    ├── roadmap.ts          → LLM 로드맵 생성
-    ├── roadmap-storage.ts  → 로드맵 저장소 관리
-    ├── llm.ts              → LLM API 호출 추상화
-    ├── matching.ts         → 컨설턴트 매칭 알고리즘
-    ├── quota.ts            → 일별/월별 LLM 호출 제한
-    ├── audit.ts            → 이벤트 로깅
-    ├── export-pdf.ts       → PDF 생성 (jspdf)
-    └── export-xlsx.ts      → Excel 생성 (xlsx)
+Shared Layers (src/lib/)
+    ├── services/           → 핵심 비즈니스 로직
+    │   ├── roadmap.ts          → LLM 로드맵 생성
+    │   ├── llm.ts              → LLM API 호출 추상화
+    │   ├── matching.ts         → 컨설턴트 매칭 알고리즘
+    │   ├── stt.ts              → STT 인사이트 추출
+    │   ├── quota.ts            → 일별/월별 LLM 호출 제한
+    │   ├── audit.ts            → 이벤트 로깅
+    │   ├── export-pdf.ts       → PDF 생성 (jspdf)
+    │   └── export-xlsx.ts      → Excel 생성 (xlsx)
+    ├── constants/          → 역할·상태·업종 등 상수 집중 관리
+    ├── schemas/            → Zod 검증 스키마 + 테스트
+    ├── utils/              → 유틸리티 함수 (에러 처리, 토스트 등)
+    ├── actions/            → 공유 Server Actions 헬퍼
+    └── types/              → ActionResult 등 공통 타입
                  │
                  ▼
 Supabase Clients (src/lib/supabase/)
@@ -89,7 +97,7 @@ Supabase Backend
 
 **역할 기반 접근 제어 (RBAC):**
 
-- 역할: PUBLIC, USER_PENDING, CONSULTANT_APPROVED, OPS_ADMIN, SYSTEM_ADMIN
+- 역할: PUBLIC, USER_PENDING, OPS_ADMIN_PENDING, CONSULTANT_APPROVED, OPS_ADMIN, SYSTEM_ADMIN
 - RLS 정책으로 데이터베이스 수준 보안 적용 (`docs/RLS.md` 참조)
 - 컨설턴트는 자신의 담당 프로젝트만 접근 가능
 
@@ -120,12 +128,15 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 
 ## 기술 스택
 
-- **프레임워크:** Next.js 16.x (App Router) + TypeScript 5.x (strict 모드)
+- **프레임워크:** Next.js 16.x (App Router, React Compiler 활성화) + TypeScript 5.x (strict 모드)
 - **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Storage)
 - **스타일링:** Tailwind CSS 4.x
-- **UI 컴포넌트:** Radix UI + shadcn/ui
-- **검증:** Zod
-- **테스트:** Vitest + React Testing Library
+- **UI 컴포넌트:** Radix UI + shadcn/ui + Lucide React (아이콘)
+- **폼/검증:** React Hook Form + Zod (@hookform/resolvers)
+- **차트:** Recharts
+- **토스트:** Sonner
+- **랜딩 애니메이션:** GSAP + Three.js (@react-three/fiber, drei) + Lenis (스무스 스크롤)
+- **테스트:** Vitest + React Testing Library + Playwright (E2E)
 - **내보내기:** jspdf + jspdf-autotable, xlsx (SheetJS)
 
 ## 환경 변수
