@@ -132,7 +132,7 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 - **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Storage)
 - **스타일링:** Tailwind CSS 4.x
 - **UI 컴포넌트:** Radix UI + shadcn/ui + Lucide React (아이콘)
-- **폼/검증:** React Hook Form + Zod (@hookform/resolvers)
+- **폼/검증:** Zod (네이티브 HTML 폼 사용, React Hook Form 미사용)
 - **차트:** Recharts
 - **토스트:** Sonner
 - **랜딩 애니메이션:** GSAP + Three.js (@react-three/fiber, drei) + Lenis (스무스 스크롤)
@@ -216,39 +216,12 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 
 | 조건 | 스킬 |
 |------|------|
-| 버그 수정 시 (재현 테스트 먼저), `src/lib/schemas/`·`src/lib/services/` 등 순수 로직 구현 시, 리팩토링 시 (기존 동작 테스트 확보 후 구조 변경) | `test-driven-development` |
+| 버그 수정, 순수 로직(`src/lib/schemas/`, `src/lib/services/` 등) 구현/수정 시 (구현 전 테스트 먼저) | `test-driven-development` |
 | 작업 완료를 선언하거나 빌드하기 직전 | `verification-before-completion` |
 
-**TDD 스킬 적용 범위 (SKILL.md 원칙의 프로젝트별 축소 적용):**
+> **TDD 미적용 대상:** UI 컴포넌트 수정, 설정/스타일 변경은 TDD 미적용 (기존 테스트 통과 확인만)
 
-- SKILL.md는 모든 코드에 TDD를 권장하지만, 이 프로젝트에서는 아래 범위로 축소 적용
-- 버그 수정 → 재현하는 실패 테스트 먼저 작성
-- `src/lib/schemas/`, `src/lib/services/` 등 순수 로직 신규 구현/수정
-- 리팩토링 → 기존 동작 테스트 확보 후 구조 변경 (테스트 없으면 먼저 작성)
-- TDD 미적용 대상: UI 컴포넌트 수정, 설정/스타일 변경 (기존 테스트 통과 확인만)
-
-**경량 작업 예외 — 다음의 경우 스킬 호출을 생략할 수 있음:**
-
-- 상수값 변경, 텍스트/라벨 수정, 오타 수정 등 단순 변경
-- 주석 추가/수정, import 정리 등 로직 변경 없는 작업
-- 단, 사소해 보여도 여러 파일에 걸친 변경이면 스킬 호출
-
-**스킬 간 우선순위 — 여러 스킬이 동시에 해당될 때 적용 순서:**
-
-1. `systematic-debugging` (원인 파악이 먼저)
-2. `test-driven-development` (테스트 작성 후 구현)
-3. 파일 기반 스킬 (`frontend-guide`, `check-server-action`, `supabase-dev`)
-4. `refactoring` (동작하는 코드가 있은 후 정리)
-5. `verification-before-completion` (항상 마지막)
-
-**사용자 오버라이드:**
-
-- 사용자가 "스킬 없이", "빠르게", "간단히" 등 명시적으로 스킵을 요청하면 스킬 호출 생략 가능
-- 이 경우에도 `verification-before-completion`은 권장 (생략 가능하지만 알림은 할 것)
-
-**공통 규칙:**
-
-- 하나의 작업에 여러 스킬이 해당되면 위 우선순위에 따라 모두 호출
+- 하나의 작업에 여러 스킬이 해당되면 모두 호출
 - 스킬 호출 후 그 지침을 따르되, 작업 컨텍스트에 맞게 적용
 
 ## 코드 품질 지침

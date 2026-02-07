@@ -16,7 +16,7 @@ $ARGUMENTS 파일을 이 가이드에 따라 작성/검사하세요.
 ### 파일 위치 및 명명
 - `supabase/migrations/` 폴더에 배치
 - 이 프로젝트는 순차 번호 사용: `001_initial_schema.sql`, `002_rls_policies.sql`, ...
-- 새 마이그레이션은 기존 번호 다음 순서로 생성 (현재 최신: `012`)
+- 새 마이그레이션은 기존 번호 다음 순서로 생성 (현재 최신: `014`)
 
 ### 필수 사항
 - CREATE TABLE 시 반드시 `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` 포함
