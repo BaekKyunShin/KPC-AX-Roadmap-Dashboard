@@ -1,371 +1,572 @@
 /**
  * XLSX 내보내기 서비스
- * 로드맵 데이터를 Excel 파일로 변환
+ * 로드맵 데이터를 전문 컨설팅 보고서 수준의 Excel 파일로 변환
+ *
+ * 시트 구성:
+ *   1. 개요 — 보고서 제목 + 기업명 + 버전/일자 + 진단 요약
+ *   2. 과정 체계도 — N×M 매트릭스 (과정번호+이름+시간 통합) + 합계 행
+ *   3. 교육 과정 상세 — 과정별 세로 카드 (No.1부터 순번)
+ *   4. PBL 프로그램 — PBL 전체 상세
  */
 
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import type { RoadmapExportData } from './export-pdf';
-import type { PBLCourse } from './roadmap';
-import {
-  getLevelLabel,
-  formatMatrixCourseNames,
-  formatMatrixCourseHours,
-} from '@/lib/utils/roadmap';
+import type { RoadmapCell, RoadmapMatrixCell } from './roadmap';
+import { getLevelLabel } from '@/lib/utils/roadmap';
 
 // ============================================================================
-// PBL 데이터 추출 헬퍼 함수들
+// 색상 상수
 // ============================================================================
 
-interface PBLExtendedFields {
-  selected_course_name?: string;
-  selected_course_level?: string;
-  selected_course_task?: string;
-  selection_rationale?: {
-    consultant_expertise_fit?: string;
-    pain_point_alignment?: string;
-    feasibility_assessment?: string;
-    summary?: string;
-  };
-  final_deliverables?: string[];
-  business_impact?: string;
-}
+const COLOR = {
+  HEADER_BG: '663399',
+  HEADER_TEXT: 'FFFFFF',
+  SECTION_BG: 'F5F3F9',
+  LABEL_BG: 'F0ECF5',
+  ALT_ROW: 'FAFAFA',
+  BORDER: 'D0D0D0',
+  BODY_TEXT: '333333',
+  MUTED_TEXT: '787878',
+  ACCENT: '663399',
+  WHITE: 'FFFFFF',
+  TOTAL_BG: 'EDE8F5',
+} as const;
 
-interface PBLModuleExtended {
-  module_name: string;
-  hours: number;
-  description: string;
-  practice: string;
-  deliverables?: string[];
-  tools?: { name: string; free_tier_info: string }[];
-}
+// ============================================================================
+// 테두리 & 스타일 상수
+// ============================================================================
 
-/**
- * PBL 과정에서 확장 필드 추출
- */
-function extractPBLExtendedFields(pblCourse: PBLCourse): PBLExtendedFields {
-  const extended = pblCourse as unknown as PBLExtendedFields;
+const THIN_BORDER = {
+  top: { style: 'thin' as const, color: { rgb: COLOR.BORDER } },
+  bottom: { style: 'thin' as const, color: { rgb: COLOR.BORDER } },
+  left: { style: 'thin' as const, color: { rgb: COLOR.BORDER } },
+  right: { style: 'thin' as const, color: { rgb: COLOR.BORDER } },
+};
+
+const NO_BORDER = {
+  top: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
+  bottom: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
+  left: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
+  right: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
+};
+
+/** 파라미터 없는 불변 스타일 프리셋 */
+const STYLE = {
+  title: {
+    font: { name: '맑은 고딕', sz: 18, bold: true, color: { rgb: COLOR.ACCENT } },
+    alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+    border: NO_BORDER,
+  },
+  company: {
+    font: { name: '맑은 고딕', sz: 13, bold: true, color: { rgb: COLOR.BODY_TEXT } },
+    alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+    border: NO_BORDER,
+  },
+  sectionHeader: {
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: COLOR.HEADER_TEXT } },
+    fill: { fgColor: { rgb: COLOR.HEADER_BG } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  subSection: {
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: COLOR.ACCENT } },
+    fill: { fgColor: { rgb: COLOR.SECTION_BG } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  label: {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.BODY_TEXT } },
+    fill: { fgColor: { rgb: COLOR.LABEL_BG } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  value: {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  tableHeader: {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.HEADER_TEXT } },
+    fill: { fgColor: { rgb: COLOR.HEADER_BG } },
+    alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  total: {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.BODY_TEXT } },
+    fill: { fgColor: { rgb: COLOR.TOTAL_BG } },
+    alignment: { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  totalLabel: {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.BODY_TEXT } },
+    fill: { fgColor: { rgb: COLOR.TOTAL_BG } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  metaLabel: {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.MUTED_TEXT } },
+    alignment: { horizontal: 'right' as const, vertical: 'center' as const },
+    border: NO_BORDER,
+  },
+  metaValue: {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+    border: NO_BORDER,
+  },
+  diagnosis: {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
+    alignment: { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true },
+    border: THIN_BORDER,
+  },
+  blank: { border: NO_BORDER } as XLSX.CellStyle,
+  courseHeader: {
+    font: { name: '맑은 고딕', sz: 11, bold: true, color: { rgb: COLOR.HEADER_TEXT } },
+    fill: { fgColor: { rgb: COLOR.HEADER_BG } },
+    alignment: { horizontal: 'left' as const, vertical: 'center' as const },
+    border: THIN_BORDER,
+  },
+} as const;
+
+/** 교대행 여부에 따른 테이블 본문 스타일 (파라미터 있으므로 함수 유지) */
+function tableBodyStyle(alt: boolean): XLSX.CellStyle {
   return {
-    selected_course_name: extended.selected_course_name,
-    selected_course_level: extended.selected_course_level,
-    selected_course_task: extended.selected_course_task,
-    selection_rationale: extended.selection_rationale,
-    final_deliverables: extended.final_deliverables,
-    business_impact: extended.business_impact,
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
+    fill: alt ? { fgColor: { rgb: COLOR.ALT_ROW } } : undefined,
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+    border: THIN_BORDER,
   };
 }
 
-/**
- * PBL 커리큘럼 모듈에서 확장 필드 추출
- */
-function extractModuleDeliverables(
-  module: PBLCourse['curriculum'][number]
-): string[] | undefined {
-  const extended = module as unknown as PBLModuleExtended;
-  return extended.deliverables;
+function tableBodyCenterStyle(alt: boolean): XLSX.CellStyle {
+  return { ...tableBodyStyle(alt), alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
 }
 
 // ============================================================================
-// 시트 생성 함수들
+// SheetCtx — 시트 빌더 컨텍스트
 // ============================================================================
 
-/**
- * 개요 시트 생성
- */
-function createOverviewSheet(
-  data: RoadmapExportData
-): XLSX.WorkSheet {
-  const overviewData = [
-    ['AI 교육 로드맵'],
-    [],
-    ['기업명', data.companyName],
-    ['프로젝트 ID', data.projectId],
-    ['버전', `v${data.versionNumber}`],
-    ['상태', data.status === 'DRAFT' ? '초안' : data.status === 'FINAL' ? '확정본' : '이전 확정본'],
-    ['생성일', new Date(data.createdAt).toLocaleDateString('ko-KR')],
-    ['확정일', data.finalizedAt ? new Date(data.finalizedAt).toLocaleDateString('ko-KR') : '-'],
-    [],
-    ['진단 요약'],
-    [data.diagnosisSummary],
-  ];
-
-  const sheet = XLSX.utils.aoa_to_sheet(overviewData);
-  sheet['!cols'] = [{ wch: 20 }, { wch: 60 }];
-  sheet['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
-    { s: { r: 9, c: 0 }, e: { r: 9, c: 1 } },
-    { s: { r: 10, c: 0 }, e: { r: 10, c: 1 } },
-  ];
-
-  return sheet;
+interface SheetCtx {
+  ws: XLSX.WorkSheet;
+  merges: XLSX.Range[];
+  rows: XLSX.RowInfo[];
+  r: number;
+  lastCol: number;
 }
 
-/**
- * NxM 매트릭스 시트 생성
- */
+function createCtx(lastCol: number): SheetCtx {
+  return { ws: {}, merges: [], rows: [], r: 0, lastCol };
+}
+
+// ============================================================================
+// 시트 빌더 헬퍼
+// ============================================================================
+
+/** 셀에 값+스타일 적용 */
+function setCell(ws: XLSX.WorkSheet, r: number, c: number, value: string | number, style: XLSX.CellStyle): void {
+  const ref = XLSX.utils.encode_cell({ r, c });
+  ws[ref] = { v: value, t: typeof value === 'number' ? 'n' : 's', s: style };
+}
+
+/** 행 전체에 스타일 적용 (빈 셀 생성) */
+function fillRow(ws: XLSX.WorkSheet, r: number, cStart: number, cEnd: number, style: XLSX.CellStyle): void {
+  for (let c = cStart; c <= cEnd; c++) {
+    const ref = XLSX.utils.encode_cell({ r, c });
+    if (!ws[ref]) ws[ref] = { v: '', t: 's' };
+    ws[ref].s = style;
+  }
+}
+
+/** 빈 행 추가 */
+function addBlankRow(ctx: SheetCtx, height: number): void {
+  fillRow(ctx.ws, ctx.r, 0, ctx.lastCol, STYLE.blank);
+  ctx.rows[ctx.r] = { hpt: height };
+  ctx.r++;
+}
+
+/** 병합 행 추가 (전체 열 병합) */
+function addMergedRow(ctx: SheetCtx, text: string, style: XLSX.CellStyle, height: number): void {
+  setCell(ctx.ws, ctx.r, 0, text, style);
+  fillRow(ctx.ws, ctx.r, 0, ctx.lastCol, style);
+  ctx.merges.push({ s: { r: ctx.r, c: 0 }, e: { r: ctx.r, c: ctx.lastCol } });
+  ctx.rows[ctx.r] = { hpt: height };
+  ctx.r++;
+}
+
+/** 섹션 헤더 (■ 접두어, 자주색 배경) */
+function addSectionHeader(ctx: SheetCtx, title: string): void {
+  addMergedRow(ctx, `■ ${title}`, STYLE.sectionHeader, 28);
+}
+
+/** 소섹션 헤더 (▸ 접두어, 연한 라벤더 배경) */
+function addSubSection(ctx: SheetCtx, title: string): void {
+  addMergedRow(ctx, `▸ ${title}`, STYLE.subSection, 24);
+}
+
+/** 레이블-값 행 (A=레이블, B~lastCol=값 병합) */
+function addLabelValueRow(ctx: SheetCtx, label: string, value: string, height?: number): void {
+  const h = height ?? Math.max(22, calcRowHeight(value, 22, 14));
+  setCell(ctx.ws, ctx.r, 0, label, STYLE.label);
+  setCell(ctx.ws, ctx.r, 1, value, STYLE.value);
+  fillRow(ctx.ws, ctx.r, 1, ctx.lastCol, STYLE.value);
+  ctx.merges.push({ s: { r: ctx.r, c: 1 }, e: { r: ctx.r, c: ctx.lastCol } });
+  ctx.rows[ctx.r] = { hpt: h };
+  ctx.r++;
+}
+
+/** 레이블-값 쌍 배열 일괄 추가 */
+function addLabelValueRows(ctx: SheetCtx, pairs: [string, string][], fixedHeight?: number): void {
+  for (const [label, value] of pairs) {
+    addLabelValueRow(ctx, label, value, fixedHeight);
+  }
+}
+
+/** 번호 매기기 리스트 섹션 (PBL용) */
+function addListSection(ctx: SheetCtx, title: string, items: string[] | undefined): void {
+  if (!items || items.length === 0) return;
+  addSubSection(ctx, title);
+  items.forEach((item, i) => {
+    const text = `${i + 1}. ${item}`;
+    addMergedRow(ctx, text, STYLE.value, Math.max(22, calcRowHeight(text, 22, 14)));
+  });
+  addBlankRow(ctx, 10);
+}
+
+/** 텍스트 블록 섹션 (PBL용) */
+function addTextSection(ctx: SheetCtx, title: string, text: string | undefined): void {
+  if (!text) return;
+  addSubSection(ctx, title);
+  addMergedRow(ctx, text, STYLE.value, Math.max(22, calcRowHeight(text, 22, 14)));
+  addBlankRow(ctx, 10);
+}
+
+/** 시트 마무리 (범위/병합/행높이/열너비 설정) */
+function finalizeSheet(ctx: SheetCtx, cols: XLSX.ColInfo[]): XLSX.WorkSheet {
+  ctx.ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: ctx.r - 1, c: ctx.lastCol } });
+  ctx.ws['!merges'] = ctx.merges;
+  ctx.ws['!rows'] = ctx.rows;
+  ctx.ws['!cols'] = cols;
+  return ctx.ws;
+}
+
+// ============================================================================
+// 포맷 헬퍼
+// ============================================================================
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'DRAFT': return '초안';
+    case 'FINAL': return '확정본';
+    case 'ARCHIVED': return '보관본';
+    default: return status;
+  }
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+function buildCourseNumberMap(courses: RoadmapCell[]): Map<string, number> {
+  const map = new Map<string, number>();
+  courses.forEach((c, i) => map.set(c.course_name, i + 1));
+  return map;
+}
+
+function formatMatrixCell(cells: RoadmapMatrixCell[] | undefined, numberMap: Map<string, number>): string {
+  if (!cells || cells.length === 0) return '-';
+  return cells
+    .map(c => {
+      const no = numberMap.get(c.course_name);
+      const prefix = no ? `No.${no} ` : '';
+      return `${prefix}${c.course_name}\n(${c.recommended_hours}시간)`;
+    })
+    .join('\n\n');
+}
+
+function sumMatrixHours(cells: RoadmapMatrixCell[] | undefined): number {
+  if (!cells || cells.length === 0) return 0;
+  return cells.reduce((sum, c) => sum + c.recommended_hours, 0);
+}
+
+function formatTools(tools: { name: string; free_tier_info: string }[] | undefined): string {
+  if (!tools || tools.length === 0) return '-';
+  return tools.map(t => `${t.name} (${t.free_tier_info})`).join(', ');
+}
+
+function calcRowHeight(text: string, baseHeight = 20, lineHeight = 14): number {
+  if (!text) return baseHeight;
+  return Math.max(baseHeight, text.split('\n').length * lineHeight);
+}
+
+function formatHours(hours: number): string {
+  return hours > 0 ? `${hours}시간` : '-';
+}
+
+// ============================================================================
+// 시트 1: 개요
+// ============================================================================
+
+function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
+  const ctx = createCtx(3);
+
+  addBlankRow(ctx, 20);
+  addMergedRow(ctx, 'AI 교육 훈련 로드맵', STYLE.title, 40);
+  addBlankRow(ctx, 10);
+  addMergedRow(ctx, data.companyName, STYLE.company, 30);
+  addBlankRow(ctx, 15);
+
+  // 메타 정보 (레이블-값이 2열만 사용, 나머지 빈칸)
+  const metaRows: [string, string][] = [
+    ['버전', `v${data.versionNumber} ${getStatusLabel(data.status)}`],
+    ['생성일', formatDate(data.createdAt)],
+    ['확정일', data.finalizedAt ? formatDate(data.finalizedAt) : '-'],
+  ];
+  for (const [label, value] of metaRows) {
+    setCell(ctx.ws, ctx.r, 0, label, STYLE.metaLabel);
+    setCell(ctx.ws, ctx.r, 1, value, STYLE.metaValue);
+    fillRow(ctx.ws, ctx.r, 2, ctx.lastCol, STYLE.blank);
+    ctx.rows[ctx.r] = { hpt: 22 };
+    ctx.r++;
+  }
+
+  addBlankRow(ctx, 20);
+  addSectionHeader(ctx, '진단 요약');
+  addBlankRow(ctx, 6);
+
+  const diagLines = data.diagnosisSummary.split('\n').length;
+  addMergedRow(ctx, data.diagnosisSummary, STYLE.diagnosis, Math.max(60, diagLines * 16));
+
+  return finalizeSheet(ctx, [{ wch: 14 }, { wch: 28 }, { wch: 28 }, { wch: 28 }]);
+}
+
+// ============================================================================
+// 시트 2: 과정 체계도
+// ============================================================================
+
 function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const header = [
-    '업무',
-    '초급 과정',
-    '초급 시간',
-    '중급 과정',
-    '중급 시간',
-    '고급 과정',
-    '고급 시간',
-  ];
+  const ctx = createCtx(3);
+  const numberMap = buildCourseNumberMap(data.courses);
 
-  const rows = data.roadmapMatrix.map(row => [
-    row.task_name,
-    formatMatrixCourseNames(row.beginner),
-    formatMatrixCourseHours(row.beginner),
-    formatMatrixCourseNames(row.intermediate),
-    formatMatrixCourseHours(row.intermediate),
-    formatMatrixCourseNames(row.advanced),
-    formatMatrixCourseHours(row.advanced),
-  ]);
+  addSectionHeader(ctx, '과정 체계도');
+  addBlankRow(ctx, 6);
 
-  const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  sheet['!cols'] = [
-    { wch: 25 },
-    { wch: 30 },
-    { wch: 10 },
-    { wch: 30 },
-    { wch: 10 },
-    { wch: 30 },
-    { wch: 10 },
-  ];
+  // 테이블 헤더
+  ['업무', '초급', '중급', '고급'].forEach((h, c) => setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader));
+  ctx.rows[ctx.r] = { hpt: 26 };
+  ctx.r++;
 
-  return sheet;
+  // 데이터 행 + 합계 집계
+  const totals = [0, 0, 0]; // [초급, 중급, 고급]
+  data.roadmapMatrix.forEach((row, idx) => {
+    const alt = idx % 2 === 1;
+    const levelCells = [row.beginner, row.intermediate, row.advanced];
+    const texts = levelCells.map(cells => formatMatrixCell(cells, numberMap));
+
+    setCell(ctx.ws, ctx.r, 0, row.task_name, {
+      ...tableBodyStyle(alt),
+      font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.BODY_TEXT } },
+    });
+    texts.forEach((text, c) => setCell(ctx.ws, ctx.r, c + 1, text, tableBodyStyle(alt)));
+
+    ctx.rows[ctx.r] = { hpt: Math.max(...texts.map(t => calcRowHeight(t, 30, 14))) };
+    levelCells.forEach((cells, i) => { totals[i] += sumMatrixHours(cells); });
+    ctx.r++;
+  });
+
+  // 합계 행
+  const grandTotal = totals[0] + totals[1] + totals[2];
+  setCell(ctx.ws, ctx.r, 0, '합계', STYLE.totalLabel);
+  totals.forEach((t, i) => setCell(ctx.ws, ctx.r, i + 1, formatHours(t), STYLE.total));
+  ctx.rows[ctx.r] = { hpt: 26 };
+  ctx.r++;
+
+  // 전체 합계
+  const grandTotalLabelStyle: XLSX.CellStyle = {
+    font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.ACCENT } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: NO_BORDER,
+  };
+  const grandTotalValueStyle: XLSX.CellStyle = {
+    font: { name: '맑은 고딕', sz: 10, bold: true, color: { rgb: COLOR.ACCENT } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: NO_BORDER,
+  };
+  setCell(ctx.ws, ctx.r, 0, '', STYLE.blank);
+  setCell(ctx.ws, ctx.r, 1, '', STYLE.blank);
+  setCell(ctx.ws, ctx.r, 2, '전체 합계', grandTotalLabelStyle);
+  setCell(ctx.ws, ctx.r, 3, `${grandTotal}시간`, grandTotalValueStyle);
+  ctx.rows[ctx.r] = { hpt: 24 };
+  ctx.r++;
+
+  return finalizeSheet(ctx, [{ wch: 18 }, { wch: 32 }, { wch: 32 }, { wch: 32 }]);
 }
 
-/**
- * PBL 과정 시트 생성
- */
+// ============================================================================
+// 시트 3: 교육 과정 상세
+// ============================================================================
+
+function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
+  const ctx = createCtx(4);
+
+  data.courses.forEach((course, idx) => {
+    // 과정 제목
+    addMergedRow(ctx, `No.${idx + 1}  ${course.course_name}`, STYLE.courseHeader, 30);
+    addBlankRow(ctx, 6);
+
+    // 프로파일
+    addLabelValueRows(ctx, [
+      ['과정 목표', course.expected_outcome || '-'],
+      ['교육 대상', course.target_audience || '-'],
+      ['대상 업무', course.target_task || '-'],
+      ['난이도', getLevelLabel(course.level)],
+      ['교육 시간', `${course.recommended_hours}시간`],
+      ['사용 도구', formatTools(course.tools)],
+      ['선수 조건', course.prerequisites?.length > 0 ? course.prerequisites.join(', ') : '없음'],
+    ]);
+    addBlankRow(ctx, 8);
+
+    // 커리큘럼
+    addSubSection(ctx, '커리큘럼');
+
+    const currHeaders = ['시간', '학습 모듈', '세부 커리큘럼', '', '실습/과제'];
+    currHeaders.forEach((h, c) => setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader));
+    ctx.merges.push({ s: { r: ctx.r, c: 2 }, e: { r: ctx.r, c: 3 } });
+    ctx.rows[ctx.r] = { hpt: 24 };
+    ctx.r++;
+
+    (course.curriculum || []).forEach((module, mIdx) => {
+      const alt = mIdx % 2 === 1;
+      const detailsText = module.details?.map(d => `• ${d}`).join('\n') || '-';
+
+      setCell(ctx.ws, ctx.r, 0, `${module.hours}H`, tableBodyCenterStyle(alt));
+      setCell(ctx.ws, ctx.r, 1, module.module_name, tableBodyStyle(alt));
+      setCell(ctx.ws, ctx.r, 2, detailsText, tableBodyStyle(alt));
+      fillRow(ctx.ws, ctx.r, 3, 3, tableBodyStyle(alt));
+      ctx.merges.push({ s: { r: ctx.r, c: 2 }, e: { r: ctx.r, c: 3 } });
+      setCell(ctx.ws, ctx.r, 4, module.practice || '-', tableBodyStyle(alt));
+      ctx.rows[ctx.r] = { hpt: calcRowHeight(detailsText, 24, 14) };
+      ctx.r++;
+    });
+    addBlankRow(ctx, 8);
+
+    // 기대효과 & 측정방법
+    addSubSection(ctx, '기대효과 및 측정');
+    addLabelValueRows(ctx, [
+      ['기대효과', course.expected_outcome || '-'],
+      ['측정 방법', course.measurement_method || '-'],
+    ]);
+
+    // 과정 사이 간격
+    if (idx < data.courses.length - 1) {
+      addBlankRow(ctx, 12);
+      addBlankRow(ctx, 12);
+    }
+  });
+
+  return finalizeSheet(ctx, [{ wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 12 }, { wch: 30 }]);
+}
+
+// ============================================================================
+// 시트 4: PBL 프로그램
+// ============================================================================
+
 function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const extended = extractPBLExtendedFields(data.pblCourse);
-  const { selection_rationale: rationale } = extended;
+  const ctx = createCtx(5);
+  const pbl = data.pblCourse;
+
+  addSectionHeader(ctx, 'PBL 프로그램');
+  addBlankRow(ctx, 10);
 
   // 선정된 과정 정보
-  const selectionInfo = [
-    ['PBL 최적 과정'],
-    [],
-    ['[선정된 과정 정보]'],
-    ['선정된 과정명', extended.selected_course_name || '-'],
-    ['선정된 과정 레벨', extended.selected_course_level ? getLevelLabel(extended.selected_course_level) : '-'],
-    ['선정된 과정 업무', extended.selected_course_task || '-'],
-    [],
-    ['[PBL 과정 선정 이유]'],
+  addSubSection(ctx, '선정된 과정 정보');
+  addLabelValueRows(ctx, [
+    ['과정명', pbl.selected_course_name || '-'],
+    ['난이도', pbl.selected_course_level ? getLevelLabel(pbl.selected_course_level) : '-'],
+    ['대상 업무', pbl.selected_course_task || '-'],
+  ], 22);
+  addBlankRow(ctx, 10);
+
+  // 선정 근거
+  addSubSection(ctx, 'PBL 과정 선정 근거');
+  const rationale = pbl.selection_rationale;
+  addLabelValueRows(ctx, [
     ['컨설턴트 전문성 적합도', rationale?.consultant_expertise_fit || '-'],
     ['페인포인트 연관성', rationale?.pain_point_alignment || '-'],
     ['현실 가능성 평가', rationale?.feasibility_assessment || '-'],
     ['종합 선정 이유', rationale?.summary || '-'],
-    [],
-    ['[PBL 과정 정보]'],
-    ['과정명', data.pblCourse.course_name],
-    ['총 시간', `${data.pblCourse.total_hours}시간`],
-    ['교육 대상', data.pblCourse.target_audience],
-    ['대상 업무', data.pblCourse.target_tasks?.join(', ') || '-'],
-    [],
-    ['[커리큘럼]'],
-  ];
+  ]);
+  addBlankRow(ctx, 10);
 
-  // 커리큘럼
-  const curriculumHeader = ['모듈명', '시간', '세부 커리큘럼', '실습', '모듈 결과물', '사용 도구', '무료 범위'];
-  const curriculumRows = data.pblCourse.curriculum?.map(module => {
-    const deliverables = extractModuleDeliverables(module);
-    const details = module.details?.map(d => `- ${d}`).join('\n') || '-';
-    return [
-      module.module_name,
-      module.hours,
-      details,
-      module.practice,
-      deliverables?.join(', ') || '-',
-      module.tools?.map(t => t.name).join(', ') || '-',
-      module.tools?.map(t => t.free_tier_info).join(', ') || '-',
-    ];
-  }) || [];
+  // 과정 개요
+  addSubSection(ctx, 'PBL 과정 개요');
+  addLabelValueRows(ctx, [
+    ['과정명', pbl.course_name || '-'],
+    ['총 교육시간', `${pbl.total_hours}시간`],
+    ['교육 대상', pbl.target_audience || '-'],
+    ['대상 업무', pbl.target_tasks?.join(', ') || '-'],
+  ], 22);
+  addBlankRow(ctx, 10);
 
-  // 최종 산출물 및 기타 정보
-  const additionalInfo = [
-    [],
-    ['[최종 산출물]'],
-    ...(extended.final_deliverables?.map(d => [d]) || [['(없음)']]),
-    [],
-    ['[비즈니스 임팩트]'],
-    [extended.business_impact || '-'],
-    [],
-    ['[기대 효과]'],
-    ...(data.pblCourse.expected_outcomes?.map(o => [o]) || []),
-    [],
-    ['[측정 방법]'],
-    ...(data.pblCourse.measurement_methods?.map(m => [m]) || []),
-    [],
-    ['[준비물]'],
-    ...(data.pblCourse.prerequisites?.map(p => [p]) || []),
-  ];
+  // 커리큘럼 테이블
+  addSubSection(ctx, 'PBL 커리큘럼');
 
-  const pblData = [
-    ...selectionInfo,
-    curriculumHeader,
-    ...curriculumRows,
-    ...additionalInfo,
-  ];
+  ['모듈명', '시간', '세부 내용', '실습', '모듈 산출물', '사용 도구 (무료 범위)']
+    .forEach((h, c) => setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader));
+  ctx.rows[ctx.r] = { hpt: 26 };
+  ctx.r++;
 
-  const sheet = XLSX.utils.aoa_to_sheet(pblData);
-  sheet['!cols'] = [
-    { wch: 25 },
-    { wch: 10 },
-    { wch: 40 },
-    { wch: 40 },
-    { wch: 30 },
-    { wch: 25 },
-    { wch: 30 },
-  ];
+  (pbl.curriculum || []).forEach((module, mIdx) => {
+    const alt = mIdx % 2 === 1;
+    const detailsText = module.details?.map(d => `• ${d}`).join('\n') || '-';
+    const deliverablesText = module.deliverables?.join(', ') || '-';
+    const toolsText = module.tools?.map(t => `${t.name} (${t.free_tier_info})`).join('\n') || '-';
 
-  return sheet;
-}
-
-/**
- * 과정 상세 시트 생성
- */
-function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const header = [
-    '과정명',
-    '레벨',
-    '대상 업무',
-    '교육 대상',
-    '권장 시간',
-    '커리큘럼',
-    '실습/과제',
-    '사용 도구',
-    '무료 범위',
-    '기대 효과',
-    '측정 방법',
-    '준비물',
-  ];
-
-  const rows = data.courses.map(course => {
-    // 커리큘럼 모듈을 문자열로 변환
-    const curriculumStr = course.curriculum?.map(m => {
-      const details = m.details?.map(d => `  - ${d}`).join('\n') || '';
-      return `[${m.hours}H] ${m.module_name}${details ? '\n' + details : ''}`;
-    }).join('\n\n') || '-';
-
-    // 실습/과제를 문자열로 변환
-    const practiceStr = course.curriculum?.map(m =>
-      m.practice ? `[${m.module_name}] ${m.practice}` : null
-    ).filter(Boolean).join('\n') || '-';
-
-    return [
-      course.course_name,
-      getLevelLabel(course.level),
-      course.target_task,
-      course.target_audience,
-      course.recommended_hours,
-      curriculumStr,
-      practiceStr,
-      course.tools?.map(t => t.name).join(', ') || '-',
-      course.tools?.map(t => t.free_tier_info).join(', ') || '-',
-      course.expected_outcome,
-      course.measurement_method,
-      course.prerequisites?.join(', ') || '-',
-    ];
+    setCell(ctx.ws, ctx.r, 0, module.module_name, tableBodyStyle(alt));
+    setCell(ctx.ws, ctx.r, 1, `${module.hours}H`, tableBodyCenterStyle(alt));
+    setCell(ctx.ws, ctx.r, 2, detailsText, tableBodyStyle(alt));
+    setCell(ctx.ws, ctx.r, 3, module.practice || '-', tableBodyStyle(alt));
+    setCell(ctx.ws, ctx.r, 4, deliverablesText, tableBodyStyle(alt));
+    setCell(ctx.ws, ctx.r, 5, toolsText, tableBodyStyle(alt));
+    ctx.rows[ctx.r] = { hpt: Math.max(calcRowHeight(detailsText, 26, 14), calcRowHeight(toolsText, 26, 14)) };
+    ctx.r++;
   });
+  addBlankRow(ctx, 10);
 
-  const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  sheet['!cols'] = [
-    { wch: 25 },
-    { wch: 8 },
-    { wch: 20 },
-    { wch: 15 },
-    { wch: 10 },
-    { wch: 40 },
-    { wch: 40 },
-    { wch: 25 },
-    { wch: 30 },
-    { wch: 30 },
-    { wch: 25 },
-    { wch: 25 },
-  ];
+  // 하단 섹션들
+  addListSection(ctx, '최종 산출물', pbl.final_deliverables);
+  addTextSection(ctx, '비즈니스 임팩트', pbl.business_impact);
+  addListSection(ctx, '기대효과', pbl.expected_outcomes);
+  addListSection(ctx, '측정 방법', pbl.measurement_methods);
+  addListSection(ctx, '준비물', pbl.prerequisites);
 
-  return sheet;
-}
-
-/**
- * 도구 목록 시트 생성
- */
-function createToolsSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const toolsSet = new Map<string, string>();
-
-  // 모든 과정에서 도구 수집
-  data.courses.forEach(course => {
-    course.tools?.forEach(tool => {
-      if (!toolsSet.has(tool.name)) {
-        toolsSet.set(tool.name, tool.free_tier_info);
-      }
-    });
-  });
-
-  // PBL 과정에서 도구 수집
-  data.pblCourse.curriculum?.forEach(module => {
-    module.tools?.forEach(tool => {
-      if (!toolsSet.has(tool.name)) {
-        toolsSet.set(tool.name, tool.free_tier_info);
-      }
-    });
-  });
-
-  const header = ['도구명', '무료 범위'];
-  const rows = Array.from(toolsSet.entries()).map(([name, info]) => [name, info]);
-
-  const toolsData = [
-    ['사용 도구 및 무료 범위'],
-    [],
-    header,
-    ...rows,
-  ];
-
-  const sheet = XLSX.utils.aoa_to_sheet(toolsData);
-  sheet['!cols'] = [{ wch: 25 }, { wch: 50 }];
-  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
-
-  return sheet;
+  return finalizeSheet(ctx, [{ wch: 20 }, { wch: 8 }, { wch: 28 }, { wch: 24 }, { wch: 20 }, { wch: 26 }]);
 }
 
 // ============================================================================
 // 메인 함수
 // ============================================================================
 
-/**
- * XLSX 생성
- */
 export function generateXLSX(data: RoadmapExportData): Uint8Array {
   const workbook = XLSX.utils.book_new();
 
-  // 시트 추가
   XLSX.utils.book_append_sheet(workbook, createOverviewSheet(data), '개요');
-  XLSX.utils.book_append_sheet(workbook, createMatrixSheet(data), 'NxM 매트릭스');
-  XLSX.utils.book_append_sheet(workbook, createPBLSheet(data), 'PBL 과정');
-  XLSX.utils.book_append_sheet(workbook, createCoursesSheet(data), '과정 상세');
-  XLSX.utils.book_append_sheet(workbook, createToolsSheet(data), '도구 목록');
+  XLSX.utils.book_append_sheet(workbook, createMatrixSheet(data), '과정 체계도');
+  XLSX.utils.book_append_sheet(workbook, createCoursesSheet(data), '교육 과정 상세');
+  XLSX.utils.book_append_sheet(workbook, createPBLSheet(data), 'PBL 프로그램');
 
-  // Uint8Array로 변환
   const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
   return new Uint8Array(buffer);
 }
 
-/**
- * 브라우저에서 다운로드 실행
- */
 export function downloadXLSX(data: RoadmapExportData, filename: string): void {
   const buffer = generateXLSX(data);
 
-  // 새 ArrayBuffer로 복사하여 Blob 생성
   const newBuffer = new ArrayBuffer(buffer.length);
   const view = new Uint8Array(newBuffer);
   view.set(buffer);
 
   const blob = new Blob([newBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
   const url = URL.createObjectURL(blob);
