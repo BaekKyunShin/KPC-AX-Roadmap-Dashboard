@@ -80,7 +80,7 @@ function createOverviewSheet(
     ['기업명', data.companyName],
     ['프로젝트 ID', data.projectId],
     ['버전', `v${data.versionNumber}`],
-    ['상태', data.status === 'DRAFT' ? '초안' : data.status === 'FINAL' ? '확정' : '보관'],
+    ['상태', data.status === 'DRAFT' ? '초안' : data.status === 'FINAL' ? '확정본' : '이전 확정본'],
     ['생성일', new Date(data.createdAt).toLocaleDateString('ko-KR')],
     ['확정일', data.finalizedAt ? new Date(data.finalizedAt).toLocaleDateString('ko-KR') : '-'],
     [],

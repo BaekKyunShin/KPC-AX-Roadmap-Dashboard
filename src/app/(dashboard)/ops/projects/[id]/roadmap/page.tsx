@@ -11,6 +11,8 @@ import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
+import { RevisionPromptToggle } from '@/components/roadmap/RevisionPromptToggle';
+import { VersionHistoryList } from '@/components/roadmap/VersionHistoryList';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
 import { OpsRoadmapPageSkeleton } from '@/components/ui/Skeleton';
@@ -25,14 +27,7 @@ export default function OpsRoadmapViewPage() {
   const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
 
   // 다운로드 훅
-  const {
-    isDownloading,
-    error: downloadError,
-    success: downloadSuccess,
-    downloadPDF,
-    downloadXLSX,
-    clearMessages,
-  } = useRoadmapDownload();
+  const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
 
   // 버전 목록 로드
   useEffect(() => {
@@ -82,61 +77,16 @@ export default function OpsRoadmapViewPage() {
         backLink={{ href: `/ops/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
       />
 
-      {/* 에러/성공 메시지 */}
-      {downloadError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-          {downloadError}
-          <button
-            onClick={clearMessages}
-            className="absolute top-0 right-0 p-3 text-red-500 hover:text-red-700"
-          >
-            ×
-          </button>
-        </div>
-      )}
-      {downloadSuccess && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
-          {downloadSuccess}
-          <button
-            onClick={clearMessages}
-            className="absolute top-0 right-0 p-3 text-green-500 hover:text-green-700"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 왼쪽: 버전 목록 */}
         <div className="lg:col-span-1">
           <div className="bg-white shadow rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-900 mb-3">버전 히스토리</h3>
-            {versions.length > 0 ? (
-              <ul className="space-y-2">
-                {versions.map((v) => (
-                  <li key={v.id}>
-                    <button
-                      onClick={() => handleVersionSelect(v.id)}
-                      className={`w-full text-left px-3 py-2 rounded text-sm ${
-                        selectedVersion?.id === v.id
-                          ? 'bg-purple-50 border border-purple-200'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">v{v.version_number}</span>
-                        <RoadmapStatusBadge status={v.status} />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {new Date(v.created_at).toLocaleDateString('ko-KR')}
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-500">아직 생성된 로드맵이 없습니다.</p>
-            )}
+            <VersionHistoryList
+              versions={versions}
+              selectedVersionId={selectedVersion?.id}
+              onVersionSelect={handleVersionSelect}
+            />
           </div>
         </div>
 
@@ -151,7 +101,7 @@ export default function OpsRoadmapViewPage() {
                     <h2 className="text-lg font-semibold text-gray-900">
                       버전 {selectedVersion.version_number}
                     </h2>
-                    <RoadmapStatusBadge status={selectedVersion.status} />
+                    <RoadmapStatusBadge status={selectedVersion.status} versionNumber={selectedVersion.version_number} />
                     {selectedVersion.free_tool_validated && selectedVersion.time_limit_validated ? (
                       <span className="text-xs text-green-600">✓ 검증 통과</span>
                     ) : (
@@ -174,15 +124,12 @@ export default function OpsRoadmapViewPage() {
                   </div>
                 </div>
 
-                {/* 진단 요약 */}
-                <p className="mt-2 text-sm text-gray-600">{selectedVersion.diagnosis_summary}</p>
-
                 {selectedVersion.revision_prompt && (
-                  <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
-                    <span className="font-medium text-yellow-800">수정 요청:</span>{' '}
-                    <span className="text-yellow-700">{selectedVersion.revision_prompt}</span>
-                  </div>
+                  <RevisionPromptToggle prompt={selectedVersion.revision_prompt} />
                 )}
+
+                {/* 진단 요약 */}
+                <p className="mt-3 text-sm text-gray-600">{selectedVersion.diagnosis_summary}</p>
               </div>
 
               {/* 탭 */}

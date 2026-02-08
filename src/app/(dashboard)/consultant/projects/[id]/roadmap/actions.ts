@@ -90,7 +90,7 @@ export async function createRoadmap(
 }
 
 /**
- * 로드맵 FINAL 확정
+ * 로드맵 최종 확정
  */
 export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResult> {
   try {
@@ -108,7 +108,7 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResu
     console.error('[confirmFinalRoadmap Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'FINAL 확정에 실패했습니다.',
+      error: error instanceof Error ? error.message : '최종 확정에 실패했습니다.',
     };
   }
 }

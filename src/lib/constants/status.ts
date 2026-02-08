@@ -160,8 +160,8 @@ export const CONSULTANT_PROJECT_STATUS_CONFIG: Record<string, { label: string; c
  */
 export const ROADMAP_VERSION_STATUS_CONFIG: Record<RoadmapVersionStatus, { label: string; color: string }> = {
   DRAFT: { label: '초안', color: 'bg-yellow-100 text-yellow-800' },
-  FINAL: { label: '확정', color: 'bg-green-100 text-green-800' },
-  ARCHIVED: { label: '보관', color: 'bg-gray-100 text-gray-800' },
+  FINAL: { label: '확정본', color: 'bg-green-100 text-green-800' },
+  ARCHIVED: { label: '이전 확정본', color: 'bg-gray-100 text-gray-800' },
 };
 
 /**

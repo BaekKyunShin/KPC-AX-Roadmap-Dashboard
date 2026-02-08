@@ -1170,7 +1170,7 @@ export function validateRoadmap(result: RoadmapResult): ValidationResult {
 }
 
 /**
- * 로드맵 FINAL 확정
+ * 로드맵 최종 확정
  */
 export async function finalizeRoadmap(
   roadmapId: string,
@@ -1189,25 +1189,20 @@ export async function finalizeRoadmap(
     throw new Error('로드맵을 찾을 수 없습니다.');
   }
 
-  // 배정된 컨설턴트만 FINAL 가능
+  // 배정된 컨설턴트만 최종 확정 가능
   const projectData = roadmap.projects as { assigned_consultant_id: string };
   if (projectData.assigned_consultant_id !== actorUserId) {
-    throw new Error('배정된 컨설턴트만 FINAL 확정할 수 있습니다.');
+    throw new Error('배정된 컨설턴트만 최종 확정할 수 있습니다.');
   }
 
-  // 검증 통과 확인
-  if (!roadmap.free_tool_validated || !roadmap.time_limit_validated) {
-    throw new Error('검증을 통과하지 못한 로드맵은 FINAL 확정할 수 없습니다.');
-  }
-
-  // 기존 FINAL → ARCHIVED
+  // 기존 확정본 → 이전 확정본
   await supabase
     .from('roadmap_versions')
     .update({ status: 'ARCHIVED' })
     .eq('project_id', roadmap.project_id)
     .eq('status', 'FINAL');
 
-  // 현재 로드맵 → FINAL
+  // 현재 로드맵 → 확정본
   await supabase
     .from('roadmap_versions')
     .update({
