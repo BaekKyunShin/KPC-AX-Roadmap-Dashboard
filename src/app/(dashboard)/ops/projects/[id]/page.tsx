@@ -9,8 +9,9 @@ import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
-import { FileText } from 'lucide-react';
+import { FileText, ClipboardList } from 'lucide-react';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -75,6 +76,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     `)
     .eq('project_id', id)
     .order('rank', { ascending: true });
+
+  // 인터뷰 조회 (인터뷰 미작성 프로젝트 대응 위해 maybeSingle 사용)
+  const { data: interview } = await supabase
+    .from('interviews')
+    .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
+    .eq('project_id', id)
+    .maybeSingle();
 
   // 배정 이력 조회 (AssignmentTabSection에서 사용)
   const { data: assignments } = await supabase
@@ -195,6 +203,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           latestAssignment={assignments?.[0]}
           hasSelfAssessment={!!selfAssessment}
         />
+
+        {/* 인터뷰 정보 (읽기 전용) */}
+        {interview && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ClipboardList className="h-4 w-4 text-blue-600" />
+                  인터뷰 정보
+                </CardTitle>
+                <span className="text-sm text-gray-500">
+                  {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <InterviewSummary {...toInterviewSummaryProps(interview)} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* 로드맵 열람 (읽기 전용) */}
         {['ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (

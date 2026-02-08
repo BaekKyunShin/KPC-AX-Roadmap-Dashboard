@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
+import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
-import { InterviewSummary } from './_components/InterviewSummary';
+import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -42,7 +43,9 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
       self_assessments(
         id,
         scores,
-        created_at
+        answers,
+        created_at,
+        template:self_assessment_templates(questions)
       ),
       interviews(
         id,
@@ -70,6 +73,8 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
 
   // 자가진단 점수 요약
   const assessmentScores = selfAssessment?.scores as SelfAssessmentScores | null;
+  const assessmentAnswers = (selfAssessment?.answers ?? []) as AssessmentAnswer[];
+  const templateQuestions = ((selfAssessment?.template as { questions?: unknown[] } | null)?.questions ?? []) as AssessmentQuestion[];
 
   // 기업 규모 라벨 변환
   const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
@@ -173,7 +178,15 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
             )}
           </div>
           {selfAssessment && assessmentScores ? (
-            <ConsultantAssessmentResult scores={assessmentScores} />
+            <>
+              <ConsultantAssessmentResult scores={assessmentScores} />
+              {assessmentAnswers.length > 0 && templateQuestions.length > 0 && (
+                <AssessmentDetailAccordion
+                  answers={assessmentAnswers}
+                  questions={templateQuestions}
+                />
+              )}
+            </>
           ) : (
             <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
           )}
@@ -182,16 +195,15 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
 
       {/* 인터뷰 정보 - 자가진단 카드 아래 */}
       {interview && (
-        <InterviewSummary
-          interviewDate={interview.interview_date}
-          companyDetails={interview.company_details as { systems_and_tools?: string[]; ai_experience?: string } | null}
-          jobTasks={(interview.job_tasks as Array<{ task_name: string; task_description: string }>) ?? []}
-          painPoints={(interview.pain_points as Array<{ description: string; severity: string }>) ?? []}
-          improvementGoals={(interview.improvement_goals as Array<{ goal_description: string; kpi?: string; target_value?: string }>) ?? []}
-          constraints={(interview.constraints as Array<{ description: string }>) ?? []}
-          notes={(interview.notes as string) ?? null}
-          customerRequirements={(interview.customer_requirements as string) ?? null}
-        />
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">인터뷰 정보</h2>
+            <span className="text-sm text-gray-500">
+              {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+            </span>
+          </div>
+          <InterviewSummary {...toInterviewSummaryProps(interview)} />
+        </div>
       )}
     </div>
   );
