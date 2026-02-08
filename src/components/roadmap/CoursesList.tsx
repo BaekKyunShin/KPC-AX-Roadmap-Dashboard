@@ -60,7 +60,7 @@ const LEVEL_BADGE_COLORS: Record<CourseLevel, string> = {
 };
 
 /** Accordion 기본 열림 상태 */
-const DEFAULT_ACCORDION_VALUES = ['profile', 'curriculum'];
+const DEFAULT_ACCORDION_VALUES = ['profile', 'curriculum', 'outcome'];
 
 // =============================================================================
 // 유틸리티 함수
@@ -185,10 +185,10 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
                 <div className="space-y-1">
                   <span className="text-gray-900 font-medium break-keep">{module.module_name}</span>
                   {module.details && module.details.length > 0 && (
-                    <ul className="ml-3 mt-1 space-y-0.5">
+                    <ul className="mt-1 space-y-0.5 list-disc pl-5">
                       {module.details.map((detail, detailIdx) => (
                         <li key={detailIdx} className="text-gray-600 text-sm break-keep">
-                          - {detail}
+                          {detail}
                         </li>
                       ))}
                     </ul>
@@ -211,7 +211,7 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
 }
 
 // =============================================================================
-// 하위 컴포넌트: 기대효과 및 측정 테이블
+// 하위 컴포넌트: 기대효과 및 측정방법 테이블
 // =============================================================================
 
 function OutcomeTable({ course }: { course: RoadmapCell }) {
@@ -324,12 +324,12 @@ function CourseCard({ course, index, canEdit, onEditCourse }: CourseCardProps) {
             </AccordionContent>
           </AccordionItem>
 
-          {/* 기대효과 및 측정 */}
+          {/* 기대효과 및 측정방법 */}
           <AccordionItem value="outcome" className="border-b-0">
             <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50/50 text-sm font-medium text-gray-700">
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-emerald-500" />
-                기대효과 및 측정
+                기대효과 및 측정방법
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-4">

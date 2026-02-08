@@ -67,7 +67,7 @@ function TestModeBanner() {
 // =============================================================================
 
 function ValidationNotesSection({ validation }: ValidationNotesSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const totalCount = validation.errors.length + validation.warnings.length;
   const allItems = [...validation.errors, ...validation.warnings];
 
@@ -148,7 +148,7 @@ function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionReque
           value={revisionPrompt}
           onChange={handleChange}
           placeholder={REVISION_PLACEHOLDER}
-          rows={3}
+          rows={9}
           disabled={isRevising}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         />

@@ -102,9 +102,9 @@ export function PBLCourseView({ course }: PBLCourseViewProps) {
                 <span className="text-sm text-gray-500">{module.hours}시간</span>
               </div>
               {module.details && module.details.length > 0 && (
-                <ul className="mt-1 space-y-0.5">
+                <ul className="mt-1 space-y-0.5 list-disc pl-5">
                   {module.details.map((detail, detailIdx) => (
-                    <li key={detailIdx} className="text-sm text-gray-600">- {detail}</li>
+                    <li key={detailIdx} className="text-sm text-gray-600 break-keep">{detail}</li>
                   ))}
                 </ul>
               )}

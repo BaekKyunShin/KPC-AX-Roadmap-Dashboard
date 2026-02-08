@@ -2,40 +2,30 @@
 
 import { useState, useCallback } from 'react';
 import { prepareExportData, logDownload } from '@/lib/actions/roadmap-export';
+import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 
 type DownloadFormat = 'PDF' | 'XLSX';
 
 interface UseRoadmapDownloadResult {
   isDownloading: DownloadFormat | null;
-  error: string | null;
-  success: string | null;
   downloadPDF: (roadmapId: string) => Promise<void>;
   downloadXLSX: (roadmapId: string) => Promise<void>;
-  clearMessages: () => void;
 }
 
 /**
  * 로드맵 다운로드 기능을 위한 커스텀 훅
+ * 성공/실패 메시지는 토스트로 표시
  */
 export function useRoadmapDownload(): UseRoadmapDownloadResult {
   const [isDownloading, setIsDownloading] = useState<DownloadFormat | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const clearMessages = useCallback(() => {
-    setError(null);
-    setSuccess(null);
-  }, []);
 
   const downloadPDF = useCallback(async (roadmapId: string) => {
     setIsDownloading('PDF');
-    setError(null);
-    setSuccess(null);
 
     try {
       const result = await prepareExportData(roadmapId);
       if (!result.success || !result.data) {
-        setError(result.error || 'PDF 준비에 실패했습니다.');
+        showErrorToast('PDF 다운로드 실패', result.error || 'PDF 준비에 실패했습니다.');
         return;
       }
 
@@ -52,10 +42,10 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
       URL.revokeObjectURL(url);
 
       await logDownload(roadmapId, 'PDF');
-      setSuccess('PDF 다운로드가 완료되었습니다.');
+      showSuccessToast('PDF 다운로드 완료');
     } catch (err) {
       console.error('[PDF Download Error]', err);
-      setError('PDF 생성에 실패했습니다.');
+      showErrorToast('PDF 다운로드 실패', 'PDF 생성에 실패했습니다.');
     } finally {
       setIsDownloading(null);
     }
@@ -63,13 +53,11 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
 
   const downloadXLSX = useCallback(async (roadmapId: string) => {
     setIsDownloading('XLSX');
-    setError(null);
-    setSuccess(null);
 
     try {
       const result = await prepareExportData(roadmapId);
       if (!result.success || !result.data) {
-        setError(result.error || 'XLSX 준비에 실패했습니다.');
+        showErrorToast('Excel 다운로드 실패', result.error || 'Excel 준비에 실패했습니다.');
         return;
       }
 
@@ -77,10 +65,10 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
       downloadExcel(result.data, `roadmap_${result.data.companyName}_v${result.data.versionNumber}.xlsx`);
 
       await logDownload(roadmapId, 'XLSX');
-      setSuccess('Excel 다운로드가 완료되었습니다.');
+      showSuccessToast('Excel 다운로드 완료');
     } catch (err) {
       console.error('[XLSX Download Error]', err);
-      setError('Excel 생성에 실패했습니다.');
+      showErrorToast('Excel 다운로드 실패', 'Excel 생성에 실패했습니다.');
     } finally {
       setIsDownloading(null);
     }
@@ -88,10 +76,7 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
 
   return {
     isDownloading,
-    error,
-    success,
     downloadPDF,
     downloadXLSX,
-    clearMessages,
   };
 }
