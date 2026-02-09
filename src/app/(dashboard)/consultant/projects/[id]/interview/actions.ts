@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { interviewSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
 import { createAuditLog } from '@/lib/services/audit';
+import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 
 // ============================================================================
@@ -179,6 +180,14 @@ export async function saveInterview(
         goals_count: validatedData.improvement_goals.length,
       },
     });
+
+    // 활동 일지 자동 기록 (자동저장 모드가 아닌 경우에만)
+    if (!options?.skipValidation) {
+      const logContent = auditAction === 'INTERVIEW_CREATE'
+        ? '인터뷰가 저장되었습니다.'
+        : '인터뷰가 수정되었습니다.';
+      await insertSystemActivityLog(projectId, user.id, logContent);
+    }
 
     return { success: true };
   } catch (error) {

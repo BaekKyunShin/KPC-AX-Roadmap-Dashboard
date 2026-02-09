@@ -7,6 +7,7 @@ import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuesti
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
+import ActivityLog from './_components/ActivityLog';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -205,6 +206,9 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
           <InterviewSummary {...toInterviewSummaryProps(interview)} />
         </div>
       )}
+
+      {/* 활동 일지 */}
+      <ActivityLog projectId={projectId} />
     </div>
   );
 }

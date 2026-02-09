@@ -11,6 +11,7 @@ import {
   type PBLCourse,
   type RoadmapCell,
 } from '@/lib/services/roadmap';
+import { insertSystemActivityLog } from '@/lib/services/activity-log';
 
 export interface ActionResult {
   success: boolean;
@@ -72,6 +73,12 @@ export async function createRoadmap(
       revisionPrompt
     );
 
+    // 활동 일지 자동 기록
+    const logContent = revisionPrompt
+      ? '새 로드맵 버전이 생성되었습니다.'
+      : '로드맵이 생성되었습니다.';
+    await insertSystemActivityLog(projectId, user.id, logContent);
+
     return {
       success: true,
       data: {
@@ -102,6 +109,21 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResu
     }
 
     await finalizeRoadmap(roadmapId, user.id);
+
+    // 활동 일지 자동 기록
+    const { data: roadmapData } = await supabase
+      .from('roadmap_versions')
+      .select('project_id')
+      .eq('id', roadmapId)
+      .single();
+
+    if (roadmapData) {
+      await insertSystemActivityLog(
+        roadmapData.project_id,
+        user.id,
+        '로드맵이 최종 확정되었습니다.',
+      );
+    }
 
     return { success: true };
   } catch (error) {

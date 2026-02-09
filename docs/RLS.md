@@ -135,6 +135,18 @@ is_approved_consultant() RETURNS BOOLEAN
 | UPDATE (consultant) | 배정된 컨설턴트만 (DRAFT만 수정, FINAL 확정) |
 | UPDATE (test) | 본인이 생성한 테스트 프로젝트 |
 
+### consultant_activity_logs
+
+| 작업 | 조건 |
+|------|------|
+| SELECT (consultant) | 자신이 작성한 로그 + 배정된 프로젝트만 |
+| SELECT (ops) | OPS_ADMIN 이상 |
+| INSERT (consultant) | 승인된 컨설턴트 + 배정된 프로젝트 + 수동 유형만 (`system_auto` 제외) |
+| UPDATE (consultant) | 자신의 수동 기록만 (`system_auto` 수정 불가) |
+| DELETE (consultant) | 자신의 수동 기록만 (`system_auto` 삭제 불가) |
+
+> `system_auto` 유형은 서비스 역할 키(admin 클라이언트)로만 삽입되며, 컨설턴트가 직접 생성/수정/삭제할 수 없습니다.
+
 ### audit_logs
 
 | 작업 | 조건 |
@@ -180,6 +192,7 @@ is_approved_consultant() RETURNS BOOLEAN
 4. **자가진단 보호**: 컨설턴트는 조회만 가능, 수정 불가
 5. **FINAL 확정 제한**: 로드맵 FINAL은 배정된 컨설턴트만 가능
 6. **테스트 모드 격리**: 테스트 프로젝트는 생성자만 접근 가능
+7. **활동 일지 시스템 기록 보호**: `system_auto` 유형은 서비스 역할로만 삽입, 컨설턴트 수정/삭제 불가
 
 ## 테스트 체크리스트
 
@@ -205,3 +218,4 @@ is_approved_consultant() RETURNS BOOLEAN
 | `005_rename_case_to_project.sql` | cases → projects 리네이밍 및 정책 재생성 |
 | `011_add_ops_admin_pending_role.sql` | `OPS_ADMIN_PENDING` 역할 ENUM 추가 |
 | `013_add_user_withdrawal.sql` | `WITHDRAWN` 상태, `USER_WITHDRAW` 감사 액션 추가 |
+| `015_add_activity_logs.sql` | 컨설턴트 활동 일지 테이블, ENUM, RLS 정책 |
