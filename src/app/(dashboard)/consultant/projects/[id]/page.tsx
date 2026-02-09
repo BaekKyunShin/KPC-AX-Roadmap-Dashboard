@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
+import { CompanyInfoCard } from './_components/CompanyInfoCard';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
@@ -125,48 +126,16 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 기업 정보 */}
-        <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">기업 정보</h2>
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-sm text-gray-500">회사명</dt>
-              <dd className="text-sm font-medium text-gray-900">{projectData.company_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">업종</dt>
-              <dd className="text-sm font-medium text-gray-900">{projectData.industry}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">규모</dt>
-              <dd className="text-sm font-medium text-gray-900">{companySizeLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">담당자</dt>
-              <dd className="text-sm font-medium text-gray-900">{projectData.contact_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-gray-500">연락처</dt>
-              <dd className="text-sm font-medium text-gray-900">
-                {projectData.contact_email}
-                {projectData.contact_phone && ` · ${projectData.contact_phone}`}
-              </dd>
-            </div>
-            {projectData.company_address && (
-              <div>
-                <dt className="text-sm text-gray-500">주소</dt>
-                <dd className="text-sm font-medium text-gray-900">{projectData.company_address}</dd>
-              </div>
-            )}
-            {projectData.customer_comment && (
-              <div>
-                <dt className="text-sm text-gray-500">고객 요청사항</dt>
-                <dd className="text-sm text-gray-900 whitespace-pre-wrap">
-                  {projectData.customer_comment}
-                </dd>
-              </div>
-            )}
-          </dl>
-        </div>
+        <CompanyInfoCard
+          companyName={projectData.company_name}
+          industry={projectData.industry}
+          companySizeLabel={companySizeLabel}
+          contactName={projectData.contact_name}
+          contactEmail={projectData.contact_email}
+          contactPhone={projectData.contact_phone}
+          companyAddress={projectData.company_address}
+          customerComment={projectData.customer_comment}
+        />
 
         {/* 자가진단 결과 */}
         <div className="lg:col-span-3 flex flex-col bg-white shadow rounded-lg p-6">
