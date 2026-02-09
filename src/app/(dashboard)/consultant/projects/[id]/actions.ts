@@ -9,8 +9,11 @@ import {
   updateActivityLogSchema,
 } from '@/lib/schemas/activity-log';
 import type { SimpleActionResult } from '@/lib/types/action-result';
-import type { ActivityLogType, ManualActivityLogType } from '@/lib/constants/activity-log';
-import { ACTIVITY_LOG_PAGE_SIZE } from '@/lib/constants/activity-log';
+import {
+  ACTIVITY_LOG_PAGE_SIZE,
+  type ActivityLogType,
+  type ManualActivityLogType,
+} from '@/lib/constants/activity-log';
 
 // ============================================================================
 // 타입 정의
@@ -169,6 +172,42 @@ export async function createActivityLog(
 }
 
 // ============================================================================
+// 개별 로그 소유권 확인 헬퍼
+// ============================================================================
+
+/**
+ * 로그가 본인 소유이며 수동 기록인지 확인
+ * - update/delete에서 공통 사용
+ */
+async function verifyManualLogOwnership(
+  logId: string,
+  userId: string,
+  action: '수정' | '삭제',
+): Promise<SimpleActionResult | null> {
+  const adminSupabase = createAdminClient();
+
+  const { data: log } = await adminSupabase
+    .from('consultant_activity_logs')
+    .select('id, consultant_id, type')
+    .eq('id', logId)
+    .single();
+
+  if (!log) {
+    return { success: false, error: '해당 기록을 찾을 수 없습니다.' };
+  }
+
+  if (log.consultant_id !== userId) {
+    return { success: false, error: `본인의 기록만 ${action}할 수 있습니다.` };
+  }
+
+  if (log.type === 'system_auto') {
+    return { success: false, error: `시스템 자동 기록은 ${action}할 수 없습니다.` };
+  }
+
+  return null; // 검증 통과
+}
+
+// ============================================================================
 // 활동 일지 수정
 // ============================================================================
 
@@ -188,26 +227,10 @@ export async function updateActivityLog(
       return { success: false, error: validation.error.errors[0].message };
     }
 
+    const ownershipError = await verifyManualLogOwnership(logId, auth.user.id, '수정');
+    if (ownershipError) return ownershipError;
+
     const adminSupabase = createAdminClient();
-
-    // 본인의 수동 기록인지 확인
-    const { data: log } = await adminSupabase
-      .from('consultant_activity_logs')
-      .select('id, consultant_id, type')
-      .eq('id', logId)
-      .single();
-
-    if (!log) {
-      return { success: false, error: '해당 기록을 찾을 수 없습니다.' };
-    }
-
-    if (log.consultant_id !== auth.user.id) {
-      return { success: false, error: '본인의 기록만 수정할 수 있습니다.' };
-    }
-
-    if (log.type === 'system_auto') {
-      return { success: false, error: '시스템 자동 기록은 수정할 수 없습니다.' };
-    }
 
     const { error: updateError } = await adminSupabase
       .from('consultant_activity_logs')
@@ -241,26 +264,10 @@ export async function deleteActivityLog(
       return { success: false, error: auth.error };
     }
 
+    const ownershipError = await verifyManualLogOwnership(logId, auth.user.id, '삭제');
+    if (ownershipError) return ownershipError;
+
     const adminSupabase = createAdminClient();
-
-    // 본인의 수동 기록인지 확인
-    const { data: log } = await adminSupabase
-      .from('consultant_activity_logs')
-      .select('id, consultant_id, type')
-      .eq('id', logId)
-      .single();
-
-    if (!log) {
-      return { success: false, error: '해당 기록을 찾을 수 없습니다.' };
-    }
-
-    if (log.consultant_id !== auth.user.id) {
-      return { success: false, error: '본인의 기록만 삭제할 수 있습니다.' };
-    }
-
-    if (log.type === 'system_auto') {
-      return { success: false, error: '시스템 자동 기록은 삭제할 수 없습니다.' };
-    }
 
     const { error: deleteError } = await adminSupabase
       .from('consultant_activity_logs')

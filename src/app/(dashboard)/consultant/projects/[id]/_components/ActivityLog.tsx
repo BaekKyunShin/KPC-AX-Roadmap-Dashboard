@@ -350,10 +350,6 @@ export default function ActivityLog({ projectId }: ActivityLogProps) {
     setIsLoadingMore(false);
   }
 
-  function refreshLogs() {
-    loadInitial();
-  }
-
   async function handleSubmit() {
     if (!newContent.trim()) return;
     setIsSubmitting(true);
@@ -365,7 +361,7 @@ export default function ActivityLog({ projectId }: ActivityLogProps) {
       showSuccessToast('기록이 저장되었습니다.');
       setNewContent('');
       setIsFormOpen(false);
-      refreshLogs();
+      loadInitial();
     } else {
       showErrorToast('저장 실패', result.error);
     }
@@ -496,7 +492,7 @@ export default function ActivityLog({ projectId }: ActivityLogProps) {
                       key={log.id}
                       log={log}
                       projectId={projectId}
-                      onUpdated={refreshLogs}
+                      onUpdated={loadInitial}
                     />
                   ))}
                 </div>
