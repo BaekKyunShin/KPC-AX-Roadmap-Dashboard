@@ -18,8 +18,10 @@ import { getLevelLabel } from '@/lib/utils/roadmap';
 // 색상 상수
 // ============================================================================
 
+const BRAND_PURPLE = '663399';
+
 const COLOR = {
-  HEADER_BG: '663399',
+  HEADER_BG: BRAND_PURPLE,
   HEADER_TEXT: 'FFFFFF',
   SECTION_BG: 'F5F3F9',
   LABEL_BG: 'F0ECF5',
@@ -27,8 +29,7 @@ const COLOR = {
   BORDER: 'D0D0D0',
   BODY_TEXT: '333333',
   MUTED_TEXT: '787878',
-  ACCENT: '663399',
-  WHITE: 'FFFFFF',
+  ACCENT: BRAND_PURPLE,
   TOTAL_BG: 'EDE8F5',
 } as const;
 
@@ -43,12 +44,7 @@ const THIN_BORDER = {
   right: { style: 'thin' as const, color: { rgb: COLOR.BORDER } },
 };
 
-const NO_BORDER = {
-  top: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
-  bottom: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
-  left: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
-  right: { style: 'thin' as const, color: { rgb: COLOR.WHITE } },
-};
+const NO_BORDER = {} as NonNullable<XLSX.CellStyle['border']>;
 
 /** 파라미터 없는 불변 스타일 프리셋 */
 const STYLE = {
@@ -127,18 +123,32 @@ const STYLE = {
   },
 } as const;
 
-/** 교대행 여부에 따른 테이블 본문 스타일 (파라미터 있으므로 함수 유지) */
-function tableBodyStyle(alt: boolean): XLSX.CellStyle {
-  return {
+/** 교대행 여부에 따른 테이블 본문 스타일 (4종 캐싱) */
+const TABLE_BODY: Record<'normal' | 'alt', XLSX.CellStyle> = {
+  normal: {
     font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
-    fill: alt ? { fgColor: { rgb: COLOR.ALT_ROW } } : undefined,
     alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
     border: THIN_BORDER,
-  };
+  },
+  alt: {
+    font: { name: '맑은 고딕', sz: 9, color: { rgb: COLOR.BODY_TEXT } },
+    fill: { fgColor: { rgb: COLOR.ALT_ROW } },
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+    border: THIN_BORDER,
+  },
+};
+
+const TABLE_BODY_CENTER: Record<'normal' | 'alt', XLSX.CellStyle> = {
+  normal: { ...TABLE_BODY.normal, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } },
+  alt: { ...TABLE_BODY.alt, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } },
+};
+
+function tableBodyStyle(alt: boolean): XLSX.CellStyle {
+  return alt ? TABLE_BODY.alt : TABLE_BODY.normal;
 }
 
 function tableBodyCenterStyle(alt: boolean): XLSX.CellStyle {
-  return { ...tableBodyStyle(alt), alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+  return alt ? TABLE_BODY_CENTER.alt : TABLE_BODY_CENTER.normal;
 }
 
 // ============================================================================
@@ -151,10 +161,20 @@ interface SheetCtx {
   rows: XLSX.RowInfo[];
   r: number;
   lastCol: number;
+  colWidths: number[];
 }
 
-function createCtx(lastCol: number): SheetCtx {
-  return { ws: {}, merges: [], rows: [], r: 0, lastCol };
+function createCtx(colWidths: number[]): SheetCtx {
+  return { ws: {}, merges: [], rows: [], r: 0, lastCol: colWidths.length - 1, colWidths };
+}
+
+/** 열 범위의 합산 너비(wch) 계산 (병합 셀용) */
+function sumColWidths(ctx: SheetCtx, cStart: number, cEnd: number): number {
+  let total = 0;
+  for (let c = cStart; c <= cEnd; c++) {
+    total += ctx.colWidths[c] ?? 10;
+  }
+  return total;
 }
 
 // ============================================================================
@@ -183,12 +203,14 @@ function addBlankRow(ctx: SheetCtx, height: number): void {
   ctx.r++;
 }
 
-/** 병합 행 추가 (전체 열 병합) */
-function addMergedRow(ctx: SheetCtx, text: string, style: XLSX.CellStyle, height: number): void {
+/** 병합 행 추가 (전체 열 병합). height를 지정하지 않으면 자동 계산 */
+function addMergedRow(ctx: SheetCtx, text: string, style: XLSX.CellStyle, height?: number): void {
+  const mergedWidth = sumColWidths(ctx, 0, ctx.lastCol);
+  const h = height ?? calcRowHeight(text, mergedWidth);
   setCell(ctx.ws, ctx.r, 0, text, style);
   fillRow(ctx.ws, ctx.r, 0, ctx.lastCol, style);
   ctx.merges.push({ s: { r: ctx.r, c: 0 }, e: { r: ctx.r, c: ctx.lastCol } });
-  ctx.rows[ctx.r] = { hpt: height };
+  ctx.rows[ctx.r] = { hpt: h };
   ctx.r++;
 }
 
@@ -204,7 +226,8 @@ function addSubSection(ctx: SheetCtx, title: string): void {
 
 /** 레이블-값 행 (A=레이블, B~lastCol=값 병합) */
 function addLabelValueRow(ctx: SheetCtx, label: string, value: string, height?: number): void {
-  const h = height ?? Math.max(22, calcRowHeight(value, 22, 14));
+  const mergedWidth = sumColWidths(ctx, 1, ctx.lastCol);
+  const h = height ?? calcRowHeight(value, mergedWidth);
   setCell(ctx.ws, ctx.r, 0, label, STYLE.label);
   setCell(ctx.ws, ctx.r, 1, value, STYLE.value);
   fillRow(ctx.ws, ctx.r, 1, ctx.lastCol, STYLE.value);
@@ -224,9 +247,10 @@ function addLabelValueRows(ctx: SheetCtx, pairs: [string, string][], fixedHeight
 function addListSection(ctx: SheetCtx, title: string, items: string[] | undefined): void {
   if (!items || items.length === 0) return;
   addSubSection(ctx, title);
+  const mergedWidth = sumColWidths(ctx, 0, ctx.lastCol);
   items.forEach((item, i) => {
     const text = `${i + 1}. ${item}`;
-    addMergedRow(ctx, text, STYLE.value, Math.max(22, calcRowHeight(text, 22, 14)));
+    addMergedRow(ctx, text, STYLE.value, calcRowHeight(text, mergedWidth));
   });
   addBlankRow(ctx, 10);
 }
@@ -235,16 +259,17 @@ function addListSection(ctx: SheetCtx, title: string, items: string[] | undefine
 function addTextSection(ctx: SheetCtx, title: string, text: string | undefined): void {
   if (!text) return;
   addSubSection(ctx, title);
-  addMergedRow(ctx, text, STYLE.value, Math.max(22, calcRowHeight(text, 22, 14)));
+  const mergedWidth = sumColWidths(ctx, 0, ctx.lastCol);
+  addMergedRow(ctx, text, STYLE.value, calcRowHeight(text, mergedWidth));
   addBlankRow(ctx, 10);
 }
 
 /** 시트 마무리 (범위/병합/행높이/열너비 설정) */
-function finalizeSheet(ctx: SheetCtx, cols: XLSX.ColInfo[]): XLSX.WorkSheet {
+function finalizeSheet(ctx: SheetCtx): XLSX.WorkSheet {
   ctx.ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: ctx.r - 1, c: ctx.lastCol } });
   ctx.ws['!merges'] = ctx.merges;
   ctx.ws['!rows'] = ctx.rows;
-  ctx.ws['!cols'] = cols;
+  ctx.ws['!cols'] = ctx.colWidths.map(w => ({ wch: w }));
   return ctx.ws;
 }
 
@@ -293,9 +318,31 @@ function formatTools(tools: { name: string; free_tier_info: string }[] | undefin
   return tools.map(t => `${t.name} (${t.free_tier_info})`).join(', ');
 }
 
-function calcRowHeight(text: string, baseHeight = 20, lineHeight = 14): number {
+/**
+ * 셀 너비를 고려한 행 높이 계산.
+ * wrapText 활성화 시 한글 폭(영문 대비 ~1.8배)을 반영하여
+ * 자동 줄바꿈이 발생했을 때의 실제 높이를 추정한다.
+ */
+function calcRowHeight(text: string, colWidthWch: number, baseHeight = 22, lineHeight = 14.5): number {
   if (!text) return baseHeight;
-  return Math.max(baseHeight, text.split('\n').length * lineHeight);
+
+  // 한글 기준: wch를 한글 글자 수로 변환 (한글 1자 ≈ 영문 1.8자 폭)
+  const charsPerLine = Math.max(colWidthWch / 1.8, 4);
+
+  let totalLines = 0;
+  for (const line of text.split('\n')) {
+    if (line.length === 0) {
+      totalLines += 0.6;
+    } else {
+      let weightedLen = 0;
+      for (const ch of line) {
+        weightedLen += ch.charCodeAt(0) > 127 ? 1.8 : 1;
+      }
+      totalLines += Math.max(1, Math.ceil(weightedLen / charsPerLine));
+    }
+  }
+
+  return Math.max(baseHeight, Math.ceil(totalLines * lineHeight));
 }
 
 function formatHours(hours: number): string {
@@ -307,7 +354,8 @@ function formatHours(hours: number): string {
 // ============================================================================
 
 function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const ctx = createCtx(3);
+  const COL_W = [14, 30, 30, 30];
+  const ctx = createCtx(COL_W);
 
   addBlankRow(ctx, 20);
   addMergedRow(ctx, 'AI 교육 훈련 로드맵', STYLE.title, 40);
@@ -333,10 +381,10 @@ function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
   addSectionHeader(ctx, '진단 요약');
   addBlankRow(ctx, 6);
 
-  const diagLines = data.diagnosisSummary.split('\n').length;
-  addMergedRow(ctx, data.diagnosisSummary, STYLE.diagnosis, Math.max(60, diagLines * 16));
+  const diagWidth = sumColWidths(ctx, 0, ctx.lastCol);
+  addMergedRow(ctx, data.diagnosisSummary, STYLE.diagnosis, Math.max(60, calcRowHeight(data.diagnosisSummary, diagWidth)));
 
-  return finalizeSheet(ctx, [{ wch: 14 }, { wch: 28 }, { wch: 28 }, { wch: 28 }]);
+  return finalizeSheet(ctx);
 }
 
 // ============================================================================
@@ -344,7 +392,8 @@ function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const ctx = createCtx(3);
+  const COL_W = [16, 36, 36, 36];
+  const ctx = createCtx(COL_W);
   const numberMap = buildCourseNumberMap(data.courses);
 
   addSectionHeader(ctx, '과정 체계도');
@@ -368,7 +417,12 @@ function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
     });
     texts.forEach((text, c) => setCell(ctx.ws, ctx.r, c + 1, text, tableBodyStyle(alt)));
 
-    ctx.rows[ctx.r] = { hpt: Math.max(...texts.map(t => calcRowHeight(t, 30, 14))) };
+    // 각 열 텍스트의 높이를 해당 열 너비로 계산 후 최대값 사용
+    const rowHeight = Math.max(
+      calcRowHeight(row.task_name, COL_W[0], 30),
+      ...texts.map((t, c) => calcRowHeight(t, COL_W[c + 1], 30)),
+    );
+    ctx.rows[ctx.r] = { hpt: rowHeight };
     levelCells.forEach((cells, i) => { totals[i] += sumMatrixHours(cells); });
     ctx.r++;
   });
@@ -398,7 +452,7 @@ function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
   ctx.rows[ctx.r] = { hpt: 24 };
   ctx.r++;
 
-  return finalizeSheet(ctx, [{ wch: 18 }, { wch: 32 }, { wch: 32 }, { wch: 32 }]);
+  return finalizeSheet(ctx);
 }
 
 // ============================================================================
@@ -406,7 +460,9 @@ function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const ctx = createCtx(4);
+  const COL_W = [10, 20, 28, 16, 34];
+  const ctx = createCtx(COL_W);
+  const detailsMergedW = COL_W[2] + COL_W[3]; // C-D 병합 너비
 
   data.courses.forEach((course, idx) => {
     // 과정 제목
@@ -437,14 +493,22 @@ function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
     (course.curriculum || []).forEach((module, mIdx) => {
       const alt = mIdx % 2 === 1;
       const detailsText = module.details?.map(d => `• ${d}`).join('\n') || '-';
+      const practiceText = module.practice || '-';
 
       setCell(ctx.ws, ctx.r, 0, `${module.hours}H`, tableBodyCenterStyle(alt));
       setCell(ctx.ws, ctx.r, 1, module.module_name, tableBodyStyle(alt));
       setCell(ctx.ws, ctx.r, 2, detailsText, tableBodyStyle(alt));
       fillRow(ctx.ws, ctx.r, 3, 3, tableBodyStyle(alt));
       ctx.merges.push({ s: { r: ctx.r, c: 2 }, e: { r: ctx.r, c: 3 } });
-      setCell(ctx.ws, ctx.r, 4, module.practice || '-', tableBodyStyle(alt));
-      ctx.rows[ctx.r] = { hpt: calcRowHeight(detailsText, 24, 14) };
+      setCell(ctx.ws, ctx.r, 4, practiceText, tableBodyStyle(alt));
+
+      // 모든 텍스트 열의 높이를 계산하여 최대값 사용
+      const rowHeight = Math.max(
+        calcRowHeight(module.module_name, COL_W[1], 24),
+        calcRowHeight(detailsText, detailsMergedW, 24),
+        calcRowHeight(practiceText, COL_W[4], 24),
+      );
+      ctx.rows[ctx.r] = { hpt: rowHeight };
       ctx.r++;
     });
     addBlankRow(ctx, 8);
@@ -463,7 +527,7 @@ function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
     }
   });
 
-  return finalizeSheet(ctx, [{ wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 12 }, { wch: 30 }]);
+  return finalizeSheet(ctx);
 }
 
 // ============================================================================
@@ -471,7 +535,8 @@ function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const ctx = createCtx(5);
+  const COL_W = [20, 8, 32, 28, 24, 30];
+  const ctx = createCtx(COL_W);
   const pbl = data.pblCourse;
 
   addSectionHeader(ctx, 'PBL 프로그램');
@@ -518,16 +583,26 @@ function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
   (pbl.curriculum || []).forEach((module, mIdx) => {
     const alt = mIdx % 2 === 1;
     const detailsText = module.details?.map(d => `• ${d}`).join('\n') || '-';
+    const practiceText = module.practice || '-';
     const deliverablesText = module.deliverables?.join(', ') || '-';
     const toolsText = module.tools?.map(t => `${t.name} (${t.free_tier_info})`).join('\n') || '-';
 
     setCell(ctx.ws, ctx.r, 0, module.module_name, tableBodyStyle(alt));
     setCell(ctx.ws, ctx.r, 1, `${module.hours}H`, tableBodyCenterStyle(alt));
     setCell(ctx.ws, ctx.r, 2, detailsText, tableBodyStyle(alt));
-    setCell(ctx.ws, ctx.r, 3, module.practice || '-', tableBodyStyle(alt));
+    setCell(ctx.ws, ctx.r, 3, practiceText, tableBodyStyle(alt));
     setCell(ctx.ws, ctx.r, 4, deliverablesText, tableBodyStyle(alt));
     setCell(ctx.ws, ctx.r, 5, toolsText, tableBodyStyle(alt));
-    ctx.rows[ctx.r] = { hpt: Math.max(calcRowHeight(detailsText, 26, 14), calcRowHeight(toolsText, 26, 14)) };
+
+    // 모든 텍스트 열의 높이를 계산하여 최대값 사용
+    const rowHeight = Math.max(
+      calcRowHeight(module.module_name, COL_W[0], 26),
+      calcRowHeight(detailsText, COL_W[2], 26),
+      calcRowHeight(practiceText, COL_W[3], 26),
+      calcRowHeight(deliverablesText, COL_W[4], 26),
+      calcRowHeight(toolsText, COL_W[5], 26),
+    );
+    ctx.rows[ctx.r] = { hpt: rowHeight };
     ctx.r++;
   });
   addBlankRow(ctx, 10);
@@ -539,7 +614,7 @@ function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
   addListSection(ctx, '측정 방법', pbl.measurement_methods);
   addListSection(ctx, '준비물', pbl.prerequisites);
 
-  return finalizeSheet(ctx, [{ wch: 20 }, { wch: 8 }, { wch: 28 }, { wch: 24 }, { wch: 20 }, { wch: 26 }]);
+  return finalizeSheet(ctx);
 }
 
 // ============================================================================
@@ -561,11 +636,11 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
 export function downloadXLSX(data: RoadmapExportData, filename: string): void {
   const buffer = generateXLSX(data);
 
-  const newBuffer = new ArrayBuffer(buffer.length);
-  const view = new Uint8Array(newBuffer);
-  view.set(buffer);
+  // Uint8Array → ArrayBuffer 복사 (TypeScript strict 모드에서 BlobPart 호환성)
+  const ab = new ArrayBuffer(buffer.length);
+  new Uint8Array(ab).set(buffer);
 
-  const blob = new Blob([newBuffer], {
+  const blob = new Blob([ab], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
