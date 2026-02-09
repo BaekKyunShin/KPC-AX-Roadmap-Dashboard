@@ -26,9 +26,9 @@ describe('CompanyInfoCard', () => {
     expect(screen.getByText('기업 정보')).toBeInTheDocument();
   });
 
-  it('담당자 정보 섹션 구분이 존재한다', () => {
-    render(<CompanyInfoCard {...requiredProps} />);
-    expect(screen.getByText('담당자 정보')).toBeInTheDocument();
+  it('기업 정보와 담당자 정보 사이에 구분선이 존재한다', () => {
+    const { container } = render(<CompanyInfoCard {...requiredProps} />);
+    expect(container.querySelector('hr')).toBeInTheDocument();
   });
 
   it('전화번호가 있으면 연락처와 함께 표시한다', () => {

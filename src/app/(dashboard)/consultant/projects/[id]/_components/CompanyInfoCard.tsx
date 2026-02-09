@@ -8,7 +8,6 @@ import {
   MapPin,
   MessageSquareText,
 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 
 interface CompanyInfoCardProps {
   companyName: string;
@@ -19,6 +18,24 @@ interface CompanyInfoCardProps {
   contactPhone?: string | null;
   companyAddress?: string | null;
   customerComment?: string | null;
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-gray-400" />
+      <dt className="w-14 shrink-0 text-sm text-gray-500">{label}</dt>
+      <dd className="text-base font-medium text-gray-900 truncate">{value}</dd>
+    </div>
+  );
 }
 
 export function CompanyInfoCard({
@@ -33,95 +50,34 @@ export function CompanyInfoCard({
 }: CompanyInfoCardProps) {
   return (
     <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-5">기업 정보</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">기업 정보</h2>
 
-      {/* 회사명 */}
-      <div className="flex items-start gap-3 mb-4">
-        <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-        <div>
-          <dt className="text-xs text-gray-500">회사명</dt>
-          <dd className="text-sm font-semibold text-gray-900">{companyName}</dd>
-        </div>
-      </div>
+      <dl>
+        <InfoRow icon={Building2} label="회사명" value={companyName} />
+        <InfoRow icon={Factory} label="업종" value={industry} />
+        <InfoRow icon={Users} label="규모" value={companySizeLabel} />
 
-      {/* 업종 · 규모 — 2열 그리드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div className="flex items-start gap-3">
-          <Factory className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">업종</dt>
-            <dd className="text-sm font-medium text-gray-900">{industry}</dd>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <Users className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">규모</dt>
-            <dd className="text-sm font-medium text-gray-900">{companySizeLabel}</dd>
-          </div>
-        </div>
-      </div>
+        <hr className="my-2 border-gray-100" />
 
-      {/* 구분선 + 담당자 정보 */}
-      <div className="relative my-5">
-        <Separator />
-        <span className="absolute -top-2.5 left-0 bg-white pr-3 text-xs font-medium text-gray-400">
-          담당자 정보
-        </span>
-      </div>
+        <InfoRow icon={User} label="담당자" value={contactName} />
+        <InfoRow icon={Mail} label="연락처" value={contactEmail} />
+        {contactPhone && (
+          <InfoRow icon={Phone} label="전화" value={contactPhone} />
+        )}
+        {companyAddress && (
+          <InfoRow icon={MapPin} label="주소" value={companyAddress} />
+        )}
+      </dl>
 
-      {/* 담당자 · 연락처 — 2열 그리드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div className="flex items-start gap-3">
-          <User className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">담당자</dt>
-            <dd className="text-sm font-medium text-gray-900">{contactName}</dd>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">연락처</dt>
-            <dd className="text-sm font-medium text-gray-900">{contactEmail}</dd>
-          </div>
-        </div>
-      </div>
-
-      {/* 전화번호 (선택) */}
-      {contactPhone && (
-        <div className="flex items-start gap-3 mb-4">
-          <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">전화</dt>
-            <dd className="text-sm font-medium text-gray-900">{contactPhone}</dd>
-          </div>
-        </div>
-      )}
-
-      {/* 주소 (선택) */}
-      {companyAddress && (
-        <div className="flex items-start gap-3 mb-4">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-          <div>
-            <dt className="text-xs text-gray-500">주소</dt>
-            <dd className="text-sm font-medium text-gray-900">{companyAddress}</dd>
-          </div>
-        </div>
-      )}
-
-      {/* 고객 요청사항 (선택) */}
       {customerComment && (
-        <div className="mt-5">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageSquareText className="h-4 w-4 text-gray-400" />
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2 mb-1.5">
+            <MessageSquareText className="h-3.5 w-3.5 text-gray-400" />
             <span className="text-xs font-medium text-gray-500">고객 요청사항</span>
           </div>
-          <div className="rounded-md bg-gray-50 px-4 py-3">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">
-              {customerComment}
-            </p>
-          </div>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap rounded-md bg-gray-50 px-3 py-2">
+            {customerComment}
+          </p>
         </div>
       )}
     </div>
