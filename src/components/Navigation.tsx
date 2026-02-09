@@ -80,7 +80,7 @@ const SYSTEM_ADMIN_ONLY_ITEMS = [
 ];
 
 const CONSULTANT_NAV_ITEMS = [
-  { href: '/consultant/home', label: '홈', icon: Home },
+  { href: '/consultant/home', label: '대시보드', icon: Home },
   { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
 ];

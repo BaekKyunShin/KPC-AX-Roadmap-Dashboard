@@ -87,36 +87,6 @@ const SYSTEM_AUTO_TRANSFORMS: [RegExp, string][] = [
 ];
 
 /**
- * 활동 로그를 홈 대시보드용 표시 멘트로 변환
- * - 수동 타입: "{기업명}의 {타입별 멘트}"
- * - system_auto: "{기업명}의 {능동형 변환 멘트}"
- * - 매칭 실패: "{기업명} — {content 그대로}"
- */
-export function formatActivityMessage(
-  logType: string,
-  companyName: string,
-  content?: string,
-): string {
-  // 수동 타입
-  const manualMsg = MANUAL_MESSAGE_MAP[logType];
-  if (manualMsg) {
-    return `${companyName}의 ${manualMsg}`;
-  }
-
-  // system_auto 타입
-  if (logType === 'system_auto' && content) {
-    for (const [pattern, replacement] of SYSTEM_AUTO_TRANSFORMS) {
-      if (pattern.test(content)) {
-        return `${companyName}의 ${replacement}`;
-      }
-    }
-  }
-
-  // 폴백: 매칭 안 되는 경우
-  return `${companyName} — ${content || ''}`;
-}
-
-/**
  * 활동 로그의 액션 부분만 반환 (기업명 제외)
  * UI에서 기업명을 볼드로 별도 렌더링할 때 사용
  * - 수동 타입: "의 사전조사 메모를 작성했습니다."
@@ -143,6 +113,18 @@ export function getActivityAction(
   return ` — ${content || ''}`;
 }
 
+/**
+ * 활동 로그를 홈 대시보드용 표시 멘트로 변환
+ * getActivityAction을 내부적으로 활용하여 기업명과 결합
+ */
+export function formatActivityMessage(
+  logType: string,
+  companyName: string,
+  content?: string,
+): string {
+  return `${companyName}${getActivityAction(logType, content)}`;
+}
+
 // =============================================================================
 // 활동 태그 정보
 // =============================================================================
@@ -153,8 +135,8 @@ export interface ActivityTagInfo {
   textColor: string;
 }
 
-/** 수동 타입 4종 → 모두 "활동메모" 태그로 통합 */
-const MANUAL_TYPES = new Set(['pre_research', 'field_note', 'follow_up', 'client_feedback']);
+/** 수동 타입 4종 → 모두 "활동메모" 태그로 통합 (MANUAL_MESSAGE_MAP에서 파생) */
+const MANUAL_TYPES = new Set(Object.keys(MANUAL_MESSAGE_MAP));
 const MEMO_TAG: ActivityTagInfo = { label: '활동메모', bgColor: 'bg-emerald-50', textColor: 'text-emerald-700' };
 
 const INTERVIEW_TAG: ActivityTagInfo = { label: '인터뷰', bgColor: 'bg-blue-50', textColor: 'text-blue-700' };
@@ -162,10 +144,11 @@ const ROADMAP_TAG: ActivityTagInfo = { label: '로드맵', bgColor: 'bg-purple-5
 const SYSTEM_FALLBACK_TAG: ActivityTagInfo = { label: '시스템', bgColor: 'bg-gray-50', textColor: 'text-gray-500' };
 
 /**
- * 활동 로그의 태그 정보를 반환
- * - 수동 타입: 해당 타입의 라벨/색상
- * - system_auto: content 내용에 따라 "인터뷰" 또는 "로드맵" 세분화
- * - 폴백: "시스템"
+ * 활동 로그의 태그 정보를 반환 (홈 대시보드용 3종 분류)
+ * - 수동 타입 4종: "활동메모" (에메랄드)
+ * - system_auto 인터뷰: "인터뷰" (파란색)
+ * - system_auto 로드맵: "로드맵" (보라색)
+ * - 폴백: "시스템" (회색)
  */
 export function getActivityTagInfo(logType: string, content?: string): ActivityTagInfo {
   if (MANUAL_TYPES.has(logType)) return MEMO_TAG;
