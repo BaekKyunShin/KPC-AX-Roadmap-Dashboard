@@ -7,6 +7,7 @@ import {
   Phone,
   MapPin,
   MessageSquareText,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface CompanyInfoCardProps {
@@ -20,15 +21,7 @@ interface CompanyInfoCardProps {
   customerComment?: string | null;
 }
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
+function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
       <Icon className="h-4 w-4 shrink-0 text-gray-400" />
@@ -56,9 +49,11 @@ export function CompanyInfoCard({
         <InfoRow icon={Building2} label="회사명" value={companyName} />
         <InfoRow icon={Factory} label="업종" value={industry} />
         <InfoRow icon={Users} label="규모" value={companySizeLabel} />
+      </dl>
 
-        <hr className="my-2 border-gray-100" />
+      <hr className="my-2 border-gray-100" />
 
+      <dl>
         <InfoRow icon={User} label="담당자" value={contactName} />
         <InfoRow icon={Mail} label="연락처" value={contactEmail} />
         {contactPhone && (
