@@ -8,6 +8,16 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messages/actions';
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/** Polling 간격 (30초) — Realtime 실패 시에만 활성화되는 fallback */
+const POLL_INTERVAL_MS = 30_000;
+
+/** Realtime 구독 실패 시 최대 재시도 횟수 */
+const MAX_REALTIME_RETRIES = 3;
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -35,37 +45,115 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
     setUnreadCount(count);
   }, []);
 
-  // Realtime: 새 메시지 수신 시 실제 카운트 조회 (debounce 적용)
+  // Realtime: 인증 세션 로드 후 구독 (CHANNEL_ERROR 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+  const realtimeFailedRef = useRef(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Realtime 실패 시에만 활성화되는 polling
+  const startFallbackPolling = useCallback(() => {
+    if (pollIntervalRef.current) return; // 이미 실행 중
+    pollIntervalRef.current = setInterval(refreshCount, POLL_INTERVAL_MS);
+  }, [refreshCount]);
+
+  const stopFallbackPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
+    let isMounted = true;
+    let retryCount = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) currentUserIdRef.current = data.user.id;
-    });
+    async function subscribe() {
+      if (!isMounted) return;
 
-    const channel = supabase
-      .channel('message-icon:badge')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const newMsg = payload.new as { sender_id: string };
-          if (newMsg.sender_id === currentUserIdRef.current) return;
+      // 인증 세션이 로드될 때까지 대기 — 이것이 핵심
+      // Realtime 구독 전에 auth.uid()가 유효해야 RLS 정책 통과
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      if (!user) return;
 
-          // 연속 메시지 수신 시 서버 부하 방지를 위한 debounce (500ms)
-          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-          debounceTimerRef.current = setTimeout(() => {
-            refreshCount();
-          }, 500);
-        },
-      )
-      .subscribe();
+      currentUserIdRef.current = user.id;
+
+      // 이전 채널이 있으면 정리
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      channelRef.current = supabase
+        .channel('message-icon:badge')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            const newMsg = payload.new as { sender_id: string };
+            // 내가 보낸 메시지는 무시
+            if (newMsg.sender_id === currentUserIdRef.current) return;
+
+            // 연속 메시지 수신 시 서버 부하 방지를 위한 debounce (500ms)
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+            debounceTimerRef.current = setTimeout(async () => {
+              const count = await fetchUnreadConversationCount();
+              if (!isMounted) return;
+              setUnreadCount(count);
+            }, 500);
+          },
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0;
+            realtimeFailedRef.current = false;
+            stopFallbackPolling();
+          } else if (status === 'CHANNEL_ERROR') {
+            if (retryCount < MAX_REALTIME_RETRIES) {
+              retryCount++;
+              const delay = Math.min(1000 * Math.pow(2, retryCount), 10_000);
+              retryTimer = setTimeout(() => subscribe(), delay);
+            } else {
+              // 재시도 소진 → polling fallback 활성화
+              realtimeFailedRef.current = true;
+              startFallbackPolling();
+            }
+          }
+        });
+    }
+
+    subscribe();
 
     return () => {
+      isMounted = false;
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      supabase.removeChannel(channel);
+      if (retryTimer) clearTimeout(retryTimer);
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      stopFallbackPolling();
+    };
+  }, [startFallbackPolling, stopFallbackPolling]);
+
+  // 대화 읽음 처리 시 즉시 뱃지 갱신 (MessagesClient에서 dispatch)
+  // + 탭 복귀 시 즉시 갱신
+  useEffect(() => {
+    function handleMessageRead() {
+      refreshCount();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        refreshCount();
+      }
+    }
+
+    window.addEventListener('conversation-read', handleMessageRead);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('conversation-read', handleMessageRead);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [refreshCount]);
 
@@ -74,9 +162,13 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       ? `${MESSAGE_BADGE_MAX}+`
       : `${unreadCount}`;
 
+  const handleClick = useCallback(() => {
+    router.push('/dashboard/messages');
+  }, [router]);
+
   return (
     <button
-      onClick={() => router.push('/dashboard/messages')}
+      onClick={handleClick}
       className="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
       aria-label={`메시지 ${unreadCount > 0 ? `${unreadCount}개 안읽음` : ''}`}
     >

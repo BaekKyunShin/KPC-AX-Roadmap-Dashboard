@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createNotification } from '@/lib/services/notification';
 import { sendMessageSchema, createConversationSchema } from '@/lib/schemas/message';
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS } from '@/lib/constants/message';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -272,24 +271,24 @@ export async function fetchUnreadConversationCount(): Promise<number> {
 
     if (participations.length === 0) return 0;
 
-    const conversationIds = participations.map((p) => p.conversation_id);
-
-    // 대화의 last_message_at 조회
-    const { data: conversations } = await supabase
-      .from('conversations')
-      .select('id, last_message_at')
-      .in('id', conversationIds);
-
-    if (!conversations) return 0;
-
-    // 안읽음 대화 수 계산 (Map으로 O(n) 조회)
-    const readMap = new Map(
-      participations.map((p) => [p.conversation_id, p.last_read_at]),
-    );
+    // 각 대화별로 last_read_at 이후 다른 사용자가 보낸 메시지 존재 여부를 직접 확인
+    // conversations.last_message_at에 의존하지 않으므로 sendMessage의
+    // last_message_at 업데이트 타이밍 race condition에 영향받지 않음
     let count = 0;
-    for (const conv of conversations) {
-      const lastReadAt = readMap.get(conv.id);
-      if (lastReadAt && new Date(conv.last_message_at) > new Date(lastReadAt)) {
+    for (const p of participations) {
+      let query = supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', p.conversation_id)
+        .neq('sender_id', user.id);
+
+      if (p.last_read_at) {
+        query = query.gt('created_at', p.last_read_at);
+      }
+      // last_read_at이 null이면 모든 타인 메시지가 안읽음
+
+      const { count: msgCount } = await query;
+      if (msgCount && msgCount > 0) {
         count++;
       }
     }
@@ -468,33 +467,6 @@ export async function sendMessage(
       .update({ last_read_at: message.created_at })
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
-
-    // 상대방에게 알림 생성
-    const { data: otherParticipant } = await adminSupabase
-      .from('conversation_participants')
-      .select('user_id')
-      .eq('conversation_id', conversationId)
-      .neq('user_id', user.id)
-      .single();
-
-    if (otherParticipant) {
-      // 보낸 사람 이름 조회
-      const { data: sender } = await adminSupabase
-        .from('users')
-        .select('name')
-        .eq('id', user.id)
-        .single();
-
-      const senderName = sender?.name || '사용자';
-
-      await createNotification({
-        userId: otherParticipant.user_id,
-        type: 'message',
-        title: '새 메시지',
-        message: `${senderName} 님이 메시지를 보냈습니다.`,
-        link: `/dashboard/messages?conversation=${conversationId}`,
-      });
-    }
 
     revalidatePath('/dashboard/messages');
     return { success: true, data: message };

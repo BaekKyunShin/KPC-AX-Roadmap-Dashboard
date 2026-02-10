@@ -66,6 +66,8 @@ export default function MessagesClient() {
         setConversations((prev) =>
           prev.map((c) => (c.id === initialConvId ? { ...c, has_unread: false } : c)),
         );
+
+        window.dispatchEvent(new CustomEvent('conversation-read'));
       }
 
       setIsLoading(false);
@@ -102,8 +104,8 @@ export default function MessagesClient() {
       prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
     );
 
-    // 네비게이션 뱃지 갱신 (서버 컴포넌트 재렌더링)
-    router.refresh();
+    // MessageIcon 뱃지 즉시 갱신 (router.refresh() 대신 직접 알림)
+    window.dispatchEvent(new CustomEvent('conversation-read'));
 
     setIsMessagesLoading(false);
   };
@@ -162,6 +164,7 @@ export default function MessagesClient() {
 
           // 현재 보고 있으므로 바로 읽음 처리
           await markConversationRead(selectedConvId);
+          window.dispatchEvent(new CustomEvent('conversation-read'));
         },
       )
       .subscribe();

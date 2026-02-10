@@ -85,10 +85,27 @@ export default function MessageThread({
   const badgeStyle = ROLE_BADGE_STYLES[other_user.role] || '';
   const roleLabel = ROLE_LABELS[other_user.role] || other_user.role;
 
-  // 메시지 로드 시 스크롤 아래로
+  // 메시지 로드/추가 시 스크롤 아래로
+  // isLoading이 false로 전환된 직후(초기 로드)에는 instant, 이후 새 메시지는 smooth
+  const prevLoadingRef = useRef(true);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (isLoading) {
+      prevLoadingRef.current = true;
+      return;
+    }
+
+    if (messages.length === 0) return;
+
+    // 로딩 → 완료 전환 직후: instant로 즉시 스크롤 (깜빡임 방지)
+    const behavior = prevLoadingRef.current ? 'instant' as ScrollBehavior : 'smooth';
+    prevLoadingRef.current = false;
+
+    // DOM 렌더링 완료 후 스크롤 실행
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    });
+  }, [messages, isLoading]);
 
   // textarea 높이 자동 조절
   useEffect(() => {
