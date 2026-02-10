@@ -46,7 +46,7 @@ export default async function TemplatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="자가진단 템플릿 관리"
+        title="자가진단 템플릿"
         description="자가진단 문항 템플릿을 관리합니다. 활성화된 템플릿이 새 자가진단에 사용됩니다."
         actions={
           <Link

@@ -210,7 +210,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">템플릿 관리 안내</h3>
+            <h3 className="text-sm font-medium text-blue-800">템플릿 안내</h3>
             <div className="mt-2 text-sm text-blue-700">
               <ul className="list-disc list-inside space-y-1">
                 <li>활성화된 템플릿이 새로운 자가진단에 사용됩니다.</li>

@@ -249,7 +249,7 @@ ai-roadmap-dashboard/
 |   |       |   |-- projects/         # 프로젝트 CRUD, 진단, 배정
 |   |       |   |   `-- [id]/roadmap/ # 로드맵 조회 (읽기 전용)
 |   |       |   |-- users/            # 사용자 승인 관리
-|   |       |   |-- templates/        # 진단 템플릿 관리
+|   |       |   |-- templates/        # 진단 템플릿
 |   |       |   |-- audit/            # 감사 로그 조회
 |   |       |   `-- quota/            # LLM 쿼터 현황
 |   |       `-- test-roadmap/         # 테스트 로드맵 (연습용)

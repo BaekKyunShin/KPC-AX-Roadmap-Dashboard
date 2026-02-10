@@ -142,7 +142,7 @@ const QUOTA_TABLE: TableConfig = {
   minWidth: 'min-w-[800px]',
 };
 
-/** 템플릿 관리 테이블 설정 (ops/templates) */
+/** 템플릿 테이블 설정 (ops/templates) */
 const TEMPLATE_TABLE: TableConfig = {
   columns: [
     { header: '버전', width: 'min-w-[80px]' },
@@ -478,7 +478,7 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   );
 }
 
-/** 템플릿 관리 테이블 스켈레톤 */
+/** 템플릿 테이블 스켈레톤 */
 export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = TEMPLATE_TABLE;
 

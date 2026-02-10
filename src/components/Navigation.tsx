@@ -76,7 +76,7 @@ const OPS_NAV_ITEMS = [
 
 /** 시스템관리자 전용 메뉴 */
 const SYSTEM_ADMIN_ONLY_ITEMS = [
-  { href: '/ops/templates', label: '템플릿 관리', icon: ClipboardList },
+  { href: '/ops/templates', label: '템플릿', icon: ClipboardList },
 ];
 
 const CONSULTANT_NAV_ITEMS = [
