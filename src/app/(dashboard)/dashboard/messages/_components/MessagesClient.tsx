@@ -11,6 +11,7 @@ import ConversationList from './ConversationList';
 import MessageThread from './MessageThread';
 import NewConversationDialog from './NewConversationDialog';
 import { fetchConversations, fetchMessages, sendMessage, markConversationRead } from '../actions';
+import { CONVERSATION_READ_EVENT } from '@/lib/constants/message';
 import type { ConversationWithPreview, Message } from '@/types/database';
 
 export default function MessagesClient() {
@@ -67,7 +68,7 @@ export default function MessagesClient() {
           prev.map((c) => (c.id === initialConvId ? { ...c, has_unread: false } : c)),
         );
 
-        window.dispatchEvent(new CustomEvent('conversation-read'));
+        window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
       }
 
       setIsLoading(false);
@@ -105,7 +106,7 @@ export default function MessagesClient() {
     );
 
     // MessageIcon 뱃지 즉시 갱신 (router.refresh() 대신 직접 알림)
-    window.dispatchEvent(new CustomEvent('conversation-read'));
+    window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
 
     setIsMessagesLoading(false);
   };
@@ -164,7 +165,7 @@ export default function MessagesClient() {
 
           // 현재 보고 있으므로 바로 읽음 처리
           await markConversationRead(selectedConvId);
-          window.dispatchEvent(new CustomEvent('conversation-read'));
+          window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
         },
       )
       .subscribe();
@@ -215,7 +216,7 @@ export default function MessagesClient() {
         <EmptyState
           icon={<MessageSquare className="mx-auto h-12 w-12 text-gray-400" />}
           title="아직 메시지가 없습니다"
-          description="팀원에게 새 메시지를 보내보세요."
+          description="멤버에게 새 메시지를 보내보세요."
           action={
             <Button onClick={() => setIsNewDialogOpen(true)}>
               새 메시지 보내기
@@ -232,7 +233,7 @@ export default function MessagesClient() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] bg-white rounded-lg shadow overflow-hidden">
+    <div className="flex h-full bg-white rounded-lg shadow overflow-hidden">
       {/* 좌측: 목록 (모바일에서는 thread 표시 시 숨김) */}
       <div
         className={cn(

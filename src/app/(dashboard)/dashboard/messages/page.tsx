@@ -13,21 +13,23 @@ export default async function MessagesPage() {
   if (!user) redirect('/login');
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col overflow-hidden h-[calc(100vh-10rem)]">
       <PageHeader
         title="메시지"
-        description="팀원에게 메시지를 보내보세요."
+        description="멤버에게 메시지를 보내보세요."
       />
-      <Suspense fallback={<MessagesSkeleton />}>
-        <MessagesClient />
-      </Suspense>
+      <div className="flex-1 min-h-0 pt-6">
+        <Suspense fallback={<MessagesSkeleton />}>
+          <MessagesClient />
+        </Suspense>
+      </div>
     </div>
   );
 }
 
 function MessagesSkeleton() {
   return (
-    <div className="flex h-[calc(100vh-10rem)] bg-white rounded-lg shadow overflow-hidden">
+    <div className="flex h-full bg-white rounded-lg shadow overflow-hidden">
       {/* 좌측 목록 스켈레톤 */}
       <div className="w-full md:w-80 lg:w-96 border-r">
         <div className="flex items-center justify-between px-4 py-3 border-b">

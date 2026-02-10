@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, MessageSquare } from 'lucide-react';
+import { SquarePen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -48,12 +48,12 @@ export default function ConversationList({
         <h2 className="text-base font-semibold text-gray-900">메시지</h2>
         <Button
           size="sm"
-          variant="ghost"
+          variant="outline"
           onClick={onNewConversation}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50"
           aria-label="새 메시지"
         >
-          <Plus className="h-4 w-4" />
+          <SquarePen className="h-4 w-4" />
         </Button>
       </div>
 

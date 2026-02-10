@@ -45,6 +45,9 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+/** 대화 읽음 처리 시 컴포넌트 간 통신에 사용하는 커스텀 이벤트 이름 */
+export const CONVERSATION_READ_EVENT = 'conversation-read';
+
 /** 메시지 가능 역할 목록 */
 export const MESSAGING_ROLES = ['SYSTEM_ADMIN', 'OPS_ADMIN', 'CONSULTANT_APPROVED'] as const;
 

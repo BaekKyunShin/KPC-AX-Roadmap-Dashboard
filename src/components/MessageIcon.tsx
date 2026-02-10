@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
-import { MESSAGE_BADGE_MAX } from '@/lib/constants/message';
+import { MESSAGE_BADGE_MAX, CONVERSATION_READ_EVENT } from '@/lib/constants/message';
 import { createClient } from '@/lib/supabase/client';
 import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messages/actions';
 
@@ -48,7 +48,6 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
   // Realtime: 인증 세션 로드 후 구독 (CHANNEL_ERROR 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
-  const realtimeFailedRef = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Realtime 실패 시에만 활성화되는 polling
@@ -109,7 +108,6 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             retryCount = 0;
-            realtimeFailedRef.current = false;
             stopFallbackPolling();
           } else if (status === 'CHANNEL_ERROR') {
             if (retryCount < MAX_REALTIME_RETRIES) {
@@ -118,7 +116,6 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
               retryTimer = setTimeout(() => subscribe(), delay);
             } else {
               // 재시도 소진 → polling fallback 활성화
-              realtimeFailedRef.current = true;
               startFallbackPolling();
             }
           }
@@ -149,10 +146,10 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       }
     }
 
-    window.addEventListener('conversation-read', handleMessageRead);
+    window.addEventListener(CONVERSATION_READ_EVENT, handleMessageRead);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('conversation-read', handleMessageRead);
+      window.removeEventListener(CONVERSATION_READ_EVENT, handleMessageRead);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [refreshCount]);
