@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
+import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import {
   PROJECT_STALL_THRESHOLDS,
@@ -314,6 +315,21 @@ export async function assignConsultant(formData: FormData): Promise<ActionResult
     targetType: 'project',
     targetId: project_id,
     meta: { consultant_id, reason: assignment_reason },
+  });
+
+  // 컨설턴트에게 배정 알림 전송
+  const { data: project } = await adminSupabase
+    .from('projects')
+    .select('company_name')
+    .eq('id', project_id)
+    .single();
+
+  await createNotification({
+    userId: consultant_id,
+    type: 'assignment',
+    title: '새 프로젝트 배정',
+    message: `${project?.company_name || '새'} 프로젝트가 배정되었습니다.`,
+    link: `/consultant/projects/${project_id}`,
   });
 
   revalidatePath(`/ops/projects/${project_id}`);

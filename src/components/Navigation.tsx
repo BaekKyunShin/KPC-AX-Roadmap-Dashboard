@@ -26,6 +26,8 @@ import {
   Home,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import NotificationBell from '@/components/NotificationBell';
+import MessageIcon from '@/components/MessageIcon';
 import type { User } from '@/types/database';
 
 // =============================================================================
@@ -34,6 +36,8 @@ import type { User } from '@/types/database';
 
 interface NavigationProps {
   user: User;
+  unreadCount?: number;
+  unreadMessageCount?: number;
 }
 
 interface RoleBadgeConfig {
@@ -108,7 +112,7 @@ function getRoleBadgeConfig(role: string): RoleBadgeConfig | null {
 // Component
 // =============================================================================
 
-export default function Navigation({ user }: NavigationProps) {
+export default function Navigation({ user, unreadCount = 0, unreadMessageCount = 0 }: NavigationProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -191,6 +195,12 @@ export default function Navigation({ user }: NavigationProps) {
 
           {/* Desktop User Menu */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Message Icon */}
+            <MessageIcon initialUnreadCount={unreadMessageCount} />
+
+            {/* Notification Bell */}
+            <NotificationBell initialUnreadCount={unreadCount} />
+
             {/* User Dropdown */}
             <div className="relative" ref={userMenuRef}>
               <button
@@ -263,15 +273,18 @@ export default function Navigation({ user }: NavigationProps) {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          {/* Mobile: Message + Notification + Menu Button */}
+          <div className="flex items-center gap-1 md:hidden">
+            <MessageIcon initialUnreadCount={unreadMessageCount} />
+            <NotificationBell initialUnreadCount={unreadCount} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
       </div>
 

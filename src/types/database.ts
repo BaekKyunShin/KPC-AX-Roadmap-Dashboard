@@ -422,6 +422,73 @@ export type AuditAction =
   | 'TEST_PROJECT_DELETE'
   | 'USER_WITHDRAW';
 
+// 알림 타입
+export type NotificationType = 'assignment' | 'deadline' | 'status_change' | 'message' | 'system';
+
+// 알림
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// 대화방
+export interface Conversation {
+  id: string;
+  last_message_at: string;
+  created_at: string;
+}
+
+// 대화 참여자
+export interface ConversationParticipant {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  last_read_at: string;
+  joined_at: string;
+}
+
+// 메시지
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+}
+
+// UI용: 대화 목록 항목 (상대방 정보 + 미리보기 포함)
+export interface ConversationWithPreview {
+  id: string;
+  last_message_at: string;
+  other_user: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  last_message?: {
+    content: string;
+    sender_id: string;
+    created_at: string;
+  };
+  has_unread: boolean;
+}
+
+// UI용: 수신자 그룹 (역할별 사용자 목록)
+export interface RecipientGroup {
+  role: string;
+  role_label: string;
+  users: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
 // 사용량 메트릭
 export interface UsageMetric {
   id: string;

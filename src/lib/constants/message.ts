@@ -1,0 +1,60 @@
+// =============================================================================
+// 메시지 상수
+// =============================================================================
+
+/** 한 번에 조회할 메시지 수 */
+export const MESSAGE_PAGE_SIZE = 50;
+
+/** 대화 목록 한 번에 조회할 수 */
+export const CONVERSATION_PAGE_SIZE = 30;
+
+/** 메시지 최대 길이 */
+export const MESSAGE_MAX_LENGTH = 2000;
+
+/** 메시지 뱃지 최대 표시 수 (이상은 "9+") */
+export const MESSAGE_BADGE_MAX = 9;
+
+/** 역할별 한국어 라벨 */
+export const ROLE_LABELS: Record<string, string> = {
+  SYSTEM_ADMIN: '시스템관리자',
+  OPS_ADMIN: '운영관리자',
+  CONSULTANT_APPROVED: '컨설턴트',
+};
+
+/** 역할별 뱃지 스타일 (Tailwind 클래스) */
+export const ROLE_BADGE_STYLES: Record<string, string> = {
+  SYSTEM_ADMIN: 'bg-red-50 text-red-600 border-red-100',
+  OPS_ADMIN: 'bg-purple-50 text-purple-600 border-purple-100',
+  CONSULTANT_APPROVED: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+};
+
+/** 역할별 아바타 배경색 (Tailwind 그라데이션) */
+export const ROLE_AVATAR_COLORS: Record<string, string> = {
+  SYSTEM_ADMIN: 'bg-gradient-to-br from-red-500 to-red-600',
+  OPS_ADMIN: 'bg-gradient-to-br from-purple-500 to-purple-600',
+  CONSULTANT_APPROVED: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+};
+
+/** 이름에서 이니셜 추출 (최대 2자) */
+export function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/** 메시지 가능 역할 목록 */
+export const MESSAGING_ROLES = ['SYSTEM_ADMIN', 'OPS_ADMIN', 'CONSULTANT_APPROVED'] as const;
+
+/**
+ * 역할별 메시지 수신 가능 대상
+ * - 컨설턴트: 운영관리자, 시스템관리자에게만 전송 가능
+ * - 운영관리자/시스템관리자: 모든 메시징 역할에게 전송 가능
+ */
+export const ALLOWED_RECIPIENTS: Record<string, readonly string[]> = {
+  CONSULTANT_APPROVED: ['OPS_ADMIN', 'SYSTEM_ADMIN'],
+  OPS_ADMIN: ['SYSTEM_ADMIN', 'OPS_ADMIN', 'CONSULTANT_APPROVED'],
+  SYSTEM_ADMIN: ['SYSTEM_ADMIN', 'OPS_ADMIN', 'CONSULTANT_APPROVED'],
+};
