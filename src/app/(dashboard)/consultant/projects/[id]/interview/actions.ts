@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { interviewSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
+import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 
 // ============================================================================
@@ -90,7 +91,7 @@ export async function saveInterview(
     // 프로젝트 접근 권한 확인 (배정된 컨설턴트만)
     const { data: projectData } = await supabase
       .from('projects')
-      .select('id, status, assigned_consultant_id')
+      .select('id, status, assigned_consultant_id, company_name, is_test_mode')
       .eq('id', projectId)
       .eq('assigned_consultant_id', user.id)
       .single();
@@ -166,6 +167,16 @@ export async function saveInterview(
         .from('projects')
         .update({ status: 'INTERVIEWED' })
         .eq('id', projectId);
+
+      // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
+      if (!projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: '인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
     }
 
     // 감사 로그

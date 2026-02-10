@@ -423,7 +423,15 @@ export type AuditAction =
   | 'USER_WITHDRAW';
 
 // 알림 타입
-export type NotificationType = 'assignment' | 'deadline' | 'status_change' | 'message' | 'system';
+export type NotificationType =
+  | 'assignment'
+  | 'deadline'
+  | 'status_change'
+  | 'message'
+  | 'system'
+  | 'interview_complete'
+  | 'roadmap_draft'
+  | 'roadmap_finalized';
 
 // 알림
 export interface Notification {

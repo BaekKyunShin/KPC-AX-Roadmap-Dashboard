@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import {
   NOTIFICATION_TYPE_CONFIG,
   NOTIFICATION_BADGE_MAX,
+  OPS_NOTIFICATION_TABS,
 } from '@/lib/constants/notification';
 import { formatRelativeTime } from '@/lib/utils/consultant-home';
 import {
@@ -15,7 +16,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/app/(dashboard)/notifications/actions';
-import type { Notification, NotificationType } from '@/types/database';
+import type { Notification, NotificationType, UserRole } from '@/types/database';
 
 // =============================================================================
 // Types
@@ -23,32 +24,127 @@ import type { Notification, NotificationType } from '@/types/database';
 
 interface NotificationBellProps {
   initialUnreadCount: number;
+  userRole: UserRole;
 }
+
+type TabKey = (typeof OPS_NOTIFICATION_TABS)[number]['key'];
 
 // =============================================================================
 // Component
 // =============================================================================
 
-export default function NotificationBell({ initialUnreadCount }: NotificationBellProps) {
+export default function NotificationBell({ initialUnreadCount, userRole }: NotificationBellProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // useRef로 page/loadingMore 관리 → IntersectionObserver에서 stale state 방지
+  const pageRef = useRef(1);
+  const isLoadingMoreRef = useRef(false);
+  // 탭 변경 시 stale 응답 무시를 위한 requestId
+  const requestIdRef = useRef(0);
+
+  const isOpsAdmin = userRole === 'OPS_ADMIN' || userRole === 'SYSTEM_ADMIN';
+  const showTabs = isOpsAdmin;
+
+  // initialUnreadCount prop 동기화
+  useEffect(() => {
+    setUnreadCount(initialUnreadCount);
+  }, [initialUnreadCount]);
 
   // Popover 열릴 때마다 알림 목록을 fresh fetch
   const handleOpenChange = useCallback(async (open: boolean) => {
     setIsOpen(open);
 
     if (open) {
+      const id = ++requestIdRef.current;
       setIsLoading(true);
-      const result = await fetchNotifications();
+      setActiveTab('all');
+      pageRef.current = 1;
+
+      const result = await fetchNotifications(1);
+      // stale 응답 무시
+      if (requestIdRef.current !== id) return;
+
       if (result.success) {
         setNotifications(result.data.notifications);
+        setHasMore(result.data.hasMore);
       }
       setIsLoading(false);
+    } else {
+      // Popover 닫힐 때 초기화
+      setNotifications([]);
+      setHasMore(false);
     }
   }, []);
+
+  // 탭 변경
+  const handleTabChange = useCallback(async (tab: TabKey) => {
+    setActiveTab(tab);
+    const id = ++requestIdRef.current;
+    setIsLoading(true);
+    pageRef.current = 1;
+
+    const filterValue = tab === 'all' ? undefined : tab;
+    const result = await fetchNotifications(1, filterValue);
+    // stale 응답 무시 (빠른 탭 전환 시)
+    if (requestIdRef.current !== id) return;
+
+    if (result.success) {
+      setNotifications(result.data.notifications);
+      setHasMore(result.data.hasMore);
+    }
+    setIsLoading(false);
+
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, []);
+
+  // 무한 스크롤: 다음 페이지 로드
+  const loadMore = useCallback(async () => {
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    const nextPage = pageRef.current + 1;
+    pageRef.current = nextPage;
+
+    const filterValue = activeTab === 'all' ? undefined : activeTab;
+    const result = await fetchNotifications(nextPage, filterValue);
+
+    if (result.success) {
+      setNotifications((prev) => [...prev, ...result.data.notifications]);
+      setHasMore(result.data.hasMore);
+    }
+
+    setIsLoadingMore(false);
+    isLoadingMoreRef.current = false;
+  }, [activeTab]);
+
+  // IntersectionObserver 기반 무한 스크롤
+  useEffect(() => {
+    if (!isOpen || !sentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMoreRef.current) {
+          loadMore();
+        }
+      },
+      { root: scrollRef.current, threshold: 0.1 },
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [isOpen, loadMore]);
 
   // 단일 알림 클릭: 읽음 처리 + 페이지 이동
   const handleNotificationClick = useCallback(
@@ -118,11 +214,32 @@ export default function NotificationBell({ initialUnreadCount }: NotificationBel
           )}
         </div>
 
+        {/* 탭 (운영관리자/시스템관리자만) */}
+        {showTabs && (
+          <>
+            <div className="flex px-4 gap-1">
+              {OPS_NOTIFICATION_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    activeTab === tab.key
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="h-2" />
+          </>
+        )}
+
         <Separator />
 
-        {/* 알림 리스트 */}
-        {/* 전체 Popover max-h: 480px — 헤더(~44px) + 구분선(1px) = 스크롤 영역 ~435px */}
-        <div className="max-h-[435px] overflow-y-auto">
+        {/* 알림 리스트 + 무한 스크롤 */}
+        <div ref={scrollRef} className="max-h-[400px] overflow-y-auto">
           {isLoading ? (
             <NotificationSkeleton />
           ) : notifications.length === 0 ? (
@@ -136,6 +253,16 @@ export default function NotificationBell({ initialUnreadCount }: NotificationBel
                   onClick={handleNotificationClick}
                 />
               ))}
+
+              {/* 무한 스크롤 센티넬 */}
+              {hasMore && <div ref={sentinelRef} className="h-1" />}
+
+              {/* 더 로딩 중 */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
             </div>
           )}
         </div>

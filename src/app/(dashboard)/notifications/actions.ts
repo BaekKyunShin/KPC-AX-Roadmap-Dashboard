@@ -3,15 +3,17 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Notification } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
-import { NOTIFICATION_PAGE_SIZE } from '@/lib/constants/notification';
+import { NOTIFICATION_PAGE_SIZE, NOTIFICATION_TYPES } from '@/lib/constants/notification';
 
 /**
  * 현재 로그인한 사용자의 알림 목록 조회
  * - RLS가 user_id 기준 필터링을 보장
  * - 최신순 정렬, 페이지네이션 지원
+ * - filter가 있으면 해당 type만 조회, 없으면 message 제외 전체
  */
 export async function fetchNotifications(
   page: number = 1,
+  filter?: string,
 ): Promise<ActionResult<{ notifications: Notification[]; hasMore: boolean }>> {
   try {
     const supabase = await createClient();
@@ -24,10 +26,24 @@ export async function fetchNotifications(
 
     // N+1 fetch: PAGE_SIZE+1건을 요청하여 다음 페이지 존재 여부를 판단
     // Supabase .range(from, to)는 inclusive이므로 +1이 자동으로 적용됨
-    const { data, error } = await supabase
+    let query = supabase
       .from('notifications')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
+
+    if (filter) {
+      // 허용된 타입만 필터링 (message 제외)
+      const allowedTypes = NOTIFICATION_TYPES.filter((t) => t !== 'message');
+      if (!allowedTypes.includes(filter as (typeof allowedTypes)[number])) {
+        return { success: false, error: '유효하지 않은 필터입니다.' };
+      }
+      query = query.eq('type', filter);
+    } else {
+      // 메시지 알림은 벨에서 표시하지 않음 (MessageIcon이 별도 처리)
+      query = query.neq('type', 'message');
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + NOTIFICATION_PAGE_SIZE);
 
@@ -54,6 +70,7 @@ export async function fetchNotifications(
 
 /**
  * 안읽음 알림 카운트 조회 (레이아웃용)
+ * - 메시지 알림은 제외 (MessageIcon이 별도 처리)
  * - 에러 시 0 반환 (UI 영향 최소화)
  */
 export async function fetchUnreadCount(): Promise<number> {
@@ -68,7 +85,8 @@ export async function fetchUnreadCount(): Promise<number> {
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('is_read', false);
+      .eq('is_read', false)
+      .neq('type', 'message');
 
     if (error) {
       console.error('[fetchUnreadCount]', error);
@@ -115,6 +133,7 @@ export async function markNotificationRead(
 
 /**
  * 모든 알림 읽음 처리
+ * - 메시지 알림은 제외 (MessageIcon이 별도 처리)
  * - RLS가 본인 알림만 업데이트하도록 보장
  */
 export async function markAllNotificationsRead(): Promise<SimpleActionResult> {
@@ -129,7 +148,8 @@ export async function markAllNotificationsRead(): Promise<SimpleActionResult> {
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', user.id)
-      .eq('is_read', false);
+      .eq('is_read', false)
+      .neq('type', 'message');
 
     if (error) {
       console.error('[markAllNotificationsRead]', error);

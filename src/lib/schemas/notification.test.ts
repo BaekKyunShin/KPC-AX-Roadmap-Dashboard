@@ -20,7 +20,16 @@ describe('createNotificationSchema', () => {
   });
 
   it('모든 알림 타입을 통과시킨다', () => {
-    const types = ['assignment', 'deadline', 'status_change', 'message', 'system'] as const;
+    const types = [
+      'assignment',
+      'deadline',
+      'status_change',
+      'message',
+      'system',
+      'interview_complete',
+      'roadmap_draft',
+      'roadmap_finalized',
+    ] as const;
     for (const type of types) {
       const result = createNotificationSchema.safeParse({ ...validInput, type });
       expect(result.success).toBe(true);

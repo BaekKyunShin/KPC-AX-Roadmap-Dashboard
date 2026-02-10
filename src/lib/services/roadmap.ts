@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { callLLMForJSON } from './llm';
 import { createAuditLog } from './audit';
+import { createNotificationForAdmins } from './notification';
 import { checkQuotaExceeded, recordLLMUsage } from './quota';
 import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import type { ConsultantProfile } from '@/types/database';
@@ -431,6 +432,22 @@ export async function generateRoadmap(
       validation_passed: validation.isValid,
     },
   });
+
+  // 운영관리자에게 로드맵 초안 알림 (테스트 모드 제외)
+  if (!isTestMode) {
+    const { data: projectInfo } = await supabase
+      .from('projects')
+      .select('company_name')
+      .eq('id', projectId)
+      .single();
+
+    await createNotificationForAdmins({
+      type: 'roadmap_draft',
+      title: '로드맵 초안 생성',
+      message: `${projectInfo?.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵 초안이 생성되었습니다.`,
+      link: `/ops/projects/${projectId}`,
+    });
+  }
 
   return {
     roadmapId: newRoadmap.id,
@@ -1229,6 +1246,22 @@ export async function finalizeRoadmap(
       version_number: roadmap.version_number,
     },
   });
+
+  // 운영관리자에게 로드맵 확정 알림 (테스트 모드 제외)
+  const { data: projectInfo } = await supabase
+    .from('projects')
+    .select('company_name, is_test_mode')
+    .eq('id', roadmap.project_id)
+    .single();
+
+  if (!projectInfo?.is_test_mode) {
+    await createNotificationForAdmins({
+      type: 'roadmap_finalized',
+      title: '로드맵 확정',
+      message: `${projectInfo?.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵이 최종 확정되었습니다.`,
+      link: `/ops/projects/${roadmap.project_id}`,
+    });
+  }
 }
 
 /**

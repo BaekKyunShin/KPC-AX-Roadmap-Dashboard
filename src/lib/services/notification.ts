@@ -1,5 +1,3 @@
-'use server';
-
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotificationSchema } from '@/lib/schemas/notification';
 import type { NotificationType } from '@/types/database';
@@ -47,5 +45,54 @@ export async function createNotification(params: CreateNotificationParams): Prom
     }
   } catch (err) {
     console.error('[createNotification] 예외:', err);
+  }
+}
+
+interface AdminNotificationParams {
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+}
+
+/**
+ * 모든 운영관리자 + 시스템관리자에게 알림 생성
+ * 프로젝트 진행 상태 알림에 사용한다.
+ * 실패해도 메인 로직에 영향을 주지 않도록 에러를 로깅만 한다.
+ */
+export async function createNotificationForAdmins(
+  params: AdminNotificationParams,
+): Promise<void> {
+  try {
+    const adminSupabase = createAdminClient();
+    const { data: admins, error } = await adminSupabase
+      .from('users')
+      .select('id')
+      .in('role', ['OPS_ADMIN', 'SYSTEM_ADMIN'])
+      .eq('status', 'ACTIVE');
+
+    if (error || !admins || admins.length === 0) {
+      if (error) console.error('[createNotificationForAdmins] 관리자 조회 실패:', error);
+      return;
+    }
+
+    // Bulk INSERT로 한 번에 처리
+    const rows = admins.map((admin) => ({
+      user_id: admin.id,
+      type: params.type,
+      title: params.title,
+      message: params.message,
+      link: params.link,
+    }));
+
+    const { error: insertError } = await adminSupabase
+      .from('notifications')
+      .insert(rows);
+
+    if (insertError) {
+      console.error('[createNotificationForAdmins] 알림 생성 실패:', insertError);
+    }
+  } catch (err) {
+    console.error('[createNotificationForAdmins] 예외:', err);
   }
 }

@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   MessageSquare,
   FileText,
+  ClipboardCheck,
+  FileEdit,
+  FileBadge,
 } from 'lucide-react';
 import type { NotificationType } from '@/types/database';
 
@@ -18,6 +21,9 @@ export const NOTIFICATION_TYPES = [
   'status_change',
   'message',
   'system',
+  'interview_complete',
+  'roadmap_draft',
+  'roadmap_finalized',
 ] as const;
 
 /** 알림 타입별 설정 (라벨, 색상, 아이콘) */
@@ -60,7 +66,33 @@ export const NOTIFICATION_TYPE_CONFIG: Record<
     textColor: 'text-gray-500',
     icon: FileText,
   },
+  interview_complete: {
+    label: '인터뷰',
+    bgColor: 'bg-teal-50',
+    textColor: 'text-teal-600',
+    icon: ClipboardCheck,
+  },
+  roadmap_draft: {
+    label: '초안',
+    bgColor: 'bg-indigo-50',
+    textColor: 'text-indigo-600',
+    icon: FileEdit,
+  },
+  roadmap_finalized: {
+    label: '확정',
+    bgColor: 'bg-emerald-50',
+    textColor: 'text-emerald-600',
+    icon: FileBadge,
+  },
 };
+
+/** 운영관리자/시스템관리자용 알림 탭 */
+export const OPS_NOTIFICATION_TABS = [
+  { key: 'all', label: '전체' },
+  { key: 'interview_complete', label: '인터뷰' },
+  { key: 'roadmap_draft', label: '초안' },
+  { key: 'roadmap_finalized', label: '확정' },
+] as const;
 
 /** Popover에서 한 번에 보여줄 알림 수 */
 export const NOTIFICATION_PAGE_SIZE = 20;

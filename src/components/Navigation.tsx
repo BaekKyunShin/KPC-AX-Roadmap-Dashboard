@@ -199,7 +199,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             <MessageIcon initialUnreadCount={unreadMessageCount} />
 
             {/* Notification Bell */}
-            <NotificationBell initialUnreadCount={unreadCount} />
+            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
 
             {/* User Dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -276,7 +276,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
           {/* Mobile: Message + Notification + Menu Button */}
           <div className="flex items-center gap-1 md:hidden">
             <MessageIcon initialUnreadCount={unreadMessageCount} />
-            <NotificationBell initialUnreadCount={unreadCount} />
+            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
             <Button
               variant="ghost"
               size="icon"
