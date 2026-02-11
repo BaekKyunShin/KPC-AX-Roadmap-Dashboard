@@ -8,12 +8,22 @@ import {
   createActivityLogSchema,
   updateActivityLogSchema,
 } from '@/lib/schemas/activity-log';
-import type { SimpleActionResult } from '@/lib/types/action-result';
+import {
+  guideDataSchema,
+  updateGuideQuestionsSchema,
+  type GuideData,
+  type GuideQuestion,
+} from '@/lib/schemas/interview-guide';
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import {
   ACTIVITY_LOG_PAGE_SIZE,
   type ActivityLogType,
   type ManualActivityLogType,
 } from '@/lib/constants/activity-log';
+import { generateInterviewGuideData } from '@/lib/services/interview-guide';
+import { checkQuotaExceeded, recordLLMUsage } from '@/lib/services/quota';
+import type { SelfAssessmentScores } from '@/lib/constants/score-color';
+import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
 // ============================================================================
 // 타입 정의
@@ -283,6 +293,177 @@ export async function deleteActivityLog(
     return { success: true };
   } catch (err) {
     console.error('[deleteActivityLog] 예외:', err);
+    return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// 인터뷰 사전 분석 가이드 생성
+// ============================================================================
+
+export async function generateInterviewGuide(
+  projectId: string,
+): Promise<ActionResult<GuideData>> {
+  try {
+    const auth = await verifyConsultantProjectAccess(projectId);
+    if ('error' in auth) {
+      return { success: false, error: auth.error };
+    }
+
+    // 쿼터 확인
+    const quotaCheck = await checkQuotaExceeded(auth.user.id);
+    if (quotaCheck.exceeded) {
+      return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
+    }
+
+    // 프로젝트 + 자가진단 데이터 조회
+    const supabase = await createClient();
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select(`
+        company_name,
+        industry,
+        company_size,
+        customer_comment,
+        self_assessments(
+          scores,
+          answers,
+          template:self_assessment_templates(questions)
+        )
+      `)
+      .eq('id', projectId)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+    }
+
+    // UNIQUE 제약조건(1:1 관계)으로 PostgREST가 단일 객체를 반환
+    const selfAssessment = projectData.self_assessments as unknown as {
+      scores: unknown;
+      answers: unknown;
+      template: { questions?: unknown[] } | null;
+    } | null;
+    if (!selfAssessment) {
+      return { success: false, error: '자가진단이 완료되지 않았습니다.' };
+    }
+
+    const scores = selfAssessment.scores as SelfAssessmentScores | null;
+    if (!scores) {
+      return { success: false, error: '자가진단 점수 데이터가 없습니다.' };
+    }
+
+    const answers = (selfAssessment.answers ?? []) as { question_id: string; answer_value: number | string }[];
+    const templateQuestions = (selfAssessment.template?.questions ?? []) as {
+      id: string;
+      order: number;
+      dimension: string;
+      question_text: string;
+      question_type: string;
+      weight: number;
+    }[];
+
+    const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
+      || projectData.company_size;
+
+    // LLM 호출
+    const guideData = await generateInterviewGuideData({
+      companyName: projectData.company_name,
+      industry: projectData.industry,
+      companySize: companySizeLabel,
+      customerComment: projectData.customer_comment,
+      scores,
+      answers,
+      questions: templateQuestions,
+    });
+
+    // Zod 검증
+    const validation = guideDataSchema.safeParse(guideData);
+    if (!validation.success) {
+      console.error('[generateInterviewGuide] LLM 출력 검증 실패:', validation.error.errors);
+      return { success: false, error: 'AI 분석 결과 형식이 올바르지 않습니다. 다시 시도해주세요.' };
+    }
+
+    // DB UPSERT (프로젝트당 1개)
+    const adminSupabase = createAdminClient();
+    const { error: upsertError } = await adminSupabase
+      .from('interview_guides')
+      .upsert(
+        {
+          project_id: projectId,
+          guide_data: validation.data,
+        },
+        { onConflict: 'project_id' },
+      );
+
+    if (upsertError) {
+      console.error('[generateInterviewGuide] DB 저장 실패:', upsertError);
+      return { success: false, error: '분석 결과 저장에 실패했습니다.' };
+    }
+
+    // 쿼터 사용량 기록
+    await recordLLMUsage(auth.user.id);
+
+    revalidatePath(`/consultant/projects/${projectId}`);
+    return { success: true, data: validation.data };
+  } catch (err) {
+    console.error('[generateInterviewGuide] 예외:', err);
+    return { success: false, error: 'AI 분석 중 오류가 발생했습니다. 다시 시도해주세요.' };
+  }
+}
+
+// ============================================================================
+// 인터뷰 가이드 질문 업데이트 (체크/추가/삭제)
+// ============================================================================
+
+export async function updateInterviewGuideQuestions(
+  projectId: string,
+  questions: GuideQuestion[],
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await verifyConsultantProjectAccess(projectId);
+    if ('error' in auth) {
+      return { success: false, error: auth.error };
+    }
+
+    const validation = updateGuideQuestionsSchema.safeParse({ questions });
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+
+    const adminSupabase = createAdminClient();
+
+    // 기존 가이드 조회
+    const { data: existing } = await adminSupabase
+      .from('interview_guides')
+      .select('id, guide_data')
+      .eq('project_id', projectId)
+      .single();
+
+    if (!existing) {
+      return { success: false, error: '사전 분석 가이드를 찾을 수 없습니다.' };
+    }
+
+    // guide_data의 questions만 업데이트
+    const updatedGuideData = {
+      ...(existing.guide_data as Record<string, unknown>),
+      questions: validation.data.questions,
+    };
+
+    const { error: updateError } = await adminSupabase
+      .from('interview_guides')
+      .update({ guide_data: updatedGuideData })
+      .eq('id', existing.id);
+
+    if (updateError) {
+      console.error('[updateInterviewGuideQuestions]', updateError);
+      return { success: false, error: '질문 업데이트에 실패했습니다.' };
+    }
+
+    revalidatePath(`/consultant/projects/${projectId}`);
+    return { success: true };
+  } catch (err) {
+    console.error('[updateInterviewGuideQuestions] 예외:', err);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

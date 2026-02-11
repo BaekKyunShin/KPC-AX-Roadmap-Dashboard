@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
-import { CompanyInfoCard } from './_components/CompanyInfoCard';
+import { CompanyInfoBar } from './_components/CompanyInfoBar';
+import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
+import { InterviewGuide } from './_components/InterviewGuide';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
@@ -69,6 +71,13 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
     notFound();
   }
 
+  // 사전 분석 가이드 조회
+  const { data: interviewGuide } = await supabase
+    .from('interview_guides')
+    .select('id, guide_data, created_at, updated_at')
+    .eq('project_id', projectId)
+    .single();
+
   // UNIQUE 제약조건(1:1 관계)으로 PostgREST가 단일 객체를 반환
   const selfAssessment = projectData.self_assessments;
   const interview = projectData.interviews;
@@ -84,8 +93,10 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
     ?.replace(/[()]/g, '')
     || projectData.company_size;
 
+  const hasSelfAssessment = !!selfAssessment && !!assessmentScores;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 헤더 */}
       <PageHeader
         title={projectData.company_name}
@@ -108,7 +119,6 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 >
                   인터뷰 수정
                 </Link>
-                {/* 인터뷰 완료(INTERVIEWED) 이상의 상태에서만 로드맵 버튼 표시 */}
                 {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
                   <Link
                     href={`/consultant/projects/${projectId}/roadmap`}
@@ -124,61 +134,72 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* 기업 정보 */}
-        <CompanyInfoCard
-          companyName={projectData.company_name}
-          industry={projectData.industry}
-          companySizeLabel={companySizeLabel}
-          contactName={projectData.contact_name}
-          contactEmail={projectData.contact_email}
-          contactPhone={projectData.contact_phone}
-          companyAddress={projectData.company_address}
-          customerComment={projectData.customer_comment}
-        />
+      {/* 기업 정보 (항상 보임) */}
+      <CompanyInfoBar
+        contactName={projectData.contact_name}
+        contactEmail={projectData.contact_email}
+        contactPhone={projectData.contact_phone}
+        companyAddress={projectData.company_address}
+        customerComment={projectData.customer_comment}
+      />
 
-        {/* 자가진단 결과 */}
-        <div className="lg:col-span-3 flex flex-col bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
-            {selfAssessment?.created_at && (
-              <span className="text-sm text-gray-500">
-                {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
-              </span>
+      {/* 탭 네비게이션 */}
+      <ProjectDetailTabs
+        assessmentContent={
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
+              {selfAssessment?.created_at && (
+                <span className="text-sm text-gray-500">
+                  {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
+                </span>
+              )}
+            </div>
+            {hasSelfAssessment ? (
+              <>
+                <ConsultantAssessmentResult scores={assessmentScores} />
+                {assessmentAnswers.length > 0 && templateQuestions.length > 0 && (
+                  <AssessmentDetailAccordion
+                    answers={assessmentAnswers}
+                    questions={templateQuestions}
+                  />
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
             )}
           </div>
-          {selfAssessment && assessmentScores ? (
-            <>
-              <ConsultantAssessmentResult scores={assessmentScores} />
-              {assessmentAnswers.length > 0 && templateQuestions.length > 0 && (
-                <AssessmentDetailAccordion
-                  answers={assessmentAnswers}
-                  questions={templateQuestions}
-                />
-              )}
-            </>
+        }
+        preAnalysisContent={
+          <InterviewGuide
+            projectId={projectId}
+            hasSelfAssessment={hasSelfAssessment}
+            guideData={interviewGuide?.guide_data ?? null}
+            guideId={interviewGuide?.id ?? null}
+            guideCreatedAt={interviewGuide?.created_at ?? null}
+          />
+        }
+        interviewContent={
+          interview ? (
+            <div className="bg-white shadow rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">인터뷰 기록</h2>
+                <span className="text-sm text-gray-500">
+                  {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+                </span>
+              </div>
+              <InterviewSummary {...toInterviewSummaryProps(interview)} />
+            </div>
           ) : (
-            <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
-          )}
-        </div>
-      </div>
-
-      {/* 인터뷰 정보 - 자가진단 카드 아래 */}
-      {interview && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">인터뷰 정보</h2>
-            <span className="text-sm text-gray-500">
-              {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
-            </span>
-          </div>
-          <InterviewSummary {...toInterviewSummaryProps(interview)} />
-        </div>
-      )}
-
-      {/* 활동 일지 */}
-      <ActivityLog projectId={projectId} />
+            <div className="bg-white shadow rounded-lg p-6">
+              <p className="text-sm text-gray-500">인터뷰가 아직 진행되지 않았습니다.</p>
+            </div>
+          )
+        }
+        activityContent={
+          <ActivityLog projectId={projectId} />
+        }
+      />
     </div>
   );
 }
-
