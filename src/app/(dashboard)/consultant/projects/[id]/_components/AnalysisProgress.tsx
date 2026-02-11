@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 
 const STEPS = [
   { label: '자가진단 데이터 수집', delay: 0 },
-  { label: '5개 영역 교차 분석', delay: 5000 },
-  { label: '업종 맥락에 맞는 질문 구성', delay: 15000 },
-  { label: '인터뷰 전략 정리', delay: 30000 },
+  { label: '5개 영역 교차 분석', delay: 10000 },
+  { label: '업종 맥락에 맞는 질문 구성', delay: 20000 },
+  { label: '인터뷰 전략 정리', delay: 35000 },
 ];
 
 export function AnalysisProgress() {
