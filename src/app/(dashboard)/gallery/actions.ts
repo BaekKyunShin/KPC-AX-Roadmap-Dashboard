@@ -14,6 +14,42 @@ import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/** 과정 토픽에서 핵심 키워드 태그를 추출 (최대 3개) */
+function extractTags(industry: string, courses: { topic?: string }[]): string[] {
+  // 업종에서 슬래시 앞부분만 추출 (예: "의료/헬스케어" → "의료")
+  const industryShort = industry?.split('/')[0] || '';
+
+  // 과정 토픽에서 핵심 키워드 추출
+  const topicKeywords: string[] = [];
+  for (const course of courses) {
+    if (!course.topic) continue;
+    // 긴 토픽에서 핵심 명사구 추출 (2~6자 한국어 단어)
+    const words = course.topic
+      .replace(/[()（）]/g, ' ')
+      .split(/[\s,+/·]+/)
+      .filter((w) => /^[가-힣]{2,6}$/.test(w))
+      .filter((w) => !['기초', '개론', '활용', '이해', '실습', '실전', '입문', '기반'].includes(w));
+    topicKeywords.push(...words);
+  }
+
+  // 중복 제거 후 빈도 높은 순 + 업종 태그 합산
+  const freq = new Map<string, number>();
+  for (const kw of topicKeywords) {
+    freq.set(kw, (freq.get(kw) || 0) + 1);
+  }
+  const sorted = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+  const tags: string[] = industryShort ? [industryShort] : [];
+  for (const [kw] of sorted) {
+    if (tags.length >= 3) break;
+    if (!tags.includes(kw)) tags.push(kw);
+  }
+  return tags;
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -26,6 +62,7 @@ export interface GalleryRoadmapItem {
   diagnosisSummary: string;
   pblCourseName: string;
   pblTotalHours: number;
+  tags: string[];
   createdBy: string;
   createdByName: string;
   likeCount: number;
@@ -90,8 +127,12 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   const { search, industry, sort, status, isShared, consultantId } = parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role);
 
+  // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
+  // 역할 기반 필터링은 아래 코드에서 수행
+  const adminClient = createAdminClient();
+
   // 기본 쿼리: roadmap_versions + projects + users (created_by)
-  let query = supabase
+  let query = adminClient
     .from('roadmap_versions')
     .select(`
       id,
@@ -99,6 +140,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       is_shared,
       diagnosis_summary,
       pbl_course,
+      courses,
       version_number,
       created_at,
       created_by,
@@ -170,6 +212,10 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     const likes = (item.roadmap_likes || []) as unknown as { id: string; user_id: string }[];
 
     const pblCourse = item.pbl_course as { course_name?: string; total_hours?: number } | null;
+    const courses = (item.courses || []) as { topic?: string }[];
+
+    // 태그 추출: 과정 토픽에서 핵심 키워드를 추출 (최대 3개)
+    const tags = extractTags(project.industry, courses);
 
     return {
       id: item.id,
@@ -182,6 +228,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       diagnosisSummary: item.diagnosis_summary || '',
       pblCourseName: pblCourse?.course_name || '',
       pblTotalHours: pblCourse?.total_hours || 0,
+      tags,
       createdBy: item.created_by,
       createdByName: creator?.name || '알 수 없음',
       likeCount: likes.length,
@@ -228,7 +275,10 @@ export async function fetchRoadmapDetail(
     return errorResult('사용자 정보를 찾을 수 없습니다.');
   }
 
-  const { data, error } = await supabase
+  // 갤러리 상세도 admin client 사용 (projects RLS 우회)
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
     .from('roadmap_versions')
     .select(`
       id,

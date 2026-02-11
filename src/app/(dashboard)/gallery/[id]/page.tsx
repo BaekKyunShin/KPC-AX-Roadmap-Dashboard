@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Factory, Building2, User } from 'lucide-react';
+import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
+import type { CompanySizeValue } from '@/lib/constants/company-size';
 import { fetchRoadmapDetail } from '../actions';
 import { GalleryDetailContent } from './_components/GalleryDetailContent';
 
@@ -52,9 +54,7 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
       {/* 메타 정보 */}
       <div className="space-y-3">
         <h2 className="text-xl font-semibold text-gray-900">
-          {detail.pblCourse && typeof detail.pblCourse === 'object' && 'course_name' in detail.pblCourse
-            ? (detail.pblCourse as { course_name: string }).course_name
-            : `${detail.companyName} 로드맵`}
+          {detail.title}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
           <Badge variant="outline">
@@ -63,7 +63,7 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
           </Badge>
           <Badge variant="outline">
             <Building2 className="mr-1 h-3 w-3" />
-            {detail.companySize}
+            {COMPANY_SIZE_LABELS[detail.companySize as CompanySizeValue] || detail.companySize}
           </Badge>
           <span className="text-gray-400">|</span>
           <span>{detail.companyName}</span>

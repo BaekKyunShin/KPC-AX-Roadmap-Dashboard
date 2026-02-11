@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toggleLike } from '@/app/(dashboard)/gallery/actions';
 
@@ -41,10 +40,11 @@ export function LikeButton({
     });
   };
 
+  const isSmall = size === 'sm';
+
   return (
-    <Button
-      variant="ghost"
-      size={size}
+    <button
+      type="button"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -52,21 +52,23 @@ export function LikeButton({
       }}
       disabled={isPending}
       className={cn(
-        'gap-1.5',
+        'inline-flex items-center gap-1 rounded-full transition-colors',
+        isSmall ? 'px-2 py-0.5' : 'px-3 py-1',
         liked
-          ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-50'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+          ? 'bg-rose-50 text-rose-500 hover:bg-rose-100'
+          : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+        isPending && 'opacity-50 cursor-not-allowed'
       )}
     >
       <Heart
         className={cn(
-          size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4',
+          isSmall ? 'h-3.5 w-3.5' : 'h-4 w-4',
           liked && 'fill-current'
         )}
       />
-      <span className={cn(size === 'sm' ? 'text-xs' : 'text-sm')}>
+      <span className={cn('font-medium', isSmall ? 'text-xs' : 'text-sm')}>
         {count}
       </span>
-    </Button>
+    </button>
   );
 }

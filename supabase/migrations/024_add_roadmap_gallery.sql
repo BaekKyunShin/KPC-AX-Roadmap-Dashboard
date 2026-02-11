@@ -54,3 +54,9 @@ CREATE POLICY "roadmap_likes_insert_own"
 CREATE POLICY "roadmap_likes_delete_own"
   ON roadmap_likes FOR DELETE
   USING ((SELECT auth.uid()) = user_id);
+
+-- 5. RLS 정책 — roadmap_versions (갤러리 공유)
+-- 공유된 FINAL 로드맵은 모든 인증된 사용자가 열람 가능
+CREATE POLICY "roadmaps_select_shared_gallery"
+  ON roadmap_versions FOR SELECT
+  USING (is_shared = TRUE AND status = 'FINAL' AND (SELECT auth.uid()) IS NOT NULL);
