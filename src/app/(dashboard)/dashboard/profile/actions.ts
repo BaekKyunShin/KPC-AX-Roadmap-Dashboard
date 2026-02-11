@@ -2,14 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 import type { SimpleActionResult, ActionResult } from '@/lib/types/action-result';
-
-const EMAIL_NOTIFY_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN', 'CONSULTANT_APPROVED'];
 
 /**
  * 현재 사용자의 이메일 알림 설정 조회
- * - 관리자(OPS_ADMIN, SYSTEM_ADMIN)만 사용 가능
- * - 관리자가 아니면 error 반환 (UI에서 조건부 렌더링에 활용)
+ * - EMAIL_NOTIFY_ROLES(OPS_ADMIN, SYSTEM_ADMIN, CONSULTANT_APPROVED)만 사용 가능
+ * - 해당 역할이 아니면 error 반환 (UI에서 조건부 렌더링에 활용)
  */
 export async function fetchEmailNotifySetting(): Promise<
   ActionResult<{ enabled: boolean }>
@@ -45,7 +44,7 @@ export async function fetchEmailNotifySetting(): Promise<
 
 /**
  * 이메일 알림 설정 변경
- * - 관리자만 가능
+ * - EMAIL_NOTIFY_ROLES(관리자 + 컨설턴트)만 가능
  * - users.email_notify_enabled 업데이트
  */
 export async function updateEmailNotifySetting(

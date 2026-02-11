@@ -51,6 +51,9 @@ export const CONVERSATION_READ_EVENT = 'conversation-read';
 /** 메시지 가능 역할 목록 */
 export const MESSAGING_ROLES = ['SYSTEM_ADMIN', 'OPS_ADMIN', 'CONSULTANT_APPROVED'] as const;
 
+/** 이메일 알림 대상 역할 (MESSAGING_ROLES와 동일하나 의미적 구분) */
+export const EMAIL_NOTIFY_ROLES: readonly string[] = MESSAGING_ROLES;
+
 /**
  * 역할별 메시지 수신 가능 대상
  * - 컨설턴트: 운영관리자, 시스템관리자에게만 전송 가능

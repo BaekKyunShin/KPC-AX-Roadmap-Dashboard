@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendMessageSchema, createConversationSchema } from '@/lib/schemas/message';
-import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS } from '@/lib/constants/message';
+import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS, EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 import { isThrottled, recordSend, sendNewMessageEmail } from '@/lib/services/email';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import type { ConversationWithPreview, Message, RecipientGroup } from '@/types/database';
@@ -518,10 +518,9 @@ export async function markConversationRead(
 // 이메일 알림 (내부 헬퍼)
 // =============================================================================
 
-const EMAIL_NOTIFY_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN', 'CONSULTANT_APPROVED'];
 
 /**
- * 메시지 수신자가 관리자이고 이메일 알림을 활성화한 경우 이메일을 발송한다.
+ * 수신자가 이메일 알림 대상 역할이고 설정을 활성화한 경우 이메일을 발송한다.
  * - 5분 throttle로 동일 발신자→수신자 중복 방지
  * - 실패해도 메시지 전송에 영향 없음 (fire-and-forget)
  */
