@@ -3,26 +3,26 @@
 import { type ReactNode } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-export type ProjectTab = 'assessment' | 'pre-analysis' | 'interview' | 'activity';
+export type ProjectTab = 'company-info' | 'pre-analysis' | 'interview' | 'activity';
 
 interface ProjectDetailTabsProps {
   defaultTab?: ProjectTab;
-  assessmentContent: ReactNode;
+  companyInfoContent: ReactNode;
   preAnalysisContent: ReactNode;
   interviewContent: ReactNode;
   activityContent: ReactNode;
 }
 
 const TAB_CONFIG: { value: ProjectTab; label: string }[] = [
-  { value: 'assessment', label: '진단 결과' },
+  { value: 'company-info', label: '기업 정보' },
   { value: 'pre-analysis', label: '사전 분석' },
   { value: 'interview', label: '인터뷰 기록' },
   { value: 'activity', label: '활동 일지' },
 ];
 
 export function ProjectDetailTabs({
-  defaultTab = 'assessment',
-  assessmentContent,
+  defaultTab = 'company-info',
+  companyInfoContent,
   preAnalysisContent,
   interviewContent,
   activityContent,
@@ -41,8 +41,8 @@ export function ProjectDetailTabs({
         ))}
       </TabsList>
 
-      <TabsContent value="assessment" className="mt-6">
-        {assessmentContent}
+      <TabsContent value="company-info" className="mt-6">
+        {companyInfoContent}
       </TabsContent>
 
       <TabsContent value="pre-analysis" className="mt-6">

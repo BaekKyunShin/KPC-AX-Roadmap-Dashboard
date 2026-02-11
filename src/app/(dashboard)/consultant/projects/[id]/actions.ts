@@ -404,7 +404,6 @@ export async function generateInterviewGuide(
     // 쿼터 사용량 기록
     await recordLLMUsage(auth.user.id);
 
-    revalidatePath(`/consultant/projects/${projectId}`);
     return { success: true, data: validation.data };
   } catch (err) {
     console.error('[generateInterviewGuide] 예외:', err);

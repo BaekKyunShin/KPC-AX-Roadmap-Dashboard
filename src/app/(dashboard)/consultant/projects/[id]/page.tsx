@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
-import { CompanyInfoBar } from './_components/CompanyInfoBar';
+import { CompanyInfoCard } from './_components/CompanyInfoCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
@@ -74,7 +74,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
   // 사전 분석 가이드 조회
   const { data: interviewGuide } = await supabase
     .from('interview_guides')
-    .select('id, guide_data, created_at, updated_at')
+    .select('guide_data, created_at')
     .eq('project_id', projectId)
     .single();
 
@@ -134,40 +134,43 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         }
       />
 
-      {/* 기업 정보 (항상 보임) */}
-      <CompanyInfoBar
-        contactName={projectData.contact_name}
-        contactEmail={projectData.contact_email}
-        contactPhone={projectData.contact_phone}
-        companyAddress={projectData.company_address}
-        customerComment={projectData.customer_comment}
-      />
-
       {/* 탭 네비게이션 */}
       <ProjectDetailTabs
-        assessmentContent={
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
-              {selfAssessment?.created_at && (
-                <span className="text-sm text-gray-500">
-                  {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
-                </span>
+        companyInfoContent={
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <CompanyInfoCard
+              companyName={projectData.company_name}
+              industry={projectData.industry}
+              companySizeLabel={companySizeLabel}
+              contactName={projectData.contact_name}
+              contactEmail={projectData.contact_email}
+              contactPhone={projectData.contact_phone}
+              companyAddress={projectData.company_address}
+              customerComment={projectData.customer_comment}
+            />
+            <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
+                {selfAssessment?.created_at && (
+                  <span className="text-sm text-gray-500">
+                    {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
+                  </span>
+                )}
+              </div>
+              {hasSelfAssessment ? (
+                <>
+                  <ConsultantAssessmentResult scores={assessmentScores} />
+                  {assessmentAnswers.length > 0 && templateQuestions.length > 0 && (
+                    <AssessmentDetailAccordion
+                      answers={assessmentAnswers}
+                      questions={templateQuestions}
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
               )}
             </div>
-            {hasSelfAssessment ? (
-              <>
-                <ConsultantAssessmentResult scores={assessmentScores} />
-                {assessmentAnswers.length > 0 && templateQuestions.length > 0 && (
-                  <AssessmentDetailAccordion
-                    answers={assessmentAnswers}
-                    questions={templateQuestions}
-                  />
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">자가진단이 아직 완료되지 않았습니다.</p>
-            )}
           </div>
         }
         preAnalysisContent={
@@ -175,7 +178,6 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
             projectId={projectId}
             hasSelfAssessment={hasSelfAssessment}
             guideData={interviewGuide?.guide_data ?? null}
-            guideId={interviewGuide?.id ?? null}
             guideCreatedAt={interviewGuide?.created_at ?? null}
           />
         }

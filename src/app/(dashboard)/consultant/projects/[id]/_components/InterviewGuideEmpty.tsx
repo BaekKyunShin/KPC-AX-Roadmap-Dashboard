@@ -3,13 +3,11 @@ import { Button } from '@/components/ui/button';
 
 interface InterviewGuideEmptyProps {
   hasSelfAssessment: boolean;
-  isGenerating: boolean;
   onGenerate: () => void;
 }
 
 export function InterviewGuideEmpty({
   hasSelfAssessment,
-  isGenerating,
   onGenerate,
 }: InterviewGuideEmptyProps) {
   if (!hasSelfAssessment) {
@@ -38,10 +36,9 @@ export function InterviewGuideEmpty({
       <Button
         className="mt-6"
         onClick={onGenerate}
-        disabled={isGenerating}
       >
         <Sparkles className="mr-2 h-4 w-4" />
-        {isGenerating ? '분석 중...' : '가이드 생성하기'}
+        분석 시작
       </Button>
     </div>
   );
