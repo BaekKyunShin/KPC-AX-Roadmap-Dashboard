@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendMessageSchema, createConversationSchema } from '@/lib/schemas/message';
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS } from '@/lib/constants/message';
+import { isThrottled, recordSend, sendNewMessageEmail } from '@/lib/services/email';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import type { ConversationWithPreview, Message, RecipientGroup } from '@/types/database';
 
@@ -468,6 +469,11 @@ export async function sendMessage(
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
 
+    // 이메일 알림 발송 (비동기, fire-and-forget)
+    notifyRecipientByEmail(conversationId, user.id, validation.data.content).catch(
+      (err) => console.error('[sendMessage] 이메일 알림 오류:', err),
+    );
+
     revalidatePath('/dashboard/messages');
     return { success: true, data: message };
   } catch (err) {
@@ -506,4 +512,71 @@ export async function markConversationRead(
     console.error('[markConversationRead] 예외:', err);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
+}
+
+// =============================================================================
+// 이메일 알림 (내부 헬퍼)
+// =============================================================================
+
+const EMAIL_NOTIFY_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN', 'CONSULTANT_APPROVED'];
+
+/**
+ * 메시지 수신자가 관리자이고 이메일 알림을 활성화한 경우 이메일을 발송한다.
+ * - 5분 throttle로 동일 발신자→수신자 중복 방지
+ * - 실패해도 메시지 전송에 영향 없음 (fire-and-forget)
+ */
+async function notifyRecipientByEmail(
+  conversationId: string,
+  senderId: string,
+  content: string,
+): Promise<void> {
+  const adminSupabase = createAdminClient();
+
+  // 1. 대화 상대방 찾기
+  const { data: participants } = await adminSupabase
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .neq('user_id', senderId);
+
+  if (!participants || participants.length === 0) return;
+
+  const recipientId = participants[0].user_id;
+
+  // 2. 수신자 정보 확인 (역할 + 이메일 알림 설정)
+  const { data: recipient } = await adminSupabase
+    .from('users')
+    .select('role, email_notify_enabled')
+    .eq('id', recipientId)
+    .single();
+
+  if (!recipient) return;
+  if (!EMAIL_NOTIFY_ROLES.includes(recipient.role)) return;
+  if (!recipient.email_notify_enabled) return;
+
+  // 3. throttle 확인
+  if (isThrottled(senderId, recipientId)) return;
+
+  // 4. 발신자 이름 조회
+  const { data: sender } = await adminSupabase
+    .from('users')
+    .select('name')
+    .eq('id', senderId)
+    .single();
+
+  // 5. 수신자 이메일 조회 (auth.users)
+  const {
+    data: { user: authUser },
+  } = await adminSupabase.auth.admin.getUserById(recipientId);
+
+  if (!authUser?.email) return;
+
+  // 6. throttle 기록 + 이메일 발송
+  recordSend(senderId, recipientId);
+  await sendNewMessageEmail({
+    to: authUser.email,
+    senderName: sender?.name || '(알 수 없음)',
+    messagePreview: content,
+    conversationId,
+  });
 }

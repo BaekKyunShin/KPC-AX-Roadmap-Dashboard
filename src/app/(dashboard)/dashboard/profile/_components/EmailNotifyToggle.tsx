@@ -1,0 +1,72 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Loader2 } from 'lucide-react';
+import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
+import {
+  fetchEmailNotifySetting,
+  updateEmailNotifySetting,
+} from '../actions';
+
+/**
+ * 관리자 전용 이메일 알림 토글
+ * - 관리자가 아니면 null 반환 (자동 숨김)
+ * - 자체적으로 데이터 fetch + 토글 처리
+ */
+export default function EmailNotifyToggle() {
+  const [enabled, setEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const result = await fetchEmailNotifySetting();
+      if (result.success) {
+        setEnabled(result.data.enabled);
+        setIsAdmin(true);
+      }
+      setIsLoading(false);
+    };
+    load();
+  }, []);
+
+  async function handleToggle(checked: boolean) {
+    setIsUpdating(true);
+    const prev = enabled;
+    setEnabled(checked);
+
+    const result = await updateEmailNotifySetting(checked);
+    if (result.success) {
+      showSuccessToast(checked ? '이메일 알림이 활성화되었습니다' : '이메일 알림이 비활성화되었습니다');
+    } else {
+      setEnabled(prev);
+      showErrorToast('설정 변경 실패', result.error);
+    }
+    setIsUpdating(false);
+  }
+
+  if (isLoading || !isAdmin) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>메시지 알림 설정</CardTitle>
+        <CardDescription>새 메시지 수신 시 가입 이메일로 알림을 받습니다.</CardDescription>
+        <CardAction>
+          <div className="flex items-center gap-2">
+            {isUpdating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              id="email-notify"
+              checked={enabled}
+              onCheckedChange={handleToggle}
+              disabled={isUpdating}
+            />
+          </div>
+        </CardAction>
+      </CardHeader>
+    </Card>
+  );
+}

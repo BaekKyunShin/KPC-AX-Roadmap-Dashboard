@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
 import DeleteAccountSection from '@/components/auth/DeleteAccountSection';
+import EmailNotifyToggle from '@/app/(dashboard)/dashboard/profile/_components/EmailNotifyToggle';
 import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 // =============================================================================
@@ -128,6 +129,9 @@ export default function SettingsPage() {
         description="비밀번호 변경 및 계정 관리"
         backLink={{ href: '/dashboard', label: '대시보드' }}
       />
+
+      {/* 이메일 알림 설정 (관리자만 표시) */}
+      <EmailNotifyToggle />
 
       {/* 비밀번호 변경 섹션 */}
       <Card>
