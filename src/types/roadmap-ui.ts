@@ -15,6 +15,7 @@ export interface RoadmapVersionUI {
   free_tool_validated: boolean;
   time_limit_validated: boolean;
   revision_prompt: string | null;
+  is_shared: boolean;
   created_at: string;
   finalized_at: string | null;
 }

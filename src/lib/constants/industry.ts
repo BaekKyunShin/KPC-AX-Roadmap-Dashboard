@@ -2,7 +2,7 @@
  * 프로젝트 및 테스트 로드맵에서 사용하는 업종 옵션
  */
 
-/** 업종 목록 */
+/** 업종 목록 (profile-options.ts의 INDUSTRIES와 동기화) */
 export const PROJECT_INDUSTRIES = [
   '제조업',
   '서비스업',
@@ -11,6 +11,8 @@ export const PROJECT_INDUSTRIES = [
   '금융/보험',
   '건설/부동산',
   '의료/헬스케어',
+  '에너지/환경',
+  '농업/식품',
   '교육',
   '공공/정부',
   '기타',

@@ -420,7 +420,8 @@ export type AuditAction =
   | 'TEST_ROADMAP_CREATE'
   | 'TEST_ROADMAP_REVISE'
   | 'TEST_PROJECT_DELETE'
-  | 'USER_WITHDRAW';
+  | 'USER_WITHDRAW'
+  | 'ROADMAP_COPY';
 
 // 알림 타입
 export type NotificationType =

@@ -28,6 +28,7 @@ import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapVersionUI, RoadmapTabKey } from '@/types/roadmap-ui';
 import CourseEditModal from './_components/CourseEditModal';
 import { RoadmapPageSkeleton } from '@/components/ui/Skeleton';
+import { ShareToggle } from '@/components/gallery/ShareToggle';
 
 export default function RoadmapPage() {
   const params = useParams();
@@ -303,6 +304,16 @@ export default function RoadmapPage() {
                 )}
 
                 <p className="mt-3 text-sm text-gray-600">{selectedVersion.diagnosis_summary}</p>
+
+                {/* FINAL 버전 공유 토글 */}
+                {selectedVersion.status === 'FINAL' && (
+                  <div className="mt-4">
+                    <ShareToggle
+                      roadmapVersionId={selectedVersion.id}
+                      initialShared={selectedVersion.is_shared ?? false}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* 탭 */}
