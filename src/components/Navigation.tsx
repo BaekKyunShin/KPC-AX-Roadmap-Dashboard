@@ -9,25 +9,26 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import {
-  FolderKanban,
-  Users,
-  ScrollText,
-  Gauge,
-  Briefcase,
-  FlaskConical,
   UserCog,
   LogOut,
   Menu,
   X,
   ChevronRight,
   ChevronDown,
-  ClipboardList,
   Settings,
-  Home,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
 import NotificationBell from '@/components/NotificationBell';
 import MessageIcon from '@/components/MessageIcon';
+import {
+  CONSULTANT_NAV_ITEMS,
+  ADMIN_NAV_GROUPS,
+  getInitials,
+  getRoleBadgeConfig,
+  isGroupActive,
+} from '@/lib/constants/navigation';
+import type { NavGroup } from '@/lib/constants/navigation';
 import type { User } from '@/types/database';
 
 // =============================================================================
@@ -40,72 +41,135 @@ interface NavigationProps {
   unreadMessageCount?: number;
 }
 
-interface RoleBadgeConfig {
-  label: string;
-  className: string;
+// =============================================================================
+// Sub-Components
+// =============================================================================
+
+/** 데스크톱용 관리자 드롭다운 그룹 */
+function NavGroupDropdown({
+  group,
+  isOpen,
+  onToggle,
+  pathname,
+  onNavigate,
+}: {
+  group: NavGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const groupActive = isGroupActive(group, pathname);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+          groupActive
+            ? 'bg-blue-50 text-blue-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        )}
+      >
+        {group.label}
+        <ChevronDown
+          className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-180')}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1 w-48 rounded-lg border bg-white py-1 shadow-lg z-50">
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
-// =============================================================================
-// Constants
-// =============================================================================
+/** 모바일용 관리자 아코디언 그룹 */
+function MobileNavGroup({
+  group,
+  isOpen,
+  onToggle,
+  pathname,
+  onNavigate,
+}: {
+  group: NavGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const groupActive = isGroupActive(group, pathname);
 
-/** 역할별 배지 스타일 설정 */
-const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
-  USER_PENDING: {
-    label: '승인 대기',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  SYSTEM_ADMIN: {
-    label: '시스템관리자',
-    className: 'bg-red-50 text-red-700 border-red-200',
-  },
-  OPS_ADMIN: {
-    label: '운영관리자',
-    className: 'bg-purple-50 text-purple-700 border-purple-200',
-  },
-  CONSULTANT_APPROVED: {
-    label: '컨설턴트',
-    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-};
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={cn(
+          'flex w-full items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
+          groupActive
+            ? 'bg-blue-50 text-blue-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        )}
+      >
+        <span>{group.label}</span>
+        <ChevronDown
+          className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')}
+        />
+      </button>
 
-/** 운영관리자 + 시스템관리자 공통 메뉴 */
-const OPS_NAV_ITEMS = [
-  { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
-  { href: '/ops/users', label: '사용자 관리', icon: Users },
-  { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
-  { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
-  { href: '/ops/audit', label: '감사로그', icon: ScrollText },
-];
+      {isOpen && (
+        <div className="ml-4 mt-1 space-y-1">
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname.startsWith(item.href);
 
-/** 시스템관리자 전용 메뉴 */
-const SYSTEM_ADMIN_ONLY_ITEMS = [
-  { href: '/ops/templates', label: '템플릿', icon: ClipboardList },
-];
-
-const CONSULTANT_NAV_ITEMS = [
-  { href: '/consultant/home', label: '대시보드', icon: Home },
-  { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
-  { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
-];
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/** 이름에서 이니셜 추출 (최대 2글자) */
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-/** 역할에 해당하는 배지 설정 반환 */
-function getRoleBadgeConfig(role: string): RoleBadgeConfig | null {
-  return ROLE_BADGE_CONFIG[role] || null;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 opacity-50" />
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // =============================================================================
@@ -116,28 +180,23 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [openGroupIndex, setOpenGroupIndex] = useState<number | null>(null);
+  const [openMobileGroup, setOpenMobileGroup] = useState<number | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const navGroupRef = useRef<HTMLDivElement>(null);
 
   const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
-
-  // 시스템관리자: 공통 메뉴 + 전용 메뉴
-  // 운영관리자: 공통 메뉴만
-  // 컨설턴트: 컨설턴트 메뉴
-  const navItems = isSystemAdmin
-    ? [...OPS_NAV_ITEMS, ...SYSTEM_ADMIN_ONLY_ITEMS]
-    : isOpsAdmin
-      ? OPS_NAV_ITEMS
-      : isConsultant
-        ? CONSULTANT_NAV_ITEMS
-        : [];
 
   // 바깥 클릭 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
+      }
+      if (navGroupRef.current && !navGroupRef.current.contains(event.target as Node)) {
+        setOpenGroupIndex(null);
       }
     }
 
@@ -169,28 +228,49 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Logo height={26} className="transition-opacity group-hover:opacity-80" />
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname.startsWith(item.href);
+            {/* Desktop Navigation — 컨설턴트: 플랫 */}
+            {isConsultant && (
+              <div className="hidden md:flex items-center gap-1">
+                {CONSULTANT_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname.startsWith(item.href);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Desktop Navigation — 관리자: 드롭다운 3그룹 */}
+            {isOpsAdmin && (
+              <div className="hidden md:flex items-center gap-1" ref={navGroupRef}>
+                {ADMIN_NAV_GROUPS.map((group, index) => (
+                  <NavGroupDropdown
+                    key={group.label}
+                    group={group}
+                    isOpen={openGroupIndex === index}
+                    onToggle={() =>
+                      setOpenGroupIndex(openGroupIndex === index ? null : index)
+                    }
+                    pathname={pathname}
+                    onNavigate={() => setOpenGroupIndex(null)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Desktop User Menu */}
@@ -217,7 +297,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
                 {renderRoleBadge()}
-                <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={cn('h-4 w-4 text-gray-500 transition-transform', isUserMenuOpen && 'rotate-180')} />
               </button>
 
               {/* Dropdown Menu */}
@@ -233,11 +313,12 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                     <Link
                       href="/consultant/profile"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
                         pathname === '/consultant/profile'
                           ? 'bg-blue-50 text-blue-700'
                           : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      )}
                     >
                       <UserCog className="h-4 w-4" />
                       프로필 관리
@@ -247,11 +328,12 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   <Link
                     href="/dashboard/settings"
                     onClick={() => setIsUserMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
                       pathname === '/dashboard/settings'
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    )}
                   >
                     <Settings className="h-4 w-4" />
                     계정 설정
@@ -292,29 +374,47 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
       {isMobileMenuOpen && (
         <div className="md:hidden border-t bg-white">
           <div className="px-4 py-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname.startsWith(item.href);
+            {/* 컨설턴트: 플랫 메뉴 */}
+            {isConsultant &&
+              CONSULTANT_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5" />
-                    {item.label}
-                  </div>
-                  <ChevronRight className="h-4 w-4 opacity-50" />
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      'flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
+                      isActive
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </div>
+                    <ChevronRight className="h-4 w-4 opacity-50" />
+                  </Link>
+                );
+              })}
+
+            {/* 관리자: 아코디언 그룹 */}
+            {isOpsAdmin &&
+              ADMIN_NAV_GROUPS.map((group, index) => (
+                <MobileNavGroup
+                  key={group.label}
+                  group={group}
+                  isOpen={openMobileGroup === index}
+                  onToggle={() =>
+                    setOpenMobileGroup(openMobileGroup === index ? null : index)
+                  }
+                  pathname={pathname}
+                  onNavigate={() => setIsMobileMenuOpen(false)}
+                />
+              ))}
           </div>
 
           <Separator />
@@ -339,11 +439,12 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                 <Link
                   href="/consultant/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  className={cn(
+                    'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors',
                     pathname === '/consultant/profile'
                       ? 'bg-blue-50 text-blue-700 border-blue-200'
                       : 'text-gray-700 hover:bg-gray-100 border-gray-200'
-                  }`}
+                  )}
                 >
                   <UserCog className="h-4 w-4" />
                   프로필 관리
@@ -353,11 +454,12 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Link
                 href="/dashboard/settings"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                className={cn(
+                  'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors',
                   pathname === '/dashboard/settings'
                     ? 'bg-blue-50 text-blue-700 border-blue-200'
                     : 'text-gray-700 hover:bg-gray-100 border-gray-200'
-                }`}
+                )}
               >
                 <Settings className="h-4 w-4" />
                 계정 설정
