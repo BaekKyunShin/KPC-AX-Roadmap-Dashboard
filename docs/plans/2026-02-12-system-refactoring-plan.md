@@ -213,19 +213,19 @@ consultant/.../roadmap/ ───→ roadmap.ts, audit.ts, notification.ts
 - **이유**: 작은 파일 묶어서 처리, DB 모킹 패턴 재활용
 - [x] 완료
 
-#### Session 1-9~1-10: 주요 Server Actions 테스트 (선택)
+#### Session 1-9~1-10: 주요 Server Actions 테스트
 
 - **대상**: `ops/projects/actions.ts`의 주요 함수 (createProject, assignConsultant)
 - **전략**: Supabase 클라이언트 모킹 + ActionResult 반환값 검증
 - **이유**: Phase 2에서 파일 분리 시 기능 보존 확인용
-- [ ] 완료 (선택적)
+- [x] 완료
 
-#### Session 1-11~1-12: 대형 컴포넌트 테스트 (선택)
+#### Session 1-11~1-12: 대형 컴포넌트 테스트
 
 - **대상**: `AssignmentTabSection`, `ProjectDashboard` 등 렌더링 테스트
 - **전략**: RTL로 주요 UI 요소 존재 확인 + 인터랙션 테스트
 - **이유**: Phase 2에서 컴포넌트 분해 시 UI 보존 확인용
-- [ ] 완료 (선택적)
+- [ ] 완료
 
 ---
 
@@ -459,7 +459,7 @@ src/app/(dashboard)/gallery/
 - **위험도**: 높음 (상태 24개, 상호의존 복잡)
 - [ ] 완료
 
-#### Session 2-15: SelfAssessmentForm.tsx + ActivityLog.tsx (선택)
+#### Session 2-15: SelfAssessmentForm.tsx + ActivityLog.tsx
 
 - **SelfAssessmentForm**:
   - 질문 타입별 컴포넌트 (Scale5Input, Scale10Input, MultipleChoiceInput, TextInput) 추출
@@ -468,7 +468,7 @@ src/app/(dashboard)/gallery/
   - `LogItem` → 별도 파일
   - `useActivityLogs` 커스텀 훅
 - **위험도**: 낮음~중간
-- [ ] 완료 (선택적)
+- [ ] 완료
 
 ---
 
@@ -570,7 +570,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-6 | export-pdf.ts 테스트 | 완료 |
 | 1 | 1-7 | export-xlsx.ts 테스트 | 완료 |
 | 1 | 1-8 | stt.ts + notification.ts + audit.ts 테스트 | 완료 |
-| 1 | 1-9~10 | Server Actions 테스트 (선택) | - |
+| 1 | 1-9~10 | Server Actions 테스트 (선택) | 완료 |
 | 1 | 1-11~12 | 컴포넌트 테스트 (선택) | - |
 | 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | - |
 | 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | - |
