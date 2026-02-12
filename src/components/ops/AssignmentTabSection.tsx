@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect, useTransition } from
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import ManualAssignmentForm from './ManualAssignmentForm';
+import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import {
   AlertMessage,
   TabNavigation,
@@ -663,17 +664,16 @@ function RecommendationResults({
       formData.append('consultant_id', selectedId);
       formData.append('assignment_reason', reason);
 
-      const { assignConsultant } = await import('@/app/(dashboard)/ops/projects/actions');
       const result = await assignConsultant(formData);
 
       if (result.success) {
         router.refresh();
       } else {
         alert(result.error || '배정에 실패했습니다.');
+        setIsSubmitting(false);
       }
     } catch {
       alert('배정에 실패했습니다.');
-    } finally {
       setIsSubmitting(false);
     }
   };
