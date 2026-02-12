@@ -23,7 +23,7 @@ interface UsageMetrics {
 /**
  * KST 기준 현재 날짜 및 월 조회
  */
-function getKSTDateTime() {
+export function getKSTDateTime() {
   const now = new Date();
   // KST = UTC + 9
   const kstOffset = 9 * 60 * 60 * 1000;

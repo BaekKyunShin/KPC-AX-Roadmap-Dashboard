@@ -63,7 +63,7 @@ const DEFAULT_CAPABILITIES: ModelCapabilities = {
 /**
  * 모델의 기능 설정 조회
  */
-function getModelCapabilities(model: string): ModelCapabilities {
+export function getModelCapabilities(model: string): ModelCapabilities {
   // 정확히 일치하는 모델 찾기
   if (MODEL_CAPABILITIES[model]) {
     return MODEL_CAPABILITIES[model];
