@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
@@ -50,6 +50,7 @@ function createEmptyQuestion(order: number): SelfAssessmentQuestion {
 export default function TemplateForm({ mode, template, isInUse }: TemplateFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -137,12 +138,13 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     // 성공 Toast
     showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
 
-    setLoading(false);
-
     if (mode === 'create' && data?.id) {
       router.push(`/ops/templates/${data.id}`);
     } else {
-      router.refresh();
+      setLoading(false);
+      startTransition(() => {
+        router.refresh();
+      });
     }
   };
 
@@ -344,10 +346,10 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
         </Link>
         <button
           type="submit"
-          disabled={loading || !name.trim()}
+          disabled={loading || isPending || !name.trim()}
           className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? '저장 중...' : mode === 'create' ? '생성' : '저장'}
+          {loading || isPending ? '저장 중...' : mode === 'create' ? '생성' : '저장'}
         </button>
       </div>
     </form>

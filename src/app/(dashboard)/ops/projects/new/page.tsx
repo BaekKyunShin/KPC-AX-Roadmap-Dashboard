@@ -63,9 +63,8 @@ export default function NewProjectPage() {
       // Toast 알림 + 스크롤
       showErrorToast('프로젝트 생성 실패', errorMessage);
       scrollToElement(formContainerRef);
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   return (

@@ -41,9 +41,8 @@ function LoginForm() {
 
       // Toast 알림
       showErrorToast('로그인 실패', errorMessage);
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   return (

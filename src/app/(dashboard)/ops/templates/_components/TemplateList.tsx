@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { SelfAssessmentTemplate } from '@/types/database';
@@ -47,6 +47,7 @@ const TABLE_COLUMNS = {
 
 export default function TemplateList({ templates }: TemplateListProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +64,9 @@ export default function TemplateList({ templates }: TemplateListProps) {
       setError(result.error || '활성화에 실패했습니다.');
     }
     setLoading(null);
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const handleDuplicate = async (templateId: string) => {
@@ -75,7 +78,9 @@ export default function TemplateList({ templates }: TemplateListProps) {
       setError(result.error || '복제에 실패했습니다.');
     }
     setLoading(null);
-    router.refresh();
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   if (templates.length === 0) {
@@ -178,7 +183,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
                       <TableActionLink
                         variant="success"
                         onClick={() => handleSetActive(template.id)}
-                        disabled={loading === template.id}
+                        disabled={loading === template.id || isPending}
                       >
                         {loading === template.id ? '처리중...' : '활성화'}
                       </TableActionLink>
@@ -186,7 +191,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
                     <TableActionLink
                       variant="secondary"
                       onClick={() => handleDuplicate(template.id)}
-                      disabled={loading === template.id}
+                      disabled={loading === template.id || isPending}
                     >
                       복제
                     </TableActionLink>

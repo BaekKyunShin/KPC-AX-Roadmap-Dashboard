@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
@@ -221,6 +221,7 @@ function DimensionHeader({
 export default function SelfAssessmentForm({ projectId, template }: SelfAssessmentFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
@@ -354,14 +355,16 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
 
     if (result.success) {
       showSuccessToast('자가진단 완료', '자가진단이 성공적으로 저장되었습니다.');
-      router.refresh();
+      setIsLoading(false);
+      startTransition(() => {
+        router.refresh();
+      });
     } else {
       const errorMessage = result.error || '자가진단 저장에 실패했습니다.';
       setError(errorMessage);
       showErrorToast('저장 실패', errorMessage);
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   // ============================================================================
@@ -578,10 +581,10 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
           <button
             type="button"
             onClick={handleSubmitClick}
-            disabled={isLoading || !allQuestionsAnswered}
+            disabled={isLoading || isPending || !allQuestionsAnswered}
             className="flex items-center px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? (
+            {isLoading || isPending ? (
               <>
                 <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

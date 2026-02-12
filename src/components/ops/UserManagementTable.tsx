@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
@@ -81,6 +81,7 @@ const PROFILE_TEXT_AREA_CLASSES =
 
 export default function UserManagementTable({ users }: UserManagementTableProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<{
@@ -99,12 +100,14 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
     const result = await updateUserStatus(userId, action);
 
     if (result.success) {
-      router.refresh();
+      setIsLoading(null);
+      startTransition(() => {
+        router.refresh();
+      });
     } else {
       setError(result.error || '처리에 실패했습니다.');
+      setIsLoading(null);
     }
-
-    setIsLoading(null);
   };
 
   const handleProfileClick = (profile: ConsultantProfile, userName: string) => {
@@ -139,17 +142,17 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
 
   const renderUserActions = (user: UserWithProfile) => {
     const { id, role, status } = user;
-    const isPending = role === 'USER_PENDING' || role === 'OPS_ADMIN_PENDING';
+    const isPendingRole = role === 'USER_PENDING' || role === 'OPS_ADMIN_PENDING';
     const isApprovedAndActive =
       (role === 'CONSULTANT_APPROVED' || role === 'OPS_ADMIN') && status === 'ACTIVE';
     const isSuspended = status === 'SUSPENDED';
 
-    if (isPending) {
+    if (isPendingRole) {
       return (
         <TableActionLink
           variant="primary"
           onClick={() => handleAction(id, 'approve')}
-          disabled={isLoading === id}
+          disabled={isLoading === id || isPending}
         >
           {isLoading === id ? '처리 중...' : '승인'}
         </TableActionLink>
@@ -160,7 +163,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
         <TableActionLink
           variant="danger"
           onClick={() => handleAction(id, 'suspend')}
-          disabled={isLoading === id}
+          disabled={isLoading === id || isPending}
         >
           {isLoading === id ? '처리 중...' : '정지'}
         </TableActionLink>
@@ -171,7 +174,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
         <TableActionLink
           variant="success"
           onClick={() => handleAction(id, 'reactivate')}
-          disabled={isLoading === id}
+          disabled={isLoading === id || isPending}
         >
           {isLoading === id ? '처리 중...' : '활성화'}
         </TableActionLink>
