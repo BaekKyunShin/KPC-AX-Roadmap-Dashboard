@@ -36,7 +36,6 @@ export default function MessagesClient() {
   const currentUserIdRef = useRef<string | null>(null);
   const selectedConvIdRef = useRef<string | null>(null);
   const messagesRef = useRef<Message[]>([]);
-  messagesRef.current = messages;
   const isLoadingMoreRef = useRef(false);
 
   // ---------------------------------------------------------------------------
@@ -107,8 +106,14 @@ export default function MessagesClient() {
     }
   }, []);
 
-  // ref 동기화
-  selectedConvIdRef.current = selectedConvId;
+  // ref 동기화 (콜백/이펙트에서 최신 값 접근용)
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    selectedConvIdRef.current = selectedConvId;
+  }, [selectedConvId]);
 
   // 선택 시 메시지 로드 (이벤트 핸들러)
   const handleSelectConversation = async (convId: string) => {
@@ -255,8 +260,7 @@ export default function MessagesClient() {
     return () => {
       supabase.removeChannel(channel);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshConversations, appendMessageIfNew, router]);
 
   // Polling: 새 메시지만 감지하여 append (Realtime 안전망)
   // 기존 이전 메시지(pagination으로 로드한)를 유지하면서 새 메시지만 추가.

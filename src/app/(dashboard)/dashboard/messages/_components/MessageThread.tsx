@@ -10,6 +10,16 @@ import { ROLE_LABELS, ROLE_BADGE_STYLES, ROLE_AVATAR_COLORS, MESSAGE_MAX_LENGTH,
 import type { ConversationWithPreview, Message } from '@/types/database';
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/** 이전 메시지 로드를 트리거하는 스크롤 상단 임계값 (px) */
+const SCROLL_TOP_THRESHOLD_PX = 100;
+
+/** textarea 자동 높이 조절 최대값 (px) */
+const TEXTAREA_MAX_HEIGHT_PX = 120;
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -153,11 +163,11 @@ export default function MessageThread({
     if (!container || !hasMore || isLoadingMore) return;
 
     const handleScroll = () => {
-      if (container.scrollTop < 100) onLoadMore();
+      if (container.scrollTop < SCROLL_TOP_THRESHOLD_PX) onLoadMore();
     };
 
     // 콘텐츠가 뷰포트를 채우지 못하는 경우 즉시 체크
-    if (container.scrollTop < 100) onLoadMore();
+    if (container.scrollTop < SCROLL_TOP_THRESHOLD_PX) onLoadMore();
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
@@ -167,7 +177,7 @@ export default function MessageThread({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, TEXTAREA_MAX_HEIGHT_PX)}px`;
     }
   }, [inputValue]);
 
