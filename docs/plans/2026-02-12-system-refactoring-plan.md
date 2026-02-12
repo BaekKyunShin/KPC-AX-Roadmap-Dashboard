@@ -202,7 +202,7 @@ consultant/.../roadmap/ ───→ roadmap.ts, audit.ts, notification.ts
 - **대상**: `getStatusLabel`, `formatDate`, `buildCourseNumberMap`, `formatMatrixCell`, `sumMatrixHours`, `formatTools`, `calcRowHeight`, `formatHours`
 - **파일**: `src/lib/services/export-xlsx.test.ts`
 - **이유**: 포맷 유틸리티는 순수 함수, 한글 폭 계산 등 경계값 중요
-- [ ] 완료
+- [x] 완료
 
 #### Session 1-8: stt.ts + notification.ts + audit.ts 테스트
 
@@ -568,7 +568,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-4 | matching.ts 레거시 점수 계산 테스트 | 완료 |
 | 1 | 1-5 | llm.ts + quota.ts 테스트 | 완료 |
 | 1 | 1-6 | export-pdf.ts 테스트 | 완료 |
-| 1 | 1-7 | export-xlsx.ts 테스트 | - |
+| 1 | 1-7 | export-xlsx.ts 테스트 | 완료 |
 | 1 | 1-8 | stt.ts + notification.ts + audit.ts 테스트 | - |
 | 1 | 1-9~10 | Server Actions 테스트 (선택) | - |
 | 1 | 1-11~12 | 컴포넌트 테스트 (선택) | - |
