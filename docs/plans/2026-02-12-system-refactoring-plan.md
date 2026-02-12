@@ -180,7 +180,7 @@ consultant/.../roadmap/ ───→ roadmap.ts, audit.ts, notification.ts
 - **파일**: `src/lib/services/matching.test.ts`
 - **이유**: 레거시 삭제 전 동작 기록, 점수 범위(0~100) 경계값 검증
 - **참고**: 레거시 제거 결정 시 이 테스트도 함께 삭제
-- [ ] 완료
+- [x] 완료
 
 #### Session 1-5: llm.ts + quota.ts 테스트
 
@@ -565,7 +565,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-1 | roadmap.ts 순수 함수 테스트 | 완료 |
 | 1 | 1-2 | roadmap.ts 검증 함수 테스트 | 완료 |
 | 1 | 1-3 | roadmap.ts 프롬프트 빌더 테스트 | 완료 |
-| 1 | 1-4 | matching.ts 레거시 점수 계산 테스트 | - |
+| 1 | 1-4 | matching.ts 레거시 점수 계산 테스트 | 완료 |
 | 1 | 1-5 | llm.ts + quota.ts 테스트 | - |
 | 1 | 1-6 | export-pdf.ts 테스트 | - |
 | 1 | 1-7 | export-xlsx.ts 테스트 | - |
