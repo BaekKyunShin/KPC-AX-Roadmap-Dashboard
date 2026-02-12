@@ -331,7 +331,7 @@ src/app/(dashboard)/gallery/
   - `index.ts`: 모든 public 함수 re-export
 - **검증**: 기존 테스트 통과 + 기존 import 경로 호환 확인
 - **위험도**: 중간 (import 경로 변경 영향)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-4: matching.ts — 레거시 제거 + 분리
 
@@ -574,7 +574,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-11~12 | 컴포넌트 테스트 | 완료 |
 | 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | 완료 |
 | 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | 완료 |
-| 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | - |
+| 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | 완료 |
 | 2 | 2-4 | matching.ts 레거시 제거 + 분리 | - |
 | 2 | 2-5 | export-pdf.ts 헬퍼/상수 추출 | - |
 | 2 | 2-6 | export-pdf.ts 렌더러 분리 | - |
