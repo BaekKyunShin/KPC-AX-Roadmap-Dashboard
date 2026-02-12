@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,12 @@ import ConversationList from './ConversationList';
 import MessageThread from './MessageThread';
 import NewConversationDialog from './NewConversationDialog';
 import { fetchConversations, fetchMessages, sendMessage, markConversationRead } from '../actions';
-import { CONVERSATION_READ_EVENT } from '@/lib/constants/message';
+import { CONVERSATION_READ_EVENT, MESSAGE_PAGE_SIZE } from '@/lib/constants/message';
+import { showErrorToast } from '@/lib/utils/toast';
 import type { ConversationWithPreview, Message } from '@/types/database';
+
+/** Polling 간격: 새 메시지 감지 (3초) — Realtime 실패 시 안전망 */
+const THREAD_POLL_MS = 3_000;
 
 export default function MessagesClient() {
   const router = useRouter();
@@ -25,13 +29,34 @@ export default function MessagesClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
-  // 모바일: 메시지 뷰 표시 여부
   const [showMobileThread, setShowMobileThread] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // 현재 사용자 ID (Realtime 필터링용)
   const currentUserIdRef = useRef<string | null>(null);
-  // 현재 선택된 대화 ID (Realtime 콜백에서 참조용)
   const selectedConvIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+  const isLoadingMoreRef = useRef(false);
+
+  // ---------------------------------------------------------------------------
+  // 공통 헬퍼
+  // ---------------------------------------------------------------------------
+
+  /** 메시지를 중복 없이 append (Realtime/polling 공통) */
+  const appendMessageIfNew = useCallback((newMsg: Message) => {
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === newMsg.id)) return prev;
+      return [...prev, newMsg];
+    });
+  }, []);
+
+  /** 대화 목록에서 안읽음 플래그 해제 */
+  const clearUnreadFlag = useCallback((convId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
+    );
+  }, []);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => {
@@ -60,30 +85,29 @@ export default function MessagesClient() {
         setShowMobileThread(true);
 
         const msgResult = await fetchMessages(initialConvId);
-        if (msgResult.success) setMessages(msgResult.data);
+        if (msgResult.success) {
+          setMessages(msgResult.data.messages);
+          setHasMore(msgResult.data.hasMore);
+        }
 
         await markConversationRead(initialConvId);
-
-        setConversations((prev) =>
-          prev.map((c) => (c.id === initialConvId ? { ...c, has_unread: false } : c)),
-        );
-
+        clearUnreadFlag(initialConvId);
         window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
       }
 
       setIsLoading(false);
     });
-  }, [initialConvId]);
+  }, [initialConvId, clearUnreadFlag]);
 
-  // 목록 새로고침 (이벤트 핸들러에서만 호출)
-  const refreshConversations = async () => {
+  // 목록 새로고침 (이벤트 핸들러에서 호출)
+  const refreshConversations = useCallback(async () => {
     const result = await fetchConversations();
     if (result.success) {
       setConversations(result.data);
     }
-  };
+  }, []);
 
-  // selectedConvId ref 동기화
+  // ref 동기화
   selectedConvIdRef.current = selectedConvId;
 
   // 선택 시 메시지 로드 (이벤트 핸들러)
@@ -92,36 +116,69 @@ export default function MessagesClient() {
     setShowMobileThread(true);
     setIsMessagesLoading(true);
 
-    const result = await fetchMessages(convId);
-    if (result.success) {
-      setMessages(result.data);
+    try {
+      const result = await fetchMessages(convId);
+      if (result.success) {
+        setMessages(result.data.messages);
+        setHasMore(result.data.hasMore);
+      }
+
+      await markConversationRead(convId);
+      clearUnreadFlag(convId);
+      window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+    } catch {
+      showErrorToast('메시지 로드 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
-
-    // 읽음 처리
-    await markConversationRead(convId);
-
-    // 목록에서 안읽음 상태 해제
-    setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
-    );
-
-    // MessageIcon 뱃지 즉시 갱신 (router.refresh() 대신 직접 알림)
-    window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
 
     setIsMessagesLoading(false);
   };
+
+  // 이전 메시지 로드 (cursor 기반 페이지네이션)
+  // ref 기반 가드로 동시 호출 방지 (React state는 비동기라 빠른 스크롤 시 중복 호출 가능)
+  const handleLoadMore = useCallback(async () => {
+    if (!selectedConvId || isLoadingMoreRef.current || !hasMore) return;
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    const oldestMsg = messagesRef.current[0];
+    if (!oldestMsg) {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+      return;
+    }
+
+    const result = await fetchMessages(selectedConvId, oldestMsg.created_at);
+    if (result.success) {
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newMsgs = result.data.messages.filter((m) => !existingIds.has(m.id));
+        return [...newMsgs, ...prev];
+      });
+      setHasMore(result.data.hasMore);
+    }
+
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
+  }, [selectedConvId, hasMore]);
 
   // 메시지 전송
   const handleSendMessage = async (content: string) => {
     if (!selectedConvId) return;
 
-    const result = await sendMessage(selectedConvId, content);
-    if (result.success) {
-      setMessages((prev) => [...prev, result.data]);
-      // 목록 새로고침 (마지막 메시지 업데이트)
-      refreshConversations();
+    try {
+      const result = await sendMessage(selectedConvId, content);
+      if (result.success) {
+        appendMessageIfNew(result.data);
+        refreshConversations();
+      } else {
+        showErrorToast('메시지 전송 실패', result.error);
+      }
+      return result;
+    } catch {
+      showErrorToast('메시지 전송 실패', '서버와 통신 중 오류가 발생했습니다.');
+      return { success: false as const, error: '서버와 통신 중 오류가 발생했습니다.' };
     }
-    return result;
   };
 
   // 새 메시지 생성 후 처리
@@ -155,15 +212,10 @@ export default function MessagesClient() {
         },
         async (payload) => {
           const newMsg = payload.new as Message;
-          // 내가 보낸 메시지는 이미 추가됨 (optimistic)
           if (newMsg.sender_id === currentUserIdRef.current) return;
 
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
+          appendMessageIfNew(newMsg);
 
-          // 현재 보고 있으므로 바로 읽음 처리
           await markConversationRead(selectedConvId);
           window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
         },
@@ -173,9 +225,9 @@ export default function MessagesClient() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedConvId]);
+  }, [selectedConvId, appendMessageIfNew]);
 
-  // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 네비게이션 뱃지)
+  // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 스레드 갱신 + 뱃지)
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -189,12 +241,11 @@ export default function MessagesClient() {
 
           refreshConversations();
 
-          // 현재 보고 있는 대화의 메시지는 이미 읽음 처리(markConversationRead)가
-          // 실행되므로, router.refresh()로 레이아웃을 재렌더링하면
-          // 메시지 뱃지가 0으로 리셋되는 race condition이 발생함.
-          // → 다른 대화의 메시지일 때만 레이아웃 갱신
-          const msgConvId = (payload.new as { conversation_id?: string }).conversation_id;
-          if (msgConvId !== selectedConvIdRef.current) {
+          if (newMsg.conversation_id === selectedConvIdRef.current) {
+            appendMessageIfNew(newMsg);
+            markConversationRead(newMsg.conversation_id);
+            window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+          } else {
             router.refresh();
           }
         },
@@ -206,6 +257,50 @@ export default function MessagesClient() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Polling: 새 메시지만 감지하여 append (Realtime 안전망)
+  // 기존 이전 메시지(pagination으로 로드한)를 유지하면서 새 메시지만 추가.
+  // Realtime이 SECURITY DEFINER RLS로 이벤트를 전달하지 못할 때 이 polling이 보장.
+  useEffect(() => {
+    if (!selectedConvId) return;
+
+    const supabase = createClient();
+
+    const poll = async () => {
+      // 현재 state의 마지막(최신) 메시지 이후의 새 메시지만 조회
+      const newestCreatedAt = messagesRef.current[messagesRef.current.length - 1]?.created_at;
+
+      let query = supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', selectedConvId)
+        .order('created_at', { ascending: true })
+        .limit(MESSAGE_PAGE_SIZE);
+
+      if (newestCreatedAt) {
+        query = query.gt('created_at', newestCreatedAt);
+      }
+
+      const { data } = await query;
+
+      if (!data || data.length === 0) return;
+
+      // 새 메시지만 append (중복 제거)
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newMsgs = (data as Message[]).filter((m) => !existingIds.has(m.id));
+        if (newMsgs.length === 0) return prev;
+        return [...prev, ...newMsgs];
+      });
+
+      markConversationRead(selectedConvId);
+      window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+      refreshConversations();
+    };
+
+    const intervalId = setInterval(poll, THREAD_POLL_MS);
+    return () => clearInterval(intervalId);
+  }, [selectedConvId, refreshConversations]);
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 
@@ -262,7 +357,10 @@ export default function MessagesClient() {
             conversation={selectedConv}
             messages={messages}
             isLoading={isMessagesLoading}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
             onSendMessage={handleSendMessage}
+            onLoadMore={handleLoadMore}
             onMobileBack={handleMobileBack}
           />
         ) : (

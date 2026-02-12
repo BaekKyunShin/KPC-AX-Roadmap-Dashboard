@@ -144,12 +144,16 @@ export async function fetchConversations(): Promise<
 }
 
 /**
- * 특정 대화의 메시지 목록 조회 (시간순)
+ * 특정 대화의 메시지 목록 조회 (cursor 기반 페이지네이션)
+ * - cursor 없음: 최신 메시지부터 PAGE_SIZE개 반환 (초기 로딩)
+ * - cursor 있음: cursor(created_at) 이전의 오래된 메시지 PAGE_SIZE개 반환
+ * - hasMore: 이전 메시지가 더 있는지 여부
  * - RLS가 참여한 대화만 허용
  */
 export async function fetchMessages(
   conversationId: string,
-): Promise<ActionResult<Message[]>> {
+  cursor?: string,
+): Promise<ActionResult<{ messages: Message[]; hasMore: boolean }>> {
   try {
     const supabase = await createClient();
     const {
@@ -157,19 +161,32 @@ export async function fetchMessages(
     } = await supabase.auth.getUser();
     if (!user) return { success: false, error: '로그인이 필요합니다.' };
 
-    const { data, error } = await supabase
+    // PAGE_SIZE+1개를 조회하여 "더 있는지" 판단
+    let query = supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
-      .limit(MESSAGE_PAGE_SIZE);
+      .order('created_at', { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE + 1);
+
+    // cursor가 있으면 해당 시점 이전의 메시지만 조회
+    if (cursor) {
+      query = query.lt('created_at', cursor);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[fetchMessages]', error);
       return { success: false, error: '메시지를 불러올 수 없습니다.' };
     }
 
-    return { success: true, data: data || [] };
+    const rows = data || [];
+    const hasMore = rows.length > MESSAGE_PAGE_SIZE;
+    // 초과분 제거 후 시간순(ASC) 정렬
+    const messages = (hasMore ? rows.slice(0, MESSAGE_PAGE_SIZE) : rows).reverse();
+
+    return { success: true, data: { messages, hasMore } };
   } catch (err) {
     console.error('[fetchMessages] 예외:', err);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };

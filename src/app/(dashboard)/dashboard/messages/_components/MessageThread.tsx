@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { ArrowLeft, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -17,7 +17,10 @@ interface MessageThreadProps {
   conversation: ConversationWithPreview;
   messages: Message[];
   isLoading: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
   onSendMessage: (content: string) => Promise<{ success: boolean; error?: string } | undefined>;
+  onLoadMore: () => void;
   onMobileBack: () => void;
 }
 
@@ -72,23 +75,51 @@ export default function MessageThread({
   conversation,
   messages,
   isLoading,
+  hasMore,
+  isLoadingMore,
   onSendMessage,
+  onLoadMore,
   onMobileBack,
 }: MessageThreadProps) {
   const { other_user } = conversation;
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const avatarColor = ROLE_AVATAR_COLORS[other_user.role] || 'bg-gradient-to-br from-gray-400 to-gray-500';
   const badgeStyle = ROLE_BADGE_STYLES[other_user.role] || '';
   const roleLabel = ROLE_LABELS[other_user.role] || other_user.role;
 
-  // 메시지 로드/추가 시 스크롤 아래로
-  // isLoading이 false로 전환된 직후(초기 로드)에는 instant, 이후 새 메시지는 smooth
+  // 스크롤 관리용 refs
+  const prevFirstMsgIdRef = useRef<string | null>(null);
+  const prevLastMsgIdRef = useRef<string | null>(null);
   const prevLoadingRef = useRef(true);
 
+  // 초기 로드 + prepend (useLayoutEffect: paint 전 동기 실행 → 깜빡임 방지)
+  useLayoutEffect(() => {
+    if (isLoading || messages.length === 0) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const currentFirstId = messages[0]?.id ?? null;
+    const prevFirstId = prevFirstMsgIdRef.current;
+
+    if (prevLoadingRef.current) {
+      // 초기 로드 / 대화 전환 → 즉시 하단 스크롤 (paint 전 실행하여 깜빡임 방지)
+      container.scrollTop = container.scrollHeight;
+    } else if (prevFirstId && currentFirstId !== prevFirstId) {
+      // prepend 감지 → 이전 위치 유지
+      const anchor = container.querySelector(`[data-msg-id="${prevFirstId}"]`);
+      if (anchor) {
+        (anchor as HTMLElement).scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' });
+      }
+    }
+  }, [messages, isLoading]);
+
+  // 새 메시지 append + ref 관리 (useEffect: paint 후 실행)
   useEffect(() => {
     if (isLoading) {
       prevLoadingRef.current = true;
@@ -97,15 +128,40 @@ export default function MessageThread({
 
     if (messages.length === 0) return;
 
-    // 로딩 → 완료 전환 직후: instant로 즉시 스크롤 (깜빡임 방지)
-    const behavior = prevLoadingRef.current ? 'instant' as ScrollBehavior : 'smooth';
-    prevLoadingRef.current = false;
+    const currentFirstId = messages[0]?.id ?? null;
+    const currentLastId = messages[messages.length - 1]?.id ?? null;
 
-    // DOM 렌더링 완료 후 스크롤 실행
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior });
-    });
+    // append (새 메시지) → 부드러운 하단 스크롤
+    if (!prevLoadingRef.current
+        && currentFirstId === prevFirstMsgIdRef.current
+        && currentLastId !== prevLastMsgIdRef.current) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    prevLoadingRef.current = false;
+    prevFirstMsgIdRef.current = currentFirstId;
+    prevLastMsgIdRef.current = currentLastId;
   }, [messages, isLoading]);
+
+  // 스크롤 이벤트: 상단 근처(100px 이내)에서 이전 메시지 로드
+  // isLoading 가드: 초기 로드 중에는 scrollTop=0이므로 onLoadMore 잘못 호출 방지
+  useEffect(() => {
+    if (isLoading) return;
+    const container = scrollContainerRef.current;
+    if (!container || !hasMore || isLoadingMore) return;
+
+    const handleScroll = () => {
+      if (container.scrollTop < 100) onLoadMore();
+    };
+
+    // 콘텐츠가 뷰포트를 채우지 못하는 경우 즉시 체크
+    if (container.scrollTop < 100) onLoadMore();
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isLoadingMore, onLoadMore, isLoading]);
 
   // textarea 높이 자동 조절
   useEffect(() => {
@@ -124,12 +180,12 @@ export default function MessageThread({
     setInputValue('');
     await onSendMessage(trimmed);
     setIsSending(false);
-
-    // 전송 후 input에 포커스
     textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 한국어/일본어/중국어 IME 조합 중에는 Enter를 가로채지 않음
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -166,7 +222,7 @@ export default function MessageThread({
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
         {isLoading ? (
           <MessagesSkeleton />
         ) : messages.length === 0 ? (
@@ -175,13 +231,19 @@ export default function MessageThread({
           </div>
         ) : (
           <>
+            {isLoadingMore && (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                <span className="ml-2 text-xs text-gray-400">이전 메시지 로딩 중...</span>
+              </div>
+            )}
             {messages.map((msg, idx) => {
               const isMe = msg.sender_id !== other_user.id;
               const showDateSep =
                 idx === 0 || !isSameDay(messages[idx - 1].created_at, msg.created_at);
 
               return (
-                <div key={msg.id}>
+                <div key={msg.id} data-msg-id={msg.id}>
                   {showDateSep && <DateSeparator date={msg.created_at} />}
                   <MessageBubble
                     message={msg}
@@ -208,7 +270,6 @@ export default function MessageThread({
           maxLength={MESSAGE_MAX_LENGTH}
           rows={1}
           className="flex-1 resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          disabled={isSending}
         />
         <Button
           type="submit"

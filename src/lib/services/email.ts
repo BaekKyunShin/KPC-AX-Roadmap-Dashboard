@@ -83,6 +83,7 @@ export async function sendNewMessageEmail(
   );
   const senderName = escapeHtml(params.senderName);
   const link = `${APP_URL}/dashboard/messages?conversation=${params.conversationId}`;
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
     await transporter.sendMail({
@@ -119,6 +120,7 @@ export async function sendNewMessageEmail(
             </div>
           </div>
         </div>
+        <div style="display:none;font-size:0;line-height:0;max-height:0;overflow:hidden;">${uniqueId}</div>
       `,
     });
   } catch (err) {

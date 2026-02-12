@@ -199,6 +199,7 @@ export default function TestRoadmapClient({
   // ===== 수정 기능 상태 =====
   const [originalInput, setOriginalInput] = useState<TestInputData | null>(null);
   const [isRevising, setIsRevising] = useState(false);
+  const [isRevisionComplete, setIsRevisionComplete] = useState(false);
 
   // ===== 과정 편집 모달 상태 =====
   const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
@@ -357,6 +358,7 @@ export default function TestRoadmapClient({
     if (!originalInput || !result) return;
 
     setIsRevising(true);
+    setIsRevisionComplete(false);
     setError(null);
 
     try {
@@ -372,13 +374,18 @@ export default function TestRoadmapClient({
           roadmapResult: response.data.result,
           validation: response.data.validation,
         });
+        setIsRevisionComplete(true);
+        setTimeout(() => {
+          setIsRevising(false);
+          setIsRevisionComplete(false);
+        }, COMPLETION_DELAY_MS);
       } else {
         setError(response.error || '로드맵 수정에 실패했습니다.');
+        setIsRevising(false);
       }
     } catch (err) {
       console.error('[TestRoadmap] 수정 요청 중 오류:', err);
       setError(formatErrorMessage(err, '로드맵 수정 중 예기치 않은 오류가 발생했습니다.'));
-    } finally {
       setIsRevising(false);
     }
   }, [originalInput, result]);
@@ -565,8 +572,11 @@ export default function TestRoadmapClient({
           <RoadmapLoadingOverlay
             isTestMode={true}
             profileHref="/consultant/profile"
-            onCancel={() => setIsRevising(false)}
-            isCompleted={false}
+            onCancel={() => {
+              setIsRevising(false);
+              setIsRevisionComplete(false);
+            }}
+            isCompleted={isRevisionComplete}
           />
         )}
       </>

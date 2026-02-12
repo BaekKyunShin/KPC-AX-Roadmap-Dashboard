@@ -2,8 +2,8 @@
 // 메시지 상수
 // =============================================================================
 
-/** 한 번에 조회할 메시지 수 */
-export const MESSAGE_PAGE_SIZE = 50;
+/** 한 번에 조회할 메시지 수 (초기 로딩 + 페이지네이션 단위) */
+export const MESSAGE_PAGE_SIZE = 30;
 
 /** 대화 목록 한 번에 조회할 수 */
 export const CONVERSATION_PAGE_SIZE = 30;
