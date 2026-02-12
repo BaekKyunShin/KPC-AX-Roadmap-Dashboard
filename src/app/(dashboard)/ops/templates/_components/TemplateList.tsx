@@ -59,28 +59,38 @@ export default function TemplateList({ templates }: TemplateListProps) {
     setLoading(templateId);
     setError(null);
 
-    const result = await setActiveTemplate(templateId);
-    if (!result.success) {
-      setError(result.error || '활성화에 실패했습니다.');
+    try {
+      const result = await setActiveTemplate(templateId);
+      if (!result.success) {
+        setError(result.error || '활성화에 실패했습니다.');
+      }
+      setLoading(null);
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setError('서버와 통신 중 오류가 발생했습니다.');
+      setLoading(null);
     }
-    setLoading(null);
-    startTransition(() => {
-      router.refresh();
-    });
   };
 
   const handleDuplicate = async (templateId: string) => {
     setLoading(templateId);
     setError(null);
 
-    const result = await duplicateTemplate(templateId);
-    if (!result.success) {
-      setError(result.error || '복제에 실패했습니다.');
+    try {
+      const result = await duplicateTemplate(templateId);
+      if (!result.success) {
+        setError(result.error || '복제에 실패했습니다.');
+      }
+      setLoading(null);
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setError('서버와 통신 중 오류가 발생했습니다.');
+      setLoading(null);
     }
-    setLoading(null);
-    startTransition(() => {
-      router.refresh();
-    });
   };
 
   if (templates.length === 0) {

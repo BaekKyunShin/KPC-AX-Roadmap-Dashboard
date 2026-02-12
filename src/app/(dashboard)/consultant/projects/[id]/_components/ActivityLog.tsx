@@ -146,27 +146,37 @@ function LogItem({
   async function handleUpdate() {
     if (!editContent.trim()) return;
     setIsSubmitting(true);
-    const result = await updateActivityLog(log.id, projectId, editContent.trim());
-    setIsSubmitting(false);
 
-    if (result.success) {
-      showSuccessToast('기록이 수정되었습니다.');
-      setIsEditing(false);
-      onUpdated();
-    } else {
-      showErrorToast('수정 실패', result.error);
+    try {
+      const result = await updateActivityLog(log.id, projectId, editContent.trim());
+
+      if (result.success) {
+        showSuccessToast('기록이 수정되었습니다.');
+        setIsEditing(false);
+        onUpdated();
+      } else {
+        showErrorToast('수정 실패', result.error);
+      }
+    } catch {
+      showErrorToast('수정 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
+    setIsSubmitting(false);
   }
 
   async function handleDelete() {
     if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-    const result = await deleteActivityLog(log.id, projectId);
 
-    if (result.success) {
-      showSuccessToast('기록이 삭제되었습니다.');
-      onUpdated();
-    } else {
-      showErrorToast('삭제 실패', result.error);
+    try {
+      const result = await deleteActivityLog(log.id, projectId);
+
+      if (result.success) {
+        showSuccessToast('기록이 삭제되었습니다.');
+        onUpdated();
+      } else {
+        showErrorToast('삭제 실패', result.error);
+      }
+    } catch {
+      showErrorToast('삭제 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
   }
 

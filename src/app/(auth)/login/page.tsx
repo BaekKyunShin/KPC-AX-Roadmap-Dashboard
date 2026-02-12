@@ -29,18 +29,24 @@ function LoginForm() {
     setError(null);
     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const result = await loginUser(formData);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await loginUser(formData);
 
-    if (result.success) {
-      router.push(redirectTo);
-      router.refresh();
-    } else {
-      const errorMessage = result.error || '로그인에 실패했습니다.';
-      setError(errorMessage);
+      if (result.success) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        const errorMessage = result.error || '로그인에 실패했습니다.';
+        setError(errorMessage);
 
-      // Toast 알림
-      showErrorToast('로그인 실패', errorMessage);
+        // Toast 알림
+        showErrorToast('로그인 실패', errorMessage);
+        setIsLoading(false);
+      }
+    } catch {
+      setError('로그인에 실패했습니다.');
+      showErrorToast('로그인 실패', '서버와 통신 중 오류가 발생했습니다.');
       setIsLoading(false);
     }
   }

@@ -97,15 +97,20 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
     setIsLoading(userId);
     setError(null);
 
-    const result = await updateUserStatus(userId, action);
+    try {
+      const result = await updateUserStatus(userId, action);
 
-    if (result.success) {
-      setIsLoading(null);
-      startTransition(() => {
-        router.refresh();
-      });
-    } else {
-      setError(result.error || '처리에 실패했습니다.');
+      if (result.success) {
+        setIsLoading(null);
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        setError(result.error || '처리에 실패했습니다.');
+        setIsLoading(null);
+      }
+    } catch {
+      setError('서버와 통신 중 오류가 발생했습니다.');
       setIsLoading(null);
     }
   };

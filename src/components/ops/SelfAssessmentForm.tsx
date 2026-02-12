@@ -338,31 +338,37 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
 
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.set('project_id', projectId);
-    formData.set('template_id', template.id);
-    formData.set(
-      'answers',
-      JSON.stringify(
-        Object.entries(answers).map(([question_id, answer_value]) => ({
-          question_id,
-          answer_value,
-        }))
-      )
-    );
+    try {
+      const formData = new FormData();
+      formData.set('project_id', projectId);
+      formData.set('template_id', template.id);
+      formData.set(
+        'answers',
+        JSON.stringify(
+          Object.entries(answers).map(([question_id, answer_value]) => ({
+            question_id,
+            answer_value,
+          }))
+        )
+      );
 
-    const result = await createSelfAssessment(formData);
+      const result = await createSelfAssessment(formData);
 
-    if (result.success) {
-      showSuccessToast('자가진단 완료', '자가진단이 성공적으로 저장되었습니다.');
-      setIsLoading(false);
-      startTransition(() => {
-        router.refresh();
-      });
-    } else {
-      const errorMessage = result.error || '자가진단 저장에 실패했습니다.';
-      setError(errorMessage);
-      showErrorToast('저장 실패', errorMessage);
+      if (result.success) {
+        showSuccessToast('자가진단 완료', '자가진단이 성공적으로 저장되었습니다.');
+        setIsLoading(false);
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        const errorMessage = result.error || '자가진단 저장에 실패했습니다.';
+        setError(errorMessage);
+        showErrorToast('저장 실패', errorMessage);
+        setIsLoading(false);
+      }
+    } catch {
+      setError('자가진단 저장에 실패했습니다.');
+      showErrorToast('저장 실패', '서버와 통신 중 오류가 발생했습니다.');
       setIsLoading(false);
     }
   }

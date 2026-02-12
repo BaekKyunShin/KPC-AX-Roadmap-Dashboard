@@ -38,12 +38,17 @@ export default function EmailNotifyToggle() {
     const prev = enabled;
     setEnabled(checked);
 
-    const result = await updateEmailNotifySetting(checked);
-    if (result.success) {
-      showSuccessToast(checked ? '이메일 알림이 활성화되었습니다' : '이메일 알림이 비활성화되었습니다');
-    } else {
+    try {
+      const result = await updateEmailNotifySetting(checked);
+      if (result.success) {
+        showSuccessToast(checked ? '이메일 알림이 활성화되었습니다' : '이메일 알림이 비활성화되었습니다');
+      } else {
+        setEnabled(prev);
+        showErrorToast('설정 변경 실패', result.error);
+      }
+    } catch {
       setEnabled(prev);
-      showErrorToast('설정 변경 실패', result.error);
+      showErrorToast('설정 변경 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
     setIsUpdating(false);
   }

@@ -247,34 +247,40 @@ export default function InterviewPage() {
       return;
     }
 
-    const result = await saveInterview(projectId, {
-      interview_date: interviewDate,
-      participants,
-      company_details: companyDetails,
-      job_tasks: jobTasks,
-      pain_points: painPoints,
-      constraints: constraints.length > 0 ? constraints : undefined,
-      improvement_goals: improvementGoals,
-      notes,
-      customer_requirements: customerRequirements,
-    });
+    try {
+      const result = await saveInterview(projectId, {
+        interview_date: interviewDate,
+        participants,
+        company_details: companyDetails,
+        job_tasks: jobTasks,
+        pain_points: painPoints,
+        constraints: constraints.length > 0 ? constraints : undefined,
+        improvement_goals: improvementGoals,
+        notes,
+        customer_requirements: customerRequirements,
+      });
 
-    if (result.success) {
-      setSuccess('인터뷰가 저장되었습니다.');
+      if (result.success) {
+        setSuccess('인터뷰가 저장되었습니다.');
 
-      // 성공 Toast
-      showSuccessToast('저장 완료', '인터뷰가 성공적으로 저장되었습니다.');
+        // 성공 Toast
+        showSuccessToast('저장 완료', '인터뷰가 성공적으로 저장되었습니다.');
 
-      setTimeout(() => {
-        router.push(`/consultant/projects/${projectId}`);
-        router.refresh();
-      }, 1000);
-    } else {
-      const errorMessage = result.error || '저장에 실패했습니다.';
-      setError(errorMessage);
+        setTimeout(() => {
+          router.push(`/consultant/projects/${projectId}`);
+          router.refresh();
+        }, 1000);
+      } else {
+        const errorMessage = result.error || '저장에 실패했습니다.';
+        setError(errorMessage);
 
-      // 에러 Toast + 스크롤
-      showErrorToast('저장 실패', errorMessage);
+        // 에러 Toast + 스크롤
+        showErrorToast('저장 실패', errorMessage);
+        scrollToPageTop(0);
+      }
+    } catch {
+      setError('저장에 실패했습니다.');
+      showErrorToast('저장 실패', '서버와 통신 중 오류가 발생했습니다.');
       scrollToPageTop(0);
     }
 

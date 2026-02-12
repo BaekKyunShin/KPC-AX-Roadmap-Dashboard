@@ -107,19 +107,24 @@ export default function SettingsPage() {
 
     setIsPasswordLoading(true);
 
-    const result = await changePassword(currentPassword, newPassword, confirmPassword);
+    try {
+      const result = await changePassword(currentPassword, newPassword, confirmPassword);
 
-    if (!result.success) {
-      setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
+      if (!result.success) {
+        setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
+        setIsPasswordLoading(false);
+        return;
+      }
+
+      setPasswordSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
       setIsPasswordLoading(false);
-      return;
+    } catch {
+      setPasswordServerError('서버와 통신 중 오류가 발생했습니다.');
+      setIsPasswordLoading(false);
     }
-
-    setPasswordSuccess(true);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setIsPasswordLoading(false);
   }
 
   return (

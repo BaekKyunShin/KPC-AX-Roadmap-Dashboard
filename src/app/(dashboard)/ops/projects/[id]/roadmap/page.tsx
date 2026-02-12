@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText } from 'lucide-react';
+import { showErrorToast } from '@/lib/utils/toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { fetchRoadmapVersionsForOps, fetchRoadmapVersionForOps } from './actions';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
@@ -45,9 +46,13 @@ export default function OpsRoadmapViewPage() {
 
   // 버전 선택
   async function handleVersionSelect(versionId: string) {
-    const version = await fetchRoadmapVersionForOps(versionId);
-    if (version) {
-      setSelectedVersion(version as RoadmapVersionUI);
+    try {
+      const version = await fetchRoadmapVersionForOps(versionId);
+      if (version) {
+        setSelectedVersion(version as RoadmapVersionUI);
+      }
+    } catch {
+      showErrorToast('버전 로드 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
   }
 

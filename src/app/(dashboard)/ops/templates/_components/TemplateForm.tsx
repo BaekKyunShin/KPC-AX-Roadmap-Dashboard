@@ -110,41 +110,48 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     setError(null);
     setSuccess(null);
 
-    const formData = new FormData();
-    if (mode === 'edit' && template) {
-      formData.append('id', template.id);
-    }
-    formData.append('name', name);
-    formData.append('description', description);
-    formData.append('questions', JSON.stringify(questions));
+    try {
+      const formData = new FormData();
+      if (mode === 'edit' && template) {
+        formData.append('id', template.id);
+      }
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('questions', JSON.stringify(questions));
 
-    const result = mode === 'create' ? await createTemplate(formData) : await updateTemplate(formData);
+      const result = mode === 'create' ? await createTemplate(formData) : await updateTemplate(formData);
 
-    if (!result.success) {
-      const errorMessage = result.error || '저장에 실패했습니다.';
-      setError(errorMessage);
-      setLoading(false);
+      if (!result.success) {
+        const errorMessage = result.error || '저장에 실패했습니다.';
+        setError(errorMessage);
+        setLoading(false);
 
-      // Toast 알림 + 스크롤
-      showErrorToast('저장 실패', errorMessage);
+        // Toast 알림 + 스크롤
+        showErrorToast('저장 실패', errorMessage);
+        scrollToElement(formRef);
+        return;
+      }
+
+      const data = result.data as { message?: string; id?: string };
+      const successMessage = data?.message || '저장되었습니다.';
+      setSuccess(successMessage);
+
+      // 성공 Toast
+      showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
+
+      if (mode === 'create' && data?.id) {
+        router.push(`/ops/templates/${data.id}`);
+      } else {
+        setLoading(false);
+        startTransition(() => {
+          router.refresh();
+        });
+      }
+    } catch {
+      setError('저장에 실패했습니다.');
+      showErrorToast('저장 실패', '서버와 통신 중 오류가 발생했습니다.');
       scrollToElement(formRef);
-      return;
-    }
-
-    const data = result.data as { message?: string; id?: string };
-    const successMessage = data?.message || '저장되었습니다.';
-    setSuccess(successMessage);
-
-    // 성공 Toast
-    showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
-
-    if (mode === 'create' && data?.id) {
-      router.push(`/ops/templates/${data.id}`);
-    } else {
       setLoading(false);
-      startTransition(() => {
-        router.refresh();
-      });
     }
   };
 

@@ -118,38 +118,45 @@ export default function RegisterPage() {
 
     setIsLoading(true);
 
-    const submitFormData = new FormData();
-    submitFormData.set('email', data.email);
-    submitFormData.set('password', data.password);
-    submitFormData.set('confirmPassword', data.confirmPassword);
-    submitFormData.set('name', data.name);
-    submitFormData.set('phone', data.phone);
-    submitFormData.set('registerType', data.registerType);
-    submitFormData.set('agreeToTerms', 'true');
+    try {
+      const submitFormData = new FormData();
+      submitFormData.set('email', data.email);
+      submitFormData.set('password', data.password);
+      submitFormData.set('confirmPassword', data.confirmPassword);
+      submitFormData.set('name', data.name);
+      submitFormData.set('phone', data.phone);
+      submitFormData.set('registerType', data.registerType);
+      submitFormData.set('agreeToTerms', 'true');
 
-    const serverResult = await registerUser(submitFormData);
+      const serverResult = await registerUser(submitFormData);
 
-    // 회원가입 실패 시 에러 표시 후 종료
-    if (!serverResult.success || !serverResult.data?.userId) {
-      const errorMessage = serverResult.error || '회원가입에 실패했습니다.';
-      setServerError(errorMessage);
+      // 회원가입 실패 시 에러 표시 후 종료
+      if (!serverResult.success || !serverResult.data?.userId) {
+        const errorMessage = serverResult.error || '회원가입에 실패했습니다.';
+        setServerError(errorMessage);
+        setIsLoading(false);
+
+        // Toast 알림 + 상단으로 스크롤
+        showErrorToast('회원가입 실패', errorMessage);
+        scrollToPageTop();
+        return;
+      }
+
+      // 운영관리자는 바로 대시보드로 이동 (로딩 상태 유지)
+      if (registerType === 'OPS_ADMIN') {
+        router.push('/dashboard');
+        return;
+      }
+
+      // 컨설턴트는 2단계(프로필 입력)로 진행
+      setStep(2);
       setIsLoading(false);
-
-      // Toast 알림 + 상단으로 스크롤
-      showErrorToast('회원가입 실패', errorMessage);
+    } catch {
+      setServerError('회원가입에 실패했습니다.');
+      showErrorToast('회원가입 실패', '서버와 통신 중 오류가 발생했습니다.');
       scrollToPageTop();
-      return;
+      setIsLoading(false);
     }
-
-    // 운영관리자는 바로 대시보드로 이동 (로딩 상태 유지)
-    if (registerType === 'OPS_ADMIN') {
-      router.push('/dashboard');
-      return;
-    }
-
-    // 컨설턴트는 2단계(프로필 입력)로 진행
-    setStep(2);
-    setIsLoading(false);
   }
 
   // 초기화 중 로딩 표시

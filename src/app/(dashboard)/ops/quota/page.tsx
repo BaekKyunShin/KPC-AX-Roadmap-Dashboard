@@ -88,16 +88,21 @@ export default function QuotaManagementPage() {
     if (!editingUser) return;
 
     setSaving(true);
-    const result = await updateQuota(editingUser, editDailyLimit, editMonthlyLimit);
 
-    if (result.success) {
-      setMessage({ type: 'success', text: '쿼터가 수정되었습니다.' });
-      // 목록 새로고침
-      const refreshed = await fetchUsageStats({ page, limit: 20, month: selectedMonth });
-      setUsers(refreshed.users as UsageStats[]);
-      setEditingUser(null);
-    } else {
-      setMessage({ type: 'error', text: result.error || '수정에 실패했습니다.' });
+    try {
+      const result = await updateQuota(editingUser, editDailyLimit, editMonthlyLimit);
+
+      if (result.success) {
+        setMessage({ type: 'success', text: '쿼터가 수정되었습니다.' });
+        // 목록 새로고침
+        const refreshed = await fetchUsageStats({ page, limit: 20, month: selectedMonth });
+        setUsers(refreshed.users as UsageStats[]);
+        setEditingUser(null);
+      } else {
+        setMessage({ type: 'error', text: result.error || '수정에 실패했습니다.' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: '서버와 통신 중 오류가 발생했습니다.' });
     }
 
     setSaving(false);

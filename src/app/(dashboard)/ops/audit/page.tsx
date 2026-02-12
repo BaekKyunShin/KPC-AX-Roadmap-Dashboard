@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Search, X, Download } from 'lucide-react';
+import { showErrorToast } from '@/lib/utils/toast';
 import * as XLSX from 'xlsx-js-style';
 
 export default function AuditLogPage() {
@@ -168,19 +169,23 @@ export default function AuditLogPage() {
 
   // Excel 내보내기
   async function handleExportExcel(exportAll = false) {
-    if (exportAll) {
-      setExporting('all-excel');
-      const result = await fetchAllAuditLogs({
-        action: selectedAction || undefined,
-        targetType: selectedTargetType || undefined,
-        actorUserId: selectedUser || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
-      exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
-    } else {
-      setExporting('excel');
-      exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    try {
+      if (exportAll) {
+        setExporting('all-excel');
+        const result = await fetchAllAuditLogs({
+          action: selectedAction || undefined,
+          targetType: selectedTargetType || undefined,
+          actorUserId: selectedUser || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        });
+        exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
+      } else {
+        setExporting('excel');
+        exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }
+    } catch {
+      showErrorToast('내보내기 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
     setExporting(null);
   }

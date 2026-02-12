@@ -47,21 +47,28 @@ export default function NewProjectPage() {
 
     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    formData.set('company_size', companySize);
-    formData.set('industry', industry);
-    formData.set('sub_industries', JSON.stringify(subIndustries));
-    const result = await createProject(formData);
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set('company_size', companySize);
+      formData.set('industry', industry);
+      formData.set('sub_industries', JSON.stringify(subIndustries));
+      const result = await createProject(formData);
 
-    if (result.success && result.data?.projectId) {
-      showSuccessToast('프로젝트 생성 완료', '프로젝트가 성공적으로 생성되었습니다.');
-      router.push(`/ops/projects/${result.data.projectId}`);
-    } else {
-      const errorMessage = result.error || '프로젝트 생성에 실패했습니다.';
-      setError(errorMessage);
+      if (result.success && result.data?.projectId) {
+        showSuccessToast('프로젝트 생성 완료', '프로젝트가 성공적으로 생성되었습니다.');
+        router.push(`/ops/projects/${result.data.projectId}`);
+      } else {
+        const errorMessage = result.error || '프로젝트 생성에 실패했습니다.';
+        setError(errorMessage);
 
-      // Toast 알림 + 스크롤
-      showErrorToast('프로젝트 생성 실패', errorMessage);
+        // Toast 알림 + 스크롤
+        showErrorToast('프로젝트 생성 실패', errorMessage);
+        scrollToElement(formContainerRef);
+        setIsLoading(false);
+      }
+    } catch {
+      setError('프로젝트 생성에 실패했습니다.');
+      showErrorToast('프로젝트 생성 실패', '서버와 통신 중 오류가 발생했습니다.');
       scrollToElement(formContainerRef);
       setIsLoading(false);
     }
