@@ -321,7 +321,7 @@ src/app/(dashboard)/gallery/
   - `roadmap-prompts.ts`: `buildSystemPrompt`, `buildUserPrompt` (246줄)
 - **검증**: 기존 테스트 통과
 - **위험도**: 낮음 (자체 완결적 함수들)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-3: roadmap.ts — 생성/CRUD 분리 + index.ts
 
@@ -573,7 +573,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-9~10 | Server Actions 테스트 | 완료 |
 | 1 | 1-11~12 | 컴포넌트 테스트 | 완료 |
 | 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | 완료 |
-| 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | - |
+| 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | 완료 |
 | 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | - |
 | 2 | 2-4 | matching.ts 레거시 제거 + 분리 | - |
 | 2 | 2-5 | export-pdf.ts 헬퍼/상수 추출 | - |
