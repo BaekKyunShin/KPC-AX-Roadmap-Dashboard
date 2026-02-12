@@ -194,7 +194,7 @@ export interface RoadmapResult {
 // ============================================================================
 
 /** 커리큘럼 모듈 배열의 시간 합계 계산 */
-function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
+export function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
   if (!curriculum || curriculum.length === 0) return 0;
   return curriculum.reduce((sum, module) => sum + (module.hours || 0), 0);
 }
@@ -206,7 +206,7 @@ function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
 /**
  * courses의 recommended_hours를 커리큘럼 모듈 시간 합계로 보정
  */
-function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
+export function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
   return courses.map(course => {
     const modulesTotal = sumModuleHours(course.curriculum);
     if (modulesTotal === 0 || course.recommended_hours === modulesTotal) {
@@ -219,7 +219,7 @@ function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
 /**
  * PBL 과정의 total_hours를 모듈 시간 합계로 보정
  */
-function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
+export function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
   const modulesTotal = sumModuleHours(pblCourse.curriculum);
   if (modulesTotal === 0 || pblCourse.total_hours === modulesTotal) {
     return pblCourse;
@@ -230,7 +230,7 @@ function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
 /**
  * LLM 출력 결과의 시간을 자동 보정
  */
-function normalizeRoadmapHours(llmResult: LLMRoadmapResult): LLMRoadmapResult {
+export function normalizeRoadmapHours(llmResult: { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] }): { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] } {
   return {
     ...llmResult,
     courses: normalizeCoursesHours(llmResult.courses),
@@ -246,7 +246,7 @@ function normalizeRoadmapHours(llmResult: LLMRoadmapResult): LLMRoadmapResult {
  * courses 배열에서 roadmap_matrix 자동 생성
  * 한 셀에 여러 과정이 있을 수 있음
  */
-function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
+export function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
   // 업무별로 그룹화
   const taskMap = new Map<string, RoadmapRow>();
 
