@@ -9,13 +9,33 @@
  *   3. PBL 과정
  */
 
-import type { jsPDF } from 'jspdf';
 import type { RoadmapRow, PBLCourse, RoadmapCell } from './roadmap';
 import {
   getLevelLabel,
   formatMatrixCourseNames,
   formatMatrixCourseHoursWithUnit,
 } from '@/lib/utils/roadmap';
+import { LAYOUT, FONT } from './export/pdf/pdf-constants';
+import { loadFonts } from './export/pdf/pdf-font-loader';
+import {
+  setRegular,
+  setBold,
+  checkPageBreak,
+  drawDivider,
+  drawSectionTitle,
+  drawSubsectionTitle,
+  drawTableTitle,
+  drawBodyText,
+  drawBulletItem,
+  drawLabelValue,
+  getTableFinalY,
+  getAutoTableStyles,
+  formatBulletList,
+} from './export/pdf/pdf-helpers';
+
+// Re-export public types and functions for backward compatibility
+export type { DocContext } from './export/pdf/pdf-helpers';
+export { checkPageBreak, formatBulletList } from './export/pdf/pdf-helpers';
 
 export interface RoadmapExportData {
   companyName: string;
@@ -79,266 +99,11 @@ export function extractModuleDeliverables(
 }
 
 // ============================================================================
-// PDF 레이아웃 상수
-// ============================================================================
-
-const LAYOUT = {
-  MARGIN: 20,
-  PAGE_WIDTH: 210,
-  PAGE_HEIGHT: 297,
-  get CONTENT_WIDTH() { return this.PAGE_WIDTH - this.MARGIN * 2; },
-  HEADER_COLOR: [102, 51, 153] as [number, number, number],
-  HEADER_TEXT_COLOR: [255, 255, 255] as [number, number, number],
-  DIVIDER_COLOR: [200, 200, 200] as [number, number, number],
-  LIGHT_BG: [248, 247, 252] as [number, number, number],
-  LABEL_BG: [245, 243, 249] as [number, number, number],
-  BODY_COLOR: [51, 51, 51] as [number, number, number],
-  MUTED_COLOR: [120, 120, 120] as [number, number, number],
-} as const;
-
-const FONT = {
-  REGULAR: 'Pretendard',
-  BOLD: 'PretendardBold',
-  SIZE: {
-    TITLE: 20,
-    SECTION: 13,
-    SUBSECTION: 11,
-    TABLE_TITLE: 9.5,
-    BODY: 9,
-    TABLE_HEAD: 8.5,
-    TABLE_BODY: 8,
-    CAPTION: 7.5,
-    FOOTER: 7,
-  },
-  LINE_HEIGHT: {
-    BODY: 4.8,
-    TIGHT: 3.5,
-  },
-} as const;
-
-// ============================================================================
-// 폰트 로딩
-// ============================================================================
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-const fontCache: Record<string, string> = {};
-
-async function loadFont(doc: jsPDF, path: string, vfsName: string, fontName: string, style: string): Promise<boolean> {
-  try {
-    if (!fontCache[path]) {
-      const response = await fetch(path);
-      if (!response.ok) {
-        console.warn(`[PDF] 폰트 로드 실패: ${path}`, response.status);
-        return false;
-      }
-      fontCache[path] = arrayBufferToBase64(await response.arrayBuffer());
-    }
-    doc.addFileToVFS(vfsName, fontCache[path]);
-    doc.addFont(vfsName, fontName, style);
-    return true;
-  } catch (error) {
-    console.warn(`[PDF] 폰트 로드 오류: ${path}`, error);
-    return false;
-  }
-}
-
-async function loadFonts(doc: jsPDF): Promise<boolean> {
-  const [regular, bold] = await Promise.all([
-    loadFont(doc, '/fonts/Pretendard-Regular.ttf', 'Pretendard-Regular.ttf', FONT.REGULAR, 'normal'),
-    loadFont(doc, '/fonts/Pretendard-Bold.ttf', 'Pretendard-Bold.ttf', FONT.BOLD, 'normal'),
-  ]);
-  if (regular) doc.setFont(FONT.REGULAR);
-  return regular && bold;
-}
-
-// ============================================================================
-// 문서 헬퍼
-// ============================================================================
-
-export interface DocContext {
-  doc: jsPDF;
-  y: number;
-  hasFonts: boolean;
-}
-
-function setRegular(ctx: DocContext, size: number) {
-  ctx.doc.setFont(ctx.hasFonts ? FONT.REGULAR : 'helvetica', 'normal');
-  ctx.doc.setFontSize(size);
-}
-
-function setBold(ctx: DocContext, size: number) {
-  if (ctx.hasFonts) {
-    ctx.doc.setFont(FONT.BOLD, 'normal');
-  } else {
-    ctx.doc.setFont('helvetica', 'bold');
-  }
-  ctx.doc.setFontSize(size);
-}
-
-export function checkPageBreak(ctx: DocContext, needed: number): void {
-  if (ctx.y + needed > LAYOUT.PAGE_HEIGHT - 25) {
-    ctx.doc.addPage();
-    ctx.y = LAYOUT.MARGIN + 5;
-  }
-}
-
-function drawDivider(ctx: DocContext): void {
-  ctx.doc.setDrawColor(...LAYOUT.DIVIDER_COLOR);
-  ctx.doc.setLineWidth(0.3);
-  ctx.doc.line(LAYOUT.MARGIN, ctx.y, LAYOUT.PAGE_WIDTH - LAYOUT.MARGIN, ctx.y);
-  ctx.y += 6;
-}
-
-function drawSectionTitle(ctx: DocContext, title: string): void {
-  checkPageBreak(ctx, 20);
-  setBold(ctx, FONT.SIZE.SECTION);
-  ctx.doc.setTextColor(...LAYOUT.BODY_COLOR);
-  ctx.doc.text(title, LAYOUT.MARGIN, ctx.y);
-  ctx.y += 2;
-  ctx.doc.setDrawColor(...LAYOUT.HEADER_COLOR);
-  ctx.doc.setLineWidth(0.6);
-  ctx.doc.line(LAYOUT.MARGIN, ctx.y, LAYOUT.MARGIN + 40, ctx.y);
-  ctx.y += 6;
-}
-
-function drawSubsectionTitle(ctx: DocContext, title: string): void {
-  checkPageBreak(ctx, 15);
-  setBold(ctx, FONT.SIZE.SUBSECTION);
-  ctx.doc.setTextColor(...LAYOUT.HEADER_COLOR);
-  ctx.doc.text(title, LAYOUT.MARGIN, ctx.y);
-  ctx.y += 2;
-  ctx.doc.setDrawColor(...LAYOUT.HEADER_COLOR);
-  ctx.doc.setLineWidth(0.4);
-  ctx.doc.line(LAYOUT.MARGIN, ctx.y, LAYOUT.PAGE_WIDTH - LAYOUT.MARGIN, ctx.y);
-  ctx.y += 5;
-}
-
-function drawTableTitle(ctx: DocContext, title: string): void {
-  checkPageBreak(ctx, 12);
-  setBold(ctx, FONT.SIZE.TABLE_TITLE);
-  ctx.doc.setTextColor(...LAYOUT.HEADER_COLOR);
-  ctx.doc.text(`\u25A0 ${title}`, LAYOUT.MARGIN, ctx.y);
-  ctx.y += 5;
-}
-
-function drawBodyText(ctx: DocContext, text: string, indent = 0): void {
-  setRegular(ctx, FONT.SIZE.BODY);
-  ctx.doc.setTextColor(...LAYOUT.BODY_COLOR);
-  const maxWidth = LAYOUT.CONTENT_WIDTH - indent;
-  const lines: string[] = ctx.doc.splitTextToSize(text, maxWidth);
-  lines.forEach((line: string) => {
-    checkPageBreak(ctx, 5);
-    ctx.doc.text(line, LAYOUT.MARGIN + indent, ctx.y);
-    ctx.y += FONT.LINE_HEIGHT.BODY;
-  });
-}
-
-function drawBulletItem(ctx: DocContext, text: string, indent = 4): void {
-  setRegular(ctx, FONT.SIZE.BODY);
-  ctx.doc.setTextColor(...LAYOUT.BODY_COLOR);
-  const bulletX = LAYOUT.MARGIN + indent;
-  const textX = bulletX + 4;
-  const maxWidth = LAYOUT.CONTENT_WIDTH - indent - 4;
-  const lines: string[] = ctx.doc.splitTextToSize(text, maxWidth);
-  lines.forEach((line: string, i: number) => {
-    checkPageBreak(ctx, 5);
-    if (i === 0) ctx.doc.text('\u2022', bulletX, ctx.y);
-    ctx.doc.text(line, textX, ctx.y);
-    ctx.y += FONT.LINE_HEIGHT.BODY;
-  });
-}
-
-function drawLabelValue(ctx: DocContext, label: string, value: string, indent = 4): void {
-  checkPageBreak(ctx, 5);
-  setBold(ctx, FONT.SIZE.BODY);
-  ctx.doc.setTextColor(...LAYOUT.MUTED_COLOR);
-  ctx.doc.text(label, LAYOUT.MARGIN + indent, ctx.y);
-  const labelWidth = ctx.doc.getTextWidth(label) + 2;
-  setRegular(ctx, FONT.SIZE.BODY);
-  ctx.doc.setTextColor(...LAYOUT.BODY_COLOR);
-  const maxWidth = LAYOUT.CONTENT_WIDTH - indent - labelWidth;
-  const lines: string[] = ctx.doc.splitTextToSize(value, maxWidth);
-  lines.forEach((line: string) => {
-    ctx.doc.text(line, LAYOUT.MARGIN + indent + labelWidth, ctx.y);
-    ctx.y += FONT.LINE_HEIGHT.BODY;
-  });
-}
-
-function getTableFinalY(doc: jsPDF): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (doc as any).lastAutoTable?.finalY ?? 0;
-}
-
-function getAutoTableStyles(hasFonts: boolean) {
-  return {
-    styles: {
-      font: hasFonts ? FONT.REGULAR : 'helvetica',
-      fontSize: FONT.SIZE.TABLE_BODY,
-      cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
-      textColor: LAYOUT.BODY_COLOR,
-      lineColor: [220, 220, 220] as [number, number, number],
-      lineWidth: 0.2,
-    },
-    headStyles: {
-      font: hasFonts ? FONT.BOLD : 'helvetica',
-      fontStyle: hasFonts ? 'normal' as const : 'bold' as const,
-      fontSize: FONT.SIZE.TABLE_HEAD,
-      fillColor: LAYOUT.HEADER_COLOR,
-      textColor: LAYOUT.HEADER_TEXT_COLOR,
-      cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
-    },
-    alternateRowStyles: {
-      fillColor: LAYOUT.LIGHT_BG,
-    },
-  };
-}
-
-// ============================================================================
-// 테이블 셀 내 머리기호 리스트 (줄바꿈 시 hanging indent)
-// ============================================================================
-
-export function formatBulletList(
-  doc: jsPDF,
-  items: string[],
-  columnWidth: number,
-  hasFonts: boolean,
-): string {
-  if (!items || items.length === 0) return '-';
-
-  doc.setFont(hasFonts ? FONT.REGULAR : 'helvetica', 'normal');
-  doc.setFontSize(FONT.SIZE.TABLE_BODY);
-
-  const bullet = '\u2022 ';
-  const bulletW = doc.getTextWidth(bullet);
-  const spaceW = doc.getTextWidth(' ');
-  const indent = ' '.repeat(Math.round(bulletW / spaceW));
-  const textWidth = columnWidth - 6 - bulletW; // 6 = padding left(3) + right(3)
-
-  const result: string[] = [];
-  items.forEach(item => {
-    const wrapped: string[] = doc.splitTextToSize(item, textWidth);
-    wrapped.forEach((line: string, i: number) => {
-      result.push(i === 0 ? `${bullet}${line}` : `${indent}${line}`);
-    });
-  });
-
-  return result.join('\n');
-}
-
-// ============================================================================
 // 과정 상세 렌더링 (과정 1개분)
 // ============================================================================
 
 function drawCourseDetail(
-  ctx: DocContext,
+  ctx: import('./export/pdf/pdf-helpers').DocContext,
   course: RoadmapCell,
   index: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -465,7 +230,7 @@ export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
 
   const hasFonts = await loadFonts(doc);
   doc.setLineHeightFactor(1.5);
-  const ctx: DocContext = { doc, y: LAYOUT.MARGIN, hasFonts };
+  const ctx: import('./export/pdf/pdf-helpers').DocContext = { doc, y: LAYOUT.MARGIN, hasFonts };
   const tableBase = getAutoTableStyles(hasFonts);
   const CW = LAYOUT.CONTENT_WIDTH;
 
