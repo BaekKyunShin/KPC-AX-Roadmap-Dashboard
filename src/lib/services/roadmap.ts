@@ -12,7 +12,7 @@ import type { SttInsights } from '@/lib/schemas/interview';
 // ============================================================================
 
 /** STT 인사이트 타입 가드 */
-function isSttInsights(value: unknown): value is SttInsights {
+export function isSttInsights(value: unknown): value is SttInsights {
   if (!value || typeof value !== 'object') return false;
   const obj = value as Record<string, unknown>;
   // 최소한 하나의 유효한 필드가 있는지 확인
@@ -27,19 +27,19 @@ function isSttInsights(value: unknown): value is SttInsights {
 }
 
 /** 배열 항목 존재 여부 확인 */
-function hasItems(arr: unknown): arr is string[] {
+export function hasItems(arr: unknown): arr is string[] {
   return Array.isArray(arr) && arr.length > 0;
 }
 
 /** 배열을 마크다운 리스트로 변환 */
-function toMarkdownList(items: string[]): string {
+export function toMarkdownList(items: string[]): string {
   return items.map(item => `- ${item}`).join('\n');
 }
 
 /**
  * STT 인사이트를 프롬프트용 문자열로 포맷팅
  */
-function formatSttInsights(insights: SttInsights): string {
+export function formatSttInsights(insights: SttInsights): string {
   const sections: string[] = [];
 
   if (hasItems(insights.추가_업무)) {
@@ -72,7 +72,7 @@ function formatSttInsights(insights: SttInsights): string {
 /**
  * 인터뷰 데이터에서 STT 인사이트 섹션 생성
  */
-function buildSttInsightsSection(interview: Record<string, unknown>): string {
+export function buildSttInsightsSection(interview: Record<string, unknown>): string {
   const sttInsights = interview.stt_insights;
 
   if (!isSttInsights(sttInsights)) {
@@ -671,7 +671,7 @@ ${revisionPrompt}
 /**
  * 시스템 프롬프트
  */
-function buildSystemPrompt(): string {
+export function buildSystemPrompt(): string {
   return `당신은 기업 AI 교육 로드맵 전문가입니다. 기업의 현황과 니즈를 분석하여 맞춤형 AI 활용 교육 로드맵을 설계합니다.
 
 ## 핵심 원칙
@@ -833,7 +833,7 @@ PBL 과정은 선정된 과정을 프로젝트 기반 학습으로 심화 확장
 /**
  * 사용자 프롬프트 (입력 데이터 포함)
  */
-function buildUserPrompt(
+export function buildUserPrompt(
   projectData: Record<string, unknown>,
   selfAssessment: Record<string, unknown> | null | undefined,
   interview: Record<string, unknown>,
