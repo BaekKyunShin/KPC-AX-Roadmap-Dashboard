@@ -188,7 +188,7 @@ consultant/.../roadmap/ ───→ roadmap.ts, audit.ts, notification.ts
 - **대상 (quota)**: `getKSTDateTime`, `checkQuotaExceeded` (모킹), `recordLLMUsage` (모킹)
 - **파일**: `src/lib/services/llm.test.ts`, `src/lib/services/quota.test.ts`
 - **이유**: 모든 LLM 서비스의 기반, 모킹 패턴 확립
-- [ ] 완료
+- [x] 완료
 
 #### Session 1-6: export-pdf.ts 테스트
 
@@ -566,7 +566,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-2 | roadmap.ts 검증 함수 테스트 | 완료 |
 | 1 | 1-3 | roadmap.ts 프롬프트 빌더 테스트 | 완료 |
 | 1 | 1-4 | matching.ts 레거시 점수 계산 테스트 | 완료 |
-| 1 | 1-5 | llm.ts + quota.ts 테스트 | - |
+| 1 | 1-5 | llm.ts + quota.ts 테스트 | 완료 |
 | 1 | 1-6 | export-pdf.ts 테스트 | - |
 | 1 | 1-7 | export-xlsx.ts 테스트 | - |
 | 1 | 1-8 | stt.ts + notification.ts + audit.ts 테스트 | - |
