@@ -349,7 +349,7 @@ ${consultantInfo}
 // ============================================================================
 
 /** 레거시: 매칭 기준 */
-interface MatchingCriteria {
+export interface MatchingCriteria {
   industry: string;
   subIndustries: string[];
   companySize: string;
@@ -357,13 +357,13 @@ interface MatchingCriteria {
 }
 
 /** 레거시: 점수 계산 결과 */
-interface ScoreResult {
+export interface ScoreResult {
   score: number;
   explanation: string;
 }
 
 /** 레거시: 규칙 기반 점수 */
-interface CandidateScore {
+export interface CandidateScore {
   userId: string;
   totalScore: number;
   breakdown: {
@@ -517,7 +517,7 @@ export async function generateMatchingRecommendations(
 }
 
 /** 레거시: 매칭 점수 계산 */
-function calculateMatchingScore(
+export function calculateMatchingScore(
   userId: string,
   profile: ConsultantProfile,
   criteria: MatchingCriteria
@@ -598,14 +598,14 @@ function calculateMatchingScore(
   };
 }
 
-function calculateIndustryScore(industries: string[], targetIndustry: string): number {
+export function calculateIndustryScore(industries: string[], targetIndustry: string): number {
   if (industries.includes(targetIndustry)) return 20;
   const related = RELATED_INDUSTRIES[targetIndustry] || [];
   if (industries.some((i) => related.includes(i))) return 12;
   return 4;
 }
 
-function calculateSubIndustryScore(
+export function calculateSubIndustryScore(
   consultantSubIndustries: string[],
   projectSubIndustries: string[]
 ): ScoreResult {
@@ -637,13 +637,13 @@ function calculateSubIndustryScore(
   return { score: 1, explanation: '세부 업종 일치 없음' };
 }
 
-function calculateExpertiseScore(domains: string[]): ScoreResult {
+export function calculateExpertiseScore(domains: string[]): ScoreResult {
   const score = Math.min(20, domains.length * 4);
   const domainSummary = domains.length > 3 ? `${domains.slice(0, 3).join(', ')} 등` : domains.join(', ');
   return { score, explanation: `${domains.length}개 전문분야 보유 (${domainSummary})` };
 }
 
-function calculateSkillScore(skills: string[], assessmentScores: SelfAssessmentScore): ScoreResult {
+export function calculateSkillScore(skills: string[], assessmentScores: SelfAssessmentScore): ScoreResult {
   const lowScoreDimensions =
     assessmentScores.dimension_scores
       ?.filter((d) => d.score / d.max_score < 0.6)
@@ -679,20 +679,20 @@ function calculateSkillScore(skills: string[], assessmentScores: SelfAssessmentS
   return { score, explanation: `${skills.length}개 역량 보유, 약점 영역 ${matchCount}개 매칭` };
 }
 
-function calculateLevelScore(levels: string[]): ScoreResult {
+export function calculateLevelScore(levels: string[]): ScoreResult {
   const score = Math.min(15, levels.length * 4);
   const levelLabels = levels.map((l) => LEVEL_LABEL_MAP[l] || l);
   return { score, explanation: `${levelLabels.join(', ')} 레벨 강의 가능` };
 }
 
-function calculateExperienceScore(years: number): ScoreResult {
+export function calculateExperienceScore(years: number): ScoreResult {
   if (years >= 10) return { score: 20, explanation: `${years}년 경력 (시니어급)` };
   if (years >= 5) return { score: 15, explanation: `${years}년 경력 (중급)` };
   if (years >= 2) return { score: 10, explanation: `${years}년 경력 (주니어급)` };
   return { score: 5, explanation: `${years}년 경력` };
 }
 
-function generateRationale(
+export function generateRationale(
   breakdown: CandidateScore['breakdown'],
   profile: ConsultantProfile
 ): MatchingRationale {
