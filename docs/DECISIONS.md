@@ -381,3 +381,124 @@
 - `user_status` ENUM에 `WITHDRAWN` 값 추가
 - `audit_action` ENUM에 `USER_WITHDRAW` 값 추가
 - 마이그레이션: `013_add_user_withdrawal.sql`
+
+---
+
+## ADR-021: 인앱 알림 시스템
+
+**날짜**: 2025-02-07
+
+**결정**: 인앱 알림 시스템 도입 (배정, 마감, 상태변경, 메시지, 시스템 이벤트)
+
+**이유**:
+- 컨설턴트/관리자가 중요 이벤트를 놓치지 않도록 시스템 수준 알림 필요
+- 벨 아이콘 + Popover 패턴으로 현재 작업을 방해하지 않고 빠르게 확인
+- 안읽음 뱃지가 재방문 트리거로 작용
+
+**구현**:
+- `notifications` 테이블 (user_id, type, title, message, link, is_read)
+- `notification_type` ENUM: assignment, deadline, status_change, message, system, interview_complete, roadmap_draft, roadmap_finalized
+- INSERT는 서비스 역할 키(admin 클라이언트)만 가능 — `createNotification()` 헬퍼 사용
+- `NotificationBell` 컴포넌트: 벨 클릭 시 Lazy Fetch, 안읽음 부분 인덱스로 카운트 최적화
+- 마이그레이션: `016_add_notifications.sql`, `021_extend_notification_types.sql`
+
+---
+
+## ADR-022: DM 메시징 시스템
+
+**날짜**: 2025-02-08
+
+**결정**: 시스템관리자/운영관리자/컨설턴트 간 1:1 DM 메시징 기능 도입
+
+**이유**:
+- 외부 커뮤니케이션 채널(이메일, 카카오톡) 의존 제거
+- 프로젝트 맥락 내에서 즉각 소통 가능
+- 비동기 우선 설계 (WebSocket 없이 Supabase Realtime으로 충분)
+
+**구현**:
+- 3개 테이블: `conversations`, `conversation_participants`, `messages`
+- `is_conversation_member()` SECURITY DEFINER 함수로 RLS 무한 재귀 방지
+- Supabase Realtime으로 messages 테이블 구독 (실시간 수신)
+- 1:1 대화 중복 방지: 기존 대화 있으면 재사용
+- 안읽음 판단: `last_message_at > last_read_at`
+- `MessageIcon` 컴포넌트: 네비게이션에 안읽음 뱃지 표시
+- 마이그레이션: `017_add_messaging.sql`, `018_fix_messaging_rls_recursion.sql`, `019_enable_realtime_messages.sql`, `020_restrict_messaging_insert_policies.sql`
+
+**대안**:
+- WebSocket 직접 구현: 복잡성 증가, Supabase Realtime으로 충분
+- 채널/그룹 채팅: YAGNI — 현재 1:1으로 충분
+
+---
+
+## ADR-023: 컨설턴트 홈 대시보드
+
+**날짜**: 2025-02-09
+
+**결정**: 컨설턴트 전용 홈 페이지(`/consultant/home`) 추가
+
+**이유**:
+- "매일 여는 관문" — 프로젝트 현황을 한눈에 파악
+- KPI 카드, 상태 분포 차트, 최근 프로젝트, 최근 활동으로 구성
+- `consultant_activity_logs` 테이블 데이터를 활용한 타임라인 표시
+
+**구현**:
+- `/consultant/home` 라우트 + SummaryCards, StatusDistributionChart, RecentProjects, RecentActivity 컴포넌트
+- `consultant-home.ts` 유틸리티: 프로젝트 통계 집계, 상대 시간 포맷
+- Recharts로 도넛 차트 시각화
+- 마이그레이션: `015_add_activity_logs.sql` (활동 일지 테이블)
+
+---
+
+## ADR-024: AI 인터뷰 사전 분석 가이드
+
+**날짜**: 2025-02-10
+
+**결정**: 자가진단 결과를 AI가 분석하여 맞춤 인터뷰 질문 가이드를 자동 생성
+
+**이유**:
+- 컨설턴트 인터뷰 준비 시간 단축
+- 자가진단의 약한 영역을 놓치지 않고 체계적으로 파고듦
+- 기존 LLM 인프라(`llm.ts`, `quota.ts`) 재활용 가능
+
+**구현**:
+- `interview_guides` 테이블 (project_id, guide_data JSONB, 프로젝트당 1개)
+- RLS: 배정된 컨설턴트 또는 OPS_ADMIN 이상만 접근
+- `updated_at` 자동 갱신 트리거
+- 마이그레이션: `022_add_interview_guides.sql`
+
+---
+
+## ADR-025: 이메일 알림 설정
+
+**날짜**: 2025-02-11
+
+**결정**: 관리자가 새 메시지 수신 시 이메일 알림을 받을 수 있는 opt-in 설정 추가
+
+**이유**:
+- 관리자가 시스템에 항상 접속해 있지 않아도 중요 메시지를 인지
+- opt-in 방식으로 기본 비활성 — 불필요한 이메일 방지
+
+**구현**:
+- `users.email_notify_enabled` BOOLEAN 컬럼 (기본값 FALSE)
+- 마이그레이션: `023_add_email_notification_settings.sql`
+
+---
+
+## ADR-026: 로드맵 갤러리
+
+**날짜**: 2025-02-12
+
+**결정**: 확정된 로드맵을 갤러리에 공유하여 다른 컨설턴트가 열람/참고할 수 있는 기능 추가
+
+**이유**:
+- 잘 만든 로드맵의 지식 재활용
+- 컨설턴트 간 간접 협업 (공유 + 좋아요)
+- 비슷한 업종/규모의 로드맵 참고로 생성 시간 단축
+
+**구현**:
+- `roadmap_versions.is_shared` BOOLEAN 컬럼 (FINAL 버전만 공유 가능)
+- `roadmap_likes` 테이블 (user_id, roadmap_version_id, UNIQUE 제약)
+- 공유된 FINAL 로드맵은 모든 인증된 사용자가 열람 가능 (RLS 정책)
+- `audit_action`에 `ROADMAP_COPY` 추가
+- `/gallery` 라우트 + 상세 페이지(`/gallery/[id]`)
+- 마이그레이션: `024_add_roadmap_gallery.sql`

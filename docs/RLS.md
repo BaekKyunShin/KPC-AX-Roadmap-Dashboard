@@ -41,6 +41,9 @@ is_ops_admin_or_higher() RETURNS BOOLEAN
 
 -- 승인된 컨설턴트 확인
 is_approved_consultant() RETURNS BOOLEAN
+
+-- 대화 참여 여부 확인 (SECURITY DEFINER — RLS 무한 재귀 방지)
+is_conversation_member(p_conversation_id) RETURNS BOOLEAN
 ```
 
 ## 테이블별 정책
@@ -147,6 +150,60 @@ is_approved_consultant() RETURNS BOOLEAN
 
 > `system_auto` 유형은 서비스 역할 키(admin 클라이언트)로만 삽입되며, 컨설턴트가 직접 생성/수정/삭제할 수 없습니다.
 
+### notifications
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | 본인 알림만 조회 |
+| UPDATE | 본인 알림만 읽음 처리 |
+| INSERT | 서비스 역할 키만 (별도 INSERT 정책 없음 → admin 클라이언트가 RLS 우회) |
+
+> 알림 타입: `assignment`, `deadline`, `status_change`, `message`, `system`, `interview_complete`, `roadmap_draft`, `roadmap_finalized`
+
+### conversations
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | `is_conversation_member()` — 참여한 대화만 |
+| UPDATE | `is_conversation_member()` — 참여한 대화만 (last_message_at 갱신) |
+| INSERT | 서비스 역할 키만 (admin 클라이언트가 RLS 우회) |
+
+### conversation_participants
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | `is_conversation_member()` — 참여한 대화의 참여자 정보 |
+| UPDATE | 본인의 `last_read_at`만 갱신 (`user_id = auth.uid()`) |
+| INSERT | 서비스 역할 키만 (admin 클라이언트가 RLS 우회) |
+
+### messages
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | `is_conversation_member()` — 참여한 대화의 메시지만 |
+| INSERT | `sender_id = auth.uid()` AND `is_conversation_member()` |
+
+> Supabase Realtime이 messages 테이블에 활성화됨. RLS 정책이 적용되므로 참여한 대화의 메시지만 수신 가능.
+
+### interview_guides
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | 배정된 컨설턴트 또는 OPS_ADMIN 이상 |
+| INSERT | 배정된 컨설턴트만 |
+| UPDATE | 배정된 컨설턴트만 |
+| DELETE | 배정된 컨설턴트만 |
+
+### roadmap_likes
+
+| 작업 | 조건 |
+|------|------|
+| SELECT | 모든 인증된 사용자 |
+| INSERT | 본인 좋아요만 (`user_id = auth.uid()`) |
+| DELETE | 본인 좋아요만 (`user_id = auth.uid()`) |
+
+> `roadmap_versions`에 `roadmaps_select_shared_gallery` 정책 추가: `is_shared = TRUE AND status = 'FINAL'`인 로드맵은 모든 인증된 사용자가 열람 가능.
+
 ### audit_logs
 
 | 작업 | 조건 |
@@ -186,13 +243,15 @@ is_approved_consultant() RETURNS BOOLEAN
 
 ## 보안 고려사항
 
-1. **서비스 역할 키**: 감사 로그, 사용량 메트릭은 서버에서만 삽입
+1. **서비스 역할 키**: 감사 로그, 사용량 메트릭, 알림, 대화/참여자 생성은 서버에서만 삽입
 2. **역할 변경 제한**: 사용자는 자신의 role/status 변경 불가
 3. **프로젝트 접근 제한**: 컨설턴트는 담당 프로젝트만 접근
 4. **자가진단 보호**: 컨설턴트는 조회만 가능, 수정 불가
 5. **FINAL 확정 제한**: 로드맵 FINAL은 배정된 컨설턴트만 가능
 6. **테스트 모드 격리**: 테스트 프로젝트는 생성자만 접근 가능
 7. **활동 일지 시스템 기록 보호**: `system_auto` 유형은 서비스 역할로만 삽입, 컨설턴트 수정/삭제 불가
+8. **메시징 격리**: 참여한 대화의 메시지만 조회/전송 가능 (`is_conversation_member` SECURITY DEFINER 함수로 무한 재귀 방지)
+9. **알림 격리**: 본인 알림만 조회/읽음 처리 가능, 생성은 서비스 역할만
 
 ## 테스트 체크리스트
 
@@ -219,3 +278,12 @@ is_approved_consultant() RETURNS BOOLEAN
 | `011_add_ops_admin_pending_role.sql` | `OPS_ADMIN_PENDING` 역할 ENUM 추가 |
 | `013_add_user_withdrawal.sql` | `WITHDRAWN` 상태, `USER_WITHDRAW` 감사 액션 추가 |
 | `015_add_activity_logs.sql` | 컨설턴트 활동 일지 테이블, ENUM, RLS 정책 |
+| `016_add_notifications.sql` | 알림 테이블, notification_type ENUM, RLS 정책 |
+| `017_add_messaging.sql` | 대화/참여자/메시지 3개 테이블, RLS 정책 |
+| `018_fix_messaging_rls_recursion.sql` | `is_conversation_member()` SECURITY DEFINER 헬퍼, RLS 정책 재생성 |
+| `019_enable_realtime_messages.sql` | messages 테이블 Realtime 활성화 |
+| `020_restrict_messaging_insert_policies.sql` | conversations/participants INSERT 정책 제거 (보안 강화) |
+| `021_extend_notification_types.sql` | notification_type에 `interview_complete`, `roadmap_draft`, `roadmap_finalized` 추가 |
+| `022_add_interview_guides.sql` | 인터뷰 사전 분석 가이드 테이블, RLS 정책 |
+| `023_add_email_notification_settings.sql` | users.email_notify_enabled 컬럼 추가 |
+| `024_add_roadmap_gallery.sql` | roadmap_versions.is_shared 컬럼, roadmap_likes 테이블, RLS 정책 |

@@ -40,8 +40,14 @@ Next.js App Router (src/app/)
          ├── Route Groups
          │   ├── (auth)/         → 로그인, 회원가입
          │   └── (dashboard)/    → 인증 필요 라우트
-         │       ├── dashboard/    → 공통 대시보드 + 프로필
-         │       ├── consultant/   → 컨설턴트 전용 (프로필, 프로젝트, 인터뷰, 로드맵)
+         │       ├── dashboard/    → 공통 대시보드 + 프로필 + 메시지
+         │       │   └── messages/ → DM 메시징 (1:1 대화, Realtime)
+         │       ├── consultant/   → 컨설턴트 전용
+         │       │   ├── home/     → 컨설턴트 대시보드 (KPI, 최근 활동)
+         │       │   ├── profile/  → 프로필 관리
+         │       │   └── projects/ → 담당 프로젝트 (인터뷰, 로드맵)
+         │       ├── gallery/      → 로드맵 갤러리 (공유/좋아요)
+         │       ├── notifications/→ 알림 Server Actions
          │       ├── ops/          → 운영관리자 전용 (프로젝트, 사용자, 템플릿, 감사로그, 쿼터)
          │       └── test-roadmap/ → 테스트 로드맵 (컨설턴트 연습용)
          │
@@ -57,6 +63,7 @@ Shared Layers (src/lib/)
     │   ├── matching.ts         → 컨설턴트 매칭 알고리즘
     │   ├── stt.ts              → STT 인사이트 추출
     │   ├── quota.ts            → 일별/월별 LLM 호출 제한
+    │   ├── notification.ts      → 알림 생성 헬퍼
     │   ├── audit.ts            → 이벤트 로깅
     │   ├── export-pdf.ts       → PDF 생성 (jspdf)
     │   └── export-xlsx.ts      → Excel 생성 (xlsx)
@@ -77,6 +84,7 @@ Supabase Clients (src/lib/supabase/)
 Supabase Backend
     ├── PostgreSQL + RLS 정책
     ├── Auth 시스템
+    ├── Realtime (메시지 실시간 구독)
     └── Storage (PDF/XLSX 파일)
 ```
 
@@ -129,7 +137,7 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 ## 기술 스택
 
 - **프레임워크:** Next.js 16.x (App Router, React Compiler 활성화) + TypeScript 5.x (strict 모드)
-- **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Storage)
+- **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Realtime + Storage)
 - **스타일링:** Tailwind CSS 4.x
 - **UI 컴포넌트:** Radix UI + shadcn/ui + Lucide React (아이콘)
 - **폼/검증:** Zod (네이티브 HTML 폼 사용, React Hook Form 미사용)

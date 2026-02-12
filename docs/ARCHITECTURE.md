@@ -32,6 +32,10 @@
 │  │    Auth     │  │  PostgreSQL │  │   Storage   │         │
 │  │  (인증)     │  │  (DB + RLS) │  │ (FINAL PDF) │         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
+│                    ┌─────────────┐                          │
+│                    │  Realtime   │                          │
+│                    │ (메시지 구독)│                          │
+│                    └─────────────┘                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -49,13 +53,20 @@ src/
 │   │   ├── register/
 │   │   └── actions.ts
 │   ├── (dashboard)/              # 대시보드 라우트 (인증 필수)
-│   │   ├── dashboard/            # 공통 대시보드 + 프로필
+│   │   ├── dashboard/            # 공통 대시보드
+│   │   │   ├── messages/         # DM 메시징 (1:1 대화)
+│   │   │   ├── profile/          # 프로필 관리
+│   │   │   └── settings/         # 계정 설정
 │   │   ├── consultant/           # 컨설턴트 전용
+│   │   │   ├── home/             # 컨설턴트 대시보드 (KPI, 최근 활동)
 │   │   │   ├── profile/          # 프로필 관리
 │   │   │   └── projects/         # 담당 프로젝트
 │   │   │       └── [id]/
 │   │   │           ├── interview/  # 인터뷰 입력
 │   │   │           └── roadmap/    # 로드맵 생성/관리
+│   │   ├── gallery/              # 로드맵 갤러리 (공유/좋아요)
+│   │   │   └── [id]/             # 갤러리 상세
+│   │   ├── notifications/        # 알림 Server Actions
 │   │   ├── ops/                  # OPS_ADMIN 전용
 │   │   │   ├── projects/         # 프로젝트 관리
 │   │   │   │   ├── new/          # 프로젝트 생성
@@ -82,6 +93,8 @@ src/
 │   ├── roadmap/                  # 로드맵 공통 컴포넌트
 │   ├── interview/                # 인터뷰 공통 컴포넌트
 │   ├── Navigation.tsx
+│   ├── NotificationBell.tsx      # 알림 벨 아이콘 + Popover
+│   ├── MessageIcon.tsx           # 메시지 아이콘 + 안읽음 뱃지
 │   └── PendingApprovalCard.tsx
 ├── hooks/                        # 공용 커스텀 훅
 │   ├── useDebounce.ts
@@ -99,11 +112,16 @@ src/
 │   │   ├── project.test.ts
 │   │   ├── interview.ts
 │   │   ├── interview.test.ts
+│   │   ├── message.ts            # 메시지 검증 스키마
+│   │   ├── message.test.ts
+│   │   ├── notification.ts       # 알림 검증 스키마
+│   │   ├── notification.test.ts
 │   │   └── test-roadmap.ts
 │   ├── services/                 # 비즈니스 로직
 │   │   ├── roadmap.ts            # LLM 로드맵 생성
 │   │   ├── llm.ts                # LLM API 호출 추상화
 │   │   ├── matching.ts           # 컨설턴트 매칭 알고리즘
+│   │   ├── notification.ts       # 알림 생성 헬퍼
 │   │   ├── stt.ts                # STT 인사이트 추출
 │   │   ├── quota.ts              # 일별/월별 LLM 호출 제한
 │   │   ├── audit.ts              # 이벤트 로깅
@@ -115,6 +133,8 @@ src/
 │   │   ├── company-size.ts       # 기업 규모 분류
 │   │   ├── profile-options.ts    # 컨설턴트 프로필 옵션
 │   │   ├── interview-steps.ts    # 인터뷰 단계
+│   │   ├── notification.ts       # 알림 타입/설정 상수
+│   │   ├── message.ts            # 메시지 관련 상수
 │   │   ├── site.ts               # 사이트 메타 정보
 │   │   └── stt.ts                # STT 관련 상수
 │   ├── actions/                  # 공유 Server Actions 헬퍼
@@ -126,6 +146,7 @@ src/
 │   │   ├── toast.ts              # 토스트 알림
 │   │   ├── roadmap.ts            # 로드맵 유틸리티 (서버)
 │   │   ├── roadmap-client.ts     # 로드맵 유틸리티 (클라이언트)
+│   │   ├── consultant-home.ts    # 컨설턴트 홈 유틸리티 (통계 집계, 상대 시간)
 │   │   └── scroll.ts             # 스크롤 유틸리티
 │   └── data/                     # 정적 데이터
 │       └── demo-sample.ts        # 데모 샘플 데이터
@@ -202,6 +223,38 @@ DRAFT v1 → DRAFT v2 → ... → FINAL
                               │
                               ▼ (새 FINAL 생성 시)
                            ARCHIVED
+```
+
+### 5. 알림 플로우
+
+```
+Server Action (이벤트 발생)
+    │  예: 프로젝트 배정, 인터뷰 완료, 로드맵 확정
+    ▼
+createNotification() (admin 클라이언트)
+    │
+    ▼
+notifications 테이블 INSERT
+    │
+    ▼
+NotificationBell (Popover) ← 클릭 시 Lazy Fetch
+```
+
+### 6. 메시징 플로우
+
+```
+사용자 A                                 사용자 B
+    │                                       │
+    ▼                                       │
+sendMessage() (Server Action)             │
+    │                                       │
+    ├──▶ messages INSERT                    │
+    ├──▶ conversations.last_message_at 갱신 │
+    └──▶ createNotification() 수신 알림     │
+                                            │
+           Supabase Realtime ──────────────▶│
+           (messages 테이블 구독)            ▼
+                                     실시간 메시지 수신
 ```
 
 ## 보안 계층
