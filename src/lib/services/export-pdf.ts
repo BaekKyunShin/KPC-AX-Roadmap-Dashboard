@@ -34,7 +34,7 @@ export interface RoadmapExportData {
 // PBL 데이터 추출 헬퍼
 // ============================================================================
 
-interface PBLExtendedFields {
+export interface PBLExtendedFields {
   selected_course_name?: string;
   selected_course_level?: string;
   selected_course_task?: string;
@@ -49,7 +49,7 @@ interface PBLExtendedFields {
   prerequisites?: string[];
 }
 
-interface PBLModuleExtended {
+export interface PBLModuleExtended {
   module_name: string;
   hours: number;
   description: string;
@@ -58,7 +58,7 @@ interface PBLModuleExtended {
   tools?: { name: string; free_tier_info: string }[];
 }
 
-function extractPBLExtendedFields(pblCourse: PBLCourse): PBLExtendedFields {
+export function extractPBLExtendedFields(pblCourse: PBLCourse): PBLExtendedFields {
   const extended = pblCourse as unknown as PBLExtendedFields;
   return {
     selected_course_name: extended.selected_course_name,
@@ -71,7 +71,7 @@ function extractPBLExtendedFields(pblCourse: PBLCourse): PBLExtendedFields {
   };
 }
 
-function extractModuleDeliverables(
+export function extractModuleDeliverables(
   module: PBLCourse['curriculum'][number]
 ): string[] | undefined {
   const extended = module as unknown as PBLModuleExtended;
@@ -163,7 +163,7 @@ async function loadFonts(doc: jsPDF): Promise<boolean> {
 // 문서 헬퍼
 // ============================================================================
 
-interface DocContext {
+export interface DocContext {
   doc: jsPDF;
   y: number;
   hasFonts: boolean;
@@ -183,7 +183,7 @@ function setBold(ctx: DocContext, size: number) {
   ctx.doc.setFontSize(size);
 }
 
-function checkPageBreak(ctx: DocContext, needed: number): void {
+export function checkPageBreak(ctx: DocContext, needed: number): void {
   if (ctx.y + needed > LAYOUT.PAGE_HEIGHT - 25) {
     ctx.doc.addPage();
     ctx.y = LAYOUT.MARGIN + 5;
@@ -305,7 +305,7 @@ function getAutoTableStyles(hasFonts: boolean) {
 // 테이블 셀 내 머리기호 리스트 (줄바꿈 시 hanging indent)
 // ============================================================================
 
-function formatBulletList(
+export function formatBulletList(
   doc: jsPDF,
   items: string[],
   columnWidth: number,
