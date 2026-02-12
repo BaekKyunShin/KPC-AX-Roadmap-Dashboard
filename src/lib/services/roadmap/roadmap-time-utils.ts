@@ -1,4 +1,4 @@
-import type { RoadmapCell, PBLCourse } from '../roadmap';
+import type { RoadmapCell, PBLCourse } from './roadmap-types';
 
 // ============================================================================
 // 시간 계산 유틸리티

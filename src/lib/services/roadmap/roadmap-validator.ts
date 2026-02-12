@@ -1,4 +1,4 @@
-import type { RoadmapCell, PBLCourse, RoadmapResult, ValidationResult } from '../roadmap';
+import type { RoadmapCell, PBLCourse, RoadmapResult, ValidationResult } from './roadmap-types';
 import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import { sumModuleHours } from './roadmap-time-utils';
 

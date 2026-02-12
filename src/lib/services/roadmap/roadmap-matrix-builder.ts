@@ -1,4 +1,4 @@
-import type { RoadmapCell, RoadmapMatrixCell, RoadmapRow } from '../roadmap';
+import type { RoadmapCell, RoadmapMatrixCell, RoadmapRow } from './roadmap-types';
 
 // ============================================================================
 // 로드맵 매트릭스 생성
