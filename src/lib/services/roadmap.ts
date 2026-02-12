@@ -7,86 +7,15 @@ import { PAID_TOOL_KEYWORDS, MAX_COURSE_HOURS } from '@/lib/utils/roadmap';
 import type { ConsultantProfile } from '@/types/database';
 import type { SttInsights } from '@/lib/schemas/interview';
 
-// ============================================================================
-// STT 인사이트 관련 헬퍼
-// ============================================================================
+// 추출된 모듈에서 re-export
+export { isSttInsights, hasItems, toMarkdownList, formatSttInsights, buildSttInsightsSection } from './roadmap/roadmap-stt-formatter';
+export { sumModuleHours, normalizeCoursesHours, normalizePBLHours, normalizeRoadmapHours } from './roadmap/roadmap-time-utils';
+export { buildRoadmapMatrixFromCourses } from './roadmap/roadmap-matrix-builder';
 
-/** STT 인사이트 타입 가드 */
-export function isSttInsights(value: unknown): value is SttInsights {
-  if (!value || typeof value !== 'object') return false;
-  const obj = value as Record<string, unknown>;
-  // 최소한 하나의 유효한 필드가 있는지 확인
-  return (
-    Array.isArray(obj['추가_업무']) ||
-    Array.isArray(obj['추가_페인포인트']) ||
-    Array.isArray(obj['숨은_니즈']) ||
-    typeof obj['조직_맥락'] === 'string' ||
-    typeof obj['AI_태도'] === 'string' ||
-    Array.isArray(obj['주요_인용'])
-  );
-}
-
-/** 배열 항목 존재 여부 확인 */
-export function hasItems(arr: unknown): arr is string[] {
-  return Array.isArray(arr) && arr.length > 0;
-}
-
-/** 배열을 마크다운 리스트로 변환 */
-export function toMarkdownList(items: string[]): string {
-  return items.map(item => `- ${item}`).join('\n');
-}
-
-/**
- * STT 인사이트를 프롬프트용 문자열로 포맷팅
- */
-export function formatSttInsights(insights: SttInsights): string {
-  const sections: string[] = [];
-
-  if (hasItems(insights.추가_업무)) {
-    sections.push(`**추가로 파악된 업무:**\n${toMarkdownList(insights.추가_업무)}`);
-  }
-
-  if (hasItems(insights.추가_페인포인트)) {
-    sections.push(`**추가 페인포인트:**\n${toMarkdownList(insights.추가_페인포인트)}`);
-  }
-
-  if (hasItems(insights.숨은_니즈)) {
-    sections.push(`**숨은 니즈:**\n${toMarkdownList(insights.숨은_니즈)}`);
-  }
-
-  if (insights.조직_맥락) {
-    sections.push(`**조직 맥락:**\n${insights.조직_맥락}`);
-  }
-
-  if (insights.AI_태도) {
-    sections.push(`**AI 도입에 대한 태도:**\n${insights.AI_태도}`);
-  }
-
-  if (hasItems(insights.주요_인용)) {
-    sections.push(`**인터뷰 주요 발언:**\n${toMarkdownList(insights.주요_인용)}`);
-  }
-
-  return sections.join('\n\n');
-}
-
-/**
- * 인터뷰 데이터에서 STT 인사이트 섹션 생성
- */
-export function buildSttInsightsSection(interview: Record<string, unknown>): string {
-  const sttInsights = interview.stt_insights;
-
-  if (!isSttInsights(sttInsights)) {
-    return '';
-  }
-
-  return `
-### STT 인터뷰 분석 인사이트
-
-인터뷰 녹취록에서 AI가 추출한 추가 정보입니다. 로드맵 설계 시 참고하세요.
-
-${formatSttInsights(sttInsights)}
-`;
-}
+// 추출된 모듈에서 내부 사용을 위한 import
+import { buildSttInsightsSection } from './roadmap/roadmap-stt-formatter';
+import { sumModuleHours, normalizeRoadmapHours } from './roadmap/roadmap-time-utils';
+import { buildRoadmapMatrixFromCourses } from './roadmap/roadmap-matrix-builder';
 
 // 커리큘럼 모듈 타입 (courses용)
 export interface CurriculumModule {
@@ -189,102 +118,6 @@ export interface RoadmapResult {
   courses: RoadmapCell[]; // 모든 과정 상세 리스트
 }
 
-// ============================================================================
-// 시간 계산 유틸리티
-// ============================================================================
-
-/** 커리큘럼 모듈 배열의 시간 합계 계산 */
-export function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
-  if (!curriculum || curriculum.length === 0) return 0;
-  return curriculum.reduce((sum, module) => sum + (module.hours || 0), 0);
-}
-
-// ============================================================================
-// 시간 보정 함수
-// ============================================================================
-
-/**
- * courses의 recommended_hours를 커리큘럼 모듈 시간 합계로 보정
- */
-export function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
-  return courses.map(course => {
-    const modulesTotal = sumModuleHours(course.curriculum);
-    if (modulesTotal === 0 || course.recommended_hours === modulesTotal) {
-      return course;
-    }
-    return { ...course, recommended_hours: modulesTotal };
-  });
-}
-
-/**
- * PBL 과정의 total_hours를 모듈 시간 합계로 보정
- */
-export function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
-  const modulesTotal = sumModuleHours(pblCourse.curriculum);
-  if (modulesTotal === 0 || pblCourse.total_hours === modulesTotal) {
-    return pblCourse;
-  }
-  return { ...pblCourse, total_hours: modulesTotal };
-}
-
-/**
- * LLM 출력 결과의 시간을 자동 보정
- */
-export function normalizeRoadmapHours(llmResult: { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] }): { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] } {
-  return {
-    ...llmResult,
-    courses: normalizeCoursesHours(llmResult.courses),
-    pbl_course: normalizePBLHours(llmResult.pbl_course),
-  };
-}
-
-// ============================================================================
-// 로드맵 매트릭스 생성
-// ============================================================================
-
-/**
- * courses 배열에서 roadmap_matrix 자동 생성
- * 한 셀에 여러 과정이 있을 수 있음
- */
-export function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
-  // 업무별로 그룹화
-  const taskMap = new Map<string, RoadmapRow>();
-
-  courses.forEach((course, index) => {
-    const taskKey = course.target_task;
-
-    if (!taskMap.has(taskKey)) {
-      taskMap.set(taskKey, {
-        task_id: `task_${index + 1}`,
-        task_name: taskKey,
-        beginner: [],
-        intermediate: [],
-        advanced: [],
-      });
-    }
-
-    const row = taskMap.get(taskKey)!;
-    const matrixCell: RoadmapMatrixCell = {
-      course_name: course.course_name,
-      recommended_hours: course.recommended_hours,
-    };
-
-    // 레벨에 따라 배열에 추가
-    switch (course.level) {
-      case 'BEGINNER':
-        row.beginner.push(matrixCell);
-        break;
-      case 'INTERMEDIATE':
-        row.intermediate.push(matrixCell);
-        break;
-      case 'ADVANCED':
-        row.advanced.push(matrixCell);
-        break;
-    }
-  });
-
-  return Array.from(taskMap.values());
-}
 
 // 검증 결과
 export interface ValidationResult {
