@@ -277,7 +277,7 @@ function finalizeSheet(ctx: SheetCtx): XLSX.WorkSheet {
 // 포맷 헬퍼
 // ============================================================================
 
-function getStatusLabel(status: string): string {
+export function getStatusLabel(status: string): string {
   switch (status) {
     case 'DRAFT': return '초안';
     case 'FINAL': return '확정본';
@@ -286,18 +286,18 @@ function getStatusLabel(status: string): string {
   }
 }
 
-function formatDate(dateStr: string): string {
+export function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-function buildCourseNumberMap(courses: RoadmapCell[]): Map<string, number> {
+export function buildCourseNumberMap(courses: RoadmapCell[]): Map<string, number> {
   const map = new Map<string, number>();
   courses.forEach((c, i) => map.set(c.course_name, i + 1));
   return map;
 }
 
-function formatMatrixCell(cells: RoadmapMatrixCell[] | undefined, numberMap: Map<string, number>): string {
+export function formatMatrixCell(cells: RoadmapMatrixCell[] | undefined, numberMap: Map<string, number>): string {
   if (!cells || cells.length === 0) return '-';
   return cells
     .map(c => {
@@ -308,12 +308,12 @@ function formatMatrixCell(cells: RoadmapMatrixCell[] | undefined, numberMap: Map
     .join('\n\n');
 }
 
-function sumMatrixHours(cells: RoadmapMatrixCell[] | undefined): number {
+export function sumMatrixHours(cells: RoadmapMatrixCell[] | undefined): number {
   if (!cells || cells.length === 0) return 0;
   return cells.reduce((sum, c) => sum + c.recommended_hours, 0);
 }
 
-function formatTools(tools: { name: string; free_tier_info: string }[] | undefined): string {
+export function formatTools(tools: { name: string; free_tier_info: string }[] | undefined): string {
   if (!tools || tools.length === 0) return '-';
   return tools.map(t => `${t.name} (${t.free_tier_info})`).join(', ');
 }
@@ -323,7 +323,7 @@ function formatTools(tools: { name: string; free_tier_info: string }[] | undefin
  * wrapText 활성화 시 한글 폭(영문 대비 ~1.8배)을 반영하여
  * 자동 줄바꿈이 발생했을 때의 실제 높이를 추정한다.
  */
-function calcRowHeight(text: string, colWidthWch: number, baseHeight = 22, lineHeight = 14.5): number {
+export function calcRowHeight(text: string, colWidthWch: number, baseHeight = 22, lineHeight = 14.5): number {
   if (!text) return baseHeight;
 
   // 한글 기준: wch를 한글 글자 수로 변환 (한글 1자 ≈ 영문 1.8자 폭)
@@ -345,7 +345,7 @@ function calcRowHeight(text: string, colWidthWch: number, baseHeight = 22, lineH
   return Math.max(baseHeight, Math.ceil(totalLines * lineHeight));
 }
 
-function formatHours(hours: number): string {
+export function formatHours(hours: number): string {
   return hours > 0 ? `${hours}시간` : '-';
 }
 
