@@ -312,7 +312,7 @@ src/app/(dashboard)/gallery/
   - `roadmap-stt-formatter.ts`: `isSttInsights`, `hasItems`, `toMarkdownList`, `formatSttInsights`, `buildSttInsightsSection` (76줄)
 - **검증**: 기존 테스트 통과 + `npm run validate`
 - **위험도**: 낮음 (순수 함수, 의존성 없음)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-2: roadmap.ts — 검증/프롬프트 추출
 
@@ -572,7 +572,7 @@ src/app/(dashboard)/gallery/
 | 1 | 1-8 | stt.ts + notification.ts + audit.ts 테스트 | 완료 |
 | 1 | 1-9~10 | Server Actions 테스트 | 완료 |
 | 1 | 1-11~12 | 컴포넌트 테스트 | 완료 |
-| 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | - |
+| 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | 완료 |
 | 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | - |
 | 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | - |
 | 2 | 2-4 | matching.ts 레거시 제거 + 분리 | - |
