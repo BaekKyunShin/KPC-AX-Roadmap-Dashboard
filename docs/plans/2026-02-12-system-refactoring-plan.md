@@ -342,7 +342,7 @@ src/app/(dashboard)/gallery/
   4. `index.ts` re-export
 - **검증**: 기존 테스트 통과 + grep으로 사용처 재확인
 - **위험도**: 중간 (레거시 삭제는 되돌리기 어려움 → 별도 커밋)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-5: export-pdf.ts — 헬퍼/상수 추출
 
@@ -575,7 +575,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | 완료 |
 | 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | 완료 |
 | 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | 완료 |
-| 2 | 2-4 | matching.ts 레거시 제거 + 분리 | - |
+| 2 | 2-4 | matching.ts 레거시 제거 + 분리 | 완료 |
 | 2 | 2-5 | export-pdf.ts 헬퍼/상수 추출 | - |
 | 2 | 2-6 | export-pdf.ts 렌더러 분리 | - |
 | 2 | 2-7 | export-xlsx.ts 분리 | - |
