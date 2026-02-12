@@ -225,7 +225,7 @@ consultant/.../roadmap/ ───→ roadmap.ts, audit.ts, notification.ts
 - **대상**: `AssignmentTabSection`, `ProjectDashboard` 등 렌더링 테스트
 - **전략**: RTL로 주요 UI 요소 존재 확인 + 인터랙션 테스트
 - **이유**: Phase 2에서 컴포넌트 분해 시 UI 보존 확인용
-- [ ] 완료
+- [x] 완료
 
 ---
 
@@ -519,7 +519,7 @@ src/app/(dashboard)/gallery/
   - 상수명: UPPER_SNAKE_CASE 확인
 - [ ] 완료
 
-#### Session 3-6~3-8: 세부 정리 (필요시)
+#### Session 3-6~3-8: 세부 정리
 
 - **후보 작업**:
   - 매직 넘버 상수화 (추가 발견분)
@@ -570,8 +570,8 @@ src/app/(dashboard)/gallery/
 | 1 | 1-6 | export-pdf.ts 테스트 | 완료 |
 | 1 | 1-7 | export-xlsx.ts 테스트 | 완료 |
 | 1 | 1-8 | stt.ts + notification.ts + audit.ts 테스트 | 완료 |
-| 1 | 1-9~10 | Server Actions 테스트 (선택) | 완료 |
-| 1 | 1-11~12 | 컴포넌트 테스트 (선택) | - |
+| 1 | 1-9~10 | Server Actions 테스트 | 완료 |
+| 1 | 1-11~12 | 컴포넌트 테스트 | 완료 |
 | 2 | 2-1 | roadmap.ts 순수 유틸리티 추출 | - |
 | 2 | 2-2 | roadmap.ts 검증/프롬프트 추출 | - |
 | 2 | 2-3 | roadmap.ts 생성/CRUD 분리 | - |
@@ -586,12 +586,12 @@ src/app/(dashboard)/gallery/
 | 2 | 2-12 | AssignmentTabSection.tsx 분리 | - |
 | 2 | 2-13 | ProjectDashboard.tsx 분리 | - |
 | 2 | 2-14 | TestRoadmapClient.tsx 분리 | - |
-| 2 | 2-15 | SelfAssessmentForm + ActivityLog (선택) | - |
+| 2 | 2-15 | SelfAssessmentForm + ActivityLog | - |
 | 3 | 3-1 | Server Action 패턴 통일 | - |
 | 3 | 3-2 | 에러 처리 패턴 통일 | - |
 | 3 | 3-3 | import 정리 + 미사용 코드 제거 | - |
 | 3 | 3-4 | 타입 정리 | - |
 | 3 | 3-5 | 네이밍 일관성 | - |
-| 3 | 3-6~8 | 세부 정리 (선택) | - |
+| 3 | 3-6~8 | 세부 정리 | - |
 
 > **상태 표기**: `-` 미시작 / `진행중` / `완료` / `건너뜀`
