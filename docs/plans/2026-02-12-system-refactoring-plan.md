@@ -374,7 +374,7 @@ src/app/(dashboard)/gallery/
   - `index.ts`: re-export
 - **검증**: XLSX 생성 결과 수동 확인 권장
 - **위험도**: 낮음~중간
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-8: ops/projects/actions.ts 분리
 
@@ -578,7 +578,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-4 | matching.ts 레거시 제거 + 분리 | 완료 |
 | 2 | 2-5 | export-pdf.ts 헬퍼/상수 추출 | 완료 |
 | 2 | 2-6 | export-pdf.ts 렌더러 분리 | 완료 |
-| 2 | 2-7 | export-xlsx.ts 분리 | - |
+| 2 | 2-7 | export-xlsx.ts 분리 | 완료 |
 | 2 | 2-8 | ops/projects/actions.ts 분리 | - |
 | 2 | 2-9 | (auth)/actions.ts 분리 | - |
 | 2 | 2-10 | gallery/actions.ts 분리 | - |
