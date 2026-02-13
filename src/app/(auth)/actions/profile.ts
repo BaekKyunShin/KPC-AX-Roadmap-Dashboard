@@ -1,0 +1,212 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { consultantProfileSchema } from '@/lib/schemas/user';
+import type { ActionResult } from './auth';
+
+/**
+ * JSON 문자열을 안전하게 파싱하여 배열로 반환
+ */
+function parseJsonArray(jsonStr: string | null): string[] {
+  if (!jsonStr) return [];
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 컨설턴트 프로필 폼 데이터 파싱
+ */
+function parseConsultantProfileFormData(formData: FormData) {
+  return {
+    expertise_domains: parseJsonArray(formData.get('expertise_domains') as string | null),
+    available_industries: parseJsonArray(formData.get('available_industries') as string | null),
+    sub_industries: parseJsonArray(formData.get('sub_industries') as string | null),
+    teaching_levels: parseJsonArray(formData.get('teaching_levels') as string | null),
+    coaching_methods: parseJsonArray(formData.get('coaching_methods') as string | null),
+    skill_tags: parseJsonArray(formData.get('skill_tags') as string | null),
+    years_of_experience: parseInt(formData.get('years_of_experience') as string || '0', 10),
+    affiliation: ((formData.get('affiliation') as string) || '').trim(),
+    representative_experience: (formData.get('representative_experience') as string) || '',
+    portfolio: (formData.get('portfolio') as string) || '',
+    strengths_constraints: (formData.get('strengths_constraints') as string) || '',
+  };
+}
+
+/**
+ * 컨설턴트 프로필 저장
+ * 회원가입 2단계: 프로필 정보 입력
+ */
+export async function saveConsultantProfile(formData: FormData): Promise<ActionResult> {
+  try {
+    // 1. 현재 사용자 확인
+    const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !authData?.user) {
+      return {
+        success: false,
+        error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      };
+    }
+
+    const userId = authData.user.id;
+
+    // 2. 폼 데이터 파싱 및 검증
+    const rawData = parseConsultantProfileFormData(formData);
+    const validation = consultantProfileSchema.safeParse(rawData);
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.errors[0].message,
+      };
+    }
+
+    // 3. Admin 클라이언트로 프로필 삽입
+    const adminSupabase = createAdminClient();
+    const { error: insertError } = await adminSupabase
+      .from('consultant_profiles')
+      .insert({
+        user_id: userId,
+        ...validation.data,
+        sub_industries: validation.data.sub_industries || [],
+      });
+
+    if (insertError) {
+      if (insertError.code === '23505') {
+        return {
+          success: false,
+          error: '이미 프로필이 등록되어 있습니다.',
+        };
+      }
+      return {
+        success: false,
+        error: '프로필 저장에 실패했습니다. 다시 시도해주세요.',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return {
+      success: false,
+      error: `프로필 저장 중 오류: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * 컨설턴트 프로필 조회
+ * 현재 로그인한 사용자의 프로필 조회
+ */
+export async function getConsultantProfile(): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !authData?.user) {
+      return {
+        success: false,
+        error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      };
+    }
+
+    const userId = authData.user.id;
+    const adminSupabase = createAdminClient();
+
+    const { data: profile, error: profileError } = await adminSupabase
+      .from('consultant_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError) {
+      if (profileError.code === 'PGRST116') {
+        // 프로필이 없는 경우
+        return {
+          success: true,
+          data: { profile: null },
+        };
+      }
+      return {
+        success: false,
+        error: '프로필 조회에 실패했습니다.',
+      };
+    }
+
+    return {
+      success: true,
+      data: { profile },
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return {
+      success: false,
+      error: `프로필 조회 중 오류: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * 컨설턴트 프로필 수정
+ * 승인 대기 상태에서도 본인 프로필 수정 가능
+ */
+export async function updateConsultantProfile(formData: FormData): Promise<ActionResult> {
+  try {
+    // 1. 현재 사용자 확인
+    const supabase = await createClient();
+    const { data: authData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !authData?.user) {
+      return {
+        success: false,
+        error: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      };
+    }
+
+    const userId = authData.user.id;
+
+    // 2. 폼 데이터 파싱 및 검증
+    const rawData = parseConsultantProfileFormData(formData);
+    const validation = consultantProfileSchema.safeParse(rawData);
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.errors[0].message,
+      };
+    }
+
+    // 3. Admin 클라이언트로 프로필 업데이트
+    const adminSupabase = createAdminClient();
+    const { error: updateError } = await adminSupabase
+      .from('consultant_profiles')
+      .update({
+        ...validation.data,
+        sub_industries: validation.data.sub_industries || [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: '프로필 수정에 실패했습니다. 다시 시도해주세요.',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    return {
+      success: false,
+      error: `프로필 수정 중 오류: ${errorMessage}`,
+    };
+  }
+}
