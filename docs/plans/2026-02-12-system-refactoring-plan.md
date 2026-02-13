@@ -457,7 +457,7 @@ src/app/(dashboard)/gallery/
   - 네비게이션 → `TestRoadmapNavigation` 별도 컴포넌트
 - **검증**: 테스트 로드맵 전체 플로우 수동 확인
 - **위험도**: 높음 (상태 24개, 상호의존 복잡)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-15: SelfAssessmentForm.tsx + ActivityLog.tsx
 
@@ -585,7 +585,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-11 | 공통 Actions 헬퍼 추출 | 완료 |
 | 2 | 2-12 | AssignmentTabSection.tsx 분리 | 완료 |
 | 2 | 2-13 | ProjectDashboard.tsx 분리 | 완료 |
-| 2 | 2-14 | TestRoadmapClient.tsx 분리 | - |
+| 2 | 2-14 | TestRoadmapClient.tsx 분리 | 완료 |
 | 2 | 2-15 | SelfAssessmentForm + ActivityLog | - |
 | 3 | 3-1 | Server Action 패턴 통일 | - |
 | 3 | 3-2 | 에러 처리 패턴 통일 | - |
