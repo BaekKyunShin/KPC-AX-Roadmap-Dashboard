@@ -468,7 +468,7 @@ src/app/(dashboard)/gallery/
   - `LogItem` → 별도 파일
   - `useActivityLogs` 커스텀 훅
 - **위험도**: 낮음~중간
-- [ ] 완료
+- [x] 완료
 
 ---
 
@@ -586,7 +586,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-12 | AssignmentTabSection.tsx 분리 | 완료 |
 | 2 | 2-13 | ProjectDashboard.tsx 분리 | 완료 |
 | 2 | 2-14 | TestRoadmapClient.tsx 분리 | 완료 |
-| 2 | 2-15 | SelfAssessmentForm + ActivityLog | - |
+| 2 | 2-15 | SelfAssessmentForm + ActivityLog | 완료 |
 | 3 | 3-1 | Server Action 패턴 통일 | - |
 | 3 | 3-2 | 에러 처리 패턴 통일 | - |
 | 3 | 3-3 | import 정리 + 미사용 코드 제거 | - |
