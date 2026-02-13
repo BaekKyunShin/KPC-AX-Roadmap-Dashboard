@@ -31,7 +31,7 @@
 
 | # | Phase | 페이지 | 현상 | 재현 방법 |
 |---|-------|--------|------|-----------|
-| 1 | Phase 1 | `/gallery` (보호 경로) | `/gallery` 비인증 접근 시 `/login`으로 리다이렉트되지만 `redirect` 쿼리 파라미터가 누락됨. 다른 보호 경로(`/dashboard`, `/consultant/home`, `/ops/projects`, `/dashboard/messages`)는 모두 `?redirect=...` 포함 | 비로그인 상태에서 `localhost:3000/gallery` 직접 접근 → `/login`으로 이동하지만 URL에 `?redirect=%2Fgallery`가 없음 |
+| ~~1~~ | ~~Phase 1~~ | ~~`/gallery` (보호 경로)~~ | ~~`/gallery` 비인증 접근 시 `/login`으로 리다이렉트되지만 `redirect` 쿼리 파라미터가 누락됨~~ → **해결**: `src/lib/supabase/middleware.ts`의 `protectedRoutes` 배열에 `'/gallery'` 추가하여 미들웨어가 `?redirect=%2Fgallery` 자동 포함 | `protectedRoutes`에 `'/gallery'` 추가 |
 | 2 | Phase 2 | `/ops/templates/new` | 템플릿 생성 시 Puppeteer에서 이름/질문 입력 후 "생성" 클릭해도 실제 생성이 안 됨 — React state에 Puppeteer 입력이 반영 안 되는 것으로 추정. 수동 테스트 필요 | 1) `/ops/templates/new` 이동 2) fill로 이름/질문 입력 3) "생성" 클릭 → 리다이렉트 안 됨, 목록에 미반영 |
 | 3 | ~~Phase 3~~ | ~~`/consultant/projects/[id]/roadmap`~~ | ~~CourseEditModal Puppeteer 미트리거~~ → **Phase 5에서 해결**: React fiber 우회(`puppeteer_evaluate`)로 CourseEditModal 정상 열림 확인. 과정명/교육시간/커리큘럼 모듈/도구/기대효과 필드 + 취소/저장 버튼 모두 표시 | Phase 5에서 `puppeteer_evaluate`로 React fiber onClick 직접 호출 → 모달 정상 열림/닫기 |
 | 4 | ~~Phase 3~~ | ~~`/consultant/home`~~ | ~~"진행 중" 카드 누락~~ → **Phase 5에서 해결**: 실제 라벨은 "로드맵 작성 중"이며 4개 카드(전체:4/인터뷰 대기:0/로드맵 작성 중:1/완료:3) 정상 표시. Phase 3 당시 해당 상태 0건이라 미표시된 것으로 추정 | Phase 5에서 재확인: 4개 카드 모두 정상 표시 |
@@ -163,7 +163,7 @@
 | 정상 작동 (Phase 5) | 7 |
 | **정상 작동 (전체)** | **~272** |
 | ~~🔴 심각한 버그~~ | ~~2~~ → 0 (2026-02-13 해결) |
-| 🟡 일반 버그 | 2 (Phase 5에서 #3, #4 해소) |
+| 🟡 일반 버그 | 1 (Phase 5에서 #3, #4 해소, #1 해결) |
 | 🔵 개선 제안 | 1 |
 | 콘솔 에러 | 0 |
 | **전체 통과율** | **~97.2%** (🔴 2건 해결 반영) |
@@ -183,7 +183,7 @@
 
 | 우선순위 | 이슈 | 위치 | 영향도 |
 |----------|------|------|--------|
-| P1 | `/gallery` 보호 경로 redirect 파라미터 누락 | middleware.ts | 로그인 후 원래 페이지로 복귀 불가 |
+| ~~P1~~ | ~~`/gallery` 보호 경로 redirect 파라미터 누락~~ | ~~middleware.ts~~ | ✅ 해결 (2026-02-13) — `protectedRoutes`에 `'/gallery'` 추가 |
 | ~~P2~~ | ~~컨설턴트 홈 "진행 중" 카드 누락~~ | ~~`/consultant/home`~~ | **Phase 5에서 해소**: 라벨 "로드맵 작성 중"으로 4개 카드 정상 표시. Phase 3 당시 데이터 0건으로 미표시 |
 | P3 | 템플릿 생성 Puppeteer 미반영 | `/ops/templates/new` | 수동 확인 필요 (Puppeteer 제한 가능성) |
 | ~~P3~~ | ~~CourseEditModal Puppeteer 미트리거~~ | ~~`/consultant/projects/[id]/roadmap`~~ | **Phase 5에서 해소**: React fiber 우회로 모달 정상 열림 확인 |
@@ -211,7 +211,7 @@ KPC AI 로드맵 대시보드의 전수조사 QA 테스트(Phase 1~5, 약 282개
 | 심각도 | 건수 | 내용 |
 |--------|------|------|
 | ~~🔴 심각~~ | ~~2~~ → 0 | ✅ `/ops/audit`, `/ops/quota` 접근 제어 해결 (2026-02-13) |
-| 🟡 일반 | 2 | `/gallery` redirect 파라미터 누락, 템플릿 생성 Puppeteer 미반영(수동 확인 필요) |
+| ~~🟡 일반~~ | ~~2~~ → 1 | ✅ `/gallery` redirect 파라미터 해결 (2026-02-13), 템플릿 생성 Puppeteer 미반영(수동 확인 필요) |
 | 🔵 개선 | 1 | 진행 현황 대시보드 탭 전환 Puppeteer 미작동(수동 확인 필요) |
 
 모든 심각한 보안 이슈(🔴)가 해결되었습니다. `src/app/(dashboard)/ops/layout.tsx`를 추가하여 모든 ops 하위 경로에 대해 OPS_ADMIN/SYSTEM_ADMIN 역할 검증을 적용했습니다. 비인가 사용자는 `/dashboard`로 리다이렉트됩니다.

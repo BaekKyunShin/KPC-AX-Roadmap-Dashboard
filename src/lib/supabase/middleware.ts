@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 보호된 경로 정의
-  const protectedRoutes = ['/dashboard', '/consultant', '/ops'];
+  const protectedRoutes = ['/dashboard', '/consultant', '/ops', '/gallery'];
   // 회원가입 페이지는 인증된 사용자도 접근 가능 (새 계정 생성을 위해)
   const authRoutes = ['/login'];
 
