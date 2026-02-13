@@ -163,6 +163,11 @@ export default function TemplateList({ templates }: TemplateListProps) {
                   >
                     {template.name}
                   </Link>
+                  {template.description && (
+                    <p className="mt-0.5 text-xs text-gray-400 truncate">
+                      {template.description}
+                    </p>
+                  )}
                 </TableCell>
                 <TableCell className="text-gray-500">{template.questions?.length || 0}개</TableCell>
                 <TableCell>
@@ -174,7 +179,10 @@ export default function TemplateList({ templates }: TemplateListProps) {
                 </TableCell>
                 <TableCell>
                   {template.is_active ? (
-                    <span className={cn(BADGE_BASE, 'bg-green-100 text-green-800')}>활성</span>
+                    <span className={cn(BADGE_BASE, 'gap-1.5 bg-green-100 text-green-800')}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                      활성
+                    </span>
                   ) : (
                     <span className={cn(BADGE_BASE, 'bg-gray-100 text-gray-600')}>비활성</span>
                   )}
