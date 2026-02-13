@@ -815,8 +815,8 @@
 - [x] `/ops/projects` 접근 시도 → `/consultant/projects`로 리다이렉트 ✅
 - [x] `/ops/users` 접근 시도 → `/consultant/projects`로 리다이렉트 ✅
 - [x] `/ops/templates` 접근 시도 → `/consultant/projects`로 리다이렉트 ✅
-- [ ] `/ops/audit` 접근 시도 → ⚠️ **차단 안 됨!** 감사 로그 페이지 접근 가능 (데이터 0건이지만 페이지 자체가 노출) — 🔴 버그 확인됨 (Phase 5 재확인: 여전히 미차단, TEST_RESULTS.md #1)
-- [ ] `/ops/quota` 접근 시도 → ⚠️ **차단 안 됨!** 쿼터 관리 페이지 접근 가능 (데이터 0명이지만 페이지 자체가 노출) — 🔴 버그 확인됨 (Phase 5 재확인: 여전히 미차단, TEST_RESULTS.md #2)
+- [x] `/ops/audit` 접근 시도 → `/dashboard`로 리다이렉트 ✅ (ops/layout.tsx 추가로 해결)
+- [x] `/ops/quota` 접근 시도 → `/dashboard`로 리다이렉트 ✅ (ops/layout.tsx 추가로 해결)
 
 ### 3.16 컨설턴트 로그아웃
 
