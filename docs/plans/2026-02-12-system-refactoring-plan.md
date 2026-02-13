@@ -587,7 +587,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-13 | ProjectDashboard.tsx 분리 | 완료 |
 | 2 | 2-14 | TestRoadmapClient.tsx 분리 | 완료 |
 | 2 | 2-15 | SelfAssessmentForm + ActivityLog | 완료 |
-| 3 | 3-1 | Server Action 패턴 통일 | - |
+| 3 | 3-1 | Server Action 패턴 통일 | 완료 |
 | 3 | 3-2 | 에러 처리 패턴 통일 | - |
 | 3 | 3-3 | import 정리 + 미사용 코드 제거 | - |
 | 3 | 3-4 | 타입 정리 | - |
