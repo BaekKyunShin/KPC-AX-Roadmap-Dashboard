@@ -1,37 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
-import {
-  fetchEmailNotifySetting,
-  updateEmailNotifySetting,
-} from '../actions';
+import { updateEmailNotifySetting } from '../actions';
+
+interface EmailNotifyToggleProps {
+  initialEnabled: boolean;
+}
 
 /**
  * 이메일 알림 토글 (관리자·컨설턴트)
- * - 대상 역할(EMAIL_NOTIFY_ROLES)이 아니면 null 반환 (자동 숨김)
- * - 자체적으로 데이터 fetch + 토글 처리
+ * - 서버에서 초기값을 받아 토글 처리
+ * - 대상 역할 필터링은 서버 컴포넌트에서 수행
  */
-export default function EmailNotifyToggle() {
-  const [enabled, setEnabled] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+export default function EmailNotifyToggle({ initialEnabled }: EmailNotifyToggleProps) {
+  const [enabled, setEnabled] = useState(initialEnabled);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isEligible, setIsEligible] = useState(false);
-
-  useEffect(() => {
-    const load = async () => {
-      const result = await fetchEmailNotifySetting();
-      if (result.success) {
-        setEnabled(result.data.enabled);
-        setIsEligible(true);
-      }
-      setIsLoading(false);
-    };
-    load();
-  }, []);
 
   async function handleToggle(checked: boolean) {
     setIsUpdating(true);
@@ -52,8 +39,6 @@ export default function EmailNotifyToggle() {
     }
     setIsUpdating(false);
   }
-
-  if (isLoading || !isEligible) return null;
 
   return (
     <Card>
