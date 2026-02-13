@@ -36,8 +36,9 @@ export default function EmailNotifyToggle({ initialEnabled }: EmailNotifyToggleP
     } catch {
       setEnabled(prev);
       showErrorToast('설정 변경 실패', '서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   }
 
   return (
