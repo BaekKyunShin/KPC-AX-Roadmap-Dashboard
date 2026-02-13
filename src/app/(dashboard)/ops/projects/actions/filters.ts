@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getStatusFilterOptions,
@@ -71,24 +72,8 @@ export interface ConsultantCandidateListResult {
 export async function fetchConsultantCandidates(
   params: ConsultantCandidateParams = {}
 ): Promise<ConsultantCandidateListResult> {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { consultants: [], total: 0, totalPages: 0, page: 1 };
-  }
-
-  // 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
-    return { consultants: [], total: 0, totalPages: 0, page: 1 };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  if ('error' in auth) return { consultants: [], total: 0, totalPages: 0, page: 1 };
 
   const { page = 1, limit = 10, search = '', industries = [], skills = [] } = params;
   const offset = (page - 1) * limit;

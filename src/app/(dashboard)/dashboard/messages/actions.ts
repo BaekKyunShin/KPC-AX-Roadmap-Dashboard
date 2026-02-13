@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 import { sendMessageSchema, createConversationSchema } from '@/lib/schemas/message';
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS } from '@/lib/constants/message';
 import { notifyRecipientByEmail } from '@/lib/services/email';
@@ -22,11 +22,9 @@ export async function fetchConversations(): Promise<
   ActionResult<ConversationWithPreview[]>
 > {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     // 1. 내가 참여한 대화 목록 (last_read_at 포함)
     const { data: myParticipations, error: partError } = await supabase
@@ -155,11 +153,9 @@ export async function fetchMessages(
   cursor?: string,
 ): Promise<ActionResult<{ messages: Message[]; hasMore: boolean }>> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { supabase } = auth;
 
     // PAGE_SIZE+1개를 조회하여 "더 있는지" 판단
     let query = supabase
@@ -202,11 +198,9 @@ export async function fetchAvailableRecipients(): Promise<
   ActionResult<RecipientGroup[]>
 > {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
     const adminSupabase = createAdminClient();
 
@@ -273,11 +267,9 @@ export async function fetchAvailableRecipients(): Promise<
  */
 export async function fetchUnreadConversationCount(): Promise<number> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return 0;
+    const auth = await requireAuth();
+    if ('error' in auth) return 0;
+    const { user, supabase } = auth;
 
     // 내 참여 대화 조회
     const { data: participations, error } = await supabase
@@ -329,11 +321,9 @@ export async function createConversation(
   recipientId: string,
 ): Promise<ActionResult<{ conversationId: string }>> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     // Zod 검증
     const validation = createConversationSchema.safeParse({ recipient_id: recipientId });
@@ -439,11 +429,9 @@ export async function sendMessage(
   content: string,
 ): Promise<ActionResult<Message>> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     // Zod 검증
     const validation = sendMessageSchema.safeParse({
@@ -507,11 +495,9 @@ export async function markConversationRead(
   conversationId: string,
 ): Promise<SimpleActionResult> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     const { error } = await supabase
       .from('conversation_participants')

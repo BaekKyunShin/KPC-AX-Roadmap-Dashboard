@@ -6,11 +6,7 @@ import { registerSchema, loginSchema } from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
 
-export interface ActionResult {
-  success: boolean;
-  error?: string;
-  data?: Record<string, unknown>;
-}
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
 /**
  * 회원가입 처리

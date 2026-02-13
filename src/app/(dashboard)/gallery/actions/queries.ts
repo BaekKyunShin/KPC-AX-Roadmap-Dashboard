@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
@@ -67,15 +67,9 @@ export interface ConsultantOption {
 export async function fetchGalleryRoadmaps(params: Record<string, string | undefined> = {}): Promise<
   ActionResult<GalleryRoadmapItem[]>
 > {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   // 사용자 역할 확인
   const { data: profile } = await supabase
@@ -223,15 +217,9 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
 export async function fetchRoadmapDetail(
   roadmapVersionId: string
 ): Promise<ActionResult<RoadmapDetailView>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   // 사용자 역할 확인
   const { data: profile } = await supabase
@@ -322,15 +310,9 @@ export async function fetchRoadmapDetail(
 // =============================================================================
 
 export async function fetchEligibleProjects(): Promise<ActionResult<EligibleProject[]>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   // INTERVIEWED 이상 상태인 프로젝트만 (로드맵 생성 가능 상태)
   const eligibleStatuses = ['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'];
@@ -360,15 +342,9 @@ export async function fetchEligibleProjects(): Promise<ActionResult<EligibleProj
 // =============================================================================
 
 export async function fetchConsultantOptions(): Promise<ActionResult<ConsultantOption[]>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   const { data: profile } = await supabase
     .from('users')

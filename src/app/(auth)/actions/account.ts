@@ -6,7 +6,7 @@ import { changePasswordSchema, deleteAccountSchema } from '@/lib/schemas/user';
 import { createAuditLog } from '@/lib/services/audit';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
-import type { ActionResult } from './auth';
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
 /**
  * 현재 세션 사용자를 확인하고 비밀번호를 검증하여 본인 확인

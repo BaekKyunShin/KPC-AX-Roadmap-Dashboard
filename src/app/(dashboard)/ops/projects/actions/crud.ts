@@ -7,11 +7,7 @@ import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
-export interface ActionResult {
-  success: boolean;
-  error?: string;
-  data?: Record<string, unknown>;
-}
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
 /**
  * 프로젝트 생성 (OPS_ADMIN)

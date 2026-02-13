@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
@@ -17,15 +17,9 @@ export async function copyRoadmapToProject(params: {
   sourceRoadmapVersionId: string;
   targetProjectId: string;
 }): Promise<ActionResult<{ newVersionId: string; versionNumber: number }>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   const parsed = copyRoadmapSchema.safeParse(params);
   if (!parsed.success) {

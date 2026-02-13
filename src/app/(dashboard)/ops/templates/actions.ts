@@ -31,11 +31,7 @@ const updateTemplateSchema = z.object({
   questions: z.array(questionSchema).min(1, '최소 1개 이상의 질문이 필요합니다.'),
 });
 
-export interface ActionResult {
-  success: boolean;
-  error?: string;
-  data?: unknown;
-}
+type ActionResult = { success: boolean; error?: string; data?: unknown };
 
 // 템플릿 목록 조회
 export async function getTemplates(): Promise<ActionResult> {

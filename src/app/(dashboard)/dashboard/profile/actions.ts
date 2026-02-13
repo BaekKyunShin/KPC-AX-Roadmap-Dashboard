@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 import type { SimpleActionResult, ActionResult } from '@/lib/types/action-result';
 
@@ -14,11 +14,9 @@ export async function fetchEmailNotifySetting(): Promise<
   ActionResult<{ enabled: boolean }>
 > {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
     const adminSupabase = createAdminClient();
     const { data, error } = await adminSupabase
@@ -51,11 +49,9 @@ export async function updateEmailNotifySetting(
   enabled: boolean,
 ): Promise<SimpleActionResult> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
     const adminSupabase = createAdminClient();
 

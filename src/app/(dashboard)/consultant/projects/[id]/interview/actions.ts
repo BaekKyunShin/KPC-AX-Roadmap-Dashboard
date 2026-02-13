@@ -8,14 +8,7 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 
-// ============================================================================
-// 타입 정의
-// ============================================================================
-
-export interface ActionResult {
-  success: boolean;
-  error?: string;
-}
+import type { SimpleActionResult } from '@/lib/types/action-result';
 
 export interface ProcessSttResult {
   success: boolean;
@@ -54,7 +47,7 @@ export async function saveInterview(
   projectId: string,
   data: InterviewInput,
   options?: { skipValidation?: boolean }
-): Promise<ActionResult> {
+): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
       roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
@@ -274,7 +267,7 @@ export async function processSttFile(
 /**
  * STT 인사이트 삭제
  */
-export async function deleteSttInsights(projectId: string): Promise<ActionResult> {
+export async function deleteSttInsights(projectId: string): Promise<SimpleActionResult> {
   try {
     // 권한 확인
     const authResult = await verifyProjectAccess(projectId);

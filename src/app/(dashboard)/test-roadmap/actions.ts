@@ -11,17 +11,8 @@ import {
 import { createAuditLog } from '@/lib/services/audit';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 import type { SttInsights } from '@/lib/schemas/interview';
+import type { ActionResult } from '@/lib/types/action-result';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-
-// =============================================================================
-// 타입 정의
-// =============================================================================
-
-interface ActionResult<T = void> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 type TestRoadmapRole = 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN';
 

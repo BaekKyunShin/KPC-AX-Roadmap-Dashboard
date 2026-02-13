@@ -1,6 +1,5 @@
 // CRUD (변경 함수)
 export { createProject, createSelfAssessment, assignConsultant } from './crud';
-export type { ActionResult } from './crud';
 
 // 조회 함수
 export { fetchProjects, fetchProjectTimeline, fetchProjectsWithTimeline } from './queries';

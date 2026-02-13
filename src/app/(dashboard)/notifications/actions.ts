@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 import type { Notification } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import { NOTIFICATION_PAGE_SIZE, NOTIFICATION_TYPES } from '@/lib/constants/notification';
@@ -16,11 +16,9 @@ export async function fetchNotifications(
   filter?: string,
 ): Promise<ActionResult<{ notifications: Notification[]; hasMore: boolean }>> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     const offset = (page - 1) * NOTIFICATION_PAGE_SIZE;
 
@@ -75,11 +73,9 @@ export async function fetchNotifications(
  */
 export async function fetchUnreadCount(): Promise<number> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return 0;
+    const auth = await requireAuth();
+    if ('error' in auth) return 0;
+    const { user, supabase } = auth;
 
     const { count, error } = await supabase
       .from('notifications')
@@ -107,11 +103,9 @@ export async function markNotificationRead(
   notificationId: string,
 ): Promise<SimpleActionResult> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     const { error } = await supabase
       .from('notifications')
@@ -138,11 +132,9 @@ export async function markNotificationRead(
  */
 export async function markAllNotificationsRead(): Promise<SimpleActionResult> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: '로그인이 필요합니다.' };
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     const { error } = await supabase
       .from('notifications')

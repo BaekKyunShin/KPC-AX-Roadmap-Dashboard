@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/actions/auth-helpers';
 
 export interface ConsultantProjectListParams {
   search?: string;
@@ -31,18 +31,11 @@ export interface ConsultantProjectListResult {
 export async function fetchConsultantProjects(
   params: ConsultantProjectListParams = {}
 ): Promise<ConsultantProjectListResult> {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if ('error' in auth) return { projects: [], total: 0, consultantName: '' };
+  const { user, supabase } = auth;
 
   const { search = '', status = '' } = params;
-
-  // 현재 사용자 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { projects: [], total: 0, consultantName: '' };
-  }
 
   // 프로필 확인
   const { data: profile } = await supabase

@@ -91,7 +91,7 @@ export function useTestRoadmapActions({
       const data = buildInputData();
       const response = await createTestRoadmap(data);
 
-      if (response.success && response.data) {
+      if (response.success) {
         setResult({
           companyName: data.company_name,
           industry: data.industry,
@@ -130,7 +130,7 @@ export function useTestRoadmapActions({
           revisionPrompt
         );
 
-        if (response.success && response.data) {
+        if (response.success) {
           setResult({
             ...result,
             roadmapResult: response.data.result,

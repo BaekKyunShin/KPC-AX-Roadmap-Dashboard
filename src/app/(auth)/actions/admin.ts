@@ -1,9 +1,10 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAuditLog } from '@/lib/services/audit';
-import type { ActionResult } from './auth';
+
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
 /**
  * 사용자 승인/정지 (OPS_ADMIN/SYSTEM_ADMIN 전용)
@@ -15,30 +16,11 @@ export async function updateUserStatus(
   action: 'approve' | 'suspend' | 'reactivate',
   reason?: string
 ): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return {
-      success: false,
-      error: '인증되지 않은 사용자입니다.',
-    };
-  }
-
-  // 현재 사용자 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
-    return {
-      success: false,
-      error: '권한이 없습니다.',
-    };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+    authError: '인증되지 않은 사용자입니다.',
+  });
+  if ('error' in auth) return { success: false, error: auth.error };
+  const { user, role: currentRole } = auth;
 
   // admin 클라이언트로 상태 변경
   const adminSupabase = createAdminClient();
@@ -64,7 +46,7 @@ export async function updateUserStatus(
     case 'approve':
       // 운영관리자 승인은 SYSTEM_ADMIN만 가능
       if (targetUser.role === 'OPS_ADMIN_PENDING') {
-        if (currentUser.role !== 'SYSTEM_ADMIN') {
+        if (currentRole !== 'SYSTEM_ADMIN') {
           return {
             success: false,
             error: '운영관리자 승인은 시스템 관리자만 가능합니다.',

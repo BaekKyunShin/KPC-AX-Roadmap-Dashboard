@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consultantProfileSchema } from '@/lib/schemas/user';
-import type { ActionResult } from './auth';
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
 /**
  * JSON 문자열을 안전하게 파싱하여 배열로 반환

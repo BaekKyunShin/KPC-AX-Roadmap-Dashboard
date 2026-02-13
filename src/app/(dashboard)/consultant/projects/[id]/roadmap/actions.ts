@@ -13,17 +13,9 @@ import {
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 
-export interface ActionResult {
-  success: boolean;
-  error?: string;
-  data?: Record<string, unknown>;
-}
+type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
 
-export interface ProjectInfoResult {
-  success: boolean;
-  data?: { companyName: string };
-  error?: string;
-}
+type ProjectInfoResult = { success: boolean; data?: { companyName: string }; error?: string };
 
 /**
  * 로드맵 생성

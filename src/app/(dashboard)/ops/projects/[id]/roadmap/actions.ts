@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { getRoadmapVersions, getRoadmapVersion } from '@/lib/services/roadmap';
 
 /**
@@ -8,21 +8,8 @@ import { getRoadmapVersions, getRoadmapVersion } from '@/lib/services/roadmap';
  */
 export async function fetchRoadmapVersionsForOps(projectId: string) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-
-    // OPS_ADMIN/SYSTEM_ADMIN 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return [];
-    }
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return [];
 
     return await getRoadmapVersions(projectId);
   } catch {
@@ -35,21 +22,8 @@ export async function fetchRoadmapVersionsForOps(projectId: string) {
  */
 export async function fetchRoadmapVersionForOps(roadmapId: string) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    // OPS_ADMIN/SYSTEM_ADMIN 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return null;
-    }
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return null;
 
     return await getRoadmapVersion(roadmapId);
   } catch {
