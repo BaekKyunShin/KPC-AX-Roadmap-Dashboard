@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { SelfAssessmentQuestion } from '@/types/database';
 import TemplateList from './TemplateList';
 
 // Radix UI는 jsdom에서 PointerEvent가 필요
@@ -57,8 +58,6 @@ vi.mock('@/lib/utils/toast', () => ({
 // =============================================================================
 // 테스트 데이터
 // =============================================================================
-
-import type { SelfAssessmentQuestion } from '@/types/database';
 
 function makeQuestion(id: string, order: number): SelfAssessmentQuestion {
   return {
