@@ -1,11 +1,11 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
 export interface ActionResult {
   success: boolean;
@@ -17,24 +17,11 @@ export interface ActionResult {
  * 프로젝트 생성 (OPS_ADMIN)
  */
 export async function createProject(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: '인증되지 않은 사용자입니다.' };
-  }
-
-  // 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
-    return { success: false, error: '권한이 없습니다.' };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+    authError: '인증되지 않은 사용자입니다.',
+  });
+  if ('error' in auth) return { success: false, error: auth.error };
+  const { user } = auth;
 
   // 폼 데이터 파싱
   const subIndustriesStr = formData.get('sub_industries') as string | null;
@@ -108,24 +95,11 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
  * 자가진단 입력 (OPS_ADMIN)
  */
 export async function createSelfAssessment(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: '인증되지 않은 사용자입니다.' };
-  }
-
-  // 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
-    return { success: false, error: '권한이 없습니다.' };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+    authError: '인증되지 않은 사용자입니다.',
+  });
+  if ('error' in auth) return { success: false, error: auth.error };
+  const { user } = auth;
 
   // 폼 데이터 파싱
   const projectId = formData.get('project_id') as string;
@@ -212,24 +186,11 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
  * 컨설턴트 배정 (OPS_ADMIN)
  */
 export async function assignConsultant(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: '인증되지 않은 사용자입니다.' };
-  }
-
-  // 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
-    return { success: false, error: '권한이 없습니다.' };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+    authError: '인증되지 않은 사용자입니다.',
+  });
+  if ('error' in auth) return { success: false, error: auth.error };
+  const { user } = auth;
 
   // 폼 데이터 파싱
   const rawData = {

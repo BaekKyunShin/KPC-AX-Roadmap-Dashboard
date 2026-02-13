@@ -1,10 +1,10 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAllUsersUsage, updateUserQuota, getUserUsage } from '@/lib/services/quota';
 import { canManageUser } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
+import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
 export interface UsageStats {
   id: string;
@@ -28,28 +28,12 @@ export async function fetchUsageStats(options: {
   limit?: number;
   month?: string;
 }) {
-  const supabase = await createClient();
-
-  // 현재 사용자 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { users: [], total: 0, page: 1, limit: 20, totalPages: 0, month: '' };
-  }
-
-  // OPS_ADMIN/SYSTEM_ADMIN 권한 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-    return { users: [], total: 0, page: 1, limit: 20, totalPages: 0, month: '' };
-  }
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  if ('error' in auth) return { users: [], total: 0, page: 1, limit: 20, totalPages: 0, month: '' };
 
   return await getAllUsersUsage({
     ...options,
-    currentUserRole: profile.role as UserRole,
+    currentUserRole: auth.role as UserRole,
   });
 }
 
@@ -64,24 +48,8 @@ export async function updateQuota(
   monthlyLimit?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient();
-
-    // 현재 사용자 확인
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // OPS_ADMIN/SYSTEM_ADMIN 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
 
     // 대상 사용자의 역할 확인
     const adminSupabase = createAdminClient();
@@ -96,7 +64,7 @@ export async function updateQuota(
     }
 
     // 현재 사용자가 대상 사용자의 쿼터를 수정할 권한이 있는지 확인
-    if (!canManageUser(profile.role as UserRole, targetUser.role as UserRole)) {
+    if (!canManageUser(auth.role as UserRole, targetUser.role as UserRole)) {
       return { success: false, error: '해당 사용자의 쿼터를 수정할 권한이 없습니다.' };
     }
 
@@ -115,12 +83,8 @@ export async function updateQuota(
  * 내 사용량 조회
  */
 export async function fetchMyUsage() {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if ('error' in auth) return null;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
-
-  return await getUserUsage(user.id);
+  return await getUserUsage(auth.user.id);
 }

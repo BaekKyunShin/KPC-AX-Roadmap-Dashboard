@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
 import {
   createActivityLogSchema,
   updateActivityLogSchema,
@@ -44,49 +44,22 @@ export interface ActivityLogsResult {
   total: number;
 }
 
-interface AuthorizedUser {
-  id: string;
-}
-
 // ============================================================================
 // 공통 헬퍼
 // ============================================================================
 
 async function verifyConsultantProjectAccess(
   projectId: string,
-): Promise<{ user: AuthorizedUser } | { error: string }> {
-  const supabase = await createClient();
+): Promise<{ user: { id: string } } | { error: string }> {
+  const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+    roleError: '컨설턴트만 접근 가능합니다.',
+  });
+  if ('error' in auth) return auth;
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    return { error: '로그인이 필요합니다.' };
-  }
+  const accessCheck = await requireConsultantProjectAccess(auth.supabase, auth.user.id, projectId);
+  if ('error' in accessCheck) return accessCheck;
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-    return { error: '컨설턴트만 접근 가능합니다.' };
-  }
-
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('assigned_consultant_id', user.id)
-    .single();
-
-  if (!projectData) {
-    return { error: '배정되지 않은 프로젝트입니다.' };
-  }
-
-  return { user: { id: user.id } };
+  return { user: { id: auth.user.id } };
 }
 
 // ============================================================================
@@ -101,14 +74,9 @@ export async function fetchActivityLogs(
     offset?: number;
   },
 ): Promise<ActivityLogsResult> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { logs: [], total: 0 };
-  }
+  const auth = await requireAuth();
+  if ('error' in auth) return { logs: [], total: 0 };
+  const { supabase } = auth;
 
   const limit = options?.limit ?? ACTIVITY_LOG_PAGE_SIZE;
   const offset = options?.offset ?? 0;
@@ -317,8 +285,9 @@ export async function generateInterviewGuide(
     }
 
     // 프로젝트 + 자가진단 데이터 조회
-    const supabase = await createClient();
-    const { data: projectData } = await supabase
+    const authForQuery = await requireAuth();
+    if ('error' in authForQuery) return { success: false, error: authForQuery.error };
+    const { data: projectData } = await authForQuery.supabase
       .from('projects')
       .select(`
         company_name,

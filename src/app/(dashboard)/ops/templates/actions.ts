@@ -1,9 +1,9 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { z } from 'zod';
 import type { SelfAssessmentQuestion } from '@/types/database';
 
@@ -40,26 +40,9 @@ export interface ActionResult {
 // 템플릿 목록 조회
 export async function getTemplates(): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { supabase } = auth;
 
     // 템플릿 목록 조회 (사용 현황 포함)
     const { data: templates, error } = await supabase
@@ -91,26 +74,9 @@ export async function getTemplates(): Promise<ActionResult> {
 // 단일 템플릿 조회
 export async function getTemplate(templateId: string): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { supabase } = auth;
 
     const { data: template, error } = await supabase
       .from('self_assessment_templates')
@@ -137,27 +103,10 @@ export async function getTemplate(templateId: string): Promise<ActionResult> {
 // 새 템플릿 생성
 export async function createTemplate(formData: FormData): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
 
     // 폼 데이터 파싱
     const rawData = {
@@ -219,27 +168,10 @@ export async function createTemplate(formData: FormData): Promise<ActionResult> 
 // 템플릿 수정 (새 버전 생성)
 export async function updateTemplate(formData: FormData): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
 
     // 폼 데이터 파싱
     const rawData = {
@@ -360,27 +292,10 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult> 
 // 활성 템플릿 변경
 export async function setActiveTemplate(templateId: string): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
 
     // 템플릿 존재 확인
     const { data: template, error: fetchError } = await supabase
@@ -428,27 +343,10 @@ export async function setActiveTemplate(templateId: string): Promise<ActionResul
 // 템플릿 복제
 export async function duplicateTemplate(templateId: string): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
-      return { success: false, error: '권한이 없습니다.' };
-    }
 
     // 원본 템플릿 조회
     const { data: sourceTemplate, error: fetchError } = await supabase

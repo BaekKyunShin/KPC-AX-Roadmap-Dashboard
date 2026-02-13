@@ -1,11 +1,11 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { toggleLikeSchema, toggleShareSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
+import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
 // =============================================================================
 // 좋아요 토글
@@ -14,15 +14,9 @@ import { successResult, errorResult } from '@/lib/types/action-result';
 export async function toggleLike(
   roadmapVersionId: string
 ): Promise<ActionResult<{ liked: boolean; count: number }>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuth('인증이 필요합니다.');
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
 
   const parsed = toggleLikeSchema.safeParse({ roadmapVersionId });
   if (!parsed.success) {
@@ -76,30 +70,16 @@ export async function toggleLike(
 export async function toggleShare(
   roadmapVersionId: string
 ): Promise<ActionResult<{ isShared: boolean }>> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResult('인증이 필요합니다.');
-  }
+  const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+    authError: '인증이 필요합니다.',
+    roleError: '컨설턴트만 공유 설정을 변경할 수 있습니다.',
+  });
+  if ('error' in auth) return errorResult(auth.error);
+  const { user } = auth;
 
   const parsed = toggleShareSchema.safeParse({ roadmapVersionId });
   if (!parsed.success) {
     return errorResult('유효하지 않은 요청입니다.');
-  }
-
-  // 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-    return errorResult('컨설턴트만 공유 설정을 변경할 수 있습니다.');
   }
 
   // 로드맵 버전 확인 (본인 작성 + FINAL만)
