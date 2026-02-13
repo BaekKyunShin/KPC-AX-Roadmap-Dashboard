@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { MoreVertical, Power, Copy, Trash2 } from 'lucide-react';
 import type { SelfAssessmentTemplate } from '@/types/database';
 import { setActiveTemplate, duplicateTemplate, deleteTemplate } from '../actions';
 import { showSuccessToast } from '@/lib/utils/toast';
@@ -13,8 +14,16 @@ import {
   TableHead,
   TableRow,
   TableCell,
-  TableActionLink,
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -33,13 +42,13 @@ interface TemplateListProps {
 // =============================================================================
 
 const TABLE_COLUMNS = {
-  version: 'min-w-[80px]',
-  name: 'min-w-[160px]',
-  questions: 'min-w-[80px]',
-  usage: 'min-w-[100px]',
-  status: 'min-w-[80px]',
-  createdAt: 'min-w-[100px]',
-  actions: 'min-w-[140px]',
+  version: 'w-[10%]',
+  name: 'w-[28%] text-left',
+  questions: 'w-[11%]',
+  usage: 'w-[15%]',
+  status: 'w-[11%]',
+  createdAt: 'w-[18%]',
+  actions: 'w-[7%]',
 } as const;
 
 // =============================================================================
@@ -121,6 +130,8 @@ export default function TemplateList({ templates }: TemplateListProps) {
     );
   }
 
+  const isActionDisabled = (templateId: string) => loading === templateId || isPending;
+
   return (
     <div className="space-y-4">
       {error && (
@@ -130,40 +141,38 @@ export default function TemplateList({ templates }: TemplateListProps) {
       )}
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
-        <Table className="min-w-[750px]">
+        <Table className="w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className={TABLE_COLUMNS.version}>버전</TableHead>
+              <TableHead className={cn(TABLE_COLUMNS.version, 'pl-8')}>버전</TableHead>
               <TableHead className={TABLE_COLUMNS.name}>템플릿 이름</TableHead>
               <TableHead className={TABLE_COLUMNS.questions}>문항 수</TableHead>
               <TableHead className={TABLE_COLUMNS.usage}>사용 현황</TableHead>
               <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
               <TableHead className={TABLE_COLUMNS.createdAt}>생성일</TableHead>
-              <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+              <TableHead className={TABLE_COLUMNS.actions}>
+                <span className="sr-only">작업</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {templates.map((template) => (
-              <TableRow key={template.id} className={template.is_active ? 'bg-green-50' : ''}>
-                <TableCell>
+              <TableRow
+                key={template.id}
+                className={cn('hover:bg-gray-50', template.is_active && 'bg-green-50 hover:bg-green-100/60')}
+              >
+                <TableCell className="pl-8">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                     v{template.version}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <div>
-                    <Link
-                      href={`/ops/templates/${template.id}`}
-                      className="font-medium text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
-                    >
-                      {template.name}
-                    </Link>
-                    {template.description && (
-                      <p className="text-xs text-gray-500 mt-1 truncate max-w-xs mx-auto">
-                        {template.description}
-                      </p>
-                    )}
-                  </div>
+                <TableCell className="text-left">
+                  <Link
+                    href={`/ops/templates/${template.id}`}
+                    className="font-medium text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
+                  >
+                    {template.name}
+                  </Link>
                 </TableCell>
                 <TableCell className="text-gray-500">{template.questions?.length || 0}개</TableCell>
                 <TableCell>
@@ -188,38 +197,51 @@ export default function TemplateList({ templates }: TemplateListProps) {
                   {new Date(template.created_at).toLocaleDateString('ko-KR')}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center justify-center gap-3">
-                    <Link
-                      href={`/ops/templates/${template.id}`}
-                      className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150"
-                    >
-                      상세
-                    </Link>
-                    {!template.is_active && (
-                      <TableActionLink
-                        variant="success"
-                        onClick={() => handleSetActive(template.id)}
-                        disabled={loading === template.id || isPending}
+                  <div className="flex justify-end mr-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label="작업 메뉴"
+                        disabled={isActionDisabled(template.id)}
                       >
-                        {loading === template.id ? '처리중...' : '활성화'}
-                      </TableActionLink>
-                    )}
-                    <TableActionLink
-                      variant="secondary"
-                      onClick={() => handleDuplicate(template.id)}
-                      disabled={loading === template.id || isPending}
-                    >
-                      복제
-                    </TableActionLink>
-                    {!template.is_active && template.usage_count === 0 && (
-                      <TableActionLink
-                        variant="danger"
-                        onClick={() => handleDelete(template.id)}
-                        disabled={loading === template.id || isPending}
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {!template.is_active && (
+                        <DropdownMenuItem
+                          onClick={() => handleSetActive(template.id)}
+                          disabled={isActionDisabled(template.id)}
+                        >
+                          <Power className="h-4 w-4" />
+                          활성화
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => handleDuplicate(template.id)}
+                        disabled={isActionDisabled(template.id)}
                       >
-                        삭제
-                      </TableActionLink>
-                    )}
+                        <Copy className="h-4 w-4" />
+                        복제
+                      </DropdownMenuItem>
+                      {!template.is_active && template.usage_count === 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => handleDelete(template.id)}
+                            disabled={isActionDisabled(template.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            삭제
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
