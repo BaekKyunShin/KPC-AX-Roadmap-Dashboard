@@ -2,14 +2,14 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
+import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import type { SelfAssessmentScores } from '@/lib/constants/score-color';
+import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
 import { CompanyInfoCard } from './_components/CompanyInfoCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
-import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
-import type { SelfAssessmentScores } from '@/lib/constants/score-color';
-import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 import ActivityLog from './_components/ActivityLog';
 
 interface PageProps {

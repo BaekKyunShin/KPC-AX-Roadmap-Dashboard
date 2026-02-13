@@ -1,6 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { ProjectStats } from '../actions';
-import { PROJECT_WORKFLOW_STEPS } from '@/lib/constants/status';
 import {
   PieChart,
   Pie,
@@ -10,6 +7,9 @@ import {
   Label,
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PROJECT_WORKFLOW_STEPS } from '@/lib/constants/status';
+import type { ProjectStats } from '../actions';
 
 // ============================================================================
 // 타입 정의

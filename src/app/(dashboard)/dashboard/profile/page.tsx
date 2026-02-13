@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { getConsultantProfile } from '@/app/(auth)/actions';
 import ProfileForm from '@/components/consultant/ProfileForm';
-import { Loader2 } from 'lucide-react';
 import type { ConsultantProfile } from '@/types/database';
 
 export default function ProfilePage() {

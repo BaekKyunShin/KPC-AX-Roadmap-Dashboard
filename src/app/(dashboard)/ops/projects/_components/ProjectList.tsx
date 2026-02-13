@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
+import {
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  FolderOpen,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,18 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
-  FolderOpen,
-} from 'lucide-react';
 import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
+import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
 
 const ITEMS_PER_PAGE = 10;

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import BadgeSelector from './BadgeSelector';
 import {
   INDUSTRIES,

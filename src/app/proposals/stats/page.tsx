@@ -7,7 +7,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   Briefcase,
-  CheckCircle2,
   TrendingUp,
   Award,
   BarChart3,

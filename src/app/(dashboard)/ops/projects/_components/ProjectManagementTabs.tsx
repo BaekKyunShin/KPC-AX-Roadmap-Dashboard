@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { List, BarChart3 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { ProjectStatus } from '@/types/database';
 import StatsSummaryCards from './StatsSummaryCards';
 import ProjectList from './ProjectList';
 import ProjectDashboard from './ProjectDashboard';
-import type { ProjectStatus } from '@/types/database';
 
 export default function ProjectManagementTabs() {
   const [activeTab, setActiveTab] = useState('list');

@@ -1,8 +1,8 @@
 import { redirect, notFound } from 'next/navigation';
+import { Factory, Building2, User } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Factory, Building2, User } from 'lucide-react';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
 import { fetchRoadmapDetail } from '../actions';

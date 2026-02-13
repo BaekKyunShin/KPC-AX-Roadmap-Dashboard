@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { cn } from '@/lib/utils';
 import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './index';
 import SelectableCard from './SelectableCard';
-import { cn } from '@/lib/utils';
 import type { ValidRecommendation } from './utils';
 
 interface RecommendationResultsProps {

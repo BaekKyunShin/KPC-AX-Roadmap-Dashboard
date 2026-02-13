@@ -7,7 +7,6 @@ import { revalidatePath } from 'next/cache';
 import { copyRoadmapSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
-import { extractTags } from './gallery-utils';
 
 // =============================================================================
 // 로드맵 복제 (가져다 쓰기)

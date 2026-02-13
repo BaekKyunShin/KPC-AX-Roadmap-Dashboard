@@ -4,7 +4,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,6 @@ import {
   User,
   Factory,
   Building2,
-  Filter,
   BookOpen,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';

@@ -4,13 +4,13 @@
  * 인터뷰 녹취록(STT 텍스트)에서 AI 교육 로드맵 수립에 필요한 정보를 추출합니다.
  */
 
-import { callLLMForJSON } from './llm';
 import type { SttInsights } from '@/lib/schemas/interview';
 import {
   MAX_STT_FILE_SIZE_BYTES,
   MAX_STT_FILE_SIZE_KB,
   STT_EXTRACTION_TEMPERATURE,
 } from '@/lib/constants/stt';
+import { callLLMForJSON } from './llm';
 
 // ============================================================================
 // 상수

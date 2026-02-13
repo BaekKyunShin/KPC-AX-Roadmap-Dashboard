@@ -2,10 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
-import ConsultantSelector from './ConsultantSelector';
-import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './assignment';
 import { cn } from '@/lib/utils';
 import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
+import ConsultantSelector from './ConsultantSelector';
+import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './assignment';
 
 // ============================================================================
 // 타입 정의

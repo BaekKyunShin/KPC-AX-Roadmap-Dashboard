@@ -1,10 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { ConsultantProfile } from '@/types/database';
+import type { SttInsights } from '@/lib/schemas/interview';
 import { callLLMForJSON } from '../llm';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import { checkQuotaExceeded, recordLLMUsage } from '../quota';
-import type { ConsultantProfile } from '@/types/database';
-import type { SttInsights } from '@/lib/schemas/interview';
 import type { LLMRoadmapResult, RoadmapResult, ValidationResult } from './roadmap-types';
 import { normalizeRoadmapHours } from './roadmap-time-utils';
 import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';

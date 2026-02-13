@@ -3,9 +3,9 @@
  * 자가진단 데이터 + 기업 정보 → AI 분석 가이드 생성
  */
 
-import { callLLMForJSON } from './llm';
 import type { GuideData } from '@/lib/schemas/interview-guide';
 import type { SelfAssessmentScores, DimensionScore } from '@/lib/constants/score-color';
+import { callLLMForJSON } from './llm';
 
 // ============================================================================
 // 타입 정의

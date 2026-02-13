@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import {
   fetchEmailNotifySetting,

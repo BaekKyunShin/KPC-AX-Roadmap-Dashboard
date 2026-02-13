@@ -1,7 +1,7 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * Aurora 배경 CSS 변수

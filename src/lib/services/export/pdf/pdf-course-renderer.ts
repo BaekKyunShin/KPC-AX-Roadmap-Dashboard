@@ -3,8 +3,8 @@
  * drawCourseDetail + PBL 데이터 추출 헬퍼
  */
 
-import type { PBLCourse, RoadmapCell } from '../../roadmap';
 import { getLevelLabel } from '@/lib/utils/roadmap';
+import type { PBLCourse, RoadmapCell } from '../../roadmap';
 import { LAYOUT, FONT } from './pdf-constants';
 import {
   type DocContext,

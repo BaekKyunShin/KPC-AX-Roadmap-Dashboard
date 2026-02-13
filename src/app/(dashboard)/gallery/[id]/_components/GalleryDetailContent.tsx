@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
 import { CoursesList } from '@/components/roadmap/CoursesList';
@@ -10,8 +10,8 @@ import { LikeButton } from '@/components/gallery/LikeButton';
 import { UseRoadmapDialog } from '@/components/gallery/UseRoadmapDialog';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
-import type { RoadmapDetailView } from '../../actions';
 import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
+import type { RoadmapDetailView } from '../../actions';
 
 interface GalleryDetailContentProps {
   detail: RoadmapDetailView;

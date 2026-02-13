@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
-import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { AuroraBackground } from '../AuroraBackground';
+import { Button } from '@/components/ui/button';
 import { LogoBadge } from '@/components/ui/logo';
+import { AuroraBackground } from '../AuroraBackground';
 
 // ============================================================================
 // 상수

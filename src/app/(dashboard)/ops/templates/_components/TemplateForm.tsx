@@ -4,8 +4,8 @@ import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
-import { createTemplate, updateTemplate } from '../actions';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import { createTemplate, updateTemplate } from '../actions';
 import {
   Select,
   SelectContent,

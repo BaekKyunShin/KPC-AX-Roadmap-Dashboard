@@ -10,9 +10,8 @@
  */
 
 import * as XLSX from 'xlsx-js-style';
-import type { RoadmapExportData } from '../../export-pdf';
 import { getLevelLabel } from '@/lib/utils/roadmap';
-
+import type { RoadmapExportData } from '../../export-pdf';
 import { COLOR, NO_BORDER, STYLE, tableBodyStyle, tableBodyCenterStyle } from './xlsx-styles';
 import {
   getStatusLabel,

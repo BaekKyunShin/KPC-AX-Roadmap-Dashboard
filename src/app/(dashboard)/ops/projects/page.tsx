@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
-import { Plus } from 'lucide-react';
 import ProjectManagementTabs from './_components/ProjectManagementTabs';
 
 export default async function OPSProjectsPage() {

@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { ConsultantProfile, SelfAssessmentScore } from '@/types/database';
 import { createAuditLog } from '../audit';
 import { callLLMForJSON } from '../llm';
-import type { ConsultantProfile, SelfAssessmentScore } from '@/types/database';
 import {
   fetchMatchingData,
   saveRecommendations,

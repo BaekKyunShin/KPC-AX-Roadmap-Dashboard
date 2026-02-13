@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { changePassword } from '@/app/(auth)/actions';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
 import DeleteAccountSection from '@/components/auth/DeleteAccountSection';
 import EmailNotifyToggle from '@/app/(dashboard)/dashboard/profile/_components/EmailNotifyToggle';
-import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 // =============================================================================
 // PasswordField (파일-로컬 컴포넌트)

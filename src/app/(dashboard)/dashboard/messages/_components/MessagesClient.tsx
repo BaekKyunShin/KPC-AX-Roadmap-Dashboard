@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { CONVERSATION_READ_EVENT, MESSAGE_PAGE_SIZE } from '@/lib/constants/message';
+import { showErrorToast } from '@/lib/utils/toast';
+import type { ConversationWithPreview, Message } from '@/types/database';
 import ConversationList from './ConversationList';
 import MessageThread from './MessageThread';
 import NewConversationDialog from './NewConversationDialog';
 import { fetchConversations, fetchMessages, sendMessage, markConversationRead } from '../actions';
-import { CONVERSATION_READ_EVENT, MESSAGE_PAGE_SIZE } from '@/lib/constants/message';
-import { showErrorToast } from '@/lib/utils/toast';
-import type { ConversationWithPreview, Message } from '@/types/database';
 
 /** Polling 간격: 새 메시지 감지 (3초) — Realtime 실패 시 안전망 */
 const THREAD_POLL_MS = 3_000;

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Factory, Building2, User } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -8,11 +9,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Factory, Building2, User } from 'lucide-react';
-import { LikeButton } from './LikeButton';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
 import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
+import { LikeButton } from './LikeButton';
 
 interface GalleryCardProps {
   item: GalleryRoadmapItem;

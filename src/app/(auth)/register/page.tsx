@@ -3,17 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { registerUser } from '../actions';
-import { createClient } from '@/lib/supabase/client';
-import { registerSchema } from '@/lib/schemas/user';
-import { showErrorToast, scrollToPageTop, scrollToFirstError } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FieldError } from '@/components/ui/field-error';
 import {
   Loader2,
   Eye,
@@ -25,10 +14,21 @@ import {
   ChevronRight,
   Shield,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { registerSchema } from '@/lib/schemas/user';
+import { showErrorToast, scrollToPageTop, scrollToFirstError } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FieldError } from '@/components/ui/field-error';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
 import { COPYRIGHT_TEXT } from '@/lib/constants';
 import ProfileForm from '@/components/consultant/ProfileForm';
+import { registerUser } from '../actions';
 
 type RegisterType = 'CONSULTANT' | 'OPS_ADMIN';
 

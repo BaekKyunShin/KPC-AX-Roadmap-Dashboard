@@ -7,22 +7,20 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/ui/page-header';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
-import TestRoadmapResult from './_components/TestRoadmapResult';
-import TestRoadmapNavigation from './_components/TestRoadmapNavigation';
 import CourseEditModal from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/CourseEditModal';
 import { INTERVIEW_STEPS } from '@/lib/constants/interview-steps';
-import { useTestRoadmapForm } from './_hooks/useTestRoadmapForm';
-import { useStepValidator } from './_hooks/useStepValidator';
-import { useTestRoadmapActions } from './_hooks/useTestRoadmapActions';
-
-// Step 컴포넌트들 - InterviewStepper는 공통 컴포넌트 사용
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
-import TestStepBasicInfo from './_components/TestStepBasicInfo';
 import StepCompanyDetails from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/StepCompanyDetails';
 import StepJobTasks from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/StepJobTasks';
 import StepPainPoints from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/StepPainPoints';
 import StepConstraintsGoals from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/StepConstraintsGoals';
+import TestRoadmapResult from './_components/TestRoadmapResult';
+import TestRoadmapNavigation from './_components/TestRoadmapNavigation';
+import TestStepBasicInfo from './_components/TestStepBasicInfo';
 import TestStepSummary from './_components/TestStepSummary';
+import { useTestRoadmapForm } from './_hooks/useTestRoadmapForm';
+import { useStepValidator } from './_hooks/useStepValidator';
+import { useTestRoadmapActions } from './_hooks/useTestRoadmapActions';
 
 // =============================================================================
 // 타입 정의

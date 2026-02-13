@@ -1,9 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchProjectStats, type ProjectStats } from '../actions';
-import type { ProjectStatus } from '@/types/database';
-import { PROJECT_WORKFLOW_STEPS } from '@/lib/constants/status';
 import {
   FolderKanban,
   FileText,
@@ -13,7 +10,10 @@ import {
   FileCheck,
   Trophy,
 } from 'lucide-react';
+import type { ProjectStatus } from '@/types/database';
+import { PROJECT_WORKFLOW_STEPS } from '@/lib/constants/status';
 import { cn } from '@/lib/utils';
+import { fetchProjectStats, type ProjectStats } from '../actions';
 
 interface StatsSummaryCardsProps {
   onStatusFilter?: (statuses: ProjectStatus[] | null) => void;

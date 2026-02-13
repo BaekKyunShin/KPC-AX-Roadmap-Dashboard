@@ -290,7 +290,6 @@ describe('formatBulletList', () => {
     const doc = createMockDoc({
       // 짧은 maxWidth에서 줄바꿈이 발생하도록 설정
       getTextWidth: vi.fn((text: string) => text.length * 2),
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       splitTextToSize: vi.fn((_text: string, _maxWidth: number) => {
         // 강제로 2줄로 분할
         return ['첫 번째 줄', '두 번째 줄'];

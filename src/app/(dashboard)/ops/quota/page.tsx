@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchUsageStats, updateQuota, type UsageStats } from './actions';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   Table,
@@ -20,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
+import { fetchUsageStats, updateQuota, type UsageStats } from './actions';
 
 // 월 선택 옵션 생성 (최근 12개월, 로컬 시간 기준)
 function getMonthOptions() {

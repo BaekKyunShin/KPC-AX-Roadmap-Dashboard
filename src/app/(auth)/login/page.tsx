@@ -3,17 +3,17 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { loginUser } from '../actions';
+import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
 import { COPYRIGHT_TEXT } from '@/lib/constants';
+import { loginUser } from '../actions';
 
 function LoginForm() {
   const router = useRouter();

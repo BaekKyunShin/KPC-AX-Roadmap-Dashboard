@@ -1,17 +1,17 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
+import { FileText, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
-import ProjectTimeline from '../_components/ProjectTimeline';
 import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
-import { FileText, ClipboardList } from 'lucide-react';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
+import ProjectTimeline from '../_components/ProjectTimeline';
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

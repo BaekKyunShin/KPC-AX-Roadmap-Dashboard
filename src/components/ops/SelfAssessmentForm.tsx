@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useCallback, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
-import { Check } from 'lucide-react';
 import {
   type Question,
   type Template,
