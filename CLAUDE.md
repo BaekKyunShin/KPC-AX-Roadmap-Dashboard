@@ -58,19 +58,20 @@ Next.js App Router (src/app/)
                  ▼
 Shared Layers (src/lib/)
     ├── services/           → 핵심 비즈니스 로직
-    │   ├── roadmap.ts          → LLM 로드맵 생성
+    │   ├── roadmap/            → 로드맵 생성 (모듈 분리)
+    │   ├── matching/           → 컨설턴트 LLM 매칭
+    │   ├── export/pdf/         → PDF 내보내기
+    │   ├── export/xlsx/        → XLSX 내보내기
     │   ├── llm.ts              → LLM API 호출 추상화
-    │   ├── matching.ts         → 컨설턴트 매칭 알고리즘
-    │   ├── stt.ts              → STT 인사이트 추출
     │   ├── quota.ts            → 일별/월별 LLM 호출 제한
-    │   ├── notification.ts      → 알림 생성 헬퍼
+    │   ├── notification.ts     → 알림 생성 헬퍼
+    │   ├── stt.ts              → STT 인사이트 추출
     │   ├── audit.ts            → 이벤트 로깅
-    │   ├── export-pdf.ts       → PDF 생성 (jspdf)
-    │   └── export-xlsx.ts      → Excel 생성 (xlsx)
+    │   └── email.ts            → 이메일 발송 (SMTP)
     ├── constants/          → 역할·상태·업종 등 상수 집중 관리
     ├── schemas/            → Zod 검증 스키마 + 테스트
     ├── utils/              → 유틸리티 함수 (에러 처리, 토스트 등)
-    ├── actions/            → 공유 Server Actions 헬퍼
+    ├── actions/            → 공유 Server Actions 헬퍼 (인증/역할 검증, 내보내기)
     └── types/              → ActionResult 등 공통 타입
                  │
                  ▼

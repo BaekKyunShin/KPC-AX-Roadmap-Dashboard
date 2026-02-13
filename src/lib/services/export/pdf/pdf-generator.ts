@@ -52,6 +52,7 @@ export interface RoadmapExportData {
   finalizedAt?: string | null;
 }
 
+/** 로드맵 데이터를 Portrait A4 PDF Blob으로 변환 (표지 + 과정 상세 + PBL) */
 export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
   const { default: jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');

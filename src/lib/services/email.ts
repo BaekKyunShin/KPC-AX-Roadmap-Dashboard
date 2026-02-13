@@ -34,12 +34,14 @@ const THROTTLE_MAP_MAX_SIZE = 1000;
 
 const throttleMap = new Map<string, number>();
 
+/** 동일 발신자→수신자 이메일이 5분 이내 중복인지 확인 */
 export function isThrottled(senderId: string, recipientId: string): boolean {
   const key = `${senderId}:${recipientId}`;
   const lastSent = throttleMap.get(key);
   return !!lastSent && Date.now() - lastSent < THROTTLE_DURATION_MS;
 }
 
+/** 발신자→수신자 이메일 발송 시각을 throttle 맵에 기록 */
 export function recordSend(senderId: string, recipientId: string): void {
   if (throttleMap.size >= THROTTLE_MAP_MAX_SIZE) {
     throttleMap.clear();
@@ -48,6 +50,7 @@ export function recordSend(senderId: string, recipientId: string): void {
   throttleMap.set(key, Date.now());
 }
 
+/** throttle 맵 초기화 (테스트용) */
 export function clearThrottleMap(): void {
   throttleMap.clear();
 }
@@ -71,6 +74,7 @@ interface SendNewMessageEmailParams {
   conversationId: string;
 }
 
+/** SMTP를 통해 새 메시지 알림 이메일 발송 (SMTP 미설정 시 무시) */
 export async function sendNewMessageEmail(
   params: SendNewMessageEmailParams,
 ): Promise<void> {

@@ -323,6 +323,7 @@ function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // 메인 함수
 // ============================================================================
 
+/** 로드맵 데이터를 4개 시트(개요/체계도/과정 상세/PBL)로 구성된 XLSX 바이트 배열로 변환 */
 export function generateXLSX(data: RoadmapExportData): Uint8Array {
   const workbook = XLSX.utils.book_new();
 
@@ -335,6 +336,7 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
   return new Uint8Array(buffer);
 }
 
+/** XLSX를 생성하고 브라우저에서 다운로드 (DOM a 태그 트리거) */
 export function downloadXLSX(data: RoadmapExportData, filename: string): void {
   const buffer = generateXLSX(data);
 

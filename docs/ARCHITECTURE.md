@@ -51,7 +51,12 @@ src/
 │   ├── (auth)/                   # 인증 라우트
 │   │   ├── login/
 │   │   ├── register/
-│   │   └── actions.ts
+│   │   └── actions/              # 인증 Server Actions (분리됨)
+│   │       ├── index.ts          # barrel export
+│   │       ├── auth.ts           # 로그인/회원가입/로그아웃
+│   │       ├── profile.ts        # 컨설턴트 프로필 CRUD
+│   │       ├── account.ts        # 비밀번호 변경/계정 삭제
+│   │       └── admin.ts          # 사용자 상태 관리
 │   ├── (dashboard)/              # 대시보드 라우트 (인증 필수)
 │   │   ├── dashboard/            # 공통 대시보드
 │   │   │   ├── messages/         # DM 메시징 (1:1 대화)
@@ -65,13 +70,24 @@ src/
 │   │   │           ├── interview/  # 인터뷰 입력
 │   │   │           └── roadmap/    # 로드맵 생성/관리
 │   │   ├── gallery/              # 로드맵 갤러리 (공유/좋아요)
-│   │   │   └── [id]/             # 갤러리 상세
+│   │   │   ├── [id]/             # 갤러리 상세
+│   │   │   └── actions/          # 갤러리 Server Actions (분리됨)
+│   │   │       ├── index.ts
+│   │   │       ├── queries.ts    # 갤러리 조회
+│   │   │       ├── interactions.ts # 좋아요/공유
+│   │   │       └── copy.ts       # 로드맵 복제
 │   │   ├── notifications/        # 알림 Server Actions
 │   │   ├── ops/                  # OPS_ADMIN 전용
 │   │   │   ├── projects/         # 프로젝트 관리
 │   │   │   │   ├── new/          # 프로젝트 생성
-│   │   │   │   └── [id]/         # 진단/배정/로드맵
-│   │   │   │       └── roadmap/  # 로드맵 열람 (읽기 전용)
+│   │   │   │   ├── [id]/         # 진단/배정/로드맵
+│   │   │   │   │   └── roadmap/  # 로드맵 열람 (읽기 전용)
+│   │   │   │   └── actions/      # 프로젝트 Server Actions (분리됨)
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── crud.ts       # 생성/배정
+│   │   │   │       ├── queries.ts    # 조회
+│   │   │   │       ├── dashboard.ts  # 통계/차트
+│   │   │   │       └── filters.ts    # 필터 옵션
 │   │   │   ├── users/            # 사용자 관리/승인
 │   │   │   ├── templates/        # 자가진단 템플릿
 │   │   │   ├── quota/            # 쿼터 관리
@@ -118,15 +134,40 @@ src/
 │   │   ├── notification.test.ts
 │   │   └── test-roadmap.ts
 │   ├── services/                 # 비즈니스 로직
-│   │   ├── roadmap.ts            # LLM 로드맵 생성
+│   │   ├── roadmap/              # 로드맵 생성 (모듈 분리됨)
+│   │   │   ├── index.ts          # barrel re-export
+│   │   │   ├── roadmap-generator.ts   # generateRoadmap 등 메인 생성
+│   │   │   ├── roadmap-crud.ts        # CRUD (finalize, versions)
+│   │   │   ├── roadmap-validator.ts   # validate* 함수 9개
+│   │   │   ├── roadmap-prompts.ts     # LLM 프롬프트 빌더
+│   │   │   ├── roadmap-time-utils.ts  # 시간 보정 유틸
+│   │   │   ├── roadmap-matrix-builder.ts # N×M 매트릭스 빌더
+│   │   │   ├── roadmap-stt-formatter.ts  # STT 인사이트 포맷
+│   │   │   └── roadmap-types.ts       # 공유 타입
+│   │   ├── matching/             # 컨설턴트 매칭 (모듈 분리됨)
+│   │   │   ├── index.ts
+│   │   │   ├── matching-llm.ts        # LLM 기반 매칭 추천
+│   │   │   └── matching-helpers.ts    # 데이터 조회/저장 헬퍼
+│   │   ├── export/               # 내보내기 (PDF/XLSX)
+│   │   │   ├── pdf/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── pdf-generator.ts   # PDF 메인 오케스트레이터
+│   │   │   │   ├── pdf-constants.ts   # 레이아웃/스타일 상수
+│   │   │   │   ├── pdf-font-loader.ts # 폰트 로딩
+│   │   │   │   ├── pdf-helpers.ts     # 문서 헬퍼 함수
+│   │   │   │   └── pdf-course-renderer.ts # 과정 상세 렌더링
+│   │   │   └── xlsx/
+│   │   │       ├── index.ts
+│   │   │       ├── xlsx-generator.ts  # XLSX 메인 + 시트 생성
+│   │   │       ├── xlsx-formatter.ts  # 포맷 유틸
+│   │   │       ├── xlsx-sheet-builder.ts # 시트 빌더 헬퍼
+│   │   │       └── xlsx-styles.ts     # 스타일 상수
 │   │   ├── llm.ts                # LLM API 호출 추상화
-│   │   ├── matching.ts           # 컨설턴트 매칭 알고리즘
+│   │   ├── quota.ts              # 일별/월별 LLM 호출 제한
 │   │   ├── notification.ts       # 알림 생성 헬퍼
 │   │   ├── stt.ts                # STT 인사이트 추출
-│   │   ├── quota.ts              # 일별/월별 LLM 호출 제한
 │   │   ├── audit.ts              # 이벤트 로깅
-│   │   ├── export-pdf.ts         # PDF 생성 (jspdf)
-│   │   └── export-xlsx.ts        # Excel 생성 (xlsx)
+│   │   └── email.ts              # 이메일 발송 (SMTP)
 │   ├── constants/                # 상수 정의
 │   │   ├── status.ts             # 역할/상태 상수 및 헬퍼 함수
 │   │   ├── industry.ts           # 업종 분류
@@ -138,6 +179,7 @@ src/
 │   │   ├── site.ts               # 사이트 메타 정보
 │   │   └── stt.ts                # STT 관련 상수
 │   ├── actions/                  # 공유 Server Actions 헬퍼
+│   │   ├── auth-helpers.ts       # 인증/역할/접근 검증 공통 헬퍼
 │   │   └── roadmap-export.ts     # 로드맵 내보내기
 │   ├── types/                    # TypeScript 타입
 │   │   └── action-result.ts      # Server Action 결과 타입
