@@ -58,15 +58,15 @@ describe('ADMIN_NAV_GROUPS', () => {
     expect(labels).toEqual(['사용자 관리', '쿼터 관리', '감사로그']);
   });
 
-  test('라이브러리 그룹에 로드맵 갤러리와 사전진단 템플릿이 있다', () => {
+  test('라이브러리 그룹에 로드맵 갤러리와 자가진단 템플릿이 있다', () => {
     const library = ADMIN_NAV_GROUPS[2];
     const labels = library.items.map((item) => item.label);
-    expect(labels).toEqual(['로드맵 갤러리', '사전진단 템플릿']);
+    expect(labels).toEqual(['로드맵 갤러리', '자가진단 템플릿']);
   });
 
-  test('사전진단 템플릿 경로는 /ops/templates이다', () => {
+  test('자가진단 템플릿 경로는 /ops/templates이다', () => {
     const library = ADMIN_NAV_GROUPS[2];
-    const template = library.items.find((item) => item.label === '사전진단 템플릿');
+    const template = library.items.find((item) => item.label === '자가진단 템플릿');
     expect(template?.href).toBe('/ops/templates');
   });
 
@@ -151,7 +151,7 @@ describe('isGroupActive', () => {
     expect(isGroupActive(opsGroup, '/ops/audit')).toBe(true);
   });
 
-  test('사전진단 템플릿 경로에서 라이브러리 그룹이 active이다', () => {
+  test('자가진단 템플릿 경로에서 라이브러리 그룹이 active이다', () => {
     expect(isGroupActive(libraryGroup, '/ops/templates')).toBe(true);
     expect(isGroupActive(libraryGroup, '/ops/templates/123')).toBe(true);
   });

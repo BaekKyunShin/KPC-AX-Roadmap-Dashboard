@@ -78,7 +78,7 @@ export async function changePassword(
  * 회원탈퇴 처리
  * 1. 세션 확인
  * 2. 비밀번호 검증 (본인 확인)
- * 3. 감사 로그 기록 (익명화 전)
+ * 3. 감사로그 기록 (익명화 전)
  * 4. users 테이블 개인정보 익명화 + 상태 WITHDRAWN
  * 5. Auth 사용자 차단 (이메일 변경 + ban)
  * 6. 로그아웃 + 리다이렉트
@@ -101,7 +101,7 @@ export async function deleteAccount(
 
   const { user, supabase } = auth;
 
-  // 3. 감사 로그 기록 (익명화 전에 기록해야 사용자 정보 유지)
+  // 3. 감사로그 기록 (익명화 전에 기록해야 사용자 정보 유지)
   await createAuditLog({
     actorUserId: user.id,
     action: 'USER_WITHDRAW',

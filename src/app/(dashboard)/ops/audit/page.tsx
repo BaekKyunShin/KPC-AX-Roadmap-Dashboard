@@ -211,7 +211,7 @@ export default function AuditLogPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="감사 로그"
+        title="감사로그"
         description="시스템 활동 내역을 확인합니다."
       />
 

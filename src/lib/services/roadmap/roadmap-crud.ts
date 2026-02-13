@@ -59,7 +59,7 @@ export async function finalizeRoadmap(
     .update({ status: 'FINALIZED' })
     .eq('id', roadmap.project_id);
 
-  // 감사 로그
+  // 감사로그
   await createAuditLog({
     actorUserId,
     action: 'ROADMAP_FINALIZE',
@@ -189,7 +189,7 @@ export async function updateRoadmapManually(
     return { success: false, validation, error: updateError.message };
   }
 
-  // 감사 로그
+  // 감사로그
   await createAuditLog({
     actorUserId,
     action: 'ROADMAP_UPDATE',

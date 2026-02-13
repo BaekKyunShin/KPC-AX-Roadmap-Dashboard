@@ -36,7 +36,7 @@ export interface AuditLogEntry {
 }
 
 /**
- * 감사 로그 조회
+ * 감사로그 조회
  * - SYSTEM_ADMIN: 전체 로그 조회 가능
  * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */

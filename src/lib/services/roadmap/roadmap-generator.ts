@@ -148,7 +148,7 @@ export async function generateRoadmap(
     .update({ status: 'ROADMAP_DRAFTED' })
     .eq('id', projectId);
 
-  // 감사 로그
+  // 감사로그
   await createAuditLog({
     actorUserId,
     action: 'ROADMAP_CREATE',

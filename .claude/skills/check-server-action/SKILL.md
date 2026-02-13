@@ -19,7 +19,7 @@ $ARGUMENTS Server Action 파일을 검사하세요.
 2. **역할 권한 검사** - users 테이블에서 role 조회 후 허용 역할 체크 (아래 3가지 패턴)
 3. **Zod 입력 검증** - `src/lib/schemas/`의 스키마로 `.safeParse()` 호출
 4. **비즈니스 로직** - admin 클라이언트(`createAdminClient()`, `@/lib/supabase/admin`)로 DB 작업
-   - 중요 변경 작업 시 감사 로그(`createAuditLog`, `@/lib/services/audit`) 권장
+   - 중요 변경 작업 시 감사로그(`createAuditLog`, `@/lib/services/audit`) 권장
 5. **반환 타입** - `{ success: true, data }` 또는 `{ success: false, error }` 형태 반환
 
 ### 역할 체크 패턴 3종
@@ -73,7 +73,7 @@ if (!projectData || projectData.assigned_consultant_id !== user.id) {
 | `registerUser` | 역할 체크 없음 (누구나 가입 가능), Admin API로 사용자 생성 |
 | `loginUser` | 역할 체크 없음, Supabase Auth signIn 직접 호출 |
 | `logoutUser` | ActionResult 미사용, `redirect()` 반환 |
-| `saveConsultantProfile` | 감사 로그 없음 (프로필 저장은 경미한 변경) |
+| `saveConsultantProfile` | 감사로그 없음 (프로필 저장은 경미한 변경) |
 
 ---
 
@@ -84,7 +84,7 @@ if (!projectData || projectData.assigned_consultant_id !== user.id) {
 - **세션 확인** 필수 (`createClient` 사용, admin 클라이언트 불필요)
 - **역할 검사** 선택 (RLS가 데이터 접근 제한)
 - **Zod 검증** 선택 (쿼리 파라미터가 단순하면 생략 가능)
-- **감사 로그** 불필요
+- **감사로그** 불필요
 - **반환 타입**: ActionResult가 아닌 **커스텀 인터페이스** 사용
   - 예: `ConsultantProjectListResult`, `ProjectListResult` 등
   - 오류 시 빈 배열 또는 `null` 반환

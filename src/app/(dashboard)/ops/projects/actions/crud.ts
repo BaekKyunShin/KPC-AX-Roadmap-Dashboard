@@ -73,7 +73,7 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     return { success: false, error: `프로젝트 생성 실패: ${insertError.message}` };
   }
 
-  // 감사 로그 기록
+  // 감사로그 기록
   await createAuditLog({
     actorUserId: user.id,
     action: 'PROJECT_CREATE',
@@ -164,7 +164,7 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
     .update({ status: 'DIAGNOSED' })
     .eq('id', projectId);
 
-  // 감사 로그 기록
+  // 감사로그 기록
   await createAuditLog({
     actorUserId: user.id,
     action: 'SELF_ASSESSMENT_CREATE',
@@ -256,7 +256,7 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
     })
     .eq('id', project_id);
 
-  // 감사 로그 기록
+  // 감사로그 기록
   await createAuditLog({
     actorUserId: user.id,
     action: 'PROJECT_ASSIGN',

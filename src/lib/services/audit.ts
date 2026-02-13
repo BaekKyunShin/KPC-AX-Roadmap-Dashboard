@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction, UserRole } from '@/types/database';
 
-/** 감사 로그 기본 페이지 크기 */
+/** 감사로그 기본 페이지 크기 */
 const AUDIT_LOG_DEFAULT_PAGE_SIZE = 50;
 
 interface AuditLogParams {
@@ -16,7 +16,7 @@ interface AuditLogParams {
 }
 
 /**
- * 감사 로그 기록
+ * 감사로그 기록
  * 서버 사이드에서만 호출 (서비스 역할 키 사용)
  */
 export async function createAuditLog({
@@ -42,7 +42,7 @@ export async function createAuditLog({
     });
 
     if (error) {
-      // 감사 로그 실패는 콘솔에만 기록 (사용자에게 영향 X)
+      // 감사로그 실패는 콘솔에만 기록 (사용자에게 영향 X)
       console.error('[createAuditLog Error]', error);
     }
   } catch (error) {
@@ -51,7 +51,7 @@ export async function createAuditLog({
 }
 
 /**
- * 감사 로그 조회 (OPS_ADMIN 이상)
+ * 감사로그 조회 (OPS_ADMIN 이상)
  * - SYSTEM_ADMIN: 전체 로그 조회 가능
  * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */
@@ -122,7 +122,7 @@ export async function fetchAuditLogs(options: {
   const { data, error, count } = await query;
 
   if (error) {
-    throw new Error(`감사 로그 조회 실패: ${error.message}`);
+    throw new Error(`감사로그 조회 실패: ${error.message}`);
   }
 
   return {

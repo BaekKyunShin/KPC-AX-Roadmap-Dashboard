@@ -380,7 +380,7 @@ export interface EvaluationCriteria {
   }[];
 }
 
-// 감사 로그
+// 감사로그
 export interface AuditLog {
   id: string;
   actor_user_id: string;
@@ -393,7 +393,7 @@ export interface AuditLog {
   created_at: string;
 }
 
-// 감사 로그 액션 타입
+// 감사로그 액션 타입
 export type AuditAction =
   | 'USER_APPROVE'
   | 'USER_SUSPEND'

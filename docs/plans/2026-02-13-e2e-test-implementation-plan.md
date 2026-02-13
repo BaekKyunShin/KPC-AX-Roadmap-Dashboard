@@ -1161,7 +1161,7 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     // 실제 셀렉터는 구현 시 Playwright Inspector로 확인
   });
 
-  test('라이브러리 — 사전진단 템플릿, 로드맵 갤러리', async ({ opsPage: page }) => {
+  test('라이브러리 — 자가진단 템플릿, 로드맵 갤러리', async ({ opsPage: page }) => {
     // 템플릿
     // 갤러리
   });
@@ -1493,7 +1493,7 @@ page.locator('[data-slot="dialog-content"]')
 
 **테스트 케이스 (Phase 2.13~2.14):**
 
-**감사 로그:**
+**감사로그:**
 - 필터 바 (검색, 액션, 대상, 사용자, 날짜)
 - 총 건수 표시
 - 다운로드 버튼

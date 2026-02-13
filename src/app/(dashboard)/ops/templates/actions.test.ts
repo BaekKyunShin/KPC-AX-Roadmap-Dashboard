@@ -5,7 +5,7 @@
  * - 인증/권한 없음 → 에러
  * - 활성 템플릿 → 삭제 불가
  * - 사용 중(usage > 0) → 삭제 불가
- * - 미사용 + 비활성 → 삭제 성공 + 감사 로그
+ * - 미사용 + 비활성 → 삭제 성공 + 감사로그
  * - DB 삭제 실패 → 에러
  */
 
@@ -154,7 +154,7 @@ describe('deleteTemplate', () => {
     });
   });
 
-  it('미사용 + 비활성 → 삭제 성공 + 감사 로그', async () => {
+  it('미사용 + 비활성 → 삭제 성공 + 감사로그', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
     const { revalidatePath } = await import('next/cache');
 

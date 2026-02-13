@@ -198,7 +198,7 @@ export async function createTestRoadmap(
       sttInsights
     );
 
-    // 6. 감사 로그
+    // 6. 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEST_ROADMAP_CREATE',
@@ -263,7 +263,7 @@ export async function reviseTestRoadmap(
       consultantProfile
     );
 
-    // 5. 감사 로그
+    // 5. 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEST_ROADMAP_REVISE',

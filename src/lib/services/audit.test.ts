@@ -1,7 +1,7 @@
 /**
  * audit.ts 테스트
- * - createAuditLog: 감사 로그 기록 (Supabase 모킹)
- * - fetchAuditLogs: 감사 로그 조회 (Supabase 모킹, 역할별 필터링)
+ * - createAuditLog: 감사로그 기록 (Supabase 모킹)
+ * - fetchAuditLogs: 감사로그 조회 (Supabase 모킹, 역할별 필터링)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -80,7 +80,7 @@ describe('createAuditLog', () => {
     targetId: 'proj-456',
   };
 
-  it('필수 파라미터로 감사 로그를 기록한다', async () => {
+  it('필수 파라미터로 감사로그를 기록한다', async () => {
     mock.addResult({ data: null, error: null });
 
     await createAuditLog(baseParams);
@@ -255,14 +255,14 @@ describe('fetchAuditLogs', () => {
   it('OPS_ADMIN은 컨설턴트가 수행한 로그만 조회한다', async () => {
     // R1: 컨설턴트 목록 조회 (from('users'))
     mock.addResult({ data: [{ id: 'consultant-1' }, { id: 'consultant-2' }], error: null });
-    // R2: 감사 로그 조회 (from('audit_logs'))
+    // R2: 감사로그 조회 (from('audit_logs'))
     mock.addResult({ data: [], error: null, count: 0 });
 
     await fetchAuditLogs({ currentUserRole: 'OPS_ADMIN' });
 
     // 컨설턴트 역할 필터
     expect(mock.chainable.in).toHaveBeenCalledWith('role', ['USER_PENDING', 'CONSULTANT_APPROVED']);
-    // 감사 로그를 컨설턴트 ID로 필터링
+    // 감사로그를 컨설턴트 ID로 필터링
     expect(mock.chainable.in).toHaveBeenCalledWith(
       'actor_user_id',
       ['consultant-1', 'consultant-2'],
@@ -287,7 +287,7 @@ describe('fetchAuditLogs', () => {
   it('Supabase 에러 시 Error를 throw한다', async () => {
     mock.addResult({ data: null, error: { message: 'DB error' }, count: null });
 
-    await expect(fetchAuditLogs({})).rejects.toThrow('감사 로그 조회 실패: DB error');
+    await expect(fetchAuditLogs({})).rejects.toThrow('감사로그 조회 실패: DB error');
   });
 
   it('count가 null이면 total 0으로 처리', async () => {

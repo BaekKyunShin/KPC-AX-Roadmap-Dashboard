@@ -76,7 +76,7 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
 }
 
 /**
- * 다운로드 감사 로그 기록
+ * 다운로드 감사로그 기록
  */
 export async function logDownload(
   roadmapId: string,
@@ -124,6 +124,6 @@ export async function logDownload(
     return { success: true };
   } catch (error) {
     console.error('[logDownload Error]', error);
-    return { success: false, error: '감사 로그 기록에 실패했습니다.' };
+    return { success: false, error: '감사로그 기록에 실패했습니다.' };
   }
 }

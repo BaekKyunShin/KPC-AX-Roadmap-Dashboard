@@ -84,7 +84,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     label: '라이브러리',
     items: [
       { href: '/gallery', label: '로드맵 갤러리', icon: Library },
-      { href: '/ops/templates', label: '사전진단 템플릿', icon: ClipboardList },
+      { href: '/ops/templates', label: '자가진단 템플릿', icon: ClipboardList },
     ],
   },
 ];

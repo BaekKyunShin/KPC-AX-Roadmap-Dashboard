@@ -102,7 +102,7 @@ export async function copyRoadmapToProject(params: {
     return errorResult('로드맵 복제 중 오류가 발생했습니다.');
   }
 
-  // 감사 로그
+  // 감사로그
   await createAuditLog({
     actorUserId: user.id,
     action: 'ROADMAP_COPY',

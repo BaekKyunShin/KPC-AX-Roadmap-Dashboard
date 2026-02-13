@@ -94,7 +94,7 @@ export async function updateUserStatus(
     };
   }
 
-  // 감사 로그 기록
+  // 감사로그 기록
   await createAuditLog({
     actorUserId: user.id,
     action: auditAction,

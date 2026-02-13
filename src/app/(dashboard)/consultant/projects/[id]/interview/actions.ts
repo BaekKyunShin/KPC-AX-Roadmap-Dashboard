@@ -140,7 +140,7 @@ export async function saveInterview(
       }
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: auditAction,
@@ -235,7 +235,7 @@ export async function processSttFile(
       return { success: false, error: 'STT 인사이트 저장에 실패했습니다.' };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: authResult.user.id,
       action: 'INTERVIEW_UPDATE',

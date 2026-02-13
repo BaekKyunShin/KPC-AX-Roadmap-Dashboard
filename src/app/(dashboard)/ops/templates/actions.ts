@@ -146,7 +146,7 @@ export async function createTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: error.message };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_CREATE',
@@ -230,7 +230,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
         return { success: false, error: error.message };
       }
 
-      // 감사 로그
+      // 감사로그
       await createAuditLog({
         actorUserId: user.id,
         action: 'TEMPLATE_CREATE',
@@ -270,7 +270,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: error.message };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_UPDATE',
@@ -323,7 +323,7 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
       return { success: false, error: error.message };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_ACTIVATE',
@@ -387,7 +387,7 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
       return { success: false, error: error.message };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_CREATE',
@@ -453,7 +453,7 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
       return { success: false, error: deleteError.message };
     }
 
-    // 감사 로그
+    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_DELETE',

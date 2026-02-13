@@ -65,7 +65,7 @@ export async function generateLLMMatchingRecommendations(
     await updateProjectStatusIfNeeded(supabase, projectId);
   }
 
-  // 6. 감사 로그
+  // 6. 감사로그
   await createAuditLog({
     actorUserId,
     action: 'MATCHING_EXECUTE',
