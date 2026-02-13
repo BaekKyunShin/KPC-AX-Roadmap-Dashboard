@@ -408,3 +408,64 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
     return { success: false, error: '템플릿 복제에 실패했습니다.' };
   }
 }
+
+// 템플릿 삭제 (미사용 + 비활성 템플릿만)
+export async function deleteTemplate(templateId: string): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+    const adminSupabase = createAdminClient();
+
+    // 템플릿 존재 확인
+    const { data: template, error: fetchError } = await supabase
+      .from('self_assessment_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+
+    if (fetchError || !template) {
+      return { success: false, error: '템플릿을 찾을 수 없습니다.' };
+    }
+
+    // 활성 템플릿은 삭제 불가
+    if (template.is_active) {
+      return { success: false, error: '활성 템플릿은 삭제할 수 없습니다. 먼저 비활성화해주세요.' };
+    }
+
+    // 사용 현황 확인
+    const { count: usageCount } = await supabase
+      .from('self_assessments')
+      .select('*', { count: 'exact', head: true })
+      .eq('template_id', templateId);
+
+    if (usageCount && usageCount > 0) {
+      return { success: false, error: `이 템플릿으로 진행된 자가진단이 ${usageCount}건 있어 삭제할 수 없습니다.` };
+    }
+
+    // 물리적 삭제
+    const { error: deleteError } = await adminSupabase
+      .from('self_assessment_templates')
+      .delete()
+      .eq('id', templateId);
+
+    if (deleteError) {
+      return { success: false, error: deleteError.message };
+    }
+
+    // 감사 로그
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'TEMPLATE_DELETE',
+      targetType: 'template',
+      targetId: templateId,
+      meta: { version: template.version, name: template.name },
+    });
+
+    revalidatePath('/ops/templates');
+    return { success: true };
+  } catch (error) {
+    console.error('[deleteTemplate Error]', error);
+    return { success: false, error: '템플릿 삭제에 실패했습니다.' };
+  }
+}

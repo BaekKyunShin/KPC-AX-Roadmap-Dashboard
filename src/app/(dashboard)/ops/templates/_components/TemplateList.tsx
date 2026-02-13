@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { SelfAssessmentTemplate } from '@/types/database';
-import { setActiveTemplate, duplicateTemplate } from '../actions';
+import { setActiveTemplate, duplicateTemplate, deleteTemplate } from '../actions';
+import { showSuccessToast } from '@/lib/utils/toast';
 import {
   Table,
   TableHeader,
@@ -51,8 +52,12 @@ export default function TemplateList({ templates }: TemplateListProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSetActive = async (templateId: string) => {
-    if (!confirm('이 템플릿을 활성화하시겠습니까? 기존 활성 템플릿은 비활성화됩니다.')) {
+  const executeAction = async (
+    templateId: string,
+    action: () => Promise<{ success: boolean; error?: string }>,
+    options: { confirmMessage?: string; errorFallback: string; onSuccess?: () => void },
+  ) => {
+    if (options.confirmMessage && !confirm(options.confirmMessage)) {
       return;
     }
 
@@ -60,9 +65,11 @@ export default function TemplateList({ templates }: TemplateListProps) {
     setError(null);
 
     try {
-      const result = await setActiveTemplate(templateId);
-      if (!result.success) {
-        setError(result.error || '활성화에 실패했습니다.');
+      const result = await action();
+      if (result.success) {
+        options.onSuccess?.();
+      } else {
+        setError(result.error || options.errorFallback);
       }
       setLoading(null);
       startTransition(() => {
@@ -74,24 +81,23 @@ export default function TemplateList({ templates }: TemplateListProps) {
     }
   };
 
-  const handleDuplicate = async (templateId: string) => {
-    setLoading(templateId);
-    setError(null);
+  const handleSetActive = (templateId: string) =>
+    executeAction(templateId, () => setActiveTemplate(templateId), {
+      confirmMessage: '이 템플릿을 활성화하시겠습니까? 기존 활성 템플릿은 비활성화됩니다.',
+      errorFallback: '활성화에 실패했습니다.',
+    });
 
-    try {
-      const result = await duplicateTemplate(templateId);
-      if (!result.success) {
-        setError(result.error || '복제에 실패했습니다.');
-      }
-      setLoading(null);
-      startTransition(() => {
-        router.refresh();
-      });
-    } catch {
-      setError('서버와 통신 중 오류가 발생했습니다.');
-      setLoading(null);
-    }
-  };
+  const handleDelete = (templateId: string) =>
+    executeAction(templateId, () => deleteTemplate(templateId), {
+      confirmMessage: '이 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      errorFallback: '삭제에 실패했습니다.',
+      onSuccess: () => showSuccessToast('템플릿이 삭제되었습니다.'),
+    });
+
+  const handleDuplicate = (templateId: string) =>
+    executeAction(templateId, () => duplicateTemplate(templateId), {
+      errorFallback: '복제에 실패했습니다.',
+    });
 
   if (templates.length === 0) {
     return (
@@ -205,6 +211,15 @@ export default function TemplateList({ templates }: TemplateListProps) {
                     >
                       복제
                     </TableActionLink>
+                    {!template.is_active && template.usage_count === 0 && (
+                      <TableActionLink
+                        variant="danger"
+                        onClick={() => handleDelete(template.id)}
+                        disabled={loading === template.id || isPending}
+                      >
+                        삭제
+                      </TableActionLink>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

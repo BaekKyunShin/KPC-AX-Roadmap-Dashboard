@@ -76,6 +76,7 @@ export async function getActionTypes(): Promise<{ value: AuditAction; label: str
     { value: 'TEMPLATE_CREATE', label: '템플릿 생성' },
     { value: 'TEMPLATE_UPDATE', label: '템플릿 수정' },
     { value: 'TEMPLATE_ACTIVATE', label: '템플릿 활성화' },
+    { value: 'TEMPLATE_DELETE', label: '템플릿 삭제' },
   ];
 }
 
