@@ -2,9 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getWorkflowStepIndex } from '@/lib/constants/status';
-
-/** 1일을 밀리초로 환산한 값 */
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
 /**
  * 프로젝트 목록 조회 (OPS_ADMIN) - 페이지네이션 및 검색 지원

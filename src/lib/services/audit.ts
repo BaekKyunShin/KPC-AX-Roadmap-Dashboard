@@ -2,6 +2,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction, UserRole } from '@/types/database';
 
+/** 감사 로그 기본 페이지 크기 */
+const AUDIT_LOG_DEFAULT_PAGE_SIZE = 50;
+
 interface AuditLogParams {
   actorUserId: string;
   action: AuditAction;
@@ -63,7 +66,7 @@ export async function fetchAuditLogs(options: {
   currentUserRole?: UserRole;
 }) {
   const supabase = createAdminClient();
-  const { page = 1, limit = 50, action, targetType, actorUserId, startDate, endDate, currentUserRole } = options;
+  const { page = 1, limit = AUDIT_LOG_DEFAULT_PAGE_SIZE, action, targetType, actorUserId, startDate, endDate, currentUserRole } = options;
 
   // OPS_ADMIN인 경우, 컨설턴트 사용자 ID 목록 조회
   let consultantUserIds: string[] | null = null;

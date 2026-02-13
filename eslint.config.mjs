@@ -9,9 +9,11 @@ const eslintConfig = defineConfig([
     rules: {
       // _prefix 변수를 허용 (destructuring rest 패턴 등)
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
       ],
+      // 프로덕션에서 console.log 누출 방지 (warn/error만 허용)
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
   // Override default ignores of eslint-config-next.

@@ -15,6 +15,10 @@ import type {
   MatchingOptions,
 } from './matching-helpers';
 
+/** 매칭 LLM 설정 */
+const MATCHING_LLM_TEMPERATURE = 0.3;
+const MATCHING_LLM_MAX_TOKENS = 4000;
+
 /**
  * LLM 기반 매칭 추천 생성
  * AI가 프로젝트 요구사항과 컨설턴트 프로필을 종합 분석하여 최적의 매칭 추천
@@ -37,7 +41,7 @@ export async function generateLLMMatchingRecommendations(
       { role: 'system', content: buildLLMSystemPrompt() },
       { role: 'user', content: buildLLMUserPrompt(projectData, assessmentScores, candidatesWithProfile) },
     ],
-    { temperature: 0.3, maxTokens: 4000 }
+    { temperature: MATCHING_LLM_TEMPERATURE, maxTokens: MATCHING_LLM_MAX_TOKENS }
   );
 
   // 3. LLM 응답 변환

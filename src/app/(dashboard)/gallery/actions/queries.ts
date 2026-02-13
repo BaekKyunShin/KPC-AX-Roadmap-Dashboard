@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
+import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
@@ -315,13 +316,11 @@ export async function fetchEligibleProjects(): Promise<ActionResult<EligibleProj
   const { user, supabase } = auth;
 
   // INTERVIEWED 이상 상태인 프로젝트만 (로드맵 생성 가능 상태)
-  const eligibleStatuses = ['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'];
-
   const { data, error } = await supabase
     .from('projects')
     .select('id, company_name, status')
     .eq('assigned_consultant_id', user.id)
-    .in('status', eligibleStatuses)
+    .in('status', [...ROADMAP_ELIGIBLE_STATUSES])
     .order('company_name');
 
   if (error) {

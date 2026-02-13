@@ -6,6 +6,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { NULL_UUID } from '@/lib/constants/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -64,7 +65,7 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
       actorUserId: user.id,
       action: 'PROJECT_CREATE',
       targetType: 'project',
-      targetId: '00000000-0000-0000-0000-000000000000',
+      targetId: NULL_UUID,
       meta: { company_name: validation.data.company_name },
       success: false,
       errorMessage: insertError.message,

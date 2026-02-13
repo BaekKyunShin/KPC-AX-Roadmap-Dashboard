@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consultantProfileSchema } from '@/lib/schemas/user';
+import { PG_UNIQUE_VIOLATION, SUPABASE_NO_ROWS } from '@/lib/constants/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -76,7 +77,7 @@ export async function saveConsultantProfile(formData: FormData): Promise<SimpleA
       });
 
     if (insertError) {
-      if (insertError.code === '23505') {
+      if (insertError.code === PG_UNIQUE_VIOLATION) {
         return {
           success: false,
           error: '이미 프로필이 등록되어 있습니다.',
@@ -126,7 +127,7 @@ export async function fetchConsultantProfile(): Promise<ActionResult<{ profile: 
       .single();
 
     if (profileError) {
-      if (profileError.code === 'PGRST116') {
+      if (profileError.code === SUPABASE_NO_ROWS) {
         // 프로필이 없는 경우
         return {
           success: true,

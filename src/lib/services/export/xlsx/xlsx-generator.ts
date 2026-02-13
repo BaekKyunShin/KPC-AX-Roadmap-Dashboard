@@ -39,11 +39,24 @@ import {
 } from './xlsx-sheet-builder';
 
 // ============================================================================
+// 시트별 열 너비 상수 (wch 단위)
+// ============================================================================
+
+/** 개요 시트: [라벨, 값, 값, 값] */
+const OVERVIEW_COL_WIDTHS = [14, 30, 30, 30];
+/** 과정 체계도 시트: [업무, 초급, 중급, 고급] */
+const MATRIX_COL_WIDTHS = [16, 36, 36, 36];
+/** 교육 과정 상세 시트: [시간, 모듈, 세부내용+, 빈칸, 실습/과제] */
+const COURSES_COL_WIDTHS = [10, 20, 28, 16, 34];
+/** PBL 프로그램 시트: [모듈명, 시간, 세부내용, 실습, 산출물, 도구] */
+const PBL_COL_WIDTHS = [20, 8, 32, 28, 24, 30];
+
+// ============================================================================
 // 시트 1: 개요
 // ============================================================================
 
 function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const COL_W = [14, 30, 30, 30];
+  const COL_W = OVERVIEW_COL_WIDTHS;
   const ctx = createCtx(COL_W);
 
   addBlankRow(ctx, 20);
@@ -81,7 +94,7 @@ function createOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const COL_W = [16, 36, 36, 36];
+  const COL_W = MATRIX_COL_WIDTHS;
   const ctx = createCtx(COL_W);
   const numberMap = buildCourseNumberMap(data.courses);
 
@@ -149,7 +162,7 @@ function createMatrixSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const COL_W = [10, 20, 28, 16, 34];
+  const COL_W = COURSES_COL_WIDTHS;
   const ctx = createCtx(COL_W);
   const detailsMergedW = COL_W[2] + COL_W[3]; // C-D 병합 너비
 
@@ -224,7 +237,7 @@ function createCoursesSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
-  const COL_W = [20, 8, 32, 28, 24, 30];
+  const COL_W = PBL_COL_WIDTHS;
   const ctx = createCtx(COL_W);
   const pbl = data.pblCourse;
 

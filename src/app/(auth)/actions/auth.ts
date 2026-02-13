@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { registerSchema, loginSchema } from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
+import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -95,13 +96,13 @@ export async function registerUser(formData: FormData): Promise<ActionResult<{ u
     await adminSupabase.auth.admin.deleteUser(authData.user.id);
 
     // 구체적인 에러 메시지 처리
-    if (profileError.code === '23505') {
+    if (profileError.code === PG_UNIQUE_VIOLATION) {
       return {
         success: false,
         error: '이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.',
       };
     }
-    if (profileError.code === '42P01') {
+    if (profileError.code === PG_TABLE_NOT_FOUND) {
       return {
         success: false,
         error: '데이터베이스 테이블이 생성되지 않았습니다. 관리자에게 문의해주세요.',

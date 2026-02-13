@@ -3,9 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PROJECT_STALL_THRESHOLDS } from '@/lib/constants/status';
-
-/** 1일을 밀리초로 환산한 값 */
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
 /**
  * 상태별 프로젝트 통계 조회

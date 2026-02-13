@@ -12,6 +12,13 @@ import { validateRoadmap } from './roadmap-validator';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
 
 // ============================================================================
+// 상수
+// ============================================================================
+
+/** 로드맵 생성 LLM 온도값 (0.7 = 적절한 창의성) */
+const LLM_TEMPERATURE = 0.7;
+
+// ============================================================================
 // 로드맵 생성
 // ============================================================================
 
@@ -82,7 +89,7 @@ export async function generateRoadmap(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: 0.7 } // maxTokens는 기본값(20000) 사용
+    { temperature: LLM_TEMPERATURE } // maxTokens는 기본값(20000) 사용
   );
 
   // 사용량 기록
@@ -297,7 +304,7 @@ export async function generateTestRoadmap(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: 0.7 }
+    { temperature: LLM_TEMPERATURE }
   );
 
   // 4. 사용량 기록
@@ -371,7 +378,7 @@ ${revisionPrompt}
       { role: 'system', content: systemPrompt },
       { role: 'user', content: revisionUserPrompt },
     ],
-    { temperature: 0.7 }
+    { temperature: LLM_TEMPERATURE }
   );
 
   // 5. 사용량 기록

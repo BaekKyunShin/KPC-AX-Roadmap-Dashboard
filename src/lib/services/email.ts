@@ -22,6 +22,9 @@ const transporter =
 const EMAIL_FROM = process.env.EMAIL_FROM || process.env.SMTP_USER || '';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+/** 이메일 본문에 표시할 메시지 미리보기 최대 길이 */
+const MESSAGE_PREVIEW_MAX_LENGTH = 100;
+
 // =============================================================================
 // Throttle (5분 중복 방지)
 // =============================================================================
@@ -77,8 +80,8 @@ export async function sendNewMessageEmail(
   }
 
   const preview = escapeHtml(
-    params.messagePreview.length > 100
-      ? params.messagePreview.slice(0, 100) + '...'
+    params.messagePreview.length > MESSAGE_PREVIEW_MAX_LENGTH
+      ? params.messagePreview.slice(0, MESSAGE_PREVIEW_MAX_LENGTH) + '...'
       : params.messagePreview,
   );
   const senderName = escapeHtml(params.senderName);

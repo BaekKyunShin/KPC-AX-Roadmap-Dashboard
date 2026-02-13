@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import {
   generateRoadmap,
   finalizeRoadmap,
@@ -39,7 +40,7 @@ export async function createRoadmap(
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
     }
 
-    if (!['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status)) {
+    if (!ROADMAP_ELIGIBLE_STATUSES.includes(projectData.status)) {
       return { success: false, error: '인터뷰가 완료된 프로젝트만 로드맵을 생성할 수 있습니다.' };
     }
 

@@ -5,6 +5,9 @@ import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction } from '@/types/database';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
+/** 전체 로그 내보내기 시 최대 건수 */
+const AUDIT_LOG_EXPORT_MAX = 10000;
+
 export interface AuditLogFilters {
   page?: number;
   limit?: number;
@@ -104,7 +107,7 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
   const result = await fetchAuditLogsService({
     ...filters,
     page: 1,
-    limit: 10000,
+    limit: AUDIT_LOG_EXPORT_MAX,
     currentUserRole: auth.role,
   });
   return { logs: result.logs, total: result.total };

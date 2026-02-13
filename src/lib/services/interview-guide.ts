@@ -8,6 +8,13 @@ import type { SelfAssessmentScores, DimensionScore } from '@/lib/constants/score
 import { callLLMForJSON } from './llm';
 
 // ============================================================================
+// 상수
+// ============================================================================
+
+/** 인터뷰 가이드 LLM 최대 토큰 수 */
+const INTERVIEW_GUIDE_LLM_MAX_TOKENS = 4000;
+
+// ============================================================================
 // 타입 정의
 // ============================================================================
 
@@ -154,7 +161,7 @@ export async function generateInterviewGuideData(
   ];
 
   const result = await callLLMForJSON<GuideData>(messages, {
-    maxTokens: 4000,
+    maxTokens: INTERVIEW_GUIDE_LLM_MAX_TOKENS,
   });
 
   return result;

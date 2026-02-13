@@ -51,6 +51,13 @@ export function canManageUser(currentUserRole: UserRole, targetUserRole: UserRol
 // 프로젝트 상태 관련 상수
 // =============================================================================
 
+/** 로드맵 생성이 가능한 프로젝트 상태 (인터뷰 완료 이후) */
+export const ROADMAP_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
+  'INTERVIEWED',
+  'ROADMAP_DRAFTED',
+  'FINALIZED',
+] as const;
+
 /**
  * 프로젝트 진행 상태 경고 기준 (일수)
  * - 대시보드 정체 프로젝트 표시 기준: 20일 이상
