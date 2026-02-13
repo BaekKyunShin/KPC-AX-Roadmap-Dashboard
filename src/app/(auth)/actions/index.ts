@@ -1,5 +1,6 @@
 // 인증 (로그인/회원가입/로그아웃)
-export { registerUser, loginUser, logoutUser, getCurrentUser, translateAuthError } from './auth';
+export { registerUser, loginUser, logoutUser, getCurrentUser } from './auth';
+export { translateAuthError } from './auth-utils';
 export type { ActionResult } from './auth';
 
 // 컨설턴트 프로필

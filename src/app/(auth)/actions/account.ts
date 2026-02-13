@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { changePasswordSchema, deleteAccountSchema } from '@/lib/schemas/user';
 import { createAuditLog } from '@/lib/services/audit';
 import { redirect } from 'next/navigation';
-import { translateAuthError } from './auth';
+import { translateAuthError } from './auth-utils';
 import type { ActionResult } from './auth';
 
 /**

@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
-import { extractTags } from './copy';
+import { extractTags } from './gallery-utils';
 
 // =============================================================================
 // Types
