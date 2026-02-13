@@ -2,7 +2,7 @@
 
 import { getAuditLogs } from '@/lib/services/audit';
 import { CONSULTANT_ROLES } from '@/lib/constants/status';
-import type { AuditAction, UserRole } from '@/types/database';
+import type { AuditAction } from '@/types/database';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
 export interface AuditLogFilters {
@@ -43,7 +43,7 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
 
   return await getAuditLogs({
     ...filters,
-    currentUserRole: auth.role as UserRole,
+    currentUserRole: auth.role,
   });
 }
 
@@ -105,7 +105,7 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
     ...filters,
     page: 1,
     limit: 10000,
-    currentUserRole: auth.role as UserRole,
+    currentUserRole: auth.role,
   });
   return { logs: result.logs, total: result.total };
 }

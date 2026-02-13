@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
+import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, type AuthSuccess } from '@/lib/actions/auth-helpers';
 import {
   createActivityLogSchema,
   updateActivityLogSchema,
@@ -50,7 +50,7 @@ export interface ActivityLogsResult {
 
 async function verifyConsultantProjectAccess(
   projectId: string,
-): Promise<{ user: { id: string } } | { error: string }> {
+): Promise<{ user: { id: string }; supabase: AuthSuccess['supabase'] } | { error: string }> {
   const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
     roleError: '컨설턴트만 접근 가능합니다.',
   });
@@ -59,7 +59,7 @@ async function verifyConsultantProjectAccess(
   const accessCheck = await requireConsultantProjectAccess(auth.supabase, auth.user.id, projectId);
   if (accessCheck !== true) return accessCheck;
 
-  return { user: { id: auth.user.id } };
+  return { user: { id: auth.user.id }, supabase: auth.supabase };
 }
 
 // ============================================================================
@@ -285,9 +285,7 @@ export async function generateInterviewGuide(
     }
 
     // 프로젝트 + 자가진단 데이터 조회
-    const authForQuery = await requireAuth();
-    if ('error' in authForQuery) return { success: false, error: authForQuery.error };
-    const { data: projectData } = await authForQuery.supabase
+    const { data: projectData } = await auth.supabase
       .from('projects')
       .select(`
         company_name,

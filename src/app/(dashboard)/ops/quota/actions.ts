@@ -33,7 +33,7 @@ export async function fetchUsageStats(options: {
 
   return await getAllUsersUsage({
     ...options,
-    currentUserRole: auth.role as UserRole,
+    currentUserRole: auth.role,
   });
 }
 
@@ -64,7 +64,7 @@ export async function updateQuota(
     }
 
     // 현재 사용자가 대상 사용자의 쿼터를 수정할 권한이 있는지 확인
-    if (!canManageUser(auth.role as UserRole, targetUser.role as UserRole)) {
+    if (!canManageUser(auth.role, targetUser.role as UserRole)) {
       return { success: false, error: '해당 사용자의 쿼터를 수정할 권한이 없습니다.' };
     }
 
