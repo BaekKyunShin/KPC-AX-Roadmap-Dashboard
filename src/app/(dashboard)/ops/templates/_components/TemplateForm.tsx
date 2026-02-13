@@ -21,12 +21,11 @@ interface TemplateFormProps {
 }
 
 const DIMENSIONS = [
-  '데이터 활용',
-  '업무 프로세스',
-  '조직 역량',
-  'IT 인프라',
-  'AI 활용 현황',
-  '기대 효과',
+  'AI 성숙도',
+  '데이터 준비도',
+  '인력 준비도',
+  '인프라 준비도',
+  '문제 명확성',
 ];
 
 const QUESTION_TYPES = [
@@ -104,11 +103,36 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     setQuestions(newQuestions.map((q, i) => ({ ...q, order: i + 1 })));
   };
 
+  const showValidationError = (msg: string) => {
+    setError(msg);
+    showErrorToast('입력 오류', msg);
+    scrollToElement(formRef);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // 클라이언트 측 검증 (Radix Select는 HTML required 미지원)
+    if (!name.trim()) {
+      showValidationError('템플릿 이름을 입력하세요.');
+      return;
+    }
+
+    const emptyQuestion = questions.find((q) => !q.question_text.trim());
+    if (emptyQuestion) {
+      showValidationError(`질문 #${emptyQuestion.order}의 내용을 입력하세요.`);
+      return;
+    }
+
+    const invalidWeight = questions.find((q) => q.weight < 0.1 || q.weight > 10);
+    if (invalidWeight) {
+      showValidationError(`질문 #${invalidWeight.order}의 가중치는 0.1~10 사이여야 합니다.`);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const formData = new FormData();
@@ -189,7 +213,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="예: 제조업 AI 성숙도 진단 v2"
           />
@@ -206,7 +229,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={2}
+            rows={4}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
             placeholder="템플릿에 대한 간단한 설명"
           />
@@ -316,9 +339,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                   <label className="block text-xs font-medium text-gray-500">가중치</label>
                   <input
                     type="number"
-                    min="0.1"
-                    max="10"
-                    step="0.1"
+                    step="any"
                     value={question.weight}
                     onChange={(e) =>
                       handleQuestionChange(index, 'weight', parseFloat(e.target.value) || 1)
@@ -333,7 +354,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                 <textarea
                   value={question.question_text}
                   onChange={(e) => handleQuestionChange(index, 'question_text', e.target.value)}
-                  required
                   rows={2}
                   className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md break-keep"
                   placeholder="질문 내용을 입력하세요"
