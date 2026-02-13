@@ -434,7 +434,7 @@ src/app/(dashboard)/gallery/
   - API 호출 로직 → `useAssignmentMatching` 커스텀 훅
 - **검증**: UI 수동 확인
 - **위험도**: 중간
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-13: ProjectDashboard.tsx 분리
 
@@ -583,7 +583,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-9 | (auth)/actions.ts 분리 | 완료 |
 | 2 | 2-10 | gallery/actions.ts 분리 | 완료 |
 | 2 | 2-11 | 공통 Actions 헬퍼 추출 | 완료 |
-| 2 | 2-12 | AssignmentTabSection.tsx 분리 | - |
+| 2 | 2-12 | AssignmentTabSection.tsx 분리 | 완료 |
 | 2 | 2-13 | ProjectDashboard.tsx 분리 | - |
 | 2 | 2-14 | TestRoadmapClient.tsx 분리 | - |
 | 2 | 2-15 | SelfAssessmentForm + ActivityLog | - |
