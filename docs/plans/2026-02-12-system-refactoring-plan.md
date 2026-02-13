@@ -387,7 +387,7 @@ src/app/(dashboard)/gallery/
 - **주의**: `'use server'` 디렉티브를 각 파일 최상단에 추가
 - **검증**: `npm run validate` + 관련 페이지 import 확인
 - **위험도**: 중간 (Server Action 디렉티브 주의)
-- [ ] 완료
+- [x] 완료
 
 #### Session 2-9: (auth)/actions.ts 분리
 
@@ -579,7 +579,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-5 | export-pdf.ts 헬퍼/상수 추출 | 완료 |
 | 2 | 2-6 | export-pdf.ts 렌더러 분리 | 완료 |
 | 2 | 2-7 | export-xlsx.ts 분리 | 완료 |
-| 2 | 2-8 | ops/projects/actions.ts 분리 | - |
+| 2 | 2-8 | ops/projects/actions.ts 분리 | 완료 |
 | 2 | 2-9 | (auth)/actions.ts 분리 | - |
 | 2 | 2-10 | gallery/actions.ts 분리 | - |
 | 2 | 2-11 | 공통 Actions 헬퍼 추출 | - |
