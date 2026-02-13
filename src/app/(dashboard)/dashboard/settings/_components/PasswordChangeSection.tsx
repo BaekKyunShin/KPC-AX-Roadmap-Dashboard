@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
+import { cn } from '@/lib/utils';
 
 // =============================================================================
 // PasswordField (파일-로컬 컴포넌트)
@@ -43,7 +44,7 @@ function PasswordField({
           value={value}
           onChange={onChange}
           disabled={disabled}
-          className={`pr-10 ${error ? 'border-destructive' : ''}`}
+          className={cn('pr-10', error && 'border-destructive')}
         />
         <button
           type="button"
@@ -107,7 +108,6 @@ export default function PasswordChangeSection() {
 
       if (!result.success) {
         setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
-        setIsPasswordLoading(false);
         return;
       }
 
@@ -115,9 +115,9 @@ export default function PasswordChangeSection() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setIsPasswordLoading(false);
     } catch {
       setPasswordServerError('서버와 통신 중 오류가 발생했습니다.');
+    } finally {
       setIsPasswordLoading(false);
     }
   }
