@@ -484,7 +484,7 @@ src/app/(dashboard)/gallery/
   - 세션 확인 → 공통 헬퍼 사용 (Session 2-11에서 추출한 것)
   - 에러 처리 → `try-catch` + `ActionResult` 반환 형식 통일
   - 캐시 무효화 → `revalidatePath` 패턴 통일
-- [ ] 완료
+- [x] 완료
 
 #### Session 3-2: 에러 처리 패턴 통일
 
@@ -500,7 +500,7 @@ src/app/(dashboard)/gallery/
   - `npm run lint` 경고 중 미사용 import 제거
   - import 순서 통일 (외부 → 내부 → 상대경로)
   - 미사용 변수/함수 제거
-- [ ] 완료
+- [x] 완료
 
 #### Session 3-4: 타입 정리
 
@@ -589,7 +589,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-15 | SelfAssessmentForm + ActivityLog | 완료 |
 | 3 | 3-1 | Server Action 패턴 통일 | 완료 |
 | 3 | 3-2 | 에러 처리 패턴 통일 | 완료 |
-| 3 | 3-3 | import 정리 + 미사용 코드 제거 | - |
+| 3 | 3-3 | import 정리 + 미사용 코드 제거 | 완료 |
 | 3 | 3-4 | 타입 정리 | - |
 | 3 | 3-5 | 네이밍 일관성 | - |
 | 3 | 3-6~8 | 세부 정리 | - |
