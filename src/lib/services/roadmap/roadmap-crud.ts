@@ -91,7 +91,7 @@ export async function finalizeRoadmap(
 /**
  * 로드맵 조회
  */
-export async function getRoadmapVersions(projectId: string) {
+export async function fetchRoadmapVersions(projectId: string) {
   const supabase = createAdminClient();
 
   const { data: versions } = await supabase
@@ -106,7 +106,7 @@ export async function getRoadmapVersions(projectId: string) {
 /**
  * 특정 로드맵 버전 조회
  */
-export async function getRoadmapVersion(roadmapId: string) {
+export async function fetchRoadmapVersion(roadmapId: string) {
   const supabase = createAdminClient();
 
   const { data } = await supabase

@@ -20,7 +20,7 @@ import {
 } from '@/lib/schemas/interview';
 import { INTERVIEW_STEPS, REQUIRED_STEP_IDS } from '@/lib/constants/interview-steps';
 
-import { saveInterview, getInterview, processSttFile, deleteSttInsights } from './actions';
+import { saveInterview, fetchInterview, processSttFile, deleteSttInsights } from './actions';
 import InterviewStepper from './_components/InterviewStepper';
 import StepBasicInfo from './_components/StepBasicInfo';
 import StepCompanyDetails from './_components/StepCompanyDetails';
@@ -139,7 +139,7 @@ export default function InterviewPage() {
   // 기존 인터뷰 데이터 로드
   useEffect(() => {
     async function loadInterview() {
-      const data = await getInterview(projectId);
+      const data = await fetchInterview(projectId);
       if (data) {
         setInterviewDate(data.interview_date);
         // 빈 배열인 경우에도 기본 폼을 표시하도록 length 체크

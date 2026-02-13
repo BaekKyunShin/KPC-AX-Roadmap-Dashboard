@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuditLogs } from '@/lib/services/audit';
+import { fetchAuditLogs as fetchAuditLogsService } from '@/lib/services/audit';
 import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction } from '@/types/database';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
@@ -41,7 +41,7 @@ export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { logs: [], total: 0, page: 1, limit: 50, totalPages: 0 };
 
-  return await getAuditLogs({
+  return await fetchAuditLogsService({
     ...filters,
     currentUserRole: auth.role,
   });
@@ -101,7 +101,7 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
   if ('error' in auth) return { logs: [] };
 
   // 전체 로그 조회 (최대 10000건)
-  const result = await getAuditLogs({
+  const result = await fetchAuditLogsService({
     ...filters,
     page: 1,
     limit: 10000,
@@ -115,7 +115,7 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
  * - SYSTEM_ADMIN: 전체 사용자 조회 가능
  * - OPS_ADMIN: 컨설턴트만 조회 가능
  */
-export async function getUsers(): Promise<{ id: string; name: string; email: string }[]> {
+export async function fetchUsers(): Promise<{ id: string; name: string; email: string }[]> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return [];
 

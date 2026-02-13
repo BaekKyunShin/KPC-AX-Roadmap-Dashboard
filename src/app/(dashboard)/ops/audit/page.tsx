@@ -6,7 +6,7 @@ import {
   fetchAllAuditLogs,
   getActionTypes,
   getTargetTypes,
-  getUsers,
+  fetchUsers,
   type AuditLogEntry,
   type AuditLogFilters,
 } from './actions';
@@ -64,7 +64,7 @@ export default function AuditLogPage() {
       const [actions, targets, userList] = await Promise.all([
         getActionTypes(),
         getTargetTypes(),
-        getUsers(),
+        fetchUsers(),
       ]);
       setActionTypes(actions);
       setTargetTypes(targets);

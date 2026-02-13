@@ -1,11 +1,11 @@
 /**
  * audit.ts 테스트
  * - createAuditLog: 감사 로그 기록 (Supabase 모킹)
- * - getAuditLogs: 감사 로그 조회 (Supabase 모킹, 역할별 필터링)
+ * - fetchAuditLogs: 감사 로그 조회 (Supabase 모킹, 역할별 필터링)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createAuditLog, getAuditLogs } from './audit';
+import { createAuditLog, fetchAuditLogs } from './audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // ─── Supabase 모킹 ─────────────────────────────────────────────────────────
@@ -156,9 +156,9 @@ describe('createAuditLog', () => {
   });
 });
 
-// ─── getAuditLogs ─────────────────────────────────────────────────────────
+// ─── fetchAuditLogs ─────────────────────────────────────────────────────────
 
-describe('getAuditLogs', () => {
+describe('fetchAuditLogs', () => {
   let mock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
@@ -174,7 +174,7 @@ describe('getAuditLogs', () => {
     const logData = [{ id: 'log-1', action: 'PROJECT_CREATE' }];
     mock.addResult({ data: logData, error: null, count: 1 });
 
-    const result = await getAuditLogs({});
+    const result = await fetchAuditLogs({});
 
     expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
     expect(mock.chainable.select).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe('getAuditLogs', () => {
   it('page와 limit 파라미터를 적용한다', async () => {
     mock.addResult({ data: [], error: null, count: 100 });
 
-    const result = await getAuditLogs({ page: 3, limit: 10 });
+    const result = await fetchAuditLogs({ page: 3, limit: 10 });
 
     expect(mock.chainable.range).toHaveBeenCalledWith(20, 29); // (3-1)*10 ~ 3*10-1
     expect(result.page).toBe(3);
@@ -206,7 +206,7 @@ describe('getAuditLogs', () => {
   it('action 필터를 적용한다', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({ action: 'USER_APPROVE' });
+    await fetchAuditLogs({ action: 'USER_APPROVE' });
 
     expect(mock.chainable.eq).toHaveBeenCalledWith('action', 'USER_APPROVE');
   });
@@ -214,7 +214,7 @@ describe('getAuditLogs', () => {
   it('targetType 필터를 적용한다', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({ targetType: 'project' });
+    await fetchAuditLogs({ targetType: 'project' });
 
     expect(mock.chainable.eq).toHaveBeenCalledWith('target_type', 'project');
   });
@@ -222,7 +222,7 @@ describe('getAuditLogs', () => {
   it('actorUserId 필터를 적용한다', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({ actorUserId: 'user-123' });
+    await fetchAuditLogs({ actorUserId: 'user-123' });
 
     expect(mock.chainable.eq).toHaveBeenCalledWith('actor_user_id', 'user-123');
   });
@@ -230,7 +230,7 @@ describe('getAuditLogs', () => {
   it('startDate/endDate 필터를 적용한다', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({
+    await fetchAuditLogs({
       startDate: '2025-01-01',
       endDate: '2025-12-31',
     });
@@ -242,7 +242,7 @@ describe('getAuditLogs', () => {
   it('SYSTEM_ADMIN은 전체 로그를 조회한다 (컨설턴트 필터 없음)', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({ currentUserRole: 'SYSTEM_ADMIN' });
+    await fetchAuditLogs({ currentUserRole: 'SYSTEM_ADMIN' });
 
     // 컨설턴트 조회를 위한 별도 from('users') 호출 없음
     // from은 audit_logs 한 번만 호출됨
@@ -258,7 +258,7 @@ describe('getAuditLogs', () => {
     // R2: 감사 로그 조회 (from('audit_logs'))
     mock.addResult({ data: [], error: null, count: 0 });
 
-    await getAuditLogs({ currentUserRole: 'OPS_ADMIN' });
+    await fetchAuditLogs({ currentUserRole: 'OPS_ADMIN' });
 
     // 컨설턴트 역할 필터
     expect(mock.chainable.in).toHaveBeenCalledWith('role', ['USER_PENDING', 'CONSULTANT_APPROVED']);
@@ -272,7 +272,7 @@ describe('getAuditLogs', () => {
   it('OPS_ADMIN이고 컨설턴트가 없으면 빈 결과 반환', async () => {
     mock.addResult({ data: [], error: null }); // 컨설턴트 0명
 
-    const result = await getAuditLogs({ currentUserRole: 'OPS_ADMIN' });
+    const result = await fetchAuditLogs({ currentUserRole: 'OPS_ADMIN' });
 
     expect(result).toEqual({
       logs: [],
@@ -287,13 +287,13 @@ describe('getAuditLogs', () => {
   it('Supabase 에러 시 Error를 throw한다', async () => {
     mock.addResult({ data: null, error: { message: 'DB error' }, count: null });
 
-    await expect(getAuditLogs({})).rejects.toThrow('감사 로그 조회 실패: DB error');
+    await expect(fetchAuditLogs({})).rejects.toThrow('감사 로그 조회 실패: DB error');
   });
 
   it('count가 null이면 total 0으로 처리', async () => {
     mock.addResult({ data: [], error: null, count: null });
 
-    const result = await getAuditLogs({});
+    const result = await fetchAuditLogs({});
 
     expect(result.total).toBe(0);
     expect(result.totalPages).toBe(0);

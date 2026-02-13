@@ -91,7 +91,7 @@ async function validateUserAccess(): Promise<ValidateUserAccessResult> {
 /**
  * 컨설턴트 프로필 조회
  */
-async function getConsultantProfile(supabase: SupabaseClient, userId: string) {
+async function fetchConsultantProfile(supabase: SupabaseClient, userId: string) {
   const { data } = await supabase
     .from('consultant_profiles')
     .select('*')
@@ -177,7 +177,7 @@ export async function createTestRoadmap(
 
   try {
     // 3. 컨설턴트 프로필 조회
-    const consultantProfile = await getConsultantProfile(supabase, user.id);
+    const consultantProfile = await fetchConsultantProfile(supabase, user.id);
 
     // 4. STT 인사이트 추출 (텍스트가 있는 경우)
     let sttInsights: SttInsights | undefined;
@@ -251,7 +251,7 @@ export async function reviseTestRoadmap(
 
   try {
     // 3. 컨설턴트 프로필 조회
-    const consultantProfile = await getConsultantProfile(supabase, user.id);
+    const consultantProfile = await fetchConsultantProfile(supabase, user.id);
 
     // 4. 데이터 변환 및 로드맵 수정 요청
     const roadmapInput = convertToRoadmapInput(input);

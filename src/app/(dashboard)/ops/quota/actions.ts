@@ -1,7 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getAllUsersUsage, updateUserQuota, getUserUsage } from '@/lib/services/quota';
+import { fetchAllUsersUsage, updateUserQuota, fetchUserUsage } from '@/lib/services/quota';
 import { canManageUser } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
@@ -31,7 +31,7 @@ export async function fetchUsageStats(options: {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { users: [], total: 0, page: 1, limit: 20, totalPages: 0, month: '' };
 
-  return await getAllUsersUsage({
+  return await fetchAllUsersUsage({
     ...options,
     currentUserRole: auth.role,
   });
@@ -86,5 +86,5 @@ export async function fetchMyUsage() {
   const auth = await requireAuth();
   if ('error' in auth) return null;
 
-  return await getUserUsage(auth.user.id);
+  return await fetchUserUsage(auth.user.id);
 }

@@ -33,7 +33,7 @@ const updateTemplateSchema = z.object({
 });
 
 // 템플릿 목록 조회
-export async function getTemplates(): Promise<ActionResult<unknown>> {
+export async function fetchTemplates(): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -62,13 +62,13 @@ export async function getTemplates(): Promise<ActionResult<unknown>> {
 
     return { success: true, data: templatesWithUsage };
   } catch (error) {
-    console.error('[getTemplates Error]', error);
+    console.error('[fetchTemplates Error]', error);
     return { success: false, error: '템플릿 목록 조회에 실패했습니다.' };
   }
 }
 
 // 단일 템플릿 조회
-export async function getTemplate(templateId: string): Promise<ActionResult<unknown>> {
+export async function fetchTemplate(templateId: string): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -92,7 +92,7 @@ export async function getTemplate(templateId: string): Promise<ActionResult<unkn
 
     return { success: true, data: { ...template, usage_count: count || 0 } };
   } catch (error) {
-    console.error('[getTemplate Error]', error);
+    console.error('[fetchTemplate Error]', error);
     return { success: false, error: '템플릿 조회에 실패했습니다.' };
   }
 }

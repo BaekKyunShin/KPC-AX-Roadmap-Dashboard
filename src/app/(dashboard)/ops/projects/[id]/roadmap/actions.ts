@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
-import { getRoadmapVersions, getRoadmapVersion } from '@/lib/services/roadmap';
+import { fetchRoadmapVersions, fetchRoadmapVersion } from '@/lib/services/roadmap';
 
 /**
  * OPS_ADMIN용 로드맵 버전 목록 조회
@@ -11,7 +11,7 @@ export async function fetchRoadmapVersionsForOps(projectId: string) {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return [];
 
-    return await getRoadmapVersions(projectId);
+    return await fetchRoadmapVersions(projectId);
   } catch {
     return [];
   }
@@ -25,7 +25,7 @@ export async function fetchRoadmapVersionForOps(roadmapId: string) {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return null;
 
-    return await getRoadmapVersion(roadmapId);
+    return await fetchRoadmapVersion(roadmapId);
   } catch {
     return null;
   }

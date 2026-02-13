@@ -4,8 +4,8 @@ import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import {
   generateRoadmap,
   finalizeRoadmap,
-  getRoadmapVersions,
-  getRoadmapVersion,
+  fetchRoadmapVersions as fetchRoadmapVersionsService,
+  fetchRoadmapVersion as fetchRoadmapVersionService,
   updateRoadmapManually,
   type RoadmapRow,
   type PBLCourse,
@@ -141,7 +141,7 @@ export async function fetchRoadmapVersions(projectId: string) {
       return [];
     }
 
-    return await getRoadmapVersions(projectId);
+    return await fetchRoadmapVersionsService(projectId);
   } catch {
     return [];
   }
@@ -156,7 +156,7 @@ export async function fetchRoadmapVersion(roadmapId: string) {
     if ('error' in auth) return null;
     const { user, supabase } = auth;
 
-    const roadmap = await getRoadmapVersion(roadmapId);
+    const roadmap = await fetchRoadmapVersionService(roadmapId);
     if (!roadmap) return null;
 
     // 접근 권한 확인

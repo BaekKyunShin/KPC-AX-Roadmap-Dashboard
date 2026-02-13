@@ -123,9 +123,9 @@ describe('getKSTDateTime', () => {
 
 // ─── checkQuotaExceeded ─────────────────────────────────────────────────────
 //
-// 호출 흐름: checkQuotaExceeded → getUserUsage → getUserQuota
+// 호출 흐름: checkQuotaExceeded → fetchUserUsage → fetchUserQuota
 // 결과 소비 순서:
-//   1) getUserQuota: from('user_quotas').select().eq().single() → R1
+//   1) fetchUserQuota: from('user_quotas').select().eq().single() → R1
 //   2) 일별 사용량: from('usage_metrics').select().eq().eq().single() → R2
 //   3) 월별 사용량: from('usage_metrics').select().eq().eq() [no single] → R3
 

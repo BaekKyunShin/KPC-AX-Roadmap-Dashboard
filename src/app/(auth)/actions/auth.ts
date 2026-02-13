@@ -191,7 +191,7 @@ export async function logoutUser(): Promise<void> {
 /**
  * 현재 사용자 정보 조회 (역할 포함)
  */
-export async function getCurrentUser() {
+export async function fetchCurrentUser() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();

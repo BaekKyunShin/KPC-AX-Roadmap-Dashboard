@@ -38,7 +38,7 @@ export function getKSTDateTime() {
 /**
  * 사용자 쿼터 조회 (없으면 기본값 생성)
  */
-export async function getUserQuota(userId: string) {
+export async function fetchUserQuota(userId: string) {
   const supabase = createAdminClient();
 
   // 쿼터 조회
@@ -61,7 +61,7 @@ export async function getUserQuota(userId: string) {
       .single();
 
     if (error) {
-      console.error('[getUserQuota Error] Insert:', error);
+      console.error('[fetchUserQuota Error] Insert:', error);
       return {
         daily_limit: DEFAULT_DAILY_LIMIT,
         monthly_limit: DEFAULT_MONTHLY_LIMIT,
@@ -77,12 +77,12 @@ export async function getUserQuota(userId: string) {
 /**
  * 사용자 사용량 조회
  */
-export async function getUserUsage(userId: string): Promise<UsageMetrics> {
+export async function fetchUserUsage(userId: string): Promise<UsageMetrics> {
   const supabase = createAdminClient();
   const { date, month } = getKSTDateTime();
 
   // 쿼터 조회
-  const quota = await getUserQuota(userId);
+  const quota = await fetchUserQuota(userId);
 
   // 일별 사용량 조회
   const { data: dailyUsage } = await supabase
@@ -120,7 +120,7 @@ export async function checkQuotaExceeded(userId: string): Promise<{
   reason?: 'daily' | 'monthly';
   message?: string;
 }> {
-  const usage = await getUserUsage(userId);
+  const usage = await fetchUserUsage(userId);
 
   if (usage.daily >= usage.dailyLimit) {
     return {
@@ -225,7 +225,7 @@ export async function updateUserQuota(
  * - SYSTEM_ADMIN: 운영관리자 + 컨설턴트 조회 가능
  * - OPS_ADMIN: 컨설턴트만 조회 가능
  */
-export async function getAllUsersUsage(options: {
+export async function fetchAllUsersUsage(options: {
   page?: number;
   limit?: number;
   month?: string;

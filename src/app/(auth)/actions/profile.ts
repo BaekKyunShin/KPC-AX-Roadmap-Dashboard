@@ -104,7 +104,7 @@ export async function saveConsultantProfile(formData: FormData): Promise<SimpleA
  * 컨설턴트 프로필 조회
  * 현재 로그인한 사용자의 프로필 조회
  */
-export async function getConsultantProfile(): Promise<ActionResult<{ profile: unknown }>> {
+export async function fetchConsultantProfile(): Promise<ActionResult<{ profile: unknown }>> {
   try {
     const supabase = await createClient();
     const { data: authData, error: userError } = await supabase.auth.getUser();

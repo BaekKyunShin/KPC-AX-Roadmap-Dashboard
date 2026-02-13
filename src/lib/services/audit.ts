@@ -52,7 +52,7 @@ export async function createAuditLog({
  * - SYSTEM_ADMIN: 전체 로그 조회 가능
  * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
  */
-export async function getAuditLogs(options: {
+export async function fetchAuditLogs(options: {
   page?: number;
   limit?: number;
   action?: AuditAction;

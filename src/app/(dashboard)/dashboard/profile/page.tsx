@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { getConsultantProfile } from '@/app/(auth)/actions';
+import { fetchConsultantProfile } from '@/app/(auth)/actions';
 import ProfileForm from '@/components/consultant/ProfileForm';
 import type { ConsultantProfile } from '@/types/database';
 
@@ -14,7 +14,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const result = await getConsultantProfile();
+        const result = await fetchConsultantProfile();
         if (result.success) {
           if (result.data.profile) {
             setProfile(result.data.profile as ConsultantProfile);

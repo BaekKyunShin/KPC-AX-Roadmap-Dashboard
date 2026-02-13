@@ -168,7 +168,7 @@ export async function saveInterview(
   }
 }
 
-export async function getInterview(projectId: string) {
+export async function fetchInterview(projectId: string) {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return null;

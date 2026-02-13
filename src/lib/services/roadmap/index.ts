@@ -19,7 +19,7 @@ export { generateRoadmap, generateTestRoadmap, reviseTestRoadmap } from './roadm
 export type { TestRoadmapInput } from './roadmap-generator';
 
 // CRUD 함수
-export { finalizeRoadmap, getRoadmapVersions, getRoadmapVersion, updateRoadmapManually } from './roadmap-crud';
+export { finalizeRoadmap, fetchRoadmapVersions, fetchRoadmapVersion, updateRoadmapManually } from './roadmap-crud';
 
 // 순수 유틸리티
 export { sumModuleHours, normalizeCoursesHours, normalizePBLHours, normalizeRoadmapHours } from './roadmap-time-utils';
