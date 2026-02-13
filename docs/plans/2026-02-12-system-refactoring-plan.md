@@ -492,7 +492,7 @@ src/app/(dashboard)/gallery/
   - `[FunctionName Error]` 로깅 패턴 적용
   - `error instanceof Error ? error.message : '기본 메시지'` 패턴 통일
   - 에러 메시지 상수화 검토
-- [ ] 완료
+- [x] 완료
 
 #### Session 3-3: import 정리 + 미사용 코드 제거
 
@@ -588,7 +588,7 @@ src/app/(dashboard)/gallery/
 | 2 | 2-14 | TestRoadmapClient.tsx 분리 | 완료 |
 | 2 | 2-15 | SelfAssessmentForm + ActivityLog | 완료 |
 | 3 | 3-1 | Server Action 패턴 통일 | 완료 |
-| 3 | 3-2 | 에러 처리 패턴 통일 | - |
+| 3 | 3-2 | 에러 처리 패턴 통일 | 완료 |
 | 3 | 3-3 | import 정리 + 미사용 코드 제거 | - |
 | 3 | 3-4 | 타입 정리 | - |
 | 3 | 3-5 | 네이밍 일관성 | - |
