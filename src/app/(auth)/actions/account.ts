@@ -126,7 +126,7 @@ export async function deleteAccount(
     .eq('id', user.id);
 
   if (updateError) {
-    console.error('[Delete Account - Users Update Error]', updateError);
+    console.error('[deleteAccount Error] 사용자 테이블 업데이트:', updateError);
     return {
       success: false,
       error: '계정 삭제 처리 중 오류가 발생했습니다. 관리자에게 문의해주세요.',
@@ -143,7 +143,7 @@ export async function deleteAccount(
   });
 
   if (banError) {
-    console.error('[Delete Account - Auth Ban Error]', banError);
+    console.error('[deleteAccount Error] Auth 차단:', banError);
     // users 테이블은 이미 익명화됨 — 치명적이지 않으므로 계속 진행
   }
 

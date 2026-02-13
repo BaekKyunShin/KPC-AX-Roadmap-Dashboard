@@ -62,7 +62,8 @@ export async function getTemplates(): Promise<ActionResult> {
     );
 
     return { success: true, data: templatesWithUsage };
-  } catch {
+  } catch (error) {
+    console.error('[getTemplates Error]', error);
     return { success: false, error: '템플릿 목록 조회에 실패했습니다.' };
   }
 }
@@ -91,7 +92,8 @@ export async function getTemplate(templateId: string): Promise<ActionResult> {
       .eq('template_id', templateId);
 
     return { success: true, data: { ...template, usage_count: count || 0 } };
-  } catch {
+  } catch (error) {
+    console.error('[getTemplate Error]', error);
     return { success: false, error: '템플릿 조회에 실패했습니다.' };
   }
 }
@@ -156,7 +158,8 @@ export async function createTemplate(formData: FormData): Promise<ActionResult> 
 
     revalidatePath('/ops/templates');
     return { success: true, data: newTemplate };
-  } catch {
+  } catch (error) {
+    console.error('[createTemplate Error]', error);
     return { success: false, error: '템플릿 생성에 실패했습니다.' };
   }
 }
@@ -280,7 +283,8 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult> 
     revalidatePath('/ops/templates');
     revalidatePath(`/ops/templates/${validation.data.id}`);
     return { success: true, data: updatedTemplate };
-  } catch {
+  } catch (error) {
+    console.error('[updateTemplate Error]', error);
     return { success: false, error: '템플릿 수정에 실패했습니다.' };
   }
 }
@@ -331,7 +335,8 @@ export async function setActiveTemplate(templateId: string): Promise<ActionResul
 
     revalidatePath('/ops/templates');
     return { success: true };
-  } catch {
+  } catch (error) {
+    console.error('[setActiveTemplate Error]', error);
     return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
   }
 }
@@ -399,7 +404,8 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
 
     revalidatePath('/ops/templates');
     return { success: true, data: newTemplate };
-  } catch {
+  } catch (error) {
+    console.error('[duplicateTemplate Error]', error);
     return { success: false, error: '템플릿 복제에 실패했습니다.' };
   }
 }

@@ -136,7 +136,7 @@ describe('createAuditLog', () => {
 
     await createAuditLog(baseParams); // 예외 없이 완료
 
-    expect(consoleSpy).toHaveBeenCalledWith('[AuditLog] 기록 실패:', dbError);
+    expect(consoleSpy).toHaveBeenCalledWith('[createAuditLog Error]', dbError);
     consoleSpy.mockRestore();
   });
 
@@ -149,7 +149,7 @@ describe('createAuditLog', () => {
     await createAuditLog(baseParams);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[AuditLog] 예외 발생:',
+      '[createAuditLog Error]',
       expect.any(Error),
     );
     consoleSpy.mockRestore();

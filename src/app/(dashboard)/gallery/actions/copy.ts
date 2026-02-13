@@ -99,7 +99,7 @@ export async function copyRoadmapToProject(params: {
     .single();
 
   if (error || !newVersion) {
-    console.error('로드맵 복제 오류:', error);
+    console.error('[copyRoadmapToProject Error]', error);
     return errorResult('로드맵 복제 중 오류가 발생했습니다.');
   }
 

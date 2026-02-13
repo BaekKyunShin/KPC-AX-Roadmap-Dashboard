@@ -120,7 +120,7 @@ export async function callLLM(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('[LLM Error]', error);
+    console.error('[callLLM Error]', error);
     throw new Error(`LLM API 호출 실패: ${response.status}`);
   }
 

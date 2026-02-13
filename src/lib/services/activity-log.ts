@@ -21,9 +21,9 @@ export async function insertSystemActivityLog(
     });
 
     if (error) {
-      console.error('[ActivityLog] 시스템 로그 기록 실패:', error);
+      console.error('[insertSystemActivityLog Error]', error);
     }
-  } catch (err) {
-    console.error('[ActivityLog] 시스템 로그 예외:', err);
+  } catch (error) {
+    console.error('[insertSystemActivityLog Error]', error);
   }
 }

@@ -34,8 +34,8 @@ export async function fetchEmailNotifySetting(): Promise<
     }
 
     return { success: true, data: { enabled: data.email_notify_enabled } };
-  } catch (err) {
-    console.error('[fetchEmailNotifySetting] 예외:', err);
+  } catch (error) {
+    console.error('[fetchEmailNotifySetting Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -72,13 +72,13 @@ export async function updateEmailNotifySetting(
       .eq('id', user.id);
 
     if (error) {
-      console.error('[updateEmailNotifySetting]', error);
+      console.error('[updateEmailNotifySetting Error]', error);
       return { success: false, error: '설정 변경에 실패했습니다.' };
     }
 
     return { success: true };
-  } catch (err) {
-    console.error('[updateEmailNotifySetting] 예외:', err);
+  } catch (error) {
+    console.error('[updateEmailNotifySetting Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

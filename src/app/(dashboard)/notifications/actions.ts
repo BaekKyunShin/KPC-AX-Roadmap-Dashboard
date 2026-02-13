@@ -46,7 +46,7 @@ export async function fetchNotifications(
       .range(offset, offset + NOTIFICATION_PAGE_SIZE);
 
     if (error) {
-      console.error('[fetchNotifications]', error);
+      console.error('[fetchNotifications Error]', error);
       return { success: false, error: '알림 조회에 실패했습니다.' };
     }
 
@@ -60,8 +60,8 @@ export async function fetchNotifications(
         hasMore,
       },
     };
-  } catch (err) {
-    console.error('[fetchNotifications] 예외:', err);
+  } catch (error) {
+    console.error('[fetchNotifications Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -85,7 +85,7 @@ export async function fetchUnreadCount(): Promise<number> {
       .neq('type', 'message');
 
     if (error) {
-      console.error('[fetchUnreadCount]', error);
+      console.error('[fetchUnreadCount Error]', error);
       return 0;
     }
 
@@ -114,13 +114,13 @@ export async function markNotificationRead(
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('[markNotificationRead]', error);
+      console.error('[markNotificationRead Error]', error);
       return { success: false, error: '알림 읽음 처리에 실패했습니다.' };
     }
 
     return { success: true };
-  } catch (err) {
-    console.error('[markNotificationRead] 예외:', err);
+  } catch (error) {
+    console.error('[markNotificationRead Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -144,13 +144,13 @@ export async function markAllNotificationsRead(): Promise<SimpleActionResult> {
       .neq('type', 'message');
 
     if (error) {
-      console.error('[markAllNotificationsRead]', error);
+      console.error('[markAllNotificationsRead Error]', error);
       return { success: false, error: '모두 읽음 처리에 실패했습니다.' };
     }
 
     return { success: true };
-  } catch (err) {
-    console.error('[markAllNotificationsRead] 예외:', err);
+  } catch (error) {
+    console.error('[markAllNotificationsRead Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

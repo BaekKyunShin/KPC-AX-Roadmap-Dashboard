@@ -87,7 +87,7 @@ export async function saveInterview(
       .maybeSingle();
 
     if (fetchError) {
-      console.error('[saveInterview Fetch Error]', fetchError);
+      console.error('[saveInterview Error] Fetch:', fetchError);
       return { success: false, error: `기존 인터뷰 확인 실패: ${fetchError.message}` };
     }
 
@@ -114,7 +114,7 @@ export async function saveInterview(
         .eq('id', existingInterview.id);
 
       if (updateError) {
-        console.error('[saveInterview Update Error]', updateError);
+        console.error('[saveInterview Error] Update:', updateError);
         return { success: false, error: `인터뷰 수정 실패: ${updateError.message}` };
       }
       auditAction = 'INTERVIEW_UPDATE';
@@ -124,7 +124,7 @@ export async function saveInterview(
         .insert(interviewData);
 
       if (insertError) {
-        console.error('[saveInterview Insert Error]', insertError);
+        console.error('[saveInterview Error] Insert:', insertError);
         return { success: false, error: `인터뷰 저장 실패: ${insertError.message}` };
       }
       auditAction = 'INTERVIEW_CREATE';

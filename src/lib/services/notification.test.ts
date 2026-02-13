@@ -121,7 +121,7 @@ describe('createNotification', () => {
 
     expect(mock.chainable.insert).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotification] 검증 실패:',
+      '[createNotification Error] 검증 실패:',
       expect.anything(),
     );
 
@@ -160,7 +160,7 @@ describe('createNotification', () => {
     await createNotification(validParams); // 예외 없이 완료
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotification] 알림 생성 실패:',
+      '[createNotification Error]',
       dbError,
     );
     consoleSpy.mockRestore();
@@ -175,7 +175,7 @@ describe('createNotification', () => {
     await createNotification(validParams); // 예외 없이 완료
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotification] 예외:',
+      '[createNotification Error]',
       expect.any(Error),
     );
     consoleSpy.mockRestore();
@@ -241,7 +241,7 @@ describe('createNotificationForAdmins', () => {
 
     expect(mock.chainable.insert).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotificationForAdmins] 관리자 조회 실패:',
+      '[createNotificationForAdmins Error] 관리자 조회:',
       dbError,
     );
     consoleSpy.mockRestore();
@@ -256,7 +256,7 @@ describe('createNotificationForAdmins', () => {
     await createNotificationForAdmins(validParams);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotificationForAdmins] 알림 생성 실패:',
+      '[createNotificationForAdmins Error]',
       insertError,
     );
     consoleSpy.mockRestore();
@@ -271,7 +271,7 @@ describe('createNotificationForAdmins', () => {
     await createNotificationForAdmins(validParams);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[createNotificationForAdmins] 예외:',
+      '[createNotificationForAdmins Error]',
       expect.any(Error),
     );
     consoleSpy.mockRestore();

@@ -40,10 +40,10 @@ export async function createAuditLog({
 
     if (error) {
       // 감사 로그 실패는 콘솔에만 기록 (사용자에게 영향 X)
-      console.error('[AuditLog] 기록 실패:', error);
+      console.error('[createAuditLog Error]', error);
     }
-  } catch (err) {
-    console.error('[AuditLog] 예외 발생:', err);
+  } catch (error) {
+    console.error('[createAuditLog Error]', error);
   }
 }
 

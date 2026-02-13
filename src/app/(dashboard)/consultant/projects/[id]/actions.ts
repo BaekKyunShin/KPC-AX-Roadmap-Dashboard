@@ -95,7 +95,7 @@ export async function fetchActivityLogs(
   const { data, error, count } = await query;
 
   if (error) {
-    console.error('[fetchActivityLogs]', error);
+    console.error('[fetchActivityLogs Error]', error);
     return { logs: [], total: 0 };
   }
 
@@ -137,14 +137,14 @@ export async function createActivityLog(
       });
 
     if (insertError) {
-      console.error('[createActivityLog]', insertError);
+      console.error('[createActivityLog Error]', insertError);
       return { success: false, error: '활동 기록 저장에 실패했습니다.' };
     }
 
     revalidatePath(`/consultant/projects/${projectId}`);
     return { success: true };
-  } catch (err) {
-    console.error('[createActivityLog] 예외:', err);
+  } catch (error) {
+    console.error('[createActivityLog Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -216,14 +216,14 @@ export async function updateActivityLog(
       .eq('id', logId);
 
     if (updateError) {
-      console.error('[updateActivityLog]', updateError);
+      console.error('[updateActivityLog Error]', updateError);
       return { success: false, error: '기록 수정에 실패했습니다.' };
     }
 
     revalidatePath(`/consultant/projects/${projectId}`);
     return { success: true };
-  } catch (err) {
-    console.error('[updateActivityLog] 예외:', err);
+  } catch (error) {
+    console.error('[updateActivityLog Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -253,14 +253,14 @@ export async function deleteActivityLog(
       .eq('id', logId);
 
     if (deleteError) {
-      console.error('[deleteActivityLog]', deleteError);
+      console.error('[deleteActivityLog Error]', deleteError);
       return { success: false, error: '기록 삭제에 실패했습니다.' };
     }
 
     revalidatePath(`/consultant/projects/${projectId}`);
     return { success: true };
-  } catch (err) {
-    console.error('[deleteActivityLog] 예외:', err);
+  } catch (error) {
+    console.error('[deleteActivityLog Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -347,7 +347,7 @@ export async function generateInterviewGuide(
     // Zod 검증
     const validation = guideDataSchema.safeParse(guideData);
     if (!validation.success) {
-      console.error('[generateInterviewGuide] LLM 출력 검증 실패:', validation.error.errors);
+      console.error('[generateInterviewGuide Error] LLM 출력 검증 실패:', validation.error.errors);
       return { success: false, error: 'AI 분석 결과 형식이 올바르지 않습니다. 다시 시도해주세요.' };
     }
 
@@ -364,7 +364,7 @@ export async function generateInterviewGuide(
       );
 
     if (upsertError) {
-      console.error('[generateInterviewGuide] DB 저장 실패:', upsertError);
+      console.error('[generateInterviewGuide Error] DB 저장 실패:', upsertError);
       return { success: false, error: '분석 결과 저장에 실패했습니다.' };
     }
 
@@ -372,8 +372,8 @@ export async function generateInterviewGuide(
     await recordLLMUsage(auth.user.id);
 
     return { success: true, data: validation.data };
-  } catch (err) {
-    console.error('[generateInterviewGuide] 예외:', err);
+  } catch (error) {
+    console.error('[generateInterviewGuide Error]', error);
     return { success: false, error: 'AI 분석 중 오류가 발생했습니다. 다시 시도해주세요.' };
   }
 }
@@ -422,14 +422,14 @@ export async function updateInterviewGuideQuestions(
       .eq('id', existing.id);
 
     if (updateError) {
-      console.error('[updateInterviewGuideQuestions]', updateError);
+      console.error('[updateInterviewGuideQuestions Error]', updateError);
       return { success: false, error: '질문 업데이트에 실패했습니다.' };
     }
 
     revalidatePath(`/consultant/projects/${projectId}`);
     return { success: true };
-  } catch (err) {
-    console.error('[updateInterviewGuideQuestions] 예외:', err);
+  } catch (error) {
+    console.error('[updateInterviewGuideQuestions Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

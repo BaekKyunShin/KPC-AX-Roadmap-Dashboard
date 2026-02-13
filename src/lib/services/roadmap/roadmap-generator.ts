@@ -44,7 +44,7 @@ export async function generateRoadmap(
   ]);
 
   if (projectResult.error || !projectResult.data) {
-    console.error('[generateRoadmap] 프로젝트 조회 실패:', projectResult.error);
+    console.error('[generateRoadmap Error] 프로젝트 조회:', projectResult.error);
     throw new Error('프로젝트를 찾을 수 없습니다.');
   }
 

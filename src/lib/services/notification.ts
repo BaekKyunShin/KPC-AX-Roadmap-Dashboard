@@ -27,7 +27,7 @@ export async function createNotification(params: CreateNotificationParams): Prom
     });
 
     if (!validation.success) {
-      console.error('[createNotification] 검증 실패:', validation.error.errors);
+      console.error('[createNotification Error] 검증 실패:', validation.error.errors);
       return;
     }
 
@@ -41,10 +41,10 @@ export async function createNotification(params: CreateNotificationParams): Prom
     });
 
     if (error) {
-      console.error('[createNotification] 알림 생성 실패:', error);
+      console.error('[createNotification Error]', error);
     }
-  } catch (err) {
-    console.error('[createNotification] 예외:', err);
+  } catch (error) {
+    console.error('[createNotification Error]', error);
   }
 }
 
@@ -72,7 +72,7 @@ export async function createNotificationForAdmins(
       .eq('status', 'ACTIVE');
 
     if (error || !admins || admins.length === 0) {
-      if (error) console.error('[createNotificationForAdmins] 관리자 조회 실패:', error);
+      if (error) console.error('[createNotificationForAdmins Error] 관리자 조회:', error);
       return;
     }
 
@@ -90,9 +90,9 @@ export async function createNotificationForAdmins(
       .insert(rows);
 
     if (insertError) {
-      console.error('[createNotificationForAdmins] 알림 생성 실패:', insertError);
+      console.error('[createNotificationForAdmins Error]', insertError);
     }
-  } catch (err) {
-    console.error('[createNotificationForAdmins] 예외:', err);
+  } catch (error) {
+    console.error('[createNotificationForAdmins Error]', error);
   }
 }

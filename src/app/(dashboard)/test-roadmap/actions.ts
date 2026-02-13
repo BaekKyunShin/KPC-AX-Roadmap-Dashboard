@@ -221,7 +221,7 @@ export async function createTestRoadmap(
       },
     };
   } catch (error) {
-    console.error('[createTestRoadmap] Error:', error);
+    console.error('[createTestRoadmap Error]', error);
     return {
       success: false,
       error: formatError(error, ERROR_MESSAGES.CREATE_FAILED),
@@ -286,7 +286,7 @@ export async function reviseTestRoadmap(
       },
     };
   } catch (error) {
-    console.error('[reviseTestRoadmap] Error:', error);
+    console.error('[reviseTestRoadmap Error]', error);
     return {
       success: false,
       error: formatError(error, ERROR_MESSAGES.REVISE_FAILED),

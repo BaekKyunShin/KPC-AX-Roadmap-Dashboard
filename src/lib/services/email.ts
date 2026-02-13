@@ -124,7 +124,7 @@ export async function sendNewMessageEmail(
       `,
     });
   } catch (err) {
-    console.error('[sendNewMessageEmail] 발송 실패:', err);
+    console.error('[sendNewMessageEmail Error]', err);
   }
 }
 

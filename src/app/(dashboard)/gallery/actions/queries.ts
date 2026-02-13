@@ -160,7 +160,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   const { data, error } = await query;
 
   if (error) {
-    console.error('갤러리 조회 오류:', error);
+    console.error('[fetchGalleryRoadmaps Error]', error);
     return errorResult('갤러리를 불러오는 중 오류가 발생했습니다.');
   }
 

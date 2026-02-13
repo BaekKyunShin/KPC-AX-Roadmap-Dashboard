@@ -50,6 +50,6 @@ export function translateAuthError(message: string): string {
 
   // 일치하는 것이 없으면 사용자 친화적 메시지 반환
   // 원본 에러는 서버 로그에만 기록
-  console.error('[Auth Error - 미번역]', message);
+  console.error('[translateAuthError Error] 미번역 메시지:', message);
   return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도하거나, 문제가 지속되면 관리자에게 문의해주세요.';
 }

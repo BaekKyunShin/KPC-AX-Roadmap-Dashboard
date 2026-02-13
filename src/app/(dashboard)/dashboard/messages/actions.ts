@@ -33,7 +33,7 @@ export async function fetchConversations(): Promise<
       .eq('user_id', user.id);
 
     if (partError) {
-      console.error('[fetchConversations] 참여 조회:', partError);
+      console.error('[fetchConversations Error] 참여 조회:', partError);
       return { success: false, error: '메시지 목록을 불러올 수 없습니다.' };
     }
 
@@ -55,7 +55,7 @@ export async function fetchConversations(): Promise<
       .limit(CONVERSATION_PAGE_SIZE);
 
     if (convError) {
-      console.error('[fetchConversations] 대화 조회:', convError);
+      console.error('[fetchConversations Error] 대화 조회:', convError);
       return { success: false, error: '메시지 목록을 불러올 수 없습니다.' };
     }
 
@@ -73,7 +73,7 @@ export async function fetchConversations(): Promise<
       .neq('user_id', user.id);
 
     if (otherError) {
-      console.error('[fetchConversations] 상대방 조회:', otherError);
+      console.error('[fetchConversations Error] 상대방 조회:', otherError);
       return { success: false, error: '메시지 목록을 불러올 수 없습니다.' };
     }
 
@@ -135,8 +135,8 @@ export async function fetchConversations(): Promise<
     });
 
     return { success: true, data: result };
-  } catch (err) {
-    console.error('[fetchConversations] 예외:', err);
+  } catch (error) {
+    console.error('[fetchConversations Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -173,7 +173,7 @@ export async function fetchMessages(
     const { data, error } = await query;
 
     if (error) {
-      console.error('[fetchMessages]', error);
+      console.error('[fetchMessages Error]', error);
       return { success: false, error: '메시지를 불러올 수 없습니다.' };
     }
 
@@ -183,8 +183,8 @@ export async function fetchMessages(
     const messages = (hasMore ? rows.slice(0, MESSAGE_PAGE_SIZE) : rows).reverse();
 
     return { success: true, data: { messages, hasMore } };
-  } catch (err) {
-    console.error('[fetchMessages] 예외:', err);
+  } catch (error) {
+    console.error('[fetchMessages Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -230,7 +230,7 @@ export async function fetchAvailableRecipients(): Promise<
       .order('name');
 
     if (error) {
-      console.error('[fetchAvailableRecipients]', error);
+      console.error('[fetchAvailableRecipients Error]', error);
       return { success: false, error: '사용자 목록을 불러올 수 없습니다.' };
     }
 
@@ -255,8 +255,8 @@ export async function fetchAvailableRecipients(): Promise<
     const result = [...groups.values()].filter((g) => g.users.length > 0);
 
     return { success: true, data: result };
-  } catch (err) {
-    console.error('[fetchAvailableRecipients] 예외:', err);
+  } catch (error) {
+    console.error('[fetchAvailableRecipients Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -395,7 +395,7 @@ export async function createConversation(
       .single();
 
     if (convError || !newConv) {
-      console.error('[createConversation] 대화 생성:', convError);
+      console.error('[createConversation Error] 대화 생성:', convError);
       return { success: false, error: '메시지를 시작할 수 없습니다.' };
     }
 
@@ -408,14 +408,14 @@ export async function createConversation(
       ]);
 
     if (partError) {
-      console.error('[createConversation] 참여자 추가:', partError);
+      console.error('[createConversation Error] 참여자 추가:', partError);
       return { success: false, error: '메시지를 시작할 수 없습니다.' };
     }
 
     revalidatePath('/dashboard/messages');
     return { success: true, data: { conversationId: newConv.id } };
-  } catch (err) {
-    console.error('[createConversation] 예외:', err);
+  } catch (error) {
+    console.error('[createConversation Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -455,7 +455,7 @@ export async function sendMessage(
       .single();
 
     if (msgError) {
-      console.error('[sendMessage] INSERT:', msgError);
+      console.error('[sendMessage Error] INSERT:', msgError);
       return { success: false, error: '메시지를 전송할 수 없습니다.' };
     }
 
@@ -476,13 +476,13 @@ export async function sendMessage(
 
     // 이메일 알림 발송 (비동기, fire-and-forget)
     notifyRecipientByEmail(conversationId, user.id, validation.data.content).catch(
-      (err) => console.error('[sendMessage] 이메일 알림 오류:', err),
+      (err) => console.error('[sendMessage Error] 이메일 알림:', err),
     );
 
     revalidatePath('/dashboard/messages');
     return { success: true, data: message };
-  } catch (err) {
-    console.error('[sendMessage] 예외:', err);
+  } catch (error) {
+    console.error('[sendMessage Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }
@@ -506,13 +506,13 @@ export async function markConversationRead(
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('[markConversationRead]', error);
+      console.error('[markConversationRead Error]', error);
       return { success: false, error: '읽음 처리에 실패했습니다.' };
     }
 
     return { success: true };
-  } catch (err) {
-    console.error('[markConversationRead] 예외:', err);
+  } catch (error) {
+    console.error('[markConversationRead Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

@@ -91,7 +91,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
   });
 
   if (profileError) {
-    console.error('[Profile Insert Error]', profileError);
+    console.error('[registerUser Error] 프로필 생성:', profileError);
     // 롤백: Auth 사용자 삭제
     await adminSupabase.auth.admin.deleteUser(authData.user.id);
 

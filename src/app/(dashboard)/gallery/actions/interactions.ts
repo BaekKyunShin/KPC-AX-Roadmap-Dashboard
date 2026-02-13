@@ -44,7 +44,7 @@ export async function toggleLike(
       .insert({ user_id: user.id, roadmap_version_id: roadmapVersionId });
 
     if (error) {
-      console.error('좋아요 추가 오류:', error);
+      console.error('[toggleLike Error]', error);
       return errorResult('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
@@ -110,7 +110,7 @@ export async function toggleShare(
     .eq('id', roadmapVersionId);
 
   if (error) {
-    console.error('공유 토글 오류:', error);
+    console.error('[toggleShare Error]', error);
     return errorResult('공유 설정 변경 중 오류가 발생했습니다.');
   }
 

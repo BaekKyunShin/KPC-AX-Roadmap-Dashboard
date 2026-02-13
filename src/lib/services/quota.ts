@@ -61,7 +61,7 @@ export async function getUserQuota(userId: string) {
       .single();
 
     if (error) {
-      console.error('[getUserQuota] Insert error:', error);
+      console.error('[getUserQuota Error] Insert:', error);
       return {
         daily_limit: DEFAULT_DAILY_LIMIT,
         monthly_limit: DEFAULT_MONTHLY_LIMIT,
