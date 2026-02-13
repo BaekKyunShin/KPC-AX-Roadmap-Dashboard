@@ -7,6 +7,32 @@ export type { TabType } from './TabNavigation';
 // 아이콘
 export { SpinnerIcon, RefreshIcon, WarningIcon, CloseIcon, CheckIcon } from './Icons';
 
+// 분리된 컴포넌트
+export { default as SelectableCard } from './SelectableCard';
+export { default as RecommendationResults } from './RecommendationResults';
+
+// 커스텀 훅
+export { default as useAssignmentMatching } from './useAssignmentMatching';
+
+// 유틸리티 함수 및 타입
+export {
+  getScoreColorClass,
+  getScoreGaugeColor,
+  parseRationale,
+  DISPLAY_COUNTS,
+  SCORE_THRESHOLDS,
+  ERROR_MESSAGES,
+} from './utils';
+export type {
+  ConsultantInfo,
+  ConsultantProfile,
+  LLMRationaleData,
+  RationaleData,
+  Recommendation,
+  ValidRecommendation,
+  ParsedRationale,
+} from './utils';
+
 // 상수 및 유틸리티
 export {
   API_TIMEOUT_MS,
