@@ -4,214 +4,26 @@ import { useState, useMemo, useCallback, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check } from 'lucide-react';
+import {
+  type Question,
+  type Template,
+  groupQuestionsByDimension,
+  toCircledNumber,
+} from './self-assessment';
+import { StepIndicator } from './self-assessment/StepIndicator';
+import { ProgressBar } from './self-assessment/ProgressBar';
+import { DimensionHeader } from './self-assessment/DimensionHeader';
+import { QuestionInput } from './self-assessment/QuestionInputs';
+import { NavigationButtons } from './self-assessment/NavigationButtons';
 
 // ============================================================================
 // 타입 정의
 // ============================================================================
 
-interface Question {
-  id: string;
-  order: number;
-  dimension: string;
-  question_text: string;
-  question_type: 'SCALE_5' | 'SCALE_10' | 'MULTIPLE_CHOICE' | 'TEXT';
-  options?: string[];
-  weight: number;
-}
-
-interface Template {
-  id: string;
-  version: number;
-  name: string;
-  questions: Question[];
-}
-
 interface SelfAssessmentFormProps {
   projectId: string;
   template: Template;
-}
-
-// ============================================================================
-// 상수 정의
-// ============================================================================
-
-const CIRCLED_NUMBERS = [
-  '①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩',
-  '⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳',
-  '㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚'
-];
-
-const SCALE_5_LABELS = ['매우 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
-const SCALE_5_VALUES = [1, 2, 3, 4, 5] as const;
-const SCALE_10_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
-
-// ============================================================================
-// 유틸리티 함수
-// ============================================================================
-
-const toCircledNumber = (n: number): string => CIRCLED_NUMBERS[n - 1] || n.toString();
-
-const groupQuestionsByDimension = (questions: Question[]): Record<string, Question[]> => {
-  return questions.reduce((acc, q) => {
-    if (!acc[q.dimension]) {
-      acc[q.dimension] = [];
-    }
-    acc[q.dimension].push(q);
-    return acc;
-  }, {} as Record<string, Question[]>);
-};
-
-// ============================================================================
-// 하위 컴포넌트
-// ============================================================================
-
-/** 스텝 인디케이터 - 탭/세그먼트 스타일 */
-function StepIndicator({
-  steps,
-  currentStep,
-  completedSteps,
-  onStepClick,
-}: {
-  steps: string[];
-  currentStep: number;
-  completedSteps: Set<number>;
-  onStepClick: (step: number) => void;
-}) {
-  return (
-    <div className="mb-6">
-      {/* 데스크톱: 탭 스타일 */}
-      <div className="hidden sm:block">
-        <div className="flex rounded-lg bg-gray-100 p-1 gap-1">
-          {steps.map((stepName, index) => {
-            const isCompleted = completedSteps.has(index);
-            const isCurrent = index === currentStep;
-
-            return (
-              <button
-                key={stepName}
-                type="button"
-                onClick={() => onStepClick(index)}
-                className={`
-                  flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-sm font-medium transition-all
-                  ${isCurrent
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : isCompleted
-                      ? 'text-indigo-600 hover:bg-white/50'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
-                  }
-                `}
-              >
-                {/* 완료 표시 또는 번호 */}
-                <span className={`
-                  flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold flex-shrink-0
-                  ${isCompleted
-                    ? 'bg-indigo-500 text-white'
-                    : isCurrent
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-gray-200 text-gray-500'
-                  }
-                `}>
-                  {isCompleted ? (
-                    <Check className="w-3 h-3" />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <span className="truncate text-xs">{stepName}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 모바일: 컴팩트 스타일 */}
-      <div className="sm:hidden">
-        <div className="flex items-center justify-between bg-indigo-50 rounded-lg px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">
-              {currentStep + 1}
-            </span>
-            <span className="font-medium text-indigo-900">{steps[currentStep]}</span>
-          </div>
-          <span className="text-sm text-indigo-600">
-            {currentStep + 1} / {steps.length}
-          </span>
-        </div>
-        {/* 모바일 진행 바 */}
-        <div className="mt-2 flex gap-1">
-          {steps.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => onStepClick(index)}
-              className={`flex-1 h-1.5 rounded-full transition-colors ${
-                index === currentStep
-                  ? 'bg-indigo-500'
-                  : completedSteps.has(index)
-                    ? 'bg-indigo-300'
-                    : 'bg-gray-200'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** 진행률 바 */
-function ProgressBar({
-  answeredCount,
-  totalCount,
-}: {
-  answeredCount: number;
-  totalCount: number;
-}) {
-  // totalCount가 0인 edge case 방어
-  const percentage = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0;
-
-  return (
-    <div className="mb-4 bg-gray-50 rounded-lg p-3">
-      <div className="flex justify-between items-center mb-1.5">
-        <span className="text-xs font-medium text-gray-600">전체 진행률</span>
-        <span className="text-xs text-gray-500">
-          {answeredCount} / {totalCount} 문항 ({percentage}%)
-        </span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/** 현재 평가 영역 헤더 */
-function DimensionHeader({
-  dimension,
-  answeredCount,
-  totalCount,
-}: {
-  dimension: string;
-  answeredCount: number;
-  totalCount: number;
-}) {
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-gray-500 font-medium">평가 영역</span>
-        <span className="text-xs text-gray-500">
-          {answeredCount} / {totalCount} 완료
-        </span>
-      </div>
-      <div className="inline-flex items-center px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg">
-        <span className="text-sm font-medium text-indigo-700">{dimension}</span>
-      </div>
-    </div>
-  );
 }
 
 // ============================================================================
@@ -374,123 +186,6 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   }
 
   // ============================================================================
-  // 질문 타입별 렌더링
-  // ============================================================================
-
-  const renderScale5 = (question: Question) => (
-    <div className="w-full">
-      <div className="grid grid-cols-5 gap-2">
-        {SCALE_5_VALUES.map((value) => {
-          const isSelected = answers[question.id] === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleAnswerChange(question.id, value)}
-              className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                isSelected
-                  ? 'bg-blue-50 border-blue-500 text-blue-700'
-                  : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
-              }`}
-            >
-              <span className={`text-sm font-semibold ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
-                {value}
-              </span>
-              <span className="text-xs">{SCALE_5_LABELS[value - 1]}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  const renderScale10 = (question: Question) => (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {SCALE_10_VALUES.map((value) => {
-          const isSelected = answers[question.id] === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleAnswerChange(question.id, value)}
-              className={`w-9 h-9 rounded-lg border text-sm font-medium transition-colors ${
-                isSelected
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-              }`}
-            >
-              {value}
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
-        <span>매우 낮음</span>
-        <span>보통</span>
-        <span>매우 높음</span>
-      </div>
-    </div>
-  );
-
-  const renderMultipleChoice = (question: Question) => (
-    <div className="space-y-2">
-      {question.options?.map((option, index) => {
-        const value = index + 1;
-        const isSelected = answers[question.id] === value;
-        return (
-          <label
-            key={index}
-            className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-              isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <input
-              type="radio"
-              name={`question-${question.id}`}
-              value={value}
-              checked={isSelected}
-              onChange={() => handleAnswerChange(question.id, value)}
-              className="h-4 w-4 text-blue-600 border-gray-300"
-            />
-            <span className="ml-3 text-sm text-gray-700">{option}</span>
-          </label>
-        );
-      })}
-    </div>
-  );
-
-  const renderText = (question: Question) => (
-    <div>
-      <textarea
-        value={(answers[question.id] as string) || ''}
-        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-        rows={3}
-        placeholder="답변을 입력하세요..."
-        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm break-keep"
-      />
-      <p className="mt-1 text-xs text-gray-400">
-        {((answers[question.id] as string) || '').length}자
-      </p>
-    </div>
-  );
-
-  const renderQuestionInput = (question: Question) => {
-    switch (question.question_type) {
-      case 'SCALE_5':
-        return renderScale5(question);
-      case 'SCALE_10':
-        return renderScale10(question);
-      case 'MULTIPLE_CHOICE':
-        return renderMultipleChoice(question);
-      case 'TEXT':
-        return renderText(question);
-      default:
-        return renderScale5(question);
-    }
-  };
-
-  // ============================================================================
   // 렌더링
   // ============================================================================
 
@@ -546,77 +241,29 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
                   {question.question_text}
                 </span>
               </div>
-              {renderQuestionInput(question)}
+              <QuestionInput
+                question={question}
+                value={answers[question.id]}
+                onChange={handleAnswerChange}
+              />
             </div>
           ))}
       </div>
 
       {/* 네비게이션 버튼 */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-        {/* 이전 버튼 */}
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={currentStep === 0}
-          className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            currentStep === 0
-              ? 'text-gray-300 cursor-not-allowed'
-              : 'text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          이전
-        </button>
-
-        {/* 현재 위치 표시 */}
-        <div className="flex items-center gap-1">
-          {dimensions.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => goToStep(index)}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentStep ? 'bg-indigo-600' : 'bg-gray-300 hover:bg-gray-400'
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* 다음/제출 버튼 */}
-        {isLastStep ? (
-          <button
-            type="button"
-            onClick={handleSubmitClick}
-            disabled={isLoading || isPending || !allQuestionsAnswered}
-            className="flex items-center px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading || isPending ? (
-              <>
-                <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                저장 중...
-              </>
-            ) : (
-              '자가진단 저장'
-            )}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              isCurrentStepComplete
-                ? 'text-white bg-indigo-600 hover:bg-indigo-700'
-                : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
-            }`}
-          >
-            다음
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </button>
-        )}
-      </div>
+      <NavigationButtons
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        isLastStep={isLastStep}
+        isCurrentStepComplete={isCurrentStepComplete}
+        allQuestionsAnswered={allQuestionsAnswered}
+        isLoading={isLoading}
+        isPending={isPending}
+        onPrev={goPrev}
+        onNext={goNext}
+        onSubmit={handleSubmitClick}
+        onGoToStep={goToStep}
+      />
 
       {/* 전체 상태 요약 */}
       <div className="mt-4 text-center">

@@ -1,18 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import {
-  Search,
   FileText,
-  CheckSquare,
-  MessageSquare,
-  Settings,
   Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
   ChevronDown,
-  ChevronUp,
   Loader2,
   X,
 } from 'lucide-react';
@@ -25,292 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import {
   ACTIVITY_LOG_TYPE_CONFIG,
   MANUAL_ACTIVITY_LOG_TYPES,
-  ACTIVITY_LOG_PAGE_SIZE,
-  ACTIVITY_LOG_PREVIEW_LENGTH,
   ACTIVITY_LOG_MAX_LENGTH,
-  type ActivityLogType,
   type ManualActivityLogType,
 } from '@/lib/constants/activity-log';
-import {
-  fetchActivityLogs,
-  createActivityLog,
-  updateActivityLog,
-  deleteActivityLog,
-  type ActivityLogItem,
-} from '../actions';
+import { LogItem, useActivityLogs, FILTER_OPTIONS } from './activity-log';
+import { groupLogsByDate, formatDateLabel } from './activity-log/helpers';
 
 // ============================================================================
-// 타입 및 상수
+// 타입
 // ============================================================================
 
 interface ActivityLogProps {
   projectId: string;
-}
-
-const ICON_MAP: Record<ActivityLogType, typeof Search> = {
-  pre_research: Search,
-  field_note: FileText,
-  follow_up: CheckSquare,
-  client_feedback: MessageSquare,
-  system_auto: Settings,
-};
-
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '전체' },
-  ...MANUAL_ACTIVITY_LOG_TYPES.map((type) => ({
-    value: type,
-    label: ACTIVITY_LOG_TYPE_CONFIG[type].label,
-  })),
-];
-
-// ============================================================================
-// 헬퍼 함수
-// ============================================================================
-
-function formatRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMs / 3600000);
-  const diffDay = Math.floor(diffMs / 86400000);
-
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 7) return `${diffDay}일 전`;
-  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-}
-
-function formatDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-
-  if (date.toDateString() === today.toDateString()) return '오늘';
-  if (date.toDateString() === yesterday.toDateString()) return '어제';
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function groupLogsByDate(logs: ActivityLogItem[]): Map<string, ActivityLogItem[]> {
-  const groups = new Map<string, ActivityLogItem[]>();
-  for (const log of logs) {
-    const dateKey = new Date(log.created_at).toDateString();
-    const existing = groups.get(dateKey) ?? [];
-    existing.push(log);
-    groups.set(dateKey, existing);
-  }
-  return groups;
-}
-
-// ============================================================================
-// 서브 컴포넌트: 로그 아이템
-// ============================================================================
-
-function LogItem({
-  log,
-  projectId,
-  onUpdated,
-}: {
-  log: ActivityLogItem;
-  projectId: string;
-  onUpdated: () => void;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(log.content);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const config = ACTIVITY_LOG_TYPE_CONFIG[log.type];
-  const IconComponent = ICON_MAP[log.type];
-  const isSystem = log.type === 'system_auto';
-  const isLong = log.content.length > ACTIVITY_LOG_PREVIEW_LENGTH;
-  const isEdited = log.updated_at !== log.created_at;
-
-  async function handleUpdate() {
-    if (!editContent.trim()) return;
-    setIsSubmitting(true);
-
-    try {
-      const result = await updateActivityLog(log.id, projectId, editContent.trim());
-
-      if (result.success) {
-        showSuccessToast('기록이 수정되었습니다.');
-        setIsEditing(false);
-        onUpdated();
-      } else {
-        showErrorToast('수정 실패', result.error);
-      }
-    } catch {
-      showErrorToast('수정 실패', '서버와 통신 중 오류가 발생했습니다.');
-    }
-    setIsSubmitting(false);
-  }
-
-  async function handleDelete() {
-    if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-
-    try {
-      const result = await deleteActivityLog(log.id, projectId);
-
-      if (result.success) {
-        showSuccessToast('기록이 삭제되었습니다.');
-        onUpdated();
-      } else {
-        showErrorToast('삭제 실패', result.error);
-      }
-    } catch {
-      showErrorToast('삭제 실패', '서버와 통신 중 오류가 발생했습니다.');
-    }
-  }
-
-  function handleCancelEdit() {
-    setEditContent(log.content);
-    setIsEditing(false);
-  }
-
-  // 시스템 자동 기록: 간결한 스타일
-  if (isSystem) {
-    return (
-      <div className="flex items-center gap-3 py-2 px-3">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-          <IconComponent className="h-3.5 w-3.5 text-gray-400" />
-        </div>
-        <span className="text-sm text-gray-500">{log.content}</span>
-        <span className="ml-auto text-xs text-gray-400 shrink-0">
-          {formatRelativeTime(log.created_at)}
-        </span>
-      </div>
-    );
-  }
-
-  // 수동 기록: 전체 스타일
-  return (
-    <div className="flex gap-3 py-3 px-3 rounded-lg hover:bg-gray-100 transition-colors">
-      {/* 아이콘 */}
-      <div
-        className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-          config.bgColor,
-        )}
-      >
-        <IconComponent className={cn('h-4 w-4', config.color)} />
-      </div>
-
-      {/* 내용 */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
-              config.bgColor,
-              config.textColor,
-            )}
-          >
-            {config.label}
-          </span>
-          <span className="text-xs text-gray-400">
-            {formatRelativeTime(log.created_at)}
-          </span>
-          {isEdited && (
-            <span className="text-xs text-gray-400">(수정됨)</span>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="mt-2 space-y-2">
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className="min-h-[80px] text-sm"
-              maxLength={ACTIVITY_LOG_MAX_LENGTH}
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handleUpdate}
-                disabled={isSubmitting || !editContent.trim()}
-              >
-                {isSubmitting && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                저장
-              </Button>
-              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                취소
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-1">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-              {isLong && !isExpanded
-                ? `${log.content.slice(0, ACTIVITY_LOG_PREVIEW_LENGTH)}...`
-                : log.content}
-            </p>
-            {isLong && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="mt-1 flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700"
-              >
-                {isExpanded ? (
-                  <>
-                    접기 <ChevronUp className="h-3 w-3" />
-                  </>
-                ) : (
-                  <>
-                    더 보기 <ChevronDown className="h-3 w-3" />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 더보기 메뉴 */}
-      {!isEditing && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-gray-600"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsEditing(true)}>
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              수정
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash2 className="mr-2 h-3.5 w-3.5" />
-              삭제
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  );
 }
 
 // ============================================================================
@@ -318,66 +39,25 @@ function LogItem({
 // ============================================================================
 
 export default function ActivityLog({ projectId }: ActivityLogProps) {
-  const [logs, setLogs] = useState<ActivityLogItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filterType, setFilterType] = useState('all');
-  const [newType, setNewType] = useState<ManualActivityLogType>('field_note');
-  const [newContent, setNewContent] = useState('');
+  const {
+    logs,
+    isLoading,
+    isLoadingMore,
+    isFormOpen,
+    setIsFormOpen,
+    isSubmitting,
+    filterType,
+    setFilterType,
+    newType,
+    setNewType,
+    newContent,
+    setNewContent,
+    loadInitial,
+    loadMore,
+    handleSubmit,
+    hasMore,
+  } = useActivityLogs(projectId);
 
-  const loadInitial = useCallback(async () => {
-    setIsLoading(true);
-    const typeFilter = filterType === 'all' ? undefined : (filterType as ActivityLogType);
-    const result = await fetchActivityLogs(projectId, {
-      type: typeFilter,
-      limit: ACTIVITY_LOG_PAGE_SIZE,
-      offset: 0,
-    });
-    setLogs(result.logs);
-    setTotal(result.total);
-    setIsLoading(false);
-  }, [projectId, filterType]);
-
-  // 초기 로드 + 필터 변경 시
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
-    loadInitial();
-  }, [loadInitial]);
-
-  async function loadMore() {
-    setIsLoadingMore(true);
-    const typeFilter = filterType === 'all' ? undefined : (filterType as ActivityLogType);
-    const result = await fetchActivityLogs(projectId, {
-      type: typeFilter,
-      limit: ACTIVITY_LOG_PAGE_SIZE,
-      offset: logs.length,
-    });
-    setLogs((prev) => [...prev, ...result.logs]);
-    setTotal(result.total);
-    setIsLoadingMore(false);
-  }
-
-  async function handleSubmit() {
-    if (!newContent.trim()) return;
-    setIsSubmitting(true);
-
-    const result = await createActivityLog(projectId, newType, newContent.trim());
-    setIsSubmitting(false);
-
-    if (result.success) {
-      showSuccessToast('기록이 저장되었습니다.');
-      setNewContent('');
-      setIsFormOpen(false);
-      loadInitial();
-    } else {
-      showErrorToast('저장 실패', result.error);
-    }
-  }
-
-  const hasMore = logs.length < total;
   const dateGroups = groupLogsByDate(logs);
 
   return (
