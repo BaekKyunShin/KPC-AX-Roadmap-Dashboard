@@ -6,7 +6,7 @@ import { changePasswordSchema, deleteAccountSchema } from '@/lib/schemas/user';
 import { createAuditLog } from '@/lib/services/audit';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
+import type { SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 현재 세션 사용자를 확인하고 비밀번호를 검증하여 본인 확인
@@ -49,7 +49,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
   confirmPassword: string
-): Promise<ActionResult> {
+): Promise<SimpleActionResult> {
   // 1. 입력 검증
   const validation = changePasswordSchema.safeParse({ currentPassword, newPassword, confirmPassword });
   if (!validation.success) {
@@ -86,7 +86,7 @@ export async function changePassword(
 export async function deleteAccount(
   password: string,
   confirmText: string
-): Promise<ActionResult> {
+): Promise<SimpleActionResult> {
   // 1. 입력 검증
   const validation = deleteAccountSchema.safeParse({ password, confirmText });
   if (!validation.success) {

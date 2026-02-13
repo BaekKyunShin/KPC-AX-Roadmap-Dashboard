@@ -15,10 +15,12 @@ export default function ConsultantProfilePage() {
     const fetchProfile = async () => {
       try {
         const result = await getConsultantProfile();
-        if (result.success && result.data?.profile) {
-          setProfile(result.data.profile as ConsultantProfile);
-        } else if (!result.success) {
-          setError(result.error || '프로필을 불러오는데 실패했습니다.');
+        if (result.success) {
+          if (result.data.profile) {
+            setProfile(result.data.profile as ConsultantProfile);
+          }
+        } else {
+          setError(result.error);
         }
       } catch (err) {
         console.error('프로필 조회 오류:', err);

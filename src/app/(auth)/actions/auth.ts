@@ -5,8 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { registerSchema, loginSchema } from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
-
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 회원가입 처리
@@ -14,7 +13,7 @@ type ActionResult = { success: boolean; error?: string; data?: Record<string, un
  * 2. users 테이블에 프로필 생성 (역할에 따라 USER_PENDING 또는 OPS_ADMIN_PENDING)
  * 3. 컨설턴트인 경우 consultant_profiles 테이블에 프로필 생성
  */
-export async function registerUser(formData: FormData): Promise<ActionResult> {
+export async function registerUser(formData: FormData): Promise<ActionResult<{ userId: string; registerType: string; needsLogin?: boolean }>> {
   const supabase = await createClient();
 
   // 폼 데이터 파싱
@@ -144,7 +143,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
 /**
  * 로그인 처리
  */
-export async function loginUser(formData: FormData): Promise<ActionResult> {
+export async function loginUser(formData: FormData): Promise<SimpleActionResult> {
   const supabase = await createClient();
 
   const rawData = {

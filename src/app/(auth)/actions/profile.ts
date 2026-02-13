@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consultantProfileSchema } from '@/lib/schemas/user';
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * JSON 문자열을 안전하게 파싱하여 배열로 반환
@@ -40,7 +40,7 @@ function parseConsultantProfileFormData(formData: FormData) {
  * 컨설턴트 프로필 저장
  * 회원가입 2단계: 프로필 정보 입력
  */
-export async function saveConsultantProfile(formData: FormData): Promise<ActionResult> {
+export async function saveConsultantProfile(formData: FormData): Promise<SimpleActionResult> {
   try {
     // 1. 현재 사용자 확인
     const supabase = await createClient();
@@ -104,7 +104,7 @@ export async function saveConsultantProfile(formData: FormData): Promise<ActionR
  * 컨설턴트 프로필 조회
  * 현재 로그인한 사용자의 프로필 조회
  */
-export async function getConsultantProfile(): Promise<ActionResult> {
+export async function getConsultantProfile(): Promise<ActionResult<{ profile: unknown }>> {
   try {
     const supabase = await createClient();
     const { data: authData, error: userError } = await supabase.auth.getUser();
@@ -156,7 +156,7 @@ export async function getConsultantProfile(): Promise<ActionResult> {
  * 컨설턴트 프로필 수정
  * 승인 대기 상태에서도 본인 프로필 수정 가능
  */
-export async function updateConsultantProfile(formData: FormData): Promise<ActionResult> {
+export async function updateConsultantProfile(formData: FormData): Promise<SimpleActionResult> {
   try {
     // 1. 현재 사용자 확인
     const supabase = await createClient();

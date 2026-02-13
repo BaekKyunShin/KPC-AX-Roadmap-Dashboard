@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import type { SelfAssessmentQuestion } from '@/types/database';
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 // 스키마 정의
 const questionSchema = z.object({
@@ -31,10 +32,8 @@ const updateTemplateSchema = z.object({
   questions: z.array(questionSchema).min(1, '최소 1개 이상의 질문이 필요합니다.'),
 });
 
-type ActionResult = { success: boolean; error?: string; data?: unknown };
-
 // 템플릿 목록 조회
-export async function getTemplates(): Promise<ActionResult> {
+export async function getTemplates(): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -69,7 +68,7 @@ export async function getTemplates(): Promise<ActionResult> {
 }
 
 // 단일 템플릿 조회
-export async function getTemplate(templateId: string): Promise<ActionResult> {
+export async function getTemplate(templateId: string): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -99,7 +98,7 @@ export async function getTemplate(templateId: string): Promise<ActionResult> {
 }
 
 // 새 템플릿 생성
-export async function createTemplate(formData: FormData): Promise<ActionResult> {
+export async function createTemplate(formData: FormData): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -165,7 +164,7 @@ export async function createTemplate(formData: FormData): Promise<ActionResult> 
 }
 
 // 템플릿 수정 (새 버전 생성)
-export async function updateTemplate(formData: FormData): Promise<ActionResult> {
+export async function updateTemplate(formData: FormData): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -290,7 +289,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult> 
 }
 
 // 활성 템플릿 변경
-export async function setActiveTemplate(templateId: string): Promise<ActionResult> {
+export async function setActiveTemplate(templateId: string): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
@@ -342,7 +341,7 @@ export async function setActiveTemplate(templateId: string): Promise<ActionResul
 }
 
 // 템플릿 복제
-export async function duplicateTemplate(templateId: string): Promise<ActionResult> {
+export async function duplicateTemplate(templateId: string): Promise<ActionResult<unknown>> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };

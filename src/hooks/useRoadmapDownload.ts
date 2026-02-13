@@ -24,18 +24,19 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
 
     try {
       const result = await prepareExportData(roadmapId);
-      if (!result.success || !result.data) {
-        showErrorToast('PDF 다운로드 실패', result.error || 'PDF 준비에 실패했습니다.');
+      if (!result.success) {
+        showErrorToast('PDF 다운로드 실패', result.error);
         return;
       }
 
+      const exportData = result.data;
       const { generatePDF } = await import('@/lib/services/export-pdf');
-      const blob = await generatePDF(result.data);
+      const blob = await generatePDF(exportData);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `roadmap_${result.data.companyName}_v${result.data.versionNumber}.pdf`;
+      a.download = `roadmap_${exportData.companyName}_v${exportData.versionNumber}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -56,13 +57,14 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
 
     try {
       const result = await prepareExportData(roadmapId);
-      if (!result.success || !result.data) {
-        showErrorToast('Excel 다운로드 실패', result.error || 'Excel 준비에 실패했습니다.');
+      if (!result.success) {
+        showErrorToast('Excel 다운로드 실패', result.error);
         return;
       }
 
+      const exportData = result.data;
       const { downloadXLSX: downloadExcel } = await import('@/lib/services/export-xlsx');
-      downloadExcel(result.data, `roadmap_${result.data.companyName}_v${result.data.versionNumber}.xlsx`);
+      downloadExcel(exportData, `roadmap_${exportData.companyName}_v${exportData.versionNumber}.xlsx`);
 
       await logDownload(roadmapId, 'XLSX');
       showSuccessToast('Excel 다운로드 완료');

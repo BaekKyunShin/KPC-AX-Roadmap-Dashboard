@@ -54,15 +54,14 @@ export default function NewProjectPage() {
       formData.set('sub_industries', JSON.stringify(subIndustries));
       const result = await createProject(formData);
 
-      if (result.success && result.data?.projectId) {
+      if (result.success) {
         showSuccessToast('프로젝트 생성 완료', '프로젝트가 성공적으로 생성되었습니다.');
         router.push(`/ops/projects/${result.data.projectId}`);
       } else {
-        const errorMessage = result.error || '프로젝트 생성에 실패했습니다.';
-        setError(errorMessage);
+        setError(result.error);
 
         // Toast 알림 + 스크롤
-        showErrorToast('프로젝트 생성 실패', errorMessage);
+        showErrorToast('프로젝트 생성 실패', result.error);
         scrollToElement(formContainerRef);
         setIsLoading(false);
       }

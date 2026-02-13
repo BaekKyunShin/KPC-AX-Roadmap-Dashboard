@@ -209,8 +209,7 @@ describe('createProject', () => {
 
     const result = await createProject(fd);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
+    expect(result).toMatchObject({ success: false, error: expect.any(String) });
   });
 
   it('DB insert 실패 → error + audit log 기록', async () => {
@@ -222,7 +221,7 @@ describe('createProject', () => {
     const result = await createProject(validProjectFormData());
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('프로젝트 생성 실패');
+    if (!result.success) expect(result.error).toContain('프로젝트 생성 실패');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROJECT_CREATE',
@@ -321,8 +320,7 @@ describe('assignConsultant', () => {
 
     const result = await assignConsultant(fd);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
+    expect(result).toMatchObject({ success: false, error: expect.any(String) });
   });
 
   it('신규 배정 성공 (기존 배정 없음)', async () => {
@@ -397,7 +395,7 @@ describe('assignConsultant', () => {
     const result = await assignConsultant(validAssignFormData());
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('배정 실패');
+    if (!result.success) expect(result.error).toContain('배정 실패');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
@@ -467,8 +465,7 @@ describe('createSelfAssessment', () => {
 
     const result = await createSelfAssessment(fd);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBeDefined();
+    expect(result).toMatchObject({ success: false, error: expect.any(String) });
   });
 
   it('템플릿 없음 → error 반환', async () => {
@@ -542,7 +539,7 @@ describe('createSelfAssessment', () => {
     const result = await createSelfAssessment(validSelfAssessmentFormData());
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('자가진단 저장 실패');
+    if (!result.success) expect(result.error).toContain('자가진단 저장 실패');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,

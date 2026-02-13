@@ -92,7 +92,7 @@ export default function RoadmapPage() {
 
     const result = await createRoadmap(projectId, revisionPrompt || undefined);
 
-    if (result.success && result.data) {
+    if (result.success) {
       showSuccessToast('로드맵이 생성되었습니다.');
       setRevisionPrompt('');
       // 버전 목록 새로고침
@@ -108,7 +108,7 @@ export default function RoadmapPage() {
         setIsGenerationComplete(false);
       }, COMPLETION_DELAY_MS);
     } else {
-      showErrorToast('로드맵 생성 실패', result.error || '로드맵 생성에 실패했습니다.');
+      showErrorToast('로드맵 생성 실패', result.error);
       setIsGenerating(false);
     }
   };

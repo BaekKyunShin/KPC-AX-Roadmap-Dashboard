@@ -131,13 +131,10 @@ export default function RegisterPage() {
       const serverResult = await registerUser(submitFormData);
 
       // 회원가입 실패 시 에러 표시 후 종료
-      if (!serverResult.success || !serverResult.data?.userId) {
-        const errorMessage = serverResult.error || '회원가입에 실패했습니다.';
-        setServerError(errorMessage);
+      if (!serverResult.success) {
+        setServerError(serverResult.error);
         setIsLoading(false);
-
-        // Toast 알림 + 상단으로 스크롤
-        showErrorToast('회원가입 실패', errorMessage);
+        showErrorToast('회원가입 실패', serverResult.error);
         scrollToPageTop();
         return;
       }

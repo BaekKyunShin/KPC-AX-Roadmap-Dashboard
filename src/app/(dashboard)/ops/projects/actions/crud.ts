@@ -6,13 +6,12 @@ import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
-
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 프로젝트 생성 (OPS_ADMIN)
  */
-export async function createProject(formData: FormData): Promise<ActionResult> {
+export async function createProject(formData: FormData): Promise<ActionResult<{ projectId: string }>> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
     authError: '인증되지 않은 사용자입니다.',
   });
@@ -90,7 +89,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
 /**
  * 자가진단 입력 (OPS_ADMIN)
  */
-export async function createSelfAssessment(formData: FormData): Promise<ActionResult> {
+export async function createSelfAssessment(formData: FormData): Promise<SimpleActionResult> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
     authError: '인증되지 않은 사용자입니다.',
   });
@@ -181,7 +180,7 @@ export async function createSelfAssessment(formData: FormData): Promise<ActionRe
 /**
  * 컨설턴트 배정 (OPS_ADMIN)
  */
-export async function assignConsultant(formData: FormData): Promise<ActionResult> {
+export async function assignConsultant(formData: FormData): Promise<SimpleActionResult> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
     authError: '인증되지 않은 사용자입니다.',
   });

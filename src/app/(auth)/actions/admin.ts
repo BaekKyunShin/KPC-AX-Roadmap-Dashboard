@@ -3,8 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAuditLog } from '@/lib/services/audit';
-
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
+import type { SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 사용자 승인/정지 (OPS_ADMIN/SYSTEM_ADMIN 전용)
@@ -15,7 +14,7 @@ export async function updateUserStatus(
   targetUserId: string,
   action: 'approve' | 'suspend' | 'reactivate',
   reason?: string
-): Promise<ActionResult> {
+): Promise<SimpleActionResult> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
     authError: '인증되지 않은 사용자입니다.',
   });

@@ -3,24 +3,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
-
-export interface ExportActionResult {
-  success: boolean;
-  error?: string;
-}
-
-export interface PrepareExportDataResult {
-  success: boolean;
-  data?: RoadmapExportData;
-  error?: string;
-}
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 내보내기용 데이터 준비
  * - CONSULTANT_APPROVED: 자신이 담당한 프로젝트만 접근 가능
  * - OPS_ADMIN, SYSTEM_ADMIN: 모든 프로젝트 접근 가능
  */
-export async function prepareExportData(roadmapId: string): Promise<PrepareExportDataResult> {
+export async function prepareExportData(roadmapId: string): Promise<ActionResult<RoadmapExportData>> {
   try {
     const supabase = await createClient();
 
@@ -91,7 +81,7 @@ export async function prepareExportData(roadmapId: string): Promise<PrepareExpor
 export async function logDownload(
   roadmapId: string,
   format: 'PDF' | 'XLSX'
-): Promise<ExportActionResult> {
+): Promise<SimpleActionResult> {
   try {
     const supabase = await createClient();
 

@@ -8,13 +8,7 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 
-import type { SimpleActionResult } from '@/lib/types/action-result';
-
-export interface ProcessSttResult {
-  success: boolean;
-  insights?: SttInsights;
-  error?: string;
-}
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 // ============================================================================
 // 공통 헬퍼 함수
@@ -213,7 +207,7 @@ export async function getInterview(projectId: string) {
 export async function processSttFile(
   projectId: string,
   sttText: string
-): Promise<ProcessSttResult> {
+): Promise<ActionResult<SttInsights>> {
   try {
     // 권한 확인
     const authResult = await verifyProjectAccess(projectId);
@@ -254,7 +248,7 @@ export async function processSttFile(
       },
     });
 
-    return { success: true, insights };
+    return { success: true, data: insights };
   } catch (error) {
     console.error('[processSttFile Error]', error);
     return {

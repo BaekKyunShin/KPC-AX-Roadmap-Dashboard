@@ -292,11 +292,11 @@ export default function InterviewPage() {
     setIsProcessingStt(true);
     try {
       const result = await processSttFile(projectId, text);
-      if (result.success && result.insights) {
-        setSttInsights(result.insights);
+      if (result.success) {
+        setSttInsights(result.data);
         showSuccessToast('STT 분석 완료', '음성 인식 결과가 성공적으로 처리되었습니다.');
       } else {
-        throw new Error(result.error || 'STT 처리에 실패했습니다.');
+        throw new Error(result.error);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'STT 처리 중 오류가 발생했습니다.';

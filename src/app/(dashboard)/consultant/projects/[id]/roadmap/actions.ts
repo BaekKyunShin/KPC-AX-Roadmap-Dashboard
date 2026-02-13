@@ -12,10 +12,7 @@ import {
   type RoadmapCell,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
-
-type ActionResult = { success: boolean; error?: string; data?: Record<string, unknown> };
-
-type ProjectInfoResult = { success: boolean; data?: { companyName: string }; error?: string };
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 로드맵 생성
@@ -23,7 +20,7 @@ type ProjectInfoResult = { success: boolean; data?: { companyName: string }; err
 export async function createRoadmap(
   projectId: string,
   revisionPrompt?: string
-): Promise<ActionResult> {
+): Promise<ActionResult<Record<string, unknown>>> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
       roleError: '컨설턴트만 로드맵을 생성할 수 있습니다.',
@@ -79,7 +76,7 @@ export async function createRoadmap(
 /**
  * 로드맵 최종 확정
  */
-export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResult> {
+export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
@@ -202,7 +199,7 @@ export async function editRoadmapManually(
     pbl_course?: PBLCourse;
     courses?: RoadmapCell[];
   }
-): Promise<ActionResult> {
+): Promise<ActionResult<Record<string, unknown>>> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
       roleError: '컨설턴트만 로드맵을 편집할 수 있습니다.',
@@ -213,7 +210,7 @@ export async function editRoadmapManually(
     const result = await updateRoadmapManually(roadmapId, user.id, updates);
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return { success: false, error: result.error || '로드맵 편집에 실패했습니다.' };
     }
 
     return {
@@ -234,7 +231,7 @@ export async function editRoadmapManually(
 /**
  * 프로젝트 기본 정보 조회 (회사명 등)
  */
-export async function fetchProjectInfo(projectId: string): Promise<ProjectInfoResult> {
+export async function fetchProjectInfo(projectId: string): Promise<ActionResult<{ companyName: string }>> {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
