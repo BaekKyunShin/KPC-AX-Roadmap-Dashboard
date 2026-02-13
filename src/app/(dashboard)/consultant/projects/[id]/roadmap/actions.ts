@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import {
   generateRoadmap,
   finalizeRoadmap,
@@ -33,23 +33,11 @@ export async function createRoadmap(
   revisionPrompt?: string
 ): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-      return { success: false, error: '컨설턴트만 로드맵을 생성할 수 있습니다.' };
-    }
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 로드맵을 생성할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     // 프로젝트 접근 권한 확인
     const { data: projectData } = await supabase
@@ -101,12 +89,9 @@ export async function createRoadmap(
  */
 export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     await finalizeRoadmap(roadmapId, user.id);
 
@@ -140,10 +125,9 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<ActionResu
  */
 export async function fetchRoadmapVersions(projectId: string) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    const auth = await requireAuth();
+    if ('error' in auth) return [];
+    const { user, supabase } = auth;
 
     // 접근 권한 확인 (컨설턴트 또는 OPS_ADMIN)
     const { data: profile } = await supabase
@@ -179,10 +163,9 @@ export async function fetchRoadmapVersions(projectId: string) {
  */
 export async function fetchRoadmapVersion(roadmapId: string) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
 
     const roadmap = await getRoadmapVersion(roadmapId);
     if (!roadmap) return null;
@@ -229,23 +212,11 @@ export async function editRoadmapManually(
   }
 ): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-      return { success: false, error: '컨설턴트만 로드맵을 편집할 수 있습니다.' };
-    }
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 로드맵을 편집할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
     const result = await updateRoadmapManually(roadmapId, user.id, updates);
 
@@ -273,12 +244,9 @@ export async function editRoadmapManually(
  */
 export async function fetchProjectInfo(projectId: string): Promise<ProjectInfoResult> {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     const { data: project } = await supabase
       .from('projects')

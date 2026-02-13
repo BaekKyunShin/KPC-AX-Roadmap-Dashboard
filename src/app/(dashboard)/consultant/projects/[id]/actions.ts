@@ -57,7 +57,7 @@ async function verifyConsultantProjectAccess(
   if ('error' in auth) return auth;
 
   const accessCheck = await requireConsultantProjectAccess(auth.supabase, auth.user.id, projectId);
-  if ('error' in accessCheck) return accessCheck;
+  if (accessCheck !== true) return accessCheck;
 
   return { user: { id: auth.user.id } };
 }

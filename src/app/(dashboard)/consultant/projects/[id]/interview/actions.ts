@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
 import { interviewSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
@@ -23,10 +23,6 @@ export interface ProcessSttResult {
   error?: string;
 }
 
-interface AuthorizedUser {
-  id: string;
-}
-
 // ============================================================================
 // 공통 헬퍼 함수
 // ============================================================================
@@ -36,27 +32,18 @@ interface AuthorizedUser {
  * @returns 인증된 사용자 정보 또는 에러
  */
 async function verifyProjectAccess(
-  projectId: string
-): Promise<{ user: AuthorizedUser } | { error: string }> {
-  const supabase = await createClient();
+  projectId: string,
+): Promise<{ user: { id: string } } | { error: string }> {
+  const auth = await requireAuth();
+  if ('error' in auth) return auth;
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    return { error: '로그인이 필요합니다.' };
-  }
+  const accessCheck = await requireConsultantProjectAccess(
+    auth.supabase, auth.user.id, projectId,
+    '해당 프로젝트에 대한 접근 권한이 없습니다.',
+  );
+  if (accessCheck !== true) return accessCheck;
 
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select('id, assigned_consultant_id')
-    .eq('id', projectId)
-    .eq('assigned_consultant_id', user.id)
-    .single();
-
-  if (!projectData) {
-    return { error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
-  }
-
-  return { user: { id: user.id } };
+  return { user: { id: auth.user.id } };
 }
 
 // ============================================================================
@@ -69,24 +56,11 @@ export async function saveInterview(
   options?: { skipValidation?: boolean }
 ): Promise<ActionResult> {
   try {
-    const supabase = await createClient();
-
-    // 현재 사용자 확인
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return { success: false, error: '로그인이 필요합니다.' };
-    }
-
-    // 사용자 역할 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-      return { success: false, error: '컨설턴트만 인터뷰를 입력할 수 있습니다.' };
-    }
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
 
     // 프로젝트 접근 권한 확인 (배정된 컨설턴트만)
     const { data: projectData } = await supabase
@@ -209,12 +183,9 @@ export async function saveInterview(
 
 export async function getInterview(projectId: string) {
   try {
-    const supabase = await createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return null;
-    }
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
 
     // 배정된 컨설턴트만 조회 가능
     const { data: projectData } = await supabase
