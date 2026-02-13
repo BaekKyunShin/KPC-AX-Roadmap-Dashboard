@@ -24,7 +24,7 @@ claude
 
 ```
 docs/plans/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
-진행 추적표에서 다음 미완료 항목 1개만 찾아서 진행해.
+진행 추적표에서 다음 미완료 항목 1개만 진행해. /using-superpowers
 
 규칙:
 - 이번 세션에서는 해당 Session 1개만 수행하고 멈출 것
