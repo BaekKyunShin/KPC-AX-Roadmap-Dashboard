@@ -3,10 +3,11 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, Power, Copy, Trash2 } from 'lucide-react';
+import { MoreVertical, Power, Copy, Trash2, FileText, Info } from 'lucide-react';
 import type { SelfAssessmentTemplate } from '@/types/database';
 import { setActiveTemplate, duplicateTemplate, deleteTemplate } from '../actions';
 import { showSuccessToast } from '@/lib/utils/toast';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableHeader,
@@ -23,7 +24,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 // =============================================================================
 // Types
@@ -50,6 +50,8 @@ const TABLE_COLUMNS = {
   createdAt: 'w-[18%]',
   actions: 'w-[7%]',
 } as const;
+
+const BADGE_BASE = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
 
 // =============================================================================
 // Component
@@ -80,12 +82,12 @@ export default function TemplateList({ templates }: TemplateListProps) {
       } else {
         setError(result.error || options.errorFallback);
       }
-      setLoading(null);
       startTransition(() => {
         router.refresh();
       });
     } catch {
       setError('서버와 통신 중 오류가 발생했습니다.');
+    } finally {
       setLoading(null);
     }
   };
@@ -111,19 +113,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
   if (templates.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-        <svg
-          className="mx-auto h-12 w-12 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
+        <FileText className="mx-auto h-12 w-12 text-gray-400" />
         <h3 className="mt-2 text-sm font-medium text-gray-900">템플릿 없음</h3>
         <p className="mt-1 text-sm text-gray-500">새 템플릿을 생성해주세요.</p>
       </div>
@@ -162,7 +152,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
                 className={cn('hover:bg-gray-50', template.is_active && 'bg-green-50 hover:bg-green-100/60')}
               >
                 <TableCell className="pl-8">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  <span className={cn(BADGE_BASE, 'bg-gray-100 text-gray-800')}>
                     v{template.version}
                   </span>
                 </TableCell>
@@ -184,13 +174,9 @@ export default function TemplateList({ templates }: TemplateListProps) {
                 </TableCell>
                 <TableCell>
                   {template.is_active ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      활성
-                    </span>
+                    <span className={cn(BADGE_BASE, 'bg-green-100 text-green-800')}>활성</span>
                   ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                      비활성
-                    </span>
+                    <span className={cn(BADGE_BASE, 'bg-gray-100 text-gray-600')}>비활성</span>
                   )}
                 </TableCell>
                 <TableCell className="text-gray-500">
@@ -198,50 +184,50 @@ export default function TemplateList({ templates }: TemplateListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end mr-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        aria-label="작업 메뉴"
-                        disabled={isActionDisabled(template.id)}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {!template.is_active && (
-                        <DropdownMenuItem
-                          onClick={() => handleSetActive(template.id)}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="작업 메뉴"
                           disabled={isActionDisabled(template.id)}
                         >
-                          <Power className="h-4 w-4" />
-                          활성화
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem
-                        onClick={() => handleDuplicate(template.id)}
-                        disabled={isActionDisabled(template.id)}
-                      >
-                        <Copy className="h-4 w-4" />
-                        복제
-                      </DropdownMenuItem>
-                      {!template.is_active && template.usage_count === 0 && (
-                        <>
-                          <DropdownMenuSeparator />
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {!template.is_active && (
                           <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleDelete(template.id)}
+                            onClick={() => handleSetActive(template.id)}
                             disabled={isActionDisabled(template.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
-                            삭제
+                            <Power className="h-4 w-4" />
+                            활성화
                           </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => handleDuplicate(template.id)}
+                          disabled={isActionDisabled(template.id)}
+                        >
+                          <Copy className="h-4 w-4" />
+                          복제
+                        </DropdownMenuItem>
+                        {!template.is_active && template.usage_count === 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => handleDelete(template.id)}
+                              disabled={isActionDisabled(template.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              삭제
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
@@ -253,13 +239,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
         <div className="flex">
           <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <Info className="h-5 w-5 text-blue-400" />
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">템플릿 안내</h3>
