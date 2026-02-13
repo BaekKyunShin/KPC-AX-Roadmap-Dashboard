@@ -11,22 +11,22 @@ import {
 } from '../actions';
 
 /**
- * 관리자 전용 이메일 알림 토글
- * - 관리자가 아니면 null 반환 (자동 숨김)
+ * 이메일 알림 토글 (관리자·컨설턴트)
+ * - 대상 역할(EMAIL_NOTIFY_ROLES)이 아니면 null 반환 (자동 숨김)
  * - 자체적으로 데이터 fetch + 토글 처리
  */
 export default function EmailNotifyToggle() {
   const [enabled, setEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEligible, setIsEligible] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const result = await fetchEmailNotifySetting();
       if (result.success) {
         setEnabled(result.data.enabled);
-        setIsAdmin(true);
+        setIsEligible(true);
       }
       setIsLoading(false);
     };
@@ -53,7 +53,7 @@ export default function EmailNotifyToggle() {
     setIsUpdating(false);
   }
 
-  if (isLoading || !isAdmin) return null;
+  if (isLoading || !isEligible) return null;
 
   return (
     <Card>

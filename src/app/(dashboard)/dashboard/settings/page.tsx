@@ -135,7 +135,7 @@ export default function SettingsPage() {
         backLink={{ href: '/dashboard', label: '대시보드' }}
       />
 
-      {/* 이메일 알림 설정 (관리자만 표시) */}
+      {/* 이메일 알림 설정 (대상 역할만 표시) */}
       <EmailNotifyToggle />
 
       {/* 비밀번호 변경 섹션 */}
