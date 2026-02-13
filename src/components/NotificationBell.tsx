@@ -35,6 +35,7 @@ type TabKey = (typeof OPS_NOTIFICATION_TABS)[number]['key'];
 
 export default function NotificationBell({ initialUnreadCount, userRole }: NotificationBellProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
@@ -53,6 +54,11 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
 
   const isOpsAdmin = userRole === 'OPS_ADMIN' || userRole === 'SYSTEM_ADMIN';
   const showTabs = isOpsAdmin;
+
+  // 브라우저에서 준비되면 mounted 켜기
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // initialUnreadCount prop 동기화
   useEffect(() => {
@@ -179,20 +185,27 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   const badgeText =
     unreadCount > NOTIFICATION_BADGE_MAX ? `${NOTIFICATION_BADGE_MAX}+` : `${unreadCount}`;
 
+  // 서버에서는 벨 버튼만 보여주고, 브라우저 준비 후 Popover 연결
+  const bellButton = (
+    <button
+      className="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+      aria-label={`알림 ${unreadCount > 0 ? `${unreadCount}개 안읽음` : ''}`}
+    >
+      <Bell className="h-5 w-5" />
+      {unreadCount > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+          {badgeText}
+        </span>
+      )}
+    </button>
+  );
+
+  if (!mounted) return bellButton;
+
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          className="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label={`알림 ${unreadCount > 0 ? `${unreadCount}개 안읽음` : ''}`}
-        >
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
-              {badgeText}
-            </span>
-          )}
-        </button>
+        {bellButton}
       </PopoverTrigger>
 
       <PopoverContent
