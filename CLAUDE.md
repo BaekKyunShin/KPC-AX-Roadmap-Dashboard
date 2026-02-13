@@ -232,3 +232,8 @@ IMPORTANT: Superpowers 플러그인이 설치되어 있음. 모든 작업 전에
 - `docs/DECISIONS.md` - 아키텍처 결정 기록 (ADR)
 - `docs/CONSULTANT_PROFILE_SPEC.md` - 컨설턴트 프로필 명세
 - `docs/PROJECT_OUTLINE.md` - 초기 기획서 (아카이브)
+
+**문서 네이밍 규칙:**
+
+- 상시 참조 문서 → `UPPER_SNAKE_CASE.md` (예: `ARCHITECTURE.md`, `TEST_PLAN.md`)
+- 시점 기반 기획/설계 → `YYYY-MM-DD-kebab-case.md` (예: `2026-02-10-interview-guide-design.md`)
