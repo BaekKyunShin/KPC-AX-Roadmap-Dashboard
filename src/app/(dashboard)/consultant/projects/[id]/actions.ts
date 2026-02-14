@@ -326,7 +326,6 @@ export async function generateInterviewGuide(
       order: number;
       dimension: string;
       question_text: string;
-      question_type: string;
       weight: number;
     }[];
 

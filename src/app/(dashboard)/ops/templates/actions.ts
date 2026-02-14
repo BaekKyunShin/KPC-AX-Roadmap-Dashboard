@@ -14,8 +14,6 @@ const questionSchema = z.object({
   order: z.number().min(1),
   dimension: z.string().min(1, '차원을 입력하세요.'),
   question_text: z.string().min(5, '질문을 5자 이상 입력하세요.'),
-  question_type: z.enum(['SCALE_5', 'SCALE_10', 'MULTIPLE_CHOICE', 'TEXT']),
-  options: z.array(z.string()).optional(),
   weight: z.number().min(0.1).max(10),
 });
 

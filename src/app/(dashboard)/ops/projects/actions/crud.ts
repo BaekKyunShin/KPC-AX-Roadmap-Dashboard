@@ -287,8 +287,10 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
 }
 
 /**
- * 점수 계산 헬퍼 함수
+ * 점수 계산 헬퍼 함수 (5점 척도 고정)
  */
+const MAX_SCALE = 5;
+
 function calculateScores(
   answers: { question_id: string; answer_value: string | number }[],
   questions: { id: string; dimension: string; weight: number }[]
@@ -306,7 +308,7 @@ function calculateScores(
     }
 
     dimensionScores[question.dimension].score += answerValue * question.weight;
-    dimensionScores[question.dimension].max += 5 * question.weight; // 5점 척도 가정
+    dimensionScores[question.dimension].max += MAX_SCALE * question.weight;
   }
 
   const totalScore = Object.values(dimensionScores).reduce((sum, d) => sum + d.score, 0);

@@ -8,7 +8,6 @@ export {
   CIRCLED_NUMBERS,
   SCALE_5_LABELS,
   SCALE_5_VALUES,
-  SCALE_10_VALUES,
   toCircledNumber,
   groupQuestionsByDimension,
 } from './constants';

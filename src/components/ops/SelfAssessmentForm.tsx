@@ -36,7 +36,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, number | string>>({});
+  const [answers, setAnswers] = useState<Record<string, number>>({});
   const [currentStep, setCurrentStep] = useState(0);
 
   // 질문을 차원별로 그룹화
@@ -60,12 +60,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
 
   // 질문 응답 여부 확인
   const isQuestionAnswered = useCallback((question: Question): boolean => {
-    const answer = answers[question.id];
-    if (answer === undefined) return false;
-    if (question.question_type === 'TEXT') {
-      return typeof answer === 'string' && answer.trim().length > 0;
-    }
-    return true;
+    return answers[question.id] !== undefined;
   }, [answers]);
 
   // 완료된 스텝 계산
@@ -88,7 +83,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const allQuestionsAnswered = answeredCount === template.questions.length;
 
   // 답변 변경 핸들러
-  const handleAnswerChange = (questionId: string, value: number | string) => {
+  const handleAnswerChange = (questionId: string, value: number) => {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: value,

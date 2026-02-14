@@ -25,9 +25,7 @@ export interface AssessmentQuestion {
   order: number;
   dimension: string;
   question_text: string;
-  question_type: string;
   weight: number;
-  options?: string[];
 }
 
 interface QuestionWithAnswer extends AssessmentQuestion {
@@ -90,34 +88,12 @@ function ScaleIndicator({ value, max = 5 }: { value: number; max?: number }) {
 }
 
 function QuestionAnswer({ question }: { question: QuestionWithAnswer }) {
-  const { question_type, answer, options } = question;
-
-  if (answer === null) {
+  if (question.answer === null) {
     return <p className="text-xs text-gray-400">미응답</p>;
   }
 
-  if (question_type === 'SCALE_5' && typeof answer === 'number') {
-    return <ScaleIndicator value={answer} max={5} />;
-  }
-
-  if (question_type === 'SCALE_10' && typeof answer === 'number') {
-    return <ScaleIndicator value={answer} max={10} />;
-  }
-
-  if (question_type === 'TEXT' && typeof answer === 'string') {
-    return (
-      <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 whitespace-pre-line break-keep break-words">
-        {answer}
-      </p>
-    );
-  }
-
-  if (question_type === 'MULTIPLE_CHOICE' && typeof answer === 'number' && options) {
-    return (
-      <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-        {options[answer - 1] ?? `선택 ${answer}`}
-      </p>
-    );
+  if (typeof question.answer === 'number') {
+    return <ScaleIndicator value={question.answer} max={5} />;
   }
 
   return null;
@@ -151,11 +127,9 @@ export function AssessmentDetailAccordion({ answers, questions }: Props) {
       const answer = answerMap.get(q.id) ?? null;
       group.questions.push({ ...q, answer });
 
-      if (q.question_type === 'SCALE_5') {
-        const val = typeof answer === 'number' ? answer : 0;
-        group.score += val * q.weight;
-        group.maxScore += 5 * q.weight;
-      }
+      const val = typeof answer === 'number' ? answer : 0;
+      group.score += val * q.weight;
+      group.maxScore += 5 * q.weight;
     }
 
     return Array.from(groups.values());

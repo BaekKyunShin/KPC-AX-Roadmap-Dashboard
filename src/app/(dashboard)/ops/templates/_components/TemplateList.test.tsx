@@ -65,7 +65,6 @@ function makeQuestion(id: string, order: number): SelfAssessmentQuestion {
     order,
     dimension: '데이터 활용',
     question_text: `테스트 질문 ${order}`,
-    question_type: 'SCALE_5',
     weight: 1,
   };
 }

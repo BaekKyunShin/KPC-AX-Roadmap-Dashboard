@@ -29,20 +29,12 @@ const DIMENSIONS = [
   '문제 명확성',
 ];
 
-const QUESTION_TYPES = [
-  { value: 'SCALE_5', label: '5점 척도' },
-  { value: 'SCALE_10', label: '10점 척도' },
-  { value: 'MULTIPLE_CHOICE', label: '객관식' },
-  { value: 'TEXT', label: '서술형' },
-];
-
 function createEmptyQuestion(order: number): SelfAssessmentQuestion {
   return {
     id: `q_${Date.now()}_${order}`,
     order,
     dimension: DIMENSIONS[0],
     question_text: '',
-    question_type: 'SCALE_5',
     weight: 1,
   };
 }
@@ -291,7 +283,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500">차원</label>
                   <Select
@@ -305,25 +297,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                       {DIMENSIONS.map((dim) => (
                         <SelectItem key={dim} value={dim}>
                           {dim}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500">유형</label>
-                  <Select
-                    value={question.question_type}
-                    onValueChange={(value) => handleQuestionChange(index, 'question_type', value)}
-                  >
-                    <SelectTrigger className="mt-1 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {QUESTION_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

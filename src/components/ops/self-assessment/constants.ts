@@ -8,7 +8,6 @@ export const CIRCLED_NUMBERS = [
 
 export const SCALE_5_LABELS = ['매우 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
 export const SCALE_5_VALUES = [1, 2, 3, 4, 5] as const;
-export const SCALE_10_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 export const toCircledNumber = (n: number): string => CIRCLED_NUMBERS[n - 1] || n.toString();
 

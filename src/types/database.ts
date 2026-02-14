@@ -108,9 +108,7 @@ export interface SelfAssessmentQuestion {
   order: number;
   dimension: string; // 차원 (예: '데이터 활용', '업무 프로세스', '조직 역량')
   question_text: string;
-  question_type: 'SCALE_5' | 'SCALE_10' | 'MULTIPLE_CHOICE' | 'TEXT';
-  options?: string[]; // MULTIPLE_CHOICE인 경우
-  weight: number; // 점수 가중치
+  weight: number; // 점수 가중치 (5점 척도)
 }
 
 // 자가진단 응답
