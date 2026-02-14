@@ -36,8 +36,8 @@ import {
   deleteTemplate,
   setActiveTemplate,
   updateTemplate,
-  hasQuestionsChanged,
 } from './actions';
+import { hasQuestionsChanged } from './utils';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 

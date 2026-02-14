@@ -7,6 +7,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import type { SelfAssessmentQuestion } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import { hasQuestionsChanged } from './utils';
 
 // 스키마 정의
 const questionSchema = z.object({
@@ -29,38 +30,6 @@ const updateTemplateSchema = z.object({
   description: z.string().max(500).optional(),
   questions: z.array(questionSchema).min(1, '최소 1개 이상의 질문이 필요합니다.'),
 });
-
-/**
- * 질문 배열이 변경되었는지 비교합니다.
- * 보수적 비교: 의심스러우면 true(변경됨) 반환하여 안전한 방향(복제)으로 동작합니다.
- */
-export function hasQuestionsChanged(
-  existing: SelfAssessmentQuestion[],
-  updated: SelfAssessmentQuestion[]
-): boolean {
-  if (existing.length !== updated.length) return true;
-
-  const sortByOrder = (a: SelfAssessmentQuestion, b: SelfAssessmentQuestion) =>
-    a.order - b.order;
-  const sortedExisting = [...existing].sort(sortByOrder);
-  const sortedUpdated = [...updated].sort(sortByOrder);
-
-  for (let i = 0; i < sortedExisting.length; i++) {
-    const e = sortedExisting[i];
-    const u = sortedUpdated[i];
-    if (
-      e.id !== u.id ||
-      e.order !== u.order ||
-      e.dimension !== u.dimension ||
-      e.question_text !== u.question_text ||
-      e.weight !== u.weight
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 // 템플릿 목록 조회
 export async function fetchTemplates(): Promise<ActionResult<unknown>> {
