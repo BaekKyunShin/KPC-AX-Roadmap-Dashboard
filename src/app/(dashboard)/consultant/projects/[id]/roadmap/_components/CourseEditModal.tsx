@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import type { RoadmapCell, CurriculumModule } from '@/lib/services/roadmap';
+import { showErrorToast } from '@/lib/utils/toast';
 
 // =============================================================================
 // 타입 정의
@@ -218,7 +219,14 @@ export default function CourseEditModal({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (currentFormData) onSave(currentFormData);
+      if (!currentFormData) return;
+
+      if (!currentFormData.course_name.trim()) {
+        showErrorToast('입력 오류', '과정명을 입력하세요.');
+        return;
+      }
+
+      onSave(currentFormData);
     },
     [currentFormData, onSave]
   );
@@ -363,7 +371,6 @@ export default function CourseEditModal({
                   type="text"
                   value={currentFormData.course_name}
                   onChange={(e) => handleChange('course_name', e.target.value)}
-                  required
                   className={INPUT_WITH_MARGIN_STYLES}
                 />
               </div>
