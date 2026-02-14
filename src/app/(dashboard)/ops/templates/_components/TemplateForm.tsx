@@ -3,7 +3,8 @@
 import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronUp, ChevronDown, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, GripVertical } from 'lucide-react';
+import { Reorder, useDragControls } from 'motion/react';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { createTemplate, updateTemplate } from '../actions';
@@ -15,11 +16,28 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+// =============================================================================
+// Types
+// =============================================================================
+
 interface TemplateFormProps {
   mode: 'create' | 'edit';
   template?: SelfAssessmentTemplate;
   isInUse?: boolean;
 }
+
+interface QuestionItemProps {
+  question: SelfAssessmentQuestion;
+  index: number;
+  totalCount: number;
+  onMove: (index: number, direction: 'up' | 'down') => void;
+  onRemove: (index: number) => void;
+  onChange: (index: number, field: keyof SelfAssessmentQuestion, value: unknown) => void;
+}
+
+// =============================================================================
+// Constants
+// =============================================================================
 
 const DIMENSIONS = [
   'AI 성숙도',
@@ -28,6 +46,138 @@ const DIMENSIONS = [
   '인프라 준비도',
   '문제 명확성',
 ];
+
+const REORDER_TRANSITION = { duration: 0.25, ease: 'easeInOut' } as const;
+
+const WHILE_DRAG_STYLE = {
+  scale: 1.02,
+  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+} as const;
+
+// =============================================================================
+// QuestionItem (Reorder.Item + 드래그 핸들)
+// =============================================================================
+
+function QuestionItem({
+  question,
+  index,
+  totalCount,
+  onMove,
+  onRemove,
+  onChange,
+}: QuestionItemProps) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={question.id}
+      dragListener={false}
+      dragControls={dragControls}
+      transition={REORDER_TRANSITION}
+      whileDrag={WHILE_DRAG_STYLE}
+      as="div"
+      className="border border-gray-200 rounded-lg p-4 space-y-3 bg-white"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="cursor-grab touch-none p-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing"
+            title="드래그하여 순서 변경"
+            aria-label={`질문 ${index + 1} 드래그하여 순서 변경`}
+            onPointerDown={(e) => dragControls.start(e)}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="text-sm font-medium text-gray-500">
+            질문 #{index + 1}
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={() => onMove(index, 'up')}
+            disabled={index === 0}
+            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+            title="위로 이동"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(index, 'down')}
+            disabled={index === totalCount - 1}
+            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+            title="아래로 이동"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="p-1 text-red-400 hover:text-red-600"
+            title="삭제"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500">차원</label>
+          <Select
+            value={question.dimension}
+            onValueChange={(value) => onChange(index, 'dimension', value)}
+          >
+            <SelectTrigger className="mt-1 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DIMENSIONS.map((dim) => (
+                <SelectItem key={dim} value={dim}>
+                  {dim}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500">가중치</label>
+          <input
+            type="number"
+            step="any"
+            value={question.weight}
+            onChange={(e) =>
+              onChange(index, 'weight', parseFloat(e.target.value) || 1)
+            }
+            className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-500">질문 내용 *</label>
+        <textarea
+          value={question.question_text}
+          onChange={(e) => onChange(index, 'question_text', e.target.value)}
+          rows={2}
+          className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md break-keep"
+          placeholder="질문 내용을 입력하세요"
+        />
+      </div>
+    </Reorder.Item>
+  );
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function reindexQuestions(qs: SelfAssessmentQuestion[]): SelfAssessmentQuestion[] {
+  return qs.map((q, i) => ({ ...q, order: i + 1 }));
+}
 
 function createEmptyQuestion(order: number): SelfAssessmentQuestion {
   return {
@@ -38,6 +188,10 @@ function createEmptyQuestion(order: number): SelfAssessmentQuestion {
     weight: 1,
   };
 }
+
+// =============================================================================
+// TemplateForm
+// =============================================================================
 
 export default function TemplateForm({ mode, template, isInUse }: TemplateFormProps) {
   const router = useRouter();
@@ -53,6 +207,9 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     template?.questions || [createEmptyQuestion(1)]
   );
 
+  // 질문 ID 배열 (Reorder.Group values용 - 문자열이므로 값 비교로 동작)
+  const questionIds = questions.map((q) => q.id);
+
   const handleAddQuestion = () => {
     setQuestions([...questions, createEmptyQuestion(questions.length + 1)]);
   };
@@ -63,9 +220,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       showErrorToast('삭제 불가', '최소 1개의 질문이 필요합니다.');
       return;
     }
-    const newQuestions = questions.filter((_, i) => i !== index);
-    // order 재정렬
-    setQuestions(newQuestions.map((q, i) => ({ ...q, order: i + 1 })));
+    setQuestions(reindexQuestions(questions.filter((_, i) => i !== index)));
   };
 
   const handleQuestionChange = (
@@ -92,8 +247,18 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       newQuestions[swapIndex],
       newQuestions[index],
     ];
-    // order 재정렬
-    setQuestions(newQuestions.map((q, i) => ({ ...q, order: i + 1 })));
+    setQuestions(reindexQuestions(newQuestions));
+  };
+
+  // 드래그로 리오더링 시 호출되는 콜백
+  const handleDragReorder = (newIdOrder: string[]) => {
+    const reordered: SelfAssessmentQuestion[] = [];
+    for (const id of newIdOrder) {
+      const q = questions.find((question) => question.id === id);
+      if (!q) return; // ID 불일치 시 상태 변경하지 않음 (안전 장치)
+      reordered.push(q);
+    }
+    setQuestions(reindexQuestions(reordered));
   };
 
   const showValidationError = (msg: string) => {
@@ -107,7 +272,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
     setError(null);
     setSuccess(null);
 
-    // 클라이언트 측 검증 (Radix Select는 HTML required 미지원)
     if (!name.trim()) {
       showValidationError('템플릿 이름을 입력하세요.');
       return;
@@ -143,7 +307,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
         setError(errorMessage);
         setLoading(false);
 
-        // Toast 알림 + 스크롤
         showErrorToast('저장 실패', errorMessage);
         scrollToElement(formRef);
         return;
@@ -153,7 +316,6 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       const successMessage = data?.message || '저장되었습니다.';
       setSuccess(successMessage);
 
-      // 성공 Toast
       showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
 
       if (mode === 'create' && data?.id) {
@@ -243,93 +405,25 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
           </button>
         </div>
 
-        <div className="space-y-4">
+        <Reorder.Group
+          axis="y"
+          values={questionIds}
+          onReorder={handleDragReorder}
+          as="div"
+          className="space-y-4"
+        >
           {questions.map((question, index) => (
-            <div
+            <QuestionItem
               key={question.id}
-              className="border border-gray-200 rounded-lg p-4 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  질문 #{question.order}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, 'up')}
-                    disabled={index === 0}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
-                    title="위로 이동"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, 'down')}
-                    disabled={index === questions.length - 1}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
-                    title="아래로 이동"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveQuestion(index)}
-                    className="p-1 text-red-400 hover:text-red-600"
-                    title="삭제"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500">차원</label>
-                  <Select
-                    value={question.dimension}
-                    onValueChange={(value) => handleQuestionChange(index, 'dimension', value)}
-                  >
-                    <SelectTrigger className="mt-1 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIMENSIONS.map((dim) => (
-                        <SelectItem key={dim} value={dim}>
-                          {dim}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500">가중치</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={question.weight}
-                    onChange={(e) =>
-                      handleQuestionChange(index, 'weight', parseFloat(e.target.value) || 1)
-                    }
-                    className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500">질문 내용 *</label>
-                <textarea
-                  value={question.question_text}
-                  onChange={(e) => handleQuestionChange(index, 'question_text', e.target.value)}
-                  rows={2}
-                  className="mt-1 block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md break-keep"
-                  placeholder="질문 내용을 입력하세요"
-                />
-              </div>
-            </div>
+              question={question}
+              index={index}
+              totalCount={questions.length}
+              onMove={handleMoveQuestion}
+              onRemove={handleRemoveQuestion}
+              onChange={handleQuestionChange}
+            />
           ))}
-        </div>
+        </Reorder.Group>
       </div>
 
       <div className="flex justify-end space-x-3">
