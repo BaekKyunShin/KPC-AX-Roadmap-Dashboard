@@ -3,6 +3,7 @@
 import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { createTemplate, updateTemplate } from '../actions';
@@ -268,9 +269,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                     className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
                     title="위로 이동"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
+                    <ChevronUp className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -279,9 +278,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                     className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
                     title="아래로 이동"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDown className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -289,9 +286,7 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
                     className="p-1 text-red-400 hover:text-red-600"
                     title="삭제"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>

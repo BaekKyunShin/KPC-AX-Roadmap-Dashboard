@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { X } from 'lucide-react';
 import type { RoadmapCell, CurriculumModule } from '@/lib/services/roadmap';
 import { showErrorToast } from '@/lib/utils/toast';
 
@@ -75,18 +76,6 @@ function buildCurriculumUpdate(newCurriculum: CurriculumModule[]): Partial<Roadm
 }
 
 // =============================================================================
-// 아이콘 컴포넌트
-// =============================================================================
-
-function CloseIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
-
-// =============================================================================
 // 하위 컴포넌트: 모듈 편집기
 // =============================================================================
 
@@ -106,7 +95,7 @@ function ModuleEditor({
           onClick={() => onRemoveModule(moduleIndex)}
           className="text-red-400 hover:text-red-600"
         >
-          <CloseIcon className="w-5 h-5" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
@@ -184,7 +173,7 @@ function ToolEditor({ tool, index, onToolChange, onRemoveTool }: ToolEditorProps
         onClick={() => onRemoveTool(index)}
         className="p-2 text-red-400 hover:text-red-600"
       >
-        <CloseIcon className="w-5 h-5" />
+        <X className="h-5 w-5" />
       </button>
     </div>
   );
@@ -358,7 +347,7 @@ export default function CourseEditModal({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">과정 편집</h3>
             <button onClick={handleClose} className="text-gray-400 hover:text-gray-500">
-              <CloseIcon />
+              <X className="h-6 w-6" />
             </button>
           </div>
 
