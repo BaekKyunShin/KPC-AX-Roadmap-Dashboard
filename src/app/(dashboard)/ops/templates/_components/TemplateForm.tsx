@@ -357,7 +357,8 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       {isInUse && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <p className="text-sm text-yellow-700">
-            이 템플릿은 이미 사용 중입니다. 수정하면 새 버전으로 저장됩니다.
+            이 템플릿은 이미 사용 중입니다. 질문을 수정하면 새 버전으로 저장되며,
+            이름·설명만 수정하면 현재 버전이 업데이트됩니다.
           </p>
         </div>
       )}

@@ -254,7 +254,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
             <div className="mt-2 text-sm text-blue-700">
               <ul className="list-disc list-inside space-y-1">
                 <li>활성화된 템플릿이 새로운 자가진단에 사용됩니다.</li>
-                <li>이미 사용 중인 템플릿을 수정하면 새 버전으로 저장됩니다.</li>
+                <li>사용 중인 템플릿의 질문을 수정하면 새 버전으로 저장되며, 이름·설명만 수정하면 현재 버전이 업데이트됩니다.</li>
                 <li>기존 자가진단은 작성 당시의 템플릿 버전을 유지합니다.</li>
               </ul>
             </div>

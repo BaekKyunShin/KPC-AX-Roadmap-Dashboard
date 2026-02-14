@@ -30,6 +30,38 @@ const updateTemplateSchema = z.object({
   questions: z.array(questionSchema).min(1, '최소 1개 이상의 질문이 필요합니다.'),
 });
 
+/**
+ * 질문 배열이 변경되었는지 비교합니다.
+ * 보수적 비교: 의심스러우면 true(변경됨) 반환하여 안전한 방향(복제)으로 동작합니다.
+ */
+export function hasQuestionsChanged(
+  existing: SelfAssessmentQuestion[],
+  updated: SelfAssessmentQuestion[]
+): boolean {
+  if (existing.length !== updated.length) return true;
+
+  const sortByOrder = (a: SelfAssessmentQuestion, b: SelfAssessmentQuestion) =>
+    a.order - b.order;
+  const sortedExisting = [...existing].sort(sortByOrder);
+  const sortedUpdated = [...updated].sort(sortByOrder);
+
+  for (let i = 0; i < sortedExisting.length; i++) {
+    const e = sortedExisting[i];
+    const u = sortedUpdated[i];
+    if (
+      e.id !== u.id ||
+      e.order !== u.order ||
+      e.dimension !== u.dimension ||
+      e.question_text !== u.question_text ||
+      e.weight !== u.weight
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // 템플릿 목록 조회
 export async function fetchTemplates(): Promise<ActionResult<unknown>> {
   try {
@@ -194,71 +226,79 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
     }
 
-    // 사용 중인 템플릿은 수정 대신 새 버전 생성
+    // 사용 현황 확인
     const { count: usageCount } = await supabase
       .from('self_assessments')
       .select('*', { count: 'exact', head: true })
       .eq('template_id', existingTemplate.id);
 
-    if (usageCount && usageCount > 0) {
-      // 새 버전으로 생성
-      const { data: latestTemplate } = await supabase
-        .from('self_assessment_templates')
-        .select('version')
-        .order('version', { ascending: false })
-        .limit(1)
-        .single();
+    const isInUse = !!(usageCount && usageCount > 0);
 
-      const newVersion = (latestTemplate?.version || 0) + 1;
+    // 사용 중 + 질문 변경 → 새 버전으로 생성
+    if (isInUse) {
+      const questionsChanged = hasQuestionsChanged(
+        existingTemplate.questions as SelfAssessmentQuestion[],
+        validation.data.questions,
+      );
 
-      const { data: newTemplate, error } = await adminSupabase
-        .from('self_assessment_templates')
-        .insert({
-          version: newVersion,
-          name: validation.data.name,
-          description: validation.data.description || null,
-          questions: validation.data.questions,
-          is_active: false,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      if (questionsChanged) {
+        const { data: latestTemplate } = await supabase
+          .from('self_assessment_templates')
+          .select('version')
+          .order('version', { ascending: false })
+          .limit(1)
+          .single();
 
-      if (error) {
-        return { success: false, error: error.message };
+        const newVersion = (latestTemplate?.version || 0) + 1;
+
+        const { data: newTemplate, error } = await adminSupabase
+          .from('self_assessment_templates')
+          .insert({
+            version: newVersion,
+            name: validation.data.name,
+            description: validation.data.description || null,
+            questions: validation.data.questions,
+            is_active: false,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        await createAuditLog({
+          actorUserId: user.id,
+          action: 'TEMPLATE_CREATE',
+          targetType: 'template',
+          targetId: newTemplate.id,
+          meta: {
+            version: newVersion,
+            name: validation.data.name,
+            based_on_version: existingTemplate.version,
+          },
+        });
+
+        revalidatePath('/ops/templates');
+        return {
+          success: true,
+          data: {
+            ...newTemplate,
+            message: `기존 템플릿이 사용 중이므로 새 버전(v${newVersion})으로 생성되었습니다.`,
+          },
+        };
       }
-
-      // 감사로그
-      await createAuditLog({
-        actorUserId: user.id,
-        action: 'TEMPLATE_CREATE',
-        targetType: 'template',
-        targetId: newTemplate.id,
-        meta: {
-          version: newVersion,
-          name: validation.data.name,
-          based_on_version: existingTemplate.version,
-        },
-      });
-
-      revalidatePath('/ops/templates');
-      return {
-        success: true,
-        data: {
-          ...newTemplate,
-          message: `기존 템플릿이 사용 중이므로 새 버전(v${newVersion})으로 생성되었습니다.`,
-        },
-      };
     }
 
-    // 사용 중이지 않으면 직접 수정
+    // 직접 수정 (사용 중이면 메타데이터만, 미사용이면 질문 포함)
     const { data: updatedTemplate, error } = await adminSupabase
       .from('self_assessment_templates')
       .update({
         name: validation.data.name,
         description: validation.data.description || null,
-        questions: validation.data.questions,
         updated_at: new Date().toISOString(),
+        ...(isInUse ? {} : { questions: validation.data.questions }),
       })
       .eq('id', validation.data.id)
       .select()
@@ -268,7 +308,6 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: error.message };
     }
 
-    // 감사로그
     await createAuditLog({
       actorUserId: user.id,
       action: 'TEMPLATE_UPDATE',

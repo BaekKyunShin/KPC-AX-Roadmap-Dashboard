@@ -1,6 +1,22 @@
 /**
  * ops/templates/actions.ts 테스트
  *
+ * hasQuestionsChanged:
+ * - 동일한 questions → false
+ * - question_text 변경 → true
+ * - weight 변경 → true
+ * - dimension 변경 → true
+ * - order 변경 → true
+ * - id 변경 → true
+ * - 질문 추가 → true
+ * - 질문 삭제 → true
+ * - 빈 배열 동일 → false
+ * - 배열 순서 다르지만 내용 동일 (정렬) → false
+ *
+ * updateTemplate:
+ * - 사용 중 + 메타데이터만 변경 → in-place update (복제 안 함)
+ * - 사용 중 + questions 변경 → 새 버전 생성 (복제)
+ *
  * deleteTemplate:
  * - 인증/권한 없음 → 에러
  * - 활성 템플릿 → 삭제 불가
@@ -16,7 +32,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { deleteTemplate, setActiveTemplate } from './actions';
+import {
+  deleteTemplate,
+  setActiveTemplate,
+  updateTemplate,
+  hasQuestionsChanged,
+} from './actions';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -59,7 +80,7 @@ function createMockSupabase() {
   const chainable: Record<string, any> = {};
 
   for (const method of [
-    'select', 'eq', 'neq', 'order', 'limit', 'delete', 'update',
+    'select', 'eq', 'neq', 'order', 'limit', 'delete', 'update', 'insert',
   ]) {
     chainable[method] = vi.fn(() => chainable);
   }
@@ -332,5 +353,210 @@ describe('setActiveTemplate', () => {
     const result = await setActiveTemplate(TEST_TEMPLATE_ID);
 
     expect(result).toEqual({ success: false, error: 'activation_failed' });
+  });
+});
+
+// ─── updateTemplate ─────────────────────────────────────────────────────────
+
+describe('updateTemplate', () => {
+  const testQuestions = [
+    { id: 'q1', order: 1, dimension: 'AI 성숙도', question_text: '현재 AI 도입 수준은?', weight: 1 },
+  ];
+
+  function createFormData(overrides?: Record<string, string>): FormData {
+    const fd = new FormData();
+    fd.append('id', TEST_TEMPLATE_ID);
+    fd.append('name', overrides?.name ?? '원본 템플릿');
+    fd.append('description', overrides?.description ?? '원본 설명');
+    fd.append('questions', overrides?.questions ?? JSON.stringify(testQuestions));
+    return fd;
+  }
+
+  it('사용 중 + 메타데이터만 변경 → in-place update (복제 안 함)', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: serverMock.client,
+    });
+
+    // 1. 기존 템플릿 조회 (.single)
+    serverMock.addResult({
+      data: {
+        id: TEST_TEMPLATE_ID,
+        version: 1,
+        name: '원본 템플릿',
+        description: '원본 설명',
+        questions: testQuestions,
+        is_active: true,
+      },
+      error: null,
+    });
+    // 2. usage count 조회 (.then)
+    serverMock.addResult({ data: null, error: null, count: 5 });
+
+    // admin: in-place update → 성공 (.single)
+    adminMock.addResult({
+      data: {
+        id: TEST_TEMPLATE_ID,
+        version: 1,
+        name: '수정된 이름',
+        description: '수정된 설명',
+      },
+      error: null,
+    });
+
+    const fd = createFormData({ name: '수정된 이름', description: '수정된 설명' });
+    const result = await updateTemplate(fd);
+
+    expect(result.success).toBe(true);
+    // 감사로그가 TEMPLATE_UPDATE (직접 수정)로 기록됨
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'TEMPLATE_UPDATE',
+        targetId: TEST_TEMPLATE_ID,
+      }),
+    );
+  });
+
+  it('사용 중 + questions 변경 → 새 버전 생성 (복제)', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: serverMock.client,
+    });
+
+    // 1. 기존 템플릿 조회 (.single)
+    serverMock.addResult({
+      data: {
+        id: TEST_TEMPLATE_ID,
+        version: 1,
+        name: '원본 템플릿',
+        description: '원본 설명',
+        questions: testQuestions,
+        is_active: true,
+      },
+      error: null,
+    });
+    // 2. usage count 조회 (.then)
+    serverMock.addResult({ data: null, error: null, count: 5 });
+    // 3. 최신 버전 조회 (.single)
+    serverMock.addResult({ data: { version: 2 }, error: null });
+
+    const NEW_TEMPLATE_ID = '550e8400-e29b-41d4-a716-446655440099';
+
+    // admin: insert 새 버전 → 성공 (.single)
+    adminMock.addResult({
+      data: {
+        id: NEW_TEMPLATE_ID,
+        version: 3,
+        name: '원본 템플릿',
+        description: '원본 설명',
+      },
+      error: null,
+    });
+
+    const changedQuestions = [
+      { ...testQuestions[0], question_text: '변경된 질문 내용' },
+    ];
+    const fd = createFormData({ questions: JSON.stringify(changedQuestions) });
+    const result = await updateTemplate(fd);
+
+    expect(result.success).toBe(true);
+    // 감사로그가 TEMPLATE_CREATE (새 버전)로 기록됨
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'TEMPLATE_CREATE',
+        targetId: NEW_TEMPLATE_ID,
+      }),
+    );
+  });
+});
+
+// ─── hasQuestionsChanged ────────────────────────────────────────────────────
+
+describe('hasQuestionsChanged', () => {
+  const baseQuestion = {
+    id: 'q1',
+    order: 1,
+    dimension: 'AI 성숙도',
+    question_text: '현재 AI 도입 수준은?',
+    weight: 1,
+  };
+
+  const baseQuestion2 = {
+    id: 'q2',
+    order: 2,
+    dimension: '데이터 준비도',
+    question_text: '데이터 품질 관리 체계가 있는가?',
+    weight: 2,
+  };
+
+  it('동일한 questions → false', () => {
+    const existing = [baseQuestion, baseQuestion2];
+    const updated = [{ ...baseQuestion }, { ...baseQuestion2 }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(false);
+  });
+
+  it('question_text 변경 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [{ ...baseQuestion, question_text: '변경된 질문' }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('weight 변경 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [{ ...baseQuestion, weight: 5 }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('dimension 변경 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [{ ...baseQuestion, dimension: '인프라 준비도' }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('order 변경 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [{ ...baseQuestion, order: 3 }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('id 변경 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [{ ...baseQuestion, id: 'q_new_1' }];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('질문 추가 → true', () => {
+    const existing = [baseQuestion];
+    const updated = [baseQuestion, baseQuestion2];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('질문 삭제 → true', () => {
+    const existing = [baseQuestion, baseQuestion2];
+    const updated = [baseQuestion];
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(true);
+  });
+
+  it('빈 배열 동일 → false', () => {
+    expect(hasQuestionsChanged([], [])).toBe(false);
+  });
+
+  it('배열 순서 다르지만 내용 동일 (order 기준 정렬) → false', () => {
+    const existing = [baseQuestion2, baseQuestion]; // order 2, 1
+    const updated = [baseQuestion, baseQuestion2]; // order 1, 2
+
+    expect(hasQuestionsChanged(existing, updated)).toBe(false);
   });
 });
