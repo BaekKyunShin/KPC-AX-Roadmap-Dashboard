@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { getScoreColor } from '@/lib/constants/score-color';
+import { MAX_SCALE, SCALE_5_LABELS } from '@/components/ops/self-assessment';
 import { cn } from '@/lib/utils';
 
 // =============================================================================
@@ -48,16 +49,15 @@ interface Props {
 // 상수
 // =============================================================================
 
-const SCALE_5_LABELS = ['매우 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
 
 // =============================================================================
 // 컴포넌트
 // =============================================================================
 
-function ScaleIndicator({ value, max = 5 }: { value: number; max?: number }) {
+function ScaleIndicator({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-4">
-      {Array.from({ length: max }, (_, i) => {
+      {Array.from({ length: MAX_SCALE }, (_, i) => {
         const point = i + 1;
         const isSelected = point === value;
         return (
@@ -72,14 +72,12 @@ function ScaleIndicator({ value, max = 5 }: { value: number; max?: number }) {
             >
               {point}
             </div>
-            {max === 5 && (
-              <span className={cn(
-                'mt-1 text-[10px] leading-tight text-center whitespace-nowrap',
-                isSelected ? 'text-blue-600 font-medium' : 'text-gray-400'
-              )}>
-                {SCALE_5_LABELS[i]}
-              </span>
-            )}
+            <span className={cn(
+              'mt-1 text-[10px] leading-tight text-center whitespace-nowrap',
+              isSelected ? 'text-blue-600 font-medium' : 'text-gray-400'
+            )}>
+              {SCALE_5_LABELS[i]}
+            </span>
           </div>
         );
       })}
@@ -93,7 +91,7 @@ function QuestionAnswer({ question }: { question: QuestionWithAnswer }) {
   }
 
   if (typeof question.answer === 'number') {
-    return <ScaleIndicator value={question.answer} max={5} />;
+    return <ScaleIndicator value={question.answer} />;
   }
 
   return null;
@@ -129,7 +127,7 @@ export function AssessmentDetailAccordion({ answers, questions }: Props) {
 
       const val = typeof answer === 'number' ? answer : 0;
       group.score += val * q.weight;
-      group.maxScore += 5 * q.weight;
+      group.maxScore += MAX_SCALE * q.weight;
     }
 
     return Array.from(groups.values());

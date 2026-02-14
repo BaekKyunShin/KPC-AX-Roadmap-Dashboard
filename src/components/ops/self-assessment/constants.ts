@@ -6,6 +6,7 @@ export const CIRCLED_NUMBERS = [
   '㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚'
 ];
 
+export const MAX_SCALE = 5;
 export const SCALE_5_LABELS = ['매우 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
 export const SCALE_5_VALUES = [1, 2, 3, 4, 5] as const;
 

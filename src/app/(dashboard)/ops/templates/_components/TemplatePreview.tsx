@@ -1,6 +1,7 @@
 'use client';
 
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
+import { MAX_SCALE } from '@/components/ops/self-assessment';
 
 interface TemplatePreviewProps {
   template: SelfAssessmentTemplate;
@@ -24,7 +25,7 @@ export default function TemplatePreview({ template }: TemplatePreviewProps) {
 
   // 최대 점수 계산 (5점 척도 고정)
   const maxScore = (template.questions || []).reduce((sum, q) => {
-    return sum + 5 * q.weight;
+    return sum + MAX_SCALE * q.weight;
   }, 0);
 
   return (

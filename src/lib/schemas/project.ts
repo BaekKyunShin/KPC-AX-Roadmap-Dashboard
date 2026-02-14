@@ -35,10 +35,10 @@ export const createProjectSchema = z.object({
 // 프로젝트 수정 스키마
 export const updateProjectSchema = createProjectSchema.partial();
 
-// 자가진단 응답 스키마
+// 자가진단 응답 스키마 (5점 척도 고정)
 export const selfAssessmentAnswerSchema = z.object({
   question_id: z.string(),
-  answer_value: z.union([z.string(), z.number()]),
+  answer_value: z.number(),
 });
 
 // 자가진단 입력 스키마

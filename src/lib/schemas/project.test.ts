@@ -129,12 +129,12 @@ describe('createSelfAssessmentSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should accept string answer values', () => {
+  it('should reject string answer values (5점 척도 고정)', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,
       answers: [{ question_id: 'q1', answer_value: 'text answer' }],
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 });
 

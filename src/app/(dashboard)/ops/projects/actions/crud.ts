@@ -7,6 +7,7 @@ import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
+import { MAX_SCALE } from '@/components/ops/self-assessment';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -289,8 +290,6 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
 /**
  * 점수 계산 헬퍼 함수 (5점 척도 고정)
  */
-const MAX_SCALE = 5;
-
 function calculateScores(
   answers: { question_id: string; answer_value: string | number }[],
   questions: { id: string; dimension: string; weight: number }[]
