@@ -305,11 +305,15 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
     }
 
-    // 모든 템플릿 비활성화
-    await adminSupabase
+    // 모든 활성 템플릿 비활성화
+    const { error: deactivateError } = await adminSupabase
       .from('self_assessment_templates')
       .update({ is_active: false })
-      .neq('id', 'placeholder');
+      .eq('is_active', true);
+
+    if (deactivateError) {
+      return { success: false, error: deactivateError.message };
+    }
 
     // 선택한 템플릿 활성화
     const { error } = await adminSupabase

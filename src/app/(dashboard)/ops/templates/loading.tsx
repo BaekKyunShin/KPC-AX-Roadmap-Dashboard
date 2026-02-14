@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { TemplateTableSkeleton } from '@/components/ui/Skeleton';
 
 export default function TemplatesLoading() {
@@ -9,12 +11,12 @@ export default function TemplatesLoading() {
         title="자가진단 템플릿"
         description="자가진단 문항 템플릿을 관리합니다. 활성화된 템플릿이 새 자가진단에 사용됩니다."
         actions={
-          <Link
-            href="/ops/templates/new"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            + 새 템플릿 생성
-          </Link>
+          <Button asChild>
+            <Link href="/ops/templates/new">
+              <Plus className="mr-2 h-4 w-4" />
+              새 템플릿 생성
+            </Link>
+          </Button>
         }
       />
       <TemplateTableSkeleton rows={5} />

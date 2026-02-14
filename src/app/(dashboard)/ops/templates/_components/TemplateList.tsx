@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 // Types
 // =============================================================================
 
-interface TemplateWithUsage extends SelfAssessmentTemplate {
+export interface TemplateWithUsage extends SelfAssessmentTemplate {
   usage_count: number;
 }
 
