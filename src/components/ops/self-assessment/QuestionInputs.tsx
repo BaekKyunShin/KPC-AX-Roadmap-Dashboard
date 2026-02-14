@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import type { Question } from './types';
 import { SCALE_5_LABELS, SCALE_5_VALUES } from './constants';
 
@@ -18,13 +19,14 @@ export function QuestionInput({ question, value, onChange }: QuestionInputProps)
               key={v}
               type="button"
               onClick={() => onChange(question.id, v)}
-              className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+              className={cn(
+                'flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all',
                 isSelected
                   ? 'bg-blue-50 border-blue-500 text-blue-700'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
-              }`}
+              )}
             >
-              <span className={`text-sm font-semibold ${isSelected ? 'text-blue-600' : 'text-gray-700'}`}>
+              <span className={cn('text-sm font-semibold', isSelected ? 'text-blue-600' : 'text-gray-700')}>
                 {v}
               </span>
               <span className="text-xs">{SCALE_5_LABELS[v - 1]}</span>

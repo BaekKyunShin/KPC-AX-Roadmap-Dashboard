@@ -4,18 +4,18 @@ import { useState, useMemo, useCallback, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { cn, showErrorToast, showSuccessToast } from '@/lib/utils';
 import {
   type Question,
   type Template,
+  StepIndicator,
+  ProgressBar,
+  DimensionHeader,
+  QuestionInput,
+  NavigationButtons,
   groupQuestionsByDimension,
   toCircledNumber,
 } from './self-assessment';
-import { StepIndicator } from './self-assessment/StepIndicator';
-import { ProgressBar } from './self-assessment/ProgressBar';
-import { DimensionHeader } from './self-assessment/DimensionHeader';
-import { QuestionInput } from './self-assessment/QuestionInputs';
-import { NavigationButtons } from './self-assessment/NavigationButtons';
 
 // ============================================================================
 // 타입 정의
@@ -222,11 +222,12 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
             <div
               key={question.id}
               id={`question-${question.id}`}
-              className={`p-4 rounded-lg transition-colors ${
+              className={cn(
+                'p-4 rounded-lg transition-colors',
                 isQuestionAnswered(question)
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-white border border-gray-200'
-              }`}
+              )}
             >
               <div className="flex gap-3 mb-3">
                 <span className="text-xl text-blue-600 flex-shrink-0 mt-[-2px]">
