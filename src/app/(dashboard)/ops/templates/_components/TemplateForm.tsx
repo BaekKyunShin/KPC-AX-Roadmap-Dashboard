@@ -49,6 +49,11 @@ const DIMENSIONS = [
 
 const REORDER_TRANSITION = { duration: 0.25, ease: 'easeInOut' } as const;
 
+const RESTING_STYLE = {
+  scale: 1,
+  boxShadow: '0 0 0 rgba(0,0,0,0)',
+} as const;
+
 const WHILE_DRAG_STYLE = {
   scale: 1.02,
   boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
@@ -73,6 +78,7 @@ function QuestionItem({
       value={question.id}
       dragListener={false}
       dragControls={dragControls}
+      animate={RESTING_STYLE}
       transition={REORDER_TRANSITION}
       whileDrag={WHILE_DRAG_STYLE}
       as="div"

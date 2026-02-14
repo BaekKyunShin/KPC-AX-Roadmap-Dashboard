@@ -39,6 +39,8 @@ vi.mock('motion/react', () => ({
       dragListener: _dragListener,
       dragControls: _dragControls,
       whileDrag: _whileDrag,
+      animate: _animate,
+      transition: _transition,
       ...props
     }: {
       children: React.ReactNode;
@@ -46,6 +48,8 @@ vi.mock('motion/react', () => ({
       dragListener?: boolean;
       dragControls?: unknown;
       whileDrag?: unknown;
+      animate?: unknown;
+      transition?: unknown;
       [key: string]: unknown;
     }) => <div data-testid="reorder-item" {...props}>{children}</div>,
   },
