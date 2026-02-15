@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { PROJECT_STALL_THRESHOLDS } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
@@ -119,6 +120,9 @@ export interface ConsultantProgress {
 }
 
 export async function fetchConsultantProgress(): Promise<ConsultantProgress[]> {
+  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  if ('error' in auth) return [];
+
   const adminSupabase = createAdminClient();
 
   // 승인된 컨설턴트 목록 조회

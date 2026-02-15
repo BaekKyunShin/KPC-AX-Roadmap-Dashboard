@@ -730,9 +730,15 @@ describe('fetchStalledProjects', () => {
 // ─── fetchConsultantProgress ────────────────────────────────────────────────
 
 describe('fetchConsultantProgress', () => {
+  let serverMock: ReturnType<typeof createMockClient>;
   let adminMock: ReturnType<typeof createMockClient>;
 
   beforeEach(() => {
+    // requireAuthWithRole 내부에서 createClient → getUser → role 조회
+    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+
     adminMock = createMockClient();
     vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
   });
