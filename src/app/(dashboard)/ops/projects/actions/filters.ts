@@ -1,10 +1,10 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getStatusFilterOptions,
+  OPS_MANAGER_ROLES,
   type StatusFilterOption,
 } from '@/lib/constants/status';
 
@@ -18,13 +18,14 @@ export interface ProjectFilterOptions {
  * 프로젝트 상태 및 업종 목록 조회
  */
 export async function fetchProjectFilters(): Promise<ProjectFilterOptions> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return { statuses: [], industries: [] };
 
   // 워크플로우 단계 기반 상태 옵션 (중복 라벨 없음)
   const statuses = getStatusFilterOptions();
 
   // 사용 중인 업종 목록
-  const { data: industries } = await supabase
+  const { data: industries } = await auth.supabase
     .from('projects')
     .select('industry')
     .not('industry', 'is', null);
@@ -72,7 +73,7 @@ export interface ConsultantCandidateListResult {
 export async function fetchConsultantCandidates(
   params: ConsultantCandidateParams = {}
 ): Promise<ConsultantCandidateListResult> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return { consultants: [], total: 0, totalPages: 0, page: 1 };
 
   const { page = 1, limit = 10, search = '', industries = [], skills = [] } = params;
@@ -168,6 +169,9 @@ export async function fetchConsultantFilterOptions(): Promise<{
   industries: string[];
   skills: string[];
 }> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return { industries: [], skills: [] };
+
   const adminSupabase = createAdminClient();
 
   // 활성 컨설턴트(CONSULTANT_APPROVED + ACTIVE)의 프로필에서 업종과 스킬 목록 수집

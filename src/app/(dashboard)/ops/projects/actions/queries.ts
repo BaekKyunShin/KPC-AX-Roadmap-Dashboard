@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import { getWorkflowStepIndex } from '@/lib/constants/status';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { getWorkflowStepIndex, OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
 /**
@@ -34,13 +34,14 @@ export interface ProjectListResult {
 }
 
 export async function fetchProjects(params: ProjectListParams = {}): Promise<ProjectListResult> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return { projects: [], total: 0, totalPages: 0, page: 1 };
 
   const { page = 1, limit = 10, search = '', status = '', industry = '' } = params;
   const offset = (page - 1) * limit;
 
   // 기본 쿼리
-  let query = supabase
+  let query = auth.supabase
     .from('projects')
     .select(`
       id,
@@ -140,10 +141,11 @@ export interface ProjectTimeline {
 }
 
 export async function fetchProjectTimeline(projectId: string): Promise<ProjectTimeline | null> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return null;
 
   // 프로젝트 기본 정보
-  const { data: project, error: projectError } = await supabase
+  const { data: project, error: projectError } = await auth.supabase
     .from('projects')
     .select('id, company_name, status, created_at')
     .eq('id', projectId)
@@ -155,7 +157,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   }
 
   // 자가진단 정보
-  const { data: selfAssessment } = await supabase
+  const { data: selfAssessment } = await auth.supabase
     .from('self_assessments')
     .select('created_at, scores')
     .eq('project_id', projectId)
@@ -164,7 +166,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .single();
 
   // 매칭 추천 정보
-  const { data: matchingRecommendation } = await supabase
+  const { data: matchingRecommendation } = await auth.supabase
     .from('matching_recommendations')
     .select('created_at')
     .eq('project_id', projectId)
@@ -173,7 +175,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .single();
 
   // 현재 배정 정보 (타임라인 단계용)
-  const { data: assignment } = await supabase
+  const { data: assignment } = await auth.supabase
     .from('project_assignments')
     .select('assigned_at, consultant:users!project_assignments_consultant_id_fkey(name)')
     .eq('project_id', projectId)
@@ -181,7 +183,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .single();
 
   // 전체 배정 이력 (타임라인 상세 표시용)
-  const { data: allAssignments } = await supabase
+  const { data: allAssignments } = await auth.supabase
     .from('project_assignments')
     .select(`
       id,
@@ -197,7 +199,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .order('assigned_at', { ascending: false });
 
   // 인터뷰 정보
-  const { data: interview } = await supabase
+  const { data: interview } = await auth.supabase
     .from('interviews')
     .select('created_at, interview_date')
     .eq('project_id', projectId)
@@ -206,7 +208,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .single();
 
   // 로드맵 정보
-  const { data: roadmapDraft } = await supabase
+  const { data: roadmapDraft } = await auth.supabase
     .from('roadmap_versions')
     .select('created_at, version_number')
     .eq('project_id', projectId)
@@ -215,7 +217,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     .single();
 
   // 최종 확정 로드맵 정보
-  const { data: roadmapFinal } = await supabase
+  const { data: roadmapFinal } = await auth.supabase
     .from('roadmap_versions')
     .select('finalized_at')
     .eq('project_id', projectId)
@@ -337,12 +339,13 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
   totalPages: number;
   page: number;
 }> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return { projects: [], total: 0, totalPages: 0, page: 1 };
 
   const { page = 1, limit = 10, search = '', status = '', statuses, industry = '' } = params;
   const offset = (page - 1) * limit;
 
-  let query = supabase
+  let query = auth.supabase
     .from('projects')
     .select(`
       id,

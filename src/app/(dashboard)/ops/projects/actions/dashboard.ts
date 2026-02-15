@@ -1,9 +1,8 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
-import { PROJECT_STALL_THRESHOLDS } from '@/lib/constants/status';
+import { OPS_MANAGER_ROLES, PROJECT_STALL_THRESHOLDS } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
 /**
@@ -15,9 +14,10 @@ export interface ProjectStats {
 }
 
 export async function fetchProjectStats(): Promise<ProjectStats> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return { total: 0, byStatus: {} };
 
-  const { data: projects, error } = await supabase
+  const { data: projects, error } = await auth.supabase
     .from('projects')
     .select('status');
 
@@ -47,13 +47,14 @@ export interface MonthlyCompletion {
 }
 
 export async function fetchMonthlyCompletions(): Promise<MonthlyCompletion[]> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return [];
 
   // 최근 6개월 범위 계산
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-  const { data: versions, error } = await supabase
+  const { data: versions, error } = await auth.supabase
     .from('roadmap_versions')
     .select('finalized_at')
     .eq('status', 'FINAL')
@@ -120,7 +121,7 @@ export interface ConsultantProgress {
 }
 
 export async function fetchConsultantProgress(): Promise<ConsultantProgress[]> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return [];
 
   const adminSupabase = createAdminClient();
@@ -206,10 +207,11 @@ export interface StalledProject {
 }
 
 export async function fetchStalledProjects(minDays: number = PROJECT_STALL_THRESHOLDS.DASHBOARD_MIN): Promise<StalledProject[]> {
-  const supabase = await createClient();
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return [];
 
   // 완료되지 않은 프로젝트 조회
-  const { data: projects, error } = await supabase
+  const { data: projects, error } = await auth.supabase
     .from('projects')
     .select(`
       id,

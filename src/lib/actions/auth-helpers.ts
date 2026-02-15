@@ -56,7 +56,7 @@ export async function requireAuth(
 export async function requireRole(
   supabase: SupabaseServerClient,
   userId: string,
-  allowedRoles: UserRole[],
+  allowedRoles: readonly UserRole[],
   errorMessage = '권한이 없습니다.',
 ): Promise<{ role: UserRole } | AuthFailure> {
   const { data: profile } = await supabase
@@ -77,7 +77,7 @@ export async function requireRole(
  * 가장 빈번한 조합 패턴(getUser → role 조회 → 권한 비교)을 단축합니다.
  */
 export async function requireAuthWithRole(
-  allowedRoles: UserRole[],
+  allowedRoles: readonly UserRole[],
   options?: { authError?: string; roleError?: string },
 ): Promise<RoleSuccess | AuthFailure> {
   const auth = await requireAuth(options?.authError);

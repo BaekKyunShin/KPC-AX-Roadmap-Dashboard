@@ -556,6 +556,7 @@ describe('fetchProjectStats', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -613,6 +614,7 @@ describe('fetchStalledProjects', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -859,6 +861,7 @@ describe('fetchProjects', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -973,6 +976,7 @@ describe('fetchProjectsWithTimeline', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
