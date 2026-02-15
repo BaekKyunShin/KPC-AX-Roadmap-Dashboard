@@ -45,6 +45,19 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+// =============================================================================
+// Realtime 채널 재시도 설정
+// =============================================================================
+
+/** Realtime 구독 실패 시 최대 재시도 횟수 */
+export const MAX_REALTIME_RETRIES = 3;
+
+/** 재시도 기본 지연 (ms) — 지수 백오프 계산의 기저값 */
+export const REALTIME_RETRY_BASE_MS = 1_000;
+
+/** 재시도 최대 지연 (ms) — 백오프 상한 */
+export const REALTIME_RETRY_MAX_MS = 10_000;
+
 /** 대화 읽음 처리 시 컴포넌트 간 통신에 사용하는 커스텀 이벤트 이름 */
 export const CONVERSATION_READ_EVENT = 'conversation-read';
 

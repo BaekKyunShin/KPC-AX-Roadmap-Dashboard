@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
-import { MESSAGE_BADGE_MAX, CONVERSATION_READ_EVENT } from '@/lib/constants/message';
+import {
+  CONVERSATION_READ_EVENT,
+  MAX_REALTIME_RETRIES,
+  MESSAGE_BADGE_MAX,
+  REALTIME_RETRY_BASE_MS,
+  REALTIME_RETRY_MAX_MS,
+} from '@/lib/constants/message';
 import { createClient } from '@/lib/supabase/client';
 import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messages/actions';
 
@@ -13,9 +19,6 @@ import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messag
 
 /** Polling 간격 (30초) — Realtime 실패 시에만 활성화되는 fallback */
 const POLL_INTERVAL_MS = 30_000;
-
-/** Realtime 구독 실패 시 최대 재시도 횟수 */
-const MAX_REALTIME_RETRIES = 3;
 
 // =============================================================================
 // Types
@@ -109,10 +112,10 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
           if (status === 'SUBSCRIBED') {
             retryCount = 0;
             stopFallbackPolling();
-          } else if (status === 'CHANNEL_ERROR') {
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             if (retryCount < MAX_REALTIME_RETRIES) {
               retryCount++;
-              const delay = Math.min(1000 * Math.pow(2, retryCount), 10_000);
+              const delay = Math.min(REALTIME_RETRY_BASE_MS * 2 ** retryCount, REALTIME_RETRY_MAX_MS);
               retryTimer = setTimeout(() => subscribe(), delay);
             } else {
               // 재시도 소진 → polling fallback 활성화

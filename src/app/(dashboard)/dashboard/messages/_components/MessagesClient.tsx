@@ -7,7 +7,13 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { CONVERSATION_READ_EVENT, MESSAGE_PAGE_SIZE } from '@/lib/constants/message';
+import {
+  CONVERSATION_READ_EVENT,
+  MAX_REALTIME_RETRIES,
+  MESSAGE_PAGE_SIZE,
+  REALTIME_RETRY_BASE_MS,
+  REALTIME_RETRY_MAX_MS,
+} from '@/lib/constants/message';
 import { showErrorToast } from '@/lib/utils/toast';
 import type { ConversationWithPreview, Message } from '@/types/database';
 import ConversationList from './ConversationList';
@@ -17,6 +23,28 @@ import { fetchConversations, fetchMessages, sendMessage, markConversationRead } 
 
 /** Polling 간격: 새 메시지 감지 (3초) — Realtime 실패 시 안전망 */
 const THREAD_POLL_MS = 3_000;
+
+/** Realtime 채널 재시도 상태 */
+interface RealtimeRetryState {
+  isMounted: boolean;
+  retryCount: number;
+  retryTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/** subscribe status 콜백 생성: CHANNEL_ERROR/TIMED_OUT 시 지수 백오프 재시도 */
+function createRetryHandler(resubscribe: () => void, state: RealtimeRetryState) {
+  return (status: string) => {
+    if (status === 'SUBSCRIBED') {
+      state.retryCount = 0;
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      if (state.isMounted && state.retryCount < MAX_REALTIME_RETRIES) {
+        state.retryCount++;
+        const delay = Math.min(REALTIME_RETRY_BASE_MS * 2 ** state.retryCount, REALTIME_RETRY_MAX_MS);
+        state.retryTimer = setTimeout(resubscribe, delay);
+      }
+    }
+  };
+}
 
 export default function MessagesClient() {
   const router = useRouter();
@@ -203,62 +231,104 @@ export default function MessagesClient() {
   // Realtime: 현재 대화의 새 메시지 실시간 수신
   useEffect(() => {
     if (!selectedConvId) return;
+    const convId = selectedConvId;
 
     const supabase = createClient();
-    const channel = supabase
-      .channel(`messages:${selectedConvId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${selectedConvId}`,
-        },
-        async (payload) => {
-          const newMsg = payload.new as Message;
-          if (newMsg.sender_id === currentUserIdRef.current) return;
+    const retryState: RealtimeRetryState = { isMounted: true, retryCount: 0, retryTimer: null };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          appendMessageIfNew(newMsg);
+    async function subscribeConv() {
+      if (!retryState.isMounted) return;
 
-          await markConversationRead(selectedConvId);
-          window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
-        },
-      )
-      .subscribe();
+      // 인증 세션 대기 — Realtime RLS 정책 통과에 필요
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!retryState.isMounted || !user) return;
+      currentUserIdRef.current = user.id;
+
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+
+      channel = supabase
+        .channel(`messages:${convId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${convId}`,
+          },
+          async (payload) => {
+            const newMsg = payload.new as Message;
+            if (newMsg.sender_id === currentUserIdRef.current) return;
+
+            appendMessageIfNew(newMsg);
+
+            await markConversationRead(convId);
+            window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+          },
+        )
+        // 3초 polling이 이미 안전망으로 동작하므로 재시도 소진 후 추가 fallback 불필요
+        .subscribe(createRetryHandler(subscribeConv, retryState));
+    }
+
+    subscribeConv();
 
     return () => {
-      supabase.removeChannel(channel);
+      retryState.isMounted = false;
+      if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [selectedConvId, appendMessageIfNew]);
 
   // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 스레드 갱신 + 뱃지)
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel('messages:all')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          if (newMsg.sender_id === currentUserIdRef.current) return;
+    const retryState: RealtimeRetryState = { isMounted: true, retryCount: 0, retryTimer: null };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          refreshConversations();
+    async function subscribeAll() {
+      if (!retryState.isMounted) return;
 
-          if (newMsg.conversation_id === selectedConvIdRef.current) {
-            appendMessageIfNew(newMsg);
-            markConversationRead(newMsg.conversation_id);
-            window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
-          } else {
-            router.refresh();
-          }
-        },
-      )
-      .subscribe();
+      // 인증 세션 대기 — Realtime RLS 정책 통과에 필요
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!retryState.isMounted || !user) return;
+      currentUserIdRef.current = user.id;
+
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+
+      channel = supabase
+        .channel('messages:all')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          (payload) => {
+            const newMsg = payload.new as Message;
+            if (newMsg.sender_id === currentUserIdRef.current) return;
+
+            refreshConversations();
+
+            if (newMsg.conversation_id === selectedConvIdRef.current) {
+              appendMessageIfNew(newMsg);
+              markConversationRead(newMsg.conversation_id);
+              window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+            } else {
+              router.refresh();
+            }
+          },
+        )
+        .subscribe(createRetryHandler(subscribeAll, retryState));
+    }
+
+    subscribeAll();
 
     return () => {
-      supabase.removeChannel(channel);
+      retryState.isMounted = false;
+      if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [refreshConversations, appendMessageIfNew, router]);
 
