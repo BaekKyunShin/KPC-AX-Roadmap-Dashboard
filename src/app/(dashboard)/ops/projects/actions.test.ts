@@ -568,6 +568,30 @@ describe('createSelfAssessment', () => {
     expect(revalidatePath).toHaveBeenCalledWith(`/ops/projects/${TEST_PROJECT_ID}`);
   });
 
+  it('NEW 상태에서만 DIAGNOSED로 전이 — status=NEW 조건이 update에 포함됨', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    // 템플릿 조회
+    adminMock.addResult({
+      data: {
+        version: 1,
+        questions: [
+          { id: 'q1', dimension: 'infra', weight: 2 },
+          { id: 'q2', dimension: 'people', weight: 1 },
+        ],
+      },
+      error: null,
+    });
+    // self_assessments insert → 성공
+    adminMock.addResult({ data: null, error: null });
+    // projects conditional update → 성공
+    adminMock.addResult({ data: null, error: null });
+
+    await createSelfAssessment(validSelfAssessmentFormData());
+
+    // status='NEW' 가드가 update 쿼리에 포함되어야 함 (역방향 전이 방지)
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('status', 'NEW');
+  });
+
   it('DB insert 실패 → error + 실패 audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 

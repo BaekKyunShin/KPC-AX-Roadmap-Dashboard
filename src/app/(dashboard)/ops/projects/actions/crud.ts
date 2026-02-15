@@ -160,11 +160,12 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
     return { success: false, error: `자가진단 저장 실패: ${insertError.message}` };
   }
 
-  // 프로젝트 상태 업데이트
+  // 프로젝트 상태 업데이트 — NEW일 때만 DIAGNOSED로 전이 (역방향 전이 방지)
   await adminSupabase
     .from('projects')
     .update({ status: 'DIAGNOSED' })
-    .eq('id', projectId);
+    .eq('id', projectId)
+    .eq('status', 'NEW');
 
   // 감사로그 기록
   await createAuditLog({
