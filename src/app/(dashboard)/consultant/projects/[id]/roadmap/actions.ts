@@ -79,26 +79,41 @@ export async function createRoadmap(
  */
 export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuth();
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 로드맵을 확정할 수 있습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
 
-    await finalizeRoadmap(roadmapId, user.id);
-
-    // 활동 일지 자동 기록
+    // roadmapId로 프로젝트 조회 후 배정 검증
     const { data: roadmapData } = await supabase
       .from('roadmap_versions')
       .select('project_id')
       .eq('id', roadmapId)
       .single();
 
-    if (roadmapData) {
-      await insertSystemActivityLog(
-        roadmapData.project_id,
-        user.id,
-        '로드맵이 최종 확정되었습니다.',
-      );
+    if (!roadmapData) {
+      return { success: false, error: '로드맵을 찾을 수 없습니다.' };
     }
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('assigned_consultant_id')
+      .eq('id', roadmapData.project_id)
+      .single();
+
+    if (!projectData || projectData.assigned_consultant_id !== user.id) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+
+    await finalizeRoadmap(roadmapId, user.id);
+
+    // 활동 일지 자동 기록
+    await insertSystemActivityLog(
+      roadmapData.project_id,
+      user.id,
+      '로드맵이 최종 확정되었습니다.',
+    );
 
     return { success: true };
   } catch (error) {
