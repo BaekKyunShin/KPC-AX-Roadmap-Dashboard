@@ -1,6 +1,6 @@
 'use server';
 
-import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import {
   generateRoadmap,
@@ -13,6 +13,7 @@ import {
   type RoadmapCell,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
+import { editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -85,32 +86,14 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
 
-    // roadmapId로 프로젝트 조회 후 배정 검증
-    const { data: roadmapData } = await supabase
-      .from('roadmap_versions')
-      .select('project_id')
-      .eq('id', roadmapId)
-      .single();
-
-    if (!roadmapData) {
-      return { success: false, error: '로드맵을 찾을 수 없습니다.' };
-    }
-
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('assigned_consultant_id')
-      .eq('id', roadmapData.project_id)
-      .single();
-
-    if (!projectData || projectData.assigned_consultant_id !== user.id) {
-      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
-    }
+    const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+    if ('error' in access) return { success: false, error: access.error };
 
     await finalizeRoadmap(roadmapId, user.id);
 
     // 활동 일지 자동 기록
     await insertSystemActivityLog(
-      roadmapData.project_id,
+      access.projectId,
       user.id,
       '로드맵이 최종 확정되었습니다.',
     );
@@ -221,9 +204,19 @@ export async function editRoadmapManually(
       roleError: '컨설턴트만 로드맵을 편집할 수 있습니다.',
     });
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user } = auth;
+    const { user, supabase } = auth;
 
-    const result = await updateRoadmapManually(roadmapId, user.id, updates);
+    // Zod 입력 검증
+    const parsed = editRoadmapUpdatesSchema.safeParse(updates);
+    if (!parsed.success) {
+      console.warn('[editRoadmapManually] Zod validation failed:', parsed.error.flatten());
+      return { success: false, error: '입력 데이터가 올바르지 않습니다.' };
+    }
+
+    const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    const result = await updateRoadmapManually(roadmapId, user.id, parsed.data);
 
     if (!result.success) {
       return { success: false, error: result.error || '로드맵 편집에 실패했습니다.' };
