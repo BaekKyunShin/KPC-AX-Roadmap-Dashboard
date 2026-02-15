@@ -329,6 +329,8 @@ describe('assignConsultant', () => {
     const { revalidatePath } = await import('next/cache');
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    // 프로젝트 상태 조회 → DIAGNOSED (배정 가능)
+    adminMock.addResult({ data: { status: 'DIAGNOSED' }, error: null });
     // 기존 배정 조회 → 없음
     adminMock.addResult({ data: null, error: null });
     // 새 배정 insert → 성공
@@ -360,6 +362,8 @@ describe('assignConsultant', () => {
 
   it('재배정 성공 (기존 배정 해제 후 신규 배정)', async () => {
     serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    // 프로젝트 상태 조회 → ASSIGNED (재배정 가능)
+    adminMock.addResult({ data: { status: 'ASSIGNED' }, error: null });
     // 기존 배정 조회 → 있음
     adminMock.addResult({ data: { id: 'old-assignment-id' }, error: null });
     // 기존 배정 해제 (update) → 성공
@@ -383,10 +387,50 @@ describe('assignConsultant', () => {
     );
   });
 
+  it.each([
+    { status: 'NEW', label: '진단 미완료' },
+    { status: 'INTERVIEWED', label: '이미 진행된 프로젝트' },
+  ])('배정 불가 상태 $status → 배정 거부 + 감사 로그 ($label)', async ({ status }) => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    adminMock.addResult({ data: { status }, error: null });
+
+    const result = await assignConsultant(validAssignFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain(status);
+      expect(result.error).toContain('배정할 수 없습니다');
+    }
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'PROJECT_ASSIGN',
+        success: false,
+        meta: expect.objectContaining({ current_status: status }),
+      }),
+    );
+  });
+
+  it('프로젝트 조회 실패 → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    // 프로젝트 조회 실패
+    adminMock.addResult({ data: null, error: { message: 'not_found' } });
+
+    const result = await assignConsultant(validAssignFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('프로젝트');
+    }
+  });
+
   it('배정 insert 실패 → error + audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    // 프로젝트 상태 조회 → MATCH_RECOMMENDED (배정 가능)
+    adminMock.addResult({ data: { status: 'MATCH_RECOMMENDED' }, error: null });
     // 기존 배정 없음
     adminMock.addResult({ data: null, error: null });
     // insert 실패

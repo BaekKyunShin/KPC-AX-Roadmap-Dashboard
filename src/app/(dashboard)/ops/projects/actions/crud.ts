@@ -7,6 +7,7 @@ import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
+import { ASSIGNMENT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import { MAX_SCALE } from '@/components/ops/self-assessment';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -205,6 +206,33 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
   const { project_id, consultant_id, assignment_reason } = validation.data;
 
   const adminSupabase = createAdminClient();
+
+  // 프로젝트 현재 상태 확인 — DIAGNOSED, MATCH_RECOMMENDED, ASSIGNED만 배정 가능
+  const { data: currentProject, error: projectError } = await adminSupabase
+    .from('projects')
+    .select('status')
+    .eq('id', project_id)
+    .single();
+
+  if (projectError || !currentProject) {
+    return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+  }
+
+  if (!ASSIGNMENT_ELIGIBLE_STATUSES.includes(currentProject.status)) {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PROJECT_ASSIGN',
+      targetType: 'project',
+      targetId: project_id,
+      meta: { consultant_id, current_status: currentProject.status },
+      success: false,
+      errorMessage: `Invalid status transition: ${currentProject.status} → ASSIGNED`,
+    });
+    return {
+      success: false,
+      error: `현재 프로젝트 상태(${currentProject.status})에서는 컨설턴트를 배정할 수 없습니다.`,
+    };
+  }
 
   // 기존 배정이 있는지 확인
   const { data: existingAssignment } = await adminSupabase

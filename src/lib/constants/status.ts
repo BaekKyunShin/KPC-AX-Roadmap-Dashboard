@@ -51,6 +51,13 @@ export function canManageUser(currentUserRole: UserRole, targetUserRole: UserRol
 // 프로젝트 상태 관련 상수
 // =============================================================================
 
+/** 컨설턴트 배정이 가능한 프로젝트 상태 (진단 완료 이후 + 재배정) */
+export const ASSIGNMENT_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
+  'DIAGNOSED',
+  'MATCH_RECOMMENDED',
+  'ASSIGNED',
+] as const;
+
 /** 로드맵 생성이 가능한 프로젝트 상태 (인터뷰 완료 이후) */
 export const ROADMAP_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
   'INTERVIEWED',
