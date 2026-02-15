@@ -1,12 +1,11 @@
 /**
  * quota.ts 테스트
  * - getKSTDateTime: KST 기준 날짜/월 조회 (순수 함수, 타이머 모킹)
- * - checkQuotaExceeded: 쿼터 초과 여부 확인 (Supabase 모킹)
- * - recordLLMUsage: LLM 호출 사용량 기록 (Supabase 모킹)
+ * - checkAndRecordLLMUsage: 원자적 쿼터 확인+사용량 기록 (RPC 모킹)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getKSTDateTime, checkQuotaExceeded, recordLLMUsage } from './quota';
+import { getKSTDateTime, checkAndRecordLLMUsage } from './quota';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // ─── Supabase 모킹 ─────────────────────────────────────────────────────────
@@ -15,53 +14,16 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(),
 }));
 
-/**
- * Supabase 클라이언트 체인 모킹
- * - .single() 호출 시: 큐에서 결과를 꺼내 반환
- * - .single() 없이 await 시: thenable로 큐에서 결과를 꺼내 반환
- * - 결과는 addResult()로 추가한 순서대로 소비됨
- */
+/** Supabase RPC 모킹 — setRpcResult()로 응답을 설정 */
 function createMockSupabase() {
-  const results: Array<{ data: unknown; error: unknown }>  = [];
-  let resultIndex = 0;
-
-  function nextResult() {
-    if (resultIndex < results.length) {
-      return results[resultIndex++];
-    }
-    return { data: null, error: null };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chainable: Record<string, any> = {};
-
-  // 체이닝 메서드: 자신을 반환
-  for (const method of ['select', 'eq', 'in', 'order', 'range']) {
-    chainable[method] = vi.fn(() => chainable);
-  }
-
-  // insert/update: 인수를 기록하고 자신을 반환
-  chainable.insert = vi.fn(() => chainable);
-  chainable.update = vi.fn(() => chainable);
-
-  // .single(): 큐에서 결과 꺼내 반환 (plain object, thenable 아님)
-  chainable.single = vi.fn(() => nextResult());
-
-  // thenable: .single() 없이 await할 때 큐에서 결과 꺼냄
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chainable.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
-    return Promise.resolve(nextResult()).then(resolve, reject);
-  };
-
   const mockClient = {
-    from: vi.fn(() => chainable),
+    rpc: vi.fn(),
   };
 
   return {
     mockClient,
-    chainable,
-    addResult: (result: { data: unknown; error: unknown }) => {
-      results.push(result);
+    setRpcResult: (result: { data: unknown; error: unknown }) => {
+      mockClient.rpc = vi.fn().mockResolvedValue(result);
     },
   };
 }
@@ -121,15 +83,12 @@ describe('getKSTDateTime', () => {
   });
 });
 
-// ─── checkQuotaExceeded ─────────────────────────────────────────────────────
+// ─── checkAndRecordLLMUsage (원자적 쿼터 확인+기록) ─────────────────────────
 //
-// 호출 흐름: checkQuotaExceeded → fetchUserUsage → fetchUserQuota
-// 결과 소비 순서:
-//   1) fetchUserQuota: from('user_quotas').select().eq().single() → R1
-//   2) 일별 사용량: from('usage_metrics').select().eq().eq().single() → R2
-//   3) 월별 사용량: from('usage_metrics').select().eq().eq() [no single] → R3
+// 호출 흐름: supabase.rpc('check_and_increment_llm_usage', { ... })
+// DB 함수가 원자적으로 쿼터 확인 + 사용량 증가를 수행하고 결과를 반환
 
-describe('checkQuotaExceeded', () => {
+describe('checkAndRecordLLMUsage', () => {
   let mock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
@@ -145,23 +104,37 @@ describe('checkQuotaExceeded', () => {
     vi.clearAllMocks();
   });
 
-  it('쿼터 미초과 시 exceeded: false 반환', async () => {
-    mock.addResult({ data: { daily_limit: 50, monthly_limit: 500 }, error: null }); // R1: quota
-    mock.addResult({ data: { llm_calls: 10 }, error: null });                       // R2: daily
-    mock.addResult({ data: [{ llm_calls: 30 }], error: null });                     // R3: monthly
+  it('쿼터 미초과 시 exceeded: false 반환 (원자적 증가 완료)', async () => {
+    mock.setRpcResult({
+      data: { exceeded: false },
+      error: null,
+    });
 
-    const result = await checkQuotaExceeded('user-1');
+    const result = await checkAndRecordLLMUsage('user-1');
 
     expect(result.exceeded).toBe(false);
     expect(result.reason).toBeUndefined();
+    expect(mock.mockClient.rpc).toHaveBeenCalledWith(
+      'check_and_increment_llm_usage',
+      expect.objectContaining({
+        p_user_id: 'user-1',
+        p_date: '2025-03-15',
+        p_month: '2025-03',
+      })
+    );
   });
 
   it('일일 쿼터 초과 시 exceeded: true, reason: daily', async () => {
-    mock.addResult({ data: { daily_limit: 50, monthly_limit: 500 }, error: null });
-    mock.addResult({ data: { llm_calls: 50 }, error: null }); // 일일 한도 도달
-    mock.addResult({ data: [{ llm_calls: 50 }], error: null });
+    mock.setRpcResult({
+      data: {
+        exceeded: true,
+        reason: 'daily',
+        message: '일일 사용량(50회)을 초과했습니다. 내일 다시 시도해주세요.',
+      },
+      error: null,
+    });
 
-    const result = await checkQuotaExceeded('user-1');
+    const result = await checkAndRecordLLMUsage('user-1');
 
     expect(result.exceeded).toBe(true);
     expect(result.reason).toBe('daily');
@@ -169,107 +142,29 @@ describe('checkQuotaExceeded', () => {
   });
 
   it('월간 쿼터 초과 시 exceeded: true, reason: monthly', async () => {
-    mock.addResult({ data: { daily_limit: 50, monthly_limit: 500 }, error: null });
-    mock.addResult({ data: { llm_calls: 10 }, error: null });                          // 일일 미초과
-    mock.addResult({ data: [{ llm_calls: 200 }, { llm_calls: 300 }], error: null });   // 월간 합산 500
+    mock.setRpcResult({
+      data: {
+        exceeded: true,
+        reason: 'monthly',
+        message: '월간 사용량(500회)을 초과했습니다. 관리자에게 문의하세요.',
+      },
+      error: null,
+    });
 
-    const result = await checkQuotaExceeded('user-1');
+    const result = await checkAndRecordLLMUsage('user-1');
 
     expect(result.exceeded).toBe(true);
     expect(result.reason).toBe('monthly');
-    expect(result.message).toContain('500');
   });
 
-  it('일일과 월간 모두 초과 시 일일이 우선', async () => {
-    mock.addResult({ data: { daily_limit: 50, monthly_limit: 500 }, error: null });
-    mock.addResult({ data: { llm_calls: 50 }, error: null });
-    mock.addResult({ data: [{ llm_calls: 500 }], error: null });
-
-    const result = await checkQuotaExceeded('user-1');
-
-    expect(result.exceeded).toBe(true);
-    expect(result.reason).toBe('daily');
-  });
-
-  it('사용량이 없을 때(null) exceeded: false', async () => {
-    mock.addResult({ data: { daily_limit: 50, monthly_limit: 500 }, error: null });
-    mock.addResult({ data: null, error: null });  // 일별 사용량 없음
-    mock.addResult({ data: null, error: null });  // 월별 사용량 없음
-
-    const result = await checkQuotaExceeded('user-1');
-
-    expect(result.exceeded).toBe(false);
-  });
-});
-
-// ─── recordLLMUsage ─────────────────────────────────────────────────────────
-//
-// 호출 흐름:
-//   1) 기존 레코드 확인: from('usage_metrics').select().eq().eq().single() → R1
-//   2a) 있으면: from('usage_metrics').update({...}).eq() [no single] → R2
-//   2b) 없으면: from('usage_metrics').insert({...}) [no single] → R2
-
-describe('recordLLMUsage', () => {
-  let mock: ReturnType<typeof createMockSupabase>;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-03-15T05:00:00.000Z'));
-
-    mock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.clearAllMocks();
-  });
-
-  it('기존 레코드가 있으면 update로 누적', async () => {
-    mock.addResult({
-      data: { id: 'rec-1', llm_calls: 5, tokens_in: 100, tokens_out: 200 },
-      error: null,
-    }); // R1: existing
-    mock.addResult({ data: null, error: null }); // R2: update 결과 (무시됨)
-
-    await recordLLMUsage('user-1', 50, 100);
-
-    expect(mock.chainable.update).toHaveBeenCalledWith({
-      llm_calls: 6,
-      tokens_in: 150,
-      tokens_out: 300,
+  it('RPC 호출 실패 시 에러를 throw', async () => {
+    mock.setRpcResult({
+      data: null,
+      error: { message: 'DB connection error' },
     });
-    expect(mock.chainable.insert).not.toHaveBeenCalled();
-  });
 
-  it('기존 레코드가 없으면 insert로 신규 생성', async () => {
-    mock.addResult({ data: null, error: null }); // R1: no existing
-    mock.addResult({ data: null, error: null }); // R2: insert 결과 (무시됨)
-
-    await recordLLMUsage('user-1', 50, 100);
-
-    expect(mock.chainable.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: 'user-1',
-        llm_calls: 1,
-        tokens_in: 50,
-        tokens_out: 100,
-      })
-    );
-    expect(mock.chainable.update).not.toHaveBeenCalled();
-  });
-
-  it('토큰 기본값은 0', async () => {
-    mock.addResult({ data: null, error: null });
-    mock.addResult({ data: null, error: null });
-
-    await recordLLMUsage('user-1');
-
-    expect(mock.chainable.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tokens_in: 0,
-        tokens_out: 0,
-      })
+    await expect(checkAndRecordLLMUsage('user-1')).rejects.toThrow(
+      '쿼터 확인/기록 실패'
     );
   });
 
@@ -277,33 +172,35 @@ describe('recordLLMUsage', () => {
     // UTC 2025-03-15 15:00 → KST 2025-03-16
     vi.setSystemTime(new Date('2025-03-15T15:00:00.000Z'));
 
-    mock.addResult({ data: null, error: null });
-    mock.addResult({ data: null, error: null });
+    mock.setRpcResult({
+      data: { exceeded: false },
+      error: null,
+    });
 
-    await recordLLMUsage('user-1');
+    await checkAndRecordLLMUsage('user-1');
 
-    expect(mock.chainable.insert).toHaveBeenCalledWith(
+    expect(mock.mockClient.rpc).toHaveBeenCalledWith(
+      'check_and_increment_llm_usage',
       expect.objectContaining({
-        date: '2025-03-16',
-        month: '2025-03',
+        p_date: '2025-03-16',
+        p_month: '2025-03',
       })
     );
   });
 
-  it('기존 레코드의 llm_calls를 1 증가시킴', async () => {
-    mock.addResult({
-      data: { id: 'rec-1', llm_calls: 99, tokens_in: 0, tokens_out: 0 },
+  it('토큰 파라미터를 RPC에 전달', async () => {
+    mock.setRpcResult({
+      data: { exceeded: false },
       error: null,
     });
-    mock.addResult({ data: null, error: null });
 
-    await recordLLMUsage('user-1', 10, 20);
+    await checkAndRecordLLMUsage('user-1', 100, 200);
 
-    expect(mock.chainable.update).toHaveBeenCalledWith(
+    expect(mock.mockClient.rpc).toHaveBeenCalledWith(
+      'check_and_increment_llm_usage',
       expect.objectContaining({
-        llm_calls: 100,
-        tokens_in: 10,
-        tokens_out: 20,
+        p_tokens_in: 100,
+        p_tokens_out: 200,
       })
     );
   });

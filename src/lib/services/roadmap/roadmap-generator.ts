@@ -4,7 +4,7 @@ import type { SttInsights } from '@/lib/schemas/interview';
 import { callLLMForJSON } from '../llm';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
-import { checkQuotaExceeded, recordLLMUsage } from '../quota';
+import { checkAndRecordLLMUsage } from '../quota';
 import type { LLMRoadmapResult, RoadmapResult, ValidationResult } from './roadmap-types';
 import { normalizeRoadmapHours } from './roadmap-time-utils';
 import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';
@@ -37,8 +37,8 @@ export async function generateRoadmap(
 ): Promise<{ roadmapId: string; result: RoadmapResult; validation: ValidationResult }> {
   const supabase = createAdminClient();
 
-  // 쿼터 확인
-  const quotaCheck = await checkQuotaExceeded(actorUserId);
+  // 원자적 쿼터 확인 + 사용량 기록 (동시 요청 시 한도 우회 방지)
+  const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
   if (quotaCheck.exceeded) {
     throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
   }
@@ -83,7 +83,7 @@ export async function generateRoadmap(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
-  // LLM 호출 (roadmap_matrix 없이 courses만 생성)
+  // LLM 호출 (roadmap_matrix 없이 courses만 생성, 쿼터는 이미 원자적으로 차감됨)
   const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
@@ -91,9 +91,6 @@ export async function generateRoadmap(
     ],
     { temperature: LLM_TEMPERATURE } // maxTokens는 기본값(20000) 사용
   );
-
-  // 사용량 기록
-  await recordLLMUsage(actorUserId);
 
   // 시간 보정 적용 (recommended_hours와 커리큘럼 시간 일치시키기)
   const llmResult = normalizeRoadmapHours(rawLlmResult);
@@ -285,8 +282,8 @@ export async function generateTestRoadmap(
   consultantProfile: ConsultantProfile | null,
   sttInsights?: SttInsights
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
-  // 1. 쿼터 확인
-  const quotaCheck = await checkQuotaExceeded(actorUserId);
+  // 1. 원자적 쿼터 확인 + 사용량 기록
+  const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
   if (quotaCheck.exceeded) {
     throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
   }
@@ -295,7 +292,7 @@ export async function generateTestRoadmap(
   const projectData = buildTestProjectData(input);
   const interview = buildTestInterviewData(input, sttInsights);
 
-  // 3. LLM 호출
+  // 3. LLM 호출 (쿼터는 이미 원자적으로 차감됨)
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
 
@@ -307,13 +304,10 @@ export async function generateTestRoadmap(
     { temperature: LLM_TEMPERATURE }
   );
 
-  // 4. 사용량 기록
-  await recordLLMUsage(actorUserId);
-
-  // 5. 시간 보정 적용
+  // 4. 시간 보정 적용
   const llmResult = normalizeRoadmapHours(rawLlmResult);
 
-  // 6. 결과 생성 및 검증
+  // 5. 결과 생성 및 검증
   const result: RoadmapResult = {
     ...llmResult,
     roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
@@ -335,8 +329,8 @@ export async function reviseTestRoadmap(
   actorUserId: string,
   consultantProfile: ConsultantProfile | null
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
-  // 1. 쿼터 확인
-  const quotaCheck = await checkQuotaExceeded(actorUserId);
+  // 1. 원자적 쿼터 확인 + 사용량 기록
+  const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
   if (quotaCheck.exceeded) {
     throw new Error(quotaCheck.message || '사용량 한도를 초과했습니다.');
   }
@@ -372,7 +366,7 @@ ${revisionPrompt}
 위 수정 요청을 반영하여 로드맵을 재생성해주세요. 수정 요청에 언급되지 않은 부분은 기존 내용을 유지해도 됩니다.
 단, 최종 출력은 반드시 완전한 JSON 형식으로 전체 로드맵을 출력해야 합니다.`;
 
-  // 4. LLM 호출
+  // 4. LLM 호출 (쿼터는 이미 원자적으로 차감됨)
   const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
     [
       { role: 'system', content: systemPrompt },
@@ -381,13 +375,10 @@ ${revisionPrompt}
     { temperature: LLM_TEMPERATURE }
   );
 
-  // 5. 사용량 기록
-  await recordLLMUsage(actorUserId);
-
-  // 6. 시간 보정 적용
+  // 5. 시간 보정 적용
   const llmResult = normalizeRoadmapHours(rawLlmResult);
 
-  // 7. 결과 생성 및 검증
+  // 6. 결과 생성 및 검증
   const result: RoadmapResult = {
     ...llmResult,
     roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),

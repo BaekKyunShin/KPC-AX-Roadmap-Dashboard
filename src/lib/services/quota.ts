@@ -113,74 +113,41 @@ export async function fetchUserUsage(userId: string): Promise<UsageMetrics> {
 }
 
 /**
- * 쿼터 초과 여부 확인
+ * 원자적 쿼터 확인 + 사용량 기록 (동시 요청 시 한도 우회 방지)
+ *
+ * DB 함수 check_and_increment_llm_usage를 호출하여
+ * 쿼터 확인과 사용량 증가를 단일 트랜잭션에서 수행합니다.
  */
-export async function checkQuotaExceeded(userId: string): Promise<{
+export async function checkAndRecordLLMUsage(
+  userId: string,
+  tokensIn: number = 0,
+  tokensOut: number = 0
+): Promise<{
   exceeded: boolean;
   reason?: 'daily' | 'monthly';
   message?: string;
 }> {
-  const usage = await fetchUserUsage(userId);
-
-  if (usage.daily >= usage.dailyLimit) {
-    return {
-      exceeded: true,
-      reason: 'daily',
-      message: `일일 사용량(${usage.dailyLimit}회)을 초과했습니다. 내일 다시 시도해주세요.`,
-    };
-  }
-
-  if (usage.monthly >= usage.monthlyLimit) {
-    return {
-      exceeded: true,
-      reason: 'monthly',
-      message: `월간 사용량(${usage.monthlyLimit}회)을 초과했습니다. 관리자에게 문의하세요.`,
-    };
-  }
-
-  return { exceeded: false };
-}
-
-/**
- * LLM 호출 사용량 기록
- */
-export async function recordLLMUsage(
-  userId: string,
-  tokensIn: number = 0,
-  tokensOut: number = 0
-): Promise<void> {
   const supabase = createAdminClient();
   const { date, month } = getKSTDateTime();
 
-  // upsert: 없으면 생성, 있으면 업데이트
-  const { data: existing } = await supabase
-    .from('usage_metrics')
-    .select('id, llm_calls, tokens_in, tokens_out')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .single();
+  const { data, error } = await supabase.rpc('check_and_increment_llm_usage', {
+    p_user_id: userId,
+    p_date: date,
+    p_month: month,
+    p_tokens_in: tokensIn,
+    p_tokens_out: tokensOut,
+  });
 
-  if (existing) {
-    // 기존 레코드 업데이트
-    await supabase
-      .from('usage_metrics')
-      .update({
-        llm_calls: existing.llm_calls + 1,
-        tokens_in: existing.tokens_in + tokensIn,
-        tokens_out: existing.tokens_out + tokensOut,
-      })
-      .eq('id', existing.id);
-  } else {
-    // 새 레코드 생성
-    await supabase.from('usage_metrics').insert({
-      user_id: userId,
-      date,
-      month,
-      llm_calls: 1,
-      tokens_in: tokensIn,
-      tokens_out: tokensOut,
-    });
+  if (error) {
+    console.error('[checkAndRecordLLMUsage Error]', error);
+    throw new Error('쿼터 확인/기록 실패: ' + error.message);
   }
+
+  return {
+    exceeded: data.exceeded,
+    reason: data.reason,
+    message: data.message,
+  };
 }
 
 /**

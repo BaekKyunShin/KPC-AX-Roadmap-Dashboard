@@ -21,7 +21,7 @@ import {
   type ManualActivityLogType,
 } from '@/lib/constants/activity-log';
 import { generateInterviewGuideData } from '@/lib/services/interview-guide';
-import { checkQuotaExceeded, recordLLMUsage } from '@/lib/services/quota';
+import { checkAndRecordLLMUsage } from '@/lib/services/quota';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 
@@ -278,8 +278,8 @@ export async function generateInterviewGuide(
       return { success: false, error: auth.error };
     }
 
-    // 쿼터 확인
-    const quotaCheck = await checkQuotaExceeded(auth.user.id);
+    // 원자적 쿼터 확인 + 사용량 기록 (동시 요청 시 한도 우회 방지)
+    const quotaCheck = await checkAndRecordLLMUsage(auth.user.id);
     if (quotaCheck.exceeded) {
       return { success: false, error: quotaCheck.message || 'LLM 호출 한도를 초과했습니다.' };
     }
@@ -332,7 +332,7 @@ export async function generateInterviewGuide(
     const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
       || projectData.company_size;
 
-    // LLM 호출
+    // LLM 호출 (쿼터는 이미 원자적으로 차감됨)
     const guideData = await generateInterviewGuideData({
       companyName: projectData.company_name,
       industry: projectData.industry,
@@ -366,9 +366,6 @@ export async function generateInterviewGuide(
       console.error('[generateInterviewGuide Error] DB 저장 실패:', upsertError);
       return { success: false, error: '분석 결과 저장에 실패했습니다.' };
     }
-
-    // 쿼터 사용량 기록
-    await recordLLMUsage(auth.user.id);
 
     return { success: true, data: validation.data };
   } catch (error) {
