@@ -149,6 +149,14 @@ describe('callLLM', () => {
     ).toBe('Bearer test-api-key');
   });
 
+  it('fetch 호출 시 signal 옵션이 포함됨 (타임아웃 설정)', async () => {
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages);
+
+    const options = vi.mocked(fetch).mock.calls[0][1];
+    expect(options?.signal).toBeDefined();
+  });
+
   it('기본 모델(gpt-5-mini)은 max_completion_tokens 사용, temperature 미포함', async () => {
     const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
     await callLLM(messages);
@@ -193,6 +201,23 @@ describe('callLLM', () => {
 
     const url = vi.mocked(fetch).mock.calls[0][0];
     expect(url).toBe('https://api.openai.com/v1/chat/completions');
+  });
+
+  it('타임아웃 발생 시 한국어 에러 메시지를 던짐', async () => {
+    const timeoutError = new DOMException('signal timed out', 'TimeoutError');
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(timeoutError)));
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await expect(callLLM(messages)).rejects.toThrow(
+      'LLM API 호출 타임아웃 (60초 초과)'
+    );
+  });
+
+  it('네트워크 에러는 그대로 전파', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await expect(callLLM(messages)).rejects.toThrow('Failed to fetch');
   });
 
   it('API 응답이 실패하면 에러를 던짐', async () => {
@@ -329,7 +354,7 @@ describe('callLLMForJSON', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('재시도 시 마지막 user 메시지에 JSON 강조 문구 추가', async () => {
+  it('재시도 시 원본 messages 배열을 변형하지 않음', async () => {
     let callCount = 0;
     vi.stubGlobal(
       'fetch',
@@ -354,8 +379,8 @@ describe('callLLMForJSON', () => {
 
     await callLLMForJSON(messages, {}, 2);
 
-    // 재시도 시 메시지가 수정됨
-    expect(messages[0].content).toContain('유효한 JSON 형식으로만 응답');
+    // 원본 messages 배열은 변형되지 않아야 함
+    expect(messages[0].content).toBe('원래 메시지');
   });
 
   it('기본 maxRetries는 2 (총 3번 시도)', async () => {

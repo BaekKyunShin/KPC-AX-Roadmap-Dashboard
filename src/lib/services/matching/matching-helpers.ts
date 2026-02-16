@@ -46,6 +46,15 @@ export const LEVEL_LABEL_MAP: Record<string, string> = {
   LEADER: '리더',
 };
 
+/** LLM 응답에서 유효한 후보 ID만 필터링 (hallucinated ID 방지) */
+export function filterValidRecommendations(
+  recommendations: LLMMatchingResponse['recommendations'],
+  validCandidateIds: string[]
+): LLMMatchingResponse['recommendations'] {
+  const validIdSet = new Set(validCandidateIds);
+  return recommendations.filter((rec) => validIdSet.has(rec.userId));
+}
+
 /** 매칭에 필요한 데이터 조회 */
 export async function fetchMatchingData(
   supabase: ReturnType<typeof createAdminClient>,

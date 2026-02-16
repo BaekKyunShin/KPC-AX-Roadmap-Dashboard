@@ -60,6 +60,9 @@ const DEFAULT_CAPABILITIES: ModelCapabilities = {
   supportsTemperature: true,
 };
 
+/** LLM API 호출 타임아웃 (밀리초) */
+const LLM_TIMEOUT_MS = 60_000;
+
 /**
  * 모델의 기능 설정 조회
  */
@@ -109,14 +112,23 @@ export async function callLLM(
     requestBody[tokenKey] = finalConfig.maxTokens;
   }
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      throw new Error(`LLM API 호출 타임아웃 (${LLM_TIMEOUT_MS / 1000}초 초과)`);
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     const error = await response.text();
@@ -162,11 +174,13 @@ export async function callLLMForJSON<T>(
       console.warn(`[LLM JSON Parse] 시도 ${i + 1}/${maxRetries + 1} 실패:`, lastError.message);
 
       if (i < maxRetries) {
-        // 재시도 시 JSON 형식 강조
-        const lastMessage = messages[messages.length - 1];
+        // 재시도 시 JSON 형식 강조 (원본 배열 변형 방지를 위해 복사본 사용)
+        const retryMessages = messages.map((m) => ({ ...m }));
+        const lastMessage = retryMessages[retryMessages.length - 1];
         if (lastMessage.role === 'user') {
           lastMessage.content += '\n\n중요: 반드시 유효한 JSON 형식으로만 응답하세요. 다른 텍스트 없이 JSON만 출력하세요.';
         }
+        messages = retryMessages;
       }
     }
   }

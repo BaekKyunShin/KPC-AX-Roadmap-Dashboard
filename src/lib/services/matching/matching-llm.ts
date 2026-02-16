@@ -4,6 +4,7 @@ import { createAuditLog } from '../audit';
 import { callLLMForJSON } from '../llm';
 import {
   fetchMatchingData,
+  filterValidRecommendations,
   saveRecommendations,
   updateProjectStatusIfNeeded,
   LEVEL_LABEL_MAP,
@@ -44,8 +45,16 @@ export async function generateLLMMatchingRecommendations(
     { temperature: MATCHING_LLM_TEMPERATURE, maxTokens: MATCHING_LLM_MAX_TOKENS }
   );
 
-  // 3. LLM 응답 변환
-  const scoredCandidates: LLMCandidateScore[] = llmResponse.recommendations
+  // 3. LLM 응답 검증 — hallucinated userId 필터링
+  const validCandidateIds = candidatesWithProfile.map((c) => c.userId);
+  const validRecommendations = filterValidRecommendations(llmResponse.recommendations, validCandidateIds);
+
+  if (validRecommendations.length === 0) {
+    console.warn(`[Matching] LLM 응답에 유효한 후보 없음 — projectId: ${projectId}`);
+  }
+
+  // 4. 응답 변환
+  const scoredCandidates: LLMCandidateScore[] = validRecommendations
     .slice(0, topN)
     .map((rec) => ({
       userId: rec.userId,
@@ -57,15 +66,15 @@ export async function generateLLMMatchingRecommendations(
       },
     }));
 
-  // 4. 추천 저장
+  // 5. 추천 저장
   await saveRecommendations(supabase, projectId, scoredCandidates);
 
-  // 5. 프로젝트 상태 업데이트
+  // 6. 프로젝트 상태 업데이트
   if (!preserveStatus) {
     await updateProjectStatusIfNeeded(supabase, projectId);
   }
 
-  // 6. 감사로그
+  // 7. 감사로그
   await createAuditLog({
     actorUserId,
     action: 'MATCHING_EXECUTE',
