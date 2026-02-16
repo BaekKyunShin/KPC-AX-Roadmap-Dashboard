@@ -9,7 +9,9 @@
 -- - 문제 명확성 (10점): 문항 25-30, weight=0.3333
 -- ============================================
 
--- 개발 환경: 기존 데이터 정리
+-- ⚠️ 개발 환경 전용: 기존 데이터 전체 정리
+-- 주의: WHERE 조건 없는 DELETE — 프로덕션에서 재실행 금지
+-- 향후 유사 마이그레이션 작성 시 반드시 WHERE 조건 또는 TRUNCATE ... CASCADE 사용
 DELETE FROM self_assessments;
 DELETE FROM self_assessment_templates;
 
