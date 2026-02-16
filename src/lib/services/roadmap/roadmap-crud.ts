@@ -10,8 +10,14 @@ import type { ValidationResult } from './roadmap-types';
 // 로드맵 CRUD
 // ============================================================================
 
+/** finalize_roadmap RPC 반환 타입 (판별 유니온) */
+type FinalizeRoadmapRpcResult =
+  | { success: true; project_id: string; version_number: number }
+  | { success: false; error: string };
+
 /**
  * 로드맵 최종 확정
+ * RPC로 기존 FINAL→ARCHIVED + 현재→FINAL + 프로젝트 FINALIZED를 원자적 실행
  */
 export async function finalizeRoadmap(
   roadmapId: string,
@@ -19,72 +25,55 @@ export async function finalizeRoadmap(
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  // 현재 로드맵 조회
-  const { data: roadmap } = await supabase
-    .from('roadmap_versions')
-    .select('*, projects!inner(assigned_consultant_id)')
-    .eq('id', roadmapId)
-    .single();
-
-  if (!roadmap) {
-    throw new Error('로드맵을 찾을 수 없습니다.');
-  }
-
-  // 배정된 컨설턴트만 최종 확정 가능
-  const projectData = roadmap.projects as { assigned_consultant_id: string };
-  if (projectData.assigned_consultant_id !== actorUserId) {
-    throw new Error('배정된 컨설턴트만 최종 확정할 수 있습니다.');
-  }
-
-  // 기존 확정본 → 이전 확정본
-  await supabase
-    .from('roadmap_versions')
-    .update({ status: 'ARCHIVED' })
-    .eq('project_id', roadmap.project_id)
-    .eq('status', 'FINAL');
-
-  // 현재 로드맵 → 확정본
-  await supabase
-    .from('roadmap_versions')
-    .update({
-      status: 'FINAL',
-      finalized_by: actorUserId,
-      finalized_at: new Date().toISOString(),
-    })
-    .eq('id', roadmapId);
-
-  // 프로젝트 상태 업데이트
-  await supabase
-    .from('projects')
-    .update({ status: 'FINALIZED' })
-    .eq('id', roadmap.project_id);
-
-  // 감사로그
-  await createAuditLog({
-    actorUserId,
-    action: 'ROADMAP_FINALIZE',
-    targetType: 'roadmap',
-    targetId: roadmapId,
-    meta: {
-      project_id: roadmap.project_id,
-      version_number: roadmap.version_number,
-    },
+  // RPC로 원자적 확정 (검증 + 3개 UPDATE를 단일 트랜잭션에서 실행)
+  const { data, error } = await supabase.rpc('finalize_roadmap', {
+    p_roadmap_id: roadmapId,
+    p_actor_user_id: actorUserId,
   });
 
-  // 운영관리자에게 로드맵 확정 알림 (테스트 모드 제외)
-  const { data: projectInfo } = await supabase
-    .from('projects')
-    .select('company_name, is_test_mode')
-    .eq('id', roadmap.project_id)
-    .single();
+  if (error || !data) {
+    throw new Error('로드맵 확정에 실패했습니다.');
+  }
 
-  if (!projectInfo?.is_test_mode) {
-    await createNotificationForAdmins({
-      type: 'roadmap_finalized',
-      title: '로드맵 확정',
-      message: `${projectInfo?.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵이 최종 확정되었습니다.`,
-      link: `/ops/projects/${roadmap.project_id}`,
+  const result = data as FinalizeRoadmapRpcResult;
+
+  if (!result.success) {
+    throw new Error(result.error || '로드맵 확정에 실패했습니다.');
+  }
+
+  // 부수 효과 (감사로그, 알림) — 실패해도 확정 결과에 영향 없음
+  try {
+    await createAuditLog({
+      actorUserId,
+      action: 'ROADMAP_FINALIZE',
+      targetType: 'roadmap',
+      targetId: roadmapId,
+      meta: {
+        project_id: result.project_id,
+        version_number: result.version_number,
+      },
     });
+  } catch (e) {
+    console.error('[finalizeRoadmap] 감사로그 기록 실패:', e);
+  }
+
+  try {
+    const { data: projectInfo } = await supabase
+      .from('projects')
+      .select('company_name, is_test_mode')
+      .eq('id', result.project_id)
+      .single();
+
+    if (!projectInfo?.is_test_mode) {
+      await createNotificationForAdmins({
+        type: 'roadmap_finalized',
+        title: '로드맵 확정',
+        message: `${projectInfo?.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵이 최종 확정되었습니다.`,
+        link: `/ops/projects/${result.project_id}`,
+      });
+    }
+  } catch (e) {
+    console.error('[finalizeRoadmap] 알림 발송 실패:', e);
   }
 }
 
