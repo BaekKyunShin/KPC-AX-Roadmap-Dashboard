@@ -308,7 +308,7 @@ export default function MessagesClient() {
     };
   }, [selectedConvId, appendMessageIfNew, markReadIfNeeded]);
 
-  // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 스레드 갱신 + 뱃지)
+  // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 비선택 대화 뱃지)
   useEffect(() => {
     const supabase = createClient();
     const retryState: RealtimeRetryState = { isMounted: true, retryCount: 0, retryTimer: null };
@@ -335,12 +335,12 @@ export default function MessagesClient() {
             const newMsg = payload.new as Message;
             if (newMsg.sender_id === currentUserIdRef.current) return;
 
+            // 목록 프리뷰 갱신 (모든 대화 공통)
             refreshConversations();
 
-            if (newMsg.conversation_id === selectedConvIdRef.current) {
-              appendMessageIfNew(newMsg);
-              markReadIfNeeded(newMsg.conversation_id);
-            } else {
+            // 선택된 대화의 메시지는 개별 채널(messages:${convId})에서 처리하므로 스킵
+            // 개별 채널 구독 실패 시에는 polling fallback(realtimeActiveRef 기반)이 커버
+            if (newMsg.conversation_id !== selectedConvIdRef.current) {
               router.refresh();
             }
           },
@@ -355,7 +355,7 @@ export default function MessagesClient() {
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [refreshConversations, appendMessageIfNew, markReadIfNeeded, router]);
+  }, [refreshConversations, router]);
 
   // Polling: Realtime 실패 시에만 활성화되는 fallback
   // Realtime이 SUBSCRIBED 상태이면 polling을 스킵하여 불필요한 DB 쿼리 방지.

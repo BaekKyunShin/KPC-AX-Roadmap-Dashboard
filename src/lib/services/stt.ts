@@ -4,7 +4,7 @@
  * 인터뷰 녹취록(STT 텍스트)에서 AI 교육 로드맵 수립에 필요한 정보를 추출합니다.
  */
 
-import type { SttInsights } from '@/lib/schemas/interview';
+import { sttInsightsSchema, type SttInsights } from '@/lib/schemas/interview';
 import {
   MAX_STT_FILE_SIZE_BYTES,
   MAX_STT_FILE_SIZE_KB,
@@ -100,11 +100,13 @@ ${sttText}
 위 녹취록에서 AI 교육 로드맵 수립에 필요한 정보를 추출해주세요.
 반드시 JSON 형식으로만 응답하세요.`;
 
-  return callLLMForJSON<SttInsights>(
+  const raw = await callLLMForJSON<unknown>(
     [
       { role: 'system', content: STT_EXTRACTION_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
     { temperature: STT_EXTRACTION_TEMPERATURE }
   );
+
+  return sttInsightsSchema.parse(raw);
 }
