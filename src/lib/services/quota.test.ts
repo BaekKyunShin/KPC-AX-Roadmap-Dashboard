@@ -134,7 +134,7 @@ describe('checkAndRecordLLMUsage', () => {
       data: {
         exceeded: true,
         reason: 'daily',
-        message: '일일 사용량(50회)을 초과했습니다. 내일 다시 시도해주세요.',
+        message: '일일 사용량 한도(50회)에 도달했습니다. 내일 다시 시도해주세요.',
       },
       error: null,
     });
@@ -151,7 +151,7 @@ describe('checkAndRecordLLMUsage', () => {
       data: {
         exceeded: true,
         reason: 'monthly',
-        message: '월간 사용량(500회)을 초과했습니다. 관리자에게 문의하세요.',
+        message: '월간 사용량 한도(500회)에 도달했습니다. 관리자에게 문의하세요.',
       },
       error: null,
     });

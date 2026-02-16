@@ -139,11 +139,13 @@ export async function generateRoadmap(
     throw new Error(`로드맵 저장 실패: ${insertError?.message}`);
   }
 
-  // 프로젝트 상태 업데이트
-  await supabase
-    .from('projects')
-    .update({ status: 'ROADMAP_DRAFTED' })
-    .eq('id', projectId);
+  // 프로젝트 상태 업데이트 (FINALIZED에서는 역방향 전이 방지)
+  if (projectData.status !== 'FINALIZED') {
+    await supabase
+      .from('projects')
+      .update({ status: 'ROADMAP_DRAFTED' })
+      .eq('id', projectId);
+  }
 
   // 감사로그
   await createAuditLog({
