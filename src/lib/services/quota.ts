@@ -11,6 +11,26 @@ import type { UserRole } from '@/types/database';
 const DEFAULT_DAILY_LIMIT = 50;
 const DEFAULT_MONTHLY_LIMIT = 500;
 
+/**
+ * user_quotas 행 존재 보장 (없으면 기본값으로 생성)
+ * UNIQUE(user_id) + ON CONFLICT DO NOTHING으로 race condition 방지
+ */
+async function ensureUserQuotaExists(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+) {
+  await supabase
+    .from('user_quotas')
+    .upsert(
+      {
+        user_id: userId,
+        daily_limit: DEFAULT_DAILY_LIMIT,
+        monthly_limit: DEFAULT_MONTHLY_LIMIT,
+      },
+      { onConflict: 'user_id', ignoreDuplicates: true }
+    );
+}
+
 interface UsageMetrics {
   daily: number;
   monthly: number;
@@ -41,34 +61,21 @@ export function getKSTDateTime() {
 export async function fetchUserQuota(userId: string) {
   const supabase = createAdminClient();
 
-  // 쿼터 조회
-  let { data: quota } = await supabase
+  await ensureUserQuotaExists(supabase, userId);
+
+  // 생성됐든 이미 있었든 조회
+  const { data: quota, error } = await supabase
     .from('user_quotas')
     .select('*')
     .eq('user_id', userId)
     .single();
 
-  // 쿼터가 없으면 기본값으로 생성
-  if (!quota) {
-    const { data: newQuota, error } = await supabase
-      .from('user_quotas')
-      .insert({
-        user_id: userId,
-        daily_limit: DEFAULT_DAILY_LIMIT,
-        monthly_limit: DEFAULT_MONTHLY_LIMIT,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[fetchUserQuota Error] Insert:', error);
-      return {
-        daily_limit: DEFAULT_DAILY_LIMIT,
-        monthly_limit: DEFAULT_MONTHLY_LIMIT,
-      };
-    }
-
-    quota = newQuota;
+  if (error || !quota) {
+    console.error('[fetchUserQuota Error]', error);
+    return {
+      daily_limit: DEFAULT_DAILY_LIMIT,
+      monthly_limit: DEFAULT_MONTHLY_LIMIT,
+    };
   }
 
   return quota;
@@ -166,25 +173,13 @@ export async function updateUserQuota(
 
   if (Object.keys(updateData).length === 0) return;
 
-  // 쿼터가 없으면 생성
-  const { data: existing } = await supabase
-    .from('user_quotas')
-    .select('id')
-    .eq('user_id', userId)
-    .single();
+  await ensureUserQuotaExists(supabase, userId);
 
-  if (existing) {
-    await supabase
-      .from('user_quotas')
-      .update(updateData)
-      .eq('user_id', userId);
-  } else {
-    await supabase.from('user_quotas').insert({
-      user_id: userId,
-      daily_limit: dailyLimit ?? DEFAULT_DAILY_LIMIT,
-      monthly_limit: monthlyLimit ?? DEFAULT_MONTHLY_LIMIT,
-    });
-  }
+  // 부분 업데이트
+  await supabase
+    .from('user_quotas')
+    .update(updateData)
+    .eq('user_id', userId);
 }
 
 /**

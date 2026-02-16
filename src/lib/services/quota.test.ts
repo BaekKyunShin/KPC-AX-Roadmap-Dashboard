@@ -5,7 +5,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getKSTDateTime, checkAndRecordLLMUsage } from './quota';
+import {
+  getKSTDateTime,
+  checkAndRecordLLMUsage,
+  fetchUserQuota,
+  updateUserQuota,
+} from './quota';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // ─── Supabase 모킹 ─────────────────────────────────────────────────────────
@@ -203,5 +208,140 @@ describe('checkAndRecordLLMUsage', () => {
         p_tokens_out: 200,
       })
     );
+  });
+});
+
+// ─── Supabase 체인 모킹 (fetchUserQuota, updateUserQuota용) ──────────────
+
+function createChainMock() {
+  let selectSingleResult: { data: unknown; error: unknown } = {
+    data: null,
+    error: null,
+  };
+
+  // select chain: .select('*').eq('user_id', id).single()
+  const singleFn = vi.fn(() => Promise.resolve(selectSingleResult));
+  const selectEqFn = vi.fn().mockReturnValue({ single: singleFn });
+  const selectFn = vi.fn().mockReturnValue({ eq: selectEqFn });
+
+  // update chain: .update({...}).eq('user_id', id)
+  const updateEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
+  const updateFn = vi.fn().mockReturnValue({ eq: updateEqFn });
+
+  // upsert: .upsert({...}, options) → Promise
+  const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null });
+
+  const fromResult = {
+    upsert: upsertFn,
+    select: selectFn,
+    update: updateFn,
+  };
+
+  const mockClient = {
+    from: vi.fn().mockReturnValue(fromResult),
+  };
+
+  return {
+    mockClient,
+    upsertFn,
+    updateFn,
+    setSelectSingleResult: (r: { data: unknown; error: unknown }) => {
+      selectSingleResult = r;
+    },
+  };
+}
+
+// ─── fetchUserQuota ─────────────────────────────────────────────────────────
+
+describe('fetchUserQuota', () => {
+  let mock: ReturnType<typeof createChainMock>;
+
+  beforeEach(() => {
+    mock = createChainMock();
+    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('기존 쿼터가 있으면 해당 값을 반환', async () => {
+    mock.setSelectSingleResult({
+      data: { user_id: 'user-1', daily_limit: 100, monthly_limit: 1000 },
+      error: null,
+    });
+
+    const result = await fetchUserQuota('user-1');
+
+    expect(result.daily_limit).toBe(100);
+    expect(result.monthly_limit).toBe(1000);
+  });
+
+  it('SELECT 실패 시 기본 쿼터 반환', async () => {
+    mock.setSelectSingleResult({ data: null, error: { message: 'not found' } });
+
+    const result = await fetchUserQuota('user-1');
+
+    expect(result.daily_limit).toBe(50);
+    expect(result.monthly_limit).toBe(500);
+  });
+
+  it('upsert로 원자적 행 생성 보장 (ON CONFLICT DO NOTHING)', async () => {
+    mock.setSelectSingleResult({
+      data: { daily_limit: 50, monthly_limit: 500 },
+      error: null,
+    });
+
+    await fetchUserQuota('user-1');
+
+    expect(mock.upsertFn).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+      expect.objectContaining({ onConflict: 'user_id', ignoreDuplicates: true })
+    );
+  });
+});
+
+// ─── updateUserQuota ────────────────────────────────────────────────────────
+
+describe('updateUserQuota', () => {
+  let mock: ReturnType<typeof createChainMock>;
+
+  beforeEach(() => {
+    mock = createChainMock();
+    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('업데이트할 항목이 없으면 아무것도 하지 않음', async () => {
+    await updateUserQuota('user-1');
+
+    expect(mock.mockClient.from).not.toHaveBeenCalled();
+  });
+
+  it('upsert로 행 존재 보장 후 부분 업데이트', async () => {
+    await updateUserQuota('user-1', 200);
+
+    expect(mock.upsertFn).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1' }),
+      expect.objectContaining({ onConflict: 'user_id', ignoreDuplicates: true })
+    );
+    expect(mock.updateFn).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_limit: 200 })
+    );
+  });
+
+  it('dailyLimit만 전달하면 daily_limit만 업데이트', async () => {
+    await updateUserQuota('user-1', 200);
+
+    expect(mock.updateFn).toHaveBeenCalledWith({ daily_limit: 200 });
+  });
+
+  it('monthlyLimit만 전달하면 monthly_limit만 업데이트', async () => {
+    await updateUserQuota('user-1', undefined, 3000);
+
+    expect(mock.updateFn).toHaveBeenCalledWith({ monthly_limit: 3000 });
   });
 });
