@@ -26,6 +26,7 @@ export async function finalizeRoadmap(
   const supabase = createAdminClient();
 
   // RPC로 원자적 확정 (검증 + 3개 UPDATE를 단일 트랜잭션에서 실행)
+  // 상태 전이는 RPC 내부의 선행 조건(DRAFT 상태 확인)으로 제한됨
   const { data, error } = await supabase.rpc('finalize_roadmap', {
     p_roadmap_id: roadmapId,
     p_actor_user_id: actorUserId,

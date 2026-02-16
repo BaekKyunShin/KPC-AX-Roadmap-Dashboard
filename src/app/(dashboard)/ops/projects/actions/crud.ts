@@ -7,7 +7,7 @@ import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
-import { ASSIGNMENT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import { validateStatusTransition } from '@/lib/constants/status';
 import { MAX_SCALE } from '@/components/ops/self-assessment';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -162,7 +162,7 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
     return { success: false, error: '자가진단 저장에 실패했습니다.' };
   }
 
-  // 프로젝트 상태 업데이트 — NEW일 때만 DIAGNOSED로 전이 (역방향 전이 방지)
+  // 프로젝트 상태 업데이트 — SQL 조건으로 NEW→DIAGNOSED 전이만 허용 (동시성 안전한 원자적 가드)
   await adminSupabase
     .from('projects')
     .update({ status: 'DIAGNOSED' })
@@ -221,7 +221,7 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
     return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
   }
 
-  if (!ASSIGNMENT_ELIGIBLE_STATUSES.includes(currentProject.status)) {
+  if (!validateStatusTransition(currentProject.status, 'ASSIGNED')) {
     await createAuditLog({
       actorUserId: user.id,
       action: 'PROJECT_ASSIGN',

@@ -7,6 +7,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
+import { validateStatusTransition } from '@/lib/constants/status';
 
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -123,11 +124,15 @@ export async function saveInterview(
       }
       auditAction = 'INTERVIEW_CREATE';
 
-      // 프로젝트 상태 업데이트 (최초 인터뷰 입력 시)
-      await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
+      // 프로젝트 상태 업데이트 (최초 인터뷰 입력 시, 중앙 전이 검증)
+      if (validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+        await adminSupabase
+          .from('projects')
+          .update({ status: 'INTERVIEWED' })
+          .eq('id', projectId);
+      } else {
+        console.warn(`[saveInterview] 상태 전이 스킵: ${projectData.status} → INTERVIEWED`);
+      }
 
       // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
       if (!projectData.is_test_mode) {

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SelfAssessmentScore } from '@/types/database';
+import { validateStatusTransition } from '@/lib/constants/status';
 
 /** LLM 매칭 후보 점수 */
 export interface LLMCandidateScore {
@@ -165,7 +166,7 @@ export async function updateProjectStatusIfNeeded(
     .eq('id', projectId)
     .single();
 
-  if (project?.status === 'DIAGNOSED' || project?.status === 'NEW') {
+  if (project?.status && validateStatusTransition(project.status, 'MATCH_RECOMMENDED')) {
     await supabase.from('projects').update({ status: 'MATCH_RECOMMENDED' }).eq('id', projectId);
   }
 }

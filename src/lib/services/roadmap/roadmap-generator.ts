@@ -10,6 +10,7 @@ import { normalizeRoadmapHours } from './roadmap-time-utils';
 import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';
 import { validateRoadmap } from './roadmap-validator';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
+import { validateStatusTransition } from '@/lib/constants/status';
 
 // ============================================================================
 // 상수
@@ -101,7 +102,9 @@ export async function generateRoadmap(
     roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
   };
 
-  // 검증
+  // 검증 — 의도적으로 검증 실패(errors 존재)해도 저장을 차단하지 않음
+  // 이유: DRAFT 버전으로 저장 후 UI에서 경고 표시 → 컨설턴트가 수정 요청(revision)으로 보완
+  // 검증 결과는 free_tool_validated / time_limit_validated 플래그로 DB에 기록됨
   const validation = validateRoadmap(result);
 
   // 버전 번호 결정
@@ -139,8 +142,8 @@ export async function generateRoadmap(
     throw new Error(`로드맵 저장 실패: ${insertError?.message}`);
   }
 
-  // 프로젝트 상태 업데이트 (FINALIZED에서는 역방향 전이 방지)
-  if (projectData.status !== 'FINALIZED') {
+  // 프로젝트 상태 업데이트 (중앙 전이 검증 — FINALIZED 역방향 전이 방지 포함)
+  if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) {
     await supabase
       .from('projects')
       .update({ status: 'ROADMAP_DRAFTED' })

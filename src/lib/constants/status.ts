@@ -51,13 +51,6 @@ export function canManageUser(currentUserRole: UserRole, targetUserRole: UserRol
 // 프로젝트 상태 관련 상수
 // =============================================================================
 
-/** 컨설턴트 배정이 가능한 프로젝트 상태 (진단 완료 이후 + 재배정) */
-export const ASSIGNMENT_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
-  'DIAGNOSED',
-  'MATCH_RECOMMENDED',
-  'ASSIGNED',
-] as const;
-
 /** 로드맵 생성이 가능한 프로젝트 상태 (인터뷰 완료 이후) */
 export const ROADMAP_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
   'INTERVIEWED',
@@ -223,4 +216,44 @@ export function getConsultantProjectStatusBadge(
   }
 
   return CONSULTANT_PROJECT_STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+}
+
+// =============================================================================
+// 프로젝트 상태 전이 검증
+// =============================================================================
+
+/**
+ * 프로젝트 상태별 허용된 전이 맵
+ *
+ * 워크플로우: NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP_DRAFTED → FINALIZED
+ *
+ * 스킵 전이:
+ * - NEW → MATCH_RECOMMENDED (자가진단 없이 매칭 추천)
+ * - DIAGNOSED → ASSIGNED (매칭 추천 없이 직접 배정)
+ *
+ * 동일 상태 전이:
+ * - ASSIGNED → ASSIGNED (컨설턴트 재배정)
+ * - ROADMAP_DRAFTED → ROADMAP_DRAFTED (로드맵 재생성)
+ */
+export const ALLOWED_STATUS_TRANSITIONS: Record<ProjectStatus, readonly ProjectStatus[]> = {
+  NEW: ['DIAGNOSED', 'MATCH_RECOMMENDED'],
+  DIAGNOSED: ['MATCH_RECOMMENDED', 'ASSIGNED'],
+  MATCH_RECOMMENDED: ['ASSIGNED'],
+  ASSIGNED: ['ASSIGNED', 'INTERVIEWED'],
+  INTERVIEWED: ['ROADMAP_DRAFTED'],
+  ROADMAP_DRAFTED: ['ROADMAP_DRAFTED', 'FINALIZED'],
+  FINALIZED: [],
+};
+
+/**
+ * 프로젝트 상태 전이가 허용되는지 검증
+ *
+ * @param from 현재 상태
+ * @param to 전이할 상태
+ * @returns 전이 허용 여부
+ */
+export function validateStatusTransition(from: ProjectStatus, to: ProjectStatus): boolean {
+  const allowed = ALLOWED_STATUS_TRANSITIONS[from];
+  if (!allowed) return false;
+  return allowed.includes(to);
 }
