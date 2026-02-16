@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronUp, FlaskConical, Info, Loader2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,9 +71,9 @@ function ValidationNotesSection({ validation }: ValidationNotesSectionProps) {
   const totalCount = validation.errors.length + validation.warnings.length;
   const allItems = [...validation.errors, ...validation.warnings];
 
-  const handleToggle = useCallback(() => {
+  const handleToggle = () => {
     setIsExpanded((prev) => !prev);
-  }, []);
+  };
 
   const ChevronIcon = isExpanded ? ChevronUp : ChevronDown;
 
@@ -114,7 +114,7 @@ function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionReque
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     const trimmedPrompt = revisionPrompt.trim();
     if (!trimmedPrompt) {
       setError('수정 요청 내용을 입력해주세요.');
@@ -123,11 +123,11 @@ function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionReque
     setError(null);
     await onRevisionRequest(trimmedPrompt);
     setRevisionPrompt('');
-  }, [revisionPrompt, onRevisionRequest]);
+  };
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRevisionPrompt(e.target.value);
-  }, []);
+  };
 
   const isSubmitDisabled = isRevising || !revisionPrompt.trim();
 
@@ -202,26 +202,23 @@ export default function TestRoadmapResult({
    * - RoadmapMatrix는 (rowIndex, level)을 전달
    * - 상위 컴포넌트는 courseIndex를 기대
    */
-  const handleEditMatrixCourse = useCallback(
-    (rowIndex: number, level: MatrixLevel) => {
-      if (!onEditCourse) return;
+  const handleEditMatrixCourse = (rowIndex: number, level: MatrixLevel) => {
+    if (!onEditCourse) return;
 
-      const row = result.roadmap_matrix[rowIndex];
-      if (!row) return;
+    const row = result.roadmap_matrix[rowIndex];
+    if (!row) return;
 
-      const levelCourses = row[level];
-      if (!levelCourses || levelCourses.length === 0) return;
+    const levelCourses = row[level];
+    if (!levelCourses || levelCourses.length === 0) return;
 
-      // 첫 번째 과정의 이름으로 전체 과정 목록에서 index 찾기
-      const courseName = levelCourses[0].course_name;
-      const courseIndex = result.courses.findIndex((c) => c.course_name === courseName);
+    // 첫 번째 과정의 이름으로 전체 과정 목록에서 index 찾기
+    const courseName = levelCourses[0].course_name;
+    const courseIndex = result.courses.findIndex((c) => c.course_name === courseName);
 
-      if (courseIndex !== -1) {
-        onEditCourse(courseIndex);
-      }
-    },
-    [onEditCourse, result.roadmap_matrix, result.courses]
-  );
+    if (courseIndex !== -1) {
+      onEditCourse(courseIndex);
+    }
+  };
 
   return (
     <div className="space-y-6 break-keep">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   fetchConsultantProjects,
@@ -196,7 +196,7 @@ export default function ProjectList() {
   }, []);
 
   // 데이터 로드
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true);
     const result = await fetchConsultantProjects({
       search: debouncedSearch,
@@ -206,12 +206,12 @@ export default function ProjectList() {
     setTotal(result.total);
     setConsultantName(result.consultantName);
     setLoading(false);
-  }, [debouncedSearch, status, isStatusFiltered]);
+  };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [debouncedSearch, status]);
 
   // 이벤트 핸들러
   const handleResetFilters = () => {

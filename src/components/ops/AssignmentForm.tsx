@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import { ReasonLengthHint, REASON_LENGTH } from './assignment';
 
@@ -35,10 +35,7 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const selectedRecommendation = useMemo(
-    () => recommendations.find((r) => r.candidate_user_id === selectedConsultantId),
-    [recommendations, selectedConsultantId]
-  );
+  const selectedRecommendation = recommendations.find((r) => r.candidate_user_id === selectedConsultantId);
 
   // 폼 제출
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -67,18 +67,15 @@ export function AdminFilters() {
     });
   }, []);
 
-  const updateParam = useCallback(
-    (key: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== DEFAULT_FILTER_VALUE) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
+  const updateParam = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value && value !== DEFAULT_FILTER_VALUE) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   const hasAdminFilters =
     currentStatus !== DEFAULT_FILTER_VALUE ||

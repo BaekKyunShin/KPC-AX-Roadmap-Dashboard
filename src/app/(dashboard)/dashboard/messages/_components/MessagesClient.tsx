@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,29 +79,29 @@ export default function MessagesClient() {
   // ---------------------------------------------------------------------------
 
   /** 메시지를 중복 없이 append (Realtime/polling 공통) */
-  const appendMessageIfNew = useCallback((newMsg: Message) => {
+  const appendMessageIfNew = (newMsg: Message) => {
     setMessages((prev) => {
       if (prev.some((m) => m.id === newMsg.id)) return prev;
       return [...prev, newMsg];
     });
-  }, []);
+  };
 
   /** 대화 목록에서 안읽음 플래그 해제 */
-  const clearUnreadFlag = useCallback((convId: string) => {
+  const clearUnreadFlag = (convId: string) => {
     setConversations((prev) =>
       prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
     );
-  }, []);
+  };
 
   /** 읽음 처리: 사용자 액션용 (대화 선택, 초기 로드) */
-  const markReadDirect = useCallback(async (convId: string) => {
+  const markReadDirect = async (convId: string) => {
     await markConversationRead(convId);
     clearUnreadFlag(convId);
     window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
-  }, [clearUnreadFlag]);
+  };
 
   /** 읽음 처리: 자동 감지용 (Realtime + polling 중복 호출 방지) */
-  const markReadIfNeeded = useCallback(async (convId: string) => {
+  const markReadIfNeeded = async (convId: string) => {
     if (markingReadRef.current) return;
     markingReadRef.current = true;
     try {
@@ -110,7 +110,7 @@ export default function MessagesClient() {
     } finally {
       setTimeout(() => { markingReadRef.current = false; }, MARK_READ_COOLDOWN_MS);
     }
-  }, []);
+  };
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => {
@@ -149,15 +149,16 @@ export default function MessagesClient() {
 
       setIsLoading(false);
     });
-  }, [initialConvId, markReadDirect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [initialConvId]);
 
   // 목록 새로고침 (이벤트 핸들러에서 호출)
-  const refreshConversations = useCallback(async () => {
+  const refreshConversations = async () => {
     const result = await fetchConversations();
     if (result.success) {
       setConversations(result.data);
     }
-  }, []);
+  };
 
   // ref 동기화 (콜백/이펙트에서 최신 값 접근용)
   useEffect(() => {
@@ -191,7 +192,7 @@ export default function MessagesClient() {
 
   // 이전 메시지 로드 (cursor 기반 페이지네이션)
   // ref 기반 가드로 동시 호출 방지 (React state는 비동기라 빠른 스크롤 시 중복 호출 가능)
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = async () => {
     if (!selectedConvId || isLoadingMoreRef.current || !hasMore) return;
 
     isLoadingMoreRef.current = true;
@@ -216,7 +217,7 @@ export default function MessagesClient() {
 
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
-  }, [selectedConvId, hasMore]);
+  };
 
   // 메시지 전송
   const handleSendMessage = async (content: string) => {
@@ -306,7 +307,7 @@ export default function MessagesClient() {
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [selectedConvId, appendMessageIfNew, markReadIfNeeded]);
+  }, [selectedConvId]);
 
   // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 비선택 대화 뱃지)
   useEffect(() => {
@@ -355,7 +356,7 @@ export default function MessagesClient() {
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [refreshConversations, router]);
+  }, [router]);
 
   // Polling: Realtime 실패 시에만 활성화되는 fallback
   // Realtime이 SUBSCRIBED 상태이면 polling을 스킵하여 불필요한 DB 쿼리 방지.
@@ -401,7 +402,7 @@ export default function MessagesClient() {
 
     const intervalId = setInterval(poll, THREAD_POLL_MS);
     return () => clearInterval(intervalId);
-  }, [selectedConvId, refreshConversations, markReadIfNeeded]);
+  }, [selectedConvId]);
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 

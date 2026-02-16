@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import ManualAssignmentForm from './ManualAssignmentForm';
 import {
@@ -68,10 +68,7 @@ export default function AssignmentTabSection({
   const [activeTab, setActiveTab] = useState<TabType>('auto');
 
   // candidate 정보가 있는 추천만 필터링
-  const validRecommendations = useMemo(
-    () => recommendations.filter((r): r is ValidRecommendation => !!r.candidate),
-    [recommendations]
-  );
+  const validRecommendations = recommendations.filter((r): r is ValidRecommendation => !!r.candidate);
 
   const hasRecommendations = validRecommendations.length > 0;
 
@@ -90,19 +87,16 @@ export default function AssignmentTabSection({
   });
 
   // 탭 설정
-  const tabs = useMemo(
-    () => [
-      {
-        id: 'auto' as TabType,
-        label: '자동 매칭',
-        badge: hasRecommendations ? validRecommendations.length : undefined,
-      },
-      { id: 'manual' as TabType, label: '수동 매칭' },
-    ],
-    [hasRecommendations, validRecommendations.length]
-  );
+  const tabs = [
+    {
+      id: 'auto' as TabType,
+      label: '자동 매칭',
+      badge: hasRecommendations ? validRecommendations.length : undefined,
+    },
+    { id: 'manual' as TabType, label: '수동 매칭' },
+  ];
 
-  const handleToggleReassign = useCallback(() => setShowReassignForm((prev) => !prev), []);
+  const handleToggleReassign = () => setShowReassignForm((prev) => !prev);
 
   // 자동 매칭 탭 컨텐츠
   const renderAutoMatchingContent = () => {

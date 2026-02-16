@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ACTIVITY_LOG_PAGE_SIZE,
   type ActivityLogType,
@@ -24,7 +24,7 @@ export function useActivityLogs(projectId: string) {
   const [newType, setNewType] = useState<ManualActivityLogType>('field_note');
   const [newContent, setNewContent] = useState('');
 
-  const loadInitial = useCallback(async () => {
+  const loadInitial = async () => {
     setIsLoading(true);
     const typeFilter = filterType === 'all' ? undefined : (filterType as ActivityLogType);
     const result = await fetchActivityLogs(projectId, {
@@ -35,13 +35,13 @@ export function useActivityLogs(projectId: string) {
     setLogs(result.logs);
     setTotal(result.total);
     setIsLoading(false);
-  }, [projectId, filterType]);
+  };
 
   // 초기 로드 + 필터 변경 시
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadInitial();
-  }, [loadInitial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [filterType, projectId]);
 
   async function loadMore() {
     setIsLoadingMore(true);

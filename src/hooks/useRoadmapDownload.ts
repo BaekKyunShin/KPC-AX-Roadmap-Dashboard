@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { prepareExportData, logDownload } from '@/lib/actions/roadmap-export';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 
@@ -19,7 +19,7 @@ interface UseRoadmapDownloadResult {
 export function useRoadmapDownload(): UseRoadmapDownloadResult {
   const [isDownloading, setIsDownloading] = useState<DownloadFormat | null>(null);
 
-  const downloadPDF = useCallback(async (roadmapId: string) => {
+  const downloadPDF = async (roadmapId: string) => {
     setIsDownloading('PDF');
 
     try {
@@ -50,9 +50,9 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
     } finally {
       setIsDownloading(null);
     }
-  }, []);
+  };
 
-  const downloadXLSX = useCallback(async (roadmapId: string) => {
+  const downloadXLSX = async (roadmapId: string) => {
     setIsDownloading('XLSX');
 
     try {
@@ -74,7 +74,7 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
     } finally {
       setIsDownloading(null);
     }
-  }, []);
+  };
 
   return {
     isDownloading,

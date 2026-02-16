@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   fetchAuditLogs,
   fetchAllAuditLogs,
@@ -73,7 +73,7 @@ export default function AuditLogPage() {
   }, []);
 
   // 로그 조회
-  const loadLogs = useCallback(async () => {
+  const loadLogs = async () => {
     setLoading(true);
     const result = await fetchAuditLogs({
       ...filters,
@@ -87,12 +87,12 @@ export default function AuditLogPage() {
     setTotalPages(result.totalPages);
     setTotal(result.total);
     setLoading(false);
-  }, [filters, selectedAction, selectedTargetType, selectedUser, startDate, endDate]);
+  };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadLogs();
-  }, [loadLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [filters, selectedAction, selectedTargetType, selectedUser, startDate, endDate]);
 
   // 페이지 변경
   function handlePageChange(newPage: number) {

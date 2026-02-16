@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
 import {
@@ -43,10 +43,10 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
   }, [initialUnreadCount]);
 
   // 서버에서 실제 안읽음 대화 수 조회
-  const refreshCount = useCallback(async () => {
+  const refreshCount = async () => {
     const count = await fetchUnreadConversationCount();
     setUnreadCount(count);
-  }, []);
+  };
 
   // Realtime: 인증 세션 로드 후 구독 (CHANNEL_ERROR 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,17 +54,17 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Realtime 실패 시에만 활성화되는 polling
-  const startFallbackPolling = useCallback(() => {
+  const startFallbackPolling = () => {
     if (pollIntervalRef.current) return; // 이미 실행 중
     pollIntervalRef.current = setInterval(refreshCount, POLL_INTERVAL_MS);
-  }, [refreshCount]);
+  };
 
-  const stopFallbackPolling = useCallback(() => {
+  const stopFallbackPolling = () => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
-  }, []);
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -134,7 +134,8 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       stopFallbackPolling();
     };
-  }, [startFallbackPolling, stopFallbackPolling]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, []);
 
   // 대화 읽음 처리 시 즉시 뱃지 갱신 (MessagesClient에서 dispatch)
   // + 탭 복귀 시 즉시 갱신
@@ -155,16 +156,16 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       window.removeEventListener(CONVERSATION_READ_EVENT, handleMessageRead);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refreshCount]);
+  }, []);
 
   const badgeText =
     unreadCount > MESSAGE_BADGE_MAX
       ? `${MESSAGE_BADGE_MAX}+`
       : `${unreadCount}`;
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     router.push('/dashboard/messages');
-  }, [router]);
+  };
 
   return (
     <button

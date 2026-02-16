@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { buildRoadmapMatrixFromCourses, validateCourseClient } from '@/lib/utils/roadmap-client';
 import { createTestRoadmap, reviseTestRoadmap } from '../actions';
 import { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
@@ -75,7 +75,7 @@ export function useTestRoadmapActions({
   const [editingCourseIndex, setEditingCourseIndex] = useState<number | null>(null);
 
   // ===== 로드맵 생성 =====
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     // 필수 스텝 유효성 검사
     const firstIncompleteStep = incompleteRequiredSteps[0];
     if (firstIncompleteStep) {
@@ -112,104 +112,95 @@ export function useTestRoadmapActions({
       setError(formatErrorMessage(err, '로드맵 생성 중 예기치 않은 오류가 발생했습니다.'));
       setGenerationState(INITIAL_GENERATION_STATE);
     }
-  }, [buildInputData, incompleteRequiredSteps, setError, setCurrentStep]);
+  };
 
   // ===== 수정 요청 (LLM 재호출) =====
-  const handleRevisionRequest = useCallback(
-    async (revisionPrompt: string) => {
-      if (!originalInput || !result) return;
+  const handleRevisionRequest = async (revisionPrompt: string) => {
+    if (!originalInput || !result) return;
 
-      setIsRevising(true);
-      setIsRevisionComplete(false);
-      setError(null);
+    setIsRevising(true);
+    setIsRevisionComplete(false);
+    setError(null);
 
-      try {
-        const response = await reviseTestRoadmap(
-          originalInput,
-          result.roadmapResult,
-          revisionPrompt
-        );
+    try {
+      const response = await reviseTestRoadmap(
+        originalInput,
+        result.roadmapResult,
+        revisionPrompt
+      );
 
-        if (response.success) {
-          setResult({
-            ...result,
-            roadmapResult: response.data.result,
-            validation: response.data.validation,
-          });
-          setIsRevisionComplete(true);
-          setTimeout(() => {
-            setIsRevising(false);
-            setIsRevisionComplete(false);
-          }, COMPLETION_DELAY_MS);
-        } else {
-          setError(response.error || '로드맵 수정에 실패했습니다.');
+      if (response.success) {
+        setResult({
+          ...result,
+          roadmapResult: response.data.result,
+          validation: response.data.validation,
+        });
+        setIsRevisionComplete(true);
+        setTimeout(() => {
           setIsRevising(false);
-        }
-      } catch (err) {
-        console.error('[TestRoadmap] 수정 요청 중 오류:', err);
-        setError(formatErrorMessage(err, '로드맵 수정 중 예기치 않은 오류가 발생했습니다.'));
+          setIsRevisionComplete(false);
+        }, COMPLETION_DELAY_MS);
+      } else {
+        setError(response.error || '로드맵 수정에 실패했습니다.');
         setIsRevising(false);
       }
-    },
-    [originalInput, result, setError]
-  );
+    } catch (err) {
+      console.error('[TestRoadmap] 수정 요청 중 오류:', err);
+      setError(formatErrorMessage(err, '로드맵 수정 중 예기치 않은 오류가 발생했습니다.'));
+      setIsRevising(false);
+    }
+  };
 
   // ===== 과정 편집 =====
-  const handleEditCourse = useCallback(
-    (courseIndex: number) => {
-      if (!result) return;
-      const course = result.roadmapResult.courses[courseIndex];
-      if (course) {
-        setEditingCourse({ ...course });
-        setEditingCourseIndex(courseIndex);
-      }
-    },
-    [result]
-  );
+  const handleEditCourse = (courseIndex: number) => {
+    if (!result) return;
+    const course = result.roadmapResult.courses[courseIndex];
+    if (course) {
+      setEditingCourse({ ...course });
+      setEditingCourseIndex(courseIndex);
+    }
+  };
 
-  const handleSaveCourse = useCallback(
-    (updatedCourse: RoadmapCell) => {
-      if (!result || editingCourseIndex === null) return;
+  const handleSaveCourse = (updatedCourse: RoadmapCell) => {
+    if (!result || editingCourseIndex === null) return;
 
-      const validation = validateCourseClient(updatedCourse);
-      if (!validation.isValid) {
-        setError(validation.errors.join('\n'));
-        return;
-      }
+    const validation = validateCourseClient(updatedCourse);
+    if (!validation.isValid) {
+      setError(validation.errors.join('\n'));
+      return;
+    }
 
-      const newCourses = [...result.roadmapResult.courses];
-      newCourses[editingCourseIndex] = updatedCourse;
-      const newMatrix = buildRoadmapMatrixFromCourses(newCourses);
+    const newCourses = [...result.roadmapResult.courses];
+    newCourses[editingCourseIndex] = updatedCourse;
+    const newMatrix = buildRoadmapMatrixFromCourses(newCourses);
 
-      setResult({
-        ...result,
-        roadmapResult: {
-          ...result.roadmapResult,
-          courses: newCourses,
-          roadmap_matrix: newMatrix,
-        },
-      });
+    setResult({
+      ...result,
+      roadmapResult: {
+        ...result.roadmapResult,
+        courses: newCourses,
+        roadmap_matrix: newMatrix,
+      },
+    });
 
-      setEditingCourse(null);
-      setEditingCourseIndex(null);
-      setError(null);
-    },
-    [result, editingCourseIndex, setError]
-  );
+    setEditingCourse(null);
+    setEditingCourseIndex(null);
+    setError(null);
+  };
 
   // ===== 초기화 =====
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setResult(null);
     setOriginalInput(null);
     setError(null);
     setEditingCourse(null);
     setEditingCourseIndex(null);
-  }, [setError]);
+  };
 
   // ===== 생성 취소 =====
-  const handleCancelGeneration = useCallback(() => {
+  const handleCancelGeneration = () => {
     setGenerationState(INITIAL_GENERATION_STATE);
-  }, []);
+  };
 
   return {
     // State

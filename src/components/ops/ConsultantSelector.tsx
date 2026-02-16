@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   fetchConsultantCandidates,
   fetchConsultantFilterOptions,
@@ -72,7 +72,7 @@ export default function ConsultantSelector({
   }, []);
 
   // 컨설턴트 목록 로드
-  const loadConsultants = useCallback(async () => {
+  const loadConsultants = async () => {
     setIsLoading(true);
     try {
       const result = await fetchConsultantCandidates({
@@ -90,11 +90,12 @@ export default function ConsultantSelector({
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, selectedIndustries, selectedSkills]);
+  };
 
   useEffect(() => {
     loadConsultants();
-  }, [loadConsultants]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [page, debouncedSearch, selectedIndustries, selectedSkills]);
 
   // 필터 변경 시 페이지 리셋
   useEffect(() => {
@@ -102,30 +103,27 @@ export default function ConsultantSelector({
   }, [selectedIndustries, selectedSkills]);
 
   // 이벤트 핸들러
-  const handleSelect = useCallback(
-    (consultant: ConsultantCandidate) => {
-      onSelect(selectedConsultantId === consultant.id ? null : consultant);
-    },
-    [selectedConsultantId, onSelect]
-  );
+  const handleSelect = (consultant: ConsultantCandidate) => {
+    onSelect(selectedConsultantId === consultant.id ? null : consultant);
+  };
 
-  const toggleIndustry = useCallback((industry: string) => {
+  const toggleIndustry = (industry: string) => {
     setSelectedIndustries((prev) =>
       prev.includes(industry) ? prev.filter((i) => i !== industry) : [...prev, industry]
     );
-  }, []);
+  };
 
-  const toggleSkill = useCallback((skill: string) => {
+  const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
     );
-  }, []);
+  };
 
-  const clearFilters = useCallback(() => {
+  const clearFilters = () => {
     setSelectedIndustries([]);
     setSelectedSkills([]);
     setSearch('');
-  }, []);
+  };
 
   const activeFilterCount = selectedIndustries.length + selectedSkills.length;
   const hasActiveFilters = activeFilterCount > 0 || debouncedSearch;

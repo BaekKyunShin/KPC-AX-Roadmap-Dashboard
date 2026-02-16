@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -223,20 +223,20 @@ export default function DemoSection() {
   // 슬라이드 네비게이션 핸들러
   // ============================================================================
 
-  const goToSlide = useCallback((index: number) => {
+  const goToSlide = (index: number) => {
     setCurrentIndex(index);
     setProgress(0);
-  }, []);
+  };
 
-  const goToNext = useCallback(() => {
+  const goToNext = () => {
     setCurrentIndex((prev) => (prev + 1) % DEMO_SLIDES.length);
     setProgress(0);
-  }, []);
+  };
 
-  const goToPrev = useCallback(() => {
+  const goToPrev = () => {
     setCurrentIndex((prev) => (prev - 1 + DEMO_SLIDES.length) % DEMO_SLIDES.length);
     setProgress(0);
-  }, []);
+  };
 
   // ============================================================================
   // Effects

@@ -1,6 +1,32 @@
 'use client';
 
-import { useMemo } from 'react';
+/** 현재 페이지 기준으로 표시할 페이지 번호 배열을 계산 */
+function getVisiblePages(currentPage: number, totalPages: number, maxVisible: number): number[] {
+  const half = Math.floor(maxVisible / 2);
+
+  let start: number;
+  let end: number;
+
+  if (totalPages <= maxVisible) {
+    start = 1;
+    end = totalPages;
+  } else if (currentPage <= half + 1) {
+    start = 1;
+    end = maxVisible;
+  } else if (currentPage >= totalPages - half) {
+    start = totalPages - maxVisible + 1;
+    end = totalPages;
+  } else {
+    start = currentPage - half;
+    end = currentPage + half;
+  }
+
+  const pages: number[] = [];
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
 
 interface PaginationProps {
   currentPage: number;
@@ -22,34 +48,7 @@ export function Pagination({
   onPageChange,
   maxVisiblePages = 5,
 }: PaginationProps) {
-  // 표시할 페이지 번호 계산
-  const pageNumbers = useMemo(() => {
-    const pages: number[] = [];
-    const half = Math.floor(maxVisiblePages / 2);
-
-    let start: number;
-    let end: number;
-
-    if (totalPages <= maxVisiblePages) {
-      start = 1;
-      end = totalPages;
-    } else if (currentPage <= half + 1) {
-      start = 1;
-      end = maxVisiblePages;
-    } else if (currentPage >= totalPages - half) {
-      start = totalPages - maxVisiblePages + 1;
-      end = totalPages;
-    } else {
-      start = currentPage - half;
-      end = currentPage + half;
-    }
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-
-    return pages;
-  }, [currentPage, totalPages, maxVisiblePages]);
+  const pageNumbers = getVisiblePages(currentPage, totalPages, maxVisiblePages);
 
   if (totalPages <= 1) return null;
 

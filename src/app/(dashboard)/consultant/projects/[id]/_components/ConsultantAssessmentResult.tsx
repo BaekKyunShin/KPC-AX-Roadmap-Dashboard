@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import {
   ChartContainer,
@@ -21,16 +20,13 @@ export function ConsultantAssessmentResult({ scores }: Props) {
   const pct = Math.round((totalScore / maxScore) * 100);
   const totalColor = getScoreColor(pct);
 
-  const dimensions = useMemo(
-    () =>
-      scores.dimension_scores?.map((ds) => {
-        const score = Math.round(ds.score);
-        const max = Math.round(ds.max_score);
-        const dimPct = Math.round((score / max) * 100);
-        return { ...ds, score, max_score: max, pct: dimPct, color: getScoreColor(dimPct) };
-      }) ?? [],
-    [scores.dimension_scores]
-  );
+  const dimensions =
+    scores.dimension_scores?.map((ds) => {
+      const score = Math.round(ds.score);
+      const max = Math.round(ds.max_score);
+      const dimPct = Math.round((score / max) * 100);
+      return { ...ds, score, max_score: max, pct: dimPct, color: getScoreColor(dimPct) };
+    }) ?? [];
 
   return (
     <div className="flex flex-1 flex-col justify-between gap-6">

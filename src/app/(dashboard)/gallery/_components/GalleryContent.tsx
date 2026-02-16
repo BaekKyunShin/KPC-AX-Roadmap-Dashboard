@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, Library, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -93,20 +93,17 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamsKey]);
 
-  const updateParams = useCallback(
-    (updates: Record<string, string>) => {
-      const params = new URLSearchParams(urlSearchParams.toString());
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value && value !== DEFAULT_FILTER_VALUE) {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      });
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, urlSearchParams]
-  );
+  const updateParams = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(urlSearchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== DEFAULT_FILTER_VALUE) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // 디바운스된 검색어 변경 시 URL 업데이트
   useEffect(() => {

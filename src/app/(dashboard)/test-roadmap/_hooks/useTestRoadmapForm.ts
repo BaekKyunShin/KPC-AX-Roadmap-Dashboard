@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { INTERVIEW_STEPS } from '@/lib/constants/interview-steps';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
 import type { SttInsights } from '@/lib/schemas/interview';
@@ -107,7 +107,7 @@ export function useTestRoadmapForm({ setError }: UseTestRoadmapFormOptions) {
   };
 
   // ===== 폼 데이터 구성 =====
-  const buildInputData = useCallback((): TestInputData => {
+  const buildInputData = (): TestInputData => {
     return {
       company_name: companyName.trim(),
       industry: industry as TestInputData['industry'],
@@ -124,22 +124,7 @@ export function useTestRoadmapForm({ setError }: UseTestRoadmapFormOptions) {
       customer_requirements: customerRequirements || undefined,
       stt_text: sttText || undefined,
     };
-  }, [
-    companyName,
-    industry,
-    subIndustries,
-    companySize,
-    interviewDate,
-    participants,
-    companyDetails,
-    jobTasks,
-    painPoints,
-    constraints,
-    improvementGoals,
-    notes,
-    customerRequirements,
-    sttText,
-  ]);
+  };
 
   return {
     // Stepper

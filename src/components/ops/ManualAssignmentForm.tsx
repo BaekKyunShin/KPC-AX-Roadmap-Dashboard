@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import { cn } from '@/lib/utils';
 import type { ConsultantCandidate } from '@/app/(dashboard)/ops/projects/actions';
@@ -26,7 +26,7 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 폼 제출
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = async () => {
     setError(null);
 
     // 유효성 검사
@@ -61,13 +61,13 @@ export default function ManualAssignmentForm({ projectId }: ManualAssignmentForm
       setError('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setIsSubmitting(false);
     }
-  }, [selectedConsultant, reason, projectId]);
+  };
 
   // 컨설턴트 선택
-  const handleSelectConsultant = useCallback((consultant: ConsultantCandidate | null) => {
+  const handleSelectConsultant = (consultant: ConsultantCandidate | null) => {
     setSelectedConsultant(consultant);
     setError(null);
-  }, []);
+  };
 
   const isValid = selectedConsultant && reason.length >= REASON_LENGTH.MIN;
 

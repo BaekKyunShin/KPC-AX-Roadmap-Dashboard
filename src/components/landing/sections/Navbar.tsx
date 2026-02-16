@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -191,20 +191,20 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+  const handleLogoClick = (e: React.MouseEvent) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, []);
+  };
 
-  const closeMobileMenu = useCallback(() => {
+  const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
-  }, []);
+  };
 
-  const toggleMobileMenu = useCallback(() => {
+  const toggleMobileMenu = () => {
     setIsMobileMenuOpen((prev) => !prev);
-  }, []);
+  };
 
   return (
     <>

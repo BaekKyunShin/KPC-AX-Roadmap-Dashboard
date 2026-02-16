@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -60,21 +60,21 @@ export default function RoadmapPage() {
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
 
   // 버전 목록 로드
-  const loadVersions = useCallback(async () => {
+  const loadVersions = async () => {
     const data = await fetchRoadmapVersions(projectId);
     setVersions(data as RoadmapVersionUI[]);
     if (data.length > 0 && !selectedVersion) {
       setSelectedVersion(data[0] as RoadmapVersionUI);
     }
-  }, [projectId, selectedVersion]);
+  };
 
   // 프로젝트 정보 로드
-  const loadProjectInfo = useCallback(async () => {
+  const loadProjectInfo = async () => {
     const result = await fetchProjectInfo(projectId);
     if (result.success && result.data) {
       setCompanyName(result.data.companyName);
     }
-  }, [projectId]);
+  };
 
   useEffect(() => {
     async function loadInitialData() {
@@ -83,7 +83,8 @@ export default function RoadmapPage() {
       setIsLoading(false);
     }
     loadInitialData();
-  }, [loadVersions, loadProjectInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [projectId]);
 
   // 로드맵 생성
   const handleGenerate = async () => {

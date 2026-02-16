@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Check, ExternalLink, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -276,18 +276,19 @@ function useTipRotation(tipCount: number) {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
 
-  const rotateTip = useCallback(() => {
+  const rotateTip = () => {
     setIsFading(true);
     setTimeout(() => {
       setCurrentTipIndex((prev) => (prev + 1) % tipCount);
       setIsFading(false);
     }, TIP_CONFIG.FADE_DURATION_MS);
-  }, [tipCount]);
+  };
 
   useEffect(() => {
     const intervalId = setInterval(rotateTip, TIP_CONFIG.INTERVAL_MS);
     return () => clearInterval(intervalId);
-  }, [rotateTip]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, []);
 
   return { currentTipIndex, isFading };
 }
@@ -488,10 +489,7 @@ export default function RoadmapLoadingOverlay({
   const tips = isTestMode ? TEST_TIPS : REAL_TIPS;
   const { currentTipIndex, isFading } = useTipRotation(tips.length);
 
-  const stepMessages = useMemo(
-    () => (isTestMode ? TEST_STEP_MESSAGES : createRealStepMessages(companyName)),
-    [isTestMode, companyName]
-  );
+  const stepMessages = isTestMode ? TEST_STEP_MESSAGES : createRealStepMessages(companyName);
 
   // 마운트 시 애니메이션
   useEffect(() => {

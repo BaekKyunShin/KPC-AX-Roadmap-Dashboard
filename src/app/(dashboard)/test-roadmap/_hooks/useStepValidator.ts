@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { REQUIRED_STEP_IDS } from '@/lib/constants/interview-steps';
 import type {
   InterviewParticipant,
@@ -78,20 +77,8 @@ export function useStepValidator({
   painPoints,
   improvementGoals,
 }: StepValidatorData) {
-  const validateStep = useCallback(
-    (step: number): boolean =>
-      validateStepFn(step, {
-        companyName,
-        industry,
-        companySize,
-        interviewDate,
-        participants,
-        companyDetails,
-        jobTasks,
-        painPoints,
-        improvementGoals,
-      }),
-    [
+  const validateStep = (step: number): boolean =>
+    validateStepFn(step, {
       companyName,
       industry,
       companySize,
@@ -101,8 +88,7 @@ export function useStepValidator({
       jobTasks,
       painPoints,
       improvementGoals,
-    ]
-  );
+    });
 
   // 필수 스텝 완료 여부 (생성 버튼 활성화 조건)
   const isAllRequiredStepsValid = REQUIRED_STEP_IDS.every((step) => validateStep(step));

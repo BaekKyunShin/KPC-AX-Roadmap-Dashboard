@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/page-header';
@@ -65,7 +65,7 @@ export default function InterviewPage() {
   const lastFormDataRef = useRef<string>('');
 
   // 현재 폼 데이터를 JSON 문자열로 직렬화
-  const serializeFormData = useCallback(() => {
+  const serializeFormData = () => {
     return JSON.stringify({
       interviewDate,
       participants,
@@ -77,10 +77,10 @@ export default function InterviewPage() {
       notes,
       customerRequirements,
     });
-  }, [interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements]);
+  };
 
   // 자동 저장 함수
-  const autoSave = useCallback(async () => {
+  const autoSave = async () => {
     const currentFormData = serializeFormData();
 
     // 데이터가 변경되지 않았으면 저장하지 않음
@@ -115,7 +115,7 @@ export default function InterviewPage() {
     }
 
     setIsAutoSaving(false);
-  }, [projectId, interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, serializeFormData]);
+  };
 
   // 디바운스된 자동 저장 설정
   useEffect(() => {
@@ -134,7 +134,8 @@ export default function InterviewPage() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, isFetching, autoSave]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [interviewDate, participants, companyDetails, jobTasks, painPoints, constraints, improvementGoals, notes, customerRequirements, isFetching]);
 
   // 기존 인터뷰 데이터 로드
   useEffect(() => {

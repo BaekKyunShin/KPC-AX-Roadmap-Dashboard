@@ -350,6 +350,23 @@ describe('buildRoadmapMatrixFromCourses', () => {
     expect(result[2].task_id).toBe('task_3');
   });
 
+  it('같은 업무에 여러 과정이 있어도 task_id가 순차적이다', () => {
+    const courses = [
+      makeCourse({ target_task: '업무A', level: 'BEGINNER' }),
+      makeCourse({ target_task: '업무A', level: 'INTERMEDIATE' }),
+      makeCourse({ target_task: '업무B', level: 'BEGINNER' }),
+      makeCourse({ target_task: '업무B', level: 'ADVANCED' }),
+      makeCourse({ target_task: '업무C', level: 'BEGINNER' }),
+    ];
+
+    const result = buildRoadmapMatrixFromCourses(courses);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].task_id).toBe('task_1');
+    expect(result[1].task_id).toBe('task_2');
+    expect(result[2].task_id).toBe('task_3');
+  });
+
   it('INTERMEDIATE 레벨 과정을 올바르게 배치한다', () => {
     const course = makeCourse({ level: 'INTERMEDIATE', target_task: '고객 응대' });
     const result = buildRoadmapMatrixFromCourses([course]);

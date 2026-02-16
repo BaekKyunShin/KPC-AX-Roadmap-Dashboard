@@ -12,13 +12,15 @@ import type { RoadmapCell, RoadmapRow, RoadmapMatrixCell } from '@/lib/services/
 export function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
   // 업무별로 그룹화
   const taskMap = new Map<string, RoadmapRow>();
+  let taskCounter = 0;
 
-  courses.forEach((course, index) => {
+  courses.forEach((course) => {
     const taskKey = course.target_task;
 
     if (!taskMap.has(taskKey)) {
+      taskCounter++;
       taskMap.set(taskKey, {
-        task_id: `task_${index + 1}`,
+        task_id: `task_${taskCounter}`,
         task_name: taskKey,
         beginner: [],
         intermediate: [],

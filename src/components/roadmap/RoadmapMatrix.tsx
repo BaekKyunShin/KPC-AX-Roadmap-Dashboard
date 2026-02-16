@@ -107,7 +107,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {matrix.map((row, rowIndex) => (
-              <tr key={row.task_id}>
+              <tr key={row.task_id ?? rowIndex}>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{row.task_name}</td>
                 {renderMatrixCell(row.beginner, rowIndex, 'beginner', 'bg-green-50')}
                 {renderMatrixCell(row.intermediate, rowIndex, 'intermediate', 'bg-yellow-50')}
@@ -142,7 +142,7 @@ export function RoadmapMatrix({ matrix, canEdit = false, onEditCourse }: Roadmap
           {matrix.map((row, rowIndex) => {
             const courses = row[mobileTab] || [];
             return (
-              <div key={row.task_id} className={`p-4 rounded-lg border ${TAB_CONFIG[mobileTab].bgColor}`}>
+              <div key={row.task_id ?? rowIndex} className={`p-4 rounded-lg border ${TAB_CONFIG[mobileTab].bgColor}`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-xs text-gray-500 mb-1">업무</div>

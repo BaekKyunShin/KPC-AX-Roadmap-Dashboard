@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ConsultantProgress } from '../actions';
@@ -228,10 +228,7 @@ export default function ConsultantProgressTable({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showAllConsultants, setShowAllConsultants] = useState(false);
 
-  const sortedConsultantData = useMemo(
-    () => sortConsultantData(data, sortKey, sortOrder),
-    [data, sortKey, sortOrder]
-  );
+  const sortedConsultantData = sortConsultantData(data, sortKey, sortOrder);
 
   const displayedConsultants = showAllConsultants
     ? sortedConsultantData
@@ -239,21 +236,18 @@ export default function ConsultantProgressTable({
 
   const remainingCount = sortedConsultantData.length - DEFAULT_CONSULTANT_ROWS;
 
-  const handleSort = useCallback(
-    (key: ConsultantSortKey) => {
-      if (sortKey === key) {
-        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      } else {
-        setSortKey(key);
-        setSortOrder('desc');
-      }
-    },
-    [sortKey]
-  );
+  const handleSort = (key: ConsultantSortKey) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
 
-  const toggleShowAllConsultants = useCallback(() => {
+  const toggleShowAllConsultants = () => {
     setShowAllConsultants((prev) => !prev);
-  }, []);
+  };
 
   return (
     <Card>

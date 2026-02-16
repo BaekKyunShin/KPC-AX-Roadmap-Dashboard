@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
 import { createSelfAssessment } from '@/app/(dashboard)/ops/projects/actions';
@@ -40,16 +40,10 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const [currentStep, setCurrentStep] = useState(0);
 
   // 질문을 차원별로 그룹화
-  const questionsByDimension = useMemo(
-    () => groupQuestionsByDimension(template.questions),
-    [template.questions]
-  );
+  const questionsByDimension = groupQuestionsByDimension(template.questions);
 
   // 차원 목록 (순서 유지) - 스텝으로 사용
-  const dimensions = useMemo(
-    () => Object.keys(questionsByDimension),
-    [questionsByDimension]
-  );
+  const dimensions = Object.keys(questionsByDimension);
 
   const totalSteps = dimensions.length;
   const isLastStep = currentStep === totalSteps - 1;
@@ -59,21 +53,17 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
   const currentQuestions = questionsByDimension[currentDimension] || [];
 
   // 질문 응답 여부 확인
-  const isQuestionAnswered = useCallback((question: Question): boolean => {
+  const isQuestionAnswered = (question: Question): boolean => {
     return answers[question.id] !== undefined;
-  }, [answers]);
+  };
 
   // 완료된 스텝 계산
-  const completedSteps = useMemo(() => {
-    const completed = new Set<number>();
-    dimensions.forEach((dim, index) => {
-      const questions = questionsByDimension[dim];
-      if (questions.every((q) => isQuestionAnswered(q))) {
-        completed.add(index);
-      }
-    });
-    return completed;
-  }, [dimensions, questionsByDimension, isQuestionAnswered]);
+  const completedSteps = new Set(
+    dimensions
+      .map((dim, index) => ({ dim, index }))
+      .filter(({ dim }) => questionsByDimension[dim].every((q) => isQuestionAnswered(q)))
+      .map(({ index }) => index),
+  );
 
   // 현재 스텝 완료 여부
   const isCurrentStepComplete = currentQuestions.every((q) => isQuestionAnswered(q));

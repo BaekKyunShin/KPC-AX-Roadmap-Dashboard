@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -91,30 +91,23 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   useEffect(() => {
     if (statusFilter !== undefined) {
       // 외부에서 배열로 들어오면 내부 상태 초기화 (카드 필터 사용 중)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external filter is intentional
       setInternalStatus(DEFAULT_FILTER_VALUE);
       setPage(1);
     }
   }, [statusFilter]);
 
   // 선택된 상태 필터 옵션 (드롭다운 선택)
-  const selectedStatusOption = useMemo(() => {
-    if (internalStatus === DEFAULT_FILTER_VALUE) {
-      return null;
-    }
-    return filterOptions.statuses.find((opt) => opt.value === internalStatus) ?? null;
-  }, [internalStatus, filterOptions.statuses]);
+  const selectedStatusOption = internalStatus === DEFAULT_FILTER_VALUE
+    ? null
+    : filterOptions.statuses.find((opt) => opt.value === internalStatus) ?? null;
 
   // 실제 적용할 상태 필터 결정 (외부 prop 우선, 없으면 내부 상태)
-  const effectiveStatuses = useMemo(() => {
-    if (statusFilter !== null && statusFilter !== undefined) {
-      return statusFilter;
-    }
-    return selectedStatusOption?.statuses;
-  }, [statusFilter, selectedStatusOption]);
+  const effectiveStatuses = (statusFilter !== null && statusFilter !== undefined)
+    ? statusFilter
+    : selectedStatusOption?.statuses;
 
   // 데이터 로드
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true);
     const result = await fetchProjectsWithTimeline({
       page,
@@ -127,16 +120,15 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     setTotalPages(result.totalPages);
     setTotal(result.total);
     setLoading(false);
-  }, [page, debouncedSearch, effectiveStatuses, industry]);
+  };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial data loading is intentional
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [page, debouncedSearch, effectiveStatuses, industry]);
 
   // 검색어 변경 시 첫 페이지로 리셋
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting page on filter change is intentional
     setPage(1);
   }, [debouncedSearch, internalStatus, industry, statusFilter]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,7 @@ export function GuideQuestions({
     dimensionGroups.set(q.dimension, group);
   }
 
-  const saveQuestions = useCallback(async (updated: GuideQuestion[]) => {
+  const saveQuestions = async (updated: GuideQuestion[]) => {
     setIsSaving(true);
     const result = await updateInterviewGuideQuestions(projectId, updated);
     setIsSaving(false);
@@ -51,7 +51,7 @@ export function GuideQuestions({
     if (!result.success) {
       showErrorToast('저장 실패', result.error);
     }
-  }, [projectId]);
+  };
 
   function handleToggleCheck(questionId: string) {
     const updated = questions.map((q) =>

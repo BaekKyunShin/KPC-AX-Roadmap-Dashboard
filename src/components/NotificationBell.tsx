@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Check, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -66,7 +66,7 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   }, [initialUnreadCount]);
 
   // Popover 열릴 때마다 알림 목록을 fresh fetch
-  const handleOpenChange = useCallback(async (open: boolean) => {
+  const handleOpenChange = async (open: boolean) => {
     setIsOpen(open);
 
     if (open) {
@@ -89,10 +89,10 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
       setNotifications([]);
       setHasMore(false);
     }
-  }, []);
+  };
 
   // 탭 변경
-  const handleTabChange = useCallback(async (tab: TabKey) => {
+  const handleTabChange = async (tab: TabKey) => {
     setActiveTab(tab);
     const id = ++requestIdRef.current;
     setIsLoading(true);
@@ -112,10 +112,10 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
-  }, []);
+  };
 
   // 무한 스크롤: 다음 페이지 로드
-  const loadMore = useCallback(async () => {
+  const loadMore = async () => {
     if (isLoadingMoreRef.current) return;
     isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
@@ -133,7 +133,7 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
 
     setIsLoadingMore(false);
     isLoadingMoreRef.current = false;
-  }, [activeTab]);
+  };
 
   // IntersectionObserver 기반 무한 스크롤
   useEffect(() => {
@@ -150,36 +150,34 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
 
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [isOpen, loadMore]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
+  }, [isOpen]);
 
   // 단일 알림 클릭: 읽음 처리 + 페이지 이동
-  const handleNotificationClick = useCallback(
-    async (notification: Notification) => {
-      if (!notification.is_read) {
-        await markNotificationRead(notification.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)),
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      await markNotificationRead(notification.id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
 
-      setIsOpen(false);
+    setIsOpen(false);
 
-      if (notification.link) {
-        router.push(notification.link);
-      }
-    },
-    [router],
-  );
+    if (notification.link) {
+      router.push(notification.link);
+    }
+  };
 
   // 모두 읽음 처리
-  const handleMarkAllRead = useCallback(async () => {
+  const handleMarkAllRead = async () => {
     const result = await markAllNotificationsRead();
     if (result.success) {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     }
-  }, []);
+  };
 
   // 뱃지 표시 텍스트
   const badgeText =

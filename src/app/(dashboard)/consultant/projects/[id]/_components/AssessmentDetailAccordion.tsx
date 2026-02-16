@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ListChecks } from 'lucide-react';
 import {
   Accordion,
@@ -43,6 +43,39 @@ interface DimensionGroup {
 interface Props {
   answers: AssessmentAnswer[];
   questions: AssessmentQuestion[];
+}
+
+// =============================================================================
+// 헬퍼 함수
+// =============================================================================
+
+/** 질문을 차원별로 그룹화하고 가중 점수를 계산 */
+function groupByDimension(
+  questions: AssessmentQuestion[],
+  answerMap: Map<string, number | string>,
+): DimensionGroup[] {
+  const groups = new Map<string, DimensionGroup>();
+
+  const sorted = [...questions].sort((a, b) => a.order - b.order);
+  for (const q of sorted) {
+    if (!groups.has(q.dimension)) {
+      groups.set(q.dimension, {
+        dimension: q.dimension,
+        questions: [],
+        score: 0,
+        maxScore: 0,
+      });
+    }
+    const group = groups.get(q.dimension)!;
+    const answer = answerMap.get(q.id) ?? null;
+    group.questions.push({ ...q, answer });
+
+    const val = typeof answer === 'number' ? answer : 0;
+    group.score += val * q.weight;
+    group.maxScore += MAX_SCALE * q.weight;
+  }
+
+  return Array.from(groups.values());
 }
 
 // =============================================================================
@@ -95,38 +128,9 @@ function QuestionAnswer({ question }: { question: QuestionWithAnswer }) {
 export function AssessmentDetailAccordion({ answers, questions }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const answerMap = useMemo(() => {
-    const map = new Map<string, number | string>();
-    for (const a of answers) {
-      map.set(a.question_id, a.answer_value);
-    }
-    return map;
-  }, [answers]);
+  const answerMap = new Map(answers.map((a) => [a.question_id, a.answer_value]));
 
-  const dimensionGroups = useMemo(() => {
-    const groups = new Map<string, DimensionGroup>();
-
-    const sorted = [...questions].sort((a, b) => a.order - b.order);
-    for (const q of sorted) {
-      if (!groups.has(q.dimension)) {
-        groups.set(q.dimension, {
-          dimension: q.dimension,
-          questions: [],
-          score: 0,
-          maxScore: 0,
-        });
-      }
-      const group = groups.get(q.dimension)!;
-      const answer = answerMap.get(q.id) ?? null;
-      group.questions.push({ ...q, answer });
-
-      const val = typeof answer === 'number' ? answer : 0;
-      group.score += val * q.weight;
-      group.maxScore += MAX_SCALE * q.weight;
-    }
-
-    return Array.from(groups.values());
-  }, [questions, answerMap]);
+  const dimensionGroups = groupByDimension(questions, answerMap);
 
   if (answers.length === 0 || questions.length === 0) {
     return null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useTransition } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEFAULT_TOP_N } from './constants';
 import { ERROR_MESSAGES } from './utils';
@@ -56,89 +56,83 @@ export default function useAssignmentMatching({
   }, [hasRecommendations, currentFirstId]);
 
   // API 호출 (타임아웃 없음, AbortController로 취소 가능)
-  const callMatchingAPI = useCallback(
-    async (preserveStatus: boolean): Promise<{ success: boolean; error?: string; cancelled?: boolean }> => {
-      // 새 AbortController 생성
-      abortControllerRef.current = new AbortController();
+  const callMatchingAPI = async (preserveStatus: boolean): Promise<{ success: boolean; error?: string; cancelled?: boolean }> => {
+    // 새 AbortController 생성
+    abortControllerRef.current = new AbortController();
 
-      try {
-        const response = await fetch('/api/matching/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId, topN: DEFAULT_TOP_N, preserveStatus }),
-          signal: abortControllerRef.current.signal,
-        });
+    try {
+      const response = await fetch('/api/matching/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, topN: DEFAULT_TOP_N, preserveStatus }),
+        signal: abortControllerRef.current.signal,
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (!response.ok || !result.success) {
-          return { success: false, error: result.error || ERROR_MESSAGES.MATCHING_FAILED };
-        }
-
-        return { success: true };
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
-          return { success: false, cancelled: true };
-        }
-
-        return { success: false, error: ERROR_MESSAGES.NETWORK };
-      } finally {
-        abortControllerRef.current = null;
+      if (!response.ok || !result.success) {
+        return { success: false, error: result.error || ERROR_MESSAGES.MATCHING_FAILED };
       }
-    },
-    [projectId]
-  );
+
+      return { success: true };
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { success: false, cancelled: true };
+      }
+
+      return { success: false, error: ERROR_MESSAGES.NETWORK };
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
 
   // 카드 상단으로 스크롤
-  const scrollToCard = useCallback(() => {
+  const scrollToCard = () => {
     if (cardRef.current) {
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, []);
+  };
 
   // 매칭 실행 공통 로직
-  const executeMatching = useCallback(
-    async (preserveStatus: boolean) => {
-      setIsGenerating(true);
-      setGenerateError(null);
+  const executeMatching = async (preserveStatus: boolean) => {
+    setIsGenerating(true);
+    setGenerateError(null);
 
-      // 로딩 시작 시 카드 상단으로 스크롤
-      scrollToCard();
+    // 로딩 시작 시 카드 상단으로 스크롤
+    scrollToCard();
 
-      const result = await callMatchingAPI(preserveStatus);
+    const result = await callMatchingAPI(preserveStatus);
 
-      if (result.success) {
-        // 데이터 새로고침 대기 상태로 설정
-        isWaitingForDataRef.current = true;
-        router.refresh();
-        // recommendations가 업데이트될 때 useEffect에서 isGenerating을 false로 설정
-      } else if (result.cancelled) {
-        // 사용자가 취소한 경우 - 에러 메시지 없이 종료
-        setIsGenerating(false);
-      } else {
-        setGenerateError(result.error || ERROR_MESSAGES.DEFAULT);
-        setIsGenerating(false);
-      }
-    },
-    [callMatchingAPI, router, scrollToCard]
-  );
+    if (result.success) {
+      // 데이터 새로고침 대기 상태로 설정
+      isWaitingForDataRef.current = true;
+      router.refresh();
+      // recommendations가 업데이트될 때 useEffect에서 isGenerating을 false로 설정
+    } else if (result.cancelled) {
+      // 사용자가 취소한 경우 - 에러 메시지 없이 종료
+      setIsGenerating(false);
+    } else {
+      setGenerateError(result.error || ERROR_MESSAGES.DEFAULT);
+      setIsGenerating(false);
+    }
+  };
 
   // 매칭 취소
-  const handleCancelMatching = useCallback(() => {
+  const handleCancelMatching = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       setIsGenerating(false);
       isWaitingForDataRef.current = false;
     }
-  }, []);
+  };
 
   // 매칭 추천 생성
-  const handleGenerateMatching = useCallback(() => {
+  const handleGenerateMatching = () => {
     executeMatching(!!hasAssignedConsultant);
-  }, [executeMatching, hasAssignedConsultant]);
+  };
 
   // 매칭 재계산
-  const handleRecalculate = useCallback(() => {
+  const handleRecalculate = () => {
     if (
       hasAssignedConsultant &&
       !confirm(
@@ -149,9 +143,9 @@ export default function useAssignmentMatching({
     }
 
     executeMatching(true);
-  }, [executeMatching, hasAssignedConsultant]);
+  };
 
-  const handleDismissError = useCallback(() => setGenerateError(null), []);
+  const handleDismissError = () => setGenerateError(null);
 
   return {
     cardRef,

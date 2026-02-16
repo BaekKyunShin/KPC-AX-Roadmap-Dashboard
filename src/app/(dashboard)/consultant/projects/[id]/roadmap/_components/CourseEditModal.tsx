@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { RoadmapCell, CurriculumModule } from '@/lib/services/roadmap';
 import { showErrorToast } from '@/lib/utils/toast';
@@ -192,135 +192,108 @@ export default function CourseEditModal({
   const [formData, setFormData] = useState<RoadmapCell | null>(null);
 
   // formData가 없으면 course를 기본값으로 사용
-  const currentFormData = useMemo(() => formData || course, [formData, course]);
+  const currentFormData = formData || course;
 
   // ---------------------------------------------------------------------------
   // 모달 제어 핸들러
   // ---------------------------------------------------------------------------
 
   /** 모달 닫기 - formData 리셋 */
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setFormData(null);
     onClose();
-  }, [onClose]);
+  };
 
   /** 폼 제출 */
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!currentFormData) return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentFormData) return;
 
-      if (!currentFormData.course_name.trim()) {
-        showErrorToast('입력 오류', '과정명을 입력하세요.');
-        return;
-      }
+    if (!currentFormData.course_name.trim()) {
+      showErrorToast('입력 오류', '과정명을 입력하세요.');
+      return;
+    }
 
-      onSave(currentFormData);
-    },
-    [currentFormData, onSave]
-  );
+    onSave(currentFormData);
+  };
 
   // ---------------------------------------------------------------------------
   // 공통 상태 업데이트 헬퍼
   // ---------------------------------------------------------------------------
 
-  const updateFormData = useCallback(
-    (updater: (current: RoadmapCell) => Partial<RoadmapCell>) => {
-      setFormData((prev) => {
-        const current = prev || course;
-        if (!current) return prev;
-        return { ...current, ...updater(current) };
-      });
-    },
-    [course]
-  );
+  const updateFormData = (updater: (current: RoadmapCell) => Partial<RoadmapCell>) => {
+    setFormData((prev) => {
+      const current = prev || course;
+      if (!current) return prev;
+      return { ...current, ...updater(current) };
+    });
+  };
 
   // ---------------------------------------------------------------------------
   // 기본 필드 핸들러
   // ---------------------------------------------------------------------------
 
-  const handleChange = useCallback(
-    (field: keyof RoadmapCell, value: unknown) => {
-      updateFormData(() => ({ [field]: value }));
-    },
-    [updateFormData]
-  );
+  const handleChange = (field: keyof RoadmapCell, value: unknown) => {
+    updateFormData(() => ({ [field]: value }));
+  };
 
-  const handlePrerequisitesChange = useCallback(
-    (value: string) => {
-      updateFormData(() => ({ prerequisites: splitLines(value) }));
-    },
-    [updateFormData]
-  );
+  const handlePrerequisitesChange = (value: string) => {
+    updateFormData(() => ({ prerequisites: splitLines(value) }));
+  };
 
   // ---------------------------------------------------------------------------
   // 커리큘럼 모듈 핸들러
   // ---------------------------------------------------------------------------
 
-  const handleModuleChange = useCallback(
-    (moduleIndex: number, field: keyof CurriculumModule, value: unknown) => {
-      updateFormData((current) => {
-        const newCurriculum = [...(current.curriculum || [])];
-        newCurriculum[moduleIndex] = { ...newCurriculum[moduleIndex], [field]: value };
-        return buildCurriculumUpdate(newCurriculum);
-      });
-    },
-    [updateFormData]
-  );
+  const handleModuleChange = (moduleIndex: number, field: keyof CurriculumModule, value: unknown) => {
+    updateFormData((current) => {
+      const newCurriculum = [...(current.curriculum || [])];
+      newCurriculum[moduleIndex] = { ...newCurriculum[moduleIndex], [field]: value };
+      return buildCurriculumUpdate(newCurriculum);
+    });
+  };
 
-  const handleModuleDetailsChange = useCallback(
-    (moduleIndex: number, value: string) => {
-      handleModuleChange(moduleIndex, 'details', splitLines(value));
-    },
-    [handleModuleChange]
-  );
+  const handleModuleDetailsChange = (moduleIndex: number, value: string) => {
+    handleModuleChange(moduleIndex, 'details', splitLines(value));
+  };
 
-  const handleAddModule = useCallback(() => {
+  const handleAddModule = () => {
     updateFormData((current) => {
       const newCurriculum = [...(current.curriculum || []), createEmptyModule()];
       return buildCurriculumUpdate(newCurriculum);
     });
-  }, [updateFormData]);
+  };
 
-  const handleRemoveModule = useCallback(
-    (index: number) => {
-      updateFormData((current) => {
-        const newCurriculum = (current.curriculum || []).filter((_, i) => i !== index);
-        return buildCurriculumUpdate(newCurriculum);
-      });
-    },
-    [updateFormData]
-  );
+  const handleRemoveModule = (index: number) => {
+    updateFormData((current) => {
+      const newCurriculum = (current.curriculum || []).filter((_, i) => i !== index);
+      return buildCurriculumUpdate(newCurriculum);
+    });
+  };
 
   // ---------------------------------------------------------------------------
   // 도구 핸들러
   // ---------------------------------------------------------------------------
 
-  const handleToolChange = useCallback(
-    (index: number, field: 'name' | 'free_tier_info', value: string) => {
-      updateFormData((current) => {
-        const newTools = [...(current.tools || [])];
-        newTools[index] = { ...newTools[index], [field]: value };
-        return { tools: newTools };
-      });
-    },
-    [updateFormData]
-  );
+  const handleToolChange = (index: number, field: 'name' | 'free_tier_info', value: string) => {
+    updateFormData((current) => {
+      const newTools = [...(current.tools || [])];
+      newTools[index] = { ...newTools[index], [field]: value };
+      return { tools: newTools };
+    });
+  };
 
-  const handleAddTool = useCallback(() => {
+  const handleAddTool = () => {
     updateFormData((current) => ({
       tools: [...(current.tools || []), { name: '', free_tier_info: '' }],
     }));
-  }, [updateFormData]);
+  };
 
-  const handleRemoveTool = useCallback(
-    (index: number) => {
-      updateFormData((current) => ({
-        tools: (current.tools || []).filter((_, i) => i !== index),
-      }));
-    },
-    [updateFormData]
-  );
+  const handleRemoveTool = (index: number) => {
+    updateFormData((current) => ({
+      tools: (current.tools || []).filter((_, i) => i !== index),
+    }));
+  };
 
   // ---------------------------------------------------------------------------
   // 렌더링

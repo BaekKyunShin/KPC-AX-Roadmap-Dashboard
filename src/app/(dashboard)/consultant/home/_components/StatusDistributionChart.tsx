@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import {
   ChartContainer,
@@ -45,15 +44,11 @@ function toChartData(byStatus: Record<string, number>): ChartDataItem[] {
 }
 
 export function StatusDistributionChart({ byStatus, total }: StatusDistributionChartProps) {
-  const data = useMemo(() => toChartData(byStatus), [byStatus]);
+  const data = toChartData(byStatus);
 
-  const config = useMemo<ChartConfig>(() => {
-    const cfg: ChartConfig = {};
-    for (const item of data) {
-      cfg[item.name] = { label: STATUS_LABELS[item.name] || item.name, color: item.color };
-    }
-    return cfg;
-  }, [data]);
+  const config: ChartConfig = Object.fromEntries(
+    data.map((item) => [item.name, { label: STATUS_LABELS[item.name] || item.name, color: item.color }]),
+  );
 
   if (total === 0) {
     return (
