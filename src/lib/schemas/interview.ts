@@ -1,45 +1,92 @@
 import { z } from 'zod';
 
-// 인터뷰 참석자 스키마
-export const interviewParticipantSchema = z.object({
+// ============================================================================
+// 공유 Enum
+// ============================================================================
+
+const severityEnum = z.enum(['HIGH', 'MEDIUM', 'LOW']);
+const constraintTypeEnum = z.enum(['DATA', 'SYSTEM', 'SECURITY', 'PERMISSION', 'OTHER']);
+
+// ============================================================================
+// 기본 스키마 (자동저장용 — 구조/타입 검증, min 제약 없음)
+// ============================================================================
+
+const baseParticipantSchema = z.object({
   id: z.string(),
+  name: z.string(),
+  position: z.string().optional(),
+});
+
+const baseJobTaskSchema = z.object({
+  id: z.string(),
+  task_name: z.string(),
+  task_description: z.string(),
+});
+
+const basePainPointSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  severity: severityEnum,
+  related_task_ids: z.array(z.string()).optional(),
+});
+
+const baseConstraintSchema = z.object({
+  id: z.string(),
+  type: constraintTypeEnum,
+  description: z.string(),
+  severity: severityEnum,
+  workaround: z.string().optional(),
+});
+
+const baseImprovementGoalSchema = z.object({
+  id: z.string(),
+  goal_description: z.string(),
+  kpi: z.string().optional(),
+  measurement_method: z.string().optional(),
+  target_value: z.string().optional(),
+  before_value: z.string().optional(),
+  related_task_ids: z.array(z.string()).optional(),
+});
+
+const baseCompanyDetailsSchema = z.object({
+  systems_and_tools: z.array(z.string()).optional(),
+  ai_experience: z.string(),
+});
+
+// ============================================================================
+// 엄격한 스키마 (수동 저장용 — min 제약 추가)
+// base.extend()로 차이점만 명시
+// ============================================================================
+
+// 인터뷰 참석자 스키마
+export const interviewParticipantSchema = baseParticipantSchema.extend({
   name: z.string().min(1, '이름을 입력하세요.'),
-  position: z.string().optional(), // 직급/직책
 });
 
 // 세부직무/세부업무 스키마
-export const jobTaskSchema = z.object({
-  id: z.string(),
+export const jobTaskSchema = baseJobTaskSchema.extend({
   task_name: z.string().min(1, '업무명을 입력하세요.'),
   task_description: z.string().min(1, '업무 설명을 입력하세요.'),
 });
 
 // 페인포인트 스키마
-export const painPointSchema = z.object({
-  id: z.string(),
+export const painPointSchema = basePainPointSchema.extend({
   description: z.string().min(1, '페인포인트 설명을 입력하세요.'),
-  severity: z.enum(['HIGH', 'MEDIUM', 'LOW']),
-  related_task_ids: z.array(z.string()).optional(), // 관련 업무 ID
 });
 
 // 데이터/시스템 제약 스키마
-export const constraintSchema = z.object({
-  id: z.string(),
-  type: z.enum(['DATA', 'SYSTEM', 'SECURITY', 'PERMISSION', 'OTHER']),
+export const constraintSchema = baseConstraintSchema.extend({
   description: z.string().min(1, '제약사항 설명을 입력하세요.'),
-  severity: z.enum(['HIGH', 'MEDIUM', 'LOW']),
-  workaround: z.string().optional(), // 우회 방법
 });
 
 // 개선 목표 스키마
-export const improvementGoalSchema = z.object({
-  id: z.string(),
+export const improvementGoalSchema = baseImprovementGoalSchema.extend({
   goal_description: z.string().min(1, '개선 목표를 입력하세요.'),
-  kpi: z.string().optional(), // KPI 지표
-  measurement_method: z.string().optional(), // 측정 방법
-  target_value: z.string().optional(), // 목표 수치
-  before_value: z.string().optional(), // Before 수치
-  related_task_ids: z.array(z.string()).optional(), // 관련 업무 ID
+});
+
+// 기업 세부 정보 스키마
+export const companyDetailsSchema = baseCompanyDetailsSchema.extend({
+  ai_experience: z.string().min(1, 'AI 도구 사용 경험을 입력하세요.'),
 });
 
 // 주요 사용 시스템/도구 프리셋 (한국 중소기업 실제 사용 기준, 사용 빈도순 정렬)
@@ -89,12 +136,6 @@ export const SYSTEM_TOOL_PRESETS = [
   'SQL',
 ] as const;
 
-// 기업 세부 정보 스키마
-export const companyDetailsSchema = z.object({
-  systems_and_tools: z.array(z.string()).optional(), // 주요 사용 시스템/도구 (통합)
-  ai_experience: z.string().min(1, 'AI 도구 사용 경험을 입력하세요.'), // AI 도구 사용 경험 (필수)
-});
-
 // STT 인사이트 스키마 (LLM 추출 결과)
 export const sttInsightsSchema = z.object({
   추가_업무: z.array(z.string()).optional(),
@@ -105,7 +146,11 @@ export const sttInsightsSchema = z.object({
   주요_인용: z.array(z.string()).optional(),
 });
 
+// ============================================================================
 // 인터뷰 전체 스키마
+// ============================================================================
+
+// 수동 저장용 (엄격한 검증)
 export const interviewSchema = z.object({
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
   participants: z.array(interviewParticipantSchema).min(1, '최소 1명 이상의 참석자를 입력하세요.'),
@@ -114,12 +159,29 @@ export const interviewSchema = z.object({
   pain_points: z.array(painPointSchema).min(1, '최소 1개 이상의 페인포인트를 입력하세요.'),
   constraints: z.array(constraintSchema).optional(),
   improvement_goals: z.array(improvementGoalSchema).min(1, '최소 1개 이상의 개선 목표를 입력하세요.'),
-  notes: z.string().optional(), // 추가 메모
-  customer_requirements: z.string().optional(), // 기업 요구사항
-  stt_insights: sttInsightsSchema.optional(), // STT에서 추출한 인사이트
+  notes: z.string().optional(),
+  customer_requirements: z.string().optional(),
+  stt_insights: sttInsightsSchema.optional(),
 });
 
+// 자동저장용 (완화된 검증 — 구조/타입만 확인, min 제약 없음)
+export const interviewAutoSaveSchema = z.object({
+  interview_date: z.string(),
+  participants: z.array(baseParticipantSchema),
+  company_details: baseCompanyDetailsSchema,
+  job_tasks: z.array(baseJobTaskSchema),
+  pain_points: z.array(basePainPointSchema),
+  constraints: z.array(baseConstraintSchema).optional(),
+  improvement_goals: z.array(baseImprovementGoalSchema),
+  notes: z.string().optional(),
+  customer_requirements: z.string().optional(),
+  stt_insights: sttInsightsSchema.optional(),
+});
+
+// ============================================================================
 // 타입 추출
+// ============================================================================
+
 export type InterviewParticipant = z.infer<typeof interviewParticipantSchema>;
 export type JobTask = z.infer<typeof jobTaskSchema>;
 export type PainPoint = z.infer<typeof painPointSchema>;
@@ -129,7 +191,10 @@ export type CompanyDetails = z.infer<typeof companyDetailsSchema>;
 export type SttInsights = z.infer<typeof sttInsightsSchema>;
 export type InterviewInput = z.infer<typeof interviewSchema>;
 
+// ============================================================================
 // 빈 항목 생성 헬퍼
+// ============================================================================
+
 export function createEmptyParticipant(): InterviewParticipant {
   return {
     id: crypto.randomUUID(),

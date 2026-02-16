@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
-import { interviewSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
+import { interviewSchema, interviewAutoSaveSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
@@ -42,7 +42,7 @@ async function verifyProjectAccess(
 export async function saveInterview(
   projectId: string,
   data: InterviewInput,
-  options?: { skipValidation?: boolean }
+  options?: { autoSave?: boolean }
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -63,15 +63,13 @@ export async function saveInterview(
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
     }
 
-    // 데이터 검증 (skipValidation이 true면 자동 저장 모드 - 검증 건너뜀)
-    let validatedData = data;
-    if (!options?.skipValidation) {
-      const validation = interviewSchema.safeParse(data);
-      if (!validation.success) {
-        return { success: false, error: validation.error.errors[0].message };
-      }
-      validatedData = validation.data;
+    // 데이터 검증: 자동저장은 완화된 스키마, 수동 저장은 엄격한 스키마 적용
+    const schema = options?.autoSave ? interviewAutoSaveSchema : interviewSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
     }
+    const validatedData = validation.data;
 
     const adminSupabase = createAdminClient();
 
@@ -156,7 +154,7 @@ export async function saveInterview(
     });
 
     // 활동 일지 자동 기록 (자동저장 모드가 아닌 경우에만)
-    if (!options?.skipValidation) {
+    if (!options?.autoSave) {
       const logContent = auditAction === 'INTERVIEW_CREATE'
         ? '인터뷰가 저장되었습니다.'
         : '인터뷰가 수정되었습니다.';

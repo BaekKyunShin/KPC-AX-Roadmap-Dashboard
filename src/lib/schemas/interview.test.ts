@@ -5,6 +5,7 @@ import {
   constraintSchema,
   improvementGoalSchema,
   interviewSchema,
+  interviewAutoSaveSchema,
   interviewParticipantSchema,
   createEmptyJobTask,
   createEmptyPainPoint,
@@ -215,6 +216,83 @@ describe('interviewSchema', () => {
 
   it('should reject empty improvement_goals array', () => {
     const result = interviewSchema.safeParse({ ...validInterview, improvement_goals: [] });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('interviewAutoSaveSchema', () => {
+  // 자동저장 스키마는 구조/타입을 검증하되 min(1) 제약을 완화해야 함
+
+  it('should accept complete valid data', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: '2024-01-15',
+      participants: [{ id: 'p-1', name: '홍길동', position: '팀장' }],
+      company_details: { systems_and_tools: ['ERP'], ai_experience: '경험 없음' },
+      job_tasks: [{ id: 'task-1', task_name: '업무', task_description: '설명' }],
+      pain_points: [{ id: 'pp-1', description: '문제', severity: 'HIGH' }],
+      improvement_goals: [{ id: 'g-1', goal_description: '개선' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept empty strings (작성 중인 데이터)', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: '',
+      participants: [{ id: 'p-1', name: '', position: '' }],
+      company_details: { systems_and_tools: [], ai_experience: '' },
+      job_tasks: [{ id: 'task-1', task_name: '', task_description: '' }],
+      pain_points: [{ id: 'pp-1', description: '', severity: 'MEDIUM' }],
+      improvement_goals: [{ id: 'g-1', goal_description: '' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept empty arrays (아직 항목 미추가)', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should still reject invalid enum values', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [{ id: 'pp-1', description: '', severity: 'INVALID' }],
+      improvement_goals: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should still reject wrong types (number instead of string)', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: 12345,
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should still reject invalid constraint type enum', () => {
+    const result = interviewAutoSaveSchema.safeParse({
+      interview_date: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [],
+      constraints: [{ id: 'c-1', type: 'WRONG', description: '', severity: 'LOW' }],
+      improvement_goals: [],
+    });
     expect(result.success).toBe(false);
   });
 });

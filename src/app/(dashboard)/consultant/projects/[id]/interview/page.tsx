@@ -90,7 +90,7 @@ export default function InterviewPage() {
 
     setIsAutoSaving(true);
 
-    // 자동 저장 시에는 유효성 검사 건너뜀 (작성 중인 데이터 보존 목적)
+    // 자동 저장 시에는 완화된 스키마로 기본 구조만 검증 (작성 중인 데이터 보존 목적)
     const result = await saveInterview(projectId, {
       interview_date: interviewDate,
       participants,
@@ -101,7 +101,7 @@ export default function InterviewPage() {
       improvement_goals: improvementGoals,
       notes,
       customer_requirements: customerRequirements,
-    }, { skipValidation: true });
+    }, { autoSave: true });
 
     if (result.success) {
       lastFormDataRef.current = currentFormData;
