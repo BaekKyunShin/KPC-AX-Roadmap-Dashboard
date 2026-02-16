@@ -767,3 +767,46 @@ export function RoadmapPageSkeleton() {
 export function OpsRoadmapPageSkeleton() {
   return <RoadmapPageSkeletonBase showDescription />;
 }
+
+// ============================================================================
+// 프로필 폼 스켈레톤
+// ============================================================================
+
+/** 컨설턴트 프로필 폼 스켈레톤 (dashboard/profile, consultant/profile 공용) */
+export function ProfileFormSkeleton() {
+  return (
+    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-6`}>
+      {/* 기본 정보 섹션 */}
+      <div className="space-y-4">
+        <SkeletonBar height="h-5" width="w-24" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderItems(4, (i) => (
+            <div key={i} className="space-y-2">
+              <SkeletonBar height="h-4" width="w-20" />
+              <SkeletonBar height="h-10" width="w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 전문 분야 섹션 */}
+      <div className="space-y-4 border-t pt-6">
+        <SkeletonBar height="h-5" width="w-28" />
+        <div className="space-y-4">
+          {renderItems(3, (i) => (
+            <div key={i} className="space-y-2">
+              <SkeletonBar height="h-4" width="w-24" />
+              <SkeletonBar height="h-10" width="w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 버튼 */}
+      <div className="flex justify-end gap-3 pt-4 border-t">
+        <SkeletonBar height="h-10" width="w-20" />
+        <SkeletonBar height="h-10" width="w-24" />
+      </div>
+    </div>
+  );
+}
