@@ -21,7 +21,9 @@ import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result
 async function verifyProjectAccess(
   projectId: string,
 ): Promise<{ user: { id: string } } | { error: string }> {
-  const auth = await requireAuth();
+  const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+    roleError: '컨설턴트만 접근 가능합니다.',
+  });
   if ('error' in auth) return auth;
 
   const accessCheck = await requireConsultantProjectAccess(
@@ -81,8 +83,8 @@ export async function saveInterview(
       .maybeSingle();
 
     if (fetchError) {
-      console.error('[saveInterview Error] Fetch:', fetchError);
-      return { success: false, error: `기존 인터뷰 확인 실패: ${fetchError.message}` };
+      console.error('[saveInterview Error] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
     }
 
     const interviewData = {
@@ -108,8 +110,8 @@ export async function saveInterview(
         .eq('id', existingInterview.id);
 
       if (updateError) {
-        console.error('[saveInterview Error] Update:', updateError);
-        return { success: false, error: `인터뷰 수정 실패: ${updateError.message}` };
+        console.error('[saveInterview Error] Update:', updateError.message);
+        return { success: false, error: '인터뷰 수정에 실패했습니다.' };
       }
       auditAction = 'INTERVIEW_UPDATE';
     } else {
@@ -118,8 +120,8 @@ export async function saveInterview(
         .insert(interviewData);
 
       if (insertError) {
-        console.error('[saveInterview Error] Insert:', insertError);
-        return { success: false, error: `인터뷰 저장 실패: ${insertError.message}` };
+        console.error('[saveInterview Error] Insert:', insertError.message);
+        return { success: false, error: '인터뷰 저장에 실패했습니다.' };
       }
       auditAction = 'INTERVIEW_CREATE';
 
@@ -253,7 +255,7 @@ export async function processSttFile(
     console.error('[processSttFile Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'STT 처리 중 오류가 발생했습니다.',
+      error: 'STT 처리 중 오류가 발생했습니다.',
     };
   }
 }
