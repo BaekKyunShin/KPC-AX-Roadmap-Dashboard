@@ -27,8 +27,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Server Action 요청은 리다이렉트하지 않음
-  // Server Action은 POST 요청이며 Next-Action 헤더를 포함함
+  // 모든 요청에서 세션 쿠키 갱신 (getUser 호출이 setAll 콜백을 트리거)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Server Action 요청은 세션 갱신만 수행하고 리다이렉트하지 않음
   const isServerAction =
     request.method === 'POST' &&
     (request.headers.get('next-action') || request.headers.get('content-type')?.includes('multipart/form-data'));
@@ -36,11 +40,6 @@ export async function updateSession(request: NextRequest) {
   if (isServerAction) {
     return supabaseResponse;
   }
-
-  // 세션 갱신
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 
