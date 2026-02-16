@@ -1,16 +1,21 @@
 import { redirect, notFound } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
-import { ConsultantAssessmentResult } from './_components/ConsultantAssessmentResult';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
 import { CompanyInfoCard } from './_components/CompanyInfoCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
 import ActivityLog from './_components/ActivityLog';
+
+const ConsultantAssessmentResult = dynamic(
+  () => import('./_components/ConsultantAssessmentResult').then(mod => ({ default: mod.ConsultantAssessmentResult })),
+  { loading: () => <div className="h-[200px] animate-pulse rounded bg-gray-100" /> }
+);
 
 interface PageProps {
   params: Promise<{ id: string }>;

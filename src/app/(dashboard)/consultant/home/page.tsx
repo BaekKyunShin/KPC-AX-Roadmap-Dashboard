@@ -1,12 +1,17 @@
 import { redirect } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { aggregateProjectStats, formatRelativeTime } from '@/lib/utils/consultant-home';
 import { SummaryCards } from './_components/SummaryCards';
-import { StatusDistributionChart } from './_components/StatusDistributionChart';
 import { RecentProjects, type RecentProjectItem } from './_components/RecentProjects';
 import { RecentActivity, type RecentActivityItem } from './_components/RecentActivity';
+
+const StatusDistributionChart = dynamic(
+  () => import('./_components/StatusDistributionChart').then(mod => ({ default: mod.StatusDistributionChart })),
+  { loading: () => <div className="h-[260px] animate-pulse rounded bg-gray-100" /> }
+);
 
 /** 기업 규모 라벨을 간략화 (괄호 안의 분류만 추출) */
 function shortSizeLabel(size: string): string {

@@ -1,11 +1,33 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useProjectDashboard } from './useProjectDashboard';
-import StatusDistributionChart from './StatusDistributionChart';
-import MonthlyCompletionChart from './MonthlyCompletionChart';
 import ConsultantProgressTable from './ConsultantProgressTable';
 import StalledProjectsSection from './StalledProjectsSection';
+
+/** 차트 카드 로딩 스켈레톤 (dynamic import용) */
+function ChartCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="h-6 w-40 animate-shimmer rounded" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-[200px] animate-shimmer rounded" />
+      </CardContent>
+    </Card>
+  );
+}
+
+const StatusDistributionChart = dynamic(() => import('./StatusDistributionChart'), {
+  ssr: false,
+  loading: () => <ChartCardSkeleton />,
+});
+const MonthlyCompletionChart = dynamic(() => import('./MonthlyCompletionChart'), {
+  ssr: false,
+  loading: () => <ChartCardSkeleton />,
+});
 
 /** 대시보드 로딩 스켈레톤 */
 function DashboardSkeleton() {

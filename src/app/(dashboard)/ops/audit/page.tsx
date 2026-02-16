@@ -31,7 +31,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Search, X, Download } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils/toast';
-import * as XLSX from 'xlsx-js-style';
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -179,10 +178,10 @@ export default function AuditLogPage() {
           startDate: startDate || undefined,
           endDate: endDate || undefined,
         });
-        exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
+        await exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
       } else {
         setExporting('excel');
-        exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        await exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
       }
     } catch {
       showErrorToast('내보내기 실패', '서버와 통신 중 오류가 발생했습니다.');
@@ -190,8 +189,10 @@ export default function AuditLogPage() {
     setExporting(null);
   }
 
-  function exportToExcel(logsToExport: AuditLogEntry[], filename: string) {
+  async function exportToExcel(logsToExport: AuditLogEntry[], filename: string) {
     if (logsToExport.length === 0) return;
+
+    const XLSX = await import('xlsx-js-style');
 
     const data = transformLogsForExport(logsToExport);
     const ws = XLSX.utils.json_to_sheet(data);
