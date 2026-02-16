@@ -363,6 +363,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               variant="ghost"
               size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>

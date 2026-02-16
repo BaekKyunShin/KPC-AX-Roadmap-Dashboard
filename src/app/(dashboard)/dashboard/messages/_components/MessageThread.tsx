@@ -286,6 +286,7 @@ export default function MessageThread({
           size="icon"
           disabled={!inputValue.trim() || isSending}
           className="h-9 w-9 shrink-0"
+          aria-label="메시지 전송"
         >
           {isSending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

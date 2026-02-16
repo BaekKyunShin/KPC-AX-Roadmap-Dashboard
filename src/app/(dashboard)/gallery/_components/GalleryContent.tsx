@@ -34,6 +34,25 @@ interface GalleryContentProps {
   searchParams: Record<string, string | undefined>;
 }
 
+function FilterBadge({
+  label,
+  value,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  onClear: () => void;
+}) {
+  return (
+    <Badge variant="secondary" className="gap-1">
+      {label}: {value}
+      <button onClick={onClear} aria-label={`${label} 필터 제거`}>
+        <X className="h-3 w-3" />
+      </button>
+    </Badge>
+  );
+}
+
 export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -165,7 +184,7 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
               </Select>
 
               {hasFilters && (
-                <Button variant="ghost" size="icon" onClick={handleResetFilters}>
+                <Button variant="ghost" size="icon" onClick={handleResetFilters} aria-label="필터 초기화">
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -176,28 +195,13 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <Badge variant="secondary" className="gap-1">
-                  검색: {debouncedSearch}
-                  <button onClick={() => setSearchInput('')}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
               )}
               {industry !== DEFAULT_FILTER_VALUE && (
-                <Badge variant="secondary" className="gap-1">
-                  업종: {industry}
-                  <button onClick={() => handleIndustryChange(DEFAULT_FILTER_VALUE)}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="업종" value={industry} onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)} />
               )}
               {sort !== 'latest' && (
-                <Badge variant="secondary" className="gap-1">
-                  정렬: {SORT_OPTIONS.find((o) => o.value === sort)?.label}
-                  <button onClick={() => handleSortChange('latest')}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="정렬" value={SORT_OPTIONS.find((o) => o.value === sort)?.label ?? ''} onClear={() => handleSortChange('latest')} />
               )}
             </div>
           )}

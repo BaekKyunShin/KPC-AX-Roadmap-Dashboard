@@ -44,6 +44,25 @@ interface ProjectListProps {
   statusFilter?: ProjectStatus[] | null;
 }
 
+function FilterBadge({
+  label,
+  value,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  onClear: () => void;
+}) {
+  return (
+    <Badge variant="secondary" className="gap-1">
+      {label}: {value}
+      <button onClick={onClear} aria-label={`${label} 필터 제거`}>
+        <X className="h-3 w-3" />
+      </button>
+    </Badge>
+  );
+}
+
 export default function ProjectList({ statusFilter }: ProjectListProps) {
   const [projects, setProjects] = useState<ProjectWithTimeline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +197,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
               </Select>
 
               {hasFilters && (
-                <Button variant="ghost" size="icon" onClick={handleResetFilters}>
+                <Button variant="ghost" size="icon" onClick={handleResetFilters} aria-label="필터 초기화">
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -189,20 +208,10 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <Badge variant="secondary" className="gap-1">
-                  검색: {debouncedSearch}
-                  <button onClick={() => setSearchInput('')}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
               )}
               {selectedStatusOption && (
-                <Badge variant="secondary" className="gap-1">
-                  상태: {selectedStatusOption.label}
-                  <button onClick={() => setInternalStatus(DEFAULT_FILTER_VALUE)}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="상태" value={selectedStatusOption.label} onClear={() => setInternalStatus(DEFAULT_FILTER_VALUE)} />
               )}
               {statusFilter && statusFilter.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
@@ -210,12 +219,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 </Badge>
               )}
               {industry !== DEFAULT_FILTER_VALUE && (
-                <Badge variant="secondary" className="gap-1">
-                  업종: {industry}
-                  <button onClick={() => setIndustry(DEFAULT_FILTER_VALUE)}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
+                <FilterBadge label="업종" value={industry} onClear={() => setIndustry(DEFAULT_FILTER_VALUE)} />
               )}
             </div>
           )}

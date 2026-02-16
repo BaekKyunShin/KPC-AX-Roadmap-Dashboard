@@ -29,6 +29,25 @@ const SHARED_OPTIONS = [
   { value: 'false', label: '비공유' },
 ];
 
+function FilterBadge({
+  label,
+  value,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  onClear: () => void;
+}) {
+  return (
+    <Badge variant="secondary" className="gap-1">
+      {label}: {value}
+      <button onClick={onClear} aria-label={`${label} 필터 제거`}>
+        <X className="h-3 w-3" />
+      </button>
+    </Badge>
+  );
+}
+
 export function AdminFilters() {
   const router = useRouter();
   const pathname = usePathname();
@@ -145,7 +164,7 @@ export function AdminFilters() {
             </Select>
 
             {hasAdminFilters && (
-              <Button variant="ghost" size="icon" onClick={handleResetAdminFilters}>
+              <Button variant="ghost" size="icon" onClick={handleResetAdminFilters} aria-label="필터 초기화">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -156,28 +175,13 @@ export function AdminFilters() {
         {hasAdminFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
             {currentStatus !== DEFAULT_FILTER_VALUE && (
-              <Badge variant="secondary" className="gap-1">
-                상태: {getStatusLabel(currentStatus)}
-                <button onClick={() => updateParam('status', '')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              <FilterBadge label="상태" value={getStatusLabel(currentStatus)} onClear={() => updateParam('status', '')} />
             )}
             {currentShared !== DEFAULT_FILTER_VALUE && (
-              <Badge variant="secondary" className="gap-1">
-                공유: {getSharedLabel(currentShared)}
-                <button onClick={() => updateParam('isShared', '')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              <FilterBadge label="공유" value={getSharedLabel(currentShared)} onClear={() => updateParam('isShared', '')} />
             )}
             {currentConsultant !== DEFAULT_FILTER_VALUE && (
-              <Badge variant="secondary" className="gap-1">
-                컨설턴트: {getConsultantLabel(currentConsultant)}
-                <button onClick={() => updateParam('consultantId', '')}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              <FilterBadge label="컨설턴트" value={getConsultantLabel(currentConsultant)} onClear={() => updateParam('consultantId', '')} />
             )}
           </div>
         )}
