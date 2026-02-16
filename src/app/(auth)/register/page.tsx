@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client';
 import { registerSchema } from '@/lib/schemas/user';
 import { showErrorToast, scrollToPageTop, scrollToFirstError } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -156,13 +157,63 @@ export default function RegisterPage() {
     }
   }
 
-  // 초기화 중 로딩 표시
+  // 초기화 중 로딩 표시 (실제 폼 레이아웃과 일치하는 skeleton)
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-2 text-muted-foreground">페이지 준비 중...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
+        <AuthBackgroundDecoration />
+        <div className="max-w-2xl mx-auto relative">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="inline-block mb-4">
+              <Logo height={32} />
+            </div>
+            <p className="mt-1 text-muted-foreground">회원가입</p>
+          </div>
+
+          {/* Progress Steps skeleton */}
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-5 w-5" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
+          </div>
+
+          {/* Card form skeleton */}
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-56 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 역할 선택 */}
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-16" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Skeleton className="h-[72px] w-full rounded-lg" />
+                  <Skeleton className="h-[72px] w-full rounded-lg" />
+                </div>
+              </div>
+              {/* 폼 필드 4개 */}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-11 w-full" />
+                </div>
+              ))}
+              {/* 약관 동의 */}
+              <Skeleton className="h-20 w-full rounded-lg" />
+              {/* 버튼 */}
+              <Skeleton className="h-11 w-full mt-4" />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

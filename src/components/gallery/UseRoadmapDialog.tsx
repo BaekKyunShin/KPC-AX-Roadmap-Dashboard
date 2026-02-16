@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertTriangle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   fetchEligibleProjects,
   copyRoadmapToProject,
@@ -109,9 +110,10 @@ function UseRoadmapDialogInner({
           </label>
 
           {isLoadingProjects ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              프로젝트 목록 불러오는 중...
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full rounded-md" />
+              ))}
             </div>
           ) : projects.length === 0 ? (
             <p className="text-sm text-gray-500">

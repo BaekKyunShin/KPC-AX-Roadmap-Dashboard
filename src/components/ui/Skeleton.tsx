@@ -772,26 +772,50 @@ export function OpsRoadmapPageSkeleton() {
 // 프로필 폼 스켈레톤
 // ============================================================================
 
-/** 컨설턴트 프로필 폼 스켈레톤 (dashboard/profile, consultant/profile 공용) */
-export function ProfileFormSkeleton() {
+/** 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션) */
+export function InterviewFormSkeleton() {
+  const stepCount = 6;
+
   return (
-    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-6`}>
-      {/* 기본 정보 섹션 */}
-      <div className="space-y-4">
-        <SkeletonBar height="h-5" width="w-24" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderItems(4, (i) => (
-            <div key={i} className="space-y-2">
-              <SkeletonBar height="h-4" width="w-20" />
-              <SkeletonBar height="h-10" width="w-full" />
-            </div>
-          ))}
+    <div className="max-w-4xl mx-auto">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <SkeletonBar height="h-4" width="w-36" className="mb-2" variant="secondary" />
+        <SkeletonBar height="h-8" width="w-44" />
+      </div>
+
+      {/* 스테퍼 */}
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact} mb-6`}>
+        {/* 데스크톱 스테퍼 */}
+        <div className="hidden md:block relative">
+          <div className="absolute top-4 inset-x-4 h-0.5 bg-gray-200" />
+          <div className="flex justify-between relative">
+            {renderItems(stepCount, (i) => (
+              <div key={i} className="flex flex-col items-center">
+                <div className={`h-8 w-8 rounded-full ${SKELETON_BAR.primary} relative z-10`} />
+                <SkeletonBar height="h-3" width="w-16" className="mt-2" variant="secondary" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 모바일 스테퍼 */}
+        <div className="md:hidden">
+          <div className="flex items-center justify-between mb-2">
+            <SkeletonBar height="h-4" width="w-16" />
+            <SkeletonBar height="h-4" width="w-24" />
+          </div>
+          <div className="flex items-center gap-1">
+            {renderItems(stepCount, (i) => (
+              <div key={i} className={`flex-1 h-2 rounded-full ${SKELETON_BAR[i === 0 ? 'primary' : 'secondary']}`} />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 전문 분야 섹션 */}
-      <div className="space-y-4 border-t pt-6">
-        <SkeletonBar height="h-5" width="w-28" />
+      {/* 폼 컨텐츠 */}
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} mb-6 min-h-[400px] space-y-6`}>
+        <SkeletonBar height="h-6" width="w-32" />
         <div className="space-y-4">
           {renderItems(3, (i) => (
             <div key={i} className="space-y-2">
@@ -802,10 +826,132 @@ export function ProfileFormSkeleton() {
         </div>
       </div>
 
-      {/* 버튼 */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      {/* 네비게이션 버튼 */}
+      <div className="flex justify-between items-center">
         <SkeletonBar height="h-10" width="w-20" />
-        <SkeletonBar height="h-10" width="w-24" />
+        <SkeletonBar height="h-10" width="w-20" />
+      </div>
+    </div>
+  );
+}
+
+/** 배지 셀렉터 영역 스켈레톤 (번호 라벨 + 설명 + 배지 그리드) */
+function BadgeSelectorSkeleton({ badgeCount = 6 }: { badgeCount?: number }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <SkeletonBar height="h-4" width="w-40" />
+        <SkeletonBar height="h-3" width="w-72" className="mt-1" variant="secondary" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {renderItems(badgeCount, (i) => (
+          <SkeletonBar
+            key={i}
+            height="h-6"
+            width={i % 3 === 0 ? 'w-20' : i % 3 === 1 ? 'w-24' : 'w-16'}
+            className="rounded-full"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 텍스트영역 섹션 스켈레톤 (번호 라벨 + 설명 + textarea) */
+function TextareaSectionSkeleton() {
+  return (
+    <div className="space-y-2">
+      <div>
+        <SkeletonBar height="h-4" width="w-36" />
+        <SkeletonBar height="h-3" width="w-64" className="mt-1" variant="secondary" />
+      </div>
+      <SkeletonBar height="h-24" width="w-full" />
+    </div>
+  );
+}
+
+/** 컨설턴트 프로필 폼 스켈레톤 (dashboard/profile, consultant/profile 공용) */
+export function ProfileFormSkeleton() {
+  return (
+    <div className="max-w-2xl mx-auto">
+      {/* 헤더: 뒤로가기 + 아이콘 + 제목 */}
+      <div className="mb-6">
+        <SkeletonBar height="h-9" width="w-28" className="mb-4" />
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-lg ${SKELETON_BAR.primary}`} />
+          <div>
+            <SkeletonBar height="h-7" width="w-28" className="mb-1" />
+            <SkeletonBar height="h-4" width="w-56" variant="secondary" />
+          </div>
+        </div>
+      </div>
+
+      {/* Card */}
+      <div className={CARD_STYLES.base}>
+        {/* CardHeader */}
+        <div className="px-6 pt-6 pb-2">
+          <SkeletonBar height="h-6" width="w-36" className="mb-1" />
+          <SkeletonBar height="h-4" width="w-80" variant="secondary" />
+        </div>
+
+        {/* CardContent: 폼 */}
+        <div className="px-6 pb-6 space-y-9">
+          {/* 1. 소속 - Input */}
+          <div className="space-y-2">
+            <div>
+              <SkeletonBar height="h-4" width="w-20" />
+              <SkeletonBar height="h-3" width="w-56" className="mt-1" variant="secondary" />
+            </div>
+            <SkeletonBar height="h-11" width="w-full" />
+          </div>
+
+          {/* 2. AI 훈련 가능 산업 - BadgeSelector (INDUSTRIES: 11개) */}
+          <BadgeSelectorSkeleton badgeCount={11} />
+
+          {/* 2-1. 세부 업종 - 들여쓰기 서브섹션 */}
+          <div className="ml-6 border-l-2 border-gray-200 pl-4 space-y-2">
+            <div>
+              <SkeletonBar height="h-4" width="w-32" />
+              <SkeletonBar height="h-3" width="w-64" className="mt-1" variant="secondary" />
+            </div>
+            <SkeletonBar height="h-10" width="w-full" />
+          </div>
+
+          {/* 3. AI 적용 가능 업무 - BadgeSelector (EXPERTISE_DOMAINS: 16개) */}
+          <BadgeSelectorSkeleton badgeCount={16} />
+
+          {/* 4. 교육 대상 수준 - BadgeSelector */}
+          <BadgeSelectorSkeleton badgeCount={4} />
+
+          {/* 5. 선호 교육 방식 - BadgeSelector (COACHING_METHODS: 5개) */}
+          <BadgeSelectorSkeleton badgeCount={5} />
+
+          {/* 6. 보유 역량 - BadgeSelector (SKILL_TAGS: 15개) */}
+          <BadgeSelectorSkeleton badgeCount={15} />
+
+          {/* 7. 경력 - 짧은 Input + "년" */}
+          <div className="space-y-2">
+            <div>
+              <SkeletonBar height="h-4" width="w-44" />
+              <SkeletonBar height="h-3" width="w-52" className="mt-1" variant="secondary" />
+            </div>
+            <div className="flex items-center gap-2">
+              <SkeletonBar height="h-11" width="w-24" />
+              <SkeletonBar height="h-4" width="w-6" variant="secondary" />
+            </div>
+          </div>
+
+          {/* 8~10. 텍스트영역 3개 */}
+          {renderItems(3, (i) => (
+            <TextareaSectionSkeleton key={i} />
+          ))}
+
+          {/* 버튼 */}
+          <div className="flex gap-3 pt-4">
+            <SkeletonBar height="h-10" width="w-16" />
+            <SkeletonBar height="h-10" width="w-20" />
+          </div>
+        </div>
       </div>
     </div>
   );
