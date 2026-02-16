@@ -78,7 +78,7 @@ function StepCard({ step, isLast }: StepCardProps) {
   return (
     <div className="relative bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
       {/* Step Number */}
-      <span className="text-5xl font-bold text-gray-100 absolute top-4 right-4 group-hover:text-blue-50 transition-colors">
+      <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-100 absolute top-4 right-4 group-hover:text-blue-50 transition-colors">
         {step.number}
       </span>
 
@@ -90,7 +90,7 @@ function StepCard({ step, isLast }: StepCardProps) {
       </div>
 
       {/* Content */}
-      <h3 className="text-xl font-semibold text-gray-800 mb-2 relative z-10">{step.title}</h3>
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 relative z-10">{step.title}</h3>
       <p className="text-gray-600 text-sm relative z-10">{step.description}</p>
 
       {/* Connection Line (except last) */}

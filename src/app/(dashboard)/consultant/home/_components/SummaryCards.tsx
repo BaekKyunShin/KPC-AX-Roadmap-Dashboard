@@ -55,7 +55,7 @@ export function SummaryCards({ total, waitingInterview, inProgress, completed }:
   const values = { total, waitingInterview, inProgress, completed };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {CARDS.map((card) => {
         const Icon = card.icon;
         return (

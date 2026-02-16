@@ -190,7 +190,7 @@ export default function ProfileForm({
               <User className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{uiText.pageTitle}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{uiText.pageTitle}</h1>
               <p className="text-sm text-muted-foreground">{uiText.pageDescription}</p>
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function ProfileForm({
                   필수 선택 항목 {unselectedCount}개 미선택
                 </p>
               )}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {/* 취소 버튼 - 회원가입 모드에서는 숨김 */}
                 {!isRegistrationMode && (
                   <Button

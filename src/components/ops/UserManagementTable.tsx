@@ -279,7 +279,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
           {selectedProfile?.profile && (
             <div className="space-y-6 mt-4 min-w-0">
               {/* 기본 정보 */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-1">소속</h4>
                   <p className="text-base font-semibold">

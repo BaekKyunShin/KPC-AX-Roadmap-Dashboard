@@ -196,7 +196,7 @@ export default function RegisterPage() {
               {/* 역할 선택 */}
               <div className="space-y-3">
                 <Skeleton className="h-4 w-16" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Skeleton className="h-[72px] w-full rounded-lg" />
                   <Skeleton className="h-[72px] w-full rounded-lg" />
                 </div>
@@ -354,7 +354,7 @@ function Step1Form({
             <Label>
               가입 유형 <span className="text-red-500">*</span>
             </Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label
                 className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
                   registerType === 'CONSULTANT'
