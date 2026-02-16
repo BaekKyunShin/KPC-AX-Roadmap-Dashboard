@@ -21,8 +21,11 @@ import MessageThread from './MessageThread';
 import NewConversationDialog from './NewConversationDialog';
 import { fetchConversations, fetchMessages, sendMessage, markConversationRead } from '../actions';
 
-/** Polling 간격: 새 메시지 감지 (3초) — Realtime 실패 시 안전망 */
-const THREAD_POLL_MS = 3_000;
+/** Polling 간격: Realtime 실패 시에만 활성화되는 fallback (10초) */
+const THREAD_POLL_MS = 10_000;
+
+/** markConversationRead 중복 호출 방지 쿨다운 (ms) */
+const MARK_READ_COOLDOWN_MS = 500;
 
 /** Realtime 채널 재시도 상태 */
 interface RealtimeRetryState {
@@ -66,6 +69,11 @@ export default function MessagesClient() {
   const messagesRef = useRef<Message[]>([]);
   const isLoadingMoreRef = useRef(false);
 
+  /** Realtime 구독 상태 — SUBSCRIBED 시 true, 에러 시 false */
+  const realtimeActiveRef = useRef(false);
+  /** markConversationRead 중복 호출 방지 */
+  const markingReadRef = useRef(false);
+
   // ---------------------------------------------------------------------------
   // 공통 헬퍼
   // ---------------------------------------------------------------------------
@@ -83,6 +91,25 @@ export default function MessagesClient() {
     setConversations((prev) =>
       prev.map((c) => (c.id === convId ? { ...c, has_unread: false } : c)),
     );
+  }, []);
+
+  /** 읽음 처리: 사용자 액션용 (대화 선택, 초기 로드) */
+  const markReadDirect = useCallback(async (convId: string) => {
+    await markConversationRead(convId);
+    clearUnreadFlag(convId);
+    window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+  }, [clearUnreadFlag]);
+
+  /** 읽음 처리: 자동 감지용 (Realtime + polling 중복 호출 방지) */
+  const markReadIfNeeded = useCallback(async (convId: string) => {
+    if (markingReadRef.current) return;
+    markingReadRef.current = true;
+    try {
+      await markConversationRead(convId);
+      window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+    } finally {
+      setTimeout(() => { markingReadRef.current = false; }, MARK_READ_COOLDOWN_MS);
+    }
   }, []);
 
   useEffect(() => {
@@ -117,14 +144,12 @@ export default function MessagesClient() {
           setHasMore(msgResult.data.hasMore);
         }
 
-        await markConversationRead(initialConvId);
-        clearUnreadFlag(initialConvId);
-        window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+        await markReadDirect(initialConvId);
       }
 
       setIsLoading(false);
     });
-  }, [initialConvId, clearUnreadFlag]);
+  }, [initialConvId, markReadDirect]);
 
   // 목록 새로고침 (이벤트 핸들러에서 호출)
   const refreshConversations = useCallback(async () => {
@@ -156,9 +181,7 @@ export default function MessagesClient() {
         setHasMore(result.data.hasMore);
       }
 
-      await markConversationRead(convId);
-      clearUnreadFlag(convId);
-      window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+      await markReadDirect(convId);
     } catch {
       showErrorToast('메시지 로드 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
@@ -249,6 +272,8 @@ export default function MessagesClient() {
         supabase.removeChannel(channel);
       }
 
+      const retryHandler = createRetryHandler(subscribeConv, retryState);
+
       channel = supabase
         .channel(`messages:${convId}`)
         .on(
@@ -264,23 +289,24 @@ export default function MessagesClient() {
             if (newMsg.sender_id === currentUserIdRef.current) return;
 
             appendMessageIfNew(newMsg);
-
-            await markConversationRead(convId);
-            window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+            markReadIfNeeded(convId);
           },
         )
-        // 3초 polling이 이미 안전망으로 동작하므로 재시도 소진 후 추가 fallback 불필요
-        .subscribe(createRetryHandler(subscribeConv, retryState));
+        .subscribe((status) => {
+          realtimeActiveRef.current = status === 'SUBSCRIBED';
+          retryHandler(status);
+        });
     }
 
     subscribeConv();
 
     return () => {
       retryState.isMounted = false;
+      realtimeActiveRef.current = false;
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [selectedConvId, appendMessageIfNew]);
+  }, [selectedConvId, appendMessageIfNew, markReadIfNeeded]);
 
   // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 스레드 갱신 + 뱃지)
   useEffect(() => {
@@ -313,8 +339,7 @@ export default function MessagesClient() {
 
             if (newMsg.conversation_id === selectedConvIdRef.current) {
               appendMessageIfNew(newMsg);
-              markConversationRead(newMsg.conversation_id);
-              window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+              markReadIfNeeded(newMsg.conversation_id);
             } else {
               router.refresh();
             }
@@ -330,10 +355,10 @@ export default function MessagesClient() {
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [refreshConversations, appendMessageIfNew, router]);
+  }, [refreshConversations, appendMessageIfNew, markReadIfNeeded, router]);
 
-  // Polling: 새 메시지만 감지하여 append (Realtime 안전망)
-  // 기존 이전 메시지(pagination으로 로드한)를 유지하면서 새 메시지만 추가.
+  // Polling: Realtime 실패 시에만 활성화되는 fallback
+  // Realtime이 SUBSCRIBED 상태이면 polling을 스킵하여 불필요한 DB 쿼리 방지.
   // Realtime이 SECURITY DEFINER RLS로 이벤트를 전달하지 못할 때 이 polling이 보장.
   useEffect(() => {
     if (!selectedConvId) return;
@@ -341,6 +366,9 @@ export default function MessagesClient() {
     const supabase = createClient();
 
     const poll = async () => {
+      // Realtime이 정상 작동 중이면 polling 스킵
+      if (realtimeActiveRef.current) return;
+
       // 현재 state의 마지막(최신) 메시지 이후의 새 메시지만 조회
       const newestCreatedAt = messagesRef.current[messagesRef.current.length - 1]?.created_at;
 
@@ -367,14 +395,13 @@ export default function MessagesClient() {
         return [...prev, ...newMsgs];
       });
 
-      markConversationRead(selectedConvId);
-      window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+      markReadIfNeeded(selectedConvId);
       refreshConversations();
     };
 
     const intervalId = setInterval(poll, THREAD_POLL_MS);
     return () => clearInterval(intervalId);
-  }, [selectedConvId, refreshConversations]);
+  }, [selectedConvId, refreshConversations, markReadIfNeeded]);
 
   const selectedConv = conversations.find((c) => c.id === selectedConvId);
 

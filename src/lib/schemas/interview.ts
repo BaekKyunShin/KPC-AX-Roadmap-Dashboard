@@ -159,8 +159,8 @@ export const interviewSchema = z.object({
   pain_points: z.array(painPointSchema).min(1, '최소 1개 이상의 페인포인트를 입력하세요.'),
   constraints: z.array(constraintSchema).optional(),
   improvement_goals: z.array(improvementGoalSchema).min(1, '최소 1개 이상의 개선 목표를 입력하세요.'),
-  notes: z.string().optional(),
-  customer_requirements: z.string().optional(),
+  notes: z.string().default(''),
+  customer_requirements: z.string().default(''),
   stt_insights: sttInsightsSchema.optional(),
 });
 
@@ -173,8 +173,8 @@ export const interviewAutoSaveSchema = z.object({
   pain_points: z.array(basePainPointSchema),
   constraints: z.array(baseConstraintSchema).optional(),
   improvement_goals: z.array(baseImprovementGoalSchema),
-  notes: z.string().optional(),
-  customer_requirements: z.string().optional(),
+  notes: z.string().default(''),
+  customer_requirements: z.string().default(''),
   stt_insights: sttInsightsSchema.optional(),
 });
 
