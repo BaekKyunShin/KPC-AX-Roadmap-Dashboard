@@ -93,10 +93,10 @@ export async function saveConsultantProfile(formData: FormData): Promise<SimpleA
       success: true,
     };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error('[saveConsultantProfile Error]', error);
     return {
       success: false,
-      error: `프로필 저장 중 오류: ${errorMessage}`,
+      error: '프로필 저장에 실패했습니다. 다시 시도해주세요.',
     };
   }
 }
@@ -145,10 +145,10 @@ export async function fetchConsultantProfile(): Promise<ActionResult<{ profile: 
       data: { profile },
     };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error('[fetchConsultantProfile Error]', error);
     return {
       success: false,
-      error: `프로필 조회 중 오류: ${errorMessage}`,
+      error: '프로필 조회에 실패했습니다. 다시 시도해주세요.',
     };
   }
 }
@@ -204,10 +204,10 @@ export async function updateConsultantProfile(formData: FormData): Promise<Simpl
       success: true,
     };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+    console.error('[updateConsultantProfile Error]', error);
     return {
       success: false,
-      error: `프로필 수정 중 오류: ${errorMessage}`,
+      error: '프로필 수정에 실패했습니다. 다시 시도해주세요.',
     };
   }
 }

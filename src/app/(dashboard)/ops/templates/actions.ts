@@ -45,7 +45,8 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
       .order('version', { ascending: false });
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[fetchTemplates] Supabase error:', error.message);
+      return { success: false, error: '템플릿 목록 조회에 실패했습니다.' };
     }
 
     // 각 템플릿의 사용 현황 조회
@@ -80,7 +81,8 @@ export async function fetchTemplate(templateId: string): Promise<ActionResult<un
       .single();
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[fetchTemplate] Supabase error:', error.message);
+      return { success: false, error: '템플릿 조회에 실패했습니다.' };
     }
 
     // 사용 현황 조회
@@ -142,7 +144,8 @@ export async function createTemplate(formData: FormData): Promise<ActionResult<u
       .single();
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[createTemplate] Supabase error:', error.message);
+      return { success: false, error: '템플릿 생성에 실패했습니다.' };
     }
 
     // 감사로그
@@ -234,7 +237,8 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
           .single();
 
         if (error) {
-          return { success: false, error: error.message };
+          console.error('[updateTemplate] Supabase error (new version):', error.message);
+          return { success: false, error: '템플릿 새 버전 생성에 실패했습니다.' };
         }
 
         await createAuditLog({
@@ -274,7 +278,8 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       .single();
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[updateTemplate] Supabase error:', error.message);
+      return { success: false, error: '템플릿 수정에 실패했습니다.' };
     }
 
     await createAuditLog({
@@ -320,7 +325,8 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
       .eq('is_active', true);
 
     if (deactivateError) {
-      return { success: false, error: deactivateError.message };
+      console.error('[setActiveTemplate] Supabase error (deactivate):', deactivateError.message);
+      return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
     }
 
     // 선택한 템플릿 활성화
@@ -330,7 +336,8 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
       .eq('id', templateId);
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[setActiveTemplate] Supabase error (activate):', error.message);
+      return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
     }
 
     // 감사로그
@@ -394,7 +401,8 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
       .single();
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[duplicateTemplate] Supabase error:', error.message);
+      return { success: false, error: '템플릿 복제에 실패했습니다.' };
     }
 
     // 감사로그
@@ -460,7 +468,8 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
       .eq('id', templateId);
 
     if (deleteError) {
-      return { success: false, error: deleteError.message };
+      console.error('[deleteTemplate] Supabase error:', deleteError.message);
+      return { success: false, error: '템플릿 삭제에 실패했습니다.' };
     }
 
     // 감사로그

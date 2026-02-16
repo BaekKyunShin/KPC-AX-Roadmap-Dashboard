@@ -72,7 +72,8 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
       success: false,
       errorMessage: insertError.message,
     });
-    return { success: false, error: `프로젝트 생성 실패: ${insertError.message}` };
+    console.error('[createProject] Supabase error:', insertError.message);
+    return { success: false, error: '프로젝트 생성에 실패했습니다.' };
   }
 
   // 감사로그 기록
@@ -157,7 +158,8 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
       success: false,
       errorMessage: insertError.message,
     });
-    return { success: false, error: `자가진단 저장 실패: ${insertError.message}` };
+    console.error('[createSelfAssessment] Supabase error:', insertError.message);
+    return { success: false, error: '자가진단 저장에 실패했습니다.' };
   }
 
   // 프로젝트 상태 업데이트 — NEW일 때만 DIAGNOSED로 전이 (역방향 전이 방지)
@@ -274,7 +276,8 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
       success: false,
       errorMessage: assignError.message,
     });
-    return { success: false, error: `배정 실패: ${assignError.message}` };
+    console.error('[assignConsultant] Supabase error:', assignError.message);
+    return { success: false, error: '컨설턴트 배정에 실패했습니다.' };
   }
 
   // 프로젝트 상태 및 배정 컨설턴트 업데이트

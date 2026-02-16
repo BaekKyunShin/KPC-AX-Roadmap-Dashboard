@@ -90,7 +90,7 @@ export async function updateUserStatus(
 
     return {
       success: false,
-      error: `상태 변경 실패: ${error.message}`,
+      error: '사용자 상태 변경에 실패했습니다.',
     };
   }
 

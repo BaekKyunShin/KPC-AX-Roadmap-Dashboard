@@ -101,13 +101,6 @@ async function fetchConsultantProfile(supabase: SupabaseClient, userId: string) 
 }
 
 /**
- * 에러 메시지 포맷팅
- */
-function formatError(error: unknown, defaultMessage: string): string {
-  return error instanceof Error ? error.message : defaultMessage;
-}
-
-/**
  * TestInputData를 roadmap 서비스용 데이터로 변환
  */
 function convertToRoadmapInput(input: TestInputData) {
@@ -224,7 +217,7 @@ export async function createTestRoadmap(
     console.error('[createTestRoadmap Error]', error);
     return {
       success: false,
-      error: formatError(error, ERROR_MESSAGES.CREATE_FAILED),
+      error: ERROR_MESSAGES.CREATE_FAILED,
     };
   }
 }
@@ -289,7 +282,7 @@ export async function reviseTestRoadmap(
     console.error('[reviseTestRoadmap Error]', error);
     return {
       success: false,
-      error: formatError(error, ERROR_MESSAGES.REVISE_FAILED),
+      error: ERROR_MESSAGES.REVISE_FAILED,
     };
   }
 }

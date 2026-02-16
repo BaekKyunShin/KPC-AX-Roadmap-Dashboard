@@ -221,7 +221,7 @@ describe('createProject', () => {
     const result = await createProject(validProjectFormData());
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain('프로젝트 생성 실패');
+    if (!result.success) expect(result.error).toBe('프로젝트 생성에 실패했습니다.');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROJECT_CREATE',
@@ -439,7 +439,7 @@ describe('assignConsultant', () => {
     const result = await assignConsultant(validAssignFormData());
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain('배정 실패');
+    if (!result.success) expect(result.error).toBe('컨설턴트 배정에 실패했습니다.');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
@@ -607,7 +607,7 @@ describe('createSelfAssessment', () => {
     const result = await createSelfAssessment(validSelfAssessmentFormData());
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain('자가진단 저장 실패');
+    if (!result.success) expect(result.error).toBe('자가진단 저장에 실패했습니다.');
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,

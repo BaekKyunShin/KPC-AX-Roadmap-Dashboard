@@ -74,7 +74,7 @@ export async function updateQuota(
     console.error('[updateQuota Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '쿼터 수정에 실패했습니다.',
+      error: '쿼터 수정에 실패했습니다.',
     };
   }
 }

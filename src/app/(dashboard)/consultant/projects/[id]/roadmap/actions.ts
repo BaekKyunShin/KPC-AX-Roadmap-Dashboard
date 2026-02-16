@@ -70,7 +70,7 @@ export async function createRoadmap(
     console.error('[createRoadmap Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '로드맵 생성에 실패했습니다.',
+      error: '로드맵 생성에 실패했습니다.',
     };
   }
 }
@@ -103,7 +103,7 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
     console.error('[confirmFinalRoadmap Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '최종 확정에 실패했습니다.',
+      error: '최종 확정에 실패했습니다.',
     };
   }
 }
@@ -232,7 +232,7 @@ export async function editRoadmapManually(
     console.error('[editRoadmapManually Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '로드맵 편집에 실패했습니다.',
+      error: '로드맵 편집에 실패했습니다.',
     };
   }
 }
@@ -283,7 +283,7 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
     console.error('[fetchProjectInfo Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : '프로젝트 정보 조회에 실패했습니다.',
+      error: '프로젝트 정보 조회에 실패했습니다.',
     };
   }
 }

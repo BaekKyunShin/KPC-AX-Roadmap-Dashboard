@@ -235,7 +235,7 @@ describe('deleteTemplate', () => {
 
     const result = await deleteTemplate(TEST_TEMPLATE_ID);
 
-    expect(result).toEqual({ success: false, error: 'delete_failed' });
+    expect(result).toEqual({ success: false, error: '템플릿 삭제에 실패했습니다.' });
   });
 
   it('템플릿 조회 실패 → error 반환', async () => {
@@ -352,7 +352,7 @@ describe('setActiveTemplate', () => {
 
     const result = await setActiveTemplate(TEST_TEMPLATE_ID);
 
-    expect(result).toEqual({ success: false, error: 'activation_failed' });
+    expect(result).toEqual({ success: false, error: '활성 템플릿 변경에 실패했습니다.' });
   });
 });
 
