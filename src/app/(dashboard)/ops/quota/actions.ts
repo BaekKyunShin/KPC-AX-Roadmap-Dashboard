@@ -5,6 +5,8 @@ import { fetchAllUsersUsage, updateUserQuota, fetchUserUsage } from '@/lib/servi
 import { canManageUser } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { updateQuotaSchema } from '@/lib/schemas/quota';
+import { createAuditLog } from '@/lib/services/audit';
 
 export interface UsageStats {
   id: string;
@@ -51,6 +53,12 @@ export async function updateQuota(
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
 
+    // Zod 입력 검증
+    const parsed = updateQuotaSchema.safeParse({ userId, dailyLimit, monthlyLimit });
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.errors[0].message };
+    }
+
     // 대상 사용자의 역할 확인
     const adminSupabase = createAdminClient();
     const { data: targetUser } = await adminSupabase
@@ -68,7 +76,20 @@ export async function updateQuota(
       return { success: false, error: '해당 사용자의 쿼터를 수정할 권한이 없습니다.' };
     }
 
-    await updateUserQuota(userId, dailyLimit, monthlyLimit);
+    await updateUserQuota(userId, parsed.data.dailyLimit, parsed.data.monthlyLimit);
+
+    // 감사로그 기록
+    await createAuditLog({
+      actorUserId: auth.user.id,
+      action: 'QUOTA_UPDATE',
+      targetType: 'user_quota',
+      targetId: userId,
+      meta: {
+        ...(parsed.data.dailyLimit !== undefined && { dailyLimit: parsed.data.dailyLimit }),
+        ...(parsed.data.monthlyLimit !== undefined && { monthlyLimit: parsed.data.monthlyLimit }),
+      },
+    });
+
     return { success: true };
   } catch (error) {
     console.error('[updateQuota Error]', error);
