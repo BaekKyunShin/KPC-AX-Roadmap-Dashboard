@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateLLMMatchingRecommendations } from '@/lib/services/matching';
+import { matchingGenerateSchema } from '@/lib/schemas/matching';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,13 +27,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '권한이 없습니다.' }, { status: 403 });
     }
 
-    // 요청 데이터 파싱
+    // Zod 입력 검증
     const body = await request.json();
-    const { projectId, topN = 3, preserveStatus = false } = body;
+    const parsed = matchingGenerateSchema.safeParse(body);
 
-    if (!projectId) {
-      return NextResponse.json({ success: false, error: '프로젝트 ID가 필요합니다.' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: '입력 데이터가 올바르지 않습니다.' }, { status: 400 });
     }
+
+    const { projectId, topN, preserveStatus } = parsed.data;
 
     // LLM 기반 매칭 추천 생성
     const recommendations = await generateLLMMatchingRecommendations(projectId, user.id, {

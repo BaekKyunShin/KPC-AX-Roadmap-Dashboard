@@ -13,7 +13,7 @@ import {
   type RoadmapCell,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
-import { editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
+import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -24,6 +24,12 @@ export async function createRoadmap(
   revisionPrompt?: string
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
+    // Zod 입력 검증
+    const parsed = createRoadmapInputSchema.safeParse({ projectId, revisionPrompt });
+    if (!parsed.success) {
+      return { success: false, error: '입력 데이터가 올바르지 않습니다.' };
+    }
+
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
       roleError: '컨설턴트만 로드맵을 생성할 수 있습니다.',
     });
@@ -34,7 +40,7 @@ export async function createRoadmap(
     const { data: projectData } = await supabase
       .from('projects')
       .select('assigned_consultant_id, status')
-      .eq('id', projectId)
+      .eq('id', parsed.data.projectId)
       .single();
 
     if (!projectData || projectData.assigned_consultant_id !== user.id) {
@@ -45,18 +51,18 @@ export async function createRoadmap(
       return { success: false, error: '인터뷰가 완료된 프로젝트만 로드맵을 생성할 수 있습니다.' };
     }
 
-    // 로드맵 생성
+    // 로드맵 생성 (검증된 데이터 사용)
     const { roadmapId, result, validation } = await generateRoadmap(
-      projectId,
+      parsed.data.projectId,
       user.id,
-      revisionPrompt
+      parsed.data.revisionPrompt
     );
 
     // 활동 일지 자동 기록
-    const logContent = revisionPrompt
+    const logContent = parsed.data.revisionPrompt
       ? '새 로드맵 버전이 생성되었습니다.'
       : '로드맵이 생성되었습니다.';
-    await insertSystemActivityLog(projectId, user.id, logContent);
+    await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
 
     return {
       success: true,

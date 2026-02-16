@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
 // ============================================================================
-// 로드맵 수동 편집용 Zod 스키마
-// roadmap-types.ts 타입 정의와 1:1 대응
+// 로드맵 관련 Zod 스키마
+// createRoadmapInputSchema: 로드맵 생성 입력 검증
+// editRoadmapUpdatesSchema: 로드맵 수동 편집 입력 검증
 // ============================================================================
 
 // RoadmapMatrixCell
@@ -75,6 +76,12 @@ const pblCourseSchema = z.object({
   business_impact: z.string(),
   measurement_methods: z.array(z.string()),
   prerequisites: z.array(z.string()),
+});
+
+// createRoadmap 입력 스키마
+export const createRoadmapInputSchema = z.object({
+  projectId: z.string().uuid(),
+  revisionPrompt: z.string().trim().min(1).max(2000).optional(),
 });
 
 // editRoadmapManually updates 스키마

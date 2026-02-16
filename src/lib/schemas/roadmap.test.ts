@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { editRoadmapUpdatesSchema } from './roadmap';
+import { editRoadmapUpdatesSchema, createRoadmapInputSchema } from './roadmap';
 
 describe('editRoadmapUpdatesSchema', () => {
   it('diagnosis_summary만 포함된 유효한 데이터 → 통과', () => {
@@ -93,5 +93,60 @@ describe('editRoadmapUpdatesSchema', () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('createRoadmapInputSchema', () => {
+  const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+  it('유효한 projectId만 → 통과', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: validUuid,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('유효한 projectId + revisionPrompt → 통과', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: validUuid,
+      revisionPrompt: '고급 과정 위주로 재구성해주세요.',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('revisionPrompt가 2000자 초과 → 실패', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: validUuid,
+      revisionPrompt: 'a'.repeat(2001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('revisionPrompt가 빈 문자열 → 실패 (trim 후 min(1))', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: validUuid,
+      revisionPrompt: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('revisionPrompt가 공백만 → 실패 (trim 후 min(1))', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: validUuid,
+      revisionPrompt: '   ',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('projectId가 UUID 형식이 아님 → 실패', () => {
+    const result = createRoadmapInputSchema.safeParse({
+      projectId: 'not-a-uuid',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('projectId가 누락 → 실패', () => {
+    const result = createRoadmapInputSchema.safeParse({});
+    expect(result.success).toBe(false);
   });
 });
