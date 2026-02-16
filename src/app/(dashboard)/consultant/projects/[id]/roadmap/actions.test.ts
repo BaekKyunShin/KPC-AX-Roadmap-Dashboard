@@ -118,7 +118,7 @@ describe('editRoadmapManually', () => {
 
   it('CONSULTANT_APPROVED가 아닌 역할 → error 반환', async () => {
     // requireAuthWithRole: users 테이블 역할 조회 → OPS_ADMIN (불허)
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const result = await editRoadmapManually(ROADMAP_ID, validUpdates());
 
@@ -128,7 +128,7 @@ describe('editRoadmapManually', () => {
 
   it('존재하지 않는 로드맵 → error 반환', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) roadmap_versions 조회 → 없음
     serverMock.addResult({ data: null, error: { message: 'not found' } });
 
@@ -140,7 +140,7 @@ describe('editRoadmapManually', () => {
 
   it('타 컨설턴트의 로드맵 편집 시도 → 접근 권한 에러', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) roadmap_versions 조회 → project_id 반환
     serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
     // 3) projects 조회 → 다른 컨설턴트(USER_B)에게 배정됨
@@ -157,7 +157,7 @@ describe('editRoadmapManually', () => {
 
   it('빈 updates 객체 → 검증 에러', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
 
     const result = await editRoadmapManually(ROADMAP_ID, {});
 
@@ -167,7 +167,7 @@ describe('editRoadmapManually', () => {
 
   it('잘못된 타입의 updates 데이터 → 검증 에러', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
 
     // diagnosis_summary에 숫자 전달 (string이어야 함)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +179,7 @@ describe('editRoadmapManually', () => {
 
   it('정상 편집 요청 → 성공', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) roadmap_versions 조회 → project_id 반환
     serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
     // 3) projects 조회 → 본인에게 배정됨

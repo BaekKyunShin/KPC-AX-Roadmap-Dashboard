@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { requireAuthWithRole, type SupabaseServerClient } from '@/lib/actions/auth-helpers';
 import { testInputSchema, type TestInputData } from '@/lib/schemas/test-roadmap';
 import {
   generateTestRoadmap,
@@ -12,37 +12,14 @@ import { createAuditLog } from '@/lib/services/audit';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 import type { SttInsights } from '@/lib/schemas/interview';
 import type { ActionResult } from '@/lib/types/action-result';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
-
-type TestRoadmapRole = 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN';
-
-interface UserAccessResult {
-  success: true;
-  user: User;
-  supabase: SupabaseClient;
-}
-
-interface UserAccessError {
-  success: false;
-  error: string;
-}
-
-type ValidateUserAccessResult = UserAccessResult | UserAccessError;
 
 // =============================================================================
 // 상수
 // =============================================================================
 
-/** 테스트 로드맵 기능에 접근 가능한 역할 목록 */
-const ALLOWED_ROLES: readonly TestRoadmapRole[] = [
-  'CONSULTANT_APPROVED',
-  'OPS_ADMIN',
-  'SYSTEM_ADMIN',
-];
+const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
 const ERROR_MESSAGES = {
-  LOGIN_REQUIRED: '로그인이 필요합니다.',
-  PERMISSION_DENIED: '승인된 컨설턴트 또는 운영관리자만 테스트 로드맵을 생성/수정할 수 있습니다.',
   REVISION_PROMPT_REQUIRED: '수정 요청 내용을 입력해주세요.',
   CREATE_FAILED: '로드맵 생성 중 오류가 발생했습니다.',
   REVISE_FAILED: '로드맵 수정 중 오류가 발생했습니다.',
@@ -53,45 +30,12 @@ const ERROR_MESSAGES = {
 // =============================================================================
 
 /**
- * 역할이 테스트 로드맵 기능에 접근 가능한지 확인
- */
-function isAllowedRole(role: string): role is TestRoadmapRole {
-  return ALLOWED_ROLES.includes(role as TestRoadmapRole);
-}
-
-/**
- * 사용자 인증 및 역할 검증 (공통 로직)
- */
-async function validateUserAccess(): Promise<ValidateUserAccessResult> {
-  const supabase = await createClient();
-
-  // 인증 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: ERROR_MESSAGES.LOGIN_REQUIRED };
-  }
-
-  // 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, status')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !isAllowedRole(profile.role) || profile.status !== 'ACTIVE') {
-    return { success: false, error: ERROR_MESSAGES.PERMISSION_DENIED };
-  }
-
-  return { success: true, user, supabase };
-}
-
-/**
  * 컨설턴트 프로필 조회
  */
-async function fetchConsultantProfile(supabase: SupabaseClient, userId: string) {
+async function fetchConsultantProfile(
+  supabase: SupabaseServerClient,
+  userId: string,
+) {
   const { data } = await supabase
     .from('consultant_profiles')
     .select('*')
@@ -156,11 +100,10 @@ export async function createTestRoadmap(
   input: TestInputData
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   // 1. 사용자 인증/역할 검증
-  const accessResult = await validateUserAccess();
-  if (!accessResult.success) {
-    return { success: false, error: accessResult.error };
+  const auth = await requireAuthWithRole(ALLOWED_ROLES);
+  if ('error' in auth) {
+    return { success: false, error: auth.error };
   }
-  const { user, supabase } = accessResult;
 
   // 2. 입력 검증
   const inputValidation = testInputSchema.safeParse(input);
@@ -170,7 +113,7 @@ export async function createTestRoadmap(
 
   try {
     // 3. 컨설턴트 프로필 조회
-    const consultantProfile = await fetchConsultantProfile(supabase, user.id);
+    const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
 
     // 4. STT 인사이트 추출 (텍스트가 있는 경우)
     let sttInsights: SttInsights | undefined;
@@ -186,14 +129,14 @@ export async function createTestRoadmap(
     const roadmapInput = convertToRoadmapInput(input);
     const roadmapResult = await generateTestRoadmap(
       roadmapInput,
-      user.id,
+      auth.user.id,
       consultantProfile,
       sttInsights
     );
 
     // 6. 감사로그
     await createAuditLog({
-      actorUserId: user.id,
+      actorUserId: auth.user.id,
       action: 'TEST_ROADMAP_CREATE',
       targetType: 'roadmap',
       targetId: 'test-mode',
@@ -231,11 +174,10 @@ export async function reviseTestRoadmap(
   revisionPrompt: string
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   // 1. 사용자 인증/역할 검증
-  const accessResult = await validateUserAccess();
-  if (!accessResult.success) {
-    return { success: false, error: accessResult.error };
+  const auth = await requireAuthWithRole(ALLOWED_ROLES);
+  if ('error' in auth) {
+    return { success: false, error: auth.error };
   }
-  const { user, supabase } = accessResult;
 
   // 2. 수정 요청 검증
   if (!revisionPrompt || revisionPrompt.trim() === '') {
@@ -244,7 +186,7 @@ export async function reviseTestRoadmap(
 
   try {
     // 3. 컨설턴트 프로필 조회
-    const consultantProfile = await fetchConsultantProfile(supabase, user.id);
+    const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
 
     // 4. 데이터 변환 및 로드맵 수정 요청
     const roadmapInput = convertToRoadmapInput(input);
@@ -252,13 +194,13 @@ export async function reviseTestRoadmap(
       roadmapInput,
       previousResult,
       revisionPrompt,
-      user.id,
+      auth.user.id,
       consultantProfile
     );
 
     // 5. 감사로그
     await createAuditLog({
-      actorUserId: user.id,
+      actorUserId: auth.user.id,
       action: 'TEST_ROADMAP_REVISE',
       targetType: 'roadmap',
       targetId: 'test-mode',

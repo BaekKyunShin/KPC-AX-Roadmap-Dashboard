@@ -181,7 +181,7 @@ describe('createProject', () => {
 
   it('OPS_ADMIN/SYSTEM_ADMIN 아닌 역할 → 권한 없음', async () => {
     // role check → CONSULTANT_APPROVED
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
 
     const result = await createProject(validProjectFormData());
 
@@ -197,7 +197,7 @@ describe('createProject', () => {
   });
 
   it('Zod 검증 실패 시 validation error 반환 (회사명 누락)', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const fd = makeFormData({
       company_name: '', // 빈 값
@@ -215,7 +215,7 @@ describe('createProject', () => {
   it('DB insert 실패 → error + audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: null, error: { message: 'unique_violation' } });
 
     const result = await createProject(validProjectFormData());
@@ -235,7 +235,7 @@ describe('createProject', () => {
     const { createAuditLog } = await import('@/lib/services/audit');
     const { revalidatePath } = await import('next/cache');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: { id: 'new-project-id' }, error: null });
 
     const result = await createProject(validProjectFormData());
@@ -253,7 +253,7 @@ describe('createProject', () => {
   });
 
   it('SYSTEM_ADMIN 역할도 프로젝트 생성 가능', async () => {
-    serverMock.addResult({ data: { role: 'SYSTEM_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'SYSTEM_ADMIN', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: { id: 'proj-sys-admin' }, error: null });
 
     const result = await createProject(validProjectFormData());
@@ -262,7 +262,7 @@ describe('createProject', () => {
   });
 
   it('sub_industries JSON 파싱 실패 시 빈 배열로 처리', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: { id: 'proj-bad-json' }, error: null });
 
     const fd = validProjectFormData();
@@ -302,7 +302,7 @@ describe('assignConsultant', () => {
   });
 
   it('권한 없는 역할 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
 
     const result = await assignConsultant(validAssignFormData());
 
@@ -310,7 +310,7 @@ describe('assignConsultant', () => {
   });
 
   it('Zod 검증 실패 (사유 10자 미만) → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const fd = makeFormData({
       project_id: TEST_PROJECT_ID,
@@ -328,7 +328,7 @@ describe('assignConsultant', () => {
     const { createNotification } = await import('@/lib/services/notification');
     const { revalidatePath } = await import('next/cache');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 프로젝트 상태 조회 → DIAGNOSED (배정 가능)
     adminMock.addResult({ data: { status: 'DIAGNOSED' }, error: null });
     // 기존 배정 조회 → 없음
@@ -361,7 +361,7 @@ describe('assignConsultant', () => {
   });
 
   it('재배정 성공 (기존 배정 해제 후 신규 배정)', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 프로젝트 상태 조회 → ASSIGNED (재배정 가능)
     adminMock.addResult({ data: { status: 'ASSIGNED' }, error: null });
     // 기존 배정 조회 → 있음
@@ -393,7 +393,7 @@ describe('assignConsultant', () => {
   ])('배정 불가 상태 $status → 배정 거부 + 감사 로그 ($label)', async ({ status }) => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     adminMock.addResult({ data: { status }, error: null });
 
     const result = await assignConsultant(validAssignFormData());
@@ -413,7 +413,7 @@ describe('assignConsultant', () => {
   });
 
   it('프로젝트 조회 실패 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 프로젝트 조회 실패
     adminMock.addResult({ data: null, error: { message: 'not_found' } });
 
@@ -428,7 +428,7 @@ describe('assignConsultant', () => {
   it('배정 insert 실패 → error + audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 프로젝트 상태 조회 → MATCH_RECOMMENDED (배정 가능)
     adminMock.addResult({ data: { status: 'MATCH_RECOMMENDED' }, error: null });
     // 기존 배정 없음
@@ -477,7 +477,7 @@ describe('createSelfAssessment', () => {
   });
 
   it('권한 없는 역할 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'USER_PENDING' }, error: null });
+    serverMock.addResult({ data: { role: 'USER_PENDING', status: 'ACTIVE' }, error: null });
 
     const result = await createSelfAssessment(validSelfAssessmentFormData());
 
@@ -485,7 +485,7 @@ describe('createSelfAssessment', () => {
   });
 
   it('answers JSON 파싱 실패 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const fd = makeFormData({
       project_id: TEST_PROJECT_ID,
@@ -499,7 +499,7 @@ describe('createSelfAssessment', () => {
   });
 
   it('Zod 검증 실패 (빈 answers 배열) → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const fd = makeFormData({
       project_id: TEST_PROJECT_ID,
@@ -513,7 +513,7 @@ describe('createSelfAssessment', () => {
   });
 
   it('템플릿 없음 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 템플릿 조회 → 없음
     adminMock.addResult({ data: null, error: null });
 
@@ -526,7 +526,7 @@ describe('createSelfAssessment', () => {
     const { createAuditLog } = await import('@/lib/services/audit');
     const { revalidatePath } = await import('next/cache');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 템플릿 조회
     adminMock.addResult({
       data: {
@@ -569,7 +569,7 @@ describe('createSelfAssessment', () => {
   });
 
   it('NEW 상태에서만 DIAGNOSED로 전이 — status=NEW 조건이 update에 포함됨', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 템플릿 조회
     adminMock.addResult({
       data: {
@@ -595,7 +595,7 @@ describe('createSelfAssessment', () => {
   it('DB insert 실패 → error + 실패 audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // 템플릿 조회
     adminMock.addResult({
       data: { version: 1, questions: [{ id: 'q1', dimension: 'infra', weight: 1 }] },
@@ -624,7 +624,7 @@ describe('fetchProjectStats', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -682,7 +682,7 @@ describe('fetchStalledProjects', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -806,7 +806,7 @@ describe('fetchConsultantProgress', () => {
   beforeEach(() => {
     // requireAuthWithRole 내부에서 createClient → getUser → role 조회
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
 
     adminMock = createMockClient();
@@ -929,7 +929,7 @@ describe('fetchProjects', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 
@@ -1044,7 +1044,7 @@ describe('fetchProjectsWithTimeline', () => {
 
   beforeEach(() => {
     serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    serverMock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
   });
 

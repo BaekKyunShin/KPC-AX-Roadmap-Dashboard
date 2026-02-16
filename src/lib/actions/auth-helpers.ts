@@ -5,7 +5,7 @@ import type { UserRole } from '@/types/database';
 // Types
 // ============================================================================
 
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+export type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 interface AuthUser {
   id: string;
@@ -51,7 +51,7 @@ export async function requireAuth(
 }
 
 /**
- * 역할 권한 검사 — users 테이블에서 역할을 조회하고 허용 목록과 비교합니다.
+ * 역할 권한 검사 — users 테이블에서 역할과 상태를 조회하고, 허용 목록 비교 및 ACTIVE 상태를 확인합니다.
  */
 export async function requireRole(
   supabase: SupabaseServerClient,
@@ -61,11 +61,15 @@ export async function requireRole(
 ): Promise<{ role: UserRole } | AuthFailure> {
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, status')
     .eq('id', userId)
     .single();
 
-  if (!profile || !allowedRoles.includes(profile.role as UserRole)) {
+  if (
+    !profile ||
+    !allowedRoles.includes(profile.role as UserRole) ||
+    profile.status !== 'ACTIVE'
+  ) {
     return { error: errorMessage };
   }
 

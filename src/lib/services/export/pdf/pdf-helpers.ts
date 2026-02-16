@@ -116,8 +116,7 @@ export function drawLabelValue(ctx: DocContext, label: string, value: string, in
 }
 
 export function getTableFinalY(doc: jsPDF): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (doc as any).lastAutoTable?.finalY ?? 0;
+  return doc.lastAutoTable?.finalY ?? 0;
 }
 
 export function getAutoTableStyles(hasFonts: boolean) {
