@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
@@ -31,6 +32,35 @@ const updateTemplateSchema = z.object({
   questions: z.array(questionSchema).min(1, '최소 1개 이상의 질문이 필요합니다.'),
 });
 
+// 내부 헬퍼: 단일 템플릿 조회
+async function getTemplateById(supabase: SupabaseClient, templateId: string) {
+  return supabase
+    .from('self_assessment_templates')
+    .select('*')
+    .eq('id', templateId)
+    .single();
+}
+
+// 내부 헬퍼: 템플릿 사용 횟수 조회
+async function getTemplateUsageCount(supabase: SupabaseClient, templateId: string) {
+  const { count } = await supabase
+    .from('self_assessments')
+    .select('*', { count: 'exact', head: true })
+    .eq('template_id', templateId);
+  return count || 0;
+}
+
+// 내부 헬퍼: 다음 템플릿 버전 번호 조회
+async function getNextTemplateVersion(supabase: SupabaseClient) {
+  const { data: latestTemplate } = await supabase
+    .from('self_assessment_templates')
+    .select('version')
+    .order('version', { ascending: false })
+    .limit(1)
+    .single();
+  return (latestTemplate?.version || 0) + 1;
+}
+
 // 템플릿 목록 조회
 export async function fetchTemplates(): Promise<ActionResult<unknown>> {
   try {
@@ -52,11 +82,8 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
     // 각 템플릿의 사용 현황 조회
     const templatesWithUsage = await Promise.all(
       (templates || []).map(async (template) => {
-        const { count } = await supabase
-          .from('self_assessments')
-          .select('*', { count: 'exact', head: true })
-          .eq('template_id', template.id);
-        return { ...template, usage_count: count || 0 };
+        const usageCount = await getTemplateUsageCount(supabase, template.id);
+        return { ...template, usage_count: usageCount };
       })
     );
 
@@ -74,11 +101,7 @@ export async function fetchTemplate(templateId: string): Promise<ActionResult<un
     if ('error' in auth) return { success: false, error: auth.error };
     const { supabase } = auth;
 
-    const { data: template, error } = await supabase
-      .from('self_assessment_templates')
-      .select('*')
-      .eq('id', templateId)
-      .single();
+    const { data: template, error } = await getTemplateById(supabase, templateId);
 
     if (error) {
       console.error('[fetchTemplate] Supabase error:', error.message);
@@ -86,12 +109,9 @@ export async function fetchTemplate(templateId: string): Promise<ActionResult<un
     }
 
     // 사용 현황 조회
-    const { count } = await supabase
-      .from('self_assessments')
-      .select('*', { count: 'exact', head: true })
-      .eq('template_id', templateId);
+    const usageCount = await getTemplateUsageCount(supabase, templateId);
 
-    return { success: true, data: { ...template, usage_count: count || 0 } };
+    return { success: true, data: { ...template, usage_count: usageCount } };
   } catch (error) {
     console.error('[fetchTemplate Error]', error);
     return { success: false, error: '템플릿 조회에 실패했습니다.' };
@@ -120,14 +140,7 @@ export async function createTemplate(formData: FormData): Promise<ActionResult<u
     }
 
     // 최신 버전 조회
-    const { data: latestTemplate } = await supabase
-      .from('self_assessment_templates')
-      .select('version')
-      .order('version', { ascending: false })
-      .limit(1)
-      .single();
-
-    const newVersion = (latestTemplate?.version || 0) + 1;
+    const newVersion = await getNextTemplateVersion(supabase);
 
     // 템플릿 생성
     const { data: newTemplate, error } = await adminSupabase
@@ -188,23 +201,15 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
     }
 
     // 기존 템플릿 조회
-    const { data: existingTemplate, error: fetchError } = await supabase
-      .from('self_assessment_templates')
-      .select('*')
-      .eq('id', validation.data.id)
-      .single();
+    const { data: existingTemplate, error: fetchError } = await getTemplateById(supabase, validation.data.id);
 
     if (fetchError || !existingTemplate) {
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
     }
 
     // 사용 현황 확인
-    const { count: usageCount } = await supabase
-      .from('self_assessments')
-      .select('*', { count: 'exact', head: true })
-      .eq('template_id', existingTemplate.id);
-
-    const isInUse = !!(usageCount && usageCount > 0);
+    const usageCount = await getTemplateUsageCount(supabase, existingTemplate.id);
+    const isInUse = usageCount > 0;
 
     // 사용 중 + 질문 변경 → 새 버전으로 생성
     if (isInUse) {
@@ -214,14 +219,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       );
 
       if (questionsChanged) {
-        const { data: latestTemplate } = await supabase
-          .from('self_assessment_templates')
-          .select('version')
-          .order('version', { ascending: false })
-          .limit(1)
-          .single();
-
-        const newVersion = (latestTemplate?.version || 0) + 1;
+        const newVersion = await getNextTemplateVersion(supabase);
 
         const { data: newTemplate, error } = await adminSupabase
           .from('self_assessment_templates')
@@ -308,11 +306,7 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
     const adminSupabase = createAdminClient();
 
     // 템플릿 존재 확인
-    const { data: template, error: fetchError } = await supabase
-      .from('self_assessment_templates')
-      .select('*')
-      .eq('id', templateId)
-      .single();
+    const { data: template, error: fetchError } = await getTemplateById(supabase, templateId);
 
     if (fetchError || !template) {
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
@@ -366,25 +360,14 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
     const adminSupabase = createAdminClient();
 
     // 원본 템플릿 조회
-    const { data: sourceTemplate, error: fetchError } = await supabase
-      .from('self_assessment_templates')
-      .select('*')
-      .eq('id', templateId)
-      .single();
+    const { data: sourceTemplate, error: fetchError } = await getTemplateById(supabase, templateId);
 
     if (fetchError || !sourceTemplate) {
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
     }
 
     // 최신 버전 조회
-    const { data: latestTemplate } = await supabase
-      .from('self_assessment_templates')
-      .select('version')
-      .order('version', { ascending: false })
-      .limit(1)
-      .single();
-
-    const newVersion = (latestTemplate?.version || 0) + 1;
+    const newVersion = await getNextTemplateVersion(supabase);
 
     // 복제 생성
     const { data: newTemplate, error } = await adminSupabase
@@ -436,11 +419,7 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
     const adminSupabase = createAdminClient();
 
     // 템플릿 존재 확인
-    const { data: template, error: fetchError } = await supabase
-      .from('self_assessment_templates')
-      .select('*')
-      .eq('id', templateId)
-      .single();
+    const { data: template, error: fetchError } = await getTemplateById(supabase, templateId);
 
     if (fetchError || !template) {
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
@@ -452,12 +431,9 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
     }
 
     // 사용 현황 확인
-    const { count: usageCount } = await supabase
-      .from('self_assessments')
-      .select('*', { count: 'exact', head: true })
-      .eq('template_id', templateId);
+    const usageCount = await getTemplateUsageCount(supabase, templateId);
 
-    if (usageCount && usageCount > 0) {
+    if (usageCount > 0) {
       return { success: false, error: `이 템플릿으로 진행된 자가진단이 ${usageCount}건 있어 삭제할 수 없습니다.` };
     }
 
