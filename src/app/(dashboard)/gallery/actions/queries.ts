@@ -70,16 +70,9 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
 > {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
-  const { user, supabase } = auth;
+  const { user, role } = auth;
 
-  // 사용자 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) {
+  if (!role) {
     return errorResult('사용자 정보를 찾을 수 없습니다.');
   }
 
@@ -89,7 +82,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   }
 
   const { search, industry, sort, status, isShared, consultantId } = parsed.data;
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role);
+  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
   // 역할 기반 필터링은 아래 코드에서 수행
@@ -220,16 +213,9 @@ export async function fetchRoadmapDetail(
 ): Promise<ActionResult<RoadmapDetailView>> {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
-  const { user, supabase } = auth;
+  const { user, role } = auth;
 
-  // 사용자 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) {
+  if (!role) {
     return errorResult('사용자 정보를 찾을 수 없습니다.');
   }
 
@@ -270,7 +256,7 @@ export async function fetchRoadmapDetail(
   }
 
   // 권한 체크: 컨설턴트는 공유된 FINAL만 열람 가능
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role);
+  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
   if (!isAdmin && (!data.is_shared || data.status !== 'FINAL')) {
     return errorResult('접근 권한이 없습니다.');
   }
@@ -343,15 +329,9 @@ export async function fetchEligibleProjects(): Promise<ActionResult<EligibleProj
 export async function fetchConsultantOptions(): Promise<ActionResult<ConsultantOption[]>> {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
-  const { user, supabase } = auth;
+  const { supabase, role } = auth;
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!role || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
     return errorResult('관리자만 접근할 수 있습니다.');
   }
 

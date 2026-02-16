@@ -200,23 +200,16 @@ export async function fetchAvailableRecipients(): Promise<
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user } = auth;
+    const { user, role } = auth;
 
-    const adminSupabase = createAdminClient();
-
-    // 현재 사용자 역할 조회
-    const { data: currentUser } = await adminSupabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!currentUser) {
+    if (!role) {
       return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
     }
 
+    const adminSupabase = createAdminClient();
+
     // 역할별 수신 가능 대상 필터
-    const allowedRoles = ALLOWED_RECIPIENTS[currentUser.role];
+    const allowedRoles = ALLOWED_RECIPIENTS[role];
     if (!allowedRoles || allowedRoles.length === 0) {
       return { success: true, data: [] };
     }
@@ -323,7 +316,7 @@ export async function createConversation(
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    const { user, supabase, role } = auth;
 
     // Zod 검증
     const validation = createConversationSchema.safeParse({ recipient_id: recipientId });
@@ -354,13 +347,7 @@ export async function createConversation(
     }
 
     // 역할별 수신 권한 검증
-    const { data: sender } = await adminSupabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    const senderAllowed = sender ? ALLOWED_RECIPIENTS[sender.role] : undefined;
+    const senderAllowed = role ? ALLOWED_RECIPIENTS[role] : undefined;
     if (!senderAllowed || !senderAllowed.includes(recipient.role)) {
       return { success: false, error: '해당 사용자에게 메시지를 보낼 권한이 없습니다.' };
     }

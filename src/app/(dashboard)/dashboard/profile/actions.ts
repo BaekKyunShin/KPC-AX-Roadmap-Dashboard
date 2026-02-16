@@ -16,20 +16,13 @@ export async function updateEmailNotifySetting(
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user } = auth;
+    const { user, role } = auth;
 
-    const adminSupabase = createAdminClient();
-
-    // 역할 확인
-    const { data: userData } = await adminSupabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData || !EMAIL_NOTIFY_ROLES.includes(userData.role)) {
+    if (!role || !EMAIL_NOTIFY_ROLES.includes(role)) {
       return { success: false, error: '이 기능을 사용할 수 없는 역할입니다.' };
     }
+
+    const adminSupabase = createAdminClient();
 
     const { error } = await adminSupabase
       .from('users')

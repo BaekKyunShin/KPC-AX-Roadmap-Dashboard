@@ -33,20 +33,20 @@ export async function fetchConsultantProjects(
 ): Promise<ConsultantProjectListResult> {
   const auth = await requireAuth();
   if ('error' in auth) return { projects: [], total: 0, consultantName: '' };
-  const { user, supabase } = auth;
+  const { user, supabase, role } = auth;
+
+  if (role !== 'CONSULTANT_APPROVED') {
+    return { projects: [], total: 0, consultantName: '' };
+  }
 
   const { search = '', status = '' } = params;
 
-  // 프로필 확인
+  // 컨설턴트 이름 조회
   const { data: profile } = await supabase
     .from('users')
-    .select('role, name')
+    .select('name')
     .eq('id', user.id)
     .single();
-
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-    return { projects: [], total: 0, consultantName: '' };
-  }
 
   // 담당 프로젝트 목록 조회
   let query = supabase
@@ -84,7 +84,7 @@ export async function fetchConsultantProjects(
 
   if (error) {
     console.error('[fetchConsultantProjects Error]', error);
-    return { projects: [], total: 0, consultantName: profile.name || '' };
+    return { projects: [], total: 0, consultantName: profile?.name || '' };
   }
 
   // 데이터 변환
@@ -103,7 +103,7 @@ export async function fetchConsultantProjects(
   return {
     projects: formattedProjects,
     total: formattedProjects.length,
-    consultantName: profile.name || '',
+    consultantName: profile?.name || '',
   };
 }
 

@@ -18,21 +18,14 @@ export async function copyRoadmapToProject(params: {
 }): Promise<ActionResult<{ newVersionId: string; versionNumber: number }>> {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
-  const { user, supabase } = auth;
+  const { user, supabase, role } = auth;
 
   const parsed = copyRoadmapSchema.safeParse(params);
   if (!parsed.success) {
     return errorResult('유효하지 않은 요청입니다.');
   }
 
-  // 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
+  if (role !== 'CONSULTANT_APPROVED') {
     return errorResult('컨설턴트만 로드맵을 가져올 수 있습니다.');
   }
 

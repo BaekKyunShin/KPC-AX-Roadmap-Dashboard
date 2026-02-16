@@ -121,18 +121,12 @@ export async function fetchRoadmapVersions(projectId: string) {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return [];
-    const { user, supabase } = auth;
+    const { user, supabase, role } = auth;
+
+    if (!role) return [];
 
     // 접근 권한 확인 (컨설턴트 또는 OPS_ADMIN)
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile) return [];
-
-    if (profile.role === 'CONSULTANT_APPROVED') {
+    if (role === 'CONSULTANT_APPROVED') {
       const { data: projectData } = await supabase
         .from('projects')
         .select('assigned_consultant_id')
@@ -142,7 +136,7 @@ export async function fetchRoadmapVersions(projectId: string) {
       if (!projectData || projectData.assigned_consultant_id !== user.id) {
         return [];
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
       return [];
     }
 
@@ -159,21 +153,15 @@ export async function fetchRoadmapVersion(roadmapId: string) {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return null;
-    const { user, supabase } = auth;
+    const { user, supabase, role } = auth;
+
+    if (!role) return null;
 
     const roadmap = await fetchRoadmapVersionService(roadmapId);
     if (!roadmap) return null;
 
     // 접근 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile) return null;
-
-    if (profile.role === 'CONSULTANT_APPROVED') {
+    if (role === 'CONSULTANT_APPROVED') {
       const { data: projectData } = await supabase
         .from('projects')
         .select('assigned_consultant_id')
@@ -183,7 +171,7 @@ export async function fetchRoadmapVersion(roadmapId: string) {
       if (!projectData || projectData.assigned_consultant_id !== user.id) {
         return null;
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
       return null;
     }
 
@@ -250,7 +238,11 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    const { user, supabase, role } = auth;
+
+    if (!role) {
+      return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
+    }
 
     const { data: project } = await supabase
       .from('projects')
@@ -263,21 +255,11 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
     }
 
     // 접근 권한 확인
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile) {
-      return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
-    }
-
-    if (profile.role === 'CONSULTANT_APPROVED') {
+    if (role === 'CONSULTANT_APPROVED') {
       if (project.assigned_consultant_id !== user.id) {
         return { success: false, error: '접근 권한이 없습니다.' };
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
