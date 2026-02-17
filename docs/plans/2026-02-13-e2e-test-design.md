@@ -664,7 +664,7 @@ export async function restoreShareStatus(roadmapId: string, originalValue: boole
 
 | Session | 작업 | spec 파일 수 | 상태 |
 |---------|------|-------------|------|
-| 0 | 인프라 구축 (config, fixtures, helpers) | 0 (+7 인프라) | - |
+| 0 | 인프라 구축 (config, fixtures, helpers) | 0 (+7 인프라) | 완료 |
 | 1 | public/ + auth/ | 5 | - |
 | 2 | ops/navigation + ops/projects | 2 | - |
 | 3 | ops/users + templates + audit-quota | 3 | - |
