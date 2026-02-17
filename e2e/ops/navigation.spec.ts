@@ -141,17 +141,5 @@ test.describe('Phase 2.3: 대시보드 리다이렉트', () => {
   });
 });
 
-// ─── Phase 2.20: 관리자 로그아웃 ─────────────────────────────────────────────
-
-test.describe('Phase 2.20: 관리자 로그아웃', () => {
-  test('로그아웃 → /login 이동 + 세션 정리', async ({ opsPage: page }) => {
-    await page.goto('/ops/projects');
-    await page.waitForLoadState('networkidle');
-    await clickUserMenu(page, '로그아웃');
-    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
-
-    // 세션 정리 확인: 보호 경로 재접근 시 /login 리다이렉트
-    await page.goto('/ops/projects');
-    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
-  });
-});
+// Phase 2.20 (관리자 로그아웃)은 세션 무효화 방지를 위해
+// e2e/ops/logout.spec.ts로 분리 → Playwright project dependency로 마지막에 실행

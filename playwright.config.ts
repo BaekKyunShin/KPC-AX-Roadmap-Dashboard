@@ -35,6 +35,13 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: '**/ops/logout.spec.ts',
+    },
+    {
+      name: 'ops-logout',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/ops/logout.spec.ts',
+      dependencies: ['chromium'],
     },
   ],
 });

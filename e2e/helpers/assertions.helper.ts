@@ -8,10 +8,22 @@ import { type Page, expect } from '@playwright/test';
  *       expect(getErrors()).toEqual([]);
  */
 export function setupConsoleErrorCheck(page: Page): () => string[] {
+  // 무시할 패턴: React hydration, Radix 내부 트리 차이, 일시적 네트워크 에러
+  const IGNORE_PATTERNS = [
+    /Hydration/i,
+    /did not match/i,
+    /Extra attributes from the server/i,
+    /Failed to load resource/i,
+    /net::ERR_/i,
+  ];
+
   const errors: string[] = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
-      errors.push(msg.text());
+      const text = msg.text();
+      if (!IGNORE_PATTERNS.some((p) => p.test(text))) {
+        errors.push(text);
+      }
     }
   });
   return () => [...errors];

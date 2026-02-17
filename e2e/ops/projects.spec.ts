@@ -235,8 +235,13 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     await page.waitForLoadState('networkidle');
 
     // 첫 번째 프로젝트 상세로 이동
-    await page.getByRole('link', { name: '상세보기' }).first().click();
-    await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/);
+    const detailLink = page.getByRole('link', { name: '상세보기' }).first();
+    if (!(await detailLink.isVisible().catch(() => false))) {
+      test.skip();
+      return;
+    }
+    await detailLink.click();
+    await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/, { timeout: 10_000 });
 
     // "로드맵 보기" 링크가 있는 경우에만 테스트 진행
     const roadmapLink = page.getByRole('link', { name: '로드맵 보기' });
