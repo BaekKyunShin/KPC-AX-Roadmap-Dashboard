@@ -60,8 +60,8 @@ const DEFAULT_CAPABILITIES: ModelCapabilities = {
   supportsTemperature: true,
 };
 
-/** LLM API 호출 타임아웃 (밀리초) */
-const LLM_TIMEOUT_MS = 60_000;
+/** LLM API 호출 타임아웃 (밀리초) — 로드맵 생성 등 복잡한 작업은 60초 이상 소요될 수 있음 */
+const LLM_TIMEOUT_MS = 300_000;
 
 /**
  * 모델의 기능 설정 조회

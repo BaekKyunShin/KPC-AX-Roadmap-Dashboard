@@ -209,7 +209,7 @@ describe('callLLM', () => {
 
     const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
     await expect(callLLM(messages)).rejects.toThrow(
-      'LLM API 호출 타임아웃 (60초 초과)'
+      'LLM API 호출 타임아웃 (300초 초과)'
     );
   });
 
