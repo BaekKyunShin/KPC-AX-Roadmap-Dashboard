@@ -16,6 +16,15 @@ export async function deleteProject(id: string) {
   if (error) console.warn(`deleteProject(${id}) 실패:`, error.message);
 }
 
+/** 회사명으로 프로젝트 삭제 (retry 시 잔여 테스트 프로젝트 정리) */
+export async function deleteProjectsByName(companyName: string) {
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('company_name', companyName);
+  if (error) console.warn(`deleteProjectsByName(${companyName}) 실패:`, error.message);
+}
+
 /** 사용자 상태 복원 (승인/정지 테스트 후) */
 export async function restoreUserStatus(
   userId: string,
