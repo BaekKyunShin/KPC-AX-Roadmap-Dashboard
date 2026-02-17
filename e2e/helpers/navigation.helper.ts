@@ -31,9 +31,11 @@ export async function clickOpsNavMenu(
   triggerText: string,
   itemText: string,
 ) {
-  // 드롭다운 트리거 클릭
-  await page.getByRole('button', { name: new RegExp(triggerText) }).click();
-  // 메뉴 항목 클릭
+  // 드롭다운 트리거 클릭 (exact 매칭으로 "운영관리자" 등 오매칭 방지)
+  await page
+    .getByRole('button', { name: triggerText, exact: true })
+    .click();
+  // 드롭다운 내 메뉴 항목 클릭
   await page.getByRole('link', { name: itemText }).click();
 }
 
@@ -41,11 +43,12 @@ export async function clickOpsNavMenu(
  * 사용자 드롭다운 열기 → 메뉴 항목 클릭
  */
 export async function clickUserMenu(page: Page, itemText: string) {
-  // 사용자 드롭다운 트리거 (아바타/이름이 있는 버튼)
+  // 사용자 드롭다운 트리거 (아바타/이름이 있는 버튼, 데스크톱만)
   await page
     .locator('nav')
     .getByRole('button')
     .filter({ has: page.locator('[data-slot="avatar"]') })
+    .first()
     .click();
   // 메뉴 항목 클릭
   if (itemText === '로그아웃') {
