@@ -27,7 +27,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
-import { COPYRIGHT_TEXT } from '@/lib/constants';
+import { FooterCredit } from '@/components/ui/FooterCredit';
 import ProfileForm from '@/components/consultant/ProfileForm';
 import { registerUser } from '../actions';
 
@@ -309,7 +309,7 @@ export default function RegisterPage() {
         )}
 
         {/* Footer */}
-        <p className="mt-8 text-center text-sm text-muted-foreground">{COPYRIGHT_TEXT}</p>
+        <FooterCredit className="mt-8 text-muted-foreground" />
       </div>
     </div>
   );

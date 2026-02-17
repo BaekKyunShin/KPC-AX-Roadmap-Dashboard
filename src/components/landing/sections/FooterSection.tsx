@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { COPYRIGHT_TEXT } from '@/lib/constants';
+import { FooterCredit } from '@/components/ui/FooterCredit';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -314,7 +314,7 @@ export default function FooterSection() {
 
           {/* Bottom */}
           <div className="flex flex-col sm:flex-row justify-center items-center mt-12 pt-8 border-t border-gray-100">
-            <p className="text-gray-500 text-sm">{COPYRIGHT_TEXT}</p>
+            <FooterCredit className="text-gray-500" />
           </div>
         </div>
       </div>

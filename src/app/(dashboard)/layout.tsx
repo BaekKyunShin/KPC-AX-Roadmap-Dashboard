@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { COPYRIGHT_TEXT } from '@/lib/constants';
 import Navigation from '@/components/Navigation';
+import { FooterCredit } from '@/components/ui/FooterCredit';
 import { fetchUnreadCount } from '@/app/(dashboard)/notifications/actions';
 import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messages/actions';
 
@@ -36,7 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <footer className="mt-auto pb-6">
-        <p className="text-center text-sm text-gray-400">{COPYRIGHT_TEXT}</p>
+        <FooterCredit />
       </footer>
     </div>
   );

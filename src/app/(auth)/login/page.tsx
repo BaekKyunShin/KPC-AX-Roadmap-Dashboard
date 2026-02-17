@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
-import { COPYRIGHT_TEXT } from '@/lib/constants';
+import { FooterCredit } from '@/components/ui/FooterCredit';
 import { loginUser } from '../actions';
 
 function LoginForm() {
@@ -162,7 +162,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="mt-8 text-center text-sm text-muted-foreground">{COPYRIGHT_TEXT}</p>
+        <FooterCredit className="mt-8 text-muted-foreground" />
       </div>
     </div>
   );
