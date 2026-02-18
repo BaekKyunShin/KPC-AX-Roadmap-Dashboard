@@ -55,9 +55,9 @@ const COACHING_LABELS: Record<string, string> = {
 };
 
 const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '컨설턴트 승인 대기' },
-  OPS_ADMIN_PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: '운영관리자 승인 대기' },
-  CONSULTANT_APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: '승인됨' },
+  USER_PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '컨설턴트 (승인 대기)' },
+  OPS_ADMIN_PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: '운영관리자 (승인 대기)' },
+  CONSULTANT_APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: '컨설턴트' },
   OPS_ADMIN: { bg: 'bg-purple-100', text: 'text-purple-800', label: '운영관리자' },
   SYSTEM_ADMIN: { bg: 'bg-red-100', text: 'text-red-800', label: '시스템관리자' },
 };
@@ -217,7 +217,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
               <TableHead className={TABLE_COLUMNS.profile}>프로필</TableHead>
               <TableHead className={TABLE_COLUMNS.joinDate}>가입일</TableHead>
-              <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+              <TableHead className={TABLE_COLUMNS.actions}>관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -257,7 +257,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                   {new Date(user.created_at).toLocaleDateString('ko-KR')}
                 </TableCell>
 
-                {/* 작업 */}
+                {/* 관리 */}
                 <TableCell className="font-medium">{renderUserActions(user)}</TableCell>
               </TableRow>
             ))}

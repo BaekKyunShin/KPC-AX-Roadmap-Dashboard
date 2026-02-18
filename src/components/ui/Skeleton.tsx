@@ -124,7 +124,7 @@ const USER_TABLE: TableConfig = {
     { header: '상태', width: 'min-w-[80px]' },
     { header: '프로필', width: 'min-w-[100px]' },
     { header: '가입일', width: 'min-w-[100px]' },
-    { header: '작업', width: 'min-w-[100px]' },
+    { header: '관리', width: 'min-w-[100px]' },
   ],
   minWidth: 'min-w-[700px]',
 };
@@ -422,7 +422,7 @@ export function UserTableSkeleton({ rows = 5 }: TableSkeletonProps) {
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
             </td>
-            {/* 작업 */}
+            {/* 관리 */}
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
             </td>

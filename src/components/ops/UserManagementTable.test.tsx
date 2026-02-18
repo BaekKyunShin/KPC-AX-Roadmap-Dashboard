@@ -115,6 +115,34 @@ describe('UserManagementTable', () => {
     expect(screen.getByText('처리에 실패했습니다.')).toBeInTheDocument();
   });
 
+  it('테이블 헤더에 올바른 칼럼명을 표시한다', () => {
+    render(<UserManagementTable users={[makeUser()]} />);
+
+    expect(screen.getByText('사용자')).toBeInTheDocument();
+    expect(screen.getByText('역할')).toBeInTheDocument();
+    expect(screen.getByText('상태')).toBeInTheDocument();
+    expect(screen.getByText('프로필')).toBeInTheDocument();
+    expect(screen.getByText('가입일')).toBeInTheDocument();
+    expect(screen.getByText('관리')).toBeInTheDocument();
+  });
+
+  it('역할에 따라 올바른 뱃지 라벨을 표시한다', () => {
+    const users = [
+      makeUser({ id: 'u1', role: 'CONSULTANT_APPROVED', name: '컨설턴트A' }),
+      makeUser({ id: 'u2', role: 'USER_PENDING', name: '대기자B' }),
+      makeUser({ id: 'u3', role: 'OPS_ADMIN_PENDING', name: '운영대기C' }),
+      makeUser({ id: 'u4', role: 'OPS_ADMIN', name: '운영관리자D' }),
+      makeUser({ id: 'u5', role: 'SYSTEM_ADMIN', name: '시스템관리자E' }),
+    ];
+    render(<UserManagementTable users={users} />);
+
+    expect(screen.getByText('컨설턴트')).toBeInTheDocument();
+    expect(screen.getByText('컨설턴트 (승인 대기)')).toBeInTheDocument();
+    expect(screen.getByText('운영관리자 (승인 대기)')).toBeInTheDocument();
+    expect(screen.getByText('운영관리자')).toBeInTheDocument();
+    expect(screen.getByText('시스템관리자')).toBeInTheDocument();
+  });
+
   it('승인 액션 성공 후 users prop 갱신까지 "처리 중..." 유지한다', async () => {
     // Arrange: USER_PENDING 상태 → "승인" 버튼
     const resolveAction = mockDeferredAction();
