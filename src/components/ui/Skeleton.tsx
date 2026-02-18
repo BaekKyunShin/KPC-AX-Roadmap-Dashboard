@@ -142,16 +142,16 @@ const QUOTA_TABLE: TableConfig = {
   minWidth: 'min-w-[800px]',
 };
 
-/** 템플릿 테이블 설정 (ops/templates) */
+/** 템플릿 테이블 설정 (ops/templates) — 실제 TemplateList TABLE_COLUMNS와 동일 비율 */
 const TEMPLATE_TABLE: TableConfig = {
   columns: [
-    { header: '버전', width: 'min-w-[80px]' },
-    { header: '템플릿 이름', width: 'min-w-[160px]' },
-    { header: '문항 수', width: 'min-w-[80px]' },
-    { header: '사용 현황', width: 'min-w-[100px]' },
-    { header: '상태', width: 'min-w-[80px]' },
-    { header: '생성일', width: 'min-w-[100px]' },
-    { header: '작업', width: 'min-w-[140px]' },
+    { header: '버전', width: 'w-[10%]' },
+    { header: '템플릿 이름', width: 'w-[28%]' },
+    { header: '문항 수', width: 'w-[11%]' },
+    { header: '사용 현황', width: 'w-[15%]' },
+    { header: '상태', width: 'w-[11%]' },
+    { header: '생성일', width: 'w-[18%]' },
+    { header: '', width: 'w-[7%]' },
   ],
   minWidth: 'min-w-[750px]',
 };
@@ -484,18 +484,29 @@ export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
 
   return (
     <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} />
+      {/* 버전(pl-8), 이름(text-left) 등 커스텀 정렬이 필요하므로 직접 렌더링 */}
+      <thead className={TABLE_STYLES.thead}>
+        <tr>
+          <th className={`${TABLE_STYLES.th} ${columns[0].width} pl-8`}>{columns[0].header}</th>
+          <th className={`${TABLE_STYLES.th} ${columns[1].width} text-left`}>{columns[1].header}</th>
+          {columns.slice(2).map((col) => (
+            <th key={col.header || 'actions'} className={`${TABLE_STYLES.th} ${col.width}`}>
+              {col.header}
+            </th>
+          ))}
+        </tr>
+      </thead>
       <tbody className={TABLE_STYLES.tbody}>
         {renderItems(rows, (i) => (
           <tr key={i}>
             {/* 버전: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-5" width="w-10" className="mx-auto" />
+            <td className={`${TABLE_STYLES.td} ${columns[0].width} pl-8`}>
+              <SkeletonBar height="h-5" width="w-10" />
             </td>
-            {/* 템플릿 이름 + 설명 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-28" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-36" variant="secondary" className="mx-auto" />
+            {/* 템플릿 이름 + 설명 (좌측 정렬) */}
+            <td className={`${TABLE_STYLES.td} ${columns[1].width} text-left`}>
+              <SkeletonBar height="h-4" width="w-28" className="mb-1" />
+              <SkeletonBar height="h-3" width="w-36" variant="secondary" />
             </td>
             {/* 문항 수 */}
             <td className={TABLE_STYLES.td}>
@@ -513,18 +524,138 @@ export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
             <td className={TABLE_STYLES.td}>
               <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
             </td>
-            {/* 작업 */}
+            {/* 작업: DropdownMenu 아이콘 버튼 */}
             <td className={TABLE_STYLES.td}>
-              <div className="flex items-center justify-center gap-3">
-                <SkeletonBar height="h-4" width="w-8" />
-                <SkeletonBar height="h-4" width="w-12" />
-                <SkeletonBar height="h-4" width="w-8" />
+              <div className="flex justify-end mr-4">
+                <SkeletonBar height="h-8" width="w-8" className="rounded-md" />
               </div>
             </td>
           </tr>
         ))}
       </tbody>
     </TableSkeletonWrapper>
+  );
+}
+
+// ============================================================================
+// 템플릿 폼/미리보기 스켈레톤
+// ============================================================================
+
+/** 질문 아이템 스켈레톤 (TemplateForm의 QuestionItem과 동일 구조) */
+function QuestionItemSkeleton() {
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-6 w-6" />
+          <Skeleton className="h-6 w-6" />
+          <Skeleton className="h-6 w-6" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <Skeleton className="h-3 w-10 mb-1" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div>
+          <Skeleton className="h-3 w-12 mb-1" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+      <div>
+        <Skeleton className="h-3 w-20 mb-1" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    </div>
+  );
+}
+
+/** 템플릿 폼 스켈레톤 (기본 정보 카드 + 질문 목록 카드 + 하단 버튼) */
+export function TemplateFormSkeleton({ questionCount = 1 }: { questionCount?: number }) {
+  return (
+    <div className="space-y-6">
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-4`}>
+        <Skeleton className="h-6 w-20" />
+        <div>
+          <Skeleton className="h-4 w-28 mb-1" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div>
+          <Skeleton className="h-4 w-12 mb-1" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </div>
+
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-4`}>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-6 w-28" />
+          <Skeleton className="h-8 w-24 rounded-md" />
+        </div>
+        {renderItems(questionCount, (i) => (
+          <QuestionItemSkeleton key={i} />
+        ))}
+      </div>
+
+      <div className="flex justify-end space-x-3">
+        <Skeleton className="h-10 w-16 rounded-md" />
+        <Skeleton className="h-10 w-16 rounded-md" />
+      </div>
+    </div>
+  );
+}
+
+/** 템플릿 미리보기 스켈레톤 (TemplatePreview와 동일 구조) */
+export function TemplatePreviewSkeleton() {
+  return (
+    <div className={`${CARD_STYLES.base} overflow-hidden`}>
+      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-64 mt-1" />
+        <div className="mt-2 flex items-center space-x-4">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+      </div>
+
+      {renderItems(3, (groupIndex) => (
+        <div key={groupIndex} className="p-4 border-b border-gray-200 last:border-0">
+          <div className="flex items-center mb-3">
+            <Skeleton className="h-2 w-2 rounded-full mr-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="space-y-3">
+            {renderItems(2, (qIndex) => (
+              <div key={qIndex} className="bg-gray-50 rounded-md p-3">
+                <div className="flex items-start justify-between">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-16 ml-2" />
+                </div>
+                <div className="mt-2 flex items-center space-x-1">
+                  {renderItems(5, (n) => (
+                    <Skeleton key={n} className="h-8 w-8 rounded-full" />
+                  ))}
+                  <Skeleton className="h-3 w-16 ml-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="bg-blue-50 px-6 py-4 border-t border-blue-100">
+        <Skeleton className="h-4 w-24 mb-2" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-3 w-52" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+      </div>
+    </div>
   );
 }
 
