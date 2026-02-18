@@ -89,6 +89,13 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
     userName: string;
   } | null>(null);
 
+  // users prop이 갱신되면 로딩 상태 해제 (React 권장 패턴: props 변경 시 상태 조정)
+  const [prevUsers, setPrevUsers] = useState(users);
+  if (users !== prevUsers) {
+    setPrevUsers(users);
+    setIsLoading(null);
+  }
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -101,7 +108,6 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       const result = await updateUserStatus(userId, action);
 
       if (result.success) {
-        setIsLoading(null);
         startTransition(() => {
           router.refresh();
         });
