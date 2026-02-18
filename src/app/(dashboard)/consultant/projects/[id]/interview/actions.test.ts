@@ -143,6 +143,22 @@ function minimalAutoSaveData() {
   };
 }
 
+/** 자동저장 최초 insert 시나리오 공통 mock 설정 */
+function setupAutoSaveFirstInsertMocks(
+  serverMock: ReturnType<typeof createMockClient>,
+  adminMock: ReturnType<typeof createMockClient>,
+) {
+  serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+  serverMock.addResult({
+    data: { id: PROJECT_ID, status: 'ASSIGNED', assigned_consultant_id: USER_A_ID, company_name: '테스트', is_test_mode: false },
+    error: null,
+  });
+  // existing interview → 없음
+  adminMock.addResult({ data: null, error: null });
+  // insert → 성공 (자동저장이므로 상태 전환/알림 없음)
+  adminMock.addResult({ data: null, error: null });
+}
+
 // ─── saveInterview ──────────────────────────────────────────────────────────
 
 describe('saveInterview', () => {
@@ -221,21 +237,33 @@ describe('saveInterview', () => {
 
   // 감사 이슈 #27: 자동저장 시 완화된 스키마 적용 검증
   it('자동저장 시 완화된 스키마 적용 → 빈 값도 통과 (감사 #27)', async () => {
-    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({
-      data: { id: PROJECT_ID, status: 'ASSIGNED', assigned_consultant_id: USER_A_ID, company_name: '테스트', is_test_mode: false },
-      error: null,
-    });
-    // existing interview check
-    adminMock.addResult({ data: null, error: null });
-    // insert
-    adminMock.addResult({ data: null, error: null });
-    // project status update
-    adminMock.addResult({ data: null, error: null });
+    setupAutoSaveFirstInsertMocks(serverMock, adminMock);
 
     const result = await saveInterview(PROJECT_ID, minimalAutoSaveData(), { autoSave: true });
 
     expect(result.success).toBe(true);
+  });
+
+  it('자동저장(최초 insert) 시 프로젝트 상태를 INTERVIEWED로 전환하지 않음', async () => {
+    setupAutoSaveFirstInsertMocks(serverMock, adminMock);
+
+    await saveInterview(PROJECT_ID, minimalAutoSaveData(), { autoSave: true });
+
+    // admin client의 from('projects') 호출이 없어야 함 (상태 전환 스킵)
+    const fromCalls = adminMock.mockClient.from.mock.calls as string[][];
+    const projectUpdateCalls = fromCalls.filter(
+      (call) => call[0] === 'projects',
+    );
+    expect(projectUpdateCalls).toHaveLength(0);
+  });
+
+  it('자동저장(최초 insert) 시 운영관리자에게 알림을 보내지 않음', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+    setupAutoSaveFirstInsertMocks(serverMock, adminMock);
+
+    await saveInterview(PROJECT_ID, minimalAutoSaveData(), { autoSave: true });
+
+    expect(createNotificationForAdmins).not.toHaveBeenCalled();
   });
 
   it('수동 저장 시 엄격한 스키마 적용 → 빈 값 거부 (감사 #27 대조)', async () => {
