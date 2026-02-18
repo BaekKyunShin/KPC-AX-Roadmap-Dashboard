@@ -107,8 +107,9 @@ export default async function ConsultantHomePage() {
         <SummaryCards
           total={stats.total}
           waitingInterview={stats.waitingInterview}
-          inProgress={stats.inProgress}
-          completed={stats.completed}
+          interviewDone={stats.interviewDone}
+          draftingRoadmap={stats.draftingRoadmap}
+          roadmapCompleted={stats.roadmapCompleted}
         />
       </div>
 

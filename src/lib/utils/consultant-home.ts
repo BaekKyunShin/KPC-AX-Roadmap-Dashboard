@@ -4,9 +4,10 @@
 
 export interface ProjectStats {
   total: number;
-  waitingInterview: number;  // ASSIGNED
-  inProgress: number;         // INTERVIEWED + ROADMAP_DRAFTED
-  completed: number;          // FINALIZED
+  waitingInterview: number;   // ASSIGNED
+  interviewDone: number;      // INTERVIEWED
+  draftingRoadmap: number;    // ROADMAP_DRAFTED
+  roadmapCompleted: number;   // FINALIZED
   byStatus: Record<string, number>;
 }
 
@@ -23,8 +24,9 @@ export function aggregateProjectStats(
   return {
     total: projects.length,
     waitingInterview: byStatus['ASSIGNED'] || 0,
-    inProgress: (byStatus['INTERVIEWED'] || 0) + (byStatus['ROADMAP_DRAFTED'] || 0),
-    completed: byStatus['FINALIZED'] || 0,
+    interviewDone: byStatus['INTERVIEWED'] || 0,
+    draftingRoadmap: byStatus['ROADMAP_DRAFTED'] || 0,
+    roadmapCompleted: byStatus['FINALIZED'] || 0,
     byStatus,
   };
 }

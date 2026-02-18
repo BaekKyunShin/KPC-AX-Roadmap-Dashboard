@@ -18,17 +18,17 @@ interface StatusDistributionChartProps {
 }
 
 const CHART_COLORS: Record<string, string> = {
-  ASSIGNED: '#3B82F6',        // blue-500
-  INTERVIEWED: '#14B8A6',     // teal-500
-  ROADMAP_DRAFTED: '#8B5CF6', // violet-500
-  FINALIZED: '#10B981',       // emerald-500
+  ASSIGNED: '#60A5FA',        // blue-400
+  INTERVIEWED: '#FBBF24',     // amber-400
+  ROADMAP_DRAFTED: '#A78BFA', // purple-400
+  FINALIZED: '#4ADE80',       // green-400
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  ASSIGNED: '배정됨',
+  ASSIGNED: '인터뷰 대기',
   INTERVIEWED: '인터뷰 완료',
-  ROADMAP_DRAFTED: '초안 작성',
-  FINALIZED: '확정',
+  ROADMAP_DRAFTED: '로드맵 작성 중',
+  FINALIZED: '로드맵 완료',
 };
 
 /** byStatus Record를 차트 데이터로 변환 */

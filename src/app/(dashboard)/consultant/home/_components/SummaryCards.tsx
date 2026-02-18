@@ -1,6 +1,7 @@
 import {
   FolderOpen,
   CalendarClock,
+  ClipboardCheck,
   PenLine,
   CheckCircle2,
 } from 'lucide-react';
@@ -8,8 +9,9 @@ import {
 interface SummaryCardsProps {
   total: number;
   waitingInterview: number;
-  inProgress: number;
-  completed: number;
+  interviewDone: number;
+  draftingRoadmap: number;
+  roadmapCompleted: number;
 }
 
 const CARDS = [
@@ -26,36 +28,51 @@ const CARDS = [
     key: 'waitingInterview',
     label: '인터뷰 대기',
     icon: CalendarClock,
-    borderColor: 'border-blue-500',
+    borderColor: 'border-blue-400',
     textColor: 'text-blue-600',
     iconColor: 'text-blue-400',
     field: 'waitingInterview' as const,
   },
   {
-    key: 'inProgress',
-    label: '로드맵 작성 중',
-    icon: PenLine,
-    borderColor: 'border-violet-500',
-    textColor: 'text-violet-600',
-    iconColor: 'text-violet-400',
-    field: 'inProgress' as const,
+    key: 'interviewDone',
+    label: '인터뷰 완료',
+    icon: ClipboardCheck,
+    borderColor: 'border-amber-400',
+    textColor: 'text-amber-600',
+    iconColor: 'text-amber-400',
+    field: 'interviewDone' as const,
   },
   {
-    key: 'completed',
-    label: '완료',
+    key: 'draftingRoadmap',
+    label: '로드맵 작성 중',
+    icon: PenLine,
+    borderColor: 'border-purple-400',
+    textColor: 'text-purple-600',
+    iconColor: 'text-purple-400',
+    field: 'draftingRoadmap' as const,
+  },
+  {
+    key: 'roadmapCompleted',
+    label: '로드맵 완료',
     icon: CheckCircle2,
-    borderColor: 'border-emerald-500',
-    textColor: 'text-emerald-600',
-    iconColor: 'text-emerald-400',
-    field: 'completed' as const,
+    borderColor: 'border-green-400',
+    textColor: 'text-green-600',
+    iconColor: 'text-green-400',
+    field: 'roadmapCompleted' as const,
   },
 ] as const;
 
-export function SummaryCards({ total, waitingInterview, inProgress, completed }: SummaryCardsProps) {
-  const values = { total, waitingInterview, inProgress, completed };
+export function SummaryCards({
+  total,
+  waitingInterview,
+  interviewDone,
+  draftingRoadmap,
+  roadmapCompleted,
+}: SummaryCardsProps) {
+  const values = { total, waitingInterview, interviewDone, draftingRoadmap, roadmapCompleted };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {CARDS.map((card) => {
         const Icon = card.icon;
         return (

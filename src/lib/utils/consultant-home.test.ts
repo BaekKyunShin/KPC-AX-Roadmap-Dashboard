@@ -11,13 +11,14 @@ describe('aggregateProjectStats', () => {
     expect(result).toEqual({
       total: 0,
       waitingInterview: 0,
-      inProgress: 0,
-      completed: 0,
+      interviewDone: 0,
+      draftingRoadmap: 0,
+      roadmapCompleted: 0,
       byStatus: {},
     });
   });
 
-  test('상태별로 정확하게 집계', () => {
+  test('상태별로 정확하게 집계 (4분류)', () => {
     const projects = [
       { status: 'ASSIGNED' },
       { status: 'ASSIGNED' },
@@ -32,8 +33,9 @@ describe('aggregateProjectStats', () => {
 
     expect(result.total).toBe(8);
     expect(result.waitingInterview).toBe(2);    // ASSIGNED
-    expect(result.inProgress).toBe(4);           // INTERVIEWED(1) + ROADMAP_DRAFTED(3)
-    expect(result.completed).toBe(2);            // FINALIZED
+    expect(result.interviewDone).toBe(1);        // INTERVIEWED
+    expect(result.draftingRoadmap).toBe(3);      // ROADMAP_DRAFTED
+    expect(result.roadmapCompleted).toBe(2);     // FINALIZED
   });
 
   test('byStatus에 상태별 개수 포함', () => {
@@ -51,7 +53,7 @@ describe('aggregateProjectStats', () => {
     });
   });
 
-  test('합산 검증: waitingInterview + inProgress + completed === total', () => {
+  test('합산 검증: 4분류 합계 === total', () => {
     const projects = [
       { status: 'ASSIGNED' },
       { status: 'ASSIGNED' },
@@ -68,7 +70,9 @@ describe('aggregateProjectStats', () => {
     ];
     const result = aggregateProjectStats(projects);
 
-    expect(result.waitingInterview + result.inProgress + result.completed).toBe(result.total);
+    expect(
+      result.waitingInterview + result.interviewDone + result.draftingRoadmap + result.roadmapCompleted
+    ).toBe(result.total);
   });
 });
 

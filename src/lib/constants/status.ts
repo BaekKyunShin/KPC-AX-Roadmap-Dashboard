@@ -156,10 +156,10 @@ export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color
  * 프로젝트 상태 설정 (컨설턴트용 - 배정 이후 상태)
  */
 export const CONSULTANT_PROJECT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  ASSIGNED: { label: '인터뷰 필요', color: 'bg-yellow-100 text-yellow-800' },
-  INTERVIEWED: { label: '인터뷰 완료', color: 'bg-blue-100 text-blue-800' },
-  ROADMAP_DRAFTED: { label: '로드맵 초안', color: 'bg-purple-100 text-purple-800' },
-  FINALIZED: { label: '완료', color: 'bg-green-100 text-green-800' },
+  ASSIGNED: { label: '인터뷰 대기', color: 'bg-blue-100 text-blue-800' },
+  INTERVIEWED: { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' },
+  ROADMAP_DRAFTED: { label: '로드맵 작성 중', color: 'bg-purple-100 text-purple-800' },
+  FINALIZED: { label: '로드맵 완료', color: 'bg-green-100 text-green-800' },
 };
 
 /**
@@ -210,9 +210,9 @@ export function getConsultantProjectStatusBadge(
   // ASSIGNED 상태에서 인터뷰 여부에 따른 분기
   if (status === 'ASSIGNED') {
     if (hasInterview) {
-      return { label: '인터뷰 완료', color: 'bg-blue-100 text-blue-800' };
+      return { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' };
     }
-    return { label: '인터뷰 필요', color: 'bg-yellow-100 text-yellow-800' };
+    return { label: '인터뷰 대기', color: 'bg-blue-100 text-blue-800' };
   }
 
   return CONSULTANT_PROJECT_STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
