@@ -41,6 +41,17 @@ function makeUser(overrides: Partial<UserWithProfile> = {}): UserWithProfile {
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/** Server Action이 수동으로 resolve 가능한 지연 Promise를 반환하도록 설정 */
+function mockDeferredAction() {
+  let resolve!: (value: { success: true }) => void;
+  mockUpdateUserStatus.mockReturnValue(new Promise((r) => { resolve = r; }));
+  return () => resolve({ success: true });
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -51,12 +62,7 @@ describe('UserManagementTable', () => {
 
   it('액션 성공 후 users prop이 갱신될 때까지 "처리 중..." 상태를 유지한다', async () => {
     // Arrange: ACTIVE 상태의 CONSULTANT_APPROVED 사용자 → "정지" 버튼 표시
-    let resolveAction!: (value: { success: true }) => void;
-    mockUpdateUserStatus.mockReturnValue(
-      new Promise((resolve) => {
-        resolveAction = resolve;
-      }),
-    );
+    const resolveAction = mockDeferredAction();
 
     const initialUsers = [makeUser()];
     const { rerender } = render(<UserManagementTable users={initialUsers} />);
@@ -75,11 +81,10 @@ describe('UserManagementTable', () => {
 
     // Act: Server Action 성공 반환
     await act(async () => {
-      resolveAction({ success: true });
+      resolveAction();
     });
 
-    // Assert (핵심!): router.refresh() 완료 전이므로 여전히 "처리 중..." 상태
-    // BUG: 현재 코드에서는 setIsLoading(null)이 먼저 호출되어 "정지"가 다시 나타남
+    // Assert: router.refresh() 완료 전이므로 여전히 "처리 중..." 상태
     expect(screen.queryByText('정지')).not.toBeInTheDocument();
 
     // Act: users prop 갱신 (router.refresh() 완료를 시뮬레이션)
@@ -112,12 +117,7 @@ describe('UserManagementTable', () => {
 
   it('승인 액션 성공 후 users prop 갱신까지 "처리 중..." 유지한다', async () => {
     // Arrange: USER_PENDING 상태 → "승인" 버튼
-    let resolveAction!: (value: { success: true }) => void;
-    mockUpdateUserStatus.mockReturnValue(
-      new Promise((resolve) => {
-        resolveAction = resolve;
-      }),
-    );
+    const resolveAction = mockDeferredAction();
 
     const pendingUser = makeUser({ role: 'USER_PENDING', status: 'ACTIVE' });
     const { rerender } = render(<UserManagementTable users={[pendingUser]} />);
@@ -133,7 +133,7 @@ describe('UserManagementTable', () => {
 
     // Act: 성공 반환
     await act(async () => {
-      resolveAction({ success: true });
+      resolveAction();
     });
 
     // Assert: 여전히 "처리 중..." (승인 버튼으로 깜빡이지 않음)
