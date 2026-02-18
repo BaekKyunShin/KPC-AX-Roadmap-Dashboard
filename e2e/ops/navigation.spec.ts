@@ -67,6 +67,12 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     ).toBeVisible();
   });
 
+  test('메시지 안읽음 배지 존재 확인', async ({ opsPage: page }) => {
+    const messageBtn = page.getByRole('button', { name: /메시지/ });
+    // 안읽음 배지: bg-blue-500 둥근 span (unreadCount > 0일 때 렌더)
+    await expect(messageBtn.locator('.bg-blue-500')).toBeAttached();
+  });
+
   test('메시지 아이콘 클릭 → /dashboard/messages', async ({ opsPage: page }) => {
     await page.getByRole('button', { name: /메시지/ }).click();
     await expect(page).toHaveURL('/dashboard/messages');
@@ -88,6 +94,17 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     await expect(
       page.locator('nav').getByText(/시스템관리자|운영관리자/),
     ).toBeVisible();
+  });
+
+  test('알림 벨 아이콘 표시 확인', async ({ opsPage: page }) => {
+    await expect(page.getByRole('button', { name: /알림/ })).toBeVisible();
+  });
+
+  test('활성 메뉴 하이라이트 확인', async ({ opsPage: page }) => {
+    // /ops/projects 페이지에서 "워크스페이스" 드롭다운 트리거가 활성 상태
+    const trigger = page.getByRole('button', { name: '워크스페이스', exact: true });
+    await expect(trigger).toHaveClass(/bg-blue-50/);
+    await expect(trigger).toHaveClass(/text-blue-700/);
   });
 
   test('사용자 드롭다운 → 계정 설정', async ({ opsPage: page }) => {
@@ -120,6 +137,15 @@ test.describe('Phase 2.2: 알림 벨', () => {
     await expect(popover.getByRole('button', { name: '인터뷰' })).toBeVisible();
     await expect(popover.getByRole('button', { name: '초안' })).toBeVisible();
     await expect(popover.getByRole('button', { name: '확정' })).toBeVisible();
+  });
+
+  test('각 탭 클릭 시 "새로운 알림이 없습니다" 표시', async ({ opsPage: page }) => {
+    await page.getByRole('button', { name: /알림/ }).click();
+    const popover = page.locator('[data-slot="popover-content"]');
+    for (const tab of ['전체', '인터뷰', '초안', '확정']) {
+      await popover.getByRole('button', { name: tab }).click();
+      await expect(popover.getByText('새로운 알림이 없습니다')).toBeVisible();
+    }
   });
 
   test('팝오버 Escape 키로 닫힘', async ({ opsPage: page }) => {

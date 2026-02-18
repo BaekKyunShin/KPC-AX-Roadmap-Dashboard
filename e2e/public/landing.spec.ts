@@ -32,12 +32,28 @@ test.describe('Phase 1.1: 랜딩 페이지 (/)', () => {
     await expect(page).toHaveURL('/register');
   });
 
-  test('주요 섹션 존재 확인 (features, workflow, demo)', async ({ page }) => {
+  test('FeaturesSection CTA "로그인하여 시작하기" → /login 이동', async ({ page }) => {
     await page.goto('/');
-    // 각 섹션이 DOM에 존재하는지 확인 (애니메이션과 무관)
+    await page.getByRole('link', { name: '로그인하여 시작하기' }).click();
+    await expect(page).toHaveURL('/login');
+  });
+
+  test('DemoSection CTA "무료로 시작하기" → /register 이동', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: '무료로 시작하기' }).click();
+    await expect(page).toHaveURL('/register');
+  });
+
+  test('주요 섹션 존재 확인 (hero, features, workflow, demo, footer)', async ({ page }) => {
+    await page.goto('/');
+    // 네비게이션 바
+    await expect(page.locator('nav')).toBeAttached();
+    // ID가 있는 섹션
     await expect(page.locator('section#features')).toBeAttached();
     await expect(page.locator('section#workflow')).toBeAttached();
     await expect(page.locator('section#demo')).toBeAttached();
+    // 전체 section 요소 5개 (Hero + Features + Workflow + Demo + Footer)
+    await expect(page.locator('section')).toHaveCount(5);
   });
 
   test('KPC 외부 링크 존재 확인', async ({ page }) => {

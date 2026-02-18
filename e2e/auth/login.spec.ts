@@ -78,6 +78,21 @@ test.describe('Phase 1.3: 로그인 페이지 (/login)', () => {
     await expect(page).toHaveURL('/register');
   });
 
+  test('제출 시 "로그인 중..." 로딩 상태 + 버튼 비활성화', async ({ page }) => {
+    await page.locator('[name="email"]').fill(process.env.E2E_OPS_ADMIN_EMAIL!);
+    await page.locator('[name="password"]').fill(process.env.E2E_OPS_ADMIN_PASSWORD!);
+
+    const submitBtn = page.locator('button[type="submit"]');
+    await submitBtn.click();
+
+    // 로딩 상태: 서버 응답 + 리다이렉트까지 유지 (성공 시 setIsLoading(false) 미호출)
+    await expect(submitBtn).toContainText('로그인 중...');
+    await expect(submitBtn).toBeDisabled();
+
+    // 로그인 완료 후 리다이렉트
+    await expect(page).toHaveURL(/\/(ops|consultant|dashboard)/, { timeout: 15_000 });
+  });
+
   test('올바른 계정 로그인 → 리다이렉트', async ({ page }) => {
     await page.locator('[name="email"]').fill(process.env.E2E_OPS_ADMIN_EMAIL!);
     await page.locator('[name="password"]').fill(process.env.E2E_OPS_ADMIN_PASSWORD!);

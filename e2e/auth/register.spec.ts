@@ -87,6 +87,38 @@ test.describe('Phase 1.4: 회원가입 페이지 (/register)', () => {
     await expect(page.getByText('비밀번호가 일치하지 않습니다.')).toBeVisible();
   });
 
+  test('개인정보 동의 미체크 시 → 제출 차단 (required)', async ({ page }) => {
+    await page.locator('[name="email"]').fill('test-agree@example.com');
+    await page.locator('[name="name"]').fill('테스트');
+    await page.locator('[name="password"]').fill('Test1234');
+    await page.locator('[name="confirmPassword"]').fill('Test1234');
+    // agreeToTerms 체크하지 않음
+    await page.getByRole('button', { name: /다음/ }).click();
+    // HTML5 required가 폼 제출 차단 — URL 변경 없음
+    await expect(page).toHaveURL(/\/register/);
+  });
+
+  test('비밀번호 보기/숨기기 토글 — password, confirmPassword 각각', async ({ page }) => {
+    const pwInput = page.locator('#password');
+    const confirmPwInput = page.locator('#confirmPassword');
+    const pwToggle = page.locator('#password ~ button[type="button"]');
+    const confirmPwToggle = page.locator('#confirmPassword ~ button[type="button"]');
+
+    // password 필드 토글
+    await expect(pwInput).toHaveAttribute('type', 'password');
+    await pwToggle.click();
+    await expect(pwInput).toHaveAttribute('type', 'text');
+    await pwToggle.click();
+    await expect(pwInput).toHaveAttribute('type', 'password');
+
+    // confirmPassword 필드 토글
+    await expect(confirmPwInput).toHaveAttribute('type', 'password');
+    await confirmPwToggle.click();
+    await expect(confirmPwInput).toHaveAttribute('type', 'text');
+    await confirmPwToggle.click();
+    await expect(confirmPwInput).toHaveAttribute('type', 'password');
+  });
+
   test('이미 존재하는 이메일 → 서버 에러', async ({ page }) => {
     await page.locator('[name="email"]').fill(process.env.E2E_OPS_ADMIN_EMAIL!);
     await page.locator('[name="name"]').fill('테스트');
