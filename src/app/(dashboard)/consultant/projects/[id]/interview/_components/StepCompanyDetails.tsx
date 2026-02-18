@@ -10,18 +10,18 @@ interface StepCompanyDetailsProps {
   onCompanyDetailsChange: (details: CompanyDetails) => void;
 }
 
-// 예시 데이터 (자동차 부품 1차 협력사 품질팀 시나리오)
+// 예시 데이터 (중소 유통 기업 일반 사무 시나리오)
 const EXAMPLE_COMPANY_DETAILS: CompanyDetails = {
   systems_and_tools: [
     'MS Office (Excel, Word, PPT)',
-    'MES (제조실행시스템)',
-    'ERP (더존 Smart A)',
+    'Google Workspace',
     '그룹웨어 (하이웍스)',
+    '자사 쇼핑몰 (카페24)',
+    '카카오톡 채널',
     '전자결재',
-    'CAD (AutoCAD)',
   ],
-  ai_experience: `• 경험 없음 - 품질팀 내 AI 도구 사용 경험 없음
-• 일부 직원이 개인적으로 ChatGPT 사용해본 적 있으나, 회사 업무에는 보안 문제로 사용 금지`,
+  ai_experience: `• ChatGPT: 일부 직원이 개인적으로 이메일 초안 작성, 번역에 사용
+• 그 외 AI 도구 사용 경험 없음 - 회사 차원의 AI 도입은 아직 미진행`,
 };
 
 // 태그 입력 컴포넌트

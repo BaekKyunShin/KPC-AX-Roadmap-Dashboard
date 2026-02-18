@@ -10,16 +10,16 @@ import {
 } from '@/lib/constants/stt';
 import FillExampleButton from './FillExampleButton';
 
-// 자동차 부품 품질관리 개선 목표 예시 텍스트 (1차 협력사 품질팀 시나리오)
-const EXAMPLE_GOALS_TEXT = `1. 입고 검사 데이터 입력 시간 50% 단축 (현재 일 2시간 → 목표 1시간). 2차 협력사 성적서를 Excel에 수기 입력하는 작업 자동화.
-2. 주간 품질 보고서 작성 시간 80% 단축 (현재 4시간 → 목표 30분). MES 데이터 추출 → 분석 → PPT 작성까지 반복 작업 자동화.
-3. OEM 클레임 대응(8D 보고서) 작성 시간 60% 단축 (현재 4시간 → 목표 1.5시간). 과거 유사 불량 사례 자동 검색 및 원인 분석 초안 자동 생성.
-4. 품질 담당자 퇴사 시 업무 인수인계 기간 단축 (현재 2주 → 목표 3일). 분석 방법, 보고서 양식 등 암묵지를 시스템화.`;
+// 일반 사무/서비스 기업 개선 목표 예시 텍스트 (중소 유통 기업 시나리오)
+const EXAMPLE_GOALS_TEXT = `1. 고객 문의 응답 시간 40% 단축 (현재 평균 4시간 → 목표 2시간). 반복 문의는 AI로 자동 분류하고 응답 템플릿 자동 생성.
+2. 월간 매출 보고서 작성 시간 70% 단축 (현재 2~3일 → 목표 반나절). 데이터 수집 → 분석 → 보고서 작성까지 반복 작업 자동화.
+3. SNS 콘텐츠 제작 시간 50% 단축 (카드뉴스 2시간 → 1시간, 블로그 3시간 → 1.5시간). AI로 초안 생성 후 수정하는 방식으로 전환.
+4. 회의록 작성 및 공유 시간 80% 단축 (현재 회의당 1시간 → 목표 10분). AI로 회의 내용 요약 및 Action Item 자동 정리.`;
 
-// 자동차 부품 품질관리 제약사항 예시 텍스트 (1차 협력사 품질팀 시나리오)
-const EXAMPLE_CONSTRAINTS_TEXT = `1. 품질 데이터 외부 반출 금지 (OEM 보안 정책). 현대차/기아 협력사 보안 서약에 따라 외부 클라우드 업로드 불가. ChatGPT 등 외부 AI 서비스 사용 금지.
-2. MES 시스템 API 미제공. 2015년 도입된 레거시 시스템이라 API 없음. 데이터 추출은 화면에서 수동 복사하거나 IT팀에 CSV 요청(2-3일 소요)만 가능.
-3. 신규 소프트웨어 도입 시 OEM 승인 필요. 현대차 품질 포털 연동 소프트웨어는 OEM 사전 승인 필수 (약 4주 소요).`;
+// 일반 사무/서비스 기업 제약사항 예시 텍스트 (중소 유통 기업 시나리오)
+const EXAMPLE_CONSTRAINTS_TEXT = `1. 고객 개인정보(이름, 연락처, 주소 등)를 외부 AI 서비스에 직접 입력 금지. 개인정보보호법 준수 필요.
+2. 월 IT 예산 한정으로 유료 소프트웨어 추가 도입이 어려움. 무료 또는 기존 구독 중인 도구 범위 내에서 활용 희망.
+3. 직원 대부분이 비개발자로, 코딩이 필요한 도구는 사용이 어려움. 클릭 기반의 쉬운 도구 위주로 교육 필요.`;
 
 interface StepConstraintsGoalsProps {
   constraints: Constraint[];
@@ -147,9 +147,9 @@ export default function StepConstraintsGoals({
           value={goalsText}
           onChange={(e) => updateGoalsText(e.target.value)}
           required
-          placeholder={`1. 입고 검사 데이터 입력 시간 50% 단축 (현재 일 2시간 → 목표 1시간)
-2. SPC 분석 리포트 작성 시간 80% 단축 (현재 주 4시간 → 목표 30분)
-3. 부적합 보고서(NCR) 작성 시간 60% 단축`}
+          placeholder={`1. 고객 문의 응답 시간 40% 단축 (현재 평균 4시간 → 목표 2시간)
+2. 월간 보고서 작성 시간 70% 단축 (현재 2~3일 → 목표 반나절)
+3. SNS 콘텐츠 제작 시간 50% 단축 (카드뉴스 2시간 → 1시간)`}
           className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y break-keep"
         />
       </div>
@@ -172,9 +172,9 @@ export default function StepConstraintsGoals({
           rows={6}
           value={constraintsText}
           onChange={(e) => updateConstraintsText(e.target.value)}
-          placeholder={`1. 품질 데이터의 외부 클라우드 업로드 금지 (OEM 보안 정책)
-2. MES 레거시 시스템으로 API 미제공, 수동 복사만 가능
-3. 새 소프트웨어 도입 시 IT보안팀 승인 필요 (3-4주 소요)`}
+          placeholder={`1. 고객 개인정보를 외부 AI 서비스에 직접 입력 금지
+2. 유료 소프트웨어 추가 도입 예산 없음, 무료 도구 위주 활용
+3. 직원 대부분 비개발자, 코딩 필요 없는 도구만 가능`}
           className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y break-keep"
         />
       </div>

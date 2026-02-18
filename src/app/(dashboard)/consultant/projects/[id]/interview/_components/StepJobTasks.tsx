@@ -4,47 +4,47 @@ import type { JobTask } from '@/lib/schemas/interview';
 import { createEmptyJobTask } from '@/lib/schemas/interview';
 import FillExampleButton from './FillExampleButton';
 
-// 자동차 부품 품질관리 예시 데이터 (1차 협력사 품질팀 시나리오)
+// 일반 사무/서비스 기업 예시 데이터 (중소 유통 기업 시나리오)
 const EXAMPLE_TASKS: Omit<JobTask, 'id'>[] = [
   {
-    task_name: '입고 부품 수입검사',
-    task_description: `1. 2차 협력사에서 입고되는 원자재/부품의 품질검사 수행
-2. CMM(3차원 측정기)으로 치수 측정, 외관 검사, 재질 성적서 확인
-3. 검사 결과를 Excel에 수기 입력 후 품질관리 시스템에 등록
-4. 불합격 시 부적합 보고서(NCR) 작성 및 2차 협력사에 반품 통보
-5. 일 평균 30-50건의 입고 LOT 처리`,
+    task_name: '고객 문의 응대 및 분류',
+    task_description: `1. 카카오톡 채널, 전화, 이메일로 접수되는 고객 문의 응대
+2. 문의 유형별 분류 (배송, 교환/반품, 제품 문의, 불만 등)
+3. 자주 묻는 질문은 복사-붙여넣기로 응답, 특이 건은 담당자에게 전달
+4. 문의 내역을 Excel에 수기로 기록하고 주간 현황 정리
+5. 일 평균 40-60건 문의 처리`,
   },
   {
-    task_name: '공정 내 품질검사',
-    task_description: `1. 프레스, 용접, 도장, 조립 공정별 중간 품질검사 수행
-2. SPC(통계적 공정관리) 데이터 기록 및 Cpk 지수 모니터링
-3. 검사 항목: 치수, 외관, 토크값, 용접 강도, 도막 두께 등
-4. 이상 발생 시 라인 정지 및 원인 분석, 시정조치 실시
-5. 검사 데이터를 MES에 입력하고 일일 품질 현황 정리`,
+    task_name: '월간 매출 보고서 작성',
+    task_description: `1. 쇼핑몰 관리자와 ERP에서 매출 데이터 추출
+2. Excel로 채널별(자사몰, 쿠팡, 네이버) 매출 정리 및 전월 대비 분석
+3. 피벗테이블로 상품별/기간별 매출 분석 후 차트 생성
+4. PPT로 월간 매출 보고서 작성 (경영진 보고용)
+5. 매월 초 3일간 보고서 작성에 집중`,
   },
   {
-    task_name: '완제품 출하검사',
-    task_description: `1. OEM(현대차, 기아 등) 납품 전 최종 품질검사 수행
-2. 외관 검사, 기능 검사, 포장 상태 확인
-3. 출하검사 성적서 작성 및 품질 보증서 발행
-4. 검사 체크리스트 50개 항목 확인 후 합격 판정
-5. 불합격 시 재작업 지시 및 재검사 수행`,
+    task_name: 'SNS 마케팅 콘텐츠 제작',
+    task_description: `1. 인스타그램, 블로그 등 채널별 콘텐츠 기획 및 작성
+2. 신제품 소개, 프로모션 안내, 고객 후기 콘텐츠 제작
+3. 상품 사진 편집 및 카드뉴스/배너 이미지 디자인
+4. 주 3-4회 콘텐츠 발행, 댓글/DM 관리
+5. 월간 콘텐츠 캘린더 작성 및 성과(조회수, 참여율) 정리`,
   },
   {
-    task_name: '품질 데이터 분석 및 보고서 작성',
-    task_description: `1. 일간/주간/월간 품질 현황 보고서 작성
-2. MES에서 품질 데이터 추출 → Excel로 분석 → PPT 보고서 작성
-3. 불량률 추이 분석, 파레토 차트, 4M 원인 분석 수행
-4. OEM 품질 회의용 자료 및 경영진 보고용 KPI 대시보드 업데이트
-5. 주 1회 품질 현황 보고, 월 1회 품질 실적 보고`,
+    task_name: '거래처 발주 및 재고 관리',
+    task_description: `1. 거래처별 발주서 작성 및 이메일/팩스 발송
+2. 입고 확인 후 Excel 재고 대장 업데이트
+3. 주 1회 재고 실사 및 시스템 데이터 대조
+4. 재고 부족 시 긴급 발주 처리
+5. 월말 재고 현황 보고서 작성`,
   },
   {
-    task_name: '고객 클레임 대응 및 시정조치',
-    task_description: `1. OEM으로부터 접수된 품질 클레임 분석 및 원인 조사
-2. 8D 보고서 작성 (문제 정의, 원인 분석, 시정조치, 재발 방지)
-3. 클레임 부품 회수 및 분석, 불량 재현 테스트 수행
-4. 시정조치 이행 확인 및 유효성 검증
-5. OEM 품질 포털에 대응 결과 등록 (기한 내 회신 필수)`,
+    task_name: '내부 회의록 작성 및 업무 공유',
+    task_description: `1. 주간 팀 회의, 월간 전체 회의 참석 및 회의록 작성
+2. 회의 중 수기 메모 → 회의 후 Word로 정리 → 그룹웨어에 공유
+3. 회의 결정사항 및 Action Item 추적 관리
+4. 부서 간 업무 요청/공유 사항 정리 및 전달
+5. 주 2-3회 회의, 회의록 작성에 회의당 30분-1시간 소요`,
   },
 ];
 
@@ -144,7 +144,7 @@ export default function StepJobTasks({
                   value={task.task_name}
                   onChange={(e) => updateTask(index, 'task_name', e.target.value)}
                   required
-                  placeholder="예: 입고 부품 수입검사"
+                  placeholder="예: 고객 문의 응대 및 분류"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
