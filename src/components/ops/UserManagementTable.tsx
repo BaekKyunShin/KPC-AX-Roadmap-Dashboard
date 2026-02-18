@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
@@ -89,12 +89,28 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
     userName: string;
   } | null>(null);
 
+  const scrollPositionRef = useRef<number | null>(null);
+
   // users prop이 갱신되면 로딩 상태 해제 (React 권장 패턴: props 변경 시 상태 조정)
   const [prevUsers, setPrevUsers] = useState(users);
   if (users !== prevUsers) {
     setPrevUsers(users);
     setIsLoading(null);
   }
+
+  // Next.js layout-router의 ScrollAndFocusHandler(부모 class component)가
+  // componentDidUpdate에서 htmlElement.scrollTop = 0을 실행하므로,
+  // 자식인 이 컴포넌트의 useLayoutEffect보다 늦게 실행됨.
+  // requestAnimationFrame을 사용하여 componentDidUpdate 이후, 브라우저 paint 이전에 복원.
+  useLayoutEffect(() => {
+    if (!isPending && scrollPositionRef.current !== null) {
+      const savedPosition = scrollPositionRef.current;
+      scrollPositionRef.current = null;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedPosition, behavior: 'instant' });
+      });
+    }
+  }, [isPending]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -108,6 +124,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       const result = await updateUserStatus(userId, action);
 
       if (result.success) {
+        scrollPositionRef.current = window.scrollY;
         startTransition(() => {
           router.refresh();
         });
