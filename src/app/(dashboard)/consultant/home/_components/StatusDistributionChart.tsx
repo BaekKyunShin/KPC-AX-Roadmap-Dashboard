@@ -5,6 +5,7 @@ import {
   ChartContainer,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 
 interface ChartDataItem {
   name: string;
@@ -17,6 +18,7 @@ interface StatusDistributionChartProps {
   total: number;
 }
 
+/** 차트 전용 hex 색상 (KPI/차트용 -400톤) — 순서가 곧 표시 순서 */
 const CHART_COLORS: Record<string, string> = {
   ASSIGNED: '#60A5FA',        // blue-400
   INTERVIEWED: '#FBBF24',     // amber-400
@@ -24,30 +26,27 @@ const CHART_COLORS: Record<string, string> = {
   FINALIZED: '#4ADE80',       // green-400
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  ASSIGNED: '인터뷰 대기',
-  INTERVIEWED: '인터뷰 완료',
-  ROADMAP_DRAFTED: '로드맵 작성 중',
-  FINALIZED: '로드맵 완료',
-};
-
 /** byStatus Record를 차트 데이터로 변환 */
 function toChartData(byStatus: Record<string, number>): ChartDataItem[] {
-  const order = ['ASSIGNED', 'INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'];
-  return order
+  return Object.keys(CHART_COLORS)
     .filter((status) => (byStatus[status] || 0) > 0)
     .map((status) => ({
       name: status,
       value: byStatus[status],
-      color: CHART_COLORS[status] || '#9CA3AF',
+      color: CHART_COLORS[status],
     }));
+}
+
+/** 상태 키 → 한글 라벨 (CONSULTANT_PROJECT_STATUS_CONFIG에서 파생) */
+function getStatusLabel(statusKey: string): string {
+  return CONSULTANT_PROJECT_STATUS_CONFIG[statusKey]?.label || statusKey;
 }
 
 export function StatusDistributionChart({ byStatus, total }: StatusDistributionChartProps) {
   const data = toChartData(byStatus);
 
   const config: ChartConfig = Object.fromEntries(
-    data.map((item) => [item.name, { label: STATUS_LABELS[item.name] || item.name, color: item.color }]),
+    data.map((item) => [item.name, { label: getStatusLabel(item.name), color: item.color }]),
   );
 
   if (total === 0) {
@@ -108,7 +107,7 @@ export function StatusDistributionChart({ byStatus, total }: StatusDistributionC
                 className="w-3 h-3 shrink-0 rounded-full"
                 style={{ backgroundColor: item.color }}
               />
-              <span className="text-gray-600">{STATUS_LABELS[item.name] || item.name}</span>
+              <span className="text-gray-600">{getStatusLabel(item.name)}</span>
             </div>
             <span className="font-medium text-gray-900">{item.value}건</span>
           </div>

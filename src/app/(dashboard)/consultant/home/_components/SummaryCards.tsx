@@ -16,7 +16,6 @@ interface SummaryCardsProps {
 
 const CARDS = [
   {
-    key: 'total',
     label: '전체 프로젝트',
     icon: FolderOpen,
     borderColor: 'border-gray-400',
@@ -25,7 +24,6 @@ const CARDS = [
     field: 'total' as const,
   },
   {
-    key: 'waitingInterview',
     label: '인터뷰 대기',
     icon: CalendarClock,
     borderColor: 'border-blue-400',
@@ -34,7 +32,6 @@ const CARDS = [
     field: 'waitingInterview' as const,
   },
   {
-    key: 'interviewDone',
     label: '인터뷰 완료',
     icon: ClipboardCheck,
     borderColor: 'border-amber-400',
@@ -43,7 +40,6 @@ const CARDS = [
     field: 'interviewDone' as const,
   },
   {
-    key: 'draftingRoadmap',
     label: '로드맵 작성 중',
     icon: PenLine,
     borderColor: 'border-purple-400',
@@ -52,7 +48,6 @@ const CARDS = [
     field: 'draftingRoadmap' as const,
   },
   {
-    key: 'roadmapCompleted',
     label: '로드맵 완료',
     icon: CheckCircle2,
     borderColor: 'border-green-400',
@@ -77,7 +72,7 @@ export function SummaryCards({
         const Icon = card.icon;
         return (
           <div
-            key={card.key}
+            key={card.field}
             className={`bg-white rounded-lg shadow p-4 border-l-4 ${card.borderColor}`}
           >
             <div className="flex items-center justify-between">

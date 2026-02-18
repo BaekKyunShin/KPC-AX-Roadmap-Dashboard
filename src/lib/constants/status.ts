@@ -207,12 +207,9 @@ export function getConsultantProjectStatusBadge(
   status: string,
   hasInterview?: boolean
 ): { label: string; color: string } {
-  // ASSIGNED 상태에서 인터뷰 여부에 따른 분기
-  if (status === 'ASSIGNED') {
-    if (hasInterview) {
-      return { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' };
-    }
-    return { label: '인터뷰 대기', color: 'bg-blue-100 text-blue-800' };
+  // ASSIGNED 상태에서 인터뷰 완료 시 INTERVIEWED 배지 표시
+  if (status === 'ASSIGNED' && hasInterview) {
+    return CONSULTANT_PROJECT_STATUS_CONFIG['INTERVIEWED'];
   }
 
   return CONSULTANT_PROJECT_STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
