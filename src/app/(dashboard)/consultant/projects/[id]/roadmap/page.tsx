@@ -12,6 +12,7 @@ import {
   fetchRoadmapVersion,
   fetchProjectInfo,
   editRoadmapManually,
+  cancelRoadmapGeneration,
 } from './actions';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
@@ -109,7 +110,10 @@ export default function RoadmapPage() {
         setIsGenerationComplete(false);
       }, COMPLETION_DELAY_MS);
     } else {
-      showErrorToast('로드맵 생성 실패', result.error);
+      // 사용자가 직접 취소한 경우 에러 토스트를 표시하지 않음
+      if (!result.error?.includes('취소되었습니다')) {
+        showErrorToast('로드맵 생성 실패', result.error);
+      }
       setIsGenerating(false);
     }
   };
@@ -218,10 +222,11 @@ export default function RoadmapPage() {
 
   const canEdit = selectedVersion?.status === 'DRAFT';
 
-  // 로드맵 생성 취소
-  const handleCancelGeneration = () => {
+  // 로드맵 생성 취소 (서버 LLM 호출도 중단)
+  const handleCancelGeneration = async () => {
     setIsGenerating(false);
     setIsGenerationComplete(false);
+    await cancelRoadmapGeneration();
   };
 
   if (isLoading) {

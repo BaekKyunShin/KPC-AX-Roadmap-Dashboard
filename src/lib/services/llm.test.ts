@@ -10,6 +10,7 @@ import {
   getModelCapabilities,
   callLLM,
   callLLMForJSON,
+  getLLMUserFriendlyError,
   type LLMMessage,
 } from './llm';
 
@@ -102,7 +103,7 @@ describe('callLLM', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content: '응답 텍스트' } }],
+              choices: [{ message: { content: '응답 텍스트' }, finish_reason: 'stop' }],
               usage: {
                 prompt_tokens: 10,
                 completion_tokens: 20,
@@ -209,7 +210,7 @@ describe('callLLM', () => {
 
     const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
     await expect(callLLM(messages)).rejects.toThrow(
-      'LLM API 호출 타임아웃 (300초 초과)'
+      'LLM API 호출 타임아웃 (240초 초과)'
     );
   });
 
@@ -236,6 +237,26 @@ describe('callLLM', () => {
     await expect(callLLM(messages)).rejects.toThrow(
       'LLM API 호출 실패: 429'
     );
+  });
+
+  it('finishReason을 반환', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content: '응답' }, finish_reason: 'length' }],
+              usage: null,
+            }),
+        })
+      )
+    );
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    const result = await callLLM(messages);
+    expect(result.finishReason).toBe('length');
   });
 
   it('choices가 비어있으면 빈 문자열 반환', async () => {
@@ -270,7 +291,7 @@ describe('callLLMForJSON', () => {
     vi.restoreAllMocks();
   });
 
-  function mockFetchResponse(content: string) {
+  function mockFetchResponse(content: string, finishReason: string = 'stop') {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
@@ -278,7 +299,7 @@ describe('callLLMForJSON', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content } }],
+              choices: [{ message: { content }, finish_reason: finishReason }],
               usage: null,
             }),
         })
@@ -328,7 +349,7 @@ describe('callLLMForJSON', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content } }],
+              choices: [{ message: { content }, finish_reason: 'stop' }],
               usage: null,
             }),
         });
@@ -366,7 +387,7 @@ describe('callLLMForJSON', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              choices: [{ message: { content } }],
+              choices: [{ message: { content }, finish_reason: 'stop' }],
               usage: null,
             }),
         });
@@ -391,5 +412,79 @@ describe('callLLMForJSON', () => {
     ).rejects.toThrow();
 
     expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('finish_reason이 length이면 재시도 없이 즉시 에러', async () => {
+    mockFetchResponse('{"incomplete": true', 'length');
+
+    await expect(
+      callLLMForJSON([{ role: 'user', content: '테스트' }])
+    ).rejects.toThrow('LLM 응답이 토큰 한도에 도달하여 잘렸습니다');
+
+    // 재시도 없이 1번만 호출
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('LLM 호출 에러(타임아웃 등)는 재시도 없이 즉시 throw', async () => {
+    const timeoutError = new DOMException('signal timed out', 'TimeoutError');
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(timeoutError)));
+
+    await expect(
+      callLLMForJSON([{ role: 'user', content: '테스트' }])
+    ).rejects.toThrow('LLM API 호출 타임아웃');
+
+    // 재시도 없이 1번만 호출
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('JSON 문자열 내 제어 문자를 자동 정제하여 파싱 성공', async () => {
+    // 실제 줄바꿈이 JSON 문자열 값 안에 들어간 경우
+    const contentWithControlChars = '{"desc": "줄바꿈\n포함된\t텍스트"}';
+    mockFetchResponse(contentWithControlChars);
+
+    const result = await callLLMForJSON<{ desc: string }>([
+      { role: 'user', content: '테스트' },
+    ]);
+
+    expect(result.desc).toBe('줄바꿈\n포함된\t텍스트');
+  });
+});
+
+// ─── getLLMUserFriendlyError ─────────────────────────────────────────────────
+
+describe('getLLMUserFriendlyError', () => {
+  it('타임아웃 에러', () => {
+    const error = new Error('LLM API 호출 타임아웃 (180초 초과)');
+    expect(getLLMUserFriendlyError(error)).toBe('AI 응답 시간이 초과되었습니다. 다시 시도해 주세요.');
+  });
+
+  it('토큰 한도 잘림 에러', () => {
+    const error = new Error('LLM 응답이 토큰 한도에 도달하여 잘렸습니다.');
+    expect(getLLMUserFriendlyError(error)).toBe('AI 응답이 잘렸습니다. 관리자에게 문의해 주세요.');
+  });
+
+  it('네트워크 에러 (Failed to fetch)', () => {
+    const error = new TypeError('Failed to fetch');
+    expect(getLLMUserFriendlyError(error)).toBe('네트워크 연결을 확인해 주세요.');
+  });
+
+  it('JSON 파싱 에러', () => {
+    const error = new Error('LLM JSON 파싱 실패');
+    expect(getLLMUserFriendlyError(error)).toBe('AI 응답 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
+  });
+
+  it('API 키 에러', () => {
+    const error = new Error('LLM API 키가 설정되지 않았습니다.');
+    expect(getLLMUserFriendlyError(error)).toBe('AI 서비스 설정에 문제가 있습니다. 관리자에게 문의해 주세요.');
+  });
+
+  it('API 호출 실패 에러', () => {
+    const error = new Error('LLM API 호출 실패: 429');
+    expect(getLLMUserFriendlyError(error)).toBe('AI 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요.');
+  });
+
+  it('알 수 없는 에러', () => {
+    const error = new Error('알 수 없는 에러');
+    expect(getLLMUserFriendlyError(error)).toBe('오류가 발생했습니다. 다시 시도해 주세요.');
   });
 });

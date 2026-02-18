@@ -79,7 +79,12 @@ const PROGRESS_CONFIG = {
     /** 해당 진행률에 도달하는 데 사용되는 시간 비율 (0~1) */
     THRESHOLD_TIME_RATIO: 0.6,
   },
+  /** 99% 도달 후 지연 메시지 표시까지 대기 시간 (밀리초) */
+  STALL_MESSAGE_DELAY_MS: 10_000,
 } as const;
+
+/** 99% 정체 시 표시할 메시지 */
+const STALL_MESSAGE = '예상보다 시간이 조금 더 걸리고 있습니다. 잠시만 기다려 주세요.';
 
 /** 100% 도달 후 오버레이 닫기 전 대기 시간 (밀리초) */
 const COMPLETION_HOLD_MS = 500;
@@ -216,9 +221,11 @@ function useProgress(isCompleted: boolean) {
   const [stepIndex, setStepIndex] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [isAnimatingCompletion, setIsAnimatingCompletion] = useState(false);
+  const [isStalled, setIsStalled] = useState(false);
 
   // 완료 애니메이션 시작 시점의 진행률 저장 (클로저 문제 방지)
   const animationStartProgressRef = useRef(0);
+  const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 일반 진행 (완료 전, 시간 기반 0% → 99%)
   useEffect(() => {
@@ -230,10 +237,23 @@ function useProgress(isCompleted: boolean) {
       const elapsed = Date.now() - startTime;
       setProgressPercent(calculateEasedProgress(elapsed / TOTAL_DURATION_MS));
       setStepIndex(calculateCurrentStep(elapsed));
+
+      // 99%에 도달하면 stall 타이머 시작
+      if (elapsed >= TOTAL_DURATION_MS && !stallTimerRef.current) {
+        stallTimerRef.current = setTimeout(() => {
+          setIsStalled(true);
+        }, PROGRESS_CONFIG.STALL_MESSAGE_DELAY_MS);
+      }
     };
 
     const intervalId = setInterval(tick, PROGRESS_UPDATE_INTERVAL_MS);
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      if (stallTimerRef.current) {
+        clearTimeout(stallTimerRef.current);
+        stallTimerRef.current = null;
+      }
+    };
   }, [isCompleted, isAnimatingCompletion]);
 
   // 완료 애니메이션 (현재 진행률 → 100%)
@@ -243,6 +263,12 @@ function useProgress(isCompleted: boolean) {
     // 애니메이션 시작 시점의 진행률 캡처
     animationStartProgressRef.current = progressPercent;
     setIsAnimatingCompletion(true);
+    setIsStalled(false);
+
+    if (stallTimerRef.current) {
+      clearTimeout(stallTimerRef.current);
+      stallTimerRef.current = null;
+    }
 
     const startTime = Date.now();
     const { COMPLETION_ANIMATION_MS, COMPLETED_PERCENT } = PROGRESS_CONFIG;
@@ -266,6 +292,7 @@ function useProgress(isCompleted: boolean) {
     step: isCompleted ? lastStepIndex : stepIndex,
     progress: progressPercent,
     isAllStepsCompleted: isCompleted && hasReachedComplete,
+    isStalled,
   };
 }
 
@@ -482,7 +509,7 @@ export default function RoadmapLoadingOverlay({
   onCancel,
   isCompleted = false,
 }: RoadmapLoadingOverlayProps) {
-  const { step, progress, isAllStepsCompleted } = useProgress(isCompleted);
+  const { step, progress, isAllStepsCompleted, isStalled } = useProgress(isCompleted);
   const [isVisible, setIsVisible] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -551,6 +578,13 @@ export default function RoadmapLoadingOverlay({
           <StepIndicator steps={STEPS} currentStep={step} isAllCompleted={isAllStepsCompleted} />
 
           <ProgressBar message={stepMessages[step]} progress={progress} />
+
+          {/* 99% 정체 시 안내 메시지 */}
+          {isStalled && !isCompleted && (
+            <p className="text-sm text-amber-600 text-center mb-4 animate-in fade-in duration-500">
+              {STALL_MESSAGE}
+            </p>
+          )}
 
           <TipCard
             tip={currentTip}

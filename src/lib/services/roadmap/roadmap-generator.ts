@@ -34,7 +34,8 @@ export async function generateRoadmap(
   projectId: string,
   actorUserId: string,
   revisionPrompt?: string,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
+  signal?: AbortSignal
 ): Promise<{ roadmapId: string; result: RoadmapResult; validation: ValidationResult }> {
   const supabase = createAdminClient();
 
@@ -90,7 +91,9 @@ export async function generateRoadmap(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: LLM_TEMPERATURE } // maxTokens는 기본값(20000) 사용
+    { temperature: LLM_TEMPERATURE }, // maxTokens는 기본값(20000) 사용
+    2,
+    signal
   );
 
   // 시간 보정 적용 (recommended_hours와 커리큘럼 시간 일치시키기)
@@ -285,7 +288,8 @@ export async function generateTestRoadmap(
   input: TestRoadmapInput,
   actorUserId: string,
   consultantProfile: ConsultantProfile | null,
-  sttInsights?: SttInsights
+  sttInsights?: SttInsights,
+  signal?: AbortSignal
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   // 1. 원자적 쿼터 확인 + 사용량 기록
   const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
@@ -306,7 +310,9 @@ export async function generateTestRoadmap(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: LLM_TEMPERATURE }
+    { temperature: LLM_TEMPERATURE },
+    2,
+    signal
   );
 
   // 4. 시간 보정 적용
@@ -332,7 +338,8 @@ export async function reviseTestRoadmap(
   previousResult: RoadmapResult,
   revisionPrompt: string,
   actorUserId: string,
-  consultantProfile: ConsultantProfile | null
+  consultantProfile: ConsultantProfile | null,
+  signal?: AbortSignal
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   // 1. 원자적 쿼터 확인 + 사용량 기록
   const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
@@ -377,7 +384,9 @@ ${revisionPrompt}
       { role: 'system', content: systemPrompt },
       { role: 'user', content: revisionUserPrompt },
     ],
-    { temperature: LLM_TEMPERATURE }
+    { temperature: LLM_TEMPERATURE },
+    2,
+    signal
   );
 
   // 5. 시간 보정 적용

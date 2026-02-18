@@ -21,6 +21,7 @@ import TestStepSummary from './_components/TestStepSummary';
 import { useTestRoadmapForm } from './_hooks/useTestRoadmapForm';
 import { useStepValidator } from './_hooks/useStepValidator';
 import { useTestRoadmapActions } from './_hooks/useTestRoadmapActions';
+import { cancelTestRoadmapGeneration } from './actions';
 
 // =============================================================================
 // 타입 정의
@@ -281,9 +282,10 @@ export default function TestRoadmapClient({
           <RoadmapLoadingOverlay
             isTestMode={true}
             profileHref="/consultant/profile"
-            onCancel={() => {
+            onCancel={async () => {
               actions.setIsRevising(false);
               actions.setIsRevisionComplete(false);
+              await cancelTestRoadmapGeneration();
             }}
             isCompleted={actions.isRevisionComplete}
           />

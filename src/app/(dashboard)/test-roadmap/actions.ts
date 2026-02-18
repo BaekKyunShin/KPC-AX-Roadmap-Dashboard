@@ -11,7 +11,9 @@ import {
 import { createAuditLog } from '@/lib/services/audit';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 import type { SttInsights } from '@/lib/schemas/interview';
-import type { ActionResult } from '@/lib/types/action-result';
+import { getLLMUserFriendlyError } from '@/lib/services/llm';
+import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 // =============================================================================
 // 상수
@@ -111,6 +113,9 @@ export async function createTestRoadmap(
     return { success: false, error: inputValidation.error.errors[0].message };
   }
 
+  // 취소 가능하도록 AbortController 등록
+  const abortController = registerAbort(`test-roadmap:${auth.user.id}`);
+
   try {
     // 3. 컨설턴트 프로필 조회
     const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
@@ -131,7 +136,8 @@ export async function createTestRoadmap(
       roadmapInput,
       auth.user.id,
       consultantProfile,
-      sttInsights
+      sttInsights,
+      abortController.signal
     );
 
     // 6. 감사로그
@@ -160,8 +166,10 @@ export async function createTestRoadmap(
     console.error('[createTestRoadmap Error]', error);
     return {
       success: false,
-      error: ERROR_MESSAGES.CREATE_FAILED,
+      error: getLLMUserFriendlyError(error),
     };
+  } finally {
+    cleanupAbort(`test-roadmap:${auth.user.id}`);
   }
 }
 
@@ -184,6 +192,9 @@ export async function reviseTestRoadmap(
     return { success: false, error: ERROR_MESSAGES.REVISION_PROMPT_REQUIRED };
   }
 
+  // 취소 가능하도록 AbortController 등록
+  const abortController = registerAbort(`test-roadmap:${auth.user.id}`);
+
   try {
     // 3. 컨설턴트 프로필 조회
     const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
@@ -195,7 +206,8 @@ export async function reviseTestRoadmap(
       previousResult,
       revisionPrompt,
       auth.user.id,
-      consultantProfile
+      consultantProfile,
+      abortController.signal
     );
 
     // 5. 감사로그
@@ -224,7 +236,20 @@ export async function reviseTestRoadmap(
     console.error('[reviseTestRoadmap Error]', error);
     return {
       success: false,
-      error: ERROR_MESSAGES.REVISE_FAILED,
+      error: getLLMUserFriendlyError(error),
     };
+  } finally {
+    cleanupAbort(`test-roadmap:${auth.user.id}`);
   }
+}
+
+/**
+ * 진행 중인 테스트 로드맵 생성 취소
+ */
+export async function cancelTestRoadmapGeneration(): Promise<SimpleActionResult> {
+  const auth = await requireAuthWithRole(ALLOWED_ROLES);
+  if ('error' in auth) return { success: false, error: auth.error };
+
+  cancelAbort(`test-roadmap:${auth.user.id}`);
+  return { success: true };
 }

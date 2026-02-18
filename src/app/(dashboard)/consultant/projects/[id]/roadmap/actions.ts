@@ -13,6 +13,8 @@ import {
   type RoadmapCell,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
+import { getLLMUserFriendlyError } from '@/lib/services/llm';
+import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -51,32 +53,41 @@ export async function createRoadmap(
       return { success: false, error: '인터뷰가 완료된 프로젝트만 로드맵을 생성할 수 있습니다.' };
     }
 
-    // 로드맵 생성 (검증된 데이터 사용)
-    const { roadmapId, result, validation } = await generateRoadmap(
-      parsed.data.projectId,
-      user.id,
-      parsed.data.revisionPrompt
-    );
+    // 취소 가능하도록 AbortController 등록
+    const abortController = registerAbort(`roadmap:${user.id}`);
 
-    // 활동 일지 자동 기록
-    const logContent = parsed.data.revisionPrompt
-      ? '새 로드맵 버전이 생성되었습니다.'
-      : '로드맵이 생성되었습니다.';
-    await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
+    try {
+      // 로드맵 생성 (검증된 데이터 사용)
+      const { roadmapId, result, validation } = await generateRoadmap(
+        parsed.data.projectId,
+        user.id,
+        parsed.data.revisionPrompt,
+        false,
+        abortController.signal
+      );
 
-    return {
-      success: true,
-      data: {
-        roadmapId,
-        result,
-        validation,
-      },
-    };
+      // 활동 일지 자동 기록
+      const logContent = parsed.data.revisionPrompt
+        ? '새 로드맵 버전이 생성되었습니다.'
+        : '로드맵이 생성되었습니다.';
+      await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
+
+      return {
+        success: true,
+        data: {
+          roadmapId,
+          result,
+          validation,
+        },
+      };
+    } finally {
+      cleanupAbort(`roadmap:${user.id}`);
+    }
   } catch (error) {
     console.error('[createRoadmap Error]', error);
     return {
       success: false,
-      error: '로드맵 생성에 실패했습니다.',
+      error: getLLMUserFriendlyError(error),
     };
   }
 }
@@ -274,5 +285,16 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
       error: '프로젝트 정보 조회에 실패했습니다.',
     };
   }
+}
+
+/**
+ * 진행 중인 로드맵 생성 취소
+ */
+export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
+  const auth = await requireAuth();
+  if ('error' in auth) return { success: false, error: auth.error };
+
+  cancelAbort(`roadmap:${auth.user.id}`);
+  return { success: true };
 }
 
