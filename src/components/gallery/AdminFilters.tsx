@@ -25,8 +25,8 @@ const STATUS_OPTIONS = [
 ];
 
 const SHARED_OPTIONS = [
-  { value: 'true', label: '공유됨' },
-  { value: 'false', label: '비공유' },
+  { value: 'true', label: '공유' },
+  { value: 'false', label: '미공유' },
 ];
 
 function FilterBadge({
@@ -130,11 +130,11 @@ export function AdminFilters() {
               value={currentShared}
               onValueChange={(v) => updateParam('isShared', v === DEFAULT_FILTER_VALUE ? '' : v)}
             >
-              <SelectTrigger className="w-full sm:w-[120px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="공유" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={DEFAULT_FILTER_VALUE}>모든 공유</SelectItem>
+                <SelectItem value={DEFAULT_FILTER_VALUE}>공유 여부 전체</SelectItem>
                 {SHARED_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
