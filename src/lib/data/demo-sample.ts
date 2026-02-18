@@ -1,4 +1,9 @@
-import type { RoadmapCell, RoadmapRow, PBLCourse } from '@/lib/services/roadmap';
+import type {
+  CurriculumModule,
+  RoadmapCell,
+  RoadmapRow,
+  PBLCourse,
+} from '@/lib/services/roadmap';
 
 // =============================================================================
 // 데모용 샘플 데이터
@@ -10,55 +15,70 @@ export const SAMPLE_COMPANY = {
   size: '중소기업 (120명)',
 };
 
+// ---------------------------------------------------------------------------
+// 첫 번째 과정 공통 속성 (SAMPLE_COURSE_SINGLE + SAMPLE_PBL 공유)
+// ---------------------------------------------------------------------------
+
+const FIRST_COURSE_NAME = 'ChatGPT로 고객 문의 자동 분류하기';
+const FIRST_COURSE_TARGET_AUDIENCE = 'CS 담당자, 고객관리팀';
+const FIRST_COURSE_HOURS = 12;
+const FIRST_COURSE_PREREQUISITES = [
+  '최근 3개월 고객 문의 데이터',
+  'PC (인터넷 연결 필수)',
+  '기본 엑셀 활용 능력',
+];
+
+const FIRST_COURSE_CURRICULUM: CurriculumModule[] = [
+  {
+    module_name: '1주차: AI 챗봇과 프롬프트 기초',
+    hours: 3,
+    details: [
+      'ChatGPT 기본 사용법과 프롬프트 작성 원칙',
+      '고객 문의 유형 분류 체계 설계',
+      '실제 CS 데이터로 프롬프트 테스트',
+    ],
+    practice: '자사 고객 문의 50건을 ChatGPT로 유형별 분류',
+  },
+  {
+    module_name: '2주차: 문의 자동 분류 시스템 구축',
+    hours: 3,
+    details: [
+      'Google Sheets에 문의 데이터 정리 및 구조화',
+      'ChatGPT API 없이 반자동 분류 워크플로우 설계',
+      '분류 정확도 검증 및 프롬프트 개선',
+    ],
+    practice: '문의 분류 워크플로우 구축 및 정확도 80% 달성',
+  },
+  {
+    module_name: '3주차: 자동 응답 템플릿 생성',
+    hours: 3,
+    details: [
+      '유형별 응답 템플릿 작성 가이드',
+      'ChatGPT로 상황별 맞춤 응답 생성',
+      '톤앤매너 일관성 유지 기법',
+    ],
+    practice: '주요 문의 유형 10개에 대한 자동 응답 템플릿 완성',
+  },
+  {
+    module_name: '4주차: 현업 적용 및 성과 측정',
+    hours: 3,
+    details: [
+      '실제 업무에 AI 분류 시스템 적용',
+      '응답 시간 단축 효과 측정',
+      '지속적인 프롬프트 개선 방안',
+    ],
+    practice: '1주일간 실무 적용 후 Before/After 비교 보고서 작성',
+  },
+];
+
 // 과정 상세 데이터 (RoadmapCell 타입) - 첫 번째 과정만 (슬라이드용)
 export const SAMPLE_COURSE_SINGLE: RoadmapCell = {
-  course_name: 'ChatGPT로 고객 문의 자동 분류하기',
+  course_name: FIRST_COURSE_NAME,
   level: 'BEGINNER',
   target_task: '고객관리-고객문의응대',
-  target_audience: 'CS 담당자, 고객관리팀',
-  recommended_hours: 12,
-  curriculum: [
-    {
-      module_name: '1주차: AI 챗봇과 프롬프트 기초',
-      hours: 3,
-      details: [
-        'ChatGPT 기본 사용법과 프롬프트 작성 원칙',
-        '고객 문의 유형 분류 체계 설계',
-        '실제 CS 데이터로 프롬프트 테스트',
-      ],
-      practice: '자사 고객 문의 50건을 ChatGPT로 유형별 분류',
-    },
-    {
-      module_name: '2주차: 문의 자동 분류 시스템 구축',
-      hours: 3,
-      details: [
-        'Google Sheets에 문의 데이터 정리 및 구조화',
-        'ChatGPT API 없이 반자동 분류 워크플로우 설계',
-        '분류 정확도 검증 및 프롬프트 개선',
-      ],
-      practice: '문의 분류 워크플로우 구축 및 정확도 80% 달성',
-    },
-    {
-      module_name: '3주차: 자동 응답 템플릿 생성',
-      hours: 3,
-      details: [
-        '유형별 응답 템플릿 작성 가이드',
-        'ChatGPT로 상황별 맞춤 응답 생성',
-        '톤앤매너 일관성 유지 기법',
-      ],
-      practice: '주요 문의 유형 10개에 대한 자동 응답 템플릿 완성',
-    },
-    {
-      module_name: '4주차: 현업 적용 및 성과 측정',
-      hours: 3,
-      details: [
-        '실제 업무에 AI 분류 시스템 적용',
-        '응답 시간 단축 효과 측정',
-        '지속적인 프롬프트 개선 방안',
-      ],
-      practice: '1주일간 실무 적용 후 Before/After 비교 보고서 작성',
-    },
-  ],
+  target_audience: FIRST_COURSE_TARGET_AUDIENCE,
+  recommended_hours: FIRST_COURSE_HOURS,
+  curriculum: FIRST_COURSE_CURRICULUM,
   tools: [
     { name: 'ChatGPT', free_tier_info: '무료 (일일 사용 제한 있음)' },
     { name: 'Google Sheets', free_tier_info: '완전 무료' },
@@ -66,7 +86,7 @@ export const SAMPLE_COURSE_SINGLE: RoadmapCell = {
   ],
   expected_outcome: '고객 문의 응답 시간 40% 단축, 분류 정확도 85% 이상 달성',
   measurement_method: '평균 응답 시간 Before/After 비교, 분류 정확도 샘플링 검증',
-  prerequisites: ['최근 3개월 고객 문의 데이터', 'PC (인터넷 연결 필수)', '기본 엑셀 활용 능력'],
+  prerequisites: FIRST_COURSE_PREREQUISITES,
 };
 
 // 전체 과정 목록
@@ -267,9 +287,41 @@ export const SAMPLE_MATRIX: RoadmapRow[] = [
   },
 ];
 
+// PBL 과정별 산출물 및 도구 (기본 커리큘럼을 확장)
+const PBL_MODULE_EXTENSIONS = [
+  {
+    deliverables: ['문의 유형 분류 체계 문서', '프롬프트 템플릿 모음', '분류 결과 스프레드시트'],
+    tools: [
+      { name: 'ChatGPT', free_tier_info: '무료 (일일 사용 제한 있음)' },
+      { name: 'Google Sheets', free_tier_info: '완전 무료' },
+    ],
+  },
+  {
+    deliverables: ['자동 분류 워크플로우 매뉴얼', '정확도 검증 보고서'],
+    tools: [
+      { name: 'Google Sheets', free_tier_info: '완전 무료' },
+      { name: 'Notion', free_tier_info: '개인용 무료' },
+    ],
+  },
+  {
+    deliverables: ['유형별 응답 템플릿 10종', '톤앤매너 가이드'],
+    tools: [
+      { name: 'ChatGPT', free_tier_info: '무료 (일일 사용 제한 있음)' },
+      { name: 'Google Docs', free_tier_info: '완전 무료' },
+    ],
+  },
+  {
+    deliverables: ['실무 적용 가이드', '성과 분석 보고서', '개선 로드맵'],
+    tools: [
+      { name: 'Gamma', free_tier_info: '무료 (월 10회 생성)' },
+      { name: 'Google Sheets', free_tier_info: '완전 무료' },
+    ],
+  },
+];
+
 // PBL 과정 데이터
 export const SAMPLE_PBL: PBLCourse = {
-  selected_course_name: 'ChatGPT로 고객 문의 자동 분류하기',
+  selected_course_name: FIRST_COURSE_NAME,
   selected_course_level: 'BEGINNER',
   selected_course_task: '고객관리-고객문의응대',
   selection_rationale: {
@@ -278,72 +330,14 @@ export const SAMPLE_PBL: PBLCourse = {
     feasibility_assessment: '초급 과정으로 비개발자도 바로 시작할 수 있으며, 무료 도구만으로 즉시 업무에 적용 가능합니다.',
     summary: '컨설턴트 전문성, 고객사 니즈, 실현 가능성을 종합적으로 고려했을 때 가장 효과적인 첫 단계 과정입니다.',
   },
-  course_name: 'ChatGPT로 고객 문의 자동 분류하기 - PBL 프로젝트',
-  total_hours: 12,
+  course_name: `${FIRST_COURSE_NAME} - PBL 프로젝트`,
+  total_hours: FIRST_COURSE_HOURS,
   target_tasks: ['고객관리-고객문의응대', '경영지원-보고서작성'],
-  target_audience: 'CS 담당자, 고객관리팀',
-  curriculum: [
-    {
-      module_name: '1주차: AI 챗봇과 프롬프트 기초',
-      hours: 3,
-      details: [
-        'ChatGPT 기본 사용법과 프롬프트 작성 원칙',
-        '고객 문의 유형 분류 체계 설계',
-        '실제 CS 데이터로 프롬프트 테스트',
-      ],
-      practice: '자사 고객 문의 50건을 ChatGPT로 유형별 분류',
-      deliverables: ['문의 유형 분류 체계 문서', '프롬프트 템플릿 모음', '분류 결과 스프레드시트'],
-      tools: [
-        { name: 'ChatGPT', free_tier_info: '무료 (일일 사용 제한 있음)' },
-        { name: 'Google Sheets', free_tier_info: '완전 무료' },
-      ],
-    },
-    {
-      module_name: '2주차: 문의 자동 분류 시스템 구축',
-      hours: 3,
-      details: [
-        'Google Sheets에 문의 데이터 정리 및 구조화',
-        'ChatGPT API 없이 반자동 분류 워크플로우 설계',
-        '분류 정확도 검증 및 프롬프트 개선',
-      ],
-      practice: '문의 분류 워크플로우 구축 및 정확도 80% 달성',
-      deliverables: ['자동 분류 워크플로우 매뉴얼', '정확도 검증 보고서'],
-      tools: [
-        { name: 'Google Sheets', free_tier_info: '완전 무료' },
-        { name: 'Notion', free_tier_info: '개인용 무료' },
-      ],
-    },
-    {
-      module_name: '3주차: 자동 응답 템플릿 생성',
-      hours: 3,
-      details: [
-        '유형별 응답 템플릿 작성 가이드',
-        'ChatGPT로 상황별 맞춤 응답 생성',
-        '톤앤매너 일관성 유지 기법',
-      ],
-      practice: '주요 문의 유형 10개에 대한 자동 응답 템플릿 완성',
-      deliverables: ['유형별 응답 템플릿 10종', '톤앤매너 가이드'],
-      tools: [
-        { name: 'ChatGPT', free_tier_info: '무료 (일일 사용 제한 있음)' },
-        { name: 'Google Docs', free_tier_info: '완전 무료' },
-      ],
-    },
-    {
-      module_name: '4주차: 현업 적용 및 성과 측정',
-      hours: 3,
-      details: [
-        '실제 업무에 AI 분류 시스템 적용',
-        '응답 시간 단축 효과 측정',
-        '지속적인 프롬프트 개선 방안',
-      ],
-      practice: '1주일간 실무 적용 후 Before/After 비교 보고서 작성',
-      deliverables: ['실무 적용 가이드', '성과 분석 보고서', '개선 로드맵'],
-      tools: [
-        { name: 'Gamma', free_tier_info: '무료 (월 10회 생성)' },
-        { name: 'Google Sheets', free_tier_info: '완전 무료' },
-      ],
-    },
-  ],
+  target_audience: FIRST_COURSE_TARGET_AUDIENCE,
+  curriculum: FIRST_COURSE_CURRICULUM.map((mod, i) => ({
+    ...mod,
+    ...PBL_MODULE_EXTENSIONS[i],
+  })),
   final_deliverables: [
     '고객 문의 자동 분류 워크플로우 (Google Sheets 기반)',
     '유형별 자동 응답 템플릿 10종',
@@ -361,9 +355,5 @@ export const SAMPLE_PBL: PBLCourse = {
     '분류 정확도: 주간 샘플링 검증 (50건)',
     '고객 만족도(CSAT): 월별 추적',
   ],
-  prerequisites: [
-    '최근 3개월 고객 문의 데이터',
-    'PC (인터넷 연결 필수)',
-    '기본 엑셀 활용 능력',
-  ],
+  prerequisites: FIRST_COURSE_PREREQUISITES,
 };
