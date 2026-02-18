@@ -80,19 +80,40 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     }));
   };
 
+  // DOM 업데이트 및 페인팅 완료 후 스크롤 실행
+  const scrollAfterPaint = (
+    getElement: () => HTMLElement | null | undefined,
+    options: ScrollIntoViewOptions,
+    delay = 0,
+  ) => {
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        getElement()?.scrollIntoView(options);
+      });
+    }, delay);
+  };
+
+  // 미응답 문항으로 스크롤
+  const scrollToFirstUnanswered = (questions: Question[], delay = 0) => {
+    const firstUnanswered = questions.find((q) => !isQuestionAnswered(q));
+    if (firstUnanswered) {
+      scrollAfterPaint(
+        () => document.getElementById(`question-${firstUnanswered.id}`),
+        { behavior: 'smooth', block: 'center' },
+        delay,
+      );
+    }
+  };
+
   // 스텝 이동
   const goToStep = (step: number) => {
     if (step >= 0 && step < totalSteps) {
       setCurrentStep(step);
       setError(null);
-      // DOM 업데이트 및 렌더링 완료 후 스크롤 실행
-      // setTimeout(0)으로 이벤트 루프의 다음 틱으로 미루고,
-      // requestAnimationFrame으로 브라우저 페인트 후 실행
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }, 0);
+      scrollAfterPaint(
+        () => formRef.current,
+        { behavior: 'smooth', block: 'start' },
+      );
     }
   };
 
@@ -100,6 +121,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     if (!isCurrentStepComplete) {
       setError('현재 단계의 모든 문항에 응답해 주세요.');
       showErrorToast('입력 확인 필요', '현재 단계의 모든 문항에 응답해 주세요.');
+      scrollToFirstUnanswered(currentQuestions);
       return;
     }
     goToStep(currentStep + 1);
@@ -122,7 +144,8 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
     // 모든 질문에 응답했는지 확인
     const unansweredQuestions = template.questions.filter((q) => !isQuestionAnswered(q));
     if (unansweredQuestions.length > 0) {
-      const firstUnansweredDim = unansweredQuestions[0].dimension;
+      const firstUnanswered = unansweredQuestions[0];
+      const firstUnansweredDim = firstUnanswered.dimension;
       const stepIndex = dimensions.indexOf(firstUnansweredDim);
       if (stepIndex !== -1) {
         setCurrentStep(stepIndex);
@@ -130,6 +153,8 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
       const errorMessage = `${unansweredQuestions.length}개의 미응답 질문이 있습니다.`;
       setError(errorMessage);
       showErrorToast('입력 확인 필요', errorMessage);
+      // 스텝 변경 후 렌더링 완료를 기다린 뒤 미응답 문항으로 스크롤
+      scrollToFirstUnanswered(unansweredQuestions, 100);
       return;
     }
 
