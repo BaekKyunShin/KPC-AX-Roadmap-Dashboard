@@ -506,7 +506,7 @@ describe('generateInterviewGuide', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
-    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
     // 프로젝트 데이터 없음
     serverMock.addResult({ data: null, error: null });
 
@@ -521,7 +521,7 @@ describe('generateInterviewGuide', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
-    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
     // 프로젝트 데이터 있으나 self_assessments = null
     serverMock.addResult({
       data: {
@@ -546,7 +546,7 @@ describe('generateInterviewGuide', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
-    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
 
     // 프로젝트 + 자가진단 데이터
     serverMock.addResult({
@@ -595,7 +595,7 @@ describe('generateInterviewGuide', () => {
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
-    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
 
     serverMock.addResult({
       data: {
