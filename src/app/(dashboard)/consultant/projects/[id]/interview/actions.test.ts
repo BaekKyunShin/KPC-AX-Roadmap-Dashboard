@@ -333,6 +333,33 @@ describe('saveInterview', () => {
     );
   });
 
+  it('자동저장으로 생성된 인터뷰를 수동 저장(update)하면 프로젝트 상태가 INTERVIEWED로 전환됨', async () => {
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // 프로젝트 상태가 아직 ASSIGNED (자동저장은 상태를 변경하지 않았으므로)
+    serverMock.addResult({
+      data: { id: PROJECT_ID, status: 'ASSIGNED', assigned_consultant_id: USER_A_ID, company_name: '테스트 기업', is_test_mode: false },
+      error: null,
+    });
+    // existing interview → 있음 (자동저장이 이미 생성)
+    adminMock.addResult({ data: { id: 'interview-1' }, error: null });
+    // interview update → 성공
+    adminMock.addResult({ data: null, error: null });
+    // project status update → 성공
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await saveInterview(PROJECT_ID, validInterviewData());
+
+    expect(result).toEqual({ success: true });
+    // 프로젝트 상태가 INTERVIEWED로 전환되어야 함
+    const fromCalls = adminMock.mockClient.from.mock.calls as string[][];
+    const projectUpdateCalls = fromCalls.filter((call) => call[0] === 'projects');
+    expect(projectUpdateCalls.length).toBeGreaterThanOrEqual(1);
+    // 알림도 발송되어야 함
+    expect(createNotificationForAdmins).toHaveBeenCalled();
+  });
+
   it('자동저장 모드에서는 활동 일지를 기록하지 않음', async () => {
     const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
 

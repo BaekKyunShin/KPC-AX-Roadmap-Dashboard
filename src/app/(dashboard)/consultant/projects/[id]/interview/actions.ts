@@ -123,29 +123,25 @@ export async function saveInterview(
         return { success: false, error: '인터뷰 저장에 실패했습니다.' };
       }
       auditAction = 'INTERVIEW_CREATE';
+    }
 
-      // 자동저장이 아닌 수동 저장일 때만 상태 전환 및 알림 발송
-      // (자동저장은 작성 중인 데이터 보존이 목적이므로 프로젝트 상태를 변경하지 않음)
-      if (!options?.autoSave) {
-        // 프로젝트 상태 업데이트 (최초 인터뷰 입력 시, 중앙 전이 검증)
-        if (validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-          await adminSupabase
-            .from('projects')
-            .update({ status: 'INTERVIEWED' })
-            .eq('id', projectId);
-        } else {
-          console.warn(`[saveInterview] 상태 전이 스킵: ${projectData.status} → INTERVIEWED`);
-        }
+    // 수동 저장일 때만 상태 전환 및 알림 발송
+    // (자동저장은 작성 중인 데이터 보존이 목적이므로 프로젝트 상태를 변경하지 않음)
+    // validateStatusTransition이 이미 전환된 상태(INTERVIEWED→INTERVIEWED)는 거부하므로 중복 전환 방지됨
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
 
-        // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
-        if (!projectData.is_test_mode) {
-          await createNotificationForAdmins({
-            type: 'interview_complete',
-            title: '인터뷰 완료',
-            message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
-            link: `/ops/projects/${projectId}`,
-          });
-        }
+      // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
+      if (!projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: '인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
       }
     }
 
