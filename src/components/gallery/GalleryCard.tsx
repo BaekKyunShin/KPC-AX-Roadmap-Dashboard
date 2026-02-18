@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Factory, Building2, User } from 'lucide-react';
+import { Factory, Building2 } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -9,10 +9,28 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
 import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
 import { LikeButton } from './LikeButton';
+
+const AVATAR_COLORS = [
+  'bg-blue-600',
+  'bg-emerald-600',
+  'bg-violet-600',
+  'bg-amber-600',
+  'bg-rose-600',
+  'bg-cyan-600',
+] as const;
+
+function getAvatarColor(name: string): (typeof AVATAR_COLORS)[number] {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 interface GalleryCardProps {
   item: GalleryRoadmapItem;
@@ -85,19 +103,28 @@ export function GalleryCard({ item }: GalleryCardProps) {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t text-xs text-gray-500">
+          <div className="flex items-center justify-between pt-3 border-t">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {item.createdByName}
-              </span>
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-semibold text-white shrink-0',
+                    getAvatarColor(item.createdByName)
+                  )}
+                >
+                  {item.createdByName?.charAt(0) || '?'}
+                </div>
+                <span className="text-sm font-medium text-gray-700">
+                  {item.createdByName}
+                </span>
+              </div>
               <LikeButton
                 roadmapVersionId={item.id}
                 initialLiked={item.isLiked}
                 initialCount={item.likeCount}
               />
             </div>
-            <span className="text-xs text-primary font-medium">
+            <span className="text-sm text-primary font-medium group-hover:underline">
               상세 보기
             </span>
           </div>
