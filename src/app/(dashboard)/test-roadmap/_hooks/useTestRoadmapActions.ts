@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { buildRoadmapMatrixFromCourses, validateCourseClient } from '@/lib/utils/roadmap-client';
 import { createTestRoadmap, reviseTestRoadmap, cancelTestRoadmapGeneration } from '../actions';
+import { isCancelledError } from '@/lib/services/llm';
 import { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
 import type { RoadmapResult, ValidationResult, RoadmapCell } from '@/lib/services/roadmap';
@@ -105,7 +106,7 @@ export function useTestRoadmapActions({
         }, COMPLETION_DELAY_MS);
       } else {
         // 사용자가 직접 취소한 경우 에러 메시지를 표시하지 않음
-        if (!response.error?.includes('취소되었습니다')) {
+        if (!isCancelledError(response.error)) {
           setError(response.error || '로드맵 생성에 실패했습니다.');
         }
         setGenerationState(INITIAL_GENERATION_STATE);
@@ -145,7 +146,7 @@ export function useTestRoadmapActions({
         }, COMPLETION_DELAY_MS);
       } else {
         // 사용자가 직접 취소한 경우 에러 메시지를 표시하지 않음
-        if (!response.error?.includes('취소되었습니다')) {
+        if (!isCancelledError(response.error)) {
           setError(response.error || '로드맵 수정에 실패했습니다.');
         }
         setIsRevising(false);

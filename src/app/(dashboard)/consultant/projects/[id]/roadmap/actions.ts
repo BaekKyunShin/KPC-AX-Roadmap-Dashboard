@@ -18,6 +18,9 @@ import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-r
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
+/** abort 레지스트리 키 생성 */
+function abortKey(userId: string) { return `roadmap:${userId}`; }
+
 /**
  * 로드맵 생성
  */
@@ -54,7 +57,7 @@ export async function createRoadmap(
     }
 
     // 취소 가능하도록 AbortController 등록
-    const abortController = registerAbort(`roadmap:${user.id}`);
+    const abortController = registerAbort(abortKey(user.id));
 
     try {
       // 로드맵 생성 (검증된 데이터 사용)
@@ -81,7 +84,7 @@ export async function createRoadmap(
         },
       };
     } finally {
-      cleanupAbort(`roadmap:${user.id}`);
+      cleanupAbort(abortKey(user.id));
     }
   } catch (error) {
     console.error('[createRoadmap Error]', error);
@@ -294,7 +297,7 @@ export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
   const auth = await requireAuth();
   if ('error' in auth) return { success: false, error: auth.error };
 
-  cancelAbort(`roadmap:${auth.user.id}`);
+  cancelAbort(abortKey(auth.user.id));
   return { success: true };
 }
 

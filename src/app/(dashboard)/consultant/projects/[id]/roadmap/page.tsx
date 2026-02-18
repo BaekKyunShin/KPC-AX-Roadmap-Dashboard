@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
+import { isCancelledError } from '@/lib/services/llm';
 import {
   createRoadmap,
   confirmFinalRoadmap,
@@ -111,7 +112,7 @@ export default function RoadmapPage() {
       }, COMPLETION_DELAY_MS);
     } else {
       // 사용자가 직접 취소한 경우 에러 토스트를 표시하지 않음
-      if (!result.error?.includes('취소되었습니다')) {
+      if (!isCancelledError(result.error)) {
         showErrorToast('로드맵 생성 실패', result.error);
       }
       setIsGenerating(false);

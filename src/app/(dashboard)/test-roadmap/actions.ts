@@ -21,11 +21,8 @@ import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
-const ERROR_MESSAGES = {
-  REVISION_PROMPT_REQUIRED: '수정 요청 내용을 입력해주세요.',
-  CREATE_FAILED: '로드맵 생성 중 오류가 발생했습니다.',
-  REVISE_FAILED: '로드맵 수정 중 오류가 발생했습니다.',
-} as const;
+/** abort 레지스트리 키 생성 */
+function abortKey(userId: string) { return `test-roadmap:${userId}`; }
 
 // =============================================================================
 // 헬퍼 함수
@@ -114,7 +111,7 @@ export async function createTestRoadmap(
   }
 
   // 취소 가능하도록 AbortController 등록
-  const abortController = registerAbort(`test-roadmap:${auth.user.id}`);
+  const abortController = registerAbort(abortKey(auth.user.id));
 
   try {
     // 3. 컨설턴트 프로필 조회
@@ -169,7 +166,7 @@ export async function createTestRoadmap(
       error: getLLMUserFriendlyError(error),
     };
   } finally {
-    cleanupAbort(`test-roadmap:${auth.user.id}`);
+    cleanupAbort(abortKey(auth.user.id));
   }
 }
 
@@ -189,11 +186,11 @@ export async function reviseTestRoadmap(
 
   // 2. 수정 요청 검증
   if (!revisionPrompt || revisionPrompt.trim() === '') {
-    return { success: false, error: ERROR_MESSAGES.REVISION_PROMPT_REQUIRED };
+    return { success: false, error: '수정 요청 내용을 입력해주세요.' };
   }
 
   // 취소 가능하도록 AbortController 등록
-  const abortController = registerAbort(`test-roadmap:${auth.user.id}`);
+  const abortController = registerAbort(abortKey(auth.user.id));
 
   try {
     // 3. 컨설턴트 프로필 조회
@@ -239,7 +236,7 @@ export async function reviseTestRoadmap(
       error: getLLMUserFriendlyError(error),
     };
   } finally {
-    cleanupAbort(`test-roadmap:${auth.user.id}`);
+    cleanupAbort(abortKey(auth.user.id));
   }
 }
 
@@ -250,6 +247,6 @@ export async function cancelTestRoadmapGeneration(): Promise<SimpleActionResult>
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
 
-  cancelAbort(`test-roadmap:${auth.user.id}`);
+  cancelAbort(abortKey(auth.user.id));
   return { success: true };
 }

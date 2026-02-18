@@ -232,6 +232,14 @@ export async function callLLMForJSON<T>(
 }
 
 /**
+ * 사용자 취소로 인한 에러인지 판별
+ * 클라이언트에서 취소 시 에러 토스트 억제에 사용
+ */
+export function isCancelledError(errorMessage?: string): boolean {
+  return !!errorMessage?.includes('취소되었습니다');
+}
+
+/**
  * LLM 에러를 사용자 친화적 메시지로 변환
  */
 export function getLLMUserFriendlyError(error: unknown): string {

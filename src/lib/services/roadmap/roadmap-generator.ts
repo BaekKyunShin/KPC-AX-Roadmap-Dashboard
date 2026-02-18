@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile } from '@/types/database';
 import type { SttInsights } from '@/lib/schemas/interview';
-import { callLLMForJSON } from '../llm';
+import { callLLMForJSON, type LLMMessage } from '../llm';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import { checkAndRecordLLMUsage } from '../quota';
@@ -18,6 +18,26 @@ import { validateStatusTransition } from '@/lib/constants/status';
 
 /** 로드맵 생성 LLM 온도값 (0.7 = 적절한 창의성) */
 const LLM_TEMPERATURE = 0.7;
+
+/** LLM 호출 후 로드맵 결과로 변환 및 검증 */
+async function callLLMAndBuildRoadmap(
+  messages: LLMMessage[],
+  signal?: AbortSignal
+): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
+  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
+    messages,
+    { temperature: LLM_TEMPERATURE },
+    2,
+    signal
+  );
+  const llmResult = normalizeRoadmapHours(rawLlmResult);
+  const result: RoadmapResult = {
+    ...llmResult,
+    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
+  };
+  const validation = validateRoadmap(result);
+  return { result, validation };
+}
 
 // ============================================================================
 // 로드맵 생성
@@ -85,30 +105,15 @@ export async function generateRoadmap(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
-  // LLM 호출 (roadmap_matrix 없이 courses만 생성, 쿼터는 이미 원자적으로 차감됨)
-  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
+  // LLM 호출 → 결과 변환 → 검증 (쿼터는 이미 원자적으로 차감됨)
+  // 검증 실패(errors 존재)해도 저장 차단하지 않음: DRAFT 버전으로 저장 후 UI에서 경고 표시
+  const { result, validation } = await callLLMAndBuildRoadmap(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: LLM_TEMPERATURE }, // maxTokens는 기본값(20000) 사용
-    2,
     signal
   );
-
-  // 시간 보정 적용 (recommended_hours와 커리큘럼 시간 일치시키기)
-  const llmResult = normalizeRoadmapHours(rawLlmResult);
-
-  // courses에서 roadmap_matrix 자동 생성
-  const result: RoadmapResult = {
-    ...llmResult,
-    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
-  };
-
-  // 검증 — 의도적으로 검증 실패(errors 존재)해도 저장을 차단하지 않음
-  // 이유: DRAFT 버전으로 저장 후 UI에서 경고 표시 → 컨설턴트가 수정 요청(revision)으로 보완
-  // 검증 결과는 free_tool_validated / time_limit_validated 플래그로 DB에 기록됨
-  const validation = validateRoadmap(result);
 
   // 버전 번호 결정
   const { data: latestVersion } = await supabase
@@ -301,31 +306,17 @@ export async function generateTestRoadmap(
   const projectData = buildTestProjectData(input);
   const interview = buildTestInterviewData(input, sttInsights);
 
-  // 3. LLM 호출 (쿼터는 이미 원자적으로 차감됨)
+  // 3. LLM 호출 → 결과 변환 → 검증 (쿼터는 이미 원자적으로 차감됨)
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
 
-  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
+  return callLLMAndBuildRoadmap(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: LLM_TEMPERATURE },
-    2,
     signal
   );
-
-  // 4. 시간 보정 적용
-  const llmResult = normalizeRoadmapHours(rawLlmResult);
-
-  // 5. 결과 생성 및 검증
-  const result: RoadmapResult = {
-    ...llmResult,
-    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
-  };
-  const validation = validateRoadmap(result);
-
-  return { result, validation };
 }
 
 /**
@@ -378,26 +369,12 @@ ${revisionPrompt}
 위 수정 요청을 반영하여 로드맵을 재생성해주세요. 수정 요청에 언급되지 않은 부분은 기존 내용을 유지해도 됩니다.
 단, 최종 출력은 반드시 완전한 JSON 형식으로 전체 로드맵을 출력해야 합니다.`;
 
-  // 4. LLM 호출 (쿼터는 이미 원자적으로 차감됨)
-  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
+  // 4. LLM 호출 → 결과 변환 → 검증 (쿼터는 이미 원자적으로 차감됨)
+  return callLLMAndBuildRoadmap(
     [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: revisionUserPrompt },
     ],
-    { temperature: LLM_TEMPERATURE },
-    2,
     signal
   );
-
-  // 5. 시간 보정 적용
-  const llmResult = normalizeRoadmapHours(rawLlmResult);
-
-  // 6. 결과 생성 및 검증
-  const result: RoadmapResult = {
-    ...llmResult,
-    roadmap_matrix: buildRoadmapMatrixFromCourses(llmResult.courses),
-  };
-  const validation = validateRoadmap(result);
-
-  return { result, validation };
 }
