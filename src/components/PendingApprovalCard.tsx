@@ -102,7 +102,7 @@ export default function PendingApprovalCard({
           {/* 컨설턴트이고 프로필이 있는 경우 프로필 수정 버튼 */}
           {isConsultant && hasProfile && (
             <div className="rounded-lg bg-blue-50 p-4 border border-blue-100">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h4 className="font-medium text-blue-900">프로필 수정</h4>
                   <p className="text-sm text-blue-700">승인 대기 중에도 프로필을 수정할 수 있습니다.</p>
@@ -120,14 +120,14 @@ export default function PendingApprovalCard({
           {/* 진행 단계 */}
           <div className="py-2">
             <h4 className="mb-4 text-base font-medium text-gray-700">진행 상태</h4>
-            <div className="flex items-center justify-between">
+            <div className="grid grid-cols-2 gap-4 sm:flex sm:items-center sm:justify-between">
               {steps.map((step, index) => {
                 const Icon = step.icon;
                 const isCompleted = step.status === 'completed';
                 const isCurrent = step.status === 'current';
 
                 return (
-                  <div key={step.id} className="flex flex-1 items-center">
+                  <div key={step.id} className="flex items-center sm:flex-1">
                     <div className="flex flex-col items-center">
                       <div
                         className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
@@ -154,7 +154,7 @@ export default function PendingApprovalCard({
                     </div>
                     {index < steps.length - 1 && (
                       <div
-                        className={`mx-2 h-0.5 flex-1 ${
+                        className={`hidden sm:block mx-2 h-0.5 flex-1 ${
                           isCompleted ? 'bg-green-500' : 'bg-gray-200'
                         }`}
                       />

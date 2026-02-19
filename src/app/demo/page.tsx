@@ -27,17 +27,17 @@ export default function DemoPage() {
               <Link href="/" className="text-xl font-bold text-purple-600">
                 KPC AI 로드맵
               </Link>
-              <span className="ml-4 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">
+              <span className="ml-2 sm:ml-4 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">
                 데모 화면
               </span>
             </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login" className="text-gray-600 hover:text-gray-900">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/login" className="text-sm sm:text-base text-gray-600 hover:text-gray-900">
                 로그인
               </Link>
               <Link
                 href="/register"
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 회원가입
               </Link>
@@ -89,12 +89,12 @@ export default function DemoPage() {
         <div className="bg-white shadow rounded-lg">
           {/* 탭 */}
           <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+            <nav className="flex -mb-px overflow-x-auto">
               {ROADMAP_TABS.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 ${
+                  className={`px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 border-b-2 ${
                     activeTab === tab.key
                       ? 'border-purple-500 text-purple-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
