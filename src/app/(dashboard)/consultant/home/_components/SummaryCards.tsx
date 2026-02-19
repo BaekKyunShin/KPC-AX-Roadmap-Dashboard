@@ -5,6 +5,7 @@ import {
   PenLine,
   CheckCircle2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SummaryCardsProps {
   total: number;
@@ -68,12 +69,16 @@ export function SummaryCards({
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      {CARDS.map((card) => {
+      {CARDS.map((card, i) => {
         const Icon = card.icon;
         return (
           <div
             key={card.field}
-            className={`bg-white rounded-lg shadow p-4 border-l-4 ${card.borderColor}`}
+            className={cn(
+              'bg-white rounded-lg shadow p-4 border-l-4',
+              card.borderColor,
+              i === CARDS.length - 1 && CARDS.length % 2 !== 0 && 'col-span-2 lg:col-span-1'
+            )}
           >
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-500">{card.label}</p>

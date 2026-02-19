@@ -334,23 +334,66 @@ export default function ProjectList() {
                 }
               />
             ) : (
-              <Table className="min-w-[700px]">
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
-                    <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
-                    <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
-                    <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
-                    <TableHead className={TABLE_COLUMNS.assignedAt}>배정일</TableHead>
-                    <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projects.map((project) => (
-                    <ProjectRow key={project.id} project={project} />
-                  ))}
-                </TableBody>
-              </Table>
+              <>
+              {/* 데스크톱: 테이블 뷰 */}
+              <div className="hidden md:block">
+                <Table className="min-w-[700px]">
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
+                      <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
+                      <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
+                      <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>
+                      <TableHead className={TABLE_COLUMNS.assignedAt}>배정일</TableHead>
+                      <TableHead className={TABLE_COLUMNS.actions}>작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projects.map((project) => (
+                      <ProjectRow key={project.id} project={project} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 모바일: 카드 뷰 */}
+              <div className="md:hidden space-y-3 p-4">
+                {projects.map((project) => {
+                  const displayDate = project.assigned_at || project.created_at;
+                  const companySizeLabel = COMPANY_SIZE_LABELS[project.company_size as CompanySizeValue]
+                    ?.replace(/\d+[~,]?\d*명\s*/, '')
+                    ?.replace(/[()]/g, '')
+                    || project.company_size;
+
+                  return (
+                    <div key={project.id} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-900">{project.company_name}</div>
+                        </div>
+                        <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        <div className="text-gray-500">업종</div>
+                        <div className="text-gray-900">{project.industry}</div>
+                        <div className="text-gray-500">규모</div>
+                        <div className="text-gray-900">{companySizeLabel}</div>
+                        <div className="text-gray-500">배정일</div>
+                        <div className="text-gray-900">{formatDateKR(displayDate)}</div>
+                      </div>
+                      <div className="flex justify-end pt-2 border-t">
+                        <Link
+                          href={`/consultant/projects/${project.id}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          상세 보기
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

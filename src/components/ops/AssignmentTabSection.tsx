@@ -287,7 +287,7 @@ function CurrentAssignmentInfo({
 }: CurrentAssignmentInfoProps) {
   return (
     <div className="p-4 bg-emerald-50 rounded-lg mb-4 border border-emerald-100">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 shrink-0">
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
