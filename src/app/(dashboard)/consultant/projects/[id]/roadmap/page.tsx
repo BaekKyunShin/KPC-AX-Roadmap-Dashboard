@@ -325,12 +325,12 @@ export default function RoadmapPage() {
 
               {/* 탭 */}
               <div className="border-b border-gray-200">
-                <nav className="flex -mb-px">
+                <nav className="flex -mb-px overflow-x-auto">
                   {ROADMAP_TABS.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key)}
-                      className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                      className={`px-3 py-2 sm:px-6 sm:py-3 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0 ${
                         activeTab === tab.key
                           ? 'border-purple-500 text-purple-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -343,7 +343,7 @@ export default function RoadmapPage() {
               </div>
 
               {/* 탭 내용 */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {activeTab === 'matrix' && (
                   <RoadmapMatrix matrix={selectedVersion.roadmap_matrix} canEdit={canEdit} onEditCourse={handleEditMatrixCourse} />
                 )}

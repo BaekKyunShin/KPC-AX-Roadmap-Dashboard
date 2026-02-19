@@ -467,18 +467,18 @@ export default function InterviewPage() {
       </div>
 
       {/* 스텝 컨텐츠 */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6 min-h-[400px]">
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6 min-h-[400px]">
         {renderStepContent()}
       </div>
 
       {/* 네비게이션 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:relative md:border-0 md:p-0 md:bg-transparent">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 md:relative md:border-0 md:p-0 md:bg-transparent">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <button
             type="button"
             onClick={goToPrevStep}
             disabled={currentStep === 1}
-            className={`px-4 py-2 border rounded-lg text-sm font-medium flex items-center ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 border rounded-lg text-xs sm:text-sm font-medium flex items-center ${
               currentStep === 1
                 ? 'border-gray-200 text-gray-400 cursor-not-allowed'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -502,7 +502,7 @@ export default function InterviewPage() {
               <button
                 type="button"
                 onClick={goToNextStep}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs sm:text-sm font-medium flex items-center"
               >
                 다음
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -512,7 +512,7 @@ export default function InterviewPage() {
             ) : (
               <div className="flex items-center gap-3">
                 {!isAllRequiredStepsValid && (
-                  <span className="text-sm text-amber-600">
+                  <span className="text-xs sm:text-sm text-amber-600">
                     {incompleteRequiredSteps.length}개 필수 단계 미완료
                   </span>
                 )}
@@ -520,7 +520,7 @@ export default function InterviewPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={isLoading || !isAllRequiredStepsValid}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center"
+                  className="px-4 py-1.5 sm:px-6 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium flex items-center"
                 >
                   {isLoading ? (
                     <>
