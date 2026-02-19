@@ -37,6 +37,10 @@ interface PaginationProps {
   maxVisiblePages?: number;
 }
 
+/** 네비게이션 버튼(처음/이전/다음/마지막) 공통 스타일 */
+const NAV_BUTTON =
+  'py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed';
+
 /**
  * 재사용 가능한 페이지네이션 컴포넌트
  */
@@ -66,14 +70,14 @@ export function Pagination({
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage <= 1}
-          className="px-2 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`px-2 ${NAV_BUTTON}`}
         >
           처음
         </button>
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="px-3 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`px-3 ${NAV_BUTTON}`}
         >
           이전
         </button>
@@ -97,14 +101,14 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="px-3 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`px-3 ${NAV_BUTTON}`}
         >
           다음
         </button>
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage >= totalPages}
-          className="px-2 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`px-2 ${NAV_BUTTON}`}
         >
           마지막
         </button>
