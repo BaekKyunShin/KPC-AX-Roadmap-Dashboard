@@ -62,6 +62,12 @@ const LEVEL_BADGE_COLORS: Record<CourseLevel, string> = {
 /** Accordion 기본 열림 상태 */
 const DEFAULT_ACCORDION_VALUES = ['profile', 'curriculum', 'outcome'];
 
+/** 반응형 테이블 셀 패딩 (모바일 축소 → sm 복원) */
+const CELL_PADDING = 'px-2 sm:px-4 py-2 sm:py-3';
+
+/** 반응형 테이블 텍스트 크기 (모바일 축소 → sm 복원) */
+const TABLE_TEXT = 'text-xs sm:text-sm';
+
 // =============================================================================
 // 유틸리티 함수
 // =============================================================================
@@ -124,19 +130,19 @@ function CourseProfileTable({ course }: { course: RoadmapCell }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs sm:text-sm">
+      <table className={`w-full ${TABLE_TEXT}`}>
         <tbody className="divide-y divide-gray-200">
           {profileRows.map((row, idx) => {
             const IconComponent = row.icon;
             return (
               <tr key={idx} className="hover:bg-gray-50/50">
-                <td className="w-[100px] sm:w-[140px] px-2 sm:px-4 py-2 sm:py-3 bg-gray-50/80 font-medium text-gray-700 text-left whitespace-nowrap align-top">
+                <td className={`w-[100px] sm:w-[140px] ${CELL_PADDING} bg-gray-50/80 font-medium text-gray-700 text-left whitespace-nowrap align-top`}>
                   <div className="flex items-center gap-2">
                     <IconComponent className="h-4 w-4 text-gray-500 shrink-0" />
                     {row.label}
                   </div>
                 </td>
-                <td className="px-2 sm:px-4 py-2 sm:py-3 text-left text-gray-900 align-top">
+                <td className={`${CELL_PADDING} text-left text-gray-900 align-top`}>
                   {typeof row.value === 'string' ? (
                     <span className="break-keep">{row.value}</span>
                   ) : (
@@ -165,23 +171,23 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs sm:text-sm">
+      <table className={`w-full ${TABLE_TEXT}`}>
         <thead>
           <tr className="bg-indigo-50/80">
-            <th className="w-[50px] sm:w-[70px] px-2 sm:px-4 py-2 sm:py-3 text-center text-indigo-700 font-semibold text-xs sm:text-sm">
+            <th className={`w-[50px] sm:w-[70px] ${CELL_PADDING} text-center text-indigo-700 font-semibold ${TABLE_TEXT}`}>
               시간
             </th>
-            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-indigo-700 font-semibold text-xs sm:text-sm">학습 모듈</th>
-            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-indigo-700 font-semibold text-xs sm:text-sm">실습/과제</th>
+            <th className={`${CELL_PADDING} text-left text-indigo-700 font-semibold ${TABLE_TEXT}`}>학습 모듈</th>
+            <th className={`${CELL_PADDING} text-left text-indigo-700 font-semibold ${TABLE_TEXT}`}>실습/과제</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {curriculum.map((module, idx) => (
             <tr key={idx} className="hover:bg-indigo-50/30">
-              <td className="px-2 sm:px-4 py-2 sm:py-3 text-center font-medium text-indigo-600 whitespace-nowrap align-top">
+              <td className={`${CELL_PADDING} text-center font-medium text-indigo-600 whitespace-nowrap align-top`}>
                 {formatHours(module.hours)}
               </td>
-              <td className="px-2 sm:px-4 py-2 sm:py-3 text-left align-top">
+              <td className={`${CELL_PADDING} text-left align-top`}>
                 <div className="space-y-1">
                   <span className="text-gray-900 font-medium break-keep">{module.module_name}</span>
                   {module.details && module.details.length > 0 && (
@@ -195,7 +201,7 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
                   )}
                 </div>
               </td>
-              <td className="px-2 sm:px-4 py-2 sm:py-3 text-left text-gray-600 align-top">
+              <td className={`${CELL_PADDING} text-left text-gray-600 align-top`}>
                 {module.practice ? (
                   <span className="break-keep">{module.practice}</span>
                 ) : (
@@ -217,23 +223,23 @@ function CurriculumTable({ course }: { course: RoadmapCell }) {
 function OutcomeTable({ course }: { course: RoadmapCell }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs sm:text-sm">
+      <table className={`w-full ${TABLE_TEXT}`}>
         <thead>
           <tr className="bg-emerald-50/80">
-            <th className="w-1/2 px-2 sm:px-4 py-2 sm:py-3 text-left text-emerald-700 font-semibold text-xs sm:text-sm">
+            <th className={`w-1/2 ${CELL_PADDING} text-left text-emerald-700 font-semibold ${TABLE_TEXT}`}>
               기대효과
             </th>
-            <th className="w-1/2 px-2 sm:px-4 py-2 sm:py-3 text-left text-emerald-700 font-semibold text-xs sm:text-sm">
+            <th className={`w-1/2 ${CELL_PADDING} text-left text-emerald-700 font-semibold ${TABLE_TEXT}`}>
               측정 방법
             </th>
           </tr>
         </thead>
         <tbody>
           <tr className="hover:bg-emerald-50/30">
-            <td className="px-2 sm:px-4 py-2 sm:py-3 text-left align-top">
+            <td className={`${CELL_PADDING} text-left align-top`}>
               <p className="text-gray-900 break-keep">{course.expected_outcome || '-'}</p>
             </td>
-            <td className="px-2 sm:px-4 py-2 sm:py-3 text-left align-top">
+            <td className={`${CELL_PADDING} text-left align-top`}>
               <p className="text-gray-900 break-keep">{course.measurement_method || '-'}</p>
             </td>
           </tr>
