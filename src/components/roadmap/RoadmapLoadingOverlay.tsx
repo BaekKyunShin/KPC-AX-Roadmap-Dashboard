@@ -360,7 +360,7 @@ function StepIndicator({ steps, currentStep, isAllCompleted = false }: StepIndic
                 )}
               </div>
               <span
-                className={`mt-1.5 text-xs font-medium whitespace-nowrap ${
+                className={`mt-1.5 text-xs font-medium sm:whitespace-nowrap ${
                   isPending ? 'text-gray-400' : 'text-purple-600'
                 }`}
               >
@@ -419,7 +419,7 @@ function TipCard({ tip, title, isFading, showProfileLink, profileHref }: TipCard
   const fadeClass = isFading ? 'opacity-0' : 'opacity-100';
 
   return (
-    <div className="bg-purple-50/70 rounded-xl p-4 border border-purple-100">
+    <div className="bg-purple-50/70 rounded-xl p-3 sm:p-4 border border-purple-100">
       <div className="flex items-start gap-3">
         <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
           <span className="text-sm">💡</span>
@@ -550,7 +550,7 @@ export default function RoadmapLoadingOverlay({
     >
       {/* 모달 카드 */}
       <div
-        className={`relative w-full max-w-md bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
+        className={`relative w-full max-w-[calc(100vw-2rem)] sm:max-w-md bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
           isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
         }`}
       >

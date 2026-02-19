@@ -56,24 +56,24 @@ export function Pagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+    <div className="px-2 sm:px-4 py-3 border-t border-gray-200 flex items-center justify-between">
       <div className="flex items-center text-sm text-gray-500">
         <span>
           {startItem.toLocaleString()} - {endItem.toLocaleString()} / {totalItems.toLocaleString()}
         </span>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-1 sm:space-x-2">
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage <= 1}
-          className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-2 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           처음
         </button>
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           이전
         </button>
@@ -83,7 +83,7 @@ export function Pagination({
             <button
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
-              className={`px-3 py-1 text-sm rounded ${
+              className={`px-3 py-1 min-h-[36px] min-w-[36px] text-sm rounded ${
                 currentPage === pageNum
                   ? 'bg-blue-600 text-white'
                   : 'border border-gray-300 hover:bg-gray-50'
@@ -97,14 +97,14 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           다음
         </button>
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage >= totalPages}
-          className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-2 py-1 min-h-[36px] text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           마지막
         </button>

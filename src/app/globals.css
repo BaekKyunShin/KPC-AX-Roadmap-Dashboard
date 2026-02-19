@@ -161,6 +161,16 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+  /* 모바일 방어 코드 */
+  html {
+    overflow-wrap: break-word;
+    word-break: keep-all;
+    -webkit-text-size-adjust: 100%;
+  }
+  img, video, svg {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 /* 버튼 요소에 pointer cursor 적용 — @layer 밖에 선언하여 Tailwind 레이어보다 우선 */

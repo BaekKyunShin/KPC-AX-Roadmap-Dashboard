@@ -14,10 +14,10 @@ interface EmptyStateProps {
  */
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="text-center py-12 bg-white rounded-lg shadow">
+    <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow">
       {icon || (
         <svg
-          className="mx-auto h-12 w-12 text-gray-400"
+          className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
