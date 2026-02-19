@@ -31,6 +31,9 @@ test-results/
 # reference files
 /_reference
 
+# internal docs (account migration)
+docs/2026-02-19-company-account-migration.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*
