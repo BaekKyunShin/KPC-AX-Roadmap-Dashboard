@@ -37,6 +37,19 @@ const CONSULTANT_STEPS = [
   { id: 4, label: '서비스 이용', icon: Sparkles, status: 'pending' },
 ];
 
+// 진행 단계 상태별 스타일
+const STEP_ICON_STYLES: Record<string, string> = {
+  completed: 'border-green-500 bg-green-500 text-white',
+  current: 'border-amber-500 bg-amber-500 text-white animate-pulse',
+  pending: 'border-gray-300 bg-white text-gray-400',
+};
+
+const STEP_LABEL_STYLES: Record<string, string> = {
+  completed: 'text-green-600',
+  current: 'text-amber-600',
+  pending: 'text-gray-400',
+};
+
 // 운영관리자 진행 단계
 const OPS_ADMIN_STEPS = [
   { id: 1, label: '가입 완료', icon: CheckCircle2, status: 'completed' },
@@ -123,31 +136,17 @@ export default function PendingApprovalCard({
             <div className="grid grid-cols-2 gap-4 sm:flex sm:items-center sm:justify-between">
               {steps.map((step, index) => {
                 const Icon = step.icon;
-                const isCompleted = step.status === 'completed';
-                const isCurrent = step.status === 'current';
 
                 return (
                   <div key={step.id} className="flex items-center sm:flex-1">
                     <div className="flex flex-col items-center">
                       <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
-                          isCompleted
-                            ? 'border-green-500 bg-green-500 text-white'
-                            : isCurrent
-                              ? 'border-amber-500 bg-amber-500 text-white animate-pulse'
-                              : 'border-gray-300 bg-white text-gray-400'
-                        }`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${STEP_ICON_STYLES[step.status]}`}
                       >
                         <Icon className="h-5 w-5" />
                       </div>
                       <span
-                        className={`mt-2 text-sm font-medium ${
-                          isCompleted
-                            ? 'text-green-600'
-                            : isCurrent
-                              ? 'text-amber-600'
-                              : 'text-gray-400'
-                        }`}
+                        className={`mt-2 text-sm font-medium ${STEP_LABEL_STYLES[step.status]}`}
                       >
                         {step.label}
                       </span>
@@ -155,7 +154,7 @@ export default function PendingApprovalCard({
                     {index < steps.length - 1 && (
                       <div
                         className={`hidden sm:block mx-2 h-0.5 flex-1 ${
-                          isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                          step.status === 'completed' ? 'bg-green-500' : 'bg-gray-200'
                         }`}
                       />
                     )}
