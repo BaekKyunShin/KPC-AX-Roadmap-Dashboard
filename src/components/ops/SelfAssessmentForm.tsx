@@ -230,7 +230,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
       />
 
       {/* 질문 목록 */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3 sm:space-y-4 mb-6">
         {currentQuestions
           .sort((a, b) => a.order - b.order)
           .map((question) => (
@@ -238,7 +238,7 @@ export default function SelfAssessmentForm({ projectId, template }: SelfAssessme
               key={question.id}
               id={`question-${question.id}`}
               className={cn(
-                'p-4 rounded-lg transition-colors',
+                'p-3 sm:p-4 rounded-lg transition-colors',
                 isQuestionAnswered(question)
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-white border border-gray-200'

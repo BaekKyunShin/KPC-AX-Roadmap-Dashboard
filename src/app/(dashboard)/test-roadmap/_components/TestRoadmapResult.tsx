@@ -225,12 +225,12 @@ export default function TestRoadmapResult({
       <TestModeBanner />
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{companyName}</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{companyName}</h2>
           <p className="text-gray-500">{industry}</p>
         </div>
-        <Button variant="outline" onClick={onReset}>
+        <Button variant="outline" onClick={onReset} className="self-start sm:self-auto shrink-0">
           새 테스트 시작
         </Button>
       </div>

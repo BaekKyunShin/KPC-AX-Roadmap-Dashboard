@@ -260,47 +260,52 @@ export function ProjectTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = PROJECT_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} />
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 기업명: 아이콘 + 회사명/이메일 */}
-            <td className={`${TABLE_STYLES.td} ${columns[0].width}`}>
-              <div className="flex items-center gap-3 justify-center">
-                <div className={`h-9 w-9 shrink-0 rounded-lg ${SKELETON_BAR.primary}`} />
-                <div className="text-left">
-                  <SkeletonBar height="h-4" width="w-28" className="mb-2" />
-                  <SkeletonBar height="h-3" width="w-36" variant="secondary" />
-                </div>
-              </div>
-            </td>
-            {/* 업종 */}
-            <td className={`${TABLE_STYLES.td} ${columns[1].width}`}>
-              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
-            </td>
-            {/* 진행 상태: MiniStepper */}
-            <td className={`${TABLE_STYLES.td} ${columns[2].width}`}>
-              <div className="flex justify-center">
-                <MiniStepperSkeleton />
-              </div>
-            </td>
-            {/* 담당 컨설턴트 */}
-            <td className={`${TABLE_STYLES.td} ${columns[3].width}`}>
-              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
-            </td>
-            {/* 프로젝트 생성일 */}
-            <td className={`${TABLE_STYLES.td} ${columns[4].width}`}>
-              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
-            </td>
-            {/* 작업 */}
-            <td className={`${TABLE_STYLES.td} ${columns[5].width}`}>
-              <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          <TableSkeletonHeader columns={columns} />
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 기업명: 아이콘 + 회사명/이메일 */}
+                <td className={`${TABLE_STYLES.td} ${columns[0].width}`}>
+                  <div className="flex items-center gap-3 justify-center">
+                    <div className={`h-9 w-9 shrink-0 rounded-lg ${SKELETON_BAR.primary}`} />
+                    <div className="text-left">
+                      <SkeletonBar height="h-4" width="w-28" className="mb-2" />
+                      <SkeletonBar height="h-3" width="w-36" variant="secondary" />
+                    </div>
+                  </div>
+                </td>
+                {/* 업종 */}
+                <td className={`${TABLE_STYLES.td} ${columns[1].width}`}>
+                  <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+                </td>
+                {/* 진행 상태: MiniStepper */}
+                <td className={`${TABLE_STYLES.td} ${columns[2].width}`}>
+                  <div className="flex justify-center">
+                    <MiniStepperSkeleton />
+                  </div>
+                </td>
+                {/* 담당 컨설턴트 */}
+                <td className={`${TABLE_STYLES.td} ${columns[3].width}`}>
+                  <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+                </td>
+                {/* 프로젝트 생성일 */}
+                <td className={`${TABLE_STYLES.td} ${columns[4].width}`}>
+                  <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+                </td>
+                {/* 작업 */}
+                <td className={`${TABLE_STYLES.td} ${columns[5].width}`}>
+                  <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={3} />
+    </>
   );
 }
 
@@ -309,39 +314,44 @@ export function ConsultantProjectTableSkeleton({ rows = 5 }: TableSkeletonProps)
   const { columns, minWidth } = CONSULTANT_PROJECT_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} theadClassName={TABLE_STYLES.theadMuted} />
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 기업명 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
-            </td>
-            {/* 업종 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
-            </td>
-            {/* 규모 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
-            </td>
-            {/* 상태: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
-            </td>
-            {/* 배정일 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
-            </td>
-            {/* 작업 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          <TableSkeletonHeader columns={columns} theadClassName={TABLE_STYLES.theadMuted} />
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 기업명 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+                </td>
+                {/* 업종 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+                </td>
+                {/* 규모 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-14" className="mx-auto" />
+                </td>
+                {/* 상태: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+                </td>
+                {/* 배정일 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+                </td>
+                {/* 작업 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={3} />
+    </>
   );
 }
 
@@ -350,42 +360,47 @@ export function AuditLogTableSkeleton({ rows = 10 }: TableSkeletonProps) {
   const { columns, minWidth } = AUDIT_LOG_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} />
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 시간: 날짜 + 시간 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-3" width="w-20" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-16" variant="secondary" className="mx-auto" />
-            </td>
-            {/* 사용자: 이름 + 이메일 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-24" variant="secondary" className="mx-auto" />
-            </td>
-            {/* 액션: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
-            </td>
-            {/* 대상: 타입 + ID */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-20" variant="secondary" className="mx-auto" />
-            </td>
-            {/* 상태: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
-            </td>
-            {/* 상세 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          <TableSkeletonHeader columns={columns} />
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 시간: 날짜 + 시간 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-3" width="w-20" className="mb-1 mx-auto" />
+                  <SkeletonBar height="h-3" width="w-16" variant="secondary" className="mx-auto" />
+                </td>
+                {/* 사용자: 이름 + 이메일 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
+                  <SkeletonBar height="h-3" width="w-24" variant="secondary" className="mx-auto" />
+                </td>
+                {/* 액션: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+                </td>
+                {/* 대상: 타입 + ID */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mb-1 mx-auto" />
+                  <SkeletonBar height="h-3" width="w-20" variant="secondary" className="mx-auto" />
+                </td>
+                {/* 상태: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
+                </td>
+                {/* 상세 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-24" className="mx-auto" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={4} />
+    </>
   );
 }
 
@@ -394,42 +409,47 @@ export function UserTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = USER_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} />
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 사용자: 이름 + 이메일 */}
-            <td className={TABLE_STYLES.td}>
-              <div className="text-left pl-14">
-                <SkeletonBar height="h-4" width="w-20" className="mb-1" />
-                <SkeletonBar height="h-3" width="w-32" variant="secondary" />
-              </div>
-            </td>
-            {/* 역할: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-24" className="mx-auto" />
-            </td>
-            {/* 상태: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
-            </td>
-            {/* 프로필 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
-            </td>
-            {/* 가입일 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
-            </td>
-            {/* 관리 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          <TableSkeletonHeader columns={columns} />
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 사용자: 이름 + 이메일 */}
+                <td className={TABLE_STYLES.td}>
+                  <div className="text-left pl-14">
+                    <SkeletonBar height="h-4" width="w-20" className="mb-1" />
+                    <SkeletonBar height="h-3" width="w-32" variant="secondary" />
+                  </div>
+                </td>
+                {/* 역할: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-24" className="mx-auto" />
+                </td>
+                {/* 상태: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-12" className="mx-auto" />
+                </td>
+                {/* 프로필 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+                </td>
+                {/* 가입일 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+                </td>
+                {/* 관리 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={3} />
+    </>
   );
 }
 
@@ -438,43 +458,48 @@ export function QuotaTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = QUOTA_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      <TableSkeletonHeader columns={columns} />
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 사용자: 이름 + 이메일 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-20" className="mb-1 mx-auto" />
-              <SkeletonBar height="h-3" width="w-28" variant="secondary" className="mx-auto" />
-            </td>
-            {/* 역할: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
-            </td>
-            {/* 월간 사용량: 수치 + 프로그레스바 */}
-            <td className={TABLE_STYLES.td}>
-              <div className="inline-block">
-                <SkeletonBar height="h-4" width="w-20" className="mb-1" />
-                <SkeletonBar height="h-2" width="w-28" variant="secondary" />
-              </div>
-            </td>
-            {/* 일일 한도 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
-            </td>
-            {/* 월간 한도 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
-            </td>
-            {/* 한도 설정 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          <TableSkeletonHeader columns={columns} />
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 사용자: 이름 + 이메일 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-20" className="mb-1 mx-auto" />
+                  <SkeletonBar height="h-3" width="w-28" variant="secondary" className="mx-auto" />
+                </td>
+                {/* 역할: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-6" width="w-20" className="mx-auto" />
+                </td>
+                {/* 월간 사용량: 수치 + 프로그레스바 */}
+                <td className={TABLE_STYLES.td}>
+                  <div className="inline-block">
+                    <SkeletonBar height="h-4" width="w-20" className="mb-1" />
+                    <SkeletonBar height="h-2" width="w-28" variant="secondary" />
+                  </div>
+                </td>
+                {/* 일일 한도 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+                </td>
+                {/* 월간 한도 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-12" className="mx-auto" />
+                </td>
+                {/* 한도 설정 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={3} />
+    </>
   );
 }
 
@@ -483,57 +508,62 @@ export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = TEMPLATE_TABLE;
 
   return (
-    <TableSkeletonWrapper minWidth={minWidth}>
-      {/* 버전(pl-8), 이름(text-left) 등 커스텀 정렬이 필요하므로 직접 렌더링 */}
-      <thead className={TABLE_STYLES.thead}>
-        <tr>
-          <th className={`${TABLE_STYLES.th} ${columns[0].width} pl-8`}>{columns[0].header}</th>
-          <th className={`${TABLE_STYLES.th} ${columns[1].width} text-left`}>{columns[1].header}</th>
-          {columns.slice(2).map((col) => (
-            <th key={col.header || 'actions'} className={`${TABLE_STYLES.th} ${col.width}`}>
-              {col.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className={TABLE_STYLES.tbody}>
-        {renderItems(rows, (i) => (
-          <tr key={i}>
-            {/* 버전: 배지 */}
-            <td className={`${TABLE_STYLES.td} ${columns[0].width} pl-8`}>
-              <SkeletonBar height="h-5" width="w-10" />
-            </td>
-            {/* 템플릿 이름 + 설명 (좌측 정렬) */}
-            <td className={`${TABLE_STYLES.td} ${columns[1].width} text-left`}>
-              <SkeletonBar height="h-4" width="w-28" className="mb-1" />
-              <SkeletonBar height="h-3" width="w-36" variant="secondary" />
-            </td>
-            {/* 문항 수 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
-            </td>
-            {/* 사용 현황 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
-            </td>
-            {/* 상태: 배지 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-5" width="w-12" className="mx-auto" />
-            </td>
-            {/* 생성일 */}
-            <td className={TABLE_STYLES.td}>
-              <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
-            </td>
-            {/* 작업: DropdownMenu 아이콘 버튼 */}
-            <td className={TABLE_STYLES.td}>
-              <div className="flex justify-end mr-4">
-                <SkeletonBar height="h-8" width="w-8" className="rounded-md" />
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </TableSkeletonWrapper>
+    <>
+      <div className="hidden md:block">
+        <TableSkeletonWrapper minWidth={minWidth}>
+          {/* 버전(pl-8), 이름(text-left) 등 커스텀 정렬이 필요하므로 직접 렌더링 */}
+          <thead className={TABLE_STYLES.thead}>
+            <tr>
+              <th className={`${TABLE_STYLES.th} ${columns[0].width} pl-8`}>{columns[0].header}</th>
+              <th className={`${TABLE_STYLES.th} ${columns[1].width} text-left`}>{columns[1].header}</th>
+              {columns.slice(2).map((col) => (
+                <th key={col.header || 'actions'} className={`${TABLE_STYLES.th} ${col.width}`}>
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className={TABLE_STYLES.tbody}>
+            {renderItems(rows, (i) => (
+              <tr key={i}>
+                {/* 버전: 배지 */}
+                <td className={`${TABLE_STYLES.td} ${columns[0].width} pl-8`}>
+                  <SkeletonBar height="h-5" width="w-10" />
+                </td>
+                {/* 템플릿 이름 + 설명 (좌측 정렬) */}
+                <td className={`${TABLE_STYLES.td} ${columns[1].width} text-left`}>
+                  <SkeletonBar height="h-4" width="w-28" className="mb-1" />
+                  <SkeletonBar height="h-3" width="w-36" variant="secondary" />
+                </td>
+                {/* 문항 수 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-10" className="mx-auto" />
+                </td>
+                {/* 사용 현황 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-16" className="mx-auto" />
+                </td>
+                {/* 상태: 배지 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-5" width="w-12" className="mx-auto" />
+                </td>
+                {/* 생성일 */}
+                <td className={TABLE_STYLES.td}>
+                  <SkeletonBar height="h-4" width="w-20" className="mx-auto" />
+                </td>
+                {/* 작업: DropdownMenu 아이콘 버튼 */}
+                <td className={TABLE_STYLES.td}>
+                  <div className="flex justify-end mr-4">
+                    <SkeletonBar height="h-8" width="w-8" className="rounded-md" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </TableSkeletonWrapper>
+      </div>
+      <MobileCardSkeletonGroup cards={3} />
+    </>
   );
 }
 
@@ -655,6 +685,25 @@ export function TemplatePreviewSkeleton() {
           <Skeleton className="h-3 w-24" />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 모바일 카드 스켈레톤 (테이블 스켈레톤의 모바일 대응)
+// ============================================================================
+
+/** 모바일 카드 스켈레톤 그룹 (md 미만에서만 표시) */
+function MobileCardSkeletonGroup({ cards = 3 }: { cards?: number }) {
+  return (
+    <div className="md:hidden space-y-3">
+      {renderItems(cards, (i) => (
+        <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-2">
+          <SkeletonBar height="h-4" width="w-3/4" />
+          <SkeletonBar height="h-3" width="w-1/2" variant="secondary" />
+          <SkeletonBar height="h-3" width="w-1/3" variant="secondary" />
+        </div>
+      ))}
     </div>
   );
 }

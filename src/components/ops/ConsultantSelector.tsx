@@ -213,7 +213,7 @@ function SearchAndFilterBar({
   const isActive = showFilters || activeFilterCount > 0;
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1 sm:gap-2">
       <div className="flex-1">
         <input
           type="text"
@@ -258,7 +258,7 @@ function FilterPanel({
   const hasSelectedFilters = selectedIndustries.length > 0 || selectedSkills.length > 0;
 
   return (
-    <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+    <div className="p-3 sm:p-4 bg-gray-50 rounded-lg space-y-4">
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-medium text-gray-700">필터 옵션</h4>
         {hasSelectedFilters && (
@@ -309,7 +309,7 @@ function FilterSection({ title, items, selectedItems, onToggle }: FilterSectionP
   return (
     <div>
       <p className="text-xs font-medium text-gray-500 mb-2">{title}</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1 sm:gap-2">
         {items.map((item) => (
           <button
             key={item}
