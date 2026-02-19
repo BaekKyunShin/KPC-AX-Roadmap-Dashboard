@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks -- Playwright fixture의 use()는 React Hook이 아님 */
 // e2e/fixtures/auth.fixture.ts
 import { test as base, type Page } from '@playwright/test';
 

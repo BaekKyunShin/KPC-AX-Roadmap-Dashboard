@@ -1,7 +1,6 @@
 // e2e/ops/navigation.spec.ts
 // TEST_PLAN Phase 2.0~2.3, 2.20: 관리자 로그인, 네비게이션, 알림벨, 로그아웃
 import { test, expect } from '../fixtures/auth.fixture';
-import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 import { clickOpsNavMenu, clickUserMenu } from '../helpers/navigation.helper';
 
 // ─── Phase 2.0: 관리자 로그인 ─────────────────────────────────────────────────

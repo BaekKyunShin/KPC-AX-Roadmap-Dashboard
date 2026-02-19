@@ -23,6 +23,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 생성 파일
+    "coverage/**",
     // Reference files (외부 라이브러리 등 참조용 파일)
     "_reference/**",
   ]),

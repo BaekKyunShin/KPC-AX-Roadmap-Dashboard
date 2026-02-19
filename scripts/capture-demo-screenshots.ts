@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- CLI 스크립트 */
 /**
  * 데모 페이지 스크린샷 캡처 스크립트
  *
