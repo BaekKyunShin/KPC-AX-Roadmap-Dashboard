@@ -34,6 +34,130 @@ function getMonthOptions() {
   return options;
 }
 
+function QuotaMobileCard({
+  user,
+  isEditing,
+  editDailyLimit,
+  editMonthlyLimit,
+  saving,
+  onEdit,
+  onSave,
+  onCancel,
+  onDailyChange,
+  onMonthlyChange,
+  getUsageColor,
+  getProgressColor,
+}: {
+  user: UsageStats;
+  isEditing: boolean;
+  editDailyLimit: number;
+  editMonthlyLimit: number;
+  saving: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDailyChange: (value: number) => void;
+  onMonthlyChange: (value: number) => void;
+  getUsageColor: (percent: number) => string;
+  getProgressColor: (percent: number) => string;
+}) {
+  const roleBadge = user.role === 'SYSTEM_ADMIN'
+    ? { className: 'bg-purple-100 text-purple-800', label: '시스템관리자' }
+    : user.role === 'OPS_ADMIN'
+    ? { className: 'bg-blue-100 text-blue-800', label: '운영관리자' }
+    : { className: 'bg-gray-100 text-gray-800', label: '컨설턴트' };
+
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900">{user.name}</div>
+          <div className="text-xs text-gray-500 break-all">{user.email}</div>
+        </div>
+        <span className={`px-2 py-1 text-xs rounded shrink-0 ${roleBadge.className}`}>
+          {roleBadge.label}
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-500">월간 사용량</span>
+          <div className="flex items-center gap-2">
+            <span>{user.monthlyUsage.toLocaleString()}회</span>
+            <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageColor(user.usagePercent)}`}>
+              {user.usagePercent}%
+            </span>
+          </div>
+        </div>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${getProgressColor(user.usagePercent)}`}
+            style={{ width: `${Math.min(100, user.usagePercent)}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">일일 한도</div>
+        <div className="text-gray-900">
+          {isEditing ? (
+            <input
+              type="number"
+              value={editDailyLimit}
+              onChange={(e) => onDailyChange(Number(e.target.value))}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              min={1}
+            />
+          ) : (
+            `${user.dailyLimit}회`
+          )}
+        </div>
+        <div className="text-gray-500">월간 한도</div>
+        <div className="text-gray-900">
+          {isEditing ? (
+            <input
+              type="number"
+              value={editMonthlyLimit}
+              onChange={(e) => onMonthlyChange(Number(e.target.value))}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              min={1}
+            />
+          ) : (
+            `${user.monthlyLimit}회`
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2 border-t">
+        {isEditing ? (
+          <div className="flex gap-2">
+            <button
+              onClick={onSave}
+              disabled={saving}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 transition-colors duration-150"
+            >
+              {saving ? '저장 중...' : '저장'}
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors duration-150"
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onEdit}
+            className="text-sm text-purple-600 hover:text-purple-800 hover:underline underline-offset-2 transition-colors duration-150"
+          >
+            한도 수정
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function QuotaManagementPage() {
   const [users, setUsers] = useState<UsageStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -183,6 +307,7 @@ export default function QuotaManagementPage() {
           </div>
         ) : (
           <>
+          <div className="hidden md:block">
           <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
@@ -288,6 +413,28 @@ export default function QuotaManagementPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
+
+          {/* 모바일: 카드 뷰 */}
+          <div className="md:hidden space-y-3 p-4">
+            {users.map((user) => (
+              <QuotaMobileCard
+                key={user.id}
+                user={user}
+                isEditing={editingUser === user.id}
+                editDailyLimit={editDailyLimit}
+                editMonthlyLimit={editMonthlyLimit}
+                saving={saving}
+                onEdit={() => handleEditStart(user)}
+                onSave={handleSave}
+                onCancel={() => setEditingUser(null)}
+                onDailyChange={setEditDailyLimit}
+                onMonthlyChange={setEditMonthlyLimit}
+                getUsageColor={getUsageColor}
+                getProgressColor={getProgressColor}
+              />
+            ))}
+          </div>
 
             {/* 페이지네이션 */}
             {totalPages > 1 && (

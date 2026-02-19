@@ -32,6 +32,64 @@ import { Input } from '@/components/ui/input';
 import { Search, X, Download } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils/toast';
 
+function AuditMobileCard({
+  log,
+  getActionLabel,
+  getActionColor,
+  getTargetTypeLabel,
+}: {
+  log: AuditLogEntry;
+  getActionLabel: (action: AuditAction) => string;
+  getActionColor: (action: AuditAction) => string;
+  getTargetTypeLabel: (type: string) => string;
+}) {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
+          {getActionLabel(log.action)}
+        </span>
+        {log.success ? (
+          <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800 shrink-0">성공</span>
+        ) : (
+          <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800 shrink-0">실패</span>
+        )}
+      </div>
+
+      <div className="text-xs text-gray-500">
+        {new Date(log.created_at).toLocaleString('ko-KR')}
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">사용자</div>
+        <div className="text-gray-900">{log.actor?.name || '-'}</div>
+        <div className="text-gray-500">이메일</div>
+        <div className="text-gray-900 break-all">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
+        <div className="text-gray-500">대상</div>
+        <div className="text-gray-900">
+          {getTargetTypeLabel(log.target_type)}
+          <span className="ml-1 text-xs text-gray-500 font-mono">{log.target_id.slice(0, 8)}</span>
+        </div>
+      </div>
+
+      {log.error_message ? (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-red-600 break-all">{log.error_message}</p>
+        </div>
+      ) : log.meta && Object.keys(log.meta).length > 0 ? (
+        <div className="pt-2 border-t">
+          <details className="cursor-pointer">
+            <summary className="text-xs text-purple-600 hover:text-purple-800">상세보기</summary>
+            <pre className="mt-1 text-xs bg-gray-50 p-2 rounded overflow-auto break-all whitespace-pre-wrap">
+              {JSON.stringify(log.meta, null, 2)}
+            </pre>
+          </details>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -369,6 +427,7 @@ export default function AuditLogPage() {
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg overflow-x-auto">
+          <div className="hidden md:block">
           <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
@@ -425,6 +484,20 @@ export default function AuditLogPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
+
+          {/* 모바일: 카드 뷰 */}
+          <div className="md:hidden space-y-3 p-4">
+            {filteredLogs.map((log) => (
+              <AuditMobileCard
+                key={log.id}
+                log={log}
+                getActionLabel={getActionLabel}
+                getActionColor={getActionColor}
+                getTargetTypeLabel={getTargetTypeLabel}
+              />
+            ))}
+          </div>
 
           {/* 페이지네이션 */}
           {totalPages > 1 && (

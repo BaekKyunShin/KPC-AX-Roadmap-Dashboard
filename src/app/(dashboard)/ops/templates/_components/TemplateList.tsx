@@ -57,6 +57,124 @@ const BADGE_BASE = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs 
 // Component
 // =============================================================================
 
+function TemplateMobileCard({
+  template,
+  loading,
+  isPending,
+  onSetActive,
+  onDuplicate,
+  onDelete,
+}: {
+  template: TemplateWithUsage;
+  loading: string | null;
+  isPending: boolean;
+  onSetActive: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const disabled = loading === template.id || isPending;
+
+  return (
+    <div className={cn(
+      "border rounded-lg p-4 space-y-2",
+      template.is_active && "bg-green-50"
+    )}>
+      <div className="min-w-0">
+        <Link
+          href={`/ops/templates/${template.id}`}
+          className="font-medium text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline transition-colors duration-150 break-keep"
+        >
+          {template.name}
+        </Link>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className={cn(BADGE_BASE, 'bg-gray-100 text-gray-800')}>
+          v{template.version}
+        </span>
+        {template.is_active ? (
+          <span className={cn(BADGE_BASE, 'gap-1.5 bg-green-100 text-green-800')}>
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+            활성
+          </span>
+        ) : (
+          <span className={cn(BADGE_BASE, 'bg-gray-100 text-gray-600')}>비활성</span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">문항 수</div>
+        <div className="text-gray-900">{template.questions?.length || 0}개</div>
+        <div className="text-gray-500">사용 현황</div>
+        <div className="text-gray-900">
+          {template.usage_count > 0 ? (
+            <span className="text-blue-600">{template.usage_count}건 사용</span>
+          ) : (
+            <span className="text-gray-400">미사용</span>
+          )}
+        </div>
+        <div className="text-gray-500">생성일</div>
+        <div className="text-gray-900">
+          {new Date(template.created_at).toLocaleDateString('ko-KR')}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-2 border-t">
+        <Link
+          href={`/ops/templates/${template.id}`}
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 transition-colors duration-150"
+        >
+          편집
+        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="작업 메뉴"
+              disabled={disabled}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!template.is_active && (
+              <DropdownMenuItem
+                onClick={() => onSetActive(template.id)}
+                disabled={disabled}
+              >
+                <Power className="h-4 w-4" />
+                활성화
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={() => onDuplicate(template.id)}
+              disabled={disabled}
+            >
+              <Copy className="h-4 w-4" />
+              복제
+            </DropdownMenuItem>
+            {!template.is_active && template.usage_count === 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete(template.id)}
+                  disabled={disabled}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  삭제
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
 export default function TemplateList({ templates }: TemplateListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -131,6 +249,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
       )}
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <div className="hidden md:block">
         <Table className="w-full">
           <TableHeader>
             <TableRow>
@@ -242,6 +361,22 @@ export default function TemplateList({ templates }: TemplateListProps) {
             ))}
           </TableBody>
         </Table>
+        </div>
+
+        {/* 모바일: 카드 뷰 */}
+        <div className="md:hidden space-y-3 p-4">
+          {templates.map((template) => (
+            <TemplateMobileCard
+              key={template.id}
+              template={template}
+              loading={loading}
+              isPending={isPending}
+              onSetActive={handleSetActive}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
