@@ -82,6 +82,16 @@ function formatDateKR(dateString: string): string {
 }
 
 /**
+ * 기업 규모 라벨을 간략화 (인원수·괄호 제거)
+ */
+function formatCompanySize(size: string): string {
+  return COMPANY_SIZE_LABELS[size as CompanySizeValue]
+    ?.replace(/\d+[~,]?\d*명\s*/, '')
+    ?.replace(/[()]/g, '')
+    || size;
+}
+
+/**
  * 상태 옵션에서 라벨 찾기
  */
 function findStatusLabel(statuses: StatusOption[], value: string): string {
@@ -137,10 +147,6 @@ function FilterBadge({
  */
 function ProjectRow({ project }: { project: ConsultantProjectItem }) {
   const displayDate = project.assigned_at || project.created_at;
-  const companySizeLabel = COMPANY_SIZE_LABELS[project.company_size as CompanySizeValue]
-    ?.replace(/\d+[~,]?\d*명\s*/, '')
-    ?.replace(/[()]/g, '')
-    || project.company_size;
 
   return (
     <TableRow>
@@ -150,7 +156,7 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         </div>
       </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
-      <TableCell className="text-muted-foreground">{companySizeLabel}</TableCell>
+      <TableCell className="text-muted-foreground">{formatCompanySize(project.company_size)}</TableCell>
       <TableCell>
         <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
       </TableCell>
@@ -164,6 +170,40 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         </Link>
       </TableCell>
     </TableRow>
+  );
+}
+
+/**
+ * 프로젝트 모바일 카드
+ */
+function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
+  const displayDate = project.assigned_at || project.created_at;
+
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900">{project.company_name}</div>
+        </div>
+        <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">업종</div>
+        <div className="text-gray-900">{project.industry}</div>
+        <div className="text-gray-500">규모</div>
+        <div className="text-gray-900">{formatCompanySize(project.company_size)}</div>
+        <div className="text-gray-500">배정일</div>
+        <div className="text-gray-900">{formatDateKR(displayDate)}</div>
+      </div>
+      <div className="flex justify-end pt-2 border-t">
+        <Link
+          href={`/consultant/projects/${project.id}`}
+          className="text-sm text-primary hover:underline"
+        >
+          상세 보기
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -358,40 +398,9 @@ export default function ProjectList() {
 
               {/* 모바일: 카드 뷰 */}
               <div className="md:hidden space-y-3 p-4">
-                {projects.map((project) => {
-                  const displayDate = project.assigned_at || project.created_at;
-                  const companySizeLabel = COMPANY_SIZE_LABELS[project.company_size as CompanySizeValue]
-                    ?.replace(/\d+[~,]?\d*명\s*/, '')
-                    ?.replace(/[()]/g, '')
-                    || project.company_size;
-
-                  return (
-                    <div key={project.id} className="border rounded-lg p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-900">{project.company_name}</div>
-                        </div>
-                        <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                        <div className="text-gray-500">업종</div>
-                        <div className="text-gray-900">{project.industry}</div>
-                        <div className="text-gray-500">규모</div>
-                        <div className="text-gray-900">{companySizeLabel}</div>
-                        <div className="text-gray-500">배정일</div>
-                        <div className="text-gray-900">{formatDateKR(displayDate)}</div>
-                      </div>
-                      <div className="flex justify-end pt-2 border-t">
-                        <Link
-                          href={`/consultant/projects/${project.id}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          상세 보기
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
+                {projects.map((project) => (
+                  <ProjectMobileCard key={project.id} project={project} />
+                ))}
               </div>
               </>
             )}
