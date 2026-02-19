@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef, useLayoutEffect } from 'react';
+import React, { useState, useTransition, useRef, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
@@ -78,6 +78,68 @@ const PROFILE_TEXT_AREA_CLASSES =
 // =============================================================================
 // Component
 // =============================================================================
+
+function UserMobileCard({
+  user,
+  getRoleBadge,
+  getStatusBadge,
+  renderUserActions,
+  onProfileClick,
+}: {
+  user: UserWithProfile;
+  getRoleBadge: (role: string) => React.ReactNode;
+  getStatusBadge: (status: string) => React.ReactNode;
+  renderUserActions: (user: UserWithProfile) => React.ReactNode;
+  onProfileClick: (profile: ConsultantProfile, name: string) => void;
+}) {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      {/* 헤더: 사용자명 + 역할 배지 */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900">{user.name}</div>
+        </div>
+        {getRoleBadge(user.role)}
+      </div>
+
+      {/* 본문: 이메일, 전화번호, 상태, 가입일 */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">이메일</div>
+        <div className="text-gray-900 break-all">{user.email}</div>
+        {user.phone && (
+          <>
+            <div className="text-gray-500">전화번호</div>
+            <div className="text-gray-900">{user.phone}</div>
+          </>
+        )}
+        <div className="text-gray-500">상태</div>
+        <div>{getStatusBadge(user.status)}</div>
+        <div className="text-gray-500">가입일</div>
+        <div className="text-gray-900">
+          {new Date(user.created_at).toLocaleDateString('ko-KR')}
+        </div>
+      </div>
+
+      {/* 푸터: 프로필 보기 + 관리 액션 */}
+      <div className="flex items-center justify-between pt-2 border-t">
+        <div>
+          {user.consultant_profile ? (
+            <button
+              type="button"
+              onClick={() => onProfileClick(user.consultant_profile!, user.name)}
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 transition-colors duration-150"
+            >
+              프로필 보기
+            </button>
+          ) : (
+            <span className="text-sm text-gray-400">미등록</span>
+          )}
+        </div>
+        <div>{renderUserActions(user)}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function UserManagementTable({ users }: UserManagementTableProps) {
   const router = useRouter();
@@ -226,6 +288,8 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
 
       {/* 사용자 테이블 */}
       <div className="bg-white shadow rounded-lg overflow-x-auto">
+        {/* 데스크톱: 테이블 뷰 */}
+        <div className="hidden md:block">
         <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
@@ -241,7 +305,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
             {users.map((user) => (
               <TableRow key={user.id}>
                 {/* 사용자 정보 */}
-                <TableCell className="pl-20 pr-6 text-left">
+                <TableCell className="pl-4 md:pl-20 pr-6 text-left">
                   <div>
                     <div className="font-medium text-gray-900">{user.name}</div>
                     <div className="text-gray-500">{user.email}</div>
@@ -289,6 +353,27 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
             )}
           </TableBody>
         </Table>
+        </div>
+
+        {/* 모바일: 카드 뷰 */}
+        <div className="md:hidden space-y-3 p-4">
+          {users.length === 0 ? (
+            <div className="py-8 text-center text-gray-500">
+              등록된 사용자가 없습니다.
+            </div>
+          ) : (
+            users.map((user) => (
+              <UserMobileCard
+                key={user.id}
+                user={user}
+                getRoleBadge={getRoleBadge}
+                getStatusBadge={getStatusBadge}
+                renderUserActions={renderUserActions}
+                onProfileClick={handleProfileClick}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* 프로필 상세 모달 */}

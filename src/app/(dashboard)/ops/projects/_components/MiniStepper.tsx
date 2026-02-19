@@ -31,7 +31,7 @@ export default function MiniStepper({
   return (
     <div className="flex flex-col gap-1 items-center">
       {/* 스텝퍼 시각화 */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 flex-wrap">
         {PROJECT_WORKFLOW_STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -65,7 +65,7 @@ export default function MiniStepper({
 
       {/* 상태 라벨 및 경과일 */}
       {(showLabel || showDays) && (
-        <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+        <div className="flex items-center gap-1.5 text-xs sm:whitespace-nowrap">
           {showLabel && (
             <span className="text-muted-foreground">
               {getWorkflowStepLabel(status)}

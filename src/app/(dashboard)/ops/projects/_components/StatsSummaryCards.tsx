@@ -141,11 +141,11 @@ export default function StatsSummaryCards({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible sm:pb-0">
         {STAT_CARDS.map((card) => (
           <div
             key={card.key}
-            className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+            className="min-w-[120px] flex-shrink-0 snap-start sm:min-w-0 sm:flex-shrink rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
           >
             <div className="flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function StatsSummaryCards({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible sm:pb-0">
       {STAT_CARDS.map((card) => {
         const count = getCount(card);
         const active = isActive(card);
@@ -172,6 +172,7 @@ export default function StatsSummaryCards({
             type="button"
             onClick={() => handleCardClick(card)}
             className={cn(
+              'min-w-[120px] flex-shrink-0 snap-start sm:min-w-0 sm:flex-shrink',
               'group flex flex-col items-center gap-1.5 rounded-lg border bg-white px-3 py-3 text-center shadow-sm transition-all duration-150',
               'hover:bg-gray-50 hover:shadow active:scale-[0.98]',
               active

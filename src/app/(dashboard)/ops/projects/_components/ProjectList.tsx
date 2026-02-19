@@ -63,6 +63,57 @@ function FilterBadge({
   );
 }
 
+function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      {/* 헤더: 기업명 + 상세보기 */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+            <Building2 className="h-4 w-4 text-blue-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-gray-900 break-keep">{project.company_name}</div>
+            <div className="text-xs text-gray-500 break-all">{project.contact_email}</div>
+          </div>
+        </div>
+        <Link
+          href={`/ops/projects/${project.id}`}
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 transition-colors duration-150 shrink-0"
+        >
+          상세보기
+        </Link>
+      </div>
+
+      {/* 본문: 업종, 컨설턴트, 생성일 */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        <div className="text-gray-500">업종</div>
+        <div className="text-gray-900">{project.industry}</div>
+        <div className="text-gray-500">담당 컨설턴트</div>
+        <div className="text-gray-900">
+          {project.assigned_consultant?.name || (
+            <span className="text-gray-400">미배정</span>
+          )}
+        </div>
+        <div className="text-gray-500">생성일</div>
+        <div className="text-gray-900">
+          {new Date(project.created_at).toLocaleDateString('ko-KR')}
+        </div>
+      </div>
+
+      {/* 진행 상태: MiniStepper */}
+      <div className="pt-2 border-t">
+        <MiniStepper
+          status={project.status as ProjectStatus}
+          daysInCurrentStatus={project.days_in_current_status}
+          showLabel={true}
+          showDays={true}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectList({ statusFilter }: ProjectListProps) {
   const [projects, setProjects] = useState<ProjectWithTimeline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,6 +301,8 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
             </div>
           ) : (
             <>
+              {/* 데스크톱: 테이블 뷰 */}
+              <div className="hidden md:block">
               <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
@@ -310,6 +363,14 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                     ))}
                 </TableBody>
               </Table>
+              </div>
+
+              {/* 모바일: 카드 뷰 */}
+              <div className="md:hidden space-y-3 p-4">
+                {projects.map((projectItem) => (
+                  <OpsProjectMobileCard key={projectItem.id} project={projectItem} />
+                ))}
+              </div>
 
               {/* 페이지네이션 */}
               {totalPages > 1 && (
