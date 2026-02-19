@@ -54,8 +54,69 @@ const TABLE_COLUMNS = {
 const BADGE_BASE = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
 
 // =============================================================================
-// Component
+// Sub-Components
 // =============================================================================
+
+function TemplateActionMenu({
+  template,
+  disabled,
+  onSetActive,
+  onDuplicate,
+  onDelete,
+}: {
+  template: TemplateWithUsage;
+  disabled: boolean;
+  onSetActive: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="작업 메뉴"
+          disabled={disabled}
+        >
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {!template.is_active && (
+          <DropdownMenuItem
+            onClick={() => onSetActive(template.id)}
+            disabled={disabled}
+          >
+            <Power className="h-4 w-4" />
+            활성화
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onClick={() => onDuplicate(template.id)}
+          disabled={disabled}
+        >
+          <Copy className="h-4 w-4" />
+          복제
+        </DropdownMenuItem>
+        {!template.is_active && template.usage_count === 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => onDelete(template.id)}
+              disabled={disabled}
+            >
+              <Trash2 className="h-4 w-4" />
+              삭제
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function TemplateMobileCard({
   template,
@@ -126,50 +187,13 @@ function TemplateMobileCard({
         >
           편집
         </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="작업 메뉴"
-              disabled={disabled}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {!template.is_active && (
-              <DropdownMenuItem
-                onClick={() => onSetActive(template.id)}
-                disabled={disabled}
-              >
-                <Power className="h-4 w-4" />
-                활성화
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => onDuplicate(template.id)}
-              disabled={disabled}
-            >
-              <Copy className="h-4 w-4" />
-              복제
-            </DropdownMenuItem>
-            {!template.is_active && template.usage_count === 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => onDelete(template.id)}
-                  disabled={disabled}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  삭제
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TemplateActionMenu
+          template={template}
+          disabled={disabled}
+          onSetActive={onSetActive}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
@@ -250,7 +274,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="hidden md:block">
-        <Table className="w-full">
+          <Table className="w-full">
           <TableHeader>
             <TableRow>
               <TableHead className={cn(TABLE_COLUMNS.version, 'pl-8')}>버전</TableHead>
@@ -311,56 +335,19 @@ export default function TemplateList({ templates }: TemplateListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end mr-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label="작업 메뉴"
-                          disabled={isActionDisabled(template.id)}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {!template.is_active && (
-                          <DropdownMenuItem
-                            onClick={() => handleSetActive(template.id)}
-                            disabled={isActionDisabled(template.id)}
-                          >
-                            <Power className="h-4 w-4" />
-                            활성화
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => handleDuplicate(template.id)}
-                          disabled={isActionDisabled(template.id)}
-                        >
-                          <Copy className="h-4 w-4" />
-                          복제
-                        </DropdownMenuItem>
-                        {!template.is_active && template.usage_count === 0 && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleDelete(template.id)}
-                              disabled={isActionDisabled(template.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              삭제
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <TemplateActionMenu
+                      template={template}
+                      disabled={isActionDisabled(template.id)}
+                      onSetActive={handleSetActive}
+                      onDuplicate={handleDuplicate}
+                      onDelete={handleDelete}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
         </div>
 
         {/* 모바일: 카드 뷰 */}

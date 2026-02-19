@@ -428,7 +428,7 @@ export default function AuditLogPage() {
       ) : (
         <div className="bg-white shadow rounded-lg overflow-x-auto">
           <div className="hidden md:block">
-          <Table className="min-w-[800px]">
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[100px]">시간</TableHead>
@@ -483,7 +483,7 @@ export default function AuditLogPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
           </div>
 
           {/* 모바일: 카드 뷰 */}

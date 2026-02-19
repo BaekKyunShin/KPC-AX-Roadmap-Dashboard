@@ -21,7 +21,28 @@ import {
 import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
 import { fetchUsageStats, updateQuota, type UsageStats } from './actions';
 
-// 월 선택 옵션 생성 (최근 12개월, 로컬 시간 기준)
+// =============================================================================
+// Helpers (순수 함수)
+// =============================================================================
+
+function getUsageColor(percent: number): string {
+  if (percent >= 90) return 'text-red-600 bg-red-100';
+  if (percent >= 70) return 'text-yellow-600 bg-yellow-100';
+  return 'text-green-600 bg-green-100';
+}
+
+function getProgressColor(percent: number): string {
+  if (percent >= 90) return 'bg-red-500';
+  if (percent >= 70) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
+function getRoleBadge(role: string) {
+  if (role === 'SYSTEM_ADMIN') return { className: 'bg-purple-100 text-purple-800', label: '시스템관리자' };
+  if (role === 'OPS_ADMIN') return { className: 'bg-blue-100 text-blue-800', label: '운영관리자' };
+  return { className: 'bg-gray-100 text-gray-800', label: '컨설턴트' };
+}
+
 function getMonthOptions() {
   const options: string[] = [];
   const now = new Date();
@@ -45,8 +66,6 @@ function QuotaMobileCard({
   onCancel,
   onDailyChange,
   onMonthlyChange,
-  getUsageColor,
-  getProgressColor,
 }: {
   user: UsageStats;
   isEditing: boolean;
@@ -58,14 +77,8 @@ function QuotaMobileCard({
   onCancel: () => void;
   onDailyChange: (value: number) => void;
   onMonthlyChange: (value: number) => void;
-  getUsageColor: (percent: number) => string;
-  getProgressColor: (percent: number) => string;
 }) {
-  const roleBadge = user.role === 'SYSTEM_ADMIN'
-    ? { className: 'bg-purple-100 text-purple-800', label: '시스템관리자' }
-    : user.role === 'OPS_ADMIN'
-    ? { className: 'bg-blue-100 text-blue-800', label: '운영관리자' }
-    : { className: 'bg-gray-100 text-gray-800', label: '컨설턴트' };
+  const roleBadge = getRoleBadge(user.role);
 
   return (
     <div className="border rounded-lg p-4 space-y-2">
@@ -232,20 +245,6 @@ export default function QuotaManagementPage() {
     setSaving(false);
   }
 
-  // 사용량 퍼센트 색상
-  function getUsageColor(percent: number): string {
-    if (percent >= 90) return 'text-red-600 bg-red-100';
-    if (percent >= 70) return 'text-yellow-600 bg-yellow-100';
-    return 'text-green-600 bg-green-100';
-  }
-
-  // 프로그레스 바 색상
-  function getProgressColor(percent: number): string {
-    if (percent >= 90) return 'bg-red-500';
-    if (percent >= 70) return 'bg-yellow-500';
-    return 'bg-green-500';
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -308,7 +307,7 @@ export default function QuotaManagementPage() {
         ) : (
           <>
           <div className="hidden md:block">
-          <Table className="min-w-[800px]">
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[140px]">사용자</TableHead>
@@ -329,16 +328,8 @@ export default function QuotaManagementPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      user.role === 'SYSTEM_ADMIN'
-                        ? 'bg-purple-100 text-purple-800'
-                        : user.role === 'OPS_ADMIN'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user.role === 'SYSTEM_ADMIN' ? '시스템관리자'
-                        : user.role === 'OPS_ADMIN' ? '운영관리자'
-                        : '컨설턴트'}
+                    <span className={`px-2 py-1 text-xs rounded ${getRoleBadge(user.role).className}`}>
+                      {getRoleBadge(user.role).label}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -412,7 +403,7 @@ export default function QuotaManagementPage() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
           </div>
 
           {/* 모바일: 카드 뷰 */}
@@ -430,8 +421,6 @@ export default function QuotaManagementPage() {
                 onCancel={() => setEditingUser(null)}
                 onDailyChange={setEditDailyLimit}
                 onMonthlyChange={setEditMonthlyLimit}
-                getUsageColor={getUsageColor}
-                getProgressColor={getProgressColor}
               />
             ))}
           </div>
