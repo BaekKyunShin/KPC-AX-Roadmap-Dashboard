@@ -30,6 +30,14 @@ interface StatCardConfig {
   activeBorder: string;
 }
 
+/** 모바일 가로 스크롤 → sm 이상 그리드 전환 */
+const STATS_GRID_CLASSES =
+  'flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible sm:pb-0';
+
+/** 모바일에서 카드 최소 너비 + 스냅 → sm 이상에서 해제 */
+const STATS_CARD_MOBILE_CLASSES =
+  'min-w-[120px] flex-shrink-0 snap-start sm:min-w-0 sm:flex-shrink';
+
 /**
  * 통계 카드 설정
  * - 라벨은 PROJECT_WORKFLOW_STEPS와 동일하게 유지
@@ -141,11 +149,11 @@ export default function StatsSummaryCards({
 
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible sm:pb-0">
+      <div className={STATS_GRID_CLASSES}>
         {STAT_CARDS.map((card) => (
           <div
             key={card.key}
-            className="min-w-[120px] flex-shrink-0 snap-start sm:min-w-0 sm:flex-shrink rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+            className={`${STATS_CARD_MOBILE_CLASSES} rounded-lg border border-gray-200 bg-white p-3 shadow-sm`}
           >
             <div className="flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2">
@@ -161,7 +169,7 @@ export default function StatsSummaryCards({
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-4 lg:grid-cols-7 sm:overflow-visible sm:pb-0">
+    <div className={STATS_GRID_CLASSES}>
       {STAT_CARDS.map((card) => {
         const count = getCount(card);
         const active = isActive(card);
@@ -172,7 +180,7 @@ export default function StatsSummaryCards({
             type="button"
             onClick={() => handleCardClick(card)}
             className={cn(
-              'min-w-[120px] flex-shrink-0 snap-start sm:min-w-0 sm:flex-shrink',
+              STATS_CARD_MOBILE_CLASSES,
               'group flex flex-col items-center gap-1.5 rounded-lg border bg-white px-3 py-3 text-center shadow-sm transition-all duration-150',
               'hover:bg-gray-50 hover:shadow active:scale-[0.98]',
               active

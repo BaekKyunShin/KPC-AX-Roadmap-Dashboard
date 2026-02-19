@@ -303,7 +303,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
             <>
               {/* 데스크톱: 테이블 뷰 */}
               <div className="hidden md:block">
-              <Table className="min-w-[900px]">
+                <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[180px]">기업명</TableHead>
@@ -362,7 +362,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                       </TableRow>
                     ))}
                 </TableBody>
-              </Table>
+                </Table>
               </div>
 
               {/* 모바일: 카드 뷰 */}

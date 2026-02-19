@@ -79,19 +79,21 @@ const PROFILE_TEXT_AREA_CLASSES =
 // Component
 // =============================================================================
 
+interface UserMobileCardProps {
+  user: UserWithProfile;
+  getRoleBadge: (role: string) => React.ReactNode;
+  getStatusBadge: (status: string) => React.ReactNode;
+  renderUserActions: (user: UserWithProfile) => React.ReactNode;
+  onProfileClick: (profile: ConsultantProfile, name: string) => void;
+}
+
 function UserMobileCard({
   user,
   getRoleBadge,
   getStatusBadge,
   renderUserActions,
   onProfileClick,
-}: {
-  user: UserWithProfile;
-  getRoleBadge: (role: string) => React.ReactNode;
-  getStatusBadge: (status: string) => React.ReactNode;
-  renderUserActions: (user: UserWithProfile) => React.ReactNode;
-  onProfileClick: (profile: ConsultantProfile, name: string) => void;
-}) {
+}: UserMobileCardProps) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
       {/* 헤더: 사용자명 + 역할 배지 */}
@@ -290,7 +292,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {/* 데스크톱: 테이블 뷰 */}
         <div className="hidden md:block">
-        <Table className="min-w-[700px]">
+          <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead className={TABLE_COLUMNS.user}>사용자</TableHead>
@@ -352,7 +354,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
         </div>
 
         {/* 모바일: 카드 뷰 */}
