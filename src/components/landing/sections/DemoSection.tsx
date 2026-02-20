@@ -387,7 +387,7 @@ export default function DemoSection() {
             직접 경험해보세요
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            AI가 기업 맞춤형 교육 로드맵을 자동으로 생성합니다
+            AI가 기업 맞춤형 교육 로드맵을 자동으로 생성합니다.
           </p>
         </div>
 

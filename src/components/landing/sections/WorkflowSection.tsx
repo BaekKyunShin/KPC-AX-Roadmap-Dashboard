@@ -136,7 +136,7 @@ export default function WorkflowSection() {
             4단계로 완성하는 맞춤형 AI 역량 강화 솔루션
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            체계적인 프로세스로 기업 맞춤형 AI 훈련 로드맵을 제공합니다
+            체계적인 프로세스로 기업 맞춤형 AI 훈련 로드맵을 제공합니다.
           </p>
         </div>
 
