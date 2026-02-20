@@ -80,9 +80,7 @@ function TimelineSkeleton() {
             {Array.from({ length: WORKFLOW_STEP_COUNT }, (_, i) => (
               <div key={i} className="relative pb-6 last:pb-0">
                 <div className={`absolute -left-12 h-8 w-8 rounded-full ${SKELETON_STYLES.primary} border-2 ${SKELETON_STYLES.border}`} />
-                <div>
-                  <div className={`h-4 w-24 ${SKELETON_STYLES.primary} rounded`} />
-                </div>
+                <div className={`h-4 w-24 ${SKELETON_STYLES.primary} rounded`} />
               </div>
             ))}
           </div>

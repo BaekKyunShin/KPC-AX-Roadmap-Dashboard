@@ -35,8 +35,8 @@ export function QuestionInput({ question, value, onChange }: QuestionInputProps)
         })}
       </div>
       <div className="flex justify-between text-[10px] text-gray-400 mt-1 sm:hidden">
-        <span>매우 그렇지 않다</span>
-        <span>매우 그렇다</span>
+        <span>{SCALE_5_LABELS[0]}</span>
+        <span>{SCALE_5_LABELS[SCALE_5_LABELS.length - 1]}</span>
       </div>
     </div>
   );
