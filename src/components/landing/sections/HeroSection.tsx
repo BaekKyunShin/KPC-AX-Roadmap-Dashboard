@@ -142,21 +142,21 @@ interface CTAButtonsProps {
 }
 
 const CTAButtons = ({ ref }: CTAButtonsProps) => (
-  <div ref={ref} className="relative mt-24 flex flex-col sm:flex-row gap-4 opacity-0">
-    <Link href="/register">
+  <div ref={ref} className="relative mt-24 flex flex-col items-center sm:flex-row gap-4 opacity-0">
+    <Link href="/register" className="w-full sm:w-auto">
       <Button
         size="lg"
-        className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-6 text-base rounded-full"
+        className="w-full bg-gray-900 hover:bg-gray-800 text-white px-8 py-6 text-base rounded-full"
         data-cursor-hover
       >
         서비스 이용하기
       </Button>
     </Link>
-    <a href="#demo">
+    <a href="#demo" className="w-full sm:w-auto">
       <Button
         size="lg"
         variant="outline"
-        className="px-8 py-6 text-base rounded-full border-gray-300 hover:bg-gray-50 bg-white/80"
+        className="w-full px-8 py-6 text-base rounded-full border-gray-300 hover:bg-gray-50 bg-white/80"
         data-cursor-hover
       >
         데모 살펴보기

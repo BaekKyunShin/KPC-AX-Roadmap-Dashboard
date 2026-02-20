@@ -348,27 +348,33 @@ export default function AuditLogPage() {
               </SelectContent>
             </Select>
 
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPage(1);
-                setFilters(prev => ({ ...prev, page: 1 }));
-              }}
-              className="w-full sm:w-[140px]"
-            />
+            <div className="relative w-full sm:w-[140px]">
+              <span className="absolute -top-2 left-2 text-[10px] text-muted-foreground bg-background px-1 sm:hidden">시작일</span>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                  setFilters(prev => ({ ...prev, page: 1 }));
+                }}
+                className="w-full sm:w-[140px]"
+              />
+            </div>
 
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPage(1);
-                setFilters(prev => ({ ...prev, page: 1 }));
-              }}
-              className="w-full sm:w-[140px]"
-            />
+            <div className="relative w-full sm:w-[140px]">
+              <span className="absolute -top-2 left-2 text-[10px] text-muted-foreground bg-background px-1 sm:hidden">종료일</span>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                  setFilters(prev => ({ ...prev, page: 1 }));
+                }}
+                className="w-full sm:w-[140px]"
+              />
+            </div>
 
             {hasFilters && (
               <button
