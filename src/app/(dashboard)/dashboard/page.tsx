@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     case 'SYSTEM_ADMIN':
       redirect('/ops/projects');
     case 'CONSULTANT_APPROVED':
-      redirect('/consultant/projects');
+      redirect('/consultant/home');
     case 'USER_PENDING': {
       // 컨설턴트 프로필 유무 확인
       const adminSupabase = createAdminClient();
