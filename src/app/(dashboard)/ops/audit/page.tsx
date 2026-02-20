@@ -358,7 +358,7 @@ export default function AuditLogPage() {
                   setPage(1);
                   setFilters(prev => ({ ...prev, page: 1 }));
                 }}
-                className="w-full sm:w-[140px]"
+                className="w-full"
               />
             </div>
 
@@ -372,7 +372,7 @@ export default function AuditLogPage() {
                   setPage(1);
                   setFilters(prev => ({ ...prev, page: 1 }));
                 }}
-                className="w-full sm:w-[140px]"
+                className="w-full"
               />
             </div>
 
