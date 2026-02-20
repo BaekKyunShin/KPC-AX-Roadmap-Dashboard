@@ -75,12 +75,12 @@ function TimelineSkeleton() {
         </div>
         {/* 모바일: 세로 타임라인 */}
         <div className="md:hidden">
-          <div className="relative pl-8">
+          <div className="relative pl-12">
             <div className={`absolute left-[15px] top-0 bottom-0 w-0.5 ${SKELETON_STYLES.primary}`} />
             {Array.from({ length: WORKFLOW_STEP_COUNT }, (_, i) => (
               <div key={i} className="relative pb-6 last:pb-0">
-                <div className={`absolute left-0 h-8 w-8 rounded-full ${SKELETON_STYLES.primary} border-2 ${SKELETON_STYLES.border}`} />
-                <div className="ml-2">
+                <div className={`absolute -left-12 h-8 w-8 rounded-full ${SKELETON_STYLES.primary} border-2 ${SKELETON_STYLES.border}`} />
+                <div>
                   <div className={`h-4 w-24 ${SKELETON_STYLES.primary} rounded`} />
                 </div>
               </div>
@@ -201,7 +201,7 @@ export default function ProjectTimeline({ projectId }: ProjectTimelineProps) {
 
         {/* 모바일: 세로 타임라인 */}
         <div className="md:hidden">
-          <div className="relative pl-8">
+          <div className="relative pl-12">
             {/* 세로 연결선 */}
             <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-gray-200" />
             {/* 완료된 단계까지 녹색 연결선 */}
@@ -224,7 +224,7 @@ export default function ProjectTimeline({ projectId }: ProjectTimelineProps) {
                   {/* 원형 아이콘 */}
                   <div
                     className={cn(
-                      'absolute left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white',
+                      'absolute -left-12 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white',
                       isCompleted && 'border-emerald-500 bg-emerald-500',
                       isCurrent && 'border-blue-500 bg-blue-500',
                       !isCompleted && !isCurrent && 'border-gray-300'
@@ -238,7 +238,7 @@ export default function ProjectTimeline({ projectId }: ProjectTimelineProps) {
                   </div>
 
                   {/* 라벨 */}
-                  <div className="ml-2">
+                  <div>
                     <p
                       className={cn(
                         'text-sm font-medium',
