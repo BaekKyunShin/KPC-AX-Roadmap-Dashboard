@@ -33,7 +33,7 @@ export default function TestRoadmapNavigation({
   isOpsAdmin,
 }: TestRoadmapNavigationProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:relative md:border-0 md:p-0 md:bg-transparent">
+    <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 px-3 pb-3 pt-8 sm:p-4 md:relative md:z-auto md:border-0 md:p-0 md:bg-transparent">
       <div className="max-w-4xl mx-auto flex justify-between items-center">
         <button
           type="button"
