@@ -26,8 +26,6 @@ import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import type { ConsultantProfile } from '@/types/database';
 
-const SUCCESS_REDIRECT_DELAY_MS = 0;
-
 type FormStatus = 'idle' | 'saving' | 'completed';
 
 interface ProfileFormProps {
@@ -170,13 +168,11 @@ export default function ProfileForm({
           );
         }
 
-        setTimeout(() => {
-          if (isRegistrationMode) {
-            router.replace(successRedirectUrl);
-          } else {
-            router.push(successRedirectUrl);
-          }
-        }, SUCCESS_REDIRECT_DELAY_MS);
+        if (isRegistrationMode) {
+          router.replace(successRedirectUrl);
+        } else {
+          router.push(successRedirectUrl);
+        }
 
         return; // 성공 시 formStatus='completed' 유지
       }
