@@ -28,7 +28,7 @@ export default async function SettingsPage() {
       <PageHeader
         title="계정 설정"
         description="비밀번호 변경 및 계정 관리"
-        backLink={{ href: '/dashboard', label: '대시보드' }}
+        backLink={{ href: '/dashboard', label: '대시보드', useBack: true }}
       />
 
       {/* 이메일 알림 설정 (대상 역할만 표시) */}

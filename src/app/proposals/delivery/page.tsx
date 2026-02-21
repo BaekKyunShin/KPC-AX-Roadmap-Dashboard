@@ -171,6 +171,7 @@ export default function DeliveryTrackingMockup() {
         backLink={{
           href: '/consultant/projects/p4',
           label: '프로젝트 상세',
+          useBack: true,
         }}
       />
 

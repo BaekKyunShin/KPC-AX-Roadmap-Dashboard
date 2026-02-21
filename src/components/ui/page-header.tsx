@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { BackButton } from '@/components/ui/back-button';
 
 interface PageHeaderProps {
   /** 페이지 제목 */
@@ -12,6 +13,8 @@ interface PageHeaderProps {
   backLink?: {
     href: string;
     label: string;
+    /** true이면 router.back() 사용 (필터 상태 유지) */
+    useBack?: boolean;
   };
 }
 
@@ -38,19 +41,30 @@ interface PageHeaderProps {
  *   title="프로젝트 상세"
  *   backLink={{ href: "/ops/projects", label: "프로젝트 목록" }}
  * />
+ *
+ * @example
+ * // router.back() 사용 (필터 상태 유지)
+ * <PageHeader
+ *   title="프로젝트 상세"
+ *   backLink={{ href: "/ops/projects", label: "프로젝트 목록", useBack: true }}
+ * />
  */
 export function PageHeader({ title, description, actions, backLink }: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         {backLink && (
-          <Link
-            href={backLink.href}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLink.label}
-          </Link>
+          backLink.useBack ? (
+            <BackButton label={backLink.label} fallbackHref={backLink.href} />
+          ) : (
+            <Link
+              href={backLink.href}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLink.label}
+            </Link>
+          )
         )}
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
         {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}

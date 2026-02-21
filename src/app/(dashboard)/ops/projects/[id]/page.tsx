@@ -108,7 +108,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <PageHeader
         title={projectData.company_name}
         description={`${projectData.industry} · ${companySizeLabel}`}
-        backLink={{ href: '/ops/projects', label: '프로젝트 목록' }}
+        backLink={{ href: '/ops/projects', label: '프로젝트 목록', useBack: true }}
       />
 
       {/* 기업 정보 카드 - 컴팩트 2컬럼 레이아웃 */}

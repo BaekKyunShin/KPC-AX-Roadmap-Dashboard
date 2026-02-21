@@ -79,7 +79,7 @@ export default function NewProjectPage() {
         <PageHeader
           title="새 프로젝트 생성"
           description="기업 기본 정보를 입력하여 프로젝트를 생성합니다."
-          backLink={{ href: '/ops/projects', label: '프로젝트 목록으로' }}
+          backLink={{ href: '/ops/projects', label: '프로젝트 목록으로', useBack: true }}
         />
       </div>
 

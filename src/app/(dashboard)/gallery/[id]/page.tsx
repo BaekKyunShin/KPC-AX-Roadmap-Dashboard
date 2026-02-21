@@ -48,7 +48,7 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
     <div className="space-y-6">
       <PageHeader
         title="로드맵 갤러리"
-        backLink={{ href: '/gallery', label: '갤러리로 돌아가기' }}
+        backLink={{ href: '/gallery', label: '갤러리로 돌아가기', useBack: true }}
       />
 
       {/* 메타 정보 */}

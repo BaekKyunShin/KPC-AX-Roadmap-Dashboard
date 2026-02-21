@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   fetchAuditLogs,
   fetchAllAuditLogs,
@@ -91,29 +92,69 @@ function AuditMobileCard({
 }
 
 export default function AuditLogPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const urlSearchParams = useSearchParams();
+
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<'excel' | 'all-excel' | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // 필터 상태
+  // 필터 상태 (URL searchParams에서 초기값 읽기)
   const [filters, setFilters] = useState<AuditLogFilters>({
-    page: 1,
+    page: Number(urlSearchParams.get('page')) || 1,
     limit: 20,
   });
-  const [selectedAction, setSelectedAction] = useState<AuditAction | ''>('');
-  const [selectedTargetType, setSelectedTargetType] = useState<string>('');
-  const [selectedUser, setSelectedUser] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [selectedAction, setSelectedAction] = useState<AuditAction | ''>(
+    (urlSearchParams.get('action') as AuditAction) || ''
+  );
+  const [selectedTargetType, setSelectedTargetType] = useState<string>(
+    urlSearchParams.get('target') || ''
+  );
+  const [selectedUser, setSelectedUser] = useState<string>(
+    urlSearchParams.get('user') || ''
+  );
+  const [startDate, setStartDate] = useState<string>(
+    urlSearchParams.get('start') || ''
+  );
+  const [endDate, setEndDate] = useState<string>(
+    urlSearchParams.get('end') || ''
+  );
+  const [searchKeyword, setSearchKeyword] = useState<string>(
+    urlSearchParams.get('search') || ''
+  );
 
   // 액션/대상 타입/사용자 목록
   const [actionTypes, setActionTypes] = useState<{ value: AuditAction; label: string }[]>([]);
   const [targetTypes, setTargetTypes] = useState<{ value: string; label: string }[]>([]);
   const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
+
+  // URL searchParams 업데이트 헬퍼
+  function updateParams(updates: Record<string, string>) {
+    const params = new URLSearchParams(urlSearchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    if (params.get('page') === '1') params.delete('page');
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`);
+  }
+
+  // 검색어 → URL 동기화 (디바운스)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      updateParams({ search: searchKeyword });
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 검색어 변경 시만 실행
+  }, [searchKeyword]);
 
   // 필터 옵션 로드
   useEffect(() => {
@@ -156,6 +197,7 @@ export default function AuditLogPage() {
   function handlePageChange(newPage: number) {
     setPage(newPage);
     setFilters(prev => ({ ...prev, page: newPage }));
+    updateParams({ page: String(newPage) });
   }
 
   // 필터 초기화
@@ -168,6 +210,7 @@ export default function AuditLogPage() {
     setSearchKeyword('');
     setPage(1);
     setFilters({ page: 1, limit: 20 });
+    router.replace(pathname);
   }
 
   // 검색어 필터링 (클라이언트)
@@ -294,9 +337,11 @@ export default function AuditLogPage() {
             <Select
               value={selectedAction || 'all'}
               onValueChange={(value) => {
-                setSelectedAction(value === 'all' ? '' : value as AuditAction);
+                const v = value === 'all' ? '' : value as AuditAction;
+                setSelectedAction(v);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
+                updateParams({ action: v, page: '' });
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -313,9 +358,11 @@ export default function AuditLogPage() {
             <Select
               value={selectedTargetType || 'all'}
               onValueChange={(value) => {
-                setSelectedTargetType(value === 'all' ? '' : value);
+                const v = value === 'all' ? '' : value;
+                setSelectedTargetType(v);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
+                updateParams({ target: v, page: '' });
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -332,9 +379,11 @@ export default function AuditLogPage() {
             <Select
               value={selectedUser || 'all'}
               onValueChange={(value) => {
-                setSelectedUser(value === 'all' ? '' : value);
+                const v = value === 'all' ? '' : value;
+                setSelectedUser(v);
                 setPage(1);
                 setFilters(prev => ({ ...prev, page: 1 }));
+                updateParams({ user: v, page: '' });
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -357,6 +406,7 @@ export default function AuditLogPage() {
                   setStartDate(e.target.value);
                   setPage(1);
                   setFilters(prev => ({ ...prev, page: 1 }));
+                  updateParams({ start: e.target.value, page: '' });
                 }}
                 className="w-full"
               />
@@ -371,6 +421,7 @@ export default function AuditLogPage() {
                   setEndDate(e.target.value);
                   setPage(1);
                   setFilters(prev => ({ ...prev, page: 1 }));
+                  updateParams({ end: e.target.value, page: '' });
                 }}
                 className="w-full"
               />

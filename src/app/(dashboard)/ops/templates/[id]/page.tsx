@@ -53,7 +53,7 @@ export default async function TemplateDetailPage({ params }: PageProps) {
       <PageHeader
         title={`템플릿 상세 - v${template.version}`}
         description={template.name}
-        backLink={{ href: '/ops/templates', label: '템플릿 목록으로' }}
+        backLink={{ href: '/ops/templates', label: '템플릿 목록으로', useBack: true }}
         actions={
           <div className="flex items-center gap-2">
             {template.is_active && (

@@ -106,7 +106,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
       <PageHeader
         title={projectData.company_name}
         description={`${projectData.industry} · ${companySizeLabel}`}
-        backLink={{ href: '/consultant/projects', label: '프로젝트 목록' }}
+        backLink={{ href: '/consultant/projects', label: '프로젝트 목록', useBack: true }}
         actions={
           <div className="flex space-x-3">
             {!interview ? (

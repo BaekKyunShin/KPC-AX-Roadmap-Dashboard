@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   Search,
   X,
@@ -115,16 +116,26 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
 }
 
 export default function ProjectList({ statusFilter }: ProjectListProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const urlSearchParams = useSearchParams();
+
   const [projects, setProjects] = useState<ProjectWithTimeline[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // 필터 상태 - 내부 상태는 단일 상태 선택용 (드롭다운)
-  const [searchInput, setSearchInput] = useState('');
-  const [internalStatus, setInternalStatus] = useState<string>(DEFAULT_FILTER_VALUE);
-  const [industry, setIndustry] = useState(DEFAULT_FILTER_VALUE);
+  // URL searchParams에서 초기값 읽기
+  const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
+  const [internalStatus, setInternalStatus] = useState<string>(
+    urlSearchParams.get('status') || DEFAULT_FILTER_VALUE
+  );
+  const [industry, setIndustry] = useState(
+    urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE
+  );
+  const [page, setPage] = useState(
+    Number(urlSearchParams.get('page')) || 1
+  );
   const debouncedSearch = useDebounce(searchInput, 300);
 
   // 필터 옵션
@@ -132,6 +143,22 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     statuses: [],
     industries: [],
   });
+
+  // URL 업데이트 헬퍼 (replace로 히스토리 오염 방지)
+  const updateParams = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(urlSearchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== DEFAULT_FILTER_VALUE && value !== '1') {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    // page=1은 기본값이므로 URL에서 제거
+    if (params.get('page') === '1') params.delete('page');
+    const search = params.toString();
+    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+  };
 
   // 필터 옵션 로드
   useEffect(() => {
@@ -141,7 +168,6 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   // 외부 statusFilter 변경 시 반영 및 페이지 리셋
   useEffect(() => {
     if (statusFilter !== undefined) {
-      // 외부에서 배열로 들어오면 내부 상태 초기화 (카드 필터 사용 중)
       setInternalStatus(DEFAULT_FILTER_VALUE);
       setPage(1);
     }
@@ -178,10 +204,35 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [page, debouncedSearch, effectiveStatuses, industry]);
 
-  // 검색어 변경 시 첫 페이지로 리셋
+  // 디바운스된 검색어 변경 시 URL 업데이트 + 첫 페이지로 리셋
   useEffect(() => {
+    const currentSearch = urlSearchParams.get('search') || '';
+    if (debouncedSearch !== currentSearch) {
+      setPage(1);
+      updateParams({ search: debouncedSearch, page: '1' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  // 상태 필터 변경 핸들러
+  const handleStatusChange = (value: string) => {
+    setInternalStatus(value);
     setPage(1);
-  }, [debouncedSearch, internalStatus, industry, statusFilter]);
+    updateParams({ status: value, page: '1' });
+  };
+
+  // 업종 필터 변경 핸들러
+  const handleIndustryChange = (value: string) => {
+    setIndustry(value);
+    setPage(1);
+    updateParams({ industry: value, page: '1' });
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateParams({ page: String(newPage) });
+  };
 
   // 필터 초기화
   const handleResetFilters = () => {
@@ -189,6 +240,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     setInternalStatus(DEFAULT_FILTER_VALUE);
     setIndustry(DEFAULT_FILTER_VALUE);
     setPage(1);
+    router.replace(pathname);
   };
 
   // 외부 필터(카드) 또는 내부 필터(드롭다운) 활성화 여부
@@ -211,7 +263,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Select value={internalStatus} onValueChange={setInternalStatus}>
+              <Select value={internalStatus} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
@@ -225,7 +277,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 </SelectContent>
               </Select>
 
-              <Select value={industry} onValueChange={setIndustry}>
+              <Select value={industry} onValueChange={handleIndustryChange}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="업종" />
                 </SelectTrigger>
@@ -254,7 +306,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
               )}
               {selectedStatusOption && (
-                <FilterBadge label="상태" value={selectedStatusOption.label} onClear={() => setInternalStatus(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge label="상태" value={selectedStatusOption.label} onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)} />
               )}
               {statusFilter && statusFilter.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
@@ -262,7 +314,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 </Badge>
               )}
               {industry !== DEFAULT_FILTER_VALUE && (
-                <FilterBadge label="업종" value={industry} onClear={() => setIndustry(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge label="업종" value={industry} onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)} />
               )}
             </div>
           )}
@@ -383,7 +435,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      onClick={() => handlePageChange(Math.max(1, page - 1))}
                       disabled={page === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -405,7 +457,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                           key={pageNum}
                           variant={page === pageNum ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setPage(pageNum)}
+                          onClick={() => handlePageChange(pageNum)}
                           className="w-9"
                         >
                           {pageNum}
@@ -415,7 +467,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
                     >
                       <ChevronRight className="h-4 w-4" />

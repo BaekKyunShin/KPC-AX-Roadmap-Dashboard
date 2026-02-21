@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   fetchConsultantProjects,
   fetchConsultantProjectFilters,
@@ -212,15 +213,19 @@ function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
 // =============================================================================
 
 export default function ProjectList() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const urlSearchParams = useSearchParams();
+
   // 데이터 상태
   const [projects, setProjects] = useState<ConsultantProjectItem[]>([]);
   const [consultantName, setConsultantName] = useState('');
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
-  // 필터 상태
-  const [searchInput, setSearchInput] = useState('');
-  const [status, setStatus] = useState(ALL_STATUS_VALUE);
+  // URL searchParams에서 초기값 읽기
+  const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
+  const [status, setStatus] = useState(urlSearchParams.get('status') || ALL_STATUS_VALUE);
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   // 필터 옵션
@@ -229,6 +234,20 @@ export default function ProjectList() {
   // 파생 상태
   const hasFilters = debouncedSearch || status !== ALL_STATUS_VALUE;
   const isStatusFiltered = status !== ALL_STATUS_VALUE;
+
+  // URL 업데이트 헬퍼
+  const updateParams = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(urlSearchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== ALL_STATUS_VALUE) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    const search = params.toString();
+    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+  };
 
   // 필터 옵션 로드
   useEffect(() => {
@@ -253,14 +272,29 @@ export default function ProjectList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [debouncedSearch, status]);
 
+  // 디바운스된 검색어 변경 시 URL 업데이트
+  useEffect(() => {
+    const currentSearch = urlSearchParams.get('search') || '';
+    if (debouncedSearch !== currentSearch) {
+      updateParams({ search: debouncedSearch });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
   // 이벤트 핸들러
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    updateParams({ status: value });
+  };
+
   const handleResetFilters = () => {
     setSearchInput('');
     setStatus(ALL_STATUS_VALUE);
+    router.replace(pathname);
   };
 
   const handleClearSearch = () => setSearchInput('');
-  const handleClearStatus = () => setStatus(ALL_STATUS_VALUE);
+  const handleClearStatus = () => handleStatusChange(ALL_STATUS_VALUE);
 
   // 헤더 설명 텍스트
   const headerDescription = consultantName
@@ -296,7 +330,7 @@ export default function ProjectList() {
 
             {/* 필터 컨트롤 */}
             <div className="flex flex-wrap gap-2">
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>

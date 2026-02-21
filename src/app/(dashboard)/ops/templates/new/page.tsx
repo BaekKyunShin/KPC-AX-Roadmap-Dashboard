@@ -30,7 +30,7 @@ export default async function NewTemplatePage() {
       <PageHeader
         title="새 템플릿 생성"
         description="자가진단 문항 템플릿을 생성합니다."
-        backLink={{ href: '/ops/templates', label: '템플릿 목록으로' }}
+        backLink={{ href: '/ops/templates', label: '템플릿 목록으로', useBack: true }}
       />
       <TemplateForm mode="create" />
     </div>

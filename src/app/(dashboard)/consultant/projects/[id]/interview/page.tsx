@@ -406,7 +406,7 @@ export default function InterviewPage() {
       <div className="mb-6">
         <PageHeader
           title="현장 인터뷰 입력"
-          backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
+          backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기', useBack: true }}
           actions={
             <div className="text-sm flex items-center">
               {autoSaveError ? (

@@ -239,7 +239,7 @@ export default function RoadmapPage() {
     <div className="space-y-6">
       <PageHeader
         title="AI 교육 로드맵"
-        backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기' }}
+        backLink={{ href: `/consultant/projects/${projectId}`, label: '프로젝트로 돌아가기', useBack: true }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
