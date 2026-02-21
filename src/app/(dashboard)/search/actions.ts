@@ -81,7 +81,7 @@ export async function unifiedSearch(
   const galleryPromise = (async (): Promise<CommandItem[]> => {
     let q = admin
       .from('roadmap_versions')
-      .select('id, status, is_shared, projects!inner(company_name)')
+      .select('id, status, is_shared, pbl_course, projects!inner(company_name)')
       .ilike('projects.company_name', pattern)
       .limit(MAX_RESULTS_PER_CATEGORY);
 
@@ -92,13 +92,17 @@ export async function unifiedSearch(
     const { data, error } = await q;
     if (error || !data) return [];
 
-    return data.map((r) => ({
-      id: r.id,
-      label: (r.projects as unknown as { company_name: string }).company_name,
-      href: `/gallery/${r.id}`,
-      category: 'gallery' as const,
-      description: `${ROADMAP_VERSION_STATUS_CONFIG[r.status as RoadmapVersionStatus]?.label ?? r.status}${r.is_shared ? ' · 공유' : ''}`,
-    }));
+    return data.map((r) => {
+      const companyName = (r.projects as unknown as { company_name: string }).company_name;
+      const courseName = (r.pbl_course as { course_name?: string } | null)?.course_name;
+      return {
+        id: r.id,
+        label: courseName ? `${companyName} — ${courseName}` : `${companyName} 로드맵`,
+        href: `/gallery/${r.id}`,
+        category: 'gallery' as const,
+        description: `${ROADMAP_VERSION_STATUS_CONFIG[r.status as RoadmapVersionStatus]?.label ?? r.status}${r.is_shared ? ' · 공유' : ''}`,
+      };
+    });
   })();
 
   // ─── 병렬 실행 ──────────────────────────────────────────────────────
