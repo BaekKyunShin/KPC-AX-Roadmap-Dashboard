@@ -16,11 +16,15 @@ import {
   ChevronRight,
   ChevronDown,
   Settings,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
 import NotificationBell from '@/components/NotificationBell';
 import MessageIcon from '@/components/MessageIcon';
+import CommandPalette from '@/components/command-palette/CommandPalette';
+import { useCommandPalette } from '@/hooks/useCommandPalette';
+import { useRecentVisits } from '@/hooks/useRecentVisits';
 import {
   CONSULTANT_NAV_ITEMS,
   ADMIN_NAV_GROUPS,
@@ -188,6 +192,8 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
+  const commandPalette = useCommandPalette();
+  const { recentVisits } = useRecentVisits();
 
   // 바깥 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -275,6 +281,16 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
           {/* Desktop User Menu */}
           <div className="hidden md:flex items-center gap-2">
+            {/* Search Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => commandPalette.setOpen(true)}
+              aria-label="검색 (⌘K)"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
             {/* Message Icon */}
             <MessageIcon initialUnreadCount={unreadMessageCount} />
 
@@ -355,8 +371,17 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             </div>
           </div>
 
-          {/* Mobile: Message + Notification + Menu Button */}
+          {/* Mobile: Search + Message + Notification + Menu Button */}
           <div className="flex items-center gap-1 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => commandPalette.setOpen(true)}
+              aria-label="검색"
+              className="h-9 w-9"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
             <MessageIcon initialUnreadCount={unreadMessageCount} />
             <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
             <Button
@@ -475,6 +500,15 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             </div>
           </div>
         </div>
+      )}
+
+      {/* Command Palette */}
+      {(isConsultant || isOpsAdmin) && (
+        <CommandPalette
+          userRole={user.role as 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN'}
+          recentVisits={recentVisits}
+          {...commandPalette}
+        />
       )}
     </nav>
   );
