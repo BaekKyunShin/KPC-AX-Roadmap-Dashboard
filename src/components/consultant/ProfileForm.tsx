@@ -4,7 +4,9 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
-import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import { showErrorToast, showSuccessToast, scrollToElement, scrollToFirstError } from '@/lib/utils';
+import { consultantProfileSchema } from '@/lib/schemas/user';
+import { FieldError } from '@/components/ui/field-error';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +26,9 @@ import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import type { ConsultantProfile } from '@/types/database';
 
-const SUCCESS_REDIRECT_DELAY_MS = 2000;
+const SUCCESS_REDIRECT_DELAY_MS = 500;
+
+type FormStatus = 'idle' | 'saving' | 'completed';
 
 interface ProfileFormProps {
   profile: ConsultantProfile | null;
@@ -52,9 +56,10 @@ export default function ProfileForm({
   const formContainerRef = useRef<HTMLDivElement>(null);
 
   // UI 상태
-  const [isSaving, setIsSaving] = useState(false);
+  const [formStatus, setFormStatus] = useState<FormStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // 선택된 값들을 상태로 관리
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
@@ -81,12 +86,6 @@ export default function ProfileForm({
     { items: selectedTags, label: '보유 역량' },
   ];
 
-  // 필수 항목 검증
-  const validateSelections = (): string | null => {
-    const emptySelection = requiredSelections.find((s) => s.items.length === 0);
-    return emptySelection ? `${emptySelection.label}을 최소 1개 이상 선택해주세요.` : null;
-  };
-
   // 필수 선택 항목 완료 여부 및 미선택 수
   const unselectedCount = requiredSelections.filter((s) => s.items.length === 0).length;
   const isSelectionsValid = unselectedCount === 0;
@@ -108,20 +107,46 @@ export default function ProfileForm({
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setFieldErrors({});
 
-    const validationError = validateSelections();
-    if (validationError) {
-      setError(validationError);
+    // 클라이언트 Zod 검증 (폼 input + React 상태 통합)
+    const form = e.currentTarget;
+    const rawData = {
+      affiliation: (form.elements.namedItem('affiliation') as HTMLInputElement)?.value ?? '',
+      years_of_experience: Number(
+        (form.elements.namedItem('years_of_experience') as HTMLInputElement)?.value ?? 0
+      ),
+      representative_experience:
+        (form.elements.namedItem('representative_experience') as HTMLTextAreaElement)?.value ?? '',
+      portfolio: (form.elements.namedItem('portfolio') as HTMLTextAreaElement)?.value ?? '',
+      strengths_constraints:
+        (form.elements.namedItem('strengths_constraints') as HTMLTextAreaElement)?.value ?? '',
+      expertise_domains: selectedDomains,
+      available_industries: selectedIndustries,
+      sub_industries: subIndustries,
+      teaching_levels: selectedLevels,
+      coaching_methods: selectedMethods,
+      skill_tags: selectedTags,
+    };
 
-      // Toast 알림 + 스크롤
-      showErrorToast('입력 확인 필요', validationError);
-      scrollToElement(formContainerRef);
+    const validation = consultantProfileSchema.safeParse(rawData);
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        const field = err.path[0] as string;
+        if (!errors[field]) {
+          errors[field] = err.message;
+        }
+      });
+      setFieldErrors(errors);
+      showErrorToast('입력 확인 필요', '필수 항목을 모두 입력해주세요.');
+      scrollToFirstError(formContainerRef);
       return;
     }
 
-    setIsSaving(true);
+    setFormStatus('saving');
 
-    const formData = prepareFormData(e.currentTarget);
+    const formData = prepareFormData(form);
 
     try {
       const result = profile
@@ -129,13 +154,21 @@ export default function ProfileForm({
         : await saveConsultantProfile(formData);
 
       if (result.success) {
-        const successMessage = profile
-          ? '프로필이 성공적으로 수정되었습니다.'
-          : '프로필이 성공적으로 등록되었습니다.';
-        setSuccess(successMessage);
+        setFormStatus('completed');
 
-        // 성공 Toast
-        showSuccessToast(profile ? '프로필 수정 완료' : '프로필 등록 완료', successMessage);
+        if (isRegistrationMode) {
+          setSuccess('가입이 완료되었습니다. 승인 후 서비스를 이용하실 수 있습니다.');
+          showSuccessToast('가입이 완료되었습니다', '승인 후 서비스를 이용하실 수 있습니다.');
+        } else {
+          const successMessage = profile
+            ? '프로필이 성공적으로 수정되었습니다.'
+            : '프로필이 성공적으로 등록되었습니다.';
+          setSuccess(successMessage);
+          showSuccessToast(
+            profile ? '프로필 수정 완료' : '프로필 등록 완료',
+            successMessage
+          );
+        }
 
         setTimeout(() => {
           if (isRegistrationMode) {
@@ -145,7 +178,7 @@ export default function ProfileForm({
           }
         }, SUCCESS_REDIRECT_DELAY_MS);
 
-        return; // 성공 시 isSaving=true 유지 → 버튼 disabled 상태로 페이지 이동까지 대기
+        return; // 성공 시 formStatus='completed' 유지
       }
 
       const errorMessage =
@@ -153,7 +186,6 @@ export default function ProfileForm({
         (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
       setError(errorMessage);
 
-      // 에러 Toast + 스크롤
       showErrorToast(profile ? '프로필 수정 실패' : '프로필 등록 실패', errorMessage);
       scrollToElement(formContainerRef);
     } catch (err) {
@@ -161,12 +193,11 @@ export default function ProfileForm({
       const errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       setError(errorMessage);
 
-      // 에러 Toast + 스크롤
       showErrorToast('서버 오류', errorMessage);
       scrollToElement(formContainerRef);
     }
 
-    setIsSaving(false); // 실패/예외 경로에서만 도달
+    setFormStatus('idle'); // 실패/예외 경로에서만 도달
   }
 
   // UI 텍스트 (모드에 따라 분기)
@@ -181,6 +212,7 @@ export default function ProfileForm({
       : '프로필이 상세할수록 적합한 기업과 매칭될 확률이 높아집니다. 각 항목은 복수 선택이 가능하니 가급적 다양하게 선택해주세요.',
     submitButton: isRegistrationMode ? '가입 완료' : isCreateMode ? '프로필 등록' : '저장',
     savingButton: isCreateMode ? '등록 중...' : '저장 중...',
+    completedButton: isRegistrationMode ? '가입 완료됨' : isCreateMode ? '등록 완료' : '저장 완료',
   };
 
   return (
@@ -226,7 +258,7 @@ export default function ProfileForm({
           <CardDescription>{uiText.cardDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-9">
+          <form onSubmit={handleSubmit} noValidate className="space-y-9">
             {/* 회원가입 완료 알림 */}
             {showRegistrationAlert && (
               <Alert className="bg-blue-50 border-blue-200">
@@ -238,7 +270,7 @@ export default function ProfileForm({
             )}
 
             {/* 1. 소속 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={!!fieldErrors.affiliation}>
               <div>
                 <Label htmlFor="affiliation">
                   1. 소속 <span className="text-red-500">*</span>
@@ -255,20 +287,24 @@ export default function ProfileForm({
                 required
                 defaultValue={profile?.affiliation || ''}
                 placeholder="예: ABC컨설팅, 프리랜서"
-                className="h-11"
+                className={`h-11 ${fieldErrors.affiliation ? 'border-destructive' : ''}`}
               />
+              <FieldError message={fieldErrors.affiliation} />
             </div>
 
             {/* 2. AI 훈련 가능 산업 */}
-            <BadgeSelector
-              number={2}
-              label="AI 훈련 가능 산업"
-              description="AI 훈련/코칭을 수행할 수 있는 산업을 선택해주세요."
-              options={INDUSTRIES}
-              selected={selectedIndustries}
-              onSelectionChange={setSelectedIndustries}
-              color="blue"
-            />
+            <div data-error={!!fieldErrors.available_industries}>
+              <BadgeSelector
+                number={2}
+                label="AI 훈련 가능 산업"
+                description="AI 훈련/코칭을 수행할 수 있는 산업을 선택해주세요."
+                options={INDUSTRIES}
+                selected={selectedIndustries}
+                onSelectionChange={setSelectedIndustries}
+                color="blue"
+              />
+              <FieldError message={fieldErrors.available_industries} />
+            </div>
 
             {/* 2-1. 선호 세부 업종 */}
             <div className="space-y-2 ml-6 border-l-2 border-blue-200 pl-4">
@@ -290,52 +326,64 @@ export default function ProfileForm({
             </div>
 
             {/* 3. AI 적용 가능 업무 */}
-            <BadgeSelector
-              number={3}
-              label="AI 적용 가능 업무"
-              description="AI를 활용해 개선할 수 있는 업무 영역을 선택해주세요."
-              options={EXPERTISE_DOMAINS}
-              selected={selectedDomains}
-              onSelectionChange={setSelectedDomains}
-              color="indigo"
-            />
+            <div data-error={!!fieldErrors.expertise_domains}>
+              <BadgeSelector
+                number={3}
+                label="AI 적용 가능 업무"
+                description="AI를 활용해 개선할 수 있는 업무 영역을 선택해주세요."
+                options={EXPERTISE_DOMAINS}
+                selected={selectedDomains}
+                onSelectionChange={setSelectedDomains}
+                color="indigo"
+              />
+              <FieldError message={fieldErrors.expertise_domains} />
+            </div>
 
             {/* 4. 교육 대상 수준 */}
-            <BadgeSelector
-              number={4}
-              label="교육 대상 수준"
-              description="교육 가능한 학습자의 AI 활용 수준을 선택해주세요."
-              options={TEACHING_LEVELS}
-              selected={selectedLevels}
-              onSelectionChange={setSelectedLevels}
-              color="emerald"
-              showOptionDescriptions
-            />
+            <div data-error={!!fieldErrors.teaching_levels}>
+              <BadgeSelector
+                number={4}
+                label="교육 대상 수준"
+                description="교육 가능한 학습자의 AI 활용 수준을 선택해주세요."
+                options={TEACHING_LEVELS}
+                selected={selectedLevels}
+                onSelectionChange={setSelectedLevels}
+                color="emerald"
+                showOptionDescriptions
+              />
+              <FieldError message={fieldErrors.teaching_levels} />
+            </div>
 
             {/* 5. 선호 교육 방식 */}
-            <BadgeSelector
-              number={5}
-              label="선호 교육 방식"
-              description="주로 활용하는 교육/코칭 방식을 선택해주세요."
-              options={COACHING_METHODS}
-              selected={selectedMethods}
-              onSelectionChange={setSelectedMethods}
-              color="purple"
-            />
+            <div data-error={!!fieldErrors.coaching_methods}>
+              <BadgeSelector
+                number={5}
+                label="선호 교육 방식"
+                description="주로 활용하는 교육/코칭 방식을 선택해주세요."
+                options={COACHING_METHODS}
+                selected={selectedMethods}
+                onSelectionChange={setSelectedMethods}
+                color="purple"
+              />
+              <FieldError message={fieldErrors.coaching_methods} />
+            </div>
 
             {/* 6. 보유 역량 */}
-            <BadgeSelector
-              number={6}
-              label="보유 역량"
-              description="본인이 보유한 핵심 역량을 모두 선택해주세요."
-              options={SKILL_TAGS}
-              selected={selectedTags}
-              onSelectionChange={setSelectedTags}
-              color="amber"
-            />
+            <div data-error={!!fieldErrors.skill_tags}>
+              <BadgeSelector
+                number={6}
+                label="보유 역량"
+                description="본인이 보유한 핵심 역량을 모두 선택해주세요."
+                options={SKILL_TAGS}
+                selected={selectedTags}
+                onSelectionChange={setSelectedTags}
+                color="amber"
+              />
+              <FieldError message={fieldErrors.skill_tags} />
+            </div>
 
             {/* 7. AI 교육/컨설팅 경력 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={!!fieldErrors.years_of_experience}>
               <div>
                 <Label htmlFor="years_of_experience">
                   7. AI 교육/컨설팅 경력 <span className="text-red-500">*</span>
@@ -353,14 +401,15 @@ export default function ProfileForm({
                   max="50"
                   required
                   defaultValue={profile?.years_of_experience || 0}
-                  className="h-11 w-24"
+                  className={`h-11 w-24 ${fieldErrors.years_of_experience ? 'border-destructive' : ''}`}
                 />
                 <span className="text-sm text-muted-foreground">년</span>
               </div>
+              <FieldError message={fieldErrors.years_of_experience} />
             </div>
 
             {/* 8. 경력 사항 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={!!fieldErrors.representative_experience}>
               <div>
                 <Label htmlFor="representative_experience">
                   8. 경력 사항 <span className="text-red-500">*</span>
@@ -373,14 +422,16 @@ export default function ProfileForm({
                 id="representative_experience"
                 name="representative_experience"
                 rows={4}
+                required
                 defaultValue={profile?.representative_experience || ''}
                 placeholder={PROFILE_PLACEHOLDERS.representative_experience}
-                className="resize-none break-keep"
+                className={`resize-none break-keep ${fieldErrors.representative_experience ? 'border-destructive' : ''}`}
               />
+              <FieldError message={fieldErrors.representative_experience} />
             </div>
 
             {/* 9. 강의/컨설팅 포트폴리오 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={!!fieldErrors.portfolio}>
               <div>
                 <Label htmlFor="portfolio">
                   9. 강의/컨설팅 포트폴리오 <span className="text-red-500">*</span>
@@ -397,12 +448,13 @@ export default function ProfileForm({
                 required
                 defaultValue={profile?.portfolio || ''}
                 placeholder={PROFILE_PLACEHOLDERS.portfolio}
-                className="resize-none break-keep"
+                className={`resize-none break-keep ${fieldErrors.portfolio ? 'border-destructive' : ''}`}
               />
+              <FieldError message={fieldErrors.portfolio} />
             </div>
 
             {/* 10. 강점/제약 */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={!!fieldErrors.strengths_constraints}>
               <div>
                 <Label htmlFor="strengths_constraints">
                   10. 강점/제약 <span className="text-red-500">*</span>
@@ -418,13 +470,14 @@ export default function ProfileForm({
                 required
                 defaultValue={profile?.strengths_constraints || ''}
                 placeholder={PROFILE_PLACEHOLDERS.strengths_constraints}
-                className="resize-none break-keep"
+                className={`resize-none break-keep ${fieldErrors.strengths_constraints ? 'border-destructive' : ''}`}
               />
+              <FieldError message={fieldErrors.strengths_constraints} />
             </div>
 
             {/* 버튼 영역 */}
             <div className="space-y-3 pt-4">
-              {!isSelectionsValid && (
+              {!isSelectionsValid && formStatus === 'idle' && (
                 <p className="text-sm text-amber-600">
                   필수 선택 항목 {unselectedCount}개 미선택
                 </p>
@@ -436,20 +489,25 @@ export default function ProfileForm({
                     type="button"
                     variant="outline"
                     onClick={() => router.push(backUrl)}
-                    disabled={isSaving}
+                    disabled={formStatus !== 'idle'}
                   >
                     취소
                   </Button>
                 )}
                 <Button
                   type="submit"
-                  disabled={isSaving || !isSelectionsValid}
+                  disabled={formStatus !== 'idle' || !isSelectionsValid}
                   className={isRegistrationMode ? 'w-full' : undefined}
                 >
-                  {isSaving ? (
+                  {formStatus === 'saving' ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {uiText.savingButton}
+                    </>
+                  ) : formStatus === 'completed' ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {uiText.completedButton}
                     </>
                   ) : (
                     <>

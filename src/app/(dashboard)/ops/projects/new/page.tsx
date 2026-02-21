@@ -31,16 +31,16 @@ export default function NewProjectPage() {
     e.preventDefault();
     setError(null);
 
-    // Select 컴포넌트 값 검증 (Radix Select는 HTML required를 지원하지 않음)
-    if (!companySize) {
-      setError('기업 규모를 선택하세요.');
-      showErrorToast('입력 오류', '기업 규모를 선택하세요.');
-      scrollToElement(formContainerRef);
-      return;
-    }
-    if (!industry) {
-      setError('업종을 선택하세요.');
-      showErrorToast('입력 오류', '업종을 선택하세요.');
+    const form = e.currentTarget;
+    const companyName = (form.elements.namedItem('company_name') as HTMLInputElement)?.value?.trim();
+    const contactName = (form.elements.namedItem('contact_name') as HTMLInputElement)?.value?.trim();
+    const contactEmail = (form.elements.namedItem('contact_email') as HTMLInputElement)?.value?.trim();
+
+    // 필수 필드 검증
+    if (!companyName || !contactName || !contactEmail || !companySize || !industry) {
+      const msg = '필수 항목을 모두 입력해주세요.';
+      setError(msg);
+      showErrorToast('입력 확인 필요', msg);
       scrollToElement(formContainerRef);
       return;
     }
@@ -89,7 +89,7 @@ export default function NewProjectPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="bg-white shadow rounded-lg p-6 space-y-6">
         {/* 회사명, 기업 규모 */}
         <div className="grid gap-4 md:grid-cols-2">
           <div>

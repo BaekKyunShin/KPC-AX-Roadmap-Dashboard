@@ -27,10 +27,21 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    // 클라이언트 빈 필드 검증
+    const formData = new FormData(e.currentTarget);
+    const email = (formData.get('email') as string)?.trim();
+    const password = formData.get('password') as string;
+    if (!email || !password) {
+      const msg = '이메일과 비밀번호를 모두 입력해주세요.';
+      setError(msg);
+      showErrorToast('입력 확인 필요', msg);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const formData = new FormData(e.currentTarget);
       const result = await loginUser(formData);
 
       if (result.success) {
@@ -52,7 +63,7 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

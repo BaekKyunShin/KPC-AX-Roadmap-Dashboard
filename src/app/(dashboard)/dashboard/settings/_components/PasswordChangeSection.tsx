@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
-import { cn } from '@/lib/utils';
+import { cn, showErrorToast } from '@/lib/utils';
 
 // =============================================================================
 // PasswordField (파일-로컬 컴포넌트)
@@ -98,6 +98,7 @@ export default function PasswordChangeSection() {
 
     if (Object.keys(errors).length > 0) {
       setPasswordErrors(errors);
+      showErrorToast('입력 확인 필요', '비밀번호 입력 내용을 확인해주세요.');
       return;
     }
 

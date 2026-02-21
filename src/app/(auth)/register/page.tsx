@@ -111,8 +111,7 @@ export default function RegisterPage() {
       setStep1Errors(errors);
 
       // Toast 알림 + 스크롤
-      const errorCount = Object.keys(errors).length;
-      showErrorToast(`${errorCount}개 항목을 확인해주세요`, '입력 내용을 확인 후 다시 시도해주세요.');
+      showErrorToast('입력 확인 필요', '입력 내용을 확인 후 다시 시도해주세요.');
       scrollToFirstError(formRef);
       return;
     }
@@ -348,7 +347,7 @@ function Step1Form({
         <CardDescription>계정 생성을 위한 기본 정보를 입력해주세요</CardDescription>
       </CardHeader>
       <CardContent>
-        <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
+        <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-4">
           {/* 역할 선택 */}
           <div className="space-y-3">
             <Label>
