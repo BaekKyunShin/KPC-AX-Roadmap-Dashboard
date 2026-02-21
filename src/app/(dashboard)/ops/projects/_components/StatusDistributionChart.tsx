@@ -130,33 +130,35 @@ export default function StatusDistributionChart({
       </CardHeader>
       <CardContent>
         {pieChartData.length > 0 ? (
-          <div className="flex items-center gap-4">
-            <ResponsiveContainer width="50%" height={CHART_HEIGHT}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={WORKFLOW_STEP_COLORS[entry.stepKey]}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-full sm:w-1/2">
+              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={WORKFLOW_STEP_COLORS[entry.stepKey]}
+                      />
+                    ))}
+                    <Label
+                      content={<DonutCenterLabel total={stats?.total || 0} />}
+                      position="center"
                     />
-                  ))}
-                  <Label
-                    content={<DonutCenterLabel total={stats?.total || 0} />}
-                    position="center"
-                  />
-                </Pie>
-                <Tooltip formatter={(value) => [`${value}건`]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex-1 space-y-1.5">
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value}건`]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="w-full sm:flex-1 space-y-1.5">
               {pieChartData.map((item) => (
                 <ChartLegendItem
                   key={item.stepKey}

@@ -32,9 +32,13 @@ export default function MonthlyCompletionChart({
             <BarChart data={data}>
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 12 }}
+                interval={0}
+                tick={{ fontSize: 11 }}
+                angle={-30}
+                textAnchor="end"
                 tickLine={false}
                 axisLine={false}
+                height={40}
               />
               <YAxis
                 tick={{ fontSize: 12 }}

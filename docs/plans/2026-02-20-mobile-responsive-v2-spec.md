@@ -221,7 +221,7 @@ npm run typecheck && npm run lint
 
 ## 스킬/MCP 활용
 - `frontend-guide` 스킬 호출 후 작업 시작
-- 수정 완료 후 puppeteer MCP로 320px, 375px 뷰포트 스크린샷 촬영하여 렌더링 검증
+- 수정 완료 후 puppeteer MCP로 320px, 375px 뷰포트 스크린샷 촬영하여 렌더링 검증 (관리자 계정: son@test.com / aaaa0000, 컨설턴트 계정: kpc@test.com / aaaa0000)
 - 작업 완료 직전 `verification-before-completion` 스킬 호출
 
 ## 수정 대상 3건
@@ -251,7 +251,7 @@ npm run typecheck && npm run lint
 - 참고: FooterCredit은 layout.tsx(38행)에서 렌더링됨
 
 ## 검증
-수정 완료 후 `npm run typecheck && npm run lint` 실행. 커밋은 하지 말 것.
+수정 완료 후 `npm run typecheck && npm run lint` 실행.
 ```
 
 ### 세션 C 프롬프트
@@ -272,7 +272,7 @@ npm run typecheck && npm run lint
 
 ## 스킬/MCP 활용
 - `frontend-guide` 스킬 호출 후 작업 시작
-- 수정 완료 후 puppeteer MCP로 320px, 375px 뷰포트 스크린샷 촬영하여 렌더링 검증
+- 수정 완료 후 puppeteer MCP로 320px, 375px 뷰포트 스크린샷 촬영하여 렌더링 검증 (관리자 계정: son@test.com / aaaa0000, 컨설턴트 계정: kpc@test.com / aaaa0000)
 - 작업 완료 직전 `verification-before-completion` 스킬 호출
 
 ## 수정 대상 3건

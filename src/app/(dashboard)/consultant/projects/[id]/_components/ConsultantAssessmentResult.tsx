@@ -52,7 +52,7 @@ export function ConsultantAssessmentResult({ scores }: Props) {
 
       {/* 하단: 항목별 PieChart 일렬 */}
       {dimensions.length > 0 && (
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {dimensions.map((ds) => {
             const config: ChartConfig = {
               score: { label: ds.dimension, color: ds.color.hex },
@@ -65,7 +65,7 @@ export function ConsultantAssessmentResult({ scores }: Props) {
             return (
               <div
                 key={ds.dimension}
-                className="flex min-w-0 flex-1 flex-col items-center"
+                className="flex min-w-0 flex-col items-center"
               >
                 <ChartContainer
                   config={config}
@@ -108,7 +108,7 @@ export function ConsultantAssessmentResult({ scores }: Props) {
                     </Pie>
                   </PieChart>
                 </ChartContainer>
-                <span className="mt-1 w-full truncate text-center text-xs font-medium text-gray-700">
+                <span className="mt-1 w-full text-center text-xs font-medium text-gray-700 break-keep">
                   {ds.dimension}
                 </span>
                 <span className="text-[11px] text-gray-400">

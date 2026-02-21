@@ -57,16 +57,16 @@ export function SelfAssessmentResult({ scores, createdAt }: SelfAssessmentResult
                   const dimColor = getScoreColor(dimPct);
 
                   return (
-                    <div key={ds.dimension} className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                      <span className="text-sm text-gray-700 shrink-0 w-auto sm:w-28 sm:truncate">{ds.dimension}</span>
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div key={ds.dimension} className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-xs sm:text-sm text-gray-700 shrink-0 min-w-0 w-auto sm:w-28 sm:truncate break-keep">{ds.dimension}</span>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
                         <div
                           className={`h-2 rounded-full ${dimColor.bg}`}
                           style={{ width: `${dimPct}%` }}
                         />
                       </div>
-                      <span className="text-sm text-gray-600 w-12 sm:w-16 text-right">{dimScore}/{dimMax}</span>
-                      <span className={`text-sm font-medium w-10 sm:w-12 text-right ${dimColor.text}`}>{dimPct}%</span>
+                      <span className="text-xs sm:text-sm text-gray-600 w-10 sm:w-16 text-right shrink-0">{dimScore}/{dimMax}</span>
+                      <span className={`text-xs sm:text-sm font-medium w-8 sm:w-12 text-right shrink-0 ${dimColor.text}`}>{dimPct}%</span>
                     </div>
                   );
                 })}
