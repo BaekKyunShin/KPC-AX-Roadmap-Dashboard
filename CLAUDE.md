@@ -24,6 +24,10 @@ npm run test             # 테스트 실행 (Vitest)
 npm run test:watch       # 테스트 워치 모드
 npm run test:coverage    # 커버리지 리포트 생성
 npm run validate         # typecheck + lint + test 통합 검증
+npm run test:e2e         # E2E 테스트 실행 (Playwright)
+npm run test:e2e:ui      # E2E 테스트 UI 모드
+npm run test:e2e:headed  # 브라우저 표시 E2E 테스트
+npm run test:e2e:report  # E2E 테스트 리포트 열기
 ```
 
 **데이터베이스 마이그레이션:** `supabase/migrations/` 폴더의 SQL 파일을 Supabase CLI (`supabase db push`) 또는 SQL Editor에서 순차적으로 실행
@@ -146,9 +150,9 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 - **폼/검증:** Zod (네이티브 HTML 폼 사용, React Hook Form 미사용)
 - **차트:** Recharts
 - **토스트:** Sonner
-- **랜딩 애니메이션:** GSAP + Three.js (@react-three/fiber, drei) + Lenis (스무스 스크롤)
+- **애니메이션:** GSAP + motion (Framer Motion) + Lenis (스무스 스크롤)
 - **테스트:** Vitest + React Testing Library + Playwright (E2E)
-- **내보내기:** jspdf + jspdf-autotable, xlsx (SheetJS)
+- **내보내기:** jspdf + jspdf-autotable, xlsx-js-style (SheetJS 포크)
 
 ## 환경 변수
 
@@ -165,6 +169,11 @@ NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP
 - `DAILY_LLM_CALL_LIMIT` - 일별 LLM 호출 제한 (기본값: 50)
 - `MONTHLY_LLM_CALL_LIMIT` - 월별 LLM 호출 제한 (기본값: 500)
 - `NEXT_PUBLIC_APP_URL` - 앱 URL (기본값: <http://localhost:3000>)
+- `SMTP_HOST` - SMTP 서버 호스트 (기본값: smtp.gmail.com)
+- `SMTP_PORT` - SMTP 포트 (기본값: 465)
+- `SMTP_USER` - SMTP 사용자
+- `SMTP_PASS` - SMTP 비밀번호
+- `EMAIL_FROM` - 발신자 이메일 주소
 
 ## 커밋 메시지 규칙
 
