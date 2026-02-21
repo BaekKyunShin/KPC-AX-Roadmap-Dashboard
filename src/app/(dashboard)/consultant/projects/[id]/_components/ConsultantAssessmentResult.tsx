@@ -14,6 +14,69 @@ interface Props {
   scores: SelfAssessmentScores;
 }
 
+interface DimensionDonutItemProps {
+  dimension: string;
+  pct: number;
+  score: number;
+  maxScore: number;
+  colorHex: string;
+}
+
+function DimensionDonutItem({ dimension, pct, score, maxScore, colorHex }: DimensionDonutItemProps) {
+  const config: ChartConfig = {
+    score: { label: dimension, color: colorHex },
+  };
+  const data = [
+    { name: 'score', value: pct },
+    { name: 'rest', value: 100 - pct },
+  ];
+
+  return (
+    <div className="flex min-w-0 flex-col items-center">
+      <ChartContainer config={config} className="aspect-square w-full max-w-[90px]">
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            innerRadius="58%"
+            outerRadius="85%"
+            startAngle={90}
+            endAngle={-270}
+            strokeWidth={0}
+          >
+            <Cell fill="var(--color-score)" />
+            <Cell fill="#f3f4f6" />
+            <Label
+              content={({ viewBox }) => {
+                if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                  return (
+                    <text
+                      x={viewBox.cx}
+                      y={viewBox.cy}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      <tspan className="fill-foreground" fontSize={14} fontWeight={700}>
+                        {pct}%
+                      </tspan>
+                    </text>
+                  );
+                }
+              }}
+            />
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      <span className="mt-1 w-full text-center text-xs font-medium text-gray-700 break-keep">
+        {dimension}
+      </span>
+      <span className="text-[11px] text-gray-400">
+        {score}/{maxScore}
+      </span>
+    </div>
+  );
+}
+
 export function ConsultantAssessmentResult({ scores }: Props) {
   const totalScore = Math.round(scores.total_score || 0);
   const maxScore = Math.round(scores.max_possible_score || 100);
@@ -53,70 +116,16 @@ export function ConsultantAssessmentResult({ scores }: Props) {
       {/* 하단: 항목별 PieChart 일렬 */}
       {dimensions.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {dimensions.map((ds) => {
-            const config: ChartConfig = {
-              score: { label: ds.dimension, color: ds.color.hex },
-            };
-            const data = [
-              { name: 'score', value: ds.pct },
-              { name: 'rest', value: 100 - ds.pct },
-            ];
-
-            return (
-              <div
-                key={ds.dimension}
-                className="flex min-w-0 flex-col items-center"
-              >
-                <ChartContainer
-                  config={config}
-                  className="aspect-square w-full max-w-[90px]"
-                >
-                  <PieChart>
-                    <Pie
-                      data={data}
-                      dataKey="value"
-                      innerRadius="58%"
-                      outerRadius="85%"
-                      startAngle={90}
-                      endAngle={-270}
-                      strokeWidth={0}
-                    >
-                      <Cell fill="var(--color-score)" />
-                      <Cell fill="#f3f4f6" />
-                      <Label
-                        content={({ viewBox }) => {
-                          if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                            return (
-                              <text
-                                x={viewBox.cx}
-                                y={viewBox.cy}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                              >
-                                <tspan
-                                  className="fill-foreground"
-                                  fontSize={14}
-                                  fontWeight={700}
-                                >
-                                  {ds.pct}%
-                                </tspan>
-                              </text>
-                            );
-                          }
-                        }}
-                      />
-                    </Pie>
-                  </PieChart>
-                </ChartContainer>
-                <span className="mt-1 w-full text-center text-xs font-medium text-gray-700 break-keep">
-                  {ds.dimension}
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  {ds.score}/{ds.max_score}
-                </span>
-              </div>
-            );
-          })}
+          {dimensions.map((ds) => (
+            <DimensionDonutItem
+              key={ds.dimension}
+              dimension={ds.dimension}
+              pct={ds.pct}
+              score={ds.score}
+              maxScore={ds.max_score}
+              colorHex={ds.color.hex}
+            />
+          ))}
         </div>
       )}
     </div>

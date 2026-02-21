@@ -34,7 +34,7 @@ const WORKFLOW_STEP_COLORS: Record<string, string> = {
   interviewed: '#F59E0B',
   drafted: '#F97316',
   finalized: '#10B981',
-} as const;
+};
 
 /** 차트 높이 (px) */
 const CHART_HEIGHT = 200;
