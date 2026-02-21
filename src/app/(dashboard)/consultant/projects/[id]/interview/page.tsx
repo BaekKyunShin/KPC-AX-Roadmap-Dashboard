@@ -401,7 +401,7 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-40 md:pb-24">
+    <div className="max-w-4xl mx-auto pb-24">
       {/* 헤더 */}
       <div className="mb-6">
         <PageHeader

@@ -297,7 +297,7 @@ export default function TestRoadmapClient({
   // ===== 메인 폼 화면 =====
   return (
     <>
-      <div className="max-w-4xl mx-auto py-6 pb-40 md:pb-24">
+      <div className="max-w-4xl mx-auto py-6 pb-24">
         <TestPageHeader isOpsAdmin={isOpsAdmin} />
         <TestModeNotice />
 

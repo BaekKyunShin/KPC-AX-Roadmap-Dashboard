@@ -35,7 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
-      <footer className="mt-auto pb-6">
+      <footer className="mt-auto pb-20 md:pb-6">
         <FooterCredit />
       </footer>
     </div>
