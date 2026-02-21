@@ -26,7 +26,7 @@ import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import type { ConsultantProfile } from '@/types/database';
 
-const SUCCESS_REDIRECT_DELAY_MS = 500;
+const SUCCESS_REDIRECT_DELAY_MS = 0;
 
 type FormStatus = 'idle' | 'saving' | 'completed';
 
