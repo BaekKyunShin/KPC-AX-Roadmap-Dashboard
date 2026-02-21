@@ -9,6 +9,25 @@ const mockSetOpen = vi.fn();
 const mockSetQuery = vi.fn();
 const mockHandleOpenChange = vi.fn();
 
+// Radix 모킹 — cmdk가 mocked이므로 Radix Dialog context 없이 동작하도록 처리
+vi.mock('@radix-ui/react-dialog', async () => {
+  const React = await import('react');
+  return {
+    DialogTitle: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) =>
+      React.createElement('h2', props, children),
+    DialogDescription: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) =>
+      React.createElement('p', props, children),
+  };
+});
+
+vi.mock('@radix-ui/react-visually-hidden', async () => {
+  const React = await import('react');
+  return {
+    VisuallyHidden: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) =>
+      React.createElement('span', props, children),
+  };
+});
+
 // cmdk 모킹 — Command.Dialog를 간단한 div로 대체
 vi.mock('cmdk', async () => {
   const React = await import('react');

@@ -1,6 +1,8 @@
 'use client';
 
 import { Command } from 'cmdk';
+import { DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Search, CornerDownLeft } from 'lucide-react';
 import { fuzzyMatch } from '@/lib/utils/fuzzy-match';
 import { getNavItemsWithKeywords } from '@/lib/constants/navigation';
@@ -57,6 +59,11 @@ export default function CommandPalette({
       overlayClassName="fixed inset-0 z-50 bg-black/50"
       contentClassName="fixed top-[20%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 rounded-xl border bg-white shadow-2xl"
     >
+      <VisuallyHidden>
+        <DialogTitle>커맨드 팔레트</DialogTitle>
+        <DialogDescription>페이지, 프로젝트, 사용자를 검색합니다</DialogDescription>
+      </VisuallyHidden>
+
       {/* 검색 입력 */}
       <div className="flex items-center gap-3 border-b px-4">
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
