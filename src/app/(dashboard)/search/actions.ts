@@ -5,6 +5,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { SearchResults, CommandItem } from '@/components/command-palette/types';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
+import { PROJECT_STATUS_CONFIG, ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
+import { ROLE_LABELS } from '@/lib/constants/message';
+import type { ProjectStatus, RoadmapVersionStatus } from '@/types/database';
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_RESULTS_PER_CATEGORY = 5;
@@ -47,7 +50,7 @@ export async function unifiedSearch(
       label: p.company_name,
       href: `${basePath}/${p.id}`,
       category: 'project' as const,
-      description: `${p.industry} · ${p.status}`,
+      description: `${p.industry} · ${PROJECT_STATUS_CONFIG[p.status as ProjectStatus]?.label ?? p.status}`,
     }));
   })();
 
@@ -69,7 +72,7 @@ export async function unifiedSearch(
       label: u.name,
       href: `/ops/users`,
       category: 'user' as const,
-      description: `${u.email} · ${u.role}`,
+      description: `${u.email} · ${ROLE_LABELS[u.role] ?? u.role}`,
     }));
   })();
 
@@ -94,7 +97,7 @@ export async function unifiedSearch(
       label: (r.projects as unknown as { company_name: string }).company_name,
       href: `/gallery/${r.id}`,
       category: 'gallery' as const,
-      description: `${r.status}${r.is_shared ? ' · 공유' : ''}`,
+      description: `${ROADMAP_VERSION_STATUS_CONFIG[r.status as RoadmapVersionStatus]?.label ?? r.status}${r.is_shared ? ' · 공유' : ''}`,
     }));
   })();
 
