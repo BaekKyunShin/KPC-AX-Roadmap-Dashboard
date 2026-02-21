@@ -152,36 +152,26 @@ export interface NavItemWithKeywords extends NavItem {
   keywords: string[];
 }
 
+/** NavItem에 label 키워드를 추가하는 헬퍼 */
+function withLabelKeyword(item: NavItem): NavItemWithKeywords {
+  return { ...item, keywords: [item.label] };
+}
+
 /** 그룹명도 검색 키워드에 포함한 아이템 배열 반환 */
 export function getNavItemsWithKeywords(
   role: CommandPaletteRole,
 ): NavItemWithKeywords[] {
   if (role === 'CONSULTANT_APPROVED') {
-    return [
-      ...CONSULTANT_NAV_ITEMS.map((item) => ({
-        ...item,
-        keywords: [item.label],
-      })),
-      ...CONSULTANT_EXTRA_ITEMS.map((item) => ({
-        ...item,
-        keywords: [item.label],
-      })),
-      ...COMMON_EXTRA_ITEMS.map((item) => ({
-        ...item,
-        keywords: [item.label],
-      })),
-    ];
+    return getNavItemsForRole(role).map(withLabelKeyword);
   }
 
   // OPS_ADMIN, SYSTEM_ADMIN — 그룹명을 키워드에 포함
-  const items: NavItemWithKeywords[] = [];
-  for (const group of ADMIN_NAV_GROUPS) {
-    for (const item of group.items) {
-      items.push({ ...item, keywords: [item.label, group.label] });
-    }
-  }
-  for (const item of COMMON_EXTRA_ITEMS) {
-    items.push({ ...item, keywords: [item.label] });
-  }
-  return items;
+  const groupItems: NavItemWithKeywords[] = ADMIN_NAV_GROUPS.flatMap((group) =>
+    group.items.map((item) => ({
+      ...item,
+      keywords: [item.label, group.label],
+    })),
+  );
+
+  return [...groupItems, ...COMMON_EXTRA_ITEMS.map(withLabelKeyword)];
 }
