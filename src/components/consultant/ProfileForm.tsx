@@ -136,9 +136,14 @@ export default function ProfileForm({
         showSuccessToast(profile ? '프로필 수정 완료' : '프로필 등록 완료', successMessage);
 
         setTimeout(() => {
-          router.push(successRedirectUrl);
-          router.refresh();
+          if (isRegistrationMode) {
+            router.replace(successRedirectUrl);
+          } else {
+            router.push(successRedirectUrl);
+          }
         }, 2000);
+
+        return; // 성공 시 isSaving=true 유지 → 버튼 disabled 상태로 페이지 이동까지 대기
       } else {
         const errorMessage =
           result.error ||
@@ -159,7 +164,7 @@ export default function ProfileForm({
       scrollToElement(formContainerRef);
     }
 
-    setIsSaving(false);
+    setIsSaving(false); // 실패/예외 경로에서만 도달
   }
 
   // UI 텍스트 (모드에 따라 분기)
