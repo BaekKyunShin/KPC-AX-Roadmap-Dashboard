@@ -38,6 +38,7 @@
     "@supabase/supabase-js": "^2.47.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "gsap": "^3.14.2",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",

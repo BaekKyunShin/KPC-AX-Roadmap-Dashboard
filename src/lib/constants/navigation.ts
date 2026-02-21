@@ -8,6 +8,9 @@ import {
   ClipboardList,
   Home,
   Library,
+  Settings,
+  MessageSquare,
+  UserCircle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -111,4 +114,74 @@ export function getRoleBadgeConfig(role: string): RoleBadgeConfig | null {
 /** 그룹 내 아이템 중 하나라도 현재 경로와 매칭되는지 확인 */
 export function isGroupActive(group: NavGroup, pathname: string): boolean {
   return group.items.some((item) => pathname.startsWith(item.href));
+}
+
+// =============================================================================
+// 커맨드 팔레트용 헬퍼
+// =============================================================================
+
+/** 공통 추가 메뉴 (계정 설정, 메시지) */
+const COMMON_EXTRA_ITEMS: NavItem[] = [
+  { href: '/dashboard/settings', label: '계정 설정', icon: Settings },
+  { href: '/dashboard/messages', label: '메시지', icon: MessageSquare },
+];
+
+/** 컨설턴트 전용 추가 메뉴 */
+const CONSULTANT_EXTRA_ITEMS: NavItem[] = [
+  { href: '/consultant/profile', label: '프로필 관리', icon: UserCircle },
+];
+
+type CommandPaletteRole = 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN';
+
+/** 역할별 메뉴를 플랫 배열로 반환 */
+export function getNavItemsForRole(role: CommandPaletteRole): NavItem[] {
+  if (role === 'CONSULTANT_APPROVED') {
+    return [
+      ...CONSULTANT_NAV_ITEMS,
+      ...CONSULTANT_EXTRA_ITEMS,
+      ...COMMON_EXTRA_ITEMS,
+    ];
+  }
+
+  // OPS_ADMIN, SYSTEM_ADMIN
+  const groupItems = ADMIN_NAV_GROUPS.flatMap((group) => group.items);
+  return [...groupItems, ...COMMON_EXTRA_ITEMS];
+}
+
+export interface NavItemWithKeywords extends NavItem {
+  keywords: string[];
+}
+
+/** 그룹명도 검색 키워드에 포함한 아이템 배열 반환 */
+export function getNavItemsWithKeywords(
+  role: CommandPaletteRole,
+): NavItemWithKeywords[] {
+  if (role === 'CONSULTANT_APPROVED') {
+    return [
+      ...CONSULTANT_NAV_ITEMS.map((item) => ({
+        ...item,
+        keywords: [item.label],
+      })),
+      ...CONSULTANT_EXTRA_ITEMS.map((item) => ({
+        ...item,
+        keywords: [item.label],
+      })),
+      ...COMMON_EXTRA_ITEMS.map((item) => ({
+        ...item,
+        keywords: [item.label],
+      })),
+    ];
+  }
+
+  // OPS_ADMIN, SYSTEM_ADMIN — 그룹명을 키워드에 포함
+  const items: NavItemWithKeywords[] = [];
+  for (const group of ADMIN_NAV_GROUPS) {
+    for (const item of group.items) {
+      items.push({ ...item, keywords: [item.label, group.label] });
+    }
+  }
+  for (const item of COMMON_EXTRA_ITEMS) {
+    items.push({ ...item, keywords: [item.label] });
+  }
+  return items;
 }

@@ -6,6 +6,8 @@ import {
   getInitials,
   getRoleBadgeConfig,
   isGroupActive,
+  getNavItemsForRole,
+  getNavItemsWithKeywords,
 } from './navigation';
 
 // =============================================================================
@@ -164,6 +166,96 @@ describe('isGroupActive', () => {
     expect(isGroupActive(workspaceGroup, '/ops/users')).toBe(false);
     expect(isGroupActive(opsGroup, '/ops/projects')).toBe(false);
     expect(isGroupActive(libraryGroup, '/consultant/home')).toBe(false);
+  });
+});
+
+// =============================================================================
+// 커맨드 팔레트용 헬퍼 함수 테스트
+// =============================================================================
+
+describe('getNavItemsForRole', () => {
+  test('컨설턴트: 기본 4개 + 프로필 관리 + 계정 설정 + 메시지 = 7개', () => {
+    const items = getNavItemsForRole('CONSULTANT_APPROVED');
+    expect(items.length).toBe(7);
+  });
+
+  test('컨설턴트: 프로필 관리 항목이 포함된다', () => {
+    const items = getNavItemsForRole('CONSULTANT_APPROVED');
+    const profile = items.find((item) => item.label === '프로필 관리');
+    expect(profile).toBeDefined();
+    expect(profile!.href).toBe('/consultant/profile');
+  });
+
+  test('컨설턴트: 계정 설정 항목이 포함된다', () => {
+    const items = getNavItemsForRole('CONSULTANT_APPROVED');
+    const settings = items.find((item) => item.label === '계정 설정');
+    expect(settings).toBeDefined();
+    expect(settings!.href).toBe('/dashboard/settings');
+  });
+
+  test('컨설턴트: 메시지 항목이 포함된다', () => {
+    const items = getNavItemsForRole('CONSULTANT_APPROVED');
+    const messages = items.find((item) => item.label === '메시지');
+    expect(messages).toBeDefined();
+    expect(messages!.href).toBe('/dashboard/messages');
+  });
+
+  test('관리자: 그룹 내 전체 아이템 + 계정 설정 + 메시지 = 9개', () => {
+    const items = getNavItemsForRole('OPS_ADMIN');
+    expect(items.length).toBe(9);
+  });
+
+  test('시스템관리자와 운영관리자 결과가 동일하다', () => {
+    const ops = getNavItemsForRole('OPS_ADMIN');
+    const sys = getNavItemsForRole('SYSTEM_ADMIN');
+    expect(ops.map((i) => i.href)).toEqual(sys.map((i) => i.href));
+  });
+
+  test('관리자: 프로필 관리는 포함되지 않는다', () => {
+    const items = getNavItemsForRole('OPS_ADMIN');
+    expect(items.find((item) => item.label === '프로필 관리')).toBeUndefined();
+  });
+
+  test('모든 아이템에 href, label, icon이 있다', () => {
+    for (const role of ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const) {
+      const items = getNavItemsForRole(role);
+      for (const item of items) {
+        expect(item.href).toBeTruthy();
+        expect(item.label).toBeTruthy();
+        expect(item.icon).toBeTruthy();
+      }
+    }
+  });
+});
+
+describe('getNavItemsWithKeywords', () => {
+  test('각 아이템에 keywords 배열이 포함된다', () => {
+    const items = getNavItemsWithKeywords('OPS_ADMIN');
+    for (const item of items) {
+      expect(Array.isArray(item.keywords)).toBe(true);
+      expect(item.keywords.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('관리자 아이템은 그룹명을 키워드에 포함한다', () => {
+    const items = getNavItemsWithKeywords('OPS_ADMIN');
+    const projectMgmt = items.find((item) => item.label === '프로젝트 관리');
+    expect(projectMgmt).toBeDefined();
+    expect(projectMgmt!.keywords).toContain('워크스페이스');
+  });
+
+  test('컨설턴트 아이템도 키워드를 가진다', () => {
+    const items = getNavItemsWithKeywords('CONSULTANT_APPROVED');
+    const dashboard = items.find((item) => item.label === '대시보드');
+    expect(dashboard).toBeDefined();
+    expect(dashboard!.keywords.length).toBeGreaterThan(0);
+  });
+
+  test('추가 아이템(계정 설정 등)도 키워드를 가진다', () => {
+    const items = getNavItemsWithKeywords('CONSULTANT_APPROVED');
+    const settings = items.find((item) => item.label === '계정 설정');
+    expect(settings).toBeDefined();
+    expect(settings!.keywords.length).toBeGreaterThan(0);
   });
 });
 
