@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SelfAssessmentQuestion } from '@/types/database';
 import TemplateList from './TemplateList';
@@ -111,6 +111,19 @@ const inactiveUsedTemplate = {
 const allTemplates = [inactiveUnusedTemplate, inactiveUsedTemplate, activeTemplate];
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * 데스크톱 테이블 컨테이너를 반환한다.
+ * 모바일 카드 뷰도 동시에 DOM에 렌더링되므로(jsdom은 CSS 미디어쿼리 미지원),
+ * 쿼리 범위를 테이블로 제한하여 중복 요소 문제를 방지한다.
+ */
+function getTable() {
+  return within(screen.getByRole('table'));
+}
+
+// =============================================================================
 // 테스트
 // =============================================================================
 
@@ -123,7 +136,7 @@ describe('TemplateList', () => {
     it('각 행에 케밥 메뉴(⋮) 트리거 버튼이 있어야 한다', () => {
       render(<TemplateList templates={allTemplates} />);
 
-      const menuTriggers = screen.getAllByRole('button', { name: /더보기|작업 메뉴/i });
+      const menuTriggers = getTable().getAllByRole('button', { name: /더보기|작업 메뉴/i });
       expect(menuTriggers).toHaveLength(allTemplates.length);
     });
 
@@ -140,7 +153,7 @@ describe('TemplateList', () => {
     it('템플릿 이름이 상세 페이지로의 링크여야 한다', () => {
       render(<TemplateList templates={[activeTemplate]} />);
 
-      const nameLink = screen.getByRole('link', { name: 'AX 진단 템플릿' });
+      const nameLink = getTable().getByRole('link', { name: 'AX 진단 템플릿' });
       expect(nameLink).toHaveAttribute('href', '/ops/templates/tmpl-1');
     });
   });
@@ -149,7 +162,7 @@ describe('TemplateList', () => {
     it('활성화, 복제, 삭제 메뉴 아이템이 모두 표시되어야 한다', async () => {
       render(<TemplateList templates={[inactiveUnusedTemplate]} />);
 
-      const trigger = screen.getByRole('button', { name: /더보기|작업 메뉴/i });
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
       openDropdown(trigger);
 
       await waitFor(() => {
@@ -164,7 +177,7 @@ describe('TemplateList', () => {
     it('활성화, 복제만 표시되고 삭제는 없어야 한다', async () => {
       render(<TemplateList templates={[inactiveUsedTemplate]} />);
 
-      const trigger = screen.getByRole('button', { name: /더보기|작업 메뉴/i });
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
       openDropdown(trigger);
 
       await waitFor(() => {
@@ -179,7 +192,7 @@ describe('TemplateList', () => {
     it('복제만 표시되고 활성화와 삭제는 없어야 한다', async () => {
       render(<TemplateList templates={[activeTemplate]} />);
 
-      const trigger = screen.getByRole('button', { name: /더보기|작업 메뉴/i });
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
       openDropdown(trigger);
 
       await waitFor(() => {
