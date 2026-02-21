@@ -1,6 +1,7 @@
 'use client';
 
 import { Command } from 'cmdk';
+import { COMMAND_ITEM_CLASS } from './types';
 import type { NavItemWithKeywords } from '@/lib/constants/navigation';
 
 interface CommandNavigationGroupProps {
@@ -22,7 +23,7 @@ export default function CommandNavigationGroup({
             value={item.href}
             keywords={item.keywords}
             onSelect={() => onSelect(item.href)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer aria-selected:bg-blue-50 aria-selected:text-blue-700"
+            className={COMMAND_ITEM_CLASS}
           >
             <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{item.label}</span>

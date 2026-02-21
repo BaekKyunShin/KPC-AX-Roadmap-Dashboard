@@ -2,6 +2,7 @@
 
 import { Command } from 'cmdk';
 import { FolderKanban, Users, Library, Loader2 } from 'lucide-react';
+import { COMMAND_ITEM_CLASS } from './types';
 import type { SearchResults, CommandItem } from './types';
 
 interface CommandSearchResultsProps {
@@ -37,7 +38,7 @@ function ResultGroup({
           value={`${item.category}-${item.id}`}
           onSelect={() => onSelect(item.href)}
           forceMount
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer aria-selected:bg-blue-50 aria-selected:text-blue-700"
+          className={COMMAND_ITEM_CLASS}
         >
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="flex flex-col min-w-0">

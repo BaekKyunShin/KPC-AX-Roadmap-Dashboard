@@ -2,6 +2,7 @@
 
 import { Command } from 'cmdk';
 import { Clock } from 'lucide-react';
+import { COMMAND_ITEM_CLASS } from './types';
 import type { RecentVisit } from './types';
 
 interface CommandRecentGroupProps {
@@ -22,7 +23,7 @@ export default function CommandRecentGroup({
           key={visit.href}
           value={`recent-${visit.href}`}
           onSelect={() => onSelect(visit.href)}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer aria-selected:bg-blue-50 aria-selected:text-blue-700"
+          className={COMMAND_ITEM_CLASS}
         >
           <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="truncate">{visit.label}</span>
