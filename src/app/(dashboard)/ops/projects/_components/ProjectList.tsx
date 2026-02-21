@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
-import { PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
+import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
@@ -138,9 +138,9 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   );
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // 필터 옵션
+  // 필터 옵션 (statuses는 상수 기반이므로 동기 초기화 — 플리커 방지)
   const [filterOptions, setFilterOptions] = useState<ProjectFilterOptions>({
-    statuses: [],
+    statuses: getStatusFilterOptions(),
     industries: [],
   });
 
@@ -160,9 +160,11 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     router.replace(`${pathname}${search ? `?${search}` : ''}`);
   };
 
-  // 필터 옵션 로드
+  // 업종 옵션만 비동기 로드 (statuses는 이미 동기 초기화됨)
   useEffect(() => {
-    fetchProjectFilters().then(setFilterOptions);
+    fetchProjectFilters().then(result => {
+      setFilterOptions(prev => ({ ...prev, industries: result.industries }));
+    });
   }, []);
 
   // 외부 statusFilter(요약 카드 클릭) 활성화 시 드롭다운 초기화
