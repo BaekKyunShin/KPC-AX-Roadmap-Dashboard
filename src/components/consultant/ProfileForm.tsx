@@ -24,6 +24,8 @@ import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import type { ConsultantProfile } from '@/types/database';
 
+const SUCCESS_REDIRECT_DELAY_MS = 2000;
+
 interface ProfileFormProps {
   profile: ConsultantProfile | null;
   backUrl: string;
@@ -141,19 +143,19 @@ export default function ProfileForm({
           } else {
             router.push(successRedirectUrl);
           }
-        }, 2000);
+        }, SUCCESS_REDIRECT_DELAY_MS);
 
         return; // 성공 시 isSaving=true 유지 → 버튼 disabled 상태로 페이지 이동까지 대기
-      } else {
-        const errorMessage =
-          result.error ||
-          (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
-        setError(errorMessage);
-
-        // 에러 Toast + 스크롤
-        showErrorToast(profile ? '프로필 수정 실패' : '프로필 등록 실패', errorMessage);
-        scrollToElement(formContainerRef);
       }
+
+      const errorMessage =
+        result.error ||
+        (profile ? '프로필 수정에 실패했습니다.' : '프로필 등록에 실패했습니다.');
+      setError(errorMessage);
+
+      // 에러 Toast + 스크롤
+      showErrorToast(profile ? '프로필 수정 실패' : '프로필 등록 실패', errorMessage);
+      scrollToElement(formContainerRef);
     } catch (err) {
       console.error('프로필 저장 오류:', err);
       const errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
