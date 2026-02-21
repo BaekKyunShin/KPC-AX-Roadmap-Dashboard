@@ -28,6 +28,8 @@ npm run validate         # typecheck + lint + test 통합 검증
 
 **데이터베이스 마이그레이션:** `supabase/migrations/` 폴더의 SQL 파일을 Supabase CLI (`supabase db push`) 또는 SQL Editor에서 순차적으로 실행
 
+**배포 전 체크리스트:** `npm run validate` (typecheck + lint + test) → `npm run build` → Vercel 배포
+
 ## 아키텍처
 
 ```text

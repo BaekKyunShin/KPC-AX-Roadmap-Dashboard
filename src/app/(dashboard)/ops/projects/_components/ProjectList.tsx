@@ -165,9 +165,10 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
     fetchProjectFilters().then(setFilterOptions);
   }, []);
 
-  // 외부 statusFilter 변경 시 반영 및 페이지 리셋
+  // 외부 statusFilter(요약 카드 클릭) 활성화 시 드롭다운 초기화
+  // 주의: null/undefined일 때는 실행하지 않아야 마운트 시 URL 상태를 보존함
   useEffect(() => {
-    if (statusFilter !== undefined) {
+    if (Array.isArray(statusFilter) && statusFilter.length > 0) {
       setInternalStatus(DEFAULT_FILTER_VALUE);
       setPage(1);
     }
