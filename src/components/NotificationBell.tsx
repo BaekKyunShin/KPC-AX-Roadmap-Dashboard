@@ -209,6 +209,7 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
       <PopoverContent
         align="end"
         sideOffset={8}
+        collisionPadding={16}
         className="w-[380px] max-w-[calc(100vw-2rem)] p-0"
       >
         {/* 헤더 */}

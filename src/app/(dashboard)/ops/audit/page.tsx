@@ -379,7 +379,7 @@ export default function AuditLogPage() {
             {hasFilters && (
               <button
                 onClick={handleResetFilters}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors col-span-2 sm:col-span-1 flex items-center justify-center"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors flex items-center justify-center"
                 title="필터 초기화"
               >
                 <X className="h-4 w-4" />

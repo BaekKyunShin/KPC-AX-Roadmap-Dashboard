@@ -58,7 +58,7 @@ export function SelfAssessmentResult({ scores, createdAt }: SelfAssessmentResult
 
                   return (
                     <div key={ds.dimension} className="flex items-center gap-2 sm:gap-3">
-                      <span className="text-xs sm:text-sm text-gray-700 shrink-0 w-auto sm:w-28 sm:truncate break-keep">{ds.dimension}</span>
+                      <span className="text-xs sm:text-sm text-gray-700 shrink-0 w-[5.5rem] sm:w-28 truncate">{ds.dimension}</span>
                       <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
                         <div
                           className={`h-2 rounded-full ${dimColor.bg}`}
