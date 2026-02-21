@@ -147,6 +147,13 @@ export default function AuditLogPage() {
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`);
   }
 
+  // 필터 변경 공통 처리: 페이지 리셋 + URL 동기화
+  function applyFilterChange(paramKey: string, value: string) {
+    setPage(1);
+    setFilters(prev => ({ ...prev, page: 1 }));
+    updateParams({ [paramKey]: value, page: '' });
+  }
+
   // 검색어 → URL 동기화 (디바운스)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -339,9 +346,7 @@ export default function AuditLogPage() {
               onValueChange={(value) => {
                 const v = value === 'all' ? '' : value as AuditAction;
                 setSelectedAction(v);
-                setPage(1);
-                setFilters(prev => ({ ...prev, page: 1 }));
-                updateParams({ action: v, page: '' });
+                applyFilterChange('action', v);
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -360,9 +365,7 @@ export default function AuditLogPage() {
               onValueChange={(value) => {
                 const v = value === 'all' ? '' : value;
                 setSelectedTargetType(v);
-                setPage(1);
-                setFilters(prev => ({ ...prev, page: 1 }));
-                updateParams({ target: v, page: '' });
+                applyFilterChange('target', v);
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -381,9 +384,7 @@ export default function AuditLogPage() {
               onValueChange={(value) => {
                 const v = value === 'all' ? '' : value;
                 setSelectedUser(v);
-                setPage(1);
-                setFilters(prev => ({ ...prev, page: 1 }));
-                updateParams({ user: v, page: '' });
+                applyFilterChange('user', v);
               }}
             >
               <SelectTrigger className="w-full sm:w-[130px]">
@@ -404,9 +405,7 @@ export default function AuditLogPage() {
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
-                  setPage(1);
-                  setFilters(prev => ({ ...prev, page: 1 }));
-                  updateParams({ start: e.target.value, page: '' });
+                  applyFilterChange('start', e.target.value);
                 }}
                 className="w-full"
               />
@@ -419,9 +418,7 @@ export default function AuditLogPage() {
                 value={endDate}
                 onChange={(e) => {
                   setEndDate(e.target.value);
-                  setPage(1);
-                  setFilters(prev => ({ ...prev, page: 1 }));
-                  updateParams({ end: e.target.value, page: '' });
+                  applyFilterChange('end', e.target.value);
                 }}
                 className="w-full"
               />

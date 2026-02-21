@@ -3,6 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
+/** BackButton과 정적 Link가 공유하는 뒤로가기 링크 스타일 */
+export const BACK_LINK_STYLES =
+  'inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2';
+
 interface BackButtonProps {
   label: string;
   fallbackHref: string;
@@ -29,7 +33,7 @@ export function BackButton({ label, fallbackHref }: BackButtonProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
+      className={BACK_LINK_STYLES}
     >
       <ArrowLeft className="h-4 w-4" />
       {label}

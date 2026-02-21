@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { BackButton } from '@/components/ui/back-button';
+import { BackButton, BACK_LINK_STYLES } from '@/components/ui/back-button';
 
 interface PageHeaderProps {
   /** 페이지 제목 */
@@ -59,7 +59,7 @@ export function PageHeader({ title, description, actions, backLink }: PageHeader
           ) : (
             <Link
               href={backLink.href}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
+              className={BACK_LINK_STYLES}
             >
               <ArrowLeft className="h-4 w-4" />
               {backLink.label}

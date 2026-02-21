@@ -40,6 +40,7 @@ import MiniStepper from './MiniStepper';
 const ITEMS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES = 5;
 const DEFAULT_FILTER_VALUE = 'all';
+const SEARCH_DEBOUNCE_DELAY = 300;
 
 interface ProjectListProps {
   statusFilter?: ProjectStatus[] | null;
@@ -136,7 +137,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   const [page, setPage] = useState(
     Number(urlSearchParams.get('page')) || 1
   );
-  const debouncedSearch = useDebounce(searchInput, 300);
+  const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   // 필터 옵션 (statuses는 상수 기반이므로 동기 초기화 — 플리커 방지)
   const [filterOptions, setFilterOptions] = useState<ProjectFilterOptions>({
