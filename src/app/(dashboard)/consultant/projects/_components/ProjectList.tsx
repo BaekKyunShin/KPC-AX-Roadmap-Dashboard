@@ -325,12 +325,13 @@ export default function ProjectList() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="기업명 또는 업종 검색..."
                 className="pl-9"
+                disabled={loading}
               />
             </div>
 
             {/* 필터 컨트롤 */}
             <div className="flex flex-wrap gap-2">
-              <Select value={status} onValueChange={handleStatusChange}>
+              <Select value={status} onValueChange={handleStatusChange} disabled={loading}>
                 <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>

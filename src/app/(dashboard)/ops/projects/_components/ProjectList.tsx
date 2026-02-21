@@ -440,7 +440,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(Math.max(1, page - 1))}
-                      disabled={page === 1}
+                      disabled={page === 1 || loading}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -462,6 +462,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                           variant={page === pageNum ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
                           className="w-9"
                         >
                           {pageNum}
@@ -472,7 +473,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                      disabled={page === totalPages}
+                      disabled={page === totalPages || loading}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

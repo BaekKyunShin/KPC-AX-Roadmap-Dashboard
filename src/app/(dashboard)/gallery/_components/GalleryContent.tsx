@@ -75,6 +75,7 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
 
     const params: Record<string, string | undefined> = {};
     urlSearchParams.forEach((value, key) => {

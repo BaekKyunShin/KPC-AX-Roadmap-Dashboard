@@ -276,6 +276,7 @@ export default function QuotaManagementPage() {
                 setSelectedMonth(value);
                 setPage(1);
               }}
+              disabled={saving}
             >
               <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="월 선택" />

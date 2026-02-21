@@ -448,7 +448,7 @@ export default function AuditLogPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleExportExcel(false)}
-              disabled={filteredLogs.length === 0 || exporting !== null}
+              disabled={filteredLogs.length === 0 || exporting !== null || loading}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
@@ -456,7 +456,7 @@ export default function AuditLogPage() {
             </button>
             <button
               onClick={() => handleExportExcel(true)}
-              disabled={total === 0 || exporting !== null}
+              disabled={total === 0 || exporting !== null || loading}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
