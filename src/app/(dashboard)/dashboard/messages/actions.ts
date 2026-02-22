@@ -264,39 +264,12 @@ export async function fetchUnreadConversationCount(): Promise<number> {
     if ('error' in auth) return 0;
     const { user, supabase } = auth;
 
-    // 내 참여 대화 조회
-    const { data: participations, error } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, last_read_at')
-      .eq('user_id', user.id);
+    const { data, error } = await supabase.rpc('get_unread_conversation_count', {
+      p_user_id: user.id,
+    });
 
-    if (error || !participations) return 0;
-
-    if (participations.length === 0) return 0;
-
-    // 각 대화별로 last_read_at 이후 다른 사용자가 보낸 메시지 존재 여부를 직접 확인
-    // conversations.last_message_at에 의존하지 않으므로 sendMessage의
-    // last_message_at 업데이트 타이밍 race condition에 영향받지 않음
-    let count = 0;
-    for (const p of participations) {
-      let query = supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('conversation_id', p.conversation_id)
-        .neq('sender_id', user.id);
-
-      if (p.last_read_at) {
-        query = query.gt('created_at', p.last_read_at);
-      }
-      // last_read_at이 null이면 모든 타인 메시지가 안읽음
-
-      const { count: msgCount } = await query;
-      if (msgCount && msgCount > 0) {
-        count++;
-      }
-    }
-
-    return count;
+    if (error) return 0;
+    return data ?? 0;
   } catch {
     return 0;
   }

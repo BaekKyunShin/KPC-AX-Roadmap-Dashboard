@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
@@ -23,65 +24,56 @@ interface PageProps {
 
 export default async function ConsultantProjectDetailPage({ params }: PageProps) {
   const { id: projectId } = await params;
-  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 현재 사용자 프로필 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, name')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getCachedProfile();
   if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
     redirect('/dashboard');
   }
 
-  // 프로젝트 정보 조회 (배정된 컨설턴트만 접근 가능)
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select(`
-      *,
-      self_assessments(
-        id,
-        scores,
-        answers,
-        created_at,
-        template:self_assessment_templates(questions)
-      ),
-      interviews(
-        id,
-        interview_date,
-        company_details,
-        job_tasks,
-        pain_points,
-        constraints,
-        improvement_goals,
-        notes,
-        customer_requirements
-      )
-    `)
-    .eq('id', projectId)
-    .eq('assigned_consultant_id', user.id)
-    .single();
+  // 프로젝트 + 사전 분석 가이드 병렬 조회
+  const supabase = await createClient();
+  const [{ data: projectData }, { data: interviewGuide }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select(`
+        *,
+        self_assessments(
+          id,
+          scores,
+          answers,
+          created_at,
+          template:self_assessment_templates(questions)
+        ),
+        interviews(
+          id,
+          interview_date,
+          company_details,
+          job_tasks,
+          pain_points,
+          constraints,
+          improvement_goals,
+          notes,
+          customer_requirements
+        )
+      `)
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single(),
+    supabase
+      .from('interview_guides')
+      .select('guide_data, created_at')
+      .eq('project_id', projectId)
+      .single(),
+  ]);
 
   if (!projectData) {
     notFound();
   }
-
-  // 사전 분석 가이드 조회
-  const { data: interviewGuide } = await supabase
-    .from('interview_guides')
-    .select('guide_data, created_at')
-    .eq('project_id', projectId)
-    .single();
 
   // UNIQUE 제약조건(1:1 관계)으로 PostgREST가 단일 객체를 반환
   const selfAssessment = projectData.self_assessments;

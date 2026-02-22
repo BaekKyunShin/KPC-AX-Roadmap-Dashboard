@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createAdminClient } from '@/lib/supabase/admin';
 import UserManagementTable from '@/components/ops/UserManagementTable';
 import { PageHeader } from '@/components/ui/page-header';
@@ -23,52 +23,43 @@ const PAGE_DESCRIPTION = '컨설턴트 승인/정지 및 상태를 관리합니�
 // =============================================================================
 
 export default async function UsersPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 현재 사용자 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
+  const cachedProfile = await getCachedProfile();
   const isAllowedRole =
-    currentUser && ALLOWED_ROLES.includes(currentUser.role as (typeof ALLOWED_ROLES)[number]);
+    cachedProfile && ALLOWED_ROLES.includes(cachedProfile.role as (typeof ALLOWED_ROLES)[number]);
 
   if (!isAllowedRole) {
     redirect('/dashboard');
   }
 
-  const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
+  const isSystemAdmin = cachedProfile.role === 'SYSTEM_ADMIN';
   const targetRoles = isSystemAdmin ? SYSTEM_ADMIN_MANAGEABLE_ROLES : OPS_ADMIN_MANAGEABLE_ROLES;
 
   // Admin 클라이언트 생성 (RLS 우회)
   const adminSupabase = createAdminClient();
 
-  // 사용자 목록 조회 (admin 클라이언트로 RLS 우회)
-  const { data: usersData, error: usersError } = await adminSupabase
-    .from('users')
-    .select('*')
-    .in('role', targetRoles)
-    .order('created_at', { ascending: false });
+  // 사용자 + 프로필 병렬 조회
+  const [
+    { data: usersData, error: usersError },
+    { data: profilesData, error: profilesError },
+  ] = await Promise.all([
+    adminSupabase
+      .from('users')
+      .select('*')
+      .in('role', targetRoles)
+      .order('created_at', { ascending: false }),
+    adminSupabase
+      .from('consultant_profiles')
+      .select('*'),
+  ]);
 
   if (usersError) {
     console.error('[Users Query Error]', usersError);
   }
-
-  // 컨설턴트 프로필 목록 조회 (admin 클라이언트로 RLS 우회)
-  const { data: profilesData, error: profilesError } = await adminSupabase
-    .from('consultant_profiles')
-    .select('*');
-
   if (profilesError) {
     console.error('[Profiles Query Error]', profilesError);
   }

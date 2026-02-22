@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import {
   CONVERSATION_READ_EVENT,
@@ -33,7 +33,6 @@ interface MessageIconProps {
 // =============================================================================
 
 export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
-  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const currentUserIdRef = useRef<string | null>(null);
 
@@ -163,13 +162,10 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
       ? `${MESSAGE_BADGE_MAX}+`
       : `${unreadCount}`;
 
-  const handleClick = () => {
-    router.push('/dashboard/messages');
-  };
-
   return (
-    <button
-      onClick={handleClick}
+    <Link
+      href="/dashboard/messages"
+      prefetch={true}
       className="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
       aria-label={`메시지 ${unreadCount > 0 ? `${unreadCount}개 안읽음` : ''}`}
     >
@@ -179,6 +175,6 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
           {badgeText}
         </span>
       )}
-    </button>
+    </Link>
   );
 }

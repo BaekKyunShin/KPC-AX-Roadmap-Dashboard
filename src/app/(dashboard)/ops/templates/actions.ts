@@ -79,13 +79,22 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
       return { success: false, error: '템플릿 목록 조회에 실패했습니다.' };
     }
 
-    // 각 템플릿의 사용 현황 조회
-    const templatesWithUsage = await Promise.all(
-      (templates || []).map(async (template) => {
-        const usageCount = await getTemplateUsageCount(supabase, template.id);
-        return { ...template, usage_count: usageCount };
-      })
-    );
+    // 전체 템플릿의 사용 현황을 한 번에 조회 (N+1 방지)
+    const templateIds = (templates || []).map(t => t.id);
+    const { data: usageCounts } = await supabase
+      .from('self_assessments')
+      .select('template_id')
+      .in('template_id', templateIds);
+
+    const usageMap = new Map<string, number>();
+    usageCounts?.forEach(row => {
+      usageMap.set(row.template_id, (usageMap.get(row.template_id) || 0) + 1);
+    });
+
+    const templatesWithUsage = (templates || []).map(template => ({
+      ...template,
+      usage_count: usageMap.get(template.id) || 0,
+    }));
 
     return { success: true, data: templatesWithUsage };
   } catch (error) {

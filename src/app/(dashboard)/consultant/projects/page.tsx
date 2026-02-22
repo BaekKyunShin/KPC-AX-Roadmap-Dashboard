@@ -1,25 +1,14 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import ProjectList from './_components/ProjectList';
 
 export default async function ConsultantProjectsPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 현재 사용자 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getCachedProfile();
   if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
     redirect('/dashboard');
   }

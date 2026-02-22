@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { aggregateProjectStats, formatRelativeTime } from '@/lib/utils/consultant-home';
 import { SummaryCards } from './_components/SummaryCards';
@@ -22,26 +23,16 @@ function shortSizeLabel(size: string): string {
 }
 
 export default async function ConsultantHomePage() {
-  const supabase = await createClient();
-
-  // 1. 인증 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) redirect('/login');
 
-  // 2. 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, name')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getCachedProfile();
   if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
     redirect('/dashboard');
   }
 
-  // 3. 프로젝트 목록 조회
+  // 프로젝트 목록 조회
+  const supabase = await createClient();
   const { data: projects } = await supabase
     .from('projects')
     .select('id, company_name, industry, company_size, status, updated_at')

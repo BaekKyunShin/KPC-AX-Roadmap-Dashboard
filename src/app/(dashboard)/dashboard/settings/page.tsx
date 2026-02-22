@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 import { PageHeader } from '@/components/ui/page-header';
 import DeleteAccountSection from '@/components/auth/DeleteAccountSection';
@@ -7,19 +7,10 @@ import EmailNotifyToggle from '@/app/(dashboard)/dashboard/profile/_components/E
 import PasswordChangeSection from './_components/PasswordChangeSection';
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) redirect('/login');
 
-  // 역할 + 이메일 알림 설정 조회 (layout에서 이미 방어하지만 일관성 유지)
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, email_notify_enabled')
-    .eq('id', user.id)
-    .single();
+  const profile = await getCachedProfile();
 
   const isEmailNotifyEligible = profile && EMAIL_NOTIFY_ROLES.includes(profile.role);
 

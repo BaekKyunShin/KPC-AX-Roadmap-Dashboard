@@ -1,30 +1,19 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import ProjectManagementTabs from './_components/ProjectManagementTabs';
 
 export default async function OPSProjectsPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 현재 사용자 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+  const profile = await getCachedProfile();
+  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
     redirect('/dashboard');
   }
 

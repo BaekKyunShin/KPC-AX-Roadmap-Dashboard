@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { GalleryContent } from './_components/GalleryContent';
 
@@ -9,23 +9,12 @@ interface GalleryPageProps {
 }
 
 export default async function GalleryPage({ searchParams }: GalleryPageProps) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 사용자 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getCachedProfile();
   if (!profile) {
     redirect('/login');
   }

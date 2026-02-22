@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import TestRoadmapClient from './TestRoadmapClient';
 
 export const metadata = {
@@ -8,23 +9,12 @@ export const metadata = {
 };
 
 export default async function TestRoadmapPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 사용자 프로필 및 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, name, email, role, status')
-    .eq('id', user.id)
-    .single();
-
+  const profile = await getCachedProfile();
   if (!profile) {
     redirect('/login');
   }
@@ -39,6 +29,7 @@ export default async function TestRoadmapPage() {
   // 컨설턴트 프로필 조회 (승인된 컨설턴트인 경우에만)
   let consultantProfile = null;
   if (isApprovedConsultant) {
+    const supabase = await createClient();
     const { data: profileData } = await supabase
       .from('consultant_profiles')
       .select('*')

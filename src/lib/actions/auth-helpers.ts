@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import type { UserRole, UserStatus } from '@/types/database';
 
 // ============================================================================
@@ -37,22 +38,13 @@ export type AuthFailure = { error: string };
 export async function requireAuth(
   errorMessage = '로그인이 필요합니다.',
 ): Promise<AuthSuccess | AuthFailure> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const user = await getCachedUser();
+  if (!user) {
     return { error: errorMessage };
   }
 
-  // 역할·상태 조회 (users 테이블 PK 조회 — 빠름)
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, status')
-    .eq('id', user.id)
-    .single();
+  const profile = await getCachedProfile();
+  const supabase = await createClient();
 
   return {
     user: { id: user.id, email: user.email ?? '' },

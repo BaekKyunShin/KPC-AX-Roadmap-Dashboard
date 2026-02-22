@@ -83,8 +83,17 @@ function createMockSupabase() {
     return Promise.resolve(nextResult()).then(resolve, reject);
   };
 
+  const rpcResults: Array<{ data: unknown; error: unknown }> = [];
+  let rpcIndex = 0;
+
   const client = {
     from: vi.fn(() => chainable),
+    rpc: vi.fn(() => {
+      if (rpcIndex < rpcResults.length) {
+        return Promise.resolve(rpcResults[rpcIndex++]);
+      }
+      return Promise.resolve({ data: null, error: null });
+    }),
   };
 
   return {
@@ -92,6 +101,9 @@ function createMockSupabase() {
     chainable,
     addResult: (result: { data: unknown; error: unknown; count?: number | null }) => {
       results.push(result);
+    },
+    addRpcResult: (result: { data: unknown; error: unknown }) => {
+      rpcResults.push(result);
     },
   };
 }
@@ -399,44 +411,31 @@ describe('fetchUnreadConversationCount', () => {
     expect(result).toBe(0);
   });
 
-  it('참여 대화 없음 → 0', async () => {
+  it('RPC 에러 → 0', async () => {
     setupAuth();
-    serverMock.addResult({ data: [], error: null });
+    serverMock.addRpcResult({ data: null, error: { message: 'rpc error' } });
 
     const result = await fetchUnreadConversationCount();
 
     expect(result).toBe(0);
   });
 
-  it('안읽음 메시지 존재 → 카운트 반환', async () => {
+  it('안읽음 대화 존재 → RPC 결과 반환', async () => {
     setupAuth();
-    // 1) 참여 목록
-    serverMock.addResult({
-      data: [
-        { conversation_id: CONV_ID, last_read_at: '2026-02-17T09:00:00Z' },
-      ],
-      error: null,
-    });
-    // 2) 안읽음 메시지 수 (count > 0)
-    serverMock.addResult({ data: null, error: null, count: 3 });
+    serverMock.addRpcResult({ data: 3, error: null });
 
     const result = await fetchUnreadConversationCount();
 
-    expect(result).toBe(1);
+    expect(result).toBe(3);
   });
 
-  it('last_read_at null → 모든 타인 메시지가 안읽음', async () => {
+  it('안읽음 대화 없음 → 0', async () => {
     setupAuth();
-    serverMock.addResult({
-      data: [{ conversation_id: CONV_ID, last_read_at: null }],
-      error: null,
-    });
-    // gt 필터 없이 전체 카운트
-    serverMock.addResult({ data: null, error: null, count: 5 });
+    serverMock.addRpcResult({ data: 0, error: null });
 
     const result = await fetchUnreadConversationCount();
 
-    expect(result).toBe(1);
+    expect(result).toBe(0);
   });
 });
 

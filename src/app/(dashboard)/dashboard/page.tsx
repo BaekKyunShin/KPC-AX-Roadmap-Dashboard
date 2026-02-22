@@ -1,22 +1,16 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader } from '@/components/ui/page-header';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
-
+  const profile = await getCachedProfile();
   if (!profile) {
     redirect('/login');
   }

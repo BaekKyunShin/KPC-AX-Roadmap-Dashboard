@@ -1,24 +1,17 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import Navigation from '@/components/Navigation';
 import { FooterCredit } from '@/components/ui/FooterCredit';
 import { fetchUnreadCount } from '@/app/(dashboard)/notifications/actions';
 import { fetchUnreadConversationCount } from '@/app/(dashboard)/dashboard/messages/actions';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCachedUser();
   if (!user) {
     redirect('/login');
   }
 
-  // 사용자 정보 조회
-  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
-
+  const profile = await getCachedProfile();
   if (!profile) {
     redirect('/login');
   }
