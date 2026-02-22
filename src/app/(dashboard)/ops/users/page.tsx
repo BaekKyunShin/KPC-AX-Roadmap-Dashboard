@@ -28,15 +28,15 @@ export default async function UsersPage() {
     redirect('/login');
   }
 
-  const cachedProfile = await getCachedProfile();
+  const profile = await getCachedProfile();
   const isAllowedRole =
-    cachedProfile && ALLOWED_ROLES.includes(cachedProfile.role as (typeof ALLOWED_ROLES)[number]);
+    profile && ALLOWED_ROLES.includes(profile.role as (typeof ALLOWED_ROLES)[number]);
 
   if (!isAllowedRole) {
     redirect('/dashboard');
   }
 
-  const isSystemAdmin = cachedProfile.role === 'SYSTEM_ADMIN';
+  const isSystemAdmin = profile.role === 'SYSTEM_ADMIN';
   const targetRoles = isSystemAdmin ? SYSTEM_ADMIN_MANAGEABLE_ROLES : OPS_ADMIN_MANAGEABLE_ROLES;
 
   // Admin 클라이언트 생성 (RLS 우회)

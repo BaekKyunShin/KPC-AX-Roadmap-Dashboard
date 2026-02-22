@@ -31,9 +31,9 @@ export type AuthFailure = { error: string };
 // ============================================================================
 
 /**
- * 세션 확인 — supabase 클라이언트를 생성하고 getUser()로 인증 상태를 확인합니다.
+ * 세션 확인 — getCachedUser/getCachedProfile로 인증 상태를 확인합니다.
  * 성공 시 { user, supabase, role, status }, 실패 시 { error }를 반환합니다.
- * role/status는 users 테이블에서 조회하며, 행이 없으면 null입니다.
+ * role/status는 캐시된 프로필에서 가져오며, 행이 없으면 null입니다.
  */
 export async function requireAuth(
   errorMessage = '로그인이 필요합니다.',
