@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
-import TemplateForm from '../_components/TemplateForm';
+import { TemplateFormSkeleton } from '@/components/ui/Skeleton';
+
+const TemplateForm = dynamic(
+  () => import('../_components/TemplateForm'),
+  { loading: () => <TemplateFormSkeleton questionCount={1} /> }
+);
 
 export default async function NewTemplatePage() {
   const supabase = await createClient();

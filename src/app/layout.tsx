@@ -21,12 +21,17 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* Pretendard - 세련된 한글 폰트 */}
+        {/* Pretendard - 세련된 한글 폰트 (Dynamic Subset: 사용 글리프만 on-demand 로드) */}
         <link
-          rel="stylesheet"
+          rel="preload"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
           as="style"
           crossOrigin="anonymous"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          crossOrigin="anonymous"
         />
       </head>
       <body

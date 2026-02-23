@@ -1,8 +1,14 @@
 import { redirect, notFound } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
-import TemplateForm from '../_components/TemplateForm';
+import { TemplateFormSkeleton } from '@/components/ui/Skeleton';
 import TemplatePreview from '../_components/TemplatePreview';
+
+const TemplateForm = dynamic(
+  () => import('../_components/TemplateForm'),
+  { loading: () => <TemplateFormSkeleton questionCount={3} /> }
+);
 
 interface PageProps {
   params: Promise<{ id: string }>;

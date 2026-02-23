@@ -31,20 +31,28 @@ export default async function ConsultantHomePage() {
     redirect('/dashboard');
   }
 
-  // 프로젝트 목록 조회
+  // 프로젝트 + 활동 로그 병렬 조회 (consultant_id 직접 조회로 의존성 제거)
   const supabase = await createClient();
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, company_name, industry, company_size, status, updated_at')
-    .eq('assigned_consultant_id', user.id)
-    .order('updated_at', { ascending: false });
+  const [{ data: projects }, { data: logs }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, company_name, industry, company_size, status, updated_at')
+      .eq('assigned_consultant_id', user.id)
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('consultant_activity_logs')
+      .select('id, project_id, type, content, created_at')
+      .eq('consultant_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5),
+  ]);
 
   const projectList = projects ?? [];
 
-  // 4. 통계 집계
+  // 통계 집계
   const stats = aggregateProjectStats(projectList);
 
-  // 5. 최근 프로젝트 5개
+  // 최근 프로젝트 5개
   const recentProjects: RecentProjectItem[] = projectList.slice(0, 5).map((p) => ({
     id: p.id,
     companyName: p.company_name,
@@ -54,30 +62,17 @@ export default async function ConsultantHomePage() {
     relativeTime: formatRelativeTime(p.updated_at),
   }));
 
-  // 6. 최근 활동 로그 5건
-  const projectIds = projectList.map((p) => p.id);
-  let recentActivities: RecentActivityItem[] = [];
+  // 프로젝트 ID → 회사명 맵
+  const companyNameMap = new Map(projectList.map((p) => [p.id, p.company_name]));
 
-  if (projectIds.length > 0) {
-    const { data: logs } = await supabase
-      .from('consultant_activity_logs')
-      .select('id, project_id, type, content, created_at')
-      .in('project_id', projectIds)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // 프로젝트 ID → 회사명 맵
-    const companyNameMap = new Map(projectList.map((p) => [p.id, p.company_name]));
-
-    recentActivities = (logs ?? []).map((log) => ({
-      id: log.id,
-      projectId: log.project_id,
-      companyName: companyNameMap.get(log.project_id) || '알 수 없음',
-      content: log.content,
-      logType: log.type,
-      relativeTime: formatRelativeTime(log.created_at),
-    }));
-  }
+  const recentActivities: RecentActivityItem[] = (logs ?? []).map((log) => ({
+    id: log.id,
+    projectId: log.project_id,
+    companyName: companyNameMap.get(log.project_id) || '알 수 없음',
+    content: log.content,
+    logType: log.type,
+    relativeTime: formatRelativeTime(log.created_at),
+  }));
 
   // 7. 이름에서 성 추출
   const displayName = profile.name;
