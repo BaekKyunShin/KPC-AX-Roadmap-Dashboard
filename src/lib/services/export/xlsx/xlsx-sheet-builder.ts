@@ -8,11 +8,13 @@ import { STYLE } from './xlsx-styles';
 import { calcRowHeight } from './xlsx-formatter';
 
 // ============================================================================
-// 셀 참조 유틸 (런타임 XLSX 의존성 제거용)
+// 셀 참조 유틸
 // ============================================================================
 
+interface CellPos { r: number; c: number }
+
 /** 셀 좌표 → 참조 문자열 (e.g. {r:0, c:0} → "A1") */
-function encodeCell(cell: { r: number; c: number }): string {
+function encodeCell(cell: CellPos): string {
   let col = '';
   let c = cell.c;
   do {
@@ -23,7 +25,7 @@ function encodeCell(cell: { r: number; c: number }): string {
 }
 
 /** 범위 → 참조 문자열 (e.g. "A1:D10") */
-function encodeRange(range: { s: { r: number; c: number }; e: { r: number; c: number } }): string {
+function encodeRange(range: { s: CellPos; e: CellPos }): string {
   return encodeCell(range.s) + ':' + encodeCell(range.e);
 }
 

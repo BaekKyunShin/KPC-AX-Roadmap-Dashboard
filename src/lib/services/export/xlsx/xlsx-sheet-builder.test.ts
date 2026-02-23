@@ -26,17 +26,15 @@ describe('setCell', () => {
   });
 
   it('Z1 (26번째 열) 셀 참조를 올바르게 생성한다', () => {
-    const colWidths = Array(27).fill(10);
-    const ctx = createCtx(colWidths);
+    const ctx = createCtx([10]);
     setCell(ctx.ws, 0, 25, 'Z col', {});
-    expect(ctx.ws['Z1']).toBeDefined();
+    expect(ctx.ws['Z1']).toEqual({ v: 'Z col', t: 's', s: {} });
   });
 
   it('AA1 (27번째 열) 셀 참조를 올바르게 생성한다', () => {
-    const colWidths = Array(28).fill(10);
-    const ctx = createCtx(colWidths);
+    const ctx = createCtx([10]);
     setCell(ctx.ws, 0, 26, 'AA col', {});
-    expect(ctx.ws['AA1']).toBeDefined();
+    expect(ctx.ws['AA1']).toEqual({ v: 'AA col', t: 's', s: {} });
   });
 });
 
