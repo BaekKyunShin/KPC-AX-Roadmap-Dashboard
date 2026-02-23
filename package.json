@@ -23,7 +23,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build --webpack"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
