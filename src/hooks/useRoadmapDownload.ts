@@ -64,7 +64,7 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
 
       const exportData = result.data;
       const { downloadXLSX: downloadExcel } = await import('@/lib/services/export-xlsx');
-      downloadExcel(exportData, `roadmap_${exportData.companyName}_v${exportData.versionNumber}.xlsx`);
+      await downloadExcel(exportData, `roadmap_${exportData.companyName}_v${exportData.versionNumber}.xlsx`);
 
       await logDownload(roadmapId, 'XLSX');
       showSuccessToast('Excel 다운로드 완료');

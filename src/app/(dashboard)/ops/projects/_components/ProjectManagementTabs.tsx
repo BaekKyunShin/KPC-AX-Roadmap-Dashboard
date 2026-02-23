@@ -1,12 +1,25 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { List, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ProjectStatus } from '@/types/database';
 import StatsSummaryCards from './StatsSummaryCards';
 import ProjectList from './ProjectList';
-import ProjectDashboard from './ProjectDashboard';
+
+const ProjectDashboard = dynamic(() => import('./ProjectDashboard'), {
+  loading: () => (
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-[280px] animate-shimmer rounded-lg border" />
+        ))}
+      </div>
+      <div className="h-[280px] animate-shimmer rounded-lg border" />
+    </div>
+  ),
+});
 
 export default function ProjectManagementTabs() {
   const [activeTab, setActiveTab] = useState('list');

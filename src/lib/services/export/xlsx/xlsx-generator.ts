@@ -9,7 +9,7 @@
  *   4. PBL 프로그램 — PBL 전체 상세
  */
 
-import * as XLSX from 'xlsx-js-style';
+import type * as XLSX from 'xlsx-js-style';
 import { getLevelLabel } from '@/lib/utils/roadmap';
 import type { RoadmapExportData } from '../../export-pdf';
 import { COLOR, NO_BORDER, STYLE, tableBodyStyle, tableBodyCenterStyle } from './xlsx-styles';
@@ -324,7 +324,8 @@ function createPBLSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // ============================================================================
 
 /** 로드맵 데이터를 4개 시트(개요/체계도/과정 상세/PBL)로 구성된 XLSX 바이트 배열로 변환 */
-export function generateXLSX(data: RoadmapExportData): Uint8Array {
+export async function generateXLSX(data: RoadmapExportData): Promise<Uint8Array> {
+  const XLSX = await import('xlsx-js-style');
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, createOverviewSheet(data), '개요');
@@ -337,8 +338,8 @@ export function generateXLSX(data: RoadmapExportData): Uint8Array {
 }
 
 /** XLSX를 생성하고 브라우저에서 다운로드 (DOM a 태그 트리거) */
-export function downloadXLSX(data: RoadmapExportData, filename: string): void {
-  const buffer = generateXLSX(data);
+export async function downloadXLSX(data: RoadmapExportData, filename: string): Promise<void> {
+  const buffer = await generateXLSX(data);
 
   // Uint8Array → ArrayBuffer 복사 (TypeScript strict 모드에서 BlobPart 호환성)
   const ab = new ArrayBuffer(buffer.length);

@@ -3,9 +3,29 @@
  * SheetCtx 컨텍스트 + 시트 구성 헬퍼 함수
  */
 
-import * as XLSX from 'xlsx-js-style';
+import type * as XLSX from 'xlsx-js-style';
 import { STYLE } from './xlsx-styles';
 import { calcRowHeight } from './xlsx-formatter';
+
+// ============================================================================
+// 셀 참조 유틸 (런타임 XLSX 의존성 제거용)
+// ============================================================================
+
+/** 셀 좌표 → 참조 문자열 (e.g. {r:0, c:0} → "A1") */
+function encodeCell(cell: { r: number; c: number }): string {
+  let col = '';
+  let c = cell.c;
+  do {
+    col = String.fromCharCode(65 + (c % 26)) + col;
+    c = Math.floor(c / 26) - 1;
+  } while (c >= 0);
+  return col + (cell.r + 1);
+}
+
+/** 범위 → 참조 문자열 (e.g. "A1:D10") */
+function encodeRange(range: { s: { r: number; c: number }; e: { r: number; c: number } }): string {
+  return encodeCell(range.s) + ':' + encodeCell(range.e);
+}
 
 // ============================================================================
 // SheetCtx — 시트 빌더 컨텍스트
@@ -39,14 +59,14 @@ export function sumColWidths(ctx: SheetCtx, cStart: number, cEnd: number): numbe
 
 /** 셀에 값+스타일 적용 */
 export function setCell(ws: XLSX.WorkSheet, r: number, c: number, value: string | number, style: XLSX.CellStyle): void {
-  const ref = XLSX.utils.encode_cell({ r, c });
+  const ref = encodeCell({ r, c });
   ws[ref] = { v: value, t: typeof value === 'number' ? 'n' : 's', s: style };
 }
 
 /** 행 전체에 스타일 적용 (빈 셀 생성) */
 export function fillRow(ws: XLSX.WorkSheet, r: number, cStart: number, cEnd: number, style: XLSX.CellStyle): void {
   for (let c = cStart; c <= cEnd; c++) {
-    const ref = XLSX.utils.encode_cell({ r, c });
+    const ref = encodeCell({ r, c });
     if (!ws[ref]) ws[ref] = { v: '', t: 's' };
     ws[ref].s = style;
   }
@@ -122,7 +142,7 @@ export function addTextSection(ctx: SheetCtx, title: string, text: string | unde
 
 /** 시트 마무리 (범위/병합/행높이/열너비 설정) */
 export function finalizeSheet(ctx: SheetCtx): XLSX.WorkSheet {
-  ctx.ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: ctx.r - 1, c: ctx.lastCol } });
+  ctx.ws['!ref'] = encodeRange({ s: { r: 0, c: 0 }, e: { r: ctx.r - 1, c: ctx.lastCol } });
   ctx.ws['!merges'] = ctx.merges;
   ctx.ws['!rows'] = ctx.rows;
   ctx.ws['!cols'] = ctx.colWidths.map(w => ({ wch: w }));
