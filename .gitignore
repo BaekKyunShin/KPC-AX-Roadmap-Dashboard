@@ -27,6 +27,7 @@ test-results/
 .DS_Store
 *.pem
 .serena/
+.worktrees/
 
 # reference files
 /_reference
