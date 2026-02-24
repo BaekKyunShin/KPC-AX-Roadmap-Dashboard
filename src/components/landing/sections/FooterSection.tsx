@@ -7,6 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Mail, Phone, ExternalLink, Copy, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+import { cn } from '@/lib/utils';
 import { showSuccessToast } from '@/lib/utils/toast';
 import {
   Dialog,
@@ -17,7 +18,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FooterCredit } from '@/components/ui/FooterCredit';
-import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -76,6 +76,11 @@ const CONTACT_LINK_TOAST_MESSAGES: Record<ContactLink['type'], string> = {
   phone: '전화번호가 복사되었습니다',
 };
 
+const CONTACT_LINK_HOVER_COLORS: Record<ContactLink['type'], string> = {
+  email: 'group-hover:text-blue-500',
+  phone: 'group-hover:text-emerald-500',
+};
+
 const KPC_HOMEPAGE_URL = 'https://www.kpc.or.kr';
 
 const PRODUCT_LINKS = [
@@ -129,7 +134,7 @@ function ContactCard({ person }: ContactCardProps) {
               }}
               className="flex items-center gap-2 px-2 py-1 -mx-2 rounded-md text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all group cursor-pointer"
             >
-              <Icon className={cn("h-4 w-4 transition-colors", link.type === 'email' ? "group-hover:text-blue-500" : "group-hover:text-emerald-500")} />
+              <Icon className={cn("h-4 w-4 transition-colors", CONTACT_LINK_HOVER_COLORS[link.type])} />
               <span>{link.value}</span>
               <Copy className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
             </button>
