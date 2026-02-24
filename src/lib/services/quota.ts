@@ -7,9 +7,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getManageableRoles } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 
-// 기본 쿼터 설정
-const DEFAULT_DAILY_LIMIT = 50;
-const DEFAULT_MONTHLY_LIMIT = 500;
+// 기본 쿼터 설정 (환경 변수로 오버라이드 가능)
+export function getDefaultLimits() {
+  return {
+    daily: Number(process.env.DAILY_LLM_CALL_LIMIT) || 50,
+    monthly: Number(process.env.MONTHLY_LLM_CALL_LIMIT) || 500,
+  };
+}
 
 /**
  * user_quotas 행 존재 보장 (없으면 기본값으로 생성)
@@ -19,13 +23,14 @@ async function ensureUserQuotaExists(
   supabase: ReturnType<typeof createAdminClient>,
   userId: string
 ) {
+  const defaults = getDefaultLimits();
   await supabase
     .from('user_quotas')
     .upsert(
       {
         user_id: userId,
-        daily_limit: DEFAULT_DAILY_LIMIT,
-        monthly_limit: DEFAULT_MONTHLY_LIMIT,
+        daily_limit: defaults.daily,
+        monthly_limit: defaults.monthly,
       },
       { onConflict: 'user_id', ignoreDuplicates: true }
     );
@@ -72,9 +77,10 @@ export async function fetchUserQuota(userId: string) {
 
   if (error || !quota) {
     console.error('[fetchUserQuota Error]', error);
+    const defaults = getDefaultLimits();
     return {
-      daily_limit: DEFAULT_DAILY_LIMIT,
-      monthly_limit: DEFAULT_MONTHLY_LIMIT,
+      daily_limit: defaults.daily,
+      monthly_limit: defaults.monthly,
     };
   }
 
@@ -267,11 +273,12 @@ export async function fetchAllUsersUsage(options: {
   });
 
   // 결과 조합
+  const defaults = getDefaultLimits();
   const result = users.map(user => {
     const llmCalls = usageMap.get(user.id) || 0;
     const quota = quotaMap.get(user.id) || {
-      dailyLimit: DEFAULT_DAILY_LIMIT,
-      monthlyLimit: DEFAULT_MONTHLY_LIMIT,
+      dailyLimit: defaults.daily,
+      monthlyLimit: defaults.monthly,
     };
 
     return {

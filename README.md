@@ -38,7 +38,7 @@ KPC(한국생산성본부) AI 훈련 확산센터에서 사용하는 **기업 AI
 | 기능 | 설명 |
 |------|------|
 | **기업 자가진단** | 30문항 기반 AI 성숙도 진단 및 점수화 |
-| **컨설턴트 매칭** | 자가진단 + 기업정보 기반 Top-N 추천 알고리즘 |
+| **컨설턴트 매칭** | 자가진단 + 기업정보 기반 Top-3 추천 알고리즘 |
 | **현장 인터뷰 관리** | 세부직무, 병목/페인포인트, 개선 목표를 단계별 폼으로 입력 |
 | **인터뷰 가이드** | LLM 기반 인터뷰 사전 가이드 생성 |
 | **AI 로드맵 생성** | LLM 기반 NxM 매트릭스 + 40시간 PBL 과정 자동 생성 |
@@ -112,7 +112,6 @@ flowchart LR
 | 데이터베이스 | Supabase (PostgreSQL) | 데이터 저장, RLS 보안 |
 | 인증 | Supabase Auth | 회원가입, 로그인, 세션 관리 |
 | 실시간 | Supabase Realtime | 메시지 실시간 구독 |
-| 스토리지 | Supabase Storage | PDF/XLSX 파일 저장 |
 | 이메일 | nodemailer | SMTP 기반 이메일 발송 |
 | API 패턴 | Server Actions 우선 | API Routes는 스트리밍 등 특수 경우만 사용 |
 
@@ -349,7 +348,7 @@ ai-roadmap-dashboard/
 |   |   `-- roadmap-ui.ts             # 로드맵 UI 타입
 |   |
 |   |-- test/                         # 테스트 설정
-|   `-- middleware.ts                  # Next.js 미들웨어 (세션 관리)
+|   `-- proxy.ts                       # Next.js 미들웨어 (세션 관리)
 |
 |-- supabase/
 |   `-- migrations/                   # SQL 마이그레이션 (39개)
@@ -390,7 +389,7 @@ flowchart TD
     subgraph NEXT["Next.js App Router"]
         SC["Server Components"] --- SA["Server Actions"]
         SA --- AR["API Routes"]
-        MW["middleware.ts"] --- ZD["Zod Schemas"]
+        MW["proxy.ts"] --- ZD["Zod Schemas"]
         ZD --- SV["Services"]
     end
 
@@ -398,7 +397,6 @@ flowchart TD
         PG["PostgreSQL + RLS"]
         ATH["Auth"]
         RT["Realtime"]
-        ST["Storage"]
     end
 
     subgraph EXT["외부 서비스"]

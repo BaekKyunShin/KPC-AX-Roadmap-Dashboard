@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  getDefaultLimits,
   getKSTDateTime,
   checkAndRecordLLMUsage,
   fetchUserQuota,
@@ -32,6 +33,41 @@ function createMockSupabase() {
     },
   };
 }
+
+// ─── getDefaultLimits (환경 변수 기반 기본 쿼터) ────────────────────────────
+
+describe('getDefaultLimits', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('환경 변수가 설정되면 해당 값을 반환', () => {
+    vi.stubEnv('DAILY_LLM_CALL_LIMIT', '100');
+    vi.stubEnv('MONTHLY_LLM_CALL_LIMIT', '2000');
+
+    const limits = getDefaultLimits();
+    expect(limits.daily).toBe(100);
+    expect(limits.monthly).toBe(2000);
+  });
+
+  it('환경 변수가 없으면 기본값 사용 (일일: 50, 월간: 500)', () => {
+    vi.stubEnv('DAILY_LLM_CALL_LIMIT', '');
+    vi.stubEnv('MONTHLY_LLM_CALL_LIMIT', '');
+
+    const limits = getDefaultLimits();
+    expect(limits.daily).toBe(50);
+    expect(limits.monthly).toBe(500);
+  });
+
+  it('유효하지 않은 값이면 기본값 사용', () => {
+    vi.stubEnv('DAILY_LLM_CALL_LIMIT', 'abc');
+    vi.stubEnv('MONTHLY_LLM_CALL_LIMIT', 'xyz');
+
+    const limits = getDefaultLimits();
+    expect(limits.daily).toBe(50);
+    expect(limits.monthly).toBe(500);
+  });
+});
 
 // ─── getKSTDateTime ─────────────────────────────────────────────────────────
 
