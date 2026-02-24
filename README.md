@@ -20,6 +20,8 @@
 - [보안](#보안)
 - [데모](#데모)
 - [문서](#문서)
+- [배포](#배포)
+- [라이선스](#라이선스)
 
 ---
 
@@ -38,13 +40,21 @@ KPC(한국생산성본부) AI 훈련 확산센터에서 사용하는 **기업 AI
 | **기업 자가진단** | 30문항 기반 AI 성숙도 진단 및 점수화 |
 | **컨설턴트 매칭** | 자가진단 + 기업정보 기반 Top-N 추천 알고리즘 |
 | **현장 인터뷰 관리** | 세부직무, 병목/페인포인트, 개선 목표를 단계별 폼으로 입력 |
+| **인터뷰 가이드** | LLM 기반 인터뷰 사전 가이드 생성 |
 | **AI 로드맵 생성** | LLM 기반 NxM 매트릭스 + 40시간 PBL 과정 자동 생성 |
 | **버전 관리** | DRAFT / FINAL / ARCHIVED 버전 관리, 수정 요청 히스토리 |
 | **내보내기** | PDF / XLSX 다운로드 (저장된 데이터 활용, LLM 재호출 없음) |
+| **로드맵 갤러리** | FINAL 로드맵 공유 및 좋아요 |
+| **컨설턴트 대시보드** | KPI 요약, 최근 활동, 프로젝트 현황 |
+| **통합 검색** | 커맨드 팔레트 기반 전체 검색 |
+| **DM 메시징** | 1:1 실시간 대화 (Supabase Realtime) |
+| **알림 시스템** | 프로젝트 배정, 메시지 수신 등 실시간 알림 |
+| **이메일 알림** | 프로젝트 배정 등 주요 이벤트 이메일 발송 |
 | **진단 템플릿** | 자가진단 설문 템플릿 생성 및 관리 |
 | **사용자 관리** | 역할 기반 접근 제어, 승인 워크플로우 |
 | **감사로그** | 모든 주요 이벤트 자동 기록 (승인, 배정, 생성 등) |
 | **LLM 쿼터** | 일별/월별 LLM 호출 제한으로 비용 관리 |
+| **모바일 반응형** | 전체 대시보드 모바일/태블릿 대응 |
 | **테스트 로드맵** | 컨설턴트가 실제 프로젝트 없이 로드맵 생성을 연습 |
 
 ---
@@ -93,7 +103,7 @@ flowchart LR
 | 프레임워크 | Next.js (App Router) | 16.x |
 | 언어 | TypeScript (strict 모드) | 5.x |
 | 런타임 | React (React Compiler 활성화) | 19.x |
-| Node.js | 권장 버전 | 20.x |
+| 런타임 | Node.js | 20.x |
 
 ### 백엔드 / 데이터
 
@@ -101,7 +111,9 @@ flowchart LR
 |------|------|------|
 | 데이터베이스 | Supabase (PostgreSQL) | 데이터 저장, RLS 보안 |
 | 인증 | Supabase Auth | 회원가입, 로그인, 세션 관리 |
+| 실시간 | Supabase Realtime | 메시지 실시간 구독 |
 | 스토리지 | Supabase Storage | PDF/XLSX 파일 저장 |
+| 이메일 | nodemailer | SMTP 기반 이메일 발송 |
 | API 패턴 | Server Actions 우선 | API Routes는 스트리밍 등 특수 경우만 사용 |
 
 ### 프론트엔드
@@ -111,17 +123,18 @@ flowchart LR
 | 스타일링 | Tailwind CSS 4.x | 유틸리티 기반 CSS |
 | UI 컴포넌트 | Radix UI + shadcn/ui | 접근성 보장 헤드리스 컴포넌트 |
 | 아이콘 | Lucide React | 아이콘 라이브러리 |
-| 폼 관리 | React Hook Form + Zod | 폼 상태 + 스키마 검증 |
+| 폼/검증 | Zod (네이티브 HTML 폼) | 스키마 기반 입력 검증 |
 | 차트 | Recharts | 데이터 시각화 |
 | 토스트 | Sonner | 알림 메시지 |
-| 랜딩 애니메이션 | GSAP + Three.js + Lenis | 3D 효과, 스크롤 애니메이션 |
+| 커맨드 팔레트 | cmdk | 통합 검색 UI |
+| 애니메이션 | GSAP + motion (Framer Motion) + Lenis | 스크롤/전환 애니메이션 |
 
 ### 내보내기 / 테스트
 
 | 분류 | 기술 | 용도 |
 |------|------|------|
 | PDF | jspdf + jspdf-autotable | 로드맵 PDF 생성 |
-| Excel | xlsx (SheetJS) | 로드맵 XLSX 생성 |
+| Excel | xlsx-js-style (SheetJS 포크) | 로드맵 XLSX 생성 |
 | 단위 테스트 | Vitest + React Testing Library | 스키마 검증, 컴포넌트 테스트 |
 | E2E 테스트 | Playwright | 브라우저 통합 테스트 |
 | 린트/포맷 | ESLint 9.x + Prettier | 코드 품질 관리 |
@@ -166,7 +179,7 @@ supabase db push
 
 **방법 B: Supabase 대시보드 SQL Editor에서 직접 실행**
 
-`001_initial_schema.sql`부터 `014_drop_summary_text.sql`까지 순서대로 실행합니다.
+`001_initial_schema.sql`부터 `039_get_unread_conversation_count.sql`까지 순서대로 실행합니다.
 
 ### 4단계: 개발 서버 실행
 
@@ -194,6 +207,11 @@ npm run dev
 | `npm run test:watch` | 테스트 워치 모드 |
 | `npm run test:coverage` | 테스트 커버리지 리포트 |
 | `npm run validate` | typecheck + lint + test 통합 검증 |
+| `npm run test:e2e` | E2E 테스트 실행 (Playwright) |
+| `npm run test:e2e:ui` | E2E 테스트 UI 모드 |
+| `npm run test:e2e:headed` | 브라우저 표시 E2E 테스트 |
+| `npm run test:e2e:report` | E2E 테스트 리포트 열기 |
+| `npm run analyze` | 번들 크기 분석 (webpack) |
 
 ---
 
@@ -213,9 +231,14 @@ npm run dev
 | 변수명 | 설명 | 기본값 |
 |--------|------|--------|
 | `LLM_API_BASE_URL` | LLM API 베이스 URL | OpenAI 호환 엔드포인트 |
-| `DAILY_LLM_CALL_LIMIT` | 일별 LLM 호출 제한 | 100 |
-| `MONTHLY_LLM_CALL_LIMIT` | 월별 LLM 호출 제한 | 2000 |
-| `NEXT_PUBLIC_APP_URL` | 앱 URL | http://localhost:3000 |
+| `DAILY_LLM_CALL_LIMIT` | 일별 LLM 호출 제한 | 50 |
+| `MONTHLY_LLM_CALL_LIMIT` | 월별 LLM 호출 제한 | 500 |
+| `NEXT_PUBLIC_APP_URL` | 앱 URL | <http://localhost:3000> |
+| `SMTP_HOST` | SMTP 서버 호스트 | smtp.gmail.com |
+| `SMTP_PORT` | SMTP 포트 | 465 |
+| `SMTP_USER` | SMTP 사용자 | — |
+| `SMTP_PASS` | SMTP 비밀번호 | — |
+| `EMAIL_FROM` | 발신자 이메일 주소 | — |
 
 ---
 
@@ -231,20 +254,25 @@ ai-roadmap-dashboard/
 |   |   |-- globals.css               # 전역 스타일
 |   |   |-- demo/                     # 로그인 없이 체험 가능한 데모
 |   |   |-- api/                      # API Routes (최소 사용)
+|   |   |   |-- auth/                 # 인증 콜백
 |   |   |   `-- matching/generate/    # 매칭 생성 API
 |   |   |-- (auth)/                   # 인증 라우트 그룹
 |   |   |   |-- login/                # 로그인
 |   |   |   `-- register/             # 회원가입
 |   |   `-- (dashboard)/              # 인증 필요 라우트 그룹
 |   |       |-- dashboard/            # 공통 대시보드
+|   |       |   |-- messages/         # DM 메시징 (1:1 실시간 대화)
 |   |       |   |-- profile/          # 프로필 조회
 |   |       |   `-- settings/         # 계정 설정 (비밀번호, 탈퇴)
 |   |       |-- consultant/           # 컨설턴트 전용
+|   |       |   |-- home/             # 컨설턴트 대시보드 (KPI, 최근 활동)
 |   |       |   |-- profile/          # 프로필 작성/수정
 |   |       |   `-- projects/         # 배정 프로젝트 관리
 |   |       |       `-- [id]/
 |   |       |           |-- interview/  # 현장 인터뷰 입력
 |   |       |           `-- roadmap/    # 로드맵 생성/조회
+|   |       |-- gallery/              # 로드맵 갤러리 (공유/좋아요)
+|   |       |-- notifications/        # 알림 관리
 |   |       |-- ops/                  # 운영관리자 전용
 |   |       |   |-- projects/         # 프로젝트 CRUD, 진단, 배정
 |   |       |   |   `-- [id]/roadmap/ # 로드맵 조회 (읽기 전용)
@@ -252,6 +280,7 @@ ai-roadmap-dashboard/
 |   |       |   |-- templates/        # 진단 템플릿
 |   |       |   |-- audit/            # 감사로그 조회
 |   |       |   `-- quota/            # LLM 쿼터 현황
+|   |       |-- search/               # 통합 검색 (커맨드 팔레트)
 |   |       `-- test-roadmap/         # 테스트 로드맵 (연습용)
 |   |
 |   |-- components/                   # 공유 컴포넌트
@@ -261,33 +290,44 @@ ai-roadmap-dashboard/
 |   |   |-- consultant/               # 컨설턴트 (프로필 폼, 배지 등)
 |   |   |-- roadmap/                  # 로드맵 (매트릭스, 다운로드 등)
 |   |   |-- interview/                # 인터뷰 (요약 컴포넌트)
+|   |   |-- gallery/                  # 갤러리 (로드맵 카드, 좋아요 등)
+|   |   |-- command-palette/          # 커맨드 팔레트 (통합 검색)
 |   |   |-- auth/                     # 인증 (배경 장식, 탈퇴 등)
 |   |   |-- Navigation.tsx            # 대시보드 네비게이션
+|   |   |-- NotificationBell.tsx      # 알림 벨
+|   |   |-- MessageIcon.tsx           # 메시지 아이콘
 |   |   `-- PendingApprovalCard.tsx   # 승인 대기 안내
 |   |
 |   |-- lib/                          # 비즈니스 로직 및 유틸리티
-|   |   |-- services/                 # 핵심 서비스 (8개)
-|   |   |   |-- roadmap.ts            # LLM 로드맵 생성
+|   |   |-- services/                 # 핵심 서비스
+|   |   |   |-- roadmap/              # 로드맵 생성 (모듈 분리)
+|   |   |   |-- matching/             # 컨설턴트 매칭 알고리즘
+|   |   |   |-- export/               # 내보내기
+|   |   |   |   |-- pdf/              # PDF 생성 (jspdf)
+|   |   |   |   `-- xlsx/             # Excel 생성 (xlsx-js-style)
 |   |   |   |-- llm.ts                # LLM API 호출 추상화
-|   |   |   |-- matching.ts           # 컨설턴트 매칭 알고리즘
-|   |   |   |-- stt.ts                # STT 인사이트 추출
 |   |   |   |-- quota.ts              # LLM 호출 쿼터 관리
+|   |   |   |-- notification.ts       # 알림 생성 헬퍼
+|   |   |   |-- email.ts              # 이메일 발송 (SMTP)
+|   |   |   |-- interview-guide.ts    # 인터뷰 가이드 생성
+|   |   |   |-- activity-log.ts       # 활동 로그
+|   |   |   |-- stt.ts                # STT 인사이트 추출
 |   |   |   |-- audit.ts              # 감사로그 기록
-|   |   |   |-- export-pdf.ts         # PDF 생성 (jspdf)
-|   |   |   `-- export-xlsx.ts        # Excel 생성 (xlsx)
-|   |   |-- schemas/                  # Zod 검증 스키마 + 테스트
-|   |   |   |-- interview.ts / .test.ts
-|   |   |   |-- project.ts / .test.ts
-|   |   |   |-- user.ts / .test.ts
+|   |   |   `-- abort-registry.ts     # LLM 호출 중단 관리
+|   |   |-- schemas/                  # Zod 검증 스키마 (각 도메인별 .test.ts 포함)
+|   |   |   |-- interview.ts
+|   |   |   |-- project.ts
+|   |   |   |-- user.ts
+|   |   |   |-- roadmap.ts
+|   |   |   |-- matching.ts
+|   |   |   |-- message.ts
+|   |   |   |-- notification.ts
+|   |   |   |-- gallery.ts
+|   |   |   |-- quota.ts
+|   |   |   |-- activity-log.ts
+|   |   |   |-- interview-guide.ts
 |   |   |   `-- test-roadmap.ts
-|   |   |-- constants/                # 상수 집중 관리
-|   |   |   |-- industry.ts           # 업종/산업 분류
-|   |   |   |-- company-size.ts       # 기업 규모
-|   |   |   |-- status.ts             # 프로젝트/로드맵 상태
-|   |   |   |-- profile-options.ts    # 컨설턴트 프로필 옵션
-|   |   |   |-- interview-steps.ts    # 인터뷰 단계
-|   |   |   |-- site.ts               # 사이트 정보
-|   |   |   `-- stt.ts                # STT 관련
+|   |   |-- constants/                # 상수 집중 관리 (업종, 상태, 네비게이션 등)
 |   |   |-- supabase/                 # Supabase 클라이언트 4종
 |   |   |   |-- client.ts             # 브라우저용 (anon key)
 |   |   |   |-- server.ts             # 서버/SSR용 (세션 갱신)
@@ -300,7 +340,9 @@ ai-roadmap-dashboard/
 |   |
 |   |-- hooks/                        # 커스텀 React 훅
 |   |   |-- useDebounce.ts
-|   |   `-- useRoadmapDownload.ts
+|   |   |-- useRoadmapDownload.ts
+|   |   |-- useCommandPalette.ts
+|   |   `-- useRecentVisits.ts
 |   |
 |   |-- types/                        # 전역 TypeScript 타입
 |   |   |-- database.ts               # Supabase DB 타입
@@ -310,19 +352,22 @@ ai-roadmap-dashboard/
 |   `-- middleware.ts                  # Next.js 미들웨어 (세션 관리)
 |
 |-- supabase/
-|   `-- migrations/                   # SQL 마이그레이션 (14개)
+|   `-- migrations/                   # SQL 마이그레이션 (39개)
 |       |-- 001_initial_schema.sql        # 초기 스키마
 |       |-- 002_rls_policies.sql          # RLS 정책
 |       |-- 003_roadmap_storage.sql       # 스토리지 설정
 |       |-- ...
-|       `-- 014_drop_summary_text.sql     # 최신 마이그레이션
+|       `-- 039_get_unread_conversation_count.sql  # 최신 마이그레이션
 |
 |-- docs/                             # 프로젝트 문서
 |   |-- ARCHITECTURE.md               # 시스템 아키텍처
 |   |-- RLS.md                        # Row-Level Security 정책
 |   |-- DECISIONS.md                  # 아키텍처 결정 기록 (ADR)
 |   |-- CONSULTANT_PROFILE_SPEC.md    # 컨설턴트 프로필 명세
-|   `-- PROJECT_OUTLINE.md            # 초기 기획서 (아카이브)
+|   |-- PROJECT_OUTLINE.md            # 초기 기획서 (아카이브)
+|   |-- plans/                        # 기능 설계 및 리팩토링 계획
+|   |-- testing/                      # 테스트 계획, 결과, 프롬프트
+|   `-- audit/                        # 감사/리뷰 기록
 |
 |-- public/                           # 정적 파일 (로고 등)
 `-- scripts/                          # 유틸리티 스크립트
@@ -337,7 +382,7 @@ ai-roadmap-dashboard/
 ```mermaid
 flowchart TD
     subgraph CLIENT["클라이언트 (브라우저)"]
-        L["Landing Page<br>Three.js / GSAP"]
+        L["Landing Page<br>GSAP / motion"]
         AU["Auth Pages<br>Login / Register"]
         DA["Dashboard Pages<br>역할별 라우팅"]
     end
@@ -352,6 +397,7 @@ flowchart TD
     subgraph SUPA["Supabase 백엔드"]
         PG["PostgreSQL + RLS"]
         ATH["Auth"]
+        RT["Realtime"]
         ST["Storage"]
     end
 
@@ -497,6 +543,9 @@ http://localhost:3000/demo
 | [DECISIONS.md](./docs/DECISIONS.md) | 아키텍처 결정 기록 (ADR) |
 | [CONSULTANT_PROFILE_SPEC.md](./docs/CONSULTANT_PROFILE_SPEC.md) | 컨설턴트 프로필 필드 명세 |
 | [PROJECT_OUTLINE.md](./docs/PROJECT_OUTLINE.md) | 초기 기획서 (아카이브) |
+| [plans/](./docs/plans/) | 기능 설계 및 리팩토링 계획 문서 |
+| [testing/](./docs/testing/) | 테스트 계획, 결과, 프롬프트 |
+| [audit/](./docs/audit/) | 감사/리뷰 기록 |
 
 ---
 
@@ -517,4 +566,15 @@ vercel
 
 ## 라이선스
 
-Private - KPC 내부용
+Copyright (c) 2026 신백균. All rights reserved.
+
+본 소프트웨어 및 관련 문서(이하 "소프트웨어")에 대한 모든 지식재산권은 저작권자에게 있습니다.
+
+**허가 범위**
+
+- KPC(한국생산성본부) 내부 AX 훈련지원 목적의 사용 및 배포
+
+**금지 사항**
+
+- 저작권자의 사전 서면 동의 없는 외부 공개, 재배포 또는 2차 저작물 작성
+- 상업적 목적의 판매, 라이선스 재부여 또는 서비스 제공
