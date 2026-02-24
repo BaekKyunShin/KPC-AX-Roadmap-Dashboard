@@ -4,9 +4,10 @@ import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Mail, Phone, ExternalLink, type LucideIcon } from 'lucide-react';
+import { Mail, Phone, ExternalLink, Copy, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+import { showSuccessToast } from '@/lib/utils/toast';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FooterCredit } from '@/components/ui/FooterCredit';
+import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -28,7 +30,6 @@ if (typeof window !== 'undefined') {
 interface ContactLink {
   type: 'email' | 'phone';
   value: string;
-  hoverColor: string;
 }
 
 interface ContactPerson {
@@ -50,8 +51,8 @@ const CONTACT_PERSONS: ContactPerson[] = [
     name: '김유근 위원',
     description: '서비스 이용 및 컨설턴트 배정 관련',
     links: [
-      { type: 'email', value: 'ykkim@kpc.or.kr', hoverColor: 'hover:text-blue-600' },
-      { type: 'phone', value: '02-398-4311', hoverColor: 'hover:text-green-600' },
+      { type: 'email', value: 'ykkim@kpc.or.kr' },
+      { type: 'phone', value: '02-398-4311' },
     ],
   },
   {
@@ -60,7 +61,7 @@ const CONTACT_PERSONS: ContactPerson[] = [
     name: '신백균 팀장',
     description: '개발 관련 문의 및 기술 협업 제안',
     links: [
-      { type: 'email', value: 'bkshin@kpc.or.kr', hoverColor: 'hover:text-purple-600' },
+      { type: 'email', value: 'bkshin@kpc.or.kr' },
     ],
   },
 ];
@@ -70,9 +71,9 @@ const CONTACT_LINK_ICONS: Record<ContactLink['type'], LucideIcon> = {
   phone: Phone,
 };
 
-const CONTACT_LINK_HREF_PREFIX: Record<ContactLink['type'], string> = {
-  email: 'mailto:',
-  phone: 'tel:',
+const CONTACT_LINK_TOAST_MESSAGES: Record<ContactLink['type'], string> = {
+  email: '이메일이 복사되었습니다',
+  phone: '전화번호가 복사되었습니다',
 };
 
 const KPC_HOMEPAGE_URL = 'https://www.kpc.or.kr';
@@ -119,16 +120,19 @@ function ContactCard({ person }: ContactCardProps) {
       <div className="flex flex-col gap-2">
         {person.links.map((link) => {
           const Icon = CONTACT_LINK_ICONS[link.type];
-          const hrefPrefix = CONTACT_LINK_HREF_PREFIX[link.type];
           return (
-            <a
+            <button
               key={`${link.type}-${link.value}`}
-              href={`${hrefPrefix}${link.value}`}
-              className={`flex items-center gap-2 text-sm text-gray-600 ${link.hoverColor} transition-colors`}
+              onClick={() => {
+                navigator.clipboard.writeText(link.value);
+                showSuccessToast(CONTACT_LINK_TOAST_MESSAGES[link.type]);
+              }}
+              className="flex items-center gap-2 px-2 py-1 -mx-2 rounded-md text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all group cursor-pointer"
             >
-              <Icon className="h-4 w-4" />
-              {link.value}
-            </a>
+              <Icon className={cn("h-4 w-4 transition-colors", link.type === 'email' ? "group-hover:text-blue-500" : "group-hover:text-emerald-500")} />
+              <span>{link.value}</span>
+              <Copy className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+            </button>
           );
         })}
       </div>
