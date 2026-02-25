@@ -53,6 +53,25 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+const pendingAfterCallbacks: Promise<unknown>[] = [];
+vi.mock('next/server', () => ({
+  after: vi.fn((fn: () => void | Promise<unknown>) => {
+    const result = fn();
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      pendingAfterCallbacks.push(result as Promise<unknown>);
+    }
+  }),
+}));
+async function flushAfterCallbacks() {
+  await Promise.all(pendingAfterCallbacks);
+  pendingAfterCallbacks.length = 0;
+}
+
+// after() 콜백 추적 배열을 테스트 간에 정리하여 격리 보장
+afterEach(() => {
+  pendingAfterCallbacks.length = 0;
+});
+
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
 
 const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -296,6 +315,7 @@ describe('saveInterview', () => {
     adminMock.addResult({ data: null, error: null });
 
     const result = await saveInterview(PROJECT_ID, validInterviewData());
+    await flushAfterCallbacks();
 
     expect(result).toEqual({ success: true });
     expect(createAuditLog).toHaveBeenCalledWith(

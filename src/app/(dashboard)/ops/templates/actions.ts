@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -170,13 +171,15 @@ export async function createTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: '템플릿 생성에 실패했습니다.' };
     }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEMPLATE_CREATE',
-      targetType: 'template',
-      targetId: newTemplate.id,
-      meta: { version: newVersion, name: validation.data.name },
+    // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'TEMPLATE_CREATE',
+        targetType: 'template',
+        targetId: newTemplate.id,
+        meta: { version: newVersion, name: validation.data.name },
+      });
     });
 
     revalidatePath('/ops/templates');
@@ -248,16 +251,19 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
           return { success: false, error: '템플릿 새 버전 생성에 실패했습니다.' };
         }
 
-        await createAuditLog({
-          actorUserId: user.id,
-          action: 'TEMPLATE_CREATE',
-          targetType: 'template',
-          targetId: newTemplate.id,
-          meta: {
-            version: newVersion,
-            name: validation.data.name,
-            based_on_version: existingTemplate.version,
-          },
+        // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+        after(async () => {
+          await createAuditLog({
+            actorUserId: user.id,
+            action: 'TEMPLATE_CREATE',
+            targetType: 'template',
+            targetId: newTemplate.id,
+            meta: {
+              version: newVersion,
+              name: validation.data.name,
+              based_on_version: existingTemplate.version,
+            },
+          });
         });
 
         revalidatePath('/ops/templates');
@@ -289,12 +295,15 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
       return { success: false, error: '템플릿 수정에 실패했습니다.' };
     }
 
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEMPLATE_UPDATE',
-      targetType: 'template',
-      targetId: updatedTemplate.id,
-      meta: { version: updatedTemplate.version, name: validation.data.name },
+    // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'TEMPLATE_UPDATE',
+        targetType: 'template',
+        targetId: updatedTemplate.id,
+        meta: { version: updatedTemplate.version, name: validation.data.name },
+      });
     });
 
     revalidatePath('/ops/templates');
@@ -343,13 +352,15 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
       return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
     }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEMPLATE_ACTIVATE',
-      targetType: 'template',
-      targetId: templateId,
-      meta: { version: template.version, name: template.name },
+    // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'TEMPLATE_ACTIVATE',
+        targetType: 'template',
+        targetId: templateId,
+        meta: { version: template.version, name: template.name },
+      });
     });
 
     revalidatePath('/ops/templates');
@@ -397,18 +408,20 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
       return { success: false, error: '템플릿 복제에 실패했습니다.' };
     }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEMPLATE_CREATE',
-      targetType: 'template',
-      targetId: newTemplate.id,
-      meta: {
-        version: newVersion,
-        name: newTemplate.name,
-        duplicated_from: sourceTemplate.id,
-        source_version: sourceTemplate.version,
-      },
+    // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'TEMPLATE_CREATE',
+        targetType: 'template',
+        targetId: newTemplate.id,
+        meta: {
+          version: newVersion,
+          name: newTemplate.name,
+          duplicated_from: sourceTemplate.id,
+          source_version: sourceTemplate.version,
+        },
+      });
     });
 
     revalidatePath('/ops/templates');
@@ -457,13 +470,15 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
       return { success: false, error: '템플릿 삭제에 실패했습니다.' };
     }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'TEMPLATE_DELETE',
-      targetType: 'template',
-      targetId: templateId,
-      meta: { version: template.version, name: template.name },
+    // 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'TEMPLATE_DELETE',
+        targetType: 'template',
+        targetId: templateId,
+        meta: { version: template.version, name: template.name },
+      });
     });
 
     revalidatePath('/ops/templates');

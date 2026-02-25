@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import {
@@ -69,11 +70,13 @@ export async function createRoadmap(
         abortController.signal
       );
 
-      // 활동 일지 자동 기록
+      // 활동 일지 자동 기록 (응답 차단 방지를 위해 after()로 지연)
       const logContent = parsed.data.revisionPrompt
         ? '새 로드맵 버전이 생성되었습니다.'
         : '로드맵이 생성되었습니다.';
-      await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
+      after(async () => {
+        await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
+      });
 
       return {
         success: true,
@@ -111,12 +114,14 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
 
     await finalizeRoadmap(roadmapId, user.id);
 
-    // 활동 일지 자동 기록
-    await insertSystemActivityLog(
-      access.projectId,
-      user.id,
-      '로드맵이 최종 확정되었습니다.',
-    );
+    // 활동 일지 자동 기록 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await insertSystemActivityLog(
+        access.projectId,
+        user.id,
+        '로드맵이 최종 확정되었습니다.',
+      );
+    });
 
     return { success: true };
   } catch (error) {

@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { requireAuthWithRole, type SupabaseServerClient } from '@/lib/actions/auth-helpers';
 import { testInputSchema, type TestInputData } from '@/lib/schemas/test-roadmap';
 import {
@@ -137,19 +138,21 @@ export async function createTestRoadmap(
       abortController.signal
     );
 
-    // 6. 감사로그
-    await createAuditLog({
-      actorUserId: auth.user.id,
-      action: 'TEST_ROADMAP_CREATE',
-      targetType: 'roadmap',
-      targetId: 'test-mode',
-      meta: {
-        company_name: input.company_name,
-        industry: input.industry,
-        is_test_mode: true,
-        no_db_save: true,
-        has_stt_insights: !!sttInsights,
-      },
+    // 6. 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: auth.user.id,
+        action: 'TEST_ROADMAP_CREATE',
+        targetType: 'roadmap',
+        targetId: 'test-mode',
+        meta: {
+          company_name: input.company_name,
+          industry: input.industry,
+          is_test_mode: true,
+          no_db_save: true,
+          has_stt_insights: !!sttInsights,
+        },
+      });
     });
 
     return {
@@ -207,19 +210,21 @@ export async function reviseTestRoadmap(
       abortController.signal
     );
 
-    // 5. 감사로그
-    await createAuditLog({
-      actorUserId: auth.user.id,
-      action: 'TEST_ROADMAP_REVISE',
-      targetType: 'roadmap',
-      targetId: 'test-mode',
-      meta: {
-        company_name: input.company_name,
-        industry: input.industry,
-        is_test_mode: true,
-        no_db_save: true,
-        revision_prompt: revisionPrompt.substring(0, 200),
-      },
+    // 5. 감사로그 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: auth.user.id,
+        action: 'TEST_ROADMAP_REVISE',
+        targetType: 'roadmap',
+        targetId: 'test-mode',
+        meta: {
+          company_name: input.company_name,
+          industry: input.industry,
+          is_test_mode: true,
+          no_db_save: true,
+          revision_prompt: revisionPrompt.substring(0, 200),
+        },
+      });
     });
 
     return {

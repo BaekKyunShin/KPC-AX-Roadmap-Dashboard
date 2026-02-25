@@ -5,6 +5,7 @@ import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema
 import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
 import { validateStatusTransition } from '@/lib/constants/status';
@@ -76,13 +77,15 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     return { success: false, error: '프로젝트 생성에 실패했습니다.' };
   }
 
-  // 감사로그 기록
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'PROJECT_CREATE',
-    targetType: 'project',
-    targetId: newProject.id,
-    meta: { company_name: validation.data.company_name },
+  // 감사로그 기록 (응답 차단 방지를 위해 after()로 지연)
+  after(async () => {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PROJECT_CREATE',
+      targetType: 'project',
+      targetId: newProject.id,
+      meta: { company_name: validation.data.company_name },
+    });
   });
 
   revalidatePath('/ops/projects');
@@ -169,13 +172,15 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
     .eq('id', projectId)
     .eq('status', 'NEW');
 
-  // 감사로그 기록
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'SELF_ASSESSMENT_CREATE',
-    targetType: 'self_assessment',
-    targetId: projectId,
-    meta: { total_score: scores.total_score },
+  // 감사로그 기록 (응답 차단 방지를 위해 after()로 지연)
+  after(async () => {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'SELF_ASSESSMENT_CREATE',
+      targetType: 'self_assessment',
+      targetId: projectId,
+      meta: { total_score: scores.total_score },
+    });
   });
 
   revalidatePath(`/ops/projects/${projectId}`);
@@ -289,28 +294,30 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
     })
     .eq('id', project_id);
 
-  // 감사로그 기록
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'PROJECT_ASSIGN',
-    targetType: 'project',
-    targetId: project_id,
-    meta: { consultant_id, reason: assignment_reason },
-  });
+  // 감사로그 + 알림 (응답 차단 방지를 위해 after()로 지연)
+  after(async () => {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PROJECT_ASSIGN',
+      targetType: 'project',
+      targetId: project_id,
+      meta: { consultant_id, reason: assignment_reason },
+    });
 
-  // 컨설턴트에게 배정 알림 전송
-  const { data: project } = await adminSupabase
-    .from('projects')
-    .select('company_name')
-    .eq('id', project_id)
-    .single();
+    // 컨설턴트에게 배정 알림 전송
+    const { data: project } = await adminSupabase
+      .from('projects')
+      .select('company_name')
+      .eq('id', project_id)
+      .single();
 
-  await createNotification({
-    userId: consultant_id,
-    type: 'assignment',
-    title: '새 프로젝트 배정',
-    message: `${project?.company_name || '새'} 프로젝트가 배정되었습니다.`,
-    link: `/consultant/projects/${project_id}`,
+    await createNotification({
+      userId: consultant_id,
+      type: 'assignment',
+      title: '새 프로젝트 배정',
+      message: `${project?.company_name || '새'} 프로젝트가 배정되었습니다.`,
+      link: `/consultant/projects/${project_id}`,
+    });
   });
 
   revalidatePath(`/ops/projects/${project_id}`);
