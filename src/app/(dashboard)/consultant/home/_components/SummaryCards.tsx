@@ -97,9 +97,9 @@ function SummaryCard({
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-gray-500">{label}</p>
-        <Icon className={`h-5 w-5 ${iconColor}`} />
+        <Icon className={cn('h-5 w-5', iconColor)} />
       </div>
-      <p className={`mt-2 text-3xl font-bold ${textColor}`}>
+      <p className={cn('mt-2 text-3xl font-bold', textColor)}>
         <span ref={ref}>{display}</span>
       </p>
     </div>
