@@ -216,14 +216,17 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 
 IMPORTANT: Superpowers 플러그인이 설치되어 있음. 모든 작업 전에 관련 superpowers 스킬을 확인하고 호출할 것. TDD는 전면 적용 (예외: 일회성 프로토타입, 생성 코드, 설정 파일만).
 
-**프로젝트 스킬 — 해당 영역 코드 수정 시 반드시 호출:**
+**해당 영역 코드 수정 시 반드시 호출:**
 
-| 조건 | 스킬 |
-|------|------|
-| UI 컴포넌트, 페이지 등 프론트엔드 코드를 수정할 때 | `frontend-guide` |
-| Server Action (`actions.ts`) 파일을 수정할 때 | `check-server-action` |
-| SQL 마이그레이션, RLS 정책, DB 함수를 작성할 때 | `supabase-dev` |
-| 리팩터링/코드 정리를 요청할 때 | `refactoring` |
+| 조건 | 스킬 | 범위 |
+|------|------|------|
+| UI 컴포넌트, 페이지 등 프론트엔드 코드를 **작성**할 때 | `frontend-guide` | 프로젝트 |
+| UI 코드를 **검수**(접근성, UX 감사)할 때 | `web-design-guidelines` | 전역 |
+| React/Next.js 코드 작성·리뷰·성능 최적화 시 | `react-best-practices` | 전역 |
+| 컴포넌트 구조 설계·리팩토링 (prop 증식, compound component 등) 시 | `composition-patterns` | 전역 |
+| Server Action (`actions.ts`) 파일을 수정할 때 | `check-server-action` | 프로젝트 |
+| SQL 마이그레이션, RLS 정책, DB 함수를 작성할 때 | `supabase-dev` | 프로젝트 |
+| 리팩터링/코드 정리를 요청할 때 | `refactoring` | 전역 |
 
 - 하나의 작업에 여러 스킬이 해당되면 모두 호출
 - 스킬 호출 후 그 지침을 따르되, 작업 컨텍스트에 맞게 적용
