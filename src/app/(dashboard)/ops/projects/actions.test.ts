@@ -49,6 +49,20 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+const pendingAfterCallbacks: Promise<unknown>[] = [];
+vi.mock('next/server', () => ({
+  after: vi.fn((fn: () => void | Promise<unknown>) => {
+    const result = fn();
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      pendingAfterCallbacks.push(result as Promise<unknown>);
+    }
+  }),
+}));
+async function flushAfterCallbacks() {
+  await Promise.all(pendingAfterCallbacks);
+  pendingAfterCallbacks.length = 0;
+}
+
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
 
 const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -341,6 +355,7 @@ describe('assignConsultant', () => {
     adminMock.addResult({ data: { company_name: '테스트 기업' }, error: null });
 
     const result = await assignConsultant(validAssignFormData());
+    await flushAfterCallbacks();
 
     expect(result).toEqual({ success: true });
     expect(createAuditLog).toHaveBeenCalledWith(

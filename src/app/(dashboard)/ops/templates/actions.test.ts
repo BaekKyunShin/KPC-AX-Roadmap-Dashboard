@@ -59,6 +59,10 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock('next/server', () => ({
+  after: vi.fn((fn: () => void) => fn()),
+}));
+
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
 
 const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
