@@ -5,6 +5,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Label,
+  type TooltipProps,
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +84,24 @@ function DonutCenterLabel({ total }: { total: number }) {
   );
 }
 
+/** 파이 차트 커스텀 툴팁 */
+function PieTooltipContent({ active, payload }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload as PieChartDataItem;
+  return (
+    <div className="rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <div className="flex items-center gap-2">
+        <div
+          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+          style={{ backgroundColor: WORKFLOW_STEP_COLORS[item.stepKey] }}
+        />
+        <span className="text-muted-foreground">{item.name}</span>
+        <span className="font-mono font-medium tabular-nums">{item.value}건</span>
+      </div>
+    </div>
+  );
+}
+
 /** 상태별 분포 차트 범례 항목 */
 function ChartLegendItem({
   item,
@@ -154,7 +173,7 @@ export default function StatusDistributionChart({
                       position="center"
                     />
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value}건`]} />
+                  <Tooltip content={<PieTooltipContent />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

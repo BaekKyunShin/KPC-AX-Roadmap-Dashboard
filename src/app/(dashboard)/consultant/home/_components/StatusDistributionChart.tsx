@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, Label } from 'recharts';
 import {
   ChartContainer,
+  ChartTooltip,
   type ChartConfig,
 } from '@/components/ui/chart';
 import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
@@ -94,6 +95,26 @@ export function StatusDistributionChart({ byStatus, total }: StatusDistributionC
                 }}
               />
             </Pie>
+            <ChartTooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const item = payload[0].payload as ChartDataItem;
+                return (
+                  <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-muted-foreground">{getStatusLabel(item.name)}</span>
+                      <span className="text-foreground font-mono font-medium tabular-nums">
+                        {item.value}건
+                      </span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
           </PieChart>
         </ChartContainer>
       </div>
