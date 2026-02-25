@@ -63,6 +63,11 @@ async function flushAfterCallbacks() {
   pendingAfterCallbacks.length = 0;
 }
 
+// after() 콜백 추적 배열을 테스트 간에 정리하여 격리 보장
+afterEach(() => {
+  pendingAfterCallbacks.length = 0;
+});
+
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
 
 const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
