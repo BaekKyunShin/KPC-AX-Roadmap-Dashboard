@@ -126,23 +126,26 @@ export async function fetchConsultantProgress(): Promise<ConsultantProgress[]> {
 
   const adminSupabase = createAdminClient();
 
-  // 승인된 컨설턴트 목록 조회
-  const { data: consultants, error: consultantError } = await adminSupabase
-    .from('users')
-    .select('id, name, email')
-    .eq('role', 'CONSULTANT_APPROVED')
-    .eq('status', 'ACTIVE');
+  // 승인된 컨설턴트 목록 + 프로젝트 배정 현황을 병렬 조회
+  const [consultantResult, projectResult] = await Promise.all([
+    adminSupabase
+      .from('users')
+      .select('id, name, email')
+      .eq('role', 'CONSULTANT_APPROVED')
+      .eq('status', 'ACTIVE'),
+    adminSupabase
+      .from('projects')
+      .select('assigned_consultant_id, status')
+      .not('assigned_consultant_id', 'is', null),
+  ]);
+
+  const { data: consultants, error: consultantError } = consultantResult;
+  const { data: projects, error: projectError } = projectResult;
 
   if (consultantError || !consultants) {
     console.error('[fetchConsultantProgress Error]', consultantError);
     return [];
   }
-
-  // 프로젝트별 컨설턴트 배정 현황 조회
-  const { data: projects, error: projectError } = await adminSupabase
-    .from('projects')
-    .select('assigned_consultant_id, status')
-    .not('assigned_consultant_id', 'is', null);
 
   if (projectError) {
     console.error('[fetchConsultantProgress Error]', projectError);
