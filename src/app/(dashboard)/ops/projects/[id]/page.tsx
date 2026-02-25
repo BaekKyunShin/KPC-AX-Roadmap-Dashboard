@@ -50,50 +50,59 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  // 자가진단 조회
-  const { data: selfAssessment } = await supabase
-    .from('self_assessments')
-    .select('*')
-    .eq('project_id', id)
-    .single();
+  // 독립 쿼리 5개를 병렬 실행
+  const [
+    { data: selfAssessment },
+    { data: template },
+    { data: matchingRecommendations },
+    { data: interview },
+    { data: assignments },
+  ] = await Promise.all([
+    // 자가진단 조회
+    supabase
+      .from('self_assessments')
+      .select('*')
+      .eq('project_id', id)
+      .single(),
 
-  // 활성 템플릿 조회
-  const { data: template } = await supabase
-    .from('self_assessment_templates')
-    .select('*')
-    .eq('is_active', true)
-    .single();
+    // 활성 템플릿 조회
+    supabase
+      .from('self_assessment_templates')
+      .select('*')
+      .eq('is_active', true)
+      .single(),
 
-  // 매칭 추천 조회
-  const { data: matchingRecommendations } = await supabase
-    .from('matching_recommendations')
-    .select(`
-      *,
-      candidate:users!matching_recommendations_candidate_user_id_fkey(
-        id, name, email,
-        consultant_profile:consultant_profiles(*)
-      )
-    `)
-    .eq('project_id', id)
-    .order('rank', { ascending: true });
+    // 매칭 추천 조회
+    supabase
+      .from('matching_recommendations')
+      .select(`
+        *,
+        candidate:users!matching_recommendations_candidate_user_id_fkey(
+          id, name, email,
+          consultant_profile:consultant_profiles(expertise_domains, available_industries, sub_industries, teaching_levels, skill_tags, years_of_experience, strengths_constraints)
+        )
+      `)
+      .eq('project_id', id)
+      .order('rank', { ascending: true }),
 
-  // 인터뷰 조회 (인터뷰 미작성 프로젝트 대응 위해 maybeSingle 사용)
-  const { data: interview } = await supabase
-    .from('interviews')
-    .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
-    .eq('project_id', id)
-    .maybeSingle();
+    // 인터뷰 조회 (인터뷰 미작성 프로젝트 대응 위해 maybeSingle 사용)
+    supabase
+      .from('interviews')
+      .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
+      .eq('project_id', id)
+      .maybeSingle(),
 
-  // 배정 이력 조회 (AssignmentTabSection에서 사용)
-  const { data: assignments } = await supabase
-    .from('project_assignments')
-    .select(`
-      *,
-      consultant:users!project_assignments_consultant_id_fkey(id, name, email),
-      assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
-    `)
-    .eq('project_id', id)
-    .order('assigned_at', { ascending: false });
+    // 배정 이력 조회 (AssignmentTabSection에서 사용)
+    supabase
+      .from('project_assignments')
+      .select(`
+        *,
+        consultant:users!project_assignments_consultant_id_fkey(id, name, email),
+        assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
+      `)
+      .eq('project_id', id)
+      .order('assigned_at', { ascending: false }),
+  ]);
 
   const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
 
