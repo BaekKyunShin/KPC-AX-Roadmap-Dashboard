@@ -8,6 +8,7 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 import { validateStatusTransition } from '@/lib/constants/status';
+import { after } from 'next/server';
 
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -125,17 +126,22 @@ export async function saveInterview(
       auditAction = 'INTERVIEW_CREATE';
     }
 
-    // 수동 저장일 때만 상태 전환 및 알림 발송
+    // 수동 저장일 때만 상태 전환
     // (자동저장은 작성 중인 데이터 보존이 목적이므로 프로젝트 상태를 변경하지 않음)
     // validateStatusTransition이 이미 전환된 상태(INTERVIEWED→INTERVIEWED)는 거부하므로 중복 전환 방지됨
+    let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
       await adminSupabase
         .from('projects')
         .update({ status: 'INTERVIEWED' })
         .eq('id', projectId);
+      statusTransitioned = true;
+    }
 
+    // 알림/감사로그/활동로그는 응답 블로킹 불필요 → after()로 비동기 실행
+    after(async () => {
       // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
-      if (!projectData.is_test_mode) {
+      if (statusTransitioned && !projectData.is_test_mode) {
         await createNotificationForAdmins({
           type: 'interview_complete',
           title: '인터뷰 완료',
@@ -143,28 +149,27 @@ export async function saveInterview(
           link: `/ops/projects/${projectId}`,
         });
       }
-    }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: user.id,
-      action: auditAction,
-      targetType: 'interview',
-      targetId: projectId,
-      meta: {
-        job_tasks_count: validatedData.job_tasks.length,
-        pain_points_count: validatedData.pain_points.length,
-        goals_count: validatedData.improvement_goals.length,
-      },
+      await createAuditLog({
+        actorUserId: user.id,
+        action: auditAction,
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          job_tasks_count: validatedData.job_tasks.length,
+          pain_points_count: validatedData.pain_points.length,
+          goals_count: validatedData.improvement_goals.length,
+        },
+      });
+
+      // 활동 일지 자동 기록 (자동저장 모드가 아닌 경우에만)
+      if (!options?.autoSave) {
+        const logContent = auditAction === 'INTERVIEW_CREATE'
+          ? '인터뷰가 저장되었습니다.'
+          : '인터뷰가 수정되었습니다.';
+        await insertSystemActivityLog(projectId, user.id, logContent);
+      }
     });
-
-    // 활동 일지 자동 기록 (자동저장 모드가 아닌 경우에만)
-    if (!options?.autoSave) {
-      const logContent = auditAction === 'INTERVIEW_CREATE'
-        ? '인터뷰가 저장되었습니다.'
-        : '인터뷰가 수정되었습니다.';
-      await insertSystemActivityLog(projectId, user.id, logContent);
-    }
 
     return { success: true };
   } catch (error) {
@@ -240,17 +245,19 @@ export async function processSttFile(
       return { success: false, error: 'STT 인사이트 저장에 실패했습니다.' };
     }
 
-    // 감사로그
-    await createAuditLog({
-      actorUserId: authResult.user.id,
-      action: 'INTERVIEW_UPDATE',
-      targetType: 'interview',
-      targetId: projectId,
-      meta: {
-        stt_processed: true,
-        stt_text_length: sttText.length,
-        insights_extracted: Object.keys(insights).length,
-      },
+    // 감사로그는 응답 블로킹 불필요 → after()로 비동기 실행
+    after(async () => {
+      await createAuditLog({
+        actorUserId: authResult.user.id,
+        action: 'INTERVIEW_UPDATE',
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          stt_processed: true,
+          stt_text_length: sttText.length,
+          insights_extracted: Object.keys(insights).length,
+        },
+      });
     });
 
     return { success: true, data: insights };
