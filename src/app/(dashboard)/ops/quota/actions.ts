@@ -6,6 +6,7 @@ import { canManageUser } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { updateQuotaSchema } from '@/lib/schemas/quota';
+import { after } from 'next/server';
 import { createAuditLog } from '@/lib/services/audit';
 
 export interface UsageStats {
@@ -78,16 +79,18 @@ export async function updateQuota(
 
     await updateUserQuota(userId, parsed.data.dailyLimit, parsed.data.monthlyLimit);
 
-    // 감사로그 기록
-    await createAuditLog({
-      actorUserId: auth.user.id,
-      action: 'QUOTA_UPDATE',
-      targetType: 'user_quota',
-      targetId: userId,
-      meta: {
-        ...(parsed.data.dailyLimit !== undefined && { dailyLimit: parsed.data.dailyLimit }),
-        ...(parsed.data.monthlyLimit !== undefined && { monthlyLimit: parsed.data.monthlyLimit }),
-      },
+    // 감사로그 기록 (응답 차단 방지를 위해 after()로 지연)
+    after(async () => {
+      await createAuditLog({
+        actorUserId: auth.user.id,
+        action: 'QUOTA_UPDATE',
+        targetType: 'user_quota',
+        targetId: userId,
+        meta: {
+          ...(parsed.data.dailyLimit !== undefined && { dailyLimit: parsed.data.dailyLimit }),
+          ...(parsed.data.monthlyLimit !== undefined && { monthlyLimit: parsed.data.monthlyLimit }),
+        },
+      });
     });
 
     return { success: true };
