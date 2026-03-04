@@ -369,7 +369,18 @@ export async function generateInterviewGuide(
 
     return { success: true, data: validation.data };
   } catch (error) {
-    console.error('[generateInterviewGuide Error]', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[generateInterviewGuide Error]', errMsg, error);
+    // 진단용: 원인별 분류 로그
+    if (errMsg.includes('토큰 한도')) {
+      console.error('[generateInterviewGuide] 원인: 토큰 초과 (maxTokens=4000)');
+    } else if (errMsg.includes('파싱') || errMsg.includes('JSON')) {
+      console.error('[generateInterviewGuide] 원인: JSON 파싱 실패 (3회 재시도 후)');
+    } else if (errMsg.includes('API 호출 실패')) {
+      console.error('[generateInterviewGuide] 원인: LLM API 호출 실패');
+    } else if (errMsg.includes('타임아웃')) {
+      console.error('[generateInterviewGuide] 원인: LLM 타임아웃');
+    }
     return { success: false, error: 'AI 분석 중 오류가 발생했습니다. 다시 시도해주세요.' };
   }
 }
