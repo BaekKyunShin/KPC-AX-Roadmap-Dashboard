@@ -195,6 +195,26 @@ describe('callLLM', () => {
     expect(body.temperature).toBe(0.7); // 레거시 기본값
   });
 
+  it('responseFormat 설정 시 request body에 response_format 포함', async () => {
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages, { responseFormat: { type: 'json_object' } });
+
+    const body = JSON.parse(
+      vi.mocked(fetch).mock.calls[0][1]?.body as string
+    );
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('responseFormat 미설정 시 response_format 미포함', async () => {
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages);
+
+    const body = JSON.parse(
+      vi.mocked(fetch).mock.calls[0][1]?.body as string
+    );
+    expect(body.response_format).toBeUndefined();
+  });
+
   it('기본 base URL은 OpenAI API', async () => {
     delete process.env.LLM_API_BASE_URL;
     const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
@@ -257,26 +277,6 @@ describe('callLLM', () => {
     const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
     const result = await callLLM(messages);
     expect(result.finishReason).toBe('length');
-  });
-
-  it('responseFormat 설정 시 request body에 response_format 포함', async () => {
-    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
-    await callLLM(messages, { responseFormat: { type: 'json_object' } });
-
-    const body = JSON.parse(
-      vi.mocked(fetch).mock.calls[0][1]?.body as string
-    );
-    expect(body.response_format).toEqual({ type: 'json_object' });
-  });
-
-  it('responseFormat 미설정 시 response_format 미포함', async () => {
-    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
-    await callLLM(messages);
-
-    const body = JSON.parse(
-      vi.mocked(fetch).mock.calls[0][1]?.body as string
-    );
-    expect(body.response_format).toBeUndefined();
   });
 
   it('choices가 비어있으면 빈 문자열 반환', async () => {
