@@ -22,6 +22,7 @@ export interface LLMConfig {
   model: string;
   temperature?: number;
   maxTokens?: number;
+  responseFormat?: { type: 'json_object' };
 }
 
 const DEFAULT_CONFIG: LLMConfig = {
@@ -115,6 +116,10 @@ export async function callLLM(
     requestBody[tokenKey] = finalConfig.maxTokens;
   }
 
+  if (finalConfig.responseFormat) {
+    requestBody.response_format = finalConfig.responseFormat;
+  }
+
   let response: Response;
   try {
     const timeoutSignal = AbortSignal.timeout(LLM_TIMEOUT_MS);
@@ -187,11 +192,15 @@ export async function callLLMForJSON<T>(
   maxRetries: number = 2,
   signal?: AbortSignal
 ): Promise<T> {
+  const jsonConfig: Partial<LLMConfig> = {
+    ...config,
+    responseFormat: config.responseFormat ?? { type: 'json_object' },
+  };
   let lastError: Error | null = null;
 
   for (let i = 0; i <= maxRetries; i++) {
     // LLM 호출 — 실패 시 재시도 없이 즉시 throw
-    const response = await callLLM(messages, config, signal);
+    const response = await callLLM(messages, jsonConfig, signal);
 
     // 응답 잘림 감지 — 토큰 한도 도달 시 재시도 무의미
     if (response.finishReason === 'length') {

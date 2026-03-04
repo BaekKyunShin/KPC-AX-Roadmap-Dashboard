@@ -8,7 +8,7 @@ const keyPointStatusSchema = z.enum(['critical', 'warning', 'good']);
 
 export const guideKeyPointSchema = z.object({
   dimension: z.string().min(1),
-  score_percent: z.number().int().min(0).max(100),
+  score_percent: z.number().min(0).max(100).transform(Math.round),
   status: keyPointStatusSchema,
   insight: z.string().min(1),
 });

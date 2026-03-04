@@ -259,6 +259,26 @@ describe('callLLM', () => {
     expect(result.finishReason).toBe('length');
   });
 
+  it('responseFormat 설정 시 request body에 response_format 포함', async () => {
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages, { responseFormat: { type: 'json_object' } });
+
+    const body = JSON.parse(
+      vi.mocked(fetch).mock.calls[0][1]?.body as string
+    );
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('responseFormat 미설정 시 response_format 미포함', async () => {
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages);
+
+    const body = JSON.parse(
+      vi.mocked(fetch).mock.calls[0][1]?.body as string
+    );
+    expect(body.response_format).toBeUndefined();
+  });
+
   it('choices가 비어있으면 빈 문자열 반환', async () => {
     vi.stubGlobal(
       'fetch',
@@ -435,6 +455,17 @@ describe('callLLMForJSON', () => {
 
     // 재시도 없이 1번만 호출
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('callLLMForJSON은 기본적으로 response_format: json_object 자동 적용', async () => {
+    mockFetchResponse('{"ok": true}');
+
+    await callLLMForJSON([{ role: 'user', content: '테스트' }]);
+
+    const body = JSON.parse(
+      vi.mocked(fetch).mock.calls[0][1]?.body as string
+    );
+    expect(body.response_format).toEqual({ type: 'json_object' });
   });
 
   it('JSON 문자열 내 제어 문자를 자동 정제하여 파싱 성공', async () => {

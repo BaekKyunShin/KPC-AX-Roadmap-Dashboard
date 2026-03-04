@@ -47,8 +47,28 @@ describe('guideKeyPointSchema', () => {
     expect(guideKeyPointSchema.safeParse({ ...validKeyPoint, score_percent: 101 }).success).toBe(false);
   });
 
-  it('score_percent가 소수이면 실패', () => {
-    expect(guideKeyPointSchema.safeParse({ ...validKeyPoint, score_percent: 28.5 }).success).toBe(false);
+  it('score_percent가 소수이면 반올림하여 통과', () => {
+    const result = guideKeyPointSchema.safeParse({ ...validKeyPoint, score_percent: 28.5 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.score_percent).toBe(29);
+    }
+  });
+
+  it('score_percent 소수 66.7은 67로 반올림', () => {
+    const result = guideKeyPointSchema.safeParse({ ...validKeyPoint, score_percent: 66.7 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.score_percent).toBe(67);
+    }
+  });
+
+  it('score_percent 정수는 그대로 통과', () => {
+    const result = guideKeyPointSchema.safeParse({ ...validKeyPoint, score_percent: 50 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.score_percent).toBe(50);
+    }
   });
 
   it('빈 dimension이면 실패', () => {
