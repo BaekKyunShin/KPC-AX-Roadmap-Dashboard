@@ -110,17 +110,37 @@ export default async function PublicAssessmentPage({ params }: PageProps) {
     );
   }
 
-  // 이미 사용된 토큰 (다른 경로로 사용됨)
+  // 이미 사용된 토큰: 실제 제출 vs 무효화(재생성) 구분
   if (tokenData.is_used) {
+    const { data: assessmentByToken } = await adminSupabase
+      .from('self_assessments')
+      .select('id')
+      .eq('assessment_token_id', tokenData.id)
+      .maybeSingle();
+
+    if (assessmentByToken) {
+      return (
+        <StatusMessage
+          icon={
+            <IconCircle bgColor="bg-blue-100">
+              <CircleAlert className="w-8 h-8 text-blue-600" />
+            </IconCircle>
+          }
+          title="진단 완료"
+          message="이미 진단 결과를 제출하셨습니다."
+        />
+      );
+    }
+
     return (
       <StatusMessage
         icon={
-          <IconCircle bgColor="bg-blue-100">
-            <CircleAlert className="w-8 h-8 text-blue-600" />
+          <IconCircle bgColor="bg-amber-100">
+            <CircleAlert className="w-8 h-8 text-amber-600" />
           </IconCircle>
         }
-        title="진단 완료"
-        message="이미 진단 결과를 제출하셨습니다."
+        title="유효하지 않은 링크"
+        message="이 링크는 더 이상 유효하지 않습니다. 담당자에게 새 링크를 요청해 주세요."
       />
     );
   }

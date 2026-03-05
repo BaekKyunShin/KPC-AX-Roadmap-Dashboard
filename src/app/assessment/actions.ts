@@ -57,9 +57,17 @@ export async function submitPublicAssessment(
   }
 
   if (tokenData.is_used) {
+    const { data: existingByToken } = await adminSupabase
+      .from('self_assessments')
+      .select('id')
+      .eq('assessment_token_id', tokenData.id)
+      .maybeSingle();
+
     return {
       success: false,
-      error: '이미 사용된 링크입니다.',
+      error: existingByToken
+        ? '이미 진단 결과를 제출하셨습니다.'
+        : '이 링크는 더 이상 유효하지 않습니다. 담당자에게 새 링크를 요청해 주세요.',
     };
   }
 
