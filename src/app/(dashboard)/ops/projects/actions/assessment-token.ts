@@ -11,6 +11,8 @@ import { createAuditLog } from '@/lib/services/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult } from '@/lib/types/action-result';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 interface AssessmentTokenResult {
   token: string;
   url: string;
@@ -72,7 +74,7 @@ export async function createAssessmentToken(
   // 새 토큰 생성
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(
-    Date.now() + expires_in_days * 24 * 60 * 60 * 1000
+    Date.now() + expires_in_days * MS_PER_DAY
   ).toISOString();
 
   const { error: insertError } = await adminSupabase
@@ -140,7 +142,7 @@ export async function getLatestToken(
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!data) return null;
 

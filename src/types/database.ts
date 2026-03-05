@@ -119,7 +119,11 @@ export interface SelfAssessment {
   template_version: number;
   answers: SelfAssessmentAnswer[];
   scores: SelfAssessmentScore;
-  created_by: string; // OPS_ADMIN user_id
+  created_by: string | null; // OPS_ADMIN user_id (null for public submissions)
+  submitted_by_name?: string | null;
+  submitted_by_title?: string | null;
+  submitted_by_email?: string | null;
+  assessment_token_id?: string | null;
   created_at: string;
   updated_at: string;
 }

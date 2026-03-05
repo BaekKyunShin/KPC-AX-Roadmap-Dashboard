@@ -32,6 +32,7 @@ interface PublicSelfAssessmentFormProps {
 }
 
 const WRITER_INFO_STEP_LABEL = '작성자 정보';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -81,7 +82,7 @@ export default function PublicSelfAssessmentForm({
     const errors: Record<string, string> = {};
     if (writerName.trim().length < 2) errors.name = '이름을 2자 이상 입력하세요.';
     if (!writerTitle.trim()) errors.title = '직책을 입력하세요.';
-    if (!writerEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(writerEmail))
+    if (!writerEmail.trim() || !EMAIL_REGEX.test(writerEmail))
       errors.email = '유효한 이메일 주소를 입력하세요.';
     setWriterErrors(errors);
     return Object.keys(errors).length === 0;
@@ -91,7 +92,7 @@ export default function PublicSelfAssessmentForm({
   const isWriterInfoComplete =
     writerName.trim().length >= 2 &&
     writerTitle.trim().length > 0 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(writerEmail);
+    EMAIL_REGEX.test(writerEmail);
 
   // 완료된 스텝 계산
   const completedSteps = new Set<number>();

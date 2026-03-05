@@ -1,8 +1,51 @@
 import { notFound } from 'next/navigation';
+import { CircleAlert, Clock } from 'lucide-react';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 
 import PublicAssessmentClient from './PublicAssessmentClient';
+
+// ============================================================================
+// 로컬 컴포넌트
+// ============================================================================
+
+function StatusMessage({
+  icon,
+  title,
+  message,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="text-center py-16">
+      <div className="flex items-center justify-center mb-4">{icon}</div>
+      <h1 className="text-xl font-semibold text-gray-900 mb-2">{title}</h1>
+      <p className="text-gray-600">{message}</p>
+    </div>
+  );
+}
+
+function IconCircle({
+  children,
+  bgColor,
+}: {
+  children: React.ReactNode;
+  bgColor: string;
+}) {
+  return (
+    <div
+      className={`w-16 h-16 ${bgColor} rounded-full flex items-center justify-center`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================================================
+// 페이지
+// ============================================================================
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -40,83 +83,45 @@ export default async function PublicAssessmentPage({ params }: PageProps) {
       : '진단 결과를 이미 KPC 운영 담당자가 입력 완료했습니다.';
 
     return (
-      <div className="text-center py-16">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-blue-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
-          진단 완료
-        </h1>
-        <p className="text-gray-600">{message}</p>
-      </div>
+      <StatusMessage
+        icon={
+          <IconCircle bgColor="bg-blue-100">
+            <CircleAlert className="w-8 h-8 text-blue-600" />
+          </IconCircle>
+        }
+        title="진단 완료"
+        message={message}
+      />
     );
   }
 
   // 만료된 링크
   if (new Date(tokenData.expires_at) < new Date()) {
     return (
-      <div className="text-center py-16">
-        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-amber-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
-          링크 만료
-        </h1>
-        <p className="text-gray-600">
-          링크가 만료되었습니다. 담당자에게 새 링크를 요청해 주세요.
-        </p>
-      </div>
+      <StatusMessage
+        icon={
+          <IconCircle bgColor="bg-amber-100">
+            <Clock className="w-8 h-8 text-amber-600" />
+          </IconCircle>
+        }
+        title="링크 만료"
+        message="링크가 만료되었습니다. 담당자에게 새 링크를 요청해 주세요."
+      />
     );
   }
 
   // 이미 사용된 토큰 (다른 경로로 사용됨)
   if (tokenData.is_used) {
     return (
-      <div className="text-center py-16">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-blue-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
-          진단 완료
-        </h1>
-        <p className="text-gray-600">이미 진단 결과를 제출하셨습니다.</p>
-      </div>
+      <StatusMessage
+        icon={
+          <IconCircle bgColor="bg-blue-100">
+            <CircleAlert className="w-8 h-8 text-blue-600" />
+          </IconCircle>
+        }
+        title="진단 완료"
+        message="이미 진단 결과를 제출하셨습니다."
+      />
     );
   }
 
@@ -138,14 +143,15 @@ export default async function PublicAssessmentPage({ params }: PageProps) {
 
   if (!project || !template) {
     return (
-      <div className="text-center py-16">
-        <h1 className="text-xl font-semibold text-gray-900 mb-2">
-          오류
-        </h1>
-        <p className="text-gray-600">
-          진단 정보를 불러올 수 없습니다. 담당자에게 문의해 주세요.
-        </p>
-      </div>
+      <StatusMessage
+        icon={
+          <IconCircle bgColor="bg-red-100">
+            <CircleAlert className="w-8 h-8 text-red-600" />
+          </IconCircle>
+        }
+        title="오류"
+        message="진단 정보를 불러올 수 없습니다. 담당자에게 문의해 주세요."
+      />
     );
   }
 
