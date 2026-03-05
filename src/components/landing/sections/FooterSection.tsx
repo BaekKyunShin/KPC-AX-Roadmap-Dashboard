@@ -71,9 +71,9 @@ const CONTACT_LINK_ICONS: Record<ContactLink['type'], LucideIcon> = {
   phone: Phone,
 };
 
-const CONTACT_LINK_TOAST_MESSAGES: Record<ContactLink['type'], string> = {
-  email: '이메일이 복사되었습니다',
-  phone: '전화번호가 복사되었습니다',
+const CONTACT_LINK_TOAST_MESSAGES: Record<ContactLink['type'], { title: string; description: string }> = {
+  email: { title: '복사 완료', description: '이메일이 클립보드에 복사되었습니다.' },
+  phone: { title: '복사 완료', description: '전화번호가 클립보드에 복사되었습니다.' },
 };
 
 const CONTACT_LINK_HOVER_COLORS: Record<ContactLink['type'], string> = {
@@ -130,7 +130,8 @@ function ContactCard({ person }: ContactCardProps) {
               key={`${link.type}-${link.value}`}
               onClick={() => {
                 navigator.clipboard.writeText(link.value);
-                showSuccessToast(CONTACT_LINK_TOAST_MESSAGES[link.type]);
+                const msg = CONTACT_LINK_TOAST_MESSAGES[link.type];
+                showSuccessToast(msg.title, msg.description);
               }}
               className="flex items-center gap-2 px-2 py-1 -mx-2 rounded-md text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all group cursor-pointer"
             >

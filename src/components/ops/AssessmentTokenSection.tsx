@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import {
   createAssessmentToken,
   type LatestTokenInfo,
@@ -79,10 +80,10 @@ export default function AssessmentTokenSection({
         });
         showSuccessToast('진단 링크 생성', '진단 링크가 생성되었습니다.');
       } else {
-        showErrorToast('생성 실패', result.error);
+        showErrorToast('링크 생성 실패', result.error);
       }
     } catch {
-      showErrorToast('생성 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('링크 생성 실패', TOAST_ERROR.NETWORK);
     } finally {
       setIsLoading(false);
     }

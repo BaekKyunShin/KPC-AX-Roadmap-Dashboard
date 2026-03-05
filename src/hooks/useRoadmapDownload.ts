@@ -46,7 +46,7 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
       showSuccessToast('PDF 다운로드 완료');
     } catch (err) {
       console.error('[PDF Download Error]', err);
-      showErrorToast('PDF 다운로드 실패', 'PDF 생성에 실패했습니다.');
+      showErrorToast('PDF 다운로드 실패', 'PDF 다운로드 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsDownloading(null);
     }
@@ -70,7 +70,7 @@ export function useRoadmapDownload(): UseRoadmapDownloadResult {
       showSuccessToast('Excel 다운로드 완료');
     } catch (err) {
       console.error('[XLSX Download Error]', err);
-      showErrorToast('Excel 다운로드 실패', 'Excel 생성에 실패했습니다.');
+      showErrorToast('Excel 다운로드 실패', 'Excel 다운로드 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsDownloading(null);
     }

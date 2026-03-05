@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import {
   ACTIVITY_LOG_TYPE_CONFIG,
   ACTIVITY_LOG_PREVIEW_LENGTH,
@@ -54,14 +55,14 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
       const result = await updateActivityLog(log.id, projectId, editContent.trim());
 
       if (result.success) {
-        showSuccessToast('기록이 수정되었습니다.');
+        showSuccessToast('기록 수정 완료', '변경 사항이 저장되었습니다.');
         setIsEditing(false);
         onUpdated();
       } else {
         showErrorToast('수정 실패', result.error);
       }
     } catch {
-      showErrorToast('수정 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('기록 수정 실패', TOAST_ERROR.NETWORK);
     }
     setIsSubmitting(false);
   }
@@ -73,13 +74,13 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
       const result = await deleteActivityLog(log.id, projectId);
 
       if (result.success) {
-        showSuccessToast('기록이 삭제되었습니다.');
+        showSuccessToast('기록 삭제 완료', '활동 기록이 삭제되었습니다.');
         onUpdated();
       } else {
         showErrorToast('삭제 실패', result.error);
       }
     } catch {
-      showErrorToast('삭제 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('기록 삭제 실패', TOAST_ERROR.NETWORK);
     }
   }
 

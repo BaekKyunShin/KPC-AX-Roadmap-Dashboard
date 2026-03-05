@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,7 +58,7 @@ function LoginForm() {
       }
     } catch {
       setError('로그인에 실패했습니다.');
-      showErrorToast('로그인 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('로그인 실패', TOAST_ERROR.NETWORK);
       setIsLoading(false);
     }
   }

@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { updateEmailNotifySetting } from '../actions';
 
 interface EmailNotifyToggleProps {
@@ -28,14 +29,14 @@ export default function EmailNotifyToggle({ initialEnabled }: EmailNotifyToggleP
     try {
       const result = await updateEmailNotifySetting(checked);
       if (result.success) {
-        showSuccessToast(checked ? '이메일 알림이 활성화되었습니다' : '이메일 알림이 비활성화되었습니다');
+        showSuccessToast('알림 설정 변경', checked ? '이메일 알림이 활성화되었습니다.' : '이메일 알림이 비활성화되었습니다.');
       } else {
         setEnabled(prev);
         showErrorToast('설정 변경 실패', result.error);
       }
     } catch {
       setEnabled(prev);
-      showErrorToast('설정 변경 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('설정 변경 실패', TOAST_ERROR.NETWORK);
     } finally {
       setIsUpdating(false);
     }

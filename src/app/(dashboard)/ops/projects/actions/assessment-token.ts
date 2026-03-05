@@ -91,7 +91,7 @@ export async function createAssessmentToken(
       '[createAssessmentToken] Supabase error:',
       insertError.message
     );
-    return { success: false, error: '토큰 생성에 실패했습니다.' };
+    return { success: false, error: '진단 링크 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
   }
 
   const appUrl =

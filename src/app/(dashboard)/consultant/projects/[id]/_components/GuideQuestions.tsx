@@ -88,7 +88,7 @@ export function GuideQuestions({
     setNewIntent('');
     setNewDimension('');
     setShowAddForm(false);
-    showSuccessToast('질문이 추가되었습니다.');
+    showSuccessToast('질문 추가 완료', '질문이 추가되었습니다.');
   }
 
   const checkedCount = questions.filter((q) => q.checked).length;

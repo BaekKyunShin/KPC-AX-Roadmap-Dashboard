@@ -17,6 +17,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { registerSchema } from '@/lib/schemas/user';
 import { showErrorToast, scrollToPageTop, scrollToFirstError } from '@/lib/utils';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/button';
@@ -150,7 +151,7 @@ export default function RegisterPage() {
       setIsLoading(false);
     } catch {
       setServerError('회원가입에 실패했습니다.');
-      showErrorToast('회원가입 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('회원가입 실패', TOAST_ERROR.NETWORK);
       scrollToPageTop();
       setIsLoading(false);
     }

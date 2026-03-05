@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 import { TagInput } from '@/components/ui/tag-input';
 import {
@@ -67,7 +68,7 @@ export default function NewProjectPage() {
       }
     } catch {
       setError('프로젝트 생성에 실패했습니다.');
-      showErrorToast('프로젝트 생성 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('프로젝트 생성 실패', TOAST_ERROR.NETWORK);
       scrollToElement(formContainerRef);
       setIsLoading(false);
     }

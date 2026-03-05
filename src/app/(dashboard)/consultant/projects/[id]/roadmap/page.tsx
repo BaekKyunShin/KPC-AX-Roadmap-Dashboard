@@ -96,7 +96,7 @@ export default function RoadmapPage() {
     const result = await createRoadmap(projectId, revisionPrompt || undefined);
 
     if (result.success) {
-      showSuccessToast('로드맵이 생성되었습니다.');
+      showSuccessToast('로드맵 생성 완료', '로드맵이 생성되었습니다.');
       setRevisionPrompt('');
       // 버전 목록 새로고침
       const data = await fetchRoadmapVersions(projectId);
@@ -137,7 +137,7 @@ export default function RoadmapPage() {
     const result = await confirmFinalRoadmap(selectedVersion.id);
 
     if (result.success) {
-      showSuccessToast('최종 확정되었습니다.');
+      showSuccessToast('최종 확정 완료', '로드맵이 최종 확정되었습니다.');
       const data = await fetchRoadmapVersions(projectId);
       setVersions(data as RoadmapVersionUI[]);
       const updated = data.find((v) => v.id === selectedVersion.id);

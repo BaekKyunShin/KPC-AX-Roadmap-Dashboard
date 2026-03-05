@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { RefreshCw, Download, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import type { GuideData, GuideQuestion } from '@/lib/schemas/interview-guide';
 import { InterviewGuideEmpty } from './InterviewGuideEmpty';
 import { GuideKeyPoints } from './GuideKeyPoints';
@@ -40,12 +41,12 @@ export function InterviewGuide({
       const result = await generateInterviewGuide(projectId);
       if (result.success) {
         setGuideData(result.data);
-        showSuccessToast('사전 분석 가이드가 생성되었습니다.');
+        showSuccessToast('가이드 생성 완료', '사전 분석 가이드가 생성되었습니다.');
       } else {
         showErrorToast('생성 실패', result.error);
       }
     } catch {
-      showErrorToast('생성 실패', '네트워크 오류가 발생했습니다.');
+      showErrorToast('생성 실패', TOAST_ERROR.NETWORK);
     } finally {
       setIsGenerating(false);
     }
@@ -71,7 +72,7 @@ export function InterviewGuide({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      showErrorToast('PDF 생성 실패', 'PDF 생성 중 오류가 발생했습니다.');
+      showErrorToast('PDF 다운로드 실패', 'PDF 다운로드 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     }
   }
 

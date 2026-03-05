@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils/toast';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { PageHeader } from '@/components/ui/page-header';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
@@ -52,7 +53,7 @@ export default function OpsRoadmapViewPage() {
         setSelectedVersion(version as RoadmapVersionUI);
       }
     } catch {
-      showErrorToast('버전 로드 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('버전 불러오기 실패', TOAST_ERROR.NETWORK);
     }
   }
 

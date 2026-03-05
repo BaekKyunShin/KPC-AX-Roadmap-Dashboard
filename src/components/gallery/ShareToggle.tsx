@@ -21,6 +21,7 @@ export function ShareToggle({ roadmapVersionId, initialShared }: ShareToggleProp
       if (result.success) {
         setIsShared(result.data.isShared);
         showSuccessToast(
+          '공유 설정 변경',
           result.data.isShared
             ? '갤러리에 공유되었습니다.'
             : '갤러리 공유가 해제되었습니다.'

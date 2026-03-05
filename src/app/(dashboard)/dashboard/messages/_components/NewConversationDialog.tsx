@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { fetchAvailableRecipients, createConversation } from '../actions';
 import { showErrorToast } from '@/lib/utils/toast';
+import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { ROLE_BADGE_STYLES } from '@/lib/constants/message';
 import type { RecipientGroup } from '@/types/database';
 
@@ -73,7 +74,7 @@ export default function NewConversationDialog({
       }
     } catch (err) {
       console.error('[handleSelectUser]', err);
-      showErrorToast('메시지 생성 실패', '서버 오류가 발생했습니다.');
+      showErrorToast('메시지 전송 실패', TOAST_ERROR.NETWORK);
     } finally {
       setIsCreating(false);
     }
