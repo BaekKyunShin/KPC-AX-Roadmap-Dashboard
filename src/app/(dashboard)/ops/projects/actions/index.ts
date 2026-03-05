@@ -1,6 +1,10 @@
 // CRUD (변경 함수)
 export { createProject, createSelfAssessment, assignConsultant } from './crud';
 
+// 진단 토큰
+export { createAssessmentToken, getLatestToken } from './assessment-token';
+export type { LatestTokenInfo } from './assessment-token';
+
 // 조회 함수
 export { fetchProjects, fetchProjectTimeline, fetchProjectsWithTimeline } from './queries';
 export type {

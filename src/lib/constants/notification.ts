@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   FileEdit,
   FileBadge,
+  ClipboardList,
 } from 'lucide-react';
 import type { NotificationType } from '@/types/database';
 
@@ -24,6 +25,7 @@ export const NOTIFICATION_TYPES = [
   'interview_complete',
   'roadmap_draft',
   'roadmap_finalized',
+  'assessment_submitted',
 ] as const;
 
 /** 알림 타입별 설정 (라벨, 색상, 아이콘) */
@@ -83,6 +85,12 @@ export const NOTIFICATION_TYPE_CONFIG: Record<
     bgColor: 'bg-emerald-50',
     textColor: 'text-emerald-600',
     icon: FileBadge,
+  },
+  assessment_submitted: {
+    label: '자가진단',
+    bgColor: 'bg-cyan-50',
+    textColor: 'text-cyan-600',
+    icon: ClipboardList,
   },
 };
 

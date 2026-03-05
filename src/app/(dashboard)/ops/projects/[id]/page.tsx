@@ -3,14 +3,17 @@ import Link from 'next/link';
 import { FileText, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
+import AssessmentTokenSection from '@/components/ops/AssessmentTokenSection';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
 import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
+import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
+import { getLatestToken } from '../actions';
 import ProjectTimeline from '../_components/ProjectTimeline';
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,13 +53,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  // 독립 쿼리 5개를 병렬 실행
+  // 독립 쿼리 6개를 병렬 실행
   const [
     { data: selfAssessment },
     { data: template },
     { data: matchingRecommendations },
     { data: interview },
     { data: assignments },
+    latestTokenData,
   ] = await Promise.all([
     // 자가진단 조회
     supabase
@@ -102,6 +106,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       `)
       .eq('project_id', id)
       .order('assigned_at', { ascending: false }),
+
+    // 진단 토큰 조회
+    getLatestToken(id),
   ]);
 
   const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
@@ -197,7 +204,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {selfAssessment ? (
               <SelfAssessmentResult scores={selfAssessment.scores} createdAt={selfAssessment.created_at} />
             ) : template ? (
-              <SelfAssessmentForm projectId={id} template={template} />
+              <div className="space-y-6">
+                {/* 공개 진단 링크 */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    고객사 자가진단 링크
+                  </h3>
+                  <AssessmentTokenSection
+                    projectId={id}
+                    latestToken={latestTokenData}
+                  />
+                </div>
+
+                <div className="relative">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-gray-400">
+                    또는 직접 입력
+                  </span>
+                </div>
+
+                {/* 기존 직접 입력 폼 */}
+                <SelfAssessmentForm projectId={id} template={template} />
+              </div>
             ) : (
               <p className="text-gray-500">활성화된 자가진단 템플릿이 없습니다.</p>
             )}

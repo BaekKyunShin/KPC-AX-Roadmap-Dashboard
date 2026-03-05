@@ -6,7 +6,7 @@ import type { AuditAction, UserRole } from '@/types/database';
 const AUDIT_LOG_DEFAULT_PAGE_SIZE = 50;
 
 interface AuditLogParams {
-  actorUserId: string;
+  actorUserId: string | null;
   action: AuditAction;
   targetType: string;
   targetId: string;
@@ -32,7 +32,7 @@ export async function createAuditLog({
     const supabase = createAdminClient();
 
     const { error } = await supabase.from('audit_logs').insert({
-      actor_user_id: actorUserId,
+      actor_user_id: actorUserId ?? null,
       action,
       target_type: targetType,
       target_id: targetId,

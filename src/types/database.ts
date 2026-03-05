@@ -381,7 +381,7 @@ export interface EvaluationCriteria {
 // 감사로그
 export interface AuditLog {
   id: string;
-  actor_user_id: string;
+  actor_user_id: string | null;
   action: AuditAction;
   target_type: string; // 예: 'project', 'user', 'roadmap_version'
   target_id: string;
@@ -421,7 +421,9 @@ export type AuditAction =
   | 'TEST_PROJECT_DELETE'
   | 'USER_WITHDRAW'
   | 'ROADMAP_COPY'
-  | 'QUOTA_UPDATE';
+  | 'QUOTA_UPDATE'
+  | 'ASSESSMENT_TOKEN_CREATE'
+  | 'PUBLIC_SELF_ASSESSMENT_CREATE';
 
 // 알림 타입
 export type NotificationType =
@@ -432,7 +434,8 @@ export type NotificationType =
   | 'system'
   | 'interview_complete'
   | 'roadmap_draft'
-  | 'roadmap_finalized';
+  | 'roadmap_finalized'
+  | 'assessment_submitted';
 
 // 알림
 export interface Notification {
