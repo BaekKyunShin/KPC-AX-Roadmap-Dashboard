@@ -27,6 +27,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     // Reference files (외부 라이브러리 등 참조용 파일)
     "_reference/**",
+    // Git worktree 빌드 아티팩트
+    ".worktrees/**",
   ]),
 ]);
 
