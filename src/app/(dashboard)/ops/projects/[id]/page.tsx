@@ -2,12 +2,11 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import SelfAssessmentForm from '@/components/ops/SelfAssessmentForm';
+import CollapsibleDirectInput from '@/components/ops/CollapsibleDirectInput';
 import AssessmentTokenSection from '@/components/ops/AssessmentTokenSection';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
 import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
-import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -216,15 +215,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   />
                 </div>
 
-                <div className="relative">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-gray-400">
-                    또는 직접 입력
-                  </span>
-                </div>
-
-                {/* 기존 직접 입력 폼 */}
-                <SelfAssessmentForm projectId={id} template={template} />
+                <CollapsibleDirectInput projectId={id} template={template} />
               </div>
             ) : (
               <p className="text-gray-500">활성화된 자가진단 템플릿이 없습니다.</p>
