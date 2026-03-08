@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Logo } from '@/components/ui/logo';
 
 export const metadata: Metadata = {
   title: 'AI 훈련 자가진단 | KPC',
@@ -15,14 +16,7 @@ export default function AssessmentLayout({
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">K</span>
-            </div>
-            <span className="font-semibold text-gray-900">
-              KPC AI 훈련 로드맵
-            </span>
-          </div>
+          <Logo height={26} />
         </div>
       </header>
 

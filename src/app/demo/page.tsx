@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Logo } from '@/components/ui/logo';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
 import { CoursesList } from '@/components/roadmap/CoursesList';
@@ -24,8 +25,8 @@ export default function DemoPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link href="/" className="text-xl font-bold text-purple-600">
-                KPC AI 로드맵
+              <Link href="/">
+                <Logo height={26} />
               </Link>
               <span className="ml-2 sm:ml-4 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">
                 데모 화면
