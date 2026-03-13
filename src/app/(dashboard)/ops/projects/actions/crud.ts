@@ -8,7 +8,6 @@ import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
-import { validateStatusTransition } from '@/lib/constants/status';
 import { calculateScores } from '@/lib/services/calculate-scores';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -215,63 +214,15 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
 
   const adminSupabase = createAdminClient();
 
-  // 프로젝트 현재 상태 확인 — DIAGNOSED, MATCH_RECOMMENDED, ASSIGNED만 배정 가능
-  const { data: currentProject, error: projectError } = await adminSupabase
-    .from('projects')
-    .select('status')
-    .eq('id', project_id)
-    .single();
-
-  if (projectError || !currentProject) {
-    return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
-  }
-
-  if (!validateStatusTransition(currentProject.status, 'ASSIGNED')) {
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'PROJECT_ASSIGN',
-      targetType: 'project',
-      targetId: project_id,
-      meta: { consultant_id, current_status: currentProject.status },
-      success: false,
-      errorMessage: `Invalid status transition: ${currentProject.status} → ASSIGNED`,
-    });
-    return {
-      success: false,
-      error: `현재 프로젝트 상태(${currentProject.status})에서는 컨설턴트를 배정할 수 없습니다.`,
-    };
-  }
-
-  // 기존 배정이 있는지 확인
-  const { data: existingAssignment } = await adminSupabase
-    .from('project_assignments')
-    .select('id')
-    .eq('project_id', project_id)
-    .eq('is_current', true)
-    .single();
-
-  if (existingAssignment) {
-    // 기존 배정 해제
-    await adminSupabase
-      .from('project_assignments')
-      .update({
-        is_current: false,
-        unassigned_at: new Date().toISOString(),
-        unassignment_reason: '새 배정으로 인한 변경',
-      })
-      .eq('id', existingAssignment.id);
-  }
-
-  // 새 배정 생성
-  const { error: assignError } = await adminSupabase.from('project_assignments').insert({
-    project_id,
-    consultant_id,
-    assigned_by: user.id,
-    assignment_reason,
-    is_current: true,
+  // RPC로 원자적 배정 (검증 + 기존 해제 + 새 배정 + 상태 업데이트를 단일 트랜잭션에서 실행)
+  const { data: rpcResult, error: rpcError } = await adminSupabase.rpc('assign_consultant', {
+    p_project_id: project_id,
+    p_consultant_id: consultant_id,
+    p_assigned_by: user.id,
+    p_assignment_reason: assignment_reason || null,
   });
 
-  if (assignError) {
+  if (rpcError || !rpcResult) {
     await createAuditLog({
       actorUserId: user.id,
       action: 'PROJECT_ASSIGN',
@@ -279,20 +230,26 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
       targetId: project_id,
       meta: { consultant_id, reason: assignment_reason },
       success: false,
-      errorMessage: assignError.message,
+      errorMessage: rpcError?.message || 'RPC 호출 실패',
     });
-    console.error('[assignConsultant] Supabase error:', assignError.message);
+    console.error('[assignConsultant] RPC error:', rpcError?.message);
     return { success: false, error: '컨설턴트 배정에 실패했습니다.' };
   }
 
-  // 프로젝트 상태 및 배정 컨설턴트 업데이트
-  await adminSupabase
-    .from('projects')
-    .update({
-      status: 'ASSIGNED',
-      assigned_consultant_id: consultant_id,
-    })
-    .eq('id', project_id);
+  const result = rpcResult as { success: boolean; error?: string };
+
+  if (!result.success) {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PROJECT_ASSIGN',
+      targetType: 'project',
+      targetId: project_id,
+      meta: { consultant_id, reason: assignment_reason },
+      success: false,
+      errorMessage: result.error || '배정 실패',
+    });
+    return { success: false, error: result.error || '컨설턴트 배정에 실패했습니다.' };
+  }
 
   // 감사로그 + 알림 (응답 차단 방지를 위해 after()로 지연)
   after(async () => {
