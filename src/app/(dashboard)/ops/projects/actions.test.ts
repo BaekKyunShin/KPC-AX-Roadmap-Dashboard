@@ -120,6 +120,7 @@ function createMockClient(options?: { authUser?: { id: string } | null }) {
       }),
     },
     from: vi.fn(() => chainable),
+    rpc: vi.fn(() => nextResult()),
   };
 
   return {
@@ -342,27 +343,27 @@ describe('assignConsultant', () => {
     expect(result).toMatchObject({ success: false, error: expect.any(String) });
   });
 
-  it('신규 배정 성공 (기존 배정 없음)', async () => {
+  it('신규 배정 성공 (RPC 성공)', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
     const { createNotification } = await import('@/lib/services/notification');
     const { revalidatePath } = await import('next/cache');
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    // 프로젝트 상태 조회 → DIAGNOSED (배정 가능)
-    adminMock.addResult({ data: { status: 'DIAGNOSED' }, error: null });
-    // 기존 배정 조회 → 없음
-    adminMock.addResult({ data: null, error: null });
-    // 새 배정 insert → 성공
-    adminMock.addResult({ data: null, error: null });
-    // 프로젝트 status 업데이트 → 성공
-    adminMock.addResult({ data: null, error: null });
-    // 프로젝트 company_name 조회
+    // RPC 성공
+    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+      { data: { success: true }, error: null } as never,
+    );
+    // after() 콜백: 프로젝트 company_name 조회
     adminMock.addResult({ data: { company_name: '테스트 기업' }, error: null });
 
     const result = await assignConsultant(validAssignFormData());
     await flushAfterCallbacks();
 
     expect(result).toEqual({ success: true });
+    expect(adminMock.mockClient.rpc).toHaveBeenCalledWith('assign_consultant', expect.objectContaining({
+      p_project_id: TEST_PROJECT_ID,
+      p_consultant_id: TEST_CONSULTANT_ID,
+    }));
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
@@ -380,41 +381,17 @@ describe('assignConsultant', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/ops/projects');
   });
 
-  it('재배정 성공 (기존 배정 해제 후 신규 배정)', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    // 프로젝트 상태 조회 → ASSIGNED (재배정 가능)
-    adminMock.addResult({ data: { status: 'ASSIGNED' }, error: null });
-    // 기존 배정 조회 → 있음
-    adminMock.addResult({ data: { id: 'old-assignment-id' }, error: null });
-    // 기존 배정 해제 (update) → 성공
-    adminMock.addResult({ data: null, error: null });
-    // 새 배정 insert → 성공
-    adminMock.addResult({ data: null, error: null });
-    // 프로젝트 status 업데이트
-    adminMock.addResult({ data: null, error: null });
-    // 프로젝트 company_name 조회
-    adminMock.addResult({ data: { company_name: '테스트 기업' }, error: null });
-
-    const result = await assignConsultant(validAssignFormData());
-
-    expect(result).toEqual({ success: true });
-    // 기존 배정 해제 확인
-    expect(adminMock.chainable.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        is_current: false,
-        unassignment_reason: '새 배정으로 인한 변경',
-      }),
-    );
-  });
-
   it.each([
     { status: 'NEW', label: '진단 미완료' },
     { status: 'INTERVIEWED', label: '이미 진행된 프로젝트' },
-  ])('배정 불가 상태 $status → 배정 거부 + 감사 로그 ($label)', async ({ status }) => {
+  ])('배정 불가 상태 $status → RPC 비즈니스 에러 ($label)', async ({ status }) => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    adminMock.addResult({ data: { status }, error: null });
+    // RPC가 비즈니스 에러 반환
+    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+      { data: { success: false, error: `현재 프로젝트 상태(${status})에서는 컨설턴트를 배정할 수 없습니다.` }, error: null } as never,
+    );
 
     const result = await assignConsultant(validAssignFormData());
 
@@ -427,34 +404,18 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
         success: false,
-        meta: expect.objectContaining({ current_status: status }),
       }),
     );
   });
 
-  it('프로젝트 조회 실패 → error 반환', async () => {
-    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    // 프로젝트 조회 실패
-    adminMock.addResult({ data: null, error: { message: 'not_found' } });
-
-    const result = await assignConsultant(validAssignFormData());
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain('프로젝트');
-    }
-  });
-
-  it('배정 insert 실패 → error + audit log 기록', async () => {
+  it('RPC 호출 실패 → error + audit log 기록', async () => {
     const { createAuditLog } = await import('@/lib/services/audit');
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    // 프로젝트 상태 조회 → MATCH_RECOMMENDED (배정 가능)
-    adminMock.addResult({ data: { status: 'MATCH_RECOMMENDED' }, error: null });
-    // 기존 배정 없음
-    adminMock.addResult({ data: null, error: null });
-    // insert 실패
-    adminMock.addResult({ data: null, error: { message: 'fk_violation' } });
+    // RPC 에러
+    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+      { data: null, error: { message: 'fk_violation' } } as never,
+    );
 
     const result = await assignConsultant(validAssignFormData());
 

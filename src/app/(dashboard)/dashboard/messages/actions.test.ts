@@ -197,14 +197,14 @@ describe('fetchConversations', () => {
       data: [{ id: OTHER_USER_ID, name: '홍길동', role: 'CONSULTANT_APPROVED' }],
       error: null,
     });
-    // 5) 마지막 메시지 (single)
-    serverMock.addResult({
-      data: {
+    // 5) 마지막 메시지 (RPC)
+    serverMock.addRpcResult({
+      data: [{
         conversation_id: CONV_ID,
         content: '안녕하세요',
         sender_id: OTHER_USER_ID,
         created_at: now,
-      },
+      }],
       error: null,
     });
 
@@ -243,8 +243,8 @@ describe('fetchConversations', () => {
       data: [{ id: OTHER_USER_ID, name: '홍길동', role: 'CONSULTANT_APPROVED' }],
       error: null,
     });
-    serverMock.addResult({
-      data: { conversation_id: CONV_ID, content: '이전 메시지', sender_id: OTHER_USER_ID, created_at: messageTime },
+    serverMock.addRpcResult({
+      data: [{ conversation_id: CONV_ID, content: '이전 메시지', sender_id: OTHER_USER_ID, created_at: messageTime }],
       error: null,
     });
 

@@ -94,26 +94,23 @@ export async function fetchConversations(): Promise<
       (otherParticipants || []).map((p) => [p.conversation_id, p.user_id]),
     );
 
-    // 5. 각 대화의 마지막 메시지 조회 (대화별 1건씩)
+    // 5. 각 대화의 마지막 메시지 조회 (RPC로 단일 쿼리)
     const lastMsgMap = new Map<string, { content: string; sender_id: string; created_at: string }>();
-    const lastMsgPromises = activeIds.map(async (convId) => {
-      const { data } = await supabase
-        .from('messages')
-        .select('conversation_id, content, sender_id, created_at')
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+    if (activeIds.length > 0) {
+      const { data: lastMessages } = await supabase.rpc('get_last_messages_for_conversations', {
+        p_conversation_ids: activeIds,
+      });
 
-      if (data) {
-        lastMsgMap.set(data.conversation_id, {
-          content: data.content,
-          sender_id: data.sender_id,
-          created_at: data.created_at,
-        });
+      if (lastMessages) {
+        for (const msg of lastMessages) {
+          lastMsgMap.set(msg.conversation_id, {
+            content: msg.content,
+            sender_id: msg.sender_id,
+            created_at: msg.created_at,
+          });
+        }
       }
-    });
-    await Promise.all(lastMsgPromises);
+    }
 
     // 6. 조합
     const result: ConversationWithPreview[] = conversations.map((conv) => {

@@ -8,6 +8,9 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 /** 전체 로그 내보내기 시 최대 건수 */
 const AUDIT_LOG_EXPORT_MAX = 10000;
 
+/** 내보내기 1회당 청크 크기 */
+const AUDIT_LOG_CHUNK_SIZE = 1000;
+
 export interface AuditLogFilters {
   page?: number;
   limit?: number;
@@ -104,14 +107,30 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { logs: [] };
 
-  // 전체 로그 조회 (최대 10000건)
-  const result = await fetchAuditLogsService({
-    ...filters,
-    page: 1,
-    limit: AUDIT_LOG_EXPORT_MAX,
-    currentUserRole: auth.role,
-  });
-  return { logs: result.logs, total: result.total };
+  // 청크 단위로 분할 조회 (메모리 부하 분산)
+  const allLogs: AuditLogEntry[] = [];
+  let page = 1;
+  let total = 0;
+
+  while (allLogs.length < AUDIT_LOG_EXPORT_MAX) {
+    const result = await fetchAuditLogsService({
+      ...filters,
+      page,
+      limit: AUDIT_LOG_CHUNK_SIZE,
+      currentUserRole: auth.role,
+    });
+
+    if (page === 1) {
+      total = result.total;
+    }
+
+    if (result.logs.length === 0) break;
+
+    allLogs.push(...result.logs);
+    page++;
+  }
+
+  return { logs: allLogs, total };
 }
 
 /**
