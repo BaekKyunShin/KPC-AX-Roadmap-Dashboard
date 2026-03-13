@@ -11,6 +11,12 @@ import { NULL_UUID } from '@/lib/constants/database';
 import { calculateScores } from '@/lib/services/calculate-scores';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
+/** RPC assign_consultant 함수의 반환 타입 */
+interface AssignConsultantResult {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * 프로젝트 생성 (OPS_ADMIN)
  */
@@ -222,23 +228,12 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
     p_assignment_reason: assignment_reason || null,
   });
 
-  if (rpcError || !rpcResult) {
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'PROJECT_ASSIGN',
-      targetType: 'project',
-      targetId: project_id,
-      meta: { consultant_id, reason: assignment_reason },
-      success: false,
-      errorMessage: rpcError?.message || 'RPC 호출 실패',
-    });
-    console.error('[assignConsultant] RPC error:', rpcError?.message);
-    return { success: false, error: '컨설턴트 배정에 실패했습니다.' };
-  }
-
-  const result = rpcResult as { success: boolean; error?: string };
+  const result: AssignConsultantResult = (rpcError || !rpcResult)
+    ? { success: false }
+    : (rpcResult as AssignConsultantResult);
 
   if (!result.success) {
+    const errorDetail = rpcError?.message || result.error || '배정 실패';
     await createAuditLog({
       actorUserId: user.id,
       action: 'PROJECT_ASSIGN',
@@ -246,8 +241,9 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
       targetId: project_id,
       meta: { consultant_id, reason: assignment_reason },
       success: false,
-      errorMessage: result.error || '배정 실패',
+      errorMessage: errorDetail,
     });
+    console.error('[assignConsultant] 에러:', errorDetail);
     return { success: false, error: result.error || '컨설턴트 배정에 실패했습니다.' };
   }
 

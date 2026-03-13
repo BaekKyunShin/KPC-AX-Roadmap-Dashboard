@@ -6,6 +6,8 @@ import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 // SMTP 클라이언트 (Gmail)
 // =============================================================================
 
+const SMTP_TIMEOUT_MS = 10_000;
+
 const transporter =
   process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
     ? nodemailer.createTransport({
@@ -16,8 +18,8 @@ const transporter =
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
-        connectionTimeout: 10_000,
-        socketTimeout: 10_000,
+        connectionTimeout: SMTP_TIMEOUT_MS,
+        socketTimeout: SMTP_TIMEOUT_MS,
       })
     : null;
 
