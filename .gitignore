@@ -28,6 +28,7 @@ test-results/
 *.pem
 .serena/
 .worktrees/
+.mcp.json
 
 # reference files
 /_reference

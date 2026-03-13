@@ -5,7 +5,12 @@ import { ChevronRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import SelfAssessmentForm from './SelfAssessmentForm';
+
 import type { Template } from './self-assessment';
+
+// ======================================================================
+// CollapsibleDirectInput — 운영자 직접 입력 토글 영역
+// ======================================================================
 
 interface CollapsibleDirectInputProps {
   projectId: string;
@@ -18,6 +23,7 @@ export default function CollapsibleDirectInput({
 }: CollapsibleDirectInputProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // ---- 구분선 + 트리거 + 폼 ----
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -32,11 +38,11 @@ export default function CollapsibleDirectInput({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-controls="direct-input-panel"
-        className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-gray-50"
+        className="flex w-full items-start gap-2 px-2 py-1.5 rounded-md text-left transition-colors hover:bg-gray-50"
       >
         <ChevronRight
           className={cn(
-            'mt-0.5 h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200',
+            'h-4 w-4 mt-0.5 shrink-0 text-gray-400 transition-transform duration-200',
             isOpen && 'rotate-90'
           )}
         />
