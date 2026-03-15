@@ -16,7 +16,7 @@ const mockFrom = vi.fn(() => ({ insert: mockInsert }));
 const mockCreateAdminClient = vi.fn(() => ({ from: mockFrom }));
 
 vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: (...args: unknown[]) => mockCreateAdminClient(...args),
+  createAdminClient: () => mockCreateAdminClient(),
 }));
 
 // ─── 테스트 상수 ────────────────────────────────────────────────────────────
