@@ -30,6 +30,8 @@ import { Input } from '@/components/ui/input';
 import { Search, X, Download } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils/toast';
 
+const AUDIT_PAGE_SIZE = 20;
+
 interface AuditLogClientProps {
   initialLogs: AuditLogEntry[];
   initialTotal: number;
@@ -119,7 +121,7 @@ export default function AuditLogClient({
   // 필터 상태 (URL searchParams에서 초기값 읽기)
   const [filters, setFilters] = useState<AuditLogFilters>({
     page: Number(urlSearchParams.get('page')) || 1,
-    limit: 20,
+    limit: AUDIT_PAGE_SIZE,
   });
   const [selectedAction, setSelectedAction] = useState<AuditAction | ''>(
     (urlSearchParams.get('action') as AuditAction) || ''
@@ -217,7 +219,7 @@ export default function AuditLogClient({
     setEndDate('');
     setSearchKeyword('');
     setPage(1);
-    setFilters({ page: 1, limit: 20 });
+    setFilters({ page: 1, limit: AUDIT_PAGE_SIZE });
     router.replace(pathname);
   }
 
@@ -558,7 +560,7 @@ export default function AuditLogClient({
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                {((page - 1) * 20) + 1} - {Math.min(page * 20, total)} / {total}
+                {((page - 1) * AUDIT_PAGE_SIZE) + 1} - {Math.min(page * AUDIT_PAGE_SIZE, total)} / {total}
               </div>
               <div className="flex items-center space-x-2">
                 <button

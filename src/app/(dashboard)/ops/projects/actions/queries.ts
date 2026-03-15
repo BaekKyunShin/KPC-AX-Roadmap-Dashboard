@@ -4,6 +4,11 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { getWorkflowStepIndex, OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 
+/** Supabase 조인 결과가 배열/단일 객체 모두 가능 — 첫 번째 항목 추출 */
+function unwrapJoinResult<T>(value: T | T[]): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
 /**
  * 프로젝트 목록 조회 (OPS_ADMIN) - 페이지네이션 및 검색 지원
  */
@@ -92,13 +97,8 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
     status: p.status,
     created_at: p.created_at,
     contact_email: p.contact_email,
-    // Supabase는 단일 조인을 배열로 반환할 수 있음
-    assigned_consultant: Array.isArray(p.assigned_consultant)
-      ? p.assigned_consultant[0] || null
-      : p.assigned_consultant,
-    created_by_user: Array.isArray(p.created_by_user)
-      ? p.created_by_user[0] || null
-      : p.created_by_user,
+    assigned_consultant: unwrapJoinResult(p.assigned_consultant),
+    created_by_user: unwrapJoinResult(p.created_by_user),
   }));
 
   return {
@@ -257,9 +257,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
       label: '컨설턴트 배정',
       date: assignment?.assigned_at || null,
       detail: assignment?.consultant
-        ? `담당: ${Array.isArray(assignment.consultant)
-            ? (assignment.consultant[0] as { name: string })?.name ?? ''
-            : (assignment.consultant as { name: string }).name}`
+        ? `담당: ${(unwrapJoinResult(assignment.consultant) as { name: string })?.name ?? ''}`
         : undefined,
       isCompleted: currentStepIndex >= 2,
       isCurrent: currentStepIndex + 1 === 2, // DIAGNOSED(1)일 때 current
@@ -296,12 +294,8 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   // 배정 이력 데이터 변환
   const assignments: ProjectAssignmentHistory[] = (allAssignments || []).map((a) => ({
     id: a.id,
-    consultant: Array.isArray(a.consultant)
-      ? (a.consultant[0] as { id: string; name: string; email: string } | null)
-      : (a.consultant as { id: string; name: string; email: string } | null),
-    assigned_by_user: Array.isArray(a.assigned_by_user)
-      ? (a.assigned_by_user[0] as { id: string; name: string } | null)
-      : (a.assigned_by_user as { id: string; name: string } | null),
+    consultant: unwrapJoinResult(a.consultant) as { id: string; name: string; email: string } | null,
+    assigned_by_user: unwrapJoinResult(a.assigned_by_user) as { id: string; name: string } | null,
     assignment_reason: a.assignment_reason,
     is_current: a.is_current,
     assigned_at: a.assigned_at,
@@ -396,9 +390,7 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       created_at: p.created_at,
       updated_at: p.updated_at,
       contact_email: p.contact_email,
-      assigned_consultant: Array.isArray(p.assigned_consultant)
-        ? p.assigned_consultant[0] || null
-        : p.assigned_consultant,
+      assigned_consultant: unwrapJoinResult(p.assigned_consultant),
       days_in_current_status: daysInCurrentStatus,
     };
   });

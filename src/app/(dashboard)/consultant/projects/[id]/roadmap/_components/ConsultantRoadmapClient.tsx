@@ -40,13 +40,10 @@ export default function ConsultantRoadmapClient({
   initialVersions,
   companyName,
 }: ConsultantRoadmapClientProps) {
-  // UI 상태
-  const [isLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
-  // 데이터 상태
   const [versions, setVersions] = useState<RoadmapVersionUI[]>(initialVersions);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
     initialVersions.length > 0 ? initialVersions[0] : null
@@ -54,7 +51,6 @@ export default function ConsultantRoadmapClient({
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
 
-  // 편집 모드 상태
   const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
   const [editingCourseContext, setEditingCourseContext] = useState<{
     type: 'matrix' | 'courses';
@@ -63,10 +59,8 @@ export default function ConsultantRoadmapClient({
     courseIndex?: number;
   } | null>(null);
 
-  // 다운로드 훅
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
 
-  // 로드맵 생성
   const handleGenerate = async () => {
     setIsGenerating(true);
     setIsGenerationComplete(false);
@@ -185,14 +179,12 @@ export default function ConsultantRoadmapClient({
     setEditingCourseContext(null);
   };
 
-  // PDF 다운로드
   const handleDownloadPDF = () => {
     if (selectedVersion) {
       downloadPDF(selectedVersion.id);
     }
   };
 
-  // XLSX 다운로드
   const handleDownloadXLSX = () => {
     if (selectedVersion) {
       downloadXLSX(selectedVersion.id);
@@ -207,10 +199,6 @@ export default function ConsultantRoadmapClient({
     setIsGenerationComplete(false);
     await cancelRoadmapGeneration();
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <>

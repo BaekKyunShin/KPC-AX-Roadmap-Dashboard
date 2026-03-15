@@ -23,16 +23,14 @@ interface OpsRoadmapClientProps {
 }
 
 export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoadmapClientProps) {
-  const [versions] = useState<RoadmapVersionUI[]>(initialVersions);
+  const versions = initialVersions;
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
     initialVersions.length > 0 ? initialVersions[0] : null
   );
   const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
 
-  // 다운로드 훅
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
 
-  // 버전 선택
   async function handleVersionSelect(versionId: string) {
     try {
       const version = await fetchRoadmapVersionForOps(versionId);
@@ -44,14 +42,12 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
     }
   }
 
-  // PDF 다운로드
   const handleDownloadPDF = () => {
     if (selectedVersion) {
       downloadPDF(selectedVersion.id);
     }
   };
 
-  // XLSX 다운로드
   const handleDownloadXLSX = () => {
     if (selectedVersion) {
       downloadXLSX(selectedVersion.id);
