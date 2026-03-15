@@ -144,7 +144,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return null;
 
-  // 프로젝트 기본 정보
+  // 1. 프로젝트 기본 정보 (선행 필수 — 존재하지 않으면 조기 반환)
   const { data: project, error: projectError } = await auth.supabase
     .from('projects')
     .select('id, company_name, status, created_at')
@@ -156,75 +156,75 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     return null;
   }
 
-  // 자가진단 정보
-  const { data: selfAssessment } = await auth.supabase
-    .from('self_assessments')
-    .select('created_at, scores')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+  // 2. 나머지 6개 독립 쿼리를 병렬 실행 (8번 DB 왕복 → 2번으로 최적화)
+  const [
+    { data: selfAssessment },
+    { data: matchingRecommendation },
+    { data: allAssignments },
+    { data: interview },
+    { data: roadmapDraft },
+    { data: roadmapFinal },
+  ] = await Promise.all([
+    // 자가진단 정보
+    auth.supabase
+      .from('self_assessments')
+      .select('created_at, scores')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+    // 매칭 추천 정보
+    auth.supabase
+      .from('matching_recommendations')
+      .select('created_at')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+    // 전체 배정 이력 (타임라인 상세 + 현재 배정 정보 모두 포함)
+    auth.supabase
+      .from('project_assignments')
+      .select(`
+        id,
+        assignment_reason,
+        is_current,
+        assigned_at,
+        unassigned_at,
+        unassignment_reason,
+        consultant:users!project_assignments_consultant_id_fkey(id, name, email),
+        assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
+      `)
+      .eq('project_id', projectId)
+      .order('assigned_at', { ascending: false }),
+    // 인터뷰 정보
+    auth.supabase
+      .from('interviews')
+      .select('created_at, interview_date')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+    // 로드맵 초안 정보
+    auth.supabase
+      .from('roadmap_versions')
+      .select('created_at, version_number')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+    // 최종 확정 로드맵 정보
+    auth.supabase
+      .from('roadmap_versions')
+      .select('finalized_at')
+      .eq('project_id', projectId)
+      .eq('status', 'FINAL')
+      .order('finalized_at', { ascending: false })
+      .limit(1)
+      .single(),
+  ]);
 
-  // 매칭 추천 정보
-  const { data: matchingRecommendation } = await auth.supabase
-    .from('matching_recommendations')
-    .select('created_at')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  // 현재 배정 정보 (타임라인 단계용)
-  const { data: assignment } = await auth.supabase
-    .from('project_assignments')
-    .select('assigned_at, consultant:users!project_assignments_consultant_id_fkey(name)')
-    .eq('project_id', projectId)
-    .eq('is_current', true)
-    .single();
-
-  // 전체 배정 이력 (타임라인 상세 표시용)
-  const { data: allAssignments } = await auth.supabase
-    .from('project_assignments')
-    .select(`
-      id,
-      assignment_reason,
-      is_current,
-      assigned_at,
-      unassigned_at,
-      unassignment_reason,
-      consultant:users!project_assignments_consultant_id_fkey(id, name, email),
-      assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
-    `)
-    .eq('project_id', projectId)
-    .order('assigned_at', { ascending: false });
-
-  // 인터뷰 정보
-  const { data: interview } = await auth.supabase
-    .from('interviews')
-    .select('created_at, interview_date')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  // 로드맵 정보
-  const { data: roadmapDraft } = await auth.supabase
-    .from('roadmap_versions')
-    .select('created_at, version_number')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  // 최종 확정 로드맵 정보
-  const { data: roadmapFinal } = await auth.supabase
-    .from('roadmap_versions')
-    .select('finalized_at')
-    .eq('project_id', projectId)
-    .eq('status', 'FINAL')
-    .order('finalized_at', { ascending: false })
-    .limit(1)
-    .single();
+  // 현재 배정 정보를 allAssignments에서 추출 (별도 쿼리 제거)
+  const assignment = allAssignments?.find((a) => a.is_current) ?? null;
 
   // 워크플로우 단계 인덱스 (DIAGNOSED와 MATCH_RECOMMENDED는 같은 단계)
   const currentStepIndex = getWorkflowStepIndex(project.status);
