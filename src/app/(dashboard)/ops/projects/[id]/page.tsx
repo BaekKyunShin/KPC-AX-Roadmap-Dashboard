@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import CollapsibleDirectInput from '@/components/ops/CollapsibleDirectInput';
 import AssessmentTokenSection from '@/components/ops/AssessmentTokenSection';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
@@ -17,26 +18,15 @@ import ProjectTimeline from '../_components/ProjectTimeline';
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const user = await getCachedUser();
+  if (!user) redirect('/login');
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  // 현재 사용자 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+  const profile = await getCachedProfile();
+  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
     redirect('/dashboard');
   }
+
+  const supabase = await createClient();
 
   // 프로젝트 조회
   const { data: projectData } = await supabase

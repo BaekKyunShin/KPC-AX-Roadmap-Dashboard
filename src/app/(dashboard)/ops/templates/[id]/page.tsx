@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { TemplateFormSkeleton } from '@/components/ui/Skeleton';
 import TemplatePreview from '../_components/TemplatePreview';
@@ -16,26 +17,15 @@ interface PageProps {
 
 export default async function TemplateDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const user = await getCachedUser();
+  if (!user) redirect('/login');
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  // 현재 사용자 역할 확인
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+  const profile = await getCachedProfile();
+  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
     redirect('/dashboard');
   }
+
+  const supabase = await createClient();
 
   // 템플릿 조회
   const { data: template, error } = await supabase

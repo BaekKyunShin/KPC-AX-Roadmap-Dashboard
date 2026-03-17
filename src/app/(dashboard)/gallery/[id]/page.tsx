@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { Factory, Building2, User } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
@@ -14,26 +14,11 @@ interface GalleryDetailPageProps {
 
 export default async function GalleryDetailPage({ params }: GalleryDetailPageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const user = await getCachedUser();
+  if (!user) redirect('/login');
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  // 역할 확인
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) {
-    redirect('/login');
-  }
+  const profile = await getCachedProfile();
+  if (!profile) redirect('/login');
 
   const result = await fetchRoadmapDetail(id);
 
