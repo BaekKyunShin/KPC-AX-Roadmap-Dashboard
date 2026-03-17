@@ -25,6 +25,7 @@ import {
   sendMessage,
   markConversationRead,
 } from './actions';
+import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -51,62 +52,6 @@ vi.mock('@/lib/services/email', () => ({
 const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const OTHER_USER_ID = '550e8400-e29b-41d4-a716-446655440002';
 const CONV_ID = '550e8400-e29b-41d4-a716-446655440010';
-
-// ─── 큐 기반 Supabase 모킹 ────────────────────────────────────────────────
-
-function createMockSupabase() {
-  const results: Array<{ data: unknown; error: unknown; count?: number | null }> = [];
-  let resultIndex = 0;
-
-  function nextResult() {
-    if (resultIndex < results.length) {
-      const r = results[resultIndex++];
-      return { data: r.data, error: r.error, count: r.count ?? null };
-    }
-    return { data: null, error: null, count: null };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chainable: Record<string, any> = {};
-
-  for (const method of [
-    'select', 'eq', 'neq', 'in', 'order', 'limit', 'lt', 'gt',
-    'insert', 'update', 'delete',
-  ]) {
-    chainable[method] = vi.fn(() => chainable);
-  }
-
-  chainable.single = vi.fn(() => nextResult());
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chainable.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
-    return Promise.resolve(nextResult()).then(resolve, reject);
-  };
-
-  const rpcResults: Array<{ data: unknown; error: unknown }> = [];
-  let rpcIndex = 0;
-
-  const client = {
-    from: vi.fn(() => chainable),
-    rpc: vi.fn(() => {
-      if (rpcIndex < rpcResults.length) {
-        return Promise.resolve(rpcResults[rpcIndex++]);
-      }
-      return Promise.resolve({ data: null, error: null });
-    }),
-  };
-
-  return {
-    client,
-    chainable,
-    addResult: (result: { data: unknown; error: unknown; count?: number | null }) => {
-      results.push(result);
-    },
-    addRpcResult: (result: { data: unknown; error: unknown }) => {
-      rpcResults.push(result);
-    },
-  };
-}
 
 // ─── 공통 헬퍼 ──────────────────────────────────────────────────────────────
 

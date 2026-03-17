@@ -9,7 +9,15 @@ export const TEST_ACCOUNTS = {
     email: process.env.E2E_CONSULTANT_EMAIL!,
     password: process.env.E2E_CONSULTANT_PASSWORD!,
   },
+  systemAdmin: {
+    email: process.env.E2E_SYSTEM_ADMIN_EMAIL ?? '',
+    password: process.env.E2E_SYSTEM_ADMIN_PASSWORD ?? '',
+  },
 };
+
+/** SYSTEM_ADMIN 테스트 계정이 설정되어 있는지 확인 */
+export const HAS_SYSTEM_ADMIN =
+  !!process.env.E2E_SYSTEM_ADMIN_EMAIL && !!process.env.E2E_SYSTEM_ADMIN_PASSWORD;
 
 /** 자주 사용하는 테스트 URL */
 export const URLS = {

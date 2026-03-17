@@ -9,7 +9,7 @@
 | 보안 (security-auditor) | 0 | 3 | 6 | 양호 |
 | 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
 | 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | ~~4~~ ✅ | 전체 해결 완료 |
-| 테스트 (test-automator) | 4 | 8 | 5 | 개선 시급 |
+| 테스트 (test-automator) | ~~4~~ ✅ | ~~8~~ ✅ | 5 | P0/P1 전체 해결 완료 |
 | **합계** | **8** | **20** | **22** | — |
 
 ---
@@ -161,7 +161,8 @@
 ## 4. 테스트 (test-automator)
 
 점검 시점: 55개 테스트 파일, 994개 테스트 전부 통과. 커버리지 15.8%.
-**해결 후 (2026-03-15):** 58개 테스트 파일, 1028개 테스트 전부 통과.
+**P0 해결 후 (2026-03-15):** 58개 테스트 파일, 1028개 테스트 전부 통과.
+**P1 해결 후 (2026-03-17):** 65개 테스트 파일, 1128개 테스트 전부 통과. +100개 테스트, +7개 파일.
 
 ### P0 발견사항
 
@@ -187,16 +188,44 @@
 
 ### P1 발견사항
 
-| ID | 설명 | 권장 조치 |
-|----|------|----------|
-| P1-TEST-01 | createMockClient 패턴 중앙화 필요 — 테스트 파일마다 재정의 | `__tests__/helpers/mock-supabase.ts` 공유 헬퍼 생성 |
-| P1-TEST-02 | consultant/projects/actions.ts 부분 테스트만 존재 | 누락 액션 테스트 추가 |
-| P1-TEST-03 | ops/projects/actions.ts 일부 액션 미테스트 | 누락 액션 테스트 추가 |
-| P1-TEST-04 | E2E 역할별 시나리오 갭 — OPS_ADMIN 플로우만 존재 | SYSTEM_ADMIN, 다중 역할 전환 시나리오 추가 |
-| P1-TEST-05 | Zod 스키마 테스트 불균일 — 일부 스키마만 테스트 존재 | 전체 스키마 경계값 테스트 추가 |
-| P1-TEST-06 | 로드맵 내보내기(PDF/XLSX) 단위 테스트 없음 | 내보내기 로직 단위 테스트 추가 |
-| P1-TEST-07 | 메시지 기능 테스트 없음 | 메시지 CRUD + Realtime 테스트 추가 |
-| P1-TEST-08 | email.ts 테스트 없음 | SMTP 모킹 기반 이메일 발송 테스트 |
+#### ~~P1-TEST-01: createMockClient 패턴 중앙화~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — `src/test/helpers/mock-supabase.ts` 공유 헬퍼 생성, 8개 테스트 파일 마이그레이션
+- **파일:** `src/test/helpers/mock-supabase.ts` (신규), 8개 기존 테스트 파일 수정
+
+#### ~~P1-TEST-02: consultant/projects/actions 테스트 보완~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 32개 테스트 추가 (7개 신규 파일 + 25개 기존 확장)
+- **파일:** `consultant/projects/actions.test.ts` (신규, 7개), `consultant/projects/[id]/roadmap/actions.test.ts` (확장, 25개)
+
+#### ~~P1-TEST-03: ops/projects/actions 테스트 보완~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 31개 테스트 추가 (3개 신규 파일 + 1개 확장)
+- **파일:** `ops/projects/actions/filters.test.ts` (13개), `ops/projects/actions/assessment-token.test.ts` (10개), `ops/projects/[id]/roadmap/actions.test.ts` (6개), `ops/projects/actions.test.ts` (확장, 3개)
+
+#### ~~P1-TEST-04: E2E 역할별 시나리오 확장~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — SYSTEM_ADMIN E2E 인프라 구축 + 스펙 2개 추가 (6개 케이스)
+- **파일:** `e2e/system-admin/admin-access.spec.ts`, `e2e/system-admin/admin-approval.spec.ts`, `e2e/fixtures/auth.fixture.ts`, `e2e/fixtures/test-data.ts`, `e2e/global-setup.ts`
+- **참고:** `.env.test`에 `E2E_SYSTEM_ADMIN_EMAIL/PASSWORD` 미설정 시 자동 skip
+
+#### ~~P1-TEST-05: Zod 스키마 경계값 테스트~~ ✅ 해결 (기존)
+
+- [x] **확인 완료** (2026-03-17) — 12/12 스키마 전체 테스트 존재 확인
+
+#### ~~P1-TEST-06: 로드맵 내보내기 단위 테스트~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 22개 테스트 추가 (3개 신규 파일)
+- **파일:** `export/pdf/pdf-generator.test.ts` (7개), `export/xlsx/xlsx-generator.test.ts` (4개), `lib/actions/roadmap-export.test.ts` (11개)
+
+#### ~~P1-TEST-07: 메시지 기능 테스트~~ ✅ 해결 (기존)
+
+- [x] **확인 완료** (2026-03-17) — 7/7 함수 100% 테스트됨 (35개 케이스)
+
+#### ~~P1-TEST-08: email.ts 테스트~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 13개 테스트 추가 (기존 파일 확장)
+- **파일:** `src/lib/services/email.test.ts` (기존 7개 + 13개 = 20개)
 
 ### P2 발견사항
 
@@ -241,14 +270,14 @@
 | P1-PERF-02 | 성능 | ops/projects/[id] getCachedUser 전환 | 낮음 | 낮음 | ✅ 해결 |
 | P1-PERF-03 | 성능 | email.ts 순차 쿼리 병렬화 | 낮음 | 낮음 | ✅ 해결 |
 | P1-PERF-04 | 성능 | GSAP+Lenis 정적 import 개선 | 낮음 | 낮음 | ✅ 해결 |
-| P1-TEST-01 | 테스트 | createMockClient 중앙화 | 낮음 | 중간 |
-| P1-TEST-02 | 테스트 | consultant/projects/actions 테스트 보완 | 중간 | 중간 |
-| P1-TEST-03 | 테스트 | ops/projects/actions 테스트 보완 | 중간 | 중간 |
-| P1-TEST-04 | 테스트 | E2E 역할별 시나리오 확장 | 높음 | 중간 |
-| P1-TEST-05 | 테스트 | Zod 스키마 경계값 테스트 보완 | 중간 | 중간 |
-| P1-TEST-06 | 테스트 | 로드맵 내보내기 단위 테스트 | 중간 | 중간 |
-| P1-TEST-07 | 테스트 | 메시지 기능 테스트 추가 | 중간 | 중간 |
-| P1-TEST-08 | 테스트 | email.ts 테스트 추가 | 낮음 | 낮음 |
+| P1-TEST-01 | 테스트 | createMockClient 중앙화 | 낮음 | 중간 | ✅ 해결 |
+| P1-TEST-02 | 테스트 | consultant/projects/actions 테스트 보완 | 중간 | 중간 | ✅ 해결 |
+| P1-TEST-03 | 테스트 | ops/projects/actions 테스트 보완 | 중간 | 중간 | ✅ 해결 |
+| P1-TEST-04 | 테스트 | E2E 역할별 시나리오 확장 | 높음 | 중간 | ✅ 해결 |
+| P1-TEST-05 | 테스트 | Zod 스키마 경계값 테스트 보완 | 중간 | 중간 | ✅ 해결 |
+| P1-TEST-06 | 테스트 | 로드맵 내보내기 단위 테스트 | 중간 | 중간 | ✅ 해결 |
+| P1-TEST-07 | 테스트 | 메시지 기능 테스트 추가 | 중간 | 중간 | ✅ 해결 |
+| P1-TEST-08 | 테스트 | email.ts 테스트 추가 | 낮음 | 낮음 | ✅ 해결 |
 
 ### P2 — 중기 조치 (22건)
 

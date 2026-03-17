@@ -21,6 +21,7 @@ import {
 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -53,19 +54,21 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
-const pendingAfterCallbacks: Promise<unknown>[] = [];
-vi.mock('next/server', () => ({
-  after: vi.fn((fn: () => void | Promise<unknown>) => {
+const { pendingCallbacks: pendingAfterCallbacks, flush: flushAfterCallbacks, mockAfter } = vi.hoisted(() => {
+  const pendingCallbacks: Promise<unknown>[] = [];
+  const mockAfter = vi.fn((fn: () => void | Promise<unknown>) => {
     const result = fn();
     if (result && typeof (result as Promise<unknown>).then === 'function') {
-      pendingAfterCallbacks.push(result as Promise<unknown>);
+      pendingCallbacks.push(result as Promise<unknown>);
     }
-  }),
-}));
-async function flushAfterCallbacks() {
-  await Promise.all(pendingAfterCallbacks);
-  pendingAfterCallbacks.length = 0;
-}
+  });
+  async function flush() {
+    await Promise.all(pendingCallbacks);
+    pendingCallbacks.length = 0;
+  }
+  return { pendingCallbacks, flush, mockAfter };
+});
+vi.mock('next/server', () => ({ after: mockAfter }));
 
 // after() 콜백 추적 배열을 테스트 간에 정리하여 격리 보장
 afterEach(() => {
@@ -78,60 +81,6 @@ const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';
 const USER_B_ID = '550e8400-e29b-41d4-a716-446655440002';
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
 
-/**
- * Supabase 체인 모킹 팩토리
- */
-function createMockClient(options?: { authUser?: { id: string } | null }) {
-  const results: Array<{ data: unknown; error: unknown; count?: number | null }> = [];
-  let resultIndex = 0;
-
-  function nextResult() {
-    if (resultIndex < results.length) {
-      const r = results[resultIndex++];
-      return { data: r.data, error: r.error, count: r.count ?? null };
-    }
-    return { data: null, error: null, count: null };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chainable: Record<string, any> = {};
-
-  for (const method of [
-    'select', 'eq', 'neq', 'in', 'not', 'or', 'gte', 'lte',
-    'ilike', 'order', 'range', 'limit',
-  ]) {
-    chainable[method] = vi.fn(() => chainable);
-  }
-
-  chainable.insert = vi.fn(() => chainable);
-  chainable.update = vi.fn(() => chainable);
-  chainable.delete = vi.fn(() => chainable);
-  chainable.single = vi.fn(() => nextResult());
-  chainable.maybeSingle = vi.fn(() => nextResult());
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chainable.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
-    return Promise.resolve(nextResult()).then(resolve, reject);
-  };
-
-  const mockClient = {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({
-        data: { user: options?.authUser ?? null },
-        error: null,
-      }),
-    },
-    from: vi.fn(() => chainable),
-  };
-
-  return {
-    mockClient,
-    chainable,
-    addResult: (result: { data: unknown; error: unknown; count?: number | null }) => {
-      results.push(result);
-    },
-  };
-}
 
 /** 유효한 인터뷰 데이터 (수동 저장용 엄격한 스키마) */
 function validInterviewData() {
@@ -164,8 +113,8 @@ function minimalAutoSaveData() {
 
 /** 자동저장 최초 insert 시나리오 공통 mock 설정 */
 function setupAutoSaveFirstInsertMocks(
-  serverMock: ReturnType<typeof createMockClient>,
-  adminMock: ReturnType<typeof createMockClient>,
+  serverMock: ReturnType<typeof createMockSupabase>,
+  adminMock: ReturnType<typeof createMockSupabase>,
 ) {
   serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
   serverMock.addResult({
@@ -181,14 +130,14 @@ function setupAutoSaveFirstInsertMocks(
 // ─── saveInterview ──────────────────────────────────────────────────────────
 
 describe('saveInterview', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: USER_A_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -196,8 +145,8 @@ describe('saveInterview', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await saveInterview(PROJECT_ID, validInterviewData());
 
@@ -269,7 +218,7 @@ describe('saveInterview', () => {
     await saveInterview(PROJECT_ID, minimalAutoSaveData(), { autoSave: true });
 
     // admin client의 from('projects') 호출이 없어야 함 (상태 전환 스킵)
-    const fromCalls = adminMock.mockClient.from.mock.calls as string[][];
+    const fromCalls = adminMock.client.from.mock.calls as string[][];
     const projectUpdateCalls = fromCalls.filter(
       (call) => call[0] === 'projects',
     );
@@ -373,7 +322,7 @@ describe('saveInterview', () => {
 
     expect(result).toEqual({ success: true });
     // 프로젝트 상태가 INTERVIEWED로 전환되어야 함
-    const fromCalls = adminMock.mockClient.from.mock.calls as string[][];
+    const fromCalls = adminMock.client.from.mock.calls as string[][];
     const projectUpdateCalls = fromCalls.filter((call) => call[0] === 'projects');
     expect(projectUpdateCalls.length).toBeGreaterThanOrEqual(1);
     // 알림도 발송되어야 함
@@ -434,11 +383,11 @@ describe('saveInterview', () => {
 // ─── fetchInterview ─────────────────────────────────────────────────────────
 
 describe('fetchInterview', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: USER_A_ID } });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
   });
 
   afterEach(() => {
@@ -446,8 +395,8 @@ describe('fetchInterview', () => {
   });
 
   it('인증되지 않은 사용자 → null 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await fetchInterview(PROJECT_ID);
 
@@ -506,14 +455,14 @@ describe('fetchInterview', () => {
 // ─── processSttFile ─────────────────────────────────────────────────────────
 
 describe('processSttFile', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: USER_A_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -521,8 +470,8 @@ describe('processSttFile', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await processSttFile(PROJECT_ID, '텍스트');
 
@@ -622,14 +571,14 @@ describe('processSttFile', () => {
 // ─── deleteSttInsights ──────────────────────────────────────────────────────
 
 describe('deleteSttInsights', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: USER_A_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -637,8 +586,8 @@ describe('deleteSttInsights', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await deleteSttInsights(PROJECT_ID);
 

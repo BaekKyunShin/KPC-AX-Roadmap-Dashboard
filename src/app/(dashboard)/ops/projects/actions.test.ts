@@ -23,9 +23,11 @@ import {
   fetchConsultantProgress,
   fetchProjects,
   fetchProjectsWithTimeline,
+  fetchMonthlyCompletions,
 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -51,19 +53,21 @@ vi.mock('next/cache', () => ({
   unstable_cache: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
 }));
 
-const pendingAfterCallbacks: Promise<unknown>[] = [];
-vi.mock('next/server', () => ({
-  after: vi.fn((fn: () => void | Promise<unknown>) => {
+const { pendingCallbacks: pendingAfterCallbacks, flush: flushAfterCallbacks, mockAfter } = vi.hoisted(() => {
+  const callbacks: Promise<unknown>[] = [];
+  const mock = vi.fn((fn: () => void | Promise<unknown>) => {
     const result = fn();
     if (result && typeof (result as Promise<unknown>).then === 'function') {
-      pendingAfterCallbacks.push(result as Promise<unknown>);
+      callbacks.push(result as Promise<unknown>);
     }
-  }),
-}));
-async function flushAfterCallbacks() {
-  await Promise.all(pendingAfterCallbacks);
-  pendingAfterCallbacks.length = 0;
-}
+  });
+  return {
+    pendingCallbacks: callbacks,
+    flush: async () => { await Promise.all(callbacks); callbacks.length = 0; },
+    mockAfter: mock,
+  };
+});
+vi.mock('next/server', () => ({ after: mockAfter }));
 
 // after() 콜백 추적 배열을 테스트 간에 정리하여 격리 보장
 afterEach(() => {
@@ -77,62 +81,6 @@ const TEST_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440002';
 const TEST_CONSULTANT_ID = '550e8400-e29b-41d4-a716-446655440003';
 const TEST_TEMPLATE_ID = '550e8400-e29b-41d4-a716-446655440004';
 
-/**
- * Supabase 체인 모킹 팩토리
- * - 큐 기반: addResult()로 순서대로 결과 추가, single()/thenable에서 순서대로 소비
- * - auth 지원: authUser 옵션으로 getUser() 결과 설정
- */
-function createMockClient(options?: { authUser?: { id: string } | null }) {
-  const results: Array<{ data: unknown; error: unknown; count?: number | null }> = [];
-  let resultIndex = 0;
-
-  function nextResult() {
-    if (resultIndex < results.length) {
-      const r = results[resultIndex++];
-      return { data: r.data, error: r.error, count: r.count ?? null };
-    }
-    return { data: null, error: null, count: null };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chainable: Record<string, any> = {};
-
-  for (const method of [
-    'select', 'eq', 'neq', 'in', 'not', 'or', 'gte', 'lte',
-    'ilike', 'order', 'range', 'limit',
-  ]) {
-    chainable[method] = vi.fn(() => chainable);
-  }
-
-  chainable.insert = vi.fn(() => chainable);
-  chainable.update = vi.fn(() => chainable);
-  chainable.single = vi.fn(() => nextResult());
-
-  // thenable for await without .single() (e.g., insert/update/select chains)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chainable.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
-    return Promise.resolve(nextResult()).then(resolve, reject);
-  };
-
-  const mockClient = {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({
-        data: { user: options?.authUser ?? null },
-        error: null,
-      }),
-    },
-    from: vi.fn(() => chainable),
-    rpc: vi.fn(() => nextResult()),
-  };
-
-  return {
-    mockClient,
-    chainable,
-    addResult: (result: { data: unknown; error: unknown; count?: number | null }) => {
-      results.push(result);
-    },
-  };
-}
 
 /** FormData 편의 생성기 */
 function makeFormData(entries: Record<string, string>): FormData {
@@ -178,14 +126,14 @@ function validSelfAssessmentFormData(): FormData {
 // ─── createProject ──────────────────────────────────────────────────────────
 
 describe('createProject', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -193,8 +141,8 @@ describe('createProject', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await createProject(validProjectFormData());
 
@@ -300,14 +248,14 @@ describe('createProject', () => {
 // ─── assignConsultant ───────────────────────────────────────────────────────
 
 describe('assignConsultant', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -315,8 +263,8 @@ describe('assignConsultant', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await assignConsultant(validAssignFormData());
 
@@ -352,7 +300,7 @@ describe('assignConsultant', () => {
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // RPC 성공
-    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+    vi.mocked(adminMock.client.rpc).mockReturnValueOnce(
       { data: { success: true }, error: null } as never,
     );
     // after() 콜백: 프로젝트 company_name 조회
@@ -362,7 +310,7 @@ describe('assignConsultant', () => {
     await flushAfterCallbacks();
 
     expect(result).toEqual({ success: true });
-    expect(adminMock.mockClient.rpc).toHaveBeenCalledWith('assign_consultant', expect.objectContaining({
+    expect(adminMock.client.rpc).toHaveBeenCalledWith('assign_consultant', expect.objectContaining({
       p_project_id: TEST_PROJECT_ID,
       p_consultant_id: TEST_CONSULTANT_ID,
     }));
@@ -391,7 +339,7 @@ describe('assignConsultant', () => {
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // RPC가 비즈니스 에러 반환
-    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+    vi.mocked(adminMock.client.rpc).mockReturnValueOnce(
       { data: { success: false, error: `현재 프로젝트 상태(${status})에서는 컨설턴트를 배정할 수 없습니다.` }, error: null } as never,
     );
 
@@ -415,7 +363,7 @@ describe('assignConsultant', () => {
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
     // RPC 에러
-    vi.mocked(adminMock.mockClient.rpc).mockReturnValueOnce(
+    vi.mocked(adminMock.client.rpc).mockReturnValueOnce(
       { data: null, error: { message: 'fk_violation' } } as never,
     );
 
@@ -436,14 +384,14 @@ describe('assignConsultant', () => {
 // ─── createSelfAssessment ───────────────────────────────────────────────────
 
 describe('createSelfAssessment', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
-    adminMock = createMockClient();
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -451,8 +399,8 @@ describe('createSelfAssessment', () => {
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
-    serverMock = createMockClient({ authUser: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
     const result = await createSelfAssessment(validSelfAssessmentFormData());
 
@@ -603,12 +551,12 @@ describe('createSelfAssessment', () => {
 // ─── fetchProjectStats ──────────────────────────────────────────────────────
 
 describe('fetchProjectStats', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
   });
 
   afterEach(() => {
@@ -661,12 +609,12 @@ describe('fetchProjectStats', () => {
 // ─── fetchStalledProjects ───────────────────────────────────────────────────
 
 describe('fetchStalledProjects', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
   });
 
   afterEach(() => {
@@ -783,17 +731,17 @@ describe('fetchStalledProjects', () => {
 // ─── fetchConsultantProgress ────────────────────────────────────────────────
 
 describe('fetchConsultantProgress', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
-  let adminMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
     // requireAuthWithRole 내부에서 createClient → getUser → role 조회
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
-    adminMock = createMockClient();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.mockClient as never);
+    adminMock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
   });
 
   afterEach(() => {
@@ -908,12 +856,12 @@ describe('fetchConsultantProgress', () => {
 // ─── fetchProjects ──────────────────────────────────────────────────────────
 
 describe('fetchProjects', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
   });
 
   afterEach(() => {
@@ -1023,12 +971,12 @@ describe('fetchProjects', () => {
 // ─── fetchProjectsWithTimeline ──────────────────────────────────────────────
 
 describe('fetchProjectsWithTimeline', () => {
-  let serverMock: ReturnType<typeof createMockClient>;
+  let serverMock: ReturnType<typeof createMockSupabase>;
 
   beforeEach(() => {
-    serverMock = createMockClient({ authUser: { id: TEST_USER_ID } });
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
-    vi.mocked(createClient).mockResolvedValue(serverMock.mockClient as never);
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
   });
 
   afterEach(() => {
@@ -1084,6 +1032,70 @@ describe('fetchProjectsWithTimeline', () => {
     const result = await fetchProjectsWithTimeline();
 
     expect(result).toEqual({ projects: [], total: 0, totalPages: 0, page: 1 });
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── fetchMonthlyCompletions ─────────────────────────────────────────────────
+
+describe('fetchMonthlyCompletions', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('인증 실패 → 빈 배열 반환', async () => {
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+
+    const result = await fetchMonthlyCompletions();
+
+    expect(result).toEqual([]);
+  });
+
+  it('정상 반환 — 6개월 데이터 (월별 집계)', async () => {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // 이번 달에 2건의 FINAL 로드맵
+    serverMock.addResult({
+      data: [
+        { finalized_at: new Date(now.getFullYear(), now.getMonth(), 5).toISOString() },
+        { finalized_at: new Date(now.getFullYear(), now.getMonth(), 15).toISOString() },
+      ],
+      error: null,
+    });
+
+    const result = await fetchMonthlyCompletions();
+
+    // 항상 6개월 분량 반환
+    expect(result).toHaveLength(6);
+    // 각 항목에 month, label, count 존재
+    for (const item of result) {
+      expect(item).toHaveProperty('month');
+      expect(item).toHaveProperty('label');
+      expect(item).toHaveProperty('count');
+    }
+    // 이번 달 데이터 확인
+    const currentMonthData = result.find((r) => r.month === currentMonth);
+    expect(currentMonthData?.count).toBe(2);
+  });
+
+  it('DB 에러 → 빈 배열', async () => {
+    serverMock.addResult({ data: null, error: { message: 'DB error' } });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await fetchMonthlyCompletions();
+
+    expect(result).toEqual([]);
+    expect(consoleSpy).toHaveBeenCalledWith('[fetchMonthlyCompletions Error]', expect.anything());
     consoleSpy.mockRestore();
   });
 });

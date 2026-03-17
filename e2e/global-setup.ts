@@ -1,6 +1,6 @@
 // e2e/global-setup.ts
 import { chromium } from '@playwright/test';
-import { TEST_ACCOUNTS } from './fixtures/test-data';
+import { TEST_ACCOUNTS, HAS_SYSTEM_ADMIN } from './fixtures/test-data';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,6 +9,10 @@ const AUTH_DIR = path.join(process.cwd(), '.auth');
 const ACCOUNTS = [
   { file: path.join(AUTH_DIR, 'ops-admin.json'), ...TEST_ACCOUNTS.opsAdmin },
   { file: path.join(AUTH_DIR, 'consultant.json'), ...TEST_ACCOUNTS.consultant },
+  // SYSTEM_ADMIN은 환경변수 설정 시에만 포함
+  ...(HAS_SYSTEM_ADMIN
+    ? [{ file: path.join(AUTH_DIR, 'system-admin.json'), ...TEST_ACCOUNTS.systemAdmin }]
+    : []),
 ];
 
 async function globalSetup() {
