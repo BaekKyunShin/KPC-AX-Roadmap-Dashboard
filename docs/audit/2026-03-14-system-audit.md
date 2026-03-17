@@ -8,7 +8,7 @@
 |------|----|----|-----|------|
 | 보안 (security-auditor) | 0 | 3 | 6 | 양호 |
 | 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
-| 성능 (performance-engineer) | 2 | 4 | 4 | 개선 필요 |
+| 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | 4 | P0·P1 해결 완료 |
 | 테스트 (test-automator) | 4 | 8 | 5 | 개선 시급 |
 | **합계** | **8** | **20** | **22** | — |
 
@@ -105,12 +105,25 @@
 
 ### P1 발견사항
 
-| ID | 설명 | 권장 조치 |
-|----|------|----------|
-| P1-PERF-01 | 인터뷰 페이지 전체 'use client' (550줄) | SC/CC 분리 |
-| P1-PERF-02 | ops/projects/[id] 인증 쿼리 중복 — getCachedUser/getCachedProfile 미사용 | 캐시 함수 사용으로 전환 |
-| P1-PERF-03 | email.ts `notifyRecipientByEmail` 순차 쿼리 4개 — 2~4번 병렬화 가능 | Promise.all 적용 |
-| P1-PERF-04 | GSAP+Lenis 6개 파일 정적 import — 랜딩 페이지 JS 번들 ~75KB 절감 가능 | 훅 통합 또는 동적 import |
+#### ~~P1-PERF-01: 인터뷰 페이지 전체 'use client' (550줄)~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — page.tsx를 SC로 전환, `_components/InterviewClient.tsx`로 분리, 초기 데이터 서버 프리페치
+- **파일:** `src/app/(dashboard)/consultant/projects/[id]/interview/page.tsx`, `_components/InterviewClient.tsx`
+
+#### ~~P1-PERF-02: ops/projects/[id] 인증 쿼리 중복~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 3개 페이지의 직접 인증 쿼리를 getCachedUser/getCachedProfile로 전환
+- **파일:** `ops/projects/[id]/page.tsx`, `ops/templates/[id]/page.tsx`, `gallery/[id]/page.tsx`
+
+#### ~~P1-PERF-03: email.ts 순차 쿼리 병렬화~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 발신자 이름 + 수신자 이메일 조회를 Promise.all로 병렬화 (DB 왕복 4→3회)
+- **파일:** `src/lib/services/email.ts`
+
+#### ~~P1-PERF-04: GSAP+Lenis 정적 import 개선~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 6개 파일 동적 import 전환 + dead code(useScrollAnimation.ts) 삭제
+- **파일:** `SmoothScroll.tsx`, `HeroSection.tsx`, `FeaturesSection.tsx`, `WorkflowSection.tsx`, `DemoSection.tsx`, `FooterSection.tsx`
 
 ### P2 발견사항
 
@@ -211,10 +224,10 @@
 | P1-DB-03 | DB | is_approved_consultant() 최적화 | 중간 | 중간 |
 | P1-DB-04 | DB | JSONB 컬럼 GIN 인덱스 검토 | 중간 | 중간 |
 | P1-DB-05 | DB | setActiveTemplate 원자적 RPC | 낮음 | 중간 |
-| P1-PERF-01 | 성능 | 인터뷰 페이지 SC/CC 분리 | 중간 | 중간 |
-| P1-PERF-02 | 성능 | ops/projects/[id] getCachedUser 전환 | 낮음 | 낮음 |
-| P1-PERF-03 | 성능 | email.ts 순차 쿼리 병렬화 | 낮음 | 낮음 |
-| P1-PERF-04 | 성능 | GSAP+Lenis 정적 import 개선 | 낮음 | 낮음 |
+| P1-PERF-01 | 성능 | 인터뷰 페이지 SC/CC 분리 | 중간 | 중간 | ✅ 해결 |
+| P1-PERF-02 | 성능 | ops/projects/[id] getCachedUser 전환 | 낮음 | 낮음 | ✅ 해결 |
+| P1-PERF-03 | 성능 | email.ts 순차 쿼리 병렬화 | 낮음 | 낮음 | ✅ 해결 |
+| P1-PERF-04 | 성능 | GSAP+Lenis 정적 import 개선 | 낮음 | 낮음 | ✅ 해결 |
 | P1-TEST-01 | 테스트 | createMockClient 중앙화 | 낮음 | 중간 |
 | P1-TEST-02 | 테스트 | consultant/projects/actions 테스트 보완 | 중간 | 중간 |
 | P1-TEST-03 | 테스트 | ops/projects/actions 테스트 보완 | 중간 | 중간 |
