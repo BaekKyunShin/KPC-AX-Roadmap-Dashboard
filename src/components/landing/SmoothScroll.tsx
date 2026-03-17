@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef, ReactNode } from 'react';
+import type Lenis from 'lenis';
 
 interface SmoothScrollProps {
   children: ReactNode;
 }
 
 export default function SmoothScroll({ children }: SmoothScrollProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lenisRef = useRef<any>(null);
+  const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
     let cancelled = false;

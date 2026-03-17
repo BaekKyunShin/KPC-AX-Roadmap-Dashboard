@@ -18,9 +18,19 @@ import {
   createEmptyPainPoint,
   createEmptyImprovementGoal,
 } from '@/lib/schemas/interview';
-import { INTERVIEW_STEPS, REQUIRED_STEP_IDS } from '@/lib/constants/interview-steps';
+import { INTERVIEW_STEPS, TOTAL_STEPS, REQUIRED_STEP_IDS } from '@/lib/constants/interview-steps';
 
 import { saveInterview, fetchInterview, processSttFile, deleteSttInsights } from '../actions';
+
+// UI 타이밍 상수 (ms)
+const AUTO_SAVE_DEBOUNCE_MS = 3000;
+const AUTO_SAVE_ERROR_DURATION_MS = 8000;
+const ERROR_DISPLAY_DURATION_MS = 5000;
+const REDIRECT_DELAY_MS = 1000;
+
+// 스텝 ID 배열 (INTERVIEW_STEPS에서 파생)
+const ALL_STEP_IDS = INTERVIEW_STEPS.map(s => s.id);
+const CONTENT_STEP_IDS = INTERVIEW_STEPS.filter(s => s.id < TOTAL_STEPS).map(s => s.id);
 import InterviewStepper from './InterviewStepper';
 import StepBasicInfo from './StepBasicInfo';
 import StepCompanyDetails from './StepCompanyDetails';
@@ -39,7 +49,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
 
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>(
-    initialInterview ? [1, 2, 3, 4, 5, 6] : []
+    initialInterview ? ALL_STEP_IDS : []
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -147,7 +157,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
       // 실제 에러 메시지를 콘솔에 출력하고 사용자에게 표시
       console.error('[Auto-save Error]', result.error);
       setAutoSaveError(result.error || '자동 저장에 실패했습니다.');
-      setTimeout(() => setAutoSaveError(null), 8000);
+      setTimeout(() => setAutoSaveError(null), AUTO_SAVE_ERROR_DURATION_MS);
     }
 
     setIsAutoSaving(false);
@@ -161,7 +171,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
 
     autoSaveTimerRef.current = setTimeout(() => {
       autoSave();
-    }, 3000);
+    }, AUTO_SAVE_DEBOUNCE_MS);
 
     return () => {
       if (autoSaveTimerRef.current) {
@@ -186,8 +196,8 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
       case 5:
         return improvementGoals.length > 0 && improvementGoals.every(g => g.goal_description);
       case 6:
-        // 확인 페이지: 이전 필수 스텝(1~5)이 모두 완료되었을 때만 완료
-        return [1, 2, 3, 4, 5].every(s => validateStep(s));
+        // 확인 페이지: 이전 콘텐츠 스텝(1~5)이 모두 완료되었을 때만 완료
+        return CONTENT_STEP_IDS.every(s => validateStep(s));
       default:
         return false;
     }
@@ -260,7 +270,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
         setTimeout(() => {
           router.push(`/consultant/projects/${projectId}`);
           router.refresh();
-        }, 1000);
+        }, REDIRECT_DELAY_MS);
       } else {
         const errorMessage = result.error || '저장에 실패했습니다.';
         setError(errorMessage);
@@ -293,7 +303,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
       const errorMessage = err instanceof Error ? err.message : 'STT 처리 중 오류가 발생했습니다.';
       setError(errorMessage);
       showErrorToast('STT 처리 실패', errorMessage);
-      setTimeout(() => setError(null), 5000);
+      setTimeout(() => setError(null), ERROR_DISPLAY_DURATION_MS);
     } finally {
       setIsProcessingStt(false);
     }
@@ -313,7 +323,7 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
       const errorMessage = err instanceof Error ? err.message : 'STT 인사이트 삭제 중 오류가 발생했습니다.';
       setError(errorMessage);
       showErrorToast('삭제 실패', errorMessage);
-      setTimeout(() => setError(null), 5000);
+      setTimeout(() => setError(null), ERROR_DISPLAY_DURATION_MS);
     }
   };
 
