@@ -2,8 +2,6 @@
 
 import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
@@ -14,11 +12,6 @@ import {
   SAMPLE_COURSE_SINGLE,
   SAMPLE_PBL,
 } from '@/lib/data/demo-sample';
-
-// GSAP 플러그인 등록 (브라우저 환경에서만)
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 // ============================================================================
 // 타입 정의
@@ -265,7 +258,6 @@ export default function DemoSection() {
   // 이 패턴은 progress 기반 슬라이드 전환에 필요하며, 의도된 동작임
   useEffect(() => {
     if (progress >= 100) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentIndex((prev) => (prev + 1) % DEMO_SLIDES.length);
       setProgress(0);
     }
@@ -307,34 +299,48 @@ export default function DemoSection() {
 
   // GSAP 진입 애니메이션
   useEffect(() => {
-    const commonScrollTriggerConfig = {
-      trigger: sectionRef.current,
-      toggleActions: 'play none none reverse' as const,
-    };
+    let cancelled = false;
 
-    gsap.fromTo(
-      contentRef.current,
-      { opacity: 0, y: 50 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: 'power3.out',
-        scrollTrigger: { ...commonScrollTriggerConfig, start: 'top 70%' },
-      }
-    );
+    async function animate() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+      if (cancelled) return;
+      gsap.registerPlugin(ScrollTrigger);
 
-    gsap.fromTo(
-      mockupRef.current,
-      { opacity: 0, scale: 0.95 },
-      {
-        opacity: 1,
-        scale: 1,
-        duration: 1,
-        ease: 'power3.out',
-        scrollTrigger: { ...commonScrollTriggerConfig, start: 'top 60%' },
-      }
-    );
+      const commonScrollTriggerConfig = {
+        trigger: sectionRef.current,
+        toggleActions: 'play none none reverse' as const,
+      };
+
+      gsap.fromTo(
+        contentRef.current,
+        { opacity: 0, y: 50 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: 'power3.out',
+          scrollTrigger: { ...commonScrollTriggerConfig, start: 'top 70%' },
+        }
+      );
+
+      gsap.fromTo(
+        mockupRef.current,
+        { opacity: 0, scale: 0.95 },
+        {
+          opacity: 1,
+          scale: 1,
+          duration: 1,
+          ease: 'power3.out',
+          scrollTrigger: { ...commonScrollTriggerConfig, start: 'top 60%' },
+        }
+      );
+    }
+
+    animate();
+    return () => { cancelled = true; };
   }, []);
 
   // ============================================================================

@@ -1,8 +1,6 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   UserCheck,
   FolderKanban,
@@ -13,10 +11,6 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 // ============================================================================
 // 타입 정의
@@ -162,18 +156,32 @@ export default function FeaturesSection() {
   useEffect(() => {
     if (!cardsRef.current) return;
 
-    const cards = cardsRef.current.children;
+    let cancelled = false;
 
-    gsap.fromTo(cards, ANIMATION_CONFIG.initial, {
-      ...ANIMATION_CONFIG.animate,
-      duration: ANIMATION_CONFIG.duration,
-      stagger: ANIMATION_CONFIG.stagger,
-      ease: ANIMATION_CONFIG.ease,
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        ...ANIMATION_CONFIG.scrollTrigger,
-      },
-    });
+    async function animate() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+      if (cancelled) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      const cards = cardsRef.current!.children;
+
+      gsap.fromTo(cards, ANIMATION_CONFIG.initial, {
+        ...ANIMATION_CONFIG.animate,
+        duration: ANIMATION_CONFIG.duration,
+        stagger: ANIMATION_CONFIG.stagger,
+        ease: ANIMATION_CONFIG.ease,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          ...ANIMATION_CONFIG.scrollTrigger,
+        },
+      });
+    }
+
+    animate();
+    return () => { cancelled = true; };
   }, []);
 
   return (

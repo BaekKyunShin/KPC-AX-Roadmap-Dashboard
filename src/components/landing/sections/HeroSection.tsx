@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import gsap from 'gsap';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoBadge } from '@/components/ui/logo';
@@ -63,34 +62,44 @@ function useEntranceAnimation(
   useEffect(() => {
     if (!isActive) return;
 
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    let cancelled = false;
 
-    tl.fromTo(
-      refs.subtitle.current,
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 0.8 }
-    )
-      .fromTo(
-        refs.cta.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6 },
-        '-=0.4'
+    async function animate() {
+      const { default: gsap } = await import('gsap');
+      if (cancelled) return;
+
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo(
+        refs.subtitle.current,
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.8 }
       )
-      .fromTo(
-        refs.scrollIndicator.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.5 },
-        '-=0.2'
-      );
+        .fromTo(
+          refs.cta.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.6 },
+          '-=0.4'
+        )
+        .fromTo(
+          refs.scrollIndicator.current,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.5 },
+          '-=0.2'
+        );
 
-    // 스크롤 인디케이터 반복 애니메이션
-    gsap.to(refs.scrollIndicator.current, {
-      y: 10,
-      duration: 1.5,
-      repeat: -1,
-      yoyo: true,
-      ease: 'power1.inOut',
-    });
+      // 스크롤 인디케이터 반복 애니메이션
+      gsap.to(refs.scrollIndicator.current, {
+        y: 10,
+        duration: 1.5,
+        repeat: -1,
+        yoyo: true,
+        ease: 'power1.inOut',
+      });
+    }
+
+    animate();
+    return () => { cancelled = true; };
   }, [isActive, refs]);
 }
 

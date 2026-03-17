@@ -2,8 +2,6 @@
 
 import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Mail, Phone, ExternalLink, Copy, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
@@ -18,10 +16,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FooterCredit } from '@/components/ui/FooterCredit';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 // ============================================================================
 // 타입 정의
@@ -210,27 +204,41 @@ export default function FooterSection() {
   const [isContactOpen, setIsContactOpen] = useState(false);
 
   useEffect(() => {
-    // Title animation
-    gsap.fromTo(titleRef.current, ANIMATION_CONFIG.title.initial, {
-      ...ANIMATION_CONFIG.title.animate,
-      duration: ANIMATION_CONFIG.title.duration,
-      ease: ANIMATION_CONFIG.title.ease,
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        ...ANIMATION_CONFIG.title.scrollTrigger,
-      },
-    });
+    let cancelled = false;
 
-    // CTA animation
-    gsap.fromTo(ctaRef.current, ANIMATION_CONFIG.cta.initial, {
-      ...ANIMATION_CONFIG.cta.animate,
-      duration: ANIMATION_CONFIG.cta.duration,
-      ease: ANIMATION_CONFIG.cta.ease,
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        ...ANIMATION_CONFIG.cta.scrollTrigger,
-      },
-    });
+    async function animate() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+      if (cancelled) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Title animation
+      gsap.fromTo(titleRef.current, ANIMATION_CONFIG.title.initial, {
+        ...ANIMATION_CONFIG.title.animate,
+        duration: ANIMATION_CONFIG.title.duration,
+        ease: ANIMATION_CONFIG.title.ease,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          ...ANIMATION_CONFIG.title.scrollTrigger,
+        },
+      });
+
+      // CTA animation
+      gsap.fromTo(ctaRef.current, ANIMATION_CONFIG.cta.initial, {
+        ...ANIMATION_CONFIG.cta.animate,
+        duration: ANIMATION_CONFIG.cta.duration,
+        ease: ANIMATION_CONFIG.cta.ease,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          ...ANIMATION_CONFIG.cta.scrollTrigger,
+        },
+      });
+    }
+
+    animate();
+    return () => { cancelled = true; };
   }, []);
 
   return (

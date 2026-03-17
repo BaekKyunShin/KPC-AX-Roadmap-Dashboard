@@ -1,13 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Search, Users, ClipboardList, Route, LucideIcon } from 'lucide-react';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 // ============================================================================
 // 타입 정의
@@ -110,18 +104,32 @@ export default function WorkflowSection() {
   useEffect(() => {
     if (!stepsRef.current) return;
 
-    const stepElements = stepsRef.current.children;
+    let cancelled = false;
 
-    gsap.fromTo(stepElements, ANIMATION_CONFIG.initial, {
-      ...ANIMATION_CONFIG.animate,
-      duration: ANIMATION_CONFIG.duration,
-      stagger: ANIMATION_CONFIG.stagger,
-      ease: ANIMATION_CONFIG.ease,
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        ...ANIMATION_CONFIG.scrollTrigger,
-      },
-    });
+    async function animate() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+      if (cancelled) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      const stepElements = stepsRef.current!.children;
+
+      gsap.fromTo(stepElements, ANIMATION_CONFIG.initial, {
+        ...ANIMATION_CONFIG.animate,
+        duration: ANIMATION_CONFIG.duration,
+        stagger: ANIMATION_CONFIG.stagger,
+        ease: ANIMATION_CONFIG.ease,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          ...ANIMATION_CONFIG.scrollTrigger,
+        },
+      });
+    }
+
+    animate();
+    return () => { cancelled = true; };
   }, []);
 
   return (
