@@ -64,6 +64,11 @@ export default function MessagesClient() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (supabaseRef.current === null) {
+    supabaseRef.current = createClient();
+  }
+
   const currentUserIdRef = useRef<string | null>(null);
   const selectedConvIdRef = useRef<string | null>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -113,7 +118,7 @@ export default function MessagesClient() {
   };
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => {
+    supabaseRef.current!.auth.getUser().then(({ data }) => {
       if (data.user) currentUserIdRef.current = data.user.id;
     });
   }, []);
@@ -257,7 +262,7 @@ export default function MessagesClient() {
     if (!selectedConvId) return;
     const convId = selectedConvId;
 
-    const supabase = createClient();
+    const supabase = supabaseRef.current!;
     const retryState: RealtimeRetryState = { isMounted: true, retryCount: 0, retryTimer: null };
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -311,7 +316,7 @@ export default function MessagesClient() {
 
   // Realtime: 모든 대화의 새 메시지 (목록 갱신 + 비선택 대화 뱃지)
   useEffect(() => {
-    const supabase = createClient();
+    const supabase = supabaseRef.current!;
     const retryState: RealtimeRetryState = { isMounted: true, retryCount: 0, retryTimer: null };
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -364,7 +369,7 @@ export default function MessagesClient() {
   useEffect(() => {
     if (!selectedConvId) return;
 
-    const supabase = createClient();
+    const supabase = supabaseRef.current!;
 
     const poll = async () => {
       // Realtime이 정상 작동 중이면 polling 스킵

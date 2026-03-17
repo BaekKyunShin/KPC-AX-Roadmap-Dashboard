@@ -1,5 +1,6 @@
 'use server';
 
+import { unstable_cache } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -14,6 +15,20 @@ export interface ProjectFilterOptions {
   industries: string[];
 }
 
+// 캐싱된 업종 목록 조회 (admin 클라이언트 사용)
+const getCachedProjectIndustries = unstable_cache(
+  async () => {
+    const adminSupabase = createAdminClient();
+    const { data: industries } = await adminSupabase
+      .from('projects')
+      .select('industry')
+      .not('industry', 'is', null);
+    return [...new Set(industries?.map((c) => c.industry) || [])].filter(Boolean);
+  },
+  ['project-industries'],
+  { revalidate: 1800, tags: ['project-filters'] }
+);
+
 /**
  * 프로젝트 상태 및 업종 목록 조회
  */
@@ -21,21 +36,9 @@ export async function fetchProjectFilters(): Promise<ProjectFilterOptions> {
   const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return { statuses: [], industries: [] };
 
-  // 워크플로우 단계 기반 상태 옵션 (중복 라벨 없음)
   const statuses = getStatusFilterOptions();
-
-  // 사용 중인 업종 목록
-  const { data: industries } = await auth.supabase
-    .from('projects')
-    .select('industry')
-    .not('industry', 'is', null);
-
-  const uniqueIndustries = [...new Set(industries?.map((c) => c.industry) || [])].filter(Boolean);
-
-  return {
-    statuses,
-    industries: uniqueIndustries,
-  };
+  const industries = await getCachedProjectIndustries();
+  return { statuses, industries };
 }
 
 /**
@@ -162,6 +165,43 @@ export async function fetchConsultantCandidates(
   };
 }
 
+// 캐싱된 컨설턴트 필터 옵션 조회 (admin 클라이언트 사용)
+const getCachedConsultantFilterOptions = unstable_cache(
+  async () => {
+    const adminSupabase = createAdminClient();
+    const { data: consultants } = await adminSupabase
+      .from('users')
+      .select(`
+        consultant_profile:consultant_profiles(
+          available_industries,
+          skill_tags
+        )
+      `)
+      .eq('role', 'CONSULTANT_APPROVED')
+      .eq('status', 'ACTIVE');
+
+    if (!consultants) return { industries: [] as string[], skills: [] as string[] };
+
+    const industriesSet = new Set<string>();
+    const skillsSet = new Set<string>();
+    for (const consultant of consultants) {
+      const profile = Array.isArray(consultant.consultant_profile)
+        ? consultant.consultant_profile[0]
+        : consultant.consultant_profile;
+      if (profile) {
+        (profile.available_industries || []).forEach((i: string) => industriesSet.add(i));
+        (profile.skill_tags || []).forEach((s: string) => skillsSet.add(s));
+      }
+    }
+    return {
+      industries: Array.from(industriesSet).sort(),
+      skills: Array.from(skillsSet).sort(),
+    };
+  },
+  ['consultant-filter-options'],
+  { revalidate: 1800, tags: ['consultant-filters'] }
+);
+
 /**
  * 컨설턴트 필터 옵션 조회 (업종, 스킬 목록)
  */
@@ -172,40 +212,5 @@ export async function fetchConsultantFilterOptions(): Promise<{
   const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return { industries: [], skills: [] };
 
-  const adminSupabase = createAdminClient();
-
-  // 활성 컨설턴트(CONSULTANT_APPROVED + ACTIVE)의 프로필에서 업종과 스킬 목록 수집
-  const { data: consultants } = await adminSupabase
-    .from('users')
-    .select(`
-      consultant_profile:consultant_profiles(
-        available_industries,
-        skill_tags
-      )
-    `)
-    .eq('role', 'CONSULTANT_APPROVED')
-    .eq('status', 'ACTIVE');
-
-  if (!consultants) {
-    return { industries: [], skills: [] };
-  }
-
-  const industriesSet = new Set<string>();
-  const skillsSet = new Set<string>();
-
-  for (const consultant of consultants) {
-    const profile = Array.isArray(consultant.consultant_profile)
-      ? consultant.consultant_profile[0]
-      : consultant.consultant_profile;
-
-    if (profile) {
-      (profile.available_industries || []).forEach((i: string) => industriesSet.add(i));
-      (profile.skill_tags || []).forEach((s: string) => skillsSet.add(s));
-    }
-  }
-
-  return {
-    industries: Array.from(industriesSet).sort(),
-    skills: Array.from(skillsSet).sort(),
-  };
+  return await getCachedConsultantFilterOptions();
 }

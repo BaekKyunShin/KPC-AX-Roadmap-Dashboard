@@ -6,7 +6,6 @@ import { Logo } from '@/components/ui/logo';
 const LandingPage = dynamic(
   () => import('@/components/landing/LandingPage'),
   {
-    ssr: false,
     loading: () => (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <Logo height={32} className="animate-pulse opacity-40" />

@@ -8,7 +8,7 @@
 |------|----|----|-----|------|
 | 보안 (security-auditor) | 0 | 3 | 6 | 양호 |
 | 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
-| 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | 4 | P0·P1 해결 완료 |
+| 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | ~~4~~ ✅ | 전체 해결 완료 |
 | 테스트 (test-automator) | 4 | 8 | 5 | 개선 시급 |
 | **합계** | **8** | **20** | **22** | — |
 
@@ -127,12 +127,25 @@
 
 ### P2 발견사항
 
-| ID | 설명 |
-|----|------|
-| P2-PERF-01 | 랜딩 페이지 전체 CSR (`ssr: false`) — SEO 불리 |
-| P2-PERF-02 | 컨설턴트 홈/프로젝트 차트 recharts 직접 import — dynamic import 누락 |
-| P2-PERF-03 | MessagesClient `createClient()` 4곳 다중 호출 — 1회로 통합 권장 |
-| P2-PERF-04 | `unstable_cache` 미사용 — 정적 데이터(필터 옵션 등) 캐싱 기회 |
+#### ~~P2-PERF-01: 랜딩 페이지 전체 CSR (`ssr: false`) — SEO 불리~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — `ssr: false` 제거하여 SSR 활성화, FOUC 방지를 위해 GSAP 애니메이션 대상 요소에 `opacity-0` CSS 클래스 선적용
+- **파일:** `LandingPageLoader.tsx`, `FeaturesSection.tsx`, `WorkflowSection.tsx`, `DemoSection.tsx`, `FooterSection.tsx`
+
+#### ~~P2-PERF-02: 컨설턴트 홈/프로젝트 차트 recharts 직접 import~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 이미 `dynamic()` import으로 코드 분할 적용됨 확인. Server Component에서는 `ssr: false` 사용 불가하나, recharts SVG 컴포넌트는 SSR에서 정상 동작하므로 현재 구성이 최적
+- **파일:** `consultant/home/page.tsx` (변경 불필요 확인)
+
+#### ~~P2-PERF-03: MessagesClient `createClient()` 4곳 다중 호출~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — `useRef` lazy initialization 패턴으로 단일 인스턴스 통합 (4회 → 1회)
+- **파일:** `dashboard/messages/_components/MessagesClient.tsx`
+
+#### ~~P2-PERF-04: `unstable_cache` 미사용 — 정적 데이터 캐싱 기회~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-17) — 업종/컨설턴트 필터 옵션에 `unstable_cache` 적용 (30분 TTL + 태그 기반 무효화), 데이터 변경 시 `revalidateTag`로 즉시 무효화
+- **파일:** `ops/projects/actions/filters.ts`, `ops/projects/actions/crud.ts`, `(auth)/actions/profile.ts`
 
 ### 양호한 영역
 
@@ -239,7 +252,7 @@
 
 ### P2 — 중기 조치 (22건)
 
-보안 6건, DB 7건, 성능 4건, 테스트 5건 — 위 각 섹션의 P2 테이블 참조.
+보안 6건, DB 7건, ~~성능 4건~~ ✅ 해결, 테스트 5건 — 위 각 섹션의 P2 테이블 참조.
 
 ---
 

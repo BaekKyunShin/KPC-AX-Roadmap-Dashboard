@@ -47,6 +47,8 @@ vi.mock('@/lib/services/notification', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
 }));
 
 const pendingAfterCallbacks: Promise<unknown>[] = [];

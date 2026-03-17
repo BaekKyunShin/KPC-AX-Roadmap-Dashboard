@@ -385,7 +385,7 @@ export default function DemoSection() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
-        <div ref={contentRef} className="text-center mb-6">
+        <div ref={contentRef} className="text-center mb-6 opacity-0">
           <span className="inline-block px-4 py-1.5 bg-purple-500/10 text-purple-400 text-sm font-medium rounded-full mb-4 border border-purple-500/20">
             제품 데모
           </span>
@@ -400,7 +400,7 @@ export default function DemoSection() {
         {/* Mockup Container */}
         <div
           ref={mockupRef}
-          className="max-w-5xl mx-auto"
+          className="max-w-5xl mx-auto opacity-0"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >

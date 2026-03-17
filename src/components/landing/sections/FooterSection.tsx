@@ -248,11 +248,11 @@ export default function FooterSection() {
         <div className="text-center mb-24">
           <h2
             ref={titleRef}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-gray-800 mb-8"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-gray-800 mb-8 opacity-0"
           >
             지금 시작하세요
           </h2>
-          <div ref={ctaRef} className="flex flex-col sm:flex-row justify-center gap-4">
+          <div ref={ctaRef} className="flex flex-col sm:flex-row justify-center gap-4 opacity-0">
             <Link href="/register">
               <Button
                 size="lg"

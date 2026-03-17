@@ -149,7 +149,7 @@ export default function WorkflowSection() {
         </div>
 
         {/* Steps */}
-        <div ref={stepsRef} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div ref={stepsRef} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 [&>*]:opacity-0">
           {WORKFLOW_STEPS.map((step, index) => (
             <StepCard key={step.number} step={step} isLast={index === WORKFLOW_STEPS.length - 1} />
           ))}

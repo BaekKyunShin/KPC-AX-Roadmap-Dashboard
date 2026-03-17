@@ -200,7 +200,7 @@ export default function FeaturesSection() {
         {/* Bento Grid Feature Cards */}
         <div
           ref={cardsRef}
-          className="mx-auto grid max-w-7xl grid-cols-1 gap-4 md:auto-rows-auto md:grid-cols-2"
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-4 md:auto-rows-auto md:grid-cols-2 [&>*]:opacity-0"
         >
           {FEATURES.map((feature, index) => (
             <FeatureCard key={index} feature={feature} />

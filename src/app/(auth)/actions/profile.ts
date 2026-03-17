@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consultantProfileSchema } from '@/lib/schemas/user';
 import { PG_UNIQUE_VIOLATION, SUPABASE_NO_ROWS } from '@/lib/constants/database';
+import { revalidateTag } from 'next/cache';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -88,6 +89,8 @@ export async function saveConsultantProfile(formData: FormData): Promise<SimpleA
         error: '프로필 저장에 실패했습니다. 다시 시도해주세요.',
       };
     }
+
+    revalidateTag('consultant-filters', { expire: 1800 });
 
     return {
       success: true,
@@ -199,6 +202,8 @@ export async function updateConsultantProfile(formData: FormData): Promise<Simpl
         error: '프로필 수정에 실패했습니다. 다시 시도해주세요.',
       };
     }
+
+    revalidateTag('consultant-filters', { expire: 1800 });
 
     return {
       success: true,
