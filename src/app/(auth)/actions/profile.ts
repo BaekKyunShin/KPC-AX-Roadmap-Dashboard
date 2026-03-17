@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { consultantProfileSchema } from '@/lib/schemas/user';
 import { PG_UNIQUE_VIOLATION, SUPABASE_NO_ROWS } from '@/lib/constants/database';
 import { revalidateTag } from 'next/cache';
+import { CACHE_TAG_CONSULTANT_FILTERS, FILTER_CACHE_TTL_SECONDS } from '@/lib/constants/cache';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -90,7 +91,7 @@ export async function saveConsultantProfile(formData: FormData): Promise<SimpleA
       };
     }
 
-    revalidateTag('consultant-filters', { expire: 1800 });
+    revalidateTag(CACHE_TAG_CONSULTANT_FILTERS, { expire: FILTER_CACHE_TTL_SECONDS });
 
     return {
       success: true,
@@ -203,7 +204,7 @@ export async function updateConsultantProfile(formData: FormData): Promise<Simpl
       };
     }
 
-    revalidateTag('consultant-filters', { expire: 1800 });
+    revalidateTag(CACHE_TAG_CONSULTANT_FILTERS, { expire: FILTER_CACHE_TTL_SECONDS });
 
     return {
       success: true,

@@ -8,6 +8,11 @@ import {
   OPS_MANAGER_ROLES,
   type StatusFilterOption,
 } from '@/lib/constants/status';
+import {
+  CACHE_TAG_PROJECT_FILTERS,
+  CACHE_TAG_CONSULTANT_FILTERS,
+  FILTER_CACHE_TTL_SECONDS,
+} from '@/lib/constants/cache';
 
 /** 프로젝트 필터 옵션 반환 타입 */
 export interface ProjectFilterOptions {
@@ -26,7 +31,7 @@ const getCachedProjectIndustries = unstable_cache(
     return [...new Set(industries?.map((c) => c.industry) || [])].filter(Boolean);
   },
   ['project-industries'],
-  { revalidate: 1800, tags: ['project-filters'] }
+  { revalidate: FILTER_CACHE_TTL_SECONDS, tags: [CACHE_TAG_PROJECT_FILTERS] }
 );
 
 /**
@@ -199,7 +204,7 @@ const getCachedConsultantFilterOptions = unstable_cache(
     };
   },
   ['consultant-filter-options'],
-  { revalidate: 1800, tags: ['consultant-filters'] }
+  { revalidate: FILTER_CACHE_TTL_SECONDS, tags: [CACHE_TAG_CONSULTANT_FILTERS] }
 );
 
 /**

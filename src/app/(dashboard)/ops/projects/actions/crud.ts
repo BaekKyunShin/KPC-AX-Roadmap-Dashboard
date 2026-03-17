@@ -5,6 +5,7 @@ import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema
 import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAG_PROJECT_FILTERS, FILTER_CACHE_TTL_SECONDS } from '@/lib/constants/cache';
 import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { NULL_UUID } from '@/lib/constants/database';
@@ -94,7 +95,7 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
   });
 
   revalidatePath('/ops/projects');
-  revalidateTag('project-filters', { expire: 1800 });
+  revalidateTag(CACHE_TAG_PROJECT_FILTERS, { expire: FILTER_CACHE_TTL_SECONDS });
 
   return { success: true, data: { projectId: newProject.id } };
 }
