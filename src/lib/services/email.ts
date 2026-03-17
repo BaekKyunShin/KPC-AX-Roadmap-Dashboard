@@ -180,21 +180,15 @@ export async function notifyRecipientByEmail(
   // 3. throttle 확인
   if (isThrottled(senderId, recipientId)) return;
 
-  // 4. 발신자 이름 조회
-  const { data: sender } = await adminSupabase
-    .from('users')
-    .select('name')
-    .eq('id', senderId)
-    .single();
-
-  // 5. 수신자 이메일 조회 (auth.users)
-  const {
-    data: { user: authUser },
-  } = await adminSupabase.auth.admin.getUserById(recipientId);
+  // 4. 발신자 이름 + 수신자 이메일 병렬 조회
+  const [{ data: sender }, { data: { user: authUser } }] = await Promise.all([
+    adminSupabase.from('users').select('name').eq('id', senderId).single(),
+    adminSupabase.auth.admin.getUserById(recipientId),
+  ]);
 
   if (!authUser?.email) return;
 
-  // 6. throttle 기록 + 이메일 발송
+  // 5. throttle 기록 + 이메일 발송
   recordSend(senderId, recipientId);
   await sendNewMessageEmail({
     to: authUser.email,
