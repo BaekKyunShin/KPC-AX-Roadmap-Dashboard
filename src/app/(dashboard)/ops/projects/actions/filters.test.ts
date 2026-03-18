@@ -186,7 +186,7 @@ describe('fetchConsultantCandidates', () => {
     );
   });
 
-  it('업종/스킬 필터 — 클라이언트 측 필터링', async () => {
+  it('업종/스킬 필터 — DB 레벨 overlaps 필터링', async () => {
     mockAuthResult.mockResolvedValue({
       user: { id: TEST_USER_ID },
       supabase: adminMock.client,
@@ -194,6 +194,7 @@ describe('fetchConsultantCandidates', () => {
       status: 'ACTIVE',
     });
 
+    // DB 레벨에서 필터링된 결과 (overlaps로 매칭된 항목만 반환)
     adminMock.addResult({
       data: [
         {
@@ -208,21 +209,9 @@ describe('fetchConsultantCandidates', () => {
             years_of_experience: 5,
           },
         },
-        {
-          id: 'cons-2',
-          name: '이컨설턴트',
-          email: 'lee@example.com',
-          consultant_profile: {
-            expertise_domains: ['데이터'],
-            available_industries: ['금융업'],
-            teaching_levels: ['중급'],
-            skill_tags: ['R'],
-            years_of_experience: 3,
-          },
-        },
       ],
       error: null,
-      count: 2,
+      count: 1,
     });
 
     const result = await fetchConsultantCandidates({
@@ -230,9 +219,21 @@ describe('fetchConsultantCandidates', () => {
       skills: ['Python'],
     });
 
-    // 클라이언트 측 필터링으로 cons-1만 남음
+    // overlaps 쿼리가 올바른 인자로 호출되었는지 검증
+    expect(adminMock.chainable.overlaps).toHaveBeenCalledWith(
+      'consultant_profiles.available_industries',
+      ['제조업'],
+    );
+    expect(adminMock.chainable.overlaps).toHaveBeenCalledWith(
+      'consultant_profiles.skill_tags',
+      ['Python'],
+    );
+
+    // DB에서 필터링된 결과가 그대로 반환됨
     expect(result.consultants).toHaveLength(1);
     expect(result.consultants[0].id).toBe('cons-1');
+    expect(result.total).toBe(1);
+    expect(result.totalPages).toBe(1);
   });
 
   it('페이지네이션 — range 호출 확인', async () => {

@@ -92,13 +92,16 @@ export async function fetchConsultantCandidates(
   const adminSupabase = createAdminClient();
 
   // 기본 쿼리 - CONSULTANT_APPROVED + ACTIVE 사용자
+  // 업종/스킬 필터 시 !inner 조인으로 DB 레벨 필터링 적용
+  const needsProfileFilter = industries.length > 0 || skills.length > 0;
+
   let query = adminSupabase
     .from('users')
     .select(`
       id,
       name,
       email,
-      consultant_profile:consultant_profiles(
+      consultant_profile:consultant_profiles${needsProfileFilter ? '!inner' : ''}(
         expertise_domains,
         available_industries,
         teaching_levels,
@@ -109,6 +112,16 @@ export async function fetchConsultantCandidates(
     `, { count: 'exact' })
     .eq('role', 'CONSULTANT_APPROVED')
     .eq('status', 'ACTIVE');
+
+  // 업종 필터 (DB 레벨)
+  if (industries.length > 0) {
+    query = query.overlaps('consultant_profiles.available_industries', industries);
+  }
+
+  // 스킬 필터 (DB 레벨)
+  if (skills.length > 0) {
+    query = query.overlaps('consultant_profiles.skill_tags', skills);
+  }
 
   // 검색 조건 (이름 또는 이메일)
   if (search) {
@@ -126,8 +139,8 @@ export async function fetchConsultantCandidates(
     return { consultants: [], total: 0, totalPages: 0, page };
   }
 
-  // 프로필 데이터 정리 및 필터링
-  let formattedConsultants: ConsultantCandidate[] = (consultants || []).map((c) => {
+  // 프로필 데이터 정리
+  const formattedConsultants: ConsultantCandidate[] = (consultants || []).map((c) => {
     const profile = Array.isArray(c.consultant_profile)
       ? c.consultant_profile[0] || null
       : c.consultant_profile;
@@ -146,20 +159,6 @@ export async function fetchConsultantCandidates(
       } : null,
     };
   });
-
-  // 클라이언트 측 필터링 (업종, 스킬)
-  // 주의: 데이터가 많아지면 DB 레벨 필터링으로 변경 필요
-  if (industries.length > 0) {
-    formattedConsultants = formattedConsultants.filter((c) =>
-      c.consultant_profile?.available_industries.some((i) => industries.includes(i))
-    );
-  }
-
-  if (skills.length > 0) {
-    formattedConsultants = formattedConsultants.filter((c) =>
-      c.consultant_profile?.skill_tags.some((s) => skills.includes(s))
-    );
-  }
 
   const total = count || 0;
   const totalPages = Math.ceil(total / limit);

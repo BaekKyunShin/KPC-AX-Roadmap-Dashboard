@@ -42,15 +42,8 @@ export async function fetchConsultantProjects(
 
   const { search = '', status = '' } = params;
 
-  // 컨설턴트 이름 조회
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name')
-    .eq('id', user.id)
-    .single();
-
-  // 담당 프로젝트 목록 조회
-  let query = supabase
+  // 컨설턴트 이름 + 담당 프로젝트 목록 병렬 조회
+  let projectsQuery = supabase
     .from('projects')
     .select(
       `
@@ -71,18 +64,22 @@ export async function fetchConsultantProjects(
   // 검색 조건
   if (search) {
     const p = ilikePattern(search);
-    query = query.or(`company_name.ilike.${p},industry.ilike.${p}`);
+    projectsQuery = projectsQuery.or(`company_name.ilike.${p},industry.ilike.${p}`);
   }
 
   // 상태 필터
   if (status) {
-    query = query.eq('status', status);
+    projectsQuery = projectsQuery.eq('status', status);
   }
 
   // Supabase에서는 관계 테이블의 컬럼으로 직접 정렬할 수 없으므로 created_at 사용
-  const { data: projectsData, error } = await query.order('created_at', {
-    ascending: false,
-  });
+  const [profileResult, projectsResult] = await Promise.all([
+    supabase.from('users').select('name').eq('id', user.id).single(),
+    projectsQuery.order('created_at', { ascending: false }),
+  ]);
+
+  const { data: profile } = profileResult;
+  const { data: projectsData, error } = projectsResult;
 
   if (error) {
     console.error('[fetchConsultantProjects Error]', error);

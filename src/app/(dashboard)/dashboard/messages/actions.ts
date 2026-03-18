@@ -420,20 +420,19 @@ export async function sendMessage(
       return { success: false, error: '메시지를 전송할 수 없습니다.' };
     }
 
-    // conversations.last_message_at 갱신 (DB 생성 타임스탬프 사용으로 시계 불일치 방지)
+    // conversations.last_message_at + 내 last_read_at 병렬 갱신
     const adminSupabase = createAdminClient();
-    await adminSupabase
-      .from('conversations')
-      .update({ last_message_at: message.created_at })
-      .eq('id', conversationId);
-
-    // 내 last_read_at도 갱신 (내가 보낸 메시지니까 읽은 것)
-    // message.created_at 사용: last_read_at >= last_message_at 보장
-    await supabase
-      .from('conversation_participants')
-      .update({ last_read_at: message.created_at })
-      .eq('conversation_id', conversationId)
-      .eq('user_id', user.id);
+    await Promise.all([
+      adminSupabase
+        .from('conversations')
+        .update({ last_message_at: message.created_at })
+        .eq('id', conversationId),
+      supabase
+        .from('conversation_participants')
+        .update({ last_read_at: message.created_at })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', user.id),
+    ]);
 
     // 이메일 알림 발송 (비동기, fire-and-forget)
     notifyRecipientByEmail(conversationId, user.id, validation.data.content).catch(

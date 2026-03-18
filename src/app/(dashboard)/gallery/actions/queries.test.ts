@@ -84,7 +84,7 @@ function setupAuthFailure() {
   mockRequireAuth.mockResolvedValue({ error: '로그인이 필요합니다.' });
 }
 
-/** 갤러리 조회용 mock 데이터 1행 */
+/** 갤러리 조회용 mock 데이터 1행 (roadmap_likes는 aggregate count 형식) */
 function makeRoadmapRow(overrides?: Record<string, unknown>) {
   return {
     id: TEST_ROADMAP_ID,
@@ -102,9 +102,7 @@ function makeRoadmapRow(overrides?: Record<string, unknown>) {
       company_size: '중소기업',
     },
     users: { name: '홍길동' },
-    roadmap_likes: [
-      { id: 'like-1', user_id: TEST_USER_ID },
-    ],
+    roadmap_likes: [{ count: 1 }],
     ...overrides,
   };
 }
@@ -240,15 +238,12 @@ describe('fetchGalleryRoadmaps', () => {
 
   it('sort=popular → 클라이언트 정렬 (likeCount 내림차순)', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
-    const row1 = makeRoadmapRow({ id: 'r-1', roadmap_likes: [] });
-    const row2 = makeRoadmapRow({
-      id: 'r-2',
-      roadmap_likes: [
-        { id: 'l-1', user_id: 'u-1' },
-        { id: 'l-2', user_id: 'u-2' },
-      ],
-    });
+    const row1 = makeRoadmapRow({ id: 'r-1', roadmap_likes: [{ count: 0 }] });
+    const row2 = makeRoadmapRow({ id: 'r-2', roadmap_likes: [{ count: 2 }] });
+    // 1차: 메인 쿼리 결과
     adminMock.addResult({ data: [row1, row2], error: null });
+    // 2차: 사용자 좋아요 일괄 조회 결과
+    adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps({ sort: 'popular' });
 
@@ -262,7 +257,10 @@ describe('fetchGalleryRoadmaps', () => {
   it('데이터 변환 + isLiked 판정', async () => {
     setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
     const row = makeRoadmapRow();
+    // 1차: 메인 쿼리 결과
     adminMock.addResult({ data: [row], error: null });
+    // 2차: 사용자 좋아요 일괄 조회 — 현재 유저가 이 로드맵에 좋아요함
+    adminMock.addResult({ data: [{ roadmap_version_id: TEST_ROADMAP_ID }], error: null });
 
     const result = await fetchGalleryRoadmaps();
 
@@ -279,7 +277,7 @@ describe('fetchGalleryRoadmaps', () => {
       expect(item.pblTotalHours).toBe(40);
       expect(item.createdByName).toBe('홍길동');
       expect(item.likeCount).toBe(1);
-      expect(item.isLiked).toBe(true); // 현재 유저가 좋아요 목록에 있음
+      expect(item.isLiked).toBe(true); // 사용자 좋아요 일괄 조회에서 확인
       expect(item.isShared).toBe(true);
       expect(item.status).toBe('FINAL');
     }
@@ -399,7 +397,10 @@ describe('fetchRoadmapDetail', () => {
   it('성공 + 데이터 변환', async () => {
     setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
     const row = makeRoadmapRow({ roadmap_matrix: [{ m: 1 }] });
+    // 1차: 메인 쿼리 (.single())
     adminMock.addResult({ data: row, error: null });
+    // 2차: 사용자 좋아요 확인 (.maybeSingle()) — 좋아요함
+    adminMock.addResult({ data: { id: 'like-1' }, error: null });
 
     const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
 

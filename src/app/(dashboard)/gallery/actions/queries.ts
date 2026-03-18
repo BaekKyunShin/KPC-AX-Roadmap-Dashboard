@@ -110,10 +110,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       users!roadmap_versions_created_by_fkey (
         name
       ),
-      roadmap_likes (
-        id,
-        user_id
-      )
+      roadmap_likes(count)
     `);
 
   // 컨설턴트: 공유된 FINAL만
@@ -160,6 +157,18 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     return errorResult('갤러리를 불러오는 중 오류가 발생했습니다.');
   }
 
+  // 현재 사용자가 좋아요한 로드맵 ID를 일괄 조회
+  const roadmapIds = (data || []).map((item) => item.id);
+  const { data: userLikes } =
+    roadmapIds.length > 0
+      ? await adminClient
+          .from('roadmap_likes')
+          .select('roadmap_version_id')
+          .eq('user_id', user.id)
+          .in('roadmap_version_id', roadmapIds)
+      : { data: [] };
+  const userLikedSet = new Set((userLikes || []).map((l) => l.roadmap_version_id));
+
   // 데이터 변환
   const items: GalleryRoadmapItem[] = (data || []).map((item) => {
     const project = item.projects as unknown as {
@@ -168,7 +177,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       company_size: string;
     };
     const creator = item.users as unknown as { name: string } | null;
-    const likes = (item.roadmap_likes || []) as unknown as { id: string; user_id: string }[];
+    const likeAgg = item.roadmap_likes as unknown as { count: number }[];
 
     const pblCourse = item.pbl_course as { course_name?: string; total_hours?: number } | null;
     const courses = (item.courses || []) as { topic?: string }[];
@@ -190,8 +199,8 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       tags,
       createdBy: item.created_by,
       createdByName: creator?.name || '알 수 없음',
-      likeCount: likes.length,
-      isLiked: likes.some((l) => l.user_id === user.id),
+      likeCount: likeAgg?.[0]?.count ?? 0,
+      isLiked: userLikedSet.has(item.id),
       isShared: item.is_shared,
       status: item.status,
       createdAt: item.created_at,
@@ -245,10 +254,7 @@ export async function fetchRoadmapDetail(
       users!roadmap_versions_created_by_fkey (
         name
       ),
-      roadmap_likes (
-        id,
-        user_id
-      )
+      roadmap_likes(count)
     `)
     .eq('id', roadmapVersionId)
     .single();
@@ -269,8 +275,16 @@ export async function fetchRoadmapDetail(
     company_size: string;
   };
   const creator = data.users as unknown as { name: string } | null;
-  const likes = (data.roadmap_likes || []) as unknown as { id: string; user_id: string }[];
+  const likeAgg = data.roadmap_likes as unknown as { count: number }[];
   const pblCourse = data.pbl_course as { course_name?: string; total_hours?: number } | null;
+
+  // 현재 사용자가 이 로드맵에 좋아요했는지 확인
+  const { data: userLike } = await adminClient
+    .from('roadmap_likes')
+    .select('id')
+    .eq('roadmap_version_id', roadmapVersionId)
+    .eq('user_id', user.id)
+    .maybeSingle();
 
   return successResult({
     id: data.id,
@@ -285,8 +299,8 @@ export async function fetchRoadmapDetail(
     roadmapMatrix: (data.roadmap_matrix as unknown[]) || [],
     pblCourse: data.pbl_course || {},
     courses: (data.courses as unknown[]) || [],
-    likeCount: likes.length,
-    isLiked: likes.some((l) => l.user_id === user.id),
+    likeCount: likeAgg?.[0]?.count ?? 0,
+    isLiked: !!userLike,
     isShared: data.is_shared,
     status: data.status,
     versionNumber: data.version_number,

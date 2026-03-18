@@ -58,7 +58,7 @@ interface MockSupabaseReturn {
 const CHAINABLE_METHODS = [
   'select', 'eq', 'neq', 'in', 'not', 'or', 'is',
   'gte', 'lte', 'gt', 'lt',
-  'ilike', 'order', 'range', 'limit',
+  'ilike', 'overlaps', 'order', 'range', 'limit',
   'insert', 'update', 'delete', 'upsert',
 ] as const;
 
