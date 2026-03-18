@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin'; // admin: 사용자 설정 업데이트 — users 테이블 UPDATE RLS 우회
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { MESSAGING_ROLES } from '@/lib/constants/message';
 import type { SimpleActionResult } from '@/lib/types/action-result';

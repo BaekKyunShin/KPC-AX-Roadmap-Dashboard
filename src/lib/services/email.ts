@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin'; // admin: 수신자 이메일/역할 조회 — users 테이블 RLS가 self만 허용
 import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
 
 // =============================================================================

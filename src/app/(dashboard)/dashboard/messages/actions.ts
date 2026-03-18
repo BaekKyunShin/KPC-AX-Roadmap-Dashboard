@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin'; // admin: 대화 상대방 정보 조회 — users 테이블 RLS 우회
 import { requireAuth } from '@/lib/actions/auth-helpers';
 import { sendMessageSchema, createConversationSchema } from '@/lib/schemas/message';
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, MESSAGING_ROLES, ROLE_LABELS, ALLOWED_RECIPIENTS } from '@/lib/constants/message';

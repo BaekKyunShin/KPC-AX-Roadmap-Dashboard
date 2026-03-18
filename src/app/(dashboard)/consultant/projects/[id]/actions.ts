@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin'; // admin: 인터뷰/활동일지 CRUD — projects RLS 우회
 import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, type AuthSuccess } from '@/lib/actions/auth-helpers';
 import {
   createActivityLogSchema,

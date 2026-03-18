@@ -6,7 +6,7 @@ import { publicSelfAssessmentSchema } from '@/lib/schemas/assessment-token';
 import { createAuditLog } from '@/lib/services/audit';
 import { calculateScores } from '@/lib/services/calculate-scores';
 import { createNotificationForAdmins } from '@/lib/services/notification';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin'; // admin: 공개 자가진단 (비로그인) — 토큰 검증 및 진단 저장
 import type { SimpleActionResult } from '@/lib/types/action-result';
 
 /**

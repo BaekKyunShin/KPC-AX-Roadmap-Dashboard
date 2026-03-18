@@ -204,6 +204,16 @@ is_conversation_member(p_conversation_id) RETURNS BOOLEAN
 
 > `roadmap_versions`에 `roadmaps_select_shared_gallery` 정책 추가: `is_shared = TRUE AND status = 'FINAL'`인 로드맵은 모든 인증된 사용자가 열람 가능.
 
+### assessment_tokens (자가진단 토큰)
+
+| 정책 | 대상 역할 | 조건 |
+|------|---------|------|
+| `ops_select_tokens` | OPS_ADMIN+ | SELECT — 운영관리자 이상 조회 |
+| `ops_insert_tokens` | OPS_ADMIN+ | INSERT — 운영관리자 이상 생성 |
+| `ops_update_tokens` | OPS_ADMIN+ | UPDATE — 운영관리자 이상 수정 |
+
+> 마이그레이션: `040_add_assessment_tokens.sql`
+
 ### audit_logs
 
 | 작업 | 조건 |
@@ -287,3 +297,9 @@ is_conversation_member(p_conversation_id) RETURNS BOOLEAN
 | `022_add_interview_guides.sql` | 인터뷰 사전 분석 가이드 테이블, RLS 정책 |
 | `023_add_email_notification_settings.sql` | users.email_notify_enabled 컬럼 추가 |
 | `024_add_roadmap_gallery.sql` | roadmap_versions.is_shared 컬럼, roadmap_likes 테이블, RLS 정책 |
+| `025_add_template_delete.sql` | 템플릿 DELETE RLS 정책 + TEMPLATE_DELETE 감사 액션 |
+| `026_fix_security_definer_search_path.sql` | SECURITY DEFINER 함수 5개에 `SET search_path = ''` 추가 |
+| `033_fix_rls_consultant_approval_check.sql` | 인터뷰/가이드 정책에 `is_approved_consultant()` 체크 추가 |
+| `034_fix_rls_test_select_consultant_check.sql` | 테스트 모드 SELECT/UPDATE/DELETE 정책에 승인 상태 체크 추가 |
+| `040_add_assessment_tokens.sql` | assessment_tokens 테이블, RLS 정책 (OPS_ADMIN+) |
+| `044_audit_logs_archive.sql` | audit_logs_archive 테이블 (아카이브용, RLS 없음) |
