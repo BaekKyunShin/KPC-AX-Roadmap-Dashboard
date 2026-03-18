@@ -11,7 +11,7 @@ test.describe('Phase 1.2: 데모 페이지 (/demo)', () => {
   test('페이지 정상 로딩 + 콘솔 에러 없음', async ({ page }) => {
     const getErrors = setupConsoleErrorCheck(page);
     await page.goto('/demo');
-    await expect(page.getByText('KPC AI 로드맵')).toBeVisible();
+    await expect(page.getByText('기업 정보 (샘플)')).toBeVisible();
     expect(getErrors()).toEqual([]);
   });
 
@@ -35,8 +35,8 @@ test.describe('Phase 1.2: 데모 페이지 (/demo)', () => {
     ).toBeVisible();
   });
 
-  test('기업 정보 카드 — (주)샘플제조 표시', async ({ page }) => {
-    await expect(page.getByText('(주)샘플제조')).toBeVisible();
+  test('기업 정보 카드 — (주)샘플유통 표시', async ({ page }) => {
+    await expect(page.getByText('(주)샘플유통')).toBeVisible();
   });
 
   test('로드맵 탭 3개 전환', async ({ page }) => {

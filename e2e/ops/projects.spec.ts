@@ -138,13 +138,13 @@ test.describe('Phase 2.6: 프로젝트 상세 (기존)', () => {
     await expect(page.getByText('담당자', { exact: true })).toBeVisible();
   });
 
-  test('뒤로가기 링크 → /ops/projects', async ({ opsPage: page }) => {
+  test('뒤로가기 버튼 → /ops/projects', async ({ opsPage: page }) => {
     await page.goto('/ops/projects');
     await page.waitForLoadState('networkidle');
     await page.getByRole('link', { name: '상세보기' }).first().click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/);
 
-    await page.getByRole('link', { name: /프로젝트 목록/ }).click();
+    await page.getByRole('button', { name: /프로젝트 목록/ }).click();
     await expect(page).toHaveURL('/ops/projects');
   });
 });

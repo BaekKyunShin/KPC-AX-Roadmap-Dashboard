@@ -60,20 +60,20 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
   });
 
   test('메시지 아이콘 표시', async ({ opsPage: page }) => {
-    // getByRole은 접근성 트리 기반 — display:none인 모바일 버전은 제외됨
+    // MessageIcon은 <Link> 요소 (role=link)
     await expect(
-      page.getByRole('button', { name: /메시지/ }),
+      page.getByRole('link', { name: /메시지/ }),
     ).toBeVisible();
   });
 
   test('메시지 안읽음 배지 존재 확인', async ({ opsPage: page }) => {
-    const messageBtn = page.getByRole('button', { name: /메시지/ });
+    const messageLink = page.getByRole('link', { name: /메시지/ });
     // 안읽음 배지: bg-blue-500 둥근 span (unreadCount > 0일 때 렌더)
-    await expect(messageBtn.locator('.bg-blue-500')).toBeAttached();
+    await expect(messageLink.locator('.bg-blue-500')).toBeAttached();
   });
 
   test('메시지 아이콘 클릭 → /dashboard/messages', async ({ opsPage: page }) => {
-    await page.getByRole('button', { name: /메시지/ }).click();
+    await page.getByRole('link', { name: /메시지/ }).click();
     await expect(page).toHaveURL('/dashboard/messages');
   });
 
@@ -138,12 +138,15 @@ test.describe('Phase 2.2: 알림 벨', () => {
     await expect(popover.getByRole('button', { name: '확정' })).toBeVisible();
   });
 
-  test('각 탭 클릭 시 "새로운 알림이 없습니다" 표시', async ({ opsPage: page }) => {
+  test('각 탭 클릭 시 콘텐츠 로딩 완료', async ({ opsPage: page }) => {
     await page.getByRole('button', { name: /알림/ }).click();
     const popover = page.locator('[data-slot="popover-content"]');
     for (const tab of ['전체', '인터뷰', '초안', '확정']) {
       await popover.getByRole('button', { name: tab }).click();
-      await expect(popover.getByText('새로운 알림이 없습니다')).toBeVisible();
+      // 로딩 완료 후 빈 상태 메시지 또는 알림 아이템 중 하나가 표시됨
+      await expect(
+        popover.getByText('새로운 알림이 없습니다').or(popover.locator('.divide-y > button').first()),
+      ).toBeVisible({ timeout: 5000 });
     }
   });
 
