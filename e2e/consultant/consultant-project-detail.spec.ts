@@ -178,4 +178,111 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     }
     // 인터뷰 전 상태에서는 로드맵 링크가 없을 수 있음 — 정상
   });
+
+  // ========================================================================
+  // 활동 일지 CRUD
+  // ========================================================================
+
+  test.describe('활동 일지 CRUD', () => {
+    test.beforeEach(async ({ consultantPage: page }) => {
+      if (!projectDetailUrl) {
+        test.skip();
+        return;
+      }
+      await page.goto(projectDetailUrl);
+      await page.waitForLoadState('networkidle');
+      await switchTab(page, '활동 일지');
+    });
+
+    test('"기록 추가" 버튼 존재', async ({ consultantPage: page }) => {
+      await expect(page.getByRole('button', { name: '기록 추가' })).toBeVisible({
+        timeout: 5_000,
+      });
+    });
+
+    test('활동 일지 작성 → 목록에 추가 확인', async ({ consultantPage: page }) => {
+      // "기록 추가" 클릭 → 입력 폼 열기
+      await page.getByRole('button', { name: '기록 추가' }).click();
+
+      // 텍스트 입력
+      const testContent = `E2E 활동일지 테스트 ${Date.now()}`;
+      await page.getByPlaceholder('활동 내용을 입력하세요...').fill(testContent);
+
+      // 저장 클릭
+      await page.getByRole('button', { name: '저장' }).click();
+
+      // 입력한 내용이 목록에 표시되는지 확인
+      await expect(page.getByText(testContent)).toBeVisible({ timeout: 10_000 });
+    });
+
+    test('활동 일지 수정 → 내용 변경 확인', async ({ consultantPage: page }) => {
+      // 수동 기록의 더보기(⋯) 메뉴 찾기
+      const moreButton = page
+        .locator('button')
+        .filter({ has: page.locator('svg.lucide-more-horizontal') })
+        .first();
+
+      const hasLog = await moreButton.isVisible().catch(() => false);
+      if (!hasLog) {
+        test.skip();
+        return;
+      }
+
+      // 더보기 → 수정
+      await moreButton.click();
+      await page.getByRole('menuitem', { name: '수정' }).click();
+
+      // 편집 텍스트 영역이 표시되는지 확인
+      const editTextarea = page.locator('textarea').first();
+      await expect(editTextarea).toBeVisible({ timeout: 5_000 });
+
+      // 내용 수정
+      const updatedContent = `E2E 수정됨 ${Date.now()}`;
+      await editTextarea.fill(updatedContent);
+
+      // 저장
+      await page.getByRole('button', { name: '저장' }).first().click();
+
+      // 수정된 내용 표시 확인
+      await expect(page.getByText(updatedContent)).toBeVisible({ timeout: 10_000 });
+    });
+
+    test('활동 일지 삭제 → 목록에서 제거 확인', async ({ consultantPage: page }) => {
+      // 수동 기록의 더보기(⋯) 메뉴 찾기
+      const moreButton = page
+        .locator('button')
+        .filter({ has: page.locator('svg.lucide-more-horizontal') })
+        .first();
+
+      const hasLog = await moreButton.isVisible().catch(() => false);
+      if (!hasLog) {
+        test.skip();
+        return;
+      }
+
+      // 삭제 전 기록 텍스트 저장
+      const logTextBefore = await page
+        .locator('.whitespace-pre-wrap')
+        .first()
+        .textContent()
+        .catch(() => null);
+
+      // 더보기 → 삭제 (confirm 다이얼로그 자동 수락)
+      page.on('dialog', (dialog) => dialog.accept());
+      await moreButton.click();
+      await page.getByRole('menuitem', { name: '삭제' }).click();
+
+      // 성공 토스트 확인
+      await expect(
+        page.locator('[data-sonner-toast]').filter({ hasText: '삭제' }),
+      ).toBeVisible({ timeout: 5_000 });
+
+      // 삭제된 텍스트가 더 이상 보이지 않는지 확인 (텍스트가 있었던 경우)
+      if (logTextBefore) {
+        await expect(page.getByText(logTextBefore, { exact: true })).not.toBeVisible({
+          timeout: 5_000,
+        });
+      }
+    });
+  });
 });

@@ -50,7 +50,7 @@ export async function deleteTemplate(id: string) {
 /** 활동일지 삭제 */
 export async function deleteActivityLog(id: string) {
   const { error } = await supabase
-    .from('activity_logs')
+    .from('consultant_activity_logs')
     .delete()
     .eq('id', id);
   if (error) console.warn(`deleteActivityLog(${id}) 실패:`, error.message);

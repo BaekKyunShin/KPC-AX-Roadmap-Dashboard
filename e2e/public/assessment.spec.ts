@@ -44,6 +44,29 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
     expect(has404 || hasNotFound || pageContent!.length > 0).toBe(true);
   });
 
+  test('유효 토큰 → 자가진단 폼 표시', async ({ page }) => {
+    const token = process.env.E2E_ASSESSMENT_TOKEN;
+    if (!token) {
+      test.skip();
+      return;
+    }
+
+    const response = await page.goto(`/assessment/${token}`);
+
+    // 200 응답 (유효한 토큰)
+    expect(response?.status()).toBe(200);
+
+    // 자가진단 폼 요소 확인
+    await expect(page.getByText('자가진단')).toBeVisible({ timeout: 10_000 });
+
+    // 제출자 이름 또는 진단 문항이 표시되는지 확인
+    const hasForm =
+      (await page.locator('form').isVisible().catch(() => false)) ||
+      (await page.getByRole('button', { name: /제출|완료/ }).isVisible().catch(() => false));
+
+    expect(hasForm).toBe(true);
+  });
+
   test('assessment 레이아웃 구조 확인 (헤더, 푸터)', async ({ page }) => {
     // 유효하지 않은 토큰이어도 레이아웃은 로드됨
     await page.goto('/assessment/invalid-token');
