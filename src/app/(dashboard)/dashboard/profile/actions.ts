@@ -1,26 +1,24 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requireAuth } from '@/lib/actions/auth-helpers';
-import { EMAIL_NOTIFY_ROLES } from '@/lib/constants/message';
+import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { MESSAGING_ROLES } from '@/lib/constants/message';
 import type { SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 이메일 알림 설정 변경
- * - EMAIL_NOTIFY_ROLES(관리자 + 컨설턴트)만 가능
+ * - MESSAGING_ROLES(관리자 + 컨설턴트) + ACTIVE 상태만 가능
  * - users.email_notify_enabled 업데이트
  */
 export async function updateEmailNotifySetting(
   enabled: boolean,
 ): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuth();
+    const auth = await requireAuthWithRole(MESSAGING_ROLES, {
+      roleError: '이 기능을 사용할 수 없는 역할입니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user, role } = auth;
-
-    if (!role || !EMAIL_NOTIFY_ROLES.includes(role)) {
-      return { success: false, error: '이 기능을 사용할 수 없는 역할입니다.' };
-    }
+    const { user } = auth;
 
     const adminSupabase = createAdminClient();
 
