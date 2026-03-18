@@ -11,6 +11,8 @@ import {
   checkAndRecordLLMUsage,
   fetchUserQuota,
   updateUserQuota,
+  fetchUserUsage,
+  fetchAllUsersUsage,
 } from './quota';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -379,5 +381,441 @@ describe('updateUserQuota', () => {
     await updateUserQuota('user-1', undefined, 3000);
 
     expect(mock.updateFn).toHaveBeenCalledWith({ monthly_limit: 3000 });
+  });
+});
+
+// ─── fetchUserUsage 모킹 헬퍼 ──────────────────────────────────────────────
+//
+// fetchUserUsage 내부 호출 순서:
+// 1. createAdminClient() → usageMockClient (본체용)
+// 2. fetchUserQuota → createAdminClient() → quotaMockClient
+//    - quotaMockClient.from('user_quotas').upsert(...)
+//    - quotaMockClient.from('user_quotas').select().eq().single()
+// 3. usageMockClient.from('usage_metrics').select().eq().eq().single() (일별)
+// 4. usageMockClient.from('usage_metrics').select().eq().eq() (월별, 배열)
+
+interface UsageMockOptions {
+  quota: { daily_limit: number; monthly_limit: number };
+  dailyUsage: { llm_calls: number } | null;
+  monthlyUsage: { llm_calls: number }[] | null;
+}
+
+function createUsageMock(options: UsageMockOptions) {
+  const { quota, dailyUsage, monthlyUsage } = options;
+
+  // ── quotaMockClient (fetchUserQuota 내부용) ──
+  const quotaSingleFn = vi.fn().mockResolvedValue({
+    data: { user_id: 'any', ...quota },
+    error: null,
+  });
+  const quotaSelectEqFn = vi.fn().mockReturnValue({ single: quotaSingleFn });
+  const quotaSelectFn = vi.fn().mockReturnValue({ eq: quotaSelectEqFn });
+  const quotaUpsertFn = vi.fn().mockResolvedValue({ data: null, error: null });
+
+  const quotaMockClient = {
+    from: vi.fn().mockReturnValue({
+      upsert: quotaUpsertFn,
+      select: quotaSelectFn,
+    }),
+  };
+
+  // ── usageMockClient (fetchUserUsage 본체용) ──
+  // from('usage_metrics')가 2번 호출됨: 일별(single), 월별(배열)
+  const dailySingleFn = vi.fn().mockResolvedValue({
+    data: dailyUsage,
+    error: null,
+  });
+  const dailyEq2Fn = vi.fn().mockReturnValue({ single: dailySingleFn });
+  const dailyEq1Fn = vi.fn().mockReturnValue({ eq: dailyEq2Fn });
+  const dailySelectFn = vi.fn().mockReturnValue({ eq: dailyEq1Fn });
+
+  // 월별: .select().eq().eq() → Promise (배열 반환, single 없음)
+  const monthlyEq2Fn = vi.fn().mockResolvedValue({
+    data: monthlyUsage,
+    error: null,
+  });
+  const monthlyEq1Fn = vi.fn().mockReturnValue({ eq: monthlyEq2Fn });
+  const monthlySelectFn = vi.fn().mockReturnValue({ eq: monthlyEq1Fn });
+
+  const usageMockClient = {
+    from: vi.fn()
+      .mockReturnValueOnce({ select: dailySelectFn })   // 1st: 일별 usage_metrics
+      .mockReturnValueOnce({ select: monthlySelectFn }), // 2nd: 월별 usage_metrics
+  };
+
+  return { usageMockClient, quotaMockClient };
+}
+
+// ─── fetchUserUsage ─────────────────────────────────────────────────────────
+
+describe('fetchUserUsage', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // 2025-03-15 05:00:00 UTC → KST 2025-03-15 14:00:00
+    vi.setSystemTime(new Date('2025-03-15T05:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('일별/월별 사용량과 한도를 정상 반환', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 10 },
+      monthlyUsage: [{ llm_calls: 80 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)   // fetchUserUsage 본체
+      .mockReturnValueOnce(quotaMockClient as never);   // fetchUserQuota
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result).toEqual({
+      daily: 10,
+      monthly: 80,
+      dailyLimit: 50,
+      monthlyLimit: 500,
+      dailyRemaining: 40,
+      monthlyRemaining: 420,
+    });
+  });
+
+  it('일별 사용량 없음(null) → daily: 0', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: null,
+      monthlyUsage: [{ llm_calls: 30 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.daily).toBe(0);
+    expect(result.dailyRemaining).toBe(50);
+  });
+
+  it('월별 사용량 여러 행 합산', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 5 },
+      monthlyUsage: [{ llm_calls: 10 }, { llm_calls: 20 }, { llm_calls: 30 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.monthly).toBe(60);
+    expect(result.monthlyRemaining).toBe(440);
+  });
+
+  it('일별 사용량이 한도를 초과하면 dailyRemaining: 0 (Math.max)', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 60 },
+      monthlyUsage: [{ llm_calls: 60 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.daily).toBe(60);
+    expect(result.dailyRemaining).toBe(0);
+  });
+
+  it('월별 사용량이 한도를 초과하면 monthlyRemaining: 0 (Math.max)', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 10 },
+      monthlyUsage: [{ llm_calls: 300 }, { llm_calls: 350 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.monthly).toBe(650);
+    expect(result.monthlyRemaining).toBe(0);
+  });
+
+  it('KST 기준 날짜 사용 (UTC 15시 → KST 다음날)', async () => {
+    // UTC 2025-03-15 15:00 → KST 2025-03-16
+    vi.setSystemTime(new Date('2025-03-15T15:00:00.000Z'));
+
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 5 },
+      monthlyUsage: [{ llm_calls: 5 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    await fetchUserUsage('user-1');
+
+    // 일별 쿼리 체인에서 eq가 'date' → '2025-03-16' 순서로 호출됨
+    const dailyFromCall = usageMockClient.from.mock.results[0].value;
+    const dailySelectCall = dailyFromCall.select.mock.results[0].value;
+    const dailyEq1Call = dailySelectCall.eq;
+    expect(dailyEq1Call).toHaveBeenCalledWith('user_id', 'user-1');
+    const dailyEq2Call = dailyEq1Call.mock.results[0].value.eq;
+    expect(dailyEq2Call).toHaveBeenCalledWith('date', '2025-03-16');
+  });
+
+  it('한도와 사용량이 같을 때 remaining: 0 (경계값)', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 50 },
+      monthlyUsage: [{ llm_calls: 500 }],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.dailyRemaining).toBe(0);
+    expect(result.monthlyRemaining).toBe(0);
+    expect(result.daily).toBe(50);
+    expect(result.monthly).toBe(500);
+  });
+
+  it('월별 사용량 빈 배열 → monthly: 0', async () => {
+    const { usageMockClient, quotaMockClient } = createUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 3 },
+      monthlyUsage: [],
+    });
+
+    vi.mocked(createAdminClient)
+      .mockReturnValueOnce(usageMockClient as never)
+      .mockReturnValueOnce(quotaMockClient as never);
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.monthly).toBe(0);
+    expect(result.monthlyRemaining).toBe(500);
+  });
+});
+
+// ─── fetchAllUsersUsage 모킹 헬퍼 ──────────────────────────────────────────
+
+interface AllUsageMockOptions {
+  users: { data: unknown[] | null; count: number | null };
+  monthlyUsage: { data: unknown[] | null };
+  quotas: { data: unknown[] | null };
+}
+
+function createAllUsageMock(options: AllUsageMockOptions) {
+  const { users, monthlyUsage, quotas } = options;
+
+  // from() 호출 순서: users → usage_metrics → user_quotas
+  let fromCallCount = 0;
+
+  // ── users 쿼리 체인 ──
+  // .from('users').select(..., { count: 'exact' }).in().order().range()
+  const usersRangeFn = vi.fn().mockResolvedValue({
+    data: users.data,
+    count: users.count,
+  });
+  const usersOrderFn = vi.fn().mockReturnValue({ range: usersRangeFn });
+  const usersInFn = vi.fn().mockReturnValue({ order: usersOrderFn });
+  const usersSelectFn = vi.fn().mockReturnValue({ in: usersInFn });
+  const usersChain = { select: usersSelectFn };
+
+  // ── usage_metrics 쿼리 체인 ──
+  // .from('usage_metrics').select('user_id, llm_calls').in().eq()
+  const metricsEqFn = vi.fn().mockResolvedValue({
+    data: monthlyUsage.data,
+    error: null,
+  });
+  const metricsInFn = vi.fn().mockReturnValue({ eq: metricsEqFn });
+  const metricsSelectFn = vi.fn().mockReturnValue({ in: metricsInFn });
+  const metricsChain = { select: metricsSelectFn };
+
+  // ── user_quotas 쿼리 체인 ──
+  // .from('user_quotas').select('user_id, daily_limit, monthly_limit').in()
+  const quotasInFn = vi.fn().mockResolvedValue({
+    data: quotas.data,
+    error: null,
+  });
+  const quotasSelectFn = vi.fn().mockReturnValue({ in: quotasInFn });
+  const quotasChain = { select: quotasSelectFn };
+
+  const mockClient = {
+    from: vi.fn().mockImplementation(() => {
+      fromCallCount++;
+      if (fromCallCount === 1) return usersChain;
+      if (fromCallCount === 2) return metricsChain;
+      return quotasChain;
+    }),
+  };
+
+  return { mockClient };
+}
+
+// ─── fetchAllUsersUsage ─────────────────────────────────────────────────────
+
+describe('fetchAllUsersUsage', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-03-15T05:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('SYSTEM_ADMIN → CONSULTANT_APPROVED + OPS_ADMIN 사용자 조회', async () => {
+    const { mockClient } = createAllUsageMock({
+      users: {
+        data: [
+          { id: 'u1', name: '홍길동', email: 'hong@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+          { id: 'u2', name: '김관리', email: 'kim@test.com', role: 'OPS_ADMIN', status: 'ACTIVE' },
+        ],
+        count: 2,
+      },
+      monthlyUsage: {
+        data: [
+          { user_id: 'u1', llm_calls: 30 },
+          { user_id: 'u2', llm_calls: 50 },
+        ],
+      },
+      quotas: {
+        data: [
+          { user_id: 'u1', daily_limit: 50, monthly_limit: 500 },
+          { user_id: 'u2', daily_limit: 100, monthly_limit: 1000 },
+        ],
+      },
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+
+    const result = await fetchAllUsersUsage({ currentUserRole: 'SYSTEM_ADMIN' });
+
+    expect(result.users).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.users[0].monthlyUsage).toBe(30);
+    expect(result.users[1].monthlyUsage).toBe(50);
+
+    // in() 호출에 targetRoles 확인
+    const usersInCall = mockClient.from.mock.results[0].value.select.mock.results[0].value.in;
+    expect(usersInCall).toHaveBeenCalledWith('role', ['CONSULTANT_APPROVED', 'OPS_ADMIN']);
+  });
+
+  it('OPS_ADMIN → CONSULTANT_APPROVED만 조회 (OPS_ADMIN 제외)', async () => {
+    const { mockClient } = createAllUsageMock({
+      users: {
+        data: [
+          { id: 'u1', name: '홍길동', email: 'hong@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        ],
+        count: 1,
+      },
+      monthlyUsage: {
+        data: [{ user_id: 'u1', llm_calls: 20 }],
+      },
+      quotas: {
+        data: [{ user_id: 'u1', daily_limit: 50, monthly_limit: 500 }],
+      },
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+
+    const result = await fetchAllUsersUsage({ currentUserRole: 'OPS_ADMIN' });
+
+    expect(result.users).toHaveLength(1);
+    const usersInCall = mockClient.from.mock.results[0].value.select.mock.results[0].value.in;
+    expect(usersInCall).toHaveBeenCalledWith('role', ['CONSULTANT_APPROVED']);
+  });
+
+  it('CONSULTANT_APPROVED → 관리 가능 역할 없으므로 빈 결과 즉시 반환', async () => {
+    const result = await fetchAllUsersUsage({ currentUserRole: 'CONSULTANT_APPROVED' });
+
+    expect(result.users).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.totalPages).toBe(0);
+    // createAdminClient가 호출되지만 from()은 호출되지 않아야 함
+    // (targetRoles가 비어있어 early return)
+  });
+
+  it('조회된 사용자가 없으면 빈 결과 반환', async () => {
+    const { mockClient } = createAllUsageMock({
+      users: { data: [], count: 0 },
+      monthlyUsage: { data: [] },
+      quotas: { data: [] },
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+
+    const result = await fetchAllUsersUsage({ currentUserRole: 'SYSTEM_ADMIN' });
+
+    expect(result.users).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.totalPages).toBe(0);
+  });
+
+  it('usagePercent 정확한 계산: llmCalls 25 / monthlyLimit 100 → 25%', async () => {
+    const { mockClient } = createAllUsageMock({
+      users: {
+        data: [
+          { id: 'u1', name: '테스트', email: 't@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        ],
+        count: 1,
+      },
+      monthlyUsage: {
+        data: [{ user_id: 'u1', llm_calls: 25 }],
+      },
+      quotas: {
+        data: [{ user_id: 'u1', daily_limit: 50, monthly_limit: 100 }],
+      },
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+
+    const result = await fetchAllUsersUsage({ currentUserRole: 'SYSTEM_ADMIN' });
+
+    expect(result.users[0].usagePercent).toBe(25);
+    expect(result.users[0].monthlyLimit).toBe(100);
+  });
+
+  it('쿼터 없는 사용자는 기본값(daily:50, monthly:500) 사용', async () => {
+    const { mockClient } = createAllUsageMock({
+      users: {
+        data: [
+          { id: 'u1', name: '무쿼터', email: 'nq@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+        ],
+        count: 1,
+      },
+      monthlyUsage: {
+        data: [{ user_id: 'u1', llm_calls: 10 }],
+      },
+      quotas: {
+        data: [], // 쿼터 데이터 없음
+      },
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+
+    const result = await fetchAllUsersUsage({ currentUserRole: 'SYSTEM_ADMIN' });
+
+    expect(result.users[0].dailyLimit).toBe(50);
+    expect(result.users[0].monthlyLimit).toBe(500);
+    expect(result.users[0].usagePercent).toBe(2); // Math.round(10/500*100)
   });
 });
