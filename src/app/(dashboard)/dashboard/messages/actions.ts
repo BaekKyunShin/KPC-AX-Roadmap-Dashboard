@@ -102,7 +102,10 @@ export async function fetchConversations(): Promise<
 
     // 5단계 결과 처리
     const lastMsgMap = new Map<string, { content: string; sender_id: string; created_at: string }>();
-    const { data: lastMessages } = lastMessagesResult;
+    const { data: lastMessages, error: lastMsgError } = lastMessagesResult;
+    if (lastMsgError) {
+      console.error('[fetchConversations Error] 마지막 메시지 조회:', lastMsgError);
+    }
     if (lastMessages) {
       for (const msg of lastMessages) {
         lastMsgMap.set(msg.conversation_id, {

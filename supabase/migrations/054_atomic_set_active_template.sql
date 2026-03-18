@@ -23,10 +23,10 @@ BEGIN
     RETURN jsonb_build_object('success', FALSE, 'error', '템플릿을 찾을 수 없습니다.');
   END IF;
 
-  -- 2. 기존 활성 비활성화 (대상 제외)
+  -- 2. 기존 활성 비활성화 (대상 제외, 소프트 삭제된 행 무시)
   UPDATE public.self_assessment_templates
   SET is_active = FALSE
-  WHERE is_active = TRUE AND id != p_template_id;
+  WHERE is_active = TRUE AND id != p_template_id AND deleted_at IS NULL;
 
   -- 3. 대상 활성화
   UPDATE public.self_assessment_templates
