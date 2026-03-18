@@ -344,36 +344,22 @@ describe('saveRecommendations', () => {
 
   it('delete 후 insert 순서 호출 확인', async () => {
     const candidates = makeCandidates(2);
-    const callOrder: string[] = [];
-
-    const supabase = {
-      from: vi.fn((table: string) => {
-        if (callOrder.length === 0 || (callOrder.length > 0 && callOrder[callOrder.length - 1] !== 'delete')) {
-          // 첫 번째 from() → delete 체인
-          callOrder.push('delete');
-          return {
-            delete: vi.fn(() => {
-              return {
-                eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-              };
-            }),
-          };
-        } else {
-          // 두 번째 from() → insert 체인
-          callOrder.push('insert');
-          return {
-            insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-          };
-        }
-      }),
-    };
+    const supabase = createSequentialSupabase([
+      { data: null }, // delete
+      { data: null }, // insert
+    ]);
 
     await saveRecommendations(supabase as never, projectId, candidates);
 
-    expect(callOrder).toEqual(['delete', 'insert']);
+    // from() 2회 호출, 모두 matching_recommendations 테이블
     expect(supabase.from).toHaveBeenCalledTimes(2);
-    expect(supabase.from.mock.calls[0][0]).toBe('matching_recommendations');
-    expect(supabase.from.mock.calls[1][0]).toBe('matching_recommendations');
+    expect(supabase.from).toHaveBeenNthCalledWith(1, 'matching_recommendations');
+    expect(supabase.from).toHaveBeenNthCalledWith(2, 'matching_recommendations');
+
+    // 첫 번째 체인에서 delete, 두 번째에서 insert 호출
+    const chains = supabase._chains();
+    expect(chains[0].delete).toHaveBeenCalled();
+    expect(chains[1].insert).toHaveBeenCalled();
   });
 
   it('빈 candidates → 빈 배열 insert', async () => {

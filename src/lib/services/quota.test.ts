@@ -1,7 +1,8 @@
 /**
  * quota.ts 테스트
- * - getKSTDateTime: KST 기준 날짜/월 조회 (순수 함수, 타이머 모킹)
- * - checkAndRecordLLMUsage: 원자적 쿼터 확인+사용량 기록 (RPC 모킹)
+ * - getDefaultLimits / getKSTDateTime / checkAndRecordLLMUsage
+ * - fetchUserQuota / updateUserQuota
+ * - fetchUserUsage / fetchAllUsersUsage
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -446,6 +447,15 @@ function createUsageMock(options: UsageMockOptions) {
   return { usageMockClient, quotaMockClient };
 }
 
+/** createUsageMock + createAdminClient 모킹을 한 번에 수행 */
+function setupUsageMock(options: UsageMockOptions) {
+  const { usageMockClient, quotaMockClient } = createUsageMock(options);
+  vi.mocked(createAdminClient)
+    .mockReturnValueOnce(usageMockClient as never)
+    .mockReturnValueOnce(quotaMockClient as never);
+  return { usageMockClient, quotaMockClient };
+}
+
 // ─── fetchUserUsage ─────────────────────────────────────────────────────────
 
 describe('fetchUserUsage', () => {
@@ -461,15 +471,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('일별/월별 사용량과 한도를 정상 반환', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 10 },
       monthlyUsage: [{ llm_calls: 80 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)   // fetchUserUsage 본체
-      .mockReturnValueOnce(quotaMockClient as never);   // fetchUserQuota
 
     const result = await fetchUserUsage('user-1');
 
@@ -484,15 +490,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('일별 사용량 없음(null) → daily: 0', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: null,
       monthlyUsage: [{ llm_calls: 30 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
@@ -501,15 +503,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('월별 사용량 여러 행 합산', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 5 },
       monthlyUsage: [{ llm_calls: 10 }, { llm_calls: 20 }, { llm_calls: 30 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
@@ -518,15 +516,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('일별 사용량이 한도를 초과하면 dailyRemaining: 0 (Math.max)', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 60 },
       monthlyUsage: [{ llm_calls: 60 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
@@ -535,15 +529,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('월별 사용량이 한도를 초과하면 monthlyRemaining: 0 (Math.max)', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 10 },
       monthlyUsage: [{ llm_calls: 300 }, { llm_calls: 350 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
@@ -555,15 +545,11 @@ describe('fetchUserUsage', () => {
     // UTC 2025-03-15 15:00 → KST 2025-03-16
     vi.setSystemTime(new Date('2025-03-15T15:00:00.000Z'));
 
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    const { usageMockClient } = setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 5 },
       monthlyUsage: [{ llm_calls: 5 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     await fetchUserUsage('user-1');
 
@@ -577,15 +563,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('한도와 사용량이 같을 때 remaining: 0 (경계값)', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 50 },
       monthlyUsage: [{ llm_calls: 500 }],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
@@ -596,15 +578,11 @@ describe('fetchUserUsage', () => {
   });
 
   it('월별 사용량 빈 배열 → monthly: 0', async () => {
-    const { usageMockClient, quotaMockClient } = createUsageMock({
+    setupUsageMock({
       quota: { daily_limit: 50, monthly_limit: 500 },
       dailyUsage: { llm_calls: 3 },
       monthlyUsage: [],
     });
-
-    vi.mocked(createAdminClient)
-      .mockReturnValueOnce(usageMockClient as never)
-      .mockReturnValueOnce(quotaMockClient as never);
 
     const result = await fetchUserUsage('user-1');
 
