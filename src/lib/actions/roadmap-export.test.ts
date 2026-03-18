@@ -78,6 +78,7 @@ const ROADMAP_DATA = {
   projects: {
     company_name: '테스트 기업',
     assigned_consultant_id: USER_ID,
+    status: 'ROADMAP_DRAFTED',
   },
 };
 
@@ -195,6 +196,40 @@ describe('prepareExportData', () => {
     if (!result.success) {
       expect(result.error).toBe('접근 권한이 없습니다.');
     }
+  });
+
+  it('프로젝트 상태가 내보내기 불가(NEW)이면 에러를 반환한다', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    const roadmapWithInvalidStatus = {
+      ...ROADMAP_DATA,
+      projects: { ...ROADMAP_DATA.projects, status: 'NEW' },
+    };
+    // 1) 로드맵 조회 → 성공 (비정상 상태)
+    mock.addResult({ data: roadmapWithInvalidStatus, error: null });
+    // 프로필 조회 불필요 — 상태 검증에서 즉시 반환
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await prepareExportData(ROADMAP_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('내보내기할 수 없는 프로젝트 상태입니다.');
+    }
+  });
+
+  it('프로젝트 상태가 FINALIZED이면 내보내기에 성공한다', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    const roadmapWithFinalizedStatus = {
+      ...ROADMAP_DATA,
+      projects: { ...ROADMAP_DATA.projects, status: 'FINALIZED' },
+    };
+    mock.addResult({ data: roadmapWithFinalizedStatus, error: null });
+    mock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await prepareExportData(ROADMAP_ID);
+
+    expect(result.success).toBe(true);
   });
 });
 

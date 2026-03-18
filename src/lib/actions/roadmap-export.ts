@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
+import { EXPORT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import type { ProjectStatus } from '@/types/database';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -22,12 +24,19 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
     // 로드맵 데이터 조회
     const { data: roadmap } = await supabase
       .from('roadmap_versions')
-      .select('*, projects!inner(company_name, assigned_consultant_id)')
+      .select('*, projects!inner(company_name, assigned_consultant_id, status)')
       .eq('id', roadmapId)
       .single();
 
     if (!roadmap) {
       return { success: false, error: '로드맵을 찾을 수 없습니다.' };
+    }
+
+    const projectData = roadmap.projects as { company_name: string; assigned_consultant_id: string; status: string };
+
+    // 프로젝트 상태 검증 (ROADMAP_DRAFTED, FINALIZED에서만 내보내기 허용)
+    if (!EXPORT_ELIGIBLE_STATUSES.includes(projectData.status as ProjectStatus)) {
+      return { success: false, error: '내보내기할 수 없는 프로젝트 상태입니다.' };
     }
 
     // 접근 권한 확인
@@ -40,8 +49,6 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
     if (!profile) {
       return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
     }
-
-    const projectData = roadmap.projects as { company_name: string; assigned_consultant_id: string };
 
     // 역할별 접근 권한 검증
     if (profile.role === 'CONSULTANT_APPROVED') {

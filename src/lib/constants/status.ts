@@ -58,6 +58,12 @@ export const ROADMAP_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
   'FINALIZED',
 ] as const;
 
+/** 내보내기 가능한 프로젝트 상태 (로드맵이 존재하는 상태) */
+export const EXPORT_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
+  'ROADMAP_DRAFTED',
+  'FINALIZED',
+] as const;
+
 /**
  * 프로젝트 진행 상태 경고 기준 (일수)
  * - 대시보드 정체 프로젝트 표시 기준: 20일 이상
