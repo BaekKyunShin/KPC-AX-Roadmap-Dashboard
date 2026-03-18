@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getCachedProfile } from '@/lib/supabase/cached';
 import { consultantProfileSchema } from '@/lib/schemas/user';
 import { PG_UNIQUE_VIOLATION, SUPABASE_NO_ROWS } from '@/lib/constants/database';
 import { revalidateTag } from 'next/cache';
@@ -160,6 +161,7 @@ export async function fetchConsultantProfile(): Promise<ActionResult<{ profile: 
 /**
  * 컨설턴트 프로필 수정
  * 승인 대기 상태에서도 본인 프로필 수정 가능
+ * SUSPENDED/WITHDRAWN 상태는 차단
  */
 export async function updateConsultantProfile(formData: FormData): Promise<SimpleActionResult> {
   try {
@@ -175,6 +177,15 @@ export async function updateConsultantProfile(formData: FormData): Promise<Simpl
     }
 
     const userId = authData.user.id;
+
+    // 1-1. 사용자 상태 검증 — SUSPENDED/WITHDRAWN 차단
+    const cachedProfile = await getCachedProfile();
+    if (cachedProfile?.status === 'SUSPENDED' || cachedProfile?.status === 'WITHDRAWN') {
+      return {
+        success: false,
+        error: '계정이 정지 또는 탈퇴 상태입니다.',
+      };
+    }
 
     // 2. 폼 데이터 파싱 및 검증
     const rawData = parseConsultantProfileFormData(formData);
