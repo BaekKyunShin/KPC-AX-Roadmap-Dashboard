@@ -3,6 +3,7 @@
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { getWorkflowStepIndex, OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
+import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
 
 /** Supabase 조인 결과가 배열/단일 객체 모두 가능 — 첫 번째 항목 추출 */
 function unwrapJoinResult<T>(value: T | T[]): T | null {
@@ -62,7 +63,8 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
 
   // 검색 조건
   if (search) {
-    query = query.or(`company_name.ilike.%${search}%,contact_email.ilike.%${search}%`);
+    const p = ilikePattern(search);
+    query = query.or(`company_name.ilike.${p},contact_email.ilike.${p}`);
   }
 
   // 상태 필터
@@ -353,7 +355,8 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
     `, { count: 'exact' });
 
   if (search) {
-    query = query.or(`company_name.ilike.%${search}%,contact_email.ilike.%${search}%`);
+    const p = ilikePattern(search);
+    query = query.or(`company_name.ilike.${p},contact_email.ilike.${p}`);
   }
 
   // 다중 상태 필터링 (statuses 배열 우선, 없으면 단일 status)

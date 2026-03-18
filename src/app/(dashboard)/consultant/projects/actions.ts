@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
+import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
 
 export interface ConsultantProjectListParams {
   search?: string;
@@ -69,7 +70,8 @@ export async function fetchConsultantProjects(
 
   // 검색 조건
   if (search) {
-    query = query.or(`company_name.ilike.%${search}%,industry.ilike.%${search}%`);
+    const p = ilikePattern(search);
+    query = query.or(`company_name.ilike.${p},industry.ilike.${p}`);
   }
 
   // 상태 필터

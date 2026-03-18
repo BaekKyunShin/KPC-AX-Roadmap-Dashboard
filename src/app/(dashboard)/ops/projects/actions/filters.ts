@@ -13,6 +13,7 @@ import {
   CACHE_TAG_CONSULTANT_FILTERS,
   FILTER_CACHE_TTL_SECONDS,
 } from '@/lib/constants/cache';
+import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
 
 /** 프로젝트 필터 옵션 반환 타입 */
 export interface ProjectFilterOptions {
@@ -111,7 +112,8 @@ export async function fetchConsultantCandidates(
 
   // 검색 조건 (이름 또는 이메일)
   if (search) {
-    query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+    const p = ilikePattern(search);
+    query = query.or(`name.ilike.${p},email.ilike.${p}`);
   }
 
   // 정렬 및 페이지네이션

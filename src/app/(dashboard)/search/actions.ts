@@ -7,6 +7,7 @@ import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
 import { PROJECT_STATUS_CONFIG, ROADMAP_VERSION_STATUS_CONFIG } from '@/lib/constants/status';
 import { ROLE_LABELS } from '@/lib/constants/message';
+import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
 import type { ProjectStatus, RoadmapVersionStatus } from '@/types/database';
 
 const MIN_QUERY_LENGTH = 2;

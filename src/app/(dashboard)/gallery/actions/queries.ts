@@ -2,6 +2,7 @@
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
@@ -140,8 +141,9 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
 
   // 검색
   if (search) {
+    const p = ilikePattern(search);
     query = query.or(
-      `diagnosis_summary.ilike.%${search}%,projects.company_name.ilike.%${search}%`
+      `diagnosis_summary.ilike.${p},projects.company_name.ilike.${p}`
     );
   }
 
