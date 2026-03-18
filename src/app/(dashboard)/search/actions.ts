@@ -27,7 +27,7 @@ export async function unifiedSearch(
   const isAdmin = role === 'OPS_ADMIN' || role === 'SYSTEM_ADMIN';
   const isConsultant = role === 'CONSULTANT_APPROVED';
   const admin = createAdminClient();
-  const pattern = `%${query}%`;
+  const pattern = ilikePattern(query);
 
   // ─── 프로젝트 검색 ──────────────────────────────────────────────────
 
