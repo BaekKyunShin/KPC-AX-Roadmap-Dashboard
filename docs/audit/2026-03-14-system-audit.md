@@ -6,7 +6,7 @@
 
 | 영역 | P0 | P1 | P2 | 상태 |
 |------|----|----|-----|------|
-| 보안 (security-auditor) | 0 | 3 | 6 | 양호 |
+| 보안 (security-auditor) | 0 | ~~3~~ ✅ | 6 | P1 전체 해결 완료 |
 | 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
 | 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | ~~4~~ ✅ | 전체 해결 완료 |
 | 테스트 (test-automator) | ~~4~~ ✅ | ~~8~~ ✅ | ~~5~~ ✅ | P0/P1/P2 전체 해결 완료 |
@@ -20,23 +20,20 @@
 
 ### P1 발견사항
 
-#### P1-SEC-01: 로드맵 내보내기 ACTIVE 상태 체크 누락
+#### ~~P1-SEC-01: 로드맵 내보내기 ACTIVE 상태 체크 누락~~ ✅ 해결
 
-- **파일:** `src/lib/actions/export-actions.ts`
-- **문제:** 프로젝트가 FINALIZED 이후 비활성화되어도 내보내기 가능. 프로젝트 상태(ACTIVE 여부) 검증 없음.
-- **권장:** 내보내기 전 프로젝트 상태 확인 로직 추가
+- [x] **해결 완료** (2026-03-18) — `EXPORT_ELIGIBLE_STATUSES` 상수 추가, `prepareExportData()`에서 프로젝트 상태 검증 (ROADMAP_DRAFTED, FINALIZED만 허용)
+- **파일:** `src/lib/actions/roadmap-export.ts`, `src/lib/constants/status.ts`
 
-#### P1-SEC-02: PostgREST `.or()` 필터 인젝션
+#### ~~P1-SEC-02: PostgREST `.or()` 필터 인젝션~~ ✅ 해결
 
-- **파일:** `src/app/(dashboard)/ops/projects/actions.ts` 등 `.or()` 사용처
-- **문제:** 사용자 입력이 `.or()` 필터 문자열에 직접 삽입되면 PostgREST 필터 인젝션 가능
-- **권장:** `.or()` 내 사용자 입력을 파라미터화하거나 사전 이스케이프 처리
+- [x] **해결 완료** (2026-03-18) — `sanitizePostgrestFilter()`/`ilikePattern()` 이스케이프 유틸리티 추가, 5개 파일(7개 `.or()` 호출) 전체 적용
+- **파일:** `src/lib/utils/postgrest-sanitize.ts` (신규), `filters.ts`, `queries.ts`, `search/actions.ts`, `gallery/actions/queries.ts`, `consultant/projects/actions.ts`
 
-#### P1-SEC-03: 프로필 상태 검증 갭
+#### ~~P1-SEC-03: 프로필 상태 검증 갭~~ ✅ 해결
 
+- [x] **해결 완료** (2026-03-18) — `requireAuth` → `requireAuthWithRole(MESSAGING_ROLES)` 교체, ACTIVE 상태 검증 추가
 - **파일:** `src/app/(dashboard)/dashboard/profile/actions.ts`
-- **문제:** 프로필 업데이트 시 사용자 상태(ACTIVE/SUSPENDED 등) 재검증 없음. 미들웨어에서 세션은 확인하지만 상태 변경 후 기존 세션으로 프로필 수정 가능.
-- **권장:** 프로필 수정 Server Action에서 사용자 상태 재검증
 
 ### P2 발견사항
 
@@ -276,9 +273,9 @@
 
 | ID | 영역 | 설명 | 난이도 | 영향도 |
 |----|------|------|--------|--------|
-| P1-SEC-01 | 보안 | 로드맵 내보내기 ACTIVE 상태 체크 | 낮음 | 중간 |
-| P1-SEC-02 | 보안 | PostgREST .or() 필터 인젝션 방어 | 중간 | 중간 |
-| P1-SEC-03 | 보안 | 프로필 수정 시 사용자 상태 재검증 | 낮음 | 중간 |
+| P1-SEC-01 | 보안 | 로드맵 내보내기 ACTIVE 상태 체크 | 낮음 | 중간 | ✅ 해결 |
+| P1-SEC-02 | 보안 | PostgREST .or() 필터 인젝션 방어 | 중간 | 중간 | ✅ 해결 |
+| P1-SEC-03 | 보안 | 프로필 수정 시 사용자 상태 재검증 | 낮음 | 중간 | ✅ 해결 |
 | P1-DB-01 | DB | audit_logs 복합 인덱스 추가 | 낮음 | 높음 |
 | P1-DB-02 | DB | fetchConversations 병렬화 | 낮음 | 중간 |
 | P1-DB-03 | DB | is_approved_consultant() 최적화 | 중간 | 중간 |
