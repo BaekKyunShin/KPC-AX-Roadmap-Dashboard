@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { SESSION_COOKIE_OPTIONS } from '@/lib/constants/session';
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -22,6 +23,7 @@ export async function createClient() {
           }
         },
       },
+      cookieOptions: SESSION_COOKIE_OPTIONS,
     }
   );
 }

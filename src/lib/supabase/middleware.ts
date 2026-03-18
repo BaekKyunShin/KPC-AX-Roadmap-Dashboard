@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { SESSION_COOKIE_OPTIONS } from '@/lib/constants/session';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -24,6 +25,7 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+      cookieOptions: SESSION_COOKIE_OPTIONS,
     }
   );
 
