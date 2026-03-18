@@ -27,3 +27,10 @@ describe('NotFound (404 페이지)', () => {
     expect(homeLink).toHaveAttribute('href', '/');
   });
 });
+
+describe('스냅샷', () => {
+  it('404 페이지 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(<NotFound />);
+    expect(container.firstChild).toMatchSnapshot();
+  });
+});

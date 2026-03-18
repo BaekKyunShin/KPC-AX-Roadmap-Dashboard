@@ -8,19 +8,19 @@ describe('createActivityLogSchema', () => {
     content: '기업 홈페이지와 산업 동향을 사전 조사했습니다.',
   };
 
-  it('should accept valid activity log data', () => {
+  it('유효한 활동 일지 데이터를 허용한다', () => {
     const result = createActivityLogSchema.safeParse(validData);
     expect(result.success).toBe(true);
   });
 
-  it('should accept all manual activity log types', () => {
+  it('모든 수동 활동 일지 유형을 허용한다', () => {
     MANUAL_ACTIVITY_LOG_TYPES.forEach((type) => {
       const result = createActivityLogSchema.safeParse({ ...validData, type });
       expect(result.success).toBe(true);
     });
   });
 
-  it('should reject system_auto type', () => {
+  it('system_auto 유형을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       ...validData,
       type: 'system_auto',
@@ -28,7 +28,7 @@ describe('createActivityLogSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject invalid type', () => {
+  it('잘못된 유형을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       ...validData,
       type: 'invalid_type',
@@ -36,7 +36,7 @@ describe('createActivityLogSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty content', () => {
+  it('빈 내용을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       ...validData,
       content: '',
@@ -44,7 +44,7 @@ describe('createActivityLogSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject content exceeding max length', () => {
+  it('최대 길이 초과 내용을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       ...validData,
       content: 'A'.repeat(ACTIVITY_LOG_MAX_LENGTH + 1),
@@ -52,7 +52,7 @@ describe('createActivityLogSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should accept content at max length', () => {
+  it('최대 길이의 내용을 허용한다', () => {
     const result = createActivityLogSchema.safeParse({
       ...validData,
       content: 'A'.repeat(ACTIVITY_LOG_MAX_LENGTH),
@@ -60,14 +60,14 @@ describe('createActivityLogSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject missing type', () => {
+  it('유형 누락을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       content: '내용',
     });
     expect(result.success).toBe(false);
   });
 
-  it('should reject missing content', () => {
+  it('내용 누락을 거부한다', () => {
     const result = createActivityLogSchema.safeParse({
       type: 'field_note',
     });
@@ -76,28 +76,28 @@ describe('createActivityLogSchema', () => {
 });
 
 describe('updateActivityLogSchema', () => {
-  it('should accept valid content', () => {
+  it('유효한 내용을 허용한다', () => {
     const result = updateActivityLogSchema.safeParse({
       content: '수정된 내용입니다.',
     });
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty content', () => {
+  it('빈 내용을 거부한다', () => {
     const result = updateActivityLogSchema.safeParse({
       content: '',
     });
     expect(result.success).toBe(false);
   });
 
-  it('should reject content exceeding max length', () => {
+  it('최대 길이 초과 내용을 거부한다', () => {
     const result = updateActivityLogSchema.safeParse({
       content: 'A'.repeat(ACTIVITY_LOG_MAX_LENGTH + 1),
     });
     expect(result.success).toBe(false);
   });
 
-  it('should accept content at max length', () => {
+  it('최대 길이의 내용을 허용한다', () => {
     const result = updateActivityLogSchema.safeParse({
       content: 'A'.repeat(ACTIVITY_LOG_MAX_LENGTH),
     });

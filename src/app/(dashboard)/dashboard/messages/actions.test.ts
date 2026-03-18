@@ -167,7 +167,7 @@ describe('fetchConversations', () => {
     }
   });
 
-  it('last_read_at >= last_message_at → has_unread=false', async () => {
+  it('last_read_at >= last_message_at이면 has_unread가 false이다', async () => {
     setupAuth();
     const messageTime = '2026-02-17T09:00:00Z';
     const readTime = '2026-02-17T10:00:00Z'; // 읽은 시간이 더 나중

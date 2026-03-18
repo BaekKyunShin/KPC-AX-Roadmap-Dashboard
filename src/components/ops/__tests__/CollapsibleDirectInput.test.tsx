@@ -55,3 +55,20 @@ describe('CollapsibleDirectInput', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('스냅샷', () => {
+  it('접힌 상태의 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(
+      <CollapsibleDirectInput projectId="proj-1" template={mockTemplate} />
+    );
+    expect(container.firstChild).toMatchSnapshot();
+  });
+
+  it('펼친 상태의 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(
+      <CollapsibleDirectInput projectId="proj-1" template={mockTemplate} />
+    );
+    fireEvent.click(screen.getByText('운영자가 직접 입력하기'));
+    expect(container.firstChild).toMatchSnapshot();
+  });
+});

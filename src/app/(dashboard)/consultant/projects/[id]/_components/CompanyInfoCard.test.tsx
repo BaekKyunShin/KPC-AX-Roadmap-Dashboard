@@ -72,3 +72,32 @@ describe('CompanyInfoCard', () => {
     expect(screen.queryByText('고객 요청사항')).not.toBeInTheDocument();
   });
 });
+
+describe('스냅샷', () => {
+  it('필수 정보만 있는 경우 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(<CompanyInfoCard {...requiredProps} />);
+    expect(container.firstChild).toMatchSnapshot();
+  });
+
+  it('모든 선택 필드가 있는 경우 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(
+      <CompanyInfoCard
+        {...requiredProps}
+        contactPhone="010-1234-5678"
+        companyAddress="서울시 강남구"
+        customerComment="AI 도입 시급합니다"
+      />
+    );
+    expect(container.firstChild).toMatchSnapshot();
+  });
+
+  it('고객 요청사항만 있는 경우 구조가 스냅샷과 일치한다', () => {
+    const { container } = render(
+      <CompanyInfoCard
+        {...requiredProps}
+        customerComment="AI 도입 시급합니다"
+      />
+    );
+    expect(container.firstChild).toMatchSnapshot();
+  });
+});

@@ -104,4 +104,11 @@ describe('FooterCredit', () => {
       expect(underline).toHaveClass('scale-x-0');
     });
   });
+
+  describe('스냅샷', () => {
+    it('기본 상태의 구조가 스냅샷과 일치한다', () => {
+      const { container } = render(<FooterCredit />);
+      expect(container.firstChild).toMatchSnapshot();
+    });
+  });
 });

@@ -9,26 +9,26 @@ import {
 } from './user';
 
 describe('userRoleSchema', () => {
-  it('should accept valid roles', () => {
+  it('유효한 역할을 허용한다', () => {
     const validRoles = ['PUBLIC', 'USER_PENDING', 'CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
     validRoles.forEach((role) => {
       expect(userRoleSchema.safeParse(role).success).toBe(true);
     });
   });
 
-  it('should reject invalid roles', () => {
+  it('잘못된 역할을 거부한다', () => {
     expect(userRoleSchema.safeParse('INVALID').success).toBe(false);
     expect(userRoleSchema.safeParse('admin').success).toBe(false);
   });
 });
 
 describe('userStatusSchema', () => {
-  it('should accept valid statuses', () => {
+  it('유효한 상태를 허용한다', () => {
     expect(userStatusSchema.safeParse('ACTIVE').success).toBe(true);
     expect(userStatusSchema.safeParse('SUSPENDED').success).toBe(true);
   });
 
-  it('should reject invalid statuses', () => {
+  it('잘못된 상태를 거부한다', () => {
     expect(userStatusSchema.safeParse('INACTIVE').success).toBe(false);
   });
 });
@@ -43,17 +43,17 @@ describe('registerSchema', () => {
     agreeToTerms: true as const,
   };
 
-  it('should accept valid registration data', () => {
+  it('유효한 회원가입 데이터를 허용한다', () => {
     const result = registerSchema.safeParse(validData);
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid email', () => {
+  it('잘못된 이메일을 거부한다', () => {
     const result = registerSchema.safeParse({ ...validData, email: 'invalid-email' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject short password', () => {
+  it('짧은 비밀번호를 거부한다', () => {
     const result = registerSchema.safeParse({
       ...validData,
       password: 'Pass1',
@@ -62,7 +62,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject password without number', () => {
+  it('숫자 없는 비밀번호를 거부한다', () => {
     const result = registerSchema.safeParse({
       ...validData,
       password: 'PasswordOnly',
@@ -71,7 +71,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject password without letter', () => {
+  it('영문 없는 비밀번호를 거부한다', () => {
     const result = registerSchema.safeParse({
       ...validData,
       password: '12345678',
@@ -80,7 +80,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject mismatched passwords', () => {
+  it('불일치하는 비밀번호를 거부한다', () => {
     const result = registerSchema.safeParse({
       ...validData,
       confirmPassword: 'DifferentPassword123',
@@ -88,19 +88,19 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject short name', () => {
+  it('짧은 이름을 거부한다', () => {
     const result = registerSchema.safeParse({ ...validData, name: '김' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject if terms not agreed', () => {
+  it('약관 미동의를 거부한다', () => {
     const result = registerSchema.safeParse({ ...validData, agreeToTerms: false });
     expect(result.success).toBe(false);
   });
 });
 
 describe('loginSchema', () => {
-  it('should accept valid login data', () => {
+  it('유효한 로그인 데이터를 허용한다', () => {
     const result = loginSchema.safeParse({
       email: 'test@example.com',
       password: 'password123',
@@ -108,7 +108,7 @@ describe('loginSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid email', () => {
+  it('잘못된 이메일을 거부한다', () => {
     const result = loginSchema.safeParse({
       email: 'invalid',
       password: 'password123',
@@ -116,7 +116,7 @@ describe('loginSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty password', () => {
+  it('빈 비밀번호를 거부한다', () => {
     const result = loginSchema.safeParse({
       email: 'test@example.com',
       password: '',
@@ -141,12 +141,12 @@ describe('consultantProfileSchema', () => {
     strengths_constraints: '제조업 도메인 전문성이 강점입니다. 특히 품질관리와 생산 프로세스 개선에 강합니다. 금융권 경험은 제한적임.',
   };
 
-  it('should accept valid consultant profile', () => {
+  it('유효한 컨설턴트 프로필을 허용한다', () => {
     const result = consultantProfileSchema.safeParse(validProfile);
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty expertise_domains', () => {
+  it('빈 전문 분야를 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       expertise_domains: [],
@@ -154,7 +154,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty teaching_levels', () => {
+  it('빈 교육 수준을 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       teaching_levels: [],
@@ -162,7 +162,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject negative years_of_experience', () => {
+  it('음수 경력 연차를 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       years_of_experience: -1,
@@ -170,7 +170,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject years_of_experience over 50', () => {
+  it('50년 초과 경력 연차를 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       years_of_experience: 51,
@@ -178,7 +178,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject short representative_experience', () => {
+  it('짧은 대표 경험을 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       representative_experience: '짧은 경험',
@@ -186,7 +186,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty affiliation', () => {
+  it('빈 소속을 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       affiliation: '',
@@ -194,7 +194,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject affiliation over 50 characters', () => {
+  it('50자 초과 소속을 거부한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       affiliation: 'A'.repeat(51),
@@ -202,7 +202,7 @@ describe('consultantProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should accept affiliation with 50 characters', () => {
+  it('50자 소속을 허용한다', () => {
     const result = consultantProfileSchema.safeParse({
       ...validProfile,
       affiliation: 'A'.repeat(50),
@@ -212,7 +212,7 @@ describe('consultantProfileSchema', () => {
 });
 
 describe('userApprovalSchema', () => {
-  it('should accept valid approval data', () => {
+  it('유효한 승인 데이터를 허용한다', () => {
     const result = userApprovalSchema.safeParse({
       userId: '123e4567-e89b-12d3-a456-426614174000',
       action: 'approve',
@@ -220,7 +220,7 @@ describe('userApprovalSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept all valid actions', () => {
+  it('모든 유효한 액션을 허용한다', () => {
     const actions = ['approve', 'suspend', 'reactivate'] as const;
     actions.forEach((action) => {
       const result = userApprovalSchema.safeParse({
@@ -231,7 +231,7 @@ describe('userApprovalSchema', () => {
     });
   });
 
-  it('should reject invalid UUID', () => {
+  it('잘못된 UUID를 거부한다', () => {
     const result = userApprovalSchema.safeParse({
       userId: 'invalid-uuid',
       action: 'approve',
@@ -239,7 +239,7 @@ describe('userApprovalSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject invalid action', () => {
+  it('잘못된 액션을 거부한다', () => {
     const result = userApprovalSchema.safeParse({
       userId: '123e4567-e89b-12d3-a456-426614174000',
       action: 'invalid',

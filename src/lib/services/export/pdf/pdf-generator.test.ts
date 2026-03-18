@@ -251,4 +251,46 @@ describe('generatePDF', () => {
     );
     expect(hasPageNumber).toBe(true);
   });
+
+  it('pblCourse가 없는 데이터도 에러 없이 처리한다', async () => {
+    const { generatePDF } = await import('./pdf-generator');
+    // pblCourse를 최소 데이터로 구성 (필수 필드만)
+    const data = createTestExportData({
+      pblCourse: {
+        course_name: '최소 PBL',
+        total_hours: 0,
+        target_tasks: [],
+        target_audience: '-',
+        curriculum: [],
+        final_deliverables: [],
+        expected_outcomes: [],
+        business_impact: '',
+        measurement_methods: [],
+        prerequisites: [],
+      },
+    });
+
+    const result = await generatePDF(data);
+
+    expect(result).toBeInstanceOf(Blob);
+  });
+
+  it('roadmapMatrix가 빈 배열이어도 에러 없이 처리한다', async () => {
+    const { generatePDF } = await import('./pdf-generator');
+    const data = createTestExportData({ roadmapMatrix: [] });
+
+    const result = await generatePDF(data);
+
+    expect(result).toBeInstanceOf(Blob);
+  });
+
+  it('courses가 비어있어도 에러 없이 처리한다', async () => {
+    const { generatePDF } = await import('./pdf-generator');
+    const data = createTestExportData({ courses: [] });
+
+    const result = await generatePDF(data);
+
+    expect(result).toBeInstanceOf(Blob);
+    // courses.forEach가 호출되지만 비어있으므로 drawCourseDetail은 호출되지 않음
+  });
 });

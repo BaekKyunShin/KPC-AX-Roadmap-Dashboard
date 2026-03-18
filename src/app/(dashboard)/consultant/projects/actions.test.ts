@@ -35,7 +35,7 @@ describe('fetchConsultantProjects', () => {
     vi.clearAllMocks();
   });
 
-  it('인증되지 않은 사용자 -> 빈 결과 반환', async () => {
+  it('인증되지 않은 사용자 → 빈 결과 반환', async () => {
     serverMock = createMockSupabase({ authUser: null });
     vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
 
@@ -44,8 +44,8 @@ describe('fetchConsultantProjects', () => {
     expect(result).toEqual({ projects: [], total: 0, consultantName: '' });
   });
 
-  it('CONSULTANT_APPROVED 아닌 역할 -> 빈 결과 반환', async () => {
-    // getCachedProfile: users 테이블 역할 조회 -> OPS_ADMIN
+  it('CONSULTANT_APPROVED 아닌 역할 → 빈 결과 반환', async () => {
+    // getCachedProfile: users 테이블 역할 조회 → OPS_ADMIN
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const result = await fetchConsultantProjects();
@@ -53,7 +53,7 @@ describe('fetchConsultantProjects', () => {
     expect(result).toEqual({ projects: [], total: 0, consultantName: '' });
   });
 
-  it('정상 조회 -> 프로젝트 목록 반환', async () => {
+  it('정상 조회 → 프로젝트 목록 반환', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) users 이름 조회 (supabase.from('users').select('name')...)
@@ -90,7 +90,7 @@ describe('fetchConsultantProjects', () => {
     });
   });
 
-  it('검색 조건 전달 -> from().or() 호출', async () => {
+  it('검색 조건 전달 → from().or() 호출', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) users 이름 조회
@@ -104,7 +104,7 @@ describe('fetchConsultantProjects', () => {
     expect(serverMock.chainable.or).toHaveBeenCalled();
   });
 
-  it('상태 필터 전달 -> eq() 추가 호출', async () => {
+  it('상태 필터 전달 → eq() 추가 호출', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) users 이름 조회
@@ -122,7 +122,7 @@ describe('fetchConsultantProjects', () => {
     expect(statusFilterCall).toBeTruthy();
   });
 
-  it('DB 에러 -> 빈 프로젝트, 컨설턴트 이름 반환', async () => {
+  it('DB 에러 → 빈 프로젝트, 컨설턴트 이름 반환', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     // 2) users 이름 조회
@@ -143,7 +143,7 @@ describe('fetchConsultantProjects', () => {
 // --- fetchConsultantProjectFilters -------------------------------------------
 
 describe('fetchConsultantProjectFilters', () => {
-  it('정상 반환 -> 4개 상태 필터 옵션', async () => {
+  it('정상 반환 → 4개 상태 필터 옵션', async () => {
     const result = await fetchConsultantProjectFilters();
 
     expect(result.statuses).toHaveLength(4);

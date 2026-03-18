@@ -9,7 +9,7 @@
 | 보안 (security-auditor) | 0 | 3 | 6 | 양호 |
 | 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
 | 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | ~~4~~ ✅ | 전체 해결 완료 |
-| 테스트 (test-automator) | ~~4~~ ✅ | ~~8~~ ✅ | 5 | P0/P1 전체 해결 완료 |
+| 테스트 (test-automator) | ~~4~~ ✅ | ~~8~~ ✅ | ~~5~~ ✅ | P0/P1/P2 전체 해결 완료 |
 | **합계** | **8** | **20** | **22** | — |
 
 ---
@@ -163,6 +163,7 @@
 점검 시점: 55개 테스트 파일, 994개 테스트 전부 통과. 커버리지 15.8%.
 **P0 해결 후 (2026-03-15):** 58개 테스트 파일, 1028개 테스트 전부 통과.
 **P1 해결 후 (2026-03-17):** 65개 테스트 파일, 1128개 테스트 전부 통과. +100개 테스트, +7개 파일.
+**P2 해결 후 (2026-03-18):** 65개 테스트 파일, 1154개 테스트 통과 (1 스킵). +27개 테스트, 100+개 네이밍 한국어 통일, 커버리지 임계값 설정, CI 워크플로우 추가, 스냅샷 7개.
 
 ### P0 발견사항
 
@@ -229,13 +230,30 @@
 
 ### P2 발견사항
 
-| ID | 설명 |
-|----|------|
-| P2-TEST-01 | 테스트 네이밍 불일치 — describe/it 블록 한국어/영어 혼용 |
-| P2-TEST-02 | 에러 케이스 테스트 비율 낮음 — happy path 위주 |
-| P2-TEST-03 | CI에서 E2E 자동 실행 미설정 |
-| P2-TEST-04 | 테스트 커버리지 임계값 미설정 (현재 15.8%) |
-| P2-TEST-05 | snapshot 테스트 미사용 — UI 회귀 감지 도구 없음 |
+#### ~~P2-TEST-01: 테스트 네이밍 불일치~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-18) — 100+개 영어 it() 설명을 한국어로 변환, 화살표 기호 `→` 통일
+- **파일:** `schemas/project.test.ts`, `schemas/interview.test.ts`, `schemas/user.test.ts`, `schemas/activity-log.test.ts`, `messages/actions.test.ts`, `consultant/projects/actions.test.ts`, `consultant/projects/[id]/roadmap/actions.test.ts` (7개)
+
+#### ~~P2-TEST-02: 에러 케이스 테스트 비율 낮음~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-18) — 20개 에러/경계값 테스트 추가 (19개 통과 + 1개 스킵)
+- **파일:** `calculate-scores.test.ts` (4개), `pdf-generator.test.ts` (3개), `xlsx-generator.test.ts` (3개), `export-pdf.test.ts` (3개), `export-xlsx.test.ts` (3개), `roadmap.test.ts` (4개)
+
+#### ~~P2-TEST-03: CI에서 E2E 자동 실행 미설정~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-18) — `.github/workflows/ci.yml` 생성 (lint+typecheck → unit-test → build → e2e)
+- **참고:** GitHub repo Settings에서 8개 시크릿 등록 필요
+
+#### ~~P2-TEST-04: 커버리지 임계값 미설정~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-18) — `vitest.config.ts`에 래칫 임계값 설정 (lines: 35, branches: 28, functions: 25, statements: 35)
+- 현재 커버리지: lines 38.55%, branches 32.25%, functions 28.84%, statements 38.77%
+
+#### ~~P2-TEST-05: snapshot 테스트 미사용~~ ✅ 해결
+
+- [x] **해결 완료** (2026-03-18) — 7개 스냅샷 테스트 추가 (4개 컴포넌트)
+- **파일:** `not-found.test.tsx` (1개), `CompanyInfoCard.test.tsx` (3개), `FooterCredit.test.tsx` (1개), `CollapsibleDirectInput.test.tsx` (2개)
 
 ---
 
@@ -281,7 +299,7 @@
 
 ### P2 — 중기 조치 (22건)
 
-보안 6건, DB 7건, ~~성능 4건~~ ✅ 해결, 테스트 5건 — 위 각 섹션의 P2 테이블 참조.
+보안 6건, DB 7건, ~~성능 4건~~ ✅ 해결, ~~테스트 5건~~ ✅ 해결 — 위 각 섹션의 P2 테이블 참조.
 
 ---
 

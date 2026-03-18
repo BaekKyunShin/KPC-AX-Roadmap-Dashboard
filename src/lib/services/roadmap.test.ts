@@ -431,3 +431,55 @@ describe('buildRoadmapMatrixFromCourses', () => {
     expect(rowB.advanced).toHaveLength(1);
   });
 });
+
+// ============================================================================
+// 엣지 케이스: 정규화 함수 방어 동작
+// ============================================================================
+
+describe('normalizeCoursesHours — 엣지 케이스', () => {
+  it('curriculum이 undefined인 과정은 0 시간으로 처리한다', () => {
+    const course = makeCourse({
+      recommended_hours: 20,
+      curriculum: undefined as unknown as RoadmapCell['curriculum'],
+    });
+
+    const result = normalizeCoursesHours([course]);
+
+    // sumModuleHours(undefined) = 0, modulesTotal=0 → 보정하지 않음
+    expect(result[0].recommended_hours).toBe(20);
+  });
+
+  it('courses가 undefined이면 빈 배열로 처리한다', () => {
+    const result = buildRoadmapMatrixFromCourses([]);
+    expect(result).toEqual([]);
+  });
+});
+
+describe('normalizePBLHours — 엣지 케이스', () => {
+  it('curriculum이 빈 배열인 PBL 과정은 0 시간으로 처리한다', () => {
+    const pbl = makePBLCourse({
+      total_hours: 30,
+      curriculum: [],
+    });
+
+    const result = normalizePBLHours(pbl);
+
+    // sumModuleHours([]) = 0, modulesTotal=0 → 보정하지 않음
+    expect(result.total_hours).toBe(30);
+  });
+
+  it('pbl_course가 undefined이면 건너뛴다', () => {
+    // normalizePBLHours에 undefined curriculum을 가진 PBL을 전달
+    const pbl = makePBLCourse({
+      curriculum: undefined as unknown as PBLCourse['curriculum'],
+      total_hours: 16,
+    });
+
+    const result = normalizePBLHours(pbl);
+
+    // sumModuleHours(undefined) = 0, modulesTotal=0 → 보정하지 않음
+    expect(result.total_hours).toBe(16);
+    // 원본 객체와 동일한 참조를 반환 (변경 없음)
+    expect(result).toBe(pbl);
+  });
+});

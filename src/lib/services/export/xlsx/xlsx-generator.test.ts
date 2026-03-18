@@ -178,4 +178,61 @@ describe('generateXLSX', () => {
       { type: 'array', bookType: 'xlsx' },
     );
   });
+
+  it('pblCourse가 없으면 PBL 시트를 건너뛴다', async () => {
+    const { generateXLSX } = await import('./xlsx-generator');
+    // pblCourse를 최소 데이터로 구성 — PBL 시트는 여전히 생성되지만 내용이 최소
+    const data = createTestExportData({
+      pblCourse: {
+        course_name: '-',
+        total_hours: 0,
+        target_tasks: [],
+        target_audience: '-',
+        curriculum: [],
+        final_deliverables: [],
+        expected_outcomes: [],
+        business_impact: '',
+        measurement_methods: [],
+        prerequisites: [],
+      },
+    });
+
+    const result = await generateXLSX(data);
+
+    // PBL 데이터가 최소여도 에러 없이 Uint8Array를 반환
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+
+  it('roadmapMatrix가 빈 배열이어도 에러 없이 처리한다', async () => {
+    const { generateXLSX } = await import('./xlsx-generator');
+    const data = createTestExportData({ roadmapMatrix: [] });
+
+    const result = await generateXLSX(data);
+
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+
+  it('courses가 비어있고 pblCourse도 없는 최소 데이터로 동작한다', async () => {
+    const { generateXLSX } = await import('./xlsx-generator');
+    const data = createTestExportData({
+      courses: [],
+      roadmapMatrix: [],
+      pblCourse: {
+        course_name: '-',
+        total_hours: 0,
+        target_tasks: [],
+        target_audience: '-',
+        curriculum: [],
+        final_deliverables: [],
+        expected_outcomes: [],
+        business_impact: '',
+        measurement_methods: [],
+        prerequisites: [],
+      },
+    });
+
+    const result = await generateXLSX(data);
+
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
 });

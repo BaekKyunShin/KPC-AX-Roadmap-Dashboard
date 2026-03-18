@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FooterCredit > 스냅샷 > 기본 상태의 구조가 스냅샷과 일치한다 1`] = `
+<p
+  class="text-center text-sm text-gray-400"
+  data-testid="footer-credit"
+>
+  © 2026 KPC 한국생산성본부
+  <span
+    class="mx-1.5"
+  >
+    ·
+  </span>
+  <span
+    class="inline-flex items-center gap-0.5 cursor-default transition-colors duration-300 hover:text-gray-600"
+    data-testid="footer-credit-interactive"
+  >
+    Developed by
+    <span
+      class="relative ml-1"
+    >
+      Baek Kyun Shin
+      <span
+        aria-hidden="true"
+        class="absolute bottom-0 left-0 h-px w-full origin-left bg-gray-400 transition-transform duration-300 ease-out scale-x-0"
+        data-testid="footer-credit-underline"
+      />
+    </span>
+  </span>
+</p>
+`;

@@ -21,12 +21,12 @@ describe('interviewParticipantSchema', () => {
     position: '팀장',
   };
 
-  it('should accept valid participant', () => {
+  it('유효한 참석자를 허용한다', () => {
     const result = interviewParticipantSchema.safeParse(validParticipant);
     expect(result.success).toBe(true);
   });
 
-  it('should accept participant without position', () => {
+  it('직책 없는 참석자를 허용한다', () => {
     const result = interviewParticipantSchema.safeParse({
       id: 'p-1',
       name: '홍길동',
@@ -34,7 +34,7 @@ describe('interviewParticipantSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty name', () => {
+  it('빈 이름을 거부한다', () => {
     const result = interviewParticipantSchema.safeParse({ ...validParticipant, name: '' });
     expect(result.success).toBe(false);
   });
@@ -47,17 +47,17 @@ describe('jobTaskSchema', () => {
     task_description: '고객 정보를 시스템에 입력하는 업무',
   };
 
-  it('should accept valid job task', () => {
+  it('유효한 직무 과업을 허용한다', () => {
     const result = jobTaskSchema.safeParse(validTask);
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty task name', () => {
+  it('빈 과업명을 거부한다', () => {
     const result = jobTaskSchema.safeParse({ ...validTask, task_name: '' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty task description', () => {
+  it('빈 과업 설명을 거부한다', () => {
     const result = jobTaskSchema.safeParse({ ...validTask, task_description: '' });
     expect(result.success).toBe(false);
   });
@@ -70,12 +70,12 @@ describe('painPointSchema', () => {
     severity: 'HIGH' as const,
   };
 
-  it('should accept valid pain point', () => {
+  it('유효한 페인포인트를 허용한다', () => {
     const result = painPointSchema.safeParse(validPainPoint);
     expect(result.success).toBe(true);
   });
 
-  it('should accept pain point with optional fields', () => {
+  it('선택 필드가 포함된 페인포인트를 허용한다', () => {
     const result = painPointSchema.safeParse({
       ...validPainPoint,
       related_task_ids: ['task-1', 'task-2'],
@@ -83,12 +83,12 @@ describe('painPointSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty description', () => {
+  it('빈 설명을 거부한다', () => {
     const result = painPointSchema.safeParse({ ...validPainPoint, description: '' });
     expect(result.success).toBe(false);
   });
 
-  it('should accept all valid severities', () => {
+  it('모든 유효한 심각도를 허용한다', () => {
     const severities = ['HIGH', 'MEDIUM', 'LOW'] as const;
     severities.forEach((severity) => {
       const result = painPointSchema.safeParse({ ...validPainPoint, severity });
@@ -105,12 +105,12 @@ describe('constraintSchema', () => {
     severity: 'MEDIUM' as const,
   };
 
-  it('should accept valid constraint', () => {
+  it('유효한 제약조건을 허용한다', () => {
     const result = constraintSchema.safeParse(validConstraint);
     expect(result.success).toBe(true);
   });
 
-  it('should accept all valid types', () => {
+  it('모든 유효한 유형을 허용한다', () => {
     const types = ['DATA', 'SYSTEM', 'SECURITY', 'PERMISSION', 'OTHER'] as const;
     types.forEach((type) => {
       const result = constraintSchema.safeParse({ ...validConstraint, type });
@@ -118,7 +118,7 @@ describe('constraintSchema', () => {
     });
   });
 
-  it('should reject empty description', () => {
+  it('빈 설명을 거부한다', () => {
     const result = constraintSchema.safeParse({ ...validConstraint, description: '' });
     expect(result.success).toBe(false);
   });
@@ -130,12 +130,12 @@ describe('improvementGoalSchema', () => {
     goal_description: '데이터 입력 오류율 50% 감소',
   };
 
-  it('should accept valid improvement goal', () => {
+  it('유효한 개선 목표를 허용한다', () => {
     const result = improvementGoalSchema.safeParse(validGoal);
     expect(result.success).toBe(true);
   });
 
-  it('should accept goal with all optional fields', () => {
+  it('모든 선택 필드가 포함된 목표를 허용한다', () => {
     const result = improvementGoalSchema.safeParse({
       ...validGoal,
       kpi: '입력 오류율',
@@ -147,7 +147,7 @@ describe('improvementGoalSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty goal description', () => {
+  it('빈 목표 설명을 거부한다', () => {
     const result = improvementGoalSchema.safeParse({ ...validGoal, goal_description: '' });
     expect(result.success).toBe(false);
   });
@@ -189,32 +189,32 @@ describe('interviewSchema', () => {
     ],
   };
 
-  it('should accept valid interview data', () => {
+  it('유효한 인터뷰 데이터를 허용한다', () => {
     const result = interviewSchema.safeParse(validInterview);
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty interview date', () => {
+  it('빈 인터뷰 날짜를 거부한다', () => {
     const result = interviewSchema.safeParse({ ...validInterview, interview_date: '' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty participants array', () => {
+  it('빈 참석자 배열을 거부한다', () => {
     const result = interviewSchema.safeParse({ ...validInterview, participants: [] });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty job_tasks array', () => {
+  it('빈 직무 과업 배열을 거부한다', () => {
     const result = interviewSchema.safeParse({ ...validInterview, job_tasks: [] });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty pain_points array', () => {
+  it('빈 페인포인트 배열을 거부한다', () => {
     const result = interviewSchema.safeParse({ ...validInterview, pain_points: [] });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty improvement_goals array', () => {
+  it('빈 개선 목표 배열을 거부한다', () => {
     const result = interviewSchema.safeParse({ ...validInterview, improvement_goals: [] });
     expect(result.success).toBe(false);
   });
@@ -223,7 +223,7 @@ describe('interviewSchema', () => {
 describe('interviewAutoSaveSchema', () => {
   // 자동저장 스키마는 구조/타입을 검증하되 min(1) 제약을 완화해야 함
 
-  it('should accept complete valid data', () => {
+  it('완전한 유효 데이터를 허용한다', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: '2024-01-15',
       participants: [{ id: 'p-1', name: '홍길동', position: '팀장' }],
@@ -235,7 +235,7 @@ describe('interviewAutoSaveSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept empty strings (작성 중인 데이터)', () => {
+  it('빈 문자열을 허용한다 (작성 중인 데이터)', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: '',
       participants: [{ id: 'p-1', name: '', position: '' }],
@@ -247,7 +247,7 @@ describe('interviewAutoSaveSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept empty arrays (아직 항목 미추가)', () => {
+  it('빈 배열을 허용한다 (아직 항목 미추가)', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: '',
       participants: [],
@@ -259,7 +259,7 @@ describe('interviewAutoSaveSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should still reject invalid enum values', () => {
+  it('잘못된 enum 값을 거부한다', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: '',
       participants: [],
@@ -271,7 +271,7 @@ describe('interviewAutoSaveSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should still reject wrong types (number instead of string)', () => {
+  it('잘못된 타입을 거부한다 (문자열 대신 숫자)', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: 12345,
       participants: [],
@@ -283,7 +283,7 @@ describe('interviewAutoSaveSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should still reject invalid constraint type enum', () => {
+  it('잘못된 제약조건 유형 enum을 거부한다', () => {
     const result = interviewAutoSaveSchema.safeParse({
       interview_date: '',
       participants: [],
@@ -299,14 +299,14 @@ describe('interviewAutoSaveSchema', () => {
 
 describe('helper functions', () => {
   describe('createEmptyParticipant', () => {
-    it('should create a valid empty participant', () => {
+    it('유효한 빈 참석자를 생성한다', () => {
       const participant = createEmptyParticipant();
       expect(participant.id).toBeDefined();
       expect(participant.name).toBe('');
       expect(participant.position).toBe('');
     });
 
-    it('should create unique IDs', () => {
+    it('고유한 ID를 생성한다', () => {
       const p1 = createEmptyParticipant();
       const p2 = createEmptyParticipant();
       expect(p1.id).not.toBe(p2.id);
@@ -314,14 +314,14 @@ describe('helper functions', () => {
   });
 
   describe('createEmptyJobTask', () => {
-    it('should create a valid empty job task', () => {
+    it('유효한 빈 직무 과업을 생성한다', () => {
       const task = createEmptyJobTask();
       expect(task.id).toBeDefined();
       expect(task.task_name).toBe('');
       expect(task.task_description).toBe('');
     });
 
-    it('should create unique IDs', () => {
+    it('고유한 ID를 생성한다', () => {
       const task1 = createEmptyJobTask();
       const task2 = createEmptyJobTask();
       expect(task1.id).not.toBe(task2.id);
@@ -329,7 +329,7 @@ describe('helper functions', () => {
   });
 
   describe('createEmptyPainPoint', () => {
-    it('should create a valid empty pain point', () => {
+    it('유효한 빈 페인포인트를 생성한다', () => {
       const pp = createEmptyPainPoint();
       expect(pp.id).toBeDefined();
       expect(pp.description).toBe('');
@@ -338,7 +338,7 @@ describe('helper functions', () => {
   });
 
   describe('createEmptyConstraint', () => {
-    it('should create a valid empty constraint', () => {
+    it('유효한 빈 제약조건을 생성한다', () => {
       const constraint = createEmptyConstraint();
       expect(constraint.id).toBeDefined();
       expect(constraint.type).toBe('DATA');
@@ -348,7 +348,7 @@ describe('helper functions', () => {
   });
 
   describe('createEmptyImprovementGoal', () => {
-    it('should create a valid empty improvement goal', () => {
+    it('유효한 빈 개선 목표를 생성한다', () => {
       const goal = createEmptyImprovementGoal();
       expect(goal.id).toBeDefined();
       expect(goal.goal_description).toBe('');

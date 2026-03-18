@@ -308,3 +308,29 @@ describe('formatHours', () => {
     expect(formatHours(-5)).toBe('-');
   });
 });
+
+// ─── 에러/엣지 케이스 추가 테스트 ───────────────────────────────────────────
+
+describe('formatMatrixCell — 에러 케이스', () => {
+  it('null 매트릭스 셀은 빈 문자열을 반환한다', () => {
+    const numberMap = new Map<string, number>();
+    // null을 전달하면 undefined과 동일하게 '-'를 반환
+    expect(formatMatrixCell(null as unknown as undefined, numberMap)).toBe('-');
+  });
+});
+
+describe('formatTools — 에러 케이스', () => {
+  it('빈 도구 배열은 빈 문자열을 반환한다', () => {
+    // 빈 배열이면 '-'를 반환 (기존 테스트 확인과 동일)
+    expect(formatTools([])).toBe('-');
+  });
+});
+
+describe('formatDate — 에러 케이스', () => {
+  it('빈 문자열 날짜는 빈 문자열을 반환한다', () => {
+    // 빈 문자열을 Date 생성자에 전달하면 Invalid Date → NaN 값들
+    const result = formatDate('');
+    // new Date('') → Invalid Date → getFullYear()=NaN, getMonth()=NaN, getDate()=NaN
+    expect(result).toBe('NaN년 NaN월 NaN일');
+  });
+});

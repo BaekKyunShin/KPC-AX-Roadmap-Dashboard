@@ -20,13 +20,13 @@ describe('projectStatusSchema', () => {
     'FINALIZED',
   ];
 
-  it('should accept valid project statuses', () => {
+  it('유효한 프로젝트 상태를 허용한다', () => {
     validStatuses.forEach((status) => {
       expect(projectStatusSchema.safeParse(status).success).toBe(true);
     });
   });
 
-  it('should reject invalid statuses', () => {
+  it('잘못된 상태를 거부한다', () => {
     expect(projectStatusSchema.safeParse('INVALID').success).toBe(false);
     expect(projectStatusSchema.safeParse('new').success).toBe(false);
     expect(projectStatusSchema.safeParse('').success).toBe(false);
@@ -42,12 +42,12 @@ describe('createProjectSchema', () => {
     contact_email: 'hong@test.com',
   };
 
-  it('should accept valid project data', () => {
+  it('유효한 프로젝트 데이터를 허용한다', () => {
     const result = createProjectSchema.safeParse(validProject);
     expect(result.success).toBe(true);
   });
 
-  it('should accept project with optional fields', () => {
+  it('선택 필드가 포함된 프로젝트를 허용한다', () => {
     const result = createProjectSchema.safeParse({
       ...validProject,
       contact_phone: '010-1234-5678',
@@ -57,34 +57,34 @@ describe('createProjectSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject empty company name', () => {
+  it('빈 회사명을 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, company_name: '' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty industry', () => {
+  it('빈 업종을 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, industry: '' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject invalid company size', () => {
+  it('잘못된 기업 규모를 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, company_size: '10000+' });
     expect(result.success).toBe(false);
   });
 
-  it('should accept all valid company sizes', () => {
+  it('모든 유효한 기업 규모를 허용한다', () => {
     COMPANY_SIZE_VALUES.forEach((size) => {
       const result = createProjectSchema.safeParse({ ...validProject, company_size: size });
       expect(result.success).toBe(true);
     });
   });
 
-  it('should reject invalid email', () => {
+  it('잘못된 이메일을 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, contact_email: 'invalid' });
     expect(result.success).toBe(false);
   });
 
-  it('should reject short contact name', () => {
+  it('짧은 담당자명을 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, contact_name: '홍' });
     expect(result.success).toBe(false);
   });
@@ -100,12 +100,12 @@ describe('createSelfAssessmentSchema', () => {
     ],
   };
 
-  it('should accept valid self assessment', () => {
+  it('유효한 자가진단 데이터를 허용한다', () => {
     const result = createSelfAssessmentSchema.safeParse(validAssessment);
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid project_id UUID', () => {
+  it('잘못된 project_id UUID를 거부한다', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,
       project_id: 'invalid',
@@ -113,7 +113,7 @@ describe('createSelfAssessmentSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject invalid template_id UUID', () => {
+  it('잘못된 template_id UUID를 거부한다', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,
       template_id: 'invalid',
@@ -121,7 +121,7 @@ describe('createSelfAssessmentSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject empty answers array', () => {
+  it('빈 답변 배열을 거부한다', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,
       answers: [],
@@ -129,7 +129,7 @@ describe('createSelfAssessmentSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject string answer values (5점 척도 고정)', () => {
+  it('문자열 답변 값을 거부한다 (5점 척도 고정)', () => {
     const result = createSelfAssessmentSchema.safeParse({
       ...validAssessment,
       answers: [{ question_id: 'q1', answer_value: 'text answer' }],
@@ -145,12 +145,12 @@ describe('assignConsultantSchema', () => {
     assignment_reason: '제조업 전문성과 교육 경험이 풍부하여 배정합니다.',
   };
 
-  it('should accept valid assignment', () => {
+  it('유효한 배정 데이터를 허용한다', () => {
     const result = assignConsultantSchema.safeParse(validAssignment);
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid project_id', () => {
+  it('잘못된 project_id를 거부한다', () => {
     const result = assignConsultantSchema.safeParse({
       ...validAssignment,
       project_id: 'invalid',
@@ -158,7 +158,7 @@ describe('assignConsultantSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject invalid consultant_id', () => {
+  it('잘못된 consultant_id를 거부한다', () => {
     const result = assignConsultantSchema.safeParse({
       ...validAssignment,
       consultant_id: 'invalid',
@@ -166,7 +166,7 @@ describe('assignConsultantSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject short assignment reason', () => {
+  it('짧은 배정 사유를 거부한다', () => {
     const result = assignConsultantSchema.safeParse({
       ...validAssignment,
       assignment_reason: '짧음',
@@ -174,7 +174,7 @@ describe('assignConsultantSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject assignment reason over 500 characters', () => {
+  it('500자 초과 배정 사유를 거부한다', () => {
     const result = assignConsultantSchema.safeParse({
       ...validAssignment,
       assignment_reason: 'a'.repeat(501),
@@ -191,12 +191,12 @@ describe('reassignConsultantSchema', () => {
     assignment_reason: '새로운 컨설턴트는 해당 업종 경험이 풍부합니다.',
   };
 
-  it('should accept valid reassignment', () => {
+  it('유효한 재배정 데이터를 허용한다', () => {
     const result = reassignConsultantSchema.safeParse(validReassignment);
     expect(result.success).toBe(true);
   });
 
-  it('should reject short unassignment reason', () => {
+  it('짧은 해제 사유를 거부한다', () => {
     const result = reassignConsultantSchema.safeParse({
       ...validReassignment,
       unassignment_reason: '짧음',
@@ -204,7 +204,7 @@ describe('reassignConsultantSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject short assignment reason', () => {
+  it('짧은 배정 사유를 거부한다', () => {
     const result = reassignConsultantSchema.safeParse({
       ...validReassignment,
       assignment_reason: '짧음',
