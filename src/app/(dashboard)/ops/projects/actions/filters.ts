@@ -93,7 +93,7 @@ export async function fetchConsultantCandidates(
 
   // 기본 쿼리 - CONSULTANT_APPROVED + ACTIVE 사용자
   // 업종/스킬 필터 시 !inner 조인으로 DB 레벨 필터링 적용
-  const needsProfileFilter = industries.length > 0 || skills.length > 0;
+  const hasActiveFilters = industries.length > 0 || skills.length > 0;
 
   let query = adminSupabase
     .from('users')
@@ -101,7 +101,7 @@ export async function fetchConsultantCandidates(
       id,
       name,
       email,
-      consultant_profile:consultant_profiles${needsProfileFilter ? '!inner' : ''}(
+      consultant_profile:consultant_profiles${hasActiveFilters ? '!inner' : ''}(
         expertise_domains,
         available_industries,
         teaching_levels,

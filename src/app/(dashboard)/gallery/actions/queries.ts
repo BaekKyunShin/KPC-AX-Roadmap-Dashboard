@@ -13,6 +13,16 @@ import { extractTags } from './gallery-utils';
 // Types
 // =============================================================================
 
+// ─── Supabase 조인 결과 타입 ────────────────────────────────
+type ProjectJoin = { company_name: string; industry: string; company_size: string };
+type CreatorJoin = { name: string } | null;
+type LikeCountAgg = { count: number }[];
+
+/** Supabase aggregate count 결과에서 좋아요 수 추출 */
+function extractLikeCount(agg: unknown): number {
+  return (agg as LikeCountAgg)?.[0]?.count ?? 0;
+}
+
 export interface GalleryRoadmapItem {
   id: string;
   title: string;
@@ -171,13 +181,8 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
 
   // 데이터 변환
   const items: GalleryRoadmapItem[] = (data || []).map((item) => {
-    const project = item.projects as unknown as {
-      company_name: string;
-      industry: string;
-      company_size: string;
-    };
-    const creator = item.users as unknown as { name: string } | null;
-    const likeAgg = item.roadmap_likes as unknown as { count: number }[];
+    const project = item.projects as unknown as ProjectJoin;
+    const creator = item.users as unknown as CreatorJoin;
 
     const pblCourse = item.pbl_course as { course_name?: string; total_hours?: number } | null;
     const courses = (item.courses || []) as { topic?: string }[];
@@ -199,7 +204,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       tags,
       createdBy: item.created_by,
       createdByName: creator?.name || '알 수 없음',
-      likeCount: likeAgg?.[0]?.count ?? 0,
+      likeCount: extractLikeCount(item.roadmap_likes),
       isLiked: userLikedSet.has(item.id),
       isShared: item.is_shared,
       status: item.status,
@@ -269,13 +274,8 @@ export async function fetchRoadmapDetail(
     return errorResult('접근 권한이 없습니다.');
   }
 
-  const project = data.projects as unknown as {
-    company_name: string;
-    industry: string;
-    company_size: string;
-  };
-  const creator = data.users as unknown as { name: string } | null;
-  const likeAgg = data.roadmap_likes as unknown as { count: number }[];
+  const project = data.projects as unknown as ProjectJoin;
+  const creator = data.users as unknown as CreatorJoin;
   const pblCourse = data.pbl_course as { course_name?: string; total_hours?: number } | null;
 
   // 현재 사용자가 이 로드맵에 좋아요했는지 확인
@@ -299,7 +299,7 @@ export async function fetchRoadmapDetail(
     roadmapMatrix: (data.roadmap_matrix as unknown[]) || [],
     pblCourse: data.pbl_course || {},
     courses: (data.courses as unknown[]) || [],
-    likeCount: likeAgg?.[0]?.count ?? 0,
+    likeCount: extractLikeCount(data.roadmap_likes),
     isLiked: !!userLike,
     isShared: data.is_shared,
     status: data.status,
