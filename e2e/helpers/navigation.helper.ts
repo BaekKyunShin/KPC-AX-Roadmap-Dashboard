@@ -57,3 +57,22 @@ export async function clickUserMenu(page: Page, itemText: string) {
     await page.getByRole('link', { name: itemText }).click();
   }
 }
+
+/**
+ * main 영역에서 href 패턴에 매칭하는 첫 링크의 href를 반환.
+ * 링크가 없으면 null — 호출부에서 test.skip() 판단.
+ */
+export async function findFirstLinkHref(
+  page: Page,
+  hrefPattern: string,
+): Promise<string | null> {
+  const firstLink = page
+    .locator('main')
+    .locator(`a[href*="${hrefPattern}"]`)
+    .first();
+
+  const isVisible = await firstLink.isVisible().catch(() => false);
+  if (!isVisible) return null;
+
+  return firstLink.getAttribute('href');
+}
