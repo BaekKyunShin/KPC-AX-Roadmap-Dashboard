@@ -14,6 +14,14 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(),
 }));
 
+// ─── next/headers 모킹 ─────────────────────────────────────────────────────
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(),
+}));
+
+import { headers } from 'next/headers';
+
 /**
  * Supabase 클라이언트 체인 모킹 (quota.test.ts 패턴 재활용)
  */
@@ -67,6 +75,8 @@ describe('createAuditLog', () => {
   beforeEach(() => {
     mock = createMockSupabase();
     vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+    // 기본: headers() 실패 (요청 컨텍스트 없음)
+    vi.mocked(headers).mockRejectedValue(new Error('Not in request context'));
   });
 
   afterEach(() => {
@@ -86,15 +96,16 @@ describe('createAuditLog', () => {
     await createAuditLog(baseParams);
 
     expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
-    expect(mock.chainable.insert).toHaveBeenCalledWith({
-      actor_user_id: 'user-123',
-      action: 'PROJECT_CREATE',
-      target_type: 'project',
-      target_id: 'proj-456',
-      meta: {},
-      success: true,
-      error_message: undefined,
-    });
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_user_id: 'user-123',
+        action: 'PROJECT_CREATE',
+        target_type: 'project',
+        target_id: 'proj-456',
+        success: true,
+        error_message: undefined,
+      }),
+    );
   });
 
   it('meta 데이터를 포함하여 기록한다', async () => {
@@ -107,7 +118,7 @@ describe('createAuditLog', () => {
 
     expect(mock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
-        meta: { previous_status: 'NEW', new_status: 'DIAGNOSED' },
+        meta: expect.objectContaining({ previous_status: 'NEW', new_status: 'DIAGNOSED' }),
       }),
     );
   });
@@ -153,6 +164,36 @@ describe('createAuditLog', () => {
       expect.any(Error),
     );
     consoleSpy.mockRestore();
+  });
+
+  // ─── IP 주소 자동 기록 ──────────────────────────────────────────────────
+
+  it('요청 헤더에서 IP 주소를 추출하여 meta에 포함한다', async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-forwarded-for': '1.2.3.4, 10.0.0.1' }) as never,
+    );
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog(baseParams);
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ ip_address: '1.2.3.4' }),
+      }),
+    );
+  });
+
+  it('headers() 실패 시 IP 없이 정상 기록된다', async () => {
+    vi.mocked(headers).mockRejectedValue(new Error('Not in request context'));
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog(baseParams);
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: {},
+      }),
+    );
   });
 });
 

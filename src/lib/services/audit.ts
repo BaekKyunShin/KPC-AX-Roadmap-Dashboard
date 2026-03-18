@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction, UserRole } from '@/types/database';
@@ -15,6 +16,18 @@ interface AuditLogParams {
   errorMessage?: string;
 }
 
+/** 요청 헤더에서 클라이언트 IP 추출 (Server Action/Route Handler에서만 작동) */
+async function getClientIp(): Promise<string | null> {
+  try {
+    const h = await headers();
+    return h.get('x-forwarded-for')?.split(',')[0].trim()
+      ?? h.get('x-real-ip')
+      ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 감사로그 기록
  * 서버 사이드에서만 호출 (서비스 역할 키 사용)
@@ -30,13 +43,15 @@ export async function createAuditLog({
 }: AuditLogParams): Promise<void> {
   try {
     const supabase = createAdminClient();
+    const ipAddress = await getClientIp();
+    const enrichedMeta = { ...meta, ...(ipAddress ? { ip_address: ipAddress } : {}) };
 
     const { error } = await supabase.from('audit_logs').insert({
       actor_user_id: actorUserId ?? null,
       action,
       target_type: targetType,
       target_id: targetId,
-      meta,
+      meta: enrichedMeta,
       success,
       error_message: errorMessage,
     });
