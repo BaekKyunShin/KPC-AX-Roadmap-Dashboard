@@ -2,10 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
-import { EXPORT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
-import type { ProjectStatus } from '@/types/database';
+import { EXPORT_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
+import type { ProjectStatus, UserRole } from '@/types/database';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+
+/** projects!inner() 조인 결과 타입 */
+interface ProjectJoinData {
+  company_name: string;
+  assigned_consultant_id: string;
+  status: string;
+}
 
 /**
  * 내보내기용 데이터 준비
@@ -32,7 +39,7 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
       return { success: false, error: '로드맵을 찾을 수 없습니다.' };
     }
 
-    const projectData = roadmap.projects as { company_name: string; assigned_consultant_id: string; status: string };
+    const projectData = roadmap.projects as ProjectJoinData;
 
     // 프로젝트 상태 검증 (ROADMAP_DRAFTED, FINALIZED에서만 내보내기 허용)
     if (!EXPORT_ELIGIBLE_STATUSES.includes(projectData.status as ProjectStatus)) {
@@ -55,7 +62,7 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
       if (projectData.assigned_consultant_id !== user.id) {
         return { success: false, error: '접근 권한이 없습니다.' };
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+    } else if (!isOpsManager(profile.role as UserRole)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
