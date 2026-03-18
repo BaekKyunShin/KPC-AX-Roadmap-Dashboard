@@ -184,6 +184,10 @@ describe('generateXLSX', () => {
     // pblCourse를 최소 데이터로 구성 — PBL 시트는 여전히 생성되지만 내용이 최소
     const data = createTestExportData({
       pblCourse: {
+        selected_course_name: '',
+        selected_course_level: 'BEGINNER',
+        selected_course_task: '',
+        selection_rationale: { consultant_expertise_fit: '', pain_point_alignment: '', feasibility_assessment: '', summary: '' },
         course_name: '-',
         total_hours: 0,
         target_tasks: [],
@@ -218,6 +222,10 @@ describe('generateXLSX', () => {
       courses: [],
       roadmapMatrix: [],
       pblCourse: {
+        selected_course_name: '',
+        selected_course_level: 'BEGINNER',
+        selected_course_task: '',
+        selection_rationale: { consultant_expertise_fit: '', pain_point_alignment: '', feasibility_assessment: '', summary: '' },
         course_name: '-',
         total_hours: 0,
         target_tasks: [],

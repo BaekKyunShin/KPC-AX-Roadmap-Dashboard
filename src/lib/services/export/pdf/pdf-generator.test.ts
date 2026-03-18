@@ -257,6 +257,15 @@ describe('generatePDF', () => {
     // pblCourse를 최소 데이터로 구성 (필수 필드만)
     const data = createTestExportData({
       pblCourse: {
+        selected_course_name: '',
+        selected_course_level: 'BEGINNER',
+        selected_course_task: '',
+        selection_rationale: {
+          consultant_expertise_fit: '',
+          pain_point_alignment: '',
+          feasibility_assessment: '',
+          summary: '',
+        },
         course_name: '최소 PBL',
         total_hours: 0,
         target_tasks: [],
