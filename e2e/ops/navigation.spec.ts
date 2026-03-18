@@ -144,9 +144,9 @@ test.describe('Phase 2.2: 알림 벨', () => {
     for (const tab of ['전체', '인터뷰', '초안', '확정']) {
       await popover.getByRole('button', { name: tab }).click();
       // 로딩 완료 후 빈 상태 메시지 또는 알림 아이템 중 하나가 표시됨
-      await expect(
-        popover.getByText('새로운 알림이 없습니다').or(popover.locator('.divide-y > button').first()),
-      ).toBeVisible({ timeout: 5000 });
+      const emptyState = popover.getByText('새로운 알림이 없습니다');
+      const firstItem = popover.locator('.divide-y > button').first();
+      await expect(emptyState.or(firstItem)).toBeVisible({ timeout: 5000 });
     }
   });
 
