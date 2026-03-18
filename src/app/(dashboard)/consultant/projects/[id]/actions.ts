@@ -168,6 +168,7 @@ async function verifyManualLogOwnership(
     .from('consultant_activity_logs')
     .select('id, consultant_id, type')
     .eq('id', logId)
+    .is('deleted_at', null)
     .single();
 
   if (!log) {
@@ -247,9 +248,10 @@ export async function deleteActivityLog(
 
     const adminSupabase = createAdminClient();
 
+    // 소프트 삭제 (감사 추적을 위해 물리 삭제 대신 deleted_at 설정)
     const { error: deleteError } = await adminSupabase
       .from('consultant_activity_logs')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', logId);
 
     if (deleteError) {

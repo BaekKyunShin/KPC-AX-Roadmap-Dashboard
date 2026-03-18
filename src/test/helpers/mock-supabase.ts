@@ -56,7 +56,7 @@ interface MockSupabaseReturn {
 // ─── 체이너블 메서드 목록 (전체 합집합) ──────────────────────────────────────
 
 const CHAINABLE_METHODS = [
-  'select', 'eq', 'neq', 'in', 'not', 'or',
+  'select', 'eq', 'neq', 'in', 'not', 'or', 'is',
   'gte', 'lte', 'gt', 'lt',
   'ilike', 'order', 'range', 'limit',
   'insert', 'update', 'delete', 'upsert',

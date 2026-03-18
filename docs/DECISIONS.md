@@ -502,3 +502,93 @@
 - `audit_action`에 `ROADMAP_COPY` 추가
 - `/gallery` 라우트 + 상세 페이지(`/gallery/[id]`)
 - 마이그레이션: `024_add_roadmap_gallery.sql`
+
+---
+
+## ADR-027: RLS 헬퍼 함수 auth.uid() 캐싱 전략 (P2-DB-01)
+
+**날짜**: 2026-03-18
+
+**결정**: `(SELECT auth.uid())` 래핑으로 initplan 최적화 적용. SET LOCAL 캐싱은 미적용.
+
+**이유**:
+- Supabase Hosted 환경에서 SET LOCAL 캐싱 불가 (PostgREST가 각 요청을 별도 트랜잭션으로 처리, 커스텀 SET LOCAL 삽입 훅 없음)
+- `(SELECT auth.uid())` 래핑 시 PostgreSQL 플래너가 initplan으로 변환하여 한 번만 평가 — Supabase 공식 권장 패턴
+- STABLE + LANGUAGE sql 함수는 플래너가 인라인 가능하므로 추가적인 캐싱 최적화 효과
+
+**적용 범위**: `get_user_role()`, `get_user_status()`, `is_assigned_to_project()`, `is_conversation_member()` (4개 함수)
+
+**재검토 조건**: Supabase가 PostgREST 미들웨어 훅을 제공하면 SET LOCAL 패턴 재검토
+
+**마이그레이션**: `048_wrap_auth_uid_in_helper_functions.sql`
+
+---
+
+## ADR-028: messages 테이블 파티셔닝 미적용 (P2-DB-04)
+
+**날짜**: 2026-03-18
+
+**결정**: messages 테이블에 파티셔닝을 적용하지 않음
+
+**이유**:
+- B2B 내부 도구로 동시 사용자 수 제한적 (수십 명 수준), 메시지 트래픽이 대규모가 아님
+- 현재 인덱스(`idx_messages_conversation(conversation_id, created_at ASC)`, `idx_messages_sender(sender_id)`)로 모든 주요 쿼리 패턴 최적
+- Supabase Hosted에서 기존 테이블의 파티셔닝 마이그레이션이 복잡 (테이블 재생성 + 데이터 이전 + RLS/Realtime 재구성)
+- 파티셔닝의 이점은 수백만 행 이상에서 나타남 — 현재 규모에서는 오버엔지니어링
+
+**재검토 조건**: messages 테이블 100만+ 행, 쿼리 응답 100ms+ 초과, 또는 외부 고객 대면 메시징으로 전환 시
+
+---
+
+## ADR-029: conversation_participants 인덱스 현재 최적 (P2-DB-06)
+
+**날짜**: 2026-03-18
+
+**결정**: 현재 인덱스 구성이 최적이므로 추가 인덱스 불필요
+
+**현재 인덱스**:
+1. `UNIQUE(conversation_id, user_id)` — PK 역할
+2. `idx_conv_participants_user(user_id, conversation_id)` — 사용자별 대화 목록
+3. `idx_conv_participants_conv(conversation_id, user_id)` — RLS 서브쿼리
+
+**이유**:
+- 5개 주요 쿼리 패턴(대화 목록, RLS 참여 확인, last_read_at 갱신, 상대방 조회, 안읽음 카운트)이 기존 인덱스로 완전 커버
+- 유일한 개선 여지인 `get_unread_conversation_count` RPC 성능은 messages 테이블 인덱스 문제이지 conversation_participants 문제가 아님
+
+**재검토 조건**: 그룹 채팅 도입 또는 EXPLAIN ANALYZE에서 seq scan 발견 시
+
+---
+
+## ADR-030: 통계 쿼리 물화 뷰 미적용 (P2-DB-07)
+
+**날짜**: 2026-03-18
+
+**결정**: 물화 뷰(Materialized View) 대신 앱 레벨 캐싱(Next.js `unstable_cache`)으로 충분
+
+**이유**:
+- B2B 내부 도구로 동시 사용자 수 제한적 (수십 명)
+- 이미 Next.js `unstable_cache` (30분 TTL + 태그 기반 무효화)가 업종/컨설턴트 필터 옵션에 적용됨 (P2-PERF-04에서 해결 완료)
+- 프로젝트 통계는 컨설턴트별(자신의 프로젝트만)이므로 글로벌 물화 뷰의 이점이 없음
+- 물화 뷰 REFRESH 스케줄링의 복잡성 대비 효과 미미
+
+**재검토 조건**: 동시 사용자 100명+ 확대, 대시보드 로딩 2초+ 초과, 전체 프로젝트 합산 통계 도입 시
+
+---
+
+## ADR-031: JSONB 컬럼 GIN 인덱스 미적용 (P1-DB-04)
+
+**날짜**: 2026-03-18
+
+**결정**: roadmap_versions 및 projects 테이블의 JSONB 컬럼에 GIN 인덱스를 추가하지 않음
+
+**대상 컬럼:**
+- roadmap_versions: consultant_profile_snapshot, roadmap_matrix, pbl_course, courses
+- projects: diagnosis_result
+
+**이유:**
+- 코드베이스 전수 검사 결과, WHERE 절에서 JSONB 연산자(`@>`, `?`, `->>` 등)로 필터링하는 쿼리 없음
+- 모든 JSONB 데이터는 SELECT 후 앱 레벨에서 처리
+- GIN 인덱스는 INSERT/UPDATE 성능 저하 + 저장 공간 증가를 유발
+- 050 마이그레이션에서 CHECK 크기 제약은 이미 적용 완료
+
+**재검토 조건**: JSONB 컬럼을 WHERE 절에서 직접 필터링하는 쿼리 도입 시

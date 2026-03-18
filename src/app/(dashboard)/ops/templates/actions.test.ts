@@ -24,11 +24,11 @@
  * - 미사용 + 비활성 → 삭제 성공 + 감사로그
  * - DB 삭제 실패 → 에러
  *
- * setActiveTemplate:
- * - 인증 없음 / 템플릿 미존재 → 에러
- * - 비활성화 단계 DB 에러 → 에러 (기존 활성 유지 방지)
+ * setActiveTemplate (원자적 RPC):
+ * - 인증 없음 → 에러
+ * - 템플릿 미존재 → RPC가 실패 반환
+ * - RPC 실행 에러 → 에러
  * - 활성화 성공 → success + 감사로그
- * - 활성화 단계 DB 에러 → 에러
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -228,38 +228,36 @@ describe('setActiveTemplate', () => {
     expect(result).toEqual({ success: false, error: '인증되지 않은 사용자입니다.' });
   });
 
-  it('존재하지 않는 템플릿 → error 반환', async () => {
+  it('존재하지 않는 템플릿 → RPC가 실패 반환', async () => {
     mockAuthResult.mockResolvedValue({
       user: { id: TEST_USER_ID },
-      supabase: serverMock.client,
     });
 
-    serverMock.addResult({ data: null, error: { message: 'not found' } });
+    // admin RPC: 템플릿 없음
+    adminMock.addRpcResult({
+      data: { success: false, error: '템플릿을 찾을 수 없습니다.' },
+      error: null,
+    });
 
     const result = await setActiveTemplate(TEST_TEMPLATE_ID);
 
     expect(result).toEqual({ success: false, error: '템플릿을 찾을 수 없습니다.' });
   });
 
-  it('비활성화 단계 DB 에러 → error 반환 (기존 활성 유지 방지)', async () => {
+  it('RPC 실행 에러 → error 반환', async () => {
     mockAuthResult.mockResolvedValue({
       user: { id: TEST_USER_ID },
-      supabase: serverMock.client,
     });
 
-    // 템플릿 조회 → 존재
-    serverMock.addResult({
-      data: { id: TEST_TEMPLATE_ID, is_active: false, version: 1, name: '테스트 템플릿' },
-      error: null,
+    // admin RPC: DB 에러
+    adminMock.addRpcResult({
+      data: null,
+      error: { message: 'RPC execution failed' },
     });
-
-    // admin: 비활성화 → 에러
-    adminMock.addResult({ data: null, error: { message: '비활성화 실패' } });
 
     const result = await setActiveTemplate(TEST_TEMPLATE_ID);
 
-    // 비활성화 실패 시 활성화로 진행하면 안 됨 → error 반환
-    expect(result.success).toBe(false);
+    expect(result).toEqual({ success: false, error: '활성 템플릿 변경에 실패했습니다.' });
   });
 
   it('활성화 성공 → success + 감사로그', async () => {
@@ -268,19 +266,13 @@ describe('setActiveTemplate', () => {
 
     mockAuthResult.mockResolvedValue({
       user: { id: TEST_USER_ID },
-      supabase: serverMock.client,
     });
 
-    // 템플릿 조회 → 존재
-    serverMock.addResult({
-      data: { id: TEST_TEMPLATE_ID, is_active: false, version: 3, name: '활성화할 템플릿' },
+    // admin RPC: 성공
+    adminMock.addRpcResult({
+      data: { success: true, name: '활성화할 템플릿', version: 3 },
       error: null,
     });
-
-    // admin: 비활성화 → 성공
-    adminMock.addResult({ data: null, error: null });
-    // admin: 활성화 → 성공
-    adminMock.addResult({ data: null, error: null });
 
     const result = await setActiveTemplate(TEST_TEMPLATE_ID);
 
@@ -295,28 +287,6 @@ describe('setActiveTemplate', () => {
       }),
     );
     expect(revalidatePath).toHaveBeenCalledWith('/ops/templates');
-  });
-
-  it('활성화 단계 DB 에러 → error 반환', async () => {
-    mockAuthResult.mockResolvedValue({
-      user: { id: TEST_USER_ID },
-      supabase: serverMock.client,
-    });
-
-    // 템플릿 조회 → 존재
-    serverMock.addResult({
-      data: { id: TEST_TEMPLATE_ID, is_active: false, version: 2, name: '테스트' },
-      error: null,
-    });
-
-    // admin: 비활성화 → 성공
-    adminMock.addResult({ data: null, error: null });
-    // admin: 활성화 → 에러
-    adminMock.addResult({ data: null, error: { message: 'activation_failed' } });
-
-    const result = await setActiveTemplate(TEST_TEMPLATE_ID);
-
-    expect(result).toEqual({ success: false, error: '활성 템플릿 변경에 실패했습니다.' });
   });
 });
 

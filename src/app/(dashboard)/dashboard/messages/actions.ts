@@ -65,19 +65,25 @@ export async function fetchConversations(): Promise<
 
     const activeIds = conversations.map((c) => c.id);
 
-    // 3. 상대방 참여자 조회 (나 제외)
-    const { data: otherParticipants, error: otherError } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id, user_id')
-      .in('conversation_id', activeIds)
-      .neq('user_id', user.id);
+    // 3+5. 상대방 참여자 + 마지막 메시지 병렬 조회 (P1-DB-02)
+    const [otherParticipantsResult, lastMessagesResult] = await Promise.all([
+      supabase
+        .from('conversation_participants')
+        .select('conversation_id, user_id')
+        .in('conversation_id', activeIds)
+        .neq('user_id', user.id),
+      supabase.rpc('get_last_messages_for_conversations', {
+        p_conversation_ids: activeIds,
+      }),
+    ]);
 
+    const { data: otherParticipants, error: otherError } = otherParticipantsResult;
     if (otherError) {
       console.error('[fetchConversations Error] 상대방 조회:', otherError);
       return { success: false, error: '메시지 목록을 불러올 수 없습니다.' };
     }
 
-    // 4. 상대방 사용자 정보 조회
+    // 4. 상대방 사용자 정보 조회 (3단계 결과에 의존, 순차)
     const otherUserIds = [...new Set((otherParticipants || []).map((p) => p.user_id))];
 
     const adminSupabase = createAdminClient();
@@ -94,21 +100,16 @@ export async function fetchConversations(): Promise<
       (otherParticipants || []).map((p) => [p.conversation_id, p.user_id]),
     );
 
-    // 5. 각 대화의 마지막 메시지 조회 (RPC로 단일 쿼리)
+    // 5단계 결과 처리
     const lastMsgMap = new Map<string, { content: string; sender_id: string; created_at: string }>();
-    if (activeIds.length > 0) {
-      const { data: lastMessages } = await supabase.rpc('get_last_messages_for_conversations', {
-        p_conversation_ids: activeIds,
-      });
-
-      if (lastMessages) {
-        for (const msg of lastMessages) {
-          lastMsgMap.set(msg.conversation_id, {
-            content: msg.content,
-            sender_id: msg.sender_id,
-            created_at: msg.created_at,
-          });
-        }
+    const { data: lastMessages } = lastMessagesResult;
+    if (lastMessages) {
+      for (const msg of lastMessages) {
+        lastMsgMap.set(msg.conversation_id, {
+          content: msg.content,
+          sender_id: msg.sender_id,
+          created_at: msg.created_at,
+        });
       }
     }
 

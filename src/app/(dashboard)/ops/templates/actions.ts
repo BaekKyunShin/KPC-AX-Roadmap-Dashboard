@@ -315,41 +315,29 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
   }
 }
 
-// 활성 템플릿 변경
+// 활성 템플릿 변경 (P1-DB-05: 원자적 RPC로 변경)
 export async function setActiveTemplate(templateId: string): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    const { user } = auth;
+
+    // RPC 내부 UPDATE가 RLS 영향을 받으므로 admin 클라이언트 사용
     const adminSupabase = createAdminClient();
 
-    // 템플릿 존재 확인
-    const { data: template, error: fetchError } = await getTemplateById(supabase, templateId);
+    // 원자적 활성 템플릿 변경 (단일 트랜잭션)
+    const { data: rpcResult, error: rpcError } = await adminSupabase.rpc(
+      'set_active_template',
+      { p_template_id: templateId },
+    );
 
-    if (fetchError || !template) {
-      return { success: false, error: '템플릿을 찾을 수 없습니다.' };
-    }
-
-    // 모든 활성 템플릿 비활성화
-    const { error: deactivateError } = await adminSupabase
-      .from('self_assessment_templates')
-      .update({ is_active: false })
-      .eq('is_active', true);
-
-    if (deactivateError) {
-      console.error('[setActiveTemplate] Supabase error (deactivate):', deactivateError.message);
+    if (rpcError) {
+      console.error('[setActiveTemplate] RPC error:', rpcError.message);
       return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
     }
 
-    // 선택한 템플릿 활성화
-    const { error } = await adminSupabase
-      .from('self_assessment_templates')
-      .update({ is_active: true, updated_at: new Date().toISOString() })
-      .eq('id', templateId);
-
-    if (error) {
-      console.error('[setActiveTemplate] Supabase error (activate):', error.message);
-      return { success: false, error: '활성 템플릿 변경에 실패했습니다.' };
+    if (!rpcResult?.success) {
+      return { success: false, error: rpcResult?.error || '활성 템플릿 변경에 실패했습니다.' };
     }
 
     // 감사로그 (응답 차단 방지를 위해 after()로 지연)
@@ -359,7 +347,7 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
         action: 'TEMPLATE_ACTIVATE',
         targetType: 'template',
         targetId: templateId,
-        meta: { version: template.version, name: template.name },
+        meta: { version: rpcResult.version, name: rpcResult.name },
       });
     });
 
@@ -459,10 +447,10 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
       return { success: false, error: `이 템플릿으로 진행된 자가진단이 ${usageCount}건 있어 삭제할 수 없습니다.` };
     }
 
-    // 물리적 삭제
+    // 소프트 삭제 (감사 추적을 위해 물리 삭제 대신 deleted_at 설정)
     const { error: deleteError } = await adminSupabase
       .from('self_assessment_templates')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', templateId);
 
     if (deleteError) {

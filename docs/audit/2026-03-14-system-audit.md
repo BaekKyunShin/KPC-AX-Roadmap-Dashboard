@@ -7,7 +7,7 @@
 | 영역 | P0 | P1 | P2 | 상태 |
 |------|----|----|-----|------|
 | 보안 (security-auditor) | 0 | ~~3~~ ✅ | ~~5/6~~ ✅ | P1 전체 + P2 5/6건 해결 (P2-SEC-04 제외) |
-| 데이터베이스 (postgres-pro) | 2 | 5 | 7 | 개선 필요 |
+| 데이터베이스 (postgres-pro) | ~~2~~ ✅ | ~~5~~ ✅ | ~~7~~ ✅ | 전체 해결 완료 |
 | 성능 (performance-engineer) | ~~2~~ ✅ | ~~4~~ ✅ | ~~4~~ ✅ | 전체 해결 완료 |
 | 테스트 (test-automator) | ~~4~~ ✅ | ~~8~~ ✅ | ~~5~~ ✅ | P0/P1/P2 전체 해결 완료 |
 | **합계** | **8** | **20** | **22** | — |
@@ -66,23 +66,23 @@
 
 | ID | 설명 | 권장 조치 |
 |----|------|----------|
-| P1-DB-01 | audit_logs 복합 인덱스 부재 — `(action_type, created_at)`, `(target_type, target_id)` 인덱스 필요 | 인덱스 마이그레이션 추가 |
-| P1-DB-02 | fetchConversations 5단계 순차 쿼리 — 3~5단계 병렬화 가능 | Promise.all 적용 |
-| P1-DB-03 | `is_approved_consultant()` RLS 함수 — 매 행 평가 시 users 테이블 조회. `get_user_role()`과 중복 호출 가능 | 결과 캐싱 또는 함수 통합 |
-| P1-DB-04 | JSONB 컬럼 인덱싱 미적용 — `projects.diagnosis_result`, `roadmap_versions.roadmap_data` 등 | 자주 필터링하는 키에 GIN 인덱스 고려 |
-| P1-DB-05 | setActiveTemplate 비원자적 2단계 UPDATE — 동시 호출 시 복수 템플릿 활성화 가능 | 단일 RPC로 원자적 처리 |
+| ~~P1-DB-01~~ | ~~audit_logs 복합 인덱스 부재~~ → ✅ `(action, created_at DESC)` 복합 인덱스 추가 (052 마이그레이션) | ~~인덱스 마이그레이션 추가~~ |
+| ~~P1-DB-02~~ | ~~fetchConversations 5단계 순차 쿼리~~ → ✅ 3+5단계 `Promise.all` 병렬화 적용 | ~~Promise.all 적용~~ |
+| ~~P1-DB-03~~ | ~~`is_approved_consultant()` RLS 함수 — users 2회 접근~~ → ✅ 단일 EXISTS 쿼리로 1회 접근 최적화 (053 마이그레이션) | ~~결과 캐싱 또는 함수 통합~~ |
+| ~~P1-DB-04~~ | ~~JSONB 컬럼 인덱싱 미적용~~ → ✅ 현재 불필요 (ADR-031 문서화) | ~~자주 필터링하는 키에 GIN 인덱스 고려~~ |
+| ~~P1-DB-05~~ | ~~setActiveTemplate 비원자적 2단계 UPDATE~~ → ✅ 원자적 RPC `set_active_template()` 도입 (054 마이그레이션 + 코드 변경) | ~~단일 RPC로 원자적 처리~~ |
 
 ### P2 발견사항
 
 | ID | 설명 |
 |----|------|
-| P2-DB-01 | `get_user_role()` 반복 호출 비용 — RLS 정책마다 호출, `SET LOCAL` 캐싱 고려 |
-| P2-DB-02 | 소프트 삭제 미적용 — 현재 물리 삭제 사용 |
-| P2-DB-03 | 외래키 인덱스 일부 누락 가능성 |
-| P2-DB-04 | `messages` 테이블 대량 증가 시 파티셔닝 필요 |
-| P2-DB-05 | `roadmap_versions.roadmap_data` JSONB 크기 제한 없음 |
-| P2-DB-06 | `conversation_participants` 복합 인덱스 최적화 여지 |
-| P2-DB-07 | 통계 쿼리용 물화 뷰(Materialized View) 부재 |
+| ~~P2-DB-01~~ | ~~`get_user_role()` 반복 호출 비용~~ → ✅ `(SELECT auth.uid())` 래핑 적용 (048 마이그레이션 + ADR-027) |
+| ~~P2-DB-02~~ | ~~소프트 삭제 미적용~~ → ✅ `self_assessment_templates`, `consultant_activity_logs`에 `deleted_at` 도입 (051 마이그레이션) |
+| ~~P2-DB-03~~ | ~~외래키 인덱스 일부 누락~~ → ✅ 실제 누락 2건 추가 (`assessment_tokens.created_by`, `self_assessments.assessment_token_id`) (049 마이그레이션) |
+| ~~P2-DB-04~~ | ~~`messages` 테이블 파티셔닝~~ → ✅ 현재 불필요 (ADR-028 문서화) |
+| ~~P2-DB-05~~ | ~~`roadmap_versions` JSONB 크기 제한 없음~~ → ✅ CHECK 제약 4건 추가 (050 마이그레이션) |
+| ~~P2-DB-06~~ | ~~`conversation_participants` 인덱스 최적화~~ → ✅ 이미 최적 확인 (ADR-029 문서화) |
+| ~~P2-DB-07~~ | ~~통계 쿼리용 물화 뷰 부재~~ → ✅ 앱 레벨 캐싱으로 충분 (ADR-030 문서화) |
 
 ---
 
@@ -276,11 +276,11 @@
 | P1-SEC-01 | 보안 | 로드맵 내보내기 ACTIVE 상태 체크 | 낮음 | 중간 | ✅ 해결 |
 | P1-SEC-02 | 보안 | PostgREST .or() 필터 인젝션 방어 | 중간 | 중간 | ✅ 해결 |
 | P1-SEC-03 | 보안 | 프로필 수정 시 사용자 상태 재검증 | 낮음 | 중간 | ✅ 해결 |
-| P1-DB-01 | DB | audit_logs 복합 인덱스 추가 | 낮음 | 높음 |
-| P1-DB-02 | DB | fetchConversations 병렬화 | 낮음 | 중간 |
-| P1-DB-03 | DB | is_approved_consultant() 최적화 | 중간 | 중간 |
-| P1-DB-04 | DB | JSONB 컬럼 GIN 인덱스 검토 | 중간 | 중간 |
-| P1-DB-05 | DB | setActiveTemplate 원자적 RPC | 낮음 | 중간 |
+| P1-DB-01 | DB | audit_logs 복합 인덱스 추가 | 낮음 | 높음 | ✅ 해결 |
+| P1-DB-02 | DB | fetchConversations 병렬화 | 낮음 | 중간 | ✅ 해결 |
+| P1-DB-03 | DB | is_approved_consultant() 최적화 | 중간 | 중간 | ✅ 해결 |
+| P1-DB-04 | DB | JSONB 컬럼 GIN 인덱스 검토 | 중간 | 중간 | ✅ 해결 (불필요, ADR-031) |
+| P1-DB-05 | DB | setActiveTemplate 원자적 RPC | 낮음 | 중간 | ✅ 해결 |
 | P1-PERF-01 | 성능 | 인터뷰 페이지 SC/CC 분리 | 중간 | 중간 | ✅ 해결 |
 | P1-PERF-02 | 성능 | ops/projects/[id] getCachedUser 전환 | 낮음 | 낮음 | ✅ 해결 |
 | P1-PERF-03 | 성능 | email.ts 순차 쿼리 병렬화 | 낮음 | 낮음 | ✅ 해결 |
@@ -296,7 +296,7 @@
 
 ### P2 — 중기 조치 (22건)
 
-~~보안 5/6건~~ ✅ 해결 (P2-SEC-04 제외), DB 7건, ~~성능 4건~~ ✅ 해결, ~~테스트 5건~~ ✅ 해결 — 위 각 섹션의 P2 테이블 참조.
+~~보안 5/6건~~ ✅ 해결 (P2-SEC-04 제외), ~~DB 7건~~ ✅ 해결, ~~성능 4건~~ ✅ 해결, ~~테스트 5건~~ ✅ 해결 — 위 각 섹션의 P2 테이블 참조.
 
 ---
 
