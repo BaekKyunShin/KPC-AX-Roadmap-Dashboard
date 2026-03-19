@@ -376,4 +376,140 @@ describe('generateLLMMatchingRecommendations', () => {
       })
     );
   });
+
+  // ─── 프롬프트 내용 상세 검증 ──────────────────────────────────────────────
+
+  it('시스템 프롬프트에 출력 형식(JSON 구조)이 명시되어 있다', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const systemMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'system'
+    );
+
+    expect(systemMsg?.content).toContain('recommendations');
+    expect(systemMsg?.content).toContain('score');
+    expect(systemMsg?.content).toContain('analysis');
+    expect(systemMsg?.content).toContain('strengths');
+    expect(systemMsg?.content).toContain('considerations');
+  });
+
+  it('시스템 프롬프트에 평가 기준 5가지가 모두 포함되어 있다', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const systemMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'system'
+    );
+
+    expect(systemMsg?.content).toContain('업종 적합성');
+    expect(systemMsg?.content).toContain('전문분야 일치');
+    expect(systemMsg?.content).toContain('역량 매칭');
+    expect(systemMsg?.content).toContain('강의 레벨');
+    expect(systemMsg?.content).toContain('경력 및 가용성');
+  });
+
+  it('사용자 프롬프트에 자가진단 차원별 수준(우수/보통/부족)이 포함된다', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const userMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'user'
+    );
+
+    // AI 활용: 7/10 = 70% → 우수
+    expect(userMsg?.content).toContain('우수');
+    // 데이터: 4/10 = 40% → 부족
+    expect(userMsg?.content).toContain('부족');
+  });
+
+  it('사용자 프롬프트에 컨설턴트 강의 레벨이 한국어 라벨로 표시된다', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const userMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'user'
+    );
+
+    // BEGINNER → 입문, INTERMEDIATE → 실무
+    expect(userMsg?.content).toContain('입문');
+    expect(userMsg?.content).toContain('실무');
+  });
+
+  it('사용자 프롬프트에 기업 규모와 세부 업종이 포함된다', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const userMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'user'
+    );
+
+    expect(userMsg?.content).toContain('MEDIUM');
+    expect(userMsg?.content).toContain('AI');
+    expect(userMsg?.content).toContain('ML');
+  });
+
+  // ─── 에러 경로 ────────────────────────────────────────────────────────────
+
+  it('callLLMForJSON 에러 시 예외가 전파된다', async () => {
+    vi.mocked(callLLMForJSON).mockRejectedValueOnce(new Error('LLM API 호출 타임아웃'));
+
+    await expect(
+      generateLLMMatchingRecommendations('project-1', 'actor-1')
+    ).rejects.toThrow('LLM API 호출 타임아웃');
+  });
+
+  it('fetchMatchingData 에러 시 예외가 전파된다', async () => {
+    vi.mocked(fetchMatchingData).mockRejectedValueOnce(new Error('프로젝트를 찾을 수 없습니다'));
+
+    await expect(
+      generateLLMMatchingRecommendations('project-1', 'actor-1')
+    ).rejects.toThrow('프로젝트를 찾을 수 없습니다');
+  });
+
+  it('saveRecommendations 에러 시 예외가 전파된다', async () => {
+    vi.mocked(saveRecommendations).mockRejectedValueOnce(new Error('DB 저장 실패'));
+
+    await expect(
+      generateLLMMatchingRecommendations('project-1', 'actor-1')
+    ).rejects.toThrow('DB 저장 실패');
+  });
+
+  // ─── 빈 추천 시 감사로그 ──────────────────────────────────────────────────
+
+  it('유효한 추천이 없을 때 감사로그에 candidates_count=0으로 기록한다', async () => {
+    vi.mocked(filterValidRecommendations).mockReturnValue([]);
+
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          candidates_count: 0,
+          top_candidate: undefined,
+        }),
+      })
+    );
+  });
+
+  // ─── 자가진단 결과 없음 ──────────────────────────────────────────────────
+
+  it('자가진단 dimension_scores가 null이면 프롬프트에 미포함 안내 표시', async () => {
+    vi.mocked(fetchMatchingData).mockResolvedValue({
+      ...MOCK_FETCH_DATA,
+      assessmentScores: {
+        total_score: 0,
+        dimension_scores: null,
+      },
+    } as never);
+
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+
+    const [[messages]] = vi.mocked(callLLMForJSON).mock.calls;
+    const userMsg = (messages as { role: string; content: string }[]).find(
+      (m) => m.role === 'user'
+    );
+
+    expect(userMsg?.content).toContain('자가진단 상세 결과 없음');
+  });
 });

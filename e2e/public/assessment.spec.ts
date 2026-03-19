@@ -43,12 +43,10 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
 
   test('유효 토큰 → 자가진단 폼 표시', async ({ page }) => {
     const token = process.env.E2E_ASSESSMENT_TOKEN;
-    if (!token) {
-      test.skip();
-      return;
-    }
+    // E2E_ASSESSMENT_TOKEN 환경 변수가 설정되지 않으면 유효 토큰 테스트 불가
+    test.skip(!token, '환경 변수 미설정: E2E_ASSESSMENT_TOKEN이 필요합니다');
 
-    const response = await page.goto(`/assessment/${token}`);
+    const response = await page.goto(`/assessment/${token!}`);
 
     // 200 응답 (유효한 토큰)
     expect(response?.status()).toBe(200);

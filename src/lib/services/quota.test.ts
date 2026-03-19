@@ -797,3 +797,116 @@ describe('fetchAllUsersUsage', () => {
     expect(result.users[0].usagePercent).toBe(2); // Math.round(10/500*100)
   });
 });
+
+// ─── 경계값 및 에지 케이스 ────────────────────────────────────────────────
+
+describe('fetchUserUsage 경계값 에지 케이스', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-03-15T05:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('일별 한도보다 1 적은 사용량 → dailyRemaining: 1', async () => {
+    setupUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 49 },
+      monthlyUsage: [{ llm_calls: 49 }],
+    });
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.daily).toBe(49);
+    expect(result.dailyRemaining).toBe(1);
+  });
+
+  it('월별 한도보다 1 적은 사용량 → monthlyRemaining: 1', async () => {
+    setupUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 10 },
+      monthlyUsage: [{ llm_calls: 499 }],
+    });
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.monthly).toBe(499);
+    expect(result.monthlyRemaining).toBe(1);
+  });
+
+  it('일별/월별 모두 한도 초과 → 둘 다 remaining: 0', async () => {
+    setupUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 100 },
+      monthlyUsage: [{ llm_calls: 800 }],
+    });
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.dailyRemaining).toBe(0);
+    expect(result.monthlyRemaining).toBe(0);
+    expect(result.daily).toBe(100);
+    expect(result.monthly).toBe(800);
+  });
+
+  it('월별 사용량 null → monthly: 0', async () => {
+    setupUsageMock({
+      quota: { daily_limit: 50, monthly_limit: 500 },
+      dailyUsage: { llm_calls: 5 },
+      monthlyUsage: null,
+    });
+
+    const result = await fetchUserUsage('user-1');
+
+    expect(result.monthly).toBe(0);
+    expect(result.monthlyRemaining).toBe(500);
+  });
+});
+
+describe('checkAndRecordLLMUsage 에지 케이스', () => {
+  let mock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-03-15T05:00:00.000Z'));
+
+    mock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('토큰 기본값(0, 0)으로 RPC 호출', async () => {
+    mock.setRpcResult({
+      data: { exceeded: false },
+      error: null,
+    });
+
+    await checkAndRecordLLMUsage('user-1');
+
+    expect(mock.mockClient.rpc).toHaveBeenCalledWith(
+      'check_and_increment_llm_usage',
+      expect.objectContaining({
+        p_tokens_in: 0,
+        p_tokens_out: 0,
+      })
+    );
+  });
+
+  it('RPC 에러 메시지가 결과에 포함된다', async () => {
+    mock.setRpcResult({
+      data: null,
+      error: { message: 'connection timeout' },
+    });
+
+    await expect(checkAndRecordLLMUsage('user-1')).rejects.toThrow(
+      '쿼터 확인/기록 실패: connection timeout'
+    );
+  });
+});

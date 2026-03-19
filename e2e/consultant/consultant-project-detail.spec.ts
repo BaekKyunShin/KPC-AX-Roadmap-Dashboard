@@ -18,13 +18,11 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     await page.waitForLoadState('networkidle');
 
     const href = await findFirstLinkHref(page, '/consultant/projects/');
-    if (!href) {
-      test.skip();
-      return;
-    }
-    projectDetailUrl = href;
+    // 담당 프로젝트가 없으면 상세 페이지 테스트 불가
+    test.skip(!href, '테스트 데이터 없음: 담당 프로젝트가 없습니다');
+    projectDetailUrl = href!;
 
-    await page.locator(`main a[href="${href}"]`).click();
+    await page.locator(`main a[href="${href!}"]`).click();
     await page.waitForLoadState('networkidle');
 
     // 프로젝트 상세 페이지 URL 확인
@@ -37,12 +35,10 @@ test.describe('컨설턴트 프로젝트 상세', () => {
   });
 
   test('기업정보 카드 표시', async ({ consultantPage: page }) => {
-    if (!projectDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 기업정보 카드 테스트 불가
+    test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
 
-    await page.goto(projectDetailUrl);
+    await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 기업 정보 카드 헤더 확인
@@ -64,12 +60,10 @@ test.describe('컨설턴트 프로젝트 상세', () => {
   test('4개 탭 전환 (기업 정보/사전 분석/인터뷰 기록/활동 일지)', async ({
     consultantPage: page,
   }) => {
-    if (!projectDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 탭 전환 테스트 불가
+    test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
 
-    await page.goto(projectDetailUrl);
+    await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 기본 탭 (기업 정보) 활성 상태 확인
@@ -94,12 +88,10 @@ test.describe('컨설턴트 프로젝트 상세', () => {
   test('자가진단 미완료 시 안내 메시지 또는 결과 표시', async ({
     consultantPage: page,
   }) => {
-    if (!projectDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 자가진단 테스트 불가
+    test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
 
-    await page.goto(projectDetailUrl);
+    await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 자가진단 결과 영역 확인 (완료 또는 미완료 중 하나)
@@ -130,12 +122,10 @@ test.describe('컨설턴트 프로젝트 상세', () => {
   test('"인터뷰 입력" 또는 "인터뷰 수정" 버튼 존재 + interview 페이지 링크 검증', async ({
     consultantPage: page,
   }) => {
-    if (!projectDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 인터뷰 버튼 테스트 불가
+    test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
 
-    await page.goto(projectDetailUrl);
+    await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // "인터뷰 입력" 또는 "인터뷰 수정" 링크 확인
@@ -156,12 +146,10 @@ test.describe('컨설턴트 프로젝트 상세', () => {
   });
 
   test('"로드맵" 관련 버튼/링크 존재 여부', async ({ consultantPage: page }) => {
-    if (!projectDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 로드맵 링크 테스트 불가
+    test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
 
-    await page.goto(projectDetailUrl);
+    await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 로드맵 관련 링크 (상태에 따라 "로드맵 생성", "로드맵 편집", "로드맵 보기" 중 하나)
@@ -185,11 +173,9 @@ test.describe('컨설턴트 프로젝트 상세', () => {
 
   test.describe('활동 일지 CRUD', () => {
     test.beforeEach(async ({ consultantPage: page }) => {
-      if (!projectDetailUrl) {
-        test.skip();
-        return;
-      }
-      await page.goto(projectDetailUrl);
+      // 선행 테스트에서 상세 URL을 추출하지 못하면 활동 일지 CRUD 전체 스킵
+      test.skip(!projectDetailUrl, '테스트 데이터 없음: 프로젝트 상세 URL이 없습니다');
+      await page.goto(projectDetailUrl!);
       await page.waitForLoadState('networkidle');
       await switchTab(page, '활동 일지');
     });
@@ -222,10 +208,8 @@ test.describe('컨설턴트 프로젝트 상세', () => {
         .first();
 
       const hasLog = await moreButton.isVisible().catch(() => false);
-      if (!hasLog) {
-        test.skip();
-        return;
-      }
+      // 수동 기록이 없으면 수정 테스트 불가
+      test.skip(!hasLog, '테스트 데이터 없음: 수정할 활동 일지 기록이 없습니다');
 
       // 더보기 → 수정
       await moreButton.click();
@@ -253,10 +237,8 @@ test.describe('컨설턴트 프로젝트 상세', () => {
         .first();
 
       const hasLog = await moreButton.isVisible().catch(() => false);
-      if (!hasLog) {
-        test.skip();
-        return;
-      }
+      // 수동 기록이 없으면 삭제 테스트 불가
+      test.skip(!hasLog, '테스트 데이터 없음: 삭제할 활동 일지 기록이 없습니다');
 
       // 삭제 전 기록 텍스트 저장
       const logTextBefore = await page

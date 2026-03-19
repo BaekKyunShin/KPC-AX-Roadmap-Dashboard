@@ -106,10 +106,9 @@ test.describe('템플릿 상세 페이지', () => {
 
     // 템플릿 목록에서 첫 번째 링크 클릭
     const templateLink = page.locator('table a[href*="/ops/templates/"]').first();
-    if (!(await templateLink.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasTemplateLink = await templateLink.isVisible().catch(() => false);
+    // 템플릿 데이터가 없으면 상세 페이지 테스트 불가
+    test.skip(!hasTemplateLink, '테스트 데이터 없음: 템플릿 목록이 비어있습니다');
 
     await templateLink.click();
     await expect(page).toHaveURL(/\/ops\/templates\/[a-f0-9-]+/);
@@ -130,10 +129,9 @@ test.describe('드롭다운 메뉴 동작', () => {
 
     // 작업 메뉴 버튼 확인
     const actionButton = page.getByRole('button', { name: '작업 메뉴' }).first();
-    if (!(await actionButton.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasActionButton = await actionButton.isVisible().catch(() => false);
+    // 작업 메뉴 버튼이 없으면 드롭다운 테스트 불가
+    test.skip(!hasActionButton, '테스트 데이터 없음: 작업 메뉴 버튼이 없습니다');
 
     await actionButton.click();
 
@@ -147,20 +145,17 @@ test.describe('드롭다운 메뉴 동작', () => {
 
     // 작업 메뉴 버튼 클릭
     const actionButton = page.getByRole('button', { name: '작업 메뉴' }).first();
-    if (!(await actionButton.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasActionBtn = await actionButton.isVisible().catch(() => false);
+    // 작업 메뉴 버튼이 없으면 삭제 다이얼로그 테스트 불가
+    test.skip(!hasActionBtn, '테스트 데이터 없음: 작업 메뉴 버튼이 없습니다');
 
     await actionButton.click();
 
     // "삭제" 메뉴 항목이 있는지 확인 (비활성 + 미사용 템플릿만 삭제 가능)
     const deleteItem = page.getByRole('menuitem', { name: '삭제' });
-    if (!(await deleteItem.isVisible().catch(() => false))) {
-      // 삭제 불가 템플릿 → confirm 다이얼로그 테스트 스킵
-      test.skip();
-      return;
-    }
+    const hasDeleteItem = await deleteItem.isVisible().catch(() => false);
+    // 삭제 불가 템플릿 → confirm 다이얼로그 테스트 스킵
+    test.skip(!hasDeleteItem, '삭제 불가 템플릿: 삭제 메뉴 항목이 없습니다');
 
     // confirm 다이얼로그를 가로채서 취소 (confirm → false)
     page.on('dialog', async (dialog) => {

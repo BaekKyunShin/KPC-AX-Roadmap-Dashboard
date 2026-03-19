@@ -21,13 +21,11 @@ test.describe('갤러리 상세', () => {
     await page.waitForLoadState('networkidle');
 
     const href = await findFirstLinkHref(page, '/gallery/');
-    if (!href) {
-      test.skip();
-      return;
-    }
-    galleryDetailUrl = href;
+    // 갤러리에 공유된 로드맵이 없으면 상세 페이지 테스트 불가
+    test.skip(!href, '테스트 데이터 없음: 갤러리 목록이 비어있습니다');
+    galleryDetailUrl = href!;
 
-    await page.locator(`main a[href="${href}"]`).click();
+    await page.locator(`main a[href="${href!}"]`).click();
     await page.waitForLoadState('networkidle');
 
     // 상세 페이지 URL 확인
@@ -48,12 +46,10 @@ test.describe('갤러리 상세', () => {
   test('3개 탭 (과정 체계도/과정 상세/PBL 과정) 전환', async ({
     consultantPage: page,
   }) => {
-    if (!galleryDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 탭 전환 테스트 불가
+    test.skip(!galleryDetailUrl, '테스트 데이터 없음: 갤러리 상세 URL이 없습니다');
 
-    await page.goto(galleryDetailUrl);
+    await page.goto(galleryDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 탭 버튼들 확인 (GalleryDetailContent는 커스텀 탭을 사용, role="tab" 아님)
@@ -78,12 +74,10 @@ test.describe('갤러리 상세', () => {
   });
 
   test('좋아요 버튼 토글', async ({ consultantPage: page }) => {
-    if (!galleryDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 좋아요 테스트 불가
+    test.skip(!galleryDetailUrl, '테스트 데이터 없음: 갤러리 상세 URL이 없습니다');
 
-    await page.goto(galleryDetailUrl);
+    await page.goto(galleryDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 좋아요 버튼 찾기 (Heart SVG + 카운트 span을 가진 rounded-full 버튼)
@@ -93,10 +87,8 @@ test.describe('갤러리 상세', () => {
       .first();
     const hasLikeButton = await likeButton.isVisible().catch(() => false);
 
-    if (!hasLikeButton) {
-      test.skip();
-      return;
-    }
+    // 좋아요 버튼이 없으면 토글 테스트 불가
+    test.skip(!hasLikeButton, '테스트 데이터 없음: 좋아요 버튼이 없습니다');
 
     // 현재 좋아요 카운트 기록
     const countBefore = await likeButton.locator('span').textContent();
@@ -124,12 +116,10 @@ test.describe('갤러리 상세', () => {
   test('"이 로드맵 사용하기" 버튼 컨설턴트에게 표시', async ({
     consultantPage: page,
   }) => {
-    if (!galleryDetailUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 상세 URL을 추출하지 못하면 버튼 표시 테스트 불가
+    test.skip(!galleryDetailUrl, '테스트 데이터 없음: 갤러리 상세 URL이 없습니다');
 
-    await page.goto(galleryDetailUrl);
+    await page.goto(galleryDetailUrl!);
     await page.waitForLoadState('networkidle');
 
     // 컨설턴트에게 "이 로드맵 사용하기" 버튼이 표시되는지 확인

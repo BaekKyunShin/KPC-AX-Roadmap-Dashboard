@@ -25,7 +25,7 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
 
   webServer: {
-    command: 'npm run dev',
+    command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
@@ -35,13 +35,43 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/ops/logout.spec.ts',
+      testIgnore: [
+        '**/ops/logout.spec.ts',
+        '**/visual/**',
+        '**/accessibility/**',
+        '**/mobile/**',
+      ],
     },
     {
       name: 'ops-logout',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/ops/logout.spec.ts',
       dependencies: ['chromium'],
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testIgnore: [
+        '**/ops/logout.spec.ts',
+        '**/visual/**',
+        '**/accessibility/**',
+        '**/mobile/**',
+      ],
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+      testMatch: '**/mobile/**',
+    },
+    {
+      name: 'visual',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/visual/**',
+    },
+    {
+      name: 'accessibility',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/accessibility/**',
     },
   ],
 });

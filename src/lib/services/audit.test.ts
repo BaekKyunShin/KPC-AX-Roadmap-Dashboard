@@ -340,3 +340,146 @@ describe('fetchAuditLogs', () => {
     expect(result.totalPages).toBe(0);
   });
 });
+
+// ─── createAuditLog 에지 케이스 ─────────────────────────────────────────────
+
+describe('createAuditLog 에지 케이스', () => {
+  let mock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    mock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+    vi.mocked(headers).mockRejectedValue(new Error('Not in request context'));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('actorUserId가 null일 때 null로 기록된다', async () => {
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({
+      actorUserId: null,
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-123',
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_user_id: null,
+      }),
+    );
+  });
+
+  it('meta에 다양한 타입(숫자, 배열, 중첩 객체, boolean)이 포함된다', async () => {
+    mock.addResult({ data: null, error: null });
+
+    const complexMeta = {
+      count: 42,
+      tags: ['tag1', 'tag2'],
+      nested: { key: 'value' },
+      flag: true,
+    };
+
+    await createAuditLog({
+      actorUserId: 'user-123',
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-456',
+      meta: complexMeta,
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          count: 42,
+          tags: ['tag1', 'tag2'],
+          nested: { key: 'value' },
+          flag: true,
+        }),
+      }),
+    );
+  });
+
+  it('meta가 빈 객체일 때도 정상 기록된다', async () => {
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({
+      actorUserId: 'user-123',
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-456',
+      meta: {},
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: {},
+      }),
+    );
+  });
+
+  it('x-real-ip 헤더로 IP 주소를 추출한다 (x-forwarded-for 없을 때)', async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-real-ip': '192.168.1.1' }) as never,
+    );
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({
+      actorUserId: 'user-123',
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-456',
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ ip_address: '192.168.1.1' }),
+      }),
+    );
+  });
+
+  it('IP 헤더가 모두 없으면 meta에 ip_address가 포함되지 않는다', async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({}) as never,
+    );
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({
+      actorUserId: 'user-123',
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-456',
+      meta: { custom: 'data' },
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: { custom: 'data' },
+      }),
+    );
+  });
+
+  it('meta와 IP 주소가 병합된다', async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-forwarded-for': '10.0.0.1' }) as never,
+    );
+    mock.addResult({ data: null, error: null });
+
+    await createAuditLog({
+      actorUserId: 'user-123',
+      action: 'PROJECT_CREATE' as const,
+      targetType: 'project',
+      targetId: 'proj-456',
+      meta: { reason: '테스트' },
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: { reason: '테스트', ip_address: '10.0.0.1' },
+      }),
+    );
+  });
+});

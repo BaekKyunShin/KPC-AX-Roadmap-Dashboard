@@ -674,3 +674,415 @@ describe('updateInterviewGuideQuestions', () => {
     consoleSpy.mockRestore();
   });
 });
+
+// ─── 추가 에지 케이스 ──────────────────────────────────────────────────────
+
+describe('fetchActivityLogs — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('type 필터 적용 시 eq(type) 호출 확인', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: [], error: null, count: 0 });
+
+    await fetchActivityLogs(PROJECT_ID, { type: 'field_note' });
+
+    expect(serverMock.chainable.eq).toHaveBeenCalledWith('type', 'field_note');
+  });
+
+  it('custom limit/offset 적용 확인', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: [], error: null, count: 0 });
+
+    await fetchActivityLogs(PROJECT_ID, { limit: 5, offset: 10 });
+
+    expect(serverMock.chainable.range).toHaveBeenCalledWith(10, 14); // offset + limit - 1
+  });
+
+  it('data null → 빈 배열 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: null, error: null, count: 0 });
+
+    const result = await fetchActivityLogs(PROJECT_ID);
+
+    expect(result.logs).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
+  it('count null → total 0 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: [{ id: 'log-1' }], error: null, count: null });
+
+    const result = await fetchActivityLogs(PROJECT_ID);
+
+    expect(result.total).toBe(0);
+  });
+});
+
+describe('createActivityLog — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    // adminClient.from이 예외를 던지도록 설정
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error('unexpected');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createActivityLog(PROJECT_ID, 'field_note', '내용');
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('pre_research 타입으로 생성 성공', async () => {
+    const { revalidatePath } = await import('next/cache');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await createActivityLog(PROJECT_ID, 'pre_research', '사전 조사 내용');
+
+    expect(result).toEqual({ success: true });
+    expect(revalidatePath).toHaveBeenCalledWith(`/consultant/projects/${PROJECT_ID}`);
+  });
+});
+
+describe('updateActivityLog — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('DB update 실패 → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    // ownership check 통과
+    adminMock.addResult({
+      data: { id: LOG_ID, consultant_id: USER_A_ID, type: 'field_note' },
+      error: null,
+    });
+    // update 실패
+    adminMock.addResult({ data: null, error: { message: 'update_error' } });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await updateActivityLog(LOG_ID, PROJECT_ID, '수정 내용');
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('수정');
+    consoleSpy.mockRestore();
+  });
+
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    // createAdminClient가 예외를 던짐
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error('unexpected');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await updateActivityLog(LOG_ID, PROJECT_ID, '수정 내용');
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('deleteActivityLog — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('존재하지 않는 로그 삭제 시도 → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    // ownership check → not found
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await deleteActivityLog(LOG_ID, PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('찾을 수 없습니다');
+  });
+
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error('unexpected');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await deleteActivityLog(LOG_ID, PROJECT_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('소프트 삭제 — update(deleted_at) 호출 확인', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    adminMock.addResult({
+      data: { id: LOG_ID, consultant_id: USER_A_ID, type: 'field_note' },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    await deleteActivityLog(LOG_ID, PROJECT_ID);
+
+    // update가 deleted_at 필드를 포함하여 호출되었는지 확인
+    const updateCalls = adminMock.chainable.update.mock.calls;
+    expect(updateCalls.length).toBeGreaterThanOrEqual(1);
+    const lastUpdateArg = updateCalls[updateCalls.length - 1][0];
+    expect(lastUpdateArg).toHaveProperty('deleted_at');
+    expect(typeof lastUpdateArg.deleted_at).toBe('string');
+  });
+});
+
+describe('generateInterviewGuide — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('자가진단 scores가 null → error 반환', async () => {
+    const { checkAndRecordLLMUsage } = await import('@/lib/services/quota');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
+
+    serverMock.addResult({
+      data: {
+        company_name: '테스트 기업',
+        industry: '제조업',
+        company_size: '50-299',
+        customer_comment: '',
+        self_assessments: {
+          scores: null, // scores가 null
+          answers: [],
+          template: { questions: [] },
+        },
+      },
+      error: null,
+    });
+
+    const result = await generateInterviewGuide(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('점수 데이터');
+  });
+
+  it('LLM 출력이 Zod 검증 실패 → error 반환', async () => {
+    const { checkAndRecordLLMUsage } = await import('@/lib/services/quota');
+    const { generateInterviewGuideData } = await import('@/lib/services/interview-guide');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
+
+    serverMock.addResult({
+      data: {
+        company_name: '테스트 기업',
+        industry: '제조업',
+        company_size: '50-299',
+        customer_comment: '',
+        self_assessments: {
+          scores: { total_score: 30, max_possible_score: 50 },
+          answers: [],
+          template: { questions: [] },
+        },
+      },
+      error: null,
+    });
+
+    // LLM 출력이 잘못된 형식
+    vi.mocked(generateInterviewGuideData).mockResolvedValue({
+      // company_summary 누락 → Zod 검증 실패
+    } as never);
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await generateInterviewGuide(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('형식');
+    consoleSpy.mockRestore();
+  });
+
+  it('LLM 호출 예외 발생 → AI 분석 오류 반환', async () => {
+    const { checkAndRecordLLMUsage } = await import('@/lib/services/quota');
+    const { generateInterviewGuideData } = await import('@/lib/services/interview-guide');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false, message: undefined });
+
+    serverMock.addResult({
+      data: {
+        company_name: '테스트 기업',
+        industry: '제조업',
+        company_size: '50-299',
+        customer_comment: '',
+        self_assessments: {
+          scores: { total_score: 30, max_possible_score: 50 },
+          answers: [],
+          template: { questions: [] },
+        },
+      },
+      error: null,
+    });
+
+    vi.mocked(generateInterviewGuideData).mockRejectedValue(new Error('토큰 한도 초과'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await generateInterviewGuide(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('AI 분석');
+    consoleSpy.mockRestore();
+  });
+
+  it('쿼터 초과 시 message가 없으면 기본 메시지 사용', async () => {
+    const { checkAndRecordLLMUsage } = await import('@/lib/services/quota');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
+      exceeded: true,
+      message: undefined, // 메시지 없음
+    });
+
+    const result = await generateInterviewGuide(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('한도');
+  });
+});
+
+describe('updateInterviewGuideQuestions — 추가 에지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  const validQuestions = [
+    { id: 'q1', dimension: 'infra', question: '질문1?', intent: '의도1', checked: true, is_custom: false },
+  ];
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    vi.mocked(createAdminClient).mockImplementation(() => {
+      throw new Error('unexpected');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await updateInterviewGuideQuestions(PROJECT_ID, validQuestions);
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('기존 guide_data의 다른 필드를 보존하며 questions만 업데이트', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+    // 기존 가이드 조회 — company_summary, key_points, cautions 보존 확인
+    adminMock.addResult({
+      data: {
+        id: 'guide-1',
+        guide_data: {
+          company_summary: '기존 요약 보존됨',
+          key_points: [{ dimension: 'infra', score_percent: 50, status: 'warning', insight: '인프라' }],
+          questions: [{ id: 'old-q', dimension: 'old', question: '옛 질문', intent: '의도', checked: false, is_custom: false }],
+          cautions: ['기존 주의사항'],
+        },
+      },
+      error: null,
+    });
+    // update 성공
+    adminMock.addResult({ data: null, error: null });
+
+    await updateInterviewGuideQuestions(PROJECT_ID, validQuestions);
+
+    // update 호출 인자에서 guide_data 확인
+    const updateCalls = adminMock.chainable.update.mock.calls;
+    expect(updateCalls.length).toBeGreaterThanOrEqual(1);
+    const updatedData = updateCalls[updateCalls.length - 1][0];
+    expect(updatedData.guide_data.company_summary).toBe('기존 요약 보존됨');
+    expect(updatedData.guide_data.cautions).toEqual(['기존 주의사항']);
+    expect(updatedData.guide_data.questions).toEqual(validQuestions);
+  });
+});

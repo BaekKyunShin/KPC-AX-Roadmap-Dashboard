@@ -49,10 +49,9 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
   });
 
   test('대화 선택 → 메시지 스레드 표시 (대화가 있는 경우)', async ({ opsPage: page }) => {
-    if (!(await selectFirstConversation(page))) {
-      test.skip();
-      return;
-    }
+    const hasConversation = await selectFirstConversation(page);
+    // 대화 데이터가 없으면 스레드 표시 테스트 불가
+    test.skip(!hasConversation, '테스트 데이터 없음: 대화 목록이 비어있습니다');
 
     // 메시지 입력 영역이 표시되어야 함 (textarea placeholder)
     await expect(
@@ -66,10 +65,9 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
   });
 
   test('메시지 입력 + 전송 (대화가 있는 경우)', async ({ opsPage: page }) => {
-    if (!(await selectFirstConversation(page))) {
-      test.skip();
-      return;
-    }
+    const hasConversation = await selectFirstConversation(page);
+    // 대화 데이터가 없으면 메시지 전송 테스트 불가
+    test.skip(!hasConversation, '테스트 데이터 없음: 대화 목록이 비어있습니다');
 
     // 입력 필드 대기
     const textarea = page.getByPlaceholder('메시지를 입력하세요...');
@@ -101,10 +99,8 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
       // 빈 상태 화면의 "새 메시지 보내기" 버튼
       const altButton = page.getByRole('button', { name: '새 메시지 보내기' });
       const hasAltButton = await altButton.isVisible().catch(() => false);
-      if (!hasAltButton) {
-        test.skip();
-        return;
-      }
+      // 새 메시지 버튼이 없으면 다이얼로그 테스트 불가
+      test.skip(!hasAltButton, '테스트 데이터 없음: 새 메시지 보내기 버튼이 없습니다');
       await altButton.click();
     }
 
@@ -125,10 +121,9 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     await page.goto('/dashboard/messages');
     await page.waitForLoadState('networkidle');
 
-    if (!(await selectFirstConversation(page))) {
-      test.skip();
-      return;
-    }
+    const hasConversation = await selectFirstConversation(page);
+    // 대화 데이터가 없으면 모바일 뷰 전환 테스트 불가
+    test.skip(!hasConversation, '테스트 데이터 없음: 대화 목록이 비어있습니다');
 
     // 모바일에서 스레드가 표시되면 "뒤로가기" 버튼이 보여야 함
     const backButton = page.getByRole('button', { name: '뒤로가기' });

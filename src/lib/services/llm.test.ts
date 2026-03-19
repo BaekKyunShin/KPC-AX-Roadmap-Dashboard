@@ -11,6 +11,7 @@ import {
   callLLM,
   callLLMForJSON,
   getLLMUserFriendlyError,
+  isCancelledError,
   type LLMMessage,
 } from './llm';
 
@@ -517,5 +518,232 @@ describe('getLLMUserFriendlyError', () => {
   it('알 수 없는 에러', () => {
     const error = new Error('알 수 없는 에러');
     expect(getLLMUserFriendlyError(error)).toBe('오류가 발생했습니다. 다시 시도해 주세요.');
+  });
+
+  it('취소 에러', () => {
+    const error = new Error('LLM 호출이 취소되었습니다.');
+    expect(getLLMUserFriendlyError(error)).toBe('로드맵 생성이 취소되었습니다.');
+  });
+
+  it('Error가 아닌 문자열 에러', () => {
+    expect(getLLMUserFriendlyError('알 수 없는 에러')).toBe('오류가 발생했습니다. 다시 시도해 주세요.');
+  });
+
+  it('TypeError (네트워크 에러 변형)', () => {
+    const error = new TypeError('network error');
+    expect(getLLMUserFriendlyError(error)).toBe('네트워크 연결을 확인해 주세요.');
+  });
+});
+
+// ─── isCancelledError ─────────────────────────────────────────────────────
+
+describe('isCancelledError', () => {
+  it('취소 메시지 포함 시 true', () => {
+    expect(isCancelledError('LLM 호출이 취소되었습니다.')).toBe(true);
+  });
+
+  it('취소 메시지 미포함 시 false', () => {
+    expect(isCancelledError('타임아웃 에러')).toBe(false);
+  });
+
+  it('undefined 전달 시 false', () => {
+    expect(isCancelledError(undefined)).toBe(false);
+  });
+
+  it('빈 문자열 전달 시 false', () => {
+    expect(isCancelledError('')).toBe(false);
+  });
+});
+
+// ─── callLLM 에지 케이스 ──────────────────────────────────────────────────
+
+describe('callLLM 에지 케이스', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env.LLM_API_KEY = 'test-api-key';
+    process.env.LLM_API_BASE_URL = 'https://test-api.example.com/v1';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    vi.restoreAllMocks();
+  });
+
+  it('AbortError 발생 시 취소 에러 메시지를 던짐', async () => {
+    const abortError = new DOMException('signal was aborted', 'AbortError');
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(abortError)));
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await expect(callLLM(messages)).rejects.toThrow('LLM 호출이 취소되었습니다.');
+  });
+
+  it('외부 signal과 함께 호출 시 signal 옵션이 포함됨', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content: '응답' }, finish_reason: 'stop' }],
+              usage: null,
+            }),
+        })
+      )
+    );
+
+    const controller = new AbortController();
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await callLLM(messages, {}, controller.signal);
+
+    const options = vi.mocked(fetch).mock.calls[0][1];
+    expect(options?.signal).toBeDefined();
+  });
+
+  it('API 응답 500 에러', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve('Internal Server Error'),
+        })
+      )
+    );
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    await expect(callLLM(messages)).rejects.toThrow('LLM API 호출 실패: 500');
+  });
+
+  it('choices 배열이 완전히 비어있으면 빈 문자열 반환', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ choices: [], usage: null }),
+        })
+      )
+    );
+
+    const messages: LLMMessage[] = [{ role: 'user', content: '테스트' }];
+    const result = await callLLM(messages);
+    expect(result.content).toBe('');
+    expect(result.finishReason).toBeUndefined();
+  });
+});
+
+// ─── callLLMForJSON 에지 케이스 ───────────────────────────────────────────
+
+describe('callLLMForJSON 에지 케이스', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env.LLM_API_KEY = 'test-api-key';
+    process.env.LLM_API_BASE_URL = 'https://test-api.example.com/v1';
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    vi.restoreAllMocks();
+  });
+
+  function mockFetchResponse(content: string, finishReason: string = 'stop') {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content }, finish_reason: finishReason }],
+              usage: null,
+            }),
+        })
+      )
+    );
+  }
+
+  it('빈 문자열 응답은 JSON 파싱 실패로 재시도', async () => {
+    mockFetchResponse('');
+
+    await expect(
+      callLLMForJSON([{ role: 'user', content: '테스트' }], {}, 0)
+    ).rejects.toThrow();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('maxRetries=0이면 재시도 없이 1번만 호출', async () => {
+    mockFetchResponse('not-json');
+
+    await expect(
+      callLLMForJSON([{ role: 'user', content: '테스트' }], {}, 0)
+    ).rejects.toThrow();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('네트워크 에러는 재시도 없이 즉시 throw', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+
+    await expect(
+      callLLMForJSON([{ role: 'user', content: '테스트' }])
+    ).rejects.toThrow('Failed to fetch');
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('JSON 내부에 중첩된 객체도 파싱 가능', async () => {
+    mockFetchResponse('{"outer": {"inner": [1, 2, 3]}, "flag": true}');
+
+    const result = await callLLMForJSON<{ outer: { inner: number[] }; flag: boolean }>([
+      { role: 'user', content: '테스트' },
+    ]);
+
+    expect(result.outer.inner).toEqual([1, 2, 3]);
+    expect(result.flag).toBe(true);
+  });
+
+  it('JSON 앞뒤 공백이 있어도 파싱 성공', async () => {
+    mockFetchResponse('  \n  {"name": "공백"}\n  ');
+
+    const result = await callLLMForJSON<{ name: string }>([
+      { role: 'user', content: '테스트' },
+    ]);
+
+    expect(result.name).toBe('공백');
+  });
+
+  it('system 메시지의 content는 재시도 시에도 변경되지 않음', async () => {
+    let callCount = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => {
+        callCount++;
+        const content = callCount < 2 ? '잘못된 응답' : '{"ok": true}';
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              choices: [{ message: { content }, finish_reason: 'stop' }],
+              usage: null,
+            }),
+        });
+      })
+    );
+
+    const messages: LLMMessage[] = [
+      { role: 'system', content: '시스템 메시지' },
+      { role: 'user', content: '원래 메시지' },
+    ];
+
+    await callLLMForJSON(messages, {}, 2);
+
+    // 원본 messages 배열은 변형되지 않아야 함
+    expect(messages[0].content).toBe('시스템 메시지');
+    expect(messages[1].content).toBe('원래 메시지');
   });
 });

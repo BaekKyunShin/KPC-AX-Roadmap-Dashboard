@@ -289,3 +289,150 @@ describe('markAllNotificationsRead', () => {
     expect(serverMock.chainable.neq).toHaveBeenCalledWith('type', 'message');
   });
 });
+
+// ─── 추가 에지 케이스 ────────────────────────────────────────────────────────
+
+describe('fetchNotifications — 추가 에지 케이스', () => {
+  it('page 2 요청 시 올바른 offset으로 range 호출', async () => {
+    setupAuth();
+    serverMock.addResult({ data: [], error: null });
+
+    await fetchNotifications(2);
+
+    const offset = NOTIFICATION_PAGE_SIZE; // page 2 → offset = 20
+    expect(serverMock.chainable.range).toHaveBeenCalledWith(
+      offset,
+      offset + NOTIFICATION_PAGE_SIZE,
+    );
+  });
+
+  it('data가 null → 빈 배열 + hasMore=false 반환', async () => {
+    setupAuth();
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchNotifications(1);
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        notifications: [],
+        hasMore: false,
+      },
+    });
+  });
+
+  it('유효한 filter "assignment" → 정상 처리', async () => {
+    setupAuth();
+    serverMock.addResult({ data: [], error: null });
+
+    const result = await fetchNotifications(1, 'assignment');
+
+    expect(result.success).toBe(true);
+    expect(serverMock.chainable.eq).toHaveBeenCalledWith('type', 'assignment');
+  });
+
+  it('유효한 filter "system" → 정상 처리', async () => {
+    setupAuth();
+    serverMock.addResult({ data: [], error: null });
+
+    const result = await fetchNotifications(1, 'system');
+
+    expect(result.success).toBe(true);
+    expect(serverMock.chainable.eq).toHaveBeenCalledWith('type', 'system');
+  });
+
+  it('정확히 PAGE_SIZE개 반환 시 hasMore=false', async () => {
+    setupAuth();
+    const notifications = Array.from({ length: NOTIFICATION_PAGE_SIZE }, (_, i) => ({
+      id: `notif-${i}`,
+      user_id: TEST_USER_ID,
+      type: 'system',
+      is_read: false,
+    }));
+    serverMock.addResult({ data: notifications, error: null });
+
+    const result = await fetchNotifications(1);
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        notifications,
+        hasMore: false,
+      },
+    });
+  });
+
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    mockRequireAuth.mockRejectedValue(new Error('unexpected'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await fetchNotifications(1);
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('fetchUnreadCount — 추가 에지 케이스', () => {
+  it('count가 0 → 0 반환', async () => {
+    setupAuth();
+    serverMock.addResult({ data: null, error: null, count: 0 });
+
+    const result = await fetchUnreadCount();
+
+    expect(result).toBe(0);
+  });
+
+  it('예외 발생 시 0 반환', async () => {
+    mockRequireAuth.mockRejectedValue(new Error('unexpected'));
+
+    const result = await fetchUnreadCount();
+
+    expect(result).toBe(0);
+  });
+
+  it('select에 head: true 옵션으로 카운트만 요청', async () => {
+    setupAuth();
+    serverMock.addResult({ data: null, error: null, count: 5 });
+
+    await fetchUnreadCount();
+
+    expect(serverMock.chainable.select).toHaveBeenCalledWith('id', {
+      count: 'exact',
+      head: true,
+    });
+  });
+});
+
+describe('markNotificationRead — 추가 에지 케이스', () => {
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    mockRequireAuth.mockRejectedValue(new Error('unexpected'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await markNotificationRead(TEST_NOTIFICATION_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('markAllNotificationsRead — 추가 에지 케이스', () => {
+  it('예외 발생 시 알 수 없는 오류 반환', async () => {
+    mockRequireAuth.mockRejectedValue(new Error('unexpected'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await markAllNotificationsRead();
+
+    expect(result).toEqual({
+      success: false,
+      error: '알 수 없는 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+});

@@ -134,17 +134,14 @@ test.describe('감사로그 페이지', () => {
   test('페이지네이션 — 다음 페이지 버튼', async ({ opsPage: page }) => {
     // 페이지네이션이 존재하는지 확인 (데이터가 충분한 경우에만)
     const nextButton = page.getByRole('button', { name: '다음' });
-    if (!(await nextButton.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasNextButton = await nextButton.isVisible().catch(() => false);
+    // 페이지네이션 버튼이 없으면 페이지 전환 테스트 불가
+    test.skip(!hasNextButton, '테스트 데이터 없음: 페이지네이션이 없습니다 (데이터 부족)');
 
     // 다음 페이지 버튼이 활성화되어 있는지 확인
     const isDisabled = await nextButton.isDisabled();
-    if (isDisabled) {
-      test.skip();
-      return;
-    }
+    // 다음 페이지 버튼이 비활성이면 추가 페이지가 없음
+    test.skip(isDisabled, '테스트 데이터 없음: 다음 페이지 버튼이 비활성입니다');
 
     await nextButton.click();
     // 페이지 변경 확인 (페이지 번호 표시)
@@ -158,10 +155,8 @@ test.describe('감사로그 페이지', () => {
 
     const options = page.getByRole('option');
     const optionCount = await options.count();
-    if (optionCount <= 1) {
-      test.skip();
-      return;
-    }
+    // 필터 옵션이 1개 이하이면 초기화 테스트 불가
+    test.skip(optionCount <= 1, '테스트 데이터 없음: 필터 옵션이 부족합니다');
 
     await options.nth(1).click();
     // 필터 적용 후 결과 갱신 대기

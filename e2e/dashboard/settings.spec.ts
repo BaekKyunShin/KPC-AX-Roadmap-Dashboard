@@ -32,10 +32,8 @@ test.describe('설정 페이지 (/dashboard/settings)', () => {
     const toggleSwitch = page.locator('#email-notify');
     const hasToggle = await toggleSwitch.isVisible().catch(() => false);
 
-    if (!hasToggle) {
-      test.skip();
-      return;
-    }
+    // 이메일 알림 토글이 없으면 토글 테스트 불가 (역할에 따라 미표시)
+    test.skip(!hasToggle, '테스트 데이터 없음: 이메일 알림 토글이 없습니다');
 
     // 현재 상태 확인 (checked 또는 data-state 속성)
     const currentState = await toggleSwitch.getAttribute('data-state');

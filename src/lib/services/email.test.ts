@@ -440,4 +440,116 @@ describe('notifyRecipientByEmail', () => {
     await notifyRecipientByEmail(CONVERSATION_ID, SENDER_ID, MESSAGE_CONTENT);
     expect(mockSendMail).not.toHaveBeenCalled();
   });
+
+  it('수신자 정보 조회 실패(null) → 발송하지 않아야 한다', async () => {
+    resultQueue.push({
+      data: [{ user_id: RECIPIENT_ID }],
+      error: null,
+    });
+    // 수신자 정보 조회 → null
+    resultQueue.push({
+      data: null,
+      error: { message: 'not found' },
+    });
+
+    await notifyRecipientByEmail(CONVERSATION_ID, SENDER_ID, MESSAGE_CONTENT);
+
+    expect(mockSendMail).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// 4. 이메일 throttle 에지 케이스
+// =============================================================================
+
+describe('이메일 throttle 에지 케이스', () => {
+  beforeEach(() => {
+    clearThrottleMap();
+  });
+
+  it('throttle 맵 최대 크기(1000) 초과 시 맵이 초기화된다', () => {
+    // 1000개 기록 채우기
+    for (let i = 0; i < 1000; i++) {
+      recordSend(`sender-${i}`, `recipient-${i}`);
+    }
+    // 기존 항목이 아직 존재하는지 확인
+    expect(isThrottled('sender-0', 'recipient-0')).toBe(true);
+
+    // 1001번째 기록 시 맵이 초기화되고 새 항목만 남음
+    recordSend('sender-new', 'recipient-new');
+    expect(isThrottled('sender-0', 'recipient-0')).toBe(false);
+    expect(isThrottled('sender-new', 'recipient-new')).toBe(true);
+  });
+
+  it('동일 발신자→수신자 재기록 시 타임스탬프가 갱신된다', () => {
+    vi.useFakeTimers();
+    try {
+      recordSend('sender1', 'recipient1');
+      vi.advanceTimersByTime(4 * 60 * 1000); // 4분 경과
+      expect(isThrottled('sender1', 'recipient1')).toBe(true);
+
+      // 재기록 → 타임스탬프 갱신
+      recordSend('sender1', 'recipient1');
+      vi.advanceTimersByTime(4 * 60 * 1000); // 추가 4분 경과 (총 8분)
+      expect(isThrottled('sender1', 'recipient1')).toBe(true); // 재기록 기준 4분
+
+      vi.advanceTimersByTime(2 * 60 * 1000); // 추가 2분 (재기록 기준 6분)
+      expect(isThrottled('sender1', 'recipient1')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// =============================================================================
+// 5. sendNewMessageEmail 에지 케이스
+// =============================================================================
+
+describe('sendNewMessageEmail 에지 케이스', () => {
+  beforeEach(() => {
+    mockSendMail.mockClear();
+    mockSendMail.mockResolvedValue({ messageId: 'test-id' });
+  });
+
+  it('정확히 100자 메시지 → truncate 없이 표시', async () => {
+    const exactMessage = 'A'.repeat(100);
+
+    await sendNewMessageEmail({
+      to: 'recipient@test.com',
+      senderName: '발신자',
+      messagePreview: exactMessage,
+      conversationId: 'conv-exact',
+    });
+
+    expect(mockSendMail).toHaveBeenCalledOnce();
+    const callArgs = mockSendMail.mock.calls[0][0];
+    expect(callArgs.html).toContain('A'.repeat(100));
+    expect(callArgs.html).not.toContain('...');
+  });
+
+  it('101자 메시지 → 100자로 truncate + "..." 처리', async () => {
+    const overMessage = 'B'.repeat(101);
+
+    await sendNewMessageEmail({
+      to: 'recipient@test.com',
+      senderName: '발신자',
+      messagePreview: overMessage,
+      conversationId: 'conv-over',
+    });
+
+    expect(mockSendMail).toHaveBeenCalledOnce();
+    const callArgs = mockSendMail.mock.calls[0][0];
+    expect(callArgs.html).toContain('B'.repeat(100) + '...');
+  });
+
+  it('빈 메시지 → 빈 문자열 그대로 표시', async () => {
+    await sendNewMessageEmail({
+      to: 'recipient@test.com',
+      senderName: '발신자',
+      messagePreview: '',
+      conversationId: 'conv-empty',
+    });
+
+    expect(mockSendMail).toHaveBeenCalledOnce();
+  });
 });

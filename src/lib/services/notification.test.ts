@@ -295,3 +295,135 @@ describe('createNotificationForAdmins', () => {
     ]);
   });
 });
+
+// ─── createNotification 알림 타입별 테스트 ─────────────────────────────────
+
+describe('createNotification 알림 타입별 생성', () => {
+  let mock: ReturnType<typeof createMockSupabase>;
+  const UUID = '550e8400-e29b-41d4-a716-446655440000';
+
+  beforeEach(() => {
+    mock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(mock.mockClient as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const notificationTypes = [
+    'assignment',
+    'deadline',
+    'status_change',
+    'message',
+    'system',
+    'interview_complete',
+    'roadmap_draft',
+    'roadmap_finalized',
+    'assessment_submitted',
+  ] as const;
+
+  for (const type of notificationTypes) {
+    it(`타입 '${type}'으로 알림을 생성할 수 있다`, async () => {
+      mock.addResult({ data: null, error: null });
+
+      await createNotification({
+        userId: UUID,
+        type,
+        title: `${type} 알림`,
+        message: `${type} 테스트 메시지`,
+      });
+
+      expect(mock.chainable.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: UUID,
+          type,
+        }),
+      );
+    });
+  }
+
+  it('link가 null이 아닌 undefined일 때 insert에 포함된다', async () => {
+    mock.addResult({ data: null, error: null });
+
+    await createNotification({
+      userId: UUID,
+      type: 'assignment',
+      title: '배정 알림',
+      message: '배정되었습니다.',
+      link: undefined,
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: UUID,
+        type: 'assignment',
+        link: undefined,
+      }),
+    );
+  });
+
+  it('link가 빈 문자열이어도 정상 생성된다', async () => {
+    mock.addResult({ data: null, error: null });
+
+    await createNotification({
+      userId: UUID,
+      type: 'system',
+      title: '시스템 알림',
+      message: '시스템 메시지',
+      link: '',
+    });
+
+    expect(mock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        link: '',
+      }),
+    );
+  });
+
+  it('유효하지 않은 알림 타입은 검증 실패한다', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await createNotification({
+      userId: UUID,
+      type: 'INVALID_TYPE' as never,
+      title: '알림',
+      message: '메시지',
+    });
+
+    expect(mock.chainable.insert).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[createNotification Error] 검증 실패:',
+      expect.anything(),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('title이 200자를 초과하면 검증 실패한다', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await createNotification({
+      userId: UUID,
+      type: 'system',
+      title: 'A'.repeat(201),
+      message: '메시지',
+    });
+
+    expect(mock.chainable.insert).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('message가 500자를 초과하면 검증 실패한다', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await createNotification({
+      userId: UUID,
+      type: 'system',
+      title: '알림',
+      message: 'A'.repeat(501),
+    });
+
+    expect(mock.chainable.insert).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+});

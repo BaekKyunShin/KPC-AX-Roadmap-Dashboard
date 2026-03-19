@@ -58,10 +58,8 @@ test.describe('사용자 목록 테이블', () => {
 
   test('상태 배지 표시 — 활성 또는 정지', async ({ opsPage: page }) => {
     const hasUsers = !(await page.getByText('등록된 사용자가 없습니다').isVisible().catch(() => false));
-    if (!hasUsers) {
-      test.skip();
-      return;
-    }
+    // 사용자 데이터가 없으면 배지 검증 불가
+    test.skip(!hasUsers, '테스트 데이터 없음: 등록된 사용자가 없습니다');
 
     // 테이블 내 "활성" 또는 "정지" 배지가 존재
     const hasActive = await page.locator('table').getByText('활성', { exact: true }).first().isVisible().catch(() => false);
@@ -71,10 +69,8 @@ test.describe('사용자 목록 테이블', () => {
 
   test('관리 액션 버튼 표시 — 승인/정지/활성화 중 하나', async ({ opsPage: page }) => {
     const hasUsers = !(await page.getByText('등록된 사용자가 없습니다').isVisible().catch(() => false));
-    if (!hasUsers) {
-      test.skip();
-      return;
-    }
+    // 사용자 데이터가 없으면 관리 액션 검증 불가
+    test.skip(!hasUsers, '테스트 데이터 없음: 등록된 사용자가 없습니다');
 
     // 관리 컬럼에 "승인", "정지", "활성화" 중 하나 이상 존재
     const hasApprove = await page.getByText('승인', { exact: true }).first().isVisible().catch(() => false);
@@ -93,10 +89,9 @@ test.describe('프로필 보기 모달', () => {
 
     // "프로필 보기" 링크가 있는지 확인
     const profileLink = page.getByText('프로필 보기').first();
-    if (!(await profileLink.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasProfileLink = await profileLink.isVisible().catch(() => false);
+    // 프로필 보기 링크가 없으면 모달 테스트 불가
+    test.skip(!hasProfileLink, '테스트 데이터 없음: 프로필 보기 링크가 없습니다');
 
     await profileLink.click();
 

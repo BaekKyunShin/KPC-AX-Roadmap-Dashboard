@@ -12,7 +12,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/lib/**/*.ts', 'src/app/**/*.ts', 'src/app/**/*.tsx'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/app/**/actions.ts',
+        'src/app/**/actions/*.ts',
+        'src/components/**/*.tsx',
+        'src/hooks/**/*.ts',
+      ],
       exclude: [
         'node_modules/',
         'src/test/',
@@ -20,12 +26,14 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.test.tsx',
         '**/*.d.ts',
+        'src/types/**',
+        '**/index.ts',
       ],
       thresholds: {
-        lines: 35,
-        branches: 28,
-        functions: 25,
-        statements: 35,
+        lines: 70,
+        branches: 55,
+        functions: 60,
+        statements: 70,
       },
     },
   },

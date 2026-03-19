@@ -297,4 +297,74 @@ describe('copyRoadmapToProject', () => {
     });
     consoleSpy.mockRestore();
   });
+
+  it('targetProjectId UUID 검증 실패 → error 반환', async () => {
+    setupAuth();
+
+    const result = await copyRoadmapToProject({
+      sourceRoadmapVersionId: SOURCE_ROADMAP_ID,
+      targetProjectId: INVALID_UUID,
+    });
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+
+  it('USER_PENDING 역할 → 비컨설턴트 에러', async () => {
+    setupAuth({ role: 'USER_PENDING' });
+
+    const result = await copyRoadmapToProject(defaultParams);
+
+    expect(result).toEqual({
+      success: false,
+      error: '컨설턴트만 로드맵을 가져올 수 있습니다.',
+    });
+  });
+
+  it('SYSTEM_ADMIN 역할 → 비컨설턴트 에러', async () => {
+    setupAuth({ role: 'SYSTEM_ADMIN' });
+
+    const result = await copyRoadmapToProject(defaultParams);
+
+    expect(result).toEqual({
+      success: false,
+      error: '컨설턴트만 로드맵을 가져올 수 있습니다.',
+    });
+  });
+
+  it('기존 버전 조회 결과가 null → 버전 1', async () => {
+    setupAuth();
+
+    serverMock.addResult({
+      data: {
+        id: TARGET_PROJECT_ID,
+        assigned_consultant_id: TEST_USER_ID,
+        company_name: '기업D',
+      },
+      error: null,
+    });
+    adminMock.addResult({
+      data: {
+        diagnosis_summary: '진단',
+        roadmap_matrix: [],
+        pbl_course: null,
+        courses: [],
+        projects: { company_name: '원본기업' },
+      },
+      error: null,
+    });
+    // null data (no versions)
+    adminMock.addResult({ data: null, error: null });
+    // insert → 성공
+    adminMock.addResult({
+      data: { id: NEW_VERSION_ID, version_number: 1 },
+      error: null,
+    });
+
+    const result = await copyRoadmapToProject(defaultParams);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.versionNumber).toBe(1);
+    }
+  });
 });

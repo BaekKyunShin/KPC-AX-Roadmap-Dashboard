@@ -18,11 +18,9 @@ test.describe('컨설턴트 인터뷰', () => {
     await page.waitForLoadState('networkidle');
 
     const href = await findFirstLinkHref(page, '/consultant/projects/');
-    if (!href) {
-      test.skip();
-      return;
-    }
-    interviewUrl = `${href}/interview`;
+    // 담당 프로젝트가 없으면 인터뷰 페이지 테스트 불가
+    test.skip(!href, '테스트 데이터 없음: 담당 프로젝트가 없습니다');
+    interviewUrl = `${href!}/interview`;
 
     await page.goto(interviewUrl);
     await page.waitForLoadState('networkidle');
@@ -45,12 +43,10 @@ test.describe('컨설턴트 인터뷰', () => {
   });
 
   test('다음/이전 버튼 동작 — 스텝 진행 확인', async ({ consultantPage: page }) => {
-    if (!interviewUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 인터뷰 URL을 추출하지 못하면 스텝 테스트 불가
+    test.skip(!interviewUrl, '테스트 데이터 없음: 인터뷰 URL이 없습니다');
 
-    await page.goto(interviewUrl);
+    await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
 
     // 초기 상태: 1단계 "기본 정보" 표시
@@ -74,12 +70,10 @@ test.describe('컨설턴트 인터뷰', () => {
   });
 
   test('1단계: 필수 필드 (날짜, 참석자명) 확인', async ({ consultantPage: page }) => {
-    if (!interviewUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 인터뷰 URL을 추출하지 못하면 필수 필드 테스트 불가
+    test.skip(!interviewUrl, '테스트 데이터 없음: 인터뷰 URL이 없습니다');
 
-    await page.goto(interviewUrl);
+    await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
 
     // 인터뷰 날짜 필드 존재 확인
@@ -99,12 +93,10 @@ test.describe('컨설턴트 인터뷰', () => {
   });
 
   test('참석자 동적 추가/제거', async ({ consultantPage: page }) => {
-    if (!interviewUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 인터뷰 URL을 추출하지 못하면 참석자 테스트 불가
+    test.skip(!interviewUrl, '테스트 데이터 없음: 인터뷰 URL이 없습니다');
 
-    await page.goto(interviewUrl);
+    await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
 
     // 초기 참석자 수 확인 (이름 입력 필드 개수)
@@ -136,12 +128,10 @@ test.describe('컨설턴트 인터뷰', () => {
   });
 
   test('스테퍼 클릭으로 단계 직접 이동', async ({ consultantPage: page }) => {
-    if (!interviewUrl) {
-      test.skip();
-      return;
-    }
+    // 선행 테스트에서 인터뷰 URL을 추출하지 못하면 스테퍼 테스트 불가
+    test.skip(!interviewUrl, '테스트 데이터 없음: 인터뷰 URL이 없습니다');
 
-    await page.goto(interviewUrl);
+    await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
 
     // 데스크톱 스테퍼에서 "세부업무" (3단계) 클릭

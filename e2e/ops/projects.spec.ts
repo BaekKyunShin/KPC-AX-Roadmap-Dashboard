@@ -151,8 +151,9 @@ test.describe('Phase 2.6: 프로젝트 상세 (기존)', () => {
 
 test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
   test('자가진단 폼 표시 + 전 문항 입력 + 제출', async ({ opsPage: page }) => {
-    if (!createdProjectId) test.skip();
-    await page.goto(`/ops/projects/${createdProjectId}`);
+    // 선행 테스트에서 프로젝트가 생성되지 않으면 자가진단 테스트 불가
+    test.skip(!createdProjectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    await page.goto(`/ops/projects/${createdProjectId!}`);
     await page.waitForLoadState('networkidle');
 
     // 자가진단 결과 카드 헤더 (data-slot="card-title")
@@ -199,8 +200,9 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
   });
 
   test('DIAGNOSED 상태 전환 확인', async ({ opsPage: page }) => {
-    if (!createdProjectId) test.skip();
-    await page.goto(`/ops/projects/${createdProjectId}`);
+    // 선행 테스트에서 프로젝트가 생성되지 않으면 상태 전환 테스트 불가
+    test.skip(!createdProjectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    await page.goto(`/ops/projects/${createdProjectId!}`);
     await page.waitForLoadState('networkidle');
 
     // 자가진단 완료 후 상태가 DIAGNOSED로 변경
@@ -208,8 +210,9 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
   });
 
   test('AI 매칭 버튼 존재 확인 (실행 skip — LLM)', async ({ opsPage: page }) => {
-    if (!createdProjectId) test.skip();
-    await page.goto(`/ops/projects/${createdProjectId}`);
+    // 선행 테스트에서 프로젝트가 생성되지 않으면 매칭 버튼 테스트 불가
+    test.skip(!createdProjectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    await page.goto(`/ops/projects/${createdProjectId!}`);
     await page.waitForLoadState('networkidle');
 
     // 컨설턴트 배정 카드 확인 (card-title로 특정)
@@ -234,19 +237,18 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
 
     // 첫 번째 프로젝트 상세로 이동
     const detailLink = page.getByRole('link', { name: '상세보기' }).first();
-    if (!(await detailLink.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasDetailLink = await detailLink.isVisible().catch(() => false);
+    // 프로젝트가 없으면 로드맵 뷰 테스트 불가
+    test.skip(!hasDetailLink, '테스트 데이터 없음: 프로젝트 목록이 비어있습니다');
+
     await detailLink.click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/, { timeout: 10_000 });
 
     // "로드맵 보기" 링크가 있는 경우에만 테스트 진행
     const roadmapLink = page.getByRole('link', { name: '로드맵 보기' });
-    if (!(await roadmapLink.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    const hasRoadmapLink = await roadmapLink.isVisible().catch(() => false);
+    // 로드맵이 생성되지 않은 프로젝트이면 로드맵 뷰 테스트 불가
+    test.skip(!hasRoadmapLink, '테스트 데이터 없음: 로드맵 보기 링크가 없습니다');
 
     await roadmapLink.click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+\/roadmap/);

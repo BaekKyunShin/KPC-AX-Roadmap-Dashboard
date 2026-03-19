@@ -349,4 +349,67 @@ describe('toggleShare', () => {
     });
     consoleSpy.mockRestore();
   });
+
+  it('ARCHIVED 상태 → error 반환 (FINAL 아님)', async () => {
+    setupAuthWithRole({ userId: TEST_USER_ID });
+    adminMock.addResult({
+      data: {
+        id: TEST_ROADMAP_ID,
+        is_shared: true,
+        status: 'ARCHIVED',
+        created_by: TEST_USER_ID,
+      },
+      error: null,
+    });
+
+    const result = await toggleShare(TEST_ROADMAP_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '확정된 로드맵만 공유할 수 있습니다.',
+    });
+  });
+});
+
+// ─── toggleLike 추가 에지 케이스 ────────────────────────────────────────────
+
+describe('toggleLike — 추가 에지 케이스', () => {
+  it('좋아요 삭제 후 count 조회 시 null → 0 반환', async () => {
+    setupAuth();
+
+    // 1. maybeSingle: 기존 좋아요 존재
+    serverMock.addResult({ data: { id: 'like-1' }, error: null });
+    // 2. delete → then
+    serverMock.addResult({ data: null, error: null });
+    // 3. count → null
+    serverMock.addResult({ data: null, error: null, count: null });
+
+    const result = await toggleLike(TEST_ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.liked).toBe(false);
+      expect(result.data.count).toBe(0);
+    }
+  });
+
+  it('빈 문자열 ID → UUID 검증 실패', async () => {
+    setupAuth();
+
+    const result = await toggleLike('');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+});
+
+// ─── toggleShare 추가 에지 케이스 ────────────────────────────────────────────
+
+describe('toggleShare — 추가 에지 케이스', () => {
+  it('빈 문자열 ID → UUID 검증 실패', async () => {
+    setupAuthWithRole();
+
+    const result = await toggleShare('');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
 });

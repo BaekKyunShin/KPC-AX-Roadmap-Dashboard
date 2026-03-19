@@ -125,6 +125,24 @@ export function createMockSupabase(
     error: null,
   });
 
+  // storage mock 체인
+  const storageMock = {
+    from: vi.fn(() => ({
+      upload: vi.fn().mockResolvedValue({ data: { path: 'mock-path' }, error: null }),
+      download: vi.fn().mockResolvedValue({ data: new Blob(), error: null }),
+      getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://mock.url/file' } }),
+      remove: vi.fn().mockResolvedValue({ data: [], error: null }),
+      list: vi.fn().mockResolvedValue({ data: [], error: null }),
+    })),
+  };
+
+  // Realtime channel mock
+  const channelMock = {
+    on: vi.fn().mockReturnThis(),
+    subscribe: vi.fn().mockReturnValue('SUBSCRIBED'),
+    unsubscribe: vi.fn().mockResolvedValue('ok'),
+  };
+
   const client = {
     from: vi.fn(() => chainable),
     rpc: vi.fn(() => buildChainable(nextRpcResult)),
@@ -132,6 +150,9 @@ export function createMockSupabase(
       getUser: authGetUser,
       admin: { getUserById: authAdminGetUserById },
     },
+    storage: storageMock,
+    channel: vi.fn(() => channelMock),
+    removeChannel: vi.fn().mockResolvedValue('ok'),
   };
 
   return {
