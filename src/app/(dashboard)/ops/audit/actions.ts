@@ -80,6 +80,15 @@ export async function getActionTypes(): Promise<{ value: AuditAction; label: str
     { value: 'TEMPLATE_UPDATE', label: '템플릿 수정' },
     { value: 'TEMPLATE_ACTIVATE', label: '템플릿 활성화' },
     { value: 'TEMPLATE_DELETE', label: '템플릿 삭제' },
+    { value: 'TEST_PROJECT_CREATE', label: '테스트 프로젝트 생성' },
+    { value: 'TEST_ROADMAP_CREATE', label: '테스트 로드맵 생성' },
+    { value: 'TEST_ROADMAP_REVISE', label: '테스트 로드맵 수정' },
+    { value: 'TEST_PROJECT_DELETE', label: '테스트 프로젝트 삭제' },
+    { value: 'USER_WITHDRAW', label: '사용자 탈퇴' },
+    { value: 'ROADMAP_COPY', label: '로드맵 복사' },
+    { value: 'QUOTA_UPDATE', label: 'LLM 쿼터 변경' },
+    { value: 'ASSESSMENT_TOKEN_CREATE', label: '진단 링크 생성' },
+    { value: 'PUBLIC_SELF_ASSESSMENT_CREATE', label: '자가진단 제출' },
   ];
 }
 
@@ -95,6 +104,9 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
     { value: 'interview', label: '인터뷰' },
     { value: 'roadmap', label: '로드맵' },
     { value: 'template', label: '템플릿' },
+    { value: 'assessment_token', label: '진단 링크' },
+    { value: 'roadmap_version', label: '로드맵 버전' },
+    { value: 'user_quota', label: 'LLM 쿼터' },
   ];
 }
 
