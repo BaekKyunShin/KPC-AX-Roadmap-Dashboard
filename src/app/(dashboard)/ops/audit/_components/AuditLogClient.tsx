@@ -73,7 +73,7 @@ function AuditMobileCard({
         <div className="text-gray-500">사용자</div>
         <div className="text-gray-900">{log.actor?.name || '-'}</div>
         <div className="text-gray-500">이메일</div>
-        <div className="text-gray-900 break-all">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
+        <div className="text-gray-900 break-all">{log.actor?.email || log.actor_user_id?.slice(0, 8) || '-'}</div>
         <div className="text-gray-500">대상</div>
         <div className="text-gray-900">
           {getTargetTypeLabel(log.target_type)}
@@ -505,7 +505,7 @@ export default function AuditLogClient({
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{log.actor?.name || '-'}</div>
-                    <div className="text-gray-500 text-xs">{log.actor?.email || log.actor_user_id.slice(0, 8)}</div>
+                    <div className="text-gray-500 text-xs">{log.actor?.email || log.actor_user_id?.slice(0, 8) || '-'}</div>
                   </TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 text-xs rounded ${getActionColor(log.action)}`}>
