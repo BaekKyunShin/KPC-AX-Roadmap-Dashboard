@@ -64,7 +64,7 @@ describe('fetchActivityLogs', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → 빈 결과 반환', async () => {
@@ -121,7 +121,7 @@ describe('createActivityLog', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -221,7 +221,7 @@ describe('updateActivityLog', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -319,7 +319,7 @@ describe('deleteActivityLog', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -409,7 +409,7 @@ describe('generateInterviewGuide', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -595,7 +595,7 @@ describe('updateInterviewGuideQuestions', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {

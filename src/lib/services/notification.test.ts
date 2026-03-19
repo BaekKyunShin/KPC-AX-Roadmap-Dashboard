@@ -69,7 +69,7 @@ describe('createNotification', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   const validParams = {
@@ -193,7 +193,7 @@ describe('createNotificationForAdmins', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   const validParams = {

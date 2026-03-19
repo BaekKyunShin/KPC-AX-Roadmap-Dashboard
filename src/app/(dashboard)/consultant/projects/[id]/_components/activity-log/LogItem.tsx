@@ -194,6 +194,7 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
               variant="ghost"
               size="sm"
               className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-gray-600"
+              data-testid="more-actions-button"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>

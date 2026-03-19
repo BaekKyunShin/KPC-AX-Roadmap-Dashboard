@@ -49,9 +49,7 @@ test.describe('Phase 2.4: 프로젝트 목록', () => {
   test('검색 필터 — 회사명 입력', async ({ opsPage: page }) => {
     const searchInput = page.getByPlaceholder('회사명 또는 이메일 검색...');
     await searchInput.fill('존재하지않는회사xyz');
-    // 디바운스 대기
-    await page.waitForTimeout(500);
-    // 결과 없음 확인 (결과 카운터)
+    // 디바운스 후 검색 결과 반영 대기 (결과 카운터)
     await expect(page.getByText('총 0개의 프로젝트')).toBeVisible({ timeout: 5_000 });
   });
 
@@ -185,8 +183,8 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
       const nextButton = page.getByRole('button', { name: '다음' });
       if (await nextButton.isVisible().catch(() => false)) {
         await nextButton.click();
-        // 스텝 전환 대기
-        await page.waitForTimeout(300);
+        // 스텝 전환 후 새 질문 블록 렌더링 대기
+        await expect(page.locator('[id^="question-"]').first()).toBeVisible({ timeout: 5_000 });
       } else {
         // 마지막 스텝 — "자가진단 저장" 버튼 클릭
         const submitButton = page.getByRole('button', { name: '자가진단 저장' });

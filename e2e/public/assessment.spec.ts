@@ -30,9 +30,6 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
 
     // 404 에러 페이지에 적절한 안내가 표시되는지 확인
     // Next.js 기본 404 또는 커스텀 not-found 페이지
-    const pageContent = await page.locator('body').textContent();
-    expect(pageContent!.length).toBeGreaterThan(0);
-
     // "404" 텍스트 또는 "찾을 수 없" 등의 안내 메시지가 있는지 확인
     const has404 = await page.getByText('404').isVisible().catch(() => false);
     const hasNotFound = await page
@@ -41,7 +38,7 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
       .isVisible()
       .catch(() => false);
 
-    expect(has404 || hasNotFound || pageContent!.length > 0).toBe(true);
+    expect(has404 || hasNotFound).toBe(true);
   });
 
   test('유효 토큰 → 자가진단 폼 표시', async ({ page }) => {
@@ -79,9 +76,9 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
     const footer = page.locator('footer');
     const hasFooter = await footer.isVisible().catch(() => false);
 
-    // 레이아웃 요소가 하나라도 있거나, 404 기본 페이지가 표시되면 통과
+    // 레이아웃 요소가 하나라도 있거나, 404 페이지가 표시되면 통과
     // (notFound()가 layout을 건너뛸 수 있으므로 방어적 처리)
-    const bodyText = await page.locator('body').textContent();
-    expect(hasHeader || hasFooter || bodyText!.length > 0).toBe(true);
+    const has404Text = await page.getByText('404').isVisible().catch(() => false);
+    expect(hasHeader || hasFooter || has404Text).toBe(true);
   });
 });

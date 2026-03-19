@@ -24,7 +24,7 @@ import { updateEmailNotifySetting } from './actions';
 
 describe('updateEmailNotifySetting', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     mockEq.mockReturnValue({ error: null });
   });
 

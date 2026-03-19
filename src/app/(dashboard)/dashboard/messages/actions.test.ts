@@ -80,7 +80,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 // =============================================================================

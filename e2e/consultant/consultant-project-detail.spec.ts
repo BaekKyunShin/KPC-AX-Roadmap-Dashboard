@@ -218,8 +218,7 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     test('활동 일지 수정 → 내용 변경 확인', async ({ consultantPage: page }) => {
       // 수동 기록의 더보기(⋯) 메뉴 찾기
       const moreButton = page
-        .locator('button')
-        .filter({ has: page.locator('svg.lucide-more-horizontal') })
+        .locator('[data-testid="more-actions-button"]')
         .first();
 
       const hasLog = await moreButton.isVisible().catch(() => false);
@@ -250,8 +249,7 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     test('활동 일지 삭제 → 목록에서 제거 확인', async ({ consultantPage: page }) => {
       // 수동 기록의 더보기(⋯) 메뉴 찾기
       const moreButton = page
-        .locator('button')
-        .filter({ has: page.locator('svg.lucide-more-horizontal') })
+        .locator('[data-testid="more-actions-button"]')
         .first();
 
       const hasLog = await moreButton.isVisible().catch(() => false);

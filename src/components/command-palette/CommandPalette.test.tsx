@@ -225,7 +225,7 @@ function renderPalette(overrides: Record<string, unknown> = {}) {
 
 describe('CommandPalette', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('열림/닫힘', () => {

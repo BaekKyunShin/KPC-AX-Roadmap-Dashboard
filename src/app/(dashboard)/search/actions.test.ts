@@ -89,7 +89,7 @@ function setupAdminClient(
 
 describe('unifiedSearch', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   // ─── 인증 ──────────────────────────────────────────────────────────────

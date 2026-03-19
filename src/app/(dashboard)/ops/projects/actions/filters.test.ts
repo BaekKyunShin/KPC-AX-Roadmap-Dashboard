@@ -50,7 +50,7 @@ describe('fetchProjectFilters', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → 빈 결과 반환', async () => {
@@ -120,7 +120,7 @@ describe('fetchConsultantCandidates', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → 빈 결과 반환', async () => {
@@ -323,7 +323,7 @@ describe('fetchConsultantFilterOptions', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → 빈 결과 반환', async () => {

@@ -142,7 +142,7 @@ function setupInvalidSafeParse(errorMessage: string = '검증 오류') {
 
 describe('updateConsultantProfile', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     mockEq.mockReturnValue({ error: null });
     setupValidSafeParse();
     insertReturnValue = { error: null };
@@ -208,7 +208,7 @@ describe('updateConsultantProfile', () => {
 
 describe('saveConsultantProfile', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     setupValidSafeParse();
     insertReturnValue = { error: null };
   });
@@ -280,7 +280,7 @@ describe('saveConsultantProfile', () => {
 
 describe('fetchConsultantProfile', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('세션 만료 → 에러 반환', async () => {

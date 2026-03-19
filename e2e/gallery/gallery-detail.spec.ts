@@ -64,20 +64,17 @@ test.describe('갤러리 상세', () => {
     // "과정 체계도" 탭이 기본 활성
     await expect(matrixTab).toBeVisible();
 
-    // "과정 상세" 탭 클릭
+    // "과정 상세" 탭 클릭 → 활성 스타일(border-primary) 적용 대기
     await coursesTab.click();
-    await page.waitForTimeout(300);
-    await expect(coursesTab).toBeVisible();
+    await expect(coursesTab).toHaveClass(/border-primary/, { timeout: 5_000 });
 
-    // "PBL 과정" 탭 클릭
+    // "PBL 과정" 탭 클릭 → 활성 스타일 적용 대기
     await pblTab.click();
-    await page.waitForTimeout(300);
-    await expect(pblTab).toBeVisible();
+    await expect(pblTab).toHaveClass(/border-primary/, { timeout: 5_000 });
 
-    // 다시 "과정 체계도" 탭 클릭
+    // 다시 "과정 체계도" 탭 클릭 → 활성 스타일 적용 대기
     await matrixTab.click();
-    await page.waitForTimeout(300);
-    await expect(matrixTab).toBeVisible();
+    await expect(matrixTab).toHaveClass(/border-primary/, { timeout: 5_000 });
   });
 
   test('좋아요 버튼 토글', async ({ consultantPage: page }) => {
@@ -104,19 +101,19 @@ test.describe('갤러리 상세', () => {
     // 현재 좋아요 카운트 기록
     const countBefore = await likeButton.locator('span').textContent();
 
-    // 좋아요 클릭
+    // 좋아요 클릭 → 카운트 변경 대기 (낙관적 업데이트)
     await likeButton.click();
-    await page.waitForTimeout(500);
+    await expect(likeButton.locator('span')).not.toHaveText(countBefore!, { timeout: 5_000 });
 
-    // 카운트가 변경되었는지 확인 (낙관적 업데이트로 즉시 변경)
+    // 카운트가 변경되었는지 확인
     const countAfter = await likeButton.locator('span').textContent();
     expect(countAfter).not.toBe(countBefore);
 
     likeToggled = true;
 
-    // 다시 클릭하여 원래 상태로 복원
+    // 다시 클릭하여 원래 상태로 복원 → 카운트 복원 대기
     await likeButton.click();
-    await page.waitForTimeout(500);
+    await expect(likeButton.locator('span')).toHaveText(countBefore!, { timeout: 5_000 });
 
     const countRestored = await likeButton.locator('span').textContent();
     expect(countRestored).toBe(countBefore);
@@ -177,8 +174,9 @@ test.describe('갤러리 상세', () => {
           .first();
 
         if (await likeButton.isVisible().catch(() => false)) {
+          const countBeforeRestore = await likeButton.locator('span').textContent();
           await likeButton.click();
-          await page.waitForTimeout(500);
+          await expect(likeButton.locator('span')).not.toHaveText(countBeforeRestore!, { timeout: 5_000 }).catch(() => {});
         }
       } finally {
         await context.close();

@@ -114,7 +114,7 @@ function setupAuthFailure() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
   pendingAfterCallbacks.length = 0;
 });
 

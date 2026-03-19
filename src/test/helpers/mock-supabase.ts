@@ -10,6 +10,8 @@
  *   vi.mocked(createClient).mockResolvedValue(mock.client as never);
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { vi } from 'vitest';
 
 // ─── 타입 ────────────────────────────────────────────────────────────────────
@@ -30,7 +32,6 @@ interface MockRpcResult {
   error: unknown;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Chainable = Record<string, any>;
 
 interface MockSupabaseReturn {
@@ -62,6 +63,25 @@ const CHAINABLE_METHODS = [
   'insert', 'update', 'delete', 'upsert',
 ] as const;
 
+// ─── 체이너블 생성 헬퍼 ─────────────────────────────────────────────────────
+
+/** 체이닝 + 종결 메서드(single, maybeSingle, then)를 갖는 mock 객체 생성 */
+function buildChainable(nextFn: () => unknown): Chainable {
+  const obj: Chainable = {};
+
+  for (const method of CHAINABLE_METHODS) {
+    obj[method] = vi.fn(() => obj);
+  }
+
+  obj.single = vi.fn(() => nextFn());
+  obj.maybeSingle = vi.fn(() => nextFn());
+  obj.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
+    return Promise.resolve(nextFn()).then(resolve, reject);
+  };
+
+  return obj;
+}
+
 // ─── 팩토리 함수 ─────────────────────────────────────────────────────────────
 
 export function createMockSupabase(
@@ -78,25 +98,21 @@ export function createMockSupabase(
       const r = results[resultIndex++];
       return { data: r.data, error: r.error, count: r.count ?? null };
     }
-    return { data: null, error: null, count: null };
+    throw new Error(
+      `mock-supabase: 결과 큐 소진 (${resultIndex}번째 호출). addResult()로 충분한 결과를 추가하세요.`,
+    );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chainable: Record<string, any> = {};
-
-  for (const method of CHAINABLE_METHODS) {
-    chainable[method] = vi.fn(() => chainable);
+  function nextRpcResult() {
+    if (rpcIndex < rpcResults.length) {
+      return rpcResults[rpcIndex++];
+    }
+    throw new Error(
+      `mock-supabase: RPC 결과 큐 소진 (${rpcIndex}번째 호출). addRpcResult()로 충분한 결과를 추가하세요.`,
+    );
   }
 
-  // 종결 메서드
-  chainable.single = vi.fn(() => nextResult());
-  chainable.maybeSingle = vi.fn(() => nextResult());
-
-  // thenable — await 시 .single() 없이도 결과 반환
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  chainable.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
-    return Promise.resolve(nextResult()).then(resolve, reject);
-  };
+  const chainable = buildChainable(nextResult);
 
   // auth 설정
   const hasAuth = 'authUser' in options;
@@ -111,12 +127,7 @@ export function createMockSupabase(
 
   const client = {
     from: vi.fn(() => chainable),
-    rpc: vi.fn(() => {
-      if (rpcIndex < rpcResults.length) {
-        return Promise.resolve(rpcResults[rpcIndex++]);
-      }
-      return Promise.resolve({ data: null, error: null });
-    }),
+    rpc: vi.fn(() => buildChainable(nextRpcResult)),
     auth: {
       getUser: authGetUser,
       admin: { getUserById: authAdminGetUserById },

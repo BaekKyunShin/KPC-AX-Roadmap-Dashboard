@@ -103,13 +103,13 @@ function setupPasswordVerified() {
 // ─── 테스트 ───────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
   // 기본 반환값 설정 (개별 테스트에서 오버라이드 가능)
   adminUpdateReturnValue = { error: null };
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 // ─── changePassword ───────────────────────────────────────────────────────

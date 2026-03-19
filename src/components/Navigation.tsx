@@ -319,7 +319,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1 z-50">
+                <div className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg py-1 z-50" data-testid="user-dropdown-menu">
                   <div className="px-4 py-3 border-b">
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>

@@ -137,7 +137,7 @@ const mockPreviousResult = {
 // ─── 공통 설정 ──────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
   pendingAfterCallbacks.length = 0;
   mockSupabase.resetResults();
 

@@ -129,7 +129,7 @@ function getTable() {
 
 describe('TemplateList', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('케밥 메뉴 렌더링', () => {

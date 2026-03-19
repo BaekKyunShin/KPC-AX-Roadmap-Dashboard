@@ -66,7 +66,7 @@ function getTable() {
 
 describe('UserManagementTable', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('액션 성공 후 users prop이 갱신될 때까지 "처리 중..." 상태를 유지한다', async () => {

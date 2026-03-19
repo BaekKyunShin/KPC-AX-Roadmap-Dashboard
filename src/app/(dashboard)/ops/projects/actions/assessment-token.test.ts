@@ -89,7 +89,7 @@ describe('createAssessmentToken', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     pendingAfterCallbacks.length = 0;
   });
 
@@ -164,7 +164,8 @@ describe('createAssessmentToken', () => {
       expect(result.data.token).toBeDefined();
       expect(result.data.token.length).toBe(64); // 32 bytes → 64 hex chars
       expect(result.data.url).toContain(`/assessment/${result.data.token}`);
-      expect(result.data.expiresAt).toBeDefined();
+      expect(typeof result.data.expiresAt).toBe('string');
+      expect(result.data.expiresAt.length).toBeGreaterThan(0);
     }
   });
 
@@ -251,7 +252,8 @@ describe('createAssessmentToken', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBeDefined();
+      expect(result.error).toBeTruthy();
+      expect(result.error!.length).toBeGreaterThan(0);
     }
   });
 });
@@ -267,7 +269,7 @@ describe('getLatestToken', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → null 반환', async () => {

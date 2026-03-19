@@ -32,7 +32,7 @@ describe('fetchConsultantProjects', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → 빈 결과 반환', async () => {

@@ -145,7 +145,7 @@ describe('checkAndRecordLLMUsage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('쿼터 미초과 시 exceeded: false 반환 (원자적 증가 완료)', async () => {
@@ -301,7 +301,7 @@ describe('fetchUserQuota', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('기존 쿼터가 있으면 해당 값을 반환', async () => {
@@ -351,7 +351,7 @@ describe('updateUserQuota', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('업데이트할 항목이 없으면 아무것도 하지 않음', async () => {
@@ -467,7 +467,7 @@ describe('fetchUserUsage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('일별/월별 사용량과 한도를 정상 반환', async () => {
@@ -657,7 +657,7 @@ describe('fetchAllUsersUsage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('SYSTEM_ADMIN → CONSULTANT_APPROVED + OPS_ADMIN 사용자 조회', async () => {

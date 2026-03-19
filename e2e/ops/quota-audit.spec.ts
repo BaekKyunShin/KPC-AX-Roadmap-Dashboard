@@ -32,16 +32,10 @@ test.describe('쿼터 관리 페이지', () => {
   });
 
   test('사용량 테이블 컬럼 헤더 표시', async ({ opsPage: page }) => {
-    // 데이터 로딩 대기 (스켈레톤이 사라질 때까지)
-    await page.waitForTimeout(2_000);
-
-    const hasTable = await page.locator('table').isVisible().catch(() => false);
-    const hasEmptyState = await page.getByText('데이터가 없습니다.').isVisible().catch(() => false);
-
-    if (!hasTable && !hasEmptyState) {
-      // 아직 로딩 중일 수 있으므로 좀 더 대기
-      await page.waitForTimeout(3_000);
-    }
+    // 데이터 로딩 대기: 테이블 또는 빈 상태 메시지가 나타날 때까지
+    await expect(
+      page.locator('table, :text("데이터가 없습니다.")').first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     if (await page.locator('table').isVisible().catch(() => false)) {
       await expect(page.getByRole('columnheader', { name: '사용자' })).toBeVisible();
@@ -66,8 +60,8 @@ test.describe('쿼터 관리 페이지', () => {
     const secondOption = page.getByRole('option').nth(1);
     if (await secondOption.isVisible().catch(() => false)) {
       await secondOption.click();
-      // 데이터 로딩 대기
-      await page.waitForTimeout(2_000);
+      // 데이터 갱신 대기: 테이블 또는 빈 상태가 다시 렌더링될 때까지
+      await page.waitForLoadState('networkidle');
       // 페이지가 여전히 쿼터 관리에 있는지 확인
       await expect(page.getByRole('heading', { name: '쿼터 관리' })).toBeVisible();
     }
@@ -121,8 +115,8 @@ test.describe('감사로그 페이지', () => {
       // 두 번째 옵션 (첫 번째 실제 액션 타입) 선택
       await options.nth(1).click();
 
-      // URL에 action 파라미터가 추가되거나 테이블이 갱신됨
-      await page.waitForTimeout(1_000);
+      // 필터 적용 후 테이블 갱신 대기
+      await page.waitForLoadState('networkidle');
       await expect(page.getByRole('heading', { name: '감사로그' })).toBeVisible();
     }
   });
@@ -131,9 +125,8 @@ test.describe('감사로그 페이지', () => {
     const searchInput = page.getByPlaceholder('사용자명, 이메일, 대상ID 검색...');
     await searchInput.fill('존재하지않는검색어xyz');
 
-    // 디바운스 대기
-    await page.waitForTimeout(500);
-
+    // 디바운스 후 검색 결과 갱신 대기 (URL 파라미터 반영 또는 테이블 갱신)
+    await page.waitForLoadState('networkidle');
     // 검색 결과가 변경됨 — 빈 상태 또는 필터링된 결과
     await expect(page.getByRole('heading', { name: '감사로그' })).toBeVisible();
   });
@@ -171,13 +164,15 @@ test.describe('감사로그 페이지', () => {
     }
 
     await options.nth(1).click();
-    await page.waitForTimeout(500);
+    // 필터 적용 후 결과 갱신 대기
+    await page.waitForLoadState('networkidle');
 
     // 필터 초기화 버튼 (X 아이콘) 확인 및 클릭
     const resetButton = page.getByTitle('필터 초기화');
     if (await resetButton.isVisible().catch(() => false)) {
       await resetButton.click();
-      await page.waitForTimeout(500);
+      // 초기화 후 결과 갱신 대기
+      await page.waitForLoadState('networkidle');
       // 초기화 후 페이지가 정상 동작
       await expect(page.getByRole('heading', { name: '감사로그' })).toBeVisible();
     }

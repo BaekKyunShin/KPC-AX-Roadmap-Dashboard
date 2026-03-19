@@ -39,7 +39,7 @@ const TEST_ROADMAP_ID = '550e8400-e29b-41d4-a716-446655440010';
 
 describe('fetchRoadmapVersionsForOps', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → 빈 배열 반환', async () => {
@@ -91,7 +91,7 @@ describe('fetchRoadmapVersionsForOps', () => {
 
 describe('fetchRoadmapVersionForOps', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → null 반환', async () => {

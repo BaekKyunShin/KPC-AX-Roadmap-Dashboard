@@ -116,7 +116,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 // ─── fetchGalleryRoadmaps ────────────────────────────────────────────────────
@@ -287,6 +287,8 @@ describe('fetchGalleryRoadmaps', () => {
     setupAuth({ role: 'OPS_ADMIN' });
     const row = makeRoadmapRow({ pbl_course: null });
     adminMock.addResult({ data: [row], error: null });
+    // 사용자 좋아요 일괄 조회
+    adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps();
 
@@ -300,6 +302,8 @@ describe('fetchGalleryRoadmaps', () => {
     setupAuth({ role: 'OPS_ADMIN' });
     const row = makeRoadmapRow({ users: null });
     adminMock.addResult({ data: [row], error: null });
+    // 사용자 좋아요 일괄 조회
+    adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps();
 
@@ -388,6 +392,8 @@ describe('fetchRoadmapDetail', () => {
       roadmap_matrix: [{ module: 'A' }],
     });
     adminMock.addResult({ data: row, error: null });
+    // 사용자 좋아요 확인 (.maybeSingle())
+    adminMock.addResult({ data: null, error: null });
 
     const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
 

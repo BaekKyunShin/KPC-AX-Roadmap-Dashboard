@@ -128,7 +128,7 @@ const assignedProps = {
 
 describe('AssignmentTabSection', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   // --------------------------------------------------------------------------

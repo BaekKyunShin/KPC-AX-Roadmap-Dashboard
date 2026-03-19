@@ -116,7 +116,8 @@ describe('Server Action 요청 → 세션만 갱신', () => {
     const result = await updateSession(request as never);
 
     expect(NextResponse.redirect).not.toHaveBeenCalled();
-    expect(result).toBeDefined();
+    expect(result).toBeTruthy();
+    expect(typeof result).toBe('object');
   });
 
   it('POST + multipart/form-data → 리다이렉트 없음', async () => {
@@ -131,7 +132,8 @@ describe('Server Action 요청 → 세션만 갱신', () => {
     const result = await updateSession(request as never);
 
     expect(NextResponse.redirect).not.toHaveBeenCalled();
-    expect(result).toBeDefined();
+    expect(result).toBeTruthy();
+    expect(typeof result).toBe('object');
   });
 });
 

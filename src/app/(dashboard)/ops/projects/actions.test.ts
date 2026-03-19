@@ -137,7 +137,7 @@ describe('createProject', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -179,7 +179,11 @@ describe('createProject', () => {
 
     const result = await createProject(fd);
 
-    expect(result).toMatchObject({ success: false, error: expect.any(String) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBeTruthy();
+      expect(result.error!.length).toBeGreaterThan(0);
+    }
   });
 
   it('DB insert 실패 → error + audit log 기록', async () => {
@@ -259,7 +263,7 @@ describe('assignConsultant', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -290,7 +294,11 @@ describe('assignConsultant', () => {
 
     const result = await assignConsultant(fd);
 
-    expect(result).toMatchObject({ success: false, error: expect.any(String) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBeTruthy();
+      expect(result.error!.length).toBeGreaterThan(0);
+    }
   });
 
   it('신규 배정 성공 (RPC 성공)', async () => {
@@ -395,7 +403,7 @@ describe('createSelfAssessment', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증되지 않은 사용자 → error 반환', async () => {
@@ -440,7 +448,11 @@ describe('createSelfAssessment', () => {
 
     const result = await createSelfAssessment(fd);
 
-    expect(result).toMatchObject({ success: false, error: expect.any(String) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBeTruthy();
+      expect(result.error!.length).toBeGreaterThan(0);
+    }
   });
 
   it('템플릿 없음 → error 반환', async () => {
@@ -560,7 +572,7 @@ describe('fetchProjectStats', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('상태별 통계를 올바르게 집계한다', async () => {
@@ -618,7 +630,7 @@ describe('fetchStalledProjects', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('minDays 이상 정체된 프로젝트를 반환한다', async () => {
@@ -745,7 +757,7 @@ describe('fetchConsultantProgress', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('컨설턴트별 상태 통계를 올바르게 집계한다', async () => {
@@ -812,7 +824,9 @@ describe('fetchConsultantProgress', () => {
   });
 
   it('컨설턴트 조회 실패 → 빈 배열', async () => {
+    // Promise.all로 2개 쿼리 병렬 실행: 컨설턴트 목록(에러) + 프로젝트 목록
     adminMock.addResult({ data: null, error: { message: 'error' } });
+    adminMock.addResult({ data: [], error: null });
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await fetchConsultantProgress();
@@ -865,7 +879,7 @@ describe('fetchProjects', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('기본 파라미터로 프로젝트 목록 반환', async () => {
@@ -980,7 +994,7 @@ describe('fetchProjectsWithTimeline', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('days_in_current_status를 올바르게 계산', async () => {
@@ -1048,7 +1062,7 @@ describe('fetchMonthlyCompletions', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 → 빈 배열 반환', async () => {

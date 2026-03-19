@@ -58,7 +58,8 @@ test.describe('컨설턴트 인터뷰', () => {
 
     // "다음" 버튼 클릭 → 2단계로 이동
     await page.getByRole('button', { name: '다음' }).click();
-    await page.waitForTimeout(300);
+    // 스텝 전환 후 "인터뷰 날짜" 필드가 사라지는 것으로 2단계 진입 확인
+    await expect(page.getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
 
     // 2단계 "시스템/AI 활용 경험" 관련 콘텐츠 표시
     const mainContent = page.locator('main');
@@ -67,10 +68,9 @@ test.describe('컨설턴트 인터뷰', () => {
 
     // "이전" 버튼 클릭 → 1단계로 복귀
     await page.getByRole('button', { name: '이전' }).click();
-    await page.waitForTimeout(300);
 
-    // 다시 "인터뷰 날짜" 필드가 보여야 함
-    await expect(page.getByText('인터뷰 날짜')).toBeVisible();
+    // 다시 "인터뷰 날짜" 필드가 보여야 함 (1단계 콘텐츠 렌더링 대기)
+    await expect(page.getByText('인터뷰 날짜')).toBeVisible({ timeout: 5_000 });
   });
 
   test('1단계: 필수 필드 (날짜, 참석자명) 확인', async ({ consultantPage: page }) => {
@@ -113,7 +113,8 @@ test.describe('컨설턴트 인터뷰', () => {
 
     // "참석자 추가" 버튼 클릭
     await page.getByRole('button', { name: '참석자 추가' }).click();
-    await page.waitForTimeout(300);
+    // 새 참석자 필드 렌더링 대기
+    await expect(page.getByPlaceholder('이름').nth(initialNameFields)).toBeVisible({ timeout: 5_000 });
 
     // 참석자 필드가 1개 증가했는지 확인
     const afterAddCount = await page.getByPlaceholder('이름').count();
@@ -125,7 +126,8 @@ test.describe('컨설턴트 인터뷰', () => {
       const deleteCount = await deleteButtons.count();
       if (deleteCount > 0) {
         await deleteButtons.last().click();
-        await page.waitForTimeout(300);
+        // 참석자 필드 제거 대기: 필드 수가 줄어들 때까지
+        await expect(page.getByPlaceholder('이름')).toHaveCount(afterAddCount - 1, { timeout: 5_000 });
 
         const afterRemoveCount = await page.getByPlaceholder('이름').count();
         expect(afterRemoveCount).toBe(afterAddCount - 1);
@@ -151,7 +153,8 @@ test.describe('컨설턴트 인터뷰', () => {
 
     if (isDesktopStepper) {
       await step3Button.click();
-      await page.waitForTimeout(300);
+      // 3단계 전환 후 "기본 정보"(1단계) 콘텐츠가 사라지는 것으로 스텝 전환 확인
+      await expect(page.getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
 
       // 3단계 콘텐츠가 표시되는지 확인 (스텝 콘텐츠 영역에 텍스트가 있으면 됨)
       const mainContent = page.locator('main');
@@ -164,7 +167,8 @@ test.describe('컨설턴트 인터뷰', () => {
 
       if (barCount >= 3) {
         await mobileBars.nth(2).click(); // 3번째 스텝
-        await page.waitForTimeout(300);
+        // 스텝 전환 후 콘텐츠 갱신 대기
+        await expect(page.getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
       }
     }
 
@@ -177,7 +181,8 @@ test.describe('컨설턴트 인터뷰', () => {
 
     if (hasStep6) {
       await step6Button.click();
-      await page.waitForTimeout(300);
+      // 마지막 단계 전환 대기: "저장" 버튼 또는 콘텐츠 렌더링
+      await expect(page.locator('main')).toBeVisible({ timeout: 5_000 });
 
       // 마지막 단계에서는 "저장" 버튼이 표시됨 ("다음" 대신)
       const saveButton = page.getByRole('button', { name: '저장' });

@@ -114,11 +114,11 @@ function createLoginFormData(overrides: Record<string, string> = {}): FormData {
 // ─── 테스트 ───────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 // ─── registerUser ─────────────────────────────────────────────────────────

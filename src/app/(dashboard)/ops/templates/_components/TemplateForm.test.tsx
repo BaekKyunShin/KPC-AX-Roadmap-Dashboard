@@ -89,7 +89,7 @@ vi.mock('@/components/ui/select', () => ({
 
 describe('TemplateForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     capturedOnReorder = null;
     capturedValues = null;
   });

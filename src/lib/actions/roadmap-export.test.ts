@@ -86,7 +86,7 @@ const ROADMAP_DATA = {
 
 describe('prepareExportData', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 시 에러를 반환한다', async () => {
@@ -235,7 +235,7 @@ describe('prepareExportData', () => {
 
 describe('logDownload', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('인증 실패 시 에러를 반환한다', async () => {

@@ -218,6 +218,9 @@ describe('createRoadmap', () => {
   });
 
   it('Zod 검증 실패 (잘못된 projectId) → error 반환', async () => {
+    // 인증 통과 후 Zod 검증 실패해야 함 (인증이 Zod보다 우선)
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+
     const result = await createRoadmap('not-a-uuid');
 
     expect(result.success).toBe(false);

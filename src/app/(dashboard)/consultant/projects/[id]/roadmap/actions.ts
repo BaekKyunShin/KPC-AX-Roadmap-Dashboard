@@ -30,17 +30,17 @@ export async function createRoadmap(
   revisionPrompt?: string
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
-    // Zod 입력 검증
-    const parsed = createRoadmapInputSchema.safeParse({ projectId, revisionPrompt });
-    if (!parsed.success) {
-      return { success: false, error: '입력 데이터가 올바르지 않습니다.' };
-    }
-
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
       roleError: '컨설턴트만 로드맵을 생성할 수 있습니다.',
     });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
+
+    // Zod 입력 검증 (인증 이후에 실행 — 미인증 사용자에게 검증 에러 노출 방지)
+    const parsed = createRoadmapInputSchema.safeParse({ projectId, revisionPrompt });
+    if (!parsed.success) {
+      return { success: false, error: '입력 데이터가 올바르지 않습니다.' };
+    }
 
     // 프로젝트 접근 권한 확인
     const { data: projectData } = await supabase

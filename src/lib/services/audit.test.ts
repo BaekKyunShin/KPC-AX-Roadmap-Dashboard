@@ -80,7 +80,7 @@ describe('createAuditLog', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   const baseParams = {
@@ -208,7 +208,7 @@ describe('fetchAuditLogs', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('기본 페이징으로 로그를 조회한다', async () => {

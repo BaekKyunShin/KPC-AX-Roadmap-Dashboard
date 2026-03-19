@@ -87,7 +87,7 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
       .click();
 
     // 드롭다운 내에서 이름, 이메일 표시 확인
-    const dropdown = page.locator('.absolute.right-0');
+    const dropdown = page.locator('[data-testid="user-dropdown-menu"]');
     await expect(dropdown).toBeVisible();
     // 역할 배지 (시스템관리자 or 운영관리자)
     await expect(

@@ -41,10 +41,7 @@ test.describe('갤러리 목록', () => {
     const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
     await searchInput.fill('테스트검색어');
 
-    // 디바운스 대기 (300ms + 여유)
-    await page.waitForTimeout(500);
-
-    // URL에 search 파라미터가 반영되는지 확인
+    // 디바운스 후 URL에 search 파라미터가 반영되는지 확인
     await expect(page).toHaveURL(/search=/, { timeout: 5_000 });
   });
 
@@ -118,8 +115,8 @@ test.describe('갤러리 목록', () => {
     await consultantPage.goto('/gallery');
     await consultantPage.waitForLoadState('networkidle');
 
-    // 페이지 로드 대기 후 관리자 필터가 없는지 확인
-    await consultantPage.waitForTimeout(1_000);
+    // 갤러리 헤더가 로드된 후 관리자 필터가 없는지 확인
+    await expect(consultantPage.getByRole('heading', { name: '로드맵 갤러리' })).toBeVisible({ timeout: 10_000 });
     await expect(consultantPage.getByText('관리자 필터')).not.toBeVisible();
   });
 });
