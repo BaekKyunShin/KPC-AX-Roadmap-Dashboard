@@ -174,16 +174,10 @@ export async function generateRoadmap(
 
   // 운영관리자에게 로드맵 초안 알림 (테스트 모드 제외)
   if (!isTestMode) {
-    const { data: projectInfo } = await supabase
-      .from('projects')
-      .select('company_name')
-      .eq('id', projectId)
-      .single();
-
     await createNotificationForAdmins({
       type: 'roadmap_draft',
       title: '로드맵 초안 생성',
-      message: `${projectInfo?.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵 초안이 생성되었습니다.`,
+      message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 로드맵 초안이 생성되었습니다.`,
       link: `/ops/projects/${projectId}`,
     });
   }

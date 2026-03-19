@@ -61,13 +61,11 @@ interface MockSupabaseOverrides {
   insertResult?: { data: { id: string } | null; error: { message: string } | null };
   /** assigned_consultant_id 오버라이드 (null → 컨설턴트 프로필 조회 안 함) */
   assignedConsultantId?: string | null;
-  /** 알림용 회사명 재조회 결과 오버라이드 */
-  companyNameResult?: { data: { company_name: string } | null; error: { message: string } | null };
 }
 
 // ── 테이블별 체인 빌더 ──────────────────────────────────────────────────
 
-/** projects 테이블 — 첫 번째 호출(메인 데이터) + 두 번째 호출(알림용 회사명) */
+/** projects 테이블 — 메인 데이터 조회 + 상태 업데이트 */
 function createProjectsChain(
   projectStatus: string,
   overrides: MockSupabaseOverrides,
@@ -77,45 +75,27 @@ function createProjectsChain(
     ? overrides.assignedConsultantId
     : 'consultant-1';
 
-  let callCount = 0;
-  return () => {
-    callCount++;
-    if (callCount === 1) {
-      const result = overrides.projectResult || {
-        data: {
-          id: 'project-1',
-          status: projectStatus,
-          company_name: '테스트 기업',
-          assigned_consultant_id: assignedConsultantId,
-        },
-        error: null,
-      };
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue(result),
-            limit: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
-            }),
-          }),
-        }),
-        update: updateFn,
-      };
-    }
-    // 두 번째 이후: 알림용 회사명
-    const companyResult = overrides.companyNameResult || {
-      data: { company_name: '테스트 기업' },
-      error: null,
-    };
-    return {
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue(companyResult),
+  const result = overrides.projectResult || {
+    data: {
+      id: 'project-1',
+      status: projectStatus,
+      company_name: '테스트 기업',
+      assigned_consultant_id: assignedConsultantId,
+    },
+    error: null,
+  };
+
+  return () => ({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue(result),
+        limit: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
         }),
       }),
-      update: updateFn,
-    };
-  };
+    }),
+    update: updateFn,
+  });
 }
 
 /** self_assessments 테이블 */
@@ -530,16 +510,14 @@ describe('generateRoadmap — 부수 효과', () => {
     expect(vi.mocked(createNotificationForAdmins)).not.toHaveBeenCalled();
   });
 
-  it('회사명 재조회 실패 → "(알 수 없는 기업)" 폴백', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      companyNameResult: { data: null, error: { message: 'not found' } },
-    });
+  it('알림 메시지에 projectData의 company_name을 사용한다', async () => {
+    setupDefaultMocks('INTERVIEWED');
 
     await generateRoadmap('project-1', 'user-1', undefined, false);
 
     expect(vi.mocked(createNotificationForAdmins)).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringContaining('(알 수 없는 기업)'),
+        message: expect.stringContaining('테스트 기업'),
       }),
     );
   });
