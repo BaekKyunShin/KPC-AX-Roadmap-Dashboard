@@ -350,6 +350,8 @@ describe('assignConsultant', () => {
     mockAuthResult.mockResolvedValue(auth);
 
     adminMock.addRpcResult({ data: { success: true }, error: null });
+    // after() 콜백 내부: 프로젝트 company_name 조회
+    adminMock.addResult({ data: { company_name: '테스트사' }, error: null });
 
     const result = await assignConsultant(makeAssignFormData());
     expect(result).toEqual({ success: true });
