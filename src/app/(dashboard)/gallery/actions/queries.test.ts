@@ -326,6 +326,61 @@ describe('fetchGalleryRoadmaps', () => {
     });
     consoleSpy.mockRestore();
   });
+
+  it('결과 데이터 없음 → 빈 배열 + 좋아요 조회 스킵', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // 메인 쿼리 빈 배열
+    adminMock.addResult({ data: [], error: null });
+    // roadmapIds가 비어 있으므로 좋아요 조회 쿼리 미호출
+
+    const result = await fetchGalleryRoadmaps();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual([]);
+    }
+    // roadmapIds.length === 0 → 좋아요 쿼리 결과 큐 소비 없음
+    expect(adminMock.client.from).toHaveBeenCalledTimes(1); // 메인 쿼리 1회만
+  });
+
+  it('관리자 status + isShared + consultantId 복합 필터', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    const consultantId = '550e8400-e29b-41d4-a716-446655440099';
+    await fetchGalleryRoadmaps({ status: 'FINAL', isShared: 'true', consultantId });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('status', 'FINAL');
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('is_shared', true);
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('created_by', consultantId);
+  });
+
+  it('search에 특수문자 포함 → sanitize 후 ilike 쿼리', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    // 특수문자 포함 검색어
+    await fetchGalleryRoadmaps({ search: '테스트%회사.이름' });
+
+    // or 쿼리에 이스케이프된 패턴이 포함되어야 함
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(
+      expect.stringContaining('ilike'),
+    );
+  });
+
+  it('데이터 변환 — roadmap_likes 빈 배열이면 likeCount=0', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makeRoadmapRow({ roadmap_likes: [] });
+    adminMock.addResult({ data: [row], error: null });
+    adminMock.addResult({ data: [], error: null });
+
+    const result = await fetchGalleryRoadmaps();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0].likeCount).toBe(0);
+    }
+  });
 });
 
 // ─── fetchRoadmapDetail ──────────────────────────────────────────────────────
@@ -423,6 +478,42 @@ describe('fetchRoadmapDetail', () => {
       expect(result.data.isLiked).toBe(true);
       expect(result.data.versionNumber).toBe(1);
     }
+  });
+
+  it('pbl_course 없는 로드맵 상세 — 제목 "회사명 로드맵"', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makeRoadmapRow({ pbl_course: null, roadmap_matrix: [] });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.title).toBe('테스트기업 로드맵');
+    }
+  });
+
+  it('creator null → createdByName "알 수 없음"', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makeRoadmapRow({ users: null, roadmap_matrix: [] });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.createdByName).toBe('알 수 없음');
+    }
+  });
+
+  it('role null → error 반환', async () => {
+    setupAuth({ role: null });
+
+    const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
+
+    expect(result).toEqual({ success: false, error: '사용자 정보를 찾을 수 없습니다.' });
   });
 });
 

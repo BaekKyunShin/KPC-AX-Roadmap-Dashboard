@@ -159,3 +159,113 @@ describe('fetchConsultantProjectFilters', () => {
     }
   });
 });
+
+// ─── 에러/엣지 케이스 ─────────────────────────────────────────────────────────
+
+describe('fetchConsultantProjects — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('DB 에러 시 profile 없음 → consultantName 빈 문자열 반환', async () => {
+    // role 조회
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // users 이름 조회 → null (이름 없음)
+    serverMock.addResult({ data: null, error: null });
+    // projects 조회 에러
+    serverMock.addResult({ data: null, error: { message: 'DB error' } });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await fetchConsultantProjects();
+
+    expect(result.projects).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.consultantName).toBe('');
+    consoleSpy.mockRestore();
+  });
+
+  it('project_assignments 없는 프로젝트 → assigned_at: null 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { name: '김컨설턴트' }, error: null });
+    serverMock.addResult({
+      data: [
+        {
+          id: 'proj-2',
+          company_name: '배정없는 기업',
+          industry: '서비스업',
+          company_size: '10-49',
+          status: 'ASSIGNED',
+          created_at: '2026-01-01',
+          project_assignments: [], // 빈 배열
+          interviews: [],
+          self_assessments: [],
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchConsultantProjects();
+
+    expect(result.projects[0].assigned_at).toBeNull();
+    expect(result.projects[0].has_interview).toBe(false);
+    expect(result.projects[0].has_assessment).toBe(false);
+  });
+
+  it('interviews가 null인 프로젝트 → has_interview: false 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { name: '김컨설턴트' }, error: null });
+    serverMock.addResult({
+      data: [
+        {
+          id: 'proj-3',
+          company_name: '테스트 기업',
+          industry: '제조업',
+          company_size: '300+',
+          status: 'INTERVIEWED',
+          created_at: '2026-01-01',
+          project_assignments: [{ assigned_at: '2026-01-02', is_current: true }],
+          interviews: null, // null 처리
+          self_assessments: null,
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchConsultantProjects();
+
+    expect(result.projects[0].has_interview).toBe(false);
+    expect(result.projects[0].has_assessment).toBe(false);
+  });
+
+  it('빈 프로젝트 목록 → total: 0, projects: []', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { name: '김컨설턴트' }, error: null });
+    serverMock.addResult({ data: [], error: null });
+
+    const result = await fetchConsultantProjects();
+
+    expect(result.projects).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.consultantName).toBe('김컨설턴트');
+  });
+
+  it('검색과 상태 필터 동시 적용 → or() + eq(status) 모두 호출', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { name: '김컨설턴트' }, error: null });
+    serverMock.addResult({ data: [], error: null });
+
+    await fetchConsultantProjects({ search: '제조', status: 'ROADMAP_DRAFTED' });
+
+    expect(serverMock.chainable.or).toHaveBeenCalled();
+    const eqCalls = serverMock.chainable.eq.mock.calls as unknown[][];
+    const statusCall = eqCalls.find((call) => call[0] === 'status' && call[1] === 'ROADMAP_DRAFTED');
+    expect(statusCall).toBeTruthy();
+  });
+});

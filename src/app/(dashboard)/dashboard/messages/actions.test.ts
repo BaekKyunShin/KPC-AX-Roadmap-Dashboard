@@ -200,6 +200,140 @@ describe('fetchConversations', () => {
       expect(result.data[0].has_unread).toBe(false);
     }
   });
+
+  it('대화 정보 조회 빈 배열 → 빈 배열 반환', async () => {
+    setupAuth();
+    const now = '2026-02-17T10:00:00Z';
+
+    // 1) 내 참여 존재 (대화 목록 있음)
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, last_read_at: now }],
+      error: null,
+    });
+    // 2) 대화 정보 → 빈 배열 (LIMIT 초과로 모두 필터됨)
+    serverMock.addResult({ data: [], error: null });
+
+    const result = await fetchConversations();
+
+    expect(result).toEqual({ success: true, data: [] });
+  });
+
+  it('대화 정보 조회 DB 에러 → error 반환', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupAuth();
+    const now = '2026-02-17T10:00:00Z';
+
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, last_read_at: now }],
+      error: null,
+    });
+    serverMock.addResult({ data: null, error: { message: 'conversations DB error' } });
+
+    const result = await fetchConversations();
+
+    expect(result).toEqual({ success: false, error: '메시지 목록을 불러올 수 없습니다.' });
+    spy.mockRestore();
+  });
+
+  it('상대방 참여자 조회 에러 → error 반환', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupAuth();
+    const now = '2026-02-17T10:00:00Z';
+
+    // 1) 내 참여
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, last_read_at: now }],
+      error: null,
+    });
+    // 2) 대화 정보
+    serverMock.addResult({ data: [{ id: CONV_ID, last_message_at: now }], error: null });
+    // 3) 상대방 참여자 에러 (Promise.all 내부)
+    serverMock.addResult({ data: null, error: { message: 'participants error' } });
+    // 4) RPC 결과 (Promise.all 내부)
+    serverMock.addRpcResult({ data: [], error: null });
+
+    const result = await fetchConversations();
+
+    expect(result).toEqual({ success: false, error: '메시지 목록을 불러올 수 없습니다.' });
+    spy.mockRestore();
+  });
+
+  it('마지막 메시지 RPC 에러 → 에러 무시하고 last_message=undefined로 대화 목록 반환', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupAuth();
+    const now = '2026-02-17T10:00:00Z';
+
+    // 1) 내 참여
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, last_read_at: now }],
+      error: null,
+    });
+    // 2) 대화 정보
+    serverMock.addResult({ data: [{ id: CONV_ID, last_message_at: now }], error: null });
+    // 3) 상대방 참여자 (Promise.all 내부)
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, user_id: OTHER_USER_ID }],
+      error: null,
+    });
+    // 4) 상대방 사용자 정보 (admin)
+    adminMock.addResult({
+      data: [{ id: OTHER_USER_ID, name: '홍길동', role: 'OPS_ADMIN' }],
+      error: null,
+    });
+    // 5) RPC 에러 (lastMsgError → 무시하고 계속 진행)
+    serverMock.addRpcResult({ data: null, error: { message: 'rpc error' } });
+
+    const result = await fetchConversations();
+
+    // RPC 에러는 무시하고 성공 반환
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(1);
+      // last_message가 undefined
+      expect(result.data[0].last_message).toBeUndefined();
+    }
+    spy.mockRestore();
+  });
+
+  it('last_read_at이 null인 참여자 → has_unread=false', async () => {
+    setupAuth();
+    const now = '2026-02-17T10:00:00Z';
+
+    // last_read_at이 null (한 번도 읽지 않은 경우)
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, last_read_at: null }],
+      error: null,
+    });
+    serverMock.addResult({ data: [{ id: CONV_ID, last_message_at: now }], error: null });
+    serverMock.addResult({
+      data: [{ conversation_id: CONV_ID, user_id: OTHER_USER_ID }],
+      error: null,
+    });
+    adminMock.addResult({
+      data: [{ id: OTHER_USER_ID, name: '홍길동', role: 'OPS_ADMIN' }],
+      error: null,
+    });
+    serverMock.addRpcResult({ data: [], error: null });
+
+    const result = await fetchConversations();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // last_read_at이 null이면 myReadAt이 falsy → hasUnread=false
+      expect(result.data[0].has_unread).toBe(false);
+    }
+  });
+
+  it('예외 발생 → 알 수 없는 오류 반환', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // requireAuth가 throw 하도록 설정
+    mockRequireAuth.mockRejectedValue(new Error('Unexpected error'));
+
+    const result = await fetchConversations();
+
+    expect(result).toEqual({ success: false, error: '알 수 없는 오류가 발생했습니다.' });
+    spy.mockRestore();
+  });
 });
 
 // =============================================================================
@@ -382,6 +516,23 @@ describe('fetchUnreadConversationCount', () => {
 
     expect(result).toBe(0);
   });
+
+  it('RPC data=null → 0 반환 (nullish coalescing)', async () => {
+    setupAuth();
+    serverMock.addRpcResult({ data: null, error: null });
+
+    const result = await fetchUnreadConversationCount();
+
+    expect(result).toBe(0);
+  });
+
+  it('예외 발생 → 0 반환', async () => {
+    mockRequireAuth.mockRejectedValue(new Error('Unexpected error'));
+
+    const result = await fetchUnreadConversationCount();
+
+    expect(result).toBe(0);
+  });
 });
 
 // =============================================================================
@@ -542,6 +693,53 @@ describe('createConversation', () => {
 
     expect(result).toEqual({ success: true, data: { conversationId: newConvId } });
     expect(revalidatePath).toHaveBeenCalledWith('/dashboard/messages');
+  });
+
+  it('내 대화 목록이 null → 새 대화 바로 생성', async () => {
+    setupAuth();
+    const newConvId = '550e8400-e29b-41d4-a716-446655440030';
+
+    adminMock.addResult({
+      data: { id: OTHER_USER_ID, role: 'OPS_ADMIN', status: 'ACTIVE' },
+      error: null,
+    });
+    // server: 내 대화 목록 조회 → null
+    serverMock.addResult({ data: null, error: null });
+    // admin: 새 대화 INSERT (single)
+    adminMock.addResult({ data: { id: newConvId }, error: null });
+    // admin: 참여자 INSERT (thenable)
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await createConversation(OTHER_USER_ID);
+
+    expect(result).toEqual({ success: true, data: { conversationId: newConvId } });
+  });
+
+  it('sendMessage에서 역할 없는 사용자 (role=null) → Zod 검증 전 인증은 통과', async () => {
+    // sendMessage는 role 검증 없이 인증만 확인
+    mockRequireAuth.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: 'test@test.com' },
+      supabase: serverMock.client,
+      role: null,
+      status: 'ACTIVE',
+    });
+
+    const newConvId = '550e8400-e29b-41d4-a716-446655440020';
+    adminMock.addResult({
+      data: { id: OTHER_USER_ID, role: 'OPS_ADMIN', status: 'ACTIVE' },
+      error: null,
+    });
+    serverMock.addResult({ data: [], error: null });
+    adminMock.addResult({ data: { id: newConvId }, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await createConversation(OTHER_USER_ID);
+
+    // role이 null이면 ALLOWED_RECIPIENTS[null]이 undefined → senderAllowed 없음
+    expect(result).toEqual({
+      success: false,
+      error: '해당 사용자에게 메시지를 보낼 권한이 없습니다.',
+    });
   });
 });
 

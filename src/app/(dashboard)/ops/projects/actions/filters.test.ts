@@ -310,6 +310,84 @@ describe('fetchConsultantCandidates', () => {
       representative_experience: undefined,
     });
   });
+
+  it('consultant_profile이 null인 컨설턴트 → profile null로 반환', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: [
+        {
+          id: 'cons-no-profile',
+          name: '프로필없는컨설턴트',
+          email: 'noprofile@example.com',
+          consultant_profile: null,
+        },
+      ],
+      error: null,
+      count: 1,
+    });
+
+    const result = await fetchConsultantCandidates();
+
+    expect(result.consultants[0].consultant_profile).toBeNull();
+  });
+
+  it('검색어에 특수문자 포함 → sanitize 후 or() 호출', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    await fetchConsultantCandidates({ search: '김%컨설턴트.이름' });
+
+    // sanitize 후 or() 쿼리 호출 확인
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(
+      expect.stringContaining('ilike'),
+    );
+  });
+
+  it('업종 필터만 적용 (스킬 없음) → overlaps 1회 호출', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    await fetchConsultantCandidates({ industries: ['IT/소프트웨어'] });
+
+    expect(adminMock.chainable.overlaps).toHaveBeenCalledTimes(1);
+    expect(adminMock.chainable.overlaps).toHaveBeenCalledWith(
+      'consultant_profiles.available_industries',
+      ['IT/소프트웨어'],
+    );
+  });
+
+  it('SYSTEM_ADMIN도 컨설턴트 후보 조회 가능', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'SYSTEM_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const result = await fetchConsultantCandidates();
+
+    expect(result).toEqual({ consultants: [], total: 0, totalPages: 0, page: 1 });
+  });
 });
 
 // ─── fetchConsultantFilterOptions ────────────────────────────────────────────
@@ -381,5 +459,62 @@ describe('fetchConsultantFilterOptions', () => {
     const result = await fetchConsultantFilterOptions();
 
     expect(result).toEqual({ industries: [], skills: [] });
+  });
+
+  it('consultant_profile이 배열 형태일 때 첫 번째 항목에서 데이터 추출', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: [
+        {
+          // 배열 형태의 조인 결과
+          consultant_profile: [
+            {
+              available_industries: ['헬스케어'],
+              skill_tags: ['ML'],
+            },
+          ],
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchConsultantFilterOptions();
+
+    expect(result.industries).toContain('헬스케어');
+    expect(result.skills).toContain('ML');
+  });
+
+  it('consultant_profile null인 컨설턴트는 건너뜀 (에러 없이 처리)', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: [
+        { consultant_profile: null },
+        {
+          consultant_profile: {
+            available_industries: ['유통'],
+            skill_tags: ['Excel'],
+          },
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchConsultantFilterOptions();
+
+    // null인 프로필은 건너뜀
+    expect(result.industries).toEqual(['유통']);
+    expect(result.skills).toEqual(['Excel']);
   });
 });

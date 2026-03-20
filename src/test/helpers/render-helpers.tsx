@@ -7,6 +7,7 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
+import type { ActionResult } from '@/lib/types/action-result';
 
 // ─── next/navigation mock 기본값 ──────────────────────────────────────────────
 
@@ -130,4 +131,78 @@ export function renderWithUser(
 ) {
   const user = createMockUser(role);
   return { ...render(ui, options), user };
+}
+
+// ─── Server Action Mock 헬퍼 ─────────────────────────────────────────────────
+
+/**
+ * Server Action 결과를 mock하는 함수를 생성합니다.
+ *
+ * 사용 예:
+ *   const mockAction = createServerActionMock({ items: [] });
+ *   vi.mocked(fetchProjects).mockImplementation(mockAction.fn);
+ *   mockAction.setError('에러 발생');
+ */
+export function createServerActionMock<T>(successData?: T, errorMessage?: string) {
+  const fn = vi.fn<() => Promise<ActionResult<T>>>();
+
+  if (errorMessage) {
+    fn.mockResolvedValue({ success: false, error: errorMessage });
+  } else if (successData !== undefined) {
+    fn.mockResolvedValue({ success: true, data: successData });
+  }
+
+  return {
+    fn,
+    setSuccess: (data: T) => {
+      fn.mockResolvedValue({ success: true, data });
+    },
+    setError: (error: string) => {
+      fn.mockResolvedValue({ success: false, error });
+    },
+  };
+}
+
+// ─── Timer 헬퍼 ──────────────────────────────────────────────────────────────
+
+/**
+ * vi.useFakeTimers 래퍼 — setup/teardown을 간편하게 처리합니다.
+ *
+ * 사용 예:
+ *   const timer = createTimerHelper();
+ *   beforeEach(() => timer.setup());
+ *   afterEach(() => timer.teardown());
+ *   await timer.advance(5000);
+ */
+export function createTimerHelper() {
+  return {
+    setup: () => {
+      vi.useFakeTimers();
+    },
+    teardown: () => {
+      vi.useRealTimers();
+    },
+    advance: async (ms: number) => {
+      await vi.advanceTimersByTimeAsync(ms);
+    },
+    runAll: async () => {
+      await vi.runAllTimersAsync();
+    },
+  };
+}
+
+// ─── Params Mock 포함 렌더 ───────────────────────────────────────────────────
+
+/**
+ * useParams가 특정 값을 반환하도록 mock된 상태에서 렌더링합니다.
+ */
+export function renderWithParams(
+  ui: ReactElement,
+  params: Record<string, string>,
+  options?: Omit<RenderOptions, 'wrapper'>,
+) {
+  return {
+    ...render(ui, options),
+    params,
+  };
 }

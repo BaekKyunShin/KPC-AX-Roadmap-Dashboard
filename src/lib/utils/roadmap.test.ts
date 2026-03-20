@@ -116,6 +116,46 @@ describe('formatMatrixCourseHours', () => {
   });
 });
 
+// ─── formatMatrixCourseNames — 단일 원소 ───
+
+describe('formatMatrixCourseNames — 단일 원소', () => {
+  it('과정이 1개이면 줄바꿈 없이 과정명만 반환한다', () => {
+    expect(formatMatrixCourseNames([{ course_name: 'AI 기초' }])).toBe('AI 기초');
+  });
+});
+
+// ─── formatMatrixCourseHoursWithUnit — 단일 원소 ───
+
+describe('formatMatrixCourseHoursWithUnit — 단일 원소', () => {
+  it('과정이 1개이면 줄바꿈 없이 시간만 반환한다', () => {
+    expect(formatMatrixCourseHoursWithUnit([{ recommended_hours: 8 }])).toBe('8h');
+  });
+});
+
+// ─── formatMatrixCourseHours — 단일 원소 ───
+
+describe('formatMatrixCourseHours — 단일 원소', () => {
+  it('과정이 1개이면 줄바꿈 없이 숫자만 반환한다', () => {
+    expect(formatMatrixCourseHours([{ recommended_hours: 16 }])).toBe('16');
+  });
+});
+
+// ─── getLevelLabel / getLevelLabelEn — 빈 문자열 ───
+
+describe('getLevelLabel / getLevelLabelEn — 빈 문자열', () => {
+  it('getLevelLabel: 빈 문자열이면 빈 문자열 반환', () => {
+    expect(getLevelLabel('')).toBe('');
+  });
+
+  it('getLevelLabelEn: 빈 문자열이면 빈 문자열 반환', () => {
+    expect(getLevelLabelEn('')).toBe('');
+  });
+
+  it('getLevelColorClass: 빈 문자열이면 gray 기본 클래스 반환', () => {
+    expect(getLevelColorClass('')).toBe('text-gray-600 border-gray-200');
+  });
+});
+
 // ─── 상수 ───
 
 describe('상수', () => {

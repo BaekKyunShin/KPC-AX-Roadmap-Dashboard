@@ -61,6 +61,62 @@ describe('sanitizePostgrestFilter', () => {
   it('빈 문자열은 그대로 반환한다', () => {
     expect(sanitizePostgrestFilter('')).toBe('');
   });
+
+  // ─── SQL/PostgREST 인젝션 패턴 ──────────────────────────────────────────
+
+  it("'; DROP TABLE users;-- 패턴에서 PostgREST 특수문자가 없으면 그대로 반환한다", () => {
+    // 싱글 쿼트(')와 세미콜론(;), 대시(-)는 이스케이프 대상이 아님
+    // sanitizePostgrestFilter는 PostgREST 필터 구문 특수문자만 이스케이프함
+    const input = "'; DROP TABLE users;--";
+    const result = sanitizePostgrestFilter(input);
+
+    // 이 입력에 포함된 PostgREST 특수문자: 없음(따옴표가 없고 싱글쿼트는 대상이 아님)
+    // 결과는 원본과 동일
+    expect(result).toBe("'; DROP TABLE users;--");
+  });
+
+  it('UNION SELECT 패턴이 포함된 입력을 이스케이프한다', () => {
+    const input = 'test UNION SELECT * FROM users';
+    const result = sanitizePostgrestFilter(input);
+
+    // 공백과 영문자는 이스케이프 대상이 아님 — 문자 그대로 반환
+    expect(result).toBe('test UNION SELECT * FROM users');
+  });
+
+  it('OR 인젝션 패턴 (or,id.eq.true)에서 쉼표와 마침표를 이스케이프한다', () => {
+    const input = 'or,id.eq.true';
+    const result = sanitizePostgrestFilter(input);
+
+    // 쉼표와 마침표가 이스케이프됨
+    expect(result).toBe('or\\,id\\.eq\\.true');
+    // 이스케이프 후 결과에는 백슬래시+쉼표(\,)가 있어 raw 쉼표(,)와 구별됨
+    // 이스케이프 문자 없이 단독으로 나타나는 쉼표가 없어야 함
+    expect(result).not.toMatch(/(?<!\\),/);
+  });
+
+  it('중첩 괄호를 사용한 인젝션 시도를 이스케이프한다', () => {
+    const input = 'test(id.eq.1)';
+    const result = sanitizePostgrestFilter(input);
+
+    expect(result).toBe('test\\(id\\.eq\\.1\\)');
+    // 이스케이프되지 않은 괄호가 없어야 함
+    expect(result).not.toMatch(/(?<!\\)[\(\)]/);
+  });
+
+  it('퍼센트 기반 LIKE 와일드카드 인젝션을 이스케이프한다', () => {
+    const input = '%admin%';
+    const result = sanitizePostgrestFilter(input);
+
+    expect(result).toBe('\\%admin\\%');
+  });
+
+  it('복합 PostgREST 인젝션 패턴을 이스케이프한다', () => {
+    // not.eq, gte 등의 PostgREST 연산자를 활용한 인젝션 시도
+    const input = 'test.not.eq.false';
+    const result = sanitizePostgrestFilter(input);
+
+    expect(result).toBe('test\\.not\\.eq\\.false');
+  });
 });
 
 describe('ilikePattern', () => {

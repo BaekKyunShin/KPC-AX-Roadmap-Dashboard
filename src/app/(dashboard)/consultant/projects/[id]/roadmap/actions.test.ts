@@ -655,3 +655,357 @@ describe('cancelRoadmapGeneration', () => {
     expect(cancelAbort).toHaveBeenCalledWith(`roadmap:${USER_A_ID}`);
   });
 });
+
+// ─── 에러/엣지 케이스 ────────────────────────────────────────────────────────
+
+describe('createRoadmap — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('revisionPrompt 있을 때 → "새 로드맵 버전" 활동 일지 기록', async () => {
+    const { generateRoadmap: generateRoadmapMock } = await import('@/lib/services/roadmap');
+    const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { assigned_consultant_id: USER_A_ID, status: 'INTERVIEWED' },
+      error: null,
+    });
+
+    vi.mocked(generateRoadmapMock).mockResolvedValueOnce({
+      roadmapId: 'rev-roadmap-id',
+      result: { diagnosis_summary: '수정 진단' } as never,
+      validation: { isValid: true, errors: [], warnings: [] },
+    });
+
+    await createRoadmap(PROJECT_ID, '이 부분을 더 구체적으로 작성해주세요.');
+
+    expect(insertSystemActivityLog).toHaveBeenCalledWith(
+      PROJECT_ID,
+      USER_A_ID,
+      '새 로드맵 버전이 생성되었습니다.',
+    );
+  });
+
+  it('프로젝트 미배정 (data null) → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // projects 조회 → null
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await createRoadmap(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('접근 권한');
+  });
+
+  it('AbortError 발생 → 에러 반환', async () => {
+    const { generateRoadmap: generateRoadmapMock } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { assigned_consultant_id: USER_A_ID, status: 'INTERVIEWED' },
+      error: null,
+    });
+
+    const abortError = new Error('The operation was aborted');
+    abortError.name = 'AbortError';
+    vi.mocked(generateRoadmapMock).mockRejectedValueOnce(abortError);
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await createRoadmap(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  it('ROADMAP_DRAFTED 상태에서 로드맵 생성 가능', async () => {
+    const { generateRoadmap: generateRoadmapMock } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // ROADMAP_DRAFTED도 ROADMAP_ELIGIBLE_STATUSES에 포함되어야 함
+    serverMock.addResult({
+      data: { assigned_consultant_id: USER_A_ID, status: 'ROADMAP_DRAFTED' },
+      error: null,
+    });
+
+    vi.mocked(generateRoadmapMock).mockResolvedValueOnce({
+      roadmapId: 'redraft-id',
+      result: { diagnosis_summary: '재생성' } as never,
+      validation: { isValid: true, errors: [], warnings: [] },
+    });
+
+    const result = await createRoadmap(PROJECT_ID);
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('editRoadmapManually — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('updateRoadmapManually 서비스 에러 → error 반환', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
+    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+
+    vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
+      success: false,
+      error: '로드맵 구조가 유효하지 않습니다.',
+      validation: { isValid: false, errors: ['오류'], warnings: [] },
+    });
+
+    const result = await editRoadmapManually(ROADMAP_ID, validUpdates());
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('로드맵');
+  });
+
+  it('updateRoadmapManually success: false + error undefined → 기본 에러 메시지', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
+    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+
+    vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
+      success: false,
+      validation: { isValid: false, errors: [], warnings: [] },
+    });
+
+    const result = await editRoadmapManually(ROADMAP_ID, validUpdates());
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toBe('로드맵 편집에 실패했습니다.');
+  });
+
+  it('예외 발생 → catch 블록에서 에러 반환', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
+    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+
+    vi.mocked(updateRoadmapManually).mockRejectedValueOnce(new Error('unexpected error'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await editRoadmapManually(ROADMAP_ID, validUpdates());
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toBe('로드맵 편집에 실패했습니다.');
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('fetchRoadmapVersions — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role이 null → 빈 배열 반환', async () => {
+    // users 테이블 조회 결과가 null → role이 null
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchRoadmapVersions(PROJECT_ID);
+
+    expect(result).toEqual([]);
+  });
+
+  it('USER_PENDING 역할 → 빈 배열 반환', async () => {
+    serverMock.addResult({ data: { role: 'USER_PENDING', status: 'ACTIVE' }, error: null });
+
+    const result = await fetchRoadmapVersions(PROJECT_ID);
+
+    expect(result).toEqual([]);
+  });
+
+  it('SYSTEM_ADMIN → 서비스 함수 호출 (프로젝트 조회 생략)', async () => {
+    const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
+    const mockVersions = [{ id: 'v1', status: 'FINAL' }];
+    vi.mocked(fetchVersionsMock).mockResolvedValueOnce(mockVersions as never);
+
+    serverMock.addResult({ data: { role: 'SYSTEM_ADMIN', status: 'ACTIVE' }, error: null });
+
+    const result = await fetchRoadmapVersions(PROJECT_ID);
+
+    expect(result).toEqual(mockVersions);
+  });
+
+  it('예외 발생 → 빈 배열 반환', async () => {
+    const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+
+    vi.mocked(fetchVersionsMock).mockRejectedValueOnce(new Error('service error'));
+
+    const result = await fetchRoadmapVersions(PROJECT_ID);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('fetchRoadmapVersion — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role이 null → null 반환', async () => {
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchRoadmapVersion(ROADMAP_ID);
+
+    expect(result).toBeNull();
+  });
+
+  it('fetchRoadmapVersionService가 null 반환 → null 반환', async () => {
+    const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
+    vi.mocked(fetchVersionMock).mockResolvedValueOnce(null);
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+
+    const result = await fetchRoadmapVersion(ROADMAP_ID);
+
+    expect(result).toBeNull();
+  });
+
+  it('OPS_ADMIN → 프로젝트 접근 검증 없이 반환', async () => {
+    const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
+    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, status: 'FINAL' };
+    vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
+
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+
+    const result = await fetchRoadmapVersion(ROADMAP_ID);
+
+    expect(result).toEqual(mockRoadmap);
+  });
+
+  it('CONSULTANT_APPROVED + 프로젝트 없음 → null 반환', async () => {
+    const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
+    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, status: 'DRAFT' };
+    vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // projects 조회 → null
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchRoadmapVersion(ROADMAP_ID);
+
+    expect(result).toBeNull();
+  });
+
+  it('USER_PENDING 역할 → null 반환', async () => {
+    const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
+    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, status: 'DRAFT' };
+    vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
+
+    serverMock.addResult({ data: { role: 'USER_PENDING', status: 'ACTIVE' }, error: null });
+
+    const result = await fetchRoadmapVersion(ROADMAP_ID);
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('fetchProjectInfo — 에러/엣지 케이스', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role이 null → 사용자 정보 없음 에러', async () => {
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchProjectInfo(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('사용자 정보');
+  });
+
+  it('프로젝트 미존재 → error 반환', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await fetchProjectInfo(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('프로젝트');
+  });
+
+  it('OPS_ADMIN → 프로젝트 배정 검증 없이 정상 반환', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { company_name: '운영사 기업', assigned_consultant_id: USER_B_ID },
+      error: null,
+    });
+
+    const result = await fetchProjectInfo(PROJECT_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.companyName).toBe('운영사 기업');
+  });
+
+  it('USER_PENDING 역할 → 접근 권한 에러', async () => {
+    serverMock.addResult({ data: { role: 'USER_PENDING', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { company_name: '기업', assigned_consultant_id: USER_A_ID },
+      error: null,
+    });
+
+    const result = await fetchProjectInfo(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('권한');
+  });
+
+  it('예외 발생 → catch 블록에서 에러 반환', async () => {
+    // auth 자체가 throw하도록 설정
+    vi.mocked(createClient).mockRejectedValueOnce(new Error('connection failed'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await fetchProjectInfo(PROJECT_ID);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('조회');
+    consoleSpy.mockRestore();
+  });
+});

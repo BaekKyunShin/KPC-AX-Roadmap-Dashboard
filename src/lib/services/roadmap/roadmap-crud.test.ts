@@ -224,6 +224,36 @@ describe('finalizeRoadmap', () => {
 
     await expect(finalizeRoadmap('roadmap-9', 'user-9')).resolves.toBeUndefined();
   });
+
+  it('company_name이 null이면 알림 메시지에 "(알 수 없는 기업)"을 사용한다', async () => {
+    mock.setRpcResult({
+      data: { success: true, project_id: 'proj-null-name', version_number: 1 },
+      error: null,
+    });
+    mock.setProjectQueryResult({
+      data: { company_name: null, is_test_mode: false },
+      error: null,
+    });
+
+    await finalizeRoadmap('roadmap-10', 'user-10');
+
+    expect(createNotificationForAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('(알 수 없는 기업)'),
+      })
+    );
+  });
+
+  it('RPC success: false이고 error 필드가 없으면 기본 메시지로 throw한다', async () => {
+    mock.setRpcResult({
+      data: { success: false },
+      error: null,
+    });
+
+    await expect(finalizeRoadmap('roadmap-11', 'user-11')).rejects.toThrow(
+      '로드맵 확정에 실패했습니다.'
+    );
+  });
 });
 
 // ─── fetchRoadmapVersions ─────────────────────────────────────────────────

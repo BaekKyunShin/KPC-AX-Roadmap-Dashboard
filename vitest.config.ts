@@ -18,6 +18,7 @@ export default defineConfig({
         'src/app/**/actions/*.ts',
         'src/components/**/*.tsx',
         'src/hooks/**/*.ts',
+        'src/app/api/**/route.ts',
       ],
       exclude: [
         'node_modules/',
@@ -30,10 +31,10 @@ export default defineConfig({
         '**/index.ts',
       ],
       thresholds: {
-        lines: 70,
-        branches: 55,
-        functions: 60,
-        statements: 70,
+        lines: 82,
+        branches: 72,
+        functions: 80,
+        statements: 82,
       },
     },
   },

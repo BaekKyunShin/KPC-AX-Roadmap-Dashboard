@@ -47,6 +47,28 @@ describe('showErrorToast', () => {
 
     expect(toast.error).toHaveBeenCalledWith('에러', undefined);
   });
+
+  it('매우 긴 title도 그대로 전달된다', () => {
+    const longTitle = '오류: ' + 'A'.repeat(500);
+    showErrorToast(longTitle);
+
+    expect(toast.error).toHaveBeenCalledWith(longTitle, undefined);
+  });
+
+  it('매우 긴 description도 그대로 전달된다', () => {
+    const longDescription = '상세: ' + 'B'.repeat(500);
+    showErrorToast('에러', longDescription);
+
+    expect(toast.error).toHaveBeenCalledWith('에러', { description: longDescription });
+  });
+
+  it('특수문자가 포함된 에러 메시지도 정상 전달된다', () => {
+    showErrorToast('저장 실패!', '프로젝트 "AI 기초"의 <업데이트>가 실패하였습니다.');
+
+    expect(toast.error).toHaveBeenCalledWith('저장 실패!', {
+      description: '프로젝트 "AI 기초"의 <업데이트>가 실패하였습니다.',
+    });
+  });
 });
 
 // ─── showSuccessToast ──────────────────────────────────────────────────────

@@ -427,4 +427,39 @@ describe('updateProjectStatusIfNeeded', () => {
     const updateChain = supabase._chains()[1];
     expect(updateChain.update).toHaveBeenCalledWith({ status: 'MATCH_RECOMMENDED' });
   });
+
+  it('ASSIGNED → MATCH_RECOMMENDED 전이 불가 시 update 스킵', async () => {
+    const supabase = createSequentialSupabase([
+      { data: { status: 'ASSIGNED' } },
+    ]);
+
+    await updateProjectStatusIfNeeded(supabase as never, projectId);
+
+    // ASSIGNED는 MATCH_RECOMMENDED로 전이 불가 → update 호출 안 함
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('MATCH_RECOMMENDED → MATCH_RECOMMENDED 동일 상태 전이 불가 시 update 스킵', async () => {
+    const supabase = createSequentialSupabase([
+      { data: { status: 'MATCH_RECOMMENDED' } },
+    ]);
+
+    await updateProjectStatusIfNeeded(supabase as never, projectId);
+
+    // 이미 MATCH_RECOMMENDED 상태이면 전이 불가 → update 호출 안 함
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── filterValidRecommendations — 빈 validCandidateIds ───
+
+describe('filterValidRecommendations — 빈 validCandidateIds', () => {
+  it('validCandidateIds가 빈 배열이면 모든 추천이 필터링된다', () => {
+    const recommendations: LLMMatchingResponse['recommendations'] = [
+      { userId: 'user-a', score: 90, analysis: '분석A', strengths: ['강점'], considerations: ['고려'] },
+    ];
+
+    const result = filterValidRecommendations(recommendations, []);
+    expect(result).toHaveLength(0);
+  });
 });

@@ -634,6 +634,72 @@ describe('generateTestRoadmap', () => {
   });
 });
 
+// ─── AbortSignal 취소 / LLM 에러 전파 ────────────────────────────────────────
+
+describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('AbortSignal이 취소되면 callLLMForJSON 에러가 그대로 전파된다', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM 호출이 취소되었습니다.'));
+
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      generateRoadmap('project-1', 'user-1', undefined, false, controller.signal)
+    ).rejects.toThrow('LLM 호출이 취소되었습니다.');
+  });
+
+  it('callLLMForJSON 타임아웃 에러가 throw된다', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockRejectedValue(
+      new Error('LLM API 호출 타임아웃 (240초 초과)')
+    );
+
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('타임아웃');
+  });
+
+  it('callLLMForJSON 토큰 한도 초과 에러가 throw된다', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockRejectedValue(
+      new Error('LLM 응답이 토큰 한도에 도달하여 잘렸습니다.')
+    );
+
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('토큰 한도');
+  });
+
+  it('callLLMForJSON JSON 파싱 실패 에러가 throw된다', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM JSON 파싱 실패'));
+
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('파싱');
+  });
+});
+
+// ─── generateTestRoadmap — AbortSignal 취소 ──────────────────────────────────
+
+describe('generateTestRoadmap — AbortSignal 취소', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('AbortSignal이 취소되면 에러가 전파된다', async () => {
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
+    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM 호출이 취소되었습니다.'));
+
+    const controller = new AbortController();
+    controller.abort();
+
+    const input = createTestInput();
+    await expect(
+      generateTestRoadmap(input, 'user-1', null, undefined, controller.signal)
+    ).rejects.toThrow('취소되었습니다.');
+  });
+});
+
 // ─── reviseTestRoadmap ──────────────────────────────────────────────────────
 
 describe('reviseTestRoadmap', () => {

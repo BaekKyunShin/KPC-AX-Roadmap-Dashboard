@@ -256,6 +256,90 @@ describe('createAssessmentToken', () => {
       expect(result.error!.length).toBeGreaterThan(0);
     }
   });
+
+  it('NEXT_PUBLIC_APP_URL 환경변수 설정 시 해당 URL 기반으로 링크 생성', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
+
+    try {
+      mockAuthResult.mockResolvedValue({
+        user: { id: TEST_USER_ID, email: 'admin@test.com' },
+        supabase: adminMock.client,
+        role: 'OPS_ADMIN',
+        status: 'ACTIVE',
+      });
+
+      adminMock.addResult({
+        data: { id: TEST_PROJECT_ID, status: 'NEW', company_name: '테스트 기업' },
+        error: null,
+      });
+      adminMock.addResult({ data: null, error: null });
+      adminMock.addResult({ data: null, error: null });
+
+      const result = await createAssessmentToken(validTokenFormData());
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.url).toContain('https://app.example.com/assessment/');
+      }
+    } finally {
+      if (originalUrl === undefined) {
+        delete process.env.NEXT_PUBLIC_APP_URL;
+      } else {
+        process.env.NEXT_PUBLIC_APP_URL = originalUrl;
+      }
+    }
+  });
+
+  it('DIAGNOSED 상태 프로젝트 → NEW 아님 error 반환', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: 'admin@test.com' },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: { id: TEST_PROJECT_ID, status: 'DIAGNOSED', company_name: '테스트 기업' },
+      error: null,
+    });
+
+    const result = await createAssessmentToken(validTokenFormData());
+
+    expect(result).toEqual({
+      success: false,
+      error: '진단 링크는 NEW 상태의 프로젝트에서만 생성할 수 있습니다.',
+    });
+  });
+
+  it('기존 미사용 토큰 무효화 후 새 토큰 생성 — expiresAt이 미래 날짜', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: 'admin@test.com' },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: { id: TEST_PROJECT_ID, status: 'NEW', company_name: '테스트 기업' },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // 기존 토큰 무효화
+    adminMock.addResult({ data: null, error: null }); // 새 토큰 insert
+
+    const before = Date.now();
+    const result = await createAssessmentToken(validTokenFormData());
+    const after = Date.now();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const expiresAt = new Date(result.data.expiresAt).getTime();
+      // 14일 후 만료 확인 (±5초 허용)
+      const expectedExpiry = before + 14 * 24 * 60 * 60 * 1000;
+      expect(expiresAt).toBeGreaterThanOrEqual(expectedExpiry - 5000);
+      expect(expiresAt).toBeLessThanOrEqual(after + 14 * 24 * 60 * 60 * 1000 + 5000);
+    }
+  });
 });
 
 // ─── getLatestToken ──────────────────────────────────────────────────────────
@@ -326,5 +410,58 @@ describe('getLatestToken', () => {
       usedAt: null,
       createdAt: '2026-03-01T00:00:00Z',
     });
+  });
+
+  it('이미 사용된 토큰 조회 → isUsed=true + usedAt 포함', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: 'admin@test.com' },
+      supabase: adminMock.client,
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: {
+        id: 'token-used',
+        token: 'used-token-hex',
+        expires_at: '2026-03-10T00:00:00Z',
+        is_used: true,
+        used_at: '2026-03-05T09:00:00Z',
+        created_at: '2026-03-01T00:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await getLatestToken(TEST_PROJECT_ID);
+
+    expect(result).not.toBeNull();
+    expect(result?.isUsed).toBe(true);
+    expect(result?.usedAt).toBe('2026-03-05T09:00:00Z');
+  });
+
+  it('SYSTEM_ADMIN도 토큰 조회 가능', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: 'admin@test.com' },
+      supabase: adminMock.client,
+      role: 'SYSTEM_ADMIN',
+      status: 'ACTIVE',
+    });
+
+    adminMock.addResult({
+      data: {
+        id: 'token-sys',
+        token: 'sys-token',
+        expires_at: '2026-04-15T00:00:00Z',
+        is_used: false,
+        used_at: null,
+        created_at: '2026-03-15T00:00:00Z',
+      },
+      error: null,
+    });
+
+    const result = await getLatestToken(TEST_PROJECT_ID);
+
+    expect(result).not.toBeNull();
+    expect(result?.token).toBe('sys-token');
   });
 });

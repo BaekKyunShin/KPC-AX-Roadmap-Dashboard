@@ -89,6 +89,60 @@ describe('fetchAuditLogs', () => {
       }),
     );
   });
+
+  it('OPS_ADMIN 역할 — 날짜 범위 필터 전달', async () => {
+    const mockAuth = {
+      user: { id: 'u1', email: 'a@b.com' },
+      supabase: {},
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    };
+    vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
+    vi.mocked(fetchAuditLogsService).mockResolvedValue({
+      logs: [],
+      total: 0,
+      page: 1,
+      limit: 50,
+      totalPages: 0,
+    });
+
+    await fetchAuditLogs({
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+      targetType: 'project',
+    });
+
+    expect(fetchAuditLogsService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentUserRole: 'OPS_ADMIN',
+        startDate: '2026-01-01',
+        endDate: '2026-01-31',
+        targetType: 'project',
+      }),
+    );
+  });
+
+  it('필터 없이 기본 호출 — fetchAuditLogsService가 currentUserRole 포함', async () => {
+    const mockAuth = {
+      user: { id: 'u1', email: 'a@b.com' },
+      supabase: {},
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    };
+    vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
+    vi.mocked(fetchAuditLogsService).mockResolvedValue({
+      logs: [{ id: 'log-1' } as never],
+      total: 1,
+      page: 1,
+      limit: 50,
+      totalPages: 1,
+    });
+
+    const result = await fetchAuditLogs();
+
+    expect(fetchAuditLogsService).toHaveBeenCalledTimes(1);
+    expect(result.total).toBe(1);
+  });
 });
 
 // ─── fetchAllAuditLogs ──────────────────────────────────────────────────────
@@ -189,6 +243,72 @@ describe('fetchAllAuditLogs', () => {
     expect(result.logs).toHaveLength(10000);
     // while 조건: allLogs.length < 10000 → 10번 * 1000 = 10000 → 조건 불만족 → 종료
     expect(fetchAuditLogsService).toHaveBeenCalledTimes(10);
+  });
+
+  it('OPS_ADMIN 역할 — fetchAllAuditLogs에서 currentUserRole 전달', async () => {
+    const mockAuth = {
+      user: { id: 'u1', email: 'a@b.com' },
+      supabase: {},
+      role: 'OPS_ADMIN',
+      status: 'ACTIVE',
+    };
+    vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
+    vi.mocked(fetchAuditLogsService)
+      .mockResolvedValueOnce({
+        logs: Array(5).fill({ id: '1' }),
+        total: 5,
+        page: 1,
+        limit: 1000,
+        totalPages: 1,
+      })
+      .mockResolvedValueOnce({
+        logs: [],
+        total: 5,
+        page: 2,
+        limit: 1000,
+        totalPages: 1,
+      });
+
+    const result = await fetchAllAuditLogs({ action: 'PROJECT_CREATE' });
+
+    expect(fetchAuditLogsService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentUserRole: 'OPS_ADMIN',
+        action: 'PROJECT_CREATE',
+      }),
+    );
+    expect(result.logs).toHaveLength(5);
+    expect(result.total).toBe(5);
+  });
+
+  it('fetchAllAuditLogs — 첫 페이지 결과로 total 설정', async () => {
+    const mockAuth = {
+      user: { id: 'u1', email: 'a@b.com' },
+      supabase: {},
+      role: 'SYSTEM_ADMIN',
+      status: 'ACTIVE',
+    };
+    vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
+    vi.mocked(fetchAuditLogsService)
+      .mockResolvedValueOnce({
+        logs: Array(3).fill({ id: '1' }),
+        total: 3,
+        page: 1,
+        limit: 1000,
+        totalPages: 1,
+      })
+      .mockResolvedValueOnce({
+        logs: [],
+        total: 3,
+        page: 2,
+        limit: 1000,
+        totalPages: 1,
+      });
+
+    const result = await fetchAllAuditLogs();
+
+    // total은 첫 페이지 결과에서 가져옴
+    expect(result.total).toBe(3);
   });
 });
 

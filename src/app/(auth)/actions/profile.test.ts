@@ -338,3 +338,150 @@ describe('fetchConsultantProfile', () => {
     expect(mockSelectEq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 });
+
+// ─── 에러/엣지 케이스 ─────────────────────────────────────────────────────
+
+describe('updateConsultantProfile — 에러/엣지 케이스', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockEq.mockReturnValue({ error: null });
+    setupValidSafeParse();
+    insertReturnValue = { error: null };
+  });
+
+  it('Zod 검증 실패 → 에러 반환', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockGetCachedProfile.mockResolvedValue({ status: 'ACTIVE', role: 'CONSULTANT_APPROVED' });
+    setupInvalidSafeParse('전문 분야를 선택해주세요.');
+
+    const result = await updateConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('전문 분야를 선택해주세요.');
+    }
+  });
+
+  it('admin update 실패 → 에러 반환', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockGetCachedProfile.mockResolvedValue({ status: 'ACTIVE', role: 'CONSULTANT_APPROVED' });
+    mockEq.mockReturnValue({ error: { message: 'update failed' } });
+
+    const result = await updateConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('수정');
+    }
+  });
+
+  it('예외 발생 → catch 블록에서 에러 반환', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockGetCachedProfile.mockResolvedValue({ status: 'ACTIVE', role: 'CONSULTANT_APPROVED' });
+    // update()가 throw하도록 설정
+    mockUpdate.mockImplementation(() => {
+      throw new Error('unexpected db error');
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await updateConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('수정');
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('getCachedProfile이 null 반환 시 정상 수정 가능 (상태 체크 통과)', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockGetCachedProfile.mockResolvedValue(null);
+    // 이전 테스트에서 mockUpdate가 throw하도록 설정된 것을 해제
+    mockUpdate.mockImplementation((..._args: unknown[]) => ({ eq: mockEq }));
+    mockEq.mockReturnValue({ error: null });
+
+    const result = await updateConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(true);
+    expect(mockUpdate).toHaveBeenCalled();
+  });
+});
+
+describe('saveConsultantProfile — 에러/엣지 케이스', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    setupValidSafeParse();
+    insertReturnValue = { error: null };
+  });
+
+  it('getUser 에러 반환 시 → 세션 만료 에러', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'auth error' } });
+
+    const result = await saveConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('로그인');
+    }
+  });
+
+  it('예외 발생 → catch 블록에서 에러 반환', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    // insert()가 throw하도록 설정
+    mockInsert.mockImplementation(() => {
+      throw new Error('unexpected error');
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await saveConsultantProfile(createMockFormData());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('저장');
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('revalidateTag 호출 확인 (성공 시)', async () => {
+    const { revalidateTag } = await import('next/cache');
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+
+    await saveConsultantProfile(createMockFormData());
+
+    expect(revalidateTag).toHaveBeenCalled();
+  });
+});
+
+describe('fetchConsultantProfile — 에러/엣지 케이스', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('getUser 에러 반환 시 → 세션 만료 에러', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'session expired' } });
+
+    const result = await fetchConsultantProfile();
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('로그인');
+    }
+  });
+
+  it('예외 발생 → catch 블록에서 에러 반환', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    // single()이 throw하도록 설정
+    mockSingle.mockImplementation(() => {
+      throw new Error('unexpected error');
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await fetchConsultantProfile();
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('조회');
+    }
+    consoleSpy.mockRestore();
+  });
+});

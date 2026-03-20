@@ -247,6 +247,35 @@ describe('createProject', () => {
     // sub_industries 파싱 실패해도 프로젝트 생성 진행됨
     expect(result.success).toBe(true);
   });
+
+  it('sub_industries 빈 문자열 → 빈 배열로 처리 후 undefined 전달', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    adminMock.addResult({ data: { id: 'proj-empty-sub' }, error: null });
+
+    const fd = validProjectFormData();
+    fd.set('sub_industries', '');
+
+    const result = await createProject(fd);
+
+    // 빈 문자열은 JSON.parse 시도 안 함 → subIndustries=[] → undefined로 처리
+    expect(result.success).toBe(true);
+  });
+
+  it('sub_industries 유효한 JSON 배열 → 프로젝트 생성에 포함', async () => {
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    adminMock.addResult({ data: { id: 'proj-with-sub' }, error: null });
+
+    const fd = validProjectFormData();
+    fd.set('sub_industries', JSON.stringify(['반도체', '자동차']));
+
+    const result = await createProject(fd);
+
+    expect(result.success).toBe(true);
+    // insert에 sub_industries가 포함됨
+    expect(adminMock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ sub_industries: ['반도체', '자동차'] }),
+    );
+  });
 });
 
 // ─── assignConsultant ───────────────────────────────────────────────────────
@@ -384,6 +413,48 @@ describe('assignConsultant', () => {
         action: 'PROJECT_ASSIGN',
         success: false,
         errorMessage: 'fk_violation',
+      }),
+    );
+  });
+
+  it('RPC 결과가 null이고 error도 null → success:false로 처리', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    // data=null, error=null → rpcResult 없음 → { success: false } 처리
+    vi.mocked(adminMock.client.rpc).mockReturnValueOnce(
+      { data: null, error: null } as never,
+    );
+
+    const result = await assignConsultant(validAssignFormData());
+
+    expect(result.success).toBe(false);
+    // rpcError=null이고 rpcResult도 null → errorDetail='배정 실패'
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'PROJECT_ASSIGN',
+        success: false,
+      }),
+    );
+  });
+
+  it('after() 콜백: 프로젝트 company_name null → 기본 메시지 사용', async () => {
+    const { createNotification } = await import('@/lib/services/notification');
+
+    serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
+    vi.mocked(adminMock.client.rpc).mockReturnValueOnce(
+      { data: { success: true }, error: null } as never,
+    );
+    // after() 콜백: 프로젝트 company_name 조회 → null
+    adminMock.addResult({ data: null, error: null });
+
+    await assignConsultant(validAssignFormData());
+    await flushAfterCallbacks();
+
+    // company_name이 null이면 '새' 프로젝트로 메시지 생성
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('새'),
       }),
     );
   });
