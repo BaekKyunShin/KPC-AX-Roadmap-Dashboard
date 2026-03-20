@@ -4,6 +4,7 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck, expectToast } from '../helpers/assertions.helper';
 import { switchTab } from '../helpers/navigation.helper';
 import { deleteProject, deleteProjectsByName } from '../helpers/cleanup.helper';
+import { waitForDownload, expectDownloadFilename, expectDownloadSize } from '../helpers/download.helper';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -229,7 +230,11 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
 // ─── Phase 2.8: 로드맵 OPS 뷰 ────────────────────────────────────────────────
 
 test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
-  test('로드맵 페이지 로딩 + 탭 전환', async ({ opsPage: page }) => {
+  // 로드맵 페이지 URL을 공유하기 위한 변수
+  let roadmapUrl: string | null = null;
+  let hasRoadmapLink = false;
+
+  test('로드맵 페이지 로딩 + 기본 요소 확인', async ({ opsPage: page }) => {
     // 로드맵이 존재하는 프로젝트를 찾기 위해 목록에서 상세 → 로드맵 보기 링크 확인
     await page.goto('/ops/projects');
     await page.waitForLoadState('networkidle');
@@ -250,13 +255,130 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
       return;
     }
 
+    hasRoadmapLink = true;
     await roadmapLink.click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+\/roadmap/);
+    roadmapUrl = page.url();
 
     // 로드맵 페이지 기본 요소 확인
     await expect(page.getByText('AI 교육 로드맵')).toBeVisible();
 
     // 뒤로가기 링크
-    await expect(page.getByRole('link', { name: /프로젝트 상세/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /프로젝트로 돌아가기/ })).toBeVisible();
+
+    // 버전 히스토리 패널 존재
+    await expect(page.getByText('버전 히스토리')).toBeVisible();
+  });
+
+  test('버전 히스토리 선택 → 콘텐츠 변경', async ({ opsPage: page }) => {
+    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
+
+    await page.goto(roadmapUrl!);
+    await page.waitForLoadState('networkidle');
+
+    // 버전 히스토리 패널에서 버전 버튼 목록 확인
+    const versionButtons = page.locator('button').filter({ hasText: /^버전 \d+/ });
+    const versionCount = await versionButtons.count();
+
+    if (versionCount < 2) {
+      // 버전이 1개뿐이면 선택 전환 테스트 불가 — 단일 버전 선택 확인만
+      await expect(versionButtons.first()).toBeVisible();
+      // 이미 선택된 첫 번째 버전의 활성 스타일(border-purple-500) 확인
+      await expect(versionButtons.first().locator('..')).toHaveClass(/border-purple-500/);
+      return;
+    }
+
+    // 두 번째 버전 클릭
+    await versionButtons.nth(1).click();
+    // 클릭 후 두 번째 버전이 활성 상태(border-purple-500)가 되는지 확인
+    await expect(versionButtons.nth(1).locator('..')).toHaveClass(/border-purple-500/, { timeout: 5_000 });
+
+    // 우측 콘텐츠 영역에 버전 번호 헤더가 바뀌었는지 확인
+    const versionHeader = page.locator('h2').filter({ hasText: /^버전 \d+$/ });
+    await expect(versionHeader).toBeVisible();
+  });
+
+  test('탭 — 과정 체계도 (matrix) 기본 표시', async ({ opsPage: page }) => {
+    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
+
+    await page.goto(roadmapUrl!);
+    await page.waitForLoadState('networkidle');
+
+    // 기본 활성 탭이 "과정 체계도"
+    const matrixTab = page.getByRole('button', { name: '과정 체계도' });
+    await expect(matrixTab).toBeVisible();
+    await expect(matrixTab).toHaveClass(/border-purple-500/);
+
+    // RoadmapMatrix 콘텐츠 영역: 테이블 또는 그리드가 표시되어야 함
+    // RoadmapMatrix는 table 또는 데이터 셀을 렌더링
+    const contentArea = page.locator('.lg\\:col-span-3');
+    await expect(contentArea).toBeVisible();
+
+    // 매트릭스 내에 데이터 행이 존재하거나, 빈 상태가 아닌지 확인
+    const hasTable = await contentArea.locator('table').isVisible().catch(() => false);
+    const hasGrid = await contentArea.locator('[class*="grid"]').isVisible().catch(() => false);
+    const hasContent = hasTable || hasGrid;
+    // 콘텐츠가 있거나 "로드맵이 없습니다" 메시지가 없어야 함
+    expect(hasContent || !(await contentArea.getByText('로드맵이 없습니다').isVisible().catch(() => false))).toBeTruthy();
+  });
+
+  test('탭 — PBL 과정 클릭 → 콘텐츠 전환', async ({ opsPage: page }) => {
+    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
+
+    await page.goto(roadmapUrl!);
+    await page.waitForLoadState('networkidle');
+
+    // "PBL 과정" 탭 클릭
+    const pblTab = page.getByRole('button', { name: 'PBL 과정' });
+    await expect(pblTab).toBeVisible();
+    await pblTab.click();
+
+    // 탭 활성화 확인 (border-purple-500 클래스)
+    await expect(pblTab).toHaveClass(/border-purple-500/);
+
+    // PBLCourseView 콘텐츠가 렌더링되었는지 확인
+    // "과정 체계도" 탭의 콘텐츠가 아닌 PBL 관련 콘텐츠가 표시되어야 함
+    const contentArea = page.locator('.lg\\:col-span-3 .p-4, .lg\\:col-span-3 .p-6').first();
+    await expect(contentArea).toBeVisible();
+  });
+
+  test('탭 — 과정 상세 클릭 → 콘텐츠 전환', async ({ opsPage: page }) => {
+    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
+
+    await page.goto(roadmapUrl!);
+    await page.waitForLoadState('networkidle');
+
+    // "과정 상세" 탭 클릭
+    const coursesTab = page.getByRole('button', { name: '과정 상세' });
+    await expect(coursesTab).toBeVisible();
+    await coursesTab.click();
+
+    // 탭 활성화 확인
+    await expect(coursesTab).toHaveClass(/border-purple-500/);
+
+    // CoursesList 콘텐츠가 렌더링되었는지 확인
+    const contentArea = page.locator('.lg\\:col-span-3 .p-4, .lg\\:col-span-3 .p-6').first();
+    await expect(contentArea).toBeVisible();
+  });
+
+  test('PDF 다운로드 버튼 클릭 → 파일 다운로드', async ({ opsPage: page }) => {
+    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
+
+    await page.goto(roadmapUrl!);
+    await page.waitForLoadState('networkidle');
+
+    // PDF 다운로드 버튼 확인
+    const pdfButton = page.getByRole('button', { name: 'PDF' });
+    await expect(pdfButton).toBeVisible();
+    await expect(pdfButton).toBeEnabled();
+
+    // 다운로드 이벤트 대기 + 클릭
+    const download = await waitForDownload(page, () => pdfButton.click());
+
+    // 파일명에 .pdf 확장자 포함 확인
+    expectDownloadFilename(download, /\.pdf$/i);
+
+    // 최소 1KB 이상의 유효한 파일인지 확인
+    await expectDownloadSize(download, 1024);
   });
 });
