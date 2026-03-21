@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ConsultantProgressTable from './ConsultantProgressTable';
 import type { ConsultantProgress } from '../actions';
 
@@ -8,8 +8,8 @@ import type { ConsultantProgress } from '../actions';
 // ============================================================================
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({ children, href, ...props }: any) => (
+    <a href={href} {...props}>{children}</a>
   ),
 }));
 
@@ -37,6 +37,10 @@ const fewConsultants: ConsultantProgress[] = [
 // ============================================================================
 
 describe('ConsultantProgressTable', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------

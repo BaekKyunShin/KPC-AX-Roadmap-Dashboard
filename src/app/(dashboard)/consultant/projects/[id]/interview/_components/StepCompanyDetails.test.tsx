@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StepCompanyDetails from './StepCompanyDetails';
 import type { CompanyDetails } from '@/lib/schemas/interview';
 
@@ -33,6 +33,10 @@ function makeCompanyDetails(overrides?: Partial<CompanyDetails>): CompanyDetails
 // =============================================================================
 
 describe('StepCompanyDetails', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // -------------------------------------------------------------------------
   // 1. 기본 렌더링
   // -------------------------------------------------------------------------

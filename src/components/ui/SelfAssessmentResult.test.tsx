@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹
@@ -37,6 +37,10 @@ function makeScores(overrides?: Partial<SelfAssessmentScores>): SelfAssessmentSc
 // =============================================================================
 
 describe('SelfAssessmentResult', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('종합 점수 영역', () => {
     it('총점을 표시한다', () => {
       render(<SelfAssessmentResult scores={makeScores()} />);

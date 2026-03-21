@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹
@@ -45,6 +45,10 @@ import { StatusDistributionChart } from './StatusDistributionChart';
 // =============================================================================
 
 describe('StatusDistributionChart', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('빈 상태', () => {
     it('total이 0이면 "배정된 프로젝트가 없습니다." 메시지를 표시한다', () => {
       render(<StatusDistributionChart byStatus={{}} total={0} />);

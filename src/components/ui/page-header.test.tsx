@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹 (최상단에 배치)
@@ -48,6 +48,10 @@ import React from 'react';
 // =============================================================================
 
 describe('PageHeader', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('title을 h1 태그로 렌더링한다', () => {
       render(<PageHeader title="프로젝트 관리" />);

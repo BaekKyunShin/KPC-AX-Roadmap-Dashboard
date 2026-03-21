@@ -78,6 +78,7 @@ import HeroSection from './HeroSection';
 
 describe('HeroSection', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
   });
 

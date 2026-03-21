@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QuestionInput } from './QuestionInputs';
 import type { Question } from './types';
 import { SCALE_5_LABELS } from './constants';
@@ -44,6 +44,10 @@ function renderInput(overrides: {
 // ============================================================================
 
 describe('QuestionInput', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('점수 버튼 렌더링', () => {
     it('1~5점 버튼을 모두 표시한다', () => {
       renderInput();

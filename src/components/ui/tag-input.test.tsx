@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as React from 'react';
 
 // =============================================================================
@@ -51,6 +51,10 @@ function setup(value: string[] = [], onChange = vi.fn(), props = {}) {
 // =============================================================================
 
 describe('TagInput', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('텍스트 입력 필드가 렌더링된다', () => {
       setup();

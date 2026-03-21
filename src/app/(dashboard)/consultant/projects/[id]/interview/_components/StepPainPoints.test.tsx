@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StepPainPoints from './StepPainPoints';
 import type { PainPoint } from '@/lib/schemas/interview';
 
@@ -35,6 +35,10 @@ function makePainPoint(overrides?: Partial<PainPoint>): PainPoint {
 // =============================================================================
 
 describe('StepPainPoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // -------------------------------------------------------------------------
   // 1. 기본 렌더링
   // -------------------------------------------------------------------------

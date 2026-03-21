@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -30,6 +30,10 @@ import WorkflowSection from './WorkflowSection';
 // ============================================================================
 
 describe('WorkflowSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('섹션 기본 렌더링', () => {
     it('워크플로우 섹션이 렌더링된다', () => {
       render(<WorkflowSection />);

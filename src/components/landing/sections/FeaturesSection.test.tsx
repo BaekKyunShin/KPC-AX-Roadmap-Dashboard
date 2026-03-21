@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -41,6 +41,10 @@ import FeaturesSection from './FeaturesSection';
 // ============================================================================
 
 describe('FeaturesSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('섹션 헤더', () => {
     it('섹션이 렌더링된다', () => {
       render(<FeaturesSection />);

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -71,6 +71,10 @@ import FooterSection from './FooterSection';
 // ============================================================================
 
 describe('FooterSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('CTA 섹션', () => {
     it('"지금 시작하세요" 제목을 표시한다', () => {
       render(<FooterSection />);

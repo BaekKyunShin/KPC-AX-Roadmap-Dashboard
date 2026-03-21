@@ -46,6 +46,7 @@ function renderOverlay(
 
 describe('RoadmapLoadingOverlay', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.useFakeTimers();
   });
 

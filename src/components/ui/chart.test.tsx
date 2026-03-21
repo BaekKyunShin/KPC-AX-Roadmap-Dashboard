@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 
 // ============================================================================
@@ -48,6 +48,10 @@ const mockConfig: ChartConfig = {
 // ============================================================================
 
 describe('ChartContainer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('data-slot="chart" 속성을 가진 div를 렌더링한다', () => {
       render(

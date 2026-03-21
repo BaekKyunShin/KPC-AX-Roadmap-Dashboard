@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ProjectManagementTabs from './ProjectManagementTabs';
 
 // ============================================================================
@@ -58,6 +58,10 @@ vi.mock('next/link', () => ({
 // ============================================================================
 
 describe('ProjectManagementTabs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------

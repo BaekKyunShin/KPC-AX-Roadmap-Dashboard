@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -16,6 +16,10 @@ import { AuroraBackground } from './AuroraBackground';
 // ============================================================================
 
 describe('AuroraBackground', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('컴포넌트가 렌더링된다', () => {
       const { container } = render(<AuroraBackground />);

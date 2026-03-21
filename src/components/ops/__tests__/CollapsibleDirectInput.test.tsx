@@ -18,6 +18,7 @@ const mockTemplate = {
 
 describe('CollapsibleDirectInput', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     render(<CollapsibleDirectInput projectId="proj-1" template={mockTemplate} />);
   });
 

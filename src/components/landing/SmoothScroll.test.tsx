@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -41,6 +41,10 @@ import SmoothScroll from './SmoothScroll';
 // ============================================================================
 
 describe('SmoothScroll', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('children 패스스루', () => {
     it('children이 렌더링된다', () => {
       render(

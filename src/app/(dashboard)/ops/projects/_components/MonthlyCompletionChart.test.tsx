@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MonthlyCompletionChart from './MonthlyCompletionChart';
 import type { MonthlyCompletion } from '../actions';
 
@@ -35,6 +35,10 @@ const mockData: MonthlyCompletion[] = [
 // ============================================================================
 
 describe('MonthlyCompletionChart', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------

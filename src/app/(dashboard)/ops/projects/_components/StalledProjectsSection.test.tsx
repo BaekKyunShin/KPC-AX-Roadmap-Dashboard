@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StalledProjectsSection from './StalledProjectsSection';
 import type { StalledProject } from '../actions';
 
@@ -55,6 +55,10 @@ const unassignedProject: StalledProject[] = [
 // ============================================================================
 
 describe('StalledProjectsSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------

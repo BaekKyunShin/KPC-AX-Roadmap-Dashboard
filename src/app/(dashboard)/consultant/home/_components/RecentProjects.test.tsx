@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹
@@ -57,6 +57,10 @@ function makeProject(overrides: Partial<RecentProjectItem> = {}): RecentProjectI
 // =============================================================================
 
 describe('RecentProjects', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('빈 상태', () => {
     it('projects가 비어있으면 안내 메시지를 표시한다', () => {
       render(<RecentProjects projects={[]} />);

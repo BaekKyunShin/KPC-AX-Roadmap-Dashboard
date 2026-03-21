@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MiniStepper from './MiniStepper';
 import type { ProjectStatus } from '@/types/database';
 
@@ -41,6 +41,10 @@ function renderStepper(
 // ============================================================================
 
 describe('MiniStepper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 단계 시각화 (dot 개수)
   // --------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StatusDistributionChart from './StatusDistributionChart';
 import type { ProjectStats } from '../actions';
 
@@ -49,6 +49,10 @@ const singleStatusStats: ProjectStats = {
 // ============================================================================
 
 describe('StatusDistributionChart', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // --------------------------------------------------------------------------
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹 (최상단)
@@ -50,6 +50,10 @@ const answers: AssessmentAnswer[] = [
 // =============================================================================
 
 describe('AssessmentDetailAccordion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('빈 데이터', () => {
     it('answers가 빈 배열이면 렌더링하지 않는다', () => {
       const { container } = render(

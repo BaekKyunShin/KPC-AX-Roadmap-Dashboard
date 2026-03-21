@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PendingApprovalCard from './PendingApprovalCard';
 
 // =============================================================================
@@ -17,6 +17,10 @@ vi.mock('next/link', () => ({
 // =============================================================================
 
 describe('PendingApprovalCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('공통 렌더링', () => {
     it('승인 대기 중 제목을 표시한다', () => {
       render(<PendingApprovalCard userName="테스트" userRole="CONSULTANT" />);

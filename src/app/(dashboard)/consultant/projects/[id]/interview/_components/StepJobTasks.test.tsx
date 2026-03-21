@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StepJobTasks from './StepJobTasks';
 import type { JobTask } from '@/lib/schemas/interview';
 
@@ -34,6 +34,10 @@ function makeTask(overrides?: Partial<JobTask>): JobTask {
 // =============================================================================
 
 describe('StepJobTasks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // -------------------------------------------------------------------------
   // 1. 기본 렌더링
   // -------------------------------------------------------------------------

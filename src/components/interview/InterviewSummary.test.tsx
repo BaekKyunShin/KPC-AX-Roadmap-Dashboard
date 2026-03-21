@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InterviewSummary, toInterviewSummaryProps } from './InterviewSummary';
 import type { InterviewSummaryProps } from './InterviewSummary';
 
@@ -64,6 +64,10 @@ function makeEmptyProps(): InterviewSummaryProps {
 // =============================================================================
 
 describe('InterviewSummary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('전체 데이터 렌더링', () => {
     it('시스템/AI 활용 경험 섹션을 표시한다', () => {
       render(<InterviewSummary {...makeFullProps()} />);

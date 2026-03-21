@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StepSummary from './StepSummary';
 import type {
   InterviewParticipant,
@@ -143,6 +143,10 @@ const DEFAULT_PROPS = {
 // =============================================================================
 
 describe('StepSummary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('헤더 및 안내 텍스트', () => {
     it('제목 "입력 내용 확인"을 표시한다', () => {
       render(<StepSummary {...DEFAULT_PROPS} />);

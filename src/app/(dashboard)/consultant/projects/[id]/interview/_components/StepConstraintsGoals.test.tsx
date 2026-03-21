@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import StepConstraintsGoals from './StepConstraintsGoals';
 import type { Constraint, ImprovementGoal, SttInsights } from '@/lib/schemas/interview';
 
@@ -62,6 +62,10 @@ const DEFAULT_PROPS = {
 // =============================================================================
 
 describe('StepConstraintsGoals', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // -------------------------------------------------------------------------
   // 1. 기본 렌더링
   // -------------------------------------------------------------------------

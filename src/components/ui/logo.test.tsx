@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹
@@ -40,6 +40,10 @@ import { Logo, LogoBadge } from './logo';
 // ============================================================================
 
 describe('Logo', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('이미지 요소를 렌더링한다', () => {
       render(<Logo />);

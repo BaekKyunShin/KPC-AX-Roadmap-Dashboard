@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
 // 모킹 — 하위 섹션 컴포넌트 경량 모킹
@@ -42,6 +42,10 @@ import LandingPage from './LandingPage';
 // ============================================================================
 
 describe('LandingPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('기본 렌더링', () => {
     it('LandingPage가 렌더링된다', () => {
       render(<LandingPage />);

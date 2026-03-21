@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // =============================================================================
 // 모킹
@@ -68,6 +68,10 @@ function makeActivity(overrides: Partial<RecentActivityItem> = {}): RecentActivi
 // =============================================================================
 
 describe('RecentActivity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('빈 상태', () => {
     it('activities가 비어있으면 안내 메시지를 표시한다', () => {
       render(<RecentActivity activities={[]} />);

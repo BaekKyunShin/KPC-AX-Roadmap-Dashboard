@@ -1,15 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({ children, href, ...props }: any) => (
+    <a href={href} {...props}>{children}</a>
   ),
 }));
 
 import NotFound from './not-found';
 
 describe('NotFound (404 페이지)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('404 상태 코드를 표시한다', () => {
     render(<NotFound />);
     expect(screen.getByText('404')).toBeInTheDocument();
