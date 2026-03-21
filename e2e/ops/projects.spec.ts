@@ -251,9 +251,9 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
 
     // "로드맵 보기" 링크가 있는 경우에만 테스트 진행
     const roadmapLink = page.getByRole('link', { name: '로드맵 보기' });
-    const hasRoadmapLink = await roadmapLink.isVisible().catch(() => false);
+    const isRoadmapVisible = await roadmapLink.isVisible().catch(() => false);
     // 로드맵이 생성되지 않은 프로젝트이면 로드맵 뷰 테스트 불가
-    test.skip(!hasRoadmapLink, '테스트 데이터 없음: 로드맵 보기 링크가 없습니다');
+    test.skip(!isRoadmapVisible, '테스트 데이터 없음: 로드맵 보기 링크가 없습니다');
 
     hasRoadmapLink = true;
     await roadmapLink.click();
