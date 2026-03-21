@@ -8,7 +8,7 @@
  * - submitPublicAssessment: 전체 커버리지 (토큰 만료, 기존 진단, 템플릿, INSERT, after 등)
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { submitPublicAssessment } from './actions';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
@@ -146,10 +146,17 @@ describe('submitPublicAssessment - is_used 토큰 메시지 구분', () => {
 // ─── 전체 커버리지 테스트 (L74-185) ─────────────────────────────────────────
 
 describe('submitPublicAssessment - 전체 커버리지', () => {
-  /** Happy path 결과 큐 세팅 헬퍼 */
-  function setupHappyPath(adminMock: ReturnType<typeof createMockSupabase>) {
-    // 1) 토큰 조회: 유효, is_used=false, 미래 만료
-    adminMock.addResult({
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    adminMock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+
+  /** 유효한 토큰 결과 */
+  function validTokenResult() {
+    return {
       data: {
         id: TEST_TOKEN_ID,
         project_id: TEST_PROJECT_ID,
@@ -157,15 +164,13 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
         is_used: false,
       },
       error: null,
-    });
+    };
+  }
 
-    // 2) 기존 진단 조회: 없음
-    adminMock.addResult({
-      data: null,
-      error: null,
-    });
-
-    // 3) 템플릿 조회: 성공
+  /** Happy path 결과 큐 세팅 헬퍼 */
+  function setupHappyPath() {
+    adminMock.addResult(validTokenResult());
+    adminMock.addResult({ data: null, error: null }); // 기존 진단: 없음
     adminMock.addResult({
       data: {
         version: 1,
@@ -175,34 +180,17 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
         ],
       },
       error: null,
-    });
-
-    // 4) INSERT: 성공
-    adminMock.addResult({ data: null, error: null });
-
-    // 5) 토큰 update (is_used): 성공
-    adminMock.addResult({ data: null, error: null });
-
-    // 6) 프로젝트 update (status): 성공
-    adminMock.addResult({ data: null, error: null });
-
-    // 7) after() 블록 내: 프로젝트 조회 (company_name)
-    adminMock.addResult({
-      data: { company_name: '테스트 주식회사' },
-      error: null,
-    });
+    }); // 템플릿
+    adminMock.addResult({ data: null, error: null }); // INSERT
+    adminMock.addResult({ data: null, error: null }); // 토큰 update
+    adminMock.addResult({ data: null, error: null }); // 프로젝트 update
+    adminMock.addResult({ data: { company_name: '테스트 주식회사' }, error: null }); // after() 프로젝트 조회
   }
 
-  // 1. 정상 경로 (happy path)
+  // 1. 정상 경로
   it('유효 토큰 + 유효 답변 → INSERT 성공 → success: true', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    setupHappyPath(adminMock);
-
+    setupHappyPath();
     const result = await submitPublicAssessment(validFormData());
-
     expect(result).toEqual({ success: true });
   });
 
@@ -212,11 +200,6 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
     vi.setSystemTime(new Date('2026-03-20T12:00:00Z'));
 
     try {
-      const { createAdminClient } = await import('@/lib/supabase/admin');
-      const adminMock = createMockSupabase();
-      vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-      // 토큰: 유효하지만 1시간 전에 만료됨
       adminMock.addResult({
         data: {
           id: TEST_TOKEN_ID,
@@ -228,7 +211,6 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
       });
 
       const result = await submitPublicAssessment(validFormData());
-
       expect(result).toEqual({
         success: false,
         error: '링크가 만료되었습니다. 담당자에게 새 링크를 요청해 주세요.',
@@ -240,100 +222,43 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
 
   // 3. 기존 진단 (TOKEN 소스)
   it('기존 진단 존재 (토큰 제출) → "이미 진단 결과를 제출하셨습니다."', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    // 1) 토큰 조회: 유효
+    adminMock.addResult(validTokenResult());
     adminMock.addResult({
-      data: {
-        id: TEST_TOKEN_ID,
-        project_id: TEST_PROJECT_ID,
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-        is_used: false,
-      },
-      error: null,
-    });
-
-    // 2) 기존 진단: assessment_token_id 존재
-    adminMock.addResult({
-      data: {
-        id: 'existing-assessment-id',
-        assessment_token_id: 'some-token-uuid',
-      },
+      data: { id: 'existing-assessment-id', assessment_token_id: 'some-token-uuid' },
       error: null,
     });
 
     const result = await submitPublicAssessment(validFormData());
-
     expect(result).toEqual({
       success: false,
       error: '이미 진단 결과를 제출하셨습니다.',
     });
   });
 
-  // 4. 기존 진단 (OPS 수동 입력 - assessment_token_id: null)
-  it('기존 진단 존재 (OPS 수동 입력, token_id=null) → 운영 담당자 입력 완료 메시지', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    // 1) 토큰 조회: 유효
+  // 4. 기존 진단 (OPS 수동 입력)
+  it('기존 진단 존재 (OPS 수동, token_id=null) → 운영 담당자 입력 완료 메시지', async () => {
+    adminMock.addResult(validTokenResult());
     adminMock.addResult({
-      data: {
-        id: TEST_TOKEN_ID,
-        project_id: TEST_PROJECT_ID,
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-        is_used: false,
-      },
-      error: null,
-    });
-
-    // 2) 기존 진단: assessment_token_id = null (OPS 수동)
-    adminMock.addResult({
-      data: {
-        id: 'existing-assessment-id',
-        assessment_token_id: null,
-      },
+      data: { id: 'existing-assessment-id', assessment_token_id: null },
       error: null,
     });
 
     const result = await submitPublicAssessment(validFormData());
-
     expect(result).toEqual({
       success: false,
       error: '진단 결과를 이미 KPC 운영 담당자가 입력 완료했습니다.',
     });
   });
 
-  // 5. 기존 진단 (방어: assessment_token_id = undefined)
+  // 5. 기존 진단 (방어: undefined)
   it('기존 진단 존재 (방어, token_id=undefined) → 운영 담당자 입력 완료 메시지', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    // 1) 토큰 조회: 유효
+    adminMock.addResult(validTokenResult());
     adminMock.addResult({
-      data: {
-        id: TEST_TOKEN_ID,
-        project_id: TEST_PROJECT_ID,
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-        is_used: false,
-      },
-      error: null,
-    });
-
-    // 2) 기존 진단: assessment_token_id = undefined (방어 케이스)
-    adminMock.addResult({
-      data: {
-        id: 'existing-assessment-id',
-        assessment_token_id: undefined,
-      },
+      data: { id: 'existing-assessment-id', assessment_token_id: undefined },
       error: null,
     });
 
     const result = await submitPublicAssessment(validFormData());
-
     expect(result).toEqual({
       success: false,
       error: '진단 결과를 이미 KPC 운영 담당자가 입력 완료했습니다.',
@@ -342,29 +267,11 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
 
   // 6. 템플릿 미존재
   it('템플릿 미존재 → 템플릿 찾을 수 없음 에러', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    // 1) 토큰 조회: 유효
-    adminMock.addResult({
-      data: {
-        id: TEST_TOKEN_ID,
-        project_id: TEST_PROJECT_ID,
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-        is_used: false,
-      },
-      error: null,
-    });
-
-    // 2) 기존 진단: 없음
-    adminMock.addResult({ data: null, error: null });
-
-    // 3) 템플릿: 없음
-    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult(validTokenResult());
+    adminMock.addResult({ data: null, error: null }); // 기존 진단 없음
+    adminMock.addResult({ data: null, error: null }); // 템플릿 없음
 
     const result = await submitPublicAssessment(validFormData());
-
     expect(result).toEqual({
       success: false,
       error: '템플릿을 찾을 수 없습니다.',
@@ -375,25 +282,8 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
   it('INSERT 실패 → 진단 저장 실패 에러 + console.error 호출', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    // 1) 토큰 조회: 유효
-    adminMock.addResult({
-      data: {
-        id: TEST_TOKEN_ID,
-        project_id: TEST_PROJECT_ID,
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-        is_used: false,
-      },
-      error: null,
-    });
-
-    // 2) 기존 진단: 없음
-    adminMock.addResult({ data: null, error: null });
-
-    // 3) 템플릿: 성공
+    adminMock.addResult(validTokenResult());
+    adminMock.addResult({ data: null, error: null }); // 기존 진단 없음
     adminMock.addResult({
       data: {
         version: 1,
@@ -403,20 +293,11 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
         ],
       },
       error: null,
-    });
-
-    // 4) INSERT: 실패
-    adminMock.addResult({
-      data: null,
-      error: { message: 'DB error' },
-    });
+    }); // 템플릿
+    adminMock.addResult({ data: null, error: { message: 'DB error' } }); // INSERT 실패
 
     const result = await submitPublicAssessment(validFormData());
-
-    expect(result).toEqual({
-      success: false,
-      error: '진단 저장에 실패했습니다.',
-    });
+    expect(result).toEqual({ success: false, error: '진단 저장에 실패했습니다.' });
     expect(consoleSpy).toHaveBeenCalledWith(
       '[submitPublicAssessment] Supabase error:',
       'DB error'
@@ -425,15 +306,9 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
 
   // 8. 토큰 is_used 업데이트 검증
   it('성공 시 토큰 is_used=true 업데이트 호출 검증', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    setupHappyPath(adminMock);
-
+    setupHappyPath();
     await submitPublicAssessment(validFormData());
 
-    // update 호출 검증: assessment_tokens 테이블에 is_used 업데이트
     const updateCalls = adminMock.chainable.update.mock.calls;
     expect(updateCalls).toContainEqual([
       { is_used: true, used_at: expect.any(String) },
@@ -442,42 +317,25 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
 
   // 9. 프로젝트 상태 전이 검증
   it('성공 시 프로젝트 상태 NEW→DIAGNOSED 전이 호출 검증', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    setupHappyPath(adminMock);
-
+    setupHappyPath();
     await submitPublicAssessment(validFormData());
 
-    // update 호출 검증: projects 테이블에 status 업데이트
     const updateCalls = adminMock.chainable.update.mock.calls;
     expect(updateCalls).toContainEqual([{ status: 'DIAGNOSED' }]);
 
-    // eq 호출에서 status=NEW 조건 검증
     const eqCalls = adminMock.chainable.eq.mock.calls;
     expect(eqCalls).toContainEqual(['status', 'NEW']);
   });
 
   // 10. after() 블록 검증: 감사로그 + 알림
   it('성공 시 after() 블록에서 감사로그 + 알림 호출 검증', async () => {
-    const { createAdminClient } = await import('@/lib/supabase/admin');
     const { createAuditLog } = await import('@/lib/services/audit');
-    const { createNotificationForAdmins } = await import(
-      '@/lib/services/notification'
-    );
+    const { createNotificationForAdmins } = await import('@/lib/services/notification');
 
-    const adminMock = createMockSupabase();
-    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
-
-    setupHappyPath(adminMock);
-
+    setupHappyPath();
     await submitPublicAssessment(validFormData());
-
-    // after() 콜백 실행
     await flushAfterCallbacks();
 
-    // 감사로그 호출 검증
     expect(createAuditLog).toHaveBeenCalledWith({
       actorUserId: null,
       action: 'PUBLIC_SELF_ASSESSMENT_CREATE',
@@ -490,7 +348,6 @@ describe('submitPublicAssessment - 전체 커버리지', () => {
       },
     });
 
-    // 알림 호출 검증
     expect(createNotificationForAdmins).toHaveBeenCalledWith({
       type: 'assessment_submitted',
       title: '자가진단 완료',

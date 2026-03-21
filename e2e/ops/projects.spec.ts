@@ -167,8 +167,10 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
     const maxSteps = 10; // 안전 장치
 
     while (stepCount < maxSteps) {
+      // 현재 스텝의 질문 블록이 렌더링될 때까지 대기
+      await expect(page.locator('[id^="question-"]').first()).toBeVisible({ timeout: 5_000 });
+
       // 현재 스텝의 모든 질문에 3점("보통이다") 선택
-      // QuestionInput은 5개 버튼(1~5)으로 구성, 3번째 버튼(3점)을 클릭
       const questionBlocks = page.locator('[id^="question-"]');
       const count = await questionBlocks.count();
 

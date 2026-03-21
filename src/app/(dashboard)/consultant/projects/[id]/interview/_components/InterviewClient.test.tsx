@@ -345,28 +345,33 @@ describe('InterviewClient', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 5. 최종 저장 성공
+  // 5-6. 최종 저장 (성공/실패) — fake timers 공유
   // -------------------------------------------------------------------------
-  describe('최종 저장 성공', () => {
-    it('필수 데이터가 충족된 상태에서 "저장" 클릭 시 saveInterview가 호출되고 성공 토스트가 표시된다', async () => {
+  describe('최종 저장', () => {
+    beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
+    /** 스텝 6까지 이동하는 헬퍼 */
+    async function navigateToLastStep(user: ReturnType<typeof userEvent.setup>) {
+      for (let i = 0; i < 5; i++) {
+        await user.click(screen.getByRole('button', { name: /다음/ }));
+      }
+    }
+
+    it('필수 데이터 충족 → "저장" 클릭 → saveInterview 호출 + 성공 토스트 + 리다이렉트', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const initialData = makeFullInitialInterview();
       mockSaveInterview.mockResolvedValue({ success: true });
 
       render(<InterviewClient projectId={TEST_PROJECT_ID} initialInterview={initialData} />);
+      await navigateToLastStep(user);
 
-      // 스텝 6까지 이동
-      for (let i = 0; i < 5; i++) {
-        await user.click(screen.getByRole('button', { name: /다음/ }));
-      }
-
-      // 저장 버튼이 활성화되어 있어야 함
       const saveButton = screen.getByRole('button', { name: /저장/ });
       expect(saveButton).not.toBeDisabled();
-
-      // 저장 클릭
       await user.click(saveButton);
 
       await waitFor(() => {
@@ -382,83 +387,47 @@ describe('InterviewClient', () => {
         );
       });
 
-      // 성공 토스트 확인
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('저장 완료', '인터뷰가 성공적으로 저장되었습니다.');
       });
-
-      // 성공 메시지 표시
       expect(screen.getByText('인터뷰가 저장되었습니다.')).toBeInTheDocument();
 
-      // 리다이렉트 (1초 후)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1100);
       });
       expect(mockPush).toHaveBeenCalledWith(`/consultant/projects/${TEST_PROJECT_ID}`);
       expect(mockRefresh).toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
-  });
 
-  // -------------------------------------------------------------------------
-  // 6. 최종 저장 실패
-  // -------------------------------------------------------------------------
-  describe('최종 저장 실패', () => {
-    it('saveInterview가 에러를 반환하면 에러 토스트가 표시된다', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
+    it('saveInterview 에러 반환 → 에러 토스트 + 리다이렉트 없음', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-
       const initialData = makeFullInitialInterview();
       mockSaveInterview.mockResolvedValue({ success: false, error: '서버 오류가 발생했습니다.' });
 
       render(<InterviewClient projectId={TEST_PROJECT_ID} initialInterview={initialData} />);
-
-      // 스텝 6까지 이동
-      for (let i = 0; i < 5; i++) {
-        await user.click(screen.getByRole('button', { name: /다음/ }));
-      }
-
-      // 저장 클릭
+      await navigateToLastStep(user);
       await user.click(screen.getByRole('button', { name: /저장/ }));
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('저장 실패', '서버 오류가 발생했습니다.');
       });
-
-      // 에러 메시지 표시
       expect(screen.getByText('서버 오류가 발생했습니다.')).toBeInTheDocument();
-
-      // 리다이렉트가 일어나지 않아야 함
       expect(mockPush).not.toHaveBeenCalled();
-
-      vi.useRealTimers();
     });
 
-    it('saveInterview가 예외를 throw하면 일반 에러 메시지가 표시된다', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
+    it('saveInterview 예외 throw → 일반 에러 메시지', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-
       const initialData = makeFullInitialInterview();
       mockSaveInterview.mockRejectedValue(new Error('네트워크 오류'));
 
       render(<InterviewClient projectId={TEST_PROJECT_ID} initialInterview={initialData} />);
-
-      // 스텝 6까지 이동
-      for (let i = 0; i < 5; i++) {
-        await user.click(screen.getByRole('button', { name: /다음/ }));
-      }
-
-      // 저장 클릭
+      await navigateToLastStep(user);
       await user.click(screen.getByRole('button', { name: /저장/ }));
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('저장 실패', '서버와 통신 중 오류가 발생했습니다.');
       });
-
       expect(screen.getByText('저장에 실패했습니다.')).toBeInTheDocument();
-
-      vi.useRealTimers();
     });
   });
 
@@ -493,9 +462,8 @@ describe('InterviewClient', () => {
   // 8. 빈 데이터에서 최종 저장 시도 (handleSubmit validation)
   // -------------------------------------------------------------------------
   describe('빈 데이터에서 최종 저장 시도', () => {
-    it('빈 데이터에서 handleSubmit 호출 시 에러 토스트가 표시되고 saveInterview는 호출되지 않는다', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    it('빈 데이터에서 저장 버튼이 disabled이다', async () => {
+      const user = userEvent.setup();
 
       render(<InterviewClient projectId={TEST_PROJECT_ID} initialInterview={null} />);
 
@@ -504,12 +472,8 @@ describe('InterviewClient', () => {
         await user.click(screen.getByRole('button', { name: /다음/ }));
       }
 
-      // 저장 버튼이 disabled이므로 직접 클릭은 불가
-      // 저장 버튼이 disabled인지 확인
       const saveButton = screen.getByRole('button', { name: /저장/ });
       expect(saveButton).toBeDisabled();
-
-      vi.useRealTimers();
     });
   });
 });
