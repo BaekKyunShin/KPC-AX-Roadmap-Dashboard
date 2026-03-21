@@ -23,7 +23,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "analyze": "ANALYZE=true next build --webpack"
+    "analyze": "ANALYZE=true next build --webpack",
+    "lighthouse:ci": "lhci autorun",
+    "test:perf": "playwright test --project=performance"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -59,6 +61,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@lhci/cli": "^0.15.1",
     "@next/bundle-analyzer": "^15.0.0",
     "@playwright/test": "^1.58.1",
     "@tailwindcss/postcss": "^4",

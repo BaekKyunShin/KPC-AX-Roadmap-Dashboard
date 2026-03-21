@@ -40,6 +40,7 @@ export default defineConfig({
         '**/visual/**',
         '**/accessibility/**',
         '**/mobile/**',
+        '**/performance/**',
       ],
     },
     {
@@ -56,6 +57,7 @@ export default defineConfig({
         '**/visual/**',
         '**/accessibility/**',
         '**/mobile/**',
+        '**/performance/**',
       ],
     },
     {
@@ -72,6 +74,11 @@ export default defineConfig({
       name: 'accessibility',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/accessibility/**',
+    },
+    {
+      name: 'performance',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/performance/**',
     },
   ],
 });
