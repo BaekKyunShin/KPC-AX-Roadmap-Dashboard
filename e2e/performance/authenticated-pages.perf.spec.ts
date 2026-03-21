@@ -8,6 +8,8 @@ const THRESHOLDS = {
   LCP_MAX_MS: 3500,
   /** TTFB 최대 허용 시간 (ms) — 인증 처리 포함으로 공개 페이지보다 넉넉하게 */
   TTFB_MAX_MS: 1500,
+  /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */
+  CLS_MAX: 0.1,
 } as const;
 
 /** Navigation Timing API에서 TTFB를 계산합니다. */
@@ -16,6 +18,27 @@ async function measureTTFB(page: Page): Promise<number> {
     const [nav] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
     if (!nav) return -1;
     return nav.responseStart - nav.requestStart;
+  });
+}
+
+/** CLS(Cumulative Layout Shift)를 PerformanceObserver로 측정합니다. */
+async function measureCLS(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    return new Promise<number>((resolve) => {
+      let clsValue = 0;
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (!(entry as any).hadRecentInput) {
+            clsValue += (entry as any).value;
+          }
+        }
+      });
+      observer.observe({ type: 'layout-shift', buffered: true });
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(clsValue);
+      }, 3000);
+    });
   });
 }
 
@@ -94,6 +117,18 @@ test.describe('인증 페이지 성능 측정 (운영관리자)', () => {
           `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`,
         ).toBeLessThan(THRESHOLDS.LCP_MAX_MS);
       });
+
+      test(`CLS가 ${THRESHOLDS.CLS_MAX} 미만이어야 한다`, async ({ opsPage }) => {
+        await opsPage.goto(경로, { waitUntil: 'networkidle' });
+
+        const cls = await measureCLS(opsPage);
+
+        console.log(`[운영관리자/${이름}] CLS: ${cls.toFixed(4)}`);
+        expect(
+          cls,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+        ).toBeLessThan(THRESHOLDS.CLS_MAX);
+      });
     });
   }
 });
@@ -133,6 +168,18 @@ test.describe('인증 페이지 성능 측정 (컨설턴트)', () => {
           lcp,
           `${이름} LCP(${lcp.toFixed(1)}ms)가 임계값(${THRESHOLDS.LCP_MAX_MS}ms)을 초과합니다`,
         ).toBeLessThan(THRESHOLDS.LCP_MAX_MS);
+      });
+
+      test(`CLS가 ${THRESHOLDS.CLS_MAX} 미만이어야 한다`, async ({ consultantPage }) => {
+        await consultantPage.goto(경로, { waitUntil: 'networkidle' });
+
+        const cls = await measureCLS(consultantPage);
+
+        console.log(`[컨설턴트/${이름}] CLS: ${cls.toFixed(4)}`);
+        expect(
+          cls,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+        ).toBeLessThan(THRESHOLDS.CLS_MAX);
       });
     });
   }

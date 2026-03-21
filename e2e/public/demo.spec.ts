@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 
 test.describe('Phase 1.2: 데모 페이지 (/demo)', () => {
+  test.describe.configure({ mode: 'parallel' });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo');
   });

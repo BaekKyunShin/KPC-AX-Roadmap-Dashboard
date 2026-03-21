@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 
 test.describe('Phase 1.1: 랜딩 페이지 (/)', () => {
+  test.describe.configure({ mode: 'parallel' });
+
   test('페이지 정상 로딩 + 콘솔 에러 없음', async ({ page }) => {
     const getErrors = setupConsoleErrorCheck(page);
     await page.goto('/');

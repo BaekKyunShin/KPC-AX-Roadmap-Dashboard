@@ -9,6 +9,8 @@ const THRESHOLDS = {
   TTFB_MAX_MS: 1000,
   /** 페이지당 JS 리소스 전체 transferSize 합계 최대값 (bytes) — 500KB */
   JS_BUNDLE_MAX_BYTES: 500 * 1024,
+  /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */
+  CLS_MAX: 0.1,
 } as const;
 
 /** Navigation Timing API에서 TTFB를 계산합니다. */
@@ -56,6 +58,27 @@ async function getLCP(page: Page): Promise<number> {
           resolve(fcp ? fcp.startTime : -1);
         }
       }, 5000);
+    });
+  });
+}
+
+/** CLS(Cumulative Layout Shift)를 PerformanceObserver로 측정합니다. */
+async function measureCLS(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    return new Promise<number>((resolve) => {
+      let clsValue = 0;
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (!(entry as any).hadRecentInput) {
+            clsValue += (entry as any).value;
+          }
+        }
+      });
+      observer.observe({ type: 'layout-shift', buffered: true });
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(clsValue);
+      }, 3000);
     });
   });
 }
@@ -124,6 +147,18 @@ test.describe('공개 페이지 성능 측정', () => {
           jsBundleBytes,
           `${이름} JS 번들(${jsBundleKB}KB)이 예산(${THRESHOLDS.JS_BUNDLE_MAX_BYTES / 1024}KB)을 초과합니다`,
         ).toBeLessThan(THRESHOLDS.JS_BUNDLE_MAX_BYTES);
+      });
+
+      test(`CLS가 ${THRESHOLDS.CLS_MAX} 미만이어야 한다`, async ({ page }) => {
+        await page.goto(경로, { waitUntil: 'networkidle' });
+
+        const cls = await measureCLS(page);
+
+        console.log(`[${이름}] CLS: ${cls.toFixed(4)}`);
+        expect(
+          cls,
+          `${이름} CLS(${cls.toFixed(4)})가 임계값(${THRESHOLDS.CLS_MAX})을 초과합니다`,
+        ).toBeLessThan(THRESHOLDS.CLS_MAX);
       });
     });
   }

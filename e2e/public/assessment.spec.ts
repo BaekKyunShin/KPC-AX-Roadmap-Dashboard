@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 
 test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
+  test.describe.configure({ mode: 'parallel' });
+
   test('유효하지 않은 토큰 → 404 페이지', async ({ page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 

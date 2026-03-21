@@ -61,6 +61,17 @@ export default defineConfig({
       ],
     },
     {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testIgnore: [
+        '**/ops/logout.spec.ts',
+        '**/visual/**',
+        '**/accessibility/**',
+        '**/mobile/**',
+        '**/performance/**',
+      ],
+    },
+    {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 5'] },
       testMatch: '**/mobile/**',
@@ -69,16 +80,19 @@ export default defineConfig({
       name: 'visual',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/visual/**',
+      fullyParallel: true,
     },
     {
       name: 'accessibility',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/accessibility/**',
+      fullyParallel: true,
     },
     {
       name: 'performance',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/performance/**',
+      fullyParallel: true,
     },
   ],
 });
