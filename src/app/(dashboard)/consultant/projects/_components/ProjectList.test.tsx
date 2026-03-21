@@ -1,6 +1,7 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 
 // =============================================================================
 // 모킹
@@ -19,22 +20,6 @@ const mockFetchConsultantProjectFilters = vi.fn();
 vi.mock('../actions', () => ({
   fetchConsultantProjects: (...args: unknown[]) => mockFetchConsultantProjects(...args),
   fetchConsultantProjectFilters: (...args: unknown[]) => mockFetchConsultantProjectFilters(...args),
-}));
-
-vi.mock('next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode;
-    href: string;
-    className?: string;
-  }) => (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  ),
 }));
 
 vi.mock('@/hooks/useDebounce', () => ({

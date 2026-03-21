@@ -1,26 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import RoadmapLoadingOverlay from './RoadmapLoadingOverlay';
-
-// ============================================================================
-// next/link 모킹
-// ============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({
-    children,
-    href,
-    ...props
-  }: {
-    children: React.ReactNode;
-    href: string;
-    [key: string]: unknown;
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
 
 // ============================================================================
 // 헬퍼

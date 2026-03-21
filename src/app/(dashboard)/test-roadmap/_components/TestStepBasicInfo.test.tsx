@@ -40,7 +40,7 @@ vi.mock('@/components/ui/tag-input', () => ({
 vi.mock('@/components/ui/select', () => ({
   Select: ({
     value,
-    onValueChange,
+    onValueChange: _onValueChange,
     children,
   }: {
     value: string;
@@ -59,7 +59,7 @@ vi.mock('@/components/ui/select', () => ({
   ),
   SelectContent: ({
     children,
-    onValueChange,
+    onValueChange: _onValueChange,
   }: {
     children: React.ReactNode;
     onValueChange?: (v: string) => void;

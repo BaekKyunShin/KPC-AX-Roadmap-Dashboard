@@ -1,11 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}));
+import '@/test/helpers/mock-next-link';
 
 import NotFound from './not-found';
 

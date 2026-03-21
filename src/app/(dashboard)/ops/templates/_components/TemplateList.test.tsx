@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import type { SelfAssessmentQuestion } from '@/types/database';
 import TemplateList from './TemplateList';
 
@@ -42,12 +43,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     refresh: vi.fn(),
   }),
-}));
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
-  ),
 }));
 
 vi.mock('@/lib/utils/toast', () => ({

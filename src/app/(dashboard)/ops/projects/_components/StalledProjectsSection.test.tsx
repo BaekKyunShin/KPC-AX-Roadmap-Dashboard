@@ -1,17 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import StalledProjectsSection from './StalledProjectsSection';
 import type { StalledProject } from '../actions';
-
-// ============================================================================
-// 모킹
-// ============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
 
 // ============================================================================
 // 테스트 데이터

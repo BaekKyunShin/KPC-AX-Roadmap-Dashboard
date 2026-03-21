@@ -28,8 +28,9 @@ async function measureCLS(page: Page): Promise<number> {
       let clsValue = 0;
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (!(entry as any).hadRecentInput) {
-            clsValue += (entry as any).value;
+          const shift = entry as PerformanceEntry & { hadRecentInput: boolean; value: number };
+          if (!shift.hadRecentInput) {
+            clsValue += shift.value;
           }
         }
       });

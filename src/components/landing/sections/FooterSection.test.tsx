@@ -17,11 +17,7 @@ vi.mock('gsap/ScrollTrigger', () => ({
 }));
 
 // Next.js Link mock
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}));
+import '@/test/helpers/mock-next-link';
 
 // Logo mock
 vi.mock('@/components/ui/logo', () => ({

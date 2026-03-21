@@ -16,6 +16,13 @@ const eslintConfig = defineConfig([
       "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
+  // E2E 테스트 파일: 성능 메트릭 리포팅용 console.log 허용
+  {
+    files: ["e2e/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

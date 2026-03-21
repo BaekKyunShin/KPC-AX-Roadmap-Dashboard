@@ -1,16 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import PendingApprovalCard from './PendingApprovalCard';
-
-// =============================================================================
-// 모킹
-// =============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}));
 
 // =============================================================================
 // 테스트

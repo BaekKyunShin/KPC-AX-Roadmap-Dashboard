@@ -1,25 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 
 // =============================================================================
 // 모킹
 // =============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode;
-    href: string;
-    className?: string;
-  }) => (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  ),
-}));
 
 vi.mock('@/lib/constants/status', () => ({
   CONSULTANT_PROJECT_STATUS_CONFIG: {

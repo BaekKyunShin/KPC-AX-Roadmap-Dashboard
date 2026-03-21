@@ -1,17 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import ConsultantProgressTable from './ConsultantProgressTable';
 import type { ConsultantProgress } from '../actions';
-
-// ============================================================================
-// 모킹 없음 (순수 props 기반 컴포넌트)
-// ============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}));
 
 // ============================================================================
 // 테스트 데이터

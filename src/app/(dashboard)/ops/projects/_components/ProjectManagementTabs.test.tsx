@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import ProjectManagementTabs from './ProjectManagementTabs';
 
 // ============================================================================
@@ -38,19 +39,13 @@ vi.mock('./ProjectDashboard', () => ({
 
 // next/dynamic: 모킹된 컴포넌트를 즉시 반환
 vi.mock('next/dynamic', () => ({
-  default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
+  default: (_importFn: () => Promise<{ default: React.ComponentType }>) => {
     // dynamic import를 동기적으로 처리 — 실제 모킹된 모듈 반환
     const Component = vi.fn().mockImplementation(() => (
       <div data-testid="project-dashboard">진행 현황 대시보드</div>
     ));
     return Component;
   },
-}));
-
-vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
 }));
 
 // ============================================================================

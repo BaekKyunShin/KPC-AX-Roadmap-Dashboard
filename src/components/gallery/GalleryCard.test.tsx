@@ -1,15 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import { GalleryCard } from './GalleryCard';
 import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string; className?: string }) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}));
 
 vi.mock('./LikeButton', () => ({
   LikeButton: ({ roadmapVersionId, initialLiked, initialCount }: {

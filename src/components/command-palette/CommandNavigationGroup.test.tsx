@@ -73,6 +73,7 @@ vi.mock('cmdk', async () => {
 
 import CommandNavigationGroup from './CommandNavigationGroup';
 import type { NavItemWithKeywords } from '@/lib/constants/navigation';
+import type { LucideIcon } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -89,8 +90,7 @@ function makeNavItem(overrides: Partial<NavItemWithKeywords> = {}): NavItemWithK
   return {
     href: '/test',
     label: '테스트 메뉴',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon: makeIcon('icon-test') as any,
+    icon: makeIcon('icon-test') as unknown as LucideIcon,
     keywords: ['테스트'],
     ...overrides,
   };
@@ -152,10 +152,9 @@ describe('CommandNavigationGroup', () => {
     });
 
     it('각 항목에 아이콘 컴포넌트가 렌더링된다', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const items: NavItemWithKeywords[] = [
-        makeNavItem({ href: '/a', label: '메뉴 A', icon: makeIcon('icon-a') as any, keywords: ['A'] }),
-        makeNavItem({ href: '/b', label: '메뉴 B', icon: makeIcon('icon-b') as any, keywords: ['B'] }),
+        makeNavItem({ href: '/a', label: '메뉴 A', icon: makeIcon('icon-a') as unknown as LucideIcon, keywords: ['A'] }),
+        makeNavItem({ href: '/b', label: '메뉴 B', icon: makeIcon('icon-b') as unknown as LucideIcon, keywords: ['B'] }),
       ];
       render(<CommandNavigationGroup navItems={items} onSelect={mockOnSelect} />);
       expect(screen.getByTestId('icon-a')).toBeInTheDocument();

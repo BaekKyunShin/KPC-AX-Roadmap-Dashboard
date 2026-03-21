@@ -1,25 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 
 // =============================================================================
 // 모킹 (최상단에 배치)
 // =============================================================================
-
-vi.mock('next/link', () => ({
-  default: ({
-    href,
-    children,
-    className,
-  }: {
-    href: string;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  ),
-}));
 
 vi.mock('@/components/ui/back-button', () => ({
   BackButton: ({

@@ -1,24 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// ─── Mocks ───────────────────────────────────────────────────────────────────
-
-vi.mock('next/link', () => ({
-  default: ({
-    href,
-    children,
-    className,
-  }: {
-    href: string;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  ),
-}));
+import '@/test/helpers/mock-next-link';
 
 import React from 'react';
 import TestRoadmapNavigation from './TestRoadmapNavigation';

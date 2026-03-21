@@ -122,7 +122,6 @@ describe('CourseEditModal', () => {
     it('준비물 목록을 줄바꿈 형태로 표시한다', () => {
       render(<CourseEditModal {...DEFAULT_PROPS} />);
       // prerequisites: ['PC', '인터넷'] → join('\n') → "PC\n인터넷"
-      const textarea = document.querySelector('textarea[class*="break-keep"]') as HTMLTextAreaElement | null;
       const prerequisiteTextarea = Array.from(document.querySelectorAll('textarea')).find(
         (el) => el.value.includes('PC') && el.value.includes('인터넷')
       );

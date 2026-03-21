@@ -35,23 +35,7 @@ vi.mock('gsap/ScrollTrigger', () => ({
 }));
 
 // Next.js Link 모킹
-vi.mock('next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-    ...props
-  }: {
-    children: React.ReactNode;
-    href: string;
-    className?: string;
-    [key: string]: unknown;
-  }) => (
-    <a href={href} className={className} {...props}>
-      {children}
-    </a>
-  ),
-}));
+import '@/test/helpers/mock-next-link';
 
 // RoadmapMatrix 모킹 (실제 컴포넌트 렌더링 불필요)
 vi.mock('@/components/roadmap/RoadmapMatrix', () => ({

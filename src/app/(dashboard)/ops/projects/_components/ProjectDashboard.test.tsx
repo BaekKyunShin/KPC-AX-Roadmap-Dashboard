@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import ProjectDashboard from './ProjectDashboard';
 import type { ProjectStats, MonthlyCompletion, ConsultantProgress, StalledProject } from '../actions';
 
@@ -36,13 +37,6 @@ vi.mock('recharts', () => ({
   Tooltip: () => null,
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Label: () => null,
-}));
-
-// next/link 모킹
-vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
 }));
 
 // ============================================================================

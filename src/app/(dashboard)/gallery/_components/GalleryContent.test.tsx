@@ -61,7 +61,7 @@ vi.mock('@/hooks/useDebounce', () => ({
 vi.mock('@/components/ui/select', () => ({
   Select: ({
     value,
-    onValueChange,
+    onValueChange: _onValueChange,
     children,
   }: {
     value: string;

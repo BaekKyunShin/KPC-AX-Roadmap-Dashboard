@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@/test/helpers/mock-next-link';
 import ProjectList from './ProjectList';
 import type { ProjectWithTimeline, ProjectFilterOptions } from '../actions';
 
@@ -11,12 +12,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/ops/projects',
-}));
-
-vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
-  ),
 }));
 
 const mockFetchProjectsWithTimeline = vi.fn();
