@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, Library, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,8 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
 
+  const isResettingRef = useRef(false);
+
   const [items, setItems] = useState<GalleryRoadmapItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchInput, setSearchInput] = useState(searchParams.search || '');
@@ -108,6 +110,7 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
 
   // 디바운스된 검색어 변경 시 URL 업데이트
   useEffect(() => {
+    if (isResettingRef.current) return;
     const currentSearch = urlSearchParams.get('search') || '';
     if (debouncedSearch !== currentSearch) {
       updateParams({ search: debouncedSearch });
@@ -126,10 +129,12 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   };
 
   const handleResetFilters = () => {
+    isResettingRef.current = true;
     setSearchInput('');
     setIndustry(DEFAULT_FILTER_VALUE);
     setSort('latest');
     router.push(pathname);
+    setTimeout(() => { isResettingRef.current = false; }, 0);
   };
 
   const hasFilters =

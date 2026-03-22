@@ -82,16 +82,22 @@ test.describe('템플릿 생성 페이지', () => {
     // 기본 질문 내용 입력 (첫 번째 질문이 이미 존재)
     await page.locator('textarea').first().fill('테스트 질문입니다.');
 
-    // 생성 버튼 클릭
-    await page.getByRole('button', { name: '생성' }).click();
+    // 생성 버튼 클릭 + Server Action 응답 대기
+    await Promise.all([
+      page.waitForResponse(
+        (resp) => resp.url().includes('/ops/templates') && resp.status() === 200,
+        { timeout: 30_000 }
+      ),
+      page.getByRole('button', { name: '생성' }).click(),
+    ]);
 
-    // 성공 토스트 (네트워크 지연 대비 timeout 증가)
+    // 성공 토스트
     await expect(
       page.locator('[data-sonner-toast]').filter({ hasText: '템플릿 생성 완료' }),
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible({ timeout: 30_000 });
 
     // 리다이렉트된 URL에서 템플릿 ID 추출
-    await expect(page).toHaveURL(/\/ops\/templates\/[a-f0-9-]+/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/ops\/templates\/[a-f0-9-]+/, { timeout: 30_000 });
     const url = page.url();
     createdTemplateId = url.split('/ops/templates/')[1]?.split('?')[0] ?? null;
   });

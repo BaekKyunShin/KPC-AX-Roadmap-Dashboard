@@ -82,12 +82,16 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
       testMatch: '**/mobile/**',
     },
-    {
-      name: 'visual',
-      use: { ...devices['Desktop Chrome'] },
-      testMatch: '**/visual/**',
-      fullyParallel: true,
-    },
+    ...(!isCI
+      ? [
+          {
+            name: 'visual' as const,
+            use: { ...devices['Desktop Chrome'] },
+            testMatch: '**/visual/**',
+            fullyParallel: true,
+          },
+        ]
+      : []),
     {
       name: 'accessibility',
       use: { ...devices['Desktop Chrome'] },

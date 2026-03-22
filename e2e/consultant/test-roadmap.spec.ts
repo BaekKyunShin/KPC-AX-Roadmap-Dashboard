@@ -73,6 +73,6 @@ test.describe('테스트 로드맵 페이지 — 운영관리자', () => {
     await expect(page.getByRole('heading', { name: '테스트 로드맵' })).toBeVisible({ timeout: 15_000 });
 
     // OPS 관리자용 뒤로가기 링크
-    await expect(page.getByRole('link', { name: /프로젝트 관리로 돌아가기/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /프로젝트 관리로 돌아가기/ })).toBeVisible();
   });
 });

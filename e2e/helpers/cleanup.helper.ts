@@ -41,7 +41,7 @@ export async function restoreUserStatus(
 /** 템플릿 삭제 (복제 테스트 후 정리) */
 export async function deleteTemplate(id: string) {
   const { error } = await supabase
-    .from('assessment_templates')
+    .from('self_assessment_templates')
     .delete()
     .eq('id', id);
   if (error) console.warn(`deleteTemplate(${id}) 실패:`, error.message);
