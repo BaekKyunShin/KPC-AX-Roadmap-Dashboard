@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.test' });
 
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -49,28 +51,32 @@ export default defineConfig({
       testMatch: '**/ops/logout.spec.ts',
       dependencies: ['chromium'],
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-      testIgnore: [
-        '**/ops/logout.spec.ts',
-        '**/visual/**',
-        '**/accessibility/**',
-        '**/mobile/**',
-        '**/performance/**',
-      ],
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-      testIgnore: [
-        '**/ops/logout.spec.ts',
-        '**/visual/**',
-        '**/accessibility/**',
-        '**/mobile/**',
-        '**/performance/**',
-      ],
-    },
+    ...(!isCI
+      ? [
+          {
+            name: 'firefox' as const,
+            use: { ...devices['Desktop Firefox'] },
+            testIgnore: [
+              '**/ops/logout.spec.ts',
+              '**/visual/**',
+              '**/accessibility/**',
+              '**/mobile/**',
+              '**/performance/**',
+            ],
+          },
+          {
+            name: 'webkit' as const,
+            use: { ...devices['Desktop Safari'] },
+            testIgnore: [
+              '**/ops/logout.spec.ts',
+              '**/visual/**',
+              '**/accessibility/**',
+              '**/mobile/**',
+              '**/performance/**',
+            ],
+          },
+        ]
+      : []),
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 5'] },

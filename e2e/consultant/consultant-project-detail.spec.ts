@@ -41,20 +41,14 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     await page.goto(projectDetailUrl!);
     await page.waitForLoadState('networkidle');
 
-    // 기업 정보 카드 헤더 확인
-    await expect(page.getByText('기업 정보')).toBeVisible();
+    // 기업 정보 카드 헤더 → heading role (h2)
+    await expect(page.getByRole('heading', { name: '기업 정보' })).toBeVisible();
 
-    // 회사명 라벨 확인
-    await expect(page.getByText('회사명')).toBeVisible();
-
-    // 업종 라벨 확인
-    await expect(page.getByText('업종', { exact: false })).toBeVisible();
-
-    // 규모 라벨 확인
-    await expect(page.getByText('규모')).toBeVisible();
-
-    // 담당자 라벨 확인
-    await expect(page.getByText('담당자')).toBeVisible();
+    // 라벨들은 dt 태그로 스코핑
+    await expect(page.locator('dt').filter({ hasText: '회사명' })).toBeVisible();
+    await expect(page.locator('dt').filter({ hasText: '업종' })).toBeVisible();
+    await expect(page.locator('dt').filter({ hasText: '규모' })).toBeVisible();
+    await expect(page.locator('dt').filter({ hasText: '담당자' })).toBeVisible();
   });
 
   test('4개 탭 전환 (기업 정보/사전 분석/인터뷰 기록/활동 일지)', async ({

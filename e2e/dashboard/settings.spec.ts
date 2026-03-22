@@ -59,9 +59,9 @@ test.describe('설정 페이지 (/dashboard/settings)', () => {
   });
 
   test('비밀번호 변경 섹션 존재', async ({ opsPage: page }) => {
-    // "비밀번호 변경" 카드 제목 확인
+    // "비밀번호 변경" 카드 제목 확인 (CardTitle은 div[data-slot="card-title"] — heading role 없음)
     await expect(
-      page.getByRole('heading', { name: '비밀번호 변경' }),
+      page.locator('[data-slot="card-title"]').filter({ hasText: '비밀번호 변경' }),
     ).toBeVisible();
 
     // 카드 설명 텍스트 확인
@@ -81,9 +81,9 @@ test.describe('설정 페이지 (/dashboard/settings)', () => {
   });
 
   test('계정 삭제 섹션 존재', async ({ opsPage: page }) => {
-    // "계정 삭제" 카드 제목 확인
+    // "계정 삭제" 카드 제목 확인 (CardTitle은 div[data-slot="card-title"] — heading role 없음)
     await expect(
-      page.getByRole('heading', { name: '계정 삭제' }),
+      page.locator('[data-slot="card-title"]').filter({ hasText: '계정 삭제' }),
     ).toBeVisible();
 
     // 경고 설명 텍스트 확인

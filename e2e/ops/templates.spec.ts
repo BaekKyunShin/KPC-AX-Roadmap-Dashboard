@@ -85,13 +85,13 @@ test.describe('템플릿 생성 페이지', () => {
     // 생성 버튼 클릭
     await page.getByRole('button', { name: '생성' }).click();
 
-    // 성공 토스트
+    // 성공 토스트 (네트워크 지연 대비 timeout 증가)
     await expect(
       page.locator('[data-sonner-toast]').filter({ hasText: '템플릿 생성 완료' }),
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible({ timeout: 15_000 });
 
     // 리다이렉트된 URL에서 템플릿 ID 추출
-    await expect(page).toHaveURL(/\/ops\/templates\/[a-f0-9-]+/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/ops\/templates\/[a-f0-9-]+/, { timeout: 15_000 });
     const url = page.url();
     createdTemplateId = url.split('/ops/templates/')[1]?.split('?')[0] ?? null;
   });

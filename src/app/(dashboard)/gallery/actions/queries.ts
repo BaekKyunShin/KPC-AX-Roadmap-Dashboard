@@ -2,7 +2,7 @@
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
-import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
+import { ilikePattern, sanitizePostgrestFilter } from '@/lib/utils/postgrest-sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
@@ -146,12 +146,24 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     query = query.eq('projects.industry', industry);
   }
 
-  // 검색
+  // 검색 (2단계 쿼리: foreign table 컬럼은 .or()에서 참조 불가 — PGRST100)
   if (search) {
+    const sanitized = sanitizePostgrestFilter(search);
     const p = ilikePattern(search);
-    query = query.or(
-      `diagnosis_summary.ilike.${p},projects.company_name.ilike.${p}`
-    );
+
+    // 1단계: projects 테이블에서 company_name 매칭 id 조회
+    const { data: matchedProjects } = await adminClient
+      .from('projects')
+      .select('id')
+      .ilike('company_name', `%${sanitized}%`);
+
+    const ids = (matchedProjects ?? []).map((r) => r.id);
+
+    if (ids.length > 0) {
+      query = query.or(`diagnosis_summary.ilike.${p},project_id.in.(${ids.join(',')})`);
+    } else {
+      query = query.ilike('diagnosis_summary', p);
+    }
   }
 
   // 정렬

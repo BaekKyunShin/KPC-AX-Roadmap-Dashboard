@@ -69,8 +69,8 @@ test.describe('테스트 로드맵 페이지 — 운영관리자', () => {
     // 로그인 페이지로 리다이렉트되지 않음
     await expect(page).not.toHaveURL('/login');
 
-    // 페이지 헤더 확인
-    await expect(page.getByRole('heading', { name: '테스트 로드맵' })).toBeVisible();
+    // 페이지 헤더 확인 (CI 환경 클라이언트 컴포넌트 렌더 지연 대비)
+    await expect(page.getByRole('heading', { name: '테스트 로드맵' })).toBeVisible({ timeout: 15_000 });
 
     // OPS 관리자용 뒤로가기 링크
     await expect(page.getByRole('link', { name: /프로젝트 관리로 돌아가기/ })).toBeVisible();

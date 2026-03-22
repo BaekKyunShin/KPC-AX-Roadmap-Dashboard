@@ -218,13 +218,46 @@ describe('fetchGalleryRoadmaps', () => {
     expect(adminMock.chainable.eq).toHaveBeenCalledWith('projects.industry', '제조');
   });
 
-  it('search 필터 → or ilike 호출', async () => {
+  it('search 필터 → 2단계 쿼리: projects에서 매칭 id 조회 후 or 필터', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
+    // 1차: projects 테이블에서 company_name 매칭 조회
+    adminMock.addResult({
+      data: [{ id: 'proj-1' }, { id: 'proj-2' }],
+      error: null,
+    });
+    // 2차: 메인 roadmap_versions 쿼리
     adminMock.addResult({ data: [], error: null });
 
     await fetchGalleryRoadmaps({ search: '테스트' });
 
-    expect(adminMock.chainable.or).toHaveBeenCalled();
+    // from('projects')가 첫 번째로 호출되어야 함
+    expect(adminMock.client.from).toHaveBeenCalledWith('projects');
+    // or 필터에 project_id.in 포함
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(
+      expect.stringContaining('project_id.in.'),
+    );
+    // or 필터에 diagnosis_summary.ilike 포함
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(
+      expect.stringContaining('diagnosis_summary.ilike.'),
+    );
+  });
+
+  it('search 필터 → 매칭 프로젝트 없으면 ilike만 호출', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // 1차: projects 테이블 — 매칭 없음
+    adminMock.addResult({ data: [], error: null });
+    // 2차: 메인 roadmap_versions 쿼리
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryRoadmaps({ search: '없는검색어' });
+
+    // or 필터가 호출되지 않아야 함 (project_id.in 없으므로)
+    expect(adminMock.chainable.or).not.toHaveBeenCalled();
+    // 대신 ilike만 호출
+    expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
+      'diagnosis_summary',
+      expect.stringContaining('없는검색어'),
+    );
   });
 
   it('sort=latest → order(created_at, desc)', async () => {
@@ -355,16 +388,24 @@ describe('fetchGalleryRoadmaps', () => {
     expect(adminMock.chainable.eq).toHaveBeenCalledWith('created_by', consultantId);
   });
 
-  it('search에 특수문자 포함 → sanitize 후 ilike 쿼리', async () => {
+  it('search에 특수문자 포함 → sanitize 후 2단계 쿼리', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
+    // 1차: projects 테이블에서 company_name 매칭 조회
+    adminMock.addResult({ data: [{ id: 'proj-x' }], error: null });
+    // 2차: 메인 roadmap_versions 쿼리
     adminMock.addResult({ data: [], error: null });
 
     // 특수문자 포함 검색어
     await fetchGalleryRoadmaps({ search: '테스트%회사.이름' });
 
-    // or 쿼리에 이스케이프된 패턴이 포함되어야 함
+    // projects 테이블 ilike에 sanitize된 패턴 사용
+    expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
+      'company_name',
+      expect.stringContaining('테스트'),
+    );
+    // or 쿼리에 project_id.in 포함
     expect(adminMock.chainable.or).toHaveBeenCalledWith(
-      expect.stringContaining('ilike'),
+      expect.stringContaining('project_id.in.'),
     );
   });
 
