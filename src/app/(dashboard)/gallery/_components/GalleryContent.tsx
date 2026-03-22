@@ -134,7 +134,7 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
     setIndustry(DEFAULT_FILTER_VALUE);
     setSort('latest');
     router.push(pathname);
-    setTimeout(() => { isResettingRef.current = false; }, 0);
+    setTimeout(() => { isResettingRef.current = false; }, 500);
   };
 
   const hasFilters =

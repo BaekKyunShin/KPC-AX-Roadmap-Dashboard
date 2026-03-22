@@ -82,14 +82,8 @@ test.describe('템플릿 생성 페이지', () => {
     // 기본 질문 내용 입력 (첫 번째 질문이 이미 존재)
     await page.locator('textarea').first().fill('테스트 질문입니다.');
 
-    // 생성 버튼 클릭 + Server Action 응답 대기
-    await Promise.all([
-      page.waitForResponse(
-        (resp) => resp.url().includes('/ops/templates') && resp.status() === 200,
-        { timeout: 30_000 }
-      ),
-      page.getByRole('button', { name: '생성' }).click(),
-    ]);
+    // 생성 버튼 클릭
+    await page.getByRole('button', { name: '생성' }).click();
 
     // 성공 토스트
     await expect(

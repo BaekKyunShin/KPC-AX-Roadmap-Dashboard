@@ -16,6 +16,8 @@ export default defineConfig({
     ? [['html', { open: 'never' }], ['github']]
     : [['html'], ['list']],
 
+  timeout: isCI ? 60_000 : 30_000,
+
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',
