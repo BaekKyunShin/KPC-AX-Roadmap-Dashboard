@@ -22,7 +22,7 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     test.skip(!href, '테스트 데이터 없음: 담당 프로젝트가 없습니다');
     projectDetailUrl = href!;
 
-    await page.locator(`main a[href="${href!}"]`).click();
+    await page.locator(`main a[href="${href!}"]`).first().click();
     await page.waitForLoadState('networkidle');
 
     // 프로젝트 상세 페이지 URL 확인

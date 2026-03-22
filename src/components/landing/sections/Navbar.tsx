@@ -134,6 +134,7 @@ function MobileMenu({ isOpen, onClose, isLoggedIn, isAuthChecked }: MobileMenuPr
       className={`md:hidden overflow-hidden ${MOBILE_MENU_TRANSITION} ${
         isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
       }`}
+      data-testid="mobile-menu"
     >
       <div className="bg-white border-t border-gray-200">
         {/* Navigation Links */}
@@ -231,7 +232,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-8" data-testid="desktop-nav">
               {NAV_LINKS.map((link) => (
                 <a
                   key={link.href}
@@ -245,7 +246,7 @@ export default function Navbar() {
             </div>
 
             {/* Desktop CTA */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3" data-testid="desktop-cta">
               {isAuthChecked && (
                 <AuthButtons isLoggedIn={isLoggedIn} variant="desktop" />
               )}
@@ -256,6 +257,7 @@ export default function Navbar() {
               onClick={toggleMobileMenu}
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
               data-cursor-hover
+              data-testid="mobile-menu-button"
               aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
             >
               {isMobileMenuOpen ? (

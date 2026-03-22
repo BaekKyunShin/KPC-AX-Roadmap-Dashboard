@@ -16,9 +16,9 @@ test.describe('컨설턴트 프로필 페이지 (/consultant/profile)', () => {
 
     await waitForPageLoad(page);
 
-    // 프로필 관련 제목 표시 ("프로필 등록" 또는 "프로필 관리")
+    // 프로필 관련 제목 표시 ("프로필 등록" 또는 "프로필 관리") — main 스코핑으로 네비 중복 방지
     await expect(
-      page.getByText(/프로필 (등록|관리)/),
+      page.locator('main').getByText(/프로필 (등록|관리)/),
     ).toBeVisible({ timeout: 10_000 });
 
     expect(getErrors()).toEqual([]);
@@ -41,9 +41,9 @@ test.describe('컨설턴트 프로필 페이지 (/consultant/profile)', () => {
   test('전문분야 필드 표시 — 입력 필드 존재 확인', async ({ consultantPage: page }) => {
     await waitForPageLoad(page);
 
-    // 컨설턴트 프로필 카드 제목 확인
+    // 컨설턴트 프로필 카드 제목 확인 — main 스코핑으로 네비 중복 방지
     await expect(
-      page.getByText(/컨설턴트 프로필/),
+      page.locator('main').getByText(/컨설턴트 프로필/),
     ).toBeVisible({ timeout: 10_000 });
 
     // "소속" 입력 필드 (#affiliation)

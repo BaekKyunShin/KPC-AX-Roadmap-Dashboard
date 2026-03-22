@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
@@ -23,13 +22,9 @@ function shortSizeLabel(size: string): string {
 }
 
 export default async function ConsultantHomePage() {
-  const user = await getCachedUser();
-  if (!user) redirect('/login');
-
-  const profile = await getCachedProfile();
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-    redirect('/dashboard');
-  }
+  // 인증/역할 검증은 consultant/layout.tsx에서 일괄 처리
+  const user = (await getCachedUser())!;
+  const profile = (await getCachedProfile())!;
 
   // 프로젝트 + 활동 로그 병렬 조회 (consultant_id 직접 조회로 의존성 제거)
   const supabase = await createClient();

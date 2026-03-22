@@ -60,30 +60,30 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
   });
 
   test('메시지 아이콘 표시', async ({ opsPage: page }) => {
-    // MessageIcon은 <Link> 요소 (role=link)
+    // MessageIcon은 <Link> 요소 (role=link), desktop-user-area 스코핑으로 모바일 제외
+    const desktopUserArea = page.locator('[data-testid="desktop-user-area"]');
     await expect(
-      page.getByRole('link', { name: /메시지/ }),
+      desktopUserArea.getByRole('link', { name: /메시지/ }),
     ).toBeVisible();
   });
 
   test('메시지 안읽음 배지 존재 확인', async ({ opsPage: page }) => {
-    const messageLink = page.getByRole('link', { name: /메시지/ });
+    const messageLink = page.locator('[data-testid="desktop-user-area"]').getByRole('link', { name: /메시지/ });
     // 안읽음 배지: bg-blue-500 둥근 span (unreadCount > 0일 때 렌더)
     await expect(messageLink.locator('.bg-blue-500')).toBeAttached();
   });
 
   test('메시지 아이콘 클릭 → /dashboard/messages', async ({ opsPage: page }) => {
-    await page.getByRole('link', { name: /메시지/ }).click();
+    await page.locator('[data-testid="desktop-user-area"]').getByRole('link', { name: /메시지/ }).click();
     await expect(page).toHaveURL('/dashboard/messages');
   });
 
   test('사용자 드롭다운 — 이름, 이메일, 역할 배지 표시', async ({ opsPage: page }) => {
-    // 사용자 드롭다운 열기
+    // 사용자 드롭다운 열기 (desktop-user-area 스코핑으로 모바일 아바타 제외)
     await page
-      .locator('nav')
+      .locator('[data-testid="desktop-user-area"]')
       .getByRole('button')
       .filter({ has: page.locator('[data-slot="avatar"]') })
-      .first()
       .click();
 
     // 드롭다운 내에서 이름, 이메일 표시 확인
@@ -91,7 +91,7 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     await expect(dropdown).toBeVisible();
     // 역할 배지 (시스템관리자 or 운영관리자)
     await expect(
-      page.locator('nav').getByText(/시스템관리자|운영관리자/),
+      dropdown.getByText(/시스템관리자|운영관리자/),
     ).toBeVisible();
   });
 
@@ -101,7 +101,7 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
 
   test('활성 메뉴 하이라이트 확인', async ({ opsPage: page }) => {
     // /ops/projects 페이지에서 "워크스페이스" 드롭다운 트리거가 활성 상태
-    const trigger = page.getByRole('button', { name: '워크스페이스', exact: true });
+    const trigger = page.locator('[data-testid="desktop-nav"]').getByRole('button', { name: '워크스페이스', exact: true });
     await expect(trigger).toHaveClass(/bg-blue-50/);
     await expect(trigger).toHaveClass(/text-blue-700/);
   });
@@ -132,17 +132,17 @@ test.describe('Phase 2.2: 알림 벨', () => {
 
     // Popover 콘텐츠 내 관리자 전용 탭 4개
     const popover = page.locator('[data-slot="popover-content"]');
-    await expect(popover.getByRole('button', { name: '전체' })).toBeVisible();
-    await expect(popover.getByRole('button', { name: '인터뷰' })).toBeVisible();
-    await expect(popover.getByRole('button', { name: '초안' })).toBeVisible();
-    await expect(popover.getByRole('button', { name: '확정' })).toBeVisible();
+    await expect(popover.getByRole('button', { name: '전체', exact: true })).toBeVisible();
+    await expect(popover.getByRole('button', { name: '인터뷰', exact: true })).toBeVisible();
+    await expect(popover.getByRole('button', { name: '초안', exact: true })).toBeVisible();
+    await expect(popover.getByRole('button', { name: '확정', exact: true })).toBeVisible();
   });
 
   test('각 탭 클릭 시 콘텐츠 로딩 완료', async ({ opsPage: page }) => {
     await page.getByRole('button', { name: /알림/ }).click();
     const popover = page.locator('[data-slot="popover-content"]');
     for (const tab of ['전체', '인터뷰', '초안', '확정']) {
-      await popover.getByRole('button', { name: tab }).click();
+      await popover.getByRole('button', { name: tab, exact: true }).click();
       // 로딩 완료 후 빈 상태 메시지 또는 알림 아이템 중 하나가 표시됨
       const emptyState = popover.getByText('새로운 알림이 없습니다');
       const firstItem = popover.locator('.divide-y > button').first();

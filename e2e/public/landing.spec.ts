@@ -15,15 +15,15 @@ test.describe('Phase 1.1: 랜딩 페이지 (/)', () => {
 
   test('"로그인" 링크 → /login 이동', async ({ page }) => {
     await page.goto('/');
-    // Navbar의 로그인 버튼 (Link 안의 Button)
-    await page.getByRole('link', { name: '로그인' }).first().click();
+    // Navbar 데스크톱 CTA의 로그인 버튼 (모바일 메뉴 중복 방지)
+    await page.locator('[data-testid="desktop-cta"]').getByRole('link', { name: '로그인' }).click();
     await expect(page).toHaveURL('/login');
   });
 
   test('"회원가입" 링크 → /register 이동', async ({ page }) => {
     await page.goto('/');
-    // Navbar의 회원가입 버튼
-    await page.getByRole('link', { name: '회원가입' }).first().click();
+    // Navbar 데스크톱 CTA의 회원가입 버튼
+    await page.locator('[data-testid="desktop-cta"]').getByRole('link', { name: '회원가입' }).click();
     await expect(page).toHaveURL('/register');
   });
 

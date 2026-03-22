@@ -74,7 +74,8 @@ test.describe('Phase 1.3: 로그인 페이지 (/login)', () => {
   });
 
   test('"회원가입" 링크 → /register 이동', async ({ page }) => {
-    await page.getByRole('link', { name: '회원가입' }).click();
+    // main 스코핑으로 Navbar의 회원가입 버튼과 중복 방지
+    await page.locator('main').getByRole('link', { name: '회원가입' }).click();
     await expect(page).toHaveURL('/register');
   });
 

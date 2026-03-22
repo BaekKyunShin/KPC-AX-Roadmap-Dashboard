@@ -14,9 +14,9 @@ test.describe('프로필 페이지 (/dashboard/profile)', () => {
     await page.goto('/dashboard/profile');
     await page.waitForLoadState('networkidle');
 
-    // 프로필 관련 제목 표시 ("프로필 등록" 또는 "프로필 관리")
+    // 프로필 관련 제목 표시 ("프로필 등록" 또는 "프로필 관리") — main 스코핑으로 네비 중복 방지
     await expect(
-      page.getByText(/프로필 (등록|관리)/),
+      page.locator('main').getByText(/프로필 (등록|관리)/),
     ).toBeVisible({ timeout: 10_000 });
 
     // 메인 콘텐츠 영역 표시
@@ -41,9 +41,9 @@ test.describe('프로필 페이지 (/dashboard/profile)', () => {
     // 컨설턴트 프로필 폼의 주요 필드 확인
     await waitForPageLoad(page);
 
-    // 카드 제목 "컨설턴트 프로필" 계열 텍스트 확인
+    // 카드 제목 "컨설턴트 프로필" 계열 텍스트 확인 — main 스코핑으로 네비 중복 방지
     await expect(
-      page.getByText(/컨설턴트 프로필/),
+      page.locator('main').getByText(/컨설턴트 프로필/),
     ).toBeVisible({ timeout: 10_000 });
 
     // "소속" 입력 필드 확인 (#affiliation)

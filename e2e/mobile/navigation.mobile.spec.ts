@@ -16,37 +16,41 @@ test.describe('모바일 네비게이션 — 랜딩 페이지', () => {
   test('햄버거 메뉴 열기 → 메뉴 항목 표시', async ({ mobilePage }) => {
     await openMobileMenu(mobilePage);
 
-    // 랜딩 네비 메뉴 항목들이 표시됨
-    await expect(mobilePage.getByText('서비스 소개')).toBeVisible();
-    await expect(mobilePage.getByText('워크플로우')).toBeVisible();
-    await expect(mobilePage.getByText('데모')).toBeVisible();
+    // 모바일 메뉴 스코핑으로 데스크톱 네비 중복 방지
+    const mobileMenu = mobilePage.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.getByText('서비스 소개')).toBeVisible();
+    await expect(mobileMenu.getByText('워크플로우')).toBeVisible();
+    await expect(mobileMenu.getByText('데모')).toBeVisible();
   });
 
   test('햄버거 메뉴 열기 → 닫기', async ({ mobilePage }) => {
     // 메뉴 열기
     await openMobileMenu(mobilePage);
-    await expect(mobilePage.getByText('서비스 소개')).toBeVisible();
+    const mobileMenu = mobilePage.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.getByText('서비스 소개')).toBeVisible();
 
     // 메뉴 닫기 (X 버튼 클릭)
     const closeButton = mobilePage.getByRole('button', { name: /메뉴 닫기/ });
     await closeButton.click();
 
     // 메뉴 항목이 숨겨짐 (opacity-0 또는 max-h-0으로 전환)
-    await expect(mobilePage.getByText('서비스 소개')).not.toBeVisible({ timeout: 3_000 });
+    await expect(mobileMenu.getByText('서비스 소개')).not.toBeVisible({ timeout: 3_000 });
   });
 
   test('메뉴 항목 "로그인" 클릭 → /login 이동', async ({ mobilePage }) => {
     await openMobileMenu(mobilePage);
 
     // 모바일 메뉴의 로그인 버튼 클릭
-    await mobilePage.getByRole('link', { name: '로그인' }).click();
+    const mobileMenu = mobilePage.locator('[data-testid="mobile-menu"]');
+    await mobileMenu.getByRole('link', { name: '로그인' }).click();
     await expect(mobilePage).toHaveURL('/login');
   });
 
   test('메뉴 항목 "회원가입" 클릭 → /register 이동', async ({ mobilePage }) => {
     await openMobileMenu(mobilePage);
 
-    await mobilePage.getByRole('link', { name: '회원가입' }).click();
+    const mobileMenu = mobilePage.locator('[data-testid="mobile-menu"]');
+    await mobileMenu.getByRole('link', { name: '회원가입' }).click();
     await expect(mobilePage).toHaveURL('/register');
   });
 });
@@ -68,9 +72,10 @@ test.describe('모바일 네비게이션 — 인증된 관리자', () => {
     await openMobileMenu(page);
 
     // 관리자 아코디언 그룹 (워크스페이스, 운영관리, 라이브러리)이 표시됨
-    await expect(page.getByText('워크스페이스', { exact: true })).toBeVisible();
-    await expect(page.getByText('운영관리', { exact: true })).toBeVisible();
-    await expect(page.getByText('라이브러리', { exact: true })).toBeVisible();
+    const mobileMenu = page.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.getByText('워크스페이스', { exact: true })).toBeVisible();
+    await expect(mobileMenu.getByText('운영관리', { exact: true })).toBeVisible();
+    await expect(mobileMenu.getByText('라이브러리', { exact: true })).toBeVisible();
 
     await context.close();
   });
@@ -91,7 +96,8 @@ test.describe('모바일 네비게이션 — 인증된 관리자', () => {
     await openMobileMenu(page);
 
     // "운영관리" 아코디언 그룹 클릭하여 하위 메뉴 표시
-    await page.getByText('운영관리', { exact: true }).click();
+    const mobileMenu = page.locator('[data-testid="mobile-menu"]');
+    await mobileMenu.getByText('운영관리', { exact: true }).click();
 
     // 하위 메뉴 항목 표시 확인
     await expect(page.getByRole('link', { name: '사용자 관리' })).toBeVisible();
@@ -119,10 +125,11 @@ test.describe('모바일 네비게이션 — 인증된 관리자', () => {
     await openMobileMenu(page);
 
     // 사용자 정보 영역 (아바타, 이름) 표시
-    await expect(page.locator('[data-slot="avatar"]')).toBeVisible();
+    const mobileMenu = page.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.locator('[data-slot="avatar"]')).toBeVisible();
 
     // 계정 설정 링크 클릭
-    await page.getByRole('link', { name: '계정 설정' }).click();
+    await mobileMenu.getByRole('link', { name: '계정 설정' }).click();
     await expect(page).toHaveURL('/dashboard/settings');
 
     await context.close();
@@ -149,11 +156,12 @@ test.describe('모바일 네비게이션 — 인증된 컨설턴트', () => {
     const mainContent = page.locator('nav');
     await expect(mainContent).toBeVisible();
 
-    // 프로필 관리 링크 표시
-    await expect(page.getByRole('link', { name: '프로필 관리' })).toBeVisible();
+    // 프로필 관리 링크 표시 (모바일 메뉴 스코핑)
+    const mobileMenu = page.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.getByRole('link', { name: '프로필 관리' })).toBeVisible();
 
     // 계정 설정 링크 표시
-    await expect(page.getByRole('link', { name: '계정 설정' })).toBeVisible();
+    await expect(mobileMenu.getByRole('link', { name: '계정 설정' })).toBeVisible();
 
     await context.close();
   });

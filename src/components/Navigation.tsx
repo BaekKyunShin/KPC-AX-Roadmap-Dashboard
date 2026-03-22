@@ -236,7 +236,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
             {/* Desktop Navigation — 컨설턴트: 플랫 */}
             {isConsultant && (
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
                 {CONSULTANT_NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname.startsWith(item.href);
@@ -263,7 +263,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
             {/* Desktop Navigation — 관리자: 드롭다운 3그룹 */}
             {isOpsAdmin && (
-              <div className="hidden md:flex items-center gap-1" ref={navGroupRef}>
+              <div className="hidden md:flex items-center gap-1" data-testid="desktop-nav" ref={navGroupRef}>
                 {ADMIN_NAV_GROUPS.map((group, index) => (
                   <NavGroupDropdown
                     key={group.label}
@@ -281,7 +281,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2" data-testid="desktop-user-area">
             {/* Search Button */}
             <Button
               variant="ghost"
@@ -373,7 +373,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
           </div>
 
           {/* Mobile: Search + Message + Notification + Menu Button */}
-          <div className="flex items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1 md:hidden" data-testid="mobile-header">
             <Button
               variant="ghost"
               size="icon"
@@ -390,6 +390,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               size="icon"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+              data-testid="mobile-menu-button"
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -399,7 +400,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-white">
+        <div className="md:hidden border-t bg-white" data-testid="mobile-menu">
           <div className="px-4 py-4 space-y-1">
             {/* 컨설턴트: 플랫 메뉴 */}
             {isConsultant &&
@@ -447,7 +448,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
           <Separator />
 
           <div className="px-4 py-4">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4" data-testid="mobile-user-info">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
                   {getInitials(user.name)}

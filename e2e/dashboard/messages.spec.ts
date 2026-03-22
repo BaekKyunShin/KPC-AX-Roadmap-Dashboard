@@ -27,8 +27,8 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     await page.goto('/dashboard/messages');
     await page.waitForLoadState('networkidle');
 
-    // 페이지 제목 "메시지" 표시
-    await expect(page.getByText('메시지', { exact: false })).toBeVisible({ timeout: 10_000 });
+    // 페이지 제목 "메시지" 표시 (main 스코핑으로 네비게이션 메시지 아이콘 제외)
+    await expect(page.locator('main').getByText('메시지', { exact: false })).toBeVisible({ timeout: 10_000 });
 
     // 대화 목록이 있거나, 빈 상태 메시지가 표시되어야 함
     const hasConversations = await page

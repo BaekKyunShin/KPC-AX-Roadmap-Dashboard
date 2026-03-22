@@ -1,17 +1,6 @@
-import { redirect } from 'next/navigation';
-import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import ProjectList from './_components/ProjectList';
 
-export default async function ConsultantProjectsPage() {
-  const user = await getCachedUser();
-  if (!user) {
-    redirect('/login');
-  }
-
-  const profile = await getCachedProfile();
-  if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
-    redirect('/dashboard');
-  }
-
+export default function ConsultantProjectsPage() {
+  // 인증/역할 검증은 consultant/layout.tsx에서 일괄 처리
   return <ProjectList />;
 }
