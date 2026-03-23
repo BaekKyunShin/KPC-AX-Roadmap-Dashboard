@@ -303,6 +303,8 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="사용자 메뉴"
+                aria-expanded={isUserMenuOpen}
               >
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs">

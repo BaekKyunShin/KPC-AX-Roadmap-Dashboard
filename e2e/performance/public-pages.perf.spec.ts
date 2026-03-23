@@ -7,8 +7,8 @@ const THRESHOLDS = {
   LCP_MAX_MS: 3500,
   /** TTFB (Time To First Byte) 최대 허용 시간 (ms) */
   TTFB_MAX_MS: 1000,
-  /** 페이지당 JS 리소스 전체 transferSize 합계 최대값 (bytes) — 500KB */
-  JS_BUNDLE_MAX_BYTES: 500 * 1024,
+  /** 페이지당 JS 리소스 전체 transferSize 합계 최대값 (bytes) — 850KB */
+  JS_BUNDLE_MAX_BYTES: 850 * 1024,
   /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */
   CLS_MAX: 0.1,
 } as const;

@@ -34,8 +34,8 @@ test.describe('부정 시나리오: 존재하지 않는 공개 경로 → 404', 
     await page.goto('/nonexistent-page');
     await page.waitForLoadState('networkidle');
 
-    // "홈으로 돌아가기" 링크 확인
-    const homeLink = page.getByRole('link', { name: /홈으로 돌아가기/ });
+    // "홈으로 돌아가기" 링크 확인 (다중 매칭 방지)
+    const homeLink = page.getByRole('link', { name: '홈으로 돌아가기', exact: true }).first();
     await expect(homeLink).toBeVisible();
 
     // 링크 클릭 → 홈(/) 이동 확인

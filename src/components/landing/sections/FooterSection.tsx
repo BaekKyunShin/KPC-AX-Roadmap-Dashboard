@@ -242,7 +242,7 @@ export default function FooterSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="py-24 sm:py-32 px-4">
+    <footer ref={sectionRef} className="py-24 sm:py-32 px-4">
       <div className="max-w-7xl mx-auto">
         {/* CTA Section */}
         <div className="text-center mb-24">
@@ -336,6 +336,6 @@ export default function FooterSection() {
           </div>
         </div>
       </div>
-    </section>
+    </footer>
   );
 }

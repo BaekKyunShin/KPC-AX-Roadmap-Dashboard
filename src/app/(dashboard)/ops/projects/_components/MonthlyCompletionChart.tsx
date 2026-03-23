@@ -28,6 +28,7 @@ export default function MonthlyCompletionChart({
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
+          <div role="img" aria-label="월별 로드맵 확정 현황 바 차트">
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart data={data}>
               <XAxis
@@ -58,6 +59,7 @@ export default function MonthlyCompletionChart({
               />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         ) : (
           <div className="flex items-center justify-center text-muted-foreground h-48">
             데이터가 없습니다

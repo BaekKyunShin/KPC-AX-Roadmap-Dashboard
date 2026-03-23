@@ -150,7 +150,7 @@ export default function StatusDistributionChart({
       <CardContent>
         {pieChartData.length > 0 ? (
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="w-full sm:w-1/2">
+            <div className="w-full sm:w-1/2" role="img" aria-label="상태별 프로젝트 분포 도넛 차트">
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <PieChart>
                   <Pie

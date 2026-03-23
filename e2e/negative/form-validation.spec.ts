@@ -65,8 +65,8 @@ test.describe('부정 시나리오: 템플릿 생성 폼 유효성 검증', () =
     await page.waitForLoadState('networkidle');
 
     // 템플릿 이름을 비운 채로 제출 버튼 클릭
-    // 생성 또는 저장 버튼 찾기
-    const submitButton = page.getByRole('button', { name: /생성|저장/ });
+    // 생성 또는 저장 버튼 찾기 (form 스코핑으로 다중 매칭 방지)
+    const submitButton = page.locator('form').getByRole('button', { name: /생성|저장/ }).first();
     await expect(submitButton).toBeVisible({ timeout: 10_000 });
     await submitButton.click();
 

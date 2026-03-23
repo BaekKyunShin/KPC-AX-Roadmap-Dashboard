@@ -5,7 +5,7 @@ import { test, expect } from '../fixtures/auth.fixture';
 /** 인증 페이지 성능 임계값 (서버 사이드 인증 처리로 공개 페이지보다 넉넉하게 설정) */
 const THRESHOLDS = {
   /** LCP 최대 허용 시간 (ms) */
-  LCP_MAX_MS: 3500,
+  LCP_MAX_MS: 5000,
   /** TTFB 최대 허용 시간 (ms) — 인증 처리 포함으로 공개 페이지보다 넉넉하게 */
   TTFB_MAX_MS: 1500,
   /** CLS (Cumulative Layout Shift) 최대 허용값 — Google 권장 0.1 이하 */

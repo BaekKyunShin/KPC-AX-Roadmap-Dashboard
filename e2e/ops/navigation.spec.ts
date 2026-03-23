@@ -93,6 +93,7 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
       .locator('[data-testid="desktop-user-area"]')
       .getByRole('button')
       .filter({ has: page.locator('[data-slot="avatar"]') })
+      .first()
       .click();
 
     // 드롭다운 내에서 이름, 이메일 표시 확인

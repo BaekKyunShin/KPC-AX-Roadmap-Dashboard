@@ -82,12 +82,12 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
     await page.goto('/consultant/home');
     await page.waitForLoadState('networkidle');
 
-    // KPI 카드 라벨 확인
-    await expect(page.getByText('전체 프로젝트')).toBeVisible();
-    await expect(page.getByText('인터뷰 대기')).toBeVisible();
-    await expect(page.getByText('인터뷰 완료')).toBeVisible();
-    await expect(page.getByText('로드맵 작성 중')).toBeVisible();
-    await expect(page.getByText('로드맵 완료')).toBeVisible();
+    // KPI 카드 라벨 확인 (CI 환경 느린 로드 대응)
+    await expect(page.getByText('전체 프로젝트')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('인터뷰 대기')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('인터뷰 완료')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('로드맵 작성 중')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('로드맵 완료')).toBeVisible({ timeout: 15_000 });
 
     await context.close();
   });
@@ -108,19 +108,35 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
     const statusSection = page.getByText('프로젝트 상태 분포');
     const recentSection = page.getByText('최근 프로젝트');
 
-    const hasStatus = await statusSection.isVisible().catch(() => false);
-    const hasRecent = await recentSection.isVisible().catch(() => false);
+    // CI 환경 느린 로드 대응: expect로 대기 후 가시성 확인
+    let hasStatus = false;
+    let hasRecent = false;
+    try {
+      await expect(statusSection).toBeVisible({ timeout: 15_000 });
+      hasStatus = true;
+    } catch {
+      hasStatus = false;
+    }
+    try {
+      await expect(recentSection).toBeVisible({ timeout: 15_000 });
+      hasRecent = true;
+    } catch {
+      hasRecent = false;
+    }
 
     if (hasStatus && hasRecent) {
       const statusBox = await statusSection.boundingBox();
       const recentBox = await recentSection.boundingBox();
 
-      // 모바일에서는 세로 배치 (grid-cols-1): 최근 프로젝트가 상태 분포 아래
-      expect(recentBox!.y).toBeGreaterThan(statusBox!.y);
+      // boundingBox가 null일 수 있으므로 null 체크
+      if (statusBox && recentBox) {
+        // 모바일에서는 세로 배치 (grid-cols-1): 최근 프로젝트가 상태 분포 아래
+        expect(recentBox.y).toBeGreaterThan(statusBox.y);
+      }
     }
 
     // "최근 활동" 섹션 확인
-    await expect(page.getByText('최근 활동')).toBeVisible();
+    await expect(page.getByText('최근 활동')).toBeVisible({ timeout: 15_000 });
 
     await context.close();
   });

@@ -64,8 +64,8 @@ test.describe('템플릿 생성 페이지', () => {
     await expect(page.getByText(/질문 목록/)).toBeVisible();
     await expect(page.getByText('+ 질문 추가')).toBeVisible();
 
-    // 생성/취소 버튼
-    await expect(page.getByRole('button', { name: '생성' })).toBeVisible();
+    // 생성/취소 버튼 (form 스코핑으로 다중 매칭 방지)
+    await expect(page.locator('form').getByRole('button', { name: '생성' })).toBeVisible();
     await expect(page.getByRole('link', { name: '취소' })).toBeVisible();
   });
 
@@ -82,8 +82,8 @@ test.describe('템플릿 생성 페이지', () => {
     // 기본 질문 내용 입력 (첫 번째 질문이 이미 존재)
     await page.locator('textarea').first().fill('테스트 질문입니다.');
 
-    // 생성 버튼 클릭
-    await page.getByRole('button', { name: '생성' }).click();
+    // 생성 버튼 클릭 (form 스코핑으로 다중 매칭 방지)
+    await page.locator('form').getByRole('button', { name: '생성' }).click();
 
     // 성공 토스트
     await expect(
@@ -220,7 +220,7 @@ test.describe('생성 유효성 검사', () => {
     await nameInput.clear();
 
     // 생성 버튼이 비활성화 상태인지 확인 (name.trim()이 빈 문자열이면 disabled)
-    const submitButton = page.getByRole('button', { name: '생성' });
+    const submitButton = page.locator('form').getByRole('button', { name: '생성' });
     await expect(submitButton).toBeDisabled();
 
     // "템플릿 이름을 입력해주세요" 인라인 경고 메시지 확인

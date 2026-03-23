@@ -81,7 +81,7 @@ export function StatusDistributionChart({ byStatus, total }: StatusDistributionC
   return (
     <div>
       {/* 도넛 차트 */}
-      <div className="flex items-center justify-center mb-5">
+      <div className="flex items-center justify-center mb-5" role="img" aria-label="담당 프로젝트 상태별 분포 도넛 차트">
         <ChartContainer config={config} className="aspect-square w-full max-w-[180px]">
           <PieChart>
             <Pie

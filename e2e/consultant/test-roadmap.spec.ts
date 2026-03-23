@@ -41,7 +41,7 @@ test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
 
     if (!hasMainForm) {
       // 미승인 → 대기 카드만 확인하고 종료
-      await expect(page.getByText(/승인 대기|프로필/)).toBeVisible();
+      await expect(page.getByText(/승인 대기|프로필/).first()).toBeVisible();
       return;
     }
 

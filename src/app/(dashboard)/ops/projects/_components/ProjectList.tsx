@@ -441,6 +441,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                       size="sm"
                       onClick={() => handlePageChange(Math.max(1, page - 1))}
                       disabled={page === 1 || loading}
+                      aria-label="이전 페이지"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -474,6 +475,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                       size="sm"
                       onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages || loading}
+                      aria-label="다음 페이지"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>

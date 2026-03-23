@@ -77,9 +77,10 @@ authTest.describe('부정 시나리오: 세션 만료 — 인증 후 쿠키 삭�
     opsPage,
   }) => {
     // 1. 인증된 상태에서 보호 페이지 로드 (정상 접근 확인)
-    await opsPage.goto('/dashboard');
-    // 리다이렉트 없이 /dashboard에 머무는지 확인 (인증 성공)
-    await authExpect(opsPage).toHaveURL(/\/dashboard/);
+    // OPS 관리자는 /dashboard 접근 시 서버에서 /ops/projects로 리다이렉트됨
+    await opsPage.goto('/ops/projects');
+    // /ops/projects에 머무는지 확인 (인증 성공)
+    await authExpect(opsPage).toHaveURL(/\/ops\/projects/);
 
     // 2. 세션 쿠키 강제 삭제 → 세션 만료 시뮬레이션
     await opsPage.context().clearCookies();
@@ -91,15 +92,16 @@ authTest.describe('부정 시나리오: 세션 만료 — 인증 후 쿠키 삭�
     // redirect 파라미터로 원래 경로가 전달되는지 확인
     const url = new URL(opsPage.url());
     authExpect(url.pathname).toBe('/login');
-    authExpect(url.searchParams.get('redirect')).toBe('/dashboard');
+    authExpect(url.searchParams.get('redirect')).toBe('/ops/projects');
   });
 
   authTest('인증된 상태에서 쿠키 삭제 후 다른 보호 페이지 네비게이션 시 /login 으로 리다이렉트된다', async ({
     opsPage,
   }) => {
     // 1. 인증된 상태에서 보호 페이지 정상 접근
-    await opsPage.goto('/dashboard');
-    await authExpect(opsPage).toHaveURL(/\/dashboard/);
+    // OPS 관리자는 /dashboard 접근 시 서버에서 /ops/projects로 리다이렉트됨
+    await opsPage.goto('/ops/projects');
+    await authExpect(opsPage).toHaveURL(/\/ops\/projects/);
 
     // 2. 세션 쿠키 강제 삭제
     await opsPage.context().clearCookies();

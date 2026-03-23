@@ -51,6 +51,7 @@ export function LikeButton({
         handleToggle();
       }}
       disabled={isPending}
+      aria-label={liked ? `좋아요 취소 (${count})` : `좋아요 (${count})`}
       className={cn(
         'inline-flex items-center gap-1 rounded-full transition-colors',
         isSmall ? 'px-2.5 py-0.5' : 'px-3 py-1',

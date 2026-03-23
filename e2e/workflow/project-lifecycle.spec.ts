@@ -196,7 +196,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 다음 → 스텝 2 (시스템/AI 활용 경험 — 필수 아님, 스킵 가능하나 입력)
     await page.getByRole('button', { name: '다음' }).click();
-    await expect(page.getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('인터뷰 날짜', { exact: true })).not.toBeVisible({ timeout: 5_000 });
 
     // ── 스텝 2: AI 활용 경험 (필수 아님이지만 다음으로 넘어감) ──
     // 다음 → 스텝 3

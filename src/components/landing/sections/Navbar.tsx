@@ -132,7 +132,7 @@ function MobileMenu({ isOpen, onClose, isLoggedIn, isAuthChecked }: MobileMenuPr
   return (
     <div
       className={`md:hidden overflow-hidden ${MOBILE_MENU_TRANSITION} ${
-        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 invisible'
       }`}
       data-testid="mobile-menu"
     >
@@ -208,7 +208,7 @@ export default function Navbar() {
   };
 
   return (
-    <>
+    <header>
       {/* Mobile Menu Overlay */}
       <MobileMenuOverlay isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />
 
@@ -272,6 +272,6 @@ export default function Navbar() {
         {/* Mobile Menu */}
         <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} isLoggedIn={isLoggedIn} isAuthChecked={isAuthChecked} />
       </nav>
-    </>
+    </header>
   );
 }

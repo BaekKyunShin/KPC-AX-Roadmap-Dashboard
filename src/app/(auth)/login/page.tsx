@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,6 +99,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
             className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -138,7 +139,7 @@ function LoadingForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
       <AuthBackgroundDecoration animated />
 
       <div className="w-full max-w-md relative">
@@ -153,7 +154,7 @@ export default function LoginPage() {
         {/* Login Card */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">로그인</CardTitle>
+            <h1 className="text-xl font-semibold leading-none tracking-tight">로그인</h1>
             <CardDescription>계정에 로그인하여 서비스를 이용하세요</CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,6 +177,6 @@ export default function LoginPage() {
         {/* Footer */}
         <FooterCredit className="mt-8 text-muted-foreground" />
       </div>
-    </div>
+    </main>
   );
 }

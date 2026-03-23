@@ -12,7 +12,7 @@ vi.mock('./SmoothScroll', () => ({
 }));
 
 vi.mock('./sections/Navbar', () => ({
-  default: () => <nav data-testid="navbar">Navbar</nav>,
+  default: () => <header><nav data-testid="navbar">Navbar</nav></header>,
 }));
 
 vi.mock('./sections/HeroSection', () => ({

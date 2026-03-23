@@ -41,9 +41,9 @@ test.describe('프로필 페이지 (/dashboard/profile)', () => {
     // 컨설턴트 프로필 폼의 주요 필드 확인
     await waitForPageLoad(page);
 
-    // 카드 제목 "컨설턴트 프로필" 계열 텍스트 확인 — main 스코핑으로 네비 중복 방지
+    // 카드 제목 "컨설턴트 프로필" 확인 — card-title 스코핑으로 다중 매칭 방지
     await expect(
-      page.locator('main').getByText(/컨설턴트 프로필/),
+      page.locator('main [data-slot="card-title"]').filter({ hasText: /컨설턴트 프로필/ }),
     ).toBeVisible({ timeout: 10_000 });
 
     // "소속" 입력 필드 확인 (#affiliation)
