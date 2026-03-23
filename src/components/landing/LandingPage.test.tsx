@@ -2,6 +2,28 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
+// next/dynamic 모킹 — Vitest에서 동적 임포트를 React.lazy + Suspense로 처리
+// ============================================================================
+
+vi.mock('next/dynamic', async () => {
+  const React = await import('react');
+  return {
+    __esModule: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    default: (importFn: () => Promise<any>) => {
+      const LazyComp = React.lazy(importFn);
+      return function DynamicMock(props: Record<string, unknown>) {
+        return React.createElement(
+          React.Suspense,
+          { fallback: null },
+          React.createElement(LazyComp, props),
+        );
+      };
+    },
+  };
+});
+
+// ============================================================================
 // 모킹 — 하위 섹션 컴포넌트 경량 모킹
 // ============================================================================
 
@@ -70,24 +92,24 @@ describe('LandingPage', () => {
       expect(screen.getByTestId('hero-section')).toBeInTheDocument();
     });
 
-    it('FeaturesSection이 렌더링된다', () => {
+    it('FeaturesSection이 렌더링된다', async () => {
       render(<LandingPage />);
-      expect(screen.getByTestId('features-section')).toBeInTheDocument();
+      expect(await screen.findByTestId('features-section')).toBeInTheDocument();
     });
 
-    it('WorkflowSection이 렌더링된다', () => {
+    it('WorkflowSection이 렌더링된다', async () => {
       render(<LandingPage />);
-      expect(screen.getByTestId('workflow-section')).toBeInTheDocument();
+      expect(await screen.findByTestId('workflow-section')).toBeInTheDocument();
     });
 
-    it('DemoSection이 렌더링된다', () => {
+    it('DemoSection이 렌더링된다', async () => {
       render(<LandingPage />);
-      expect(screen.getByTestId('demo-section')).toBeInTheDocument();
+      expect(await screen.findByTestId('demo-section')).toBeInTheDocument();
     });
 
-    it('FooterSection이 렌더링된다', () => {
+    it('FooterSection이 렌더링된다', async () => {
       render(<LandingPage />);
-      expect(screen.getByTestId('footer-section')).toBeInTheDocument();
+      expect(await screen.findByTestId('footer-section')).toBeInTheDocument();
     });
   });
 

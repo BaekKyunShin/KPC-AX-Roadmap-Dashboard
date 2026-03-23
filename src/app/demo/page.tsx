@@ -1,12 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
-import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
-import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
-import { CoursesList } from '@/components/roadmap/CoursesList';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
+
+// 로드맵 컴포넌트 — 코드 분할 (초기 번들에서 제외)
+const RoadmapMatrix = dynamic(
+  () => import('@/components/roadmap/RoadmapMatrix').then(m => ({ default: m.RoadmapMatrix }))
+);
+const PBLCourseView = dynamic(
+  () => import('@/components/roadmap/PBLCourseView').then(m => ({ default: m.PBLCourseView }))
+);
+const CoursesList = dynamic(
+  () => import('@/components/roadmap/CoursesList').then(m => ({ default: m.CoursesList }))
+);
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
 import {
   SAMPLE_COMPANY,

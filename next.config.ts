@@ -28,8 +28,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       'lucide-react',
-      'recharts',
-      '@radix-ui/react-icons',
     ],
   },
 };
