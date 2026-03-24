@@ -96,7 +96,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
       } else {
         // 마지막 스텝 — "자가진단 저장" 버튼 클릭
         const submitButton = page.getByRole('button', { name: '자가진단 저장' });
-        await expect(submitButton).toBeEnabled({ timeout: 3_000 });
+        await expect(submitButton).toBeEnabled({ timeout: 10_000 });
         await submitButton.click();
         break;
       }

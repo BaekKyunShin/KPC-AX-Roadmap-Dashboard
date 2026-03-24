@@ -142,9 +142,9 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     // 뒤로가기 클릭 → 목록으로 복귀
     await backButton.click();
 
-    // 목록 영역이 다시 보여야 함 (대화 버튼이 다시 표시)
+    // 목록 영역이 다시 보여야 함 (main 영역 내 대화 버튼이 다시 표시)
     await expect(
-      page.locator('button').filter({ has: page.locator('[data-slot="avatar"]') }).first(),
+      page.locator('main button').filter({ has: page.locator('[data-slot="avatar"]') }).first(),
     ).toBeVisible({ timeout: 5_000 });
   });
 });
