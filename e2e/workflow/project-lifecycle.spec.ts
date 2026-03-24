@@ -69,6 +69,14 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
       page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' }),
     ).toBeVisible();
 
+    // CollapsibleDirectInput이 접혀있으면 "운영자가 직접 입력하기" 클릭하여 폼 열기
+    const directInputToggle = page.getByRole('button', { name: /운영자가 직접 입력하기/ });
+    if (await directInputToggle.isVisible().catch(() => false)) {
+      await directInputToggle.click();
+      // 폼 렌더링 대기
+      await expect(page.locator('[id^="question-"]').first()).toBeVisible({ timeout: 10_000 });
+    }
+
     // 각 스텝의 모든 질문에 3점("보통이다") 선택
     let stepCount = 0;
     const maxSteps = 10; // 안전 장치
