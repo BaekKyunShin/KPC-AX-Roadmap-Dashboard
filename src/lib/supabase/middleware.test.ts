@@ -20,12 +20,12 @@ import { updateSession } from './middleware';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
-const mockGetUser = vi.fn();
+const mockGetSession = vi.fn();
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
     auth: {
-      getUser: mockGetUser,
+      getSession: mockGetSession,
     },
   })),
 }));
@@ -89,8 +89,8 @@ function createMockRequest(options: {
 }
 
 function setupUser(user: { id: string; email: string } | null) {
-  mockGetUser.mockResolvedValue({
-    data: { user },
+  mockGetSession.mockResolvedValue({
+    data: { session: user ? { user } : null },
     error: user ? null : { message: 'not authenticated' },
   });
 }

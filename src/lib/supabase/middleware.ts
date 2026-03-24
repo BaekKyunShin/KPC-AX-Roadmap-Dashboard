@@ -29,10 +29,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 모든 요청에서 세션 쿠키 갱신 (getUser 호출이 setAll 콜백을 트리거)
+  // 세션 쿠키 갱신 (getSession은 로컬 JWT 디코딩 — 네트워크 호출 없음)
+  // 실제 사용자 검증은 레이아웃의 getCachedUser()에서 getUser()로 수행
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // Server Action 요청은 세션 갱신만 수행하고 리다이렉트하지 않음
   const isServerAction =
