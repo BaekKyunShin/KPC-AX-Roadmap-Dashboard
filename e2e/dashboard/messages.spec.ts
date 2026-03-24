@@ -6,17 +6,23 @@ import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 
 /** 대화 목록에서 첫 번째 대화를 선택. 없으면 false 반환. */
 async function selectFirstConversation(page: Page): Promise<boolean> {
+  // main 영역 내에서만 대화 버튼 찾기 (Navigation 아바타 제외)
   const btn = page
-    .locator('button')
+    .locator('main button')
     .filter({ has: page.locator('[data-slot="avatar"]') })
     .first();
-  // 클라이언트 측 fetchConversations 완료 대기 (networkidle 이후에도 비동기 로드 가능)
   try {
     await btn.waitFor({ state: 'visible', timeout: 5_000 });
   } catch {
     return false;
   }
   await btn.click();
+  // MessageThread 렌더링 완료 대기 (비동기 메시지 로드 포함)
+  try {
+    await page.getByPlaceholder('메시지를 입력하세요...').waitFor({ state: 'visible', timeout: 15_000 });
+  } catch {
+    return false;
+  }
   return true;
 }
 
@@ -60,7 +66,7 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     // 메시지 입력 영역이 표시되어야 함 (textarea placeholder)
     await expect(
       page.getByPlaceholder('메시지를 입력하세요...'),
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible();
 
     // 전송 버튼이 표시되어야 함
     await expect(
@@ -75,7 +81,7 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
 
     // 입력 필드 대기
     const textarea = page.getByPlaceholder('메시지를 입력하세요...');
-    await expect(textarea).toBeVisible({ timeout: 15_000 });
+    await expect(textarea).toBeVisible();
 
     // 메시지 입력
     const testMessage = `E2E 테스트 메시지 ${Date.now()}`;

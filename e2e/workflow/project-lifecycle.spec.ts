@@ -26,8 +26,8 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 기업 규모 Select (첫 번째 combobox)
     await page.getByRole('combobox').first().click();
-    await expect(page.getByRole('option', { name: /100~299명/ })).toBeVisible({ timeout: 10_000 });
-    await page.getByRole('option', { name: /100~299명/ }).click();
+    await expect(page.getByRole('option', { name: /50~299명/ })).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('option', { name: /50~299명/ }).click();
 
     // 업종 Select (두 번째 combobox)
     await page.getByRole('combobox').nth(1).click();

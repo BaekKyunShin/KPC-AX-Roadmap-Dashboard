@@ -36,6 +36,8 @@ export async function openMobileMenu(page: Page) {
     page.locator('[data-testid="mobile-menu-button"]'),
   );
   await menuButton.click();
+  // 메뉴 CSS 애니메이션(300ms) 완료 대기 (max-h-0 → max-h-96, opacity-0 → opacity-100)
+  await page.locator('[data-testid="mobile-menu"]').waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /** 모바일에서 가로 스크롤 가능 여부를 확인합니다 */

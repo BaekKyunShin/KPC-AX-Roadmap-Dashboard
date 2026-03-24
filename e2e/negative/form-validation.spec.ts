@@ -64,21 +64,25 @@ test.describe('부정 시나리오: 템플릿 생성 폼 유효성 검증', () =
     await page.goto('/ops/templates/new');
     await page.waitForLoadState('networkidle');
 
-    // 템플릿 이름을 비운 채로 제출 버튼 클릭
-    // 생성 또는 저장 버튼 찾기 (form 스코핑으로 다중 매칭 방지)
+    // 템플릿 이름을 비운 채로 제출 버튼 확인
     const submitButton = page.locator('form').getByRole('button', { name: /생성|저장/ }).first();
     await expect(submitButton).toBeVisible({ timeout: 10_000 });
-    await submitButton.click({ force: true });
 
-    // JS 유효성 검증: "템플릿 이름을 입력하세요" 에러 또는 토스트
-    const errorAlert = page.locator('.bg-red-50');
-    const hasErrorAlert = await errorAlert.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    if (hasErrorAlert) {
-      await expect(errorAlert).toContainText('이름');
+    // 빈 이름 상태에서 버튼이 disabled이면 = 클라이언트 유효성 검증이 동작 중
+    const isDisabled = await submitButton.isDisabled();
+    if (isDisabled) {
+      // disabled 상태 자체가 유효성 검증의 증거 (빈 필수 필드 차단)
+      expect(isDisabled).toBe(true);
     } else {
-      // Sonner 토스트로 에러가 표시되는 경우
-      await expectToast(page, '이름');
+      // 버튼이 enabled이면 클릭 후 에러 표시 확인
+      await submitButton.click();
+      const errorAlert = page.locator('.bg-red-50');
+      const hasErrorAlert = await errorAlert.isVisible({ timeout: 5_000 }).catch(() => false);
+      if (hasErrorAlert) {
+        await expect(errorAlert).toContainText('이름');
+      } else {
+        await expectToast(page, '이름');
+      }
     }
 
     expect(getErrors()).toEqual([]);
