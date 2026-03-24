@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { List, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ProjectStatus } from '@/types/database';
+import { fetchProjectStats, type ProjectStats } from '../actions';
 import StatsSummaryCards from './StatsSummaryCards';
 import ProjectList from './ProjectList';
 
@@ -24,6 +25,11 @@ const ProjectDashboard = dynamic(() => import('./ProjectDashboard'), {
 export default function ProjectManagementTabs() {
   const [activeTab, setActiveTab] = useState('list');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus[] | null>(null);
+  const [stats, setStats] = useState<ProjectStats | null>(null);
+
+  useEffect(() => {
+    fetchProjectStats().then(setStats);
+  }, []);
 
   const handleStatusFilter = (statuses: ProjectStatus[] | null) => {
     setStatusFilter(statuses);
@@ -39,6 +45,7 @@ export default function ProjectManagementTabs() {
       <StatsSummaryCards
         onStatusFilter={handleStatusFilter}
         activeStatuses={statusFilter}
+        initialStats={stats}
       />
 
       {/* 탭 */}
@@ -59,7 +66,7 @@ export default function ProjectManagementTabs() {
         </TabsContent>
 
         <TabsContent value="dashboard">
-          <ProjectDashboard />
+          <ProjectDashboard initialStats={stats} />
         </TabsContent>
       </Tabs>
     </div>

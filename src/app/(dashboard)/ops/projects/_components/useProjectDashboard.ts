@@ -18,8 +18,8 @@ interface ProjectDashboardData {
   loading: boolean;
 }
 
-export function useProjectDashboard(): ProjectDashboardData {
-  const [stats, setStats] = useState<ProjectStats | null>(null);
+export function useProjectDashboard(initialStats?: ProjectStats | null): ProjectDashboardData {
+  const [stats, setStats] = useState<ProjectStats | null>(initialStats ?? null);
   const [monthlyData, setMonthlyData] = useState<MonthlyCompletion[]>([]);
   const [consultantData, setConsultantData] = useState<ConsultantProgress[]>(
     []
@@ -30,16 +30,27 @@ export function useProjectDashboard(): ProjectDashboardData {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsData, monthly, consultant, stalled] = await Promise.all([
-          fetchProjectStats(),
-          fetchMonthlyCompletions(),
-          fetchConsultantProgress(),
-          fetchStalledProjects(),
-        ]);
-        setStats(statsData);
-        setMonthlyData(monthly);
-        setConsultantData(consultant);
-        setStalledProjects(stalled);
+        if (initialStats) {
+          const [monthly, consultant, stalled] = await Promise.all([
+            fetchMonthlyCompletions(),
+            fetchConsultantProgress(),
+            fetchStalledProjects(),
+          ]);
+          setMonthlyData(monthly);
+          setConsultantData(consultant);
+          setStalledProjects(stalled);
+        } else {
+          const [statsData, monthly, consultant, stalled] = await Promise.all([
+            fetchProjectStats(),
+            fetchMonthlyCompletions(),
+            fetchConsultantProgress(),
+            fetchStalledProjects(),
+          ]);
+          setStats(statsData);
+          setMonthlyData(monthly);
+          setConsultantData(consultant);
+          setStalledProjects(stalled);
+        }
       } catch (error) {
         console.error('[ProjectDashboard] 데이터 로드 실패:', error);
       } finally {
@@ -48,7 +59,7 @@ export function useProjectDashboard(): ProjectDashboardData {
     };
 
     loadData();
-  }, []);
+  }, [initialStats]);
 
   return { stats, monthlyData, consultantData, stalledProjects, loading };
 }

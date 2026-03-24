@@ -18,6 +18,7 @@ import { fetchProjectStats, type ProjectStats } from '../actions';
 interface StatsSummaryCardsProps {
   onStatusFilter?: (statuses: ProjectStatus[] | null) => void;
   activeStatuses?: ProjectStatus[] | null;
+  initialStats?: ProjectStats | null;
 }
 
 interface StatCardConfig {
@@ -112,16 +113,18 @@ const STAT_CARDS: StatCardConfig[] = [
 export default function StatsSummaryCards({
   onStatusFilter,
   activeStatuses,
+  initialStats,
 }: StatsSummaryCardsProps) {
-  const [stats, setStats] = useState<ProjectStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<ProjectStats | null>(initialStats ?? null);
+  const [loading, setLoading] = useState(!initialStats);
 
   useEffect(() => {
+    if (initialStats) return;
     fetchProjectStats().then((data) => {
       setStats(data);
       setLoading(false);
     });
-  }, []);
+  }, [initialStats]);
 
   const getCount = (card: StatCardConfig): number => {
     if (!stats) return 0;

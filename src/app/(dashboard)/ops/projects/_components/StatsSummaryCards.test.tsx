@@ -213,4 +213,33 @@ describe('StatsSummaryCards', () => {
       expect(totalBtn?.textContent).toMatch('0');
     });
   });
+
+  // --------------------------------------------------------------------------
+  // 7. initialStats prop (중복 호출 제거)
+  // --------------------------------------------------------------------------
+  describe('initialStats prop', () => {
+    it('initialStats가 전달되면 fetchProjectStats를 호출하지 않는다', async () => {
+      render(<StatsSummaryCards initialStats={mockStats} />);
+      await waitFor(() => {
+        expect(screen.getByText('전체 프로젝트')).toBeInTheDocument();
+      });
+      expect(mockFetchProjectStats).not.toHaveBeenCalled();
+    });
+
+    it('initialStats가 전달되면 해당 데이터로 카드를 렌더링한다', async () => {
+      render(<StatsSummaryCards initialStats={mockStats} />);
+      await waitFor(() => {
+        expect(screen.getByText('15')).toBeInTheDocument();
+        expect(screen.getByText('전체 프로젝트')).toBeInTheDocument();
+      });
+    });
+
+    it('initialStats가 없으면 기존처럼 fetchProjectStats를 호출한다', async () => {
+      mockFetchProjectStats.mockResolvedValue(mockStats);
+      render(<StatsSummaryCards />);
+      await waitFor(() => {
+        expect(mockFetchProjectStats).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
 });

@@ -7,16 +7,27 @@ import ProjectManagementTabs from './ProjectManagementTabs';
 // 모킹
 // ============================================================================
 
+// Server Actions 모킹 (fetchProjectStats가 ProjectManagementTabs에서 호출됨)
+vi.mock('../actions', async () => {
+  const actual = await vi.importActual('../actions');
+  return {
+    ...actual,
+    fetchProjectStats: vi.fn().mockResolvedValue({ total: 10, byStatus: { NEW: 3 } }),
+  };
+});
+
 // StatsSummaryCards: Server Action 의존성 제거용 모킹
 vi.mock('./StatsSummaryCards', () => ({
   default: ({
     onStatusFilter,
     activeStatuses,
+    initialStats,
   }: {
     onStatusFilter?: (statuses: string[] | null) => void;
     activeStatuses?: string[] | null;
+    initialStats?: unknown;
   }) => (
-    <div data-testid="stats-summary-cards" data-active={JSON.stringify(activeStatuses)}>
+    <div data-testid="stats-summary-cards" data-active={JSON.stringify(activeStatuses)} data-initial-stats={JSON.stringify(initialStats)}>
       <button onClick={() => onStatusFilter?.(['NEW'])}>신규 등록 필터</button>
       <button onClick={() => onStatusFilter?.(null)}>전체 필터</button>
     </div>

@@ -68,9 +68,13 @@ function DashboardSkeleton() {
   );
 }
 
-export default function ProjectDashboard() {
+export default function ProjectDashboard({
+  initialStats,
+}: {
+  initialStats?: import('../actions').ProjectStats | null;
+} = {}) {
   const { stats, monthlyData, consultantData, stalledProjects, loading } =
-    useProjectDashboard();
+    useProjectDashboard(initialStats);
 
   if (loading) {
     return <DashboardSkeleton />;
