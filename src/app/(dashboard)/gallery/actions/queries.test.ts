@@ -11,7 +11,7 @@
  *   - industry 필터
  *   - search 필터
  *   - sort=latest → order(created_at, desc)
- *   - sort=popular → 클라이언트 정렬
+ *   - sort=popular → DB 정렬 (like_count 내림차순)
  *   - 데이터 변환 + isLiked 판정
  *   - DB 에러
  *
@@ -269,21 +269,30 @@ describe('fetchGalleryRoadmaps', () => {
     expect(adminMock.chainable.order).toHaveBeenCalledWith('created_at', { ascending: false });
   });
 
-  it('sort=popular → 클라이언트 정렬 (likeCount 내림차순)', async () => {
+  it('sort=popular → DB 정렬 (like_count 내림차순)', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
-    const row1 = makeRoadmapRow({ id: 'r-1', roadmap_likes: [{ count: 0 }] });
-    const row2 = makeRoadmapRow({ id: 'r-2', roadmap_likes: [{ count: 2 }] });
-    // 1차: 메인 쿼리 결과
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryRoadmaps({ sort: 'popular' });
+
+    expect(adminMock.chainable.order).toHaveBeenCalledWith('like_count', { ascending: false });
+  });
+
+  it('sort=popular → 클라이언트 정렬 없음 (DB 순서 유지)', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // DB가 like_count 내림차순으로 이미 정렬된 결과를 반환한다고 가정
+    const row1 = makeRoadmapRow({ id: 'r-2', roadmap_likes: [{ count: 2 }] });
+    const row2 = makeRoadmapRow({ id: 'r-1', roadmap_likes: [{ count: 0 }] });
     adminMock.addResult({ data: [row1, row2], error: null });
-    // 2차: 사용자 좋아요 일괄 조회 결과
     adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps({ sort: 'popular' });
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data[0].id).toBe('r-2'); // likeCount=2가 먼저
-      expect(result.data[1].id).toBe('r-1'); // likeCount=0이 나중
+      // DB 순서 그대로 반환 (클라이언트 재정렬 없음)
+      expect(result.data[0].id).toBe('r-2');
+      expect(result.data[1].id).toBe('r-1');
     }
   });
 

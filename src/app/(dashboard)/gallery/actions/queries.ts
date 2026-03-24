@@ -112,6 +112,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       version_number,
       created_at,
       created_by,
+      like_count,
       projects!inner (
         company_name,
         industry,
@@ -169,8 +170,9 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   // 정렬
   if (sort === 'latest') {
     query = query.order('created_at', { ascending: false });
+  } else if (sort === 'popular') {
+    query = query.order('like_count', { ascending: false });
   }
-  // popular 정렬은 클라이언트에서 처리 (Supabase에서 count 정렬 복잡)
 
   const { data, error } = await query;
 
@@ -223,11 +225,6 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
       createdAt: item.created_at,
     };
   });
-
-  // popular 정렬
-  if (sort === 'popular') {
-    items.sort((a, b) => b.likeCount - a.likeCount);
-  }
 
   return successResult(items);
 }
