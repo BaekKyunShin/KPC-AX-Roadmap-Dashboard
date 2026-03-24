@@ -84,10 +84,10 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
 
     // KPI 카드 라벨 확인 (CI 환경 느린 로드 대응)
     await expect(page.getByText('전체 프로젝트')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('인터뷰 대기')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('인터뷰 완료')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('로드맵 작성 중')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('로드맵 완료')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('인터뷰 대기').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('인터뷰 완료').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('로드맵 작성 중').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('로드맵 완료').first()).toBeVisible({ timeout: 15_000 });
 
     await context.close();
   });
@@ -136,7 +136,7 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
     }
 
     // "최근 활동" 섹션 확인
-    await expect(page.getByText('최근 활동')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: '최근 활동' })).toBeVisible({ timeout: 15_000 });
 
     await context.close();
   });

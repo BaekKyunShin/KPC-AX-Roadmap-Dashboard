@@ -80,7 +80,8 @@ test.describe('템플릿 생성 페이지', () => {
     await page.getByLabel('설명').fill('E2E 테스트용 템플릿입니다.');
 
     // 기본 질문 내용 입력 (첫 번째 질문이 이미 존재)
-    await page.locator('textarea').first().fill('테스트 질문입니다.');
+    // 설명 textarea가 첫 번째이므로, 질문 내용 textarea는 placeholder로 특정
+    await page.locator('textarea[placeholder="질문 내용을 입력하세요"]').first().fill('테스트 질문입니다.');
 
     // 생성 버튼 클릭 (form 스코핑으로 다중 매칭 방지)
     await page.locator('form').getByRole('button', { name: '생성' }).click();

@@ -15,13 +15,13 @@ test.describe('부정 시나리오: 컨설턴트 → OPS 하위 라우트 접근
   ];
 
   for (const { path, description } of opsSubRoutes) {
-    test(`컨설턴트 → ${description}(${path}) → /dashboard 리다이렉트`, async ({
+    test(`컨설턴트 → ${description}(${path}) → /consultant/home 리다이렉트`, async ({
       consultantPage: page,
     }) => {
       await page.goto(path);
 
-      // OPS 레이아웃에서 비 OPS_ADMIN/SYSTEM_ADMIN → /dashboard 리다이렉트
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
+      // OPS 레이아웃에서 비 OPS_ADMIN/SYSTEM_ADMIN → /dashboard → /consultant/home 리다이렉트
+      await expect(page).toHaveURL(/\/consultant\/home/, { timeout: 10_000 });
 
       // /ops/ 경로에 남아있지 않아야 함
       expect(page.url()).not.toContain('/ops/');
@@ -33,13 +33,13 @@ test.describe('부정 시나리오: 컨설턴트 → OPS 하위 라우트 접근
 // OPS 관리자 → 컨설턴트 하위 라우트 (role-access.spec.ts에서 미커버)
 // ---------------------------------------------------------------------------
 test.describe('부정 시나리오: OPS 관리자 → 컨설턴트 하위 라우트 접근 차단', () => {
-  test('OPS 관리자 → /consultant/projects → /dashboard 리다이렉트', async ({
+  test('OPS 관리자 → /consultant/projects → /ops/projects 리다이렉트', async ({
     opsPage: page,
   }) => {
     await page.goto('/consultant/projects');
 
-    // 컨설턴트 페이지: 비 CONSULTANT_APPROVED → /dashboard 리다이렉트
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
+    // 컨설턴트 페이지: 비 CONSULTANT_APPROVED → /dashboard → /ops/projects 리다이렉트
+    await expect(page).toHaveURL(/\/ops\/projects/, { timeout: 10_000 });
 
     // /consultant/ 경로에 남아있지 않아야 함
     expect(page.url()).not.toContain('/consultant/');

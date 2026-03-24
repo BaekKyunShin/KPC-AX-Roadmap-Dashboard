@@ -262,13 +262,14 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="회사명 또는 이메일 검색..."
+                aria-label="회사명 또는 이메일 검색"
                 className="pl-9"
               />
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Select value={internalStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]" aria-label="상태 필터">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
                 <SelectContent>
@@ -282,7 +283,7 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
               </Select>
 
               <Select value={industry} onValueChange={handleIndustryChange}>
-                <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]" aria-label="업종 필터">
                   <SelectValue placeholder="업종" />
                 </SelectTrigger>
                 <SelectContent>

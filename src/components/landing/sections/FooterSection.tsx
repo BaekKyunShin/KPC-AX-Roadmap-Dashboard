@@ -280,7 +280,7 @@ export default function FooterSection() {
           <div className="grid md:grid-cols-4 gap-8">
             {/* Logo & Description */}
             <div className="md:col-span-2">
-              <Link href="/" className="mb-4 inline-block" data-cursor-hover>
+              <Link href="/" className="mb-4 inline-block" data-cursor-hover aria-label="KPC AI ROADMAP 홈">
                 <Logo height={24} priority={false} />
               </Link>
               <p className="text-gray-600 text-sm max-w-xs">

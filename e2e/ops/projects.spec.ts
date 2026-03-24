@@ -160,6 +160,14 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
     // 자가진단 결과 카드 헤더 (data-slot="card-title")
     await expect(page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' })).toBeVisible();
 
+    // 활성 템플릿이 없으면 자가진단 폼 자체가 없음 → 스킵
+    const directInputBtn = page.getByText('운영자가 직접 입력하기');
+    const hasDirectInput = await directInputBtn.isVisible().catch(() => false);
+    test.skip(!hasDirectInput, '테스트 데이터 없음: 활성 자가진단 템플릿이 없습니다');
+
+    // CollapsibleDirectInput 열기
+    await directInputBtn.click();
+
     // 자가진단 폼 내 질문이 있는지 확인 (스텝 인디케이터 존재)
     // 각 스텝의 모든 질문에 "보통이다"(3점) 선택
     // 스텝을 순차적으로 진행하며 모든 문항 응답

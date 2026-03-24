@@ -88,9 +88,15 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
   });
 
   test('사용자 드롭다운 — 이름, 이메일, 역할 배지 표시', async ({ opsPage: page }) => {
+    const desktopUserArea = page.locator('[data-testid="desktop-user-area"]');
+
+    // 역할 배지는 드롭다운 트리거에 표시됨 (드롭다운 메뉴 본체 밖)
+    await expect(
+      desktopUserArea.getByText(/시스템관리자|운영관리자/),
+    ).toBeVisible();
+
     // 사용자 드롭다운 열기 (desktop-user-area 스코핑으로 모바일 아바타 제외)
-    await page
-      .locator('[data-testid="desktop-user-area"]')
+    await desktopUserArea
       .getByRole('button')
       .filter({ has: page.locator('[data-slot="avatar"]') })
       .first()
@@ -99,10 +105,8 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     // 드롭다운 내에서 이름, 이메일 표시 확인
     const dropdown = page.locator('[data-testid="user-dropdown-menu"]');
     await expect(dropdown).toBeVisible();
-    // 역할 배지 (시스템관리자 or 운영관리자)
-    await expect(
-      dropdown.getByText(/시스템관리자|운영관리자/),
-    ).toBeVisible();
+    // 드롭다운 내부에 이름, 이메일이 표시됨
+    await expect(dropdown.locator('p').first()).toBeVisible();
   });
 
   test('알림 벨 아이콘 표시 확인', async ({ opsPage: page }) => {

@@ -49,8 +49,8 @@ test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
     await expect(page.getByText('테스트 모드 안내')).toBeVisible();
     await expect(page.getByText(/테스트 결과는 저장되지 않으며/)).toBeVisible();
 
-    // 뒤로가기 링크
-    await expect(page.getByRole('link', { name: /담당 프로젝트로 돌아가기/ })).toBeVisible();
+    // 뒤로가기 버튼 (backLink.useBack: true → BackButton = <button>)
+    await expect(page.getByRole('button', { name: /담당 프로젝트로 돌아가기/ })).toBeVisible();
 
     // 스테퍼가 표시됨 (인터뷰 스텝)
     // 스텝 컨텐츠 영역이 존재

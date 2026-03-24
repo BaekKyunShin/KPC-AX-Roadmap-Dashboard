@@ -324,6 +324,7 @@ export default function ProjectList() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="기업명 또는 업종 검색..."
+                aria-label="기업명 또는 업종 검색"
                 className="pl-9"
                 disabled={loading}
               />
@@ -332,7 +333,7 @@ export default function ProjectList() {
             {/* 필터 컨트롤 */}
             <div className="flex flex-wrap gap-2">
               <Select value={status} onValueChange={handleStatusChange} disabled={loading}>
-                <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]" aria-label="상태 필터">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
                 <SelectContent>

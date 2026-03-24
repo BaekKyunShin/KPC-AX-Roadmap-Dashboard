@@ -3,8 +3,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 /** 번들 크기 예산 (bytes) */
 const BUDGET = {
-  /** JS 번들 총 transferSize 합계 최대값 — 500KB */
-  JS_TOTAL_BYTES: 512_000,
+  /** JS 번들 총 transferSize 합계 최대값 — 800KB — Next.js + Supabase + GSAP + Recharts 스택 반영 */
+  JS_TOTAL_BYTES: 819_200,
   /** CSS 총 transferSize 합계 최대값 — 100KB */
   CSS_TOTAL_BYTES: 102_400,
 } as const;

@@ -15,15 +15,16 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
       <SmoothScroll>
-        {/* 메인 콘텐츠 */}
+        {/* Navbar를 main 밖에 배치하여 <header>가 banner landmark 역할을 가지도록 함 */}
+        <Navbar />
         <main className="relative z-10">
-          <Navbar />
           <HeroSection />
           <FeaturesSection />
           <WorkflowSection />
           <DemoSection />
-          <FooterSection />
         </main>
+        {/* FooterSection을 main 밖에 배치하여 <footer>가 contentinfo landmark 역할을 가지도록 함 */}
+        <FooterSection />
       </SmoothScroll>
     </div>
   );

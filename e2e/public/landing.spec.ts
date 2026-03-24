@@ -54,8 +54,10 @@ test.describe('Phase 1.1: 랜딩 페이지 (/)', () => {
     await expect(page.locator('section#features')).toBeAttached();
     await expect(page.locator('section#workflow')).toBeAttached();
     await expect(page.locator('section#demo')).toBeAttached();
-    // main 내부 section 요소 5개 (Hero + Features + Workflow + Demo + Footer)
-    await expect(page.locator('main section')).toHaveCount(5);
+    // main 내부 section 4개 (Hero + Features + Workflow + Demo)
+    await expect(page.locator('main section')).toHaveCount(4);
+    // footer는 main 밖에 위치 (contentinfo landmark 역할)
+    await expect(page.locator('footer')).toBeAttached();
   });
 
   test('KPC 외부 링크 존재 확인', async ({ page }) => {

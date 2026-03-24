@@ -154,13 +154,14 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="로드맵 검색 (기업명, 업종, 키워드...)"
+                aria-label="로드맵 검색"
                 className="pl-9"
               />
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Select value={industry} onValueChange={handleIndustryChange}>
-                <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]" aria-label="업종 필터">
                   <SelectValue placeholder="업종" />
                 </SelectTrigger>
                 <SelectContent>
@@ -174,7 +175,7 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
               </Select>
 
               <Select value={sort} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-full sm:w-[120px]">
+                <SelectTrigger className="w-full sm:w-[120px]" aria-label="정렬 기준">
                   <SelectValue placeholder="정렬" />
                 </SelectTrigger>
                 <SelectContent>

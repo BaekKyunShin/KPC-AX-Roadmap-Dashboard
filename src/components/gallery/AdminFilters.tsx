@@ -113,7 +113,7 @@ export function AdminFilters() {
               value={currentStatus}
               onValueChange={(v) => updateParam('status', v === DEFAULT_FILTER_VALUE ? '' : v)}
             >
-              <SelectTrigger className="w-full sm:w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]" aria-label="로드맵 상태 필터">
                 <SelectValue placeholder="상태" />
               </SelectTrigger>
               <SelectContent>
@@ -130,7 +130,7 @@ export function AdminFilters() {
               value={currentShared}
               onValueChange={(v) => updateParam('isShared', v === DEFAULT_FILTER_VALUE ? '' : v)}
             >
-              <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]" aria-label="공유 여부 필터">
                 <SelectValue placeholder="공유" />
               </SelectTrigger>
               <SelectContent>
@@ -147,7 +147,7 @@ export function AdminFilters() {
               value={currentConsultant}
               onValueChange={(v) => updateParam('consultantId', v === DEFAULT_FILTER_VALUE ? '' : v)}
             >
-              <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]" aria-label="컨설턴트 필터">
                 <SelectValue placeholder="컨설턴트" />
               </SelectTrigger>
               <SelectContent>

@@ -10,8 +10,12 @@ async function selectFirstConversation(page: Page): Promise<boolean> {
     .locator('button')
     .filter({ has: page.locator('[data-slot="avatar"]') })
     .first();
-  const visible = await btn.isVisible().catch(() => false);
-  if (!visible) return false;
+  // 클라이언트 측 fetchConversations 완료 대기 (networkidle 이후에도 비동기 로드 가능)
+  try {
+    await btn.waitFor({ state: 'visible', timeout: 5_000 });
+  } catch {
+    return false;
+  }
   await btn.click();
   return true;
 }

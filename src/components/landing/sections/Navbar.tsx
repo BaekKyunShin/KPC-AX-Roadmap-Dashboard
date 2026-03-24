@@ -227,6 +227,7 @@ export default function Navbar() {
               onClick={handleLogoClick}
               className="transition-opacity hover:opacity-70"
               data-cursor-hover
+              aria-label="KPC AI ROADMAP 홈"
             >
               <Logo height={26} />
             </Link>

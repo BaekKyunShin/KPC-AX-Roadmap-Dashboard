@@ -230,7 +230,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="group">
+            <Link href="/" className="group" aria-label="KPC AI ROADMAP 홈">
               <Logo height={26} className="transition-opacity group-hover:opacity-80" />
             </Link>
 

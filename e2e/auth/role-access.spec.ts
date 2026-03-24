@@ -13,10 +13,10 @@ test.describe('역할 간 접근 차단 — 컨설턴트 → OPS 라우트', () 
   ];
 
   for (const route of opsRoutes) {
-    test(`컨설턴트 → ${route} → /dashboard 리다이렉트`, async ({ consultantPage: page }) => {
+    test(`컨설턴트 → ${route} → /consultant/home 리다이렉트`, async ({ consultantPage: page }) => {
       await page.goto(route);
-      // ops/layout.tsx: 비 OPS_ADMIN/SYSTEM_ADMIN → /dashboard 리다이렉트
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
+      // ops/layout.tsx: 비 OPS_ADMIN/SYSTEM_ADMIN → /dashboard → /consultant/home 리다이렉트
+      await expect(page).toHaveURL(/\/consultant\/home/, { timeout: 10_000 });
       // /ops/ 경로에 남아있지 않아야 함
       expect(page.url()).not.toContain('/ops/');
     });
@@ -31,10 +31,10 @@ test.describe('역할 간 접근 차단 — OPS 관리자 → 컨설턴트 라�
   ];
 
   for (const route of consultantRoutes) {
-    test(`OPS 관리자 → ${route} → /dashboard 리다이렉트`, async ({ opsPage: page }) => {
+    test(`OPS 관리자 → ${route} → /ops/projects 리다이렉트`, async ({ opsPage: page }) => {
       await page.goto(route);
-      // 각 컨설턴트 페이지: 비 CONSULTANT_APPROVED → /dashboard 리다이렉트
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
+      // 각 컨설턴트 페이지: 비 CONSULTANT_APPROVED → /dashboard → /ops/projects 리다이렉트
+      await expect(page).toHaveURL(/\/ops\/projects/, { timeout: 10_000 });
       // /consultant/ 경로에 남아있지 않아야 함
       expect(page.url()).not.toContain('/consultant/');
     });

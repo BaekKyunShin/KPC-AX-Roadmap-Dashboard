@@ -50,12 +50,12 @@ test.describe('컨설턴트 인터뷰', () => {
     await page.waitForLoadState('networkidle');
 
     // 초기 상태: 1단계 "기본 정보" 표시 (main 스코핑으로 네비 중복 방지)
-    await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).toBeVisible();
+    await expect(page.locator('main').getByText('인터뷰 날짜')).toBeVisible();
 
     // "다음" 버튼 클릭 → 2단계로 이동
     await page.getByRole('button', { name: '다음' }).click();
     // 스텝 전환 후 "인터뷰 날짜" 필드가 사라지는 것으로 2단계 진입 확인
-    await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('main').getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
 
     // 2단계 "시스템/AI 활용 경험" 관련 콘텐츠 표시
     const mainContent = page.locator('main');
@@ -66,7 +66,7 @@ test.describe('컨설턴트 인터뷰', () => {
     await page.getByRole('button', { name: '이전' }).click();
 
     // 다시 "인터뷰 날짜" 필드가 보여야 함 (1단계 콘텐츠 렌더링 대기)
-    await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('main').getByText('인터뷰 날짜')).toBeVisible({ timeout: 5_000 });
   });
 
   test('1단계: 필수 필드 (날짜, 참석자명) 확인', async ({ consultantPage: page }) => {
@@ -88,8 +88,8 @@ test.describe('컨설턴트 인터뷰', () => {
     await expect(page.getByPlaceholder('이름')).toBeVisible();
 
     // 필수 표시 (*) 확인
-    await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).toBeVisible();
-    await expect(page.locator('main').getByText('인터뷰 참석자', { exact: true })).toBeVisible();
+    await expect(page.locator('main').getByText('인터뷰 날짜')).toBeVisible();
+    await expect(page.locator('main').getByText('인터뷰 참석자')).toBeVisible();
   });
 
   test('참석자 동적 추가/제거', async ({ consultantPage: page }) => {
@@ -144,7 +144,7 @@ test.describe('컨설턴트 인터뷰', () => {
     if (isDesktopStepper) {
       await step3Button.click();
       // 3단계 전환 후 "기본 정보"(1단계) 콘텐츠가 사라지는 것으로 스텝 전환 확인
-      await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).not.toBeVisible({ timeout: 5_000 });
+      await expect(page.locator('main').getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
 
       // 3단계 콘텐츠가 표시되는지 확인 (스텝 콘텐츠 영역에 텍스트가 있으면 됨)
       const mainContent = page.locator('main');
@@ -158,7 +158,7 @@ test.describe('컨설턴트 인터뷰', () => {
       if (barCount >= 3) {
         await mobileBars.nth(2).click(); // 3번째 스텝
         // 스텝 전환 후 콘텐츠 갱신 대기
-        await expect(page.locator('main').getByText('인터뷰 날짜', { exact: true })).not.toBeVisible({ timeout: 5_000 });
+        await expect(page.locator('main').getByText('인터뷰 날짜')).not.toBeVisible({ timeout: 5_000 });
       }
     }
 
