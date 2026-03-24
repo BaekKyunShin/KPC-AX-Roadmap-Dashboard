@@ -87,19 +87,19 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
       stepCount++;
 
-      // "다음" 버튼이 있으면 클릭, 없으면 (마지막 스텝) "자가진단 저장" 버튼
-      const nextButton = page.getByRole('button', { name: '다음' });
-      if (await nextButton.isVisible().catch(() => false)) {
-        await nextButton.click();
-        // 스텝 전환 후 새 질문 블록 렌더링 대기
-        await expect(page.locator('[id^="question-"]').first()).toBeVisible({ timeout: 5_000 });
-      } else {
-        // 마지막 스텝 — "자가진단 저장" 버튼 클릭
-        const submitButton = page.getByRole('button', { name: '자가진단 저장' });
+      // "자가진단 저장" 버튼이 보이면 마지막 스텝, 아니면 "다음" 클릭
+      const submitButton = page.getByRole('button', { name: '자가진단 저장' });
+      const isLastStep = await submitButton.isVisible().catch(() => false);
+      if (isLastStep) {
         await expect(submitButton).toBeEnabled({ timeout: 10_000 });
         await submitButton.click();
         break;
       }
+      // 다음 스텝으로 이동
+      const nextButton = page.getByRole('button', { name: '다음' });
+      await nextButton.click();
+      // 스텝 전환 후 새 질문 블록 렌더링 대기
+      await expect(page.locator('[id^="question-"]').first()).toBeVisible({ timeout: 5_000 });
     }
 
     // 성공 토스트
