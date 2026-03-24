@@ -30,27 +30,21 @@ export function useProjectDashboard(initialStats?: ProjectStats | null): Project
   useEffect(() => {
     const loadData = async () => {
       try {
-        if (initialStats) {
-          const [monthly, consultant, stalled] = await Promise.all([
-            fetchMonthlyCompletions(),
-            fetchConsultantProgress(),
-            fetchStalledProjects(),
-          ]);
-          setMonthlyData(monthly);
-          setConsultantData(consultant);
-          setStalledProjects(stalled);
-        } else {
-          const [statsData, monthly, consultant, stalled] = await Promise.all([
-            fetchProjectStats(),
-            fetchMonthlyCompletions(),
-            fetchConsultantProgress(),
-            fetchStalledProjects(),
-          ]);
-          setStats(statsData);
-          setMonthlyData(monthly);
-          setConsultantData(consultant);
-          setStalledProjects(stalled);
-        }
+        const statsPromise = initialStats
+          ? Promise.resolve(initialStats)
+          : fetchProjectStats();
+
+        const [statsData, monthly, consultant, stalled] = await Promise.all([
+          statsPromise,
+          fetchMonthlyCompletions(),
+          fetchConsultantProgress(),
+          fetchStalledProjects(),
+        ]);
+
+        setStats(statsData);
+        setMonthlyData(monthly);
+        setConsultantData(consultant);
+        setStalledProjects(stalled);
       } catch (error) {
         console.error('[ProjectDashboard] 데이터 로드 실패:', error);
       } finally {
