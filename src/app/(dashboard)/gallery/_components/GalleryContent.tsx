@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Pagination } from '@/components/ui/Pagination';
 import { GalleryCard } from '@/components/gallery/GalleryCard';
 import { AdminFilters } from '@/components/gallery/AdminFilters';
 import { PROJECT_INDUSTRIES } from '@/lib/constants/industry';
@@ -61,6 +62,9 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   const isResettingRef = useRef(false);
 
   const [items, setItems] = useState<GalleryRoadmapItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchInput, setSearchInput] = useState(searchParams.search || '');
   const [industry, setIndustry] = useState(
@@ -87,7 +91,10 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
     fetchGalleryRoadmaps(params).then((result) => {
       if (cancelled) return;
       if (result.success) {
-        setItems(result.data);
+        setItems(result.data.items);
+        setTotal(result.data.total);
+        setTotalPages(result.data.totalPages);
+        setCurrentPage(result.data.page);
       }
       setIsLoading(false);
     });
@@ -99,7 +106,10 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   const updateParams = (updates: Record<string, string>) => {
     const params = new URLSearchParams(urlSearchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value && value !== DEFAULT_FILTER_VALUE) {
+      // page=1은 기본값이므로 URL에서 제거 (깔끔한 URL)
+      if (key === 'page' && value === '1') {
+        params.delete(key);
+      } else if (value && value !== DEFAULT_FILTER_VALUE) {
         params.set(key, value);
       } else {
         params.delete(key);
@@ -108,24 +118,24 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // 디바운스된 검색어 변경 시 URL 업데이트
+  // 디바운스된 검색어 변경 시 URL 업데이트 + page 리셋
   useEffect(() => {
     if (isResettingRef.current) return;
     const currentSearch = urlSearchParams.get('search') || '';
     if (debouncedSearch !== currentSearch) {
-      updateParams({ search: debouncedSearch });
+      updateParams({ search: debouncedSearch, page: '1' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
   const handleIndustryChange = (value: string) => {
     setIndustry(value);
-    updateParams({ industry: value === DEFAULT_FILTER_VALUE ? '' : value });
+    updateParams({ industry: value === DEFAULT_FILTER_VALUE ? '' : value, page: '1' });
   };
 
   const handleSortChange = (value: string) => {
     setSort(value);
-    updateParams({ sort: value });
+    updateParams({ sort: value, page: '1' });
   };
 
   const handleResetFilters = () => {
@@ -246,11 +256,22 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
           />
         )
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {items.map((item) => (
-            <GalleryCard key={item.id} item={item} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {items.map((item) => (
+              <GalleryCard key={item.id} item={item} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              itemsPerPage={12}
+              onPageChange={(page) => updateParams({ page: String(page) })}
+            />
+          )}
+        </>
       )}
     </div>
   );

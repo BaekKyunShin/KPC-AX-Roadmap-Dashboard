@@ -283,7 +283,7 @@ describe('fetchGalleryRoadmaps', () => {
     // DB가 like_count 내림차순으로 이미 정렬된 결과를 반환한다고 가정
     const row1 = makeRoadmapRow({ id: 'r-2', roadmap_likes: [{ count: 2 }] });
     const row2 = makeRoadmapRow({ id: 'r-1', roadmap_likes: [{ count: 0 }] });
-    adminMock.addResult({ data: [row1, row2], error: null });
+    adminMock.addResult({ data: [row1, row2], error: null, count: 2 });
     adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps({ sort: 'popular' });
@@ -291,8 +291,8 @@ describe('fetchGalleryRoadmaps', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       // DB 순서 그대로 반환 (클라이언트 재정렬 없음)
-      expect(result.data[0].id).toBe('r-2');
-      expect(result.data[1].id).toBe('r-1');
+      expect(result.data.items[0].id).toBe('r-2');
+      expect(result.data.items[1].id).toBe('r-1');
     }
   });
 
@@ -300,7 +300,7 @@ describe('fetchGalleryRoadmaps', () => {
     setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
     const row = makeRoadmapRow();
     // 1차: 메인 쿼리 결과
-    adminMock.addResult({ data: [row], error: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
     // 2차: 사용자 좋아요 일괄 조회 — 현재 유저가 이 로드맵에 좋아요함
     adminMock.addResult({ data: [{ roadmap_version_id: TEST_ROADMAP_ID }], error: null });
 
@@ -308,7 +308,7 @@ describe('fetchGalleryRoadmaps', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const item = result.data[0];
+      const item = result.data.items[0];
       expect(item.id).toBe(TEST_ROADMAP_ID);
       expect(item.title).toBe('테스트기업 — AI 실습');
       expect(item.industry).toBe('제조/생산');
@@ -328,7 +328,7 @@ describe('fetchGalleryRoadmaps', () => {
   it('pbl_course 없을 때 title 포맷 — "회사명 로드맵"', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
     const row = makeRoadmapRow({ pbl_course: null });
-    adminMock.addResult({ data: [row], error: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
     // 사용자 좋아요 일괄 조회
     adminMock.addResult({ data: [], error: null });
 
@@ -336,14 +336,14 @@ describe('fetchGalleryRoadmaps', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data[0].title).toBe('테스트기업 로드맵');
+      expect(result.data.items[0].title).toBe('테스트기업 로드맵');
     }
   });
 
   it('creator 없을 때 createdByName → "알 수 없음"', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
     const row = makeRoadmapRow({ users: null });
-    adminMock.addResult({ data: [row], error: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
     // 사용자 좋아요 일괄 조회
     adminMock.addResult({ data: [], error: null });
 
@@ -351,7 +351,7 @@ describe('fetchGalleryRoadmaps', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data[0].createdByName).toBe('알 수 없음');
+      expect(result.data.items[0].createdByName).toBe('알 수 없음');
     }
   });
 
@@ -372,14 +372,14 @@ describe('fetchGalleryRoadmaps', () => {
   it('결과 데이터 없음 → 빈 배열 + 좋아요 조회 스킵', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
     // 메인 쿼리 빈 배열
-    adminMock.addResult({ data: [], error: null });
+    adminMock.addResult({ data: [], error: null, count: 0 });
     // roadmapIds가 비어 있으므로 좋아요 조회 쿼리 미호출
 
     const result = await fetchGalleryRoadmaps();
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toEqual([]);
+      expect(result.data.items).toEqual([]);
     }
     // roadmapIds.length === 0 → 좋아요 쿼리 결과 큐 소비 없음
     expect(adminMock.client.from).toHaveBeenCalledTimes(1); // 메인 쿼리 1회만
@@ -421,15 +421,93 @@ describe('fetchGalleryRoadmaps', () => {
   it('데이터 변환 — roadmap_likes 빈 배열이면 likeCount=0', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
     const row = makeRoadmapRow({ roadmap_likes: [] });
-    adminMock.addResult({ data: [row], error: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
     adminMock.addResult({ data: [], error: null });
 
     const result = await fetchGalleryRoadmaps();
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data[0].likeCount).toBe(0);
+      expect(result.data.items[0].likeCount).toBe(0);
     }
+  });
+
+  // ─── 페이지네이션 ────────────────────────────────────────────────────────
+
+  describe('페이지네이션', () => {
+    it('반환값에 items, total, totalPages, page 필드 포함', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      const row = makeRoadmapRow();
+      adminMock.addResult({ data: [row], error: null, count: 25 });
+      adminMock.addResult({ data: [], error: null });
+
+      const result = await fetchGalleryRoadmaps();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveProperty('items');
+        expect(result.data).toHaveProperty('total');
+        expect(result.data).toHaveProperty('totalPages');
+        expect(result.data).toHaveProperty('page');
+      }
+    });
+
+    it('page=1, limit=12 기본 호출 시 range(0, 11) 호출', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      adminMock.addResult({ data: [], error: null, count: 0 });
+
+      await fetchGalleryRoadmaps();
+
+      expect(adminMock.chainable.range).toHaveBeenCalledWith(0, 11);
+    });
+
+    it('page=2, limit=12 → range(12, 23) 호출', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      adminMock.addResult({ data: [], error: null, count: 25 });
+
+      await fetchGalleryRoadmaps({ page: '2' });
+
+      expect(adminMock.chainable.range).toHaveBeenCalledWith(12, 23);
+    });
+
+    it('select에 { count: "exact" } 옵션 전달', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      adminMock.addResult({ data: [], error: null, count: 0 });
+
+      await fetchGalleryRoadmaps();
+
+      expect(adminMock.chainable.select).toHaveBeenCalledWith(
+        expect.any(String),
+        { count: 'exact' },
+      );
+    });
+
+    it('total=25, limit=12 → totalPages=3', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      adminMock.addResult({ data: [], error: null, count: 25 });
+
+      const result = await fetchGalleryRoadmaps();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.total).toBe(25);
+        expect(result.data.totalPages).toBe(3);
+        expect(result.data.page).toBe(1);
+      }
+    });
+
+    it('count null → total=0, totalPages=0', async () => {
+      setupAuth({ role: 'OPS_ADMIN' });
+      adminMock.addResult({ data: [], error: null, count: null });
+
+      const result = await fetchGalleryRoadmaps();
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.total).toBe(0);
+        expect(result.data.totalPages).toBe(0);
+      }
+    });
   });
 });
 

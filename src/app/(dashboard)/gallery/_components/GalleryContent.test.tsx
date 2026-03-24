@@ -100,6 +100,31 @@ vi.mock('@/components/ui/select', () => ({
   ),
 }));
 
+vi.mock('@/components/ui/Pagination', () => ({
+  Pagination: ({
+    currentPage,
+    totalPages,
+    totalItems,
+    onPageChange,
+  }: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
+  }) =>
+    totalPages > 1 ? (
+      <div data-testid="pagination">
+        <span data-testid="pagination-info">
+          {currentPage}/{totalPages} (총 {totalItems}건)
+        </span>
+        <button data-testid="pagination-next" onClick={() => onPageChange(currentPage + 1)}>
+          다음
+        </button>
+      </div>
+    ) : null,
+}));
+
 import React from 'react';
 import { GalleryContent } from './GalleryContent';
 import type { GalleryRoadmapItem } from '../actions';
@@ -152,7 +177,10 @@ describe('GalleryContent', () => {
     vi.clearAllMocks();
     // 빈 searchParams 리셋
     mockSearchParams.forEach((_, key) => mockSearchParams.delete(key));
-    mockFetchGalleryRoadmaps.mockResolvedValue({ success: true, data: mockItems });
+    mockFetchGalleryRoadmaps.mockResolvedValue({
+      success: true,
+      data: { items: mockItems, total: mockItems.length, totalPages: 1, page: 1 },
+    });
   });
 
   describe('기본 렌더링', () => {
@@ -197,7 +225,10 @@ describe('GalleryContent', () => {
     });
 
     it('빈 결과이고 필터 없을 때 빈 갤러리 EmptyState가 표시된다', async () => {
-      mockFetchGalleryRoadmaps.mockResolvedValue({ success: true, data: [] });
+      mockFetchGalleryRoadmaps.mockResolvedValue({
+        success: true,
+        data: { items: [], total: 0, totalPages: 0, page: 1 },
+      });
       render(<GalleryContent isAdmin={false} searchParams={{}} />);
       await waitFor(() => {
         expect(screen.getByTestId('empty-state')).toBeInTheDocument();
@@ -253,6 +284,48 @@ describe('GalleryContent', () => {
       await waitFor(() => {
         expect(screen.getByText('제조업 AI 로드맵')).toBeInTheDocument();
         expect(screen.getByText('서비스업 AI 로드맵')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('페이지네이션', () => {
+    it('totalPages > 1일 때 Pagination 컴포넌트가 렌더링된다', async () => {
+      mockFetchGalleryRoadmaps.mockResolvedValue({
+        success: true,
+        data: { items: mockItems, total: 25, totalPages: 3, page: 1 },
+      });
+      render(<GalleryContent isAdmin={false} searchParams={{}} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination')).toBeInTheDocument();
+        expect(screen.getByTestId('pagination-info')).toHaveTextContent('1/3 (총 25건)');
+      });
+    });
+
+    it('totalPages <= 1일 때 Pagination이 렌더링되지 않는다', async () => {
+      mockFetchGalleryRoadmaps.mockResolvedValue({
+        success: true,
+        data: { items: mockItems, total: 2, totalPages: 1, page: 1 },
+      });
+      render(<GalleryContent isAdmin={false} searchParams={{}} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('gallery-card-rv-1')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+    });
+
+    it('페이지 변경 시 URL 파라미터가 업데이트된다', async () => {
+      const user = userEvent.setup();
+      mockFetchGalleryRoadmaps.mockResolvedValue({
+        success: true,
+        data: { items: mockItems, total: 25, totalPages: 3, page: 1 },
+      });
+      render(<GalleryContent isAdmin={false} searchParams={{}} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination-next')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('pagination-next'));
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('page=2'));
       });
     });
   });

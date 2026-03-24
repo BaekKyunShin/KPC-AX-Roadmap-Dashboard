@@ -44,6 +44,40 @@ describe('galleryFiltersSchema', () => {
     const result = galleryFiltersSchema.safeParse({ status: 'INVALID' });
     expect(result.success).toBe(false);
   });
+
+  describe('page/limit 필드', () => {
+    it('기본값: page=1, limit=12', () => {
+      const result = galleryFiltersSchema.parse({});
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(12);
+    });
+
+    it('page=2, limit=6 파싱 성공', () => {
+      const result = galleryFiltersSchema.parse({ page: '2', limit: '6' });
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(6);
+    });
+
+    it('page=0 거부', () => {
+      const result = galleryFiltersSchema.safeParse({ page: '0' });
+      expect(result.success).toBe(false);
+    });
+
+    it('limit=0 거부', () => {
+      const result = galleryFiltersSchema.safeParse({ limit: '0' });
+      expect(result.success).toBe(false);
+    });
+
+    it('limit=51 거부 (최대 50)', () => {
+      const result = galleryFiltersSchema.safeParse({ limit: '51' });
+      expect(result.success).toBe(false);
+    });
+
+    it('소수점 page 거부', () => {
+      const result = galleryFiltersSchema.safeParse({ page: '1.5' });
+      expect(result.success).toBe(false);
+    });
+  });
 });
 
 describe('toggleLikeSchema', () => {

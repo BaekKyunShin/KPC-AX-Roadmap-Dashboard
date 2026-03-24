@@ -2,6 +2,7 @@
 export { fetchGalleryRoadmaps, fetchRoadmapDetail, fetchEligibleProjects, fetchConsultantOptions } from './queries';
 export type {
   GalleryRoadmapItem,
+  GalleryPaginatedResult,
   RoadmapDetailView,
   EligibleProject,
   ConsultantOption,

@@ -76,8 +76,15 @@ export interface ConsultantOption {
 // 갤러리 조회
 // =============================================================================
 
+export interface GalleryPaginatedResult {
+  items: GalleryRoadmapItem[];
+  total: number;
+  totalPages: number;
+  page: number;
+}
+
 export async function fetchGalleryRoadmaps(params: Record<string, string | undefined> = {}): Promise<
-  ActionResult<GalleryRoadmapItem[]>
+  ActionResult<GalleryPaginatedResult>
 > {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
@@ -92,7 +99,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     return errorResult('잘못된 필터 값입니다.');
   }
 
-  const { search, industry, sort, status, isShared, consultantId } = parsed.data;
+  const { search, industry, sort, status, isShared, consultantId, page, limit } = parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
@@ -122,7 +129,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
         name
       ),
       roadmap_likes(count)
-    `);
+    `, { count: 'exact' });
 
   // 컨설턴트: 공유된 FINAL만
   if (!isAdmin) {
@@ -174,7 +181,11 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     query = query.order('like_count', { ascending: false });
   }
 
-  const { data, error } = await query;
+  // 페이지네이션
+  const offset = (page - 1) * limit;
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
 
   if (error) {
     console.error('[fetchGalleryRoadmaps Error]', error);
@@ -226,7 +237,13 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     };
   });
 
-  return successResult(items);
+  const total = count ?? 0;
+  return successResult({
+    items,
+    total,
+    totalPages: total > 0 ? Math.ceil(total / limit) : 0,
+    page,
+  });
 }
 
 // =============================================================================

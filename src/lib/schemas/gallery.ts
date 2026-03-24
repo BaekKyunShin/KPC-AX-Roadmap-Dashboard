@@ -11,6 +11,9 @@ export const galleryFiltersSchema = z.object({
   status: z.enum(['DRAFT', 'FINAL', 'ARCHIVED']).optional(),
   isShared: z.enum(['true', 'false']).optional(),
   consultantId: z.string().uuid().optional(),
+  // 페이지네이션
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(12),
 });
 
 export type GalleryFilters = z.infer<typeof galleryFiltersSchema>;
