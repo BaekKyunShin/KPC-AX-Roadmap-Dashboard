@@ -1,8 +1,29 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
+
+// next/link 모킹 — prefetch prop 전달 검증을 위해 data-prefetch 속성으로 매핑
+vi.mock('next/link', () => ({
+  default: ({
+    children,
+    href,
+    prefetch,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+    prefetch?: boolean;
+    [key: string]: unknown;
+  }) =>
+    React.createElement(
+      'a',
+      { href, ...(prefetch !== undefined ? { 'data-prefetch': String(prefetch) } : {}), ...props },
+      children
+    ),
+}));
 
 const mockPush = vi.fn();
 const mockRefresh = vi.fn();
@@ -578,6 +599,62 @@ describe('Navigation', () => {
     it('알 수 없는 역할은 역할명을 그대로 표시한다', () => {
       renderNavigation({ user: createUser({ role: 'PUBLIC' as User['role'] }) });
       expect(screen.getAllByText('PUBLIC').length).toBeGreaterThan(0);
+    });
+  });
+
+  // ─── Link prefetch 일관 적용 ─────────────────────────────────────────────
+
+  describe('Link prefetch 일관 적용', () => {
+    it('데스크톱 컨설턴트 메뉴 Link에 prefetch={true}가 적용된다', () => {
+      renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
+      const desktopNav = screen.getByTestId('desktop-nav');
+      const links = within(desktopNav).getAllByRole('link');
+      links.forEach((link) => {
+        expect(link).toHaveAttribute('data-prefetch', 'true');
+      });
+    });
+
+    it('관리자 드롭다운 메뉴 Link에 prefetch={true}가 적용된다', async () => {
+      const user = userEvent.setup();
+      renderNavigation({ user: createUser({ role: 'OPS_ADMIN' }) });
+      // 워크스페이스 드롭다운 열기
+      await user.click(screen.getByText('워크스페이스'));
+      const dropdownLinks = screen.getAllByRole('link').filter(
+        (link) => link.getAttribute('href')?.startsWith('/ops/')
+      );
+      expect(dropdownLinks.length).toBeGreaterThan(0);
+      dropdownLinks.forEach((link) => {
+        expect(link).toHaveAttribute('data-prefetch', 'true');
+      });
+    });
+
+    it('모바일 컨설턴트 메뉴 Link에 prefetch={true}가 적용된다', async () => {
+      const user = userEvent.setup();
+      renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      const mobileMenu = screen.getByTestId('mobile-menu');
+      const mobileNavLinks = within(mobileMenu).getAllByRole('link').filter(
+        (link) => {
+          const href = link.getAttribute('href');
+          return href?.startsWith('/consultant/') || href?.startsWith('/gallery') || href?.startsWith('/test-roadmap');
+        }
+      );
+      expect(mobileNavLinks.length).toBeGreaterThan(0);
+      mobileNavLinks.forEach((link) => {
+        expect(link).toHaveAttribute('data-prefetch', 'true');
+      });
+    });
+
+    it('모바일 관리자 아코디언 메뉴 Link에 prefetch={true}가 적용된다', async () => {
+      const user = userEvent.setup();
+      renderNavigation({ user: createUser({ role: 'OPS_ADMIN' }) });
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      // 운영관리 아코디언 열기 (모바일)
+      const opsLabels = screen.getAllByText('운영관리');
+      const mobileOpsBtn = opsLabels[opsLabels.length - 1].closest('button');
+      await user.click(mobileOpsBtn!);
+      const userMgmtLink = screen.getByText('사용자 관리').closest('a');
+      expect(userMgmtLink).toHaveAttribute('data-prefetch', 'true');
     });
   });
 });

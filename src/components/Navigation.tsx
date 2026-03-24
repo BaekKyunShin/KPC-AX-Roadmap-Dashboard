@@ -92,6 +92,7 @@ function NavGroupDropdown({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 onClick={onNavigate}
                 className={cn(
                   'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
@@ -154,6 +155,7 @@ function MobileNavGroup({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 onClick={onNavigate}
                 className={cn(
                   'flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -331,6 +333,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   {isConsultant && (
                     <Link
                       href="/consultant/profile"
+                      prefetch={true}
                       onClick={() => setIsUserMenuOpen(false)}
                       className={cn(
                         'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
@@ -346,6 +349,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
                   <Link
                     href="/dashboard/settings"
+                    prefetch={true}
                     onClick={() => setIsUserMenuOpen(false)}
                     className={cn(
                       'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
@@ -414,6 +418,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       'flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
@@ -468,6 +473,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               {isConsultant && (
                 <Link
                   href="/consultant/profile"
+                  prefetch={true}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
                     'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors',
@@ -483,6 +489,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
 
               <Link
                 href="/dashboard/settings"
+                prefetch={true}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={cn(
                   'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors',
