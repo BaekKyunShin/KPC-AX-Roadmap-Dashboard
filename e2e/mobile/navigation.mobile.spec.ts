@@ -50,6 +50,7 @@ test.describe('모바일 네비게이션 — 랜딩 페이지', () => {
     await openMobileMenu(mobilePage);
 
     const mobileMenu = mobilePage.locator('[data-testid="mobile-menu"]');
+    await expect(mobileMenu.getByRole('link', { name: '회원가입' })).toBeVisible({ timeout: 10_000 });
     await mobileMenu.getByRole('link', { name: '회원가입' }).click();
     await expect(mobilePage).toHaveURL('/register');
   });

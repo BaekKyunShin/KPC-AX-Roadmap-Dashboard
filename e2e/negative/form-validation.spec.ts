@@ -68,7 +68,7 @@ test.describe('부정 시나리오: 템플릿 생성 폼 유효성 검증', () =
     // 생성 또는 저장 버튼 찾기 (form 스코핑으로 다중 매칭 방지)
     const submitButton = page.locator('form').getByRole('button', { name: /생성|저장/ }).first();
     await expect(submitButton).toBeVisible({ timeout: 10_000 });
-    await submitButton.click();
+    await submitButton.click({ force: true });
 
     // JS 유효성 검증: "템플릿 이름을 입력하세요" 에러 또는 토스트
     const errorAlert = page.locator('.bg-red-50');

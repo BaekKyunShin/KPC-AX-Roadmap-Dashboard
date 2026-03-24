@@ -74,6 +74,8 @@ export function AdminFilters() {
     } else {
       params.delete(key);
     }
+    // 필터 변경 시 page를 1로 리셋 (페이지네이션 호환)
+    params.delete('page');
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -87,6 +89,7 @@ export function AdminFilters() {
     params.delete('status');
     params.delete('isShared');
     params.delete('consultantId');
+    params.delete('page');
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   };

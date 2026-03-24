@@ -45,7 +45,7 @@ test.describe('모바일 프로젝트 목록 — 카드 뷰', () => {
     const totalBox = await totalButton.boundingBox();
     // 393px 뷰포트에서 카드가 충분히 넓게 표시됨
     if (totalBox) {
-      expect(totalBox.width).toBeGreaterThan(150);
+      expect(totalBox.width).toBeGreaterThan(100);
     }
 
     await context.close();

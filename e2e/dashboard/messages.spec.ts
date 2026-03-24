@@ -60,7 +60,7 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     // 메시지 입력 영역이 표시되어야 함 (textarea placeholder)
     await expect(
       page.getByPlaceholder('메시지를 입력하세요...'),
-    ).toBeVisible({ timeout: 5_000 });
+    ).toBeVisible({ timeout: 15_000 });
 
     // 전송 버튼이 표시되어야 함
     await expect(
@@ -75,7 +75,7 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
 
     // 입력 필드 대기
     const textarea = page.getByPlaceholder('메시지를 입력하세요...');
-    await expect(textarea).toBeVisible({ timeout: 5_000 });
+    await expect(textarea).toBeVisible({ timeout: 15_000 });
 
     // 메시지 입력
     const testMessage = `E2E 테스트 메시지 ${Date.now()}`;

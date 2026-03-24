@@ -117,7 +117,9 @@ test.describe('템플릿 상세 페이지', () => {
     // 상세 페이지 요소 확인
     await expect(page.getByText('템플릿 편집')).toBeVisible();
     await expect(page.getByText('미리보기')).toBeVisible();
-    await expect(page.getByRole('link', { name: /템플릿 목록으로/ })).toBeVisible();
+    const backNav = page.getByRole('link', { name: /템플릿 목록으로/ })
+      .or(page.getByRole('button', { name: /템플릿 목록으로/ }));
+    await expect(backNav).toBeVisible();
   });
 });
 

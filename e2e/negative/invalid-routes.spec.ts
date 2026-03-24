@@ -41,7 +41,7 @@ test.describe('부정 시나리오: 존재하지 않는 공개 경로 → 404', 
     // 링크 클릭 → 홈(/) 이동 확인
     await homeLink.click();
     await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/^\/$/, { timeout: 10_000 });
+    await expect(page).toHaveURL('/', { timeout: 10_000 });
   });
 });
 

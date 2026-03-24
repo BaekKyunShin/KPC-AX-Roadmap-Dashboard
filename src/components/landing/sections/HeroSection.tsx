@@ -122,7 +122,7 @@ interface TitleProps {
 
 function Title({ text, showCursor }: TitleProps) {
   return (
-    <h1 className="relative text-center text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold max-w-6xl leading-[1.1] tracking-tight text-gray-800">
+    <h1 aria-label="AI 훈련의 새로운 기준" className="relative text-center text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold max-w-6xl leading-[1.1] tracking-tight text-gray-800">
       {text}
       {showCursor && (
         <span className="inline-block w-[4px] h-[0.85em] bg-gray-800 ml-1 align-middle animate-blink" />
