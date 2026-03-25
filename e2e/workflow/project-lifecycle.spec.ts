@@ -9,6 +9,7 @@ const E2E_COMPANY = 'E2E워크플로우테스트';
 test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   test.describe.configure({ mode: 'serial' });
   let projectId: string | null = null;
+  let isAssigned = false; // 3단계(컨설턴트 배정) 성공 여부
 
   test.afterAll(async () => {
     if (projectId) await deleteProject(projectId);
@@ -162,11 +163,13 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // 상태 뱃지: "컨설턴트 배정 완료"
     await expect(page.getByText('컨설턴트 배정 완료')).toBeVisible({ timeout: 15_000 });
+    isAssigned = true;
   });
 
   // ─── 4단계: 인터뷰 입력 (ASSIGNED → INTERVIEWED) ──────────────────────────
   test('4단계: 인터뷰 입력 → INTERVIEWED 상태', async ({ consultantPage: page }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 인터뷰 입력 불가');
 
     // 컨설턴트 프로젝트 상세 → 인터뷰 입력
     await page.goto(`/consultant/projects/${projectId!}`);
