@@ -265,6 +265,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   // ─── 5단계: 로드맵 생성 (INTERVIEWED → ROADMAP_DRAFTED) ───────────────────
   test('5단계: 로드맵 생성 → ROADMAP_DRAFTED 상태', async ({ consultantPage: page }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 로드맵 생성 불가');
     test.skip(!process.env.LLM_API_KEY, 'LLM API 키 미설정');
     test.setTimeout(120_000); // LLM 응답 대기
 
@@ -300,6 +301,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   // ─── 6단계: 로드맵 확정 (ROADMAP_DRAFTED → FINALIZED) ─────────────────────
   test('6단계: 로드맵 확정 → FINALIZED 상태', async ({ consultantPage: page, opsPage }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
+    test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 로드맵 확정 불가');
     test.skip(!process.env.LLM_API_KEY, 'LLM API 키 미설정');
 
     // 로드맵 페이지 접근
