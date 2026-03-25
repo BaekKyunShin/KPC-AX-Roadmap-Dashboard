@@ -137,19 +137,17 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     // "수동 매칭" 탭 클릭
     await page.getByRole('button', { name: '수동 매칭', exact: true }).click();
 
-    // ConsultantSelector 로딩 대기 — 컨설턴트 목록이 나타날 때까지
-    // ConsultantListItem은 <div class="...cursor-pointer..."> 구조
-    const consultantListItem = page.locator('[class*="cursor-pointer"]').first();
+    // ConsultantSelector 로딩 대기 — data-testid로 정확한 컨설턴트 항목 타겟팅
+    const consultantListItem = page.locator('[data-testid="consultant-list-item"]').first();
     const hasConsultants = await consultantListItem.isVisible({ timeout: 15_000 }).catch(() => false);
-    test.skip(!hasConsultants, 'CI 환경에 등록된 컨설턴트가 없어 배정 테스트 스킵');
+    test.skip(!hasConsultants, '승인된 컨설턴트가 없어 배정 테스트 스킵');
 
-    // 첫 번째 컨설턴트 클릭 → selectedConsultant 상태 업데이트
+    // 첫 번째 컨설턴트 클릭 → selectedConsultant 상태 업데이트 → textarea 조건부 렌더링
     await consultantListItem.click();
 
-    // 컨설턴트 선택 후 배정 사유 textarea 렌더링 대기 (조건부 렌더링: selectedConsultant && ...)
+    // 배정 사유 textarea 렌더링 대기 (ManualAssignmentForm: selectedConsultant && ...)
     const reasonTextarea = page.locator('textarea').first();
-    const textareaVisible = await reasonTextarea.isVisible({ timeout: 10_000 }).catch(() => false);
-    test.skip(!textareaVisible, 'CI 환경에서 컨설턴트 선택 후 배정 사유 입력란이 렌더링되지 않아 스킵');
+    await expect(reasonTextarea).toBeVisible({ timeout: 10_000 });
     await reasonTextarea.fill('E2E 워크플로우 테스트를 위한 컨설턴트 수동 배정입니다.');
 
     // "배정하기" 버튼 클릭

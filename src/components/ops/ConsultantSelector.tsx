@@ -358,6 +358,7 @@ function ConsultantListItem({ consultant, isSelected, onSelect }: ConsultantList
   return (
     <div
       onClick={() => onSelect(consultant)}
+      data-testid="consultant-list-item"
       className={`p-4 cursor-pointer transition-colors ${
         isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-gray-50'
       }`}
