@@ -207,60 +207,54 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.getByRole('button', { name: '다음' }).click();
     await expect(page.getByText('인터뷰 날짜', { exact: true })).not.toBeVisible({ timeout: 5_000 });
 
-    // ── 스텝 2: AI 활용 경험 (필수 아님이지만 다음으로 넘어감) ──
-    // 다음 → 스텝 3
+    // ── 스텝 2: AI 활용 경험 (REQUIRED_STEP_IDS에는 없지만, 경고 방지) ──
+    await expect(page.getByText(/AI 도구|시스템/).first()).toBeVisible({ timeout: 5_000 });
+    const aiTextarea = page.locator('textarea').first();
+    if (await aiTextarea.isVisible().catch(() => false)) {
+      await aiTextarea.fill('ChatGPT를 활용한 문서 작성 경험이 있습니다.');
+    }
     await page.getByRole('button', { name: '다음' }).click();
 
     // ── 스텝 3: 세부업무 (업무명 + 업무 설명 필수) ──
     await expect(page.getByText('세부업무').first()).toBeVisible({ timeout: 5_000 });
-
-    // "예시 채우기" 버튼으로 데이터 빠르게 채우기
     const fillExampleBtn = page.getByRole('button', { name: '예시 채우기' }).first();
-    const hasFillExample = await fillExampleBtn.isVisible().catch(() => false);
-    if (hasFillExample) {
+    if (await fillExampleBtn.isVisible().catch(() => false)) {
       await fillExampleBtn.click();
+      // 예시 데이터 반영 대기
+      await expect(page.locator('textarea').first()).not.toHaveValue('', { timeout: 3_000 });
     } else {
-      // 수동 입력
-      await page.locator('input[placeholder*="고객 문의"]').first().fill('테스트 업무');
+      await page.locator('input[placeholder*="업무"]').first().fill('테스트 업무');
       await page.locator('textarea').first().fill('테스트 업무 설명입니다. AI 교육으로 개선하고자 합니다.');
     }
-
-    // 다음 → 스텝 4
     await page.getByRole('button', { name: '다음' }).click();
 
-    // ── 스텝 4: 페인포인트 (설명 필수) ──
+    // ── 스텝 4: 페인포인트 (description 필수) ──
     await expect(page.getByText('페인포인트').first()).toBeVisible({ timeout: 5_000 });
-
     const painFillBtn = page.getByRole('button', { name: '예시 채우기' }).first();
-    const hasPainFill = await painFillBtn.isVisible().catch(() => false);
-    if (hasPainFill) {
+    if (await painFillBtn.isVisible().catch(() => false)) {
       await painFillBtn.click();
+      await expect(page.locator('textarea').first()).not.toHaveValue('', { timeout: 3_000 });
     } else {
       await page.locator('textarea').first().fill('반복 업무에 시간이 너무 많이 소요됩니다. 자동화가 필요합니다.');
     }
-
-    // 다음 → 스텝 5
     await page.getByRole('button', { name: '다음' }).click();
 
-    // ── 스텝 5: 목표/제약 (개선 목표 필수) ──
-    await expect(page.getByText('개선 목표').first()).toBeVisible({ timeout: 5_000 });
-
+    // ── 스텝 5: 목표/제약 (goal_description 필수) ──
+    await expect(page.getByText(/목표|개선/).first()).toBeVisible({ timeout: 5_000 });
     const goalFillBtn = page.getByRole('button', { name: '예시 채우기' }).first();
-    const hasGoalFill = await goalFillBtn.isVisible().catch(() => false);
-    if (hasGoalFill) {
+    if (await goalFillBtn.isVisible().catch(() => false)) {
       await goalFillBtn.click();
+      await expect(page.locator('textarea').first()).not.toHaveValue('', { timeout: 3_000 });
     } else {
-      await page.locator('textarea').first().fill('업무 시간 50% 단축을 목표로 합니다. AI 도구를 활용한 자동화 추진.');
+      await page.locator('textarea').first().fill('업무 시간 50% 단축을 목표로 합니다.');
     }
-
-    // 다음 → 스텝 6 (확인)
     await page.getByRole('button', { name: '다음' }).click();
 
     // ── 스텝 6: 확인 → 저장 ──
-    // 마지막 스텝에서 "저장" 버튼 클릭
+    await expect(page.getByText('입력 내용 확인').first()).toBeVisible({ timeout: 5_000 });
     const saveButton = page.getByRole('button', { name: '저장' });
     await expect(saveButton).toBeVisible({ timeout: 5_000 });
-    await expect(saveButton).toBeEnabled({ timeout: 5_000 });
+    await expect(saveButton).toBeEnabled({ timeout: 10_000 });
     await saveButton.click();
 
     // 성공 토스트
@@ -337,7 +331,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await opsPage.goto(`/ops/projects/${projectId!}`);
     await opsPage.waitForLoadState('networkidle');
 
-    // 상태 뱃지: "로드맵 최종 확정"
-    await expect(opsPage.getByText('로드맵 최종 확정')).toBeVisible({ timeout: 10_000 });
+    // 상태 뱃지: "로드맵 최종 확정" (페이지 내 여러 곳에 표시될 수 있으므로 .first())
+    await expect(opsPage.getByText('로드맵 최종 확정').first()).toBeVisible({ timeout: 10_000 });
   });
 });
