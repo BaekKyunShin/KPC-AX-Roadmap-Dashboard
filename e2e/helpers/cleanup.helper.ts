@@ -81,6 +81,75 @@ export async function restoreEmailNotify(
     console.warn(`restoreEmailNotify(${userId}) 실패:`, error.message);
 }
 
+/** 테스트 대화 생성 (ops ↔ consultant 사이) — 대화 + 참가자 + 메시지 */
+export async function ensureTestConversation(
+  opsEmail: string,
+  consultantEmail: string,
+): Promise<string | null> {
+  // 사용자 ID 조회
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, email')
+    .in('email', [opsEmail, consultantEmail]);
+  if (!users || users.length < 2) return null;
+
+  const opsId = users.find(u => u.email === opsEmail)!.id;
+  const consultantId = users.find(u => u.email === consultantEmail)!.id;
+
+  // 기존 대화가 있는지 확인 (두 사용자가 모두 참여하는 대화)
+  const { data: existing } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', opsId);
+
+  if (existing && existing.length > 0) {
+    for (const row of existing) {
+      const { data: partner } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', row.conversation_id)
+        .eq('user_id', consultantId)
+        .single();
+      if (partner) return row.conversation_id; // 이미 대화 존재
+    }
+  }
+
+  // 대화 생성
+  const { data: conv, error: convErr } = await supabase
+    .from('conversations')
+    .insert({ last_message_at: new Date().toISOString() })
+    .select('id')
+    .single();
+  if (convErr || !conv) {
+    console.warn('ensureTestConversation: 대화 생성 실패', convErr?.message);
+    return null;
+  }
+
+  // 참가자 추가
+  await supabase.from('conversation_participants').insert([
+    { conversation_id: conv.id, user_id: opsId },
+    { conversation_id: conv.id, user_id: consultantId },
+  ]);
+
+  // 초기 메시지 삽입
+  await supabase.from('messages').insert({
+    conversation_id: conv.id,
+    sender_id: opsId,
+    content: 'E2E 테스트를 위한 초기 메시지입니다.',
+  });
+
+  return conv.id;
+}
+
+/** 테스트 대화 삭제 */
+export async function deleteConversation(conversationId: string) {
+  // messages → conversation_participants → conversations 순서로 삭제
+  await supabase.from('messages').delete().eq('conversation_id', conversationId);
+  await supabase.from('conversation_participants').delete().eq('conversation_id', conversationId);
+  const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
+  if (error) console.warn(`deleteConversation(${conversationId}) 실패:`, error.message);
+}
+
 /** 로드맵 공유 상태 복원 */
 export async function restoreShareStatus(
   roadmapId: string,
