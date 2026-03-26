@@ -139,11 +139,21 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // ConsultantSelector 로딩 대기 — data-testid로 정확한 컨설턴트 항목 타겟팅
     const consultantListItem = page.locator('[data-testid="consultant-list-item"]').first();
-    const hasConsultants = await consultantListItem.isVisible({ timeout: 15_000 }).catch(() => false);
-    test.skip(!hasConsultants, '승인된 컨설턴트가 없어 배정 테스트 스킵');
+    await expect(consultantListItem).toBeVisible({ timeout: 15_000 });
 
-    // 첫 번째 컨설턴트 클릭 → selectedConsultant 상태 업데이트 → textarea 조건부 렌더링
-    await consultantListItem.click();
+    // 테스트 컨설턴트 계정(E2E_CONSULTANT_EMAIL)을 선택해야
+    // 4단계에서 consultantPage로 프로젝트에 접근 가능 (RLS 정책)
+    const consultantEmail = process.env.E2E_CONSULTANT_EMAIL!;
+    const targetConsultant = page
+      .locator('[data-testid="consultant-list-item"]')
+      .filter({ hasText: consultantEmail });
+
+    if (await targetConsultant.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await targetConsultant.click();
+    } else {
+      // 테스트 컨설턴트가 1페이지에 없으면 첫 번째 선택 (4단계 RLS 실패 가능)
+      await consultantListItem.click();
+    }
 
     // 배정 사유 textarea 렌더링 대기 (ManualAssignmentForm: selectedConsultant && ...)
     const reasonTextarea = page.locator('textarea').first();
