@@ -267,7 +267,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
     test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 로드맵 생성 불가');
     test.skip(!process.env.LLM_API_KEY, 'LLM API 키 미설정');
-    test.setTimeout(180_000); // LLM 응답 대기 (최대 3분)
+    test.setTimeout(300_000); // LLM API timeout(240초) + 페이지 로드/렌더링 여유
 
     // 컨설턴트 프로젝트 상세
     await page.goto(`/consultant/projects/${projectId!}`);
@@ -289,7 +289,7 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
 
     // LLM 생성 완료 대기 — 성공 토스트 또는 버전 헤더 표시
     // 오버레이가 사라지고 "버전 1" 헤더가 표시될 때까지 대기
-    await expect(page.locator('h2').filter({ hasText: /^버전 \d+$/ })).toBeVisible({ timeout: 150_000 });
+    await expect(page.locator('h2').filter({ hasText: /^버전 \d+$/ })).toBeVisible({ timeout: 250_000 });
 
     // 로드맵 콘텐츠가 렌더링되었는지 확인
     await expect(page.locator('.lg\\:col-span-3')).toBeVisible();
