@@ -115,6 +115,8 @@ jobs:
           E2E_OPS_ADMIN_PASSWORD: ${{ secrets.E2E_OPS_ADMIN_PASSWORD }}
           E2E_CONSULTANT_EMAIL: ${{ secrets.E2E_CONSULTANT_EMAIL }}
           E2E_CONSULTANT_PASSWORD: ${{ secrets.E2E_CONSULTANT_PASSWORD }}
+          E2E_SYSTEM_ADMIN_EMAIL: ${{ secrets.E2E_SYSTEM_ADMIN_EMAIL }}
+          E2E_SYSTEM_ADMIN_PASSWORD: ${{ secrets.E2E_SYSTEM_ADMIN_PASSWORD }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
