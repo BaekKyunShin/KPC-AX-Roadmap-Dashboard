@@ -3,7 +3,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
-import { ensureTestConversation, deleteConversation } from '../helpers/cleanup.helper';
+import { ensureTestConversation } from '../helpers/cleanup.helper';
 
 /** 대화 목록에서 첫 번째 대화를 선택. 없으면 false 반환. */
 async function selectFirstConversation(page: Page): Promise<boolean> {
@@ -28,19 +28,11 @@ async function selectFirstConversation(page: Page): Promise<boolean> {
 }
 
 test.describe('메시지 페이지 (/dashboard/messages)', () => {
-  let testConversationId: string | null = null;
-
   // 테스트 대화 보장 — ops ↔ consultant 사이에 대화가 없으면 생성
   test.beforeAll(async () => {
     const opsEmail = process.env.E2E_OPS_ADMIN_EMAIL!;
     const consultantEmail = process.env.E2E_CONSULTANT_EMAIL!;
-    testConversationId = await ensureTestConversation(opsEmail, consultantEmail);
-  });
-
-  // 테스트 중 생성된 대화 정리 (기존 대화를 재사용한 경우 삭제하지 않음)
-  test.afterAll(async () => {
-    // ensureTestConversation이 새 대화를 생성한 경우에만 삭제하려면
-    // 별도 플래그가 필요하지만, 테스트 데이터이므로 그대로 둠
+    await ensureTestConversation(opsEmail, consultantEmail);
   });
 
   test.beforeEach(async ({ opsPage: page }) => {
