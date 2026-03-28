@@ -6,6 +6,7 @@ import { List, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ProjectStatus } from '@/types/database';
 import { fetchProjectStats, type ProjectStats } from '../actions';
+import type { ProjectWithTimeline } from '../actions';
 import StatsSummaryCards from './StatsSummaryCards';
 import ProjectList from './ProjectList';
 
@@ -22,14 +23,28 @@ const ProjectDashboard = dynamic(() => import('./ProjectDashboard'), {
   ),
 });
 
-export default function ProjectManagementTabs() {
+interface ProjectManagementTabsProps {
+  initialStats?: ProjectStats | null;
+  initialProjects?: {
+    projects: ProjectWithTimeline[];
+    total: number;
+    totalPages: number;
+    page: number;
+  } | null;
+}
+
+export default function ProjectManagementTabs({
+  initialStats = null,
+  initialProjects = null,
+}: ProjectManagementTabsProps) {
   const [activeTab, setActiveTab] = useState('list');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus[] | null>(null);
-  const [stats, setStats] = useState<ProjectStats | null>(null);
+  const [stats, setStats] = useState<ProjectStats | null>(initialStats);
 
   useEffect(() => {
+    if (initialStats) return; // Server Component에서 이미 제공된 경우 스킵
     fetchProjectStats().then(setStats);
-  }, []);
+  }, [initialStats]);
 
   const handleStatusFilter = (statuses: ProjectStatus[] | null) => {
     setStatusFilter(statuses);
@@ -62,7 +77,7 @@ export default function ProjectManagementTabs() {
         </TabsList>
 
         <TabsContent value="list">
-          <ProjectList statusFilter={statusFilter} />
+          <ProjectList statusFilter={statusFilter} initialData={initialProjects} />
         </TabsContent>
 
         <TabsContent value="dashboard">

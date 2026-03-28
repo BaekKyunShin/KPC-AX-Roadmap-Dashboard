@@ -5,6 +5,8 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import ProjectManagementTabs from './_components/ProjectManagementTabs';
+import { fetchProjectStats } from './actions/dashboard';
+import { fetchProjectsWithTimeline } from './actions/queries';
 
 export default async function OPSProjectsPage() {
   const user = await getCachedUser();
@@ -16,6 +18,12 @@ export default async function OPSProjectsPage() {
   if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
     redirect('/dashboard');
   }
+
+  // Server Component에서 데이터 프리페치 — 클라이언트 useEffect 워터폴 제거
+  const [initialStats, initialProjectsResult] = await Promise.all([
+    fetchProjectStats(),
+    fetchProjectsWithTimeline({ page: 1, limit: 10 }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -33,7 +41,10 @@ export default async function OPSProjectsPage() {
       />
 
       {/* Stats + Tabs */}
-      <ProjectManagementTabs />
+      <ProjectManagementTabs
+        initialStats={initialStats}
+        initialProjects={initialProjectsResult}
+      />
     </div>
   );
 }

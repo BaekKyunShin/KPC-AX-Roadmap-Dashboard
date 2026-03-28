@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
@@ -44,6 +44,7 @@ const SEARCH_DEBOUNCE_DELAY = 300;
 
 interface ProjectListProps {
   statusFilter?: ProjectStatus[] | null;
+  initialData?: { projects: ProjectWithTimeline[]; totalPages: number; total: number; page: number } | null;
 }
 
 function FilterBadge({
@@ -116,15 +117,18 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
   );
 }
 
-export default function ProjectList({ statusFilter }: ProjectListProps) {
+export default function ProjectList({ statusFilter, initialData = null }: ProjectListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
 
-  const [projects, setProjects] = useState<ProjectWithTimeline[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalPages, setTotalPages] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [projects, setProjects] = useState<ProjectWithTimeline[]>(initialData?.projects ?? []);
+  const [loading, setLoading] = useState(!initialData);
+  const [totalPages, setTotalPages] = useState(initialData?.totalPages ?? 0);
+  const [total, setTotal] = useState(initialData?.total ?? 0);
+
+  // initialData가 제공된 경우 첫 마운트 시 fetch를 스킵하기 위한 ref
+  const isInitialMount = useRef(!!initialData);
 
   // URL searchParams에서 초기값 읽기
   const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
@@ -204,6 +208,10 @@ export default function ProjectList({ statusFilter }: ProjectListProps) {
   };
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [page, debouncedSearch, effectiveStatuses, industry]);
