@@ -28,7 +28,7 @@ export default function AssessmentLayout({
       {/* 푸터 */}
       <footer className="border-t border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-sm text-gray-500 text-center" suppressHydrationWarning>
             &copy; {new Date().getFullYear()} KPC 한국생산성본부. All rights
             reserved.
           </p>
