@@ -61,6 +61,7 @@ const CHAINABLE_METHODS = [
   'gte', 'lte', 'gt', 'lt',
   'ilike', 'overlaps', 'order', 'range', 'limit',
   'insert', 'update', 'delete', 'upsert',
+  'returns',
 ] as const;
 
 // ─── 체이너블 생성 헬퍼 ─────────────────────────────────────────────────────

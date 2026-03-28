@@ -6,6 +6,10 @@ import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';
 import { validateRoadmap } from './roadmap-validator';
 import type { ValidationResult } from './roadmap-types';
 
+/** roadmap_versions 테이블의 공통 select 컬럼 */
+const ROADMAP_VERSION_COLUMNS =
+  'id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at';
+
 // ============================================================================
 // 로드맵 CRUD
 // ============================================================================
@@ -86,7 +90,7 @@ export async function fetchRoadmapVersions(projectId: string) {
 
   const { data: versions } = await supabase
     .from('roadmap_versions')
-    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at')
+    .select(ROADMAP_VERSION_COLUMNS)
     .eq('project_id', projectId)
     .order('version_number', { ascending: false });
 
@@ -101,11 +105,35 @@ export async function fetchRoadmapVersion(roadmapId: string) {
 
   const { data } = await supabase
     .from('roadmap_versions')
-    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at')
+    .select(ROADMAP_VERSION_COLUMNS)
     .eq('id', roadmapId)
     .single();
 
   return data;
+}
+
+/** projects JOIN 포함 로드맵 조회 결과 타입 */
+interface RoadmapWithProject {
+  id: string;
+  project_id: string;
+  version_number: number;
+  status: string;
+  consultant_profile_snapshot: unknown;
+  diagnosis_summary: string;
+  roadmap_matrix: RoadmapRow[];
+  pbl_course: PBLCourse;
+  courses: RoadmapCell[];
+  free_tool_validated: boolean;
+  time_limit_validated: boolean;
+  revision_prompt: string | null;
+  is_shared: boolean;
+  like_count: number;
+  created_by: string;
+  finalized_by: string | null;
+  finalized_at: string | null;
+  created_at: string;
+  updated_at: string;
+  projects: { assigned_consultant_id: string };
 }
 
 /**
@@ -127,8 +155,9 @@ export async function updateRoadmapManually(
   // 현재 로드맵 조회
   const { data: roadmap, error: fetchError } = await supabase
     .from('roadmap_versions')
-    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at, projects!inner(assigned_consultant_id)')
+    .select(`${ROADMAP_VERSION_COLUMNS}, projects!inner(assigned_consultant_id)`)
     .eq('id', roadmapId)
+    .returns<RoadmapWithProject[]>()
     .single();
 
   if (fetchError || !roadmap) {
@@ -141,8 +170,7 @@ export async function updateRoadmapManually(
   }
 
   // 배정된 컨설턴트 확인
-  const projectData = roadmap.projects as unknown as { assigned_consultant_id: string };
-  if (projectData.assigned_consultant_id !== actorUserId) {
+  if (roadmap.projects.assigned_consultant_id !== actorUserId) {
     return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.' };
   }
 
