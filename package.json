@@ -25,7 +25,11 @@
     "test:e2e:report": "playwright show-report",
     "analyze": "ANALYZE=true next build --webpack",
     "lighthouse:ci": "lhci autorun",
-    "test:perf": "playwright test --project=performance"
+    "test:perf": "playwright test --project=performance",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "test:e2e:setup": "supabase db reset && echo 'DB ready'"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
