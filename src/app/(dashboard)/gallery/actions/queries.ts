@@ -18,6 +18,28 @@ type ProjectJoin = { company_name: string; industry: string; company_size: strin
 type CreatorJoin = { name: string } | null;
 type LikeCountAgg = { count: number }[];
 
+/** fetchGalleryRoadmaps 쿼리 행 타입 (.returns<> 용) */
+interface GalleryRoadmapRow {
+  id: string;
+  status: string;
+  is_shared: boolean;
+  diagnosis_summary: string;
+  pbl_course: { course_name?: string; total_hours?: number } | null;
+  courses: { topic?: string }[];
+  version_number: number;
+  created_at: string;
+  created_by: string;
+  like_count: number;
+  projects: ProjectJoin;
+  users: CreatorJoin;
+  roadmap_likes: LikeCountAgg;
+}
+
+/** fetchRoadmapDetail 쿼리 행 타입 (.returns<> 용) */
+interface RoadmapDetailRow extends GalleryRoadmapRow {
+  roadmap_matrix: unknown[];
+}
+
 /** Supabase aggregate count 결과에서 좋아요 수 추출 */
 function extractLikeCount(agg: unknown): number {
   return (agg as LikeCountAgg)?.[0]?.count ?? 0;
@@ -185,7 +207,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   const offset = (page - 1) * limit;
   query = query.range(offset, offset + limit - 1);
 
-  const { data, error, count } = await query;
+  const { data, error, count } = await query.returns<GalleryRoadmapRow[]>();
 
   if (error) {
     console.error('[fetchGalleryRoadmaps Error]', error);
@@ -206,11 +228,11 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
 
   // 데이터 변환
   const items: GalleryRoadmapItem[] = (data || []).map((item) => {
-    const project = item.projects as unknown as ProjectJoin;
-    const creator = item.users as unknown as CreatorJoin;
+    const project = item.projects;
+    const creator = item.users;
 
-    const pblCourse = item.pbl_course as { course_name?: string; total_hours?: number } | null;
-    const courses = (item.courses || []) as { topic?: string }[];
+    const pblCourse = item.pbl_course;
+    const courses = item.courses || [];
 
     // 태그 추출: 과정 토픽에서 핵심 키워드를 추출 (최대 3개)
     const tags = extractTags(project.industry, courses);
@@ -290,6 +312,7 @@ export async function fetchRoadmapDetail(
         roadmap_likes(count)
       `)
       .eq('id', roadmapVersionId)
+      .returns<RoadmapDetailRow[]>()
       .single(),
     adminClient
       .from('roadmap_likes')
@@ -312,9 +335,9 @@ export async function fetchRoadmapDetail(
     return errorResult('접근 권한이 없습니다.');
   }
 
-  const project = data.projects as unknown as ProjectJoin;
-  const creator = data.users as unknown as CreatorJoin;
-  const pblCourse = data.pbl_course as { course_name?: string; total_hours?: number } | null;
+  const project = data.projects;
+  const creator = data.users;
+  const pblCourse = data.pbl_course;
 
   return successResult({
     id: data.id,
