@@ -264,31 +264,43 @@ export async function fetchRoadmapDetail(
   // 갤러리 상세도 admin client 사용 (projects RLS 우회)
   const adminClient = createAdminClient();
 
-  const { data, error } = await adminClient
-    .from('roadmap_versions')
-    .select(`
-      id,
-      status,
-      is_shared,
-      version_number,
-      diagnosis_summary,
-      roadmap_matrix,
-      pbl_course,
-      courses,
-      created_at,
-      created_by,
-      projects!inner (
-        company_name,
-        industry,
-        company_size
-      ),
-      users!roadmap_versions_created_by_fkey (
-        name
-      ),
-      roadmap_likes(count)
-    `)
-    .eq('id', roadmapVersionId)
-    .single();
+  // 메인 쿼리와 좋아요 확인 쿼리를 병렬 실행 (서로 독립적)
+  const [mainResult, likeResult] = await Promise.all([
+    adminClient
+      .from('roadmap_versions')
+      .select(`
+        id,
+        status,
+        is_shared,
+        version_number,
+        diagnosis_summary,
+        roadmap_matrix,
+        pbl_course,
+        courses,
+        created_at,
+        created_by,
+        projects!inner (
+          company_name,
+          industry,
+          company_size
+        ),
+        users!roadmap_versions_created_by_fkey (
+          name
+        ),
+        roadmap_likes(count)
+      `)
+      .eq('id', roadmapVersionId)
+      .single(),
+    adminClient
+      .from('roadmap_likes')
+      .select('id')
+      .eq('roadmap_version_id', roadmapVersionId)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
+
+  const { data, error } = mainResult;
+  const { data: userLike } = likeResult;
 
   if (error || !data) {
     return errorResult('로드맵을 찾을 수 없습니다.');
@@ -303,14 +315,6 @@ export async function fetchRoadmapDetail(
   const project = data.projects as unknown as ProjectJoin;
   const creator = data.users as unknown as CreatorJoin;
   const pblCourse = data.pbl_course as { course_name?: string; total_hours?: number } | null;
-
-  // 현재 사용자가 이 로드맵에 좋아요했는지 확인
-  const { data: userLike } = await adminClient
-    .from('roadmap_likes')
-    .select('id')
-    .eq('roadmap_version_id', roadmapVersionId)
-    .eq('user_id', user.id)
-    .maybeSingle();
 
   return successResult({
     id: data.id,
