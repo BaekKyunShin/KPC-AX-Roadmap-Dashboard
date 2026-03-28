@@ -533,6 +533,8 @@ describe('fetchRoadmapDetail', () => {
   it('미존재(DB에러) → error 반환', async () => {
     setupAuth({ role: 'OPS_ADMIN' });
     adminMock.addResult({ data: null, error: { message: 'not found' } });
+    // 2차: 사용자 좋아요 확인 (Promise.all 병렬 실행)
+    adminMock.addResult({ data: null, error: null });
 
     const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
 
@@ -547,6 +549,8 @@ describe('fetchRoadmapDetail', () => {
       roadmap_matrix: [],
     });
     adminMock.addResult({ data: row, error: null });
+    // 2차: 사용자 좋아요 확인 (Promise.all 병렬 실행)
+    adminMock.addResult({ data: null, error: null });
 
     const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
 
@@ -561,6 +565,8 @@ describe('fetchRoadmapDetail', () => {
       roadmap_matrix: [],
     });
     adminMock.addResult({ data: row, error: null });
+    // 2차: 사용자 좋아요 확인 (Promise.all 병렬 실행)
+    adminMock.addResult({ data: null, error: null });
 
     const result = await fetchRoadmapDetail(TEST_ROADMAP_ID);
 
