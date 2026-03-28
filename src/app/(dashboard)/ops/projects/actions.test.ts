@@ -707,8 +707,9 @@ describe('fetchStalledProjects', () => {
   it('minDays 이상 정체된 프로젝트를 반환한다', async () => {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
-    const fiveDaysAgo = new Date(now.getTime() - 5 * 86400000);
 
+    // DB 레벨에서 .lt('updated_at', thresholdDate) 필터가 적용되므로
+    // mock은 실제 DB가 반환할 데이터만 포함 (minDays 미만인 항목은 DB에서 제외됨)
     serverMock.addResult({
       data: [
         {
@@ -718,14 +719,6 @@ describe('fetchStalledProjects', () => {
           status: 'ASSIGNED',
           updated_at: thirtyDaysAgo.toISOString(),
           assigned_consultant: { id: 'cons-1', name: '김컨설턴트' },
-        },
-        {
-          id: 'proj-active',
-          company_name: '활발 기업',
-          contact_email: 'active@example.com',
-          status: 'NEW',
-          updated_at: fiveDaysAgo.toISOString(),
-          assigned_consultant: null,
         },
       ],
       error: null,
