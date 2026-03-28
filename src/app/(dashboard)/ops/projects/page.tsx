@@ -8,7 +8,11 @@ import ProjectManagementTabs from './_components/ProjectManagementTabs';
 import { fetchProjectStats } from './actions/dashboard';
 import { fetchProjectsWithTimeline } from './actions/queries';
 
-export default async function OPSProjectsPage() {
+export default async function OPSProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await getCachedUser();
   if (!user) {
     redirect('/login');
@@ -19,10 +23,13 @@ export default async function OPSProjectsPage() {
     redirect('/dashboard');
   }
 
+  const params = await searchParams;
+  const search = typeof params.search === 'string' ? params.search : '';
+
   // Server Component에서 데이터 프리페치 — 클라이언트 useEffect 워터폴 제거
   const [initialStats, initialProjectsResult] = await Promise.all([
     fetchProjectStats(),
-    fetchProjectsWithTimeline({ page: 1, limit: 10 }),
+    fetchProjectsWithTimeline({ page: 1, limit: 10, search }),
   ]);
 
   return (
