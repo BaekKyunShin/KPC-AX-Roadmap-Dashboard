@@ -46,7 +46,11 @@ function LoginForm() {
       const result = await loginUser(formData);
 
       if (result.success) {
-        router.push(redirectTo);
+        // 명시적 redirect 파라미터가 있고 /dashboard가 아닌 경우 그대로 사용,
+        // 아니면 서버가 역할 기반으로 계산한 기본 경로로 직접 이동
+        const destination =
+          redirectTo !== '/dashboard' ? redirectTo : result.data.defaultRoute;
+        router.push(destination);
         router.refresh();
       } else {
         const errorMessage = result.error || '로그인에 실패했습니다.';

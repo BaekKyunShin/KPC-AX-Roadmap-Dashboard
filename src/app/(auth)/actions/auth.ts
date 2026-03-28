@@ -6,7 +6,8 @@ import { registerSchema, loginSchema } from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
-import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import { getDefaultRouteForRole } from '@/lib/utils/role-routes';
+import type { ActionResult } from '@/lib/types/action-result';
 
 /**
  * 회원가입 처리
@@ -143,8 +144,11 @@ export async function registerUser(formData: FormData): Promise<ActionResult<{ u
 
 /**
  * 로그인 처리
+ * 성공 시 역할 기반 기본 랜딩 경로를 반환하여 리다이렉트 체인을 제거합니다.
  */
-export async function loginUser(formData: FormData): Promise<SimpleActionResult> {
+export async function loginUser(
+  formData: FormData,
+): Promise<ActionResult<{ defaultRoute: string }>> {
   const supabase = await createClient();
 
   const rawData = {
@@ -163,7 +167,7 @@ export async function loginUser(formData: FormData): Promise<SimpleActionResult>
 
   const { email, password } = validation.data;
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -175,8 +179,20 @@ export async function loginUser(formData: FormData): Promise<SimpleActionResult>
     };
   }
 
+  // 역할 조회 → 기본 랜딩 경로 계산 (리다이렉트 체인 제거)
+  let defaultRoute = '/dashboard';
+  if (authData.user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single();
+    defaultRoute = getDefaultRouteForRole(profile?.role);
+  }
+
   return {
     success: true,
+    data: { defaultRoute },
   };
 }
 

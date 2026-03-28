@@ -450,13 +450,40 @@ describe('loginUser', () => {
     });
   });
 
-  it('로그인 성공', async () => {
-    mockSignInWithPassword.mockResolvedValue({ error: null });
+  it('로그인 성공 → 역할 기반 기본 경로 반환', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockFromChain.single.mockReturnValue({
+      data: { role: 'OPS_ADMIN' },
+    });
 
     const fd = createLoginFormData();
     const result = await loginUser(fd);
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({
+      success: true,
+      data: { defaultRoute: '/ops/projects' },
+    });
+  });
+
+  it('로그인 성공 + 프로필 없음 → /dashboard 폴백', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockFromChain.single.mockReturnValue({
+      data: null,
+    });
+
+    const fd = createLoginFormData();
+    const result = await loginUser(fd);
+
+    expect(result).toEqual({
+      success: true,
+      data: { defaultRoute: '/dashboard' },
+    });
   });
 });
 
