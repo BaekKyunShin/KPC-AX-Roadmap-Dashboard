@@ -86,7 +86,7 @@ export async function fetchRoadmapVersions(projectId: string) {
 
   const { data: versions } = await supabase
     .from('roadmap_versions')
-    .select('*')
+    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at')
     .eq('project_id', projectId)
     .order('version_number', { ascending: false });
 
@@ -101,7 +101,7 @@ export async function fetchRoadmapVersion(roadmapId: string) {
 
   const { data } = await supabase
     .from('roadmap_versions')
-    .select('*')
+    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at')
     .eq('id', roadmapId)
     .single();
 
@@ -127,7 +127,7 @@ export async function updateRoadmapManually(
   // 현재 로드맵 조회
   const { data: roadmap, error: fetchError } = await supabase
     .from('roadmap_versions')
-    .select('*, projects!inner(assigned_consultant_id)')
+    .select('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at, projects!inner(assigned_consultant_id)')
     .eq('id', roadmapId)
     .single();
 
@@ -141,7 +141,7 @@ export async function updateRoadmapManually(
   }
 
   // 배정된 컨설턴트 확인
-  const projectData = roadmap.projects as { assigned_consultant_id: string };
+  const projectData = roadmap.projects as unknown as { assigned_consultant_id: string };
   if (projectData.assigned_consultant_id !== actorUserId) {
     return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.' };
   }

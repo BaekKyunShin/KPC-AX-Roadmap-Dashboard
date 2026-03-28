@@ -6,6 +6,7 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import CollapsibleDirectInput from '@/components/ops/CollapsibleDirectInput';
 import AssessmentTokenSection from '@/components/ops/AssessmentTokenSection';
 import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
+import type { Recommendation } from '@/components/ops/assignment/utils';
 import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,18 +30,41 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const supabase = await createClient();
 
   // 프로젝트 조회
-  const { data: projectData } = await supabase
+  type ProjectRow = {
+    id: string;
+    company_name: string;
+    industry: string;
+    company_size: string;
+    status: string;
+    contact_name: string;
+    contact_email: string;
+    contact_phone: string | null;
+    customer_comment: string | null;
+    assigned_consultant_id: string | null;
+    is_test_mode: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+    assigned_consultant: { id: string; name: string; email: string } | null;
+  };
+
+  const { data: rawProject } = await supabase
     .from('projects')
     .select(`
-      *,
+      id, company_name, industry, company_size, status,
+      contact_name, contact_email, contact_phone,
+      customer_comment, assigned_consultant_id, is_test_mode,
+      created_by, created_at, updated_at,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
     `)
     .eq('id', id)
     .single();
 
-  if (!projectData) {
+  if (!rawProject) {
     notFound();
   }
+
+  const projectData = rawProject as unknown as ProjectRow;
 
   // 독립 쿼리 6개를 병렬 실행
   const [
@@ -54,14 +78,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     // 자가진단 조회
     supabase
       .from('self_assessments')
-      .select('*')
+      .select('scores, created_at')
       .eq('project_id', id)
       .single(),
 
     // 활성 템플릿 조회
     supabase
       .from('self_assessment_templates')
-      .select('*')
+      .select('id, version, name, questions')
       .eq('is_active', true)
       .single(),
 
@@ -69,14 +93,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase
       .from('matching_recommendations')
       .select(`
-        *,
+        id, project_id, candidate_user_id, total_score, score_breakdown, rationale, rank, created_at,
         candidate:users!matching_recommendations_candidate_user_id_fkey(
           id, name, email,
           consultant_profile:consultant_profiles(expertise_domains, available_industries, sub_industries, teaching_levels, skill_tags, years_of_experience, strengths_constraints)
         )
       `)
       .eq('project_id', id)
-      .order('rank', { ascending: true }),
+      .order('rank', { ascending: true })
+      .returns<Recommendation[]>(),
 
     // 인터뷰 조회 (인터뷰 미작성 프로젝트 대응 위해 maybeSingle 사용)
     supabase
@@ -89,12 +114,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase
       .from('project_assignments')
       .select(`
-        *,
+        id, project_id, consultant_id, assigned_by, assignment_reason, is_current, assigned_at,
         consultant:users!project_assignments_consultant_id_fkey(id, name, email),
         assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
       `)
       .eq('project_id', id)
-      .order('assigned_at', { ascending: false }),
+      .order('assigned_at', { ascending: false })
+      .returns<{
+        id: string;
+        project_id: string;
+        consultant_id: string;
+        assigned_by: string;
+        assignment_reason: string;
+        is_current: boolean;
+        assigned_at: string;
+        consultant: { id: string; name: string; email: string } | null;
+        assigned_by_user: { id: string; name: string } | null;
+      }[]>(),
 
     // 진단 토큰 조회
     getLatestToken(id),
