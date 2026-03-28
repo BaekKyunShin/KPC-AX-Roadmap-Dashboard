@@ -69,7 +69,7 @@ vi.mock('@/components/ui/page-header', () => ({
 // =============================================================================
 
 import ProjectList from './ProjectList';
-import type { ConsultantProjectItem } from '../actions';
+import type { ConsultantProjectItem, ConsultantProjectListResult } from '../actions';
 
 // =============================================================================
 // 테스트 데이터
@@ -310,6 +310,43 @@ describe('ProjectList', () => {
       render(<ProjectList />);
       await waitFor(() => {
         expect(mockFetchConsultantProjectFilters).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('서버 프리페치 (initialData)', () => {
+    const initialData: ConsultantProjectListResult = {
+      projects: [makeProject({ company_name: '프리페치기업' })],
+      total: 1,
+      consultantName: '프리페치컨설턴트',
+    };
+
+    const initialFilters = {
+      statuses: [
+        { value: 'ASSIGNED', label: '인터뷰 대기' },
+        { value: 'FINALIZED', label: '로드맵 완료' },
+      ],
+    };
+
+    it('initialData가 있으면 스켈레톤 없이 즉시 데이터를 표시한다', () => {
+      render(<ProjectList initialData={initialData} initialFilters={initialFilters} />);
+      expect(screen.queryByTestId('table-skeleton')).not.toBeInTheDocument();
+      expect(screen.getAllByText('프리페치기업').length).toBeGreaterThan(0);
+      expect(screen.getByText('프리페치컨설턴트님의 담당 프로젝트 목록입니다.')).toBeInTheDocument();
+    });
+
+    it('initialData가 있으면 초기 마운트 시 fetchConsultantProjects를 호출하지 않는다', async () => {
+      render(<ProjectList initialData={initialData} initialFilters={initialFilters} />);
+      // 약간의 대기 후에도 fetch가 호출되지 않았는지 확인
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects).not.toHaveBeenCalled();
+      });
+    });
+
+    it('initialFilters가 있으면 fetchConsultantProjectFilters를 호출하지 않는다', async () => {
+      render(<ProjectList initialData={initialData} initialFilters={initialFilters} />);
+      await waitFor(() => {
+        expect(mockFetchConsultantProjectFilters).not.toHaveBeenCalled();
       });
     });
   });

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   fetchConsultantProjects,
   fetchConsultantProjectFilters,
   type ConsultantProjectItem,
+  type ConsultantProjectListResult,
 } from '../actions';
 import { ConsultantProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -212,24 +213,32 @@ function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
 // Main Component
 // =============================================================================
 
-export default function ProjectList() {
+interface ProjectListProps {
+  initialData?: ConsultantProjectListResult | null;
+  initialFilters?: FilterOptions | null;
+}
+
+export default function ProjectList({ initialData = null, initialFilters = null }: ProjectListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
 
-  // 데이터 상태
-  const [projects, setProjects] = useState<ConsultantProjectItem[]>([]);
-  const [consultantName, setConsultantName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
+  // 데이터 상태 — initialData가 있으면 즉시 사용
+  const [projects, setProjects] = useState<ConsultantProjectItem[]>(initialData?.projects ?? []);
+  const [consultantName, setConsultantName] = useState(initialData?.consultantName ?? '');
+  const [loading, setLoading] = useState(!initialData);
+  const [total, setTotal] = useState(initialData?.total ?? 0);
 
   // URL searchParams에서 초기값 읽기
   const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
   const [status, setStatus] = useState(urlSearchParams.get('status') || ALL_STATUS_VALUE);
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
-  // 필터 옵션
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>(INITIAL_FILTER_OPTIONS);
+  // 필터 옵션 — initialFilters가 있으면 즉시 사용
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialFilters ?? INITIAL_FILTER_OPTIONS);
+
+  // initialData가 제공된 경우 첫 마운트 시 fetch를 스킵하기 위한 ref
+  const isInitialMount = useRef(!!initialData);
 
   // 파생 상태
   const hasFilters = debouncedSearch || status !== ALL_STATUS_VALUE;
@@ -249,10 +258,12 @@ export default function ProjectList() {
     router.replace(`${pathname}${search ? `?${search}` : ''}`);
   };
 
-  // 필터 옵션 로드
+  // 필터 옵션 로드 — initialFilters가 없을 때만 fetch
   useEffect(() => {
-    fetchConsultantProjectFilters().then(setFilterOptions);
-  }, []);
+    if (!initialFilters) {
+      fetchConsultantProjectFilters().then(setFilterOptions);
+    }
+  }, [initialFilters]);
 
   // 데이터 로드
   const loadData = async () => {
@@ -268,6 +279,10 @@ export default function ProjectList() {
   };
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- React Compiler가 메모이제이션 처리
   }, [debouncedSearch, status]);
