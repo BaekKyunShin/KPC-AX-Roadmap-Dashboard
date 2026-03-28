@@ -241,18 +241,18 @@ export async function fetchAllUsersUsage(options: {
 
   const userIds = users.map(u => u.id);
 
-  // 월별 사용량 조회
-  const { data: monthlyUsage } = await supabase
-    .from('usage_metrics')
-    .select('user_id, llm_calls')
-    .in('user_id', userIds)
-    .eq('month', month);
-
-  // 쿼터 조회
-  const { data: quotas } = await supabase
-    .from('user_quotas')
-    .select('user_id, daily_limit, monthly_limit')
-    .in('user_id', userIds);
+  // 월별 사용량 + 쿼터를 병렬 조회 (둘 다 userIds에만 의존)
+  const [{ data: monthlyUsage }, { data: quotas }] = await Promise.all([
+    supabase
+      .from('usage_metrics')
+      .select('user_id, llm_calls')
+      .in('user_id', userIds)
+      .eq('month', month),
+    supabase
+      .from('user_quotas')
+      .select('user_id, daily_limit, monthly_limit')
+      .in('user_id', userIds),
+  ]);
 
   // 사용량 맵 생성
   const usageMap = new Map<string, number>();
