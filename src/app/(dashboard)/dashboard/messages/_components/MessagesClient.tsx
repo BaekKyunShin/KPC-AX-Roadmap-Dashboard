@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -50,7 +50,6 @@ function createRetryHandler(resubscribe: () => void, state: RealtimeRetryState) 
 }
 
 export default function MessagesClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const initialConvId = searchParams.get('conversation');
 
@@ -343,12 +342,6 @@ export default function MessagesClient() {
 
             // 목록 프리뷰 갱신 (모든 대화 공통)
             refreshConversations();
-
-            // 선택된 대화의 메시지는 개별 채널(messages:${convId})에서 처리하므로 스킵
-            // 개별 채널 구독 실패 시에는 polling fallback(realtimeActiveRef 기반)이 커버
-            if (newMsg.conversation_id !== selectedConvIdRef.current) {
-              router.refresh();
-            }
           },
         )
         .subscribe(createRetryHandler(subscribeAll, retryState));
@@ -361,7 +354,7 @@ export default function MessagesClient() {
       if (retryState.retryTimer) clearTimeout(retryState.retryTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, []);
 
   // Polling: Realtime 실패 시에만 활성화되는 fallback
   // Realtime이 SUBSCRIBED 상태이면 polling을 스킵하여 불필요한 DB 쿼리 방지.
