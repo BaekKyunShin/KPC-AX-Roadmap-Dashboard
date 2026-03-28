@@ -3,6 +3,8 @@ import { Suspense } from 'react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { GalleryContent } from './_components/GalleryContent';
+import { fetchGalleryRoadmaps } from './actions';
+import type { GalleryPaginatedResult } from './actions';
 
 interface GalleryPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -33,9 +35,32 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
         }
       />
       <Suspense fallback={<GalleryLoadingSkeleton />}>
-        <GalleryContent isAdmin={isAdmin} searchParams={params} />
+        <GallerySection isAdmin={isAdmin} searchParams={params} />
       </Suspense>
     </div>
+  );
+}
+
+async function GallerySection({
+  isAdmin,
+  searchParams,
+}: {
+  isAdmin: boolean;
+  searchParams: Record<string, string | undefined>;
+}) {
+  let initialData: GalleryPaginatedResult | undefined;
+
+  const result = await fetchGalleryRoadmaps(searchParams);
+  if (result.success) {
+    initialData = result.data;
+  }
+
+  return (
+    <GalleryContent
+      isAdmin={isAdmin}
+      searchParams={searchParams}
+      initialData={initialData}
+    />
   );
 }
 

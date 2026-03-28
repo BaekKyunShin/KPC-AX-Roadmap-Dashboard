@@ -21,7 +21,7 @@ import { AdminFilters } from '@/components/gallery/AdminFilters';
 import { PROJECT_INDUSTRIES } from '@/lib/constants/industry';
 import { useDebounce } from '@/hooks/useDebounce';
 import { fetchGalleryRoadmaps } from '../actions';
-import type { GalleryRoadmapItem } from '../actions';
+import type { GalleryRoadmapItem, GalleryPaginatedResult } from '../actions';
 
 const DEFAULT_FILTER_VALUE = 'all';
 
@@ -33,6 +33,7 @@ const SORT_OPTIONS = [
 interface GalleryContentProps {
   isAdmin: boolean;
   searchParams: Record<string, string | undefined>;
+  initialData?: GalleryPaginatedResult;
 }
 
 function FilterBadge({
@@ -54,18 +55,19 @@ function FilterBadge({
   );
 }
 
-export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
+export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
 
   const isResettingRef = useRef(false);
+  const isInitialMount = useRef(!!initialData);
 
-  const [items, setItems] = useState<GalleryRoadmapItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<GalleryRoadmapItem[]>(initialData?.items ?? []);
+  const [total, setTotal] = useState(initialData?.total ?? 0);
+  const [totalPages, setTotalPages] = useState(initialData?.totalPages ?? 0);
+  const [currentPage, setCurrentPage] = useState(initialData?.page ?? 1);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [searchInput, setSearchInput] = useState(searchParams.search || '');
   const [industry, setIndustry] = useState(
     urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE
@@ -80,6 +82,12 @@ export function GalleryContent({ isAdmin, searchParams }: GalleryContentProps) {
   const searchParamsKey = urlSearchParams.toString();
 
   useEffect(() => {
+    // 서버에서 프리페치한 초기 데이터가 있으면 첫 마운트 시 fetch 건너뛰기
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
 
