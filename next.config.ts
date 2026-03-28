@@ -28,6 +28,23 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       'lucide-react',
+      'recharts',
+      'motion',
+      'radix-ui',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-label',
+      '@radix-ui/react-select',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-tabs',
+      'cmdk',
+      'class-variance-authority',
+      'clsx',
+      'tailwind-merge',
+      'zod',
     ],
   },
 };
