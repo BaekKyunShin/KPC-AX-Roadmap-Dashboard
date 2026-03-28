@@ -51,6 +51,9 @@ export default defineConfig({
         'src/components/ui/tabs.tsx',
         'src/components/ui/textarea.tsx',
         'src/components/ui/toaster.tsx',
+        // 0% 커버리지 정당화 — 순수 UI 컴포넌트 (타이머 애니메이션, 대시보드 테이블) → E2E로 검증
+        '**/AnalysisProgress.tsx',
+        '**/QuotaClient.tsx',
         // 0% 커버리지 정당화 파일 — 팩토리·래퍼·타입·정적 데이터
         'src/lib/services/export-pdf.ts',
         'src/lib/services/export-xlsx.ts',
