@@ -105,24 +105,24 @@ export async function generateRoadmap(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(projectData, selfAssessment, interview, consultantSnapshot, revisionPrompt, isTestMode);
 
-  // LLM 호출 → 결과 변환 → 검증 (쿼터는 이미 원자적으로 차감됨)
+  // LLM 호출 + 버전 번호 조회를 병렬 실행 (버전 번호는 LLM 결과에 의존하지 않음)
   // 검증 실패(errors 존재)해도 저장 차단하지 않음: DRAFT 버전으로 저장 후 UI에서 경고 표시
-  const { result, validation } = await callLLMAndBuildRoadmap(
-    [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    signal
-  );
-
-  // 버전 번호 결정
-  const { data: latestVersion } = await supabase
-    .from('roadmap_versions')
-    .select('version_number')
-    .eq('project_id', projectId)
-    .order('version_number', { ascending: false })
-    .limit(1)
-    .single();
+  const [{ result, validation }, { data: latestVersion }] = await Promise.all([
+    callLLMAndBuildRoadmap(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      signal
+    ),
+    supabase
+      .from('roadmap_versions')
+      .select('version_number')
+      .eq('project_id', projectId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single(),
+  ]);
 
   const newVersionNumber = (latestVersion?.version_number || 0) + 1;
 

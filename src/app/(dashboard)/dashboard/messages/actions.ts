@@ -161,7 +161,7 @@ export async function fetchMessages(
     // PAGE_SIZE+1개를 조회하여 "더 있는지" 판단
     let query = supabase
       .from('messages')
-      .select('*')
+      .select('id, conversation_id, sender_id, content, created_at')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(MESSAGE_PAGE_SIZE + 1);
@@ -412,7 +412,7 @@ export async function sendMessage(
         sender_id: user.id,
         content: validation.data.content,
       })
-      .select('*')
+      .select('id, conversation_id, sender_id, content, created_at')
       .single();
 
     if (msgError) {

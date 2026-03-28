@@ -49,12 +49,12 @@ export default async function UsersPage() {
   ] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('*')
+      .select('id, email, name, role, status, phone, created_at, updated_at')
       .in('role', targetRoles)
       .order('created_at', { ascending: false }),
     adminSupabase
       .from('consultant_profiles')
-      .select('*'),
+      .select('id, user_id, expertise_domains, available_industries, sub_industries, teaching_levels, coaching_methods, skill_tags, years_of_experience, affiliation, representative_experience, portfolio, strengths_constraints, created_at, updated_at'),
   ]);
 
   if (usersError) {

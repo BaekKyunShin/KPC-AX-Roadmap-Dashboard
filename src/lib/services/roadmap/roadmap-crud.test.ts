@@ -277,7 +277,7 @@ describe('fetchRoadmapVersions', () => {
 
     expect(result).toEqual(versions);
     expect(sharedMock.client.from).toHaveBeenCalledWith('roadmap_versions');
-    expect(sharedMock.chainable.select).toHaveBeenCalledWith('*');
+    expect(sharedMock.chainable.select).toHaveBeenCalledWith('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at');
     expect(sharedMock.chainable.eq).toHaveBeenCalledWith('project_id', 'project-1');
     expect(sharedMock.chainable.order).toHaveBeenCalledWith('version_number', { ascending: false });
   });
@@ -327,7 +327,7 @@ describe('fetchRoadmapVersion', () => {
 
     expect(result).toEqual(versionData);
     expect(sharedMock.client.from).toHaveBeenCalledWith('roadmap_versions');
-    expect(sharedMock.chainable.select).toHaveBeenCalledWith('*');
+    expect(sharedMock.chainable.select).toHaveBeenCalledWith('id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at');
     expect(sharedMock.chainable.eq).toHaveBeenCalledWith('id', 'rv-1');
     expect(sharedMock.chainable.single).toHaveBeenCalled();
   });

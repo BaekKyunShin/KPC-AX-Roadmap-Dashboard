@@ -197,7 +197,7 @@ export async function fetchInterview(projectId: string) {
 
     const { data: interview } = await supabase
       .from('interviews')
-      .select('*')
+      .select('id, project_id, interview_date, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights')
       .eq('project_id', projectId)
       .single();
 
