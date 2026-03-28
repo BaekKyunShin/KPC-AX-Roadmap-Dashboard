@@ -26,11 +26,20 @@ export interface UsageStats {
  * - SYSTEM_ADMIN: 운영관리자 + 컨설턴트 조회 가능
  * - OPS_ADMIN: 컨설턴트만 조회 가능
  */
+interface UsageStatsResult {
+  users: UsageStats[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  month: string;
+}
+
 export async function fetchUsageStats(options: {
   page?: number;
   limit?: number;
   month?: string;
-}) {
+}): Promise<UsageStatsResult> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { users: [], total: 0, page: 1, limit: 20, totalPages: 0, month: '' };
 

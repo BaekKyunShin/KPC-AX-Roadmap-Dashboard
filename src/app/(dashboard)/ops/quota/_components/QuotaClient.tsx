@@ -186,7 +186,7 @@ export default function QuotaClient({
   initialMonth,
   monthOptions,
 }: QuotaClientProps) {
-  const [users, setUsers] = useState<UsageStats[]>(initialData.users as UsageStats[]);
+  const [users, setUsers] = useState<UsageStats[]>(initialData.users);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(initialData.totalPages);
@@ -216,7 +216,7 @@ export default function QuotaClient({
         limit: 20,
         month: selectedMonth,
       });
-      setUsers(result.users as UsageStats[]);
+      setUsers(result.users);
       setTotalPages(result.totalPages);
       setTotal(result.total);
       setLoading(false);
@@ -245,7 +245,7 @@ export default function QuotaClient({
         setMessage({ type: 'success', text: '쿼터가 수정되었습니다.' });
         // 목록 새로고침
         const refreshed = await fetchUsageStats({ page, limit: 20, month: selectedMonth });
-        setUsers(refreshed.users as UsageStats[]);
+        setUsers(refreshed.users);
         setEditingUser(null);
       } else {
         setMessage({ type: 'error', text: result.error || '수정에 실패했습니다.' });
