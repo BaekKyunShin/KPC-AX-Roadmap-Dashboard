@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, ClipboardList } from 'lucide-react';
@@ -9,6 +10,7 @@ import AssignmentTabSection from '@/components/ops/AssignmentTabSection';
 import type { Recommendation } from '@/components/ops/assignment/utils';
 import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -16,6 +18,236 @@ import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/comp
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 import { getLatestToken } from '../actions';
 import ProjectTimeline from '../_components/ProjectTimeline';
+
+// ============================================================================
+// 공통 타입
+// ============================================================================
+
+type ProjectRow = {
+  id: string;
+  company_name: string;
+  industry: string;
+  company_size: string;
+  status: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string | null;
+  customer_comment: string | null;
+  assigned_consultant_id: string | null;
+  is_test_mode: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  assigned_consultant: { id: string; name: string; email: string } | null;
+};
+
+// ============================================================================
+// 스켈레톤 폴백 컴포넌트
+// ============================================================================
+
+function SelfAssessmentSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <Skeleton className="h-5 w-28" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-full max-w-[200px]" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AssignmentSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <Skeleton className="h-5 w-28" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full mt-3" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function InterviewSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-1">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// 비동기 섹션 Server Components
+// ============================================================================
+
+async function SelfAssessmentSection({ projectId }: { projectId: string }) {
+  const supabase = await createClient();
+
+  const [{ data: selfAssessment }, { data: template }, latestTokenData] = await Promise.all([
+    supabase
+      .from('self_assessments')
+      .select('scores, created_at')
+      .eq('project_id', projectId)
+      .single(),
+    supabase
+      .from('self_assessment_templates')
+      .select('id, version, name, questions')
+      .eq('is_active', true)
+      .single(),
+    getLatestToken(projectId),
+  ]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">자가진단 결과</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {selfAssessment ? (
+          <SelfAssessmentResult scores={selfAssessment.scores} createdAt={selfAssessment.created_at} />
+        ) : template ? (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">
+                고객사 자가진단 링크
+              </h3>
+              <AssessmentTokenSection
+                projectId={projectId}
+                latestToken={latestTokenData}
+              />
+            </div>
+            <CollapsibleDirectInput projectId={projectId} template={template} />
+          </div>
+        ) : (
+          <p className="text-gray-500">활성화된 자가진단 템플릿이 없습니다.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+async function AssignmentSection({
+  projectId,
+  projectData,
+}: {
+  projectId: string;
+  projectData: ProjectRow;
+}) {
+  const supabase = await createClient();
+
+  const [{ data: selfAssessment }, { data: matchingRecommendations }, { data: assignments }] =
+    await Promise.all([
+      supabase
+        .from('self_assessments')
+        .select('scores')
+        .eq('project_id', projectId)
+        .single(),
+      supabase
+        .from('matching_recommendations')
+        .select(`
+          id, project_id, candidate_user_id, total_score, score_breakdown, rationale, rank, created_at,
+          candidate:users!matching_recommendations_candidate_user_id_fkey(
+            id, name, email,
+            consultant_profile:consultant_profiles(expertise_domains, available_industries, sub_industries, teaching_levels, skill_tags, years_of_experience, strengths_constraints)
+          )
+        `)
+        .eq('project_id', projectId)
+        .order('rank', { ascending: true })
+        .returns<Recommendation[]>(),
+      supabase
+        .from('project_assignments')
+        .select(`
+          id, project_id, consultant_id, assigned_by, assignment_reason, is_current, assigned_at,
+          consultant:users!project_assignments_consultant_id_fkey(id, name, email),
+          assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
+        `)
+        .eq('project_id', projectId)
+        .order('assigned_at', { ascending: false })
+        .returns<{
+          id: string;
+          project_id: string;
+          consultant_id: string;
+          assigned_by: string;
+          assignment_reason: string;
+          is_current: boolean;
+          assigned_at: string;
+          consultant: { id: string; name: string; email: string } | null;
+          assigned_by_user: { id: string; name: string } | null;
+        }[]>(),
+    ]);
+
+  return (
+    <AssignmentTabSection
+      projectData={projectData}
+      projectId={projectId}
+      recommendations={matchingRecommendations || []}
+      latestAssignment={assignments?.[0]}
+      hasSelfAssessment={!!selfAssessment}
+    />
+  );
+}
+
+async function InterviewSection({ projectId }: { projectId: string }) {
+  const supabase = await createClient();
+
+  const { data: interview } = await supabase
+    .from('interviews')
+    .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  if (!interview) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardList className="h-4 w-4 text-blue-600" />
+            인터뷰 정보
+          </CardTitle>
+          <span className="text-sm text-gray-500">
+            {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <InterviewSummary {...toInterviewSummaryProps(interview)} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// 메인 페이지 컴포넌트
+// ============================================================================
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,25 +261,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const supabase = await createClient();
 
-  // 프로젝트 조회
-  type ProjectRow = {
-    id: string;
-    company_name: string;
-    industry: string;
-    company_size: string;
-    status: string;
-    contact_name: string;
-    contact_email: string;
-    contact_phone: string | null;
-    customer_comment: string | null;
-    assigned_consultant_id: string | null;
-    is_test_mode: boolean;
-    created_by: string;
-    created_at: string;
-    updated_at: string;
-    assigned_consultant: { id: string; name: string; email: string } | null;
-  };
-
+  // 프로젝트 조회 (헤더 즉시 렌더링에 필요)
   const { data: rawProject } = await supabase
     .from('projects')
     .select(`
@@ -65,77 +279,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const projectData = rawProject as unknown as ProjectRow;
-
-  // 독립 쿼리 6개를 병렬 실행
-  const [
-    { data: selfAssessment },
-    { data: template },
-    { data: matchingRecommendations },
-    { data: interview },
-    { data: assignments },
-    latestTokenData,
-  ] = await Promise.all([
-    // 자가진단 조회
-    supabase
-      .from('self_assessments')
-      .select('scores, created_at')
-      .eq('project_id', id)
-      .single(),
-
-    // 활성 템플릿 조회
-    supabase
-      .from('self_assessment_templates')
-      .select('id, version, name, questions')
-      .eq('is_active', true)
-      .single(),
-
-    // 매칭 추천 조회
-    supabase
-      .from('matching_recommendations')
-      .select(`
-        id, project_id, candidate_user_id, total_score, score_breakdown, rationale, rank, created_at,
-        candidate:users!matching_recommendations_candidate_user_id_fkey(
-          id, name, email,
-          consultant_profile:consultant_profiles(expertise_domains, available_industries, sub_industries, teaching_levels, skill_tags, years_of_experience, strengths_constraints)
-        )
-      `)
-      .eq('project_id', id)
-      .order('rank', { ascending: true })
-      .returns<Recommendation[]>(),
-
-    // 인터뷰 조회 (인터뷰 미작성 프로젝트 대응 위해 maybeSingle 사용)
-    supabase
-      .from('interviews')
-      .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
-      .eq('project_id', id)
-      .maybeSingle(),
-
-    // 배정 이력 조회 (AssignmentTabSection에서 사용)
-    supabase
-      .from('project_assignments')
-      .select(`
-        id, project_id, consultant_id, assigned_by, assignment_reason, is_current, assigned_at,
-        consultant:users!project_assignments_consultant_id_fkey(id, name, email),
-        assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
-      `)
-      .eq('project_id', id)
-      .order('assigned_at', { ascending: false })
-      .returns<{
-        id: string;
-        project_id: string;
-        consultant_id: string;
-        assigned_by: string;
-        assignment_reason: string;
-        is_current: boolean;
-        assigned_at: string;
-        consultant: { id: string; name: string; email: string } | null;
-        assigned_by_user: { id: string; name: string } | null;
-      }[]>(),
-
-    // 진단 토큰 조회
-    getLatestToken(id),
-  ]);
-
   const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
 
   // 기업 규모 라벨 변환
@@ -221,62 +364,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {/* 하단 영역: 단일 컬럼 */}
       <div className="space-y-6">
         {/* 자가진단 결과 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">자가진단 결과</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selfAssessment ? (
-              <SelfAssessmentResult scores={selfAssessment.scores} createdAt={selfAssessment.created_at} />
-            ) : template ? (
-              <div className="space-y-6">
-                {/* 공개 진단 링크 */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">
-                    고객사 자가진단 링크
-                  </h3>
-                  <AssessmentTokenSection
-                    projectId={id}
-                    latestToken={latestTokenData}
-                  />
-                </div>
-
-                <CollapsibleDirectInput projectId={id} template={template} />
-              </div>
-            ) : (
-              <p className="text-gray-500">활성화된 자가진단 템플릿이 없습니다.</p>
-            )}
-          </CardContent>
-        </Card>
+        <Suspense fallback={<SelfAssessmentSkeleton />}>
+          <SelfAssessmentSection projectId={id} />
+        </Suspense>
 
         {/* 컨설턴트 배정 섹션 */}
-        <AssignmentTabSection
-          projectData={projectData}
-          projectId={id}
-          recommendations={matchingRecommendations || []}
-          latestAssignment={assignments?.[0]}
-          hasSelfAssessment={!!selfAssessment}
-        />
+        <Suspense fallback={<AssignmentSkeleton />}>
+          <AssignmentSection projectId={id} projectData={projectData} />
+        </Suspense>
 
         {/* 인터뷰 정보 (읽기 전용) */}
-        {interview && (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ClipboardList className="h-4 w-4 text-blue-600" />
-                  인터뷰 정보
-                </CardTitle>
-                <span className="text-sm text-gray-500">
-                  {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <InterviewSummary {...toInterviewSummaryProps(interview)} />
-            </CardContent>
-          </Card>
-        )}
+        <Suspense fallback={<InterviewSkeleton />}>
+          <InterviewSection projectId={id} />
+        </Suspense>
 
         {/* 로드맵 열람 (읽기 전용) */}
         {['ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
@@ -308,4 +408,3 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     </div>
   );
 }
-
