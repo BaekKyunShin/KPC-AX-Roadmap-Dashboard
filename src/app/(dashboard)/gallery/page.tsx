@@ -4,7 +4,6 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { GalleryContent } from './_components/GalleryContent';
 import { fetchGalleryRoadmaps } from './actions';
-import type { GalleryPaginatedResult } from './actions';
 
 interface GalleryPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -48,18 +47,13 @@ async function GallerySection({
   isAdmin: boolean;
   searchParams: Record<string, string | undefined>;
 }) {
-  let initialData: GalleryPaginatedResult | undefined;
-
   const result = await fetchGalleryRoadmaps(searchParams);
-  if (result.success) {
-    initialData = result.data;
-  }
 
   return (
     <GalleryContent
       isAdmin={isAdmin}
       searchParams={searchParams}
-      initialData={initialData}
+      initialData={result.success ? result.data : undefined}
     />
   );
 }
