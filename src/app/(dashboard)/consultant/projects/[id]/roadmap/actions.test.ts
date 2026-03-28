@@ -130,11 +130,9 @@ describe('editRoadmapManually', () => {
   it('타 컨설턴트의 로드맵 편집 시도 → 접근 권한 에러', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) roadmap_versions 조회 → project_id 반환
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    // 3) projects 조회 → 다른 컨설턴트(USER_B)에게 배정됨
+    // 2) requireConsultantRoadmapAccess: JOIN 조회 → 다른 컨설턴트(USER_B)에게 배정됨
     serverMock.addResult({
-      data: { assigned_consultant_id: USER_B_ID },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_B_ID } },
       error: null,
     });
 
@@ -169,11 +167,9 @@ describe('editRoadmapManually', () => {
   it('정상 편집 요청 → 성공', async () => {
     // 1) requireAuthWithRole: 역할 조회 → CONSULTANT_APPROVED
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) roadmap_versions 조회 → project_id 반환
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    // 3) projects 조회 → 본인에게 배정됨
+    // 2) requireConsultantRoadmapAccess: JOIN 조회 → 본인에게 배정됨
     serverMock.addResult({
-      data: { assigned_consultant_id: USER_A_ID },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
       error: null,
     });
 
@@ -366,11 +362,9 @@ describe('confirmFinalRoadmap', () => {
   it('접근 권한 없음 (타 컨설턴트 로드맵) → error 반환', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) requireConsultantRoadmapAccess: roadmap_versions 조회
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    // 3) requireConsultantRoadmapAccess: projects 조회 → 타 컨설턴트
+    // 2) requireConsultantRoadmapAccess: JOIN 조회 → 타 컨설턴트
     serverMock.addResult({
-      data: { assigned_consultant_id: USER_B_ID },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_B_ID } },
       error: null,
     });
 
@@ -383,11 +377,9 @@ describe('confirmFinalRoadmap', () => {
   it('정상 확정 → success', async () => {
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) requireConsultantRoadmapAccess: roadmap_versions 조회
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    // 3) requireConsultantRoadmapAccess: projects 조회 → 본인
+    // 2) requireConsultantRoadmapAccess: JOIN 조회 → 본인
     serverMock.addResult({
-      data: { assigned_consultant_id: USER_A_ID },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
       error: null,
     });
 
@@ -401,11 +393,9 @@ describe('confirmFinalRoadmap', () => {
 
     // 1) getCachedProfile: role 조회
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    // 2) requireConsultantRoadmapAccess: roadmap_versions 조회
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    // 3) requireConsultantRoadmapAccess: projects 조회 → 본인
+    // 2) requireConsultantRoadmapAccess: JOIN 조회 → 본인
     serverMock.addResult({
-      data: { assigned_consultant_id: USER_A_ID },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
       error: null,
     });
 
@@ -764,8 +754,7 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
 
     vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
       success: false,
@@ -783,8 +772,7 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
 
     vi.mocked(updateRoadmapManually).mockResolvedValueOnce({
       success: false,
@@ -801,8 +789,7 @@ describe('editRoadmapManually — 에러/엣지 케이스', () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
-    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
-    serverMock.addResult({ data: { assigned_consultant_id: USER_A_ID }, error: null });
+    serverMock.addResult({ data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } }, error: null });
 
     vi.mocked(updateRoadmapManually).mockRejectedValueOnce(new Error('unexpected error'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

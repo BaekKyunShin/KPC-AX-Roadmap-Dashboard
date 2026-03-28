@@ -173,24 +173,12 @@ describe('requireConsultantRoadmapAccess', () => {
     expect(result).toEqual({ error: '로드맵을 찾을 수 없습니다.' });
   });
 
-  it('프로젝트 조회 결과가 null이면 접근 권한 에러를 반환한다', async () => {
+  it('JOIN 결과에서 assigned_consultant_id가 userId와 다르면 접근 권한 에러를 반환한다', async () => {
     const mock = createMockSupabase();
-    mock.addResult({ data: { project_id: 'proj-1' }, error: null });
-    mock.addResult({ data: null, error: null });
-
-    const result = await requireConsultantRoadmapAccess(
-      mock.client as never,
-      'user-1',
-      'roadmap-1',
-    );
-
-    expect(result).toEqual({ error: '해당 프로젝트에 대한 접근 권한이 없습니다.' });
-  });
-
-  it('assigned_consultant_id가 userId와 다르면 접근 권한 에러를 반환한다', async () => {
-    const mock = createMockSupabase();
-    mock.addResult({ data: { project_id: 'proj-1' }, error: null });
-    mock.addResult({ data: { assigned_consultant_id: 'other-user' }, error: null });
+    mock.addResult({
+      data: { project_id: 'proj-1', projects: { assigned_consultant_id: 'other-user' } },
+      error: null,
+    });
 
     const result = await requireConsultantRoadmapAccess(
       mock.client as never,
@@ -203,8 +191,10 @@ describe('requireConsultantRoadmapAccess', () => {
 
   it('정상이면 projectId를 반환한다', async () => {
     const mock = createMockSupabase();
-    mock.addResult({ data: { project_id: 'proj-1' }, error: null });
-    mock.addResult({ data: { assigned_consultant_id: 'user-1' }, error: null });
+    mock.addResult({
+      data: { project_id: 'proj-1', projects: { assigned_consultant_id: 'user-1' } },
+      error: null,
+    });
 
     const result = await requireConsultantRoadmapAccess(
       mock.client as never,

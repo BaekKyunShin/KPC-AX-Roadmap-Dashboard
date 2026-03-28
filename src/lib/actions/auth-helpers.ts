@@ -85,27 +85,27 @@ export async function requireConsultantRoadmapAccess(
   userId: string,
   roadmapId: string,
 ): Promise<{ projectId: string } | AuthFailure> {
-  const { data: roadmapData } = await supabase
+  const { data } = await supabase
     .from('roadmap_versions')
-    .select('project_id')
+    .select('project_id, projects!inner(assigned_consultant_id)')
     .eq('id', roadmapId)
     .single();
 
-  if (!roadmapData) {
+  if (!data) {
     return { error: '로드맵을 찾을 수 없습니다.' };
   }
 
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select('assigned_consultant_id')
-    .eq('id', roadmapData.project_id)
-    .single();
+  // Handle the projects field - could be object or array depending on Supabase response
+  const projects = data.projects;
+  const assignedId = Array.isArray(projects)
+    ? projects[0]?.assigned_consultant_id
+    : (projects as { assigned_consultant_id: string })?.assigned_consultant_id;
 
-  if (!projectData || projectData.assigned_consultant_id !== userId) {
+  if (assignedId !== userId) {
     return { error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
   }
 
-  return { projectId: roadmapData.project_id };
+  return { projectId: data.project_id };
 }
 
 /**
