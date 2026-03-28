@@ -117,6 +117,8 @@ describe('copyRoadmapToProject', () => {
     setupAuth();
     // supabase.from('projects').select().eq().single() → 프로젝트 없음
     serverMock.addResult({ data: null, error: null });
+    // adminClient: 원본 로드맵 조회 (병렬 실행되므로 결과 필요)
+    adminMock.addResult({ data: null, error: null });
 
     const result = await copyRoadmapToProject(defaultParams);
 
@@ -133,6 +135,8 @@ describe('copyRoadmapToProject', () => {
       },
       error: null,
     });
+    // adminClient: 원본 로드맵 조회 (병렬 실행되므로 결과 필요)
+    adminMock.addResult({ data: null, error: null });
 
     const result = await copyRoadmapToProject(defaultParams);
 

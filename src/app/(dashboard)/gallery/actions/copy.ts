@@ -29,31 +29,31 @@ export async function copyRoadmapToProject(params: {
     return errorResult('컨설턴트만 로드맵을 가져올 수 있습니다.');
   }
 
-  // 대상 프로젝트 배정 확인
-  const { data: projectData } = await supabase
-    .from('projects')
-    .select('id, assigned_consultant_id, company_name')
-    .eq('id', params.targetProjectId)
-    .single();
+  const adminClient = createAdminClient();
+
+  // 대상 프로젝트 배정 확인 + 원본 로드맵 조회 (독립적이므로 병렬 실행)
+  const [{ data: projectData }, { data: source }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, assigned_consultant_id, company_name')
+      .eq('id', params.targetProjectId)
+      .single(),
+    adminClient
+      .from('roadmap_versions')
+      .select(`
+        diagnosis_summary,
+        roadmap_matrix,
+        pbl_course,
+        courses,
+        projects!inner (company_name)
+      `)
+      .eq('id', params.sourceRoadmapVersionId)
+      .single(),
+  ]);
 
   if (!projectData || projectData.assigned_consultant_id !== user.id) {
     return errorResult('배정되지 않은 프로젝트입니다.');
   }
-
-  const adminClient = createAdminClient();
-
-  // 원본 로드맵 조회
-  const { data: source } = await adminClient
-    .from('roadmap_versions')
-    .select(`
-      diagnosis_summary,
-      roadmap_matrix,
-      pbl_course,
-      courses,
-      projects!inner (company_name)
-    `)
-    .eq('id', params.sourceRoadmapVersionId)
-    .single();
 
   if (!source) {
     return errorResult('원본 로드맵을 찾을 수 없습니다.');
