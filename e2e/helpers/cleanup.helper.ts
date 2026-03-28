@@ -150,6 +150,56 @@ export async function deleteConversation(conversationId: string) {
   if (error) console.warn(`deleteConversation(${conversationId}) 실패:`, error.message);
 }
 
+/** 유효한 assessment 토큰 보장 — NEW 상태 프로젝트에 미사용+미만료 토큰이 없으면 생성 */
+export async function ensureAssessmentToken(): Promise<string | null> {
+  // 미사용 + 미만료 토큰이 이미 있는지 확인
+  const { data: existing } = await supabase
+    .from('assessment_tokens')
+    .select('token')
+    .eq('is_used', false)
+    .gt('expires_at', new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.token;
+
+  // NEW 상태 프로젝트 찾기 (토큰 생성 조건)
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('status', 'NEW')
+    .limit(1)
+    .maybeSingle();
+  if (!project) return null;
+
+  // ops admin 사용자 ID
+  const { data: opsUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'OPS_ADMIN')
+    .eq('status', 'ACTIVE')
+    .limit(1)
+    .maybeSingle();
+  if (!opsUser) return null;
+
+  // 토큰 생성 (14일 유효)
+  const crypto = await import('crypto');
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase.from('assessment_tokens').insert({
+    token,
+    project_id: project.id,
+    expires_at: expiresAt,
+    created_by: opsUser.id,
+  });
+  if (error) {
+    console.warn('ensureAssessmentToken: 생성 실패', error.message);
+    return null;
+  }
+
+  return token;
+}
+
 /** 로드맵 공유 상태 복원 */
 export async function restoreShareStatus(
   roadmapId: string,

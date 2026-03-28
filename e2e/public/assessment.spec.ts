@@ -2,9 +2,17 @@
 // 공개 자가진단 페이지 E2E 테스트
 import { test, expect } from '@playwright/test';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
+import { ensureAssessmentToken } from '../helpers/cleanup.helper';
+
+let validToken: string | null = null;
 
 test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
   test.describe.configure({ mode: 'parallel' });
+
+  // 유효한 토큰 보장 — 없으면 자동 생성
+  test.beforeAll(async () => {
+    validToken = process.env.E2E_ASSESSMENT_TOKEN || await ensureAssessmentToken();
+  });
 
   test('유효하지 않은 토큰 → 404 페이지', async ({ page }) => {
     const getErrors = setupConsoleErrorCheck(page);
@@ -44,11 +52,9 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
   });
 
   test('유효 토큰 → 자가진단 폼 표시', async ({ page }) => {
-    const token = process.env.E2E_ASSESSMENT_TOKEN;
-    // E2E_ASSESSMENT_TOKEN 환경 변수가 설정되지 않으면 유효 토큰 테스트 불가
-    test.skip(!token, '환경 변수 미설정: E2E_ASSESSMENT_TOKEN이 필요합니다');
+    test.skip(!validToken, 'NEW 상태 프로젝트가 없어 assessment 토큰 생성 불가');
 
-    const response = await page.goto(`/assessment/${token!}`);
+    const response = await page.goto(`/assessment/${validToken!}`);
 
     // 200 응답 (유효한 토큰)
     expect(response?.status()).toBe(200);
@@ -56,12 +62,12 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
     // 자가진단 폼 요소 확인
     await expect(page.getByText('자가진단')).toBeVisible({ timeout: 10_000 });
 
-    // 제출자 이름 또는 진단 문항이 표시되는지 확인
-    const hasForm =
-      (await page.locator('form').isVisible().catch(() => false)) ||
-      (await page.getByRole('button', { name: /제출|완료/ }).isVisible().catch(() => false));
+    // "진단 시작" 버튼 또는 진단 폼 요소 확인
+    const hasStartButton = await page.getByRole('button', { name: /진단 시작|제출|완료/ })
+      .first().isVisible().catch(() => false);
+    const hasForm = await page.locator('form').isVisible().catch(() => false);
 
-    expect(hasForm).toBe(true);
+    expect(hasStartButton || hasForm).toBe(true);
   });
 
   test('assessment 레이아웃 구조 확인 (헤더, 푸터)', async ({ page }) => {
