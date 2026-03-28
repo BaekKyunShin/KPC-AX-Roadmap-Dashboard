@@ -12,6 +12,15 @@ import { successResult, errorResult } from '@/lib/types/action-result';
 // 로드맵 복제 (가져다 쓰기)
 // =============================================================================
 
+/** sourceResult 쿼리 행 타입 (.returns<> 용) */
+interface SourceRoadmapRow {
+  diagnosis_summary: string;
+  roadmap_matrix: unknown;
+  pbl_course: unknown;
+  courses: unknown;
+  projects: { company_name: string };
+}
+
 export async function copyRoadmapToProject(params: {
   sourceRoadmapVersionId: string;
   targetProjectId: string;
@@ -48,6 +57,7 @@ export async function copyRoadmapToProject(params: {
         projects!inner (company_name)
       `)
       .eq('id', params.sourceRoadmapVersionId)
+      .returns<SourceRoadmapRow[]>()
       .single(),
   ]);
 
@@ -74,7 +84,7 @@ export async function copyRoadmapToProject(params: {
     ? existingVersions[0].version_number + 1
     : 1;
 
-  const sourceProject = source.projects as unknown as { company_name: string };
+  const sourceProject = source.projects;
 
   // 새 DRAFT 버전 생성
   const { data: newVersion, error } = await adminClient
