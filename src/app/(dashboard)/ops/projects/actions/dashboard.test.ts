@@ -321,10 +321,12 @@ describe('fetchStalledProjects', () => {
     expect(result).toEqual([]);
   });
 
-  it('정체 프로젝트 필터링 (minDays 기준)', async () => {
+  it('정체 프로젝트 필터링 (minDays 기준, DB에서 필터링)', async () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
 
+    // DB .lt() 필터가 적용된 후 결과: minDays(20일) 이상 정체된 프로젝트만 반환
+    // p2(5일 전)는 DB 쿼리 단계에서 제외됨
     auth._mock.addResult({
       data: [
         {
@@ -332,17 +334,12 @@ describe('fetchStalledProjects', () => {
           status: 'ASSIGNED', updated_at: '2026-02-01T00:00:00Z',
           assigned_consultant: { id: 'c1', name: '컨설턴트A' },
         },
-        {
-          id: 'p2', company_name: 'B사', contact_email: 'b@b.com',
-          status: 'NEW', updated_at: '2026-03-15T00:00:00Z', // 5일 전
-          assigned_consultant: null,
-        },
       ],
       error: null,
     });
 
     const result = await fetchStalledProjects(20);
-    // p1: 47일 정체 (>=20), p2: 5일 (< 20)
+    // p1: 47일 정체 (>=20) — DB에서 이미 필터링됨
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('p1');
     expect(result[0].days_stalled).toBe(47);

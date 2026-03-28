@@ -213,7 +213,9 @@ export async function fetchStalledProjects(minDays: number = PROJECT_STALL_THRES
   const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return [];
 
-  // 완료되지 않은 프로젝트 조회
+  // DB에서 날짜 필터링: minDays 이상 정체된 프로젝트만 조회
+  const thresholdDate = new Date(Date.now() - minDays * MILLISECONDS_PER_DAY).toISOString();
+
   const { data: projects, error } = await auth.supabase
     .from('projects')
     .select(`
@@ -224,7 +226,8 @@ export async function fetchStalledProjects(minDays: number = PROJECT_STALL_THRES
       updated_at,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name)
     `)
-    .neq('status', 'FINALIZED');
+    .neq('status', 'FINALIZED')
+    .lt('updated_at', thresholdDate);
 
   if (error || !projects) {
     console.error('[fetchStalledProjects Error]', error);
@@ -238,19 +241,17 @@ export async function fetchStalledProjects(minDays: number = PROJECT_STALL_THRES
     const updatedAt = new Date(project.updated_at);
     const daysDiff = Math.floor((now.getTime() - updatedAt.getTime()) / MILLISECONDS_PER_DAY);
 
-    if (daysDiff >= minDays) {
-      stalledProjects.push({
-        id: project.id,
-        company_name: project.company_name,
-        contact_email: project.contact_email,
-        status: project.status,
-        days_stalled: daysDiff,
-        assigned_consultant: Array.isArray(project.assigned_consultant)
-          ? project.assigned_consultant[0] || null
-          : project.assigned_consultant,
-        severity: daysDiff >= PROJECT_STALL_THRESHOLDS.SEVERE ? 'high' : 'medium',
-      });
-    }
+    stalledProjects.push({
+      id: project.id,
+      company_name: project.company_name,
+      contact_email: project.contact_email,
+      status: project.status,
+      days_stalled: daysDiff,
+      assigned_consultant: Array.isArray(project.assigned_consultant)
+        ? project.assigned_consultant[0] || null
+        : project.assigned_consultant,
+      severity: daysDiff >= PROJECT_STALL_THRESHOLDS.SEVERE ? 'high' : 'medium',
+    });
   }
 
   // 정체 일수 기준 내림차순 정렬
