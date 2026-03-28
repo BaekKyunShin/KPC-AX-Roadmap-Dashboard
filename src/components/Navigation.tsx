@@ -22,7 +22,11 @@ import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
 import NotificationBell from '@/components/NotificationBell';
 import MessageIcon from '@/components/MessageIcon';
-import CommandPalette from '@/components/command-palette/CommandPalette';
+import dynamic from 'next/dynamic';
+const CommandPalette = dynamic(
+  () => import('@/components/command-palette/CommandPalette'),
+  { ssr: false }
+);
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { useRecentVisits } from '@/hooks/useRecentVisits';
 import {
