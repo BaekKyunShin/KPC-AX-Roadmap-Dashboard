@@ -94,23 +94,21 @@ export async function fetchUserUsage(userId: string): Promise<UsageMetrics> {
   const supabase = createAdminClient();
   const { date, month } = getKSTDateTime();
 
-  // 쿼터 조회
-  const quota = await fetchUserQuota(userId);
-
-  // 일별 사용량 조회
-  const { data: dailyUsage } = await supabase
-    .from('usage_metrics')
-    .select('llm_calls')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .single();
-
-  // 월별 사용량 조회
-  const { data: monthlyUsage } = await supabase
-    .from('usage_metrics')
-    .select('llm_calls')
-    .eq('user_id', userId)
-    .eq('month', month);
+  // 쿼터·일별·월별 사용량을 병렬 조회 (서로 독립적)
+  const [quota, { data: dailyUsage }, { data: monthlyUsage }] = await Promise.all([
+    fetchUserQuota(userId),
+    supabase
+      .from('usage_metrics')
+      .select('llm_calls')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .single(),
+    supabase
+      .from('usage_metrics')
+      .select('llm_calls')
+      .eq('user_id', userId)
+      .eq('month', month),
+  ]);
 
   const dailyCalls = dailyUsage?.llm_calls || 0;
   const monthlyCalls = monthlyUsage?.reduce((sum, m) => sum + m.llm_calls, 0) || 0;
