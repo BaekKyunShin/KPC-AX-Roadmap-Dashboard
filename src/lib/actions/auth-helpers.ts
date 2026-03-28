@@ -80,6 +80,12 @@ export async function requireAuthWithRole(
  * 컨설턴트 로드맵 접근 검증 — roadmapId에서 프로젝트를 조회하고 배정 여부를 확인합니다.
  * 성공 시 { projectId }를 반환하여 호출부에서 활용할 수 있습니다.
  */
+
+interface RoadmapAccessRow {
+  project_id: string;
+  projects: { assigned_consultant_id: string };
+}
+
 export async function requireConsultantRoadmapAccess(
   supabase: SupabaseServerClient,
   userId: string,
@@ -89,19 +95,14 @@ export async function requireConsultantRoadmapAccess(
     .from('roadmap_versions')
     .select('project_id, projects!inner(assigned_consultant_id)')
     .eq('id', roadmapId)
+    .returns<RoadmapAccessRow[]>()
     .single();
 
   if (!data) {
     return { error: '로드맵을 찾을 수 없습니다.' };
   }
 
-  // Handle the projects field - could be object or array depending on Supabase response
-  const projects = data.projects;
-  const assignedId = Array.isArray(projects)
-    ? projects[0]?.assigned_consultant_id
-    : (projects as { assigned_consultant_id: string })?.assigned_consultant_id;
-
-  if (assignedId !== userId) {
+  if (data.projects.assigned_consultant_id !== userId) {
     return { error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
   }
 
