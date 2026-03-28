@@ -32,7 +32,7 @@ export async function copyRoadmapToProject(params: {
   const adminClient = createAdminClient();
 
   // 대상 프로젝트 배정 확인 + 원본 로드맵 조회 (독립적이므로 병렬 실행)
-  const [{ data: projectData }, { data: source }] = await Promise.all([
+  const [projectResult, sourceResult] = await Promise.all([
     supabase
       .from('projects')
       .select('id, assigned_consultant_id, company_name')
@@ -51,11 +51,14 @@ export async function copyRoadmapToProject(params: {
       .single(),
   ]);
 
-  if (!projectData || projectData.assigned_consultant_id !== user.id) {
+  const { data: projectData, error: projectError } = projectResult;
+  const { data: source, error: sourceError } = sourceResult;
+
+  if (projectError || !projectData || projectData.assigned_consultant_id !== user.id) {
     return errorResult('배정되지 않은 프로젝트입니다.');
   }
 
-  if (!source) {
+  if (sourceError || !source) {
     return errorResult('원본 로드맵을 찾을 수 없습니다.');
   }
 
