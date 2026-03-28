@@ -262,7 +262,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const supabase = await createClient();
 
   // 프로젝트 조회 (헤더 즉시 렌더링에 필요)
-  const { data: rawProject } = await supabase
+  const { data: projectData } = await supabase
     .from('projects')
     .select(`
       id, company_name, industry, company_size, status,
@@ -272,13 +272,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
     `)
     .eq('id', id)
+    .returns<ProjectRow[]>()
     .single();
 
-  if (!rawProject) {
+  if (!projectData) {
     notFound();
   }
-
-  const projectData = rawProject as unknown as ProjectRow;
   const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
 
   // 기업 규모 라벨 변환
