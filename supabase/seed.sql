@@ -123,9 +123,9 @@ INSERT INTO auth.identities (
 -- 3. public.users — 프로필
 -- ============================================================
 INSERT INTO users (id, email, name, role, status, phone) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'son@test.com',          '손운영관리자', 'OPS_ADMIN',            'ACTIVE', '010-1111-1111'),
-  ('22222222-2222-2222-2222-222222222222', 'kpc@test.com',          'KPC컨설턴트',  'CONSULTANT_APPROVED',  'ACTIVE', '010-2222-2222'),
-  ('33333333-3333-3333-3333-333333333333', 'sysadmin@test.com',   '시스템관리자', 'SYSTEM_ADMIN',         'ACTIVE', '010-3333-3333');
+  ('11111111-1111-1111-1111-111111111111', 'son@test.com',        '손준성',   'OPS_ADMIN',            'ACTIVE', '010-1111-1111'),
+  ('22222222-2222-2222-2222-222222222222', 'kpc@test.com',        '김동순',   'CONSULTANT_APPROVED',  'ACTIVE', '010-2222-2222'),
+  ('33333333-3333-3333-3333-333333333333', 'sysadmin@test.com',   '신백균',   'SYSTEM_ADMIN',         'ACTIVE', '010-3333-3333');
 
 -- ============================================================
 -- 4. consultant_profiles — 컨설턴트 프로필
