@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
+import { Agentation } from "agentation";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   );

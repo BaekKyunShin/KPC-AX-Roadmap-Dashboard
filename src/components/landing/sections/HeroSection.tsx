@@ -138,7 +138,7 @@ interface SubtitleProps {
 const Subtitle = ({ ref }: SubtitleProps) => (
   <p
     ref={ref}
-    className="relative mt-6 text-center text-lg sm:text-xl text-gray-600 max-w-2xl opacity-0"
+    className="relative mt-8 text-center text-lg sm:text-xl text-gray-600 max-w-2xl opacity-0"
   >
     기업 진단부터 컨설턴트 매칭, 맞춤형 AI 훈련 로드맵까지
     <br className="hidden sm:block" />
