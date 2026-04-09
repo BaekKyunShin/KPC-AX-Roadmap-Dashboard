@@ -84,16 +84,15 @@ async function measureCLS(page: Page): Promise<number> {
   });
 }
 
-/** JS 리소스 총 transferSize를 계산합니다. */
+/** JS 리소스 총 transferSize를 계산합니다. (확장자 기반 매칭 — jsdelivr CDN 등 호스트명에 .js가 포함된 URL 오분류 방지) */
 async function measureJSBundleSize(page: Page): Promise<number> {
   return page.evaluate(() => {
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
     return resources
-      .filter(
-        (r) =>
-          r.initiatorType === 'script' ||
-          (r.name.includes('.js') && !r.name.includes('.json')),
-      )
+      .filter((r) => {
+        const pathname = r.name.split('?')[0];
+        return /\.(m?js|cjs)$/.test(pathname);
+      })
       .reduce((sum, r) => sum + (r.transferSize ?? 0), 0);
   });
 }

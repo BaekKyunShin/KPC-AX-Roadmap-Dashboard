@@ -17,15 +17,15 @@ interface ResourceEntry {
   encodedBodySize: number;
 }
 
-/** JS 리소스 목록을 수집합니다. */
+/** JS 리소스 목록을 수집합니다. (확장자 기반 매칭 — jsdelivr CDN 등 호스트명에 .js가 포함된 URL 오분류 방지) */
 async function collectJSResources(page: Page): Promise<ResourceEntry[]> {
   return page.evaluate(() => {
     return (performance.getEntriesByType('resource') as PerformanceResourceTiming[])
-      .filter(
-        (r) =>
-          r.initiatorType === 'script' ||
-          (r.name.includes('.js') && !r.name.includes('.json')),
-      )
+      .filter((r) => {
+        // 쿼리스트링 제거 후 pathname 기준으로 확장자 매칭
+        const pathname = r.name.split('?')[0];
+        return /\.(m?js|cjs)$/.test(pathname);
+      })
       .map((r) => ({
         name: r.name,
         initiatorType: r.initiatorType,
