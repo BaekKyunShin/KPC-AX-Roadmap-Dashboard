@@ -1,6 +1,6 @@
 ---
 name: check-server-action
-description: Server Action 파일을 작성하거나 수정할 때 프로젝트 패턴 준수 여부를 검사합니다
+description: Server Action 파일(actions.ts)이 프로젝트 5단계 패턴(세션 확인 → 역할 권한 검사 → Zod 입력 검증 → 비즈니스 로직 → ActionResult 반환)을 따르는지 검사한다. 'use server' 지시문 파일을 작성·수정하거나 "Server Action 리뷰해줘" 요청 시 사용한다.
 user-invocable: true
 argument-hint: [파일경로]
 ---

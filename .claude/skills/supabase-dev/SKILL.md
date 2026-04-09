@@ -1,6 +1,6 @@
 ---
 name: supabase-dev
-description: Supabase 마이그레이션 SQL, RLS 정책, PostgreSQL 함수를 작성하거나 수정할 때 프로젝트 규칙과 Supabase 베스트 프랙티스를 적용합니다
+description: Supabase 마이그레이션 SQL, RLS 정책, PostgreSQL 함수/트리거/뷰, UUID 기반 스키마, 6개 역할(PUBLIC/USER_PENDING/OPS_ADMIN_PENDING/CONSULTANT_APPROVED/OPS_ADMIN/SYSTEM_ADMIN) 헬퍼 함수를 작성·수정한다. supabase/migrations/ 파일, RLS 정책 추가, DB 함수 작성 요청 시 사용한다.
 user-invocable: true
 argument-hint: [파일경로]
 ---

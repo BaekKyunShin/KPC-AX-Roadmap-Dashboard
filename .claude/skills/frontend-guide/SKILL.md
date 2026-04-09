@@ -1,6 +1,6 @@
 ---
 name: frontend-guide
-description: 프론트엔드 UI 컴포넌트나 페이지를 생성하거나 수정할 때 프로젝트의 디자인 패턴과 컴포넌트 규칙을 적용합니다
+description: shadcn/ui + Tailwind CSS + Radix UI 기반 B2B 대시보드의 컴포넌트·페이지·폼·테이블·차트·반응형 레이아웃을 생성하거나 수정한다. "페이지 만들어줘", "컴포넌트 추가", "UI 수정", "디자인 개선", "디자인 수정", "폼 만들기", "모바일 대응" 요청 시 사용한다.
 user-invocable: true
 argument-hint: [파일경로]
 ---
