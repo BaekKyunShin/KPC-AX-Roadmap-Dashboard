@@ -172,7 +172,7 @@ export default function NavbarClient({ isLoggedIn }: NavbarClientProps) {
       setIsScrolled(window.scrollY > SCROLL_THRESHOLD);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

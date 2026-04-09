@@ -124,5 +124,49 @@ describe('NavbarClient', () => {
       await user.click(screen.getByLabelText('메뉴 열기'));
       expect(screen.getByLabelText('메뉴 닫기')).toBeInTheDocument();
     });
+
+    it('메뉴 버튼을 두 번 클릭하면 다시 닫힌다 (토글)', async () => {
+      const user = userEvent.setup();
+      render(<NavbarClient isLoggedIn={false} />);
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      expect(screen.getByLabelText('메뉴 닫기')).toBeInTheDocument();
+
+      await user.click(screen.getByLabelText('메뉴 닫기'));
+      expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
+    });
+
+    it('모바일 메뉴 내 네비게이션 링크 클릭 시 메뉴가 닫힌다', async () => {
+      const user = userEvent.setup();
+      render(<NavbarClient isLoggedIn={false} />);
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      expect(screen.getByLabelText('메뉴 닫기')).toBeInTheDocument();
+
+      // mobile-menu 내부의 "#features" 링크 클릭 (desktop/mobile 둘 다 존재하므로 scope로 한정)
+      const mobileMenu = screen.getByTestId('mobile-menu');
+      const featuresLink = Array.from(mobileMenu.querySelectorAll('a')).find(
+        (a) => a.getAttribute('href') === '#features',
+      );
+      expect(featuresLink).toBeTruthy();
+      if (featuresLink) await user.click(featuresLink);
+
+      expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
+    });
+  });
+
+  describe('모바일 메뉴 로그인 상태', () => {
+    it('로그인 상태에서 모바일 메뉴에도 대시보드 버튼이 포함된다', async () => {
+      const user = userEvent.setup();
+      render(<NavbarClient isLoggedIn={true} />);
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+
+      const mobileMenu = screen.getByTestId('mobile-menu');
+      const dashLink = Array.from(mobileMenu.querySelectorAll('a')).find(
+        (a) => a.getAttribute('href') === '/dashboard',
+      );
+      expect(dashLink).toBeTruthy();
+    });
   });
 });

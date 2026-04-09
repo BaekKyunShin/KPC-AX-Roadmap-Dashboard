@@ -1,3 +1,4 @@
+import { unstable_rethrow } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import NavbarClient from './NavbarClient';
 
@@ -16,8 +17,10 @@ export default async function Navbar() {
       data: { user },
     } = await supabase.auth.getUser();
     isLoggedIn = !!user;
-  } catch {
-    // Supabase 오류 시 비로그인 상태로 안전 fallback
+  } catch (err) {
+    // Next.js 내부 제어 흐름 에러(redirect/notFound 등)는 반드시 재throw하여
+    // 프레임워크가 정상 처리하도록 함. 그 외 실제 에러만 비로그인 fallback.
+    unstable_rethrow(err);
     isLoggedIn = false;
   }
 
