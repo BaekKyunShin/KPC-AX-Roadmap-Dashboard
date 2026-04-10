@@ -264,6 +264,95 @@ describe('ProjectList', () => {
         expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThan(callCountBefore);
       });
     });
+
+    it('1글자 입력 시에도 debounce 후 검색이 실행된다', async () => {
+      mockFetchConsultantProjects.mockResolvedValue({
+        projects: [makeProject()],
+        total: 1,
+        consultantName: '홍길동',
+      });
+      const user = userEvent.setup();
+      render(<ProjectList />);
+
+      // 초기 로드 대기
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects).toHaveBeenCalledTimes(1);
+      });
+
+      const callCountAfterMount = mockFetchConsultantProjects.mock.calls.length;
+
+      const input = screen.getByPlaceholderText('기업명 또는 업종 검색...');
+      await act(async () => {
+        await user.type(input, '가');
+      });
+
+      // 1글자 입력 후에도 debounce 후 호출되어야 함
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+      });
+    });
+
+    it('검색어 전체 삭제(빈 문자열) 시 전체 목록을 다시 로드한다', async () => {
+      mockFetchConsultantProjects.mockResolvedValue({
+        projects: [makeProject()],
+        total: 1,
+        consultantName: '홍길동',
+      });
+      const user = userEvent.setup();
+      render(<ProjectList />);
+
+      // 초기 로드 대기
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects).toHaveBeenCalledTimes(1);
+      });
+
+      const input = screen.getByPlaceholderText('기업명 또는 업종 검색...');
+
+      // 검색어 입력 → debounce 후 검색 발동 대기
+      await act(async () => {
+        await user.type(input, '삼성');
+      });
+
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThanOrEqual(2);
+      });
+
+      const callCountBeforeClear = mockFetchConsultantProjects.mock.calls.length;
+
+      // 검색어 전체 삭제
+      await act(async () => {
+        await user.clear(input);
+      });
+
+      // 빈 문자열 → 전체 목록 로드 호출
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects.mock.calls.length).toBeGreaterThan(callCountBeforeClear);
+      }, { timeout: 2000 });
+    });
+
+    it('1글자 검색어도 debounce 후 필터 배지가 표시된다', async () => {
+      mockFetchConsultantProjects.mockResolvedValue({
+        projects: [makeProject()],
+        total: 1,
+        consultantName: '홍길동',
+      });
+      const user = userEvent.setup();
+      render(<ProjectList />);
+
+      await waitFor(() => {
+        expect(mockFetchConsultantProjects).toHaveBeenCalledTimes(1);
+      });
+
+      const input = screen.getByPlaceholderText('기업명 또는 업종 검색...');
+      await act(async () => {
+        await user.type(input, '가');
+      });
+
+      // 1글자도 debounce 후 검색 필터 배지가 표시되어야 함
+      await waitFor(() => {
+        expect(screen.getByText('검색: 가')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('상태 필터', () => {

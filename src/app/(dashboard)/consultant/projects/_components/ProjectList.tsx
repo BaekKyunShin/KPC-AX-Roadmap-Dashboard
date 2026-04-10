@@ -59,6 +59,8 @@ const ALL_STATUS_VALUE = 'all';
 /** 검색 디바운스 지연 시간 (ms) */
 const SEARCH_DEBOUNCE_DELAY = 300;
 
+
+
 /** 테이블 열 설정 */
 const TABLE_COLUMNS = {
   company: 'min-w-[140px]',
@@ -240,6 +242,8 @@ export default function ProjectList({ initialData = null, initialFilters = null 
   // initialData가 제공된 경우 첫 마운트 시 fetch를 스킵하기 위한 ref
   const isInitialMount = useRef(!!initialData);
 
+
+
   // 파생 상태
   const hasFilters = debouncedSearch || status !== ALL_STATUS_VALUE;
   const isStatusFiltered = status !== ALL_STATUS_VALUE;
@@ -341,13 +345,12 @@ export default function ProjectList({ initialData = null, initialFilters = null 
                 placeholder="기업명 또는 업종 검색..."
                 aria-label="기업명 또는 업종 검색"
                 className="pl-9"
-                disabled={loading}
               />
             </div>
 
             {/* 필터 컨트롤 */}
             <div className="flex flex-wrap gap-2">
-              <Select value={status} onValueChange={handleStatusChange} disabled={loading}>
+              <Select value={status} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-full sm:w-[140px]" aria-label="상태 필터">
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
