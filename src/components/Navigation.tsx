@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutUser } from '@/app/(auth)/actions';
@@ -11,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   UserCog,
   LogOut,
+  Loader2,
   Menu,
   X,
   ChevronRight,
@@ -369,13 +371,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                   <Separator className="my-1" />
 
                   <form action={logoutUser}>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      로그아웃
-                    </button>
+                    <LogoutSubmitButton variant="ghost" />
                   </form>
                 </div>
               )}
@@ -507,10 +503,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               </Link>
 
               <form action={logoutUser}>
-                <Button variant="outline" className="w-full justify-center">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  로그아웃
-                </Button>
+                <LogoutSubmitButton variant="outline" />
               </form>
             </div>
           </div>
@@ -526,5 +519,34 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
         />
       )}
     </nav>
+  );
+}
+
+/** 로그아웃 버튼 (pending 상태 피드백 포함) */
+function LogoutSubmitButton({ variant }: { variant: 'ghost' | 'outline' }) {
+  const { pending } = useFormStatus();
+  const icon = pending
+    ? <Loader2 className="h-4 w-4 animate-spin" />
+    : <LogOut className="h-4 w-4" />;
+  const label = pending ? '로그아웃 중...' : '로그아웃';
+
+  if (variant === 'outline') {
+    return (
+      <Button variant="outline" className="w-full justify-center" type="submit" disabled={pending}>
+        <span className="mr-2">{icon}</span>
+        {label}
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
