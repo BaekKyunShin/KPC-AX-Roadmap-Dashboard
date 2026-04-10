@@ -64,6 +64,7 @@ vi.mock('next/server', () => ({
 import { createProject, createSelfAssessment, assignConsultant } from './crud';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
+import { createNotification } from '@/lib/services/notification';
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -398,6 +399,85 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
         targetId: TEST_PROJECT_ID,
+      }),
+    );
+  });
+
+  it('재배정 시 이전 컨설턴트에게 해제 알림 전송', async () => {
+    const PREVIOUS_CONSULTANT_ID = '550e8400-e29b-41d4-a716-446655440099';
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addRpcResult({
+      data: { success: true, previous_consultant_id: PREVIOUS_CONSULTANT_ID },
+      error: null,
+    });
+    // after() 내부: 프로젝트 조회
+    adminMock.addResult({ data: { company_name: '재배정사' }, error: null });
+
+    await assignConsultant(makeAssignFormData());
+    await flush();
+
+    // 새 컨설턴트 배정 알림
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: TEST_CONSULTANT_ID,
+        type: 'assignment',
+        title: '새 프로젝트 배정',
+      }),
+    );
+    // 이전 컨설턴트 해제 알림
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: PREVIOUS_CONSULTANT_ID,
+        type: 'assignment',
+        title: '프로젝트 배정 해제',
+        message: '재배정사 프로젝트 담당이 변경되었습니다.',
+      }),
+    );
+  });
+
+  it('첫 배정 시 해제 알림 미전송', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    // previous_consultant_id가 없는 경우 (첫 배정)
+    adminMock.addRpcResult({ data: { success: true }, error: null });
+    adminMock.addResult({ data: { company_name: '첫배정사' }, error: null });
+
+    await assignConsultant(makeAssignFormData());
+    await flush();
+
+    // 새 컨설턴트 배정 알림만 전송
+    expect(createNotification).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: TEST_CONSULTANT_ID,
+        title: '새 프로젝트 배정',
+      }),
+    );
+  });
+
+  it('같은 컨설턴트로 재배정 시 해제 알림 미전송', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    // 이전 컨설턴트 == 새 컨설턴트
+    adminMock.addRpcResult({
+      data: { success: true, previous_consultant_id: TEST_CONSULTANT_ID },
+      error: null,
+    });
+    adminMock.addResult({ data: { company_name: '자기배정사' }, error: null });
+
+    await assignConsultant(makeAssignFormData());
+    await flush();
+
+    // 배정 알림만 전송, 해제 알림 미전송
+    expect(createNotification).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: TEST_CONSULTANT_ID,
+        title: '새 프로젝트 배정',
       }),
     );
   });

@@ -16,6 +16,7 @@ import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result
 interface AssignConsultantResult {
   success: boolean;
   error?: string;
+  previous_consultant_id?: string;
 }
 
 /**
@@ -259,13 +260,14 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
       meta: { consultant_id, reason: assignment_reason },
     });
 
-    // 컨설턴트에게 배정 알림 전송
+    // 프로젝트명 조회
     const { data: project } = await adminSupabase
       .from('projects')
       .select('company_name')
       .eq('id', project_id)
       .single();
 
+    // 새 컨설턴트에게 배정 알림 전송
     await createNotification({
       userId: consultant_id,
       type: 'assignment',
@@ -273,6 +275,18 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
       message: `${project?.company_name || '새'} 프로젝트가 배정되었습니다.`,
       link: `/consultant/projects/${project_id}`,
     });
+
+    // 이전 컨설턴트에게 해제 알림 (다른 사람으로 변경된 경우에만)
+    const previousConsultantId = result.previous_consultant_id;
+    if (previousConsultantId && previousConsultantId !== consultant_id) {
+      await createNotification({
+        userId: previousConsultantId,
+        type: 'assignment',
+        title: '프로젝트 배정 해제',
+        message: `${project?.company_name || ''} 프로젝트 담당이 변경되었습니다.`,
+        link: '/consultant/projects',
+      });
+    }
   });
 
   revalidatePath(`/ops/projects/${project_id}`);
