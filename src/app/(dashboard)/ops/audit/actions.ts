@@ -117,32 +117,38 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
  */
 export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 'limit'> = {}) {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
-  if ('error' in auth) return { logs: [] };
+  if ('error' in auth) return { logs: [] as AuditLogEntry[] };
 
-  // 청크 단위로 분할 조회 (메모리 부하 분산)
-  const allLogs: AuditLogEntry[] = [];
-  let page = 1;
-  let total = 0;
+  try {
+    // 청크 단위로 분할 조회 (메모리 부하 분산)
+    const allLogs: AuditLogEntry[] = [];
+    let page = 1;
+    let total = 0;
 
-  while (allLogs.length < AUDIT_LOG_EXPORT_MAX) {
-    const result = await fetchAuditLogsService({
-      ...filters,
-      page,
-      limit: AUDIT_LOG_CHUNK_SIZE,
-      currentUserRole: auth.role,
-    });
+    while (allLogs.length < AUDIT_LOG_EXPORT_MAX) {
+      const result = await fetchAuditLogsService({
+        ...filters,
+        page,
+        limit: AUDIT_LOG_CHUNK_SIZE,
+        currentUserRole: auth.role,
+      });
 
-    if (page === 1) {
-      total = result.total;
+      if (page === 1) {
+        total = result.total;
+      }
+
+      if (result.logs.length === 0) break;
+
+      allLogs.push(...result.logs);
+      page++;
     }
 
-    if (result.logs.length === 0) break;
-
-    allLogs.push(...result.logs);
-    page++;
+    // Server Action 직렬화 안전성 확보 (Date 인스턴스 등 제거)
+    return { logs: JSON.parse(JSON.stringify(allLogs)) as AuditLogEntry[], total };
+  } catch (error) {
+    console.error('[fetchAllAuditLogs]', error);
+    return { logs: [] as AuditLogEntry[] };
   }
-
-  return { logs: allLogs, total };
 }
 
 /**

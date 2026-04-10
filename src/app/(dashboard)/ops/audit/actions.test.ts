@@ -281,6 +281,24 @@ describe('fetchAllAuditLogs', () => {
     expect(result.total).toBe(5);
   });
 
+  it('fetchAuditLogsService 에러 시 빈 결과 반환 (throw하지 않음)', async () => {
+    const mockAuth = {
+      user: { id: 'u1', email: 'a@b.com' },
+      supabase: {},
+      role: 'SYSTEM_ADMIN',
+      status: 'ACTIVE',
+    };
+    vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
+    vi.mocked(fetchAuditLogsService).mockRejectedValueOnce(
+      new Error('DB 연결 실패'),
+    );
+
+    const result = await fetchAllAuditLogs();
+
+    // 에러 시 빈 배열 반환, throw하지 않음
+    expect(result).toEqual({ logs: [] });
+  });
+
   it('fetchAllAuditLogs — 첫 페이지 결과로 total 설정', async () => {
     const mockAuth = {
       user: { id: 'u1', email: 'a@b.com' },

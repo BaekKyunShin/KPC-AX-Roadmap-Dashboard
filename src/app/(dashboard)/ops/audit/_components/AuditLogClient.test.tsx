@@ -360,5 +360,41 @@ describe('AuditLogClient', () => {
         expect(mockFetchAllAuditLogs).toHaveBeenCalled();
       });
     });
+
+    it('전체 목록 다운로드 실패 시 에러 토스트를 표시한다', async () => {
+      const { showErrorToast } = await import('@/lib/utils/toast');
+      mockFetchAllAuditLogs.mockRejectedValueOnce(new Error('서버 오류'));
+      render(<AuditLogClient {...defaultProps} />);
+
+      const allDownloadBtn = screen.getByText(/전체 목록 다운로드/).closest('button')!;
+      await act(async () => {
+        fireEvent.click(allDownloadBtn);
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(
+          '내보내기 실패',
+          '서버와 통신 중 오류가 발생했습니다.',
+        );
+      });
+    });
+
+    it('전체 목록 다운로드 결과가 빈 배열이면 빈 데이터 토스트를 표시한다', async () => {
+      const { showErrorToast } = await import('@/lib/utils/toast');
+      mockFetchAllAuditLogs.mockResolvedValueOnce({ logs: [], total: 0 });
+      render(<AuditLogClient {...defaultProps} />);
+
+      const allDownloadBtn = screen.getByText(/전체 목록 다운로드/).closest('button')!;
+      await act(async () => {
+        fireEvent.click(allDownloadBtn);
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(
+          '내보내기 실패',
+          '내보낼 로그가 없습니다.',
+        );
+      });
+    });
   });
 });

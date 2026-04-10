@@ -289,12 +289,18 @@ export default function AuditLogClient({
           startDate: startDate || undefined,
           endDate: endDate || undefined,
         });
+        if (!result.logs || result.logs.length === 0) {
+          showErrorToast('내보내기 실패', '내보낼 로그가 없습니다.');
+          setExporting(null);
+          return;
+        }
         await exportToExcel(result.logs as AuditLogEntry[], `audit_logs_all_${new Date().toISOString().split('T')[0]}.xlsx`);
       } else {
         setExporting('excel');
         await exportToExcel(filteredLogs, `audit_logs_page${page}_${new Date().toISOString().split('T')[0]}.xlsx`);
       }
-    } catch {
+    } catch (error) {
+      console.error('[handleExportExcel]', error);
       showErrorToast('내보내기 실패', '서버와 통신 중 오류가 발생했습니다.');
     }
     setExporting(null);

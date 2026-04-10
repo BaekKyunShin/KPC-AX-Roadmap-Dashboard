@@ -137,11 +137,18 @@ export async function fetchAuditLogs(options: {
   const { data, error, count } = await query;
 
   if (error) {
-    throw new Error(`감사로그 조회 실패: ${error.message}`);
+    console.error('[fetchAuditLogs]', error);
+    return {
+      logs: [] as NonNullable<typeof data>,
+      total: 0,
+      page,
+      limit,
+      totalPages: 0,
+    };
   }
 
   return {
-    logs: data,
+    logs: data ?? [],
     total: count || 0,
     page,
     limit,

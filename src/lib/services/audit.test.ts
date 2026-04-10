@@ -325,10 +325,17 @@ describe('fetchAuditLogs', () => {
     // audit_logs 쿼리는 실행되지 않음
   });
 
-  it('Supabase 에러 시 Error를 throw한다', async () => {
+  it('Supabase 에러 시 빈 결과를 반환한다', async () => {
     mock.addResult({ data: null, error: { message: 'DB error' }, count: null });
 
-    await expect(fetchAuditLogs({})).rejects.toThrow('감사로그 조회 실패: DB error');
+    const result = await fetchAuditLogs({});
+    expect(result).toEqual({
+      logs: [],
+      total: 0,
+      page: 1,
+      limit: 50,
+      totalPages: 0,
+    });
   });
 
   it('count가 null이면 total 0으로 처리', async () => {
