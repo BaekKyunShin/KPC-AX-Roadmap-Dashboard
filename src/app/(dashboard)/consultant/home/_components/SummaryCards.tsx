@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   FolderOpen,
   CalendarClock,
@@ -23,6 +24,7 @@ const CARDS = [
     textColor: 'text-gray-900',
     iconColor: 'text-gray-400',
     field: 'total',
+    statusFilter: null,
   },
   {
     label: '인터뷰 대기',
@@ -31,6 +33,7 @@ const CARDS = [
     textColor: 'text-blue-600',
     iconColor: 'text-blue-400',
     field: 'waitingInterview',
+    statusFilter: 'ASSIGNED',
   },
   {
     label: '인터뷰 완료',
@@ -39,6 +42,7 @@ const CARDS = [
     textColor: 'text-amber-600',
     iconColor: 'text-amber-400',
     field: 'interviewDone',
+    statusFilter: 'INTERVIEWED',
   },
   {
     label: '로드맵 작성 중',
@@ -47,6 +51,7 @@ const CARDS = [
     textColor: 'text-purple-600',
     iconColor: 'text-purple-400',
     field: 'draftingRoadmap',
+    statusFilter: 'ROADMAP_DRAFTED',
   },
   {
     label: '로드맵 완료',
@@ -55,6 +60,7 @@ const CARDS = [
     textColor: 'text-green-600',
     iconColor: 'text-green-400',
     field: 'roadmapCompleted',
+    statusFilter: 'FINALIZED',
   },
 ] as const;
 
@@ -74,12 +80,14 @@ export function SummaryCards({
         const isLastCardInOddTotal =
           i === CARDS.length - 1 && CARDS.length % 2 !== 0;
         return (
-          <div
+          <Link
             key={card.field}
+            href={card.statusFilter ? `/consultant/projects?status=${card.statusFilter}` : '/consultant/projects'}
             className={cn(
               'bg-white rounded-lg shadow-sm p-4 border-l-4',
               'transition-all duration-200 ease-out',
               'hover:-translate-y-1 hover:shadow-md',
+              'block cursor-pointer',
               card.borderColor,
               isLastCardInOddTotal && 'col-span-2 lg:col-span-1',
             )}
@@ -91,7 +99,7 @@ export function SummaryCards({
             <p className={cn('mt-2 text-3xl font-bold', card.textColor)}>
               {values[card.field]}
             </p>
-          </div>
+          </Link>
         );
       })}
     </div>

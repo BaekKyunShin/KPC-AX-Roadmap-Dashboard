@@ -78,6 +78,38 @@ describe('SummaryCards', () => {
     });
   });
 
+  describe('카드 링크 연동', () => {
+    it('전체 프로젝트 카드는 /consultant/projects로 링크된다', () => {
+      render(<SummaryCards {...defaultProps} />);
+      const link = screen.getByText('전체 프로젝트').closest('a');
+      expect(link).toHaveAttribute('href', '/consultant/projects');
+    });
+
+    it('인터뷰 대기 카드는 /consultant/projects?status=ASSIGNED로 링크된다', () => {
+      render(<SummaryCards {...defaultProps} />);
+      const link = screen.getByText('인터뷰 대기').closest('a');
+      expect(link).toHaveAttribute('href', '/consultant/projects?status=ASSIGNED');
+    });
+
+    it('인터뷰 완료 카드는 /consultant/projects?status=INTERVIEWED로 링크된다', () => {
+      render(<SummaryCards {...defaultProps} />);
+      const link = screen.getByText('인터뷰 완료').closest('a');
+      expect(link).toHaveAttribute('href', '/consultant/projects?status=INTERVIEWED');
+    });
+
+    it('로드맵 작성 중 카드는 /consultant/projects?status=ROADMAP_DRAFTED로 링크된다', () => {
+      render(<SummaryCards {...defaultProps} />);
+      const link = screen.getByText('로드맵 작성 중').closest('a');
+      expect(link).toHaveAttribute('href', '/consultant/projects?status=ROADMAP_DRAFTED');
+    });
+
+    it('로드맵 완료 카드는 /consultant/projects?status=FINALIZED로 링크된다', () => {
+      render(<SummaryCards {...defaultProps} />);
+      const link = screen.getByText('로드맵 완료').closest('a');
+      expect(link).toHaveAttribute('href', '/consultant/projects?status=FINALIZED');
+    });
+  });
+
   describe('그리드 레이아웃', () => {
     it('그리드 컨테이너가 존재한다', () => {
       const { container } = render(<SummaryCards {...defaultProps} />);
