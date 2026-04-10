@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Plus, Search, List, BarChart3 } from 'lucide-react';
-import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
+import { ProjectTableSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,9 +19,9 @@ function StatsSummaryCardsSkeleton() {
         >
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 animate-shimmer rounded-md" />
-            <div className="h-3.5 w-14 animate-shimmer rounded" />
+            <Skeleton className="h-3.5 w-14" />
           </div>
-          <div className="h-7 w-10 animate-shimmer rounded" />
+          <Skeleton className="h-7 w-10" />
         </div>
       ))}
     </div>
@@ -94,8 +94,8 @@ export default function ProjectsLoading() {
 
             {/* 결과 요약 스켈레톤 */}
             <div className="flex items-center justify-between text-base text-muted-foreground">
-              <span className="h-5 w-32 animate-shimmer rounded" />
-              <span className="h-5 w-24 animate-shimmer rounded" />
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-24" />
             </div>
 
             {/* 테이블 스켈레톤 */}

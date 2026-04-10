@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { AuditLogTableSkeleton } from '@/components/ui/Skeleton';
+import { AuditLogTableSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import {
@@ -65,10 +65,10 @@ export default function AuditLoading() {
 
         {/* 통계 및 액션 */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="h-4 w-24 animate-shimmer rounded" />
+          <Skeleton className="h-4 w-24" />
           <div className="flex items-center gap-2">
-            <div className="h-8 w-36 animate-shimmer rounded" />
-            <div className="h-8 w-44 animate-shimmer rounded" />
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-8 w-44" />
           </div>
         </div>
       </div>
