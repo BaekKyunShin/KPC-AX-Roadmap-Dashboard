@@ -62,6 +62,12 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
   const [interviewDate, setInterviewDate] = useState(
     initialInterview?.interview_date || new Date().toISOString().split('T')[0]
   );
+  const [interviewRound, setInterviewRound] = useState<number>(
+    (initialInterview?.interview_round as number) || 1
+  );
+  const [interviewTime, setInterviewTime] = useState(
+    (initialInterview?.interview_time as string) || ''
+  );
   const [participants, setParticipants] = useState<InterviewParticipant[]>(() => {
     const loaded = initialInterview?.participants as InterviewParticipant[] | undefined;
     return loaded?.length ? loaded : [createEmptyParticipant()];
@@ -99,6 +105,8 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
   const lastFormDataRef = useRef<string>(
     initialInterview ? JSON.stringify({
       interviewDate: initialInterview.interview_date,
+      interviewRound: initialInterview.interview_round,
+      interviewTime: initialInterview.interview_time,
       participants: initialInterview.participants,
       companyDetails: initialInterview.company_details,
       jobTasks: initialInterview.job_tasks,
@@ -114,6 +122,8 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
   const serializeFormData = () => {
     return JSON.stringify({
       interviewDate,
+      interviewRound,
+      interviewTime,
       participants,
       companyDetails,
       jobTasks,
@@ -139,6 +149,8 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
     // 자동 저장 시에는 완화된 스키마로 기본 구조만 검증 (작성 중인 데이터 보존 목적)
     const result = await saveInterview(projectId, {
       interview_date: interviewDate,
+      interview_round: interviewRound,
+      interview_time: interviewTime,
       participants,
       company_details: companyDetails,
       job_tasks: jobTasks,
@@ -251,6 +263,8 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
     try {
       const result = await saveInterview(projectId, {
         interview_date: interviewDate,
+        interview_round: interviewRound,
+        interview_time: interviewTime,
         participants,
         company_details: companyDetails,
         job_tasks: jobTasks,
@@ -334,8 +348,12 @@ export default function InterviewClient({ projectId, initialInterview }: Intervi
         return (
           <StepBasicInfo
             interviewDate={interviewDate}
+            interviewRound={interviewRound}
+            interviewTime={interviewTime}
             participants={participants}
             onInterviewDateChange={setInterviewDate}
+            onInterviewRoundChange={setInterviewRound}
+            onInterviewTimeChange={setInterviewTime}
             onParticipantsChange={setParticipants}
           />
         );

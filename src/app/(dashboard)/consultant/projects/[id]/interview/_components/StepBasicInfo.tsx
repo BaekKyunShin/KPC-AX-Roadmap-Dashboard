@@ -2,18 +2,37 @@
 
 import type { InterviewParticipant } from '@/lib/schemas/interview';
 import { createEmptyParticipant } from '@/lib/schemas/interview';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, X } from 'lucide-react';
 
 interface StepBasicInfoProps {
   interviewDate: string;
+  interviewRound: number;
+  interviewTime: string;
   participants: InterviewParticipant[];
   onInterviewDateChange: (date: string) => void;
+  onInterviewRoundChange: (round: number) => void;
+  onInterviewTimeChange: (time: string) => void;
   onParticipantsChange: (participants: InterviewParticipant[]) => void;
 }
 
+const ROUND_OPTIONS = [1, 2, 3];
+
 export default function StepBasicInfo({
   interviewDate,
+  interviewRound,
+  interviewTime,
   participants,
   onInterviewDateChange,
+  onInterviewRoundChange,
+  onInterviewTimeChange,
   onParticipantsChange,
 }: StepBasicInfoProps) {
   const updateParticipant = (index: number, field: keyof InterviewParticipant, value: string) => {
@@ -37,25 +56,56 @@ export default function StepBasicInfo({
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">기본 정보</h2>
         <p className="text-sm text-gray-600 mb-6">
-          인터뷰 날짜와 참석자 정보를 입력해주세요.
+          인터뷰 차수, 날짜, 시간 및 참석자 정보를 입력해주세요.
         </p>
       </div>
 
-      {/* 인터뷰 날짜 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          인터뷰 날짜 <span className="text-red-500">*</span>
+      {/* 인터뷰 차수 */}
+      <div className="max-w-xs">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          인터뷰 차수 <span className="text-red-500">*</span>
         </label>
-        <input
-          type="date"
-          value={interviewDate}
-          onChange={(e) => onInterviewDateChange(e.target.value)}
-          required
-          className="mt-1 block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-        <p className="mt-2 text-xs text-gray-500">
-          현장 인터뷰가 진행된 날짜를 선택하세요.
-        </p>
+        <Select
+          value={String(interviewRound)}
+          onValueChange={(v) => onInterviewRoundChange(Number(v))}
+        >
+          <SelectTrigger aria-label="인터뷰 차수">
+            <SelectValue placeholder="차수 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            {ROUND_OPTIONS.map((n) => (
+              <SelectItem key={n} value={String(n)}>
+                {n}차
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 인터뷰 날짜 + 시간 (같은 행) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            인터뷰 날짜 <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="date"
+            value={interviewDate}
+            onChange={(e) => onInterviewDateChange(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            인터뷰 시간 <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="time"
+            value={interviewTime}
+            onChange={(e) => onInterviewTimeChange(e.target.value)}
+            required
+          />
+        </div>
       </div>
 
       {/* 인터뷰 참석자 */}
@@ -74,9 +124,7 @@ export default function StepBasicInfo({
             onClick={addParticipant}
             className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 transition-colors"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="w-4 h-4 mr-1" />
             참석자 추가
           </button>
         </div>
@@ -88,25 +136,19 @@ export default function StepBasicInfo({
                 {index + 1}
               </span>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <input
-                    type="text"
-                    value={participant.name}
-                    onChange={(e) => updateParticipant(index, 'name', e.target.value)}
-                    placeholder="이름"
-                    required
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    value={participant.position || ''}
-                    onChange={(e) => updateParticipant(index, 'position', e.target.value)}
-                    placeholder="직급/직책 (예: 대표이사, 팀장)"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+                <Input
+                  type="text"
+                  value={participant.name}
+                  onChange={(e) => updateParticipant(index, 'name', e.target.value)}
+                  placeholder="이름"
+                  required
+                />
+                <Input
+                  type="text"
+                  value={participant.position || ''}
+                  onChange={(e) => updateParticipant(index, 'position', e.target.value)}
+                  placeholder="직급/직책 (예: 대표이사, 팀장)"
+                />
               </div>
               {participants.length > 1 && (
                 <button
@@ -115,9 +157,7 @@ export default function StepBasicInfo({
                   className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                   title="삭제"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-5 h-5" />
                 </button>
               )}
             </div>

@@ -86,6 +86,8 @@ const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
 function validInterviewData() {
   return {
     interview_date: '2026-02-15',
+    interview_round: 1,
+    interview_time: '09:00',
     participants: [{ id: 'p1', name: '홍길동', position: '부장' }],
     company_details: { ai_experience: 'ChatGPT 사용 경험' },
     job_tasks: [{ id: 't1', task_name: '데이터 분석', task_description: '매출 데이터 분석 업무' }],
@@ -101,6 +103,8 @@ function validInterviewData() {
 function minimalAutoSaveData() {
   return {
     interview_date: '',
+    interview_round: 1,
+    interview_time: '',
     participants: [{ id: 'p1', name: '', position: '' }],
     company_details: { ai_experience: '' },
     job_tasks: [{ id: 't1', task_name: '', task_description: '' }],

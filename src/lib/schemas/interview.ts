@@ -153,6 +153,8 @@ export const sttInsightsSchema = z.object({
 // 수동 저장용 (엄격한 검증)
 export const interviewSchema = z.object({
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
+  interview_round: z.number().int().min(1, '인터뷰 차수는 1 이상이어야 합니다.'),
+  interview_time: z.string().min(1, '인터뷰 시간을 입력하세요.'),
   participants: z.array(interviewParticipantSchema).min(1, '최소 1명 이상의 참석자를 입력하세요.'),
   company_details: companyDetailsSchema,
   job_tasks: z.array(jobTaskSchema).min(1, '최소 1개 이상의 세부업무를 입력하세요.'),
@@ -167,6 +169,8 @@ export const interviewSchema = z.object({
 // 자동저장용 (완화된 검증 — 구조/타입만 확인, min 제약 없음)
 export const interviewAutoSaveSchema = z.object({
   interview_date: z.string(),
+  interview_round: z.number().int().optional(),
+  interview_time: z.string().optional(),
   participants: z.array(baseParticipantSchema),
   company_details: baseCompanyDetailsSchema,
   job_tasks: z.array(baseJobTaskSchema),
@@ -189,7 +193,7 @@ export type Constraint = z.infer<typeof constraintSchema>;
 export type ImprovementGoal = z.infer<typeof improvementGoalSchema>;
 export type CompanyDetails = z.infer<typeof companyDetailsSchema>;
 export type SttInsights = z.infer<typeof sttInsightsSchema>;
-export type InterviewInput = z.infer<typeof interviewSchema>;
+export type InterviewInput = z.input<typeof interviewSchema>;
 
 // ============================================================================
 // 빈 항목 생성 헬퍼

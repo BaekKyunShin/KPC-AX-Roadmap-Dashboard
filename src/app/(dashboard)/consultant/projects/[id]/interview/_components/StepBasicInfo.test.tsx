@@ -31,13 +31,17 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate="2026-03-15"
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
 
       expect(screen.getByText('기본 정보')).toBeInTheDocument();
-      expect(screen.getByText('인터뷰 날짜와 참석자 정보를 입력해주세요.')).toBeInTheDocument();
+      expect(screen.getByText('인터뷰 차수, 날짜, 시간 및 참석자 정보를 입력해주세요.')).toBeInTheDocument();
     });
 
     it('날짜 입력 필드에 초기값이 표시된다', () => {
@@ -45,7 +49,11 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate="2026-03-15"
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -59,7 +67,11 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate=""
           participants={[makeParticipant({ name: '김철수', position: '대표이사' })]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -73,7 +85,11 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate=""
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -86,7 +102,11 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate=""
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -102,7 +122,11 @@ describe('StepBasicInfo', () => {
             makeParticipant({ id: 'p1', name: '홍길동' }),
             makeParticipant({ id: 'p2', name: '김영희' }),
           ]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -123,12 +147,16 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate=""
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={mockOnDateChange}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
 
-      const dateInput = screen.getByDisplayValue('');
+      const dateInput = screen.getAllByDisplayValue('')[0];
       await user.type(dateInput, '2026-04-01');
 
       expect(mockOnDateChange).toHaveBeenCalled();
@@ -149,6 +177,10 @@ describe('StepBasicInfo', () => {
           interviewDate=""
           participants={initial}
           onInterviewDateChange={vi.fn()}
+          interviewRound={1}
+          interviewTime=""
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={mockOnChange}
         />,
       );
@@ -179,6 +211,10 @@ describe('StepBasicInfo', () => {
           interviewDate=""
           participants={initial}
           onInterviewDateChange={vi.fn()}
+          interviewRound={1}
+          interviewTime=""
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={mockOnChange}
         />,
       );
@@ -197,7 +233,11 @@ describe('StepBasicInfo', () => {
         <StepBasicInfo
           interviewDate=""
           participants={[makeParticipant()]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );
@@ -219,6 +259,10 @@ describe('StepBasicInfo', () => {
           interviewDate=""
           participants={[makeParticipant({ name: '' })]}
           onInterviewDateChange={vi.fn()}
+          interviewRound={1}
+          interviewTime=""
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={mockOnChange}
         />,
       );
@@ -241,6 +285,10 @@ describe('StepBasicInfo', () => {
           interviewDate=""
           participants={[makeParticipant({ position: '' })]}
           onInterviewDateChange={vi.fn()}
+          interviewRound={1}
+          interviewTime=""
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={mockOnChange}
         />,
       );
@@ -265,7 +313,11 @@ describe('StepBasicInfo', () => {
             makeParticipant({ id: 'p2', name: '이순신', position: '부장' }),
             makeParticipant({ id: 'p3', name: '강감찬', position: '사원' }),
           ]}
+          interviewRound={1}
+          interviewTime=""
           onInterviewDateChange={vi.fn()}
+          onInterviewRoundChange={vi.fn()}
+          onInterviewTimeChange={vi.fn()}
           onParticipantsChange={vi.fn()}
         />,
       );

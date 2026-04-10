@@ -107,6 +107,8 @@ function makeFullInitialInterview() {
     project_id: TEST_PROJECT_ID,
     interviewer_id: 'user-1',
     interview_date: '2026-03-15',
+    interview_round: 1,
+    interview_time: '09:00',
     participants: makeValidParticipants(),
     company_details: { systems_and_tools: ['Excel'], ai_experience: 'ChatGPT 사용 경험 있음' },
     job_tasks: makeValidJobTasks(),

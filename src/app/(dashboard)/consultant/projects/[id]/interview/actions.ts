@@ -91,6 +91,8 @@ export async function saveInterview(
       project_id: projectId,
       interviewer_id: user.id,
       interview_date: validatedData.interview_date,
+      interview_round: validatedData.interview_round ?? 1,
+      interview_time: validatedData.interview_time || null,
       participants: validatedData.participants,
       company_details: validatedData.company_details,
       job_tasks: validatedData.job_tasks,
@@ -197,7 +199,7 @@ export async function fetchInterview(projectId: string) {
 
     const { data: interview } = await supabase
       .from('interviews')
-      .select('id, project_id, interview_date, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights')
+      .select('id, project_id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights')
       .eq('project_id', projectId)
       .single();
 

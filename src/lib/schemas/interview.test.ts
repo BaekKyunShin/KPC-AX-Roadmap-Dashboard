@@ -156,6 +156,8 @@ describe('improvementGoalSchema', () => {
 describe('interviewSchema', () => {
   const validInterview = {
     interview_date: '2024-01-15',
+    interview_round: 1,
+    interview_time: '09:00',
     participants: [
       {
         id: 'p-1',
