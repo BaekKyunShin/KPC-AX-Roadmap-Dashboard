@@ -1,7 +1,5 @@
-'use client';
-
-import { useRef, useEffect } from 'react';
 import { Search, Users, ClipboardList, Route, LucideIcon } from 'lucide-react';
+import ScrollAnimation from './ScrollAnimation';
 
 // ============================================================================
 // 타입 정의
@@ -17,18 +15,6 @@ interface WorkflowStep {
 // ============================================================================
 // 상수
 // ============================================================================
-
-const ANIMATION_CONFIG = {
-  initial: { opacity: 0, x: -50 },
-  animate: { opacity: 1, x: 0 },
-  duration: 0.6,
-  stagger: 0.15,
-  ease: 'power3.out',
-  scrollTrigger: {
-    start: 'top 65%',
-    toggleActions: 'play none none reverse',
-  },
-} as const;
 
 const WORKFLOW_STEPS: WorkflowStep[] = [
   {
@@ -94,46 +80,12 @@ function StepCard({ step, isLast }: StepCardProps) {
 }
 
 // ============================================================================
-// 메인 컴포넌트
+// 메인 컴포넌트 (Server Component)
 // ============================================================================
 
 export default function WorkflowSection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const stepsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!stepsRef.current) return;
-
-    let cancelled = false;
-
-    async function animate() {
-      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import('gsap'),
-        import('gsap/ScrollTrigger'),
-      ]);
-      if (cancelled) return;
-      gsap.registerPlugin(ScrollTrigger);
-
-      const stepElements = stepsRef.current!.children;
-
-      gsap.fromTo(stepElements, ANIMATION_CONFIG.initial, {
-        ...ANIMATION_CONFIG.animate,
-        duration: ANIMATION_CONFIG.duration,
-        stagger: ANIMATION_CONFIG.stagger,
-        ease: ANIMATION_CONFIG.ease,
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          ...ANIMATION_CONFIG.scrollTrigger,
-        },
-      });
-    }
-
-    animate();
-    return () => { cancelled = true; };
-  }, []);
-
   return (
-    <section id="workflow" ref={sectionRef} className="py-24 sm:py-32 px-4 bg-gray-50">
+    <section id="workflow" className="py-24 sm:py-32 px-4 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -148,12 +100,19 @@ export default function WorkflowSection() {
           </p>
         </div>
 
-        {/* Steps */}
-        <div ref={stepsRef} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 [&>*]:opacity-0">
+        {/* Steps — ScrollAnimation Client island로 GSAP 적용 */}
+        <ScrollAnimation
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 [&>*]:opacity-0"
+          initial={{ opacity: 0, x: -50 }}
+          duration={0.6}
+          stagger={0.15}
+          ease="power3.out"
+          scrollStart="top 65%"
+        >
           {WORKFLOW_STEPS.map((step, index) => (
             <StepCard key={step.number} step={step} isLast={index === WORKFLOW_STEPS.length - 1} />
           ))}
-        </div>
+        </ScrollAnimation>
       </div>
     </section>
   );

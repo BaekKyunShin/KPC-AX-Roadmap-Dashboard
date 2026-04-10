@@ -1,6 +1,3 @@
-'use client';
-
-import { useRef, useEffect } from 'react';
 import {
   UserCheck,
   FolderKanban,
@@ -11,6 +8,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ScrollAnimation from './ScrollAnimation';
 
 // ============================================================================
 // 타입 정의
@@ -34,18 +32,6 @@ interface Feature {
 // ============================================================================
 // 상수
 // ============================================================================
-
-const ANIMATION_CONFIG = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  duration: 1,
-  stagger: 0.15,
-  ease: 'power2.out',
-  scrollTrigger: {
-    start: 'top 70%',
-    toggleActions: 'play none none reverse',
-  },
-} as const;
 
 const FEATURES: Feature[] = [
   {
@@ -146,46 +132,12 @@ function FeatureCard({ feature }: FeatureCardProps) {
 }
 
 // ============================================================================
-// 메인 컴포넌트
+// 메인 컴포넌트 (Server Component)
 // ============================================================================
 
 export default function FeaturesSection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const cardsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!cardsRef.current) return;
-
-    let cancelled = false;
-
-    async function animate() {
-      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import('gsap'),
-        import('gsap/ScrollTrigger'),
-      ]);
-      if (cancelled) return;
-      gsap.registerPlugin(ScrollTrigger);
-
-      const cards = cardsRef.current!.children;
-
-      gsap.fromTo(cards, ANIMATION_CONFIG.initial, {
-        ...ANIMATION_CONFIG.animate,
-        duration: ANIMATION_CONFIG.duration,
-        stagger: ANIMATION_CONFIG.stagger,
-        ease: ANIMATION_CONFIG.ease,
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          ...ANIMATION_CONFIG.scrollTrigger,
-        },
-      });
-    }
-
-    animate();
-    return () => { cancelled = true; };
-  }, []);
-
   return (
-    <section id="features" ref={sectionRef} className="py-24 sm:py-32 px-4">
+    <section id="features" className="py-24 sm:py-32 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -197,15 +149,18 @@ export default function FeaturesSection() {
           </h2>
         </div>
 
-        {/* Bento Grid Feature Cards */}
-        <div
-          ref={cardsRef}
+        {/* Bento Grid Feature Cards — ScrollAnimation Client island로 GSAP 적용 */}
+        <ScrollAnimation
           className="mx-auto grid max-w-7xl grid-cols-1 gap-4 md:auto-rows-auto md:grid-cols-2 [&>*]:opacity-0"
+          duration={1}
+          stagger={0.15}
+          ease="power2.out"
+          scrollStart="top 70%"
         >
           {FEATURES.map((feature, index) => (
             <FeatureCard key={index} feature={feature} />
           ))}
-        </div>
+        </ScrollAnimation>
       </div>
     </section>
   );

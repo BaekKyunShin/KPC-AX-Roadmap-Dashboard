@@ -179,7 +179,8 @@ export default function NavbarClient({ isLoggedIn }: NavbarClientProps) {
   const handleLogoClick = (e: React.MouseEvent) => {
     if (window.location.pathname === '/') {
       e.preventDefault();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Lenis smooth scroll과 경합하지 않도록 instant로 이동
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
