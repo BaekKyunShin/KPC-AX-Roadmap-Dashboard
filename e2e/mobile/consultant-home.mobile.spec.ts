@@ -48,7 +48,7 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
     const hasKpiGrid = await kpiGrid.isVisible().catch(() => false);
 
     if (hasKpiGrid) {
-      const cards = kpiGrid.locator('> div');
+      const cards = kpiGrid.locator('> a');
       const cardCount = await cards.count();
 
       // 최소 5개 KPI 카드 존재 (전체, 인터뷰 대기, 인터뷰 완료, 로드맵 작성 중, 로드맵 완료)

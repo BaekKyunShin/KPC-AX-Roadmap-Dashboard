@@ -100,8 +100,10 @@ test.describe('메시지 페이지 (/dashboard/messages)', () => {
     await expect(sendButton).toBeEnabled();
     await sendButton.click();
 
-    // 전송된 메시지가 화면에 표시되는지 확인
-    await expect(page.getByText(testMessage)).toBeVisible({ timeout: 10_000 });
+    // 전송된 메시지가 채팅 영역에 표시되는지 확인 (사이드바 미리보기와 구분)
+    await expect(
+      page.getByTestId('message-thread-area').getByText(testMessage),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('새 메시지 다이얼로그 열기', async ({ opsPage: page }) => {

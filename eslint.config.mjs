@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
     "_reference/**",
     // Git worktree 빌드 아티팩트
     ".worktrees/**",
+    // Playwright 리포트 (로컬 생성 파일)
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

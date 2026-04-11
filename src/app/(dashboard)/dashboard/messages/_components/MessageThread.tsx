@@ -232,7 +232,7 @@ export default function MessageThread({
       </div>
 
       {/* 메시지 영역 */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
+      <div ref={scrollContainerRef} data-testid="message-thread-area" className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
         {isLoading ? (
           <MessagesSkeleton />
         ) : messages.length === 0 ? (

@@ -197,9 +197,10 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, { timeout: 10_000 });
     await page.waitForLoadState('networkidle');
 
-    // ── 스텝 1: 기본 정보 (날짜 + 참석자 이름) ──
-    // 날짜는 기본값(오늘)이 채워져 있으므로 참석자 이름만 입력
+    // ── 스텝 1: 기본 정보 (날짜 + 시간 + 참석자 이름) ──
+    // 날짜는 기본값(오늘)이 채워져 있으므로 시간과 참석자 이름만 입력
     await expect(page.getByText('기본 정보').first()).toBeVisible();
+    await page.locator('input[type="time"]').fill('09:00');
     const nameInput = page.getByPlaceholder('이름');
     await nameInput.first().fill('테스트참석자');
 
