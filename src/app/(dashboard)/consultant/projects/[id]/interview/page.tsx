@@ -1,23 +1,43 @@
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
+import { createClient } from '@/lib/supabase/server';
 import { fetchInterview } from './actions';
-import InterviewClient from './_components/InterviewClient';
+import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
+import RoadmapInterviewClient from './_components/RoadmapInterviewClient';
 
 export default async function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // 1. 인증 확인
   const user = await getCachedUser();
   if (!user) redirect('/login');
 
-  // 2. 역할 확인 (CONSULTANT_APPROVED만)
   const profile = await getCachedProfile();
   if (!profile || profile.role !== 'CONSULTANT_APPROVED') {
     redirect('/dashboard');
   }
 
-  // 3. 인터뷰 데이터 프리페치
-  const initialInterview = await fetchInterview(id);
+  // 프로젝트 트랙 조회 — RLS가 배정 컨설턴트만 허용하므로 null이면 권한 없음 or 미존재
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id, track')
+    .eq('id', id)
+    .single();
 
-  return <InterviewClient projectId={id} initialInterview={initialInterview} />;
+  if (!project) notFound();
+
+  if (project.track === 'PBL') {
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <p className="text-muted-foreground">
+          PBL 인터뷰 화면은 곧 제공됩니다 (OFA Step 8).
+        </p>
+      </div>
+    );
+  }
+
+  const interviewRow = await fetchInterview(id);
+  const initialData = mapInterviewRowToRoadmapInterview(interviewRow);
+
+  return <RoadmapInterviewClient projectId={project.id} initialData={initialData} />;
 }

@@ -3,6 +3,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
 import { interviewSchema, interviewAutoSaveSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
+import {
+  roadmapInterviewSchema,
+  roadmapInterviewAutoSaveSchema,
+  type RoadmapInterviewInput,
+  type RoadmapInterviewAutoSaveInput,
+} from '@/lib/schemas/interview-roadmap';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
@@ -41,6 +47,10 @@ async function verifyProjectAccess(
 // 인터뷰 저장/조회
 // ============================================================================
 
+/**
+ * @deprecated OFA-05. 산인공 양식 정렬 이후 신규 코드는 `saveRoadmapInterview`를 사용하세요.
+ * 기존 `InterviewClient.tsx` 호환을 위해 유지되며 Step 12에서 제거 예정입니다.
+ */
 export async function saveInterview(
   projectId: string,
   data: InterviewInput,
@@ -176,6 +186,206 @@ export async function saveInterview(
     return { success: true };
   } catch (error) {
     console.error('[saveInterview Error]', error);
+    return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// 산인공 로드맵 인터뷰 저장 (OFA-05)
+// ----------------------------------------------------------------------------
+// 기존 interviews 테이블 컬럼(company_details, job_tasks, improvement_goals 등)을
+// 애플리케이션 레이어 매핑으로 재사용. 본 Step에서 DB 마이그레이션은 추가하지 않음.
+// 분리 전용 컬럼(roadmap_data JSONB)은 Step 12에서 도입 검토.
+// ============================================================================
+
+function mapRoadmapToLegacyColumns(
+  data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
+): {
+  interview_date: string | null;
+  interview_round: number;
+  interview_time: string | null;
+  participants: unknown;
+  company_details: unknown;
+  job_tasks: unknown;
+  pain_points: unknown;
+  constraints: unknown;
+  improvement_goals: unknown;
+  notes: string;
+  customer_requirements: string;
+  stt_insights: unknown;
+} {
+  const cr = data.company_requirements ?? {
+    company_status: '',
+    main_problems: '',
+    push_willingness: '',
+    expected_outcomes: '',
+  };
+  const tasks = data.task_workflow_items ?? [];
+  const targets = data.training_targets ?? [];
+  const an = data.analysis_notes ?? { text: '', attachment_urls: [] };
+
+  return {
+    interview_date: data.interview_date ?? null,
+    interview_round: data.interview_round ?? 1,
+    interview_time: data.interview_time ?? null,
+    participants: data.participants ?? [],
+    company_details: {
+      ai_experience: cr.company_status ?? '',
+      systems_and_tools: [],
+      // 신규 4필드 + 수행 방법 + 분석 노트를 병행 저장해 Step 12 이전에도 원본 복구 가능
+      roadmap_company_requirements: cr,
+      roadmap_interview_method: data.interview_method ?? 'ONSITE',
+      roadmap_analysis_notes: an,
+    },
+    job_tasks: tasks.map((t) => ({
+      id: t.id,
+      task_name: t.task_name,
+      task_description: t.as_is,
+      roadmap_job: t.job,
+      roadmap_problems: t.problems,
+      roadmap_data_availability: t.data_availability,
+      roadmap_ai_necessity: t.ai_necessity,
+    })),
+    pain_points: tasks.map((t) => ({
+      id: t.id,
+      description: t.problems ?? '',
+      severity: 'MEDIUM' as const,
+    })),
+    constraints: [],
+    improvement_goals: targets.map((g) => ({
+      id: g.id,
+      goal_description: g.selection_reason,
+      kpi: g.task_name,
+      roadmap_as_is: g.as_is,
+      roadmap_to_be: g.to_be,
+    })),
+    notes: data.notes ?? '',
+    customer_requirements: cr.expected_outcomes ?? '',
+    stt_insights: data.stt_insights ?? null,
+  };
+}
+
+/**
+ * 로드맵 트랙 전용 인터뷰 저장 (OFA-05 산인공 양식)
+ *
+ * 5단계 패턴: 인증 → 역할 → track 가드 → Zod → admin client 저장 → 상태 전이
+ */
+export async function saveRoadmapInterview(
+  projectId: string,
+  data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
+  options?: { autoSave?: boolean },
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.track !== 'ROADMAP') {
+      return { success: false, error: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.' };
+    }
+
+    const schema = options?.autoSave ? roadmapInterviewAutoSaveSchema : roadmapInterviewSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+    const validated = validation.data;
+
+    const adminSupabase = createAdminClient();
+
+    const { data: existing, error: fetchError } = await adminSupabase
+      .from('interviews')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[saveRoadmapInterview] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+    }
+
+    const legacyColumns = mapRoadmapToLegacyColumns(validated);
+    const row = {
+      project_id: projectId,
+      interviewer_id: user.id,
+      ...legacyColumns,
+    };
+
+    let auditAction: 'INTERVIEW_CREATE' | 'INTERVIEW_UPDATE';
+
+    if (existing) {
+      const { error: updateError } = await adminSupabase
+        .from('interviews')
+        .update(row)
+        .eq('id', existing.id);
+      if (updateError) {
+        console.error('[saveRoadmapInterview] Update:', updateError.message);
+        return { success: false, error: '인터뷰 수정에 실패했습니다.' };
+      }
+      auditAction = 'INTERVIEW_UPDATE';
+    } else {
+      const { error: insertError } = await adminSupabase.from('interviews').insert(row);
+      if (insertError) {
+        console.error('[saveRoadmapInterview] Insert:', insertError.message);
+        return { success: false, error: '인터뷰 저장에 실패했습니다.' };
+      }
+      auditAction = 'INTERVIEW_CREATE';
+    }
+
+    let statusTransitioned = false;
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      statusTransitioned = true;
+    }
+
+    after(async () => {
+      if (statusTransitioned && !projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: '인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
+
+      await createAuditLog({
+        actorUserId: user.id,
+        action: auditAction,
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          track: 'ROADMAP',
+          task_items_count: validated.task_workflow_items?.length ?? 0,
+          training_targets_count: validated.training_targets?.length ?? 0,
+        },
+      });
+
+      if (!options?.autoSave) {
+        const logContent = auditAction === 'INTERVIEW_CREATE'
+          ? '인터뷰가 저장되었습니다.'
+          : '인터뷰가 수정되었습니다.';
+        await insertSystemActivityLog(projectId, user.id, logContent);
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[saveRoadmapInterview Error]', error);
     return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
   }
 }
