@@ -104,7 +104,7 @@ export default async function NoticesPage({ searchParams }: Props) {
                 {result.items.map((notice) => (
                   <TableRow
                     key={notice.id}
-                    className="group h-14 [&>td]:align-middle hover:bg-muted/40 transition-colors"
+                    className="group h-12 [&>td]:align-middle [&>td]:py-2 hover:bg-muted/40 transition-colors"
                   >
                     <TableCell className="text-center">
                       {notice.is_pinned && (

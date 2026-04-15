@@ -64,7 +64,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
               </TableRow>
             ) : (
               notices.map((notice) => (
-                <TableRow key={notice.id} className="h-14 [&>td]:align-middle">
+                <TableRow key={notice.id} className="h-12 [&>td]:align-middle [&>td]:py-2">
                   <TableCell className="text-center">
                     {notice.is_pinned && (
                       <Pin
