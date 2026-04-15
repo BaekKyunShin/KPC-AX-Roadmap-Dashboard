@@ -1,0 +1,2 @@
+python-hwpx==2.9.0
+lxml==5.4.0
