@@ -70,9 +70,12 @@ export default function StepSummaryRoadmap({
           <div className="md:col-span-2">
             <dt className="text-muted-foreground">참석자</dt>
             <dd className="text-foreground">
-              {participants.length > 0
-                ? participants.map((p) => `${p.name}${p.position ? ` (${p.position})` : ''}`).join(', ')
-                : '-'}
+              {(() => {
+                const named = participants.filter((p) => p.name.trim() !== '');
+                return named.length > 0
+                  ? named.map((p) => `${p.name}${p.position ? ` (${p.position})` : ''}`).join(', ')
+                  : '-';
+              })()}
             </dd>
           </div>
         </dl>

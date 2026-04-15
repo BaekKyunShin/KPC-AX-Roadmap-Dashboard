@@ -225,6 +225,100 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.task_workflow_items?.[0].as_is).toBe('육안');
   });
 
+  it('roadmap_company_requirements(JSONB 원본) 우선 복원', () => {
+    const row = {
+      interview_date: '2026-04-16',
+      interview_round: 1,
+      interview_time: '10:00',
+      participants: [],
+      company_details: {
+        ai_experience: 'X',
+        roadmap_company_requirements: {
+          company_status: '원본 현황',
+          main_problems: '원본 문제',
+          push_willingness: '원본 의지',
+          expected_outcomes: '원본 성과',
+        },
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '다른 값',
+      stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.company_requirements).toEqual({
+      company_status: '원본 현황',
+      main_problems: '원본 문제',
+      push_willingness: '원본 의지',
+      expected_outcomes: '원본 성과',
+    });
+  });
+
+  it('job_tasks의 roadmap_* 필드 복원 (직무/문제점/데이터/AI필요도)', () => {
+    const row = {
+      interview_date: '', interview_round: 1, interview_time: '',
+      participants: [], company_details: { ai_experience: '' },
+      job_tasks: [{
+        id: 'j1',
+        task_name: '검사',
+        task_description: '육안',
+        roadmap_job: '생산',
+        roadmap_problems: '편차',
+        roadmap_data_availability: '2년치',
+        roadmap_ai_necessity: 5,
+      }],
+      pain_points: [], improvement_goals: [],
+      notes: '', customer_requirements: '', stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0]).toMatchObject({
+      job: '생산',
+      task_name: '검사',
+      as_is: '육안',
+      problems: '편차',
+      data_availability: '2년치',
+      ai_necessity: 5,
+    });
+  });
+
+  it('roadmap_ai_necessity가 문자열이면 숫자로 clamp', () => {
+    const row = {
+      interview_date: '', interview_round: 1, interview_time: '',
+      participants: [], company_details: null,
+      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: '4' }],
+      pain_points: [], improvement_goals: [],
+      notes: '', customer_requirements: '', stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0].ai_necessity).toBe(4);
+  });
+
+  it('improvement_goals의 roadmap_as_is/to_be 복원', () => {
+    const row = {
+      interview_date: '', interview_round: 1, interview_time: '',
+      participants: [], company_details: null,
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [{
+        id: 'g1',
+        goal_description: '선정 사유',
+        kpi: '과업명',
+        roadmap_as_is: '육안',
+        roadmap_to_be: 'AI',
+      }],
+      notes: '', customer_requirements: '', stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.training_targets?.[0]).toMatchObject({
+      task_name: '과업명',
+      selection_reason: '선정 사유',
+      as_is: '육안',
+      to_be: 'AI',
+    });
+  });
+
   it('레거시 improvement_goals를 training_targets로 변환', () => {
     const row = {
       interview_date: '2026-04-16',

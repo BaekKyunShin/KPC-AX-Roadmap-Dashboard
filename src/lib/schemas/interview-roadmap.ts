@@ -156,18 +156,54 @@ export function createEmptyTrainingTarget(): TrainingTarget {
 // 호환성을 확보한다. Step 12에서 roadmap_data 전용 컬럼으로 이전 예정.
 // ============================================================================
 
+interface LegacyCompanyDetails {
+  ai_experience?: string;
+  systems_and_tools?: string[];
+  roadmap_company_requirements?: {
+    company_status?: string;
+    main_problems?: string;
+    push_willingness?: string;
+    expected_outcomes?: string;
+  };
+}
+
+interface LegacyJobTask {
+  id?: string;
+  task_name?: string;
+  task_description?: string;
+  roadmap_job?: string;
+  roadmap_problems?: string;
+  roadmap_data_availability?: string;
+  roadmap_ai_necessity?: number | string;
+}
+
+interface LegacyImprovementGoal {
+  id?: string;
+  goal_description?: string;
+  kpi?: string;
+  roadmap_as_is?: string;
+  roadmap_to_be?: string;
+}
+
 interface LegacyInterviewRow {
   interview_date?: string | null;
   interview_round?: number | null;
   interview_time?: string | null;
   participants?: unknown;
-  company_details?: { ai_experience?: string; systems_and_tools?: string[] } | null;
-  job_tasks?: Array<{ id?: string; task_name?: string; task_description?: string }> | null;
+  company_details?: LegacyCompanyDetails | null;
+  job_tasks?: LegacyJobTask[] | null;
   pain_points?: Array<{ id?: string; description?: string }> | null;
-  improvement_goals?: Array<{ id?: string; goal_description?: string; kpi?: string }> | null;
+  improvement_goals?: LegacyImprovementGoal[] | null;
   notes?: string | null;
   customer_requirements?: string | null;
   stt_insights?: unknown;
+}
+
+function clampAiNecessity(value: number | string | undefined): number {
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(n as number)) return 3;
+  const int = Math.trunc(n as number);
+  return int < 1 || int > 5 ? 3 : int;
 }
 
 export function mapInterviewRowToRoadmapInterview(
@@ -185,9 +221,16 @@ export function mapInterviewRowToRoadmapInterview(
     partial.participants = row.participants as RoadmapParticipant[];
   }
 
-  // company_details.ai_experience + customer_requirements + notes를
-  // company_requirements 4필드로 대략 매핑. 사용자가 신규 UI에서 재작성하게 유도.
-  if (row.company_details || row.customer_requirements) {
+  // 우선순위: roadmap_company_requirements(원본 4필드) > legacy ai_experience + customer_requirements
+  const savedCr = row.company_details?.roadmap_company_requirements;
+  if (savedCr) {
+    partial.company_requirements = {
+      company_status: savedCr.company_status ?? '',
+      main_problems: savedCr.main_problems ?? '',
+      push_willingness: savedCr.push_willingness ?? '',
+      expected_outcomes: savedCr.expected_outcomes ?? '',
+    };
+  } else if (row.company_details || row.customer_requirements) {
     const aiExp = row.company_details?.ai_experience ?? '';
     const tools = row.company_details?.systems_and_tools?.join(', ') ?? '';
     partial.company_requirements = {
@@ -201,12 +244,12 @@ export function mapInterviewRowToRoadmapInterview(
   if (Array.isArray(row.job_tasks) && row.job_tasks.length > 0) {
     partial.task_workflow_items = row.job_tasks.map((t) => ({
       id: t.id ?? crypto.randomUUID(),
-      job: '',
+      job: t.roadmap_job ?? '',
       task_name: t.task_name ?? '',
       as_is: t.task_description ?? '',
-      problems: '',
-      data_availability: '',
-      ai_necessity: 3,
+      problems: t.roadmap_problems ?? '',
+      data_availability: t.roadmap_data_availability ?? '',
+      ai_necessity: clampAiNecessity(t.roadmap_ai_necessity),
     }));
   }
 
@@ -215,8 +258,8 @@ export function mapInterviewRowToRoadmapInterview(
       id: g.id ?? crypto.randomUUID(),
       task_name: g.kpi ?? '',
       selection_reason: g.goal_description ?? '',
-      as_is: '',
-      to_be: '',
+      as_is: g.roadmap_as_is ?? '',
+      to_be: g.roadmap_to_be ?? '',
     }));
   }
 
