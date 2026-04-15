@@ -58,3 +58,9 @@ next-env.d.ts
 # tool artifacts
 .playwright-mcp/
 .superpowers/
+
+# Python (HWPX 관련 로컬 도구)
+.venv/
+__pycache__/
+*.pyc
+*.pyo

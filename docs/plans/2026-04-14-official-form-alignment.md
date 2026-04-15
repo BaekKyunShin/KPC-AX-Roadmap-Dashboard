@@ -1320,18 +1320,20 @@ mcp__plugin_context7_context7__resolve-library-id("vercel python")
 {
   "functions": {
     "api/hwpx/*.py": {
-      "runtime": "python3.13"
+      "runtime": "@vercel/python@6.31.0"
     }
   }
 }
 ```
+
+> ℹ️ Step 3 PoC 중 Context7 MCP로 재확인: Vercel Python runtime은 `"python3.13"` 대신 **`"@vercel/python@<version>"` 형식의 빌더 패키지 버전 문자열**을 사용한다(해당 빌더가 내부적으로 Python 3.12 기반 이미지를 사용). 초판의 `"python3.13"`은 공식 형식으로 교정됨. 관련 근거는 `docs/decisions/2026-04-14-hwpx-infrastructure.md`.
 
 (B) TypeScript 설정 (Vercel Knowledge Updates 2026-02-27 권장; 동적 로직 필요 시):
 파일: `vercel.ts` (`@vercel/config` 설치 필요)
 ```typescript
 import { type VercelConfig } from '@vercel/config/v1';
 export const config: VercelConfig = {
-  functions: { 'api/hwpx/*.py': { runtime: 'python3.13' } },
+  functions: { 'api/hwpx/*.py': { runtime: '@vercel/python@6.31.0' } },
 };
 ```
 
@@ -1354,9 +1356,11 @@ class handler(BaseHTTPRequestHandler):
 
 파일: `api/hwpx/requirements.txt`
 ```
-python-hwpx==0.1.0
+python-hwpx==2.9.0
 lxml>=5.0.0
 ```
+
+> ℹ️ 초판의 `python-hwpx==0.1.0`은 outdated. Step 3 PoC 중 Context7 MCP(`/airmang/python-hwpx`, reputation High)로 최신 **2.9.0** 확인 후 고정. 계획서의 `HwpxDocument.new() / add_paragraph() / save_to_path()` API는 2.9.0에서도 호환. 관련 근거는 `docs/decisions/2026-04-14-hwpx-infrastructure.md`.
 
 (버전은 Context7로 확인한 최신으로 정확히 고정)
 
