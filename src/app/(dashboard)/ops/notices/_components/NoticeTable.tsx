@@ -39,7 +39,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
           <TableHeader>
             <TableRow>
               <TableHead className="w-[48px]"></TableHead>
-              <TableHead className="min-w-[240px]">제목</TableHead>
+              <TableHead className="min-w-[240px] text-left">제목</TableHead>
               <TableHead className="hidden md:table-cell w-[140px]">
                 작성자
               </TableHead>
@@ -73,7 +73,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-left">
                     <Link
                       href={`/notices/${notice.id}`}
                       className="hover:underline"

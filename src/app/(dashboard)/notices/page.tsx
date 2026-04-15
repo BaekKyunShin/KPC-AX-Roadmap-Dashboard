@@ -88,7 +88,7 @@ export default async function NoticesPage({ searchParams }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[48px]"></TableHead>
-                  <TableHead className="min-w-[240px]">제목</TableHead>
+                  <TableHead className="min-w-[240px] text-left">제목</TableHead>
                   <TableHead className="hidden md:table-cell w-[140px]">
                     작성자
                   </TableHead>
@@ -114,7 +114,7 @@ export default async function NoticesPage({ searchParams }: Props) {
                         />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-left">
                       <Link
                         href={`/notices/${notice.id}`}
                         className="flex items-center gap-2 font-medium text-foreground hover:underline"
