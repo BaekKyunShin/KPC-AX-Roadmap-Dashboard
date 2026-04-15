@@ -40,6 +40,7 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     // JSON 파싱 실패 시 빈 배열
   }
 
+  const trackValue = formData.get('track') as string | null;
   const rawData = {
     company_name: formData.get('company_name') as string,
     industry: formData.get('industry') as string,
@@ -50,6 +51,8 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     contact_phone: formData.get('contact_phone') as string || undefined,
     company_address: formData.get('company_address') as string || undefined,
     customer_comment: formData.get('customer_comment') as string || undefined,
+    // track 미지정(null/빈 문자열) → 스키마 default(ROADMAP) 적용. 명시 시 스키마에서 검증.
+    ...(trackValue ? { track: trackValue } : {}),
   };
 
   // 서버 검증

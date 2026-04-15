@@ -89,6 +89,7 @@ function makeProjectFormData(overrides: Record<string, string> = {}) {
   if (overrides.contact_phone) data.set('contact_phone', overrides.contact_phone);
   if (overrides.company_address) data.set('company_address', overrides.company_address);
   if (overrides.customer_comment) data.set('customer_comment', overrides.customer_comment);
+  if (overrides.track !== undefined) data.set('track', overrides.track);
   return data;
 }
 
@@ -185,6 +186,40 @@ describe('createProject', () => {
         success: false,
       }),
     );
+  });
+
+  it('track 미지정 시 기본값 ROADMAP으로 저장', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addResult({ data: { id: TEST_PROJECT_ID }, error: null });
+
+    const result = await createProject(makeProjectFormData());
+    expect(result.success).toBe(true);
+    expect(adminMock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ track: 'ROADMAP' }),
+    );
+  });
+
+  it("track='PBL' 지정 시 PBL 프로젝트로 저장", async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addResult({ data: { id: TEST_PROJECT_ID }, error: null });
+
+    const result = await createProject(makeProjectFormData({ track: 'PBL' }));
+    expect(result.success).toBe(true);
+    expect(adminMock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ track: 'PBL' }),
+    );
+  });
+
+  it("track='INVALID' 지정 시 검증 실패", async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    const result = await createProject(makeProjectFormData({ track: 'INVALID' }));
+    expect(result.success).toBe(false);
   });
 
   it('성공 시 after()로 감사 로그 기록', async () => {
