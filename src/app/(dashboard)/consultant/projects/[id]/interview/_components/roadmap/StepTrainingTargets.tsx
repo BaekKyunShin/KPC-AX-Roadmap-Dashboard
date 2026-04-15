@@ -38,10 +38,12 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">훈련대상 과업 선정</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            훈련대상 과업(Task)·워크플로우 선정
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            산업인력공단 AI 훈련로드맵 양식 Ⅱ-4. AI 필요도가 높은 과업 중 실제 훈련 대상으로 선정할
-            과업과 그 사유, 개선 목표를 기록해주세요.
+            산업인력공단 AI 훈련로드맵 양식 Ⅱ-4. AI도입·활용 필요도가 높은 과업 중 실제 훈련대상으로 선정할
+            과업과 선정사유, 기대효과(As-Is → To-Be)를 기록해주세요.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={addItem}>
@@ -78,7 +80,7 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
             <div className="space-y-4">
               <div>
                 <Label htmlFor={`tt-name-${item.id}`}>
-                  과업명 <span className="text-destructive">*</span>
+                  훈련대상 과업 <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id={`tt-name-${item.id}`}
@@ -90,45 +92,53 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
               </div>
               <div>
                 <Label htmlFor={`tt-reason-${item.id}`}>
-                  선정 사유 <span className="text-destructive">*</span>
+                  선정사유 <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id={`tt-reason-${item.id}`}
                   rows={2}
                   value={item.selection_reason}
                   onChange={(e) => updateItem(index, 'selection_reason', e.target.value)}
-                  placeholder="예) AI 필요도 5점. 데이터 확보 완료. 경영진 최우선 과제"
+                  placeholder="예) AI도입·활용 필요도 5점. 데이터 2년치 확보. 경영진 최우선 과제"
                   className="mt-1 break-keep"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor={`tt-asis-${item.id}`}>
-                    현행 (As-Is) <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id={`tt-asis-${item.id}`}
-                    rows={3}
-                    value={item.as_is}
-                    onChange={(e) => updateItem(index, 'as_is', e.target.value)}
-                    placeholder="예) 검사원 2명 육안 검사 / 평균 12초"
-                    className="mt-1 break-keep"
-                  />
+              <fieldset className="rounded-md border border-border/70 p-3 bg-background/60">
+                <legend className="px-1 text-sm font-medium text-foreground">
+                  기대효과 <span className="text-destructive">*</span>
+                </legend>
+                <p className="text-xs text-muted-foreground mb-3">
+                  현행(As-Is) 수행 방식과 AI 도입·활용 훈련 실시 후 개선(To-Be)되는 사항을 기록합니다.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`tt-asis-${item.id}`}>
+                      현행 (As-Is) <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id={`tt-asis-${item.id}`}
+                      rows={3}
+                      value={item.as_is}
+                      onChange={(e) => updateItem(index, 'as_is', e.target.value)}
+                      placeholder="예) 검사원 2명 육안 검사 / 평균 12초"
+                      className="mt-1 break-keep"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`tt-tobe-${item.id}`}>
+                      개선 (To-Be) <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id={`tt-tobe-${item.id}`}
+                      rows={3}
+                      value={item.to_be}
+                      onChange={(e) => updateItem(index, 'to_be', e.target.value)}
+                      placeholder="예) 비전 AI 1차 스크리닝 + 검사원 최종 판정 / 평균 3초"
+                      className="mt-1 break-keep"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor={`tt-tobe-${item.id}`}>
-                    개선 목표 (To-Be) <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id={`tt-tobe-${item.id}`}
-                    rows={3}
-                    value={item.to_be}
-                    onChange={(e) => updateItem(index, 'to_be', e.target.value)}
-                    placeholder="예) 비전 AI 1차 스크리닝 + 검사원 최종 판정 / 평균 3초"
-                    className="mt-1 break-keep"
-                  />
-                </div>
-              </div>
+              </fieldset>
             </div>
           </div>
         ))}

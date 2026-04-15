@@ -9,12 +9,25 @@ function makeItems(n = 1): TrainingTarget[] {
 }
 
 describe('StepTrainingTargets', () => {
-  it('4개 필드(과업명·선정사유·As-Is·To-Be)가 각 행에 렌더', () => {
+  it('4개 필드(훈련대상 과업·선정사유·As-Is·To-Be)가 각 행에 렌더', () => {
     render(<StepTrainingTargets items={makeItems(1)} onChange={vi.fn()} />);
-    expect(screen.getByLabelText(/과업명/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/선정 사유/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/훈련대상 과업/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/선정사유/)).toBeInTheDocument();
     expect(screen.getByLabelText(/현행.*As-Is/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/개선.*To-Be/i)).toBeInTheDocument();
+  });
+
+  it('제목에 "훈련대상 과업(Task)·워크플로우 선정" 표기', () => {
+    render(<StepTrainingTargets items={makeItems(1)} onChange={vi.fn()} />);
+    expect(
+      screen.getByRole('heading', { name: /훈련대상 과업\(Task\)·워크플로우 선정/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('"기대효과" 그룹 fieldset으로 As-Is/To-Be 묶음', () => {
+    render(<StepTrainingTargets items={makeItems(1)} onChange={vi.fn()} />);
+    const fieldset = screen.getByRole('group', { name: /기대효과/ });
+    expect(fieldset).toBeInTheDocument();
   });
 
   it('"훈련대상 추가" 버튼 클릭 시 새 행 추가', async () => {
@@ -50,7 +63,7 @@ describe('StepTrainingTargets', () => {
     const items = makeItems(1);
     render(<StepTrainingTargets items={items} onChange={onChange} />);
 
-    await userEvent.type(screen.getByLabelText(/과업명/), 'A');
+    await userEvent.type(screen.getByLabelText(/훈련대상 과업/), 'A');
     const [next] = onChange.mock.calls.at(-1)!;
     expect(next[0].task_name).toBe('A');
   });

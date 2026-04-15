@@ -18,13 +18,15 @@ import {
   type CompanyRequirements,
   type TaskWorkflowItem,
   type TrainingTarget,
+  type AnalysisNotes,
+  type InterviewMethod,
   createEmptyRoadmapParticipant,
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
 } from '@/lib/schemas/interview-roadmap';
 import { saveRoadmapInterview } from '../actions';
 import InterviewStepper from './InterviewStepper';
-import StepBasicInfo from './StepBasicInfo';
+import StepBasicInfoRoadmap from './roadmap/StepBasicInfoRoadmap';
 import StepCompanyRequirements from './roadmap/StepCompanyRequirements';
 import StepTaskWorkflowAnalysis from './roadmap/StepTaskWorkflowAnalysis';
 import StepTrainingTargets from './roadmap/StepTrainingTargets';
@@ -42,6 +44,10 @@ function emptyCompanyRequirements(): CompanyRequirements {
   return { company_status: '', main_problems: '', push_willingness: '', expected_outcomes: '' };
 }
 
+function emptyAnalysisNotes(): AnalysisNotes {
+  return { text: '', attachment_urls: [] };
+}
+
 export default function RoadmapInterviewClient({
   projectId,
   initialData,
@@ -57,6 +63,9 @@ export default function RoadmapInterviewClient({
   );
   const [interviewRound, setInterviewRound] = useState<number>(initialData.interview_round ?? 1);
   const [interviewTime, setInterviewTime] = useState(initialData.interview_time ?? '');
+  const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>(
+    initialData.interview_method ?? 'ONSITE',
+  );
   const [participants, setParticipants] = useState<RoadmapParticipant[]>(
     () => initialData.participants?.length
       ? (initialData.participants as RoadmapParticipant[])
@@ -75,6 +84,9 @@ export default function RoadmapInterviewClient({
       ? initialData.training_targets
       : [createEmptyTrainingTarget()],
   );
+  const [analysisNotes, setAnalysisNotes] = useState<AnalysisNotes>(
+    () => initialData.analysis_notes ?? emptyAnalysisNotes(),
+  );
   const [notes, setNotes] = useState(initialData.notes ?? '');
   const [sttInsights] = useState<RoadmapInterview['stt_insights']>(initialData.stt_insights);
 
@@ -83,11 +95,12 @@ export default function RoadmapInterviewClient({
       interview_date: interviewDate,
       interview_round: interviewRound,
       interview_time: interviewTime,
+      interview_method: interviewMethod,
       participants,
       company_requirements: companyRequirements,
       task_workflow_items: taskWorkflowItems,
       training_targets: trainingTargets,
-      analysis_notes: { text: '', attachment_urls: [] },
+      analysis_notes: analysisNotes,
       notes,
       stt_insights: sttInsights,
     }),
@@ -95,10 +108,12 @@ export default function RoadmapInterviewClient({
       interviewDate,
       interviewRound,
       interviewTime,
+      interviewMethod,
       participants,
       companyRequirements,
       taskWorkflowItems,
       trainingTargets,
+      analysisNotes,
       notes,
       sttInsights,
     ],
@@ -115,6 +130,7 @@ export default function RoadmapInterviewClient({
         return (
           Boolean(interviewDate) &&
           Boolean(interviewTime) &&
+          Boolean(interviewMethod) &&
           participants.length > 0 &&
           participants.every((p) => p.name.trim() !== '')
         );
@@ -197,21 +213,30 @@ export default function RoadmapInterviewClient({
     switch (currentStep) {
       case 1:
         return (
-          <StepBasicInfo
+          <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
             interviewTime={interviewTime}
-            participants={participants as RoadmapParticipant[]}
+            interviewMethod={interviewMethod}
+            participants={participants}
             onInterviewDateChange={setInterviewDate}
             onInterviewRoundChange={setInterviewRound}
             onInterviewTimeChange={setInterviewTime}
+            onInterviewMethodChange={setInterviewMethod}
             onParticipantsChange={setParticipants}
           />
         );
       case 2:
         return <StepCompanyRequirements value={companyRequirements} onChange={setCompanyRequirements} />;
       case 3:
-        return <StepTaskWorkflowAnalysis items={taskWorkflowItems} onChange={setTaskWorkflowItems} />;
+        return (
+          <StepTaskWorkflowAnalysis
+            items={taskWorkflowItems}
+            onChange={setTaskWorkflowItems}
+            analysisNotes={analysisNotes}
+            onAnalysisNotesChange={setAnalysisNotes}
+          />
+        );
       case 4:
         return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
       case 5:
@@ -220,9 +245,11 @@ export default function RoadmapInterviewClient({
             interviewDate={interviewDate}
             interviewRound={interviewRound}
             interviewTime={interviewTime}
+            interviewMethod={interviewMethod}
             participants={participants}
             companyRequirements={companyRequirements}
             taskWorkflowItems={taskWorkflowItems}
+            analysisNotes={analysisNotes}
             trainingTargets={trainingTargets}
             notes={notes}
             onEditStep={goToStep}

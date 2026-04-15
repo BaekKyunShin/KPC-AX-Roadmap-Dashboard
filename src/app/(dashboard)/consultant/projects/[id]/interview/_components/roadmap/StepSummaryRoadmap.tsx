@@ -8,15 +8,20 @@ import type {
   CompanyRequirements,
   TaskWorkflowItem,
   TrainingTarget,
+  AnalysisNotes,
+  InterviewMethod,
 } from '@/lib/schemas/interview-roadmap';
+import { INTERVIEW_METHOD_LABEL } from '@/lib/schemas/interview-roadmap';
 
 interface StepSummaryRoadmapProps {
   interviewDate: string;
   interviewRound: number;
   interviewTime: string;
+  interviewMethod: InterviewMethod;
   participants: RoadmapParticipant[];
   companyRequirements: CompanyRequirements;
   taskWorkflowItems: TaskWorkflowItem[];
+  analysisNotes: AnalysisNotes;
   trainingTargets: TrainingTarget[];
   notes: string;
   onEditStep: (stepId: number) => void;
@@ -40,9 +45,11 @@ export default function StepSummaryRoadmap({
   interviewDate,
   interviewRound,
   interviewTime,
+  interviewMethod,
   participants,
   companyRequirements,
   taskWorkflowItems,
+  analysisNotes,
   trainingTargets,
   notes,
   onEditStep,
@@ -59,13 +66,17 @@ export default function StepSummaryRoadmap({
       </div>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="1. 기본 정보 · 참석자" stepId={1} onEdit={onEditStep} />
-        <dl className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <SectionHeader title="1. 기본 정보 · 참석자 (Ⅰ-2 주요 활동)" stepId={1} onEdit={onEditStep} />
+        <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div>
-            <dt className="text-muted-foreground">차수 / 날짜 / 시간</dt>
+            <dt className="text-muted-foreground">수행 차수 / 일시</dt>
             <dd className="text-foreground">
               {interviewRound}차 · {interviewDate || '-'} · {interviewTime || '-'}
             </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">수행 방법</dt>
+            <dd className="text-foreground">{INTERVIEW_METHOD_LABEL[interviewMethod] ?? '-'}</dd>
           </div>
           <div className="md:col-span-2">
             <dt className="text-muted-foreground">참석자</dt>
@@ -104,7 +115,7 @@ export default function StepSummaryRoadmap({
       </section>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="3. 과업·워크플로우 분석" stepId={3} onEdit={onEditStep} />
+        <SectionHeader title="3. 과업(Task)·워크플로우 분석" stepId={3} onEdit={onEditStep} />
         {taskWorkflowItems.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">작성된 과업이 없습니다.</p>
         ) : (
@@ -112,31 +123,61 @@ export default function StepSummaryRoadmap({
             {taskWorkflowItems.map((item, i) => (
               <li key={item.id} className="border-l-2 border-primary/30 pl-3">
                 <p className="font-medium text-foreground">
-                  #{i + 1} [{item.job || '-'}] {item.task_name || '(과업명 미입력)'}{' '}
-                  <span className="text-xs text-muted-foreground">· AI 필요도 {item.ai_necessity}</span>
+                  #{i + 1} [{item.job || '-'}] {item.task_name || '(과업 미입력)'}{' '}
+                  <span className="text-xs text-muted-foreground">
+                    · AI도입·활용 필요도 {item.ai_necessity}
+                  </span>
                 </p>
                 <p className="text-muted-foreground whitespace-pre-wrap break-keep">
-                  As-Is: {item.as_is || '-'} / 문제점: {item.problems || '-'}
+                  As-Is: {item.as_is || '-'} / 문제점: {item.problems || '-'} / 데이터: {item.data_availability || '-'}
                 </p>
               </li>
             ))}
           </ul>
         )}
+        {(analysisNotes.text || analysisNotes.attachment_urls.length > 0) && (
+          <div className="mt-4 pt-3 border-t border-border/60 space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">분석 내용:</span>{' '}
+              {analysisNotes.text ? (
+                <span className="whitespace-pre-wrap break-keep">{analysisNotes.text}</span>
+              ) : (
+                '-'
+              )}
+            </p>
+            {analysisNotes.attachment_urls.length > 0 && (
+              <div>
+                <span className="font-medium text-foreground">참고자료: </span>
+                <ul className="list-disc ml-5 text-xs">
+                  {analysisNotes.attachment_urls.map((url, i) => (
+                    <li key={i} className="text-primary truncate">
+                      {url || '(빈 URL)'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="4. 훈련대상 과업 선정" stepId={4} onEdit={onEditStep} />
+        <SectionHeader title="4. 훈련대상 과업(Task)·워크플로우 선정" stepId={4} onEdit={onEditStep} />
         {trainingTargets.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">작성된 훈련대상이 없습니다.</p>
         ) : (
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-3 space-y-3 text-sm">
             {trainingTargets.map((item, i) => (
               <li key={item.id} className="border-l-2 border-primary/30 pl-3">
                 <p className="font-medium text-foreground">
-                  #{i + 1} {item.task_name || '(과업명 미입력)'}
+                  #{i + 1} {item.task_name || '(훈련대상 과업 미입력)'}
                 </p>
                 <p className="text-muted-foreground whitespace-pre-wrap break-keep">
-                  선정 사유: {item.selection_reason || '-'} / As-Is → To-Be: {item.as_is || '-'} → {item.to_be || '-'}
+                  <span className="font-medium text-foreground">선정사유:</span> {item.selection_reason || '-'}
+                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap break-keep">
+                  <span className="font-medium text-foreground">기대효과</span> ·{' '}
+                  As-Is: {item.as_is || '-'} → To-Be: {item.to_be || '-'}
                 </p>
               </li>
             ))}

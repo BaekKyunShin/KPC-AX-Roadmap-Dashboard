@@ -96,6 +96,7 @@ describe('roadmapInterviewSchema', () => {
     interview_date: '2026-04-16',
     interview_round: 1,
     interview_time: '오전 10:00',
+    interview_method: 'ONSITE' as const,
     participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
     company_requirements: {
       company_status: '제조업',
@@ -316,6 +317,45 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       selection_reason: '선정 사유',
       as_is: '육안',
       to_be: 'AI',
+    });
+  });
+
+  it('roadmap_interview_method 복원 (enum 유효성 체크)', () => {
+    const row = {
+      interview_date: '', interview_round: 1, interview_time: '',
+      participants: [],
+      company_details: { ai_experience: '', roadmap_interview_method: 'VIDEO' },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+      notes: '', customer_requirements: '', stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    expect(mapInterviewRowToRoadmapInterview(row).interview_method).toBe('VIDEO');
+  });
+
+  it('유효하지 않은 method 값은 ONSITE로 fallback', () => {
+    const row = {
+      participants: [],
+      company_details: { ai_experience: '', roadmap_interview_method: 'INVALID' },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    expect(mapInterviewRowToRoadmapInterview(row).interview_method).toBe('ONSITE');
+  });
+
+  it('roadmap_analysis_notes 복원 (text + attachment_urls)', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_analysis_notes: {
+          text: '그룹 인터뷰로 도출',
+          attachment_urls: ['https://example.com/a.pdf'],
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const r = mapInterviewRowToRoadmapInterview(row);
+    expect(r.analysis_notes).toEqual({
+      text: '그룹 인터뷰로 도출',
+      attachment_urls: ['https://example.com/a.pdf'],
     });
   });
 

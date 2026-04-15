@@ -43,6 +43,7 @@ function validRoadmapData(): RoadmapInterviewInput {
     interview_date: '2026-04-16',
     interview_round: 1,
     interview_time: '09:00',
+    interview_method: 'ONSITE',
     participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
     company_requirements: {
       company_status: '제조업',

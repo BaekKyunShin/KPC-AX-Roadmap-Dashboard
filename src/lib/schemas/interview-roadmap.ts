@@ -5,6 +5,24 @@ import { sttInsightsSchema } from './interview';
 // 산인공 로드맵 인터뷰 양식 (docs/references/1.AI훈련로드맵 컨설팅 보고서(양식).pdf)
 // ============================================================================
 
+// Ⅰ-2. 주요 활동 "수행 방법" - 양식 예시: 대면 / 비대면(화상회의) / 대면(워크숍)
+export const interviewMethodEnum = z.enum(['ONSITE', 'VIDEO', 'WORKSHOP', 'OTHER']);
+export type InterviewMethod = z.infer<typeof interviewMethodEnum>;
+
+export const INTERVIEW_METHOD_LABEL: Record<InterviewMethod, string> = {
+  ONSITE: '대면',
+  VIDEO: '비대면(화상회의)',
+  WORKSHOP: '워크숍',
+  OTHER: '기타',
+};
+
+export const INTERVIEW_METHOD_OPTIONS: ReadonlyArray<{ value: InterviewMethod; label: string }> = [
+  { value: 'ONSITE', label: '대면' },
+  { value: 'VIDEO', label: '비대면(화상회의)' },
+  { value: 'WORKSHOP', label: '워크숍' },
+  { value: 'OTHER', label: '기타' },
+];
+
 // Ⅱ-2. 기업 요구분석 (4필드 텍스트)
 export const companyRequirementsSchema = z.object({
   company_status: z.string().min(1, '기업 현황을 입력하세요.'),
@@ -51,6 +69,7 @@ export const roadmapInterviewSchema = z.object({
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
   interview_round: z.number().int().min(1, '인터뷰 차수는 1 이상이어야 합니다.'),
   interview_time: z.string().min(1, '인터뷰 시간을 입력하세요.'),
+  interview_method: interviewMethodEnum,
   participants: z.array(roadmapParticipantSchema).min(1, '최소 1명 이상의 참석자를 입력하세요.'),
   company_requirements: companyRequirementsSchema,
   task_workflow_items: z.array(taskWorkflowItemSchema).min(1, '최소 1개의 과업을 분석하세요.'),
@@ -65,6 +84,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
   interview_date: z.string().optional(),
   interview_round: z.number().int().optional(),
   interview_time: z.string().optional(),
+  interview_method: interviewMethodEnum.optional(),
   participants: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -165,6 +185,11 @@ interface LegacyCompanyDetails {
     push_willingness?: string;
     expected_outcomes?: string;
   };
+  roadmap_interview_method?: InterviewMethod | string;
+  roadmap_analysis_notes?: {
+    text?: string;
+    attachment_urls?: string[];
+  };
 }
 
 interface LegacyJobTask {
@@ -217,8 +242,24 @@ export function mapInterviewRowToRoadmapInterview(
   if (typeof row.interview_round === 'number') partial.interview_round = row.interview_round;
   if (row.interview_time) partial.interview_time = row.interview_time;
 
+  // 수행 방법 복원 — 미보유 시 기본값 ONSITE
+  const savedMethod = row.company_details?.roadmap_interview_method;
+  const validMethods: InterviewMethod[] = ['ONSITE', 'VIDEO', 'WORKSHOP', 'OTHER'];
+  partial.interview_method = (savedMethod && validMethods.includes(savedMethod as InterviewMethod))
+    ? (savedMethod as InterviewMethod)
+    : 'ONSITE';
+
   if (Array.isArray(row.participants)) {
     partial.participants = row.participants as RoadmapParticipant[];
+  }
+
+  // 분석 노트 복원
+  const savedAn = row.company_details?.roadmap_analysis_notes;
+  if (savedAn) {
+    partial.analysis_notes = {
+      text: savedAn.text ?? '',
+      attachment_urls: Array.isArray(savedAn.attachment_urls) ? savedAn.attachment_urls : [],
+    };
   }
 
   // 우선순위: roadmap_company_requirements(원본 4필드) > legacy ai_experience + customer_requirements

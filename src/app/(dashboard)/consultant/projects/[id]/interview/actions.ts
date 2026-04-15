@@ -222,6 +222,7 @@ function mapRoadmapToLegacyColumns(
   };
   const tasks = data.task_workflow_items ?? [];
   const targets = data.training_targets ?? [];
+  const an = data.analysis_notes ?? { text: '', attachment_urls: [] };
 
   return {
     interview_date: data.interview_date ?? null,
@@ -231,8 +232,10 @@ function mapRoadmapToLegacyColumns(
     company_details: {
       ai_experience: cr.company_status ?? '',
       systems_and_tools: [],
-      // 신규 4필드를 병행 저장해 Step 12 이전에도 원본 복구 가능
+      // 신규 4필드 + 수행 방법 + 분석 노트를 병행 저장해 Step 12 이전에도 원본 복구 가능
       roadmap_company_requirements: cr,
+      roadmap_interview_method: data.interview_method ?? 'ONSITE',
+      roadmap_analysis_notes: an,
     },
     job_tasks: tasks.map((t) => ({
       id: t.id,
