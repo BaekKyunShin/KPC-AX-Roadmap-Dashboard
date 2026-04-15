@@ -45,3 +45,14 @@ Vercel Python Functions(Fluid Compute)를 `api/hwpx/` 경로에 둔다. Next.js 
 
 - Step 7/10: 산인공 양식 템플릿 매핑 + 정식 `src/lib/services/export/hwpx/` 클라이언트 도입. `src/app/api/hwpx-test/route.ts`는 이때 삭제.
 - Step 12: `security-auditor`로 시크릿 검증 누락 여부 재확인.
+
+## Plan drift note (2026-04-15)
+
+본 PoC(Step 3) 수행 중 원 계획서(`docs/plans/2026-04-14-official-form-alignment.md`)의 두 항목이 outdated임을 확인하고 교정했다. 교정된 값은 본 ADR이 정본이다.
+
+| 항목 | 계획서 초판 | PoC 확정값 | 근거 |
+|---|---|---|---|
+| `vercel.json` runtime 문자열 | `"python3.13"` | `"@vercel/python@6.31.0"` | Vercel 공식 Python runtime은 빌더 패키지 버전 문자열 형식. Context7 MCP로 재확인. |
+| `python-hwpx` 버전 | `0.1.0` | `2.9.0` | Context7 MCP(`/airmang/python-hwpx`, reputation High)로 최신 버전 확인. `HwpxDocument.new()/add_paragraph()/save_to_path()` API는 2.9.0에서도 호환. |
+
+계획서 본문의 해당 코드 블록도 동일 시점에 수정하였으며, 각 블록 아래에 본 ADR을 참조하는 인라인 주석을 추가했다. 이후 Step(7·10)에서 HWPX 양식 로더를 구현할 때는 본 ADR의 버전 값을 기준으로 한다.
