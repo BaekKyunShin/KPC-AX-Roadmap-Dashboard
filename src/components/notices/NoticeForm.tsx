@@ -132,9 +132,24 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6" data-testid="notice-form">
       <div className="space-y-2">
-        <Label htmlFor="title">
-          제목 <span className="text-destructive">*</span>
-        </Label>
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="title">
+            제목 <span className="text-destructive">*</span>
+          </Label>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="is_pinned"
+              name="is_pinned"
+              defaultChecked={initial?.is_pinned ?? false}
+            />
+            <Label
+              htmlFor="is_pinned"
+              className="cursor-pointer text-sm font-normal text-muted-foreground"
+            >
+              상단 고정
+            </Label>
+          </div>
+        </div>
         <Input
           id="title"
           name="title"
@@ -160,17 +175,6 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
           className="min-h-[400px]"
         />
         <FieldError message={errors.body} />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="is_pinned"
-          name="is_pinned"
-          defaultChecked={initial?.is_pinned ?? false}
-        />
-        <Label htmlFor="is_pinned" className="cursor-pointer">
-          상단 고정
-        </Label>
       </div>
 
       {mode === 'create' && (

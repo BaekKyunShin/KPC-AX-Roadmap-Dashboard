@@ -20,11 +20,11 @@ interface NoticeTableProps {
 
 function formatDate(iso: string): string {
   try {
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date(iso));
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   } catch {
     return iso;
   }
@@ -49,7 +49,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
               <TableHead className="hidden lg:table-cell w-[100px]">
                 조회
               </TableHead>
-              <TableHead className="hidden sm:table-cell w-[120px]">
+              <TableHead className="hidden sm:table-cell w-[130px] whitespace-nowrap">
                 작성일
               </TableHead>
               <TableHead className="w-[160px] text-right">관리</TableHead>
@@ -82,7 +82,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
                     </Link>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                    {notice.author?.name ?? '-'}
+                    {notice.author_name ?? notice.author?.name ?? '-'}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-sm">
                     {notice.attachment_count && notice.attachment_count > 0 ? (
@@ -96,7 +96,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
                   <TableCell className="hidden lg:table-cell text-sm tabular-nums">
                     {notice.view_count.toLocaleString()}
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums">
+                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums whitespace-nowrap">
                     {formatDate(notice.created_at)}
                   </TableCell>
                   <TableCell>

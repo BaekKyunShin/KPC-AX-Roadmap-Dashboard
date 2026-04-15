@@ -13,11 +13,14 @@ import type { Notice, NoticeAttachment } from '@/types/database';
 
 export interface NoticeWithMeta extends Notice {
   author?: { name: string | null } | null;
+  /** 컨설턴트 세션에서 users RLS로 FK join이 null일 때 adminClient로 해결된 이름 */
+  author_name?: string | null;
   attachment_count?: number;
 }
 
 export interface NoticeDetail extends Notice {
   author?: { name: string | null } | null;
+  author_name?: string | null;
   notice_attachments: NoticeAttachment[];
 }
 
@@ -41,15 +44,44 @@ type SupaClient = SupabaseClient<any, any, any>;
 // ============================================================================
 
 /**
+ * author_id 배열 → `{ id: name }` 맵 해결.
+ * 컨설턴트 세션은 users 테이블 RLS로 OPS 작성자 row를 읽지 못하므로,
+ * adminClient로 별도 조회해 UI에 이름을 노출할 때 사용한다.
+ */
+export async function resolveAuthorNames(
+  authorIds: ReadonlyArray<string>,
+  adminClient: SupaClient,
+): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(authorIds.filter(Boolean)));
+  if (unique.length === 0) return {};
+  const { data, error } = await adminClient
+    .from('users')
+    .select('id, name')
+    .in('id', unique);
+  if (error) {
+    console.error('[resolveAuthorNames] error:', error.message);
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const u of data ?? []) {
+    const row = u as { id: string; name: string | null };
+    if (row.id && row.name) out[row.id] = row.name;
+  }
+  return out;
+}
+
+/**
  * 공지 목록 조회.
  * - `is_pinned desc, created_at desc` 정렬 (상단 고정 우선)
- * - filter_by=title 시 title ILIKE, filter_by=author 시 작성자 이름 ILIKE (FK join)
- *
- * RLS로 접근 제어가 되므로 server client를 받는다.
+ * - filter_by=title 시 title ILIKE.
+ * - filter_by=author: adminClient가 주어지면 users에서 이름 ILIKE로 ids를 먼저 구해
+ *   notices.author_id IN (...)로 필터한다. adminClient가 없으면 FK inner join으로 폴백.
+ * - adminClient 제공 시 각 item에 `author_name`을 주입해 컨설턴트 세션에서도 노출 가능.
  */
 export async function listNotices(
   search: NoticeSearch,
   client: SupaClient,
+  adminClient?: SupaClient,
 ): Promise<NoticeListResult> {
   const { q, filter_by, page, per_page } = search;
   const from = (page - 1) * per_page;
@@ -63,17 +95,31 @@ export async function listNotices(
     );
 
   if (q && q.trim().length > 0) {
+    const trimmed = q.trim();
     if (filter_by === 'title') {
-      query = query.ilike('title', `%${q.trim()}%`);
+      query = query.ilike('title', `%${trimmed}%`);
+    } else if (adminClient) {
+      // adminClient로 users 이름 ILIKE → ids → notices IN 필터
+      const { data: matched } = await adminClient
+        .from('users')
+        .select('id')
+        .ilike('name', `%${trimmed}%`);
+      const ids = (matched ?? []).map(
+        (u) => (u as { id: string }).id,
+      );
+      if (ids.length === 0) {
+        return { items: [], total: 0, page, perPage: per_page, totalPages: 0 };
+      }
+      query = query.in('author_id', ids);
     } else {
-      // filter_by === 'author' — inner join 후 author.name ILIKE
+      // adminClient 없을 때(테스트 등) — 기존 FK inner join 폴백
       query = client
         .from('notices')
         .select(
           'id, title, body, author_id, is_pinned, view_count, created_at, updated_at, author:author_id!inner(name), notice_attachments(count)',
           { count: 'exact' },
         )
-        .ilike('author.name', `%${q.trim()}%`);
+        .ilike('author.name', `%${trimmed}%`);
     }
   }
 
@@ -87,15 +133,13 @@ export async function listNotices(
     return { items: [], total: 0, page, perPage: per_page, totalPages: 0 };
   }
 
-  const items: NoticeWithMeta[] = (data ?? []).map((row) => {
-    // notice_attachments(count)는 [{ count: n }] 배열로 반환
+  const rawItems: NoticeWithMeta[] = (data ?? []).map((row) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rawRow = row as any;
     const attachmentsArr = rawRow.notice_attachments;
     const attachment_count = Array.isArray(attachmentsArr)
       ? (attachmentsArr[0]?.count ?? 0)
       : 0;
-    // PostgREST FK join은 단수(1:1) 관계여도 배열로 반환될 수 있다.
     const authorRaw = rawRow.author;
     const authorField = Array.isArray(authorRaw) ? authorRaw[0] : authorRaw;
     return {
@@ -105,10 +149,26 @@ export async function listNotices(
     };
   });
 
+  // adminClient 제공 시 author_name 주입 (컨설턴트 세션 RLS 우회)
+  if (adminClient && rawItems.length > 0) {
+    const authorIds = rawItems
+      .map((it) => it.author_id)
+      .filter((id): id is string => !!id);
+    const nameMap = await resolveAuthorNames(authorIds, adminClient);
+    for (const it of rawItems) {
+      const id = it.author_id ?? '';
+      it.author_name = nameMap[id] ?? it.author?.name ?? null;
+    }
+  } else {
+    for (const it of rawItems) {
+      it.author_name = it.author?.name ?? null;
+    }
+  }
+
   const total = count ?? 0;
   const totalPages = total > 0 ? Math.ceil(total / per_page) : 0;
 
-  return { items, total, page, perPage: per_page, totalPages };
+  return { items: rawItems, total, page, perPage: per_page, totalPages };
 }
 
 // ============================================================================
@@ -123,6 +183,7 @@ export async function listNotices(
 export async function getNotice(
   id: string,
   client: SupaClient,
+  adminClient?: SupaClient,
 ): Promise<NoticeDetail | null> {
   const { data, error } = await client
     .from('notices')
@@ -137,7 +198,15 @@ export async function getNotice(
     return null;
   }
 
-  return data as unknown as NoticeDetail;
+  const detail = data as unknown as NoticeDetail;
+  // adminClient 있으면 users RLS 우회하여 author_name 해결
+  if (adminClient && detail.author_id) {
+    const map = await resolveAuthorNames([detail.author_id], adminClient);
+    detail.author_name = map[detail.author_id] ?? detail.author?.name ?? null;
+  } else {
+    detail.author_name = detail.author?.name ?? null;
+  }
+  return detail;
 }
 
 /**
@@ -261,6 +330,41 @@ export function sanitizeFileName(name: string): string {
 }
 
 /**
+ * 확장자 → MIME 타입 매핑.
+ * 마이그 062의 버킷 `notice-attachments` `allowed_mime_types`와 1:1 일치.
+ * 브라우저가 MIME을 올바르게 감지하지 못하는 경우(.hwp 등)에도
+ * 버킷 정책에 맞는 contentType으로 업로드할 수 있도록 확장자 기준으로 보정한다.
+ */
+const EXT_TO_MIME: Record<string, string> = {
+  '.hwpx': 'application/vnd.hancom.hwpx',
+  '.hwp': 'application/x-hwp',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx':
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx':
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx':
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.txt': 'text/plain',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+export function getMimeTypeByExtension(fileName: string): string | null {
+  const lower = fileName.toLowerCase();
+  const idx = lower.lastIndexOf('.');
+  if (idx < 0) return null;
+  const ext = lower.slice(idx);
+  return EXT_TO_MIME[ext] ?? null;
+}
+
+/**
  * storage_path 생성 규칙.
  * `${noticeId}/${uuid}-${safeName}`
  */
@@ -291,11 +395,18 @@ export async function uploadAttachment(
   const arrayBuffer = await file.arrayBuffer();
   const body = new Uint8Array(arrayBuffer);
 
+  // 브라우저 MIME 감지 실패(.hwp 등) 대비: 확장자 기반 매핑을 우선 사용.
+  // 버킷 `notice-attachments`는 allowed_mime_types로 contentType을 검사하므로
+  // application/octet-stream은 거부된다.
+  const resolvedMime =
+    getMimeTypeByExtension(file.name) ??
+    (file.type && file.type.length > 0 ? file.type : 'application/octet-stream');
+
   // 1) Storage 업로드
   const { error: uploadError } = await adminClient.storage
     .from('notice-attachments')
     .upload(storagePath, body, {
-      contentType: file.type || 'application/octet-stream',
+      contentType: resolvedMime,
       upsert: false,
     });
 
@@ -304,10 +415,10 @@ export async function uploadAttachment(
     return { error: '파일 업로드에 실패했습니다.' };
   }
 
-  // 2) DB row insert
+  // 2) DB row insert — mime_type도 확장자 기반 보정 값 사용
   const attachmentInput: AttachmentInput = {
     file_name: file.name,
-    mime_type: file.type || 'application/octet-stream',
+    mime_type: resolvedMime,
     file_size: file.size,
     storage_path: storagePath,
   };

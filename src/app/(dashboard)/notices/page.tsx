@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Pin, Paperclip, FileText } from 'lucide-react';
+import { Pin, Paperclip, FileText, Eye } from 'lucide-react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Badge } from '@/components/ui/badge';
@@ -27,11 +28,11 @@ const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
 
 function formatDate(iso: string): string {
   try {
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date(iso));
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   } catch {
     return iso;
   }
@@ -57,7 +58,9 @@ export default async function NoticesPage({ searchParams }: Props) {
     : { filter_by: 'title' as const, page: 1, per_page: 10, q: undefined };
 
   const supabase = await createClient();
-  const result = await listNotices(search, supabase);
+  // users 테이블 RLS로 컨설턴트는 작성자 row를 못 읽으므로 adminClient로 이름 해결
+  const adminClient = createAdminClient();
+  const result = await listNotices(search, supabase, adminClient);
 
   return (
     <div className="space-y-6">
@@ -79,70 +82,84 @@ export default async function NoticesPage({ searchParams }: Props) {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-md border bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[48px]"></TableHead>
-                <TableHead className="min-w-[240px]">제목</TableHead>
-                <TableHead className="hidden md:table-cell w-[140px]">
-                  작성자
-                </TableHead>
-                <TableHead className="hidden lg:table-cell w-[100px]">
-                  조회수
-                </TableHead>
-                <TableHead className="hidden sm:table-cell w-[120px]">
-                  작성일
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {result.items.map((notice) => (
-                <TableRow key={notice.id}>
-                  <TableCell>
-                    {notice.is_pinned && (
-                      <Pin
-                        className="h-4 w-4 text-primary"
-                        aria-label="상단 고정"
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/notices/${notice.id}`}
-                      className="flex items-center gap-2 font-medium hover:underline"
-                    >
-                      <span>{notice.title}</span>
-                      {notice.attachment_count &&
-                      notice.attachment_count > 0 ? (
-                        <Badge variant="secondary" className="gap-1">
-                          <Paperclip className="h-3 w-3" />
-                          {notice.attachment_count}
-                        </Badge>
-                      ) : null}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                    {notice.author?.name ?? '-'}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm tabular-nums">
-                    {notice.view_count.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums">
-                    {formatDate(notice.created_at)}
-                  </TableCell>
+        <div className="rounded-md border bg-white overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[48px]"></TableHead>
+                  <TableHead className="min-w-[240px]">제목</TableHead>
+                  <TableHead className="hidden md:table-cell w-[140px]">
+                    작성자
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell w-[100px] text-right">
+                    조회수
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell w-[130px] whitespace-nowrap">
+                    작성일
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {result.items.map((notice) => (
+                  <TableRow
+                    key={notice.id}
+                    className="group hover:bg-muted/40 transition-colors"
+                  >
+                    <TableCell className="align-middle">
+                      {notice.is_pinned && (
+                        <Pin
+                          className="h-4 w-4 text-primary"
+                          aria-label="상단 고정"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/notices/${notice.id}`}
+                        className="flex items-center gap-2 font-medium text-foreground hover:underline"
+                      >
+                        <span className="truncate">{notice.title}</span>
+                        {notice.attachment_count &&
+                        notice.attachment_count > 0 ? (
+                          <Badge
+                            variant="secondary"
+                            className="shrink-0 gap-1"
+                            aria-label={`첨부 ${notice.attachment_count}개`}
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            {notice.attachment_count}
+                          </Badge>
+                        ) : null}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {notice.author_name ?? '-'}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm tabular-nums text-right text-muted-foreground">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        <Eye className="h-3.5 w-3.5" />
+                        {notice.view_count.toLocaleString()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+                      {formatDate(notice.created_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
           {result.totalPages > 1 && (
-            <NoticePagination
-              currentPage={result.page}
-              totalPages={result.totalPages}
-              totalItems={result.total}
-              itemsPerPage={result.perPage}
-            />
+            <div className="border-t">
+              <NoticePagination
+                currentPage={result.page}
+                totalPages={result.totalPages}
+                totalItems={result.total}
+                itemsPerPage={result.perPage}
+              />
+            </div>
           )}
         </div>
       )}
