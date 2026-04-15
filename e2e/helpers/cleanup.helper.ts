@@ -212,3 +212,30 @@ export async function restoreShareStatus(
   if (error)
     console.warn(`restoreShareStatus(${roadmapId}) 실패:`, error.message);
 }
+
+/** 공지 삭제 (E2E 생성 테스트 후 정리) — 첨부는 CASCADE로 자동 제거되나 Storage는 별도 제거 */
+export async function deleteNotice(id: string) {
+  // Storage 정리: prefix로 파일 목록 조회 후 일괄 삭제
+  const { data: list } = await supabase.storage
+    .from('notice-attachments')
+    .list(id);
+  if (list && list.length > 0) {
+    const paths = list.map((f) => `${id}/${f.name}`);
+    await supabase.storage.from('notice-attachments').remove(paths);
+  }
+  const { error } = await supabase.from('notices').delete().eq('id', id);
+  if (error) console.warn(`deleteNotice(${id}) 실패:`, error.message);
+}
+
+/** 제목으로 공지 삭제 (잔여 테스트 데이터 정리) */
+export async function deleteNoticesByTitle(titlePattern: string) {
+  const { data: matches } = await supabase
+    .from('notices')
+    .select('id')
+    .ilike('title', titlePattern);
+  if (matches) {
+    for (const row of matches) {
+      await deleteNotice(row.id as string);
+    }
+  }
+}

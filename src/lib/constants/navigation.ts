@@ -11,6 +11,7 @@ import {
   Settings,
   MessageSquare,
   UserCircle,
+  Megaphone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -58,12 +59,13 @@ export const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   },
 };
 
-/** 컨설턴트 메뉴 (플랫 4개) */
+/** 컨설턴트 메뉴 (플랫 5개) */
 export const CONSULTANT_NAV_ITEMS: NavItem[] = [
   { href: '/consultant/home', label: '대시보드', icon: Home },
   { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
   { href: '/gallery', label: '로드맵 갤러리', icon: Library },
+  { href: '/notices', label: '공지사항', icon: Megaphone },
 ];
 
 /** 관리자 메뉴 (드롭다운 3그룹) — 운영관리자와 시스템관리자 동일 */
@@ -81,6 +83,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
       { href: '/ops/users', label: '사용자 관리', icon: Users },
       { href: '/ops/quota', label: '쿼터 관리', icon: Gauge },
       { href: '/ops/audit', label: '감사로그', icon: ScrollText },
+      { href: '/ops/notices', label: '공지 관리', icon: Megaphone },
     ],
   },
   {
