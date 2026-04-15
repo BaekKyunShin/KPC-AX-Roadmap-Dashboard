@@ -47,23 +47,29 @@ export default async function NoticeDetailPage({ params }: Props) {
 
   const { id } = await params;
   const supabase = await createClient();
-  // admin client: 조회수 RPC + users RLS 우회한 작성자 이름 해결
+  // adminClient: users RLS 우회한 작성자 이름 해결 전용.
+  // 조회수 RPC는 반드시 server client로 호출해야 한다(내부에서 auth.uid() NULL 체크).
   const adminClient = createAdminClient();
   const notice = await getNotice(id, supabase, adminClient);
   if (!notice) notFound();
 
-  // 조회수 증가 (실패해도 렌더링엔 영향 없음 — 서비스 내부에서 로깅)
-  await incrementNoticeViewCount(notice.id, adminClient);
+  // 조회수 증가 — server client(사용자 세션)로 호출.
+  // 실패해도 렌더링엔 영향 없음 (서비스 내부에서 로깅).
+  await incrementNoticeViewCount(notice.id, supabase);
 
   const attachments = notice.notice_attachments ?? [];
   const authorName = notice.author_name ?? notice.author?.name ?? '-';
 
+  // 역할별 "목록으로 돌아가기" 경로 분기 — 운영자는 공지 관리 목록으로 복귀
+  const isOps =
+    profile.role === 'OPS_ADMIN' || profile.role === 'SYSTEM_ADMIN';
+  const backLink = isOps
+    ? { href: '/ops/notices', label: '공지 관리' }
+    : { href: '/notices', label: '공지 목록' };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader
-        title={notice.title}
-        backLink={{ href: '/notices', label: '공지 목록' }}
-      />
+      <PageHeader title={notice.title} backLink={backLink} />
 
       <div className="rounded-lg border bg-muted/30 p-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">

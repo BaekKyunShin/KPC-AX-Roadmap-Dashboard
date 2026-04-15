@@ -64,11 +64,11 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
               </TableRow>
             ) : (
               notices.map((notice) => (
-                <TableRow key={notice.id}>
-                  <TableCell>
+                <TableRow key={notice.id} className="h-14 [&>td]:align-middle">
+                  <TableCell className="text-center">
                     {notice.is_pinned && (
                       <Pin
-                        className="h-4 w-4 text-primary"
+                        className="mx-auto h-4 w-4 text-primary"
                         aria-label="상단 고정"
                       />
                     )}
