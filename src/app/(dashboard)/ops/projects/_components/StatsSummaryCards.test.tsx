@@ -92,8 +92,8 @@ describe('StatsSummaryCards', () => {
         expect(screen.getByText('진단결과 입력 완료')).toBeInTheDocument();
         expect(screen.getByText('컨설턴트 배정 완료')).toBeInTheDocument();
         expect(screen.getByText('현장 인터뷰 완료')).toBeInTheDocument();
-        expect(screen.getByText('로드맵 초안 완료')).toBeInTheDocument();
-        expect(screen.getByText('로드맵 최종 확정')).toBeInTheDocument();
+        expect(screen.getByText('초안 완료')).toBeInTheDocument();
+        expect(screen.getByText('최종 확정')).toBeInTheDocument();
       });
     });
   });
@@ -118,7 +118,7 @@ describe('StatsSummaryCards', () => {
       render(<StatsSummaryCards />);
       await waitFor(() => {
         const buttons = screen.getAllByRole('button');
-        const finalizedBtn = buttons.find(btn => btn.textContent?.includes('로드맵 최종 확정'));
+        const finalizedBtn = buttons.find(btn => btn.textContent?.includes('최종 확정'));
         expect(finalizedBtn?.textContent).toMatch('2');
       });
     });

@@ -98,7 +98,7 @@ describe('MiniStepper', () => {
 
     it('FINALIZED 상태의 라벨을 표시한다', () => {
       renderStepper('FINALIZED', 0, true, false);
-      expect(screen.getByText('로드맵 최종 확정')).toBeInTheDocument();
+      expect(screen.getByText('최종 확정')).toBeInTheDocument();
     });
 
     it('DIAGNOSED와 MATCH_RECOMMENDED는 같은 단계 라벨을 가진다', () => {

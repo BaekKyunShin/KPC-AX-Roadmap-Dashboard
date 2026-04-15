@@ -1,4 +1,5 @@
 import type { ProjectStatus, RoadmapVersionStatus, UserRole, UserStatus } from '@/types/database';
+import type { ProjectTrack } from './tracks';
 
 // =============================================================================
 // 역할 기반 접근 제어 상수
@@ -58,9 +59,19 @@ export const ROADMAP_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
   'FINALIZED',
 ] as const;
 
-/** 내보내기 가능한 프로젝트 상태 (로드맵이 존재하는 상태) */
+/** 내보내기 가능한 프로젝트 상태 (로드맵·PBL 산출물이 존재하는 상태) */
 export const EXPORT_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
   'ROADMAP_DRAFTED',
+  'PBL_DRAFTED',
+  'FINALIZED',
+] as const;
+
+/**
+ * PBL 생성·편집이 가능한 프로젝트 상태 (ROADMAP_ELIGIBLE_STATUSES 평행 구조)
+ */
+export const PBL_ELIGIBLE_STATUSES: readonly ProjectStatus[] = [
+  'INTERVIEWED',
+  'PBL_DRAFTED',
   'FINALIZED',
 ] as const;
 
@@ -93,9 +104,32 @@ export const PROJECT_WORKFLOW_STEPS: WorkflowStep[] = [
   { key: 'diagnosed', label: '진단결과 입력 완료', statuses: ['DIAGNOSED', 'MATCH_RECOMMENDED'] },
   { key: 'assigned', label: '컨설턴트 배정 완료', statuses: ['ASSIGNED'] },
   { key: 'interviewed', label: '현장 인터뷰 완료', statuses: ['INTERVIEWED'] },
-  { key: 'drafted', label: '로드맵 초안 완료', statuses: ['ROADMAP_DRAFTED'] },
-  { key: 'finalized', label: '로드맵 최종 확정', statuses: ['FINALIZED'] },
+  // 트랙 공통 라벨. 트랙별 라벨이 필요하면 getProjectWorkflowStepsByTrack 사용.
+  { key: 'drafted', label: '초안 완료', statuses: ['ROADMAP_DRAFTED', 'PBL_DRAFTED'] },
+  { key: 'finalized', label: '최종 확정', statuses: ['FINALIZED'] },
 ];
+
+/**
+ * 트랙별 워크플로우 단계 반환
+ *
+ * - 프로젝트 상세 페이지·스테퍼처럼 트랙 컨텍스트가 있는 UI에서 사용
+ * - 운영 대시보드 통계처럼 트랙 혼합 UI는 PROJECT_WORKFLOW_STEPS 그대로 사용
+ */
+export function getProjectWorkflowStepsByTrack(track: ProjectTrack): WorkflowStep[] {
+  return PROJECT_WORKFLOW_STEPS.map((step) => {
+    if (step.key === 'drafted') {
+      return track === 'PBL'
+        ? { ...step, label: 'PBL 초안 완료', statuses: ['PBL_DRAFTED'] }
+        : { ...step, label: '로드맵 초안 완료', statuses: ['ROADMAP_DRAFTED'] };
+    }
+    if (step.key === 'finalized') {
+      return track === 'PBL'
+        ? { ...step, label: 'PBL 최종 확정', statuses: ['FINALIZED'] }
+        : { ...step, label: '로드맵 최종 확정', statuses: ['FINALIZED'] };
+    }
+    return step;
+  });
+}
 
 /**
  * 모든 프로젝트 상태 목록 (워크플로우 순서대로)
@@ -155,7 +189,8 @@ export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, { label: string; color
   ASSIGNED: { label: '컨설턴트 배정 완료', color: 'bg-green-100 text-green-800' },
   INTERVIEWED: { label: '현장 인터뷰 완료', color: 'bg-yellow-100 text-yellow-800' },
   ROADMAP_DRAFTED: { label: '로드맵 초안 완료', color: 'bg-orange-100 text-orange-800' },
-  FINALIZED: { label: '로드맵 최종 확정', color: 'bg-emerald-100 text-emerald-800' },
+  PBL_DRAFTED: { label: 'PBL 초안 완료', color: 'bg-purple-100 text-purple-800' },
+  FINALIZED: { label: '최종 확정', color: 'bg-emerald-100 text-emerald-800' },
 };
 
 /**
@@ -243,8 +278,10 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<ProjectStatus, readonly ProjectS
   DIAGNOSED: ['MATCH_RECOMMENDED', 'ASSIGNED'],
   MATCH_RECOMMENDED: ['ASSIGNED'],
   ASSIGNED: ['ASSIGNED', 'INTERVIEWED'],
-  INTERVIEWED: ['ROADMAP_DRAFTED'],
+  // PBL 트랙은 ROADMAP_DRAFTED 대신 PBL_DRAFTED로 분기.
+  INTERVIEWED: ['ROADMAP_DRAFTED', 'PBL_DRAFTED'],
   ROADMAP_DRAFTED: ['ROADMAP_DRAFTED', 'FINALIZED'],
+  PBL_DRAFTED: ['PBL_DRAFTED', 'FINALIZED'],
   FINALIZED: [],
 };
 

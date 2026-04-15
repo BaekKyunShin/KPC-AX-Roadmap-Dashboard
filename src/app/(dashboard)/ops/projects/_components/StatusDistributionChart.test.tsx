@@ -104,8 +104,8 @@ describe('StatusDistributionChart', () => {
       expect(screen.getByText('신규 등록 완료')).toBeInTheDocument();
       expect(screen.getByText('컨설턴트 배정 완료')).toBeInTheDocument();
       expect(screen.getByText('현장 인터뷰 완료')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 초안 완료')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 최종 확정')).toBeInTheDocument();
+      expect(screen.getByText('초안 완료')).toBeInTheDocument();
+      expect(screen.getByText('최종 확정')).toBeInTheDocument();
     });
 
     it('범례에 "건" 단위가 포함된 수치를 표시한다', () => {

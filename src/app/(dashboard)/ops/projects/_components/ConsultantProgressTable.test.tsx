@@ -61,7 +61,7 @@ describe('ConsultantProgressTable', () => {
       const headers = screen.getAllByRole('columnheader');
       const headerTexts = headers.map(th => th.textContent);
       expect(headerTexts).toEqual(
-        expect.arrayContaining(['컨설턴트', '총 담당 프로젝트', '프로젝트 수행 전', '현장 인터뷰 완료', '로드맵 초안 완료', '로드맵 확정 완료'])
+        expect.arrayContaining(['컨설턴트', '총 담당 프로젝트', '프로젝트 수행 전', '현장 인터뷰 완료', '초안 완료', '최종 확정'])
       );
     });
   });
