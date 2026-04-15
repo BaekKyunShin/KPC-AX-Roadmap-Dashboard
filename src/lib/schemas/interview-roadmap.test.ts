@@ -1,0 +1,247 @@
+import { describe, it, expect } from 'vitest';
+import {
+  companyRequirementsSchema,
+  taskWorkflowItemSchema,
+  trainingTargetSchema,
+  analysisNotesSchema,
+  roadmapInterviewSchema,
+  roadmapInterviewAutoSaveSchema,
+  createEmptyTaskWorkflowItem,
+  createEmptyTrainingTarget,
+  mapInterviewRowToRoadmapInterview,
+} from './interview-roadmap';
+
+describe('companyRequirementsSchema', () => {
+  it('4개 필드가 모두 필수 (산인공 Ⅱ-2)', () => {
+    const valid = {
+      company_status: '제조업, AI 미도입',
+      main_problems: '생산성 저하',
+      push_willingness: '경영진 적극 지원',
+      expected_outcomes: '15% 효율 개선',
+    };
+    expect(companyRequirementsSchema.safeParse(valid).success).toBe(true);
+
+    for (const key of ['company_status', 'main_problems', 'push_willingness', 'expected_outcomes'] as const) {
+      const invalid = { ...valid, [key]: '' };
+      const result = companyRequirementsSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    }
+  });
+});
+
+describe('taskWorkflowItemSchema', () => {
+  const base = {
+    id: 'a',
+    job: '생산',
+    task_name: '품질검사',
+    as_is: '육안 검사',
+    problems: '개인 역량 의존',
+    data_availability: '검사 이미지 2년치 보유',
+    ai_necessity: 5,
+  };
+
+  it('유효한 항목은 통과', () => {
+    expect(taskWorkflowItemSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('AI 필요도는 1~5 정수만 허용', () => {
+    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 0 }).success).toBe(false);
+    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 6 }).success).toBe(false);
+    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 3.5 }).success).toBe(false);
+    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 1 }).success).toBe(true);
+    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 5 }).success).toBe(true);
+  });
+
+  it('모든 텍스트 필드는 필수', () => {
+    for (const key of ['job', 'task_name', 'as_is', 'problems', 'data_availability'] as const) {
+      expect(taskWorkflowItemSchema.safeParse({ ...base, [key]: '' }).success).toBe(false);
+    }
+  });
+});
+
+describe('trainingTargetSchema', () => {
+  const base = {
+    id: 'b',
+    task_name: '품질검사 자동화',
+    selection_reason: 'AI 필요도 5점',
+    as_is: '육안 검사',
+    to_be: '비전 AI 1차 스크리닝',
+  };
+
+  it('유효한 항목은 통과', () => {
+    expect(trainingTargetSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('모든 텍스트 필드는 필수', () => {
+    for (const key of ['task_name', 'selection_reason', 'as_is', 'to_be'] as const) {
+      expect(trainingTargetSchema.safeParse({ ...base, [key]: '' }).success).toBe(false);
+    }
+  });
+});
+
+describe('analysisNotesSchema', () => {
+  it('기본값 허용', () => {
+    const result = analysisNotesSchema.parse({});
+    expect(result).toEqual({ text: '', attachment_urls: [] });
+  });
+
+  it('attachment_urls는 URL만 허용', () => {
+    expect(analysisNotesSchema.safeParse({ text: '', attachment_urls: ['not-a-url'] }).success).toBe(false);
+    expect(analysisNotesSchema.safeParse({ text: '', attachment_urls: ['https://example.com/a.pdf'] }).success).toBe(true);
+  });
+});
+
+describe('roadmapInterviewSchema', () => {
+  const baseValid = {
+    interview_date: '2026-04-16',
+    interview_round: 1,
+    interview_time: '오전 10:00',
+    participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
+    company_requirements: {
+      company_status: '제조업',
+      main_problems: '품질 저하',
+      push_willingness: '지원',
+      expected_outcomes: '효율 개선',
+    },
+    task_workflow_items: [
+      {
+        id: 't1',
+        job: '생산',
+        task_name: '검사',
+        as_is: '육안',
+        problems: '편차 큼',
+        data_availability: '2년치',
+        ai_necessity: 4,
+      },
+    ],
+    analysis_notes: { text: '', attachment_urls: [] },
+    training_targets: [
+      {
+        id: 'tg1',
+        task_name: '검사 자동화',
+        selection_reason: '고효율',
+        as_is: '육안',
+        to_be: 'AI',
+      },
+    ],
+    notes: '',
+  };
+
+  it('유효한 전체 구조는 통과', () => {
+    expect(roadmapInterviewSchema.safeParse(baseValid).success).toBe(true);
+  });
+
+  it('참석자 최소 1명 필요', () => {
+    const invalid = { ...baseValid, participants: [] };
+    expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('과업 분석표 최소 1개 필요', () => {
+    const invalid = { ...baseValid, task_workflow_items: [] };
+    expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('훈련대상 최소 1개 필요', () => {
+    const invalid = { ...baseValid, training_targets: [] };
+    expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe('roadmapInterviewAutoSaveSchema', () => {
+  it('부분 구조도 허용 (자동 저장용)', () => {
+    expect(roadmapInterviewAutoSaveSchema.safeParse({}).success).toBe(true);
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({
+        interview_date: '2026-04-16',
+        task_workflow_items: [],
+      }).success
+    ).toBe(true);
+  });
+});
+
+describe('createEmptyTaskWorkflowItem', () => {
+  it('UUID id 및 기본값 포함', () => {
+    const item = createEmptyTaskWorkflowItem();
+    expect(item.id).toBeTruthy();
+    expect(item.job).toBe('');
+    expect(item.ai_necessity).toBe(3);
+  });
+});
+
+describe('createEmptyTrainingTarget', () => {
+  it('UUID id 및 빈 필드', () => {
+    const item = createEmptyTrainingTarget();
+    expect(item.id).toBeTruthy();
+    expect(item.task_name).toBe('');
+    expect(item.to_be).toBe('');
+  });
+});
+
+describe('mapInterviewRowToRoadmapInterview', () => {
+  it('null 입력 시 빈 Partial 반환', () => {
+    const result = mapInterviewRowToRoadmapInterview(null);
+    expect(result).toEqual({});
+  });
+
+  it('레거시 company_details.ai_experience를 company_requirements에 매핑', () => {
+    const row = {
+      interview_date: '2026-04-16',
+      interview_round: 1,
+      interview_time: '오전',
+      participants: [{ id: 'p1', name: '김' }],
+      company_details: { ai_experience: '경험 없음', systems_and_tools: ['Excel'] },
+      job_tasks: [],
+      pain_points: [],
+      constraints: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_date).toBe('2026-04-16');
+    expect(result.participants).toEqual([{ id: 'p1', name: '김' }]);
+    expect(result.company_requirements?.company_status).toContain('경험 없음');
+  });
+
+  it('레거시 job_tasks를 task_workflow_items 기본 구조로 변환', () => {
+    const row = {
+      interview_date: '2026-04-16',
+      interview_round: 1,
+      interview_time: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [{ id: 'j1', task_name: '검사', task_description: '육안' }],
+      pain_points: [],
+      constraints: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items).toHaveLength(1);
+    expect(result.task_workflow_items?.[0].task_name).toBe('검사');
+    expect(result.task_workflow_items?.[0].as_is).toBe('육안');
+  });
+
+  it('레거시 improvement_goals를 training_targets로 변환', () => {
+    const row = {
+      interview_date: '2026-04-16',
+      interview_round: 1,
+      interview_time: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [],
+      constraints: [],
+      improvement_goals: [{ id: 'g1', goal_description: '생산성 20% 향상', kpi: '생산량' }],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.training_targets).toHaveLength(1);
+    expect(result.training_targets?.[0].selection_reason).toContain('생산성 20% 향상');
+  });
+});

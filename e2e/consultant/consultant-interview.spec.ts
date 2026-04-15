@@ -9,7 +9,10 @@ test.describe.configure({ mode: 'serial' });
 // 프로젝트 목록에서 첫 프로젝트의 인터뷰 URL을 추출하여 재사용
 let interviewUrl: string | null = null;
 
-test.describe('컨설턴트 인터뷰', () => {
+// OFA-05: 인터뷰가 산인공 5스텝(기본 · 요구 · 과업 · 대상 · 확인) 구조로 개편됨.
+// 본 legacy spec은 6스텝 구조를 가정하므로 전체 skip. Step 12에서 제거 예정.
+// 신규 커버리지는 `interview-roadmap.spec.ts` 참조.
+test.describe.skip('컨설턴트 인터뷰 (legacy 6스텝 — OFA-12에서 제거)', () => {
   test('인터뷰 페이지 로드 + 스테퍼 표시', async ({ consultantPage: page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 

@@ -1,0 +1,57 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import StepTrainingTargets from './StepTrainingTargets';
+import { createEmptyTrainingTarget, type TrainingTarget } from '@/lib/schemas/interview-roadmap';
+
+function makeItems(n = 1): TrainingTarget[] {
+  return Array.from({ length: n }, () => createEmptyTrainingTarget());
+}
+
+describe('StepTrainingTargets', () => {
+  it('4개 필드(과업명·선정사유·As-Is·To-Be)가 각 행에 렌더', () => {
+    render(<StepTrainingTargets items={makeItems(1)} onChange={vi.fn()} />);
+    expect(screen.getByLabelText(/과업명/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/선정 사유/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/현행.*As-Is/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/개선.*To-Be/i)).toBeInTheDocument();
+  });
+
+  it('"훈련대상 추가" 버튼 클릭 시 새 행 추가', async () => {
+    const onChange = vi.fn();
+    render(<StepTrainingTargets items={makeItems(1)} onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /훈련대상 추가/ }));
+    const [next] = onChange.mock.calls[0];
+    expect(next).toHaveLength(2);
+  });
+
+  it('행 2개 이상일 때만 삭제 버튼 노출', async () => {
+    const onChange = vi.fn();
+    const items = makeItems(2);
+    render(<StepTrainingTargets items={items} onChange={onChange} />);
+
+    const removeButtons = screen.getAllByRole('button', { name: /행 삭제/ });
+    expect(removeButtons).toHaveLength(2);
+
+    await userEvent.click(removeButtons[1]);
+    const [next] = onChange.mock.calls[0];
+    expect(next).toHaveLength(1);
+    expect(next[0].id).toBe(items[0].id);
+  });
+
+  it('1개 행만 있으면 삭제 버튼 없음', () => {
+    render(<StepTrainingTargets items={makeItems(1)} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /행 삭제/ })).not.toBeInTheDocument();
+  });
+
+  it('필드 변경 시 onChange에 부분 업데이트 전달', async () => {
+    const onChange = vi.fn();
+    const items = makeItems(1);
+    render(<StepTrainingTargets items={items} onChange={onChange} />);
+
+    await userEvent.type(screen.getByLabelText(/과업명/), 'A');
+    const [next] = onChange.mock.calls.at(-1)!;
+    expect(next[0].task_name).toBe('A');
+  });
+});
