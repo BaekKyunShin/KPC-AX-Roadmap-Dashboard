@@ -37,6 +37,20 @@ function formatDateTime(iso: string): string {
   }
 }
 
+/**
+ * created_at 대비 updated_at이 1분 이상 이후인지 판정.
+ * DB 기본값 set-by-trigger로 초 단위 차이가 발생할 수 있어 여유를 둠.
+ */
+function wasEdited(createdAt: string, updatedAt: string): boolean {
+  try {
+    const created = new Date(createdAt).getTime();
+    const updated = new Date(updatedAt).getTime();
+    return updated - created > 60_000;
+  } catch {
+    return false;
+  }
+}
+
 export default async function NoticeDetailPage({ params }: Props) {
   const user = await getCachedUser();
   if (!user) redirect('/login');
@@ -54,9 +68,11 @@ export default async function NoticeDetailPage({ params }: Props) {
   const notice = await getNotice(id, supabase, adminClient);
   if (!notice) notFound();
 
-  // 조회수 증가 — server client(사용자 세션)로 호출.
-  // 실패해도 렌더링엔 영향 없음 (서비스 내부에서 로깅).
-  await incrementNoticeViewCount(notice.id, supabase);
+  // 조회수 증가 — 컨설턴트 조회만 카운트(운영자·시스템관리자 조회는 제외).
+  // server client(사용자 세션)로 호출해 RPC의 auth.uid() 체크를 통과.
+  if (profile.role === 'CONSULTANT_APPROVED') {
+    await incrementNoticeViewCount(notice.id, supabase);
+  }
 
   const attachments = notice.notice_attachments ?? [];
   const authorName = notice.author_name ?? notice.author?.name ?? '-';
@@ -95,6 +111,14 @@ export default async function NoticeDetailPage({ params }: Props) {
             <Calendar className="h-3.5 w-3.5" />
             {formatDateTime(notice.created_at)}
           </span>
+          {wasEdited(notice.created_at, notice.updated_at) && (
+            <span
+              className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs"
+              title={`최종 수정: ${formatDateTime(notice.updated_at)}`}
+            >
+              (수정됨 · {formatDateTime(notice.updated_at)})
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5">
             <Eye className="h-3.5 w-3.5" />
             {notice.view_count.toLocaleString()}

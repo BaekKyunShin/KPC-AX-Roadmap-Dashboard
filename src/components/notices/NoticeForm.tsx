@@ -116,6 +116,8 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         const result = await updateNoticeAction(initial.id, formData);
         if (result.success) {
           showSuccessToast('공지가 수정되었습니다.');
+          // 수정 후 상세 페이지로 이동해 변경된 내용을 즉시 확인하도록 함
+          router.push(`/notices/${initial.id}`);
           router.refresh();
         } else {
           showErrorToast('수정 실패', result.error);
