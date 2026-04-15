@@ -19,14 +19,14 @@ describe('CONSULTANT_NAV_ITEMS', () => {
     expect(CONSULTANT_NAV_ITEMS).toHaveLength(5);
   });
 
-  test('대시보드, 담당 프로젝트, 테스트 로드맵, 로드맵 갤러리, 공지사항 순서이다', () => {
+  test('공지사항이 맨 앞이고 이후 대시보드, 담당 프로젝트, 테스트 로드맵, 로드맵 갤러리 순서이다', () => {
     const labels = CONSULTANT_NAV_ITEMS.map((item) => item.label);
     expect(labels).toEqual([
+      '공지사항',
       '대시보드',
       '담당 프로젝트',
       '테스트 로드맵',
       '로드맵 갤러리',
-      '공지사항',
     ]);
   });
 
@@ -60,10 +60,10 @@ describe('ADMIN_NAV_GROUPS', () => {
     expect(labels).toEqual(['프로젝트 관리', '테스트 로드맵']);
   });
 
-  test('운영관리 그룹에 사용자 관리, 쿼터 관리, 감사로그, 공지 관리가 있다', () => {
+  test('운영관리 그룹에서 공지 관리가 상단, 이후 사용자 관리·쿼터 관리·감사로그 순이다', () => {
     const ops = ADMIN_NAV_GROUPS[1];
     const labels = ops.items.map((item) => item.label);
-    expect(labels).toEqual(['사용자 관리', '쿼터 관리', '감사로그', '공지 관리']);
+    expect(labels).toEqual(['공지 관리', '사용자 관리', '쿼터 관리', '감사로그']);
   });
 
   test('라이브러리 그룹에 로드맵 갤러리와 자가진단 템플릿이 있다', () => {

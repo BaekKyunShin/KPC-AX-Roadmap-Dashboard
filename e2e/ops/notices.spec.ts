@@ -32,7 +32,9 @@ test.describe('Phase OFA-04: 공지 게시판 — 운영자 플로우', () => {
     expect(getErrors()).toEqual([]);
   });
 
-  test('운영자: 일반 공지 작성', async ({ opsPage: page }) => {
+  test('운영자: 일반 공지 작성 (첨부 없음 → 목록으로 이동)', async ({
+    opsPage: page,
+  }) => {
     await page.goto('/ops/notices/new');
     await page.waitForLoadState('networkidle');
 
@@ -44,15 +46,16 @@ test.describe('Phase OFA-04: 공지 게시판 — 운영자 플로우', () => {
     await page.getByLabel('본문').fill('E2E 테스트 본문입니다.');
     await page.getByRole('button', { name: '작성' }).click();
 
-    // 작성 후 edit 페이지로 이동 (/ops/notices/{id}/edit)
-    await expect(page).toHaveURL(/\/ops\/notices\/[^/]+\/edit/, {
+    // 첨부 없이 작성 시 /ops/notices 목록으로 리다이렉트
+    await expect(page).toHaveURL(/\/ops\/notices(?:\?.*)?$/, {
       timeout: 10_000,
     });
-    // 편집 페이지에서 첨부 업로더 표시 확인
-    await expect(page.getByText(/파일 선택/)).toBeVisible();
+    await expect(page.getByText(NORMAL_TITLE)).toBeVisible();
   });
 
-  test('운영자: 공지 작성 + 첨부 업로드', async ({ opsPage: page }) => {
+  test('운영자: 공지 작성 + 첨부 동시 업로드 (작성 페이지에서 한 번에)', async ({
+    opsPage: page,
+  }) => {
     await page.goto('/ops/notices/new');
     await page.waitForLoadState('networkidle');
 
@@ -63,16 +66,10 @@ test.describe('Phase OFA-04: 공지 게시판 — 운영자 플로우', () => {
       .locator('button[role="checkbox"][id="is_pinned"]')
       .click()
       .catch(() => {
-        // 폴백: label 클릭
         return page.getByLabel('상단 고정').click();
       });
 
-    await page.getByRole('button', { name: '작성' }).click();
-    await expect(page).toHaveURL(/\/ops\/notices\/[^/]+\/edit/, {
-      timeout: 10_000,
-    });
-
-    // 첨부 파일 업로드 (네이티브 input[type=file])
+    // 작성 페이지에서 첨부 파일 선택 (pending 리스트에 추가)
     const fileInput = page.getByTestId('attachment-input');
     await fileInput.setInputFiles({
       name: 'sample.txt',
@@ -80,11 +77,20 @@ test.describe('Phase OFA-04: 공지 게시판 — 운영자 플로우', () => {
       buffer: Buffer.from('테스트 첨부 파일 내용'),
     });
 
-    // 업로드 성공 토스트 or 첨부 목록 항목 확인
-    await expect(page.getByTestId('attachment-list')).toBeVisible({
-      timeout: 15_000,
+    // pending 리스트에 파일이 노출되는지 확인
+    await expect(page.getByTestId('pending-attachments')).toBeVisible({
+      timeout: 5_000,
     });
-    await expect(page.getByText('sample.txt')).toBeVisible();
+    await expect(
+      page.getByTestId('pending-attachments').getByText('sample.txt'),
+    ).toBeVisible();
+
+    // 작성 클릭 → 공지 생성 + 첨부 업로드 → 목록 페이지로 이동
+    await page.getByRole('button', { name: '작성' }).click();
+    await expect(page).toHaveURL(/\/ops\/notices(?:\?.*)?$/, {
+      timeout: 20_000,
+    });
+    await expect(page.getByText(PINNED_TITLE)).toBeVisible();
   });
 
   test('운영자: 목록에서 상단 고정이 먼저 나타난다', async ({

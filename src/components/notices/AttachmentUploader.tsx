@@ -14,9 +14,17 @@ import { uploadAttachmentAction } from '@/app/(dashboard)/ops/notices/actions';
 import type { NoticeAttachment } from '@/types/database';
 
 interface AttachmentUploaderProps {
-  noticeId: string;
-  /** 업로드 성공 시 부모에게 알림 (옵티미스틱 업데이트용) */
+  /**
+   * 업로드 대상 공지 ID.
+   * - string: 즉시 업로드 모드 (수정 페이지)
+   * - undefined: 지연 업로드 모드 — onFileSelected로 부모에게 파일만 전달하고
+   *   실제 업로드는 부모가 공지 생성 후 수행한다.
+   */
+  noticeId?: string;
+  /** 즉시 업로드 성공 시 부모 알림 */
   onUploaded?: (attachment: NoticeAttachment) => void;
+  /** 지연 업로드 모드에서 파일 선택 시 부모 알림 */
+  onFileSelected?: (file: File) => void;
 }
 
 const ACCEPT_ATTR = ALLOWED_ATTACHMENT_EXT.join(',');
@@ -24,11 +32,13 @@ const ACCEPT_ATTR = ALLOWED_ATTACHMENT_EXT.join(',');
 /**
  * 공지 첨부 파일 업로더.
  * 네이티브 input type="file"을 shadcn Button으로 래핑한다 (3-4-2 원칙).
- * 클라이언트 단에서 크기/확장자 Zod 검증 후 Server Action 호출.
+ * 클라이언트 단에서 크기/확장자 Zod 검증 후, noticeId 유무에 따라
+ * 즉시 업로드 or 부모에게 파일 전달(지연 업로드)을 수행한다.
  */
 export function AttachmentUploader({
   noticeId,
   onUploaded,
+  onFileSelected,
 }: AttachmentUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -40,7 +50,6 @@ export function AttachmentUploader({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 클라이언트 1차 검증
     const lowerName = file.name.toLowerCase();
     const extOk = ALLOWED_ATTACHMENT_EXT.some((ext) => lowerName.endsWith(ext));
     if (!extOk) {
@@ -55,8 +64,16 @@ export function AttachmentUploader({
     }
 
     setError(null);
-    setIsUploading(true);
 
+    // 지연 업로드 모드: 부모에게 파일만 전달
+    if (!noticeId) {
+      onFileSelected?.(file);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    // 즉시 업로드 모드 (수정 페이지)
+    setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
 
