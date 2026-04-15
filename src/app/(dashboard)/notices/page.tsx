@@ -19,6 +19,7 @@ import { listNotices } from '@/lib/services/notice';
 import { noticeSearchSchema } from '@/lib/schemas/notice';
 import { NoticeSearchBar } from './_components/NoticeSearchBar';
 import { NoticePagination } from './_components/NoticePagination';
+import { cn } from '@/lib/utils';
 
 export const metadata = {
   title: '공지사항',
@@ -104,12 +105,17 @@ export default async function NoticesPage({ searchParams }: Props) {
                 {result.items.map((notice) => (
                   <TableRow
                     key={notice.id}
-                    className="group h-12 [&>td]:align-middle [&>td]:py-2 hover:bg-muted/40 transition-colors"
+                    className={cn(
+                      'group h-12 [&>td]:align-middle [&>td]:py-2 transition-colors',
+                      notice.is_pinned
+                        ? 'bg-amber-50/60 hover:bg-amber-100/70'
+                        : 'hover:bg-muted/40',
+                    )}
                   >
                     <TableCell className="text-center">
                       {notice.is_pinned && (
                         <Pin
-                          className="mx-auto h-4 w-4 text-primary"
+                          className="mx-auto h-4 w-4 fill-amber-500 text-amber-500"
                           aria-label="상단 고정"
                         />
                       )}
@@ -117,8 +123,21 @@ export default async function NoticesPage({ searchParams }: Props) {
                     <TableCell className="text-left">
                       <Link
                         href={`/notices/${notice.id}`}
-                        className="flex items-center gap-2 font-medium text-foreground hover:underline"
+                        className={cn(
+                          'flex items-center gap-2 hover:underline',
+                          notice.is_pinned
+                            ? 'font-semibold text-foreground'
+                            : 'font-medium text-foreground',
+                        )}
                       >
+                        {notice.is_pinned && (
+                          <Badge
+                            className="shrink-0 bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-100"
+                            aria-label="상단 고정 공지"
+                          >
+                            공지
+                          </Badge>
+                        )}
                         <span className="truncate">{notice.title}</span>
                         {notice.attachment_count &&
                         notice.attachment_count > 0 ? (

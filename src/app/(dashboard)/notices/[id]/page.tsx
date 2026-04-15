@@ -11,6 +11,7 @@ import {
   incrementNoticeViewCount,
 } from '@/lib/services/notice';
 import { NoticeAttachmentDownloader } from './_components/NoticeAttachmentDownloader';
+import { NoticeDetailActions } from './_components/NoticeDetailActions';
 
 export const metadata = {
   title: '공지 상세',
@@ -69,7 +70,15 @@ export default async function NoticeDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader title={notice.title} backLink={backLink} />
+      <PageHeader
+        title={notice.title}
+        backLink={backLink}
+        actions={
+          isOps ? (
+            <NoticeDetailActions noticeId={notice.id} title={notice.title} />
+          ) : undefined
+        }
+      />
 
       <div className="rounded-lg border bg-muted/30 p-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
