@@ -253,36 +253,32 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 훈련형태 */}
-      <td className="h-0 px-3 py-3 align-top text-center">
+      <td className="px-3 py-3 align-top text-center">
         {canEdit ? (
-          <div className="flex h-full">
-            <Input
-              value={item.format}
-              onChange={(e) => onUpdate(index, { format: e.target.value })}
-              placeholder="집체/원격/혼합"
-              className="h-full w-full text-center"
-              aria-label={`연간계획 ${index + 1} 훈련형태`}
-            />
-          </div>
+          <Input
+            value={item.format}
+            onChange={(e) => onUpdate(index, { format: e.target.value })}
+            placeholder="집체/원격/혼합"
+            className="w-full text-center"
+            aria-label={`연간계획 ${index + 1} 훈련형태`}
+          />
         ) : (
           <span className="text-foreground">{item.format || '-'}</span>
         )}
       </td>
 
       {/* 훈련시간 */}
-      <td className="h-0 px-3 py-3 align-top text-right">
+      <td className="px-3 py-3 align-top text-right">
         {canEdit ? (
-          <div className="flex h-full">
-            <Input
-              type="number"
-              min={1}
-              value={item.hours || ''}
-              onChange={(e) => onUpdate(index, { hours: Number(e.target.value) || 0 })}
-              placeholder="시간"
-              className="h-full w-full text-right"
-              aria-label={`연간계획 ${index + 1} 훈련시간`}
-            />
-          </div>
+          <Input
+            type="number"
+            min={1}
+            value={item.hours || ''}
+            onChange={(e) => onUpdate(index, { hours: Number(e.target.value) || 0 })}
+            placeholder="시간"
+            className="w-full text-right"
+            aria-label={`연간계획 ${index + 1} 훈련시간`}
+          />
         ) : (
           <span className="text-foreground">{item.hours > 0 ? `${item.hours}H` : '-'}</span>
         )}

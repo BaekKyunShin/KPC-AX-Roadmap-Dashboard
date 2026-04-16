@@ -391,19 +391,17 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
           </span>
         )}
       </td>
-      <td className="h-0 px-3 py-3 text-right align-top">
+      <td className="px-3 py-3 text-right align-top">
         {canEdit ? (
-          <div className="flex h-full">
-            <Input
-              type="number"
-              min={1}
-              value={subject.hours || ''}
-              onChange={(e) => onUpdate(sIdx, { hours: Number(e.target.value) || 0 })}
-              placeholder="시간"
-              className="h-full w-full text-right"
-              aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
-            />
-          </div>
+          <Input
+            type="number"
+            min={1}
+            value={subject.hours || ''}
+            onChange={(e) => onUpdate(sIdx, { hours: Number(e.target.value) || 0 })}
+            placeholder="시간"
+            className="w-full text-right"
+            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
+          />
         ) : (
           <span className="font-medium text-foreground">
             {subject.hours > 0 ? `${subject.hours}H` : '-'}
