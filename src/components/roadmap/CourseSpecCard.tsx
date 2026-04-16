@@ -392,7 +392,7 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
           </span>
         )}
       </td>
-      <td className="h-0 px-3 py-3 text-right align-top">
+      <td className="h-0 px-3 py-3 text-center align-top">
         {canEdit ? (
           <Textarea
             rows={1}
@@ -402,7 +402,7 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
               onUpdate(sIdx, { hours: v === '' ? 0 : Number(v) });
             }}
             placeholder="시간"
-            className="h-full w-full resize-none overflow-hidden text-right"
+            className="h-full w-full resize-none overflow-hidden text-center"
             aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
           />
         ) : (

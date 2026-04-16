@@ -272,7 +272,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 훈련시간 — 박스 stretch + 텍스트 top-align, 숫자만 허용 */}
-      <td className="h-0 px-3 py-3 align-top text-right">
+      <td className="h-0 px-3 py-3 align-top text-center">
         {canEdit ? (
           <Textarea
             rows={1}
@@ -282,7 +282,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
               onUpdate(index, { hours: v === '' ? 0 : Number(v) });
             }}
             placeholder="시간"
-            className="h-full w-full resize-none overflow-hidden text-right"
+            className="h-full w-full resize-none overflow-hidden text-center"
             aria-label={`연간계획 ${index + 1} 훈련시간`}
           />
         ) : (
