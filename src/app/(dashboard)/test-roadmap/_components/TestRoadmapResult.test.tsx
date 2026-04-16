@@ -2,7 +2,28 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ─── Mocks (신규 4섹션 컴포넌트) ─────────────────────────────────────────────
+// ─── Mocks (신규 4섹션 컴포넌트 + Ⅰ장 요약 블록) ────────────────────────────
+
+vi.mock('@/components/roadmap/RoadmapOverviewSummary', () => ({
+  RoadmapOverviewSummary: ({
+    setupNecessity,
+    outcomeSummary,
+  }: {
+    setupNecessity: string;
+    outcomeSummary: { ai_competency_level: string; selected_tasks: string; main_content: string };
+  }) => {
+    const hasAny =
+      (setupNecessity && setupNecessity.trim() !== '') ||
+      (outcomeSummary.selected_tasks && outcomeSummary.selected_tasks.trim() !== '') ||
+      (outcomeSummary.main_content && outcomeSummary.main_content.trim() !== '');
+    if (!hasAny) return null;
+    return (
+      <section aria-label="로드맵 개요 (Ⅰ장)" data-testid="roadmap-overview-summary">
+        {setupNecessity}
+      </section>
+    );
+  },
+}));
 
 vi.mock('@/components/roadmap/CompetencyModelingTable', () => ({
   CompetencyModelingTable: ({
@@ -221,6 +242,32 @@ describe('TestRoadmapResult', () => {
       expect(screen.getByText('주의 사항')).toBeInTheDocument();
       expect(screen.getByText(/오류 \(1\)/)).toBeInTheDocument();
       expect(screen.getByText(/경고 \(1\)/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Ⅰ장 요약 블록 (RoadmapOverviewSummary)', () => {
+    it('setup_necessity와 outcome_summary가 비어있으면 개요 블록이 표시되지 않는다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      expect(screen.queryByTestId('roadmap-overview-summary')).not.toBeInTheDocument();
+    });
+
+    it('setup_necessity에 내용이 있으면 개요 블록이 표시된다', () => {
+      const resultWithNecessity: RoadmapResult = {
+        ...mockResult,
+        setup_necessity: 'AI 도입이 필요한 이유입니다.',
+      };
+      render(<TestRoadmapResult {...defaultProps} result={resultWithNecessity} />);
+      expect(screen.getByTestId('roadmap-overview-summary')).toBeInTheDocument();
+      expect(screen.getByText('AI 도입이 필요한 이유입니다.')).toBeInTheDocument();
+    });
+  });
+
+  describe('탭 sticky', () => {
+    it('TabsList에 sticky 클래스가 적용되어 있다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      // role="tablist" 컨테이너 래퍼에 sticky 클래스가 있어야 함
+      const tabsWrapper = document.querySelector('.sticky');
+      expect(tabsWrapper).not.toBeNull();
     });
   });
 
