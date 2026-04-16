@@ -72,25 +72,49 @@ vi.mock('@/components/roadmap/RevisionPromptToggle', () => ({
     <div data-testid="revision-prompt">{prompt}</div>
   ),
 }));
-vi.mock('@/components/roadmap/VersionHistoryList', () => ({
-  VersionHistoryList: ({
+vi.mock('@/components/roadmap/RoadmapOverviewSummary', () => ({
+  RoadmapOverviewSummary: () => (
+    <div data-testid="roadmap-overview-summary">RoadmapOverviewSummary</div>
+  ),
+}));
+vi.mock('@/components/roadmap/NcsMethodologyBox', () => ({
+  NcsMethodologyBox: ({ canEdit }: { canEdit?: boolean }) => (
+    <div data-testid="ncs-methodology-box" data-can-edit={String(canEdit)}>
+      NcsMethodologyBox
+    </div>
+  ),
+}));
+
+// VersionSelector: combobox 존재 여부만 확인 (드롭다운 열기는 VersionSelector 자체 테스트에서 검증)
+vi.mock('@/components/roadmap/VersionSelector', () => ({
+  VersionSelector: ({
     versions,
-    onVersionSelect,
+    selectedId,
+    onSelect,
   }: {
     versions: RoadmapVersionUI[];
-    selectedVersionId?: string;
-    onVersionSelect: (id: string) => void;
+    selectedId?: string;
+    onSelect: (id: string) => void;
   }) => (
-    <div data-testid="version-history-list">
+    <div data-testid="version-selector" data-selected-id={selectedId}>
       {versions.map((v) => (
         <button
           key={v.id}
           data-testid={`version-btn-${v.id}`}
-          onClick={() => onVersionSelect(v.id)}
+          onClick={() => onSelect(v.id)}
         >
           버전 {v.version_number}
         </button>
       ))}
+    </div>
+  ),
+}));
+
+// ShareToggle 모킹
+vi.mock('@/components/gallery/ShareToggle', () => ({
+  ShareToggle: ({ roadmapVersionId }: { roadmapVersionId: string; initialShared: boolean }) => (
+    <div data-testid="share-toggle" data-version-id={roadmapVersionId}>
+      ShareToggle
     </div>
   ),
 }));
@@ -171,6 +195,17 @@ describe('OpsRoadmapClient', () => {
       render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion1]} />);
       const h2 = document.querySelector('h2.text-lg');
       expect(h2?.textContent).toContain('버전 1');
+    });
+
+    it('VersionSelector가 렌더된다', () => {
+      render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion1]} />);
+      expect(screen.getByTestId('version-selector')).toBeInTheDocument();
+    });
+
+    it('RegenerateAccordion과 최종 확정 버튼이 없다', () => {
+      render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion1]} />);
+      expect(screen.queryByTestId('regenerate-accordion')).not.toBeInTheDocument();
+      expect(screen.queryByText('최종 확정')).not.toBeInTheDocument();
     });
   });
 
@@ -297,6 +332,21 @@ describe('OpsRoadmapClient', () => {
     it('revision_prompt가 null이면 RevisionPromptToggle을 표시하지 않는다', () => {
       render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion1]} />);
       expect(screen.queryByTestId('revision-prompt')).not.toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. 공유 토글 (FINAL 상태에서만)
+  // --------------------------------------------------------------------------
+  describe('공유 토글', () => {
+    it('FINAL 버전일 때 ShareToggle을 표시한다', () => {
+      render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion2]} />);
+      expect(screen.getByTestId('share-toggle')).toBeInTheDocument();
+    });
+
+    it('DRAFT 버전일 때 ShareToggle을 표시하지 않는다', () => {
+      render(<OpsRoadmapClient projectId="proj-1" initialVersions={[mockVersion1]} />);
+      expect(screen.queryByTestId('share-toggle')).not.toBeInTheDocument();
     });
   });
 });
