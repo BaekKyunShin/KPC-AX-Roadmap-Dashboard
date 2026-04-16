@@ -197,7 +197,7 @@ function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps)
             const inputId = `course-${index}-${f.key}`;
             return (
               <tr key={f.key} className="align-top">
-                <td className="w-[140px] bg-muted/50 px-3 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
+                <td className="min-w-[140px] bg-muted/50 px-3 py-3 text-left font-medium text-muted-foreground whitespace-normal break-keep">
                   <Label htmlFor={inputId} className="flex items-center gap-2 cursor-pointer">
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                     {f.label}
