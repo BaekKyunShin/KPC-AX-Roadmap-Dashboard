@@ -19,7 +19,9 @@ import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
+import { NcsMethodologyBox } from '@/components/roadmap/NcsMethodologyBox';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { RoadmapOverviewSummary } from '@/components/roadmap/RoadmapOverviewSummary';
 import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
@@ -175,6 +177,22 @@ export default function ConsultantRoadmapClient({
   const handleCourseSpecsChange = (next: RoadmapCourseSpec[]) =>
     runSectionUpdate({ course_specs: next }, { course_specs: next });
 
+  const handleNcsChange = (patch: {
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
+  }) => {
+    const optimistic: Partial<RoadmapVersionUI> = {};
+    if (patch.ncs_used !== undefined) optimistic.ncs_used = patch.ncs_used;
+    if (patch.ncs_methodology !== undefined) optimistic.ncs_methodology = patch.ncs_methodology;
+    if (patch.ncs_derivation_method !== undefined)
+      optimistic.ncs_derivation_method = patch.ncs_derivation_method;
+    runSectionUpdate(patch, optimistic);
+  };
+
+  const handleTrainingStructureMethodChange = (next: string) =>
+    runSectionUpdate({ training_structure_method: next }, { training_structure_method: next });
+
   const handleDownloadPDF = () => {
     if (selectedVersion) {
       downloadPDF(selectedVersion.id);
@@ -304,6 +322,13 @@ export default function ConsultantRoadmapClient({
                     {selectedVersion.diagnosis_summary}
                   </p>
 
+                  <div className="mt-4">
+                    <RoadmapOverviewSummary
+                      setupNecessity={selectedVersion.setup_necessity}
+                      outcomeSummary={selectedVersion.outcome_summary}
+                    />
+                  </div>
+
                   {/* FINAL 버전 공유 토글 */}
                   {selectedVersion.status === 'FINAL' && (
                     <div className="mt-4">
@@ -337,17 +362,28 @@ export default function ConsultantRoadmapClient({
                 {/* 탭 내용 */}
                 <div className="p-4 sm:p-6">
                   {activeTab === 'competencies' && (
-                    <CompetencyModelingTable
-                      competencies={selectedVersion.competencies}
-                      canEdit={canEdit}
-                      onChange={handleCompetenciesChange}
-                    />
+                    <div className="space-y-5">
+                      <CompetencyModelingTable
+                        competencies={selectedVersion.competencies}
+                        canEdit={canEdit}
+                        onChange={handleCompetenciesChange}
+                      />
+                      <NcsMethodologyBox
+                        ncsUsed={selectedVersion.ncs_used}
+                        ncsMethodology={selectedVersion.ncs_methodology}
+                        ncsDerivationMethod={selectedVersion.ncs_derivation_method}
+                        canEdit={canEdit}
+                        onChange={handleNcsChange}
+                      />
+                    </div>
                   )}
                   {activeTab === 'structure' && (
                     <RoadmapMatrix
                       competencies={selectedVersion.competencies}
                       trainingStructure={selectedVersion.training_structure}
+                      trainingStructureMethod={selectedVersion.training_structure_method}
                       canEdit={canEdit}
+                      onTrainingStructureMethodChange={handleTrainingStructureMethodChange}
                     />
                   )}
                   {activeTab === 'plan' && (

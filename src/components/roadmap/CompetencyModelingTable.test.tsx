@@ -15,8 +15,6 @@ function makeCompetency(overrides: Partial<RoadmapCompetency> = {}): RoadmapComp
     knowledge: ['통계 기초', 'SQL'],
     skills: ['Excel 활용', 'BI 도구 활용'],
     attitudes: ['데이터 기반 사고'],
-    ncs_used: false,
-    ncs_derivation_method: '현업 인터뷰',
     ...overrides,
   };
 }
@@ -51,23 +49,6 @@ describe('CompetencyModelingTable', () => {
       expect(screen.getAllByText('SQL').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Excel 활용').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('데이터 기반 사고').length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('ncs_used=false이면 "NCS 도출 방법" 라벨을 사용한다', () => {
-      render(<CompetencyModelingTable competencies={[makeCompetency({ ncs_used: false })]} />);
-      expect(screen.getAllByText('NCS 도출 방법').length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('ncs_used=true이면 "NCS 활용 방법" 라벨을 사용한다', () => {
-      render(
-        <CompetencyModelingTable
-          competencies={[
-            makeCompetency({ ncs_used: true, ncs_methodology: 'NCS 분류번호 02...' }),
-          ]}
-        />,
-      );
-      expect(screen.getAllByText('NCS 활용 방법').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('NCS 분류번호 02...').length).toBeGreaterThanOrEqual(1);
     });
 
     it('canEdit=false면 입력 필드가 없다', () => {
@@ -119,7 +100,6 @@ describe('CompetencyModelingTable', () => {
       expect(arg).toHaveLength(2);
       expect(arg[1].name).toBe('');
       expect(arg[1].knowledge).toEqual([]);
-      expect(arg[1].ncs_used).toBe(false);
     });
 
     it('삭제 버튼 클릭 시 onChange가 해당 행이 제거된 배열로 호출된다', async () => {
@@ -163,26 +143,6 @@ describe('CompetencyModelingTable', () => {
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
       const arg = lastCall[0] as RoadmapCompetency[];
       expect(arg[0].name).toBe('A');
-    });
-
-    it('NCS 스위치 토글 시 ncs_used가 반전된다', async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-      render(
-        <CompetencyModelingTable
-          competencies={[makeCompetency({ ncs_used: false })]}
-          canEdit={true}
-          onChange={onChange}
-        />,
-      );
-
-      const switches = screen.getAllByLabelText(/역량 1 NCS 활용 여부/);
-      await user.click(switches[0]);
-
-      expect(onChange).toHaveBeenCalled();
-      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-      const arg = lastCall[0] as RoadmapCompetency[];
-      expect(arg[0].ncs_used).toBe(true);
     });
 
     it('지식 textarea 변경 시 줄바꿈 기준으로 배열이 파싱되어 onChange 호출된다', async () => {

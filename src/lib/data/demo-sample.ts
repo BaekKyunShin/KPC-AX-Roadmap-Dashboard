@@ -28,8 +28,6 @@ export const SAMPLE_COMPETENCIES: RoadmapResult['competencies'] = [
       'Google Sheets 연동 워크플로우 구축',
     ],
     attitudes: ['고객 중심 사고', '지속적 개선 마인드'],
-    ncs_used: true,
-    ncs_methodology: 'NCS 02020201 "고객불만관리" 능력단위 기반 + AI 활용 요소 추가',
   },
   {
     name: 'AI 콘텐츠 제작',
@@ -37,8 +35,6 @@ export const SAMPLE_COMPETENCIES: RoadmapResult['competencies'] = [
     knowledge: ['카피라이팅 기본', '시각 콘텐츠 디자인 원칙', 'SNS 채널별 특성'],
     skills: ['ChatGPT 콘텐츠 초안 생성', 'Canva AI 디자인', 'Gamma 프레젠테이션 자동화'],
     attitudes: ['창의성', '브랜드 일관성 중시'],
-    ncs_used: false,
-    ncs_derivation_method: '사내 마케팅 업무 매뉴얼 + 업계 벤치마킹을 통해 도출',
   },
   {
     name: 'AI 기반 업무 자동화',
@@ -46,8 +42,6 @@ export const SAMPLE_COMPETENCIES: RoadmapResult['competencies'] = [
     knowledge: ['업무 프로세스 분석 기법', '노코드 자동화 플랫폼(Make, Zapier)', '데이터 구조화'],
     skills: ['반복 업무 식별 및 우선순위화', 'Make 워크플로우 설계', '보고서 자동 생성'],
     attitudes: ['분석적 사고', '자동화 마인드'],
-    ncs_used: true,
-    ncs_methodology: 'NCS 20010201 "경영기획" 능력단위의 업무 개선 요소와 결합',
   },
 ];
 
@@ -243,8 +237,22 @@ export const SAMPLE_ROADMAP_RESULT: RoadmapResult = {
     `${SAMPLE_COMPANY.name}은 ${SAMPLE_COMPANY.industry} 분야의 ${SAMPLE_COMPANY.size} 기업으로, ` +
     'CS 응답 지연·마케팅 콘텐츠 제작 부담·반복 업무 과다라는 3대 과제를 보유하고 있습니다. ' +
     '생성형 AI와 노코드 자동화를 단계적으로 도입해 업무 효율을 극대화할 수 있는 단계입니다.',
+  setup_necessity:
+    '반복 CS 업무 및 콘텐츠 제작에 투입되는 시간을 절감하고, ' +
+    '사내 AI 활용 문화를 안착시키기 위해 단계별 교육 로드맵이 필요합니다.',
+  outcome_summary: {
+    ai_competency_level: 'INTERMEDIATE',
+    selected_tasks: '고객 응대 자동화, AI 콘텐츠 제작, 반복 업무 자동화',
+    main_content: '3단계 AI 역량 체계(기초·실무·심화) + 과제 기반 학습으로 전 직원 대상 운영',
+  },
   competencies: SAMPLE_COMPETENCIES,
+  ncs_used: true,
+  ncs_methodology:
+    'NCS 02020201 "고객불만관리", NCS 20010201 "경영기획" 능력단위를 본 훈련과정 역량 정의에 매핑.',
+  ncs_derivation_method: '',
   training_structure: SAMPLE_TRAINING_STRUCTURE,
+  training_structure_method:
+    '역량별 3수준 체계(초급/중급/고급). 초급은 전 직원 공통 소양, 중급은 실무자, 고급은 리더 대상. 수준 간 선수요건을 명확히 설정.',
   annual_plan: SAMPLE_ANNUAL_PLAN,
   course_specs: SAMPLE_COURSE_SPECS,
 };

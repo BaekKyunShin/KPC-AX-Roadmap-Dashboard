@@ -23,6 +23,43 @@ export const INTERVIEW_METHOD_OPTIONS: ReadonlyArray<{ value: InterviewMethod; l
   { value: 'OTHER', label: '기타' },
 ];
 
+// Ⅰ. 개요 (산인공 양식 Ⅰ-1 수립 필요성 + Ⅰ-3 수립 주요 결과)
+// - ai_competency_level: Ⅰ-3 기업 AI 역량 수준 체크
+//   BEGINNER=초급(AI기초형) / INTERMEDIATE=중급(AI탐구형) / ADVANCED=고급(AI활용형·선도형)
+// - hrd_report_attachment_url: Ⅱ-1 HRD이음 진단 보고서 첨부 (Step 12 이후 자동 연동 예정)
+export const AI_COMPETENCY_LEVEL = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
+export type AiCompetencyLevel = z.infer<typeof AI_COMPETENCY_LEVEL>;
+
+export const AI_COMPETENCY_LEVEL_LABEL: Record<AiCompetencyLevel, string> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
+export const AI_COMPETENCY_LEVEL_SUBTITLE: Record<AiCompetencyLevel, string> = {
+  BEGINNER: 'AI기초형',
+  INTERMEDIATE: 'AI탐구형',
+  ADVANCED: 'AI활용형·선도형',
+};
+
+export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
+  value: AiCompetencyLevel;
+  label: string;
+  subtitle: string;
+}> = [
+  { value: 'BEGINNER', label: '초급', subtitle: 'AI기초형' },
+  { value: 'INTERMEDIATE', label: '중급', subtitle: 'AI탐구형' },
+  { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
+];
+
+export const overviewSchema = z.object({
+  establishment_necessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
+  ai_competency_level: AI_COMPETENCY_LEVEL,
+  selected_tasks_summary: z.string().min(1, '선정 과업을 입력하세요.'),
+  roadmap_summary: z.string().min(1, '수립 주요내용 요약을 입력하세요 (1장 이내).'),
+  hrd_report_attachment_url: z.string().url().optional(),
+});
+
 // Ⅱ-2. 기업 요구분석 (4필드 텍스트)
 export const companyRequirementsSchema = z.object({
   company_status: z.string().min(1, '기업 현황을 입력하세요.'),
@@ -66,6 +103,7 @@ export const roadmapParticipantSchema = z.object({
 
 // 전체 로드맵 인터뷰 스키마 (수동 저장용 - 엄격)
 export const roadmapInterviewSchema = z.object({
+  overview: overviewSchema,
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
   interview_round: z.number().int().min(1, '인터뷰 차수는 1 이상이어야 합니다.'),
   interview_time: z.string().min(1, '인터뷰 시간을 입력하세요.'),
@@ -81,6 +119,15 @@ export const roadmapInterviewSchema = z.object({
 
 // 자동저장용 (전 필드 optional)
 export const roadmapInterviewAutoSaveSchema = z.object({
+  overview: z
+    .object({
+      establishment_necessity: z.string().optional(),
+      ai_competency_level: AI_COMPETENCY_LEVEL.optional(),
+      selected_tasks_summary: z.string().optional(),
+      roadmap_summary: z.string().optional(),
+      hrd_report_attachment_url: z.string().optional(),
+    })
+    .optional(),
   interview_date: z.string().optional(),
   interview_round: z.number().int().optional(),
   interview_time: z.string().optional(),
@@ -124,6 +171,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
 // 타입
 // ============================================================================
 
+export type Overview = z.infer<typeof overviewSchema>;
 export type CompanyRequirements = z.infer<typeof companyRequirementsSchema>;
 export type TaskWorkflowItem = z.infer<typeof taskWorkflowItemSchema>;
 export type TrainingTarget = z.infer<typeof trainingTargetSchema>;
@@ -136,6 +184,15 @@ export type RoadmapInterviewAutoSaveInput = z.input<typeof roadmapInterviewAutoS
 // ============================================================================
 // 빈 항목 생성 헬퍼
 // ============================================================================
+
+export function createEmptyOverview(): Overview {
+  return {
+    establishment_necessity: '',
+    ai_competency_level: 'BEGINNER',
+    selected_tasks_summary: '',
+    roadmap_summary: '',
+  };
+}
 
 export function createEmptyRoadmapParticipant(): RoadmapParticipant {
   return {

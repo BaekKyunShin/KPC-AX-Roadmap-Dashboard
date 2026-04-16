@@ -7,6 +7,7 @@ import type {
   RoadmapAnnualPlan,
   RoadmapCourseSubject,
   RoadmapCourseSpec,
+  RoadmapOutcomeSummary,
   LLMRoadmapResult,
   RoadmapResult,
   ValidationResult,
@@ -17,30 +18,22 @@ describe('roadmap-types 신규 구조', () => {
     expectTypeOf<TrainingLevel>().toEqualTypeOf<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'>();
   });
 
-  it('RoadmapCompetency는 필수 필드를 보유한다', () => {
-    expectTypeOf<RoadmapCompetency>().toMatchTypeOf<{
+  it('RoadmapCompetency는 필수 필드를 보유한다 (NCS 필드는 루트로 이동되어 제거됨)', () => {
+    expectTypeOf<RoadmapCompetency>().toEqualTypeOf<{
       name: string;
       definition: string;
       knowledge: string[];
       skills: string[];
       attitudes: string[];
-      ncs_used: boolean;
     }>();
   });
 
-  it('RoadmapCompetency의 NCS 관련 필드는 선택 필드이다', () => {
-    expectTypeOf<RoadmapCompetency>().toHaveProperty('ncs_methodology');
-    expectTypeOf<RoadmapCompetency>().toHaveProperty('ncs_derivation_method');
-    const sample: RoadmapCompetency = {
-      name: '역량',
-      definition: '정의',
-      knowledge: [],
-      skills: [],
-      attitudes: [],
-      ncs_used: true,
-    };
-    expectTypeOf(sample.ncs_methodology).toEqualTypeOf<string | undefined>();
-    expectTypeOf(sample.ncs_derivation_method).toEqualTypeOf<string | undefined>();
+  it('RoadmapOutcomeSummary는 3필드 (Ⅰ-3 수립 주요 결과)', () => {
+    expectTypeOf<RoadmapOutcomeSummary>().toMatchTypeOf<{
+      ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+      selected_tasks: string;
+      main_content: string;
+    }>();
   });
 
   it('RoadmapTrainingStructureItem은 훈련수준·내용·대상·방법·목표를 보유한다', () => {
@@ -91,11 +84,17 @@ describe('roadmap-types 신규 구조', () => {
     }>();
   });
 
-  it('LLMRoadmapResult는 4섹션을 모두 보유한다', () => {
+  it('LLMRoadmapResult는 4섹션 + 신규 Ⅰ·Ⅲ 필드를 모두 보유한다', () => {
     expectTypeOf<LLMRoadmapResult>().toMatchTypeOf<{
       diagnosis_summary: string;
+      setup_necessity: string;
+      outcome_summary: RoadmapOutcomeSummary;
       competencies: RoadmapCompetency[];
+      ncs_used: boolean;
+      ncs_methodology: string;
+      ncs_derivation_method: string;
       training_structure: RoadmapTrainingStructureItem[];
+      training_structure_method: string;
       annual_plan: RoadmapAnnualPlan;
       course_specs: RoadmapCourseSpec[];
     }>();
@@ -116,6 +115,12 @@ describe('roadmap-types 신규 구조', () => {
   it('샘플 RoadmapResult 객체는 타입 검사를 통과한다', () => {
     const sample: RoadmapResult = {
       diagnosis_summary: '진단',
+      setup_necessity: '수립 필요성',
+      outcome_summary: {
+        ai_competency_level: 'INTERMEDIATE',
+        selected_tasks: '선정 과업',
+        main_content: '수립 주요내용',
+      },
       competencies: [
         {
           name: '데이터분석',
@@ -123,10 +128,11 @@ describe('roadmap-types 신규 구조', () => {
           knowledge: ['K1'],
           skills: ['S1'],
           attitudes: ['A1'],
-          ncs_used: true,
-          ncs_methodology: 'NCS 활용 방법',
         },
       ],
+      ncs_used: true,
+      ncs_methodology: 'NCS 활용 방법',
+      ncs_derivation_method: '',
       training_structure: [
         {
           competency_name: '데이터분석',
@@ -137,6 +143,7 @@ describe('roadmap-types 신규 구조', () => {
           goal: '목표',
         },
       ],
+      training_structure_method: '체계 수립 방법',
       annual_plan: {
         items: [
           {

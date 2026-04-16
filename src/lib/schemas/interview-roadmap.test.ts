@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  AI_COMPETENCY_LEVEL,
   companyRequirementsSchema,
+  createEmptyOverview,
+  overviewSchema,
   taskWorkflowItemSchema,
   trainingTargetSchema,
   analysisNotesSchema,
@@ -10,6 +13,13 @@ import {
   createEmptyTrainingTarget,
   mapInterviewRowToRoadmapInterview,
 } from './interview-roadmap';
+
+const baseOverview = {
+  establishment_necessity: 'AI 훈련 로드맵 수립 필요성',
+  ai_competency_level: 'INTERMEDIATE' as const,
+  selected_tasks_summary: '품질검사 자동화',
+  roadmap_summary: '전사 AI 인력 양성 3단계',
+};
 
 describe('companyRequirementsSchema', () => {
   it('4개 필드가 모두 필수 (산인공 Ⅱ-2)', () => {
@@ -91,8 +101,68 @@ describe('analysisNotesSchema', () => {
   });
 });
 
+describe('AI_COMPETENCY_LEVEL', () => {
+  it('BEGINNER | INTERMEDIATE | ADVANCED enum 허용', () => {
+    expect(AI_COMPETENCY_LEVEL.safeParse('BEGINNER').success).toBe(true);
+    expect(AI_COMPETENCY_LEVEL.safeParse('INTERMEDIATE').success).toBe(true);
+    expect(AI_COMPETENCY_LEVEL.safeParse('ADVANCED').success).toBe(true);
+    expect(AI_COMPETENCY_LEVEL.safeParse('EXPERT').success).toBe(false);
+    expect(AI_COMPETENCY_LEVEL.safeParse('').success).toBe(false);
+  });
+});
+
+describe('overviewSchema', () => {
+  it('4개 텍스트 필드가 필수 (산인공 Ⅰ-1·Ⅰ-3)', () => {
+    expect(overviewSchema.safeParse(baseOverview).success).toBe(true);
+
+    for (const key of [
+      'establishment_necessity',
+      'selected_tasks_summary',
+      'roadmap_summary',
+    ] as const) {
+      expect(overviewSchema.safeParse({ ...baseOverview, [key]: '' }).success).toBe(false);
+    }
+  });
+
+  it('ai_competency_level enum 외 값 거부', () => {
+    expect(
+      overviewSchema.safeParse({ ...baseOverview, ai_competency_level: 'LEVEL_1' }).success
+    ).toBe(false);
+  });
+
+  it('hrd_report_attachment_url은 선택이며 URL 형식만 허용', () => {
+    expect(
+      overviewSchema.safeParse({
+        ...baseOverview,
+        hrd_report_attachment_url: 'https://hrd4u.or.kr/report/123',
+      }).success
+    ).toBe(true);
+
+    expect(
+      overviewSchema.safeParse({
+        ...baseOverview,
+        hrd_report_attachment_url: 'not-a-url',
+      }).success
+    ).toBe(false);
+
+    expect(overviewSchema.safeParse(baseOverview).success).toBe(true);
+  });
+});
+
+describe('createEmptyOverview', () => {
+  it('기본값은 BEGINNER + 빈 텍스트', () => {
+    const empty = createEmptyOverview();
+    expect(empty.ai_competency_level).toBe('BEGINNER');
+    expect(empty.establishment_necessity).toBe('');
+    expect(empty.selected_tasks_summary).toBe('');
+    expect(empty.roadmap_summary).toBe('');
+    expect(empty.hrd_report_attachment_url).toBeUndefined();
+  });
+});
+
 describe('roadmapInterviewSchema', () => {
   const baseValid = {
+    overview: baseOverview,
     interview_date: '2026-04-16',
     interview_round: 1,
     interview_time: '오전 10:00',
@@ -145,6 +215,11 @@ describe('roadmapInterviewSchema', () => {
   it('훈련대상 최소 1개 필요', () => {
     const invalid = { ...baseValid, training_targets: [] };
     expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('overview 섹션 필수 (없으면 거부)', () => {
+    const { overview: _overview, ...withoutOverview } = baseValid;
+    expect(roadmapInterviewSchema.safeParse(withoutOverview).success).toBe(false);
   });
 });
 

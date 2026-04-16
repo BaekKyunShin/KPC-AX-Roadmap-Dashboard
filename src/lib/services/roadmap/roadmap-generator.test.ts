@@ -53,6 +53,12 @@ import { buildUserPrompt } from './roadmap-prompts';
 
 const MOCK_LLM_RESULT: RoadmapResult = {
   diagnosis_summary: '테스트 진단 요약',
+  setup_necessity: '수립 필요성 복사본',
+  outcome_summary: {
+    ai_competency_level: 'INTERMEDIATE',
+    selected_tasks: '데이터 분석 자동화',
+    main_content: '3단계 역량 체계 구축',
+  },
   competencies: [
     {
       name: '데이터 분석 역량',
@@ -60,10 +66,11 @@ const MOCK_LLM_RESULT: RoadmapResult = {
       knowledge: ['통계 기초'],
       skills: ['엑셀 피벗'],
       attitudes: ['객관성'],
-      ncs_used: false,
-      ncs_derivation_method: '현장 인터뷰 기반 도출',
     },
   ],
+  ncs_used: false,
+  ncs_methodology: '',
+  ncs_derivation_method: '현장 인터뷰 기반 도출',
   training_structure: [
     {
       competency_name: '데이터 분석 역량',
@@ -74,6 +81,7 @@ const MOCK_LLM_RESULT: RoadmapResult = {
       goal: '기초 통계 이해',
     },
   ],
+  training_structure_method: '역량 기준 3수준 체계 수립',
   annual_plan: {
     items: [
       {

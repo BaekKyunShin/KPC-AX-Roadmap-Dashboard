@@ -5,10 +5,8 @@ import type { RoadmapCompetency } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 // ============================================================================
@@ -27,9 +25,6 @@ const EMPTY_COMPETENCY: RoadmapCompetency = {
   knowledge: [],
   skills: [],
   attitudes: [],
-  ncs_used: false,
-  ncs_methodology: '',
-  ncs_derivation_method: '',
 };
 
 // ============================================================================
@@ -48,17 +43,15 @@ function splitKsa(text: string): string[] {
 }
 
 // ============================================================================
-// 헤더 구성
+// 헤더 구성 — 산인공 양식 Ⅲ-1: 역량명·역량 정의(수행준거)·지식(학술, 업무지식)·기술(기능)·태도
 // ============================================================================
 
 const COLUMN_HEADERS = [
-  { key: 'name', label: '역량명', width: 'w-[140px]' },
-  { key: 'definition', label: '역량 정의', width: 'w-[220px]' },
-  { key: 'knowledge', label: '지식(K)', width: 'w-[180px]' },
-  { key: 'skills', label: '기술(S)', width: 'w-[180px]' },
-  { key: 'attitudes', label: '태도(A)', width: 'w-[180px]' },
-  { key: 'ncs_used', label: 'NCS 활용', width: 'w-[90px]' },
-  { key: 'ncs_method', label: '도출/활용 방법', width: 'w-[220px]' },
+  { key: 'name', label: '역량명', subtitle: null, width: 'w-[140px]' },
+  { key: 'definition', label: '역량 정의', subtitle: '(수행준거)', width: 'w-[220px]' },
+  { key: 'knowledge', label: '지식', subtitle: '(학술, 업무지식)', width: 'w-[200px]' },
+  { key: 'skills', label: '기술', subtitle: '(기능)', width: 'w-[180px]' },
+  { key: 'attitudes', label: '태도', subtitle: null, width: 'w-[180px]' },
 ] as const;
 
 // ============================================================================
@@ -113,7 +106,12 @@ export function CompetencyModelingTable({
                   className={`${col.width} px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
                   scope="col"
                 >
-                  {col.label}
+                  <span>{col.label}</span>
+                  {col.subtitle && (
+                    <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
+                      {col.subtitle}
+                    </span>
+                  )}
                 </th>
               ))}
               {canEdit && (
@@ -201,22 +199,6 @@ interface RowProps {
 }
 
 function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps) {
-  const methodLabel = competency.ncs_used ? 'NCS 활용 방법' : 'NCS 도출 방법';
-  const methodValue = competency.ncs_used
-    ? (competency.ncs_methodology ?? '')
-    : (competency.ncs_derivation_method ?? '');
-  const methodPlaceholder = competency.ncs_used
-    ? 'NCS 활용 방법을 입력하세요'
-    : 'NCS 외 도출 방법을 입력하세요';
-
-  const handleMethodChange = (value: string) => {
-    if (competency.ncs_used) {
-      onUpdate(index, { ncs_methodology: value });
-    } else {
-      onUpdate(index, { ncs_derivation_method: value });
-    }
-  };
-
   return (
     <tr className="align-top">
       {/* 역량명 */}
@@ -233,39 +215,39 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
         )}
       </td>
 
-      {/* 정의 */}
+      {/* 정의(수행준거) */}
       <td className="px-3 py-3">
         {canEdit ? (
           <Textarea
             value={competency.definition}
             onChange={(e) => onUpdate(index, { definition: e.target.value })}
             rows={2}
-            placeholder="역량 정의"
-            aria-label={`역량 ${index + 1} 정의`}
+            placeholder="역량 정의 (수행준거)"
+            aria-label={`역량 ${index + 1} 정의 (수행준거)`}
           />
         ) : (
           <span className="text-muted-foreground">{competency.definition || '-'}</span>
         )}
       </td>
 
-      {/* 지식 */}
+      {/* 지식 (학술, 업무지식) */}
       <td className="px-3 py-3">
         <KsaCell
           index={index}
           field="knowledge"
-          label="지식"
+          label="지식 (학술, 업무지식)"
           values={competency.knowledge}
           canEdit={canEdit}
           onUpdate={onUpdate}
         />
       </td>
 
-      {/* 기술 */}
+      {/* 기술 (기능) */}
       <td className="px-3 py-3">
         <KsaCell
           index={index}
           field="skills"
-          label="기술"
+          label="기술 (기능)"
           values={competency.skills}
           canEdit={canEdit}
           onUpdate={onUpdate}
@@ -282,50 +264,6 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
           canEdit={canEdit}
           onUpdate={onUpdate}
         />
-      </td>
-
-      {/* NCS 활용 여부 */}
-      <td className="px-3 py-3">
-        {canEdit ? (
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`ncs-used-${index}`}
-              checked={competency.ncs_used}
-              onCheckedChange={(checked) => onUpdate(index, { ncs_used: checked })}
-              aria-label={`역량 ${index + 1} NCS 활용 여부`}
-            />
-            <Label htmlFor={`ncs-used-${index}`} className="text-xs text-muted-foreground">
-              {competency.ncs_used ? '활용' : '미활용'}
-            </Label>
-          </div>
-        ) : (
-          <Badge variant="outline" className={competency.ncs_used ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200'}>
-            {competency.ncs_used ? '활용' : '미활용'}
-          </Badge>
-        )}
-      </td>
-
-      {/* 도출/활용 방법 */}
-      <td className="px-3 py-3">
-        {canEdit ? (
-          <div className="space-y-1">
-            <Label htmlFor={`ncs-method-${index}`} className="text-xs text-muted-foreground">
-              {methodLabel}
-            </Label>
-            <Textarea
-              id={`ncs-method-${index}`}
-              value={methodValue}
-              onChange={(e) => handleMethodChange(e.target.value)}
-              rows={2}
-              placeholder={methodPlaceholder}
-            />
-          </div>
-        ) : (
-          <div>
-            <div className="text-xs text-muted-foreground mb-0.5">{methodLabel}</div>
-            <div className="text-foreground">{methodValue || '-'}</div>
-          </div>
-        )}
       </td>
 
       {/* 액션 */}
@@ -393,22 +331,6 @@ function KsaCell({ index, field, label, values, canEdit, onUpdate }: KsaCellProp
 // ============================================================================
 
 function MobileCard({ index, competency, canEdit, onUpdate, onRemove }: RowProps) {
-  const methodLabel = competency.ncs_used ? 'NCS 활용 방법' : 'NCS 도출 방법';
-  const methodValue = competency.ncs_used
-    ? (competency.ncs_methodology ?? '')
-    : (competency.ncs_derivation_method ?? '');
-  const methodPlaceholder = competency.ncs_used
-    ? 'NCS 활용 방법을 입력하세요'
-    : 'NCS 외 도출 방법을 입력하세요';
-
-  const handleMethodChange = (value: string) => {
-    if (competency.ncs_used) {
-      onUpdate(index, { ncs_methodology: value });
-    } else {
-      onUpdate(index, { ncs_derivation_method: value });
-    }
-  };
-
   return (
     <Card className="py-4">
       <CardContent className="space-y-3">
@@ -440,7 +362,7 @@ function MobileCard({ index, competency, canEdit, onUpdate, onRemove }: RowProps
           )}
         </Field>
 
-        <Field label="정의" htmlFor={`m-def-${index}`}>
+        <Field label="정의 (수행준거)" htmlFor={`m-def-${index}`}>
           {canEdit ? (
             <Textarea
               id={`m-def-${index}`}
@@ -453,29 +375,29 @@ function MobileCard({ index, competency, canEdit, onUpdate, onRemove }: RowProps
           )}
         </Field>
 
-        <Field label="지식(K)" htmlFor={`m-k-${index}`}>
+        <Field label="지식 (학술, 업무지식)" htmlFor={`m-k-${index}`}>
           <KsaCell
             index={index}
             field="knowledge"
-            label="지식"
+            label="지식 (학술, 업무지식)"
             values={competency.knowledge}
             canEdit={canEdit}
             onUpdate={onUpdate}
           />
         </Field>
 
-        <Field label="기술(S)" htmlFor={`m-s-${index}`}>
+        <Field label="기술 (기능)" htmlFor={`m-s-${index}`}>
           <KsaCell
             index={index}
             field="skills"
-            label="기술"
+            label="기술 (기능)"
             values={competency.skills}
             canEdit={canEdit}
             onUpdate={onUpdate}
           />
         </Field>
 
-        <Field label="태도(A)" htmlFor={`m-a-${index}`}>
+        <Field label="태도" htmlFor={`m-a-${index}`}>
           <KsaCell
             index={index}
             field="attitudes"
@@ -484,39 +406,6 @@ function MobileCard({ index, competency, canEdit, onUpdate, onRemove }: RowProps
             canEdit={canEdit}
             onUpdate={onUpdate}
           />
-        </Field>
-
-        <Field label="NCS 활용 여부" htmlFor={`m-ncs-${index}`}>
-          {canEdit ? (
-            <div className="flex items-center gap-2">
-              <Switch
-                id={`m-ncs-${index}`}
-                checked={competency.ncs_used}
-                onCheckedChange={(checked) => onUpdate(index, { ncs_used: checked })}
-              />
-              <span className="text-xs text-muted-foreground">
-                {competency.ncs_used ? '활용' : '미활용'}
-              </span>
-            </div>
-          ) : (
-            <Badge variant="outline" className={competency.ncs_used ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-600 border-gray-200'}>
-              {competency.ncs_used ? '활용' : '미활용'}
-            </Badge>
-          )}
-        </Field>
-
-        <Field label={methodLabel} htmlFor={`m-method-${index}`}>
-          {canEdit ? (
-            <Textarea
-              id={`m-method-${index}`}
-              value={methodValue}
-              onChange={(e) => handleMethodChange(e.target.value)}
-              rows={2}
-              placeholder={methodPlaceholder}
-            />
-          ) : (
-            <span className="text-foreground">{methodValue || '-'}</span>
-          )}
         </Field>
       </CardContent>
     </Card>

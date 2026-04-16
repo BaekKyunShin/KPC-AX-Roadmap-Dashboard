@@ -66,8 +66,6 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
         knowledge: ['통계 이론', 'SQL'],
         skills: ['엑셀', '파이썬'],
         attitudes: ['객관적 사고'],
-        ncs_used: true,
-        ncs_methodology: 'NCS 빅데이터 분석 L4',
       },
       {
         name: 'AI 활용 역량',
@@ -75,8 +73,6 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
         knowledge: ['프롬프트 엔지니어링'],
         skills: ['ChatGPT 활용'],
         attitudes: ['적극성'],
-        ncs_used: false,
-        ncs_derivation_method: '현장 인터뷰 기반 도출',
       },
     ],
     trainingStructure: [

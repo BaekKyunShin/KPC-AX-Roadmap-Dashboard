@@ -62,6 +62,8 @@ import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 
 const mockResult: RoadmapResult = {
   diagnosis_summary: '제조업 AI 도입 초기 단계 기업입니다.',
+  setup_necessity: '',
+  outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
   competencies: [
     {
       name: '데이터 분석',
@@ -69,9 +71,11 @@ const mockResult: RoadmapResult = {
       knowledge: ['통계'],
       skills: ['SQL'],
       attitudes: ['호기심'],
-      ncs_used: false,
     },
   ],
+  ncs_used: false,
+  ncs_methodology: '',
+  ncs_derivation_method: '',
   training_structure: [
     {
       competency_name: '데이터 분석',
@@ -82,6 +86,7 @@ const mockResult: RoadmapResult = {
       goal: '기초 통계 이해',
     },
   ],
+  training_structure_method: '',
   annual_plan: {
     items: [
       {

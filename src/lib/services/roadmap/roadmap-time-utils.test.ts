@@ -13,8 +13,14 @@ import type { LLMRoadmapResult } from './roadmap-types';
 function makeResult(overrides: Partial<LLMRoadmapResult> = {}): LLMRoadmapResult {
   return {
     diagnosis_summary: '진단',
+    setup_necessity: '',
+    outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
     competencies: [],
+    ncs_used: false,
+    ncs_methodology: '',
+    ncs_derivation_method: '',
     training_structure: [],
+    training_structure_method: '',
     annual_plan: {
       items: [],
       usage_plan: '활용방안',
@@ -190,8 +196,6 @@ describe('normalizeRoadmapHours', () => {
           knowledge: [],
           skills: [],
           attitudes: [],
-          ncs_used: false,
-          ncs_derivation_method: '인터뷰',
         },
       ],
       training_structure: [

@@ -36,7 +36,13 @@ export interface RoadmapExportData {
   status: string;
   diagnosisSummary: string;
   competencies: RoadmapCompetency[];
+  /** 표 전체 단위 NCS 활용 여부 (양식 Ⅲ-1) */
+  ncsUsed?: boolean;
+  ncsMethodology?: string;
+  ncsDerivationMethod?: string;
   trainingStructure: RoadmapTrainingStructureItem[];
+  /** Ⅲ-2 훈련체계 수립 방법 */
+  trainingStructureMethod?: string;
   annualPlan: RoadmapAnnualPlan;
   courseSpecs: RoadmapCourseSpec[];
   createdAt: string;
@@ -76,7 +82,11 @@ export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
   // ======================================================================
   doc.addPage();
   ctx.y = LAYOUT.MARGIN + 5;
-  drawCompetencySection(ctx, data.competencies, autoTable, tableBase);
+  drawCompetencySection(ctx, data.competencies, autoTable, tableBase, {
+    ncs_used: data.ncsUsed ?? false,
+    ncs_methodology: data.ncsMethodology ?? '',
+    ncs_derivation_method: data.ncsDerivationMethod ?? '',
+  });
 
   // ======================================================================
   // 페이지 3: Ⅲ-2. 훈련체계도

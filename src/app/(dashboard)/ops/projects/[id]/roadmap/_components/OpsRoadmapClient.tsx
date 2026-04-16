@@ -8,7 +8,9 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
+import { NcsMethodologyBox } from '@/components/roadmap/NcsMethodologyBox';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { RoadmapOverviewSummary } from '@/components/roadmap/RoadmapOverviewSummary';
 import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
@@ -118,6 +120,13 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
 
                 {/* 진단 요약 */}
                 <p className="mt-3 text-sm text-gray-600">{selectedVersion.diagnosis_summary}</p>
+
+                <div className="mt-4">
+                  <RoadmapOverviewSummary
+                    setupNecessity={selectedVersion.setup_necessity}
+                    outcomeSummary={selectedVersion.outcome_summary}
+                  />
+                </div>
               </div>
 
               {/* 탭 */}
@@ -142,15 +151,24 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
               {/* 탭 내용 (읽기 전용) */}
               <div className="p-4 sm:p-6">
                 {activeTab === 'competencies' && (
-                  <CompetencyModelingTable
-                    competencies={selectedVersion.competencies}
-                    canEdit={false}
-                  />
+                  <div className="space-y-5">
+                    <CompetencyModelingTable
+                      competencies={selectedVersion.competencies}
+                      canEdit={false}
+                    />
+                    <NcsMethodologyBox
+                      ncsUsed={selectedVersion.ncs_used}
+                      ncsMethodology={selectedVersion.ncs_methodology}
+                      ncsDerivationMethod={selectedVersion.ncs_derivation_method}
+                      canEdit={false}
+                    />
+                  </div>
                 )}
                 {activeTab === 'structure' && (
                   <RoadmapMatrix
                     competencies={selectedVersion.competencies}
                     trainingStructure={selectedVersion.training_structure}
+                    trainingStructureMethod={selectedVersion.training_structure_method}
                     canEdit={false}
                   />
                 )}

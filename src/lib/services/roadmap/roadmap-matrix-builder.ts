@@ -90,3 +90,70 @@ export function buildTrainingStructureMatrix(
 
   return orderedNames.map((name) => rowMap.get(name)!);
 }
+
+// ============================================================================
+// 출력 전용 — 양식 1번 Ⅲ-2 훈련체계도 "단순 6열 표" 변환 함수 (HWPX/PDF 대응)
+// ============================================================================
+
+const LEVEL_LABEL: Record<TrainingLevel, '초급' | '중급' | '고급'> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
+const LEVEL_ORDER: Record<TrainingLevel, number> = {
+  BEGINNER: 0,
+  INTERMEDIATE: 1,
+  ADVANCED: 2,
+};
+
+/** 단순 6열 표의 한 행 (역량명·훈련수준·훈련내용·훈련대상·훈련방법·훈련목표). */
+export interface TrainingStructureTableRow {
+  competency_name: string;
+  level_label: '초급' | '중급' | '고급';
+  content: string;
+  target_audience: string;
+  method: string;
+  goal: string;
+}
+
+/**
+ * 매트릭스(역량×수준) → 단순 6열 표 변환. 한 역량의 여러 수준이 여러 행으로 전개된다.
+ * - competencies 순서 우선, 그 뒤 미참조 역량은 등장 순서대로 추가
+ * - 각 역량 내부에서는 초/중/고 순서로 정렬
+ * - 같은 (역량, 수준) 셀에 여러 항목이 있으면 여러 행으로 전개
+ */
+export function buildTrainingStructureTable(
+  competencies: RoadmapCompetency[],
+  structure: RoadmapTrainingStructureItem[],
+): TrainingStructureTableRow[] {
+  if (!structure || structure.length === 0) return [];
+
+  const competencyOrder = new Map<string, number>();
+  competencies?.forEach((c, i) => {
+    if (!competencyOrder.has(c.name)) competencyOrder.set(c.name, i);
+  });
+
+  let unknownIndex = competencyOrder.size;
+  for (const item of structure) {
+    if (!competencyOrder.has(item.competency_name)) {
+      competencyOrder.set(item.competency_name, unknownIndex++);
+    }
+  }
+
+  return [...structure]
+    .sort((a, b) => {
+      const order = (competencyOrder.get(a.competency_name) ?? 0) -
+        (competencyOrder.get(b.competency_name) ?? 0);
+      if (order !== 0) return order;
+      return LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
+    })
+    .map((item) => ({
+      competency_name: item.competency_name,
+      level_label: LEVEL_LABEL[item.level],
+      content: item.content,
+      target_audience: item.target_audience,
+      method: item.method,
+      goal: item.goal,
+    }));
+}

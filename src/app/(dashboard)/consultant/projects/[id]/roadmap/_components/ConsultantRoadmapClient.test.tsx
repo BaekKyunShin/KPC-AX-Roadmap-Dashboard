@@ -254,6 +254,8 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
     version_number: 1,
     status: 'DRAFT',
     diagnosis_summary: '진단 요약 내용입니다.',
+    setup_necessity: '',
+    outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
     competencies: [
       {
         name: '역량A',
@@ -261,9 +263,11 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
         knowledge: [],
         skills: [],
         attitudes: [],
-        ncs_used: false,
       },
     ],
+    ncs_used: false,
+    ncs_methodology: '',
+    ncs_derivation_method: '',
     training_structure: [
       {
         competency_name: '역량A',
@@ -274,6 +278,7 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
         goal: '목표',
       },
     ],
+    training_structure_method: '',
     annual_plan: {
       items: [
         {

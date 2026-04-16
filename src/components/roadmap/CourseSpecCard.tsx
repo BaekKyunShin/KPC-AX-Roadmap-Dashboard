@@ -284,7 +284,10 @@ function SubjectsSection({
                   scope="col"
                   className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 >
-                  세부내용
+                  <span>세부 내용</span>
+                  <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
+                    (단원, 과제명)
+                  </span>
                 </th>
                 <th
                   scope="col"
@@ -323,8 +326,8 @@ function SubjectsSection({
                         value={subject.details}
                         onChange={(e) => onUpdate(sIdx, { details: e.target.value })}
                         rows={2}
-                        placeholder="세부내용"
-                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 세부내용`}
+                        placeholder="세부 내용 (단원, 과제명)"
+                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}
                       />
                     ) : (
                       <span className="text-muted-foreground break-keep whitespace-pre-wrap">

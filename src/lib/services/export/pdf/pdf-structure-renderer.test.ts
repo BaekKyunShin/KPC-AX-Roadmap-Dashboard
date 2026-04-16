@@ -54,8 +54,6 @@ describe('drawStructureSection', () => {
         knowledge: [],
         skills: [],
         attitudes: [],
-        ncs_used: false,
-        ncs_derivation_method: '-',
       },
     ];
     const struct: RoadmapTrainingStructureItem[] = [
@@ -105,8 +103,6 @@ describe('drawStructureSection', () => {
         knowledge: [],
         skills: [],
         attitudes: [],
-        ncs_used: false,
-        ncs_derivation_method: '-',
       },
     ];
     const struct: RoadmapTrainingStructureItem[] = [

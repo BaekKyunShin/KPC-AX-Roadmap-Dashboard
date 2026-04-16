@@ -6,6 +6,7 @@
 export type {
   TrainingLevel,
   RoadmapCompetency,
+  RoadmapOutcomeSummary,
   RoadmapTrainingStructureItem,
   RoadmapAnnualPlanItem,
   RoadmapAnnualPlan,
@@ -23,10 +24,14 @@ export { validateRoadmap } from './roadmap-validator';
 export { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
 
 // 훈련체계도 매트릭스 빌더
-export { buildTrainingStructureMatrix } from './roadmap-matrix-builder';
+export {
+  buildTrainingStructureMatrix,
+  buildTrainingStructureTable,
+} from './roadmap-matrix-builder';
 export type {
   TrainingStructureMatrixCell,
   TrainingStructureMatrixRow,
+  TrainingStructureTableRow,
 } from './roadmap-matrix-builder';
 
 // 시간 유틸

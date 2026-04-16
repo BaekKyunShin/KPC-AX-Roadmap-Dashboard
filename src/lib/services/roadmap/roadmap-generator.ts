@@ -230,6 +230,15 @@ export interface TestRoadmapInput {
   company_size: string;
   customer_requirements?: string;
 
+  // Ⅰ 장 개요 (선택 — 없으면 LLM이 재창작하지 않고 빈 값 유지)
+  overview?: {
+    establishment_necessity: string;
+    ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    selected_tasks_summary: string;
+    roadmap_summary: string;
+    hrd_report_attachment_url?: string;
+  };
+
   // 인터뷰 헤더
   interview_date: string;
   interview_round?: number;
@@ -283,6 +292,12 @@ function buildTestProjectData(input: TestRoadmapInput) {
 /** 테스트용 인터뷰 데이터 구성 (buildUserPrompt가 요구하는 필드를 그대로 노출) */
 function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsights) {
   return {
+    overview: input.overview ?? {
+      establishment_necessity: '',
+      ai_competency_level: 'BEGINNER',
+      selected_tasks_summary: '',
+      roadmap_summary: '',
+    },
     interview_date: input.interview_date,
     interview_round: input.interview_round ?? 1,
     interview_time: input.interview_time ?? '',
