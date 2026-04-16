@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { CompetencyModelingTable } from './CompetencyModelingTable';
@@ -165,6 +165,62 @@ describe('CompetencyModelingTable', () => {
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
       const arg = lastCall[0] as RoadmapCompetency[];
       expect(arg[0].knowledge).toEqual(['A', 'B']);
+    });
+  });
+});
+
+describe('2단 헤더 (양식 1번 Ⅲ-1)', () => {
+  it('역량 데이터 있을 때 상위 "필요 지식·기술·태도" 헤더가 colspan=3', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    const groupHeader = screen.getByRole('columnheader', { name: /필요 지식.*기술.*태도/ });
+    expect(groupHeader).toHaveAttribute('colspan', '3');
+  });
+
+  it('하위 지식·기술·태도 헤더', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    // 콘테너를 thead 스코프로 한정 (중복 text 방지)
+    const thead = document.querySelector('thead')!;
+    expect(within(thead).getByText(/^지식/)).toBeInTheDocument();
+    expect(within(thead).getByText(/^기술/)).toBeInTheDocument();
+    expect(within(thead).getByText(/^태도/)).toBeInTheDocument();
+  });
+
+  it('역량명·정의 헤더는 rowspan=2', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    expect(screen.getByRole('columnheader', { name: '역량명' })).toHaveAttribute('rowspan', '2');
+    const defHeader = screen.getByRole('columnheader', { name: /역량 정의/ });
+    expect(defHeader).toHaveAttribute('rowspan', '2');
+  });
+});
+
+describe('셀 균일 높이 + 자동 줄바꿈', () => {
+  it('각 td에 break-words 또는 break-keep 클래스 적용', () => {
+    const { container } = render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    const tds = container.querySelectorAll('tbody td');
+    expect(tds.length).toBeGreaterThan(0);
+    tds.forEach((td) => {
+      const cls = td.className;
+      expect(cls).toMatch(/break-words|break-keep|align-top/);
     });
   });
 });

@@ -43,16 +43,8 @@ function splitKsa(text: string): string[] {
 }
 
 // ============================================================================
-// 헤더 구성 — 산인공 양식 Ⅲ-1: 역량명·역량 정의(수행준거)·지식(학술, 업무지식)·기술(기능)·태도
+// 헤더 구성 — 산인공 양식 Ⅲ-1: 2단 헤더 구조
 // ============================================================================
-
-const COLUMN_HEADERS = [
-  { key: 'name', label: '역량명', subtitle: null, width: 'w-[140px]' },
-  { key: 'definition', label: '역량 정의', subtitle: '(수행준거)', width: 'w-[220px]' },
-  { key: 'knowledge', label: '지식', subtitle: '(학술, 업무지식)', width: 'w-[200px]' },
-  { key: 'skills', label: '기술', subtitle: '(기능)', width: 'w-[180px]' },
-  { key: 'attitudes', label: '태도', subtitle: null, width: 'w-[180px]' },
-] as const;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -100,32 +92,72 @@ export function CompetencyModelingTable({
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {COLUMN_HEADERS.map((col) => (
+              <th
+                rowSpan={2}
+                className="w-[12%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
+                scope="col"
+              >
+                역량명
+              </th>
+              <th
+                rowSpan={2}
+                className="w-[26%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
+                scope="col"
+              >
+                <span>역량 정의</span>
+                <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
+                  (수행준거)
+                </span>
+              </th>
+              <th
+                colSpan={3}
+                className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border"
+                scope="colgroup"
+              >
+                필요 지식·기술·태도
+              </th>
+              {canEdit && (
                 <th
-                  key={col.key}
-                  className={`${col.width} px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
+                  rowSpan={2}
+                  className="w-[60px] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase align-middle"
                   scope="col"
                 >
-                  <span>{col.label}</span>
-                  {col.subtitle && (
-                    <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
-                      {col.subtitle}
-                    </span>
-                  )}
-                </th>
-              ))}
-              {canEdit && (
-                <th className="w-[60px] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase" scope="col">
                   액션
                 </th>
               )}
+            </tr>
+            <tr>
+              <th
+                className="w-[20%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                scope="col"
+              >
+                <span>지식</span>
+                <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
+                  (학술, 업무지식)
+                </span>
+              </th>
+              <th
+                className="w-[20%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                scope="col"
+              >
+                <span>기술</span>
+                <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
+                  (기능)
+                </span>
+              </th>
+              <th
+                className="w-[22%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                scope="col"
+              >
+                태도
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border bg-card">
             {isEmpty ? (
               <tr>
                 <td
-                  colSpan={canEdit ? COLUMN_HEADERS.length + 1 : COLUMN_HEADERS.length}
+                  colSpan={canEdit ? 6 : 5}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                   역량을 추가하려면 아래 &quot;+ 역량 추가&quot; 버튼을 클릭하세요.
@@ -202,7 +234,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
   return (
     <tr className="align-top">
       {/* 역량명 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
           <Input
             value={competency.name}
@@ -216,12 +248,12 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
       </td>
 
       {/* 정의(수행준거) */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
           <Textarea
             value={competency.definition}
             onChange={(e) => onUpdate(index, { definition: e.target.value })}
-            rows={2}
+            rows={4}
             placeholder="역량 정의 (수행준거)"
             aria-label={`역량 ${index + 1} 정의 (수행준거)`}
           />
@@ -231,7 +263,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
       </td>
 
       {/* 지식 (학술, 업무지식) */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         <KsaCell
           index={index}
           field="knowledge"
@@ -243,7 +275,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
       </td>
 
       {/* 기술 (기능) */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         <KsaCell
           index={index}
           field="skills"
@@ -255,7 +287,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
       </td>
 
       {/* 태도 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         <KsaCell
           index={index}
           field="attitudes"
@@ -268,7 +300,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
 
       {/* 액션 */}
       {canEdit && (
-        <td className="px-3 py-3 text-center">
+        <td className="px-3 py-3 text-center align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
           <Button
             type="button"
             variant="ghost"
@@ -304,7 +336,7 @@ function KsaCell({ index, field, label, values, canEdit, onUpdate }: KsaCellProp
       <Textarea
         value={joinKsa(values ?? [])}
         onChange={(e) => onUpdate(index, { [field]: splitKsa(e.target.value) })}
-        rows={3}
+        rows={4}
         placeholder={`${label} 항목을 줄바꿈으로 구분`}
         aria-label={`역량 ${index + 1} ${label}`}
       />
