@@ -1,51 +1,92 @@
-import type { RoadmapCell, RoadmapMatrixCell, RoadmapRow } from './roadmap-types';
+import type {
+  RoadmapCompetency,
+  RoadmapTrainingStructureItem,
+  TrainingLevel,
+} from './roadmap-types';
 
 // ============================================================================
-// 로드맵 매트릭스 생성
+// 훈련체계도 매트릭스 생성 — Ⅲ-2. 훈련체계도 (역량 × 수준) 테이블 구조
 // ============================================================================
+
+/** 매트릭스 셀: 특정 (역량, 수준) 조합에 대응하는 훈련 항목들 */
+export interface TrainingStructureMatrixCell {
+  competency_name: string;
+  level: TrainingLevel;
+  items: RoadmapTrainingStructureItem[];
+}
+
+/** 매트릭스 행: 한 역량의 3수준(초/중/고) 셀 묶음 */
+export interface TrainingStructureMatrixRow {
+  competency_name: string;
+  beginner: RoadmapTrainingStructureItem[];
+  intermediate: RoadmapTrainingStructureItem[];
+  advanced: RoadmapTrainingStructureItem[];
+}
+
+/** 빈 행 생성 */
+function emptyRow(competency_name: string): TrainingStructureMatrixRow {
+  return {
+    competency_name,
+    beginner: [],
+    intermediate: [],
+    advanced: [],
+  };
+}
+
+/** 한 셀에 항목 추가 (level 분배) */
+function pushItem(
+  row: TrainingStructureMatrixRow,
+  item: RoadmapTrainingStructureItem,
+): void {
+  switch (item.level) {
+    case 'BEGINNER':
+      row.beginner.push(item);
+      break;
+    case 'INTERMEDIATE':
+      row.intermediate.push(item);
+      break;
+    case 'ADVANCED':
+      row.advanced.push(item);
+      break;
+  }
+}
 
 /**
- * courses 배열에서 roadmap_matrix 자동 생성
- * 한 셀에 여러 과정이 있을 수 있음
+ * 훈련체계도 매트릭스 빌더.
+ *
+ * - competencies 순서대로 행 생성 (RoadmapCompetency.name 기준)
+ * - training_structure[*]는 competency_name 기준으로 (역량, 수준) 셀에 분배
+ * - 같은 (역량, 수준) 셀에 여러 항목이 올 수 있음 (배열 유지)
+ * - training_structure에 있으나 competencies에 없는 역량은 매트릭스 끝에
+ *   별도 행으로 추가 (UI에서 경고 표시 가능)
+ * - 빈 셀은 빈 배열
  */
-export function buildRoadmapMatrixFromCourses(courses: RoadmapCell[]): RoadmapRow[] {
-  // 업무별로 그룹화
-  const taskMap = new Map<string, RoadmapRow>();
-  let taskCounter = 0;
+export function buildTrainingStructureMatrix(
+  competencies: RoadmapCompetency[],
+  structure: RoadmapTrainingStructureItem[],
+): TrainingStructureMatrixRow[] {
+  const rowMap = new Map<string, TrainingStructureMatrixRow>();
+  const orderedNames: string[] = [];
 
-  courses.forEach((course) => {
-    const taskKey = course.target_task;
-
-    if (!taskMap.has(taskKey)) {
-      taskCounter++;
-      taskMap.set(taskKey, {
-        task_id: `task_${taskCounter}`,
-        task_name: taskKey,
-        beginner: [],
-        intermediate: [],
-        advanced: [],
-      });
+  // 1. competencies 순서대로 빈 행 초기화
+  for (const comp of competencies ?? []) {
+    if (!rowMap.has(comp.name)) {
+      rowMap.set(comp.name, emptyRow(comp.name));
+      orderedNames.push(comp.name);
     }
+  }
 
-    const row = taskMap.get(taskKey)!;
-    const matrixCell: RoadmapMatrixCell = {
-      course_name: course.course_name,
-      recommended_hours: course.recommended_hours,
-    };
-
-    // 레벨에 따라 배열에 추가
-    switch (course.level) {
-      case 'BEGINNER':
-        row.beginner.push(matrixCell);
-        break;
-      case 'INTERMEDIATE':
-        row.intermediate.push(matrixCell);
-        break;
-      case 'ADVANCED':
-        row.advanced.push(matrixCell);
-        break;
+  // 2. training_structure 항목을 분배
+  for (const item of structure ?? []) {
+    let row = rowMap.get(item.competency_name);
+    if (!row) {
+      // 미참조 역량 → 끝에 추가
+      row = emptyRow(item.competency_name);
+      rowMap.set(item.competency_name, row);
+      orderedNames.push(item.competency_name);
     }
-  });
+    pushItem(row, item);
+  }
 
-  return Array.from(taskMap.values());
+  return orderedNames.map((name) => rowMap.get(name)!);
 }

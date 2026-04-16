@@ -2,87 +2,109 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+// ─── Mocks (신규 4섹션 컴포넌트) ─────────────────────────────────────────────
+
+vi.mock('@/components/roadmap/CompetencyModelingTable', () => ({
+  CompetencyModelingTable: ({
+    competencies,
+    canEdit,
+  }: {
+    competencies: unknown[];
+    canEdit: boolean;
+  }) => (
+    <div data-testid="competency-modeling-table" data-can-edit={canEdit}>
+      competencies: {competencies.length}
+    </div>
+  ),
+}));
 
 vi.mock('@/components/roadmap/RoadmapMatrix', () => ({
-  RoadmapMatrix: ({ matrix, canEdit }: { matrix: unknown[]; canEdit: boolean }) => (
+  RoadmapMatrix: ({
+    trainingStructure,
+    canEdit,
+  }: {
+    competencies: unknown[];
+    trainingStructure: unknown[];
+    canEdit: boolean;
+  }) => (
     <div data-testid="roadmap-matrix" data-can-edit={canEdit}>
-      matrix rows: {matrix.length}
+      structure: {trainingStructure.length}
+    </div>
+  ),
+}));
+
+vi.mock('@/components/roadmap/AnnualTrainingPlanTable', () => ({
+  AnnualTrainingPlanTable: ({
+    plan,
+    canEdit,
+  }: {
+    plan: { items: unknown[]; usage_plan: string };
+    canEdit: boolean;
+  }) => (
+    <div data-testid="annual-plan" data-can-edit={canEdit}>
+      items: {plan.items.length}
     </div>
   ),
 }));
 
 vi.mock('@/components/roadmap/CoursesList', () => ({
-  CoursesList: ({ courses, canEdit }: { courses: unknown[]; canEdit: boolean }) => (
+  CoursesList: ({ specs, canEdit }: { specs: unknown[]; canEdit: boolean }) => (
     <div data-testid="courses-list" data-can-edit={canEdit}>
-      courses: {courses.length}
+      specs: {specs.length}
     </div>
-  ),
-}));
-
-vi.mock('@/components/roadmap/PBLCourseView', () => ({
-  PBLCourseView: ({ course }: { course: unknown }) => (
-    <div data-testid="pbl-course-view">{JSON.stringify(course)}</div>
   ),
 }));
 
 import TestRoadmapResult from './TestRoadmapResult';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 
-// ─── 테스트 데이터 ─────────────────────────────────────────────────────────────
-
-const mockMatrix = [
-  {
-    task_id: 't1',
-    task_name: '데이터 분석',
-    beginner: [{ course_name: '데이터 분석 기초', recommended_hours: 16 }],
-    intermediate: [],
-    advanced: [],
-  },
-];
-
-const mockCourses = [
-  {
-    course_name: '데이터 분석 기초',
-    level: 'BEGINNER' as const,
-    target_task: '데이터 분석',
-    target_audience: '초급자',
-    recommended_hours: 16,
-    curriculum: [],
-    tools: [],
-    expected_outcome: '기본 분석 능력',
-    measurement_method: '실습 평가',
-    prerequisites: [],
-  },
-];
-
-const mockPblCourse = {
-  selected_course_name: '데이터 분석 기초',
-  selected_course_level: 'BEGINNER' as const,
-  selected_course_task: '데이터 분석',
-  selection_rationale: {
-    consultant_expertise_fit: '적합',
-    pain_point_alignment: '연관',
-    feasibility_assessment: '가능',
-    summary: '적합한 과정',
-  },
-  course_name: 'PBL 데이터 분석',
-  total_hours: 16,
-  target_tasks: ['데이터 분석'],
-  target_audience: '초급자',
-  curriculum: [],
-  final_deliverables: [],
-  expected_outcomes: [],
-  business_impact: '',
-  measurement_methods: [],
-  prerequisites: [],
-};
+// ─── 테스트 데이터 (신규 4섹션 구조) ───────────────────────────────────────────
 
 const mockResult: RoadmapResult = {
   diagnosis_summary: '제조업 AI 도입 초기 단계 기업입니다.',
-  roadmap_matrix: mockMatrix,
-  courses: mockCourses,
-  pbl_course: mockPblCourse,
+  competencies: [
+    {
+      name: '데이터 분석',
+      definition: '데이터 기반 의사결정',
+      knowledge: ['통계'],
+      skills: ['SQL'],
+      attitudes: ['호기심'],
+      ncs_used: false,
+    },
+  ],
+  training_structure: [
+    {
+      competency_name: '데이터 분석',
+      level: 'BEGINNER',
+      content: '기초 통계',
+      target_audience: '전사',
+      method: '집체',
+      goal: '기초 통계 이해',
+    },
+  ],
+  annual_plan: {
+    items: [
+      {
+        competency_name: '데이터 분석',
+        course_name: '데이터 분석 기초',
+        format: '집체',
+        hours: 16,
+        notes: '',
+      },
+    ],
+    usage_plan: '사내 재직자 교육 활용',
+  },
+  course_specs: [
+    {
+      course_name: '데이터 분석 기초',
+      format: '집체',
+      recommended_program: '재직자',
+      goal: '기초 통계 이해',
+      main_content: 'Python/Pandas',
+      target_audience: '전사',
+      subjects: [],
+    },
+  ],
 };
 
 const mockValidation: ValidationResult = {
@@ -118,16 +140,6 @@ describe('TestRoadmapResult', () => {
       expect(screen.getByText('제조업 AI 도입 초기 단계 기업입니다.')).toBeInTheDocument();
     });
 
-    it('테스트 모드 배너가 표시된다', () => {
-      render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByText('테스트 로드맵')).toBeInTheDocument();
-    });
-
-    it('"새 테스트 시작" 버튼이 표시된다', () => {
-      render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByRole('button', { name: '새 테스트 시작' })).toBeInTheDocument();
-    });
-
     it('"새 테스트 시작" 버튼 클릭 시 onReset이 호출된다', async () => {
       const user = userEvent.setup();
       const onReset = vi.fn();
@@ -135,38 +147,45 @@ describe('TestRoadmapResult', () => {
       await user.click(screen.getByRole('button', { name: '새 테스트 시작' }));
       expect(onReset).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('탭 전환', () => {
-    it('기본 탭은 "과정 체계도"이고 RoadmapMatrix가 표시된다', () => {
+    it('기본 탭은 "역량 모델링"이며 CompetencyModelingTable이 표시된다', () => {
       render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      expect(screen.getByTestId('competency-modeling-table')).toBeInTheDocument();
     });
 
-    it('"과정 상세" 탭 클릭 시 CoursesList가 표시된다', async () => {
+    it('canEdit=false로 읽기 전용 렌더링된다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      const tbl = screen.getByTestId('competency-modeling-table');
+      expect(tbl.getAttribute('data-can-edit')).toBe('false');
+    });
+  });
+
+  describe('탭 전환 (신규 4섹션)', () => {
+    it('"훈련체계도" 탭 클릭 시 RoadmapMatrix가 표시된다', async () => {
       const user = userEvent.setup();
       render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: '과정 상세' }));
+      await user.click(screen.getByRole('tab', { name: '훈련체계도' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      });
+    });
+
+    it('"연간 훈련계획" 탭 클릭 시 AnnualTrainingPlanTable이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} />);
+      await user.click(screen.getByRole('tab', { name: '연간 훈련계획' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('annual-plan')).toBeInTheDocument();
+      });
+    });
+
+    it('"훈련과정 명세서" 탭 클릭 시 CoursesList가 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} />);
+      await user.click(screen.getByRole('tab', { name: '훈련과정 명세서' }));
       await waitFor(() => {
         expect(screen.getByTestId('courses-list')).toBeInTheDocument();
       });
-    });
-
-    it('"PBL 과정" 탭 클릭 시 PBLCourseView가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: 'PBL 과정' }));
-      await waitFor(() => {
-        expect(screen.getByTestId('pbl-course-view')).toBeInTheDocument();
-      });
-    });
-
-    it('"과정 체계도" 탭으로 다시 돌아오면 RoadmapMatrix가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: '과정 상세' }));
-      await user.click(screen.getByRole('tab', { name: '과정 체계도' }));
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
     });
   });
 
@@ -186,21 +205,17 @@ describe('TestRoadmapResult', () => {
       expect(screen.queryByText(/검토 필요 사항/)).not.toBeInTheDocument();
     });
 
-    it('검토 필요 사항 토글 클릭 시 목록이 접힌다', async () => {
-      const user = userEvent.setup();
+    it('에러 항목과 경고 항목이 분리 표시된다', () => {
       const validationWithNotes: ValidationResult = {
         isValid: false,
-        errors: ['오류 항목 1'],
-        warnings: [],
+        errors: ['치명적 오류'],
+        warnings: ['주의 사항'],
       };
       render(<TestRoadmapResult {...defaultProps} validation={validationWithNotes} />);
-      // 초기에는 펼쳐져 있음
-      expect(screen.getByText('오류 항목 1')).toBeInTheDocument();
-      // 토글 버튼 클릭
-      await user.click(screen.getByText('검토 필요 사항(1건)'));
-      await waitFor(() => {
-        expect(screen.queryByText('오류 항목 1')).not.toBeInTheDocument();
-      });
+      expect(screen.getByText('치명적 오류')).toBeInTheDocument();
+      expect(screen.getByText('주의 사항')).toBeInTheDocument();
+      expect(screen.getByText(/오류 \(1\)/)).toBeInTheDocument();
+      expect(screen.getByText(/경고 \(1\)/)).toBeInTheDocument();
     });
   });
 
@@ -242,18 +257,6 @@ describe('TestRoadmapResult', () => {
         />
       );
       expect(screen.getByText('수정 중...')).toBeInTheDocument();
-    });
-
-    it('isRevising이 true이면 수정 요청 반영 버튼이 비활성화된다', () => {
-      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
-      render(
-        <TestRoadmapResult
-          {...defaultProps}
-          onRevisionRequest={onRevisionRequest}
-          isRevising={true}
-        />
-      );
-      expect(screen.getByRole('button', { name: /수정 중/ })).toBeDisabled();
     });
   });
 });

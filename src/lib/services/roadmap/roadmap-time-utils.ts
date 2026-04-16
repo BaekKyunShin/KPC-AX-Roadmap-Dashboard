@@ -1,50 +1,66 @@
-import type { RoadmapCell, PBLCourse } from './roadmap-types';
+import type { LLMRoadmapResult } from './roadmap-types';
 
 // ============================================================================
-// 시간 계산 유틸리티
-// ============================================================================
-
-/** 커리큘럼 모듈 배열의 시간 합계 계산 */
-export function sumModuleHours(curriculum: { hours: number }[] | undefined): number {
-  if (!curriculum || curriculum.length === 0) return 0;
-  return curriculum.reduce((sum, module) => sum + (module.hours || 0), 0);
-}
-
-// ============================================================================
-// 시간 보정 함수
+// 시간 계산 / 안전 보정 유틸리티
+// ----------------------------------------------------------------------------
+// 산인공 4섹션 구조에서는 시간 필드가 LLM 출력 그대로 사용되므로 복잡한
+// 보정 로직은 불필요하다. 다만 LLM 출력의 hours 필드에 음수·NaN·undefined
+// 가 포함될 가능성을 대비해 안전망으로 0 이상 정수로 보정한다.
 // ============================================================================
 
 /**
- * courses의 recommended_hours를 커리큘럼 모듈 시간 합계로 보정
+ * 모듈/교과목 배열의 시간 합계 계산 (음수·비정상 값은 0으로 처리).
  */
-export function normalizeCoursesHours(courses: RoadmapCell[]): RoadmapCell[] {
-  return courses.map(course => {
-    const modulesTotal = sumModuleHours(course.curriculum);
-    if (modulesTotal === 0 || course.recommended_hours === modulesTotal) {
-      return course;
+export function sumModuleHours(
+  items: { hours?: number | null }[] | undefined | null,
+): number {
+  if (!items || items.length === 0) return 0;
+  return items.reduce((sum, m) => {
+    const h = m.hours;
+    if (typeof h === 'number' && Number.isFinite(h) && h > 0) {
+      return sum + h;
     }
-    return { ...course, recommended_hours: modulesTotal };
-  });
+    return sum;
+  }, 0);
 }
 
-/**
- * PBL 과정의 total_hours를 모듈 시간 합계로 보정
- */
-export function normalizePBLHours(pblCourse: PBLCourse): PBLCourse {
-  const modulesTotal = sumModuleHours(pblCourse.curriculum);
-  if (modulesTotal === 0 || pblCourse.total_hours === modulesTotal) {
-    return pblCourse;
+/** 단일 hours 값을 0 이상 유한수로 보정 */
+function normalizeHours(h: unknown): number {
+  if (typeof h !== 'number' || !Number.isFinite(h) || h < 0) {
+    return 0;
   }
-  return { ...pblCourse, total_hours: modulesTotal };
+  return h;
 }
 
 /**
- * LLM 출력 결과의 시간을 자동 보정
+ * LLM 출력 결과의 시간 안전 보정.
+ *
+ * 처리 대상:
+ * - course_specs[*].subjects[*].hours
+ * - annual_plan.items[*].hours
+ *
+ * 음수 / NaN / undefined / Infinity → 0으로 보정. 정상 값은 보존.
  */
-export function normalizeRoadmapHours(llmResult: { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] }): { diagnosis_summary: string; pbl_course: PBLCourse; courses: RoadmapCell[] } {
+export function normalizeRoadmapHours(result: LLMRoadmapResult): LLMRoadmapResult {
+  const nextCourseSpecs = (result.course_specs ?? []).map((spec) => ({
+    ...spec,
+    subjects: (spec.subjects ?? []).map((subj) => ({
+      ...subj,
+      hours: normalizeHours(subj.hours),
+    })),
+  }));
+
+  const nextAnnualPlan = {
+    ...result.annual_plan,
+    items: (result.annual_plan?.items ?? []).map((item) => ({
+      ...item,
+      hours: normalizeHours(item.hours),
+    })),
+  };
+
   return {
-    ...llmResult,
-    courses: normalizeCoursesHours(llmResult.courses),
-    pbl_course: normalizePBLHours(llmResult.pbl_course),
+    ...result,
+    annual_plan: nextAnnualPlan,
+    course_specs: nextCourseSpecs,
   };
 }

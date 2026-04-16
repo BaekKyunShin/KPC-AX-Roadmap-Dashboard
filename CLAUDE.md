@@ -30,7 +30,13 @@ npm run test:e2e:headed  # 브라우저 표시 E2E 테스트
 npm run test:e2e:report  # E2E 테스트 리포트 열기
 ```
 
-**데이터베이스 마이그레이션:** `supabase/migrations/` 폴더의 SQL 파일을 Supabase CLI (`supabase db push`) 또는 SQL Editor에서 순차적으로 실행
+**데이터베이스 마이그레이션 규칙 (엄수):**
+
+- `supabase/migrations/NNN_*.sql` 파일을 **신규 작성·수정**했다면, 같은 작업 내에서 반드시 DB에 적용까지 완료할 것. 파일만 만들고 작업을 종료하는 것을 금지.
+- 적용 우선순위: ① `mcp__supabase__apply_migration` (권장) → ② `supabase db push` → ③ SQL Editor (최종 폴백)
+- 적용 후 `mcp__supabase__list_migrations` 또는 `list_tables`로 반영 검증
+- 과거 수동 적용으로 `schema_migrations`에 기록이 없는 마이그는 멱등 패치판(`DROP IF EXISTS + CREATE`, `IF NOT EXISTS`)으로 재적용해 정식 등록
+- 이유: 파일·DB 불일치는 후속 Step·에이전트가 테이블/컬럼 부재로 즉시 차단되는 잠재적 지뢰
 
 **작업 완료 검증:** 코드 수정 작업 완료 시 반드시 `npm run validate && npm run build` 실행 후 통과를 확인할 것
 

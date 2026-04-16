@@ -4,20 +4,37 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
-vi.mock('@/components/roadmap/RoadmapMatrix', () => ({
-  RoadmapMatrix: ({ matrix }: { matrix: unknown[]; canEdit: boolean }) => (
-    <div data-testid="roadmap-matrix">matrix: {matrix.length}rows</div>
+vi.mock('@/components/roadmap/CompetencyModelingTable', () => ({
+  CompetencyModelingTable: ({ competencies }: { competencies: unknown[]; canEdit: boolean }) => (
+    <div data-testid="competency-modeling-table">competencies: {competencies.length}</div>
   ),
+}));
+
+vi.mock('@/components/roadmap/RoadmapMatrix', () => ({
+  RoadmapMatrix: ({
+    trainingStructure,
+  }: {
+    competencies: unknown[];
+    trainingStructure: unknown[];
+    canEdit: boolean;
+  }) => (
+    <div data-testid="roadmap-matrix">structure: {trainingStructure.length}</div>
+  ),
+}));
+
+vi.mock('@/components/roadmap/AnnualTrainingPlanTable', () => ({
+  AnnualTrainingPlanTable: ({
+    plan,
+  }: {
+    plan: { items: unknown[]; usage_plan: string };
+    canEdit: boolean;
+  }) => <div data-testid="annual-plan">items: {plan.items.length}</div>,
 }));
 
 vi.mock('@/components/roadmap/CoursesList', () => ({
-  CoursesList: ({ courses }: { courses: unknown[]; canEdit: boolean }) => (
-    <div data-testid="courses-list">courses: {courses.length}</div>
+  CoursesList: ({ specs }: { specs: unknown[]; canEdit: boolean }) => (
+    <div data-testid="courses-list">specs: {specs.length}</div>
   ),
-}));
-
-vi.mock('@/components/roadmap/PBLCourseView', () => ({
-  PBLCourseView: () => <div data-testid="pbl-course-view">PBL 과정</div>,
 }));
 
 vi.mock('@/components/gallery/LikeButton', () => ({
@@ -54,11 +71,10 @@ vi.mock('@/components/gallery/UseRoadmapDialog', () => ({
     ) : null,
 }));
 
-import React from 'react';
 import { GalleryDetailContent } from './GalleryDetailContent';
 import type { RoadmapDetailView } from '../../actions';
 
-// ─── 테스트 데이터 ────────────────────────────────────────────────────────────
+// ─── 테스트 데이터 (DB legacy 컬럼 구조 — 신규 데이터 저장형태) ─────────────────
 
 const mockDetail: RoadmapDetailView = {
   id: 'rv-1',
@@ -68,12 +84,51 @@ const mockDetail: RoadmapDetailView = {
   companyName: '테스트 제조회사',
   createdByName: '홍길동',
   diagnosisSummary: '제조업 AI 도입 초기 단계 기업입니다.',
+  // 신규 저장 형태: roadmap_matrix=training_structure, pbl_course={competencies, annual_plan}
   roadmapMatrix: [
-    { task_id: 't1', task_name: '데이터 분석', beginner: [], intermediate: [], advanced: [] },
+    {
+      competency_name: '데이터 분석',
+      level: 'BEGINNER',
+      content: '기초',
+      target_audience: '전사',
+      method: '집체',
+      goal: '데이터 이해',
+    },
   ],
-  pblCourse: { course_name: 'PBL 데이터 분석', total_hours: 16 },
+  pblCourse: {
+    competencies: [
+      {
+        name: '데이터 분석',
+        definition: '데이터 기반 의사결정',
+        knowledge: [],
+        skills: [],
+        attitudes: [],
+        ncs_used: false,
+      },
+    ],
+    annual_plan: {
+      items: [
+        {
+          competency_name: '데이터 분석',
+          course_name: '데이터 분석 기초',
+          format: '집체',
+          hours: 16,
+          notes: '',
+        },
+      ],
+      usage_plan: '사내 교육 활용',
+    },
+  },
   courses: [
-    { course_name: '데이터 분석 기초', level: 'BEGINNER', recommended_hours: 16 },
+    {
+      course_name: '데이터 분석 기초',
+      format: '집체',
+      recommended_program: '재직자',
+      goal: '기초',
+      main_content: '파이썬/판다스',
+      target_audience: '전사',
+      subjects: [],
+    },
   ],
   likeCount: 7,
   isLiked: false,
@@ -106,45 +161,46 @@ describe('GalleryDetailContent', () => {
       expect(screen.getByText('좋아요 7')).toBeInTheDocument();
     });
 
-    it('기본 탭은 "과정 체계도"이며 RoadmapMatrix가 표시된다', () => {
+    it('기본 탭은 "역량 모델링"이며 CompetencyModelingTable이 표시된다', () => {
       render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      expect(screen.getByTestId('competency-modeling-table')).toBeInTheDocument();
     });
   });
 
   describe('탭 전환', () => {
-    it('"과정 상세" 탭 클릭 시 CoursesList가 표시된다', async () => {
+    it('"훈련체계도" 탭 클릭 시 RoadmapMatrix가 표시된다', async () => {
       const user = userEvent.setup();
       render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
-      await user.click(screen.getByRole('button', { name: '과정 상세' }));
+      await user.click(screen.getByRole('button', { name: '훈련체계도' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      });
+    });
+
+    it('"연간 훈련계획" 탭 클릭 시 AnnualTrainingPlanTable이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
+      await user.click(screen.getByRole('button', { name: '연간 훈련계획' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('annual-plan')).toBeInTheDocument();
+      });
+    });
+
+    it('"훈련과정 명세서" 탭 클릭 시 CoursesList가 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
+      await user.click(screen.getByRole('button', { name: '훈련과정 명세서' }));
       await waitFor(() => {
         expect(screen.getByTestId('courses-list')).toBeInTheDocument();
       });
     });
 
-    it('"PBL 과정" 탭 클릭 시 PBLCourseView가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
-      await user.click(screen.getByRole('button', { name: 'PBL 과정' }));
-      await waitFor(() => {
-        expect(screen.getByTestId('pbl-course-view')).toBeInTheDocument();
-      });
-    });
-
-    it('"과정 체계도" 탭으로 다시 돌아오면 RoadmapMatrix가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
-      await user.click(screen.getByRole('button', { name: '과정 상세' }));
-      await user.click(screen.getByRole('button', { name: '과정 체계도' }));
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
-    });
-
     it('탭 클릭 시 탭 버튼에 border-primary 클래스가 적용된다', async () => {
       const user = userEvent.setup();
       render(<GalleryDetailContent detail={mockDetail} isConsultant={false} />);
-      const coursesTab = screen.getByRole('button', { name: '과정 상세' });
-      await user.click(coursesTab);
-      expect(coursesTab.className).toContain('border-primary');
+      const tab = screen.getByRole('button', { name: '훈련체계도' });
+      await user.click(tab);
+      expect(tab.className).toContain('border-primary');
     });
   });
 
