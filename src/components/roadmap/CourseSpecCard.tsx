@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { useRowHeightSync } from '@/hooks/useRowHeightSync';
@@ -391,15 +392,17 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
           </span>
         )}
       </td>
-      <td className="px-3 py-3 text-right align-top">
+      <td className="h-0 px-3 py-3 text-right align-top">
         {canEdit ? (
-          <Input
-            type="number"
-            min={1}
+          <Textarea
+            rows={1}
             value={subject.hours || ''}
-            onChange={(e) => onUpdate(sIdx, { hours: Number(e.target.value) || 0 })}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, '');
+              onUpdate(sIdx, { hours: v === '' ? 0 : Number(v) });
+            }}
             placeholder="시간"
-            className="w-full text-right"
+            className="h-full w-full resize-none overflow-hidden text-right"
             aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
           />
         ) : (

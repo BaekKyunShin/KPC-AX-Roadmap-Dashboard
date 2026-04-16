@@ -9,6 +9,7 @@ import type {
 } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -252,14 +253,17 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
         )}
       </td>
 
-      {/* 훈련형태 */}
-      <td className="px-3 py-3 align-top text-center">
+      {/* 훈련형태 — 박스 stretch + 텍스트 top-align 위해 rows=1 textarea 사용 */}
+      <td className="h-0 px-3 py-3 align-top text-center">
         {canEdit ? (
-          <Input
+          <Textarea
+            rows={1}
             value={item.format}
-            onChange={(e) => onUpdate(index, { format: e.target.value })}
+            onChange={(e) =>
+              onUpdate(index, { format: e.target.value.replace(/\n/g, '') })
+            }
             placeholder="집체/원격/혼합"
-            className="w-full text-center"
+            className="h-full w-full resize-none overflow-hidden text-center"
             aria-label={`연간계획 ${index + 1} 훈련형태`}
           />
         ) : (
@@ -267,16 +271,18 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
         )}
       </td>
 
-      {/* 훈련시간 */}
-      <td className="px-3 py-3 align-top text-right">
+      {/* 훈련시간 — 박스 stretch + 텍스트 top-align, 숫자만 허용 */}
+      <td className="h-0 px-3 py-3 align-top text-right">
         {canEdit ? (
-          <Input
-            type="number"
-            min={1}
+          <Textarea
+            rows={1}
             value={item.hours || ''}
-            onChange={(e) => onUpdate(index, { hours: Number(e.target.value) || 0 })}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, '');
+              onUpdate(index, { hours: v === '' ? 0 : Number(v) });
+            }}
             placeholder="시간"
-            className="w-full text-right"
+            className="h-full w-full resize-none overflow-hidden text-right"
             aria-label={`연간계획 ${index + 1} 훈련시간`}
           />
         ) : (
