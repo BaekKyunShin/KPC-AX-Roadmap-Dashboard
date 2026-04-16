@@ -143,6 +143,11 @@
 - src/lib/services/pbl/ 외 위치에 PBL 서비스 코드 배치
 
 === 종료 시 ===
+0. **[필수] 전체 회귀 테스트 수행** — 모든 구현이 끝난 뒤 기존 기능 회귀 방지를 위해 반드시 실행. 건너뛰기 금지.
+   - `npm run validate` (typecheck + lint + unit test 전체)
+   - `npm run build` (프로덕션 빌드)
+   - `npm run test:e2e` (E2E 전체)
+   - 실패 시 원인 분석·수정 후 재실행. 우회·skip 금지.
 1. superpowers:verification-before-completion
 2. e2e/consultant/pbl-output.spec.ts 통과 보고
 3. gh pr create --base feature/official-form-alignment --title "feat(ofa-09): PBL 산출물 신규" (또는 09a/09b 분할)

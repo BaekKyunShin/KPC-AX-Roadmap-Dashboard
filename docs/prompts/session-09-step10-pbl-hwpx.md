@@ -126,6 +126,12 @@
 - 양식 원본 .hwpx 파일 손상
 
 === 종료 시 ===
+0. **[필수] 전체 회귀 테스트 수행** — 모든 구현이 끝난 뒤 기존 기능 회귀 방지를 위해 반드시 실행. 건너뛰기 금지.
+   - `npm run validate` (typecheck + lint + unit test 전체)
+   - `npm run build` (프로덕션 빌드)
+   - `npm run test:e2e` (E2E 전체)
+   - pytest (Python 측 테스트)
+   - 실패 시 원인 분석·수정 후 재실행. 우회·skip 금지.
 1. superpowers:verification-before-completion
 2. Preview에서 PBL HWPX 다운로드 + 한글 프로그램 양식 검증 보고
 3. gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL HWPX 템플릿 + 내보내기"
