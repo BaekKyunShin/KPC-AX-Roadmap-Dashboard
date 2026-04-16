@@ -12,6 +12,7 @@ import { normalizeRoadmapHours } from './roadmap-time-utils';
 import { validateRoadmap } from './roadmap-validator';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
 import { toRoadmapVersionColumns } from './roadmap-storage-mapper';
+import { sanitizeRoadmapResult } from './roadmap-sanitize';
 import { validateStatusTransition } from '@/lib/constants/status';
 
 // ============================================================================
@@ -243,8 +244,11 @@ export async function generateRoadmap(
 
   const newVersionNumber = (latestVersion?.version_number || 0) + 1;
 
+  // LLM 결과에 빈 역량/훈련과정/명세서/교과목이 섞여 있을 경우 방어적으로 제거.
+  const sanitized = sanitizeRoadmapResult(result);
+
   // 신규 구조를 legacy 컬럼에 매핑
-  const cols = toRoadmapVersionColumns(result);
+  const cols = toRoadmapVersionColumns(sanitized);
 
   // 로드맵 버전 저장
   // free_tool_validated / time_limit_validated 컬럼은 Step 12에서 제거 예정. 현재는 true 고정.

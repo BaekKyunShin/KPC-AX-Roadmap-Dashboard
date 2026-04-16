@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
 import { Trash2, Plus, BookOpen, FileText, Target, Users, Wrench, ClipboardList } from 'lucide-react';
 import type {
   RoadmapCourseSpec,
@@ -15,10 +14,14 @@ import {
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
-import { useRowHeightSync } from '@/hooks/useRowHeightSync';
+import {
+  SyncedTableRow,
+  TableTextCell,
+  TableNumericCell,
+  SectionNumberBadge,
+  CARD_HEADER_CLASS,
+} from '@/components/roadmap/shared';
 
 // ============================================================================
 // 타입
@@ -80,22 +83,28 @@ export function CourseSpecCard({
   return (
     <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* 헤더 */}
-      <CardHeader className="pt-5 pb-3 bg-gradient-to-r from-gray-50 to-white">
+      <CardHeader className={CARD_HEADER_CLASS}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                명세서 #{index + 1}
-              </Badge>
+              <SectionNumberBadge label="명세서" index={index} />
             </div>
             {canEdit ? (
-              <AutoResizeTextarea
-                value={spec.course_name}
-                onChange={(e) => updateSpec({ course_name: e.target.value })}
-                placeholder="과정명"
-                aria-label={`명세서 ${index + 1} 과정명`}
-                className="text-base font-semibold"
-              />
+              <table>
+                <tbody>
+                  <tr>
+                    <TableTextCell
+                      canEdit={true}
+                      value={spec.course_name}
+                      onChange={(v) => updateSpec({ course_name: v })}
+                      placeholder="과정명"
+                      ariaLabel={`명세서 ${index + 1} 과정명`}
+                      inputClassName="text-base font-semibold"
+                      tdClassName="px-0 py-0"
+                    />
+                  </tr>
+                </tbody>
+              </table>
             ) : (
               <h3 className="text-lg font-semibold text-foreground break-keep">
                 {spec.course_name || '(과정명 미입력)'}
@@ -177,14 +186,12 @@ function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps)
     key: keyof RoadmapCourseSpec;
     label: string;
     icon: typeof BookOpen;
-    multiline: boolean;
-    rows?: number;
   }[] = [
-    { key: 'format', label: '훈련형태', icon: BookOpen, multiline: false },
-    { key: 'recommended_program', label: '추천 훈련사업', icon: Wrench, multiline: false },
-    { key: 'goal', label: '훈련 목표', icon: Target, multiline: true, rows: 2 },
-    { key: 'main_content', label: '주요 훈련 내용', icon: FileText, multiline: true, rows: 3 },
-    { key: 'target_audience', label: '훈련 대상', icon: Users, multiline: false },
+    { key: 'format', label: '훈련형태', icon: BookOpen },
+    { key: 'recommended_program', label: '추천 훈련사업', icon: Wrench },
+    { key: 'goal', label: '훈련 목표', icon: Target },
+    { key: 'main_content', label: '주요 훈련 내용', icon: FileText },
+    { key: 'target_audience', label: '훈련 대상', icon: Users },
   ];
 
   return (
@@ -203,21 +210,16 @@ function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps)
                     {f.label}
                   </Label>
                 </td>
-                <td className="px-3 py-3 text-foreground">
-                  {canEdit ? (
-                    <AutoResizeTextarea
-                      id={inputId}
-                      value={value}
-                      onChange={(e) =>
-                        onUpdate({ [f.key]: e.target.value } as Partial<RoadmapCourseSpec>)
-                      }
-                      placeholder={f.label}
-                      aria-label={`명세서 ${index + 1} ${f.label}`}
-                    />
-                  ) : (
-                    <span className="break-keep whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{value || '-'}</span>
-                  )}
-                </td>
+                <TableTextCell
+                  canEdit={canEdit}
+                  value={value}
+                  onChange={(v) =>
+                    onUpdate({ [f.key]: v } as Partial<RoadmapCourseSpec>)
+                  }
+                  placeholder={f.label}
+                  ariaLabel={`명세서 ${index + 1} ${f.label}`}
+                  readOnlyClassName="break-keep"
+                />
               </tr>
             );
           })}
@@ -359,57 +361,35 @@ interface SubjectRowProps {
 }
 
 function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }: SubjectRowProps) {
-  const rowRef = useRef<HTMLTableRowElement>(null);
-  useRowHeightSync(rowRef, [subject.name, subject.details, canEdit]);
-
   return (
-    <tr ref={rowRef}>
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={subject.name}
-            onChange={(e) => onUpdate(sIdx, { name: e.target.value })}
-            placeholder="교과목명"
-            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 이름`}
-            className="font-medium"
-          />
-        ) : (
-          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{subject.name || '-'}</span>
-        )}
-      </td>
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={subject.details}
-            onChange={(e) => onUpdate(sIdx, { details: e.target.value })}
-            placeholder="세부 내용 (단원, 과제명)"
-            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}
-          />
-        ) : (
-          <span className="text-muted-foreground break-keep whitespace-pre-wrap">
-            {subject.details || '-'}
-          </span>
-        )}
-      </td>
-      <td className="h-0 px-3 py-3 text-center align-top">
-        {canEdit ? (
-          <Textarea
-            rows={1}
-            value={subject.hours || ''}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              onUpdate(sIdx, { hours: v === '' ? 0 : Number(v) });
-            }}
-            placeholder="시간"
-            className="h-full w-full resize-none overflow-hidden text-center"
-            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
-          />
-        ) : (
-          <span className="font-medium text-foreground">
-            {subject.hours > 0 ? `${subject.hours}H` : '-'}
-          </span>
-        )}
-      </td>
+    <SyncedTableRow deps={[subject.name, subject.details, canEdit]}>
+      <TableTextCell
+        canEdit={canEdit}
+        value={subject.name}
+        onChange={(v) => onUpdate(sIdx, { name: v })}
+        placeholder="교과목명"
+        ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 이름`}
+        inputClassName="font-medium"
+        readOnlyClassName="font-medium text-foreground"
+      />
+
+      <TableTextCell
+        canEdit={canEdit}
+        value={subject.details}
+        onChange={(v) => onUpdate(sIdx, { details: v })}
+        placeholder="세부 내용 (단원, 과제명)"
+        ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}
+        readOnlyClassName="text-muted-foreground"
+      />
+
+      <TableNumericCell
+        canEdit={canEdit}
+        value={subject.hours}
+        onChange={(v) => onUpdate(sIdx, { hours: v })}
+        placeholder="시간"
+        ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
+      />
+
       {canEdit && (
         <td className="px-3 py-3 text-center">
           <Button
@@ -424,6 +404,6 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
           </Button>
         </td>
       )}
-    </tr>
+    </SyncedTableRow>
   );
 }

@@ -161,6 +161,13 @@
 - 본 세션 종료 후 추가 코드 변경 (Step 12 PR이 마지막 — 변경 사항 발견 시 별도 PR로)
 
 === 종료 시 ===
+0. **[필수] 전체 회귀 테스트 수행** — 모든 구현이 끝난 뒤 기존 기능 회귀 방지를 위해 반드시 실행. 최종 QA 세션이므로 특히 엄격히. 건너뛰기 금지.
+   - `npm run validate` (typecheck + lint + unit test 전체)
+   - `npm run build` (프로덕션 빌드)
+   - `npm run test:e2e` (E2E 전체 — 모든 역할 시나리오)
+   - pytest (Python 측 테스트)
+   - Vercel Preview 배포 후 스모크 테스트
+   - 실패 시 원인 분석·수정 후 재실행. 우회·skip 금지.
 1. ofa-12 sub-PR 머지 후 main PR 생성 보고
 2. 배포 체크리스트 §8 항목별 ✅/❌ 보고
 3. main PR URL + Preview URL 보고
