@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Trash2, Plus, BookOpen, FileText, Target, Users, Wrench, ClipboardList } from 'lucide-react';
 import type {
   RoadmapCourseSpec,
@@ -15,8 +16,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
+import { useRowHeightSync } from '@/hooks/useRowHeightSync';
 
 // ============================================================================
 // 타입
@@ -204,13 +206,12 @@ function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps)
                 <td className="px-3 py-3 text-foreground">
                   {canEdit ? (
                     f.multiline ? (
-                      <Textarea
+                      <AutoResizeTextarea
                         id={inputId}
                         value={value}
                         onChange={(e) =>
                           onUpdate({ [f.key]: e.target.value } as Partial<RoadmapCourseSpec>)
                         }
-                        rows={f.rows ?? 2}
                         placeholder={f.label}
                         aria-label={`명세서 ${index + 1} ${f.label}`}
                       />
@@ -307,68 +308,15 @@ function SubjectsSection({
             </thead>
             <tbody className="divide-y divide-border bg-card">
               {subjects.map((subject, sIdx) => (
-                <tr key={sIdx}>
-                  <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {canEdit ? (
-                      <Input
-                        value={subject.name}
-                        onChange={(e) => onUpdate(sIdx, { name: e.target.value })}
-                        placeholder="교과목명"
-                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 이름`}
-                      />
-                    ) : (
-                      <span className="font-medium text-foreground">{subject.name || '-'}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {canEdit ? (
-                      <Textarea
-                        value={subject.details}
-                        onChange={(e) => onUpdate(sIdx, { details: e.target.value })}
-                        rows={2}
-                        placeholder="세부 내용 (단원, 과제명)"
-                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}
-                      />
-                    ) : (
-                      <span className="text-muted-foreground break-keep whitespace-pre-wrap">
-                        {subject.details || '-'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-right align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {canEdit ? (
-                      <Input
-                        type="number"
-                        min={1}
-                        value={subject.hours || ''}
-                        onChange={(e) =>
-                          onUpdate(sIdx, { hours: Number(e.target.value) || 0 })
-                        }
-                        placeholder="시간"
-                        className="text-right"
-                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 시간`}
-                      />
-                    ) : (
-                      <span className="font-medium text-foreground">
-                        {subject.hours > 0 ? `${subject.hours}H` : '-'}
-                      </span>
-                    )}
-                  </td>
-                  {canEdit && (
-                    <td className="px-3 py-3 text-center">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onRemove(sIdx)}
-                        aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 삭제`}
-                        title="삭제"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </td>
-                  )}
-                </tr>
+                <SubjectRow
+                  key={sIdx}
+                  courseIndex={index}
+                  sIdx={sIdx}
+                  subject={subject}
+                  canEdit={canEdit}
+                  onUpdate={onUpdate}
+                  onRemove={onRemove}
+                />
               ))}
             </tbody>
             {!isEmpty && (
@@ -406,5 +354,85 @@ function SubjectsSection({
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// 교과목 행 (행 높이 동기화)
+// ============================================================================
+
+interface SubjectRowProps {
+  courseIndex: number;
+  sIdx: number;
+  subject: RoadmapCourseSubject;
+  canEdit: boolean;
+  onUpdate: (sIndex: number, patch: Partial<RoadmapCourseSubject>) => void;
+  onRemove: (sIndex: number) => void;
+}
+
+function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }: SubjectRowProps) {
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useRowHeightSync(rowRef, [subject.details, canEdit]);
+
+  return (
+    <tr ref={rowRef}>
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {canEdit ? (
+          <Input
+            value={subject.name}
+            onChange={(e) => onUpdate(sIdx, { name: e.target.value })}
+            placeholder="교과목명"
+            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 이름`}
+          />
+        ) : (
+          <span className="font-medium text-foreground">{subject.name || '-'}</span>
+        )}
+      </td>
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {canEdit ? (
+          <AutoResizeTextarea
+            value={subject.details}
+            onChange={(e) => onUpdate(sIdx, { details: e.target.value })}
+            placeholder="세부 내용 (단원, 과제명)"
+            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}
+          />
+        ) : (
+          <span className="text-muted-foreground break-keep whitespace-pre-wrap">
+            {subject.details || '-'}
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-3 text-right align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {canEdit ? (
+          <Input
+            type="number"
+            min={1}
+            value={subject.hours || ''}
+            onChange={(e) => onUpdate(sIdx, { hours: Number(e.target.value) || 0 })}
+            placeholder="시간"
+            className="text-right"
+            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
+          />
+        ) : (
+          <span className="font-medium text-foreground">
+            {subject.hours > 0 ? `${subject.hours}H` : '-'}
+          </span>
+        )}
+      </td>
+      {canEdit && (
+        <td className="px-3 py-3 text-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(sIdx)}
+            aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 삭제`}
+            title="삭제"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </td>
+      )}
+    </tr>
   );
 }

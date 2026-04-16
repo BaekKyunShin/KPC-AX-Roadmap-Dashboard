@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Trash2, Plus, CalendarDays } from 'lucide-react';
 import type {
   RoadmapAnnualPlan,
@@ -8,10 +9,11 @@ import type {
 } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useRowHeightSync } from '@/hooks/useRowHeightSync';
 
 // ============================================================================
 // 타입
@@ -182,11 +184,10 @@ export function AnnualTrainingPlanTable({
           활용방안
         </Label>
         {canEdit ? (
-          <Textarea
+          <AutoResizeTextarea
             id="annual-plan-usage-plan"
             value={usagePlan}
             onChange={(e) => updateUsagePlan(e.target.value)}
-            rows={4}
             placeholder="본 훈련계획의 활용방안을 입력하세요"
             aria-label="활용방안"
           />
@@ -217,8 +218,11 @@ interface RowProps {
 }
 
 function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useRowHeightSync(rowRef, [item.competency_name, item.course_name, item.notes, canEdit]);
+
   return (
-    <tr className="align-top">
+    <tr ref={rowRef} className="align-top">
       {/* 역량명 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (

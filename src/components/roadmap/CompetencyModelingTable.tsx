@@ -1,13 +1,16 @@
 'use client';
 
+import { useRef } from 'react';
 import { Trash2, Plus, ListChecks } from 'lucide-react';
 import type { RoadmapCompetency } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useRowHeightSync } from '@/hooks/useRowHeightSync';
 
 // ============================================================================
 // 타입 & 상수
@@ -231,8 +234,14 @@ interface RowProps {
 }
 
 function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps) {
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  const knowledgeStr = competency.knowledge.join('\n');
+  const skillsStr = competency.skills.join('\n');
+  const attitudesStr = competency.attitudes.join('\n');
+  useRowHeightSync(rowRef, [competency.definition, knowledgeStr, skillsStr, attitudesStr, canEdit]);
+
   return (
-    <tr className="align-top">
+    <tr ref={rowRef} className="align-top">
       {/* 역량명 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
@@ -250,10 +259,9 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
       {/* 정의(수행준거) */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Textarea
+          <AutoResizeTextarea
             value={competency.definition}
             onChange={(e) => onUpdate(index, { definition: e.target.value })}
-            rows={4}
             placeholder="역량 정의 (수행준거)"
             aria-label={`역량 ${index + 1} 정의 (수행준거)`}
           />
@@ -333,10 +341,9 @@ interface KsaCellProps {
 function KsaCell({ index, field, label, values, canEdit, onUpdate }: KsaCellProps) {
   if (canEdit) {
     return (
-      <Textarea
+      <AutoResizeTextarea
         value={joinKsa(values ?? [])}
         onChange={(e) => onUpdate(index, { [field]: splitKsa(e.target.value) })}
-        rows={4}
         placeholder={`${label} 항목을 줄바꿈으로 구분`}
         aria-label={`역량 ${index + 1} ${label}`}
       />
