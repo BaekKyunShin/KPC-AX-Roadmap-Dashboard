@@ -25,6 +25,19 @@ interface RoadmapOverviewSummaryProps {
   outcomeSummary: RoadmapOutcomeSummary;
 }
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 pb-1 border-b border-border/40">
+        {label}
+      </dt>
+      <dd className="text-sm text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {value || '-'}
+      </dd>
+    </div>
+  );
+}
+
 export function RoadmapOverviewSummary({
   setupNecessity,
   outcomeSummary,
@@ -39,9 +52,9 @@ export function RoadmapOverviewSummary({
   return (
     <section
       aria-label="로드맵 개요 (Ⅰ장)"
-      className="rounded-lg border border-border bg-muted/20 p-4 space-y-3 break-keep"
+      className="rounded-lg border border-border bg-muted/20 p-5 space-y-4 break-keep"
     >
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <header className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-sm font-semibold text-foreground">개요 (Ⅰ장)</h3>
         <Badge
           variant="outline"
@@ -49,25 +62,11 @@ export function RoadmapOverviewSummary({
         >
           AI 역량 {LEVEL_LABEL[outcomeSummary.ai_competency_level]}
         </Badge>
-      </div>
-
-      <dl className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        <div className="md:col-span-2">
-          <dt className="text-xs text-muted-foreground mb-0.5">수립 필요성</dt>
-          <dd className="text-foreground whitespace-pre-wrap">{setupNecessity || '-'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground mb-0.5">선정 과업</dt>
-          <dd className="text-foreground whitespace-pre-wrap">
-            {outcomeSummary.selected_tasks || '-'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground mb-0.5">수립 주요내용 요약</dt>
-          <dd className="text-foreground whitespace-pre-wrap">
-            {outcomeSummary.main_content || '-'}
-          </dd>
-        </div>
+      </header>
+      <dl className="space-y-4">
+        <Row label="수립 필요성" value={setupNecessity} />
+        <Row label="선정 과업" value={outcomeSummary.selected_tasks} />
+        <Row label="수립 주요내용 요약" value={outcomeSummary.main_content} />
       </dl>
     </section>
   );
