@@ -15,6 +15,8 @@ import {
   cancelRoadmapGeneration,
 } from '../actions';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
+import { exportRoadmapAsHwpxAction } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/actions';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
@@ -205,6 +207,18 @@ export default function ConsultantRoadmapClient({
     }
   };
 
+  const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
+    action: () =>
+      exportRoadmapAsHwpxAction(selectedVersion?.id ?? ''),
+    successMessage: 'HWPX 다운로드 완료',
+    errorTitle: 'HWPX 다운로드 실패',
+  });
+  const handleDownloadHwpx = () => {
+    if (selectedVersion) {
+      void downloadHwpx();
+    }
+  };
+
   const canEdit = selectedVersion?.status === 'DRAFT';
 
   // 로드맵 생성 취소 (서버 LLM 호출도 중단)
@@ -238,6 +252,12 @@ export default function ConsultantRoadmapClient({
                   loading={isDownloading === 'XLSX'}
                   type="Excel"
                   disabled={isDownloading !== null}
+                />
+                <DownloadButton
+                  onClick={handleDownloadHwpx}
+                  loading={isHwpxDownloading}
+                  type="HWPX"
+                  disabled={isDownloading !== null || isHwpxDownloading}
                 />
                 {canEdit && (
                   <Button

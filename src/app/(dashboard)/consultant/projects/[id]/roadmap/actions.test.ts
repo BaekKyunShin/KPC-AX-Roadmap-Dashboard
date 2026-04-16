@@ -20,9 +20,11 @@ import {
   fetchRoadmapVersion,
   fetchProjectInfo,
   cancelRoadmapGeneration,
+  exportRoadmapAsHwpxAction,
 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
+import { generateHwpx } from '@/lib/services/export/hwpx';
 
 // --- 외부 모듈 모킹 ---------------------------------------------------------
 
@@ -68,6 +70,19 @@ vi.mock('@/lib/services/abort-registry', () => ({
   registerAbort: vi.fn(() => new AbortController()),
   cancelAbort: vi.fn(() => true),
   cleanupAbort: vi.fn(),
+}));
+
+vi.mock('@/lib/services/export/hwpx', () => ({
+  generateHwpx: vi.fn().mockResolvedValue(Buffer.from('dummy-hwpx-bytes')),
+  buildRoadmapHwpxPayload: vi.fn((inputs: Record<string, unknown>) => ({
+    track: 'ROADMAP',
+    fileName: `${(inputs.project as { company_name?: string })?.company_name ?? '로드맵'}_로드맵_v1.hwpx`,
+    data: {},
+  })),
+}));
+
+vi.mock('@/lib/services/audit', () => ({
+  createAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { mockAfter } = vi.hoisted(() => {
@@ -1015,6 +1030,142 @@ describe('fetchProjectInfo — 에러/엣지 케이스', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain('조회');
+    consoleSpy.mockRestore();
+  });
+});
+
+// --- exportRoadmapAsHwpxAction (Step 7) --------------------------------------
+
+describe('exportRoadmapAsHwpxAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('미인증 → error 반환', async () => {
+    const mock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(false);
+  });
+
+  it('빈 roadmapId → error 반환', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await exportRoadmapAsHwpxAction('');
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('로드맵 ID');
+  });
+
+  it('타 컨설턴트의 로드맵 → forbidden', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    // 1) users.role 조회
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // 2) requireConsultantRoadmapAccess: roadmap_versions 조회 — 다른 컨설턴트
+    mock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_B_ID } },
+      error: null,
+    });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('권한');
+  });
+
+  it('로드맵 없음 → not found', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    // 1) users.role
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // 2) requireConsultantRoadmapAccess — 로드맵 없음
+    mock.addResult({ data: null, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('로드맵을');
+  });
+
+  it('성공 → base64 + fileName + mimeType 반환', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    // 1) users.role
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    // 2) requireConsultantRoadmapAccess
+    mock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
+    // 3) projects 조회
+    mock.addResult({
+      data: { id: PROJECT_ID, company_name: '테스트(주)' },
+      error: null,
+    });
+    // 4) interviews 조회
+    mock.addResult({ data: null, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    // fetchRoadmapVersionService 모킹 — 유효한 roadmap row 반환
+    const { fetchRoadmapVersion: fetchRoadmapVersionMock } = await import('@/lib/services/roadmap');
+    vi.mocked(fetchRoadmapVersionMock).mockResolvedValueOnce({
+      id: ROADMAP_ID,
+      project_id: PROJECT_ID,
+      version_number: 1,
+      status: 'FINAL',
+      consultant_profile_snapshot: { affiliation: 'KPC' },
+      diagnosis_summary: '진단',
+      roadmap_matrix: [],
+      pbl_course: {},
+      courses: [],
+      created_by: USER_A_ID,
+      created_at: '2026-04-17',
+      updated_at: '2026-04-17',
+    } as never);
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fileName).toContain('테스트(주)');
+      expect(result.data.contentBase64).toBeTruthy();
+      expect(result.data.mimeType).toBe('application/vnd.hancom.hwpx');
+      // "dummy-hwpx-bytes" base64 = "ZHVtbXktaHdweC1ieXRlcw=="
+      expect(Buffer.from(result.data.contentBase64, 'base64').toString()).toBe('dummy-hwpx-bytes');
+    }
+  });
+
+  it('Python 함수 500 에러 → 사용자 친화 메시지', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    mock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
+    mock.addResult({
+      data: { id: PROJECT_ID, company_name: '테스트(주)' },
+      error: null,
+    });
+    mock.addResult({ data: null, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const { fetchRoadmapVersion: fetchRoadmapVersionMock } = await import('@/lib/services/roadmap');
+    vi.mocked(fetchRoadmapVersionMock).mockResolvedValueOnce({
+      id: ROADMAP_ID,
+      project_id: PROJECT_ID,
+      version_number: 1,
+      consultant_profile_snapshot: { affiliation: 'KPC' },
+      roadmap_matrix: [],
+      pbl_course: {},
+      courses: [],
+      created_at: '2026-04-17',
+      updated_at: '2026-04-17',
+    } as never);
+    vi.mocked(generateHwpx).mockRejectedValueOnce(new Error('HWPX generation failed: 500'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('HWPX');
     consoleSpy.mockRestore();
   });
 });
