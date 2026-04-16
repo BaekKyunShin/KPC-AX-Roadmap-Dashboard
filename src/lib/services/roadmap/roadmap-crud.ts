@@ -11,6 +11,7 @@ import type {
   ValidationResult,
 } from './roadmap-types';
 import { validateRoadmap } from './roadmap-validator';
+import { sanitizeRoadmapResult } from './roadmap-sanitize';
 import {
   fromRoadmapVersionColumns,
   toRoadmapVersionColumns,
@@ -200,7 +201,7 @@ export async function updateRoadmapManually(
 
   // 기존 데이터 복원 → updates 적용 → 신규 RoadmapResult 구성
   const current = fromRoadmapVersionColumns(roadmap);
-  const merged: RoadmapResult = {
+  const mergedRaw: RoadmapResult = {
     diagnosis_summary: updates.diagnosis_summary ?? current.diagnosis_summary,
     setup_necessity: updates.setup_necessity ?? current.setup_necessity,
     outcome_summary: updates.outcome_summary ?? current.outcome_summary,
@@ -213,6 +214,9 @@ export async function updateRoadmapManually(
     annual_plan: updates.annual_plan ?? current.annual_plan,
     course_specs: updates.course_specs ?? current.course_specs,
   };
+
+  // 빈 행 자동 정리 — "역량/훈련과정/명세서/교과목 추가" 후 미입력 저장 시 제거.
+  const merged = sanitizeRoadmapResult(mergedRaw);
 
   // 검증 실행
   const validation = validateRoadmap(merged);

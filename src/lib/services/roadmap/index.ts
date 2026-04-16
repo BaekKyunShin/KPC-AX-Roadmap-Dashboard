@@ -20,6 +20,15 @@ export type {
 // 검증
 export { validateRoadmap } from './roadmap-validator';
 
+// 빈 행 자동 정리 (저장 직전 호출)
+export {
+  isEmptyCompetency,
+  isEmptyAnnualPlanItem,
+  isEmptyCourseSubject,
+  isEmptyCourseSpec,
+  sanitizeRoadmapResult,
+} from './roadmap-sanitize';
+
 // 프롬프트 빌더
 export { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
 
