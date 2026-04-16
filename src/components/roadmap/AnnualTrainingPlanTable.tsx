@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
 import { Trash2, Plus, CalendarDays } from 'lucide-react';
 import type {
   RoadmapAnnualPlan,
@@ -9,12 +8,16 @@ import type {
 } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useRowHeightSync } from '@/hooks/useRowHeightSync';
+import {
+  SyncedTableRow,
+  TableTextCell,
+  TableInlineCell,
+  TableNumericCell,
+} from '@/components/roadmap/shared';
 
 // ============================================================================
 // 타입
@@ -219,92 +222,54 @@ interface RowProps {
 }
 
 function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
-  const rowRef = useRef<HTMLTableRowElement>(null);
-  useRowHeightSync(rowRef, [item.competency_name, item.course_name, item.notes, canEdit]);
-
   return (
-    <tr ref={rowRef} className="align-top">
-      {/* 역량명 */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={item.competency_name}
-            onChange={(e) => onUpdate(index, { competency_name: e.target.value })}
-            placeholder="역량명"
-            aria-label={`연간계획 ${index + 1} 역량명`}
-            className="font-medium"
-          />
-        ) : (
-          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.competency_name || '-'}</span>
-        )}
-      </td>
+    <SyncedTableRow
+      deps={[item.competency_name, item.course_name, item.notes, canEdit]}
+    >
+      <TableTextCell
+        canEdit={canEdit}
+        value={item.competency_name}
+        onChange={(v) => onUpdate(index, { competency_name: v })}
+        placeholder="역량명"
+        ariaLabel={`연간계획 ${index + 1} 역량명`}
+        inputClassName="font-medium"
+        readOnlyClassName="font-medium text-foreground"
+      />
 
-      {/* 훈련과정명 */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={item.course_name}
-            onChange={(e) => onUpdate(index, { course_name: e.target.value })}
-            placeholder="훈련과정명"
-            aria-label={`연간계획 ${index + 1} 훈련과정명`}
-          />
-        ) : (
-          <span className="text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.course_name || '-'}</span>
-        )}
-      </td>
+      <TableTextCell
+        canEdit={canEdit}
+        value={item.course_name}
+        onChange={(v) => onUpdate(index, { course_name: v })}
+        placeholder="훈련과정명"
+        ariaLabel={`연간계획 ${index + 1} 훈련과정명`}
+        readOnlyClassName="text-foreground"
+      />
 
-      {/* 훈련형태 — 박스 stretch + 텍스트 top-align 위해 rows=1 textarea 사용 */}
-      <td className="h-0 px-3 py-3 align-top text-center">
-        {canEdit ? (
-          <Textarea
-            rows={1}
-            value={item.format}
-            onChange={(e) =>
-              onUpdate(index, { format: e.target.value.replace(/\n/g, '') })
-            }
-            placeholder="집체/원격/혼합"
-            className="h-full w-full resize-none overflow-hidden text-center"
-            aria-label={`연간계획 ${index + 1} 훈련형태`}
-          />
-        ) : (
-          <span className="text-foreground">{item.format || '-'}</span>
-        )}
-      </td>
+      <TableInlineCell
+        canEdit={canEdit}
+        value={item.format}
+        onChange={(v) => onUpdate(index, { format: v })}
+        placeholder="집체/원격/혼합"
+        ariaLabel={`연간계획 ${index + 1} 훈련형태`}
+      />
 
-      {/* 훈련시간 — 박스 stretch + 텍스트 top-align, 숫자만 허용 */}
-      <td className="h-0 px-3 py-3 align-top text-center">
-        {canEdit ? (
-          <Textarea
-            rows={1}
-            value={item.hours || ''}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^0-9]/g, '');
-              onUpdate(index, { hours: v === '' ? 0 : Number(v) });
-            }}
-            placeholder="시간"
-            className="h-full w-full resize-none overflow-hidden text-center"
-            aria-label={`연간계획 ${index + 1} 훈련시간`}
-          />
-        ) : (
-          <span className="text-foreground">{item.hours > 0 ? `${item.hours}H` : '-'}</span>
-        )}
-      </td>
+      <TableNumericCell
+        canEdit={canEdit}
+        value={item.hours}
+        onChange={(v) => onUpdate(index, { hours: v })}
+        placeholder="시간"
+        ariaLabel={`연간계획 ${index + 1} 훈련시간`}
+      />
 
-      {/* 비고 */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={item.notes}
-            onChange={(e) => onUpdate(index, { notes: e.target.value })}
-            placeholder="비고"
-            aria-label={`연간계획 ${index + 1} 비고`}
-          />
-        ) : (
-          <span className="text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.notes || '-'}</span>
-        )}
-      </td>
+      <TableTextCell
+        canEdit={canEdit}
+        value={item.notes}
+        onChange={(v) => onUpdate(index, { notes: v })}
+        placeholder="비고"
+        ariaLabel={`연간계획 ${index + 1} 비고`}
+        readOnlyClassName="text-muted-foreground"
+      />
 
-      {/* 액션 */}
       {canEdit && (
         <td className="px-3 py-3 text-center align-top">
           <Button
@@ -319,7 +284,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
           </Button>
         </td>
       )}
-    </tr>
+    </SyncedTableRow>
   );
 }
 
