@@ -80,11 +80,12 @@ describe('PageHeader', () => {
       expect(screen.getByRole('button', { name: '새 항목' })).toBeInTheDocument();
     });
 
-    it('actions가 없으면 액션 컨테이너가 없다', () => {
+    it('actions가 없으면 액션 컨테이너는 빈 div로 렌더된다 (hydration 안정성)', () => {
       const { container } = render(<PageHeader title="제목" />);
-      // flex-shrink-0 div가 없어야 함
+      // tree shape 고정을 위해 flex-shrink-0 div는 항상 렌더되며, 내부만 비어있음
       const flexShrinkDiv = container.querySelector('.flex-shrink-0');
-      expect(flexShrinkDiv).toBeNull();
+      expect(flexShrinkDiv).not.toBeNull();
+      expect(flexShrinkDiv?.childNodes.length).toBe(0);
     });
   });
 
