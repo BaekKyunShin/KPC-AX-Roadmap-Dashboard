@@ -210,8 +210,8 @@ src/app/(dashboard)/
 ├── consultant/projects/[id]/interview/
 │   ├── _components/RoadmapInterviewClient.tsx          # [신규] Step 5 Task 9
 │   ├── _components/PBLInterviewClient.tsx              # [신규] Step 8 Task 14
-│   ├── _components/roadmap/Step{CompanyRequirements,TaskWorkflowAnalysis,TrainingTargets}.tsx  # [신규] Step 5 Task 6~8
-│   ├── _components/pbl/StepPBL{CourseOverview,CompanyStatus,TrainingEnvironment,ProblemDefinition,TargetTasks,AILevel,HrdNecessity,Summary}.tsx  # [신규] Step 8 Task 6~13 (8개)
+│   ├── _components/roadmap/Step{CompanyRequirements,TaskWorkflowAnalysis,TrainingTargets,Overview}.tsx  # [신규] Step 5 Task 6~8 + **Step 6.5 개요(Ⅰ장)**
+│   ├── _components/pbl/StepPBL{CourseOverview,CompanyStatus,TrainingEnvironment,HrdNecessity,PerformanceActivities,ProblemDefinition,TargetTasks,AILevel,Summary}.tsx  # [신규] Step 8 Task 6~14 (9개 — 양식 2번 3~11p 순서)
 │   └── _hooks/useInterviewAutoSave.ts                  # [신규] Step 5 Task 9 (기존 InterviewClient 인라인 로직 추출)
 ├── gallery/[id]/_components/
 │   ├── GalleryDetailContent.tsx                        # [기존]
@@ -271,8 +271,10 @@ docs/references/hwpx-placeholders-pbl.md           # [신규] 양식 2번 플레
 | `src/lib/services/roadmap/roadmap-prompts.ts` | 로드맵 인터뷰 → 로드맵 산출물 프롬프트를 산인공 양식에 맞춤 |
 | `src/lib/services/roadmap/roadmap-generator.ts` | Zod 출력 스키마 확장 (역량 모델링, 훈련체계도, 훈련과정 명세서 등) |
 | `src/lib/services/roadmap/roadmap-crud.ts` | 기존 `pbl_course` 단일 과정 개념 제거 또는 deprecated 표시 |
-| `src/lib/services/roadmap/roadmap-types.ts` | 산인공 양식 구조에 맞춘 타입 재정의 |
-| `src/components/roadmap/*.tsx` | 로드맵 산출물 UI를 새 구조에 맞게 재구성 |
+| `src/lib/services/roadmap/roadmap-types.ts` | 산인공 양식 구조에 맞춘 타입 재정의 (Step 6.5에서 `setup_necessity`·`outcome_summary`·`training_structure_method`·루트 NCS 필드 추가) |
+| `src/lib/services/roadmap/roadmap-matrix-builder.ts` | `buildTrainingStructureMatrix`(UI) + **`buildTrainingStructureTable`**(HWPX/PDF 출력용 단순 6열 표) — Step 6.5에서 신규 함수 추가 |
+| `src/lib/services/roadmap/roadmap-storage-mapper.ts` | 신규 필드 jsonb 매핑 + legacy `RoadmapCompetency.ncs_*` 루트 승격 fallback (Step 6.5) |
+| `src/components/roadmap/*.tsx` | 로드맵 산출물 UI를 새 구조에 맞게 재구성 + **`NcsMethodologyBox.tsx` 신규**(Step 6.5 — 표 전체 단위 NCS 방법 박스) |
 | `src/app/(dashboard)/ops/projects/new/page.tsx` | 프로젝트 생성 폼에 `track` 선택 필드 추가 |
 | `src/app/(dashboard)/gallery/page.tsx` + `actions/` | 트랙 라벨·필터 추가 |
 | `src/app/(dashboard)/test-roadmap/*` | 유지 (트랙 페이지 이름만 `test-roadmap`으로 고정) |
@@ -291,11 +293,12 @@ docs/references/hwpx-placeholders-pbl.md           # [신규] 양식 2번 플레
 | 4 | `feature/ofa-04-notices-board` | 공지 게시판 (독립 기능, Step 3과 병렬 가능) | M (10) | ✅ |
 | 5 | `feature/ofa-05-interview-roadmap` | 로드맵 인터뷰 산인공 양식 재설계 | L (13) | ⚠️ (Step 2 의존) |
 | 6 | `feature/ofa-06-output-roadmap` | 로드맵 산출물 양식 정렬 (LLM 프롬프트 + UI) | L (16) | ⚠️ (Step 5 의존) |
-| 7 | `feature/ofa-07-hwpx-roadmap` | 로드맵 HWPX 템플릿 + 내보내기 연결 | M (11) | ⚠️ (Step 3, 6 의존) |
-| 8 | `feature/ofa-08-interview-pbl` | PBL 트랙 인터뷰 신규 (8스텝 위저드) | L (18) | ⚠️ (Step 2 + Step 5 의존 — Step 5의 useInterviewAutoSave·InterviewStepper 재사용) |
+| **6.5** | **`feature/ofa-06.5-form-compliance`** | **로드맵 양식 정합성 보강 (Ⅰ장 인터뷰 + NCS 박스 + 수립 방법 + 부제 라벨)** | **M (12)** | ⚠️ (Step 5·6 의존, Step 7 선행) |
+| 7 | `feature/ofa-07-hwpx-roadmap` | 로드맵 HWPX 템플릿 + 내보내기 연결 (양식 1번 1:1) | M (11) | ⚠️ (Step 3, 6, **6.5** 의존) |
+| 8 | `feature/ofa-08-interview-pbl` | PBL 트랙 인터뷰 신규 (9스텝 위저드, 양식 2번 Ⅰ~Ⅲ장 1:1) | L (19) | ⚠️ (Step 2 + Step 5 의존 — Step 5의 useInterviewAutoSave·InterviewStepper 재사용) |
 | 9 | `feature/ofa-09-output-pbl` | PBL 산출물 신규 (LLM, UI, CRUD, 내보내기) | XL (20) | ⚠️ (Step 8 의존) |
 | 10 | `feature/ofa-10-hwpx-pbl` | PBL HWPX 템플릿 + 내보내기 연결 | M (11) | ⚠️ (Step 3, 9 의존) |
-| 11 | `feature/ofa-11-gallery-test-track` | 갤러리 트랙 라벨·필터, PBL 테스트 페이지 | M (10) | ⚠️ (Step 9 의존) |
+| 11 | `feature/ofa-11-gallery-test-track` | 갤러리 트랙 라벨·필터, PBL 테스트 페이지 (Step 6.5·Step 8·9 신규 필드 노출) | M (10) | ⚠️ (Step 6.5, Step 9 의존) |
 | 12 | `feature/ofa-12-final-qa-docs` | E2E, 문서, 배포 점검 | M (10) | ⚠️ (전부 의존) |
 
 **병렬화 가능 구간**: Step 3 + Step 4는 Step 2 머지 후 병렬 시작 가능. `superpowers:dispatching-parallel-agents` 활용.
@@ -2347,14 +2350,297 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-06): 로�
 
 ---
 
+### Step 6.5: 로드맵 양식 정합성 보강 (Step 5·6 사후 보강)
+
+**브랜치:** `feature/ofa-06.5-form-compliance`
+**규모:** Medium (약 12 Task)
+**호출 스킬:** `frontend-guide`, `composition-patterns`, `check-server-action`, `refactoring`
+**의존:** Step 5, Step 6 (모두 머지됨)
+
+**배경 (중요 — 반드시 먼저 정독):**
+Step 5·6 구현 후 산인공 양식 1번(`docs/references/1.AI훈련로드맵 컨설팅 보고서(양식).pdf`)과 1:1 대조 결과 아래 격차 확인. 본 Step에서 **HWPX 자동 생성 전(Step 7)에 반드시 보강**해야 양식 그대로 출력이 가능하다.
+
+**양식 1번 1:1 대조 격차:**
+
+| 양식 위치 | 양식 필드 | Step 5/6 상태 | 본 Step 조치 |
+|---|---|---|---|
+| Ⅰ-1 | 수립 필요성 (텍스트 박스) | 없음 | **인터뷰 스키마 + UI 추가** |
+| Ⅰ-2 | 주요 활동 표 (수행 차수·일시·내용·방법·참석자) | 없음 | **수행일지 수집 필드 + 자동집계는 Step 7로** |
+| Ⅰ-3 | 수립 주요 결과 (기업 AI 역량 수준 체크·선정 과업·수립 주요내용 요약) | `diagnosis_summary`만 | **3필드로 분리 저장** |
+| Ⅱ-1 | 기업 AI 역량 수준 진단 (HRD이음 첨부) | 없음 | **`hrd_report_attachment_url` 필드만 추가 (실제 연동은 Step 12)** |
+| Ⅲ-1 | 역량 정의(수행준거) 부제 / 지식(학술·업무지식) / 기술(기능) | 필드는 있으나 UI 부제 없음 | **UI 라벨에 괄호 부제 추가** |
+| Ⅲ-1 | NCS 활용 방법 / 역량별 도출 방법 (**표 전체 단위** 별도 박스) | 각 역량 행마다 개별 필드 | **역량 배열에서 분리 → 결과 루트에 2개 텍스트 박스 필드 추가. 역량별 개별 필드는 제거** |
+| Ⅲ-2 | 훈련체계 수립 방법 (텍스트 박스) | 없음 | **`training_structure_method` 필드 추가** |
+| Ⅲ-4 | 훈련 내용 표의 "세부 내용(**단원, 과제명**)" 부제 | "세부내용"만 | **UI 부제 추가** |
+| Ⅲ-2 | 훈련체계도 단순 표 (6열: 역량명·훈련수준·훈련내용·훈련대상·훈련방법·훈련목표) | 매트릭스(역량×수준) UI | **매트릭스 UI 유지 + HWPX/PDF 출력 전용 단순 표 변환 함수 추가** |
+
+**파일:**
+- 변경: `src/lib/schemas/interview-roadmap.ts` — Ⅰ장 입력 필드 추가
+- 변경: `src/lib/constants/interview-steps-roadmap.ts` — "개요" 스텝 추가 (5→6스텝)
+- 변경: `src/lib/services/roadmap/roadmap-types.ts` — 신규 3필드(setup_necessity·outcome_summary·training_structure_method) + NCS 루트 필드(ncs_methodology·ncs_derivation_method) + RoadmapCompetency에서 개별 NCS 필드 제거
+- 변경: `src/lib/services/roadmap/roadmap-validator.ts` — 신규 Zod 필드
+- 변경: `src/lib/schemas/roadmap.ts` — Zod 스키마 갱신
+- 변경: `src/lib/services/roadmap/roadmap-prompts.ts` — LLM 프롬프트 신규 필드 지시
+- 변경: `src/lib/services/roadmap/roadmap-storage-mapper.ts` — DB jsonb 매핑 확장
+- 변경: `src/lib/services/roadmap/roadmap-matrix-builder.ts` — 단순 표 출력용 변환 함수 추가(`buildTrainingStructureTable()`)
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepOverview.tsx` + `.test.tsx` — Ⅰ장 입력 스텝
+- 변경: `src/components/roadmap/CompetencyModelingTable.tsx` — 부제 라벨 + NCS 박스 제거
+- 신규: `src/components/roadmap/NcsMethodologyBox.tsx` + `.test.tsx` — 전체 단위 NCS 방법 박스 (활용/도출 중 ncs_used 토글)
+- 변경: `src/components/roadmap/RoadmapMatrix.tsx` — 매트릭스 아래 "훈련체계 수립 방법" 텍스트 박스
+- 변경: `src/components/roadmap/CourseSpecCard.tsx` — 교과목 부제 라벨
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/ConsultantRoadmapClient.tsx` — 헤더에 개요(Ⅰ장) 블록 추가
+- 변경: `src/app/(dashboard)/ops/projects/[id]/roadmap/_components/OpsRoadmapClient.tsx` — 동일
+- 변경: 관련 테스트 전수 갱신
+
+**중요 제약:**
+- **마이그레이션 신규 추가 금지**. DB 컬럼은 Step 6에서 재용도 중인 jsonb에 하위 키로 추가.
+- legacy 데이터 호환 유지 (빈 값 → 기본값 안전 변환; `roadmap-storage-mapper.ts`의 type guard 확장).
+- LLM 프롬프트 토큰 증가 최소화.
+
+**legacy 데이터 호환 — `RoadmapCompetency` 개별 NCS 필드 제거 영향 (중요):**
+Step 6에서 `RoadmapCompetency`에 `ncs_used`·`ncs_methodology`·`ncs_derivation_method` 3필드를 **역량별**로 두고 데이터를 저장했다. Step 6.5에서 이 3필드를 `RoadmapCompetency`에서 제거하고 루트로 승격하므로, Step 6 이후에 생성된 legacy 데이터(개별 역량에 NCS 필드가 포함된 jsonb)를 **승격 변환**해 신규 루트 필드로 이동해야 한다.
+
+`fromRoadmapVersionColumns` 안에 legacy → neo 승격 로직:
+```ts
+// legacy: competencies[i].ncs_methodology 중 비어 있지 않은 첫 값을 루트로 승격
+const legacyNcsMethodology = legacyCompetencies.find(c => typeof c.ncs_methodology === 'string' && c.ncs_methodology.length > 0)?.ncs_methodology;
+const legacyNcsDerivation = legacyCompetencies.find(c => typeof c.ncs_derivation_method === 'string' && c.ncs_derivation_method.length > 0)?.ncs_derivation_method;
+// 다수 역량 간 값이 다르면 첫 비어있지 않은 값만 승격. 차이 발견 시 console.warn + UI에서 "여러 역량에 NCS 메소돌로지가 분산되어 있었습니다. 검토 필요." 토스트
+```
+
+→ Task 8(storage-mapper) 구현 시 이 로직 필수 포함. 기존 데이터 손실 0건.
+
+- [ ] **Task 1: 브랜치 생성**
+
+```bash
+git checkout feature/official-form-alignment && git pull
+git checkout -b feature/ofa-06.5-form-compliance
+```
+
+- [ ] **Task 2: 인터뷰 스키마 Ⅰ장 필드 추가 (TDD)**
+
+파일: `src/lib/schemas/interview-roadmap.ts` + `.test.ts`
+
+```ts
+// 신규 섹션 — Ⅰ. 개요
+export const AI_COMPETENCY_LEVEL = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']); // 초급(AI기초형) / 중급(AI탐구형) / 고급(AI활용형·선도형)
+
+export const overviewSchema = z.object({
+  establishment_necessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
+  ai_competency_level: AI_COMPETENCY_LEVEL,                    // Ⅰ-3 체크박스
+  selected_tasks_summary: z.string().min(1, '선정 과업을 입력하세요.'),
+  roadmap_summary: z.string().min(1, '수립 주요내용 요약을 입력하세요 (1장 이내).'),
+  hrd_report_attachment_url: z.string().url().optional(),       // Ⅱ-1 HRD이음 보고서 첨부 (실연동은 Step 12)
+});
+
+// roadmapInterviewSchema에 overview 통합
+export const roadmapInterviewSchema = z.object({
+  // 기존 필드 ...
+  overview: overviewSchema,
+  // ...
+});
+```
+
+경계값 테스트: 빈 값 거부, enum 외 값 거부, URL 형식 검증.
+
+- [ ] **Task 3: 인터뷰 스텝 상수 — "개요" 스텝 추가**
+
+파일: `src/lib/constants/interview-steps-roadmap.ts` + `.test.ts`
+
+기존 5스텝 앞에 "개요" 스텝 삽입 → 6스텝:
+1. 개요 (Ⅰ-1·Ⅰ-3 입력)
+2. 기업 요구분석 (Ⅱ-2)
+3. 과업·워크플로우 분석 (Ⅱ-3)
+4. 훈련대상 과업 선정 (Ⅱ-4)
+5. 참석자·일정
+6. 확인·제출
+
+- [ ] **Task 4: `StepOverview.tsx` 컴포넌트 (RED → GREEN)**
+
+파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepOverview.tsx` + `.test.tsx`
+
+- `establishment_necessity` textarea (5줄, 힌트: "AI훈련로드맵 수립을 위해 해당 과업 선정 이유 및 AI 적용의 필요성")
+- `ai_competency_level` 라디오 3개 (초급·중급·고급) + 각 라벨 옆 부제 "(AI기초형)", "(AI탐구형)", "(AI활용형·선도형)"
+- `selected_tasks_summary` textarea
+- `roadmap_summary` textarea (1장 이내 가이드 툴팁)
+- `hrd_report_attachment_url` Input (placeholder: "HRD이음 보고서 URL — Step 12 이후 자동 연동 예정")
+
+shadcn 컴포넌트만 사용, `field-error`·`useInterviewAutoSave` 훅 재사용.
+
+- [ ] **Task 5: RoadmapResult 타입 갱신 (TDD)**
+
+파일: `src/lib/services/roadmap/roadmap-types.ts` + `roadmap-types.test.ts`
+
+변경 요약:
+```ts
+// RoadmapCompetency에서 NCS 개별 필드 제거
+export interface RoadmapCompetency {
+  name: string;
+  definition: string;       // (수행준거)
+  knowledge: string[];      // (학술, 업무지식)
+  skills: string[];         // (기능)
+  attitudes: string[];
+  // ncs_used / ncs_methodology / ncs_derivation_method 모두 삭제
+}
+
+// 루트에 3신규 필드 + NCS 전체 박스 2필드
+export interface LLMRoadmapResult {
+  diagnosis_summary: string;           // (기존)
+  setup_necessity: string;              // Ⅰ-1 (인터뷰에서 그대로 복사)
+  outcome_summary: {                   // Ⅰ-3
+    ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    selected_tasks: string;
+    main_content: string;
+  };
+  competencies: RoadmapCompetency[];
+  ncs_used: boolean;                    // Ⅲ-1 표 전체 단위
+  ncs_methodology: string;              // ncs_used=true 시 필수
+  ncs_derivation_method: string;        // ncs_used=false 시 필수
+  training_structure: RoadmapTrainingStructureItem[];
+  training_structure_method: string;    // Ⅲ-2 수립 방법 텍스트
+  annual_plan: RoadmapAnnualPlan;
+  course_specs: RoadmapCourseSpec[];
+}
+```
+
+호환: `fromRoadmapVersionColumns`에서 누락 시 기본값 (빈 문자열/배열).
+
+- [ ] **Task 6: Zod validator·schema 갱신 (TDD)**
+
+파일:
+- `src/lib/services/roadmap/roadmap-validator.ts` + `.test.ts`
+- `src/lib/schemas/roadmap.ts` + `.test.ts`
+
+변경:
+- `competencySchema`에서 NCS 개별 필드 제거
+- 루트 `roadmapContentSchema`에 `setup_necessity`, `outcome_summary`, `ncs_used + ncs_methodology | ncs_derivation_method` refine, `training_structure_method` 추가
+- `editRoadmapUpdatesSchema`에 신규 필드 허용
+
+정합성 규칙:
+- `ncs_used=true`이면 `ncs_methodology` 필수
+- `ncs_used=false`이면 `ncs_derivation_method` 필수
+- `training_structure_method` 최소 1자
+- `outcome_summary.ai_competency_level`은 enum 3값
+
+- [ ] **Task 7: LLM 프롬프트 갱신 (prompt-engineer 서브에이전트)**
+
+Agent(subagent_type:"prompt-engineer", description:"OFA Step 6.5 프롬프트 신규 필드 지시 추가", prompt:"...").
+
+요점:
+- 신규 출력 필드(setup_necessity·outcome_summary·training_structure_method·ncs_used·ncs_methodology·ncs_derivation_method) 추가 지시
+- `setup_necessity`는 인터뷰 `overview.establishment_necessity`를 **그대로 복사**하도록 지시 (LLM 재창작 금지)
+- `outcome_summary.ai_competency_level` 역시 인터뷰 입력값을 그대로 복사
+- 토큰 효율을 위해 기존 단일 텍스트 `diagnosis_summary` 역할은 유지하되, 신규 3필드와 중복 내용 방지 지침 추가
+
+- [ ] **Task 8: storage-mapper + generator 갱신**
+
+파일:
+- `src/lib/services/roadmap/roadmap-storage-mapper.ts` + `.test.ts`
+- `src/lib/services/roadmap/roadmap-generator.ts` + `.test.ts`
+
+- jsonb legacy 컬럼(`pbl_course`) 하위 구조 확장:
+  ```ts
+  pbl_course = {
+    competencies: [...],
+    annual_plan: {...},
+    // 신규
+    setup_necessity: string,
+    outcome_summary: {...},
+    training_structure_method: string,
+    ncs: { used: boolean, methodology?: string, derivation_method?: string },
+    hrd_report_attachment_url?: string,
+  }
+  ```
+- `fromRoadmapVersionColumns`의 type guard에 신규 필드 검증 + 누락 시 기본값
+- `generateRoadmap`이 인터뷰 `overview`를 받아 LLM에 전달 + 반환값에 Ⅰ장 데이터 포함
+
+- [ ] **Task 9: 매트릭스 단순 표 변환 함수 추가**
+
+파일: `src/lib/services/roadmap/roadmap-matrix-builder.ts` + `.test.ts`
+
+```ts
+/**
+ * 양식 1번 Ⅲ-2 훈련체계도 단순 표 변환 (HWPX/PDF 출력용).
+ * 매트릭스(역량×수준) → 6열 단순 표 (역량명·훈련수준·훈련내용·훈련대상·훈련방법·훈련목표).
+ * 같은 역량의 여러 수준은 여러 행으로 전개.
+ */
+export interface TrainingStructureTableRow {
+  competency_name: string;
+  level_label: '초급' | '중급' | '고급';
+  content: string;
+  target_audience: string;
+  method: string;
+  goal: string;
+}
+
+export function buildTrainingStructureTable(
+  competencies: RoadmapCompetency[],
+  structure: RoadmapTrainingStructureItem[],
+): TrainingStructureTableRow[]
+```
+
+기존 `buildTrainingStructureMatrix`는 그대로 유지 (UI 매트릭스용).
+
+- [ ] **Task 10: UI 컴포넌트 갱신 (병렬 subagent 디스패치 가능)**
+
+- `CompetencyModelingTable.tsx`: 부제 라벨 추가 ("역량 정의 (수행준거)", "지식 (학술, 업무지식)", "기술 (기능)"), **NCS 관련 필드 삭제**
+- `NcsMethodologyBox.tsx` 신규: `ncs_used` 토글 + 활용 방법 또는 도출 방법 textarea (ncs_used 값에 따라 라벨/필드 전환), canEdit + onChange
+- `RoadmapMatrix.tsx`: 매트릭스 아래에 "훈련체계 수립 방법" 섹션 (textarea, canEdit=false 시 읽기 표시)
+- `CourseSpecCard.tsx`: 교과목 표 헤더 "세부 내용" → "세부 내용 (단원, 과제명)"
+- `ConsultantRoadmapClient.tsx`: 헤더(diagnosis_summary) 대신 **Ⅰ장 요약 블록**(수립 필요성 · AI 역량 수준 뱃지 · 선정 과업 · 수립 주요내용 요약) 신규. 기존 diagnosis_summary는 보조 블록으로 유지 또는 outcome_summary.main_content로 대체
+- `OpsRoadmapClient.tsx`: 동일 읽기 전용
+
+테스트 모두 갱신.
+
+- [ ] **Task 11: E2E 갱신**
+
+`e2e/consultant/consultant-roadmap.spec.ts` + `e2e/consultant/consultant-interview.spec.ts` (있을 시):
+- 인터뷰 "개요" 스텝 렌더 + 입력 검증
+- 로드맵 결과 페이지에 Ⅰ장 블록·훈련체계 수립 방법·NCS 박스(표 전체 단위) 렌더 확인
+
+- [ ] **Task 12: 검증·커밋·PR**
+
+```bash
+npm run validate && npm run build && npm run test:e2e
+git add <변경파일>
+git commit -m "feat(ofa-06.5): 로드맵 양식 정합성 보강 (Ⅰ장 + NCS 박스 + 수립 방법 + 부제 라벨)
+
+- 인터뷰 Ⅰ장 필드(수립 필요성·AI역량수준·선정과업·요약) 추가
+- RoadmapResult에 setup_necessity·outcome_summary·training_structure_method 추가
+- NCS 방법을 역량별 → 표 전체 단위 박스로 재배치
+- 부제 라벨(수행준거·학술/업무지식·기능·단원·과제명) UI 반영
+- buildTrainingStructureTable 변환 함수(단순 표, HWPX/PDF용)
+- 전체 테스트 회귀 0"
+git push -u origin feature/ofa-06.5-form-compliance
+gh pr create --base feature/official-form-alignment --title "feat(ofa-06.5): 로드맵 양식 정합성 보강" --body "..."
+```
+
+**완료 지표:** 로드맵 인터뷰 6스텝 + 결과 화면에 Ⅰ장 블록·NCS 표 전체 단위 박스·훈련체계 수립 방법 텍스트 정상 표출 + LLM 생성 결과가 신규 스키마 검증 통과 + 기존 테스트 회귀 0.
+
+---
+
 ### Step 7: 로드맵 HWPX 템플릿 + 내보내기 연결
 
 **브랜치:** `feature/ofa-07-hwpx-roadmap`
-**규모:** Medium (약 10개 Task)
+**규모:** Medium (약 11 Task)
 **호출 스킬:** `hwpx-docgen`(외부 분석), supabase MCP (필요 시)
-**의존:** Step 3, 6
+**의존:** Step 3, 6, **6.5**
 
-**목표:** 산인공 양식 1번 HWPX 원본을 템플릿화하고, 로드맵 데이터 → 템플릿 → HWPX 다운로드 파이프라인 완성.
+**목표:** 산인공 양식 1번 HWPX 원본을 템플릿화하고, 로드맵 데이터 → 템플릿 → HWPX 다운로드 파이프라인 완성. **양식 1번 모든 섹션(Ⅰ·Ⅱ·Ⅲ + 별첨 수행일지) 1:1 매칭**.
+
+**양식 1번 섹션별 데이터 출처 (반드시 숙지):**
+| 섹션 | 데이터 출처 |
+|---|---|
+| Ⅰ. 개요 (수립 필요성·주요 활동·수립 주요 결과) | 인터뷰 `overview` 필드 (Step 6.5) + 수행일지 자동집계 |
+| Ⅱ-1. 기업 AI 역량 수준 진단 | HRD이음 보고서 URL/첨부 (Step 6.5 `hrd_report_attachment_url`; 실 파일 임베드는 Step 12) |
+| Ⅱ-2. 기업 요구분석 | 인터뷰 `company_requirements` (Step 5) |
+| Ⅱ-3. 과업·워크플로우 분석 | 인터뷰 `task_workflow_items` + `analysis_notes` (Step 5) |
+| Ⅱ-4. 훈련대상 과업 선정 | 인터뷰 `training_targets` (Step 5) |
+| Ⅲ-1. 역량 모델링 | LLM 결과 `competencies` + 전체 단위 NCS 박스 (`ncs_used`/`ncs_methodology`/`ncs_derivation_method`, Step 6.5) |
+| Ⅲ-2. 훈련체계도 + 수립 방법 | LLM 결과 `training_structure` + `training_structure_method` (Step 6.5). **`buildTrainingStructureTable()`로 매트릭스→단순 6열 표 변환 후 삽입** |
+| Ⅲ-3. 연간 훈련계획 | LLM 결과 `annual_plan.items` + `usage_plan` (Step 6) |
+| Ⅲ-4. 훈련과정 명세서 | LLM 결과 `course_specs` (Step 6) — 교과목 표 "세부 내용 (단원, 과제명)" 부제는 템플릿에 이미 존재하므로 데이터만 채움 |
+| 별첨 수행일지 | 인터뷰 차수별 `participants`·수행내용 자동집계 (Task 3에서 명시) |
 
 **파일:**
 - 신규: `templates/hwpx/roadmap.hwpx` (산인공 양식 1번 수정본)
@@ -2403,20 +2689,27 @@ python-hwpx로 텍스트 위치를 찾아 `{{company_name}}`, `{{pm_name}}`, `{{
 | 기업명 | `{{company_name}}` |
 | 컨설팅책임자(PM) | `{{pm_name}}`, `{{pm_affiliation}}` |
 | 기업 내부전문가 | `{{internal_expert_name}}`, `{{internal_expert_affiliation}}` |
-| 수립 필요성 | `{{establishment_necessity}}` |
-| 역량 수준(체크) | `{{level_beginner_check}}`, `{{level_intermediate_check}}`, `{{level_advanced_check}}` |
-| 선정 과업 | `{{selected_tasks_text}}` |
-| 로드맵 수립 주요내용 요약 | `{{roadmap_summary}}` |
-| 기업 현황 | `{{company_status}}` |
-| 주요 문제 | `{{main_problems}}` |
-| 추진 의지 | `{{push_willingness}}` |
-| 기대 성과 | `{{expected_outcomes}}` |
-| 과업·워크플로우 분석표 | (표 행 반복 → Python 쪽에서 add_row) |
-| 훈련대상 과업 | `{{training_target_name}}` ... |
-| 역량 모델링 표 | (행 반복) |
-| 훈련체계도 | (행 반복) |
-| 연간 훈련계획 | (행 반복) |
-| 훈련과정 명세서 | (반복 블록) |
+| **Ⅰ-1 수립 필요성** | `{{establishment_necessity}}` (인터뷰 `overview.establishment_necessity`) |
+| **Ⅰ-2 주요 활동 표** | (수행일지 차수별 행 반복 — Python `add_row`) |
+| **Ⅰ-3 AI 역량 수준 체크** | `{{level_beginner_check}}`, `{{level_intermediate_check}}`, `{{level_advanced_check}}` (`outcome_summary.ai_competency_level`에서 해당 1개만 "☑", 나머지 "☐") |
+| **Ⅰ-3 선정 과업** | `{{selected_tasks_text}}` (`outcome_summary.selected_tasks`) |
+| **Ⅰ-3 수립 주요내용 요약** | `{{roadmap_summary}}` (`outcome_summary.main_content`) |
+| **Ⅱ-1 HRD이음 보고서 첨부** | `{{hrd_report_attachment_url}}` (선택 — 빈 값이면 "별도 작성 불요" 자동 표기) |
+| Ⅱ-2 기업 현황 | `{{company_status}}` |
+| Ⅱ-2 주요 문제 | `{{main_problems}}` |
+| Ⅱ-2 추진 의지 | `{{push_willingness}}` |
+| Ⅱ-2 기대 성과 | `{{expected_outcomes}}` |
+| Ⅱ-3 과업·워크플로우 분석표 | (표 행 반복) + `{{analysis_notes_text}}` |
+| Ⅱ-4 훈련대상 과업 | `{{training_target_name}}`, `{{selection_reason}}`, `{{target_as_is}}`, `{{target_to_be}}` ... (반복 블록) |
+| **Ⅲ-1 역량 모델링 표** | (행 반복 — 역량명·역량 정의(수행준거)·지식(학술, 업무지식)·기술(기능)·태도) |
+| **Ⅲ-1 NCS 활용 방법** | `{{ncs_methodology}}` (`ncs_used=true`일 때만 렌더, 아니면 빈 박스) |
+| **Ⅲ-1 역량별 도출 방법** | `{{ncs_derivation_method}}` (`ncs_used=false`일 때만 렌더) |
+| **Ⅲ-2 훈련체계도 표** | (행 반복 — `buildTrainingStructureTable()` 결과: 역량명·훈련수준·훈련내용·훈련대상·훈련방법·훈련목표 6열 단순 표) |
+| **Ⅲ-2 훈련체계 수립 방법** | `{{training_structure_method}}` |
+| Ⅲ-3 연간 훈련계획 | (행 반복 — 역량명·훈련과정명·훈련형태·훈련시간·비고) |
+| Ⅲ-3 활용방안 | `{{annual_plan_usage}}` |
+| Ⅲ-4 훈련과정 명세서 | (반복 블록 — 과정명·훈련 형태·추천 훈련사업·훈련 목표·주요 훈련 내용·훈련 대상 + 교과목 표 "세부 내용(단원, 과제명)·훈련시간" 행 반복) |
+| 별첨 수행일지 | (차수별 반복 블록 — 수행일자·차수·수행방법·운영방식·참석자 표·회의주제·수행내용·별첨자료) |
 
 검증:
 ```bash
@@ -2586,23 +2879,71 @@ print('OK')
 ### Step 8: PBL 트랙 인터뷰 신규
 
 **브랜치:** `feature/ofa-08-interview-pbl`
-**규모:** Large (18 Task)
+**규모:** Large (19 Task) — 양식 2번 3~11p의 9개 스텝 + Summary + Client + Server Action + E2E
 **호출 스킬:** `frontend-guide`, `composition-patterns`, `check-server-action`
 **의존:** Step 2 (DB), Step 5 (인터뷰 위저드 패턴 참조)
 
-**목표:** PBL 트랙 전용 인터뷰 스키마·UI 신규 구축. 산인공 문서 2 기준 모든 필드 수용.
+**목표:** PBL 트랙 전용 인터뷰 스키마·UI 신규 구축. 산인공 양식 2번 **3~11p (Ⅰ·Ⅱ·Ⅲ장)**의 모든 필드를 **1:1로 수용**.
 
-**산인공 PBL 인터뷰 요구 필드:**
-1. 훈련과정 개요 (NCS 분류·훈련시간·훈련생수·AI역량수준·훈련목표 체크박스)
-2. 기업 현황 분석 (경영이슈, 조직도)
-3. 훈련환경 분석 (적정시간·장소·사내강사·AI인프라·As-Is/To-Be)
-4. HRD 제안 & AI훈련과정 개발 필요성 (수기 입력)
-5. 수행활동 (수행일지)
-6. 문제 도출 (문제정의서 — 배경·핵심·범위·제약)
-7. 문제 우선순위 결정 (5점 척도)
-8. 훈련대상 업무 선정 + 사유
-9. 훈련대상 업무 세부내용 (As-Is, To-Be, 요구지식, 기술)
-10. AI수준 진단 (현행·향후)
+**산인공 양식 2번 인터뷰 필드 (3~11p, 양식 그대로):**
+
+### Ⅰ. 훈련과정 개요 (3p)
+| 필드 | 스키마 키 | 타입 | 비고 |
+|---|---|---|---|
+| 기업명 | `company_name` | string (읽기전용) | 신청서 자동 불러옴 |
+| 사업장관리번호 | `business_registration_no` | string | |
+| 주요 업종 (업종코드·주업종) | `industry_code`, `industry_main` | string | |
+| 주소 | `address` | string | |
+| 훈련실시주소 | `training_address` | string | |
+| 관할 지부·지사 | `jurisdiction_office` | string | |
+| 담당자 연락처 | `contact.position`, `contact.name`, `contact.phone`, `contact.email` | nested | |
+| 훈련과정명 | `course_name` | string | 훈련 프로파일 자동 불러옴 |
+| NCS 분류 | `ncs_code` | string | 예: 200107 인공지능 |
+| 훈련시간 | `training_hours` | number | 시간 단위 |
+| 훈련생 | `trainee_count` | number | 명 |
+| 훈련 직무 | `training_job` | string | 직접 입력 |
+| AI역량 수준 | `ai_level` | enum | `AI기초형` / `AI탐구형` / `AI활용형` / `AI선도형` |
+| 훈련 목표 | `training_goals[]` | string[] (복수선택) | `기술문제 해결` / `공정 최적화` / `불량률 감소` / `기술 매뉴얼 개발` / `기타` |
+
+### Ⅱ. 훈련 요구 분석 (4~6p)
+#### Ⅱ-1. 기업 현황 분석
+- 기업 경영 이슈 (`business_issues`: string, 다중 항목 bullet) — 인터뷰 내용 기반
+- 조직도 및 주요 업무 (`organization[]`): `{ department_name, tasks[] }` 배열
+
+#### Ⅱ-2. 기업 훈련환경 분석
+| 필드 | 스키마 키 |
+|---|---|
+| 적정 훈련시간 | `proper_training_hours: number` |
+| 적정 훈련장소 | `training_place.type`: enum(`사내`/`사외`), `training_place.special_notes: string` |
+| 사내 강사 활용 여부 | `internal_instructor.used: boolean`, `internal_instructor.name`, `internal_instructor.position` |
+| 대상 인원 | `target_count: number` |
+| 대상자 특성 | `target_characteristics: { career, level }` |
+| AI활용 가능 인프라 | `ai_infrastructure`: { `ai_tools: enum(가능/제한적/불가능)`, `network: enum(양호/보통/개선필요)`, `pc_count: number`, `etc_equipment: string` } |
+| AI훈련 요구분석 결과 | `training_needs_analysis: string` (bullet 3~5개) |
+| 기대효과 | `expectation.as_is: string`, `expectation.to_be: string` |
+
+### Ⅲ. AI기반 훈련과제 도출 (7~11p)
+#### Ⅲ-1. 훈련과제 도출 수행활동 (7p)
+- `performance_activities[]`: `{ round, date, content, method, participants: { pm, external_expert, internal_expert, jurisdiction_manager }[] }` (반복 행)
+
+#### Ⅲ-2. 문제 도출 및 문제 우선순위 결정 (8p)
+- 문제 정의서 (`problem_definition`): `{ background, core_problem, scope, constraints }` 4필드
+- 문제 우선순위 결정 (`problem_priorities[]`): `{ problem_name, priority: 1~5, selected: boolean }` (1~5점 척도)
+
+#### Ⅲ-3. 훈련대상 업무 선정 및 분석 (9~10p)
+- 훈련대상 업무 선정 (`target_tasks[]`): `{ task_name, necessity: 1~5, selected: boolean }` (각 업무에 AI훈련과정 개발 필요성 1~5점)
+- AI기반 문제해결의 필요성 (훈련대상 업무 선정 사유, `selection_reason: string`)
+- 훈련대상 업무 세부내용 (`target_task_details[]`): `{ task_name, as_is, to_be, required_knowledge, required_skill }` (각 업무의 As-IS → To-Be + 요구지식 + 기술)
+
+#### Ⅲ-4. AI수준 진단 (11p)
+- 현재 기업의 AI역량 수준 진단 (`current_ai_level`): enum(`AI기초형`/`AI탐구형`/`AI활용형`/`AI선도형`)
+- 훈련 이후 AI역량 수준 향상도 예상 (`expected_ai_level`): enum 동일
+- AI역량 수준 향상 사유 (`improvement_reason: string`)
+
+**스키마 설계 원칙:**
+- 양식 필드명을 한글 그대로 UI 라벨에 표시 (스키마 키는 snake_case 영어)
+- enum 값은 **양식 그대로의 한글 문자열** 사용 (예: `'AI기초형'`) — 매핑 테이블 별도 관리 불필요, HWPX 생성 시 바로 삽입
+- 체크박스/복수선택은 배열 + `satisfies` 확인
 
 **기존 프로젝트 컨벤션 준수 (Step 5와 동일):**
 - 컨테이너: `PBLInterviewClient.tsx`
@@ -2616,26 +2957,28 @@ print('OK')
 - 변경: `src/lib/constants/interview-steps.ts` (PBL 분기 완성 — Step 5에서 만든 디스패처 확장)
 - 변경: `src/app/(dashboard)/consultant/projects/[id]/interview/page.tsx` (PBL 분기 실제 위저드 연결)
 - 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/PBLInterviewClient.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCourseOverview.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCompanyStatus.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTrainingEnvironment.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLProblemDefinition.tsx` (+ `.test.tsx`) — 문제 정의서 + 우선순위 통합
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTargetTasks.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLAILevel.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity.tsx` (+ `.test.tsx`)
-- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLSummary.tsx` (+ `.test.tsx`)
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCourseOverview.tsx` (+ `.test.tsx`) — Ⅰ장
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCompanyStatus.tsx` (+ `.test.tsx`) — Ⅱ-1
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTrainingEnvironment.tsx` (+ `.test.tsx`) — Ⅱ-2
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity.tsx` (+ `.test.tsx`) — Ⅱ-3
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLPerformanceActivities.tsx` (+ `.test.tsx`) — **Ⅲ-1 신규 스텝**
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLProblemDefinition.tsx` (+ `.test.tsx`) — Ⅲ-2 (문제 정의서 + 우선순위 통합)
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTargetTasks.tsx` (+ `.test.tsx`) — Ⅲ-3
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLAILevel.tsx` (+ `.test.tsx`) — Ⅲ-4
+- 신규: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLSummary.tsx` (+ `.test.tsx`) — 확인·제출
 
 > 참고: DB는 Step 2에서 추가된 `interviews.pbl_data JSONB` 컬럼을 사용. 로드맵 JSONB 컬럼들은 건드리지 않는다.
 
-**권장 스텝 분할 (8스텝):**
-1. 기본정보 + 훈련과정 개요 (NCS 분류·훈련시간·AI역량수준·훈련목표 체크박스)
-2. 기업 현황 분석 (경영이슈 + 조직도/부서별 업무)
-3. 훈련환경 분석 (적정시간·장소·사내강사·AI인프라·As-Is/To-Be)
-4. 문제 도출 + 우선순위 (문제정의서 + 5점 척도)
-5. 훈련대상 업무 선정 + 세부내용 (AS-IS/TO-BE/요구지식/기술)
-6. AI수준 진단 (현행·향후 등급 + 사유)
-7. HRD 제안 + 과정개발 필요성
-8. 확인·제출
+**권장 스텝 분할 (9스텝 — 양식 2번 3~11p 구조 1:1 매칭):**
+1. **훈련과정 개요** (Ⅰ장) — NCS 분류·훈련시간·훈련생·훈련 직무·AI역량 수준·훈련 목표 체크박스
+2. **기업 현황 분석** (Ⅱ-1) — 경영 이슈 + 조직도/부서별 업무
+3. **훈련환경 분석** (Ⅱ-2) — 적정시간·장소·사내강사·AI인프라·훈련요구분석 결과·As-Is/To-Be
+4. **HRD 제안·과정개발 필요성** (Ⅱ-3) — 훈련 실시·지원 이력 표 + 추천훈련사업 + AI훈련과정 개발 필요성 텍스트
+5. **훈련과제 도출 수행활동** (Ⅲ-1) — 수행 차수·일자·내용·방법·참석자 반복 행 (PM/외부전문가/기업내부전문가/능력개발전담주치의)
+6. **문제 도출·우선순위** (Ⅲ-2) — 문제정의서(배경·핵심·범위·제약) + 5점 척도
+7. **훈련대상 업무** (Ⅲ-3) — 선정 표(필요성 1~5점) + 사유 + 세부내용(As-IS/To-Be/요구지식/기술)
+8. **AI수준 진단** (Ⅲ-4) — 현재 4등급 + 향후 4등급 + 향상 사유
+9. **확인·제출**
 
 - [ ] **Task 1: 브랜치 생성**
 
@@ -2647,23 +2990,27 @@ git checkout -b feature/ofa-08-interview-pbl
 - [ ] **Task 2: PBL 인터뷰 스키마 RED 테스트**
 
 파일: `src/lib/schemas/interview-pbl.test.ts`
-- `courseOverview`: NCS 분류, 훈련시간, 훈련생 수, AI역량수준(enum), 훈련목표(배열 선택)
-- `companyStatus`: 경영이슈(필수), 조직도 부서 배열
-- `trainingEnvironment`: 적정시간, 장소(enum), 대상자 특성, AI인프라
-- `problemDefinition`: 배경·핵심·범위·제약 4필드 모두 필수
-- `problemPriority`: 배열, 각 항목에 priority(1-5), selected(boolean)
-- `targetTasks`: 업무명·As-Is·To-Be·요구지식·기술 배열
-- `aiLevelDiagnosis`: 현행 등급·향후 등급·향상 사유
+**9개 서브 스키마 (양식 2번 3~11p 구조 1:1):**
+- `courseOverview` (Ⅰ장): company_name·business_registration_no·industry_code·industry_main·address·training_address·jurisdiction_office·contact·course_name·ncs_code·training_hours·trainee_count·training_job·ai_level(enum: AI기초형/AI탐구형/AI활용형/AI선도형)·training_goals(string[] 복수선택)
+- `companyStatus` (Ⅱ-1): business_issues(bullet), organization[]({ department_name, tasks[] })
+- `trainingEnvironment` (Ⅱ-2): proper_training_hours, training_place({ type: '사내'/'사외', special_notes }), internal_instructor({ used, name, position }), target_count, target_characteristics({ career, level }), ai_infrastructure({ ai_tools: '가능'/'제한적'/'불가능', network: '양호'/'보통'/'개선필요', pc_count, etc_equipment }), training_needs_analysis(bullet), expectation({ as_is, to_be })
+- `hrdNecessity` (Ⅱ-3): hrd_consulting_result({ training_history[], support_history[], recommendations[] }), course_development_necessity(bullet)
+- `performanceActivities` (Ⅲ-1): performance_activities[]({ round, date, content, method, participants: { pm, external_expert, internal_expert, jurisdiction_manager } })
+- `problemDefinition` (Ⅲ-2): problem_definition({ background, core_problem, scope, constraints }) 모두 필수, problem_priorities[]({ problem_name, priority: 1-5, selected })
+- `targetTasks` (Ⅲ-3): target_tasks[]({ task_name, necessity: 1-5, selected }), selection_reason, target_task_details[]({ task_name, as_is, to_be, required_knowledge, required_skill })
+- `aiLevelDiagnosis` (Ⅲ-4): current_ai_level(enum 4등급), expected_ai_level(enum 4등급), improvement_reason
+
+**enum 값은 양식 그대로 한글**: `'AI기초형'`, `'AI탐구형'`, `'AI활용형'`, `'AI선도형'` / `'사내'`, `'사외'` / `'가능'`, `'제한적'`, `'불가능'` / `'양호'`, `'보통'`, `'개선필요'`
 
 `npm run test -- interview-pbl.test.ts` → FAIL 확인.
 
 - [ ] **Task 3: PBL 인터뷰 스키마 구현 (GREEN)**
 
 파일: `src/lib/schemas/interview-pbl.ts`
-- 위 7개 서브 스키마 + 전체 조합 `pblInterviewSchema`
+- 위 **9개 서브 스키마** + 전체 조합 `pblInterviewSchema`
 - 자동 저장용 완화 스키마 `pblInterviewAutoSaveSchema`
-- 빈 항목 생성 헬퍼(`createEmptyOrgUnit`, `createEmptyProblemItem` 등)
-- 타입 export (`PBLInterview`, `PBLCourseOverview`, ...)
+- 빈 항목 생성 헬퍼(`createEmptyOrgUnit`, `createEmptyProblemItem`, `createEmptyPerformanceActivity`, `createEmptyTargetTask` 등)
+- 타입 export (`PBLInterview`, `PBLCourseOverview`, `PBLCompanyStatus`, `PBLTrainingEnvironment`, `PBLHrdNecessity`, `PBLPerformanceActivities`, `PBLProblemDefinition`, `PBLTargetTasks`, `PBLAILevelDiagnosis`)
 
 `npm run test -- interview-pbl.test.ts` → PASS 확인.
 
@@ -2674,17 +3021,18 @@ git checkout -b feature/ofa-08-interview-pbl
 import type { InterviewStep } from './interview-steps';
 
 export const PBL_INTERVIEW_STEPS: readonly InterviewStep[] = [
-  { id: 1, name: '훈련과정 개요', shortName: '개요' },
-  { id: 2, name: '기업 현황 분석', shortName: '기업' },
-  { id: 3, name: '훈련환경 분석', shortName: '환경' },
-  { id: 4, name: '문제 도출·우선순위', shortName: '문제' },
-  { id: 5, name: '훈련대상 업무', shortName: '업무' },
-  { id: 6, name: 'AI 수준 진단', shortName: 'AI' },
-  { id: 7, name: 'HRD 제안·필요성', shortName: 'HRD' },
-  { id: 8, name: '확인·제출', shortName: '확인' },
+  { id: 1, name: '훈련과정 개요', shortName: '개요' },                // Ⅰ장
+  { id: 2, name: '기업 현황 분석', shortName: '기업' },                 // Ⅱ-1
+  { id: 3, name: '훈련환경 분석', shortName: '환경' },                 // Ⅱ-2
+  { id: 4, name: 'HRD 제안·과정개발 필요성', shortName: 'HRD' },       // Ⅱ-3
+  { id: 5, name: '훈련과제 도출 수행활동', shortName: '수행활동' },    // Ⅲ-1
+  { id: 6, name: '문제 도출·우선순위', shortName: '문제' },           // Ⅲ-2
+  { id: 7, name: '훈련대상 업무', shortName: '업무' },                 // Ⅲ-3
+  { id: 8, name: 'AI 수준 진단', shortName: 'AI수준' },                // Ⅲ-4
+  { id: 9, name: '확인·제출', shortName: '확인' },
 ] as const;
 
-export const PBL_REQUIRED_STEP_IDS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const PBL_REQUIRED_STEP_IDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 ```
 
 테스트 동반(`interview-steps-pbl.test.ts`).
@@ -2732,54 +3080,72 @@ export function getInterviewSteps(track: ProjectTrack) {
 - AI 인프라 체크(도구 사용 환경 / 네트워크 / PC / 기타 장비)
 - As-Is / To-Be 텍스트 영역
 
-- [ ] **Task 9: `StepPBLProblemDefinition` 컴포넌트 (RED → GREEN, 문제 도출 + 우선순위 통합)**
+- [ ] **Task 9: `StepPBLHrdNecessity` 컴포넌트 (RED → GREEN)** — Ⅱ-3 (양식 6p)
+
+파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity.tsx` (+ `.test.tsx`)
+- **기업 훈련현황 표 2개** (양식 6p "가. 기업HRD이음컨설팅 결과" 섹션 그대로):
+  - 훈련 실시 이력 행: 연번·참여사업·훈련과정명·훈련방법·훈련기간(일) — 수기 입력 (HRD이음 자동 연동은 Step 12)
+  - 훈련 지원 이력 행: 연도·연간 정부지원 한도금액(원)(A)·지원받은 금액(원)(B)·비율(B/A)
+- **추천훈련사업 3순위** (양식 6p): 추천 1·2·3순위 + 각 순위별 HRD 제안 (적합 훈련 및 과정 제안) textarea
+- **AI훈련과정 개발 필요성** textarea (양식 6p "나." 섹션, 불릿 스타일 입력 지원)
+
+스키마 매핑: `hrdNecessity` (`src/lib/schemas/interview-pbl.ts`의 Ⅱ-3 서브스키마 그대로)
+
+- [ ] **Task 10: `StepPBLPerformanceActivities` 컴포넌트 (RED → GREEN)** — Ⅲ-1 (양식 7p)
+
+파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLPerformanceActivities.tsx` (+ `.test.tsx`)
+
+양식 2번 7p "Ⅲ-1. 훈련과제 도출 수행활동" 표와 1:1 매칭:
+- 수행 차수(1차/2차/...n차, 동적 추가) 행 반복 테이블
+- 각 행 필드: 수행 일자(YYYY-MM-DD), 수행 내용(textarea), 수행 방법(enum: `'회의'`/`'워크숍'`/`'토론'`/`'기타'` — 양식 예시), 운영 방식(`'대면'`/`'비대면'`)
+- **참석자 4역할** (양식 그대로): 컨설팅책임자(PM)·외부전문가(직무·HRD)·기업내부전문가·능력개발전담주치의 각각 성명 입력
+- 행 추가/삭제 버튼, 기본 1차 1행 제공
+- `composition-patterns` 참고: `StepPBLCompanyStatus`의 동적 배열과 공통화 검토
+
+스키마 매핑: `performanceActivities.performance_activities[]`
+
+- [ ] **Task 11: `StepPBLProblemDefinition` 컴포넌트 (RED → GREEN, 문제 도출 + 우선순위 통합)** — Ⅲ-2 (양식 8p)
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLProblemDefinition.tsx` (+ `.test.tsx`)
 - 문제정의서: 배경·핵심문제·문제범위·제약조건 textarea 4개
 - 문제 우선순위 동적 배열: 각 항목에 문제명 + 5점 척도 + 선정 체크박스
-- "AI 해결 가능 여부" 체크 포함
 
-- [ ] **Task 10: `StepPBLTargetTasks` 컴포넌트 (RED → GREEN)**
+- [ ] **Task 12: `StepPBLTargetTasks` 컴포넌트 (RED → GREEN)** — Ⅲ-3 (양식 9~10p)
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTargetTasks.tsx` (+ `.test.tsx`)
 - 업무 배열 (업무명 + AI훈련 필요성 1-5 + 선정 여부)
-- 선정 업무별 세부내용: 현재(As-Is) / AI활용(To-Be) / 요구지식 / 기술
+- 선정 사유(AI기반 문제해결의 필요성) textarea
+- 선정 업무별 세부내용: 현재(As-IS) / AI활용(To-Be) / 요구지식 / 기술
 - 업무명은 Task 7의 조직도 데이터를 `useMemo`로 추천 후보로 제공(선택)
 
-- [ ] **Task 11: `StepPBLAILevel` 컴포넌트 (RED → GREEN)**
+- [ ] **Task 13: `StepPBLAILevel` 컴포넌트 (RED → GREEN)** — Ⅲ-4 (양식 11p)
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLAILevel.tsx` (+ `.test.tsx`)
-- 현행 등급 라디오 (4등급) + 등급 설명 툴팁
-- 향후 기대 등급 라디오 (4등급)
+- 현재 AI역량 4등급 라디오 (AI기초형/AI탐구형/AI활용형/AI선도형) + 등급 설명 툴팁
+- 향후 기대 AI역량 4등급 라디오
 - 향상 사유 textarea
 
-- [ ] **Task 12: `StepPBLHrdNecessity` 컴포넌트 (RED → GREEN)**
-
-파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity.tsx` (+ `.test.tsx`)
-- HRD 제안 (훈련 실시 이력·지원 이력 수기 입력 표 — HRD이음 자동 불러옴 대체)
-- AI훈련과정 개발 필요성 textarea
-
-- [ ] **Task 13: `StepPBLSummary` 컴포넌트 (RED → GREEN)**
+- [ ] **Task 14: `StepPBLSummary` 컴포넌트 (RED → GREEN)**
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLSummary.tsx` (+ `.test.tsx`)
 - 각 스텝 입력 값 요약
 - 제출 전 최종 확인용
 
-- [ ] **Task 14: `PBLInterviewClient` 오케스트레이터 (RED → GREEN)**
+- [ ] **Task 15: `PBLInterviewClient` 오케스트레이터 (RED → GREEN)**
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/PBLInterviewClient.tsx` (+ `.test.tsx`)
-- 8스텝 전환, **`InterviewStepper.tsx` 재사용**으로 진행률 표시
+- **9스텝** 전환, **`InterviewStepper.tsx` 재사용**으로 진행률 표시
 - 각 스텝 컴포넌트를 동적 import + Suspense로 감싸고 스켈레톤 제공
 - `_hooks/useInterviewAutoSave.ts` (Step 5에서 분리된 공용 훅) 재사용
 - `composition-patterns` 스킬로 Step 5 `RoadmapInterviewClient`와 공통 Wrapper 추출 여부 판단
 
-RTL 테스트: 8스텝 전환·최종 제출 성공 경로.
+RTL 테스트: 9스텝 전환·최종 제출 성공 경로.
 
-- [ ] **Task 15: `interview/page.tsx` PBL 분기 완성**
+- [ ] **Task 16: `interview/page.tsx` PBL 분기 완성**
 
 Step 5에서 추가된 트랙 분기의 PBL placeholder를 실제 `PBLInterviewClient`로 교체.
 
-**주의: 기존 `fetchInterview` 함수는 pbl_data를 select하지 않음** (`company_details, job_tasks, pain_points, constraints, improvement_goals` 등 로드맵 컬럼만). PBL 트랙은 본 Task 16에서 신설하는 **`fetchPBLInterview(projectId)`**를 호출해 pbl_data를 전용으로 가져온다. fetchInterview를 확장하지 않고 분리하는 이유: 트랙별 select 컬럼이 다르고, 한쪽 데이터만 사용해도 다른 쪽 컬럼 fetch 비용·코드 결합도 증가.
+**주의: 기존 `fetchInterview` 함수는 pbl_data를 select하지 않음** (`company_details, job_tasks, pain_points, constraints, improvement_goals` 등 로드맵 컬럼만). PBL 트랙은 본 Task 17에서 신설하는 **`fetchPBLInterview(projectId)`**를 호출해 pbl_data를 전용으로 가져온다. fetchInterview를 확장하지 않고 분리하는 이유: 트랙별 select 컬럼이 다르고, 한쪽 데이터만 사용해도 다른 쪽 컬럼 fetch 비용·코드 결합도 증가.
 
 ```typescript
 import { fetchInterview, fetchPBLInterview } from './actions';
@@ -2799,7 +3165,7 @@ if (project.track === 'PBL') {
 }
 ```
 
-- [ ] **Task 16: PBL 전용 Server Action**
+- [ ] **Task 17: PBL 전용 Server Action**
 
 파일: `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts` (확장)
 - `savePBLInterview(projectId, formData)` — `interviews.pbl_data`에 저장 (프로젝트 트랙이 'PBL'일 때만 허용)
@@ -2815,22 +3181,22 @@ if (project.track === 'PBL') {
 
 각 액션 테스트(권한·검증·성공 경로).
 
-- [ ] **Task 17: E2E 테스트**
+- [ ] **Task 18: E2E 테스트**
 
 파일: `e2e/consultant/interview-pbl.spec.ts` (프로젝트 실제 E2E 루트 = `e2e/<카테고리>/`)
 - 운영자 → 기업 A에 PBL 프로젝트 생성 → 컨설턴트 배정
-- 컨설턴트 로그인 → 8스텝 작성 → 제출 → 상태 `INTERVIEWED` 전환 확인
+- 컨설턴트 로그인 → **9스텝** 작성 → 제출 → 상태 `INTERVIEWED` 전환 확인
 - 자동 저장(draft) 상태에서 재진입 시 복원 확인
 
-- [ ] **Task 18: 검증·커밋·PR**
+- [ ] **Task 19: 검증·커밋·PR**
 
 ```bash
 npm run validate && npm run build
 git add <변경파일>
-git commit -m "feat(ofa-08): PBL 트랙 인터뷰 신규 (8스텝 위저드)
+git commit -m "feat(ofa-08): PBL 트랙 인터뷰 신규 (9스텝 위저드 — 양식 2번 Ⅰ~Ⅲ장 1:1)
 
-- pblInterviewSchema (산인공 양식 2번 Ⅰ~Ⅲ장)
-- Step* 컴포넌트 8종 + PBLInterviewClient 오케스트레이터
+- pblInterviewSchema (산인공 양식 2번 3~11p, 9개 서브 스키마)
+- Step* 컴포넌트 9종 + StepPBLSummary + PBLInterviewClient 오케스트레이터
 - interviews.pbl_data 컬럼 활용
 - 트랙 분기 완성 (ROADMAP/PBL)
 - Server Action 5단계 패턴
@@ -2860,18 +3226,65 @@ gh pr create --base feature/official-form-alignment \
 - 내보내기는 `src/lib/services/export/pdf/`, `export/xlsx/` 신규 경로에 PBL 버전 추가(legacy `export-*.ts`는 Step 12에서 deprecate).
 - Server Action 파일은 `/consultant/projects/[id]/pbl/actions.ts` 신규.
 
-**목표:** PBL 보고서 생성·편집·버전관리·PDF/XLSX 내보내기. `pbl_reports` 테이블 기반 CRUD + LLM 생성.
+**목표:** PBL 보고서 생성·편집·버전관리·PDF/XLSX 내보내기. `pbl_reports` 테이블 기반 CRUD + LLM 생성. **양식 2번 12~17p (Ⅳ·Ⅴ장) 1:1 매칭**.
 
-**산인공 PBL 산출물 요구 구조:**
-- Ⅰ. 훈련과정 개요 (Step 8 인터뷰 데이터에서 반영)
-- Ⅱ. 훈련 요구분석 (인터뷰 반영)
-- Ⅲ. AI 기반 훈련과제 도출 (인터뷰 반영 + LLM 정리)
-- Ⅳ. AI 기반 운영계획 수립:
-  - 훈련 목표
-  - AI 도구 활용 계획 (단계별: { 단계, 주요활동, AI도구, 활용데이터, 활용목적, 구체적 활용방법 })
-  - 훈련 실시 계획 (교과목 프로파일, 학습그룹, 시설·장비, 강사)
-  - 평가 계획 (과정평가: 포트폴리오/문제해결시나리오/작업장 평가 + 결과평가 설문)
-- Ⅴ. 성과분석 및 확산 전략 (정량·정성 지표, 내재화·전사확산)
+**산인공 양식 2번 Ⅳ·Ⅴ장 결과물 필드 (12~17p, 양식 그대로):**
+
+### Ⅳ. AI 기반 운영계획 수립 (12~15p)
+
+#### Ⅳ-1. 훈련 목표 (12p)
+- `training_goal: string` (텍스트 박스, Ⅳ-1은 목표 요약 — 인터뷰 `training_goals` 체크 기반 LLM이 구체화)
+
+#### Ⅳ-2. AI 도구 활용 계획 (12p — 단계별 표)
+- `ai_tool_usage_plan[]`: 각 단계(예: 1단계 훈련실시 / 2단계 리뷰 및 피드백 / 3단계 최종 결과 및 평가) 행 반복
+  - `stage: string` (예: "1단계")
+  - `main_activity: string` (주요활동, 예: "훈련실시")
+  - `ai_tools: string[]` (AI 도구, 예: ["Lovable", "Cursor", "ChatGPT(보조)"])
+  - `utilized_data: string` (활용 데이터)
+  - `purpose: string` (활용 목적, 2줄 내외)
+  - `specific_method: string` (구체적 활용 방법, 2~4줄)
+
+**제약 (validator)**: 최소 3단계 이상.
+
+#### Ⅳ-3. 훈련 실시 계획 (13~14p)
+- **가. 훈련과정 개요**: `overview.course_name`, `overview.training_period: { start, end }`
+- **나. 학습그룹 구성**:
+  - `learning_group.instructors[]`: `{ type: '외부'|'내부', role: '팀원'|'팀장', affiliation, position, name }`
+  - `learning_group.trainees[]`: `{ type: '내부', role: '팀원', affiliation, position, name }`
+- **다. 훈련 교과목 프로파일** (13p — 양식 핵심 표):
+  - `subject_profile.course_name`, `subject_profile.total_hours`, `subject_profile.training_goal`(불릿), `subject_profile.ai_tools`(불릿), `subject_profile.utilized_data`, `subject_profile.analysis_method` (예: "LLM, RGA 등")
+  - `subject_profile.training_contents[]`: 각 행에 `{ unit_name (업무(단원)명), detail, training_hours, instructor_hours: { external, internal } }` — **강사 투입시간 합 = 업무(단원)별 훈련시간** (양식 가이드 #9)
+  - `subject_profile.total_sum_hours: number` (자동 산출)
+  - `subject_profile.evaluation_methods`:
+    - `course_evaluation`: 체크박스 복수 선택 (`'포트폴리오'`, `'문제해결시나리오'`, `'작업장 평가'`) + `evaluator_checklist: string`(참고 비고)
+    - `result_evaluation.satisfaction` (만족도·성취도 조사), `result_evaluation.practical_application` (현업적용도 조사) — 고정 설문 템플릿, 수정 불가 가이드 반영
+- **라. 시설·장비** (14p): `facilities[]`: `{ seq, category: '시설/장비', name, spec, location }`
+- **마. 훈련강사** (14p): `instructors[]`: `{ name, internal_external: '내부'|'외부', career_years, work_name, detailed_training_content }`
+
+#### Ⅳ-4. 평가 계획 (15~17p)
+- **가. 과정평가** (15p):
+  - `course_evaluation.course_name`, `course_evaluation.evaluation_methods: ('포트폴리오'|'문제해결시나리오'|'작업장 평가')[]`, `course_evaluation.evaluation_target`, `course_evaluation.evaluation_date`, `course_evaluation.evaluation_criteria` (예: "14개 중 수행 수준 4 이상 8개(60%) 이상시 PASS")
+  - `course_evaluation.evaluation_result: 'Pass'|'Fail'`
+  - `course_evaluation.performance_checklist[]`: `{ unit_name, evaluation_criteria, performance_level: 1~5 (체크) }` (양식 표: "수행 수준" 1~5 체크)
+  - `course_evaluation.overall_comment` (총평)
+  - `course_evaluation.evaluation_scale` (5단계 평가척도 설명 — 양식 하단 고정 표)
+- **나. 결과평가** (16~17p):
+  - `result_evaluation.satisfaction_survey` (만족도 조사 고정 5문항)
+  - `result_evaluation.achievement_survey` (성취도 조사 고정 3문항)
+  - `result_evaluation.external_expert_survey` (외부전문가 만족도 조사 5문항)
+  - `result_evaluation.practical_application_survey` (현업적용도 조사 4문항)
+  - 모든 설문: `5단계 리커트` (매우 아니다/아니다/보통/그렇다/매우 그렇다). **문항 텍스트·순서는 양식 고정**, 값만 응답 저장 (설문 실제 응답은 훈련 실시 후 — 본 결과물에는 "응답 예정" 표시)
+
+### Ⅴ. 성과분석 및 확산 전략 (18p)
+
+#### Ⅴ-1. 성과분석 측정 지표
+- `training_goal_categories[]`: 체크 복수 선택 (`'기술문제 해결'`, `'공정 최적화'`, `'불량률 감소'`, `'기술 매뉴얼 개발'`, `'기타'`)
+- `quantitative_metrics: string[]` (정량 지표 — 예: "훈련 이후 불량발생률 00% 감소")
+- `qualitative_metrics: string[]` (정성 지표 — 예: "문제해결 역량: 복잡한 현장 문제에 대한 자율적 해결 능력 향상")
+
+#### Ⅴ-2. 성과 확산 전략
+- `internalization_plan: string[]` (내재화 방안 — 매뉴얼 제작·지식 공유·멘토링·후속 프로젝트·재훈련 체계 5개 가이드 bullet)
+- `dissemination_plan: string[]` (전사 확산 방안 — 성과 발표회·타 부서 확대·경영진 보고 등)
 
 **파일 구조는 로드맵과 평행:**
 ```
@@ -2911,13 +3324,142 @@ git checkout -b feature/ofa-09-output-pbl
 
 - [ ] **Task 2: `pbl-types.ts` — 산인공 양식 2번 구조에 맞춘 TS 타입**
 
-파일: `src/lib/services/pbl/pbl-types.ts`
-- `PBLTrainingGoal`, `PBLAIToolUsagePlanItem`(단계/도구/데이터/목적/방법)
-- `PBLTrainingPlan`(교과목 프로파일/학습그룹/시설·장비/강사)
-- `PBLEvaluationPlan`(과정평가 방식·평가기준 / 결과평가 설문 3종)
-- `PBLPerformanceMetrics`(정량·정성 지표)
-- `PBLDisseminationStrategy`(내재화·전사 확산)
-- 전체 조합 `PBLContent`
+파일: `src/lib/services/pbl/pbl-types.ts` — **양식 2번 Ⅳ·Ⅴ장 본문 필드 정의 그대로 1:1 매칭**
+
+```ts
+// Ⅳ-1. 훈련 목표
+export type PBLTrainingGoal = string;
+
+// Ⅳ-2. AI 도구 활용 계획 (단계별 반복)
+export interface PBLAIToolUsagePlanItem {
+  stage: string;           // "1단계", "2단계", ...
+  main_activity: string;   // 주요활동
+  ai_tools: string[];      // 예: ["Lovable","Cursor","ChatGPT(보조)"]
+  utilized_data: string;   // 활용 데이터
+  purpose: string;         // 활용 목적
+  specific_method: string; // 구체적 활용 방법
+}
+
+// Ⅳ-3-가. 훈련과정 개요
+export interface PBLCourseOverview {
+  course_name: string;
+  training_period: { start: string; end: string };
+}
+
+// Ⅳ-3-나. 학습그룹 구성
+export interface PBLInstructor {
+  type: '외부' | '내부';
+  role: '팀원' | '팀장';
+  affiliation: string;
+  position: string;
+  name: string;
+}
+export interface PBLTrainee {
+  role: '팀원';
+  affiliation: string;
+  position: string;
+  name: string;
+}
+
+// Ⅳ-3-다. 훈련 교과목 프로파일
+export interface PBLTrainingContent {
+  unit_name: string;                            // 업무(단원)명
+  detail: string;                               // 세부 내용
+  training_hours: number;                       // 훈련시간(H)
+  instructor_hours: { external: number; internal: number };  // 강사 투입시간 외부/내부 (합계 = training_hours)
+}
+export interface PBLSubjectProfile {
+  course_name: string;
+  total_hours: number;
+  training_goals: string[];      // 훈련목표 (bullet)
+  ai_tools: string[];            // 활용 AI도구 (bullet)
+  utilized_data: string;         // 활용 데이터
+  analysis_method: string;       // 분석방법 (예: "LLM, RGA 등")
+  training_contents: PBLTrainingContent[];
+  total_sum_hours: number;       // 전체시간 (training_contents 합, 자동 산출)
+}
+
+// Ⅳ-3-라. 시설·장비
+export interface PBLFacility {
+  seq: number;
+  category: '시설' | '장비';
+  name: string;
+  spec: string;
+  location: string;
+}
+
+// Ⅳ-3-마. 훈련강사
+export interface PBLTrainingInstructor {
+  name: string;
+  internal_external: '내부' | '외부';
+  career_years: number;
+  work_name: string;
+  detailed_training_content: string[];  // bullet
+}
+
+// Ⅳ-4-가. 과정평가
+export type PBLCourseEvaluationMethod = '포트폴리오' | '문제해결시나리오' | '작업장 평가';
+export interface PBLPerformanceChecklistItem {
+  unit_name: string;
+  evaluation_criteria: string;
+  performance_level: 1 | 2 | 3 | 4 | 5;
+}
+export interface PBLCourseEvaluation {
+  course_name: string;
+  evaluation_methods: PBLCourseEvaluationMethod[];  // 체크박스 복수
+  evaluation_target: string;
+  evaluation_date: string;
+  evaluation_criteria: string;
+  evaluation_result: 'Pass' | 'Fail' | '예정';
+  performance_checklist: PBLPerformanceChecklistItem[];
+  overall_comment: string;
+  evaluation_scale: string;  // 5단계 설명 텍스트(양식 하단 고정)
+}
+
+// Ⅳ-4-나. 결과평가 (고정 설문)
+export type SurveyScale = 1 | 2 | 3 | 4 | 5 | null;  // null = 미응답(실시 이전)
+export interface PBLResultEvaluation {
+  satisfaction_survey: SurveyScale[];         // 만족도 5문항
+  achievement_survey: SurveyScale[];          // 성취도 3문항
+  external_expert_survey: SurveyScale[];      // 외부전문가 만족도 5문항
+  practical_application_survey: SurveyScale[]; // 현업적용도 4문항
+  respondent_name?: string;
+  evaluation_date?: string;
+}
+
+// Ⅳ. 운영계획 수립 (통합)
+export interface PBLOperationPlan {
+  training_goal: PBLTrainingGoal;
+  ai_tool_usage_plan: PBLAIToolUsagePlanItem[];
+  training_plan: {
+    overview: PBLCourseOverview;
+    learning_group: { instructors: PBLInstructor[]; trainees: PBLTrainee[] };
+    subject_profile: PBLSubjectProfile;
+    facilities: PBLFacility[];
+    training_instructors: PBLTrainingInstructor[];
+  };
+  evaluation_plan: {
+    course_evaluation: PBLCourseEvaluation;
+    result_evaluation: PBLResultEvaluation;
+  };
+}
+
+// Ⅴ. 성과분석 및 확산 전략
+export type PBLTrainingGoalCategory = '기술문제 해결' | '공정 최적화' | '불량률 감소' | '기술 매뉴얼 개발' | '기타';
+export interface PBLPerformanceAnalysis {
+  training_goal_categories: PBLTrainingGoalCategory[];
+  quantitative_metrics: string[];
+  qualitative_metrics: string[];
+  internalization_plan: string[];
+  dissemination_plan: string[];
+}
+
+// 최상위 결과물
+export interface PBLContent {
+  operation_plan: PBLOperationPlan;
+  performance_analysis: PBLPerformanceAnalysis;
+}
+```
 
 타입만 export. 실제 값 검증은 다음 Task의 validator에서.
 
@@ -2925,12 +3467,15 @@ git checkout -b feature/ofa-09-output-pbl
 
 파일: `src/lib/services/pbl/pbl-validator.ts` + `.test.ts`
 
-Zod로 `pbl-types.ts` 구조를 그대로 검증. 규칙:
-- 훈련목표는 최소 1개
-- AI도구 활용계획은 **단계 최소 3개**
-- 교과목 프로파일 최소 3개
-- 평가 척도 1~5 범위
-- 모든 텍스트 필드 빈 문자열 거부
+Zod로 `pbl-types.ts` 구조를 그대로 검증. **양식 2번 규칙 준수:**
+- `ai_tool_usage_plan.length >= 3` (양식 예시 단계 3개)
+- `subject_profile.training_contents.length >= 1` + 각 행 `instructor_hours.external + internal === training_hours` (양식 가이드 #9 완전 일치)
+- `subject_profile.total_sum_hours === sum(training_contents.training_hours)` (자동 산출 검증)
+- `course_evaluation.performance_level`은 1~5 중 하나
+- `course_evaluation.evaluation_methods`는 `'포트폴리오'|'문제해결시나리오'|'작업장 평가'` enum만
+- `result_evaluation` 4종 설문의 길이는 고정: satisfaction 5 / achievement 3 / external_expert 5 / practical_application 4 (양식 문항 수 고정)
+- `performance_analysis.training_goal_categories`는 `'기술문제 해결'|'공정 최적화'|'불량률 감소'|'기술 매뉴얼 개발'|'기타'` 중에서만
+- 모든 텍스트 필드 trim 후 빈 문자열 거부 (optional이 아닌 경우)
 
 테스트: 각 필드 min/max 경계, 누락 케이스, 성공 케이스.
 
@@ -3194,23 +3739,53 @@ python .claude/skills/hwpx-docgen/scripts/analyze_template.py \
 주요 플레이스홀더 예:
 | 양식 필드 | 플레이스홀더 |
 |---|---|
+| **Ⅰ. 훈련과정 개요** (3p) | |
 | 기업명 / 사업장관리번호 | `{{company_name}}`, `{{business_registration_no}}` |
-| 주요 업종 / NCS 분류 | `{{industry_code}}`, `{{industry_main}}`, `{{ncs_code}}` |
-| AI역량 수준(체크) | `{{level_basic_check}}`, `{{level_inquiry_check}}`, `{{level_utilize_check}}`, `{{level_leading_check}}` |
-| 훈련 목표(체크) | `{{goal_tech_check}}`, `{{goal_optimize_check}}`, `{{goal_defect_check}}`, `{{goal_manual_check}}`, `{{goal_etc_check}}` |
-| 경영 이슈 | `{{business_issues}}` |
-| 조직도 | (부서 행 반복) |
-| 훈련환경 (As-Is/To-Be) | `{{as_is}}`, `{{to_be}}` |
+| 주요 업종 / 업종코드 / 주업종 | `{{industry_code}}`, `{{industry_main}}` |
+| 주소 / 훈련실시주소 / 관할 지부·지사 | `{{address}}`, `{{training_address}}`, `{{jurisdiction_office}}` |
+| 담당자 연락처 | `{{contact_position}}`, `{{contact_name}}`, `{{contact_phone}}`, `{{contact_email}}` |
+| 훈련과정명 / NCS 분류 / 훈련시간 / 훈련생 / 훈련 직무 | `{{course_name}}`, `{{ncs_code}}`, `{{training_hours}}`, `{{trainee_count}}`, `{{training_job}}` |
+| AI역량 수준(체크) | `{{level_basic_check}}`, `{{level_inquiry_check}}`, `{{level_utilize_check}}`, `{{level_leading_check}}` (해당 1개만 "☑") |
+| 훈련 목표(체크) | `{{goal_tech_check}}`, `{{goal_optimize_check}}`, `{{goal_defect_check}}`, `{{goal_manual_check}}`, `{{goal_etc_check}}` (복수 체크) |
+| **Ⅱ-1. 기업 현황 분석** (4p) | |
+| 경영 이슈 | `{{business_issues}}` (bullet) |
+| 조직도 | (부서 행 반복 — `{{department_name}}` + `{{tasks}}`) |
+| **Ⅱ-2. 기업 훈련환경 분석** (5p) | |
+| 적정 훈련시간·장소 | `{{proper_training_hours}}`, `{{training_place_type}}` (사내/사외 체크), `{{training_place_notes}}` |
+| 사내 강사 활용 | `{{internal_instructor_used}}` (예/아니오), `{{internal_instructor_name}}`, `{{internal_instructor_position}}` |
+| 대상 인원 / 특성 | `{{target_count}}`, `{{target_career}}`, `{{target_level}}` |
+| AI활용 가능 인프라 | `{{ai_tools_capability}}`, `{{ai_network}}`, `{{ai_pc_count}}`, `{{ai_etc_equipment}}` |
+| AI훈련 요구분석 결과 | `{{training_needs_analysis}}` (bullet) |
+| 기대효과 As-Is/To-Be | `{{expectation_as_is}}`, `{{expectation_to_be}}` |
+| **Ⅱ-3. AI 과정개발의 필요성** (6p) | |
+| 훈련 실시 이력 표 | (행 반복 — 연번·참여사업·훈련과정명·훈련방법·훈련기간) |
+| 훈련 지원 이력 표 | (행 반복 — 연도·연간 정부지원 한도·지원받은 금액·비율 B/A) |
+| 추천훈련사업 1·2·3순위 + HRD 제안 | `{{recommend_rank1}}`, `{{hrd_rank1}}` ... (3세트) |
+| AI훈련과정 개발 필요성 | `{{course_development_necessity}}` (bullet) |
+| **Ⅲ-1. 훈련과제 도출 수행활동** (7p) | |
+| 수행활동 표 | (차수 행 반복 — 수행 차수·일자·내용·방법·참석자 4역할 각 성명) |
+| **Ⅲ-2. 문제 도출·우선순위** (8p) | |
 | 문제정의서 | `{{problem_background}}`, `{{problem_core}}`, `{{problem_scope}}`, `{{problem_constraints}}` |
-| 문제 우선순위 표 | (행 반복) |
-| 훈련대상 업무 세부 | (행 반복) |
-| AI수준 진단 | `{{current_level}}`, `{{target_level}}`, `{{improvement_reason}}` |
-| 훈련 목표 | `{{training_goal}}` |
-| AI도구 활용계획 | (행 반복, 단계·도구·데이터·목적·방법) |
-| 훈련 교과목 프로파일 | (행 반복) |
-| 평가계획(과정/결과 설문) | (표 복제) |
-| 성과지표(정량/정성) | `{{quantitative_metrics}}`, `{{qualitative_metrics}}` |
-| 확산 전략 | `{{internalization}}`, `{{dissemination}}` |
+| 문제 우선순위 표 | (행 반복 — 문제명 + 1~5점 체크 + 선정 여부) |
+| **Ⅲ-3. 훈련대상 업무 선정·분석** (9~10p) | |
+| 훈련대상 업무 선정 표 | (행 반복 — 업무명·AI훈련 필요성 1~5점·선정 여부) |
+| 훈련대상 업무 선정 사유 | `{{selection_reason}}` (bullet) |
+| 훈련대상 업무 세부내용 | (행 반복 — 업무명·As-IS·To-Be·요구지식·기술) |
+| **Ⅲ-4. AI수준 진단** (11p) | |
+| 현재 AI역량 수준 체크 | `{{current_level_basic_check}}`, `{{current_level_inquiry_check}}`, `{{current_level_utilize_check}}`, `{{current_level_leading_check}}` |
+| 향상도 예상 현행 → 향후 | `{{current_ai_level}}`, `{{expected_ai_level}}`, `{{improvement_reason}}` |
+| **Ⅳ-1. 훈련 목표** (12p) | `{{training_goal}}` |
+| **Ⅳ-2. AI도구 활용계획** | (단계 행 반복 — `{{stage}}`·`{{main_activity}}`·`{{ai_tools}}`·`{{utilized_data}}`·`{{purpose}}`·`{{specific_method}}`) |
+| **Ⅳ-3-가 훈련과정 개요** | `{{subject_course_name}}`, `{{training_period_start}} ~ {{training_period_end}}` |
+| **Ⅳ-3-나 학습그룹 구성** | (훈련강사 외부/내부 행 반복 + 훈련생 행 반복) |
+| **Ⅳ-3-다 훈련 교과목 프로파일** | `{{profile_course_name}}`, `{{total_hours}}`, `{{profile_training_goals}}` (bullet), `{{profile_ai_tools}}` (bullet), `{{profile_utilized_data}}`, `{{analysis_method}}` + 훈련내용 표 (행 반복 — 업무(단원)명·세부 내용·훈련시간·강사 투입시간 외부/내부) + `{{total_sum_hours}}` |
+| **Ⅳ-3-라 시설·장비** | (행 반복 — 연번·시설/장비·시설명·규격(사양)·위치) |
+| **Ⅳ-3-마 훈련강사** | (행 반복 — 성명·내/외부·업무경력·업무명·세부 교육훈련 내용 bullet) |
+| **Ⅳ-4-가 과정평가** | `{{eval_course_name}}`, `{{eval_methods_portfolio_check}}`, `{{eval_methods_scenario_check}}`, `{{eval_methods_workplace_check}}`, `{{eval_target}}`, `{{eval_date}}`, `{{eval_criteria}}`, `{{eval_result}}` (Pass/Fail/예정) + 수행수준 표 (행 반복 — 업무(단원)명·평가기준·수행수준 1~5 체크) + `{{overall_comment}}` |
+| **Ⅳ-4-나 결과평가** | 4종 고정 설문 (값만 `{{survey_q1}}`...`{{survey_qN}}` 형태 — 실시 이전이면 "예정" 표시) |
+| **Ⅴ-1. 성과분석 측정 지표** | 훈련목표 체크 `{{goal_*_check}}` + `{{quantitative_metrics}}` (bullet) + `{{qualitative_metrics}}` (bullet) |
+| **Ⅴ-2. 성과 확산 전략** | `{{internalization}}` (bullet) + `{{dissemination}}` (bullet) |
+| **결과보고서 학습활동 수행일지** | (일자별 행 반복 — 일자·수행훈련내용·훈련사진) |
 
 검증:
 ```bash
@@ -3345,13 +3920,20 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 ### Step 11: 갤러리 트랙 라벨·필터 + PBL 테스트 페이지
 
 **브랜치:** `feature/ofa-11-gallery-test-track`
-**규모:** Medium (약 8개 Task)
+**규모:** Medium (약 10 Task)
 **호출 스킬:** `frontend-guide`, `composition-patterns`
-**의존:** Step 9
+**의존:** Step 6.5, Step 9
 
 **목표:**
 - 갤러리가 로드맵·PBL 양쪽 데이터를 통합 표시 + 트랙 라벨/필터 제공
 - `/test-pbl` 페이지 신규 (기존 `/test-roadmap`와 평행 구조)
+- **Step 6.5 신규 필드(Ⅰ장 개요·NCS 박스·훈련체계 수립 방법)가 갤러리 카드/상세에서도 올바르게 렌더되도록 확인**
+- **Step 8·9 PBL 양식 2번 전 필드(Ⅰ~Ⅴ장 + 결과평가 설문)가 상세 페이지에 누락 없이 표출되도록 확인**
+
+**양식 정합성 반영 필수:**
+- `GalleryDetailContent.tsx` (로드맵): Step 6.5에서 추가된 `setup_necessity`·`outcome_summary`·`training_structure_method`·NCS 전체 단위 박스를 모두 렌더 (Step 6.5에서 컨설턴트·운영자 뷰에 반영된 것과 동일한 블록 구조 재사용 권장).
+- `GalleryPBLDetailContent.tsx` (신규): 양식 2번 Ⅰ~Ⅴ장 모든 섹션 읽기 전용 렌더. `PBLOverview`·`PBLToolUsagePlan`·`PBLTrainingPlan`·`PBLEvaluationPlan`·`PBLPerformanceMetrics` 컴포넌트 `canEdit=false`로 재사용.
+- `test-pbl` 샘플 데이터는 양식 2번 3~11p 인터뷰 전 필드를 채운 fixture 필요 (`e2e/fixtures/pbl-interview-sample.ts`).
 
 **파일:**
 - 변경: `src/app/(dashboard)/gallery/page.tsx` (+ `.test.tsx`)
@@ -3544,6 +4126,49 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 - 문서 갱신 (ARCHITECTURE.md, RLS.md, CLAUDE.md)
 - 배포 체크리스트 검증
 - 성능·보안 최종 감사
+- **산인공 양식 1번·2번 1:1 정합성 전수 검증 (HWPX 실물 기준)**
+
+**양식 매칭 QA 체크리스트 (본 Step에서 모두 ✅ 해야 머지 가능):**
+
+### 양식 1번 (로드맵) — `docs/references/1.AI훈련로드맵 컨설팅 보고서(양식).pdf`
+- [ ] Ⅰ-1 수립 필요성 5줄 내외 렌더
+- [ ] Ⅰ-2 주요 활동 표 — 수행 차수별 일시·내용·방법·참석자 자동 채움
+- [ ] Ⅰ-3 AI 역량 수준 체크박스 1개만 "☑", 나머지 "☐"
+- [ ] Ⅰ-3 선정 과업·수립 주요내용 요약 각 1장 이내
+- [ ] Ⅱ-1 HRD이음 보고서 URL(첨부 링크) 또는 "별도 작성 불요" 표기
+- [ ] Ⅱ-2 기업 요구분석 4필드 (현황·문제·의지·성과)
+- [ ] Ⅱ-3 과업·워크플로우 분석표 행 + 분석내용 텍스트
+- [ ] Ⅱ-4 훈련대상 과업 선정 (과업·선정사유·As-Is·To-Be)
+- [ ] Ⅲ-1 역량 모델링 표 (**부제 "수행준거·학술, 업무지식·기능" 포함**)
+- [ ] Ⅲ-1 NCS 활용 방법 / 역량별 도출 방법 — **표 전체 단위 별도 박스** (역량별 개별 아님)
+- [ ] Ⅲ-2 훈련체계도 **6열 단순 표** (매트릭스 UI가 아닌 표 형식으로 HWPX 출력)
+- [ ] Ⅲ-2 훈련체계 수립 방법 텍스트 박스
+- [ ] Ⅲ-3 훈련과정 목록 표 + 활용방안
+- [ ] Ⅲ-4 훈련과정 명세서 각 과정: 과정명·훈련 형태·추천 훈련사업·훈련 목표·주요 훈련 내용·훈련 대상 + 교과목 표 (**"세부 내용(단원, 과제명)" 부제** + 훈련시간)
+- [ ] 별첨 컨설팅 수행일지 (양식)
+
+### 양식 2번 (PBL) — `docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).pdf`
+- [ ] Ⅰ. 훈련과정 개요 — 모든 필드 (기업명·사업장관리번호·업종·주소·훈련실시주소·관할 지부·담당자 연락처·과정명·NCS분류·훈련시간·훈련생·훈련 직무·AI역량 수준 4등급 체크·훈련 목표 5종 체크)
+- [ ] Ⅱ-1 기업 경영 이슈 + 조직도
+- [ ] Ⅱ-2 훈련환경 분석 전 필드 (훈련시간·장소·사내강사·인원·특성·AI인프라·요구분석·기대효과 As-Is/To-Be)
+- [ ] Ⅱ-3 AI 과정개발의 필요성 (훈련 실시 이력 표·지원 이력 표·추천훈련사업 3순위·개발 필요성 bullet)
+- [ ] Ⅲ-1 훈련과제 도출 수행활동 표 (차수·일자·내용·방법·참석자 4역할)
+- [ ] Ⅲ-2 문제정의서 4필드 + 문제 우선순위 표
+- [ ] Ⅲ-3 훈련대상 업무 선정 표 + 사유 + 세부내용 (As-IS·To-Be·요구지식·기술)
+- [ ] Ⅲ-4 현재 AI역량 4등급 체크 + 향후 4등급 + 향상 사유
+- [ ] Ⅳ-1 훈련 목표
+- [ ] Ⅳ-2 AI 도구 활용 계획 (단계·주요활동·AI도구·활용데이터·활용목적·구체적 활용방법, **최소 3단계**)
+- [ ] Ⅳ-3 훈련 실시 계획 (과정 개요·학습그룹·**교과목 프로파일 — 강사 투입시간 외부/내부 합=훈련시간 검증**·시설·장비·훈련강사)
+- [ ] Ⅳ-4-가 과정평가 (포트폴리오/문제해결시나리오/작업장 평가 체크 + 수행수준 1~5 + 총평 + 평가척도 5단계)
+- [ ] Ⅳ-4-나 결과평가 (만족도 5문항·성취도 3문항·외부전문가 만족도 5문항·현업적용도 4문항 — **양식 고정 문항**)
+- [ ] Ⅴ-1 성과분석 측정 지표 (훈련목표 체크 + 정량·정성)
+- [ ] Ⅴ-2 성과 확산 전략 (내재화·전사 확산)
+- [ ] 결과보고서 학습활동 수행일지 (일자별 수행내용·훈련사진)
+
+### 실물 한글 파일 검증
+- [ ] 로드맵 HWPX 다운로드 3건 → 한글 프로그램에서 양식 1번 PDF와 겹쳐 확인 (섹션 순서·표 열·부제 라벨 모두 일치)
+- [ ] PBL HWPX 다운로드 3건 → 한글 프로그램에서 양식 2번 PDF와 겹쳐 확인
+- [ ] 플레이스홀더 `{{` 잔존 0건
 
 - [ ] **Task 1: 브랜치 + 기존 `interview.ts` 최종 제거** (deprecated 표시된 것을 실제 삭제)
 

@@ -161,7 +161,7 @@ describe('fromRoadmapVersionColumns', () => {
     expect(restored.annual_plan.usage_plan).toBe('');
   });
 
-  it('roadmap_matrix가 legacy RoadmapRow[]일 경우 배열 길이는 그대로 전달 (상위에서 스키마 검증)', () => {
+  it('roadmap_matrix가 legacy RoadmapRow[]이면 type guard로 필터링되어 빈 배열', () => {
     const legacyMatrix = [
       { task_id: 't1', task_name: '업무', beginner: [], intermediate: [], advanced: [] },
       { task_id: 't2', task_name: '업무2', beginner: [], intermediate: [], advanced: [] },
@@ -170,8 +170,8 @@ describe('fromRoadmapVersionColumns', () => {
       roadmap_matrix: legacyMatrix as unknown,
     });
 
-    // legacy 데이터가 그대로 담겨도 타입은 배열이기만 하면 통과
-    expect(restored.training_structure).toHaveLength(2);
+    // 신규 RoadmapTrainingStructureItem 형식(competency_name + level)이 아니므로 모두 제외
+    expect(restored.training_structure).toHaveLength(0);
   });
 
   it('roadmap_matrix가 null이면 빈 배열', () => {

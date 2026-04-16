@@ -230,10 +230,10 @@ export function RoadmapMatrix({
             </tr>
           </thead>
           <tbody className="divide-y divide-border bg-card">
-            {matrix.map((row) => {
+            {matrix.map((row, rowIdx) => {
               const isUnreferenced = !competencyNameSet.has(row.competency_name);
               return (
-                <tr key={row.competency_name}>
+                <tr key={`${row.competency_name}-${rowIdx}`}>
                   <td className="px-3 py-3 text-sm font-medium text-foreground align-top">
                     <div className="flex items-center gap-2">
                       <span className="break-keep">{row.competency_name}</span>
@@ -291,12 +291,12 @@ export function RoadmapMatrix({
             const cfg = LEVEL_CONFIG[level];
             return (
               <TabsContent key={level} value={level} className="space-y-3 mt-3">
-                {matrix.map((row) => {
+                {matrix.map((row, rowIdx) => {
                   const items = row[level];
                   const isUnreferenced = !competencyNameSet.has(row.competency_name);
                   return (
                     <div
-                      key={row.competency_name}
+                      key={`${row.competency_name}-${rowIdx}`}
                       className={`rounded-lg border border-border p-3 ${cfg.cellBg}`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-2">

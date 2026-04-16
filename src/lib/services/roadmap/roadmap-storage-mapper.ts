@@ -51,11 +51,6 @@ export function toRoadmapVersionColumns(result: RoadmapResult): RoadmapVersionCo
 
 // ─── 방어적 파싱 헬퍼 ────────────────────────────────────────────────────
 
-/** 배열이면 그대로, 아니면 빈 배열 */
-function asArray<T>(v: unknown): T[] {
-  return Array.isArray(v) ? (v as T[]) : [];
-}
-
 /** object이면 그대로, 아니면 빈 객체 */
 function asRecord(v: unknown): Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -63,10 +58,41 @@ function asRecord(v: unknown): Record<string, unknown> {
     : {};
 }
 
+/** 배열을 신규 형식 type guard로 필터링. legacy 구버전 데이터(RoadmapRow/RoadmapCell)는 신규 키가 없어 자동 제외. */
+function asFilteredArray<T>(v: unknown, isValid: (item: unknown) => boolean): T[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isValid) as T[];
+}
+
+function isCompetency(v: unknown): boolean {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.name === 'string' && typeof o.definition === 'string';
+}
+
+function isStructureItem(v: unknown): boolean {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.competency_name === 'string' && typeof o.level === 'string';
+}
+
+function isAnnualPlanItem(v: unknown): boolean {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.competency_name === 'string' && typeof o.course_name === 'string';
+}
+
+function isCourseSpec(v: unknown): boolean {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.course_name === 'string' && Array.isArray(o.subjects);
+}
+
 /** DB legacy 컬럼 구조 → 신규 RoadmapResult
  *
- * 방어 코딩: 잘못된 row 데이터(null, 누락 필드, 구버전 데이터)를
- * 빈 배열/빈 객체로 안전 변환. 스키마 검증은 상위 호출자에서 수행.
+ * 방어 코딩: 잘못된 row 데이터(null, 누락 필드, 구버전 PBL/매트릭스 데이터)는
+ * type guard로 필터링되어 빈 배열로 안전 변환. UI 컴포넌트가 항상 유효한
+ * 신규 4섹션 구조만 받는다.
  */
 export function fromRoadmapVersionColumns(row: {
   diagnosis_summary?: string | null;
@@ -77,16 +103,16 @@ export function fromRoadmapVersionColumns(row: {
   const pbl = asRecord(row.pbl_course);
   const annualPlanRaw = asRecord(pbl.annual_plan);
   const annualPlan: RoadmapAnnualPlan = {
-    items: asArray<RoadmapAnnualPlan['items'][number]>(annualPlanRaw.items),
+    items: asFilteredArray<RoadmapAnnualPlan['items'][number]>(annualPlanRaw.items, isAnnualPlanItem),
     usage_plan:
       typeof annualPlanRaw.usage_plan === 'string' ? (annualPlanRaw.usage_plan as string) : '',
   };
 
   return {
     diagnosis_summary: typeof row.diagnosis_summary === 'string' ? row.diagnosis_summary : '',
-    competencies: asArray<RoadmapCompetency>(pbl.competencies),
-    training_structure: asArray<RoadmapTrainingStructureItem>(row.roadmap_matrix),
+    competencies: asFilteredArray<RoadmapCompetency>(pbl.competencies, isCompetency),
+    training_structure: asFilteredArray<RoadmapTrainingStructureItem>(row.roadmap_matrix, isStructureItem),
     annual_plan: annualPlan,
-    course_specs: asArray<RoadmapCourseSpec>(row.courses),
+    course_specs: asFilteredArray<RoadmapCourseSpec>(row.courses, isCourseSpec),
   };
 }
