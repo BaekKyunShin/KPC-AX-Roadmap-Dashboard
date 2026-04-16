@@ -1,16 +1,14 @@
 'use client';
 
-import { useRef } from 'react';
 import { Trash2, Plus, ListChecks } from 'lucide-react';
 import type { RoadmapCompetency } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useRowHeightSync } from '@/hooks/useRowHeightSync';
+import { SyncedTableRow, TableTextCell } from '@/components/roadmap/shared';
 
 // ============================================================================
 // 타입 & 상수
@@ -234,89 +232,67 @@ interface RowProps {
 }
 
 function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps) {
-  const rowRef = useRef<HTMLTableRowElement>(null);
   const knowledgeStr = competency.knowledge.join('\n');
   const skillsStr = competency.skills.join('\n');
   const attitudesStr = competency.attitudes.join('\n');
-  useRowHeightSync(rowRef, [
-    competency.name,
-    competency.definition,
-    knowledgeStr,
-    skillsStr,
-    attitudesStr,
-    canEdit,
-  ]);
 
   return (
-    <tr ref={rowRef} className="align-top">
-      {/* 역량명 */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={competency.name}
-            onChange={(e) => onUpdate(index, { name: e.target.value })}
-            placeholder="역량명"
-            aria-label={`역량 ${index + 1} 역량명`}
-            className="font-medium"
-          />
-        ) : (
-          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{competency.name || '-'}</span>
-        )}
-      </td>
+    <SyncedTableRow
+      deps={[
+        competency.name,
+        competency.definition,
+        knowledgeStr,
+        skillsStr,
+        attitudesStr,
+        canEdit,
+      ]}
+    >
+      <TableTextCell
+        canEdit={canEdit}
+        value={competency.name}
+        onChange={(v) => onUpdate(index, { name: v })}
+        placeholder="역량명"
+        ariaLabel={`역량 ${index + 1} 역량명`}
+        inputClassName="font-medium"
+        readOnlyClassName="font-medium text-foreground"
+      />
 
-      {/* 정의(수행준거) */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {canEdit ? (
-          <AutoResizeTextarea
-            value={competency.definition}
-            onChange={(e) => onUpdate(index, { definition: e.target.value })}
-            placeholder="역량 정의 (수행준거)"
-            aria-label={`역량 ${index + 1} 정의 (수행준거)`}
-          />
-        ) : (
-          <span className="text-muted-foreground">{competency.definition || '-'}</span>
-        )}
-      </td>
+      <TableTextCell
+        canEdit={canEdit}
+        value={competency.definition}
+        onChange={(v) => onUpdate(index, { definition: v })}
+        placeholder="역량 정의 (수행준거)"
+        ariaLabel={`역량 ${index + 1} 정의 (수행준거)`}
+        readOnlyClassName="text-muted-foreground"
+      />
 
-      {/* 지식 (학술, 업무지식) */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        <KsaCell
-          index={index}
-          field="knowledge"
-          label="지식 (학술, 업무지식)"
-          values={competency.knowledge}
-          canEdit={canEdit}
-          onUpdate={onUpdate}
-        />
-      </td>
+      <KsaCell
+        index={index}
+        field="knowledge"
+        label="지식 (학술, 업무지식)"
+        values={competency.knowledge}
+        canEdit={canEdit}
+        onUpdate={onUpdate}
+      />
+      <KsaCell
+        index={index}
+        field="skills"
+        label="기술 (기능)"
+        values={competency.skills}
+        canEdit={canEdit}
+        onUpdate={onUpdate}
+      />
+      <KsaCell
+        index={index}
+        field="attitudes"
+        label="태도"
+        values={competency.attitudes}
+        canEdit={canEdit}
+        onUpdate={onUpdate}
+      />
 
-      {/* 기술 (기능) */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        <KsaCell
-          index={index}
-          field="skills"
-          label="기술 (기능)"
-          values={competency.skills}
-          canEdit={canEdit}
-          onUpdate={onUpdate}
-        />
-      </td>
-
-      {/* 태도 */}
-      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        <KsaCell
-          index={index}
-          field="attitudes"
-          label="태도"
-          values={competency.attitudes}
-          canEdit={canEdit}
-          onUpdate={onUpdate}
-        />
-      </td>
-
-      {/* 액션 */}
       {canEdit && (
-        <td className="px-3 py-3 text-center align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <td className="px-3 py-3 text-center align-top">
           <Button
             type="button"
             variant="ghost"
@@ -329,7 +305,7 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
           </Button>
         </td>
       )}
-    </tr>
+    </SyncedTableRow>
   );
 }
 
@@ -347,29 +323,38 @@ interface KsaCellProps {
 }
 
 function KsaCell({ index, field, label, values, canEdit, onUpdate }: KsaCellProps) {
+  // 편집 모드: 줄바꿈으로 구분된 문자열을 TableTextCell로 편집
   if (canEdit) {
     return (
-      <AutoResizeTextarea
+      <TableTextCell
+        canEdit={true}
         value={joinKsa(values ?? [])}
-        onChange={(e) => onUpdate(index, { [field]: splitKsa(e.target.value) })}
+        onChange={(v) => onUpdate(index, { [field]: splitKsa(v) })}
         placeholder={`${label} 항목을 줄바꿈으로 구분`}
-        aria-label={`역량 ${index + 1} ${label}`}
+        ariaLabel={`역량 ${index + 1} ${label}`}
       />
     );
   }
 
+  // 읽기 모드: 목록으로 렌더 (기존 UI 유지)
   if (!values || values.length === 0) {
-    return <span className="text-muted-foreground">-</span>;
+    return (
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <span className="text-muted-foreground">-</span>
+      </td>
+    );
   }
 
   return (
-    <ul className="list-disc pl-4 space-y-0.5 text-sm text-foreground">
-      {values.map((v, i) => (
-        <li key={i} className="break-keep">
-          {v}
-        </li>
-      ))}
-    </ul>
+    <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <ul className="list-disc pl-4 space-y-0.5 text-sm text-foreground">
+        {values.map((v, i) => (
+          <li key={i} className="break-keep">
+            {v}
+          </li>
+        ))}
+      </ul>
+    </td>
   );
 }
 
