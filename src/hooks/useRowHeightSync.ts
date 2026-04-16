@@ -16,45 +16,33 @@ export function useRowHeightSync(
 ): void {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    const textareas = Array.from(row.querySelectorAll<HTMLTextAreaElement>('textarea'));
-    if (textareas.length === 0) return;
+    const sync = () => {
+      const row = rowRef.current;
+      if (!row) return;
+      const textareas = Array.from(row.querySelectorAll<HTMLTextAreaElement>('textarea'));
+      if (textareas.length === 0) return;
 
-    // reset
-    textareas.forEach((ta) => {
-      ta.style.height = 'auto';
-    });
-    // 각자 scrollHeight, max 구하기
-    let max = 0;
-    textareas.forEach((ta) => {
-      if (ta.scrollHeight > max) max = ta.scrollHeight;
-    });
-    // apply max
-    textareas.forEach((ta) => {
-      ta.style.height = `${max}px`;
-    });
-
-    // window resize 이벤트 리스너
-    const handleResize = () => {
-      const row2 = rowRef.current;
-      if (!row2) return;
-      const tas = Array.from(row2.querySelectorAll<HTMLTextAreaElement>('textarea'));
-      if (tas.length === 0) return;
-      tas.forEach((ta) => {
+      textareas.forEach((ta) => {
         ta.style.height = 'auto';
       });
-      let maxH = 0;
-      tas.forEach((ta) => {
-        if (ta.scrollHeight > maxH) maxH = ta.scrollHeight;
+      let max = 0;
+      textareas.forEach((ta) => {
+        if (ta.scrollHeight > max) max = ta.scrollHeight;
       });
-      tas.forEach((ta) => {
-        ta.style.height = `${maxH}px`;
+      textareas.forEach((ta) => {
+        ta.style.height = `${max}px`;
       });
     };
 
+    sync();
+    // 폰트 로딩 지연 · 첫 paint 이후 추가 재동기화 (자식 rAF 제거 후 여기서 1회 더)
+    const rafId = window.requestAnimationFrame(sync);
+
+    const handleResize = () => sync();
     window.addEventListener('resize', handleResize);
+
     return () => {
+      window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', handleResize);
     };
   }, deps);

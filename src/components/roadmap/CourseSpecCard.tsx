@@ -89,7 +89,7 @@ export function CourseSpecCard({
               </Badge>
             </div>
             {canEdit ? (
-              <Input
+              <AutoResizeTextarea
                 value={spec.course_name}
                 onChange={(e) => updateSpec({ course_name: e.target.value })}
                 placeholder="과정명"
@@ -205,29 +205,17 @@ function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps)
                 </td>
                 <td className="px-3 py-3 text-foreground">
                   {canEdit ? (
-                    f.multiline ? (
-                      <AutoResizeTextarea
-                        id={inputId}
-                        value={value}
-                        onChange={(e) =>
-                          onUpdate({ [f.key]: e.target.value } as Partial<RoadmapCourseSpec>)
-                        }
-                        placeholder={f.label}
-                        aria-label={`명세서 ${index + 1} ${f.label}`}
-                      />
-                    ) : (
-                      <Input
-                        id={inputId}
-                        value={value}
-                        onChange={(e) =>
-                          onUpdate({ [f.key]: e.target.value } as Partial<RoadmapCourseSpec>)
-                        }
-                        placeholder={f.label}
-                        aria-label={`명세서 ${index + 1} ${f.label}`}
-                      />
-                    )
+                    <AutoResizeTextarea
+                      id={inputId}
+                      value={value}
+                      onChange={(e) =>
+                        onUpdate({ [f.key]: e.target.value } as Partial<RoadmapCourseSpec>)
+                      }
+                      placeholder={f.label}
+                      aria-label={`명세서 ${index + 1} ${f.label}`}
+                    />
                   ) : (
-                    <span className="break-keep whitespace-pre-wrap">{value || '-'}</span>
+                    <span className="break-keep whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{value || '-'}</span>
                   )}
                 </td>
               </tr>
@@ -372,20 +360,21 @@ interface SubjectRowProps {
 
 function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }: SubjectRowProps) {
   const rowRef = useRef<HTMLTableRowElement>(null);
-  useRowHeightSync(rowRef, [subject.details, canEdit]);
+  useRowHeightSync(rowRef, [subject.name, subject.details, canEdit]);
 
   return (
     <tr ref={rowRef}>
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={subject.name}
             onChange={(e) => onUpdate(sIdx, { name: e.target.value })}
             placeholder="교과목명"
             aria-label={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 이름`}
+            className="font-medium"
           />
         ) : (
-          <span className="font-medium text-foreground">{subject.name || '-'}</span>
+          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{subject.name || '-'}</span>
         )}
       </td>
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">

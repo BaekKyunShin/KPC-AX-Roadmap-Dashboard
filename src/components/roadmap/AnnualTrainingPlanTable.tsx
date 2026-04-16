@@ -226,28 +226,29 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       {/* 역량명 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.competency_name}
             onChange={(e) => onUpdate(index, { competency_name: e.target.value })}
             placeholder="역량명"
             aria-label={`연간계획 ${index + 1} 역량명`}
+            className="font-medium"
           />
         ) : (
-          <span className="font-medium text-foreground">{item.competency_name || '-'}</span>
+          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.competency_name || '-'}</span>
         )}
       </td>
 
       {/* 훈련과정명 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.course_name}
             onChange={(e) => onUpdate(index, { course_name: e.target.value })}
             placeholder="훈련과정명"
             aria-label={`연간계획 ${index + 1} 훈련과정명`}
           />
         ) : (
-          <span className="text-foreground">{item.course_name || '-'}</span>
+          <span className="text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.course_name || '-'}</span>
         )}
       </td>
 
@@ -286,14 +287,14 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       {/* 비고 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.notes}
             onChange={(e) => onUpdate(index, { notes: e.target.value })}
             placeholder="비고"
             aria-label={`연간계획 ${index + 1} 비고`}
           />
         ) : (
-          <span className="text-muted-foreground">{item.notes || '-'}</span>
+          <span className="text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.notes || '-'}</span>
         )}
       </td>
 

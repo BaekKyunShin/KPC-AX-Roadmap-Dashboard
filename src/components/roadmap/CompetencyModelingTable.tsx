@@ -238,21 +238,29 @@ function DesktopRow({ index, competency, canEdit, onUpdate, onRemove }: RowProps
   const knowledgeStr = competency.knowledge.join('\n');
   const skillsStr = competency.skills.join('\n');
   const attitudesStr = competency.attitudes.join('\n');
-  useRowHeightSync(rowRef, [competency.definition, knowledgeStr, skillsStr, attitudesStr, canEdit]);
+  useRowHeightSync(rowRef, [
+    competency.name,
+    competency.definition,
+    knowledgeStr,
+    skillsStr,
+    attitudesStr,
+    canEdit,
+  ]);
 
   return (
     <tr ref={rowRef} className="align-top">
       {/* 역량명 */}
       <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={competency.name}
             onChange={(e) => onUpdate(index, { name: e.target.value })}
             placeholder="역량명"
             aria-label={`역량 ${index + 1} 역량명`}
+            className="font-medium"
           />
         ) : (
-          <span className="font-medium text-foreground">{competency.name || '-'}</span>
+          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{competency.name || '-'}</span>
         )}
       </td>
 
