@@ -307,8 +307,8 @@ function SubjectsSection({
             </thead>
             <tbody className="divide-y divide-border bg-card">
               {subjects.map((subject, sIdx) => (
-                <tr key={sIdx} className="align-top">
-                  <td className="px-3 py-3">
+                <tr key={sIdx}>
+                  <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {canEdit ? (
                       <Input
                         value={subject.name}
@@ -320,7 +320,7 @@ function SubjectsSection({
                       <span className="font-medium text-foreground">{subject.name || '-'}</span>
                     )}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {canEdit ? (
                       <Textarea
                         value={subject.details}
@@ -335,7 +335,7 @@ function SubjectsSection({
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-3 py-3 text-right align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {canEdit ? (
                       <Input
                         type="number"
@@ -345,6 +345,7 @@ function SubjectsSection({
                           onUpdate(sIdx, { hours: Number(e.target.value) || 0 })
                         }
                         placeholder="시간"
+                        className="text-right"
                         aria-label={`명세서 ${index + 1} 교과목 ${sIdx + 1} 시간`}
                       />
                     ) : (
