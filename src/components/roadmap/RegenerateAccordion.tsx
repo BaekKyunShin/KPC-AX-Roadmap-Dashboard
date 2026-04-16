@@ -30,14 +30,25 @@ export function RegenerateAccordion({
         className="w-full justify-between rounded-lg"
         onClick={() => setOpen((o) => !o)}
         disabled={disabled}
+        aria-expanded={open}
+        aria-controls="regenerate-panel"
       >
         <span className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />새 버전 생성
+          <Plus className="h-4 w-4" aria-hidden="true" />새 버전 생성
         </span>
-        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {open ? (
+          <ChevronUp className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+        )}
       </Button>
       {open && (
-        <div className="border-t border-border p-4 space-y-3">
+        <div
+          id="regenerate-panel"
+          role="region"
+          aria-label="새 버전 생성"
+          className="border-t border-border p-4 space-y-3"
+        >
           <div>
             <Label htmlFor="regenerate-prompt" className="mb-2 block text-sm font-medium">
               수정 요청 사항 (선택)
@@ -52,7 +63,13 @@ export function RegenerateAccordion({
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={isLoading}
+            >
               취소
             </Button>
             <Button
@@ -63,7 +80,7 @@ export function RegenerateAccordion({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" aria-hidden="true" />
                   AI 생성 중…
                 </>
               ) : (

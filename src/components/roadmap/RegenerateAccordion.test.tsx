@@ -62,4 +62,32 @@ describe('RegenerateAccordion', () => {
     await userEvent.click(screen.getByRole('button', { name: /새 버전 생성/ }));
     expect(screen.getByRole('button', { name: /생성 중|생성 시작/ })).toBeDisabled();
   });
+
+  it('disabled prop 적용 시 트리거 버튼 disabled', () => {
+    render(
+      <RegenerateAccordion
+        value={''}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isLoading={false}
+        disabled
+      />,
+    );
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
+  });
+
+  it('aria-expanded가 초기 false, 클릭 후 true로 전환', async () => {
+    render(
+      <RegenerateAccordion
+        value={''}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isLoading={false}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: /새 버전 생성/ });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  });
 });
