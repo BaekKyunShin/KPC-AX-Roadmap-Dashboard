@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -56,8 +57,11 @@ vi.mock('@/lib/services/llm', () => ({
 
 // 하위 컴포넌트 경량 모킹
 vi.mock('@/components/ui/page-header', () => ({
-  PageHeader: ({ title }: { title: string }) => (
-    <div data-testid="page-header">{title}</div>
+  PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
+    <div data-testid="page-header">
+      {title}
+      {actions && <div data-testid="page-header-actions">{actions}</div>}
+    </div>
   ),
 }));
 
@@ -161,27 +165,58 @@ vi.mock('@/components/roadmap/RevisionPromptToggle', () => ({
   ),
 }));
 
-vi.mock('@/components/roadmap/VersionHistoryList', () => ({
-  VersionHistoryList: ({
+vi.mock('@/components/roadmap/VersionSelector', () => ({
+  VersionSelector: ({
     versions,
-    selectedVersionId,
-    onVersionSelect,
+    selectedId,
+    onSelect,
   }: {
     versions: RoadmapVersionUI[];
-    selectedVersionId?: string;
-    onVersionSelect: (id: string) => void;
+    selectedId?: string;
+    onSelect: (id: string) => void;
   }) => (
-    <div data-testid="version-history-list">
-      {versions.map((v) => (
-        <button
-          key={v.id}
-          data-testid={`version-btn-${v.id}`}
-          onClick={() => onVersionSelect(v.id)}
-          data-selected={selectedVersionId === v.id}
-        >
-          버전 {v.version_number}
-        </button>
-      ))}
+    <div data-testid="version-selector">
+      <select
+        role="combobox"
+        value={selectedId ?? ''}
+        onChange={(e) => onSelect(e.target.value)}
+        aria-label="버전 선택"
+      >
+        {versions.map((v) => (
+          <option key={v.id} value={v.id}>
+            버전 {v.version_number}
+          </option>
+        ))}
+      </select>
+    </div>
+  ),
+}));
+
+vi.mock('@/components/roadmap/RegenerateAccordion', () => ({
+  RegenerateAccordion: ({
+    value,
+    onChange,
+    onSubmit,
+    isLoading,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+    onSubmit: () => void;
+    isLoading: boolean;
+  }) => (
+    <div data-testid="regenerate-accordion">
+      <button
+        data-testid="regenerate-submit"
+        onClick={onSubmit}
+        disabled={isLoading}
+      >
+        새 버전 생성
+      </button>
+      <textarea
+        data-testid="regenerate-textarea"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   ),
 }));
@@ -339,7 +374,7 @@ describe('ConsultantRoadmapClient', () => {
       expect(screen.getByText('로드맵이 없습니다')).toBeInTheDocument();
     });
 
-    it('버전이 없으면 생성 버튼에 "로드맵 생성" 텍스트를 표시한다', () => {
+    it('버전이 없으면 RegenerateAccordion을 표시한다', () => {
       render(
         <ConsultantRoadmapClient
           projectId={TEST_PROJECT_ID}
@@ -347,7 +382,7 @@ describe('ConsultantRoadmapClient', () => {
           companyName={TEST_COMPANY_NAME}
         />,
       );
-      expect(screen.getByRole('button', { name: '로드맵 생성' })).toBeInTheDocument();
+      expect(screen.getByTestId('regenerate-accordion')).toBeInTheDocument();
     });
 
     it('버전이 있으면 상태 배지를 표시한다', () => {
@@ -362,7 +397,7 @@ describe('ConsultantRoadmapClient', () => {
       expect(screen.getByTestId('roadmap-status-badge')).toHaveTextContent('DRAFT');
     });
 
-    it('버전이 있으면 "새 버전 로드맵 생성" 텍스트를 표시한다', () => {
+    it('버전이 있으면 VersionSelector를 표시한다', () => {
       render(
         <ConsultantRoadmapClient
           projectId={TEST_PROJECT_ID}
@@ -370,9 +405,7 @@ describe('ConsultantRoadmapClient', () => {
           companyName={TEST_COMPANY_NAME}
         />,
       );
-      expect(
-        screen.getByRole('button', { name: '새 버전 로드맵 생성' }),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('version-selector')).toBeInTheDocument();
     });
   });
 
@@ -618,7 +651,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByRole('button', { name: '로드맵 생성' }));
+      await user.click(screen.getByTestId('regenerate-submit'));
       expect(mockCreateRoadmap).toHaveBeenCalledWith(TEST_PROJECT_ID, undefined);
     });
 
@@ -635,7 +668,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByRole('button', { name: '로드맵 생성' }));
+      await user.click(screen.getByTestId('regenerate-submit'));
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith(
           '로드맵 생성 완료',
@@ -656,7 +689,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByRole('button', { name: '로드맵 생성' }));
+      await user.click(screen.getByTestId('regenerate-submit'));
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('로드맵 생성 실패', '생성 오류');
       });
@@ -681,7 +714,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByRole('button', { name: '로드맵 생성' }));
+      await user.click(screen.getByTestId('regenerate-submit'));
       await user.click(screen.getByTestId('cancel-generation'));
       expect(mockCancelRoadmapGeneration).toHaveBeenCalled();
 
