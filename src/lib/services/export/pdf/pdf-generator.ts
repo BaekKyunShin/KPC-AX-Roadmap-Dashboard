@@ -93,7 +93,14 @@ export async function generatePDF(data: RoadmapExportData): Promise<Blob> {
   // ======================================================================
   doc.addPage();
   ctx.y = LAYOUT.MARGIN + 5;
-  drawStructureSection(ctx, data.competencies, data.trainingStructure, autoTable, tableBase);
+  drawStructureSection(
+    ctx,
+    data.competencies,
+    data.trainingStructure,
+    autoTable,
+    tableBase,
+    data.trainingStructureMethod,
+  );
 
   // ======================================================================
   // 페이지 4: Ⅲ-3. 연간 훈련계획

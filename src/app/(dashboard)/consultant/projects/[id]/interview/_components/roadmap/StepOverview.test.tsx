@@ -63,15 +63,35 @@ describe('StepOverview', () => {
     );
   });
 
-  it('HRD이음 첨부 URL Input 렌더 + 초기값 표시', () => {
+  it('HRD이음 첨부 미존재 시 "파일 선택" 버튼 표시', () => {
     render(
       <StepOverview
-        value={{ ...EMPTY, hrd_report_attachment_url: 'https://example.com/report.pdf' }}
+        value={EMPTY}
         onChange={vi.fn()}
+        onUploadHrdReport={vi.fn()}
       />,
     );
-    const urlInput = screen.getByLabelText(/HRD이음/);
-    expect(urlInput).toHaveValue('https://example.com/report.pdf');
+    expect(screen.getByRole('button', { name: /파일 선택/ })).toBeInTheDocument();
+  });
+
+  it('HRD이음 첨부가 있으면 파일명·삭제 버튼 표시', () => {
+    render(
+      <StepOverview
+        value={{
+          ...EMPTY,
+          hrd_report_attachment: {
+            storage_path: 'p1/abc.pdf',
+            file_name: '진단보고서.pdf',
+            mime_type: 'application/pdf',
+            size: 102400,
+          },
+        }}
+        onChange={vi.fn()}
+        onRemoveHrdReport={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('진단보고서.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /삭제/ })).toBeInTheDocument();
   });
 
   it('errors prop으로 필드 에러 메시지 표시', () => {

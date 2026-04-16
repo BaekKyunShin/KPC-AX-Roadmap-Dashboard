@@ -130,18 +130,23 @@ describe('overviewSchema', () => {
     ).toBe(false);
   });
 
-  it('hrd_report_attachment_url은 선택이며 URL 형식만 허용', () => {
+  it('hrd_report_attachment은 선택이며 첨부 메타 객체만 허용', () => {
     expect(
       overviewSchema.safeParse({
         ...baseOverview,
-        hrd_report_attachment_url: 'https://hrd4u.or.kr/report/123',
+        hrd_report_attachment: {
+          storage_path: 'project-1/abc.pdf',
+          file_name: '진단보고서.pdf',
+          mime_type: 'application/pdf',
+          size: 1024,
+        },
       }).success
     ).toBe(true);
 
     expect(
       overviewSchema.safeParse({
         ...baseOverview,
-        hrd_report_attachment_url: 'not-a-url',
+        hrd_report_attachment: { storage_path: '', file_name: 'a.pdf' },
       }).success
     ).toBe(false);
 
@@ -156,7 +161,7 @@ describe('createEmptyOverview', () => {
     expect(empty.establishment_necessity).toBe('');
     expect(empty.selected_tasks_summary).toBe('');
     expect(empty.roadmap_summary).toBe('');
-    expect(empty.hrd_report_attachment_url).toBeUndefined();
+    expect(empty.hrd_report_attachment).toBeUndefined();
   });
 });
 

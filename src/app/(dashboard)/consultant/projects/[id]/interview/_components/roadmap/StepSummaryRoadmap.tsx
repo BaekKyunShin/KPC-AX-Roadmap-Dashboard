@@ -102,10 +102,15 @@ export default function StepSummaryRoadmap({
               {overview.roadmap_summary || '-'}
             </dd>
           </div>
-          {overview.hrd_report_attachment_url && (
+          {overview.hrd_report_attachment && (
             <div>
               <dt className="text-muted-foreground">HRD이음 진단 보고서</dt>
-              <dd className="text-primary break-all">{overview.hrd_report_attachment_url}</dd>
+              <dd className="text-foreground">
+                {overview.hrd_report_attachment.file_name}
+                {overview.hrd_report_attachment.size
+                  ? ` (${Math.round(overview.hrd_report_attachment.size / 1024)} KB)`
+                  : ''}
+              </dd>
             </div>
           )}
         </dl>

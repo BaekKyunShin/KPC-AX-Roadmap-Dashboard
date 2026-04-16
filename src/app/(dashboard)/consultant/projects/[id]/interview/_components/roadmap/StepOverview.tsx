@@ -1,9 +1,12 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { Loader2, Paperclip, Trash2, Download } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { FieldError } from '@/components/ui/field-error';
+import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   AI_COMPETENCY_LEVEL_OPTIONS,
   type AiCompetencyLevel,
@@ -14,6 +17,15 @@ interface StepOverviewProps {
   value: Overview;
   onChange: (next: Overview) => void;
   errors?: Partial<Record<keyof Overview, string>>;
+  /** HRD이음 첨부 업로드 핸들러 (Server Action). projectId를 prebound한 함수 */
+  onUploadHrdReport?: (file: File) => Promise<
+    | { success: true; data: NonNullable<Overview['hrd_report_attachment']> }
+    | { success: false; error: string }
+  >;
+  /** HRD이음 첨부 삭제 핸들러 */
+  onRemoveHrdReport?: (storagePath: string) => Promise<{ success: boolean; error?: string }>;
+  /** HRD이음 첨부 다운로드 URL 발급 */
+  onDownloadHrdReport?: (storagePath: string) => Promise<{ url: string } | null>;
 }
 
 const TEXT_FIELDS: ReadonlyArray<{
@@ -25,7 +37,7 @@ const TEXT_FIELDS: ReadonlyArray<{
 }> = [
   {
     key: 'establishment_necessity',
-    label: '수립 필요성',
+    label: 'AI 훈련로드맵 수립 필요성',
     hint: 'AI 훈련로드맵 수립 배경 · 해당 과업 선정 이유 · AI 적용 필요성 (양식 Ⅰ-1, 5줄 내외)',
     placeholder:
       '예) 제조 공정의 품질검사 업무에서 인력 의존도가 높아 품질 편차가 발생하고 있다.\nAI 비전 검사 도입으로 1차 스크리닝을 자동화하면 작업자 부담이 줄고 품질 편차 또한 줄어들 것으로 기대된다.',
@@ -40,7 +52,7 @@ const TEXT_FIELDS: ReadonlyArray<{
   },
   {
     key: 'roadmap_summary',
-    label: '수립 주요내용 요약',
+    label: 'AI 훈련로드맵 수립 주요내용 요약',
     hint: '훈련 목표 · 대상 · 주요 과정 · 운영 방식 핵심만 요약 (양식 Ⅰ-3, 1장 이내)',
     placeholder:
       '예) 전사 3단계 AI 인력 양성 로드맵(기초/탐구/활용). 생산기술팀 15명 대상. 집체 + 원격 혼합. 2026 상반기 기초 과정 시작.',
@@ -48,7 +60,29 @@ const TEXT_FIELDS: ReadonlyArray<{
   },
 ];
 
-export default function StepOverview({ value, onChange, errors }: StepOverviewProps) {
+function formatBytes(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = bytes;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`;
+}
+
+export default function StepOverview({
+  value,
+  onChange,
+  errors,
+  onUploadHrdReport,
+  onRemoveHrdReport,
+  onDownloadHrdReport,
+}: StepOverviewProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleText = (
     key: 'establishment_necessity' | 'selected_tasks_summary' | 'roadmap_summary',
     next: string,
@@ -60,11 +94,50 @@ export default function StepOverview({ value, onChange, errors }: StepOverviewPr
     onChange({ ...value, ai_competency_level: next });
   };
 
-  const handleUrl = (next: string) => {
-    onChange({
-      ...value,
-      hrd_report_attachment_url: next.trim() === '' ? undefined : next,
-    });
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // 같은 파일 재선택 허용
+    if (!file || !onUploadHrdReport) return;
+
+    setIsUploading(true);
+    try {
+      const result = await onUploadHrdReport(file);
+      if (result.success) {
+        onChange({ ...value, hrd_report_attachment: result.data });
+        showSuccessToast('업로드 완료', `${file.name} (${formatBytes(file.size)})`);
+      } else {
+        showErrorToast('업로드 실패', result.error);
+      }
+    } catch {
+      showErrorToast('업로드 실패', '서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveAttachment = async () => {
+    const att = value.hrd_report_attachment;
+    if (!att || !onRemoveHrdReport) return;
+    if (!confirm(`"${att.file_name}" 첨부를 삭제하시겠습니까?`)) return;
+
+    const result = await onRemoveHrdReport(att.storage_path);
+    if (result.success) {
+      onChange({ ...value, hrd_report_attachment: undefined });
+      showSuccessToast('삭제 완료', '첨부 파일이 삭제되었습니다.');
+    } else {
+      showErrorToast('삭제 실패', result.error || '서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDownload = async () => {
+    const att = value.hrd_report_attachment;
+    if (!att || !onDownloadHrdReport) return;
+    const result = await onDownloadHrdReport(att.storage_path);
+    if (result?.url) {
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } else {
+      showErrorToast('다운로드 실패', '미리보기 URL을 가져오지 못했습니다.');
+    }
   };
 
   return (
@@ -149,22 +222,84 @@ export default function StepOverview({ value, onChange, errors }: StepOverviewPr
         </fieldset>
 
         <div>
-          <Label htmlFor="ov-hrd-url" className="mb-1 block">
-            HRD이음 진단 보고서 URL (선택)
+          <Label className="mb-1 block">
+            HRD이음 진단 보고서 (PDF 첨부 · 선택)
           </Label>
-          <p id="ov-hrd-url-hint" className="text-xs text-muted-foreground mb-2">
-            첨부 대신 외부 URL로 대체 가능. Step 12 이후 자동 연동 예정 (양식 Ⅱ-1).
+          <p className="text-xs text-muted-foreground mb-2">
+            기업HRD이음컨설팅 보고서 PDF를 첨부하세요. 로드맵 생성 시 LLM 프롬프트에서 첨부 파일이 있다는 사실을 함께 안내합니다 (양식 Ⅱ-1).
           </p>
-          <Input
-            id="ov-hrd-url"
-            type="url"
-            value={value.hrd_report_attachment_url ?? ''}
-            onChange={(e) => handleUrl(e.target.value)}
-            placeholder="https://hrd4u.or.kr/report/..."
-            aria-describedby="ov-hrd-url-hint"
-            aria-invalid={Boolean(errors?.hrd_report_attachment_url) || undefined}
-          />
-          <FieldError message={errors?.hrd_report_attachment_url} />
+
+          {value.hrd_report_attachment ? (
+            <div className="rounded-md border border-border bg-muted/20 p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {value.hrd_report_attachment.file_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {value.hrd_report_attachment.mime_type ?? '파일'}
+                    {value.hrd_report_attachment.size
+                      ? ` · ${formatBytes(value.hrd_report_attachment.size)}`
+                      : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {onDownloadHrdReport && (
+                  <Button type="button" variant="ghost" size="sm" onClick={handleDownload}>
+                    <Download className="h-4 w-4" />
+                    다운로드
+                  </Button>
+                )}
+                {onRemoveHrdReport && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveAttachment}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    삭제
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.hwpx,.hwp,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                aria-label="HRD이음 진단 보고서 첨부"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading || !onUploadHrdReport}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    업로드 중…
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    파일 선택
+                  </>
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                PDF · HWPX · DOCX · XLSX · 이미지 (최대 20MB)
+              </span>
+            </div>
+          )}
+          <FieldError message={errors?.hrd_report_attachment} />
         </div>
       </div>
     </div>

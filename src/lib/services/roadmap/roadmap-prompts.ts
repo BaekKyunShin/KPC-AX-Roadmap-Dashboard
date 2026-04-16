@@ -146,7 +146,11 @@ ${isTestMode && !selfAssessment ? '(테스트 모드 - 자가진단 결과 없�
 
 ### 개요 (Ⅰ-1 · Ⅰ-3) — 아래 값은 LLM 재창작 없이 그대로 복사
 ${JSON.stringify(interview.overview ?? {}, null, 2)}
-
+${(() => {
+  const att = (interview.overview as { hrd_report_attachment?: { file_name?: string; mime_type?: string; size?: number } } | undefined)?.hrd_report_attachment;
+  if (!att) return '';
+  return `\n### Ⅱ-1. HRD이음 진단 보고서 (첨부 파일 메타)\n- 파일명: ${att.file_name ?? '-'}\n- 형식: ${att.mime_type ?? '-'}\n- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}\n- 본 보고서는 별도 첨부되어 있으며, AI 역량 수준(outcome_summary.ai_competency_level)은 인터뷰 입력값을 그대로 사용합니다. 첨부 본문 자체를 LLM이 직접 파싱하지는 않습니다.\n`;
+})()}
 ### 기업 요구분석 (Ⅱ-2)
 ${JSON.stringify(interview.company_requirements, null, 2)}
 

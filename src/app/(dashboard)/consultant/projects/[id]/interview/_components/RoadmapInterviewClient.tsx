@@ -26,7 +26,12 @@ import {
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
 } from '@/lib/schemas/interview-roadmap';
-import { saveRoadmapInterview } from '../actions';
+import {
+  saveRoadmapInterview,
+  uploadHrdReportAttachment,
+  removeHrdReportAttachment,
+  createHrdReportSignedUrl,
+} from '../actions';
 import InterviewStepper from './InterviewStepper';
 import StepOverview from './roadmap/StepOverview';
 import StepBasicInfoRoadmap from './roadmap/StepBasicInfoRoadmap';
@@ -226,7 +231,24 @@ export default function RoadmapInterviewClient({
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <StepOverview value={overview} onChange={setOverview} />;
+        return (
+          <StepOverview
+            value={overview}
+            onChange={setOverview}
+            onUploadHrdReport={async (file) => {
+              const fd = new FormData();
+              fd.append('file', file);
+              return uploadHrdReportAttachment(projectId, fd);
+            }}
+            onRemoveHrdReport={(storagePath) =>
+              removeHrdReportAttachment(projectId, storagePath)
+            }
+            onDownloadHrdReport={async (storagePath) => {
+              const r = await createHrdReportSignedUrl(projectId, storagePath);
+              return r.success ? r.data : null;
+            }}
+          />
+        );
       case 2:
         return (
           <StepBasicInfoRoadmap

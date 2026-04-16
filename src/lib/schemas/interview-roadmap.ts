@@ -26,7 +26,8 @@ export const INTERVIEW_METHOD_OPTIONS: ReadonlyArray<{ value: InterviewMethod; l
 // Ⅰ. 개요 (산인공 양식 Ⅰ-1 수립 필요성 + Ⅰ-3 수립 주요 결과)
 // - ai_competency_level: Ⅰ-3 기업 AI 역량 수준 체크
 //   BEGINNER=초급(AI기초형) / INTERMEDIATE=중급(AI탐구형) / ADVANCED=고급(AI활용형·선도형)
-// - hrd_report_attachment_url: Ⅱ-1 HRD이음 진단 보고서 첨부 (Step 12 이후 자동 연동 예정)
+// - hrd_report_attachment: Ⅱ-1 HRD이음 진단 보고서 PDF 첨부
+//   { storage_path: bucket 내부 경로, file_name: 원본 파일명, mime_type, size, uploaded_at }
 export const AI_COMPETENCY_LEVEL = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
 export type AiCompetencyLevel = z.infer<typeof AI_COMPETENCY_LEVEL>;
 
@@ -52,12 +53,22 @@ export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
   { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
 ];
 
+// HRD이음 진단 보고서 첨부 메타 (Storage 'interview-attachments' 버킷)
+export const hrdReportAttachmentSchema = z.object({
+  storage_path: z.string().min(1),
+  file_name: z.string().min(1),
+  mime_type: z.string().optional(),
+  size: z.number().nonnegative().optional(),
+  uploaded_at: z.string().optional(),
+});
+export type HrdReportAttachment = z.infer<typeof hrdReportAttachmentSchema>;
+
 export const overviewSchema = z.object({
   establishment_necessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
   ai_competency_level: AI_COMPETENCY_LEVEL,
   selected_tasks_summary: z.string().min(1, '선정 과업을 입력하세요.'),
   roadmap_summary: z.string().min(1, '수립 주요내용 요약을 입력하세요 (1장 이내).'),
-  hrd_report_attachment_url: z.string().url().optional(),
+  hrd_report_attachment: hrdReportAttachmentSchema.optional(),
 });
 
 // Ⅱ-2. 기업 요구분석 (4필드 텍스트)
@@ -125,7 +136,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
       ai_competency_level: AI_COMPETENCY_LEVEL.optional(),
       selected_tasks_summary: z.string().optional(),
       roadmap_summary: z.string().optional(),
-      hrd_report_attachment_url: z.string().optional(),
+      hrd_report_attachment: hrdReportAttachmentSchema.optional(),
     })
     .optional(),
   interview_date: z.string().optional(),
