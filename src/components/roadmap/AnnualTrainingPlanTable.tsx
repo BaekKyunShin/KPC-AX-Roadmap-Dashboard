@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { Trash2, Plus, CalendarDays } from 'lucide-react';
 import type {
   RoadmapAnnualPlan,
@@ -9,9 +10,11 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useRowHeightSync } from '@/hooks/useRowHeightSync';
 
 // ============================================================================
 // 타입
@@ -33,11 +36,11 @@ const EMPTY_ITEM: RoadmapAnnualPlanItem = {
 };
 
 const COLUMN_HEADERS = [
-  { key: 'competency_name', label: '역량명', width: 'w-[160px]' },
-  { key: 'course_name', label: '훈련과정명', width: 'w-[200px]' },
-  { key: 'format', label: '훈련형태', width: 'w-[120px]' },
-  { key: 'hours', label: '훈련시간', width: 'w-[90px]' },
-  { key: 'notes', label: '비고', width: 'w-[200px]' },
+  { key: 'competency_name', label: '역량명', width: 'w-[18%]', align: 'text-left' },
+  { key: 'course_name', label: '훈련과정명', width: '', align: 'text-left' },
+  { key: 'format', label: '훈련형태', width: 'w-[10%]', align: 'text-center' },
+  { key: 'hours', label: '훈련시간', width: 'w-[10%]', align: 'text-right' },
+  { key: 'notes', label: '비고', width: 'w-[20%]', align: 'text-left' },
 ] as const;
 
 // ============================================================================
@@ -92,7 +95,7 @@ export function AnnualTrainingPlanTable({
                   <th
                     key={col.key}
                     scope="col"
-                    className={`${col.width} px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
+                    className={`${col.width} text-center px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
                   >
                     {col.label}
                   </th>
@@ -182,11 +185,10 @@ export function AnnualTrainingPlanTable({
           활용방안
         </Label>
         {canEdit ? (
-          <Textarea
+          <AutoResizeTextarea
             id="annual-plan-usage-plan"
             value={usagePlan}
             onChange={(e) => updateUsagePlan(e.target.value)}
-            rows={4}
             placeholder="본 훈련계획의 활용방안을 입력하세요"
             aria-label="활용방안"
           />
@@ -217,43 +219,51 @@ interface RowProps {
 }
 
 function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useRowHeightSync(rowRef, [item.competency_name, item.course_name, item.notes, canEdit]);
+
   return (
-    <tr className="align-top">
+    <tr ref={rowRef} className="align-top">
       {/* 역량명 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.competency_name}
             onChange={(e) => onUpdate(index, { competency_name: e.target.value })}
             placeholder="역량명"
             aria-label={`연간계획 ${index + 1} 역량명`}
+            className="font-medium"
           />
         ) : (
-          <span className="font-medium text-foreground">{item.competency_name || '-'}</span>
+          <span className="font-medium text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.competency_name || '-'}</span>
         )}
       </td>
 
       {/* 훈련과정명 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.course_name}
             onChange={(e) => onUpdate(index, { course_name: e.target.value })}
             placeholder="훈련과정명"
             aria-label={`연간계획 ${index + 1} 훈련과정명`}
           />
         ) : (
-          <span className="text-foreground">{item.course_name || '-'}</span>
+          <span className="text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.course_name || '-'}</span>
         )}
       </td>
 
-      {/* 훈련형태 */}
-      <td className="px-3 py-3">
+      {/* 훈련형태 — 박스 stretch + 텍스트 top-align 위해 rows=1 textarea 사용 */}
+      <td className="h-0 px-3 py-3 align-top text-center">
         {canEdit ? (
-          <Input
+          <Textarea
+            rows={1}
             value={item.format}
-            onChange={(e) => onUpdate(index, { format: e.target.value })}
+            onChange={(e) =>
+              onUpdate(index, { format: e.target.value.replace(/\n/g, '') })
+            }
             placeholder="집체/원격/혼합"
+            className="h-full w-full resize-none overflow-hidden text-center"
             aria-label={`연간계획 ${index + 1} 훈련형태`}
           />
         ) : (
@@ -261,15 +271,18 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
         )}
       </td>
 
-      {/* 훈련시간 */}
-      <td className="px-3 py-3">
+      {/* 훈련시간 — 박스 stretch + 텍스트 top-align, 숫자만 허용 */}
+      <td className="h-0 px-3 py-3 align-top text-center">
         {canEdit ? (
-          <Input
-            type="number"
-            min={1}
+          <Textarea
+            rows={1}
             value={item.hours || ''}
-            onChange={(e) => onUpdate(index, { hours: Number(e.target.value) || 0 })}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, '');
+              onUpdate(index, { hours: v === '' ? 0 : Number(v) });
+            }}
             placeholder="시간"
+            className="h-full w-full resize-none overflow-hidden text-center"
             aria-label={`연간계획 ${index + 1} 훈련시간`}
           />
         ) : (
@@ -278,22 +291,22 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 비고 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
-          <Input
+          <AutoResizeTextarea
             value={item.notes}
             onChange={(e) => onUpdate(index, { notes: e.target.value })}
             placeholder="비고"
             aria-label={`연간계획 ${index + 1} 비고`}
           />
         ) : (
-          <span className="text-muted-foreground">{item.notes || '-'}</span>
+          <span className="text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.notes || '-'}</span>
         )}
       </td>
 
       {/* 액션 */}
       {canEdit && (
-        <td className="px-3 py-3 text-center">
+        <td className="px-3 py-3 text-center align-top">
           <Button
             type="button"
             variant="ghost"

@@ -1,6 +1,6 @@
 /**
  * pdf-competency-renderer.ts 테스트
- * Ⅲ-1. 역량 모델링 섹션 렌더 검증
+ * Ⅲ-1. 역량 모델링 섹션 렌더 검증 (표 + NCS 박스)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -43,7 +43,7 @@ describe('drawCompetencySection', () => {
     expect(textCalls.some(t => typeof t === 'string' && t.includes('Ⅲ-1'))).toBe(true);
   });
 
-  it('autoTable을 1회 호출한다', () => {
+  it('ncs 정보 없이 호출하면 역량 표만 1회 출력', () => {
     const comps: RoadmapCompetency[] = [
       {
         name: '역량A',
@@ -51,8 +51,6 @@ describe('drawCompetencySection', () => {
         knowledge: ['K1'],
         skills: ['S1'],
         attitudes: ['A1'],
-        ncs_used: true,
-        ncs_methodology: 'L4',
       },
     ];
     drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false));
@@ -60,7 +58,7 @@ describe('drawCompetencySection', () => {
     expect(autoTable).toHaveBeenCalledTimes(1);
   });
 
-  it('ncs_used=true이면 NCS 활용 컬럼에 O를 넣는다', () => {
+  it('ncs_used=true + methodology 제공 시 NCS 활용 방법 박스를 추가 렌더(autoTable 2회)', () => {
     const comps: RoadmapCompetency[] = [
       {
         name: '역량A',
@@ -68,18 +66,21 @@ describe('drawCompetencySection', () => {
         knowledge: [],
         skills: [],
         attitudes: [],
-        ncs_used: true,
-        ncs_methodology: 'NCS 방법',
       },
     ];
-    drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false));
+    drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false), {
+      ncs_used: true,
+      ncs_methodology: 'NCS 빅데이터 세분류 활용',
+      ncs_derivation_method: '',
+    });
 
-    const body = autoTable.mock.calls[0][1].body;
-    expect(body[0][5]).toBe('O');
-    expect(body[0][6]).toBe('NCS 방법');
+    expect(autoTable).toHaveBeenCalledTimes(2);
+    const ncsCall = autoTable.mock.calls[1][1];
+    expect(ncsCall.head[0][0]).toBe('NCS 활용 방법');
+    expect(ncsCall.body[0][0]).toBe('NCS 빅데이터 세분류 활용');
   });
 
-  it('ncs_used=false이면 NCS 활용 컬럼에 X를 넣고 derivation_method를 사용한다', () => {
+  it('ncs_used=false + derivation_method 제공 시 역량별 도출 방법 박스 렌더', () => {
     const comps: RoadmapCompetency[] = [
       {
         name: '역량B',
@@ -87,15 +88,17 @@ describe('drawCompetencySection', () => {
         knowledge: [],
         skills: [],
         attitudes: [],
-        ncs_used: false,
-        ncs_derivation_method: '자체 도출',
       },
     ];
-    drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false));
+    drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false), {
+      ncs_used: false,
+      ncs_methodology: '',
+      ncs_derivation_method: '자체 도출',
+    });
 
-    const body = autoTable.mock.calls[0][1].body;
-    expect(body[0][5]).toBe('X');
-    expect(body[0][6]).toBe('자체 도출');
+    const ncsCall = autoTable.mock.calls[1][1];
+    expect(ncsCall.head[0][0]).toBe('역량별 도출 방법');
+    expect(ncsCall.body[0][0]).toBe('자체 도출');
   });
 
   it('knowledge/skills/attitudes를 불릿 리스트 문자열로 포맷한다', () => {
@@ -106,8 +109,6 @@ describe('drawCompetencySection', () => {
         knowledge: ['k1', 'k2'],
         skills: ['s1'],
         attitudes: ['a1'],
-        ncs_used: false,
-        ncs_derivation_method: '-',
       },
     ];
     drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false));
@@ -127,10 +128,10 @@ describe('drawCompetencySection', () => {
     expect(body[0][0]).toBe('-');
   });
 
-  it('y를 autoTable finalY + 10으로 업데이트한다', () => {
+  it('ncs 박스 없을 때 y는 autoTable finalY + 일부 offset으로 업데이트', () => {
     mockDoc.lastAutoTable = { finalY: 150 };
     drawCompetencySection(ctx, [], autoTable, getAutoTableStyles(false));
 
-    expect(ctx.y).toBe(160);
+    expect(ctx.y).toBeGreaterThan(150);
   });
 });

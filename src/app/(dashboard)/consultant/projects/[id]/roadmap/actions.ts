@@ -11,6 +11,7 @@ import {
   updateRoadmapManually,
   fromRoadmapVersionColumns,
   type RoadmapCompetency,
+  type RoadmapOutcomeSummary,
   type RoadmapTrainingStructureItem,
   type RoadmapAnnualPlan,
   type RoadmapCourseSpec,
@@ -242,8 +243,14 @@ export async function editRoadmapManually(
   roadmapId: string,
   updates: {
     diagnosis_summary?: string;
+    setup_necessity?: string;
+    outcome_summary?: RoadmapOutcomeSummary;
     competencies?: RoadmapCompetency[];
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
     training_structure?: RoadmapTrainingStructureItem[];
+    training_structure_method?: string;
     annual_plan?: RoadmapAnnualPlan;
     course_specs?: RoadmapCourseSpec[];
   }

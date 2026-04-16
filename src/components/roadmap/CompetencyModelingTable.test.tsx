@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { CompetencyModelingTable } from './CompetencyModelingTable';
@@ -15,8 +15,6 @@ function makeCompetency(overrides: Partial<RoadmapCompetency> = {}): RoadmapComp
     knowledge: ['통계 기초', 'SQL'],
     skills: ['Excel 활용', 'BI 도구 활용'],
     attitudes: ['데이터 기반 사고'],
-    ncs_used: false,
-    ncs_derivation_method: '현업 인터뷰',
     ...overrides,
   };
 }
@@ -51,23 +49,6 @@ describe('CompetencyModelingTable', () => {
       expect(screen.getAllByText('SQL').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('Excel 활용').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('데이터 기반 사고').length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('ncs_used=false이면 "NCS 도출 방법" 라벨을 사용한다', () => {
-      render(<CompetencyModelingTable competencies={[makeCompetency({ ncs_used: false })]} />);
-      expect(screen.getAllByText('NCS 도출 방법').length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('ncs_used=true이면 "NCS 활용 방법" 라벨을 사용한다', () => {
-      render(
-        <CompetencyModelingTable
-          competencies={[
-            makeCompetency({ ncs_used: true, ncs_methodology: 'NCS 분류번호 02...' }),
-          ]}
-        />,
-      );
-      expect(screen.getAllByText('NCS 활용 방법').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('NCS 분류번호 02...').length).toBeGreaterThanOrEqual(1);
     });
 
     it('canEdit=false면 입력 필드가 없다', () => {
@@ -119,7 +100,6 @@ describe('CompetencyModelingTable', () => {
       expect(arg).toHaveLength(2);
       expect(arg[1].name).toBe('');
       expect(arg[1].knowledge).toEqual([]);
-      expect(arg[1].ncs_used).toBe(false);
     });
 
     it('삭제 버튼 클릭 시 onChange가 해당 행이 제거된 배열로 호출된다', async () => {
@@ -165,26 +145,6 @@ describe('CompetencyModelingTable', () => {
       expect(arg[0].name).toBe('A');
     });
 
-    it('NCS 스위치 토글 시 ncs_used가 반전된다', async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-      render(
-        <CompetencyModelingTable
-          competencies={[makeCompetency({ ncs_used: false })]}
-          canEdit={true}
-          onChange={onChange}
-        />,
-      );
-
-      const switches = screen.getAllByLabelText(/역량 1 NCS 활용 여부/);
-      await user.click(switches[0]);
-
-      expect(onChange).toHaveBeenCalled();
-      const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-      const arg = lastCall[0] as RoadmapCompetency[];
-      expect(arg[0].ncs_used).toBe(true);
-    });
-
     it('지식 textarea 변경 시 줄바꿈 기준으로 배열이 파싱되어 onChange 호출된다', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
@@ -205,6 +165,62 @@ describe('CompetencyModelingTable', () => {
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
       const arg = lastCall[0] as RoadmapCompetency[];
       expect(arg[0].knowledge).toEqual(['A', 'B']);
+    });
+  });
+});
+
+describe('2단 헤더 (양식 1번 Ⅲ-1)', () => {
+  it('역량 데이터 있을 때 상위 "필요 지식·기술·태도" 헤더가 colspan=3', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    const groupHeader = screen.getByRole('columnheader', { name: /필요 지식.*기술.*태도/ });
+    expect(groupHeader).toHaveAttribute('colspan', '3');
+  });
+
+  it('하위 지식·기술·태도 헤더', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    // 콘테너를 thead 스코프로 한정 (중복 text 방지)
+    const thead = document.querySelector('thead')!;
+    expect(within(thead).getByText(/^지식/)).toBeInTheDocument();
+    expect(within(thead).getByText(/^기술/)).toBeInTheDocument();
+    expect(within(thead).getByText(/^태도/)).toBeInTheDocument();
+  });
+
+  it('역량명·정의 헤더는 rowspan=2', () => {
+    render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    expect(screen.getByRole('columnheader', { name: '역량명' })).toHaveAttribute('rowspan', '2');
+    const defHeader = screen.getByRole('columnheader', { name: /역량 정의/ });
+    expect(defHeader).toHaveAttribute('rowspan', '2');
+  });
+});
+
+describe('셀 균일 높이 + 자동 줄바꿈', () => {
+  it('각 td에 break-words 또는 break-keep 클래스 적용', () => {
+    const { container } = render(
+      <CompetencyModelingTable
+        competencies={[{ name: 'A', definition: '정의', knowledge: [], skills: [], attitudes: [] }]}
+        canEdit={false}
+      />,
+    );
+    const tds = container.querySelectorAll('tbody td');
+    expect(tds.length).toBeGreaterThan(0);
+    tds.forEach((td) => {
+      const cls = td.className;
+      expect(cls).toMatch(/break-words|break-keep|align-top/);
     });
   });
 });

@@ -2,28 +2,37 @@ import type { ConsultantProfile } from '@/types/database';
 import { buildSttInsightsSection } from './roadmap-stt-formatter';
 
 // ============================================================================
-// 프롬프트 빌더 — 산인공 공식 로드맵 보고서 양식(Ⅲ장) 기반
+// 프롬프트 빌더 — 산인공 공식 로드맵 보고서 양식(Ⅰ·Ⅱ·Ⅲ장) 기반
 // ============================================================================
 
 /**
  * 시스템 프롬프트
  */
 export function buildSystemPrompt(): string {
-  return `당신은 산업인력공단 AI 훈련 로드맵 설계 전문가입니다. 기업 인터뷰 결과를 분석하여 산인공 공식 4섹션 양식에 맞는 AI 훈련 로드맵을 설계합니다.
+  return `당신은 산업인력공단 AI 훈련 로드맵 설계 전문가입니다. 기업 인터뷰 결과를 분석하여 산인공 공식 양식(Ⅰ·Ⅲ장)에 맞는 AI 훈련 로드맵을 설계합니다.
 
-## 4섹션 설계 원칙
+## 섹션 설계 원칙
+
+### Ⅰ-1. 수립 필요성 (setup_necessity)
+- 인터뷰 overview.establishment_necessity 값을 **그대로 복사**하라. 재창작 금지.
+
+### Ⅰ-3. 수립 주요 결과 (outcome_summary)
+- ai_competency_level: 인터뷰 overview.ai_competency_level 값을 **그대로 복사**하라. 재창작 금지.
+- selected_tasks: 훈련대상 과업(training_targets) 핵심을 2~3문장으로 요약.
+- main_content: 수립된 훈련과정·대상·운영 방식 핵심을 1문단 이내로 요약.
 
 ### Ⅲ-1. 역량 모델링 (competencies)
 - 훈련대상 과업(training_targets)에서 필요 역량을 도출하라.
-- 각 역량: knowledge(지식), skills(기술), attitudes(태도) 항목을 구분하라.
-- NCS 활용 여부(ncs_used)를 반드시 결정하라.
-  - ncs_used=true → ncs_methodology 필수 (어떤 NCS 세분류/능력단위를 매핑했는지 명시)
-  - ncs_used=false → ncs_derivation_method 필수 (인터뷰·전문가 인터뷰·벤치마킹 등 도출 방법 명시)
+- 각 역량: knowledge(지식, 학술·업무지식), skills(기술, 기능), attitudes(태도) 항목을 구분하라.
+- **NCS 활용 방법은 표 전체 단위(루트)에 기술**한다. 개별 역량에는 NCS 필드를 두지 마라.
+  - ncs_used=true → ncs_methodology 필수 (양식 공통 NCS 활용 방법)
+  - ncs_used=false → ncs_derivation_method 필수 (인터뷰·전문가 인터뷰·벤치마킹 등 도출 방법)
 
-### Ⅲ-2. 훈련체계도 (training_structure)
+### Ⅲ-2. 훈련체계도 (training_structure + training_structure_method)
 - competency_name은 competencies[*].name 집합 안의 값만 사용하라.
 - 각 역량별로 BEGINNER/INTERMEDIATE/ADVANCED 3수준을 모두 채우라.
 - method: 집체/원격/혼합/현장 중 적합한 형태를 명시하라.
+- **training_structure_method**: 훈련체계 수립 방법을 3~5문장으로 기술하라(예: 역량 기준 3수준 체계, 단계별 선수요건 등).
 
 ### Ⅲ-3. 연간 훈련계획 (annual_plan)
 - items[*].competency_name은 competencies[*].name 집합 안의 값만 사용하라.
@@ -33,7 +42,7 @@ export function buildSystemPrompt(): string {
 ### Ⅲ-4. 훈련과정 명세서 (course_specs)
 - **최소 3개** 이상 생성하라.
 - course_name은 annual_plan.items[*].course_name 중 하나와 일치해야 한다.
-- subjects는 최소 1개, 각 subject의 hours > 0이어야 한다.
+- subjects는 최소 1개, 각 subject의 hours > 0이어야 한다. details는 "단원, 과제명" 형식으로 기술하라.
 - recommended_program: K-Digital Training / 사업주 직업능력개발훈련 / 국가기간전략산업직종훈련 등 실제 훈련사업명을 명시하라.
 
 ## 공통 정책 (전 섹션 적용)
@@ -41,25 +50,32 @@ export function buildSystemPrompt(): string {
 - 비개발자도 활용 가능한 노코드/로코드 도구 중심으로 설계하라. 코딩 교육은 기업이 명시적으로 요청하거나 인터뷰에서 기술 수준이 높다고 판단될 때만 포함하라.
 - 과정당 권장 시간은 40시간 이하, 최대 50시간을 초과하지 마라.
 - 한국어로 출력하라.
+- diagnosis_summary는 기업 현황·교육 니즈를 2~3문장으로 요약하라. setup_necessity·outcome_summary와 **중복되지 않도록** 간결하게 작성하라.
 
 ## 출력 형식
 
 반드시 아래 JSON 구조로만 응답하라. JSON 외 다른 텍스트를 출력하지 마라.
 
 {
-  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (3~4문장, 산인공 Ⅰ장 개요용)",
+  "diagnosis_summary": "기업 현황 및 교육 니즈 요약 (2~3문장, setup_necessity·outcome_summary와 중복 금지)",
+  "setup_necessity": "(인터뷰 overview.establishment_necessity 값을 그대로 복사)",
+  "outcome_summary": {
+    "ai_competency_level": "(인터뷰 overview.ai_competency_level 값을 그대로 복사: BEGINNER|INTERMEDIATE|ADVANCED)",
+    "selected_tasks": "훈련대상 과업 요약 2~3문장",
+    "main_content": "수립된 로드맵 주요 내용 1문단"
+  },
   "competencies": [
     {
       "name": "역량명",
-      "definition": "역량 정의 (1~2문장)",
-      "knowledge": ["지식 항목"],
-      "skills": ["기술 항목"],
-      "attitudes": ["태도 항목"],
-      "ncs_used": true,
-      "ncs_methodology": "NCS 세분류명 + 능력단위명 + 매핑 방법 (ncs_used=true일 때 필수)",
-      "ncs_derivation_method": "도출 방법 설명 (ncs_used=false일 때 필수)"
+      "definition": "역량 정의(수행준거) 1~2문장",
+      "knowledge": ["지식 항목 (학술, 업무지식)"],
+      "skills": ["기술 항목 (기능)"],
+      "attitudes": ["태도 항목"]
     }
   ],
+  "ncs_used": true,
+  "ncs_methodology": "(ncs_used=true 일 때 필수) 표 전체 단위 NCS 세분류/능력단위 매핑 방법. 예: 'NCS 20.02.01 경영·회계·사무 - 빅데이터분석 세분류 활용'.",
+  "ncs_derivation_method": "(ncs_used=false 일 때 필수) 인터뷰·벤치마킹 등 도출 방법.",
   "training_structure": [
     {
       "competency_name": "역량명 (competencies[*].name과 일치)",
@@ -70,6 +86,7 @@ export function buildSystemPrompt(): string {
       "goal": "훈련 목표"
     }
   ],
+  "training_structure_method": "훈련체계 수립 방법 3~5문장",
   "annual_plan": {
     "items": [
       {
@@ -91,7 +108,7 @@ export function buildSystemPrompt(): string {
       "main_content": "주요 훈련 내용 요약",
       "target_audience": "훈련 대상",
       "subjects": [
-        { "name": "교과목명", "details": "세부 내용", "hours": 8 }
+        { "name": "교과목명", "details": "세부 내용 (단원, 과제명)", "hours": 8 }
       ]
     }
   ]
@@ -107,7 +124,7 @@ export function buildUserPrompt(
   interview: Record<string, unknown>,
   consultantProfile: ConsultantProfile | null,
   revisionPrompt?: string,
-  isTestMode: boolean = false
+  isTestMode: boolean = false,
 ): string {
   const subIndustries = Array.isArray(projectData.sub_industries)
     ? projectData.sub_industries
@@ -127,6 +144,13 @@ ${isTestMode && !selfAssessment ? '(테스트 모드 - 자가진단 결과 없�
 
 ## 현장 인터뷰 결과
 
+### 개요 (Ⅰ-1 · Ⅰ-3) — 아래 값은 LLM 재창작 없이 그대로 복사
+${JSON.stringify(interview.overview ?? {}, null, 2)}
+${(() => {
+  const att = (interview.overview as { hrd_report_attachment?: { file_name?: string; mime_type?: string; size?: number } } | undefined)?.hrd_report_attachment;
+  if (!att) return '';
+  return `\n### Ⅱ-1. HRD이음 진단 보고서 (첨부 파일 메타)\n- 파일명: ${att.file_name ?? '-'}\n- 형식: ${att.mime_type ?? '-'}\n- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}\n- 본 보고서는 별도 첨부되어 있으며, AI 역량 수준(outcome_summary.ai_competency_level)은 인터뷰 입력값을 그대로 사용합니다. 첨부 본문 자체를 LLM이 직접 파싱하지는 않습니다.\n`;
+})()}
 ### 기업 요구분석 (Ⅱ-2)
 ${JSON.stringify(interview.company_requirements, null, 2)}
 

@@ -58,8 +58,6 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
         knowledge: ['K1'],
         skills: ['S1'],
         attitudes: ['A1'],
-        ncs_used: true,
-        ncs_methodology: 'NCS L4',
       },
     ],
     trainingStructure: [

@@ -40,6 +40,12 @@ const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
 
 function validRoadmapData(): RoadmapInterviewInput {
   return {
+    overview: {
+      establishment_necessity: '공정 품질 편차 개선을 위한 AI 훈련',
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks_summary: '품질검사 자동화',
+      roadmap_summary: '3단계 AI 인력 양성',
+    },
     interview_date: '2026-04-16',
     interview_round: 1,
     interview_time: '09:00',

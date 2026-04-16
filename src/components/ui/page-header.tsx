@@ -69,7 +69,9 @@ export function PageHeader({ title, description, actions, backLink }: PageHeader
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
         {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
       </div>
-      {actions && <div className="flex-shrink-0">{actions}</div>}
+      {/* actions가 undefined일 때도 div를 렌더해 server/client DOM 트리 shape을 고정한다.
+          (conditional 렌더 시 브라우저 확장 프로그램 등 외부 요인으로 hydration mismatch 발생 가능) */}
+      <div className="flex-shrink-0">{actions}</div>
     </div>
   );
 }

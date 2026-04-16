@@ -5,6 +5,7 @@ import type {
   RoadmapAnnualPlan,
   RoadmapCompetency,
   RoadmapCourseSpec,
+  RoadmapOutcomeSummary,
   RoadmapResult,
   RoadmapTrainingStructureItem,
   ValidationResult,
@@ -149,8 +150,14 @@ export async function updateRoadmapManually(
   actorUserId: string,
   updates: {
     diagnosis_summary?: string;
+    setup_necessity?: string;
+    outcome_summary?: RoadmapOutcomeSummary;
     competencies?: RoadmapCompetency[];
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
     training_structure?: RoadmapTrainingStructureItem[];
+    training_structure_method?: string;
     annual_plan?: RoadmapAnnualPlan;
     course_specs?: RoadmapCourseSpec[];
   },
@@ -195,8 +202,14 @@ export async function updateRoadmapManually(
   const current = fromRoadmapVersionColumns(roadmap);
   const merged: RoadmapResult = {
     diagnosis_summary: updates.diagnosis_summary ?? current.diagnosis_summary,
+    setup_necessity: updates.setup_necessity ?? current.setup_necessity,
+    outcome_summary: updates.outcome_summary ?? current.outcome_summary,
     competencies: updates.competencies ?? current.competencies,
+    ncs_used: updates.ncs_used ?? current.ncs_used,
+    ncs_methodology: updates.ncs_methodology ?? current.ncs_methodology,
+    ncs_derivation_method: updates.ncs_derivation_method ?? current.ncs_derivation_method,
     training_structure: updates.training_structure ?? current.training_structure,
+    training_structure_method: updates.training_structure_method ?? current.training_structure_method,
     annual_plan: updates.annual_plan ?? current.annual_plan,
     course_specs: updates.course_specs ?? current.course_specs,
   };

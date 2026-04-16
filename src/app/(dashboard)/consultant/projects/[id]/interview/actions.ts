@@ -236,6 +236,8 @@ function mapRoadmapToLegacyColumns(
       roadmap_company_requirements: cr,
       roadmap_interview_method: data.interview_method ?? 'ONSITE',
       roadmap_analysis_notes: an,
+      // Ⅰ장 개요 (OFA-06.5 신규 — HRD이음 첨부 메타 포함)
+      roadmap_overview: data.overview ?? null,
     },
     job_tasks: tasks.map((t) => ({
       id: t.id,
@@ -387,6 +389,149 @@ export async function saveRoadmapInterview(
   } catch (error) {
     console.error('[saveRoadmapInterview Error]', error);
     return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// HRD이음 진단 보고서 첨부 (산인공 양식 1번 Ⅱ-1)
+// ============================================================================
+
+const HRD_ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/vnd.hancom.hwpx',
+  'application/x-hwp',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+const HRD_MAX_BYTES = 20 * 1024 * 1024; // 20MB
+const HRD_BUCKET = 'interview-attachments';
+
+export interface HrdReportUploadResult {
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  uploaded_at: string;
+}
+
+/** HRD이음 진단 보고서 업로드 (Storage 'interview-attachments' 버킷) */
+export async function uploadHrdReportAttachment(
+  projectId: string,
+  formData: FormData,
+): Promise<ActionResult<HrdReportUploadResult>> {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return { success: false, error: '파일이 첨부되지 않았습니다.' };
+    }
+
+    if (file.size === 0) {
+      return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
+    }
+    if (file.size > HRD_MAX_BYTES) {
+      return { success: false, error: '파일 크기는 최대 20MB까지 허용됩니다.' };
+    }
+    const mimeType = file.type || 'application/octet-stream';
+    if (!HRD_ALLOWED_MIMES.has(mimeType)) {
+      return { success: false, error: `허용되지 않은 파일 형식입니다 (${mimeType}).` };
+    }
+
+    const supabase = createAdminClient();
+
+    // 경로: <project_id>/hrd-<random>.<ext>  (project_id가 첫 segment여야 RLS 통과)
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeExt = ext ? `.${ext}` : '';
+    const random = crypto.randomUUID();
+    const storagePath = `${projectId}/hrd-${random}${safeExt}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from(HRD_BUCKET)
+      .upload(storagePath, arrayBuffer, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[uploadHrdReportAttachment] upload error:', uploadError);
+      return { success: false, error: `업로드 실패: ${uploadError.message}` };
+    }
+
+    return {
+      success: true,
+      data: {
+        storage_path: storagePath,
+        file_name: file.name,
+        mime_type: mimeType,
+        size: file.size,
+        uploaded_at: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('[uploadHrdReportAttachment Error]', error);
+    return { success: false, error: '서버 오류로 업로드에 실패했습니다.' };
+  }
+}
+
+/** HRD이음 첨부 삭제 + signed URL 생성을 위한 헬퍼 */
+export async function removeHrdReportAttachment(
+  projectId: string,
+  storagePath: string,
+): Promise<SimpleActionResult> {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    // 안전: 경로가 해당 projectId로 시작해야 함
+    if (!storagePath.startsWith(`${projectId}/`)) {
+      return { success: false, error: '잘못된 파일 경로입니다.' };
+    }
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.storage.from(HRD_BUCKET).remove([storagePath]);
+    if (error) {
+      console.error('[removeHrdReportAttachment] remove error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[removeHrdReportAttachment Error]', error);
+    return { success: false, error: '서버 오류로 삭제에 실패했습니다.' };
+  }
+}
+
+/** HRD이음 첨부의 1시간 짜리 signed URL 발급 (다운로드/미리보기용) */
+export async function createHrdReportSignedUrl(
+  projectId: string,
+  storagePath: string,
+): Promise<ActionResult<{ url: string }>> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+
+    if (!storagePath.startsWith(`${projectId}/`)) {
+      return { success: false, error: '잘못된 파일 경로입니다.' };
+    }
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.storage
+      .from(HRD_BUCKET)
+      .createSignedUrl(storagePath, 3600);
+    if (error || !data) {
+      return { success: false, error: error?.message || 'URL 생성 실패' };
+    }
+    return { success: true, data: { url: data.signedUrl } };
+  } catch (error) {
+    console.error('[createHrdReportSignedUrl Error]', error);
+    return { success: false, error: '서버 오류로 URL 생성에 실패했습니다.' };
   }
 }
 

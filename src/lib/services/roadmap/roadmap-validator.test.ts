@@ -19,14 +19,12 @@ function makeCompetency(overrides: Partial<RoadmapCompetency> = {}): RoadmapComp
     knowledge: ['K1'],
     skills: ['S1'],
     attitudes: ['A1'],
-    ncs_used: true,
-    ncs_methodology: 'NCS 빅데이터분석 세분류 활용',
     ...overrides,
   };
 }
 
 function makeStructureItem(
-  overrides: Partial<RoadmapTrainingStructureItem> = {}
+  overrides: Partial<RoadmapTrainingStructureItem> = {},
 ): RoadmapTrainingStructureItem {
   return {
     competency_name: '데이터분석',
@@ -40,7 +38,7 @@ function makeStructureItem(
 }
 
 function makeAnnualItem(
-  overrides: Partial<RoadmapAnnualPlanItem> = {}
+  overrides: Partial<RoadmapAnnualPlanItem> = {},
 ): RoadmapAnnualPlanItem {
   return {
     competency_name: '데이터분석',
@@ -68,8 +66,18 @@ function makeCourseSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCour
 function makeValidRoadmap(overrides: Partial<RoadmapResult> = {}): RoadmapResult {
   return {
     diagnosis_summary: '진단 요약',
+    setup_necessity: '수립 필요성',
+    outcome_summary: {
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks: '선정 과업',
+      main_content: '수립 주요내용',
+    },
     competencies: [makeCompetency()],
+    ncs_used: true,
+    ncs_methodology: 'NCS 빅데이터분석 세분류 활용',
+    ncs_derivation_method: '',
     training_structure: [makeStructureItem()],
+    training_structure_method: '역량 기준 3수준 체계 수립',
     annual_plan: {
       items: [makeAnnualItem({ course_name: '과정A' })],
       usage_plan: '활용방안',
@@ -118,7 +126,7 @@ describe('validateRoadmap — 필수 필드 검증', () => {
     const result = validateRoadmap(
       makeValidRoadmap({
         annual_plan: { items: [], usage_plan: '' },
-      })
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('연간'))).toBe(true);
@@ -131,7 +139,7 @@ describe('validateRoadmap — 필수 필드 검증', () => {
           makeCourseSpec({ course_name: '과정A' }),
           makeCourseSpec({ course_name: '과정B' }),
         ],
-      })
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('명세서') && e.includes('3'))).toBe(true);
@@ -149,9 +157,26 @@ describe('validateRoadmap — 필수 필드 검증', () => {
           ],
           usage_plan: '활용',
         },
-      })
+      }),
     );
     expect(result.warnings.some((w) => w.includes('진단'))).toBe(true);
+  });
+
+  it('training_structure_method가 비어있으면 warning', () => {
+    const result = validateRoadmap(
+      makeValidRoadmap({
+        training_structure_method: '',
+        annual_plan: {
+          items: [
+            makeAnnualItem({ course_name: '과정A' }),
+            makeAnnualItem({ course_name: '과정B' }),
+            makeAnnualItem({ course_name: '과정C' }),
+          ],
+          usage_plan: '활용',
+        },
+      }),
+    );
+    expect(result.warnings.some((w) => w.includes('훈련체계 수립 방법'))).toBe(true);
   });
 });
 
@@ -164,37 +189,29 @@ describe('validateRoadmap — 명세서 subjects 검증', () => {
           makeCourseSpec({ course_name: '과정B' }),
           makeCourseSpec({ course_name: '과정C' }),
         ],
-      })
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('교과목'))).toBe(true);
   });
 });
 
-describe('validateRoadmap — NCS 일관성', () => {
-  it('ncs_used=true 이지만 ncs_methodology 누락 → error', () => {
+describe('validateRoadmap — 루트 NCS 일관성 (표 전체 단위)', () => {
+  it('ncs_used=true 이지만 ncs_methodology 공백 → error', () => {
     const result = validateRoadmap(
-      makeValidRoadmap({
-        competencies: [
-          makeCompetency({ ncs_used: true, ncs_methodology: undefined }),
-        ],
-      })
+      makeValidRoadmap({ ncs_used: true, ncs_methodology: '' }),
     );
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('NCS 활용'))).toBe(true);
   });
 
-  it('ncs_used=false 이지만 ncs_derivation_method 누락 → error', () => {
+  it('ncs_used=false 이지만 ncs_derivation_method 공백 → error', () => {
     const result = validateRoadmap(
       makeValidRoadmap({
-        competencies: [
-          makeCompetency({
-            ncs_used: false,
-            ncs_methodology: undefined,
-            ncs_derivation_method: undefined,
-          }),
-        ],
-      })
+        ncs_used: false,
+        ncs_methodology: '',
+        ncs_derivation_method: '',
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('NCS 도출'))).toBe(true);
@@ -202,13 +219,9 @@ describe('validateRoadmap — NCS 일관성', () => {
 
   it('ncs_used=false + ncs_derivation_method 제공 → error 없음', () => {
     const roadmap = makeValidRoadmap({
-      competencies: [
-        makeCompetency({
-          ncs_used: false,
-          ncs_methodology: undefined,
-          ncs_derivation_method: '현업 인터뷰 기반',
-        }),
-      ],
+      ncs_used: false,
+      ncs_methodology: '',
+      ncs_derivation_method: '현업 인터뷰 기반',
       annual_plan: {
         items: [
           makeAnnualItem({ course_name: '과정A' }),
@@ -228,11 +241,11 @@ describe('validateRoadmap — 역량 참조 정합성', () => {
     const result = validateRoadmap(
       makeValidRoadmap({
         training_structure: [makeStructureItem({ competency_name: '미존재역량' })],
-      })
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(
-      result.errors.some((e) => e.includes('미존재역량') && e.includes('훈련체계'))
+      result.errors.some((e) => e.includes('미존재역량') && e.includes('훈련체계')),
     ).toBe(true);
   });
 
@@ -247,11 +260,11 @@ describe('validateRoadmap — 역량 참조 정합성', () => {
           ],
           usage_plan: '활용',
         },
-      })
+      }),
     );
     expect(result.isValid).toBe(false);
     expect(
-      result.errors.some((e) => e.includes('미존재역량') && e.includes('연간'))
+      result.errors.some((e) => e.includes('미존재역량') && e.includes('연간')),
     ).toBe(true);
   });
 });
@@ -269,7 +282,7 @@ describe('validateRoadmap — 명세서/연간계획 과정명 정합성', () =>
           makeCourseSpec({ course_name: '과정B' }),
           makeCourseSpec({ course_name: '과정C' }),
         ],
-      })
+      }),
     );
     expect(result.warnings.some((w) => w.includes('과정A'))).toBe(true);
   });
@@ -285,7 +298,7 @@ describe('validateRoadmap — 명세서/연간계획 과정명 정합성', () =>
           ],
           usage_plan: '활용',
         },
-      })
+      }),
     );
     expect(result.warnings.filter((w) => w.includes('명세서'))).toEqual([]);
   });

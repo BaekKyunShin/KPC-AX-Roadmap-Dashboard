@@ -20,12 +20,20 @@ import {
   type TrainingTarget,
   type AnalysisNotes,
   type InterviewMethod,
+  type Overview,
+  createEmptyOverview,
   createEmptyRoadmapParticipant,
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
 } from '@/lib/schemas/interview-roadmap';
-import { saveRoadmapInterview } from '../actions';
+import {
+  saveRoadmapInterview,
+  uploadHrdReportAttachment,
+  removeHrdReportAttachment,
+  createHrdReportSignedUrl,
+} from '../actions';
 import InterviewStepper from './InterviewStepper';
+import StepOverview from './roadmap/StepOverview';
 import StepBasicInfoRoadmap from './roadmap/StepBasicInfoRoadmap';
 import StepCompanyRequirements from './roadmap/StepCompanyRequirements';
 import StepTaskWorkflowAnalysis from './roadmap/StepTaskWorkflowAnalysis';
@@ -58,6 +66,9 @@ export default function RoadmapInterviewClient({
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [overview, setOverview] = useState<Overview>(
+    () => initialData.overview ?? createEmptyOverview(),
+  );
   const [interviewDate, setInterviewDate] = useState(
     initialData.interview_date || new Date().toISOString().split('T')[0],
   );
@@ -92,6 +103,7 @@ export default function RoadmapInterviewClient({
 
   const formData = useMemo(
     () => ({
+      overview,
       interview_date: interviewDate,
       interview_round: interviewRound,
       interview_time: interviewTime,
@@ -105,6 +117,7 @@ export default function RoadmapInterviewClient({
       stt_insights: sttInsights,
     }),
     [
+      overview,
       interviewDate,
       interviewRound,
       interviewTime,
@@ -128,34 +141,40 @@ export default function RoadmapInterviewClient({
     switch (step) {
       case 1:
         return (
+          overview.establishment_necessity.trim() !== '' &&
+          overview.selected_tasks_summary.trim() !== '' &&
+          overview.roadmap_summary.trim() !== ''
+        );
+      case 2:
+        return (
           Boolean(interviewDate) &&
           Boolean(interviewTime) &&
           Boolean(interviewMethod) &&
           participants.length > 0 &&
           participants.every((p) => p.name.trim() !== '')
         );
-      case 2:
+      case 3:
         return (
           companyRequirements.company_status.trim() !== '' &&
           companyRequirements.main_problems.trim() !== '' &&
           companyRequirements.push_willingness.trim() !== '' &&
           companyRequirements.expected_outcomes.trim() !== ''
         );
-      case 3:
+      case 4:
         return (
           taskWorkflowItems.length > 0 &&
           taskWorkflowItems.every(
             (t) => t.job && t.task_name && t.as_is && t.problems && t.data_availability,
           )
         );
-      case 4:
+      case 5:
         return (
           trainingTargets.length > 0 &&
           trainingTargets.every(
             (t) => t.task_name && t.selection_reason && t.as_is && t.to_be,
           )
         );
-      case 5:
+      case 6:
         return ROADMAP_REQUIRED_STEP_IDS.every((s) => validateStep(s));
       default:
         return false;
@@ -213,6 +232,25 @@ export default function RoadmapInterviewClient({
     switch (currentStep) {
       case 1:
         return (
+          <StepOverview
+            value={overview}
+            onChange={setOverview}
+            onUploadHrdReport={async (file) => {
+              const fd = new FormData();
+              fd.append('file', file);
+              return uploadHrdReportAttachment(projectId, fd);
+            }}
+            onRemoveHrdReport={(storagePath) =>
+              removeHrdReportAttachment(projectId, storagePath)
+            }
+            onDownloadHrdReport={async (storagePath) => {
+              const r = await createHrdReportSignedUrl(projectId, storagePath);
+              return r.success ? r.data : null;
+            }}
+          />
+        );
+      case 2:
+        return (
           <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
@@ -226,9 +264,9 @@ export default function RoadmapInterviewClient({
             onParticipantsChange={setParticipants}
           />
         );
-      case 2:
-        return <StepCompanyRequirements value={companyRequirements} onChange={setCompanyRequirements} />;
       case 3:
+        return <StepCompanyRequirements value={companyRequirements} onChange={setCompanyRequirements} />;
+      case 4:
         return (
           <StepTaskWorkflowAnalysis
             items={taskWorkflowItems}
@@ -237,11 +275,12 @@ export default function RoadmapInterviewClient({
             onAnalysisNotesChange={setAnalysisNotes}
           />
         );
-      case 4:
-        return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
       case 5:
+        return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
+      case 6:
         return (
           <StepSummaryRoadmap
+            overview={overview}
             interviewDate={interviewDate}
             interviewRound={interviewRound}
             interviewTime={interviewTime}

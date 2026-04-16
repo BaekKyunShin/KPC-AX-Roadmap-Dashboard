@@ -31,6 +31,12 @@ function makeProjectData(overrides: Record<string, unknown> = {}) {
 
 function makeInterview(overrides: Record<string, unknown> = {}) {
   return {
+    overview: {
+      establishment_necessity: '품질검사 업무 자동화 필요성',
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks_summary: '생산 실적 집계 / 불량 탐지',
+      roadmap_summary: '3단계 AI 인력 양성',
+    },
     interview_date: '2026-04-16',
     interview_round: 1,
     interview_time: '14:00',
@@ -122,12 +128,20 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('annual_plan');
     expect(prompt).toContain('course_specs');
     expect(prompt).toContain('diagnosis_summary');
+    expect(prompt).toContain('setup_necessity');
+    expect(prompt).toContain('outcome_summary');
+    expect(prompt).toContain('training_structure_method');
   });
 
-  it('NCS 분기 필드가 명시되어 있다', () => {
+  it('NCS 분기 필드가 루트 레벨에 명시되어 있다', () => {
     expect(prompt).toContain('ncs_used');
     expect(prompt).toContain('ncs_methodology');
     expect(prompt).toContain('ncs_derivation_method');
+  });
+
+  it('setup_necessity·outcome_summary.ai_competency_level는 인터뷰 값을 그대로 복사하도록 지시', () => {
+    expect(prompt).toMatch(/setup_necessity[^\n]*그대로 복사|그대로 복사[^\n]*setup_necessity/);
+    expect(prompt).toMatch(/ai_competency_level[^\n]*그대로 복사|그대로 복사[^\n]*ai_competency_level/);
   });
 
   it('course_specs 최소 3개 제약이 명시되어 있다', () => {
@@ -201,6 +215,19 @@ describe('buildUserPrompt', () => {
     expect(prompt).toContain('제조업');
     expect(prompt).toContain('50-299');
     expect(prompt).toContain('자동차, 전자');
+  });
+
+  it('인터뷰 overview 블록(Ⅰ-1·Ⅰ-3)이 포함된다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null,
+    );
+
+    expect(prompt).toContain('establishment_necessity');
+    expect(prompt).toContain('품질검사 업무 자동화 필요성');
+    expect(prompt).toContain('ai_competency_level');
   });
 
   it('신규 인터뷰 필드(company_requirements)가 포함된다', () => {

@@ -16,7 +16,7 @@ import type {
   RoadmapAnnualPlan,
   RoadmapCourseSpec,
 } from '../../roadmap/roadmap-types';
-import { buildTrainingStructureMatrix } from '../../roadmap/roadmap-matrix-builder';
+import { buildTrainingStructureTable } from '../../roadmap/roadmap-matrix-builder';
 import type { RoadmapExportData } from '../../export-pdf';
 import { COLOR, NO_BORDER, STYLE, tableBodyStyle, tableBodyCenterStyle } from './xlsx-styles';
 import {
@@ -24,7 +24,6 @@ import {
   formatDate,
   formatHours,
   formatBulletLines,
-  formatNcsUsed,
   sumSubjectHours,
   calcRowHeight,
 } from './xlsx-formatter';
@@ -50,8 +49,8 @@ import {
 const OVERVIEW_COL_WIDTHS = [14, 30, 30, 30];
 /** 역량모델링: [역량명, 정의, 지식, 기술, 태도, NCS, NCS 방법] */
 const COMPETENCY_COL_WIDTHS = [18, 26, 20, 20, 20, 10, 24];
-/** 훈련체계도: [역량명, 초급, 중급, 고급] */
-const STRUCTURE_COL_WIDTHS = [18, 34, 34, 34];
+/** 훈련체계도: [구분(역량명), 훈련수준, 훈련내용, 훈련대상, 훈련방법, 훈련목표] (양식 Ⅲ-2 6열) */
+const STRUCTURE_COL_WIDTHS = [18, 10, 30, 18, 16, 28];
 /** 연간계획: [역량명, 과정명, 형태, 시간, 비고] */
 const ANNUAL_COL_WIDTHS = [20, 32, 14, 12, 22];
 /** 명세서: [과목명/라벨, 세부내용, 시간/값, 값, 값] */
@@ -104,14 +103,24 @@ export function buildOverviewSheet(data: RoadmapExportData): XLSX.WorkSheet {
 // 시트 2: 역량모델링 (Ⅲ-1)
 // ============================================================================
 
-export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.WorkSheet {
+export interface CompetencySheetNcsInfo {
+  ncsUsed: boolean;
+  ncsMethodology: string;
+  ncsDerivationMethod: string;
+}
+
+export function buildCompetencySheet(
+  competencies: RoadmapCompetency[],
+  ncsInfo?: CompetencySheetNcsInfo,
+): XLSX.WorkSheet {
   const COL_W = COMPETENCY_COL_WIDTHS;
   const ctx = createCtx(COL_W);
 
   addSectionHeader(ctx, 'Ⅲ-1. 역량 모델링');
   addBlankRow(ctx, 6);
 
-  const headers = ['역량명', '정의', '지식(K)', '기술(S)', '태도(A)', 'NCS 활용', 'NCS 활용/도출 방법'];
+  // 역량 표 (NCS 열 제거 — 표 전체 단위로 하단 박스 렌더)
+  const headers = ['역량명', '정의(수행준거)', '지식(학술, 업무지식)', '기술(기능)', '태도'];
   headers.forEach((h, c) => setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader));
   ctx.rows[ctx.r] = { hpt: 28 };
   ctx.r++;
@@ -119,7 +128,7 @@ export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.Wo
   const list = competencies ?? [];
   if (list.length === 0) {
     setCell(ctx.ws, ctx.r, 0, '-', tableBodyStyle(false));
-    for (let c = 1; c <= ctx.lastCol; c++) {
+    for (let c = 1; c < headers.length; c++) {
       setCell(ctx.ws, ctx.r, c, '-', tableBodyStyle(false));
     }
     ctx.rows[ctx.r] = { hpt: 24 };
@@ -130,9 +139,6 @@ export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.Wo
       const knowledge = formatBulletLines(comp.knowledge);
       const skills = formatBulletLines(comp.skills);
       const attitudes = formatBulletLines(comp.attitudes);
-      const ncsMethod = comp.ncs_used
-        ? comp.ncs_methodology || '-'
-        : comp.ncs_derivation_method || '-';
 
       setCell(ctx.ws, ctx.r, 0, comp.name || '-', {
         ...tableBodyStyle(alt),
@@ -142,8 +148,6 @@ export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.Wo
       setCell(ctx.ws, ctx.r, 2, knowledge, tableBodyStyle(alt));
       setCell(ctx.ws, ctx.r, 3, skills, tableBodyStyle(alt));
       setCell(ctx.ws, ctx.r, 4, attitudes, tableBodyStyle(alt));
-      setCell(ctx.ws, ctx.r, 5, formatNcsUsed(comp.ncs_used), tableBodyCenterStyle(alt));
-      setCell(ctx.ws, ctx.r, 6, ncsMethod, tableBodyStyle(alt));
 
       const rowHeight = Math.max(
         calcRowHeight(comp.name || '-', COL_W[0], 26),
@@ -151,11 +155,28 @@ export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.Wo
         calcRowHeight(knowledge, COL_W[2], 26),
         calcRowHeight(skills, COL_W[3], 26),
         calcRowHeight(attitudes, COL_W[4], 26),
-        calcRowHeight(ncsMethod, COL_W[6], 26),
       );
       ctx.rows[ctx.r] = { hpt: rowHeight };
       ctx.r++;
     });
+  }
+
+  // NCS 활용 방법 / 역량별 도출 방법 (표 전체 단위 별도 박스)
+  if (ncsInfo) {
+    addBlankRow(ctx, 1);
+    const label = ncsInfo.ncsUsed ? 'NCS 활용 방법' : '역량별 도출 방법';
+    const body = ncsInfo.ncsUsed
+      ? ncsInfo.ncsMethodology || '-'
+      : ncsInfo.ncsDerivationMethod || '-';
+
+    setCell(ctx.ws, ctx.r, 0, label, STYLE.tableHeader);
+    ctx.rows[ctx.r] = { hpt: 24 };
+    ctx.r++;
+
+    setCell(ctx.ws, ctx.r, 0, body, tableBodyStyle(false));
+    const combinedWidth = COL_W.reduce((acc, w) => acc + w, 0);
+    ctx.rows[ctx.r] = { hpt: calcRowHeight(body, combinedWidth, 28) };
+    ctx.r++;
   }
 
   return finalizeSheet(ctx);
@@ -168,6 +189,7 @@ export function buildCompetencySheet(competencies: RoadmapCompetency[]): XLSX.Wo
 export function buildStructureSheet(
   competencies: RoadmapCompetency[],
   structure: RoadmapTrainingStructureItem[],
+  trainingStructureMethod?: string,
 ): XLSX.WorkSheet {
   const COL_W = STRUCTURE_COL_WIDTHS;
   const ctx = createCtx(COL_W);
@@ -175,58 +197,59 @@ export function buildStructureSheet(
   addSectionHeader(ctx, 'Ⅲ-2. 훈련체계도');
   addBlankRow(ctx, 6);
 
-  ['역량명', '초급', '중급', '고급'].forEach((h, c) =>
+  // 양식 1번 Ⅲ-2 그대로 6열: 구분(역량명) · 훈련수준 · 훈련내용 · 훈련대상 · 훈련방법 · 훈련목표
+  ['구분(역량명)', '훈련수준', '훈련내용', '훈련대상', '훈련방법', '훈련목표'].forEach((h, c) =>
     setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader),
   );
   ctx.rows[ctx.r] = { hpt: 26 };
   ctx.r++;
 
-  const matrix = buildTrainingStructureMatrix(competencies ?? [], structure ?? []);
+  const tableRows = buildTrainingStructureTable(competencies ?? [], structure ?? []);
 
-  const cellText = (items: RoadmapTrainingStructureItem[]): string => {
-    if (!items || items.length === 0) return '-';
-    return items
-      .map(it => {
-        const lines: string[] = [];
-        if (it.content) lines.push(`[내용] ${it.content}`);
-        if (it.target_audience) lines.push(`[대상] ${it.target_audience}`);
-        if (it.method) lines.push(`[방법] ${it.method}`);
-        if (it.goal) lines.push(`[목표] ${it.goal}`);
-        return lines.length > 0 ? lines.join('\n') : '-';
-      })
-      .join('\n\n');
-  };
-
-  if (matrix.length === 0) {
+  if (tableRows.length === 0) {
     for (let c = 0; c <= ctx.lastCol; c++) {
       setCell(ctx.ws, ctx.r, c, '-', tableBodyStyle(false));
     }
     ctx.rows[ctx.r] = { hpt: 24 };
     ctx.r++;
   } else {
-    matrix.forEach((row, idx) => {
+    tableRows.forEach((row, idx) => {
       const alt = idx % 2 === 1;
-      const beg = cellText(row.beginner);
-      const inter = cellText(row.intermediate);
-      const adv = cellText(row.advanced);
 
       setCell(ctx.ws, ctx.r, 0, row.competency_name || '-', {
         ...tableBodyStyle(alt),
         font: { name: '맑은 고딕', sz: 9, bold: true, color: { rgb: COLOR.BODY_TEXT } },
       });
-      setCell(ctx.ws, ctx.r, 1, beg, tableBodyStyle(alt));
-      setCell(ctx.ws, ctx.r, 2, inter, tableBodyStyle(alt));
-      setCell(ctx.ws, ctx.r, 3, adv, tableBodyStyle(alt));
+      setCell(ctx.ws, ctx.r, 1, row.level_label, tableBodyCenterStyle(alt));
+      setCell(ctx.ws, ctx.r, 2, row.content || '-', tableBodyStyle(alt));
+      setCell(ctx.ws, ctx.r, 3, row.target_audience || '-', tableBodyStyle(alt));
+      setCell(ctx.ws, ctx.r, 4, row.method || '-', tableBodyStyle(alt));
+      setCell(ctx.ws, ctx.r, 5, row.goal || '-', tableBodyStyle(alt));
 
       const rowHeight = Math.max(
-        calcRowHeight(row.competency_name || '-', COL_W[0], 28),
-        calcRowHeight(beg, COL_W[1], 28),
-        calcRowHeight(inter, COL_W[2], 28),
-        calcRowHeight(adv, COL_W[3], 28),
+        calcRowHeight(row.competency_name || '-', COL_W[0], 24),
+        calcRowHeight(row.content || '-', COL_W[2], 24),
+        calcRowHeight(row.target_audience || '-', COL_W[3], 24),
+        calcRowHeight(row.method || '-', COL_W[4], 24),
+        calcRowHeight(row.goal || '-', COL_W[5], 24),
       );
       ctx.rows[ctx.r] = { hpt: rowHeight };
       ctx.r++;
     });
+  }
+
+  // 훈련체계 수립 방법 (양식 Ⅲ-2)
+  const method = (trainingStructureMethod ?? '').trim();
+  if (method !== '') {
+    addBlankRow(ctx, 1);
+    setCell(ctx.ws, ctx.r, 0, '훈련체계 수립 방법', STYLE.tableHeader);
+    ctx.rows[ctx.r] = { hpt: 24 };
+    ctx.r++;
+
+    setCell(ctx.ws, ctx.r, 0, method, tableBodyStyle(false));
+    const combinedWidth = COL_W.reduce((acc, w) => acc + w, 0);
+    ctx.rows[ctx.r] = { hpt: calcRowHeight(method, combinedWidth, 28) };
+    ctx.r++;
   }
 
   return finalizeSheet(ctx);
@@ -403,10 +426,18 @@ export async function generateXLSX(data: RoadmapExportData): Promise<Uint8Array>
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, buildOverviewSheet(data), '개요');
-  XLSX.utils.book_append_sheet(workbook, buildCompetencySheet(data.competencies), '역량모델링');
   XLSX.utils.book_append_sheet(
     workbook,
-    buildStructureSheet(data.competencies, data.trainingStructure),
+    buildCompetencySheet(data.competencies, {
+      ncsUsed: data.ncsUsed ?? false,
+      ncsMethodology: data.ncsMethodology ?? '',
+      ncsDerivationMethod: data.ncsDerivationMethod ?? '',
+    }),
+    '역량모델링',
+  );
+  XLSX.utils.book_append_sheet(
+    workbook,
+    buildStructureSheet(data.competencies, data.trainingStructure, data.trainingStructureMethod),
     '훈련체계도',
   );
   XLSX.utils.book_append_sheet(workbook, buildAnnualPlanSheet(data.annualPlan), '연간계획');

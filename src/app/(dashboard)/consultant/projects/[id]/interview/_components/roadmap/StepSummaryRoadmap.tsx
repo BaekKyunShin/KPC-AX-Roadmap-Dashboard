@@ -10,10 +10,16 @@ import type {
   TrainingTarget,
   AnalysisNotes,
   InterviewMethod,
+  Overview,
 } from '@/lib/schemas/interview-roadmap';
-import { INTERVIEW_METHOD_LABEL } from '@/lib/schemas/interview-roadmap';
+import {
+  AI_COMPETENCY_LEVEL_LABEL,
+  AI_COMPETENCY_LEVEL_SUBTITLE,
+  INTERVIEW_METHOD_LABEL,
+} from '@/lib/schemas/interview-roadmap';
 
 interface StepSummaryRoadmapProps {
+  overview: Overview;
   interviewDate: string;
   interviewRound: number;
   interviewTime: string;
@@ -42,6 +48,7 @@ function SectionHeader({ title, stepId, onEdit }: { title: string; stepId: numbe
 }
 
 export default function StepSummaryRoadmap({
+  overview,
   interviewDate,
   interviewRound,
   interviewTime,
@@ -66,7 +73,51 @@ export default function StepSummaryRoadmap({
       </div>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="1. 기본 정보 · 참석자 (Ⅰ-2 주요 활동)" stepId={1} onEdit={onEditStep} />
+        <SectionHeader title="1. 개요 (Ⅰ-1 · Ⅰ-3)" stepId={1} onEdit={onEditStep} />
+        <dl className="mt-3 space-y-2 text-sm">
+          <div>
+            <dt className="text-muted-foreground">수립 필요성</dt>
+            <dd className="text-foreground whitespace-pre-wrap break-keep">
+              {overview.establishment_necessity || '-'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">기업 AI 역량 수준</dt>
+            <dd className="text-foreground">
+              {AI_COMPETENCY_LEVEL_LABEL[overview.ai_competency_level]}
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({AI_COMPETENCY_LEVEL_SUBTITLE[overview.ai_competency_level]})
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">선정 과업</dt>
+            <dd className="text-foreground whitespace-pre-wrap break-keep">
+              {overview.selected_tasks_summary || '-'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">수립 주요내용 요약</dt>
+            <dd className="text-foreground whitespace-pre-wrap break-keep">
+              {overview.roadmap_summary || '-'}
+            </dd>
+          </div>
+          {overview.hrd_report_attachment && (
+            <div>
+              <dt className="text-muted-foreground">HRD이음 진단 보고서</dt>
+              <dd className="text-foreground">
+                {overview.hrd_report_attachment.file_name}
+                {overview.hrd_report_attachment.size
+                  ? ` (${Math.round(overview.hrd_report_attachment.size / 1024)} KB)`
+                  : ''}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </section>
+
+      <section className="border border-border rounded-lg p-4">
+        <SectionHeader title="2. 기본 정보 · 참석자 (Ⅰ-2 주요 활동)" stepId={2} onEdit={onEditStep} />
         <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-muted-foreground">수행 차수 / 일시</dt>
@@ -93,7 +144,7 @@ export default function StepSummaryRoadmap({
       </section>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="2. 기업 요구분석" stepId={2} onEdit={onEditStep} />
+        <SectionHeader title="3. 기업 요구분석" stepId={3} onEdit={onEditStep} />
         <dl className="mt-3 space-y-2 text-sm">
           <div>
             <dt className="text-muted-foreground">기업 현황</dt>
@@ -115,7 +166,7 @@ export default function StepSummaryRoadmap({
       </section>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="3. 과업(Task)·워크플로우 분석" stepId={3} onEdit={onEditStep} />
+        <SectionHeader title="4. 과업(Task)·워크플로우 분석" stepId={4} onEdit={onEditStep} />
         {taskWorkflowItems.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">작성된 과업이 없습니다.</p>
         ) : (
@@ -162,7 +213,7 @@ export default function StepSummaryRoadmap({
       </section>
 
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="4. 훈련대상 과업(Task)·워크플로우 선정" stepId={4} onEdit={onEditStep} />
+        <SectionHeader title="5. 훈련대상 과업(Task)·워크플로우 선정" stepId={5} onEdit={onEditStep} />
         {trainingTargets.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">작성된 훈련대상이 없습니다.</p>
         ) : (

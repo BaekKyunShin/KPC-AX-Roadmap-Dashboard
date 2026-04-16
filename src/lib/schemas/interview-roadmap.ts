@@ -23,6 +23,54 @@ export const INTERVIEW_METHOD_OPTIONS: ReadonlyArray<{ value: InterviewMethod; l
   { value: 'OTHER', label: '기타' },
 ];
 
+// Ⅰ. 개요 (산인공 양식 Ⅰ-1 수립 필요성 + Ⅰ-3 수립 주요 결과)
+// - ai_competency_level: Ⅰ-3 기업 AI 역량 수준 체크
+//   BEGINNER=초급(AI기초형) / INTERMEDIATE=중급(AI탐구형) / ADVANCED=고급(AI활용형·선도형)
+// - hrd_report_attachment: Ⅱ-1 HRD이음 진단 보고서 PDF 첨부
+//   { storage_path: bucket 내부 경로, file_name: 원본 파일명, mime_type, size, uploaded_at }
+export const AI_COMPETENCY_LEVEL = z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']);
+export type AiCompetencyLevel = z.infer<typeof AI_COMPETENCY_LEVEL>;
+
+export const AI_COMPETENCY_LEVEL_LABEL: Record<AiCompetencyLevel, string> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
+export const AI_COMPETENCY_LEVEL_SUBTITLE: Record<AiCompetencyLevel, string> = {
+  BEGINNER: 'AI기초형',
+  INTERMEDIATE: 'AI탐구형',
+  ADVANCED: 'AI활용형·선도형',
+};
+
+export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
+  value: AiCompetencyLevel;
+  label: string;
+  subtitle: string;
+}> = [
+  { value: 'BEGINNER', label: '초급', subtitle: 'AI기초형' },
+  { value: 'INTERMEDIATE', label: '중급', subtitle: 'AI탐구형' },
+  { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
+];
+
+// HRD이음 진단 보고서 첨부 메타 (Storage 'interview-attachments' 버킷)
+export const hrdReportAttachmentSchema = z.object({
+  storage_path: z.string().min(1),
+  file_name: z.string().min(1),
+  mime_type: z.string().optional(),
+  size: z.number().nonnegative().optional(),
+  uploaded_at: z.string().optional(),
+});
+export type HrdReportAttachment = z.infer<typeof hrdReportAttachmentSchema>;
+
+export const overviewSchema = z.object({
+  establishment_necessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
+  ai_competency_level: AI_COMPETENCY_LEVEL,
+  selected_tasks_summary: z.string().min(1, '선정 과업을 입력하세요.'),
+  roadmap_summary: z.string().min(1, '수립 주요내용 요약을 입력하세요 (1장 이내).'),
+  hrd_report_attachment: hrdReportAttachmentSchema.optional(),
+});
+
 // Ⅱ-2. 기업 요구분석 (4필드 텍스트)
 export const companyRequirementsSchema = z.object({
   company_status: z.string().min(1, '기업 현황을 입력하세요.'),
@@ -66,6 +114,7 @@ export const roadmapParticipantSchema = z.object({
 
 // 전체 로드맵 인터뷰 스키마 (수동 저장용 - 엄격)
 export const roadmapInterviewSchema = z.object({
+  overview: overviewSchema,
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
   interview_round: z.number().int().min(1, '인터뷰 차수는 1 이상이어야 합니다.'),
   interview_time: z.string().min(1, '인터뷰 시간을 입력하세요.'),
@@ -81,6 +130,15 @@ export const roadmapInterviewSchema = z.object({
 
 // 자동저장용 (전 필드 optional)
 export const roadmapInterviewAutoSaveSchema = z.object({
+  overview: z
+    .object({
+      establishment_necessity: z.string().optional(),
+      ai_competency_level: AI_COMPETENCY_LEVEL.optional(),
+      selected_tasks_summary: z.string().optional(),
+      roadmap_summary: z.string().optional(),
+      hrd_report_attachment: hrdReportAttachmentSchema.optional(),
+    })
+    .optional(),
   interview_date: z.string().optional(),
   interview_round: z.number().int().optional(),
   interview_time: z.string().optional(),
@@ -124,6 +182,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
 // 타입
 // ============================================================================
 
+export type Overview = z.infer<typeof overviewSchema>;
 export type CompanyRequirements = z.infer<typeof companyRequirementsSchema>;
 export type TaskWorkflowItem = z.infer<typeof taskWorkflowItemSchema>;
 export type TrainingTarget = z.infer<typeof trainingTargetSchema>;
@@ -136,6 +195,15 @@ export type RoadmapInterviewAutoSaveInput = z.input<typeof roadmapInterviewAutoS
 // ============================================================================
 // 빈 항목 생성 헬퍼
 // ============================================================================
+
+export function createEmptyOverview(): Overview {
+  return {
+    establishment_necessity: '',
+    ai_competency_level: 'BEGINNER',
+    selected_tasks_summary: '',
+    roadmap_summary: '',
+  };
+}
 
 export function createEmptyRoadmapParticipant(): RoadmapParticipant {
   return {
@@ -190,6 +258,20 @@ interface LegacyCompanyDetails {
     text?: string;
     attachment_urls?: string[];
   };
+  // Ⅰ장 개요 (OFA-06.5 신규)
+  roadmap_overview?: {
+    establishment_necessity?: string;
+    ai_competency_level?: AiCompetencyLevel | string;
+    selected_tasks_summary?: string;
+    roadmap_summary?: string;
+    hrd_report_attachment?: {
+      storage_path?: string;
+      file_name?: string;
+      mime_type?: string;
+      size?: number;
+      uploaded_at?: string;
+    } | null;
+  } | null;
 }
 
 interface LegacyJobTask {
@@ -259,6 +341,33 @@ export function mapInterviewRowToRoadmapInterview(
     partial.analysis_notes = {
       text: savedAn.text ?? '',
       attachment_urls: Array.isArray(savedAn.attachment_urls) ? savedAn.attachment_urls : [],
+    };
+  }
+
+  // Ⅰ장 개요 복원 (OFA-06.5 신규)
+  const savedOv = row.company_details?.roadmap_overview;
+  if (savedOv) {
+    const validLevels: AiCompetencyLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
+    const lvl = savedOv.ai_competency_level;
+    const level: AiCompetencyLevel = validLevels.includes(lvl as AiCompetencyLevel)
+      ? (lvl as AiCompetencyLevel)
+      : 'BEGINNER';
+    const att = savedOv.hrd_report_attachment;
+    partial.overview = {
+      establishment_necessity: savedOv.establishment_necessity ?? '',
+      ai_competency_level: level,
+      selected_tasks_summary: savedOv.selected_tasks_summary ?? '',
+      roadmap_summary: savedOv.roadmap_summary ?? '',
+      hrd_report_attachment:
+        att && typeof att.storage_path === 'string' && typeof att.file_name === 'string'
+          ? {
+              storage_path: att.storage_path,
+              file_name: att.file_name,
+              mime_type: att.mime_type,
+              size: att.size,
+              uploaded_at: att.uploaded_at,
+            }
+          : undefined,
     };
   }
 

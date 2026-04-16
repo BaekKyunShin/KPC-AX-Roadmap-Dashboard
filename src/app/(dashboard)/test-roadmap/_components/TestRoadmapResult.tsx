@@ -10,6 +10,7 @@ import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModeling
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
+import { RoadmapOverviewSummary } from '@/components/roadmap/RoadmapOverviewSummary';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 
 // =============================================================================
@@ -236,6 +237,12 @@ export default function TestRoadmapResult({
         </Button>
       </div>
 
+      {/* Ⅰ장 요약 블록 */}
+      <RoadmapOverviewSummary
+        setupNecessity={result.setup_necessity}
+        outcomeSummary={result.outcome_summary}
+      />
+
       {/* 진단 요약 */}
       <Card>
         <CardHeader>
@@ -248,13 +255,15 @@ export default function TestRoadmapResult({
 
       {/* 로드맵 4섹션 탭 */}
       <Tabs defaultValue="competencies" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-          {ROADMAP_TABS.map((tab) => (
-            <TabsTrigger key={tab.key} value={tab.key}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="sticky top-[60px] z-10 bg-card border-b border-gray-200">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            {ROADMAP_TABS.map((tab) => (
+              <TabsTrigger key={tab.key} value={tab.key}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         <TabsContent value="competencies">
           <Card>

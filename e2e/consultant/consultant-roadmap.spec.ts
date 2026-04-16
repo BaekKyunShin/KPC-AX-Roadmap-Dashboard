@@ -88,6 +88,33 @@ test.describe('컨설턴트 로드맵', () => {
 
       // 구형 PBL 탭은 더 이상 노출되지 않아야 함
       expect(pageText).not.toContain('PBL 과정');
+
+      // 로드맵이 생성된 상태라면 Ⅰ장 요약 · NCS 박스 · 수립 방법이 양식 1번과 정합하게 표출
+      if (hasRoadmapSection) {
+        // Ⅰ장 요약 블록 — 로드맵 헤더 영역 (OFA-06.5 신규)
+        const overviewSection = page.getByRole('region', { name: /로드맵 개요/ });
+        if (await overviewSection.count() > 0) {
+          await expect(overviewSection).toBeVisible();
+        }
+
+        // 역량 모델링 탭 → NCS 박스 (표 전체 단위)
+        const competenciesTab = page.getByRole('button', { name: /역량 모델링/ });
+        if (await competenciesTab.count() > 0) {
+          await competenciesTab.click();
+          // "NCS 활용 방법" 또는 "역량별 도출 방법" 중 하나가 표시되어야 함
+          const ncsBox =
+            page.getByText(/NCS 활용 방법|역량별 도출 방법/).first();
+          await expect(ncsBox).toBeVisible();
+        }
+
+        // 훈련체계도 탭 → "훈련체계 수립 방법"
+        const structureTab = page.getByRole('button', { name: /훈련체계도/ });
+        if (await structureTab.count() > 0) {
+          await structureTab.click();
+          const methodBox = page.getByText(/훈련체계 수립 방법/).first();
+          await expect(methodBox).toBeVisible();
+        }
+      }
     }
     // 프로젝트가 없으면 스킵 (방어적 패턴)
   });

@@ -19,7 +19,6 @@ function makeCompetency(overrides: Partial<RoadmapCompetency> = {}): RoadmapComp
     knowledge: [],
     skills: [],
     attitudes: [],
-    ncs_used: false,
     ...overrides,
   };
 }

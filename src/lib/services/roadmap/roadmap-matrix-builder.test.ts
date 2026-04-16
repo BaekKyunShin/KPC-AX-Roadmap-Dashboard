@@ -1,10 +1,11 @@
 /**
  * roadmap-matrix-builder.ts 테스트
- * - buildTrainingStructureMatrix: 역량 × 수준 매트릭스 생성
+ * - buildTrainingStructureMatrix: 역량 × 수준 매트릭스 생성 (UI용)
+ * - buildTrainingStructureTable: 6열 단순 표 변환 (HWPX/PDF 출력용)
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildTrainingStructureMatrix } from './roadmap-matrix-builder';
+import { buildTrainingStructureMatrix, buildTrainingStructureTable } from './roadmap-matrix-builder';
 import type {
   RoadmapCompetency,
   RoadmapTrainingStructureItem,
@@ -23,8 +24,6 @@ function makeCompetency(
     knowledge: ['K1'],
     skills: ['S1'],
     attitudes: ['A1'],
-    ncs_used: false,
-    ncs_derivation_method: '인터뷰',
     ...overrides,
   };
 }
@@ -187,5 +186,65 @@ describe('buildTrainingStructureMatrix', () => {
     expect(result).toHaveLength(1);
     expect(result[0].beginner).toHaveLength(2);
     expect(result[0].intermediate).toHaveLength(1);
+  });
+});
+
+describe('buildTrainingStructureTable', () => {
+  it('빈 structure → 빈 배열', () => {
+    expect(buildTrainingStructureTable([makeCompetency('역량1')], [])).toEqual([]);
+  });
+
+  it('역량×수준 항목을 6열 행으로 전개 (역량명·훈련수준·내용·대상·방법·목표)', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('데이터 분석'), makeCompetency('AI 활용')],
+      [
+        makeItem('데이터 분석', 'BEGINNER'),
+        makeItem('데이터 분석', 'ADVANCED'),
+        makeItem('AI 활용', 'INTERMEDIATE'),
+      ],
+    );
+
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({
+      competency_name: '데이터 분석',
+      level_label: '초급',
+      content: '데이터 분석 BEGINNER 내용',
+      target_audience: '전 직원',
+      method: '집체',
+      goal: '훈련 목표',
+    });
+    expect(rows[1].level_label).toBe('고급');
+    expect(rows[2]).toMatchObject({ competency_name: 'AI 활용', level_label: '중급' });
+  });
+
+  it('competencies 순서 + 수준 오름차순(초/중/고) 정렬', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('A'), makeCompetency('B')],
+      [
+        makeItem('B', 'ADVANCED'),
+        makeItem('A', 'INTERMEDIATE'),
+        makeItem('A', 'BEGINNER'),
+        makeItem('B', 'BEGINNER'),
+      ],
+    );
+
+    expect(rows.map((r) => `${r.competency_name}/${r.level_label}`)).toEqual([
+      'A/초급',
+      'A/중급',
+      'B/초급',
+      'B/고급',
+    ]);
+  });
+
+  it('미참조 역량은 competencies 뒤에 추가, 수준 순서 유지', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('A')],
+      [
+        makeItem('Unknown', 'BEGINNER'),
+        makeItem('A', 'BEGINNER'),
+      ],
+    );
+
+    expect(rows.map((r) => r.competency_name)).toEqual(['A', 'Unknown']);
   });
 });

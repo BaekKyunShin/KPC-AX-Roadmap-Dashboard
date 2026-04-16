@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react';
 import { FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import { isCancelledError } from '@/lib/services/llm';
 import {
@@ -19,12 +18,15 @@ import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
+import { NcsMethodologyBox } from '@/components/roadmap/NcsMethodologyBox';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { RoadmapOverviewSummary } from '@/components/roadmap/RoadmapOverviewSummary';
 import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
 import { RevisionPromptToggle } from '@/components/roadmap/RevisionPromptToggle';
-import { VersionHistoryList } from '@/components/roadmap/VersionHistoryList';
+import { VersionSelector } from '@/components/roadmap/VersionSelector';
+import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import type {
   RoadmapCompetency,
   RoadmapAnnualPlan,
@@ -175,6 +177,22 @@ export default function ConsultantRoadmapClient({
   const handleCourseSpecsChange = (next: RoadmapCourseSpec[]) =>
     runSectionUpdate({ course_specs: next }, { course_specs: next });
 
+  const handleNcsChange = (patch: {
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
+  }) => {
+    const optimistic: Partial<RoadmapVersionUI> = {};
+    if (patch.ncs_used !== undefined) optimistic.ncs_used = patch.ncs_used;
+    if (patch.ncs_methodology !== undefined) optimistic.ncs_methodology = patch.ncs_methodology;
+    if (patch.ncs_derivation_method !== undefined)
+      optimistic.ncs_derivation_method = patch.ncs_derivation_method;
+    runSectionUpdate(patch, optimistic);
+  };
+
+  const handleTrainingStructureMethodChange = (next: string) =>
+    runSectionUpdate({ training_structure_method: next }, { training_structure_method: next });
+
   const handleDownloadPDF = () => {
     if (selectedVersion) {
       downloadPDF(selectedVersion.id);
@@ -206,175 +224,155 @@ export default function ConsultantRoadmapClient({
             label: '프로젝트로 돌아가기',
             useBack: true,
           }}
+          actions={
+            selectedVersion ? (
+              <div className="flex items-center gap-2">
+                <DownloadButton
+                  onClick={handleDownloadPDF}
+                  loading={isDownloading === 'PDF'}
+                  type="PDF"
+                  disabled={isDownloading !== null}
+                />
+                <DownloadButton
+                  onClick={handleDownloadXLSX}
+                  loading={isDownloading === 'XLSX'}
+                  type="Excel"
+                  disabled={isDownloading !== null}
+                />
+                {canEdit && (
+                  <Button
+                    onClick={handleFinalize}
+                    disabled={isFinalizing}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                  >
+                    {isFinalizing ? '처리 중...' : '최종 확정'}
+                  </Button>
+                )}
+              </div>
+            ) : undefined
+          }
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 왼쪽: 생성 및 버전 목록 */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* 생성 버튼 */}
-            <div className="bg-white shadow rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">로드맵 생성</h3>
-              {versions.length > 0 && (
-                <Textarea
-                  rows={9}
-                  value={revisionPrompt}
-                  onChange={(e) => setRevisionPrompt(e.target.value)}
-                  placeholder="수정 요청사항 (선택)"
-                  className="text-sm"
+        {/* 버전 셀렉터 바 */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
+          <VersionSelector
+            versions={versions}
+            selectedId={selectedVersion?.id}
+            onSelect={handleVersionSelect}
+          />
+          {selectedVersion?.status === 'FINAL' && (
+            <ShareToggle
+              roadmapVersionId={selectedVersion.id}
+              initialShared={selectedVersion.is_shared ?? false}
+            />
+          )}
+        </div>
+
+        {/* 수정 요청 아코디언 */}
+        <RegenerateAccordion
+          value={revisionPrompt}
+          onChange={setRevisionPrompt}
+          onSubmit={handleGenerate}
+          isLoading={isGenerating}
+        />
+
+        {selectedVersion ? (
+          <div className="bg-card shadow rounded-lg pb-1">
+            <div className="px-6 py-5 border-b border-gray-200 space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  버전 {selectedVersion.version_number}
+                </h2>
+                <RoadmapStatusBadge
+                  status={selectedVersion.status}
+                  versionNumber={selectedVersion.version_number}
                 />
+                {isSaving && <span className="text-xs text-gray-400">저장 중…</span>}
+              </div>
+
+              {selectedVersion.revision_prompt && (
+                <RevisionPromptToggle prompt={selectedVersion.revision_prompt} />
               )}
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className={`${versions.length > 0 ? 'mt-2 ' : ''}w-full text-sm`}
-              >
-                {isGenerating
-                  ? 'AI 생성 중...'
-                  : versions.length > 0
-                    ? '새 버전 로드맵 생성'
-                    : '로드맵 생성'}
-              </Button>
-              {isGenerating && (
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  AI가 로드맵을 생성 중입니다. 잠시 기다려주세요...
+
+              <RoadmapOverviewSummary
+                setupNecessity={selectedVersion.setup_necessity}
+                outcomeSummary={selectedVersion.outcome_summary}
+              />
+
+              {selectedVersion.diagnosis_summary && (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-keep">
+                  {selectedVersion.diagnosis_summary}
                 </p>
               )}
             </div>
 
-            {/* 버전 목록 */}
-            <div className="bg-white shadow rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">버전 히스토리</h3>
-              <VersionHistoryList
-                versions={versions}
-                selectedVersionId={selectedVersion?.id}
-                onVersionSelect={handleVersionSelect}
-              />
+            {/* 탭 (sticky) */}
+            <div className="sticky top-[60px] z-10 bg-card border-b border-gray-200">
+              <nav className="flex -mb-px overflow-x-auto">
+                {ROADMAP_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-3 py-2 sm:px-6 sm:py-3 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0 ${
+                      activeTab === tab.key
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {activeTab === 'competencies' && (
+                <div className="space-y-5">
+                  <CompetencyModelingTable
+                    competencies={selectedVersion.competencies}
+                    canEdit={canEdit}
+                    onChange={handleCompetenciesChange}
+                  />
+                  <NcsMethodologyBox
+                    ncsUsed={selectedVersion.ncs_used}
+                    ncsMethodology={selectedVersion.ncs_methodology}
+                    ncsDerivationMethod={selectedVersion.ncs_derivation_method}
+                    canEdit={canEdit}
+                    onChange={handleNcsChange}
+                  />
+                </div>
+              )}
+              {activeTab === 'structure' && (
+                <RoadmapMatrix
+                  competencies={selectedVersion.competencies}
+                  trainingStructure={selectedVersion.training_structure}
+                  trainingStructureMethod={selectedVersion.training_structure_method}
+                  canEdit={canEdit}
+                  onTrainingStructureMethodChange={handleTrainingStructureMethodChange}
+                />
+              )}
+              {activeTab === 'plan' && (
+                <AnnualTrainingPlanTable
+                  plan={selectedVersion.annual_plan}
+                  competencies={selectedVersion.competencies}
+                  canEdit={canEdit}
+                  onChange={handleAnnualPlanChange}
+                />
+              )}
+              {activeTab === 'specs' && (
+                <CoursesList
+                  specs={selectedVersion.course_specs}
+                  canEdit={canEdit}
+                  onChange={handleCourseSpecsChange}
+                />
+              )}
             </div>
           </div>
-
-          {/* 오른쪽: 로드맵 내용 */}
-          <div className="lg:col-span-3">
-            {selectedVersion ? (
-              <div className="bg-white shadow rounded-lg pb-1">
-                {/* 버전 헤더 */}
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        버전 {selectedVersion.version_number}
-                      </h2>
-                      <RoadmapStatusBadge
-                        status={selectedVersion.status}
-                        versionNumber={selectedVersion.version_number}
-                      />
-                      {isSaving && (
-                        <span className="text-xs text-gray-400">저장 중…</span>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <DownloadButton
-                        onClick={handleDownloadPDF}
-                        loading={isDownloading === 'PDF'}
-                        type="PDF"
-                        disabled={isDownloading !== null}
-                      />
-                      <DownloadButton
-                        onClick={handleDownloadXLSX}
-                        loading={isDownloading === 'XLSX'}
-                        type="Excel"
-                        disabled={isDownloading !== null}
-                      />
-                      {canEdit && (
-                        <Button
-                          onClick={handleFinalize}
-                          disabled={isFinalizing}
-                          className="bg-green-600 hover:bg-green-700 text-white text-sm"
-                        >
-                          {isFinalizing ? '처리 중...' : '최종 확정'}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedVersion.revision_prompt && (
-                    <RevisionPromptToggle prompt={selectedVersion.revision_prompt} />
-                  )}
-
-                  <p className="mt-3 text-sm text-gray-600">
-                    {selectedVersion.diagnosis_summary}
-                  </p>
-
-                  {/* FINAL 버전 공유 토글 */}
-                  {selectedVersion.status === 'FINAL' && (
-                    <div className="mt-4">
-                      <ShareToggle
-                        roadmapVersionId={selectedVersion.id}
-                        initialShared={selectedVersion.is_shared ?? false}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* 탭 */}
-                <div className="border-b border-gray-200">
-                  <nav className="flex -mb-px overflow-x-auto">
-                    {ROADMAP_TABS.map((tab) => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`px-3 py-2 sm:px-6 sm:py-3 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0 ${
-                          activeTab === tab.key
-                            ? 'border-purple-500 text-purple-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-
-                {/* 탭 내용 */}
-                <div className="p-4 sm:p-6">
-                  {activeTab === 'competencies' && (
-                    <CompetencyModelingTable
-                      competencies={selectedVersion.competencies}
-                      canEdit={canEdit}
-                      onChange={handleCompetenciesChange}
-                    />
-                  )}
-                  {activeTab === 'structure' && (
-                    <RoadmapMatrix
-                      competencies={selectedVersion.competencies}
-                      trainingStructure={selectedVersion.training_structure}
-                      canEdit={canEdit}
-                    />
-                  )}
-                  {activeTab === 'plan' && (
-                    <AnnualTrainingPlanTable
-                      plan={selectedVersion.annual_plan}
-                      competencies={selectedVersion.competencies}
-                      canEdit={canEdit}
-                      onChange={handleAnnualPlanChange}
-                    />
-                  )}
-                  {activeTab === 'specs' && (
-                    <CoursesList
-                      specs={selectedVersion.course_specs}
-                      canEdit={canEdit}
-                      onChange={handleCourseSpecsChange}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <EmptyRoadmapState />
-            )}
-          </div>
-        </div>
+        ) : (
+          <EmptyRoadmapState />
+        )}
       </div>
 
-      {/* 로딩 오버레이 */}
       {isGenerating && (
         <RoadmapLoadingOverlay
           isTestMode={false}

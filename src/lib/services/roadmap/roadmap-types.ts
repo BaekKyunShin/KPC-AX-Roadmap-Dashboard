@@ -1,7 +1,9 @@
 // ============================================================================
-// 로드맵 타입 정의 — 산인공 공식 로드맵 보고서 양식(Ⅲ장) 기반
-//   Ⅲ-1. 역량 모델링        → RoadmapCompetency[]
-//   Ⅲ-2. 훈련체계도         → RoadmapTrainingStructureItem[]
+// 로드맵 타입 정의 — 산인공 공식 로드맵 보고서 양식(Ⅰ·Ⅱ·Ⅲ장) 기반
+//   Ⅰ-1. 수립 필요성        → setup_necessity
+//   Ⅰ-3. 수립 주요 결과      → outcome_summary (3필드)
+//   Ⅲ-1. 역량 모델링        → RoadmapCompetency[] + ncs_* (표 전체 단위)
+//   Ⅲ-2. 훈련체계도         → RoadmapTrainingStructureItem[] + training_structure_method
 //   Ⅲ-3. 연간 훈련계획      → RoadmapAnnualPlan
 //   Ⅲ-4. 훈련과정 명세서    → RoadmapCourseSpec[] (최소 3개)
 // ============================================================================
@@ -10,17 +12,25 @@
 export type TrainingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 
 // ----------------------------------------------------------------------------
-// Ⅲ-1. 역량 모델링
+// Ⅰ-3. 수립 주요 결과
+// ----------------------------------------------------------------------------
+// ai_competency_level: Ⅰ-3 기업 AI 역량 수준
+//   BEGINNER=초급(AI기초형) / INTERMEDIATE=중급(AI탐구형) / ADVANCED=고급(AI활용형·선도형)
+export interface RoadmapOutcomeSummary {
+  ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  selected_tasks: string;
+  main_content: string;
+}
+
+// ----------------------------------------------------------------------------
+// Ⅲ-1. 역량 모델링 (NCS 관련 필드는 루트로 이동 — 양식상 표 전체 단위이므로)
 // ----------------------------------------------------------------------------
 export interface RoadmapCompetency {
   name: string;               // 역량명
-  definition: string;         // 역량 정의
-  knowledge: string[];        // 지식(K)
-  skills: string[];           // 기술(S)
-  attitudes: string[];        // 태도(A)
-  ncs_used: boolean;          // NCS 활용 여부
-  ncs_methodology?: string;   // (ncs_used=true) NCS 활용 방법
-  ncs_derivation_method?: string; // (ncs_used=false) NCS 외 도출 방법
+  definition: string;         // 역량 정의(수행준거)
+  knowledge: string[];        // 지식(학술, 업무지식)
+  skills: string[];           // 기술(기능)
+  attitudes: string[];        // 태도
 }
 
 // ----------------------------------------------------------------------------
@@ -56,7 +66,7 @@ export interface RoadmapAnnualPlan {
 // ----------------------------------------------------------------------------
 export interface RoadmapCourseSubject {
   name: string;              // 과목명
-  details: string;           // 세부내용
+  details: string;           // 세부 내용 (단원, 과제명)
   hours: number;             // 시간
 }
 
@@ -75,8 +85,22 @@ export interface RoadmapCourseSpec {
 // ----------------------------------------------------------------------------
 export interface LLMRoadmapResult {
   diagnosis_summary: string;
+
+  // Ⅰ-1 · Ⅰ-3 — 인터뷰 입력값을 그대로 복사 (LLM 재창작 금지)
+  setup_necessity: string;
+  outcome_summary: RoadmapOutcomeSummary;
+
+  // Ⅲ-1 역량 모델링
   competencies: RoadmapCompetency[];
+  ncs_used: boolean;              // 표 전체 단위 NCS 활용 여부
+  ncs_methodology: string;        // ncs_used=true → 필수
+  ncs_derivation_method: string;  // ncs_used=false → 필수
+
+  // Ⅲ-2 훈련체계도
   training_structure: RoadmapTrainingStructureItem[];
+  training_structure_method: string; // Ⅲ-2 수립 방법 텍스트 박스
+
+  // Ⅲ-3 연간 훈련계획 / Ⅲ-4 훈련과정 명세서
   annual_plan: RoadmapAnnualPlan;
   course_specs: RoadmapCourseSpec[];
 }

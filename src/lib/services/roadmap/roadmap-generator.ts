@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile } from '@/types/database';
 import type { SttInsights } from '@/lib/schemas/interview';
+import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import { roadmapContentSchema } from '@/lib/schemas/roadmap';
 import { callLLMForJSON, type LLMMessage } from '../llm';
 import { createAuditLog } from '../audit';
@@ -31,21 +32,103 @@ export class RoadmapStorageError extends Error {
   }
 }
 
-/** LLM 호출 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행 */
+/**
+ * LLM 응답 신규 필드(OFA-06.5) 자동 보정.
+ * LLM이 인스트럭션을 빠뜨려도 인터뷰 overview·기본값으로 채워 schema 검증을 통과시킨다.
+ */
+function fillMissingRoadmapFields(
+  raw: Partial<LLMRoadmapResult> & Record<string, unknown>,
+  interviewOverview?: {
+    establishment_necessity?: string;
+    ai_competency_level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    selected_tasks_summary?: string;
+    roadmap_summary?: string;
+  },
+): LLMRoadmapResult {
+  const overview = interviewOverview ?? {};
+  const r = raw as Record<string, unknown>;
+
+  const setupNecessity =
+    typeof r.setup_necessity === 'string' && r.setup_necessity.trim() !== ''
+      ? r.setup_necessity
+      : overview.establishment_necessity ?? '';
+
+  const rawOutcome = (r.outcome_summary ?? {}) as Record<string, unknown>;
+  const validLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+  const outcomeLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' =
+    typeof rawOutcome.ai_competency_level === 'string' &&
+    validLevels.includes(rawOutcome.ai_competency_level as typeof validLevels[number])
+      ? (rawOutcome.ai_competency_level as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED')
+      : overview.ai_competency_level ?? 'BEGINNER';
+  const outcomeSummary = {
+    ai_competency_level: outcomeLevel,
+    selected_tasks:
+      typeof rawOutcome.selected_tasks === 'string' && rawOutcome.selected_tasks.trim() !== ''
+        ? rawOutcome.selected_tasks
+        : overview.selected_tasks_summary ?? '',
+    main_content:
+      typeof rawOutcome.main_content === 'string' && rawOutcome.main_content.trim() !== ''
+        ? rawOutcome.main_content
+        : overview.roadmap_summary ?? '',
+  };
+
+  const ncsUsed = typeof r.ncs_used === 'boolean' ? r.ncs_used : false;
+  const ncsMethodology = typeof r.ncs_methodology === 'string' ? r.ncs_methodology : '';
+  const ncsDerivationMethod =
+    typeof r.ncs_derivation_method === 'string' ? r.ncs_derivation_method : '';
+
+  // refine: ncs_used=true → methodology 필요 / false → derivation 필요
+  // LLM이 빈 값을 보냈을 경우 양쪽 모두 placeholder 채워 schema 통과
+  const safeNcsMethodology =
+    ncsUsed && ncsMethodology.trim() === ''
+      ? '(생성 시 NCS 활용 방법이 누락되었습니다. 수동 입력 필요.)'
+      : ncsMethodology;
+  const safeNcsDerivation =
+    !ncsUsed && ncsDerivationMethod.trim() === ''
+      ? '(생성 시 역량별 도출 방법이 누락되었습니다. 수동 입력 필요.)'
+      : ncsDerivationMethod;
+
+  const trainingStructureMethod =
+    typeof r.training_structure_method === 'string' && r.training_structure_method.trim() !== ''
+      ? r.training_structure_method
+      : '역량 기준 3수준 체계(초급·중급·고급)로 단계별 선수요건을 설정하여 훈련체계를 수립.';
+
+  return {
+    diagnosis_summary: typeof r.diagnosis_summary === 'string' ? r.diagnosis_summary : '',
+    setup_necessity: setupNecessity,
+    outcome_summary: outcomeSummary,
+    competencies: (r.competencies as LLMRoadmapResult['competencies']) ?? [],
+    ncs_used: ncsUsed,
+    ncs_methodology: safeNcsMethodology,
+    ncs_derivation_method: safeNcsDerivation,
+    training_structure: (r.training_structure as LLMRoadmapResult['training_structure']) ?? [],
+    training_structure_method: trainingStructureMethod,
+    annual_plan:
+      (r.annual_plan as LLMRoadmapResult['annual_plan']) ?? { items: [], usage_plan: '' },
+    course_specs: (r.course_specs as LLMRoadmapResult['course_specs']) ?? [],
+  };
+}
+
+/** LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행 */
 async function callLLMAndBuildRoadmap(
   messages: LLMMessage[],
   signal?: AbortSignal,
+  interviewOverview?: Parameters<typeof fillMissingRoadmapFields>[1],
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
-  const rawLlmResult = await callLLMForJSON<LLMRoadmapResult>(
+  const rawLlmResult = await callLLMForJSON<Partial<LLMRoadmapResult>>(
     messages,
     { temperature: LLM_TEMPERATURE },
     2,
     signal,
   );
 
+  // OFA-06.5 신규 필드 누락 시 인터뷰 입력값/기본값으로 자동 보정
+  const filled = fillMissingRoadmapFields(rawLlmResult, interviewOverview);
+
   // Zod 스키마 검증 — 실패 시 수동편집 유도
-  const parsed = roadmapContentSchema.safeParse(rawLlmResult);
+  const parsed = roadmapContentSchema.safeParse(filled);
   if (!parsed.success) {
+    console.error('[callLLMAndBuildRoadmap] schema fail:', JSON.stringify(parsed.error.errors));
     throw new RoadmapStorageError(
       'LLM이 산인공 양식에 맞지 않는 결과를 반환했습니다. 수동 편집이 필요합니다.',
       { cause: parsed.error },
@@ -119,12 +202,21 @@ export async function generateRoadmap(
     consultantSnapshot = profile;
   }
 
+  // legacy DB row → 신규 RoadmapInterview 구조로 변환하여 프롬프트에 전달
+  // (overview, company_requirements, task_workflow_items, training_targets 복원)
+  const roadmapInterview = mapInterviewRowToRoadmapInterview(interview);
+  const promptInterview = {
+    ...roadmapInterview,
+    notes: interview.notes ?? '',
+    stt_insights: interview.stt_insights ?? null,
+  };
+
   // LLM 프롬프트 생성
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(
     projectData,
     selfAssessment,
-    interview,
+    promptInterview,
     consultantSnapshot,
     revisionPrompt,
     isTestMode,
@@ -138,6 +230,7 @@ export async function generateRoadmap(
         { role: 'user', content: userPrompt },
       ],
       signal,
+      promptInterview.overview,
     ),
     supabase
       .from('roadmap_versions')
@@ -230,6 +323,15 @@ export interface TestRoadmapInput {
   company_size: string;
   customer_requirements?: string;
 
+  // Ⅰ 장 개요 (선택 — 없으면 LLM이 재창작하지 않고 빈 값 유지)
+  overview?: {
+    establishment_necessity: string;
+    ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    selected_tasks_summary: string;
+    roadmap_summary: string;
+    hrd_report_attachment_url?: string;
+  };
+
   // 인터뷰 헤더
   interview_date: string;
   interview_round?: number;
@@ -283,6 +385,12 @@ function buildTestProjectData(input: TestRoadmapInput) {
 /** 테스트용 인터뷰 데이터 구성 (buildUserPrompt가 요구하는 필드를 그대로 노출) */
 function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsights) {
   return {
+    overview: input.overview ?? {
+      establishment_necessity: '',
+      ai_competency_level: 'BEGINNER',
+      selected_tasks_summary: '',
+      roadmap_summary: '',
+    },
     interview_date: input.interview_date,
     interview_round: input.interview_round ?? 1,
     interview_time: input.interview_time ?? '',
@@ -325,6 +433,7 @@ export async function generateTestRoadmap(
       { role: 'user', content: userPrompt },
     ],
     signal,
+    input.overview,
   );
 }
 
@@ -387,5 +496,6 @@ ${revisionPrompt}
       { role: 'user', content: revisionUserPrompt },
     ],
     signal,
+    input.overview,
   );
 }

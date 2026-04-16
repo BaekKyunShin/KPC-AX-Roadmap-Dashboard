@@ -252,8 +252,6 @@ describe('updateRoadmapManually', () => {
     knowledge: ['K'],
     skills: ['S'],
     attitudes: ['A'],
-    ncs_used: false,
-    ncs_derivation_method: '인터뷰',
   };
   const legacyTraining: RoadmapTrainingStructureItem = {
     competency_name: '역량1',
