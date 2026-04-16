@@ -33,11 +33,11 @@ const EMPTY_ITEM: RoadmapAnnualPlanItem = {
 };
 
 const COLUMN_HEADERS = [
-  { key: 'competency_name', label: '역량명', width: 'w-[160px]' },
-  { key: 'course_name', label: '훈련과정명', width: 'w-[200px]' },
-  { key: 'format', label: '훈련형태', width: 'w-[120px]' },
-  { key: 'hours', label: '훈련시간', width: 'w-[90px]' },
-  { key: 'notes', label: '비고', width: 'w-[200px]' },
+  { key: 'competency_name', label: '역량명', width: 'w-[18%]', align: 'text-left' },
+  { key: 'course_name', label: '훈련과정명', width: '', align: 'text-left' },
+  { key: 'format', label: '훈련형태', width: 'w-[10%]', align: 'text-center' },
+  { key: 'hours', label: '훈련시간', width: 'w-[10%]', align: 'text-right' },
+  { key: 'notes', label: '비고', width: 'w-[20%]', align: 'text-left' },
 ] as const;
 
 // ============================================================================
@@ -92,7 +92,7 @@ export function AnnualTrainingPlanTable({
                   <th
                     key={col.key}
                     scope="col"
-                    className={`${col.width} px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
+                    className={`${col.width} ${col.align} px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
                   >
                     {col.label}
                   </th>
@@ -220,7 +220,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
   return (
     <tr className="align-top">
       {/* 역량명 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
           <Input
             value={item.competency_name}
@@ -234,7 +234,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 훈련과정명 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
           <Input
             value={item.course_name}
@@ -248,12 +248,13 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 훈련형태 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-center">
         {canEdit ? (
           <Input
             value={item.format}
             onChange={(e) => onUpdate(index, { format: e.target.value })}
             placeholder="집체/원격/혼합"
+            className="text-center"
             aria-label={`연간계획 ${index + 1} 훈련형태`}
           />
         ) : (
@@ -262,7 +263,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 훈련시간 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-right">
         {canEdit ? (
           <Input
             type="number"
@@ -270,6 +271,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
             value={item.hours || ''}
             onChange={(e) => onUpdate(index, { hours: Number(e.target.value) || 0 })}
             placeholder="시간"
+            className="text-right"
             aria-label={`연간계획 ${index + 1} 훈련시간`}
           />
         ) : (
@@ -278,7 +280,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
       </td>
 
       {/* 비고 */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {canEdit ? (
           <Input
             value={item.notes}
@@ -293,7 +295,7 @@ function DesktopRow({ index, item, canEdit, onUpdate, onRemove }: RowProps) {
 
       {/* 액션 */}
       {canEdit && (
-        <td className="px-3 py-3 text-center">
+        <td className="px-3 py-3 text-center align-top">
           <Button
             type="button"
             variant="ghost"
