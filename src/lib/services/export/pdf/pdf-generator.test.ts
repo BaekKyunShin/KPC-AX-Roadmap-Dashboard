@@ -1,12 +1,11 @@
 /**
- * pdf-generator.ts 테스트
+ * pdf-generator.ts 테스트 (산인공 4섹션 구조)
  * generatePDF 함수의 메인 오케스트레이션 검증
  *
  * - 유효한 데이터 → Blob 반환
- * - 빈 과정 목록 → 에러 없이 처리
- * - PBL 과정 포함 시 PBL 섹션 렌더링
- * - 표지에 기업명/버전 포함 확인
- * - addPage 호출 확인 (다중 과정 시)
+ * - 빈 섹션 데이터 → 에러 없이 처리
+ * - 표지에 기업명/버전/확정일 포함 확인
+ * - 4섹션별 addPage 호출 (표지→Ⅲ-1→Ⅲ-2→Ⅲ-3→Ⅲ-4, 과정별 추가)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,7 +26,7 @@ const mockDoc = {
   line: vi.fn(),
   addPage: vi.fn(),
   setPage: vi.fn(),
-  getNumberOfPages: vi.fn(() => 3),
+  getNumberOfPages: vi.fn(() => 5),
   getTextWidth: vi.fn(() => 50),
   splitTextToSize: vi.fn((text: string) => [text]),
   output: vi.fn(() => new Blob(['pdf-content'], { type: 'application/pdf' })),
@@ -60,78 +59,68 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
     versionNumber: 1,
     status: 'DRAFT',
     diagnosisSummary: '진단 요약 텍스트입니다.',
-    roadmapMatrix: [
+    competencies: [
       {
-        task_id: 'task-1',
-        task_name: '데이터 분석',
-        beginner: [{ course_name: 'AI 기초', recommended_hours: 8 }],
-        intermediate: [{ course_name: '데이터 처리', recommended_hours: 16 }],
-        advanced: [],
+        name: '데이터 분석 역량',
+        definition: '데이터를 활용하여 의사결정을 지원하는 능력',
+        knowledge: ['통계 이론', 'SQL'],
+        skills: ['엑셀', '파이썬'],
+        attitudes: ['객관적 사고'],
+        ncs_used: true,
+        ncs_methodology: 'NCS 빅데이터 분석 L4',
+      },
+      {
+        name: 'AI 활용 역량',
+        definition: 'AI 도구를 업무에 적용하는 능력',
+        knowledge: ['프롬프트 엔지니어링'],
+        skills: ['ChatGPT 활용'],
+        attitudes: ['적극성'],
+        ncs_used: false,
+        ncs_derivation_method: '현장 인터뷰 기반 도출',
       },
     ],
-    pblCourse: {
-      selected_course_name: 'AI 기초',
-      selected_course_level: 'BEGINNER',
-      selected_course_task: '데이터 분석',
-      selection_rationale: {
-        consultant_expertise_fit: '전문가 적합',
-        pain_point_alignment: '페인포인트 일치',
-        feasibility_assessment: '실현 가능',
-        summary: '종합 선정 이유',
+    trainingStructure: [
+      {
+        competency_name: '데이터 분석 역량',
+        level: 'BEGINNER',
+        content: '엑셀 기초 + 데이터 정제',
+        target_audience: '신입 사원',
+        method: '집체 교육',
+        goal: '엑셀로 기초 분석 수행',
       },
-      course_name: 'PBL: AI 기초 실습',
-      total_hours: 16,
-      target_tasks: ['데이터 분석'],
-      target_audience: '신입 사원',
-      curriculum: [
+      {
+        competency_name: 'AI 활용 역량',
+        level: 'INTERMEDIATE',
+        content: 'ChatGPT 업무 적용',
+        target_audience: '대리급',
+        method: '혼합 교육',
+        goal: '업무 자동화 시나리오 3건',
+      },
+    ],
+    annualPlan: {
+      items: [
         {
-          module_name: '데이터 수집',
-          hours: 8,
-          details: ['크롤링 기초', 'API 활용'],
-          practice: '실습: 공공데이터 수집',
-          deliverables: ['수집 스크립트'],
-          tools: [{ name: 'Python', free_tier_info: '무료' }],
-        },
-        {
-          module_name: '데이터 분석',
-          hours: 8,
-          details: ['판다스 기초'],
-          practice: '실습: EDA',
-          deliverables: ['분석 리포트'],
-          tools: [{ name: 'Jupyter', free_tier_info: '무료' }],
+          competency_name: '데이터 분석 역량',
+          course_name: '데이터 분석 기초',
+          format: '집체',
+          hours: 16,
+          notes: '1분기',
         },
       ],
-      final_deliverables: ['최종 보고서'],
-      expected_outcomes: ['데이터 분석 역량 강화'],
-      business_impact: '업무 효율 30% 향상',
-      measurement_methods: ['실습 평가'],
-      prerequisites: ['노트북 지참'],
+      usage_plan: '연간 계획 활용방안 텍스트',
     },
-    courses: [
+    courseSpecs: [
       {
-        course_name: 'AI 기초',
-        level: 'BEGINNER',
-        target_task: '데이터 분석',
+        course_name: '데이터 분석 기초',
+        format: '집체',
+        recommended_program: 'S-OJT',
+        goal: '엑셀로 기초 분석 수행',
+        main_content: '엑셀 함수, 피벗 테이블, 데이터 정제',
         target_audience: '신입 사원',
-        recommended_hours: 8,
-        curriculum: [
-          {
-            module_name: '소개',
-            hours: 4,
-            details: ['AI 개요'],
-            practice: '실습: Hello AI',
-          },
-          {
-            module_name: '실습',
-            hours: 4,
-            details: ['실전 연습'],
-            practice: '실습: 데이터 분석',
-          },
+        subjects: [
+          { name: '엑셀 함수', details: 'VLOOKUP, SUMIFS 등', hours: 4 },
+          { name: '피벗 테이블', details: '요약/분석 실습', hours: 4 },
         ],
-        tools: [{ name: 'ChatGPT', free_tier_info: '무료 플랜' }],
-        expected_outcome: 'AI 기초 이해',
-        measurement_method: '퀴즈',
-        prerequisites: ['없음'],
       },
     ],
     createdAt: '2026-02-01T00:00:00Z',
@@ -145,10 +134,9 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
 describe('generatePDF', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // output을 매번 새 Blob으로 리셋
     mockDoc.output.mockReturnValue(new Blob(['pdf-content'], { type: 'application/pdf' }));
     mockDoc.lastAutoTable = { finalY: 100 };
-    mockDoc.getNumberOfPages.mockReturnValue(3);
+    mockDoc.getNumberOfPages.mockReturnValue(5);
   });
 
   it('유효한 데이터로 Blob을 반환한다', async () => {
@@ -160,27 +148,27 @@ describe('generatePDF', () => {
     expect(result).toBeInstanceOf(Blob);
   });
 
-  it('빈 과정 목록이어도 에러 없이 Blob을 반환한다', async () => {
+  it('빈 courseSpecs이어도 에러 없이 Blob을 반환한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    const data = createTestExportData({ courses: [] });
+    const data = createTestExportData({ courseSpecs: [] });
 
     const result = await generatePDF(data);
 
     expect(result).toBeInstanceOf(Blob);
   });
 
-  it('PBL 과정 데이터가 있으면 PBL 섹션을 렌더링한다', async () => {
+  it('빈 competencies/trainingStructure/annualPlan에도 안전하게 처리한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    const data = createTestExportData();
+    const data = createTestExportData({
+      competencies: [],
+      trainingStructure: [],
+      annualPlan: { items: [], usage_plan: '' },
+      courseSpecs: [],
+    });
 
-    await generatePDF(data);
+    const result = await generatePDF(data);
 
-    // PBL 과정명이 텍스트에 출력되는지 확인 (drawSubsectionTitle → doc.text)
-    const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
-    const hasPBLCourseName = textCalls.some(
-      (t: unknown) => typeof t === 'string' && t.includes('PBL: AI 기초 실습'),
-    );
-    expect(hasPBLCourseName).toBe(true);
+    expect(result).toBeInstanceOf(Blob);
   });
 
   it('표지에 기업명과 버전 정보를 포함한다', async () => {
@@ -193,113 +181,69 @@ describe('generatePDF', () => {
 
     await generatePDF(data);
 
-    // 기업명 확인
     const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
-    const hasCompanyName = textCalls.some(
-      (t: unknown) => typeof t === 'string' && t.includes('삼성전자'),
-    );
-    expect(hasCompanyName).toBe(true);
-
-    // 버전 정보 확인
-    const hasVersion = textCalls.some(
-      (t: unknown) => typeof t === 'string' && t.includes('v3'),
-    );
-    expect(hasVersion).toBe(true);
+    expect(textCalls.some((t: unknown) => typeof t === 'string' && t.includes('삼성전자'))).toBe(true);
+    expect(textCalls.some((t: unknown) => typeof t === 'string' && t.includes('v3'))).toBe(true);
   });
 
-  it('과정 상세 및 PBL 섹션을 위해 addPage를 호출한다', async () => {
+  it('각 섹션을 위해 addPage를 여러 번 호출한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
     const data = createTestExportData();
 
     await generatePDF(data);
 
-    // 과정 상세(새 페이지) + PBL(새 페이지) = 최소 2회 addPage
-    expect(mockDoc.addPage).toHaveBeenCalledTimes(2);
+    // 표지(페이지1) → Ⅲ-1 → Ⅲ-2 → Ⅲ-3 → Ⅲ-4 = 최소 4회 addPage
+    expect(mockDoc.addPage.mock.calls.length).toBeGreaterThanOrEqual(4);
   });
 
   it('확정일이 있으면 표지에 확정일을 표시한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    const data = createTestExportData({
-      finalizedAt: '2026-03-01T00:00:00Z',
-    });
+    const data = createTestExportData({ finalizedAt: '2026-03-01T00:00:00Z' });
 
     await generatePDF(data);
 
     const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
-    const hasFinalizedLabel = textCalls.some(
-      (t: unknown) => typeof t === 'string' && t === '확정일',
-    );
-    expect(hasFinalizedLabel).toBe(true);
+    expect(textCalls.some((t: unknown) => typeof t === 'string' && t === '확정일')).toBe(true);
   });
 
   it('푸터에 페이지 번호를 렌더링한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    mockDoc.getNumberOfPages.mockReturnValue(3);
+    mockDoc.getNumberOfPages.mockReturnValue(5);
     const data = createTestExportData();
 
     await generatePDF(data);
 
-    // setPage가 1, 2, 3 모두 호출됨
     expect(mockDoc.setPage).toHaveBeenCalledWith(1);
-    expect(mockDoc.setPage).toHaveBeenCalledWith(2);
-    expect(mockDoc.setPage).toHaveBeenCalledWith(3);
+    expect(mockDoc.setPage).toHaveBeenCalledWith(5);
 
-    // 페이지 번호 텍스트 확인 ("1 / 3", "2 / 3", "3 / 3")
     const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
-    const hasPageNumber = textCalls.some(
-      (t: unknown) => typeof t === 'string' && t === '1 / 3',
-    );
-    expect(hasPageNumber).toBe(true);
+    expect(textCalls.some((t: unknown) => typeof t === 'string' && t === '1 / 5')).toBe(true);
   });
 
-  it('pblCourse가 없는 데이터도 에러 없이 처리한다', async () => {
+  it('역량 모델링 섹션 제목을 출력한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    // pblCourse를 최소 데이터로 구성 (필수 필드만)
-    const data = createTestExportData({
-      pblCourse: {
-        selected_course_name: '',
-        selected_course_level: 'BEGINNER',
-        selected_course_task: '',
-        selection_rationale: {
-          consultant_expertise_fit: '',
-          pain_point_alignment: '',
-          feasibility_assessment: '',
-          summary: '',
-        },
-        course_name: '최소 PBL',
-        total_hours: 0,
-        target_tasks: [],
-        target_audience: '-',
-        curriculum: [],
-        final_deliverables: [],
-        expected_outcomes: [],
-        business_impact: '',
-        measurement_methods: [],
-        prerequisites: [],
-      },
-    });
+    const data = createTestExportData();
 
-    const result = await generatePDF(data);
+    await generatePDF(data);
 
-    expect(result).toBeInstanceOf(Blob);
+    const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
+    expect(
+      textCalls.some((t: unknown) => typeof t === 'string' && t.includes('Ⅲ-1')),
+    ).toBe(true);
   });
 
-  it('roadmapMatrix가 빈 배열이어도 에러 없이 처리한다', async () => {
+  it('훈련체계도/연간훈련계획/훈련과정 명세서 섹션 제목을 출력한다', async () => {
     const { generatePDF } = await import('./pdf-generator');
-    const data = createTestExportData({ roadmapMatrix: [] });
+    const data = createTestExportData();
 
-    const result = await generatePDF(data);
+    await generatePDF(data);
 
-    expect(result).toBeInstanceOf(Blob);
-  });
+    const textCalls = mockDoc.text.mock.calls.map((c: unknown[]) => c[0]);
+    const hasSection = (s: string) =>
+      textCalls.some((t: unknown) => typeof t === 'string' && t.includes(s));
 
-  it('courses가 비어있어도 에러 없이 처리한다', async () => {
-    const { generatePDF } = await import('./pdf-generator');
-    const data = createTestExportData({ courses: [] });
-
-    const result = await generatePDF(data);
-
-    expect(result).toBeInstanceOf(Blob);
-    // courses.forEach가 호출되지만 비어있으므로 drawCourseDetail은 호출되지 않음
+    expect(hasSection('Ⅲ-2')).toBe(true);
+    expect(hasSection('Ⅲ-3')).toBe(true);
+    expect(hasSection('Ⅲ-4')).toBe(true);
   });
 });

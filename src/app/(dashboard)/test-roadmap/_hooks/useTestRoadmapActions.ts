@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { buildRoadmapMatrixFromCourses, validateCourseClient } from '@/lib/utils/roadmap-client';
 import { createTestRoadmap, reviseTestRoadmap, cancelTestRoadmapGeneration } from '../actions';
 import { isCancelledError } from '@/lib/services/llm';
 import { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { TestInputData } from '@/lib/schemas/test-roadmap';
-import type { RoadmapResult, ValidationResult, RoadmapCell } from '@/lib/services/roadmap';
+import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 
 // =============================================================================
 // 타입
@@ -71,10 +70,6 @@ export function useTestRoadmapActions({
   const [isRevising, setIsRevising] = useState(false);
   const [isRevisionComplete, setIsRevisionComplete] = useState(false);
 
-  // ===== 과정 편집 모달 상태 =====
-  const [editingCourse, setEditingCourse] = useState<RoadmapCell | null>(null);
-  const [editingCourseIndex, setEditingCourseIndex] = useState<number | null>(null);
-
   // ===== 로드맵 생성 =====
   const handleSubmit = async () => {
     // 필수 스텝 유효성 검사
@@ -105,7 +100,6 @@ export function useTestRoadmapActions({
           setGenerationState(INITIAL_GENERATION_STATE);
         }, COMPLETION_DELAY_MS);
       } else {
-        // 사용자가 직접 취소한 경우 에러 메시지를 표시하지 않음
         if (!isCancelledError(response.error)) {
           setError(response.error || '로드맵 생성에 실패했습니다.');
         }
@@ -145,7 +139,6 @@ export function useTestRoadmapActions({
           setIsRevisionComplete(false);
         }, COMPLETION_DELAY_MS);
       } else {
-        // 사용자가 직접 취소한 경우 에러 메시지를 표시하지 않음
         if (!isCancelledError(response.error)) {
           setError(response.error || '로드맵 수정에 실패했습니다.');
         }
@@ -158,50 +151,11 @@ export function useTestRoadmapActions({
     }
   };
 
-  // ===== 과정 편집 =====
-  const handleEditCourse = (courseIndex: number) => {
-    if (!result) return;
-    const course = result.roadmapResult.courses[courseIndex];
-    if (course) {
-      setEditingCourse({ ...course });
-      setEditingCourseIndex(courseIndex);
-    }
-  };
-
-  const handleSaveCourse = (updatedCourse: RoadmapCell) => {
-    if (!result || editingCourseIndex === null) return;
-
-    const validation = validateCourseClient(updatedCourse);
-    if (!validation.isValid) {
-      setError(validation.errors.join('\n'));
-      return;
-    }
-
-    const newCourses = [...result.roadmapResult.courses];
-    newCourses[editingCourseIndex] = updatedCourse;
-    const newMatrix = buildRoadmapMatrixFromCourses(newCourses);
-
-    setResult({
-      ...result,
-      roadmapResult: {
-        ...result.roadmapResult,
-        courses: newCourses,
-        roadmap_matrix: newMatrix,
-      },
-    });
-
-    setEditingCourse(null);
-    setEditingCourseIndex(null);
-    setError(null);
-  };
-
   // ===== 초기화 =====
   const handleReset = () => {
     setResult(null);
     setOriginalInput(null);
     setError(null);
-    setEditingCourse(null);
-    setEditingCourseIndex(null);
   };
 
   // ===== 생성 취소 (서버 LLM 호출도 중단) =====
@@ -218,15 +172,9 @@ export function useTestRoadmapActions({
     setIsRevising,
     isRevisionComplete,
     setIsRevisionComplete,
-    editingCourse,
-    setEditingCourse,
-    editingCourseIndex,
-    setEditingCourseIndex,
     // Actions
     handleSubmit,
     handleRevisionRequest,
-    handleEditCourse,
-    handleSaveCourse,
     handleReset,
     handleCancelGeneration,
   };

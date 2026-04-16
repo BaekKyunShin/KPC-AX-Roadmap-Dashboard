@@ -7,8 +7,9 @@ import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { PageHeader } from '@/components/ui/page-header';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
+import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
-import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
+import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
 import { RevisionPromptToggle } from '@/components/roadmap/RevisionPromptToggle';
@@ -25,9 +26,9 @@ interface OpsRoadmapClientProps {
 export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoadmapClientProps) {
   const versions = initialVersions;
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
-    initialVersions.length > 0 ? initialVersions[0] : null
+    initialVersions.length > 0 ? initialVersions[0] : null,
   );
-  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
 
@@ -59,7 +60,11 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
       <PageHeader
         title="AI 교육 로드맵"
         description="품질 관리 및 감사 목적으로 열람합니다."
-        backLink={{ href: `/ops/projects/${projectId}`, label: '프로젝트로 돌아가기', useBack: true }}
+        backLink={{
+          href: `/ops/projects/${projectId}`,
+          label: '프로젝트로 돌아가기',
+          useBack: true,
+        }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -86,12 +91,10 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
                     <h2 className="text-lg font-semibold text-gray-900">
                       버전 {selectedVersion.version_number}
                     </h2>
-                    <RoadmapStatusBadge status={selectedVersion.status} versionNumber={selectedVersion.version_number} />
-                    {selectedVersion.free_tool_validated && selectedVersion.time_limit_validated ? (
-                      <span className="text-xs text-green-600">✓ 검증 통과</span>
-                    ) : (
-                      <span className="text-xs text-red-600">✗ 검증 실패</span>
-                    )}
+                    <RoadmapStatusBadge
+                      status={selectedVersion.status}
+                      versionNumber={selectedVersion.version_number}
+                    />
                   </div>
                   <div className="flex items-center space-x-2">
                     <DownloadButton
@@ -136,16 +139,30 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
                 </nav>
               </div>
 
-              {/* 탭 내용 */}
+              {/* 탭 내용 (읽기 전용) */}
               <div className="p-4 sm:p-6">
-                {activeTab === 'matrix' && (
-                  <RoadmapMatrix matrix={selectedVersion.roadmap_matrix} />
+                {activeTab === 'competencies' && (
+                  <CompetencyModelingTable
+                    competencies={selectedVersion.competencies}
+                    canEdit={false}
+                  />
                 )}
-                {activeTab === 'pbl' && (
-                  <PBLCourseView course={selectedVersion.pbl_course} />
+                {activeTab === 'structure' && (
+                  <RoadmapMatrix
+                    competencies={selectedVersion.competencies}
+                    trainingStructure={selectedVersion.training_structure}
+                    canEdit={false}
+                  />
                 )}
-                {activeTab === 'courses' && (
-                  <CoursesList courses={selectedVersion.courses} />
+                {activeTab === 'plan' && (
+                  <AnnualTrainingPlanTable
+                    plan={selectedVersion.annual_plan}
+                    competencies={selectedVersion.competencies}
+                    canEdit={false}
+                  />
+                )}
+                {activeTab === 'specs' && (
+                  <CoursesList specs={selectedVersion.course_specs} canEdit={false} />
                 )}
               </div>
             </div>

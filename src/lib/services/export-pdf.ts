@@ -9,13 +9,12 @@ export { generatePDF } from './export/pdf/pdf-generator';
 export type { RoadmapExportData } from './export/pdf/pdf-generator';
 
 export {
-  extractPBLExtendedFields,
-  extractModuleDeliverables,
-} from './export/pdf/pdf-course-renderer';
-export type {
-  PBLExtendedFields,
-  PBLModuleExtended,
-} from './export/pdf/pdf-course-renderer';
+  drawCoverPage,
+  drawCompetencySection,
+  drawStructureSection,
+  drawAnnualPlanSection,
+  drawCourseSpecSection,
+} from './export/pdf';
 
 export { checkPageBreak, formatBulletList } from './export/pdf/pdf-helpers';
 export type { DocContext } from './export/pdf/pdf-helpers';

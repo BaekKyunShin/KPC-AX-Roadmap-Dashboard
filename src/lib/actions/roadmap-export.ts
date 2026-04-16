@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
 import { EXPORT_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
+import { fromRoadmapVersionColumns } from '@/lib/services/roadmap';
 import type { ProjectStatus, UserRole } from '@/types/database';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -66,15 +67,24 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
+    // DB legacy 컬럼(roadmap_matrix / pbl_course / courses) → 신규 4섹션 매핑
+    const mapped = fromRoadmapVersionColumns({
+      diagnosis_summary: roadmap.diagnosis_summary,
+      roadmap_matrix: roadmap.roadmap_matrix,
+      pbl_course: roadmap.pbl_course,
+      courses: roadmap.courses,
+    });
+
     const exportData: RoadmapExportData = {
       companyName: projectData.company_name,
       projectId: roadmap.project_id,
       versionNumber: roadmap.version_number,
       status: roadmap.status,
-      diagnosisSummary: roadmap.diagnosis_summary,
-      roadmapMatrix: roadmap.roadmap_matrix,
-      pblCourse: roadmap.pbl_course,
-      courses: roadmap.courses,
+      diagnosisSummary: mapped.diagnosis_summary,
+      competencies: mapped.competencies,
+      trainingStructure: mapped.training_structure,
+      annualPlan: mapped.annual_plan,
+      courseSpecs: mapped.course_specs,
       createdAt: roadmap.created_at,
       finalizedAt: roadmap.finalized_at,
     };

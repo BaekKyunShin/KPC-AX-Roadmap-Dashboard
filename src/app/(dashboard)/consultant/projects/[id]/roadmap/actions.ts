@@ -9,9 +9,11 @@ import {
   fetchRoadmapVersions as fetchRoadmapVersionsService,
   fetchRoadmapVersion as fetchRoadmapVersionService,
   updateRoadmapManually,
-  type RoadmapRow,
-  type PBLCourse,
-  type RoadmapCell,
+  fromRoadmapVersionColumns,
+  type RoadmapCompetency,
+  type RoadmapTrainingStructureItem,
+  type RoadmapAnnualPlan,
+  type RoadmapCourseSpec,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
@@ -21,6 +23,38 @@ import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result
 
 /** abort 레지스트리 키 생성 */
 function abortKey(userId: string) { return `roadmap:${userId}`; }
+
+/**
+ * raw row → RoadmapVersionUI 호환 형태로 변환.
+ * legacy 컬럼(roadmap_matrix/pbl_course/courses)을 fromRoadmapVersionColumns로
+ * 신규 4섹션 구조(competencies/training_structure/annual_plan/course_specs)로 매핑.
+ */
+function toRoadmapVersionUI<
+  R extends {
+    id: string;
+    version_number: number;
+    status: string;
+    diagnosis_summary?: string | null;
+    roadmap_matrix?: unknown;
+    pbl_course?: unknown;
+    courses?: unknown;
+    revision_prompt: string | null;
+    is_shared: boolean;
+    created_at: string;
+    finalized_at: string | null;
+  },
+>(row: R) {
+  return {
+    id: row.id,
+    version_number: row.version_number,
+    status: row.status,
+    revision_prompt: row.revision_prompt,
+    is_shared: row.is_shared,
+    created_at: row.created_at,
+    finalized_at: row.finalized_at,
+    ...fromRoadmapVersionColumns(row),
+  };
+}
 
 /**
  * 로드맵 생성
@@ -134,7 +168,7 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
 }
 
 /**
- * 로드맵 버전 목록 조회
+ * 로드맵 버전 목록 조회 (신규 4섹션 구조로 변환된 RoadmapVersionUI 호환 형태)
  */
 export async function fetchRoadmapVersions(projectId: string) {
   try {
@@ -159,14 +193,15 @@ export async function fetchRoadmapVersions(projectId: string) {
       return [];
     }
 
-    return await fetchRoadmapVersionsService(projectId);
+    const rawVersions = await fetchRoadmapVersionsService(projectId);
+    return rawVersions.map(toRoadmapVersionUI);
   } catch {
     return [];
   }
 }
 
 /**
- * 특정 로드맵 버전 조회
+ * 특정 로드맵 버전 조회 (신규 4섹션 구조로 변환)
  */
 export async function fetchRoadmapVersion(roadmapId: string) {
   try {
@@ -194,22 +229,23 @@ export async function fetchRoadmapVersion(roadmapId: string) {
       return null;
     }
 
-    return roadmap;
+    return toRoadmapVersionUI(roadmap);
   } catch {
     return null;
   }
 }
 
 /**
- * 로드맵 수동 편집
+ * 로드맵 수동 편집 (산인공 4섹션 신규 구조)
  */
 export async function editRoadmapManually(
   roadmapId: string,
   updates: {
     diagnosis_summary?: string;
-    roadmap_matrix?: RoadmapRow[];
-    pbl_course?: PBLCourse;
-    courses?: RoadmapCell[];
+    competencies?: RoadmapCompetency[];
+    training_structure?: RoadmapTrainingStructureItem[];
+    annual_plan?: RoadmapAnnualPlan;
+    course_specs?: RoadmapCourseSpec[];
   }
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
@@ -305,4 +341,3 @@ export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
   cancelAbort(abortKey(auth.user.id));
   return { success: true };
 }
-

@@ -8,6 +8,7 @@ import {
   reviseTestRoadmap as reviseTestRoadmapService,
   type RoadmapResult,
   type ValidationResult,
+  type TestRoadmapInput,
 } from '@/lib/services/roadmap';
 import { createAuditLog } from '@/lib/services/audit';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
@@ -45,47 +46,78 @@ async function fetchConsultantProfile(
 }
 
 /**
- * TestInputData를 roadmap 서비스용 데이터로 변환
+ * TestInputData(legacy 인터뷰 구조)를 산인공 신규 양식 TestRoadmapInput으로 변환.
+ *
+ * 매핑 규칙(OFA Step 6 cleanup — test-roadmap 입력 폼 갱신 범위 외):
+ *   - company_details   → company_requirements (4필드 압축)
+ *   - job_tasks         → task_workflow_items (워크플로우 필드는 기본값)
+ *   - improvement_goals → training_targets
+ *   - pain_points       → main_problems 문자열로 병합
  */
-function convertToRoadmapInput(input: TestInputData) {
+function convertToRoadmapInput(input: TestInputData): TestRoadmapInput {
+  const mainProblems = input.pain_points
+    .map((p) => p.description)
+    .filter(Boolean)
+    .join('\n');
+
+  const systemsText = (input.company_details.systems_and_tools ?? []).join(', ');
+  const companyStatus = [
+    input.company_details.ai_experience && `AI 경험: ${input.company_details.ai_experience}`,
+    systemsText && `사용 시스템/도구: ${systemsText}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const expectedOutcomes = input.improvement_goals
+    .map((g) => g.goal_description)
+    .filter(Boolean)
+    .join('\n');
+
   return {
     company_name: input.company_name,
     industry: input.industry,
     sub_industries: input.sub_industries,
     company_size: input.company_size,
-    // 인터뷰 데이터
-    interview_date: input.interview_date,
-    participants: input.participants,
-    company_details: input.company_details,
-    job_tasks: input.job_tasks.map((task, index) => ({
-      id: task.id || `test-task-${index}`,
-      task_name: task.task_name,
-      task_description: task.task_description,
-    })),
-    pain_points: input.pain_points.map((point, index) => ({
-      id: point.id || `test-pain-${index}`,
-      description: point.description,
-      severity: point.severity,
-      related_task_ids: point.related_task_ids || [],
-    })),
-    constraints: input.constraints?.map((constraint, index) => ({
-      id: constraint.id || `test-constraint-${index}`,
-      type: constraint.type,
-      description: constraint.description,
-      severity: constraint.severity,
-      workaround: constraint.workaround || '',
-    })) || [],
-    improvement_goals: input.improvement_goals.map((goal, index) => ({
-      id: goal.id || `test-goal-${index}`,
-      goal_description: goal.goal_description,
-      kpi: goal.kpi || '',
-      measurement_method: goal.measurement_method || '',
-      target_value: goal.target_value || '',
-      before_value: goal.before_value || '',
-      related_task_ids: goal.related_task_ids || [],
-    })),
-    notes: input.notes || '',
     customer_requirements: input.customer_requirements || '',
+
+    // 인터뷰 헤더
+    interview_date: input.interview_date,
+    participants: input.participants.map((p, i) => ({
+      id: p.id || `test-participant-${i}`,
+      name: p.name,
+      position: p.position,
+    })),
+
+    // Ⅱ-2 기업 요구분석 (legacy 데이터에서 근사치 생성)
+    company_requirements: {
+      company_status: companyStatus || '(미입력)',
+      main_problems: mainProblems || '(미입력)',
+      push_willingness: input.customer_requirements || '',
+      expected_outcomes: expectedOutcomes || '',
+    },
+
+    // Ⅱ-3 과업·워크플로우 분석 (legacy job_tasks → task_workflow_items)
+    task_workflow_items: input.job_tasks.map((task, index) => ({
+      id: task.id || `test-task-${index}`,
+      job: '미분류',
+      task_name: task.task_name,
+      as_is: task.task_description,
+      problems: '',
+      data_availability: '',
+      ai_necessity: 3,
+    })),
+
+    // Ⅱ-4 훈련대상 과업 선정 (legacy improvement_goals → training_targets)
+    training_targets: input.improvement_goals.map((goal, index) => ({
+      id: goal.id || `test-goal-${index}`,
+      task_name: goal.kpi || goal.goal_description.substring(0, 30),
+      selection_reason: goal.goal_description,
+      as_is: goal.before_value || '',
+      to_be: goal.target_value || '',
+    })),
+
+    notes: input.notes || '',
+    analysis_notes: { text: '', attachment_urls: [] },
   };
 }
 

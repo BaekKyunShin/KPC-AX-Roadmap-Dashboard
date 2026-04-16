@@ -72,9 +72,22 @@ test.describe('컨설턴트 로드맵', () => {
       await expect(page.locator('main')).toBeVisible();
 
       // 로드맵 페이지에 관련 UI 요소가 있는지 확인
-      // (로드맵이 생성되지 않았으면 생성 버튼, 생성되었으면 탭/매트릭스 등)
+      // (로드맵이 생성되지 않았으면 생성 버튼, 생성되었으면 4섹션 탭)
       const pageText = await page.locator('main').textContent();
       expect(pageText!.length).toBeGreaterThan(0);
+
+      // 산인공 양식 4섹션 또는 생성 버튼 중 하나는 반드시 표시되어야 함
+      const hasRoadmapSection =
+        pageText!.includes('역량 모델링') ||
+        pageText!.includes('훈련체계도') ||
+        pageText!.includes('연간 훈련계획') ||
+        pageText!.includes('훈련과정 명세서');
+      const hasGenerateButton =
+        pageText!.includes('로드맵 생성') || pageText!.includes('새 버전 로드맵 생성');
+      expect(hasRoadmapSection || hasGenerateButton).toBe(true);
+
+      // 구형 PBL 탭은 더 이상 노출되지 않아야 함
+      expect(pageText).not.toContain('PBL 과정');
     }
     // 프로젝트가 없으면 스킵 (방어적 패턴)
   });

@@ -2,16 +2,13 @@
 
 import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
-import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
-import {
-  SAMPLE_MATRIX,
-  SAMPLE_COURSE_SINGLE,
-  SAMPLE_PBL,
-} from '@/lib/data/demo-sample';
+import { SAMPLE_ROADMAP_RESULT } from '@/lib/data/demo-sample';
 
 // ============================================================================
 // 타입 정의
@@ -35,34 +32,40 @@ const CONTENT_HEIGHT = 340; // px
 const DEMO_URL = 'kpc-ax-roadmap-dashboard.vercel.app';
 
 /**
- * 데모 슬라이드 설정
- * - ROADMAP_TABS와 동일한 순서: 과정 체계도 → 과정 상세 → PBL 과정
- * - duration: 총 노출 시간 (ms)
- * - scrollStartPercent/scrollEndPercent: 스크롤 구간 (0~100%)
+ * 데모 슬라이드 설정 (산인공 4섹션 구조와 1:1 매핑)
+ *   역량 모델링 → 훈련체계도 → 연간 훈련계획 → 훈련과정 명세서
  */
 const DEMO_SLIDES: DemoSlideConfig[] = [
   {
-    key: 'matrix',
-    description: '세부직무별 초급/중급/고급 AI 교육 과정 매트릭스',
-    duration: 3300,
+    key: 'competencies',
+    description: 'NCS 기반 역량 모델링 — 지식·기술·태도(KSA) 정의',
+    duration: 5000,
+    scrollStartPercent: 10,
+    scrollEndPercent: 90,
+    enableScroll: true,
+  },
+  {
+    key: 'structure',
+    description: '역량 × 수준(초/중/고급) 훈련체계도',
+    duration: 4000,
     scrollStartPercent: 0,
     scrollEndPercent: 100,
     enableScroll: false,
   },
   {
-    key: 'courses',
-    description: '각 과정별 커리큘럼, 실습, 도구, 기대효과 상세 정보',
-    duration: 8000, // 1초 상단 + 6초 스크롤 + 1초 하단
-    scrollStartPercent: 12.5,
-    scrollEndPercent: 87.5,
+    key: 'plan',
+    description: '연간 훈련계획 및 활용방안',
+    duration: 4500,
+    scrollStartPercent: 10,
+    scrollEndPercent: 90,
     enableScroll: true,
   },
   {
-    key: 'pbl',
-    description: '프로젝트 기반 학습 커리큘럼 및 실습 계획',
-    duration: 11000, // 1초 상단 + 9초 스크롤 + 1초 하단
-    scrollStartPercent: 9.09,
-    scrollEndPercent: 90.91,
+    key: 'specs',
+    description: '훈련과정별 상세 명세서 (과정·교과목·시간)',
+    duration: 8000,
+    scrollStartPercent: 10,
+    scrollEndPercent: 90,
     enableScroll: true,
   },
 ];
@@ -71,7 +74,7 @@ const DEMO_SLIDES: DemoSlideConfig[] = [
 // 서브 컴포넌트
 // ============================================================================
 
-/** 브라우저 창 상단 헤더 (트래픽 라이트 + URL 바) */
+/** 브라우저 창 상단 헤더 */
 function BrowserHeader() {
   return (
     <div className="flex items-center gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700">
@@ -91,7 +94,6 @@ function BrowserHeader() {
   );
 }
 
-/** 자물쇠 아이콘 */
 function LockIcon() {
   return (
     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +107,6 @@ function LockIcon() {
   );
 }
 
-/** 슬라이드 네비게이션 화살표 버튼 */
 function NavigationArrow({
   direction,
   onClick,
@@ -131,7 +132,6 @@ function NavigationArrow({
   );
 }
 
-/** 슬라이드 카운터 (예: 1/3) */
 function SlideCounter({ current, total }: { current: number; total: number }) {
   return (
     <div className="absolute top-4 right-4 z-10">
@@ -142,7 +142,6 @@ function SlideCounter({ current, total }: { current: number; total: number }) {
   );
 }
 
-/** 하단 진행률 인디케이터 */
 function ProgressIndicator({
   slides,
   currentIndex,
@@ -155,7 +154,7 @@ function ProgressIndicator({
   onSlideSelect: (index: number) => void;
 }) {
   return (
-    <div className="flex justify-center items-center gap-6 mt-6">
+    <div className="flex justify-center items-center gap-4 sm:gap-6 mt-6 flex-wrap">
       {slides.map((slide, index) => {
         const tab = ROADMAP_TABS.find((t) => t.key === slide.key);
         const isActive = index === currentIndex;
@@ -175,7 +174,7 @@ function ProgressIndicator({
             >
               {tab?.label}
             </span>
-            <div className="w-20 h-1 rounded-full bg-gray-700 overflow-hidden">
+            <div className="w-16 sm:w-20 h-1 rounded-full bg-gray-700 overflow-hidden">
               <div
                 className="h-full rounded-full bg-purple-500 transition-all duration-100 ease-linear"
                 style={{
@@ -196,49 +195,34 @@ function ProgressIndicator({
 // ============================================================================
 
 export default function DemoSection() {
-  // Refs
   const sectionRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const mockupRef = useRef<HTMLDivElement>(null);
   const slideScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // State
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // 현재 슬라이드 정보
   const currentSlide = DEMO_SLIDES[currentIndex];
   const currentTab = ROADMAP_TABS.find((tab) => tab.key === currentSlide.key);
   const currentLabel = currentTab?.label ?? '';
-
-  // ============================================================================
-  // 슬라이드 네비게이션 핸들러
-  // ============================================================================
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
     setProgress(0);
   };
-
   const goToNext = () => {
     setCurrentIndex((prev) => (prev + 1) % DEMO_SLIDES.length);
     setProgress(0);
   };
-
   const goToPrev = () => {
     setCurrentIndex((prev) => (prev - 1 + DEMO_SLIDES.length) % DEMO_SLIDES.length);
     setProgress(0);
   };
 
-  // ============================================================================
-  // Effects
-  // ============================================================================
-
-  // 현재 슬라이드의 duration
   const currentDuration = currentSlide.duration;
 
-  // 자동 진행률 업데이트
   useEffect(() => {
     if (isPaused) return;
 
@@ -254,8 +238,6 @@ export default function DemoSection() {
     return () => clearInterval(intervalId);
   }, [isPaused, currentDuration]);
 
-  // progress가 100에 도달하면 다음 슬라이드로 전환
-  // 이 패턴은 progress 기반 슬라이드 전환에 필요하며, 의도된 동작임
   useEffect(() => {
     if (progress >= 100) {
       setCurrentIndex((prev) => (prev + 1) % DEMO_SLIDES.length);
@@ -263,10 +245,8 @@ export default function DemoSection() {
     }
   }, [progress]);
 
-  // 자동 스크롤에 필요한 설정값 추출
   const { enableScroll, scrollStartPercent, scrollEndPercent } = currentSlide;
 
-  // 자동 스크롤 처리
   useEffect(() => {
     if (!enableScroll) return;
 
@@ -276,28 +256,26 @@ export default function DemoSection() {
     const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
     if (maxScroll <= 0) return;
 
-    // 스크롤 위치 계산
     let targetScroll: number;
     if (progress <= scrollStartPercent) {
       targetScroll = 0;
     } else if (progress >= scrollEndPercent) {
       targetScroll = maxScroll;
     } else {
-      const scrollProgress = (progress - scrollStartPercent) / (scrollEndPercent - scrollStartPercent);
+      const scrollProgress =
+        (progress - scrollStartPercent) / (scrollEndPercent - scrollStartPercent);
       targetScroll = scrollProgress * maxScroll;
     }
 
     scrollContainer.scrollTop = targetScroll;
   }, [progress, currentIndex, enableScroll, scrollStartPercent, scrollEndPercent]);
 
-  // 슬라이드 변경 시 스크롤 위치 초기화
   useEffect(() => {
     slideScrollRefs.current.forEach((ref) => {
       if (ref) ref.scrollTop = 0;
     });
   }, [currentIndex]);
 
-  // GSAP 진입 애니메이션
   useEffect(() => {
     let cancelled = false;
 
@@ -340,21 +318,42 @@ export default function DemoSection() {
     }
 
     animate();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ============================================================================
-  // 슬라이드 컨텐츠 렌더링
+  // 슬라이드 컨텐츠 렌더링 (4섹션)
   // ============================================================================
 
   const renderSlideContent = (slideKey: RoadmapTabKey) => {
     switch (slideKey) {
-      case 'matrix':
-        return <RoadmapMatrix matrix={SAMPLE_MATRIX} />;
-      case 'courses':
-        return <CoursesList courses={[SAMPLE_COURSE_SINGLE]} />;
-      case 'pbl':
-        return <PBLCourseView course={SAMPLE_PBL} />;
+      case 'competencies':
+        return (
+          <CompetencyModelingTable
+            competencies={SAMPLE_ROADMAP_RESULT.competencies}
+            canEdit={false}
+          />
+        );
+      case 'structure':
+        return (
+          <RoadmapMatrix
+            competencies={SAMPLE_ROADMAP_RESULT.competencies}
+            trainingStructure={SAMPLE_ROADMAP_RESULT.training_structure}
+            canEdit={false}
+          />
+        );
+      case 'plan':
+        return (
+          <AnnualTrainingPlanTable
+            plan={SAMPLE_ROADMAP_RESULT.annual_plan}
+            competencies={SAMPLE_ROADMAP_RESULT.competencies}
+            canEdit={false}
+          />
+        );
+      case 'specs':
+        return <CoursesList specs={SAMPLE_ROADMAP_RESULT.course_specs} canEdit={false} />;
       default:
         return null;
     }
@@ -370,21 +369,15 @@ export default function DemoSection() {
     return 'opacity-0 translate-x-8 pointer-events-none';
   };
 
-  // ============================================================================
-  // 렌더링
-  // ============================================================================
-
   return (
     <section
       id="demo"
       ref={sectionRef}
       className="py-12 sm:py-14 px-4 bg-gray-900 relative overflow-hidden"
     >
-      {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-900 to-black" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* Section Header */}
         <div ref={contentRef} className="text-center mb-6 opacity-0">
           <span className="inline-block px-4 py-1.5 bg-purple-500/10 text-purple-400 text-sm font-medium rounded-full mb-4 border border-purple-500/20">
             제품 데모
@@ -393,22 +386,19 @@ export default function DemoSection() {
             직접 경험해보세요
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
-            AI가 기업 맞춤형 교육 로드맵을 자동으로 생성합니다.
+            AI가 산인공 공식 양식에 맞춘 기업 맞춤형 교육 로드맵을 자동으로 생성합니다.
           </p>
         </div>
 
-        {/* Mockup Container */}
         <div
           ref={mockupRef}
           className="max-w-5xl mx-auto opacity-0"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
-          {/* Browser Frame */}
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
             <BrowserHeader />
 
-            {/* Content Area */}
             <div
               className="relative bg-white overflow-hidden"
               style={{ height: CONTENT_HEIGHT }}
@@ -416,14 +406,15 @@ export default function DemoSection() {
               <NavigationArrow direction="prev" onClick={goToPrev} />
               <NavigationArrow direction="next" onClick={goToNext} />
 
-              {/* Slides */}
               {DEMO_SLIDES.map((slide, index) => (
                 <div
                   key={slide.key}
                   className={`absolute inset-0 transition-all duration-500 ease-out ${getSlideClassName(index)}`}
                 >
                   <div
-                    ref={(el) => { slideScrollRefs.current[index] = el; }}
+                    ref={(el) => {
+                      slideScrollRefs.current[index] = el;
+                    }}
                     className="w-full h-full overflow-y-auto p-4 sm:p-6"
                   >
                     {renderSlideContent(slide.key)}
@@ -433,11 +424,9 @@ export default function DemoSection() {
 
               <SlideCounter current={currentIndex + 1} total={DEMO_SLIDES.length} />
 
-              {/* Bottom Gradient Overlay */}
               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
             </div>
 
-            {/* Description Bar */}
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -449,9 +438,7 @@ export default function DemoSection() {
                     {currentSlide.description}
                   </p>
                 </div>
-                <p className="text-gray-600 text-sm sm:hidden">
-                  {currentSlide.description}
-                </p>
+                <p className="text-gray-600 text-sm sm:hidden">{currentSlide.description}</p>
               </div>
             </div>
           </div>
@@ -464,7 +451,6 @@ export default function DemoSection() {
           />
         </div>
 
-        {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
           <Link
             href="/demo"

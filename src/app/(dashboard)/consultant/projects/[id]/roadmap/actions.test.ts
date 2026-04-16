@@ -43,6 +43,15 @@ vi.mock('@/lib/services/roadmap', () => ({
   finalizeRoadmap: vi.fn().mockResolvedValue(undefined),
   fetchRoadmapVersions: vi.fn().mockResolvedValue([]),
   fetchRoadmapVersion: vi.fn().mockResolvedValue(null),
+  /** raw row → 신규 4섹션 매퍼. 테스트에서는 identity-ish 변환으로 단순화. */
+  fromRoadmapVersionColumns: vi.fn((row: Record<string, unknown>) => ({
+    diagnosis_summary:
+      typeof row?.diagnosis_summary === 'string' ? row.diagnosis_summary : '',
+    competencies: [],
+    training_structure: [],
+    annual_plan: { items: [], usage_plan: '' },
+    course_specs: [],
+  })),
 }));
 
 vi.mock('@/lib/services/activity-log', () => ({
@@ -436,7 +445,7 @@ describe('fetchRoadmapVersions', () => {
   it('본인 프로젝트 → 서비스 함수 호출', async () => {
     const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
     const mockVersions = [
-      { id: 'v1', status: 'DRAFT', created_at: '2026-01-01' },
+      { id: 'v1', status: 'DRAFT', created_at: '2026-01-01', version_number: 1 },
     ];
     vi.mocked(fetchVersionsMock).mockResolvedValueOnce(mockVersions as never);
 
@@ -450,7 +459,13 @@ describe('fetchRoadmapVersions', () => {
 
     const result = await fetchRoadmapVersions(PROJECT_ID);
 
-    expect(result).toEqual(mockVersions);
+    // 변환 후: 신규 4섹션 구조 + legacy 필드 포함
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'v1', status: 'DRAFT', version_number: 1 });
+    expect(result[0]).toHaveProperty('competencies');
+    expect(result[0]).toHaveProperty('training_structure');
+    expect(result[0]).toHaveProperty('annual_plan');
+    expect(result[0]).toHaveProperty('course_specs');
     expect(fetchVersionsMock).toHaveBeenCalledWith(PROJECT_ID);
   });
 
@@ -470,7 +485,7 @@ describe('fetchRoadmapVersions', () => {
 
   it('OPS_ADMIN → 서비스 함수 호출 (프로젝트 조회 생략)', async () => {
     const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
-    const mockVersions = [{ id: 'v1', status: 'FINAL', created_at: '2026-01-01' }];
+    const mockVersions = [{ id: 'v1', status: 'FINAL', created_at: '2026-01-01', version_number: 1 }];
     vi.mocked(fetchVersionsMock).mockResolvedValueOnce(mockVersions as never);
 
     // getCachedProfile: role 조회 → OPS_ADMIN
@@ -478,7 +493,8 @@ describe('fetchRoadmapVersions', () => {
 
     const result = await fetchRoadmapVersions(PROJECT_ID);
 
-    expect(result).toEqual(mockVersions);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'v1', status: 'FINAL' });
   });
 });
 
@@ -510,8 +526,9 @@ describe('fetchRoadmapVersion', () => {
     const mockRoadmap = {
       id: ROADMAP_ID,
       project_id: PROJECT_ID,
+      version_number: 1,
       status: 'DRAFT',
-      result: { diagnosis_summary: '진단' },
+      diagnosis_summary: '진단',
     };
     vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
 
@@ -525,7 +542,10 @@ describe('fetchRoadmapVersion', () => {
 
     const result = await fetchRoadmapVersion(ROADMAP_ID);
 
-    expect(result).toEqual(mockRoadmap);
+    // 변환 후 형태 확인
+    expect(result).toMatchObject({ id: ROADMAP_ID, status: 'DRAFT' });
+    expect(result).toHaveProperty('competencies');
+    expect(result).toHaveProperty('course_specs');
   });
 
   it('타 컨설턴트 프로젝트 로드맵 → null 반환', async () => {
@@ -833,14 +853,15 @@ describe('fetchRoadmapVersions — 에러/엣지 케이스', () => {
 
   it('SYSTEM_ADMIN → 서비스 함수 호출 (프로젝트 조회 생략)', async () => {
     const { fetchRoadmapVersions: fetchVersionsMock } = await import('@/lib/services/roadmap');
-    const mockVersions = [{ id: 'v1', status: 'FINAL' }];
+    const mockVersions = [{ id: 'v1', status: 'FINAL', version_number: 1 }];
     vi.mocked(fetchVersionsMock).mockResolvedValueOnce(mockVersions as never);
 
     serverMock.addResult({ data: { role: 'SYSTEM_ADMIN', status: 'ACTIVE' }, error: null });
 
     const result = await fetchRoadmapVersions(PROJECT_ID);
 
-    expect(result).toEqual(mockVersions);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'v1', status: 'FINAL' });
   });
 
   it('예외 발생 → 빈 배열 반환', async () => {
@@ -890,14 +911,15 @@ describe('fetchRoadmapVersion — 에러/엣지 케이스', () => {
 
   it('OPS_ADMIN → 프로젝트 접근 검증 없이 반환', async () => {
     const { fetchRoadmapVersion: fetchVersionMock } = await import('@/lib/services/roadmap');
-    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, status: 'FINAL' };
+    const mockRoadmap = { id: ROADMAP_ID, project_id: PROJECT_ID, version_number: 1, status: 'FINAL' };
     vi.mocked(fetchVersionMock).mockResolvedValueOnce(mockRoadmap as never);
 
     serverMock.addResult({ data: { role: 'OPS_ADMIN', status: 'ACTIVE' }, error: null });
 
     const result = await fetchRoadmapVersion(ROADMAP_ID);
 
-    expect(result).toEqual(mockRoadmap);
+    expect(result).toMatchObject({ id: ROADMAP_ID, status: 'FINAL' });
+    expect(result).toHaveProperty('competencies');
   });
 
   it('CONSULTANT_APPROVED + 프로젝트 없음 → null 반환', async () => {

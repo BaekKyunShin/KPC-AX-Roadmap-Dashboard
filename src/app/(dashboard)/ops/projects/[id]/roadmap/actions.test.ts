@@ -20,6 +20,15 @@ const mockFetchRoadmapVersion = vi.fn();
 vi.mock('@/lib/services/roadmap', () => ({
   fetchRoadmapVersions: (...args: unknown[]) => mockFetchRoadmapVersions(...args),
   fetchRoadmapVersion: (...args: unknown[]) => mockFetchRoadmapVersion(...args),
+  /** raw row → 신규 4섹션 매퍼. 테스트에서는 단순화. */
+  fromRoadmapVersionColumns: vi.fn((row: Record<string, unknown>) => ({
+    diagnosis_summary:
+      typeof row?.diagnosis_summary === 'string' ? row.diagnosis_summary : '',
+    competencies: [],
+    training_structure: [],
+    annual_plan: { items: [], usage_plan: '' },
+    course_specs: [],
+  })),
 }));
 
 // ─── 테스트 대상 import ──────────────────────────────────────────────────────
@@ -67,7 +76,11 @@ describe('fetchRoadmapVersionsForOps', () => {
 
     const result = await fetchRoadmapVersionsForOps(TEST_PROJECT_ID);
 
-    expect(result).toEqual(mockVersions);
+    // 변환 후: id/status는 유지되고 신규 4섹션이 추가된 형태
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 'v1', version_number: 2, status: 'DRAFT' });
+    expect(result[0]).toHaveProperty('competencies');
+    expect(result[1]).toMatchObject({ id: 'v2', version_number: 1, status: 'FINAL' });
     expect(mockFetchRoadmapVersions).toHaveBeenCalledWith(TEST_PROJECT_ID);
   });
 
@@ -122,7 +135,9 @@ describe('fetchRoadmapVersionForOps', () => {
 
     const result = await fetchRoadmapVersionForOps(TEST_ROADMAP_ID);
 
-    expect(result).toEqual(mockVersion);
+    expect(result).toMatchObject({ id: TEST_ROADMAP_ID, version_number: 1, status: 'FINAL' });
+    expect(result).toHaveProperty('competencies');
+    expect(result).toHaveProperty('course_specs');
     expect(mockFetchRoadmapVersion).toHaveBeenCalledWith(TEST_ROADMAP_ID);
   });
 
