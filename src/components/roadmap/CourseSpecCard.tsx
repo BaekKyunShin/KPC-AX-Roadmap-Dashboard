@@ -277,13 +277,13 @@ function SubjectsSection({
               <tr>
                 <th
                   scope="col"
-                  className="w-[180px] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  className="w-[180px] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 >
                   교과목명
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 >
                   <span>세부 내용</span>
                   <span className="ml-1 font-normal normal-case text-[11px] text-muted-foreground/80">
@@ -292,7 +292,7 @@ function SubjectsSection({
                 </th>
                 <th
                   scope="col"
-                  className="w-[90px] px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  className="w-[90px] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 >
                   시간
                 </th>

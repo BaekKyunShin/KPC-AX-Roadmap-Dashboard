@@ -255,7 +255,7 @@ export function RoadmapMatrix({
             <tr>
               <th
                 scope="col"
-                className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground bg-muted/50 w-[180px]"
+                className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground bg-muted/50 w-[180px]"
               >
                 역량
               </th>

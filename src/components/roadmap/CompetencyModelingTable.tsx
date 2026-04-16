@@ -97,14 +97,14 @@ export function CompetencyModelingTable({
             <tr>
               <th
                 rowSpan={2}
-                className="w-[12%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
+                className="w-[12%] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
                 scope="col"
               >
                 역량명
               </th>
               <th
                 rowSpan={2}
-                className="w-[26%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
+                className="w-[26%] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide align-middle"
                 scope="col"
               >
                 <span>역량 정의</span>
@@ -131,7 +131,7 @@ export function CompetencyModelingTable({
             </tr>
             <tr>
               <th
-                className="w-[20%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                className="w-[20%] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 scope="col"
               >
                 <span>지식</span>
@@ -140,7 +140,7 @@ export function CompetencyModelingTable({
                 </span>
               </th>
               <th
-                className="w-[20%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                className="w-[20%] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 scope="col"
               >
                 <span>기술</span>
@@ -149,7 +149,7 @@ export function CompetencyModelingTable({
                 </span>
               </th>
               <th
-                className="w-[22%] px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                className="w-[22%] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 scope="col"
               >
                 태도

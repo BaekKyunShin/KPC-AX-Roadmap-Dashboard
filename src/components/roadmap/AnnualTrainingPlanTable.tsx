@@ -94,7 +94,7 @@ export function AnnualTrainingPlanTable({
                   <th
                     key={col.key}
                     scope="col"
-                    className={`${col.width} ${col.align} px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
+                    className={`${col.width} text-center px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide`}
                   >
                     {col.label}
                   </th>
