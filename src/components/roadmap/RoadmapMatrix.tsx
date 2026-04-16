@@ -100,19 +100,19 @@ function TrainingItemCard({ item, originalIndex, canEdit, onEdit }: TrainingItem
   return (
     <div className="group relative rounded-md border border-border bg-background p-3 text-xs shadow-xs hover:shadow-sm transition-shadow">
       <div className="space-y-1">
-        <div className="font-semibold text-foreground break-keep">{item.content}</div>
+        <div className="font-semibold text-foreground break-keep [overflow-wrap:anywhere]">{item.content}</div>
         {item.target_audience && (
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground [overflow-wrap:anywhere]">
             <span className="font-medium text-foreground/70">대상:</span> {item.target_audience}
           </div>
         )}
         {item.method && (
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground [overflow-wrap:anywhere]">
             <span className="font-medium text-foreground/70">방법:</span> {item.method}
           </div>
         )}
         {item.goal && (
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground [overflow-wrap:anywhere]">
             <span className="font-medium text-foreground/70">목표:</span> {item.goal}
           </div>
         )}
