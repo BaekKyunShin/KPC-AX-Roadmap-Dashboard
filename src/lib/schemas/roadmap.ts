@@ -105,21 +105,78 @@ export const createRoadmapInputSchema = z.object({
   revisionPrompt: z.string().trim().min(1).max(2000).optional(),
 });
 
+// ============================================================================
+// 편집 중(DRAFT) 임시 저장용 loose 스키마
+// ----------------------------------------------------------------------------
+// 사용자가 "역량 추가" 버튼으로 빈 역량을 일단 추가하거나, 과정명을 지웠다가
+// 다시 채우는 등 중간 상태가 저장되어야 한다. 따라서 editRoadmapUpdatesSchema
+// 에서 쓰는 sub-schema는 엄격한 min(1)·positive()를 완화한다.
+// 최종 확정(FINAL)은 validateRoadmap가 별도로 엄격 검증한다.
+// ============================================================================
+
+const editableCompetencySchema = z.object({
+  name: z.string(),
+  definition: z.string(),
+  knowledge: z.array(z.string()),
+  skills: z.array(z.string()),
+  attitudes: z.array(z.string()),
+});
+
+const editableTrainingStructureItemSchema = z.object({
+  competency_name: z.string(),
+  level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+  content: z.string(),
+  target_audience: z.string(),
+  method: z.string(),
+  goal: z.string(),
+});
+
+const editableAnnualPlanItemSchema = z.object({
+  competency_name: z.string(),
+  course_name: z.string(),
+  format: z.string(),
+  hours: z.number().nonnegative(),
+  notes: z.string(),
+});
+
+const editableAnnualPlanSchema = z.object({
+  items: z.array(editableAnnualPlanItemSchema),
+  usage_plan: z.string(),
+});
+
+const editableCourseSubjectSchema = z.object({
+  name: z.string(),
+  details: z.string(),
+  hours: z.number().nonnegative(),
+});
+
+const editableCourseSpecSchema = z.object({
+  course_name: z.string(),
+  format: z.string(),
+  recommended_program: z.string(),
+  goal: z.string(),
+  main_content: z.string(),
+  target_audience: z.string(),
+  subjects: z.array(editableCourseSubjectSchema),
+});
+
+const editableCourseSpecsSchema = z.array(editableCourseSpecSchema);
+
 // editRoadmapManually updates 스키마
-// 신규 필드 포함, 최소 1개 이상 필드 수정 필수
+// 신규 필드 포함, 최소 1개 이상 필드 수정 필수. DRAFT 중간 상태 허용 (loose)
 export const editRoadmapUpdatesSchema = z
   .object({
     diagnosis_summary: z.string().max(5000).optional(),
     setup_necessity: z.string().max(5000).optional(),
     outcome_summary: outcomeSummarySchema.optional(),
-    competencies: z.array(competencySchema).optional(),
+    competencies: z.array(editableCompetencySchema).optional(),
     ncs_used: z.boolean().optional(),
     ncs_methodology: z.string().max(5000).optional(),
     ncs_derivation_method: z.string().max(5000).optional(),
-    training_structure: z.array(trainingStructureItemSchema).optional(),
+    training_structure: z.array(editableTrainingStructureItemSchema).optional(),
     training_structure_method: z.string().max(5000).optional(),
-    annual_plan: annualPlanSchema.optional(),
-    course_specs: courseSpecsSchema.optional(),
+    annual_plan: editableAnnualPlanSchema.optional(),
+    course_specs: editableCourseSpecsSchema.optional(),
   })
   .refine(
     (data) =>

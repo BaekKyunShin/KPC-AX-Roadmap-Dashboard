@@ -238,17 +238,17 @@ describe('editRoadmapUpdatesSchema — course_specs', () => {
     expect(result.success).toBe(true);
   });
 
-  it('course_specs가 2개 → 실패 (최소 3개)', () => {
+  it('course_specs가 2개여도 편집 저장은 통과 (DRAFT 중간 상태, 최소 3개는 FINAL 확정 시 validateRoadmap에서 검증)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
       course_specs: [
         { ...validCourseSpec, course_name: '과정1' },
         { ...validCourseSpec, course_name: '과정2' },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  it('subjects 배열이 비어있음 → 실패', () => {
+  it('subjects 배열이 비어있어도 편집 저장은 통과 (DRAFT 중간 상태)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
       course_specs: [
         { ...validCourseSpec, course_name: '과정1', subjects: [] },
@@ -256,10 +256,10 @@ describe('editRoadmapUpdatesSchema — course_specs', () => {
         { ...validCourseSpec, course_name: '과정3' },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  it('subject.hours가 0 이하 → 실패', () => {
+  it('subject.hours가 0이어도 편집 저장은 통과 (nonnegative — 사용자가 채우는 중)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
       course_specs: [
         {
@@ -271,7 +271,29 @@ describe('editRoadmapUpdatesSchema — course_specs', () => {
         { ...validCourseSpec, course_name: '과정3' },
       ],
     });
+    expect(result.success).toBe(true);
+  });
+
+  it('subject.hours가 음수면 여전히 실패 (nonnegative)', () => {
+    const result = editRoadmapUpdatesSchema.safeParse({
+      course_specs: [
+        {
+          ...validCourseSpec,
+          course_name: '과정1',
+          subjects: [{ name: '과목', details: '세부', hours: -1 }],
+        },
+      ],
+    });
     expect(result.success).toBe(false);
+  });
+
+  it('빈 역량 추가 저장 → 통과 (사용자가 역량 추가 버튼으로 새로 만든 직후)', () => {
+    const result = editRoadmapUpdatesSchema.safeParse({
+      competencies: [
+        { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
+      ],
+    });
+    expect(result.success).toBe(true);
   });
 });
 
