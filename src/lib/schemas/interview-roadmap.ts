@@ -258,6 +258,20 @@ interface LegacyCompanyDetails {
     text?: string;
     attachment_urls?: string[];
   };
+  // Ⅰ장 개요 (OFA-06.5 신규)
+  roadmap_overview?: {
+    establishment_necessity?: string;
+    ai_competency_level?: AiCompetencyLevel | string;
+    selected_tasks_summary?: string;
+    roadmap_summary?: string;
+    hrd_report_attachment?: {
+      storage_path?: string;
+      file_name?: string;
+      mime_type?: string;
+      size?: number;
+      uploaded_at?: string;
+    } | null;
+  } | null;
 }
 
 interface LegacyJobTask {
@@ -327,6 +341,33 @@ export function mapInterviewRowToRoadmapInterview(
     partial.analysis_notes = {
       text: savedAn.text ?? '',
       attachment_urls: Array.isArray(savedAn.attachment_urls) ? savedAn.attachment_urls : [],
+    };
+  }
+
+  // Ⅰ장 개요 복원 (OFA-06.5 신규)
+  const savedOv = row.company_details?.roadmap_overview;
+  if (savedOv) {
+    const validLevels: AiCompetencyLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
+    const lvl = savedOv.ai_competency_level;
+    const level: AiCompetencyLevel = validLevels.includes(lvl as AiCompetencyLevel)
+      ? (lvl as AiCompetencyLevel)
+      : 'BEGINNER';
+    const att = savedOv.hrd_report_attachment;
+    partial.overview = {
+      establishment_necessity: savedOv.establishment_necessity ?? '',
+      ai_competency_level: level,
+      selected_tasks_summary: savedOv.selected_tasks_summary ?? '',
+      roadmap_summary: savedOv.roadmap_summary ?? '',
+      hrd_report_attachment:
+        att && typeof att.storage_path === 'string' && typeof att.file_name === 'string'
+          ? {
+              storage_path: att.storage_path,
+              file_name: att.file_name,
+              mime_type: att.mime_type,
+              size: att.size,
+              uploaded_at: att.uploaded_at,
+            }
+          : undefined,
     };
   }
 

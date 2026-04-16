@@ -236,6 +236,8 @@ function mapRoadmapToLegacyColumns(
       roadmap_company_requirements: cr,
       roadmap_interview_method: data.interview_method ?? 'ONSITE',
       roadmap_analysis_notes: an,
+      // Ⅰ장 개요 (OFA-06.5 신규 — HRD이음 첨부 메타 포함)
+      roadmap_overview: data.overview ?? null,
     },
     job_tasks: tasks.map((t) => ({
       id: t.id,
