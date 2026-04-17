@@ -870,7 +870,7 @@ function RoadmapOverviewSummarySkeleton() {
 /** VersionSelector 바 스켈레톤 (sticky 바 형태) */
 function VersionSelectorBarSkeleton() {
   return (
-    <div className="sticky top-16 z-20 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
+    <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
       <div className="flex items-center gap-2">
         <SkeletonBar height="h-9" width="w-32" />
         <SkeletonBar height="h-6" width="w-16" variant="secondary" />
@@ -915,7 +915,7 @@ function RoadmapVersionCardSkeleton() {
       </div>
 
       {/* 탭 바 (4개) */}
-      <div className="sticky top-32 z-10 bg-card border-b border-gray-200">
+      <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
         <nav className="flex -mb-px overflow-x-auto">
           {TAB_LABELS.map((label, i) => (
             <div
