@@ -3222,9 +3222,16 @@ gh pr create --base feature/official-form-alignment \
 
 **기존 프로젝트 컨벤션 준수:**
 - PBL 서비스 파일들(`src/lib/services/pbl/*.ts`)은 **기존 `roadmap/` 디렉터리와 평행**한 구조로 작성.
-- 상태 배지는 `src/components/pbl/PBLStatusBadge.tsx` 신규(기존 `RoadmapStatusBadge` 패턴).
+- 상태 배지는 `src/components/pbl/PBLStatusBadge.tsx` 신규(기존 `src/components/roadmap/RoadmapStatusBadge.tsx` 패턴).
 - 내보내기는 `src/lib/services/export/pdf/`, `export/xlsx/` 신규 경로에 PBL 버전 추가(legacy `export-*.ts`는 Step 12에서 deprecate).
 - Server Action 파일은 `/consultant/projects/[id]/pbl/actions.ts` 신규.
+- **Step 6.5에서 추출된 공용 디자인 키트 재사용(중요):**
+  - 경로: `src/components/roadmap/shared/` (배럴 export: `@/components/roadmap/shared`).
+  - 제공 자산: `TableTextCell`, `TableInlineCell`, `TableNumericCell`, `SyncedTableRow`, `SectionNumberBadge`, `TABLE_CELL_TEXT_CLASS`·`TABLE_CELL_INLINE_CLASS`·`READ_ONLY_TEXT_CLASS`·`CARD_HEADER_CLASS` 스타일 상수.
+  - PBL 표(교과목 프로파일·AI 도구 활용계획·시설/장비·수행수준 체크 등)는 모두 이 키트 기반으로 작성해 로드맵·PBL 시각 정합성을 유지한다.
+- **Step 6.5 UI 컨벤션**: `AutoResizeTextarea`(`src/components/ui/auto-resize-textarea.tsx`) + `useRowHeightSync`(`src/hooks/useRowHeightSync.ts`)로 같은 행 textarea 높이 동기화, `rows=1` Textarea로 상단 정렬 통일.
+- **Step 5에서 공용화된 인터뷰 자산**: `InterviewStepper`(`src/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper.tsx`) + `useInterviewAutoSave`(`_hooks/useInterviewAutoSave.ts`)는 PBL 결과물 편집 흐름에는 직접 사용하지 않지만, 비슷한 자동 저장 UX가 필요하면 훅 로직을 참고해 재사용한다.
+- **Step 8 산출물 의존**: PBL 인터뷰 스키마·8스텝 UI는 Step 8에서 확정되며, PBL 결과물은 `interviews.pbl_data`(JSONB, 마이그 063) 컬럼에서만 읽어온다. `interviews.answers` 레거시 컬럼은 사용 금지.
 
 **목표:** PBL 보고서 생성·편집·버전관리·PDF/XLSX 내보내기. `pbl_reports` 테이블 기반 CRUD + LLM 생성. **양식 2번 12~17p (Ⅳ·Ⅴ장) 1:1 매칭**.
 
@@ -3561,7 +3568,8 @@ Supabase 모킹 팩토리 활용. RPC mocking은 `mockSupabase.rpc.mockResolvedV
 
 파일: `src/components/pbl/PBLOverview.tsx` + `.test.tsx`
 - 기업명·훈련과정명·훈련시간·AI역량수준·훈련목표 체크 표시
-- 편집 가능(수기 입력 필드)
+- 편집 가능(수기 입력 필드) — `AutoResizeTextarea` + `TableInlineCell` 활용
+- 로드맵의 `RoadmapOverviewSummary.tsx`(Step 6.5 신규)가 참고 구현. PBL 양식 2번 3p 필드에 맞춰 평행 구조로 신규 작성.
 
 - [ ] **Task 9: UI — `PBLTrainingTargets` (Ⅲ장 — 요구분석·훈련대상)**
 
@@ -3574,37 +3582,42 @@ Supabase 모킹 팩토리 활용. RPC mocking은 `mockSupabase.rpc.mockResolvedV
 파일: `src/components/pbl/PBLToolUsagePlan.tsx` + `.test.tsx`
 - 단계별 행 테이블 (단계·주요활동·AI도구·활용데이터·목적·구체방법)
 - 행 추가/삭제, 편집 가능
+- 행 편집 셀은 `@/components/roadmap/shared`의 `TableTextCell`/`TableInlineCell` + `SyncedTableRow`(같은 행 textarea 높이 동기화)로 구성. 3단계 이하 시 validator 경고.
 
 - [ ] **Task 11: UI — `PBLTrainingPlan` (훈련 실시 계획)**
 
 파일: `src/components/pbl/PBLTrainingPlan.tsx` + `.test.tsx`
 - 교과목 프로파일(단원별 훈련시간·강사 투입시간)
 - 학습그룹 구성 / 시설·장비 / 강사 3개 서브 섹션
+- 교과목 프로파일 표는 `SyncedTableRow`로 훈련시간·강사 투입시간 셀 높이 동기화, 숫자 셀은 `TableNumericCell` 사용. **강사 투입시간 외부/내부 합 === 훈련시간** 불일치 시 인라인 경고(양식 가이드 #9).
 
 - [ ] **Task 12: UI — `PBLEvaluationPlan` (평가 계획)**
 
 파일: `src/components/pbl/PBLEvaluationPlan.tsx` + `.test.tsx`
 - 과정평가: 포트폴리오/문제해결시나리오/작업장 평가 선택 + 평가기준
 - 결과평가: 만족도·성취도·현업적용도 설문 항목 표시(고정 템플릿)
+- 과정평가 수행수준 표는 `TableNumericCell`(1~5 체크), 결과평가는 고정 문항을 읽기 전용 텍스트로 렌더하고 응답 슬롯만 입력 가능.
 
 - [ ] **Task 13: UI — `PBLPerformanceMetrics` (성과분석 + 확산 전략)**
 
 파일: `src/components/pbl/PBLPerformanceMetrics.tsx` + `.test.tsx`
 - 정량/정성 지표 입력
 - 내재화·전사 확산 방안 입력
+- 자유 텍스트 bullet 입력은 `AutoResizeTextarea` + `TABLE_CELL_TEXT_CLASS` 사용.
 
-- [ ] **Task 14: `ConsultantPBLClient` 오케스트레이터 + `PBLStatusBadge`**
+- [ ] **Task 14: `ConsultantPBLClient` 오케스트레이터 + `PBLStatusBadge` + 공용 헤더 재사용**
 
 파일:
 - `src/app/(dashboard)/consultant/projects/[id]/pbl/_components/ConsultantPBLClient.tsx` + `.test.tsx`
-- 신규: `src/components/pbl/PBLStatusBadge.tsx` + `.test.tsx` — `RoadmapStatusBadge.tsx` 패턴 그대로 복제. props: `{ status: 'DRAFT' | 'FINAL' | 'ARCHIVED'; versionNumber?: number }`. **색상·라벨은 기존 `ROADMAP_VERSION_STATUS_CONFIG`(src/lib/constants/status.ts) 그대로 재사용** (PBL 보고서와 로드맵 보고서 모두 동일한 DRAFT/FINAL/ARCHIVED 의미). 별도 `PBL_REPORT_STATUS_CONFIG`는 신설하지 않음 — 추후 PBL 라벨이 갈라져야 할 시점에 분리.
+- 신규: `src/components/pbl/PBLStatusBadge.tsx` + `.test.tsx` — `src/components/roadmap/RoadmapStatusBadge.tsx` 패턴 그대로 복제. props: `{ status: 'DRAFT' | 'FINAL' | 'ARCHIVED'; versionNumber?: number }`. **색상·라벨은 기존 `ROADMAP_VERSION_STATUS_CONFIG`(src/lib/constants/status.ts) 그대로 재사용** (PBL 보고서와 로드맵 보고서 모두 동일한 DRAFT/FINAL/ARCHIVED 의미). 별도 `PBL_REPORT_STATUS_CONFIG`는 신설하지 않음 — 추후 PBL 라벨이 갈라져야 할 시점에 분리.
 
 ConsultantPBLClient 구성:
+- **Step 6.5 레이아웃 컨벤션 계승**: 사이드바 제거 → `VersionSelector`(`src/components/roadmap/VersionSelector.tsx`) + `RegenerateAccordion`(`src/components/roadmap/RegenerateAccordion.tsx`) + 풀 너비 본문 구조. 해당 두 컴포넌트가 PBL에도 그대로 동작한다면 재사용, 타입이 로드맵 전용이라면 **제네릭화하지 말고 `PBLVersionSelector`·`PBLRegenerateAccordion`으로 평행 복제**(회귀 0 원칙).
 - 상단 PBLStatusBadge (위에서 신규)
 - 생성 버튼(DRAFT 없을 때) / 재생성 / 최종 확정 / 공유 토글
-- 하위 컴포넌트(Task 8~13) 마운트
+- 하위 컴포넌트(Task 8~13) 마운트 — 모든 표는 `@/components/roadmap/shared` 공용 키트 사용.
 
-`composition-patterns` 스킬로 `ConsultantRoadmapClient`와 공통 Wrapper 추출 검토.
+`composition-patterns` 스킬로 `ConsultantRoadmapClient`와 공통 Wrapper 추출 검토. **다만 로드맵 경로 수정은 금지** — PBL 쪽에서만 평행 구조를 먼저 확정하고, 공통 Wrapper 추출은 Step 12 `refactoring` 단계에서 판단한다.
 
 - [ ] **Task 15: `page.tsx`·`layout.tsx`·`loading.tsx`**
 
@@ -3621,26 +3634,31 @@ ConsultantPBLClient 구성:
 
 - [ ] **Task 17: PDF/XLSX 내보내기 PBL 버전**
 
-**프로젝트 기존 네이밍 확인**:
-- `src/lib/services/export/pdf/pdf-generator.ts` → `export async function generatePDF(data: RoadmapExportData): Promise<Blob>` (현재 로드맵 전용)
-- `src/lib/services/export/xlsx/xlsx-generator.ts` → `export async function generateXLSX(data: RoadmapExportData): Promise<Uint8Array>` + `downloadXLSX`
-- 공통 데이터 타입: `RoadmapExportData` (PDF 모듈에서 export)
+**프로젝트 기존 네이밍 확인** (Step 6에서 4섹션 분할 렌더러로 재작성됨):
+- `src/lib/services/export/pdf/pdf-generator.ts` → `export async function generatePDF(data: RoadmapExportData): Promise<Blob>` (현재 로드맵 전용).
+- 로드맵 PDF 섹션 렌더러(Step 6): `pdf-cover-renderer.ts`, `pdf-competency-renderer.ts`, `pdf-structure-renderer.ts`, `pdf-annual-renderer.ts`, `pdf-coursespec-renderer.ts` + 공통 `pdf-constants.ts`/`pdf-helpers.ts`/`pdf-font-loader.ts`.
+- `src/lib/services/export/xlsx/xlsx-generator.ts` → `export async function generateXLSX(data: RoadmapExportData): Promise<Uint8Array>` + `downloadXLSX`. 시트 빌더: `xlsx-sheet-builder.ts` (Step 6에서 5시트 구조로 재작성).
+- 공통 데이터 타입: `RoadmapExportData` (PDF 모듈에서 export).
 
-**신규 구조** (기존 회귀 0 원칙):
+**신규 구조** (기존 회귀 0 원칙 — Step 6·6.5 건드리지 않음):
 - 신규 타입: `PBLExportData` (`src/lib/services/export/pdf/pdf-generator.ts` 또는 별도 `pbl-export-types.ts` — 정하고 기록).
 - 신규 함수:
   - `export async function generatePBLPDF(data: PBLExportData): Promise<Blob>` (기존 `generatePDF`와 대칭 네이밍)
   - `export async function generatePBLXLSX(data: PBLExportData): Promise<Uint8Array>` + `downloadPBLXLSX`
-- 신규 렌더링 파일:
-  - `src/lib/services/export/pdf/pdf-pbl-renderer.ts` + `.test.ts` — PBL 섹션별 렌더러(개요/요구분석/훈련과제/운영계획/성과)
-  - `src/lib/services/export/xlsx/xlsx-pbl-sheet-builder.ts` + `.test.ts` — PBL 시트 빌더
+- 신규 렌더링 파일(로드맵 패턴 그대로 평행 분할):
+  - `src/lib/services/export/pdf/pdf-pbl-overview-renderer.ts` (Ⅰ장)
+  - `src/lib/services/export/pdf/pdf-pbl-requirements-renderer.ts` (Ⅱ·Ⅲ장)
+  - `src/lib/services/export/pdf/pdf-pbl-operation-renderer.ts` (Ⅳ장)
+  - `src/lib/services/export/pdf/pdf-pbl-performance-renderer.ts` (Ⅴ장 + 결과보고서 요약)
+  - 각 파일 `.test.ts` 포함. 단, 네이밍은 PR 리뷰 단계에서 `pdf-pbl-renderer.ts` 단일 파일과의 장단점 비교 가능(분할이 기본).
+  - `src/lib/services/export/xlsx/xlsx-pbl-sheet-builder.ts` + `.test.ts` — PBL 시트 빌더.
 - 배럴 export 갱신:
   - `export/pdf/index.ts`: `generatePBLPDF`, `PBLExportData` 추가
   - `export/xlsx/index.ts`: `generatePBLXLSX`, `downloadPBLXLSX` 추가
 
 **원칙**:
 - 기존 `generatePDF`·`generateXLSX` 시그니처·동작은 **절대 건드리지 않는다**(로드맵 회귀 방지).
-- 공통 유틸(`pdf-font-loader`, `pdf-constants`, `pdf-helpers`, `xlsx-styles`, `xlsx-formatter`)은 현 모듈을 그대로 재사용. 필요한 헬퍼가 로드맵 특화되어 있으면 먼저 중립화 리팩터링 후 재사용.
+- 공통 유틸(`pdf-font-loader`, `pdf-constants`, `pdf-helpers`, `xlsx-styles`, `xlsx-formatter`)은 현 모듈을 그대로 재사용. 필요한 헬퍼가 로드맵 특화되어 있으면 먼저 중립화 리팩터링 후 재사용. 중립화 리팩터링은 PR 분리.
 - `serena` MCP로 심볼 탐색·안전 수정.
 
 - [ ] **Task 18: 프로젝트 워크플로우 상태 전환 연결**
@@ -3695,14 +3713,27 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-09): PBL �
 
 **목표:** 산인공 양식 2번 HWPX를 템플릿화하고 PBL 데이터 → HWPX 다운로드 파이프라인 완성. 결과보고서 파트 포함(과정개발보고서 Ⅰ~Ⅴ + 결과보고서 1~4).
 
+**Step 7 실제 산출물 (본 Step이 계승·확장할 자산):**
+- 템플릿: `templates/hwpx/roadmap.hwpx` (수동 편집 완료).
+- Python: `api/hwpx/generate.py`(ROADMAP/PBL `type` 분기 **이미 골격 존재**, 본 Step에서 PBL 경로 실구현), `api/hwpx/_placeholders_roadmap.py`(pytest 19 PASS), **`api/hwpx/_hwpx_helpers.py` 공통 헬퍼 이미 추출**(OXML 셀 편집·행 복제·플레이스홀더 치환), `api/hwpx/test_placeholders_roadmap.py`, `api/hwpx/ping.py`.
+- Node 클라이언트: `src/lib/services/export/hwpx/hwpx-client.ts`(vitest 8 PASS), `hwpx-payload-roadmap.ts`(vitest 18 PASS), `index.ts` 배럴.
+- 훅: `src/hooks/useHwpxDownload.ts`(vitest 5 PASS) — Server Action base64 → Blob → `a.download`. **본 Step에서 PBL용으로 재사용, 인터페이스 변경 금지**.
+- Server Action: `exportRoadmapAsHwpxAction`(`/consultant/projects/[id]/roadmap/actions.ts`).
+- 보안: `X-HWPX-Secret` 헤더 검증 유지 (Step 3 보안 원칙).
+- 구조 문서: `docs/references/hwpx-structure-roadmap.md` (49개 표 구조 매핑).
+
 **파일:**
-- 신규: `templates/hwpx/pbl.hwpx` (산인공 양식 2번 플레이스홀더 삽입본)
-- 변경: `api/hwpx/generate.py` (type=pbl 분기 추가)
-- 신규: `api/hwpx/_placeholders_pbl.py` (플레이스홀더 매핑 전용 모듈)
-- 신규: `src/lib/services/export/hwpx/hwpx-payload-pbl.ts` + `.test.ts`
-- 변경: `src/lib/services/export/hwpx/index.ts` (PBL entry point 추가)
-- 변경: `src/components/pbl/DownloadButton.tsx` (HWPX 항목 추가)
-- 변경: `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` (`exportPBLAsHwpxAction` 추가)
+- 신규: `templates/hwpx/pbl.hwpx` (산인공 양식 2번 원본 `docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).hwpx` 복사 후 플레이스홀더 삽입본).
+- 신규: `docs/references/hwpx-structure-pbl.md` (양식 2번 표 구조 매핑).
+- 변경: `api/hwpx/generate.py` (이미 `type` 분기 골격 있음 — PBL 경로 실구현 추가).
+- 신규: `api/hwpx/_placeholders_pbl.py` (플레이스홀더 매핑 전용 모듈) + `api/hwpx/test_placeholders_pbl.py`.
+- 재사용: `api/hwpx/_hwpx_helpers.py` (Step 7 추출 완료 — 추가 중립화 필요 시 PR 분리).
+- 신규: `src/lib/services/export/hwpx/hwpx-payload-pbl.ts` + `.test.ts`.
+- 변경: `src/lib/services/export/hwpx/hwpx-client.ts` (Step 7의 `generateHwpx` → `generateRoadmapHwpx` 리네임 + `generatePBLHwpx` 추가 + 공통 헬퍼 `postToPythonGenerate` 추출).
+- 변경: `src/lib/services/export/hwpx/index.ts` (PBL entry point 추가).
+- 변경: `src/components/pbl/DownloadButton.tsx` (HWPX 항목 추가) — `useHwpxDownload` 훅 그대로 재사용.
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/pbl/actions.ts` (`exportPBLAsHwpxAction` 추가).
+- **리네임 영향**: `src/app/(dashboard)/consultant/projects/[id]/roadmap/actions.ts`의 `exportRoadmapAsHwpxAction`이 `generateHwpx`를 호출 중. `serena` MCP로 심볼 rename + import 갱신 필수. 기존 테스트(`hwpx-client.test.ts`, `hwpx-payload-roadmap.test.ts`, `useHwpxDownload.test.tsx`)도 함께 갱신.
 
 - [ ] **Task 1: 브랜치 생성**
 
@@ -3800,9 +3831,9 @@ python .claude/skills/hwpx-docgen/scripts/validate_hwpx.py templates/hwpx/pbl.hw
 
 Python 단위 테스트(`api/hwpx/test_placeholders_pbl.py`)로 매핑 정확성 검증.
 
-- [ ] **Task 5: `api/hwpx/generate.py` 분기 확장**
+- [ ] **Task 5: `api/hwpx/generate.py` PBL 분기 실구현**
 
-현재 ROADMAP 전용 로직을 `type` 파라미터 분기로 일반화:
+Step 7에서 ROADMAP/PBL `type` 분기 **골격은 이미 추가**되어 있고 PBL 경로는 미구현 상태(NotImplementedError 또는 placeholder). 본 Task에서 실제 PBL 렌더 함수를 채운다:
 ```python
 pbl_type = body.get('type', 'roadmap')
 if pbl_type == 'pbl':
@@ -3813,7 +3844,9 @@ else:
     placeholder_mod = _placeholders_roadmap
 ```
 
-동적 표 행 삽입 공통 함수를 `_hwpx_helpers.py`로 추출(리팩터링).
+공통 헬퍼 `api/hwpx/_hwpx_helpers.py`(OXML 셀 편집·행 복제·플레이스홀더 치환)는 **Step 7에서 이미 추출 완료**되어 있으므로 본 Step에서는 그대로 재사용한다. 추가로 PBL 전용 헬퍼가 필요하면 `_hwpx_helpers.py`에 함수 추가(기존 함수 시그니처 변경 금지 — 로드맵 회귀 방지).
+
+체크박스 렌더(AI역량 4등급·훈련목표 5종·과정평가 방법 3종·결과평가 Pass/Fail 등)와 결과평가 설문의 "예정" 마커 처리 등 PBL 특화 로직은 `_placeholders_pbl.py`에 응집.
 
 - [ ] **Task 6: Node 변환기 `hwpx-payload-pbl.ts` (RED → GREEN)**
 
@@ -3917,28 +3950,36 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 
 ---
 
-### Step 11: 갤러리 트랙 라벨·필터 + PBL 테스트 페이지
+### Step 11: 갤러리 트랙 라벨·필터 + 프로젝트 목록 트랙 뱃지 + PBL 테스트 페이지
 
 **브랜치:** `feature/ofa-11-gallery-test-track`
-**규모:** Medium (약 10 Task)
+**규모:** Medium (약 11 Task)
 **호출 스킬:** `frontend-guide`, `composition-patterns`
 **의존:** Step 6.5, Step 9
 
 **목표:**
 - 갤러리가 로드맵·PBL 양쪽 데이터를 통합 표시 + 트랙 라벨/필터 제공
+- **컨설턴트/운영관리자 프로젝트 목록 테이블에 트랙(로드맵/PBL) 뱃지 컬럼 추가** — Step 8 Playwright 점검에서 발견된 누락(OFA-08 PR 논의)
 - `/test-pbl` 페이지 신규 (기존 `/test-roadmap`와 평행 구조)
 - **Step 6.5 신규 필드(Ⅰ장 개요·NCS 박스·훈련체계 수립 방법)가 갤러리 카드/상세에서도 올바르게 렌더되도록 확인**
 - **Step 8·9 PBL 양식 2번 전 필드(Ⅰ~Ⅴ장 + 결과평가 설문)가 상세 페이지에 누락 없이 표출되도록 확인**
 
 **양식 정합성 반영 필수:**
-- `GalleryDetailContent.tsx` (로드맵): Step 6.5에서 추가된 `setup_necessity`·`outcome_summary`·`training_structure_method`·NCS 전체 단위 박스를 모두 렌더 (Step 6.5에서 컨설턴트·운영자 뷰에 반영된 것과 동일한 블록 구조 재사용 권장).
-- `GalleryPBLDetailContent.tsx` (신규): 양식 2번 Ⅰ~Ⅴ장 모든 섹션 읽기 전용 렌더. `PBLOverview`·`PBLToolUsagePlan`·`PBLTrainingPlan`·`PBLEvaluationPlan`·`PBLPerformanceMetrics` 컴포넌트 `canEdit=false`로 재사용.
-- `test-pbl` 샘플 데이터는 양식 2번 3~11p 인터뷰 전 필드를 채운 fixture 필요 (`e2e/fixtures/pbl-interview-sample.ts`).
+- `GalleryDetailContent.tsx` (로드맵): Step 6.5에서 추가된 `setup_necessity`·`outcome_summary`·`training_structure_method`·NCS 전체 단위 박스를 모두 렌더. **재사용 대상 구체 컴포넌트**:
+  - `RoadmapOverviewSummary`(`src/components/roadmap/RoadmapOverviewSummary.tsx`) — Ⅰ장 요약 블록 (수립 필요성·AI 역량 수준·선정 과업·수립 주요내용)
+  - `NcsMethodologyBox`(`src/components/roadmap/NcsMethodologyBox.tsx`) — 표 전체 단위 NCS 박스 2종(활용/미활용)
+  - `CompetencyModelingTable` + `AnnualTrainingPlanTable` + `CourseSpecCard` + `RoadmapMatrix` + `CoursesList` — 모두 `canEdit=false`로 호출 (Step 6.5에서 controlled 패턴 반영 완료).
+  - 모든 표는 `@/components/roadmap/shared`의 `TableTextCell`/`SyncedTableRow` 등이 내부적으로 쓰이므로 추가 작업 없음.
+- `GalleryPBLDetailContent.tsx` (신규): 양식 2번 Ⅰ~Ⅴ장 모든 섹션 읽기 전용 렌더. Step 9 Task 8~13에서 만든 `PBLOverview`·`PBLTrainingTargets`·`PBLToolUsagePlan`·`PBLTrainingPlan`·`PBLEvaluationPlan`·`PBLPerformanceMetrics` 컴포넌트 `canEdit=false`로 재사용.
+- `test-pbl` 샘플 데이터는 양식 2번 3~11p 인터뷰 전 필드를 채운 fixture 필요 (`e2e/fixtures/pbl-interview-sample.ts`). Step 8의 `interviews.pbl_data` JSONB 스키마(`src/lib/schemas/interview-pbl.ts`)를 준수.
 
 **파일:**
 - 변경: `src/app/(dashboard)/gallery/page.tsx` (+ `.test.tsx`)
 - 변경: `src/app/(dashboard)/gallery/actions/*.ts`
 - 변경: `src/components/gallery/*.tsx` (트랙 라벨, 필터 UI)
+- 변경: `src/app/(dashboard)/consultant/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
+- 변경: `src/app/(dashboard)/ops/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
+- 신규: `src/components/ui/TrackBadge.tsx` (+ `.test.tsx`) — 로드맵/PBL 뱃지 공용 컴포넌트 (`tracks.ts` 색상맵 사용)
 - 신규: `src/app/(dashboard)/test-pbl/page.tsx`
 - 신규: `src/app/(dashboard)/test-pbl/TestPBLClient.tsx` (테스트용 정적 인터뷰 데이터로 PBL 생성 — **test-roadmap 컨벤션 준수: 컨테이너 컴포넌트는 루트에 배치, `_components/`는 하위 단계 컴포넌트 전용**)
 - 신규: `src/app/(dashboard)/test-pbl/_components/TestPBL*.tsx` (단계·보조 컴포넌트)
@@ -4033,6 +4074,25 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 
 > 라우트 구조는 유지(`/gallery/[id]`)하되, 내부에서 트랙 분기를 명시적으로 한다. **쿼리 파라미터가 누락된 경우 기본값 'ROADMAP'**으로 기존 동작을 보존.
 
+- [ ] **Task 4.5: 프로젝트 목록 테이블 트랙 뱃지 컬럼 (RED → GREEN)**
+
+> 배경: OFA-08 Playwright 점검에서 발견된 이슈. 현재 컨설턴트(`/consultant/projects`)와 운영관리자(`/ops/projects`) 프로젝트 목록 테이블 헤더가 "기업명 · 업종 · 규모 · 상태 · 배정일 · 작업"만 있어 **로드맵/PBL 트랙 구분이 목록에서 불가능**하다. `src/lib/constants/tracks.ts`에 색상 쌍(`ROADMAP=blue, PBL=purple`)이 이미 정의되어 있으니 뱃지 컴포넌트만 추가하면 된다.
+
+파일:
+- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 `PROJECT_TRACK_LABEL` + 색상맵 사용. Shadcn `Badge` 기반.
+- 변경: `src/app/(dashboard)/consultant/projects/_components/ConsultantProjectsTable.tsx` (또는 동등 파일) — 헤더에 "트랙" 컬럼 + 각 행에 `<TrackBadge track={p.track} />` 렌더
+- 변경: `src/app/(dashboard)/ops/projects/_components/OpsProjectsTable.tsx` (또는 동등 파일) — 동일 패턴
+- 변경: `src/app/(dashboard)/consultant/projects/actions/queries.ts` / `ops/projects/actions/queries.ts` — `select` 절에 `track` 컬럼 추가 (기존 select가 `track`을 빠뜨리면 클라이언트에 도달하지 않음)
+- 선택: 트랙 필터 드롭다운 (상태 필터 옆) — 필수 아님, UX 개선용. `TrackFilter`와 공통화 가능.
+
+테스트:
+- `TrackBadge.test.tsx` — ROADMAP/PBL 각각 라벨·색상 클래스 검증
+- 각 테이블 `.test.tsx` — 행 렌더 시 뱃지 포함 확인
+
+`composition-patterns` 스킬 호출 권장: `TrackBadge`는 갤러리 카드(Task 4)와 프로젝트 테이블 양쪽에서 쓰이므로 한 파일로 집중.
+
+완료 조건: Playwright로 두 목록 방문 시 각 행에 "로드맵" 또는 "PBL" 뱃지가 보임.
+
 - [ ] **Task 5: 갤러리 페이지 통합**
 
 파일: `src/app/(dashboard)/gallery/page.tsx` + `.test.tsx`
@@ -4121,12 +4181,28 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 
 **목표:**
 - 전체 E2E 스모크 테스트
-- deprecated된 기존 인터뷰 스키마 최종 제거
+- deprecated된 기존 인터뷰 스키마 최종 제거 (`src/lib/schemas/interview.ts` — Step 5·8에서 트랙별로 분리 완료)
 - `roadmap_versions.pbl_course` 컬럼 drop 마이그레이션
 - 문서 갱신 (ARCHITECTURE.md, RLS.md, CLAUDE.md)
 - 배포 체크리스트 검증
 - 성능·보안 최종 감사
 - **산인공 양식 1번·2번 1:1 정합성 전수 검증 (HWPX 실물 기준)**
+
+**Step 1~11 실제 산출물 요약 (본 Step이 전수 감사할 대상):**
+- 마이그레이션 060~065가 이미 적용됨:
+  - 060: project track enum (Step 2)
+  - 061: pbl_reports + pbl_likes + finalize_pbl RPC + audit ENUM 확장 (Step 2)
+  - 062: notices + notice_attachments (Step 2)
+  - 063: interviews.pbl_data JSONB (Step 2)
+  - 064: project status PBL 확장 (Step 2)
+  - **065: interview_attachments + Storage 버킷 `interview-attachments`** (Step 6.5 — HRD이음 첨부 업로드)
+- 본 Step에서 추가할 마이그레이션 번호는 **066_ofa_cleanup.sql** (065는 Step 6.5가 점유).
+- 공용 디자인 키트: `src/components/roadmap/shared/` (Step 6.5 추출).
+- HWPX 템플릿: `templates/hwpx/roadmap.hwpx`(Step 7) + `templates/hwpx/pbl.hwpx`(Step 10).
+- Python 공통 헬퍼: `api/hwpx/_hwpx_helpers.py`(Step 7 추출).
+- HWPX 훅: `src/hooks/useHwpxDownload.ts`(Step 7).
+- Node HWPX 클라이언트: `generateRoadmapHwpx` + `generatePBLHwpx`(Step 10 리네임 완료).
+- 공통 인터뷰 자산: `InterviewStepper` + `useInterviewAutoSave`(Step 5).
 
 **양식 매칭 QA 체크리스트 (본 Step에서 모두 ✅ 해야 머지 가능):**
 
@@ -4187,9 +4263,11 @@ Grep(pattern: "schemas/interview['\"]|from '@/lib/schemas/interview'", path: "e2
 ```
 
 기대: Step 5·8·9의 트랙별 스키마로 이미 완전 이관된 상태. 잔존 import가 있다면 해당 파일부터 교체 후 삭제 진행. 삭제 후 `npm run typecheck` + `npm run test` 회귀 0 확인.
-- [ ] **Task 2: 마이그레이션 065 — legacy 정리 + audit 액션 확장**
+- [ ] **Task 2: 마이그레이션 066 — legacy 정리 + audit 액션 확장**
 
-파일: `supabase/migrations/065_ofa_cleanup.sql`
+> **번호 주의**: 065는 **Step 6.5에서 `065_add_interview_attachments.sql`로 이미 점유**되었다. 따라서 본 Step의 legacy 정리 마이그는 **066**이다. 본 파일명·파일 내용의 숫자는 모두 066을 사용한다.
+
+파일: `supabase/migrations/066_ofa_cleanup.sql`
 ```sql
 -- 1) roadmap_versions의 legacy pbl_course 컬럼 drop
 --    (Step 6에서 코드 참조 제거 완료 → 이 시점에 안전하게 drop 가능)
@@ -4215,7 +4293,9 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 --    (본 Step 진입 전 Step 5·11 결과를 재검토하여 결정)
 ```
 
-> DDL 적용 후 `supabase gen types typescript` 또는 `mcp__supabase__generate_typescript_types`로 `src/types/database.ts`를 재생성하여 새 audit_action 값을 TS `AuditAction` 유니언에 반영한다.
+> DDL 적용 후 `supabase gen types typescript` 또는 `mcp__supabase__generate_typescript_types`로 `src/types/database.ts`를 재생성하여 새 audit_action 값을 TS `AuditAction` 유니언에 반영한다. **`src/types/database.ts`는 수동 편집 필수 파일** — 전체 덮어쓰기 금지, enum 확장분만 수기로 병합.
+
+적용: `mcp__supabase__apply_migration` 사용 → `mcp__supabase__list_migrations`로 066 반영 검증.
 
 - [ ] **Task 3: `src/app/api/hwpx-test/route.ts` 제거** (PoC용 일회성 라우트)
 - [ ] **Task 4: `test-automator` 서브에이전트로 E2E 스모크 시나리오**
@@ -4340,7 +4420,7 @@ Agent(
 - [ ] `mcp__supabase__get_advisors`로 RLS/성능 경고 0건
 - [ ] 환경변수 확인 (`NEXT_PUBLIC_*`, `SUPABASE_*`, `LLM_*`, **`HWPX_API_SECRET`**)
 - [ ] Supabase Storage bucket 프로덕션에도 생성됨
-- [ ] 프로덕션 마이그레이션 적용 순서 검증 (060 → 061 → 062 → 063 → 064 → 065)
+- [ ] 프로덕션 마이그레이션 적용 순서 검증 (060 → 061 → 062 → 063 → 064 → 065 → 066) — 065는 Step 6.5의 `interview_attachments`, 066은 Step 12의 legacy 정리
 - [ ] 롤백 스크립트 준비 (`pg_dump` 백업)
 
 ---

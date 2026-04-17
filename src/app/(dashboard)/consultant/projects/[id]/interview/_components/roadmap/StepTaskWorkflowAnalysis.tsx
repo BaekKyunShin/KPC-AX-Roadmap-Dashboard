@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2, X } from 'lucide-react';
 import {
   createEmptyTaskWorkflowItem,
@@ -76,10 +78,10 @@ export default function StepTaskWorkflowAnalysis({
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">과업(Task)·워크플로우 분석</h2>
+          <h2 className="text-lg font-semibold text-foreground">Ⅱ-3. 과업(Task)·워크플로우 분석</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            산업인력공단 AI 훈련로드맵 양식 Ⅱ-3. 직무별 과업의 현행 방식과 문제점, 데이터 발생 시점(또는 보유현황),
-            AI 도입·활용 필요도(1~5점)를 분석해주세요.
+            과업·워크플로우 분석표. 직무별 과업의 현행 방식과 문제점, 데이터 발생 시점(또는 데이터 보유현황),
+            AI도입·활용 필요도(1~5점 척도)를 분석하세요.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={addItem}>
@@ -114,73 +116,62 @@ export default function StepTaskWorkflowAnalysis({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor={`twf-job-${item.id}`}>
-                  직무 <span className="text-destructive">*</span>
-                </Label>
+              <FormField label="직무" htmlFor={`twf-job-${item.id}`} required>
                 <Input
                   id={`twf-job-${item.id}`}
                   value={item.job}
                   onChange={(e) => updateItem(index, 'job', e.target.value)}
                   placeholder="예: 생산 / 품질 / 설비"
-                  className="mt-1"
                 />
-              </div>
-              <div>
-                <Label htmlFor={`twf-task-${item.id}`}>
-                  과업(Task) <span className="text-destructive">*</span>
-                </Label>
+              </FormField>
+              <FormField label="과업(Task)" htmlFor={`twf-task-${item.id}`} required>
                 <Input
                   id={`twf-task-${item.id}`}
                   value={item.task_name}
                   onChange={(e) => updateItem(index, 'task_name', e.target.value)}
                   placeholder="예: 완제품 외관 검사"
-                  className="mt-1"
                 />
-              </div>
+              </FormField>
             </div>
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor={`twf-asis-${item.id}`}>
-                  현행 방식 (As-Is) <span className="text-destructive">*</span>
-                </Label>
+              <FormField label="현행 방식 (As-Is)" htmlFor={`twf-asis-${item.id}`} required>
                 <Textarea
                   id={`twf-asis-${item.id}`}
-                  rows={3}
+                  rows={4}
                   value={item.as_is}
                   onChange={(e) => updateItem(index, 'as_is', e.target.value)}
                   placeholder="예) 검사원 2명이 라인에서 육안으로 외관 검사"
-                  className="mt-1 break-keep"
+                  className="break-keep"
                 />
-              </div>
-              <div>
-                <Label htmlFor={`twf-problems-${item.id}`}>
-                  문제점 <span className="text-destructive">*</span>
-                </Label>
+              </FormField>
+              <FormField label="문제점" htmlFor={`twf-problems-${item.id}`} required>
                 <Textarea
                   id={`twf-problems-${item.id}`}
-                  rows={3}
+                  rows={4}
                   value={item.problems}
                   onChange={(e) => updateItem(index, 'problems', e.target.value)}
                   placeholder="예) 검사원 피로도에 따라 품질 편차 발생, 재검사 필요"
-                  className="mt-1 break-keep"
+                  className="break-keep"
                 />
-              </div>
+              </FormField>
             </div>
 
             <div className="mt-4">
-              <Label htmlFor={`twf-data-${item.id}`}>
-                데이터 발생시점 / 보유 현황 <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id={`twf-data-${item.id}`}
-                rows={2}
-                value={item.data_availability}
-                onChange={(e) => updateItem(index, 'data_availability', e.target.value)}
-                placeholder="예) 검사 이미지 2년치(DB 저장), 불량 판정 로그 1년치"
-                className="mt-1 break-keep"
-              />
+              <FormField
+                label="데이터 발생 시점 (또는 데이터 보유현황)"
+                htmlFor={`twf-data-${item.id}`}
+                required
+              >
+                <Textarea
+                  id={`twf-data-${item.id}`}
+                  rows={4}
+                  value={item.data_availability}
+                  onChange={(e) => updateItem(index, 'data_availability', e.target.value)}
+                  placeholder="예) 검사 이미지 2년치(DB 저장), 불량 판정 로그 1년치"
+                  className="break-keep"
+                />
+              </FormField>
             </div>
 
             <div className="mt-4">
@@ -233,12 +224,20 @@ export default function StepTaskWorkflowAnalysis({
         ))}
       </div>
 
+      <GuideNote
+        items={[
+          '기업 내부전문가와의 인터뷰를 통해 현재 기업에서 수행하고 있는 과업(또는 워크플로우) 중 AI 도입·활용이 필요하다고 판단되는 과업 분석',
+          '※ 기업의 전체 과업을 대상으로 분석할 필요는 없으며, 기업 내부전문가와의 인터뷰를 통해 필요한 과업을 대상으로만 분석',
+          '현행 수행방식과 문제점을 파악하고, AI 도입·활용이 가능한 데이터 발생(또는 보유) 여부 등을 감안하여 AI도입·활용 필요도를 1점(낮음)~5점(높음) 척도로 점수 부여',
+        ]}
+      />
+
       {/* Ⅱ-3 분석내용 — 양식: "과업(또는 워크플로우) 분석 과정 및 방법에 대한 내용 기술" */}
       <div className="border-t border-border pt-6 space-y-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">분석 내용</h3>
+          <h3 className="text-sm font-semibold text-foreground">분석내용</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            과업·워크플로우 분석 과정 및 방법에 대한 내용을 서술하세요. (선택)
+            과업(또는 워크플로우) 분석 과정 및 방법에 대한 내용을 서술하세요. (선택)
           </p>
         </div>
         <Textarea
@@ -254,9 +253,9 @@ export default function StepTaskWorkflowAnalysis({
         <div>
           <div className="flex items-center justify-between mb-2">
             <div>
-              <Label className="block">참고자료 URL (첨부)</Label>
+              <Label className="block">첨부파일 (URL)</Label>
               <p className="mt-1 text-xs text-muted-foreground">
-                공정 분석표, 현황 자료 등 참고 URL을 첨부하세요. 파일 업로드는 로드맵 단계에서 제공됩니다.
+                공정 분석, 업로드 자료 등 참고 URL을 첨부하세요. 파일 업로드는 로드맵 단계에서 제공됩니다.
               </p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addAttachmentUrl}>
@@ -290,6 +289,13 @@ export default function StepTaskWorkflowAnalysis({
             </div>
           )}
         </div>
+
+        <GuideNote
+          items={[
+            '과업(또는 워크플로우) 분석 과정 및 방법에 대한 내용 기술',
+            '작성한 내용 외에 제시해야 할 파일이 있는 경우 첨부파일로 업로드',
+          ]}
+        />
       </div>
     </div>
   );

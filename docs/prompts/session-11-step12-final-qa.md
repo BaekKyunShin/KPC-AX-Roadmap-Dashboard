@@ -28,9 +28,10 @@
 
 ## 성공 지표
 - [ ] `interview.ts` 의존성 grep 결과 0건 → 파일 삭제 + `npm run typecheck` 회귀 0.
-- [ ] `supabase/migrations/065_ofa_cleanup.sql` 작성 + 적용:
+- [ ] `supabase/migrations/066_ofa_cleanup.sql` 작성 + 적용 (**065는 Step 6.5의 `065_add_interview_attachments.sql`가 점유** — 본 Step는 **066**을 사용):
   - `roadmap_versions.pbl_course` DROP COLUMN (chk_pbl_course_size CASCADE 동반 제거 주석 명시)
   - audit/RPC는 마이그 061에서 이미 추가됨 — 본 마이그 추가 항목 0 가능
+  - `mcp__supabase__apply_migration` 적용 → `mcp__supabase__list_migrations`로 066 반영 검증
 - [ ] `src/app/api/hwpx-test/route.ts` 제거 (PoC 일회성).
 - [ ] `e2e/workflow/ofa-smoke.spec.ts` 6개 시나리오 작성 + 통과.
 - [ ] performance-engineer 보고서 (번들 사이즈·인터뷰 위저드 렌더·HWPX 콜드스타트·갤러리 통합 쿼리) — Critical 0건.
@@ -68,23 +69,32 @@
 === 사전 검증 (반드시 첫 번째로 실행) ===
 1. cd /Users/baekkyunshin/Desktop/AI-roadmap-dashboard
 2. git fetch origin && git checkout feature/official-form-alignment && git pull
-3. git log --oneline | grep -E "ofa-(02|03|04|05|06|07|08|09|10|11)" | wc -l  → 10 이상 (ofa-02~11 모두 머지)
-4. ls supabase/migrations/06{0,1,2,3,4}_*.sql  → 5개 마이그
+3. git log --oneline | grep -E "ofa-(02|03|04|05|06|06\\.5|07|08|09|10|11)" | wc -l  → 11 이상 (ofa-02~11 + Step 6.5 모두 머지)
+4. ls supabase/migrations/06{0,1,2,3,4,5}_*.sql  → **6개 마이그**:
+   - 060: project track
+   - 061: pbl_reports + pbl_likes + finalize_pbl RPC + audit ENUM
+   - 062: notices + notice_attachments
+   - 063: interviews.pbl_data JSONB
+   - 064: project status PBL 확장
+   - **065: interview_attachments + Storage 버킷 (Step 6.5 — HRD이음 첨부)**
 5. ls api/hwpx/ templates/hwpx/ src/lib/services/pbl/ src/lib/services/export/hwpx/  → 핵심 산출물
-6. ls src/app/\(dashboard\)/notices src/app/\(dashboard\)/test-pbl  → 신규 라우트
-7. grep -rn "schemas/interview['\"]|from '@/lib/schemas/interview'" src/ e2e/  → interview.ts 잔존 import 사전 감사 (Task 1 전제)
-8. mcp__supabase__list_migrations  → 060~064 모두 적용 + 065 미적용 확인
-9. mcp__supabase__get_advisors  → 현재 advisor 경고 상태 baseline
-10. echo $HWPX_API_SECRET || vercel env ls | grep HWPX  → 환경변수 등록 확인
-11. npm run validate && npm run build && npm run test:e2e  → baseline 통과
+6. ls templates/hwpx/roadmap.hwpx templates/hwpx/pbl.hwpx  → 양쪽 템플릿 존재
+7. ls api/hwpx/_hwpx_helpers.py api/hwpx/_placeholders_roadmap.py api/hwpx/_placeholders_pbl.py  → Python 측 3파일
+8. ls src/components/roadmap/shared/  → Step 6.5 공용 디자인 키트
+9. ls src/app/\(dashboard\)/notices src/app/\(dashboard\)/test-pbl  → 신규 라우트
+10. grep -rn "schemas/interview['\"]\\|from '@/lib/schemas/interview'" src/ e2e/  → interview.ts 잔존 import 사전 감사 (Task 1 전제)
+11. mcp__supabase__list_migrations  → 060~065 모두 적용 + **066 미적용** 확인
+12. mcp__supabase__get_advisors  → 현재 advisor 경고 상태 baseline
+13. echo $HWPX_API_SECRET || vercel env ls | grep HWPX  → 환경변수 등록 확인
+14. npm run validate && npm run build && npm run test:e2e  → baseline 통과
 
-검증 실패 시 즉시 중단. Step 1~11 미머지·잔존 import 발견 시 사용자 보고.
+검증 실패 시 즉시 중단. Step 1~11 + 6.5 미머지·잔존 import 발견 시 사용자 보고.
 
 === 필수 사전 정독 ===
 > 계획서에서 해당 섹션은 `grep -n '^## 0\.\|^### Step 12:\|^## 6\.\|^## 7\.\|^## 8\.' docs/plans/2026-04-14-official-form-alignment.md` 로 정확한 줄 위치 찾아 Read.
 
 - 계획서 §0: 안전장치 (a)~(d) — 본 세션이 이 보장의 최종 게이트
-- 계획서 §4 Step 12: 본 세션 10 Task + 마이그 065
+- 계획서 §4 Step 12: 본 세션 10 Task + 마이그 **066** (065는 Step 6.5가 점유)
 - 계획서 §6: 리스크 매트릭스 — 마지막 한 번 검토
 - 계획서 §7: 롤백 전략
 - 계획서 §8: 배포 체크리스트 — 본 세션이 모든 항목 ✅화
@@ -100,11 +110,13 @@
 2. Task 1 (interview.ts 삭제):
    - 먼저 grep -rn "schemas/interview['\"]|from '@/lib/schemas/interview'" src/ e2e/ 로 잔존 import 감사
    - 잔존 0이면 삭제 + npm run typecheck && npm run test 회귀 0 확인
-3. Task 2 (마이그 065):
-   - roadmap_versions.pbl_course DROP COLUMN (chk_pbl_course_size CHECK 제약은 CASCADE로 자동 제거 — 주석 명시)
+3. Task 2 (마이그 **066** — 065는 Step 6.5가 점유):
+   - 파일명: supabase/migrations/**066_ofa_cleanup.sql**
+   - roadmap_versions.pbl_course DROP COLUMN (chk_pbl_course_size CHECK 제약은 DROP COLUMN으로 자동 제거 — 주석 명시)
    - audit_action ENUM 추가 항목은 마이그 061에서 이미 처리됨 — 본 마이그에서 발견된 추가 값만 (없으면 빈 블록)
    - finalize_pbl RPC도 마이그 061에서 처리됨
-   - mcp__supabase__apply_migration로 적용 + mcp__supabase__generate_typescript_types 재생성
+   - mcp__supabase__apply_migration로 적용 + mcp__supabase__list_migrations 로 066 반영 검증
+   - src/types/database.ts는 **수동 편집 파일** — generate_typescript_types 전체 덮어쓰기 금지. enum 확장분(있으면)만 수기 병합
 4. Task 3: src/app/api/hwpx-test/route.ts 제거 (PoC 일회성)
 5. Task 4: Agent(subagent_type:"test-automator", ...) 디스패치 — e2e/workflow/ofa-smoke.spec.ts 6개 시나리오 (계획서 본문 그대로)
 6. Task 5: Agent(subagent_type:"performance-engineer", ...) 성능 감사. Critical 발견 시 별도 PR로 fix
@@ -133,7 +145,8 @@
 
        ## 머지 절차
        팀장 직접 승인 필수. 자동 머지 금지.
-       프로덕션 마이그 적용 순서: 060 → 061 → 062 → 063 → 064 → 065.
+       프로덕션 마이그 적용 순서: 060 → 061 → 062 → 063 → 064 → 065 → 066.
+       (065 = Step 6.5 interview_attachments, 066 = Step 12 legacy 정리)
        EOF
        )"
     e. 본 PR 머지는 사용자(팀장)만 수동 수행. Claude는 절대 머지하지 않음
@@ -145,7 +158,7 @@
   - security-auditor가 Critical 발견 시 (즉시 차단·수정)
   - performance-engineer가 회귀 보고 시
   - mcp__supabase__get_advisors 경고 발생 시
-  - 마이그 065 적용 결과가 예상과 다를 때
+  - 마이그 066 적용 결과가 예상과 다를 때 (065가 아니라 066 — Step 6.5가 065 점유)
   - **Task 10 main PR 생성 직전 사람 최종 확인 필수**
 
 === Task 종료 보고 양식 ===
@@ -200,7 +213,7 @@
 - 실 발급 수준인지 판단
 
 **(4) 프로덕션 환경 준비 확인**
-- 프로덕션 Supabase에 마이그 060~065 적용 순서·백업 계획
+- 프로덕션 Supabase에 마이그 060~066 적용 순서·백업 계획 (065 = interview_attachments, 066 = ofa_cleanup)
 - `HWPX_API_SECRET` 프로덕션 환경변수 등록
 - `notice-attachments` Storage 버킷 프로덕션 생성
 - pg_dump 백업 준비

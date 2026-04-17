@@ -9,6 +9,12 @@ import {
   type RoadmapInterviewInput,
   type RoadmapInterviewAutoSaveInput,
 } from '@/lib/schemas/interview-roadmap';
+import {
+  pblInterviewSchema,
+  pblInterviewAutoSaveSchema,
+  type PBLInterviewInput,
+  type PBLInterviewAutoSaveInput,
+} from '@/lib/schemas/interview-pbl';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
@@ -532,6 +538,166 @@ export async function createHrdReportSignedUrl(
   } catch (error) {
     console.error('[createHrdReportSignedUrl Error]', error);
     return { success: false, error: '서버 오류로 URL 생성에 실패했습니다.' };
+  }
+}
+
+// ============================================================================
+// PBL 인터뷰 저장/조회 (OFA-08)
+// ----------------------------------------------------------------------------
+// Step 2 마이그 063에서 추가된 `interviews.pbl_data JSONB` 컬럼을 사용한다.
+// 로드맵 트랙 컬럼(company_details·job_tasks·improvement_goals 등)은 건드리지 않는다.
+// ============================================================================
+
+/**
+ * PBL 인터뷰 조회 — 컨설턴트 전용 (배정된 프로젝트에 한함)
+ */
+export async function fetchPBLInterview(
+  projectId: string,
+): Promise<{ pbl_data: Record<string, unknown> } | null> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('assigned_consultant_id, track')
+      .eq('id', projectId)
+      .single();
+
+    if (!projectData || projectData.assigned_consultant_id !== user.id) {
+      return null;
+    }
+    if (projectData.track !== 'PBL') return null;
+
+    const { data: interview } = await supabase
+      .from('interviews')
+      .select('pbl_data')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (!interview) return { pbl_data: {} };
+    return { pbl_data: (interview.pbl_data as Record<string, unknown> | null) ?? {} };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PBL 인터뷰 저장 (OFA-08 산인공 양식 2번)
+ *
+ * 5단계 패턴: 인증·역할 → track=PBL 가드 → Zod 검증 → admin 저장 → 상태 전이 + 감사로그
+ */
+export async function savePBLInterview(
+  projectId: string,
+  data: PBLInterviewInput | PBLInterviewAutoSaveInput,
+  options?: { autoSave?: boolean },
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.track !== 'PBL') {
+      return { success: false, error: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.' };
+    }
+
+    const schema = options?.autoSave ? pblInterviewAutoSaveSchema : pblInterviewSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+    const validated = validation.data;
+
+    const adminSupabase = createAdminClient();
+
+    const { data: existing, error: fetchError } = await adminSupabase
+      .from('interviews')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[savePBLInterview] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+    }
+
+    if (existing) {
+      const { error: updateError } = await adminSupabase
+        .from('interviews')
+        .update({ pbl_data: validated })
+        .eq('id', existing.id);
+      if (updateError) {
+        console.error('[savePBLInterview] Update:', updateError.message);
+        return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
+      }
+    } else {
+      const { error: insertError } = await adminSupabase.from('interviews').insert({
+        project_id: projectId,
+        interviewer_id: user.id,
+        pbl_data: validated,
+      });
+      if (insertError) {
+        console.error('[savePBLInterview] Insert:', insertError.message);
+        return { success: false, error: 'PBL 인터뷰 저장에 실패했습니다.' };
+      }
+    }
+
+    let statusTransitioned = false;
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      statusTransitioned = true;
+    }
+
+    after(async () => {
+      if (statusTransitioned && !projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: 'PBL 인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} PBL 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
+
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'PBL_INTERVIEW_SAVED',
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          track: 'PBL',
+          auto_save: Boolean(options?.autoSave),
+        },
+      });
+
+      if (!options?.autoSave) {
+        await insertSystemActivityLog(
+          projectId,
+          user.id,
+          'PBL 인터뷰가 저장되었습니다.',
+        );
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[savePBLInterview Error]', error);
+    return { success: false, error: 'PBL 인터뷰 저장 중 오류가 발생했습니다.' };
   }
 }
 

@@ -2,8 +2,9 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTrainingTarget,
@@ -39,11 +40,11 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">
-            훈련대상 과업(Task)·워크플로우 선정
+            Ⅱ-4. 훈련대상 과업(Task)·워크플로우 선정
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            산업인력공단 AI 훈련로드맵 양식 Ⅱ-4. AI도입·활용 필요도가 높은 과업 중 실제 훈련대상으로 선정할
-            과업과 선정사유, 기대효과(As-Is → To-Be)를 기록해주세요.
+            AI도입·활용 필요도가 높은 과업 중 실제 훈련대상으로 선정할
+            과업과 선정사유, 기대효과(As-Is → To-Be)를 기록하세요.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={addItem}>
@@ -78,71 +79,65 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
             </div>
 
             <div className="space-y-4">
-              <div>
-                <Label htmlFor={`tt-name-${item.id}`}>
-                  훈련대상 과업 <span className="text-destructive">*</span>
-                </Label>
+              <FormField label="훈련대상 과업" htmlFor={`tt-name-${item.id}`} required>
                 <Input
                   id={`tt-name-${item.id}`}
                   value={item.task_name}
                   onChange={(e) => updateItem(index, 'task_name', e.target.value)}
                   placeholder="예) 외관 검사 AI 자동화"
-                  className="mt-1"
                 />
-              </div>
-              <div>
-                <Label htmlFor={`tt-reason-${item.id}`}>
-                  선정사유 <span className="text-destructive">*</span>
-                </Label>
+              </FormField>
+              <FormField label="선정사유" htmlFor={`tt-reason-${item.id}`} required>
                 <Textarea
                   id={`tt-reason-${item.id}`}
-                  rows={2}
+                  rows={5}
                   value={item.selection_reason}
                   onChange={(e) => updateItem(index, 'selection_reason', e.target.value)}
                   placeholder="예) AI도입·활용 필요도 5점. 데이터 2년치 확보. 경영진 최우선 과제"
-                  className="mt-1 break-keep"
+                  className="break-keep"
                 />
-              </div>
+              </FormField>
               <fieldset className="rounded-md border border-border/70 p-3 bg-background/60">
                 <legend className="px-1 text-sm font-medium text-foreground">
                   기대효과 <span className="text-destructive">*</span>
                 </legend>
                 <p className="text-xs text-muted-foreground mb-3">
-                  현행(As-Is) 수행 방식과 AI 도입·활용 훈련 실시 후 개선(To-Be)되는 사항을 기록합니다.
+                  해당 과업의 현행 수행방식(As-Is)과 AI를 도입·활용하기 위한 훈련실시 후 개선(To-Be)되는 사항을 기록합니다.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`tt-asis-${item.id}`}>
-                      현행 (As-Is) <span className="text-destructive">*</span>
-                    </Label>
+                  <FormField label="현행 (As-Is)" htmlFor={`tt-asis-${item.id}`} required>
                     <Textarea
                       id={`tt-asis-${item.id}`}
-                      rows={3}
+                      rows={4}
                       value={item.as_is}
                       onChange={(e) => updateItem(index, 'as_is', e.target.value)}
                       placeholder="예) 검사원 2명 육안 검사 / 평균 12초"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`tt-tobe-${item.id}`}>
-                      개선 (To-Be) <span className="text-destructive">*</span>
-                    </Label>
+                  </FormField>
+                  <FormField label="개선 (To-Be)" htmlFor={`tt-tobe-${item.id}`} required>
                     <Textarea
                       id={`tt-tobe-${item.id}`}
-                      rows={3}
+                      rows={4}
                       value={item.to_be}
                       onChange={(e) => updateItem(index, 'to_be', e.target.value)}
                       placeholder="예) 비전 AI 1차 스크리닝 + 검사원 최종 판정 / 평균 3초"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
+                  </FormField>
                 </div>
               </fieldset>
             </div>
           </div>
         ))}
       </div>
+
+      <GuideNote
+        items={[
+          '위의 분석표에서 제시한 과업 중 AI훈련로드맵을 수립하기 위한 훈련대상 과업 선정 및 선정사유 작성',
+          '해당 과업의 현행 수행방식(As-Is)과 AI를 도입·활용하기 위한 훈련실시 후 개선(To-Be)되는 사항을 기대효과 항목으로 제시',
+        ]}
+      />
     </div>
   );
 }

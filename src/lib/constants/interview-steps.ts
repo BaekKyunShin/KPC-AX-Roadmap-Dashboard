@@ -7,6 +7,7 @@
 
 import type { ProjectTrack } from './tracks';
 import { ROADMAP_INTERVIEW_STEPS } from './interview-steps-roadmap';
+import { PBL_INTERVIEW_STEPS } from './interview-steps-pbl';
 
 export interface InterviewStep {
   id: number;
@@ -19,7 +20,9 @@ export interface InterviewStep {
  */
 export function getInterviewSteps(track: ProjectTrack): readonly InterviewStep[] {
   if (track === 'ROADMAP') return ROADMAP_INTERVIEW_STEPS;
-  throw new Error('PBL 인터뷰 스텝은 아직 구현되지 않았습니다 (OFA Step 8 예정).');
+  if (track === 'PBL') return PBL_INTERVIEW_STEPS;
+  const _exhaustive: never = track;
+  throw new Error(`Unknown project track: ${String(_exhaustive)}`);
 }
 
 /**

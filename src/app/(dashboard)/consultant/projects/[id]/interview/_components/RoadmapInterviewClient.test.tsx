@@ -37,13 +37,13 @@ describe('RoadmapInterviewClient', () => {
 
   it('초기 렌더 시 Step 1 (개요) 표시', () => {
     render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
-    expect(screen.getByRole('heading', { name: /^개요$/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Ⅰ\. 개요/ })).toBeInTheDocument();
   });
 
-  it('"다음" 버튼 클릭 시 Step 2 (기본 정보)로 전환', async () => {
+  it('"다음" 버튼 클릭 시 Step 2 (주요 활동)로 전환', async () => {
     render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
     await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
-    expect(screen.getByRole('heading', { name: /기본 정보/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /주요 활동/ })).toBeInTheDocument();
   });
 
   it('마지막 스텝(확인)까지 이동하면 제출 버튼 노출', async () => {

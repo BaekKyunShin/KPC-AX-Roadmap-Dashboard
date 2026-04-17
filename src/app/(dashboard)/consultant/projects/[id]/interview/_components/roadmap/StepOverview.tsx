@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { FieldError } from '@/components/ui/field-error';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   AI_COMPETENCY_LEVEL_OPTIONS,
@@ -37,26 +39,26 @@ const TEXT_FIELDS: ReadonlyArray<{
 }> = [
   {
     key: 'establishment_necessity',
-    label: 'AI 훈련로드맵 수립 필요성',
-    hint: 'AI 훈련로드맵 수립 배경 · 해당 과업 선정 이유 · AI 적용 필요성 (양식 Ⅰ-1, 5줄 내외)',
+    label: '수립 필요성',
+    hint: '해당 과업(또는 워크플로우) 선정 이유 및 AI 적용의 필요성 (양식 Ⅰ-1, 5줄 내외)',
     placeholder:
       '예) 제조 공정의 품질검사 업무에서 인력 의존도가 높아 품질 편차가 발생하고 있다.\nAI 비전 검사 도입으로 1차 스크리닝을 자동화하면 작업자 부담이 줄고 품질 편차 또한 줄어들 것으로 기대된다.',
-    rows: 5,
+    rows: 6,
   },
   {
     key: 'selected_tasks_summary',
     label: '선정 과업',
     hint: '훈련 대상으로 확정된 과업을 간단히 나열 (양식 Ⅰ-3)',
     placeholder: '예) 1) 품질검사 1차 스크리닝 자동화  2) 월간 보고서 초안 생성  3) 현장 설비 이상 감지',
-    rows: 3,
+    rows: 5,
   },
   {
     key: 'roadmap_summary',
-    label: 'AI 훈련로드맵 수립 주요내용 요약',
-    hint: '훈련 목표 · 대상 · 주요 과정 · 운영 방식 핵심만 요약 (양식 Ⅰ-3, 1장 이내)',
+    label: 'AI훈련로드맵 수립 주요내용 (요약)',
+    hint: '훈련요구 분석 및 로드맵 수립 결과를 1장 이내로 요약 (양식 Ⅰ-3)',
     placeholder:
       '예) 전사 3단계 AI 인력 양성 로드맵(기초/탐구/활용). 생산기술팀 15명 대상. 집체 + 원격 혼합. 2026 상반기 기초 과정 시작.',
-    rows: 5,
+    rows: 6,
   },
 ];
 
@@ -143,9 +145,9 @@ export default function StepOverview({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">개요</h2>
+        <h2 className="text-lg font-semibold text-foreground">Ⅰ. 개요</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          산업인력공단 AI 훈련로드맵 양식 Ⅰ장. 수립 필요성, 기업 AI 역량 수준, 선정 과업, 수립 주요내용을 입력해주세요.
+          산업인력공단 AI훈련로드맵 양식 Ⅰ장. 수립 필요성, 주요 활동, 주요 결과를 입력하세요.
         </p>
       </div>
 
@@ -153,26 +155,39 @@ export default function StepOverview({
         {TEXT_FIELDS.map(({ key, label, hint, placeholder, rows }) => {
           const errorMsg = errors?.[key];
           const fieldId = `ov-${key}`;
-          const hintId = `ov-${key}-hint`;
           return (
-            <div key={key}>
-              <Label htmlFor={fieldId} className="mb-1 block">
-                {label} <span className="text-destructive">*</span>
-              </Label>
-              <p id={hintId} className="text-xs text-muted-foreground mb-2">
-                {hint}
-              </p>
-              <Textarea
-                id={fieldId}
-                rows={rows}
-                value={value[key]}
-                onChange={(e) => handleText(key, e.target.value)}
-                placeholder={placeholder}
-                aria-describedby={hintId}
-                aria-invalid={Boolean(errorMsg) || undefined}
-                className="break-keep"
-              />
-              <FieldError message={errorMsg} />
+            <div key={key} className="space-y-2">
+              <FormField
+                label={label}
+                htmlFor={fieldId}
+                required
+                hint={hint}
+                error={errorMsg}
+              >
+                <Textarea
+                  id={fieldId}
+                  rows={rows}
+                  value={value[key]}
+                  onChange={(e) => handleText(key, e.target.value)}
+                  placeholder={placeholder}
+                  aria-invalid={Boolean(errorMsg) || undefined}
+                  className="break-keep"
+                />
+              </FormField>
+              {key === 'establishment_necessity' && (
+                <GuideNote
+                  items={[
+                    '컨설팅 대상 기업의 경영진 또는 담당자(내부전문가)와 인터뷰 등을 통해 파악한 AI훈련로드맵 수립을 위해 해당 과업(또는 워크플로우) 선정 이유 및 AI 적용의 필요성 작성(5줄 내외로 간단히 기술)',
+                  ]}
+                />
+              )}
+              {key === 'roadmap_summary' && (
+                <GuideNote
+                  items={[
+                    '뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약하여 작성',
+                  ]}
+                />
+              )}
             </div>
           );
         })}
@@ -182,7 +197,7 @@ export default function StepOverview({
             기업 AI 역량 수준 <span className="text-destructive">*</span>
           </legend>
           <p className="text-xs text-muted-foreground mb-2">
-            HRD이음 진단 결과를 바탕으로 선택 (양식 Ⅰ-3)
+            (초급) AI기초형 / (중급) AI탐구형 / (고급) AI활용형·선도형 중 선택 (양식 Ⅰ-3)
           </p>
           <div
             role="radiogroup"
@@ -223,10 +238,10 @@ export default function StepOverview({
 
         <div>
           <Label className="mb-1 block">
-            HRD이음 진단 보고서 (PDF 첨부 · 선택)
+            기업HRD이음컨설팅 보고서 (AI역량 진단 결과 · 선택)
           </Label>
           <p className="text-xs text-muted-foreground mb-2">
-            기업HRD이음컨설팅 보고서 PDF를 첨부하세요. 로드맵 생성 시 LLM 프롬프트에서 첨부 파일이 있다는 사실을 함께 안내합니다 (양식 Ⅱ-1).
+            기업HRD이음컨설팅 보고서의 AI역량 진단 결과 내용을 첨부하세요(별도 작성 불요). 로드맵 생성 시 LLM 프롬프트에서 첨부 파일이 있다는 사실을 함께 안내합니다 (양식 Ⅱ-1).
           </p>
 
           {value.hrd_report_attachment ? (
@@ -302,6 +317,12 @@ export default function StepOverview({
           <FieldError message={errors?.hrd_report_attachment} />
         </div>
       </div>
+
+      <GuideNote
+        items={[
+          '본 장은 AI훈련로드맵 수립의 필요성, 주요 활동, 주요 결과를 한 눈에 제시하고자 하는 목적을 가지고 있음',
+        ]}
+      />
     </div>
   );
 }
