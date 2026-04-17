@@ -955,10 +955,10 @@ function RoadmapPageSkeletonBase({
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <SkeletonBar height="h-7" width="w-48" />
           <div className="flex items-center gap-2">
+            {/* PDF / Excel / HWPX 다운로드 버튼 3종 */}
             <SkeletonBar height="h-9" width="w-20" />
             <SkeletonBar height="h-9" width="w-20" />
             <SkeletonBar height="h-9" width="w-20" />
-            {showRegenerateAccordion && <SkeletonBar height="h-9" width="w-20" />}
           </div>
         </div>
         {showDescription && (
