@@ -223,14 +223,19 @@ def _collect_tables(doc):
 
 
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
-    """표 셀의 값을 설정 (첫 paragraph의 첫 run에 기록).
+    """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
     공식 API만 사용. lxml·OXML 직접 편집 금지.
 
-    주의: placeholder 글자 겹침(Ⅰ-2 수행일시 등)을 막으려면 값을 쓰기 전에
-    **모든 run의 text를 무조건 비워야** 한다. `if r.text:` 조건부 비움은
-    run.text getter가 일부 `<hp:t>` 노드를 놓칠 때 잔존 placeholder를
-    남길 수 있다. 아래 순서(전체 비움 → 첫 run에 쓰기)가 안전.
+    핵심 원칙:
+    1. 셀 내부 모든 paragraph의 모든 run text를 무조건 비움
+       (placeholder 흔적 완전 제거)
+    2. text 를 '\n' 기준으로 분할, 각 줄을 paragraph[i].runs[0] 에 기록
+       — 템플릿이 paragraph 2~3개로 설계된 셀(Ⅰ-2 수행일시: 날짜/시간 2줄,
+       Ⅰ-1 주요 훈련내용 등)에서 한 줄로 이어붙이면 `lineWrap="SQUEEZE"`
+       속성에 의해 좁은 셀 안에서 글자가 눌려 겹쳐 렌더되는 문제가 있음.
+    3. 줄 수가 template paragraph 개수보다 많으면 마지막 paragraph에 join.
+       줄 수가 적으면 남은 paragraph는 빈 상태 유지.
     """
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
         return
@@ -240,14 +245,29 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         return
     if not cell.paragraphs:
         return
-    # Step 1: 셀 내부 모든 run의 text 무조건 비움 (placeholder 흔적 제거)
-    for p in cell.paragraphs:
+
+    paragraphs = list(cell.paragraphs)
+
+    # Step 1: 모든 paragraph의 모든 run text 무조건 비움
+    for p in paragraphs:
         for r in p.runs:
             r.text = ""
-    # Step 2: 첫 paragraph의 첫 run에 새 값 기록
-    first_p = cell.paragraphs[0]
-    if first_p.runs:
-        first_p.runs[0].text = text
+
+    # Step 2: text 를 '\n' 기준으로 분할해 각 paragraph에 기록
+    text = text if text is not None else ""
+    lines = text.split("\n") if text else [""]
+    p_count = len(paragraphs)
+
+    for i, p in enumerate(paragraphs):
+        if not p.runs:
+            continue
+        if i < p_count - 1:
+            p.runs[0].text = lines[i] if i < len(lines) else ""
+        else:
+            # 마지막 paragraph = 남은 모든 줄을 '\n' 대신 공백으로 join
+            # (단일 paragraph 셀에서 원래 동작 유지)
+            remainder = "\n".join(lines[i:]) if i < len(lines) else ""
+            p.runs[0].text = remainder
 
 
 def _replace_in_all_runs(doc, old: str, new: str) -> None:

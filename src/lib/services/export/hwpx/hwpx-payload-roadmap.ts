@@ -170,7 +170,7 @@ export function buildRoadmapHwpxPayload(
               typedInterview.interview_time ?? '',
             ]
               .filter(Boolean)
-              .join(' '),
+              .join('\n'),
             content: notes?.text ?? '',
             method:
               typedInterview.interview_method === '대면'
