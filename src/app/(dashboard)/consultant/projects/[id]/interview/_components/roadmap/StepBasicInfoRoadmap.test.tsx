@@ -22,9 +22,9 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof StepBasicInfoR
 }
 
 describe('StepBasicInfoRoadmap', () => {
-  it('제목 "기본 정보 · 참석자" + 수행 차수/방법/일자/시간 필드 렌더', () => {
+  it('제목 "Ⅰ-2. 주요 활동" + 수행 차수/방법/일자/시간 필드 렌더', () => {
     render(<StepBasicInfoRoadmap {...baseProps()} />);
-    expect(screen.getByRole('heading', { name: /기본 정보 · 참석자/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /주요 활동/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 차수/)).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 방법/)).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 일자/)).toBeInTheDocument();

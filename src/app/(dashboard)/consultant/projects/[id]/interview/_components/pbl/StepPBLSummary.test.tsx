@@ -37,7 +37,7 @@ function mkProps(overrides: Partial<Props> = {}): Props {
   const companyStatus: PBLCompanyStatus = { business_issues: '', organization: [] };
   const trainingEnvironment: PBLTrainingEnvironment = {
     proper_training_hours: 0,
-    training_place: { type: '사내', special_notes: '' },
+    training_place: { types: [], location: '', special_notes: '' },
     internal_instructor: { used: false, name: '', position: '' },
     target_count: 0,
     target_characteristics: { career: '', level: '' },
@@ -90,8 +90,8 @@ describe('StepPBLSummary', () => {
     expect(screen.getByText(/AI 과정개발의 필요성/)).toBeInTheDocument();
     expect(screen.getByText(/훈련과제 도출 수행활동/)).toBeInTheDocument();
     expect(screen.getByText(/문제 도출·우선순위/)).toBeInTheDocument();
-    expect(screen.getByText(/훈련대상 업무/)).toBeInTheDocument();
-    expect(screen.getByText(/AI 수준 진단/)).toBeInTheDocument();
+    expect(screen.getByText(/7\. 훈련대상 업무 \(Ⅲ-3\)/)).toBeInTheDocument();
+    expect(screen.getByText(/AI수준 진단/)).toBeInTheDocument();
   });
 
   it('CourseOverview 필드 값이 표시된다', () => {

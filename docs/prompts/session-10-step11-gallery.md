@@ -103,6 +103,13 @@
 2. Task 2 (통합 목록): SQL UNION 사용 X. 두 테이블 병렬 쿼리 후 TS에서 병합·정렬·페이지네이션 (계획서 본문 코드 패턴)
 3. Task 3 (TrackFilter): 3개 토글(전체/로드맵/PBL) + URL searchParams 동기화 + composition-patterns로 기존 필터와 공통화 검토
 4. Task 4 (카드 + 상세 분기): 카드 href에 ?track 명시 (UUID 충돌 방지). gallery/[id]/page.tsx에 ?track 기반 분기 + GalleryPBLDetailContent.tsx 신규
+4.5. **Task 4.5 (프로젝트 목록 트랙 뱃지 — OFA-08 Playwright 점검에서 발견된 누락)**:
+   - 신규 `src/components/ui/TrackBadge.tsx` + 테스트 (shadcn Badge 기반, `tracks.ts` 색상맵 사용 — ROADMAP=blue, PBL=purple)
+   - `/consultant/projects` 테이블에 "트랙" 컬럼 추가 + 각 행에 `<TrackBadge track={p.track} />`
+   - `/ops/projects` 테이블에 동일 패턴
+   - 각 queries.ts `select` 절에 `track` 포함 (빠뜨리면 클라에 도달 안 함)
+   - 배경: Session 7(Step 8) Playwright 점검에서 현재 목록 헤더가 "기업명·업종·규모·상태·배정일·작업"뿐이라 로드맵/PBL 육안 구별 불가. 상세 페이지 방문해야만 알 수 있음.
+   - composition-patterns: TrackBadge는 갤러리 카드(Task 4)·프로젝트 테이블 양쪽에서 쓰이므로 한 파일로 집중
 5. Task 5 (gallery/page.tsx 통합): TrackFilter + 빈 상태 + 페이지네이션
 6. Task 6 (좋아요·공유): interactions.ts 분기. pbl_likes INSERT/DELETE만 — 트리거가 like_count 자동 갱신 (Step 2 마이그 061 트리거)
 7. Task 7 (/test-pbl): test-roadmap 컨벤션 정확히 평행
@@ -116,7 +123,7 @@
 9. Task 9: E2E 2개 (e2e/gallery/gallery-tracks.spec.ts + e2e/consultant/test-pbl.spec.ts)
 
 === 자동 진행 vs 승인 요청 경계 ===
-- 자동 진행: 10 Task. 갤러리 통합·필터·상세 분기·test-pbl·E2E 자율.
+- 자동 진행: 11 Task (Task 4.5 포함). 갤러리 통합·필터·상세 분기·프로젝트 목록 트랙 뱃지·test-pbl·E2E 자율.
 - 승인 요청 (즉시 중단):
   - TS 병합 방식이 트래픽 증가로 비효율적일 가능성이 보일 때 (DB 뷰 도입 검토)
   - TrackFilter 추출이 기존 필터 컴포넌트와 인터페이스 충돌할 때

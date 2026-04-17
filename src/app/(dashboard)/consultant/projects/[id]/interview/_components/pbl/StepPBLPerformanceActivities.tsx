@@ -2,8 +2,9 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyPerformanceActivity,
@@ -133,11 +134,12 @@ export default function StepPBLPerformanceActivities({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor={`pa-round-${activity.id}`}>
-                    수행 차수 <span className="text-destructive">*</span>
-                  </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  label="수행 차수"
+                  htmlFor={`pa-round-${activity.id}`}
+                  required
+                >
                   <Input
                     id={`pa-round-${activity.id}`}
                     type="number"
@@ -147,13 +149,13 @@ export default function StepPBLPerformanceActivities({
                       updateActivity(index, 'round', Number(e.target.value) || 0)
                     }
                     placeholder="예: 1"
-                    className="mt-1"
                   />
-                </div>
-                <div>
-                  <Label htmlFor={`pa-date-${activity.id}`}>
-                    수행 일자 <span className="text-destructive">*</span>
-                  </Label>
+                </FormField>
+                <FormField
+                  label="수행 일자"
+                  htmlFor={`pa-date-${activity.id}`}
+                  required
+                >
                   <Input
                     id={`pa-date-${activity.id}`}
                     type="date"
@@ -161,39 +163,44 @@ export default function StepPBLPerformanceActivities({
                     onChange={(e) =>
                       updateActivity(index, 'date', e.target.value)
                     }
-                    className="mt-1"
                   />
-                </div>
-                <div>
-                  <Label htmlFor={`pa-method-${activity.id}`}>
-                    수행 방법 <span className="text-destructive">*</span>
-                  </Label>
+                </FormField>
+              </div>
+
+              <div className="mt-4">
+                <FormField
+                  label="수행 방법"
+                  htmlFor={`pa-method-${activity.id}`}
+                  required
+                >
                   <Input
                     id={`pa-method-${activity.id}`}
                     value={activity.method}
                     onChange={(e) =>
                       updateActivity(index, 'method', e.target.value)
                     }
-                    placeholder="예: 회의 / 워크숍 / 토론 / 기타"
-                    className="mt-1"
+                    placeholder="예: 회의 / 워크숍 / 토론 등"
                   />
-                </div>
+                </FormField>
               </div>
 
               <div className="mt-4">
-                <Label htmlFor={`pa-content-${activity.id}`}>
-                  수행 내용 <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id={`pa-content-${activity.id}`}
-                  rows={3}
-                  value={activity.content}
-                  onChange={(e) =>
-                    updateActivity(index, 'content', e.target.value)
-                  }
-                  placeholder="예) 훈련과제 후보 브레인스토밍 및 우선순위 토의"
-                  className="mt-1 break-keep"
-                />
+                <FormField
+                  label="수행 내용"
+                  htmlFor={`pa-content-${activity.id}`}
+                  required
+                >
+                  <Textarea
+                    id={`pa-content-${activity.id}`}
+                    rows={4}
+                    value={activity.content}
+                    onChange={(e) =>
+                      updateActivity(index, 'content', e.target.value)
+                    }
+                    placeholder="예) 훈련과제 후보 브레인스토밍 및 우선순위 토의"
+                    className="break-keep"
+                  />
+                </FormField>
               </div>
 
               <div className="mt-4">
@@ -253,10 +260,11 @@ export default function StepPBLPerformanceActivities({
                       keyof PerformanceActivityItem['participants']
                     >
                   ).map((role) => (
-                    <div key={role}>
-                      <Label htmlFor={`pa-part-${activity.id}-${role}`}>
-                        {PARTICIPANT_LABELS[role]}
-                      </Label>
+                    <FormField
+                      key={role}
+                      label={PARTICIPANT_LABELS[role]}
+                      htmlFor={`pa-part-${activity.id}-${role}`}
+                    >
                       <Input
                         id={`pa-part-${activity.id}-${role}`}
                         value={activity.participants[role]}
@@ -264,9 +272,8 @@ export default function StepPBLPerformanceActivities({
                           updateParticipant(index, role, e.target.value)
                         }
                         placeholder="예: 홍길동 외 1명"
-                        className="mt-1"
                       />
-                    </div>
+                    </FormField>
                   ))}
                 </div>
               </div>
@@ -274,6 +281,14 @@ export default function StepPBLPerformanceActivities({
           ))}
         </div>
       )}
+
+      <GuideNote
+        items={[
+          '문제도출 및 훈련대상 업무 선정 등을 위한 중요한 활동으로, 기업이 지닌 본질적인 핵심문제 파악 및 문제정의에 경영진과 기업 핵심인력이 다수 참여하여 토론, 워크숍, 회의 등 다양한 방법으로 논의(경영진을 포함한 실무자 등 3명 이상 참여 권장)',
+          "기 작성한 '컨설팅 수행일지'의 주요 내용을 기준으로 자동 불러옴 처리되며, 내용 수정이 불가",
+          '본 과정이 어떠한 활동을 통해 개발되었는지 한눈에 볼 수 있도록 도식화 하여 기업의 이해를 도움',
+        ]}
+      />
     </div>
   );
 }

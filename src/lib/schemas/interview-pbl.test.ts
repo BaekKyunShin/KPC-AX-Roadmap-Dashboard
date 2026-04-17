@@ -138,7 +138,11 @@ describe('companyStatusSchema (Ⅱ-1)', () => {
 describe('trainingEnvironmentSchema (Ⅱ-2)', () => {
   const valid = {
     proper_training_hours: 24,
-    training_place: { type: '사내' as const, special_notes: '본사 교육장 사용' },
+    training_place: {
+      types: ['사내' as const],
+      location: '본사 3층 교육장',
+      special_notes: '본사 교육장 사용',
+    },
     internal_instructor: { used: true, name: '김강사', position: '과장' },
     target_count: 15,
     target_characteristics: { career: '5년 이상', level: '중급' },
@@ -159,11 +163,11 @@ describe('trainingEnvironmentSchema (Ⅱ-2)', () => {
     expect(() => trainingEnvironmentSchema.parse(valid)).not.toThrow();
   });
 
-  it('training_place.type은 사내/사외만', () => {
+  it('training_place.types 원소는 사내/사외만', () => {
     expect(() =>
       trainingEnvironmentSchema.parse({
         ...valid,
-        training_place: { type: '온라인', special_notes: '' },
+        training_place: { types: ['온라인'], location: '', special_notes: '' },
       })
     ).toThrow();
   });

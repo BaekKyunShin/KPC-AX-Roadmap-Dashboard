@@ -3,6 +3,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import {
   Select,
   SelectContent,
@@ -66,18 +68,15 @@ export default function StepBasicInfoRoadmap({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">기본 정보 · 참석자</h2>
+        <h2 className="text-lg font-semibold text-foreground">Ⅰ-2. 주요 활동</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          산업인력공단 AI 훈련로드맵 양식 Ⅰ-2. 컨설팅 수행 차수·일시·수행 방법·참석자를 입력하세요.
+          컨설팅 수행 차수·일시·수행 방법·참석자를 입력하세요.
           이 정보는 최종 보고서의 <strong>주요 활동</strong> 표로 자동 반영됩니다.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
-        <div>
-          <Label htmlFor="basic-round" className="mb-1 block">
-            수행 차수 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="수행 차수" htmlFor="basic-round" required>
           <Select
             value={String(interviewRound)}
             onValueChange={(v) => onInterviewRoundChange(Number(v))}
@@ -93,11 +92,8 @@ export default function StepBasicInfoRoadmap({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div>
-          <Label htmlFor="basic-method" className="mb-1 block">
-            수행 방법 <span className="text-destructive">*</span>
-          </Label>
+        </FormField>
+        <FormField label="수행 방법" htmlFor="basic-method" required>
           <Select value={interviewMethod} onValueChange={(v) => onInterviewMethodChange(v as InterviewMethod)}>
             <SelectTrigger id="basic-method" aria-label="수행 방법">
               <SelectValue placeholder="방법 선택" />
@@ -110,14 +106,11 @@ export default function StepBasicInfoRoadmap({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
-        <div>
-          <Label htmlFor="basic-date" className="mb-1 block">
-            수행 일자 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="수행 일자" htmlFor="basic-date" required>
           <Input
             id="basic-date"
             type="date"
@@ -125,11 +118,8 @@ export default function StepBasicInfoRoadmap({
             onChange={(e) => onInterviewDateChange(e.target.value)}
             required
           />
-        </div>
-        <div>
-          <Label htmlFor="basic-time" className="mb-1 block">
-            수행 시간 <span className="text-destructive">*</span>
-          </Label>
+        </FormField>
+        <FormField label="수행 시간" htmlFor="basic-time" required>
           <Input
             id="basic-time"
             type="time"
@@ -137,7 +127,7 @@ export default function StepBasicInfoRoadmap({
             onChange={(e) => onInterviewTimeChange(e.target.value)}
             required
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="border-t border-border pt-6">
@@ -195,6 +185,12 @@ export default function StepBasicInfoRoadmap({
           ))}
         </div>
       </div>
+
+      <GuideNote
+        items={[
+          '컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정(별도 작성 불요)',
+        ]}
+      />
     </div>
   );
 }

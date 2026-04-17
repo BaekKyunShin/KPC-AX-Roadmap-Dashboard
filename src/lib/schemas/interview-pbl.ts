@@ -125,7 +125,11 @@ export type PBLCompanyStatus = z.infer<typeof companyStatusSchema>;
 // ----------------------------------------------------------------------------
 
 export const trainingPlaceSchema = z.object({
-  type: TRAINING_PLACE,
+  /** 사내·사외 복수 선택 가능 (양식 원본: 체크박스) */
+  types: z.array(TRAINING_PLACE).default([]),
+  /** 구체 훈련장소 (예: 본사 3층 교육장·○○컨벤션센터) — 양식 원본 "*훈련장소" 칸 */
+  location: z.string().default(''),
+  /** 훈련장소 특이사항 — 양식 원본 "*훈련장소 특이사항(추가 훈련장 필요 사유 기재)" */
   special_notes: z.string().default(''),
 });
 
@@ -314,25 +318,25 @@ export type PBLInterviewInput = z.input<typeof pblInterviewSchema>;
 // ----------------------------------------------------------------------------
 // 자동저장용 (전 필드 optional, 부분 입력 허용)
 // ----------------------------------------------------------------------------
+// 작성 중간 단계의 부분 입력을 그대로 JSONB에 저장하므로, 각 서브 스키마의
+// min/positive/email 검증을 우회해야 한다. z.any()로 값 자체를 완화해
+// "과정명을 입력하세요" 등 빈 문자열 실패를 방지한다. 최종 제출 시에는
+// `pblInterviewSchema`(엄격)로 검증한다.
 
 export const pblInterviewAutoSaveSchema = z
   .object({
-    courseOverview: courseOverviewSchema
-      .partial()
-      .extend({
-        contact: contactSchema.partial().optional(),
-      })
-      .optional(),
-    companyStatus: companyStatusSchema.partial().optional(),
-    trainingEnvironment: trainingEnvironmentSchema.partial().optional(),
-    hrdNecessity: hrdNecessitySchema.partial().optional(),
-    performanceActivities: performanceActivitiesSchema.partial().optional(),
-    problemDefinition: problemDefinitionSchema.partial().optional(),
-    targetTasks: targetTasksSchema.partial().optional(),
-    aiLevelDiagnosis: aiLevelDiagnosisSchema.partial().optional(),
+    courseOverview: z.any().optional(),
+    companyStatus: z.any().optional(),
+    trainingEnvironment: z.any().optional(),
+    hrdNecessity: z.any().optional(),
+    performanceActivities: z.any().optional(),
+    problemDefinition: z.any().optional(),
+    targetTasks: z.any().optional(),
+    aiLevelDiagnosis: z.any().optional(),
   })
-  .partial();
+  .passthrough();
 export type PBLInterviewAutoSaveInput = z.input<typeof pblInterviewAutoSaveSchema>;
+
 
 // ----------------------------------------------------------------------------
 // 빈 항목 생성 헬퍼
@@ -455,7 +459,7 @@ export function createEmptyPBLInterviewDraft(): PBLInterviewAutoSaveInput {
     },
     trainingEnvironment: {
       proper_training_hours: 0,
-      training_place: { type: '사내', special_notes: '' },
+      training_place: { types: [], location: '', special_notes: '' },
       internal_instructor: { used: false, name: '', position: '' },
       target_count: 0,
       target_characteristics: { career: '', level: '' },

@@ -9,7 +9,7 @@ import type { InterviewStep } from './interview-steps';
  * 5. 훈련과제 도출 수행활동 (Ⅲ-1)
  * 6. 문제 도출·우선순위 (Ⅲ-2)
  * 7. 훈련대상 업무 (Ⅲ-3)
- * 8. AI 수준 진단 (Ⅲ-4)
+ * 8. AI수준 진단 (Ⅲ-4)
  * 9. 확인·제출
  */
 export const PBL_INTERVIEW_STEPS: readonly InterviewStep[] = [
@@ -20,7 +20,7 @@ export const PBL_INTERVIEW_STEPS: readonly InterviewStep[] = [
   { id: 5, name: '훈련과제 도출 수행활동', shortName: '수행활동' },
   { id: 6, name: '문제 도출·우선순위', shortName: '문제' },
   { id: 7, name: '훈련대상 업무', shortName: '업무' },
-  { id: 8, name: 'AI 수준 진단', shortName: 'AI수준' },
+  { id: 8, name: 'AI수준 진단', shortName: 'AI수준' },
   { id: 9, name: '확인·제출', shortName: '확인' },
 ] as const;
 

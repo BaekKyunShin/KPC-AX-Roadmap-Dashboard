@@ -3950,15 +3950,16 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 
 ---
 
-### Step 11: 갤러리 트랙 라벨·필터 + PBL 테스트 페이지
+### Step 11: 갤러리 트랙 라벨·필터 + 프로젝트 목록 트랙 뱃지 + PBL 테스트 페이지
 
 **브랜치:** `feature/ofa-11-gallery-test-track`
-**규모:** Medium (약 10 Task)
+**규모:** Medium (약 11 Task)
 **호출 스킬:** `frontend-guide`, `composition-patterns`
 **의존:** Step 6.5, Step 9
 
 **목표:**
 - 갤러리가 로드맵·PBL 양쪽 데이터를 통합 표시 + 트랙 라벨/필터 제공
+- **컨설턴트/운영관리자 프로젝트 목록 테이블에 트랙(로드맵/PBL) 뱃지 컬럼 추가** — Step 8 Playwright 점검에서 발견된 누락(OFA-08 PR 논의)
 - `/test-pbl` 페이지 신규 (기존 `/test-roadmap`와 평행 구조)
 - **Step 6.5 신규 필드(Ⅰ장 개요·NCS 박스·훈련체계 수립 방법)가 갤러리 카드/상세에서도 올바르게 렌더되도록 확인**
 - **Step 8·9 PBL 양식 2번 전 필드(Ⅰ~Ⅴ장 + 결과평가 설문)가 상세 페이지에 누락 없이 표출되도록 확인**
@@ -3976,6 +3977,9 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 - 변경: `src/app/(dashboard)/gallery/page.tsx` (+ `.test.tsx`)
 - 변경: `src/app/(dashboard)/gallery/actions/*.ts`
 - 변경: `src/components/gallery/*.tsx` (트랙 라벨, 필터 UI)
+- 변경: `src/app/(dashboard)/consultant/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
+- 변경: `src/app/(dashboard)/ops/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
+- 신규: `src/components/ui/TrackBadge.tsx` (+ `.test.tsx`) — 로드맵/PBL 뱃지 공용 컴포넌트 (`tracks.ts` 색상맵 사용)
 - 신규: `src/app/(dashboard)/test-pbl/page.tsx`
 - 신규: `src/app/(dashboard)/test-pbl/TestPBLClient.tsx` (테스트용 정적 인터뷰 데이터로 PBL 생성 — **test-roadmap 컨벤션 준수: 컨테이너 컴포넌트는 루트에 배치, `_components/`는 하위 단계 컴포넌트 전용**)
 - 신규: `src/app/(dashboard)/test-pbl/_components/TestPBL*.tsx` (단계·보조 컴포넌트)
@@ -4069,6 +4073,25 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 - 신규 파일: `src/app/(dashboard)/gallery/[id]/_components/GalleryPBLDetailContent.tsx` + `.test.tsx`.
 
 > 라우트 구조는 유지(`/gallery/[id]`)하되, 내부에서 트랙 분기를 명시적으로 한다. **쿼리 파라미터가 누락된 경우 기본값 'ROADMAP'**으로 기존 동작을 보존.
+
+- [ ] **Task 4.5: 프로젝트 목록 테이블 트랙 뱃지 컬럼 (RED → GREEN)**
+
+> 배경: OFA-08 Playwright 점검에서 발견된 이슈. 현재 컨설턴트(`/consultant/projects`)와 운영관리자(`/ops/projects`) 프로젝트 목록 테이블 헤더가 "기업명 · 업종 · 규모 · 상태 · 배정일 · 작업"만 있어 **로드맵/PBL 트랙 구분이 목록에서 불가능**하다. `src/lib/constants/tracks.ts`에 색상 쌍(`ROADMAP=blue, PBL=purple`)이 이미 정의되어 있으니 뱃지 컴포넌트만 추가하면 된다.
+
+파일:
+- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 `PROJECT_TRACK_LABEL` + 색상맵 사용. Shadcn `Badge` 기반.
+- 변경: `src/app/(dashboard)/consultant/projects/_components/ConsultantProjectsTable.tsx` (또는 동등 파일) — 헤더에 "트랙" 컬럼 + 각 행에 `<TrackBadge track={p.track} />` 렌더
+- 변경: `src/app/(dashboard)/ops/projects/_components/OpsProjectsTable.tsx` (또는 동등 파일) — 동일 패턴
+- 변경: `src/app/(dashboard)/consultant/projects/actions/queries.ts` / `ops/projects/actions/queries.ts` — `select` 절에 `track` 컬럼 추가 (기존 select가 `track`을 빠뜨리면 클라이언트에 도달하지 않음)
+- 선택: 트랙 필터 드롭다운 (상태 필터 옆) — 필수 아님, UX 개선용. `TrackFilter`와 공통화 가능.
+
+테스트:
+- `TrackBadge.test.tsx` — ROADMAP/PBL 각각 라벨·색상 클래스 검증
+- 각 테이블 `.test.tsx` — 행 렌더 시 뱃지 포함 확인
+
+`composition-patterns` 스킬 호출 권장: `TrackBadge`는 갤러리 카드(Task 4)와 프로젝트 테이블 양쪽에서 쓰이므로 한 파일로 집중.
+
+완료 조건: Playwright로 두 목록 방문 시 각 행에 "로드맵" 또는 "PBL" 뱃지가 보임.
 
 - [ ] **Task 5: 갤러리 페이지 통합**
 

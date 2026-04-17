@@ -2,8 +2,9 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTrainingHistoryItem,
@@ -106,13 +107,13 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
         </p>
       </div>
 
-      {/* 훈련 이력 */}
+      {/* 훈련 실시 이력 */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">최근 훈련 이력</h3>
+            <h3 className="text-sm font-semibold text-foreground">훈련 실시 이력</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              프로그램·과정명·훈련방법·훈련일수를 행 단위로 입력하세요.
+              참여사업·훈련과정명·훈련방법·훈련기간(일)을 행 단위로 입력하세요.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addTrainingHistory}>
@@ -151,8 +152,7 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`th-seq-${item.id}`}>순번</Label>
+                  <FormField label="연번" htmlFor={`th-seq-${item.id}`}>
                     <Input
                       id={`th-seq-${item.id}`}
                       type="number"
@@ -163,11 +163,9 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                           seq: Number(e.target.value) || 0,
                         })
                       }
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`th-program-${item.id}`}>프로그램</Label>
+                  </FormField>
+                  <FormField label="참여사업" htmlFor={`th-program-${item.id}`}>
                     <Input
                       id={`th-program-${item.id}`}
                       value={item.program}
@@ -175,11 +173,9 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                         updateTrainingHistory(index, { program: e.target.value })
                       }
                       placeholder="예: 재직자 향상훈련"
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`th-course-${item.id}`}>과정명</Label>
+                  </FormField>
+                  <FormField label="훈련과정명" htmlFor={`th-course-${item.id}`}>
                     <Input
                       id={`th-course-${item.id}`}
                       value={item.course_name}
@@ -187,11 +183,9 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                         updateTrainingHistory(index, { course_name: e.target.value })
                       }
                       placeholder="예: 스마트팩토리 기초"
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`th-method-${item.id}`}>훈련방법</Label>
+                  </FormField>
+                  <FormField label="훈련방법" htmlFor={`th-method-${item.id}`}>
                     <Input
                       id={`th-method-${item.id}`}
                       value={item.method}
@@ -199,11 +193,11 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                         updateTrainingHistory(index, { method: e.target.value })
                       }
                       placeholder="예: 집체(대면)"
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`th-duration-${item.id}`}>훈련일수</Label>
+                  </FormField>
+                </div>
+                <div className="mt-3">
+                  <FormField label="훈련기간(일)" htmlFor={`th-duration-${item.id}`}>
                     <Input
                       id={`th-duration-${item.id}`}
                       type="number"
@@ -214,9 +208,8 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                           duration_days: Number(e.target.value) || 0,
                         })
                       }
-                      className="mt-1"
                     />
-                  </div>
+                  </FormField>
                 </div>
               </div>
             ))}
@@ -224,15 +217,15 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
         )}
       </section>
 
-      {/* 지원 이력 */}
+      {/* 훈련 지원 이력 */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              연도별 지원 현황
+              훈련 지원 이력
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              연도·연간한도·지원액·지원비율을 입력하세요.
+              연도·연간 정부지원 한도금액(원)(A)·지원받은 금액(원)(B)·비율(B/A)을 입력하세요.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addSupportHistory}>
@@ -271,8 +264,7 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`sh-year-${item.id}`}>연도</Label>
+                  <FormField label="연도" htmlFor={`sh-year-${item.id}`}>
                     <Input
                       id={`sh-year-${item.id}`}
                       value={item.year}
@@ -280,11 +272,12 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                         updateSupportHistory(index, { year: e.target.value })
                       }
                       placeholder="예: 2025"
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`sh-limit-${item.id}`}>연간 한도</Label>
+                  </FormField>
+                  <FormField
+                    label="연간 정부지원 한도금액(원) (A)"
+                    htmlFor={`sh-limit-${item.id}`}
+                  >
                     <Input
                       id={`sh-limit-${item.id}`}
                       type="number"
@@ -295,11 +288,12 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                           annual_limit: Number(e.target.value) || 0,
                         })
                       }
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`sh-supported-${item.id}`}>지원액</Label>
+                  </FormField>
+                  <FormField
+                    label="지원받은 금액(원) (B)"
+                    htmlFor={`sh-supported-${item.id}`}
+                  >
                     <Input
                       id={`sh-supported-${item.id}`}
                       type="number"
@@ -310,11 +304,9 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                           supported: Number(e.target.value) || 0,
                         })
                       }
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`sh-ratio-${item.id}`}>지원비율</Label>
+                  </FormField>
+                  <FormField label="비율(B/A)" htmlFor={`sh-ratio-${item.id}`}>
                     <Input
                       id={`sh-ratio-${item.id}`}
                       value={item.ratio}
@@ -322,9 +314,8 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                         updateSupportHistory(index, { ratio: e.target.value })
                       }
                       placeholder="예: 60%"
-                      className="mt-1"
                     />
-                  </div>
+                  </FormField>
                 </div>
               </div>
             ))}
@@ -332,13 +323,13 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
         )}
       </section>
 
-      {/* 추천 과정 */}
+      {/* 추천훈련사업 */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">추천 과정</h3>
+            <h3 className="text-sm font-semibold text-foreground">추천훈련사업</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              우선순위(1~3)·프로그램·제안 내용을 입력하세요. (최대 {MAX_RECOMMENDATIONS}개)
+              추천 순위(1~3)·훈련사업명·HRD 제안(적합 훈련 및 과정 제안)을 입력하세요. (최대 {MAX_RECOMMENDATIONS}개)
             </p>
           </div>
           <Button
@@ -383,8 +374,7 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`rec-rank-${item.id}`}>우선순위</Label>
+                  <FormField label="추천 순위" htmlFor={`rec-rank-${item.id}`}>
                     <Input
                       id={`rec-rank-${item.id}`}
                       type="number"
@@ -399,34 +389,35 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
                           ),
                         })
                       }
-                      className="mt-1"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`rec-program-${item.id}`}>프로그램</Label>
+                  </FormField>
+                  <FormField label="훈련사업명" htmlFor={`rec-program-${item.id}`}>
                     <Input
                       id={`rec-program-${item.id}`}
                       value={item.program}
                       onChange={(e) =>
                         updateRecommendation(index, { program: e.target.value })
                       }
-                      placeholder="예: AI 실무 응용"
-                      className="mt-1"
+                      placeholder="예) 체계적 현장훈련(S-OJT)"
                     />
-                  </div>
+                  </FormField>
                 </div>
                 <div className="mt-3">
-                  <Label htmlFor={`rec-proposal-${item.id}`}>제안 내용</Label>
-                  <Textarea
-                    id={`rec-proposal-${item.id}`}
-                    rows={3}
-                    value={item.proposal}
-                    onChange={(e) =>
-                      updateRecommendation(index, { proposal: e.target.value })
-                    }
-                    placeholder="제안 배경 및 기대효과"
-                    className="mt-1 break-keep"
-                  />
+                  <FormField
+                    label="HRD 제안 (적합 훈련 및 과정 제안)"
+                    htmlFor={`rec-proposal-${item.id}`}
+                  >
+                    <Textarea
+                      id={`rec-proposal-${item.id}`}
+                      rows={3}
+                      value={item.proposal}
+                      onChange={(e) =>
+                        updateRecommendation(index, { proposal: e.target.value })
+                      }
+                      placeholder="제안 배경 및 기대효과"
+                      className="break-keep"
+                    />
+                  </FormField>
                 </div>
               </div>
             ))}
@@ -435,16 +426,15 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
       </section>
 
       {/* AI훈련과정 개발 필요성 */}
-      <div>
-        <Label htmlFor="hrd-necessity">
-          AI훈련과정 개발 필요성 <span className="text-destructive">*</span>
-        </Label>
-        <p className="text-xs text-muted-foreground mb-2">
-          불릿 스타일로 개발이 필요한 근거를 정리하세요.
-        </p>
+      <FormField
+        label="AI훈련과정 개발 필요성"
+        htmlFor="hrd-necessity"
+        required
+        hint="불릿 스타일로 개발이 필요한 근거를 정리하세요."
+      >
         <Textarea
           id="hrd-necessity"
-          rows={5}
+          rows={7}
           value={value.course_development_necessity}
           onChange={(e) =>
             onChange({ ...value, course_development_necessity: e.target.value })
@@ -452,7 +442,14 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
           placeholder={'예) - 기존 과정의 AI 실습 부재\n- 현업 데이터 기반 커스텀 실습 필요\n- 사내 전문가와 연계한 PBL 형식 요구'}
           className="break-keep"
         />
-      </div>
+      </FormField>
+
+      <GuideNote
+        items={[
+          '기업HRD이음컨설팅에서 제시된 결과와 연계하여 작성 필요',
+          "기업HRD이음컨설팅 외에도 'Ⅱ. 훈련 요구분석' 및 기업관계자 면담 등을 통해 파악한 내용(AI 업무적용 니즈 등)을 과정개발의 필요성으로 함께 제시할 것",
+        ]}
+      />
     </div>
   );
 }

@@ -18,9 +18,9 @@ describe('StepPBLHrdNecessity', () => {
   it('Ⅱ-3 제목과 주요 섹션이 렌더링된다', () => {
     render(<StepPBLHrdNecessity value={makeValue()} onChange={vi.fn()} />);
     expect(screen.getByText('Ⅱ-3. AI 과정개발의 필요성')).toBeInTheDocument();
-    expect(screen.getByText('최근 훈련 이력')).toBeInTheDocument();
-    expect(screen.getByText('연도별 지원 현황')).toBeInTheDocument();
-    expect(screen.getByText('추천 과정')).toBeInTheDocument();
+    expect(screen.getByText('훈련 실시 이력')).toBeInTheDocument();
+    expect(screen.getByText('훈련 지원 이력')).toBeInTheDocument();
+    expect(screen.getByText('추천훈련사업')).toBeInTheDocument();
     expect(screen.getByLabelText(/AI훈련과정 개발 필요성/)).toBeInTheDocument();
   });
 

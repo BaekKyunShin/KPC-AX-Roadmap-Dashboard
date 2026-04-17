@@ -97,14 +97,14 @@ export default function StepSummaryRoadmap({
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">수립 주요내용 요약</dt>
+            <dt className="text-muted-foreground">AI훈련로드맵 수립 주요내용 (요약)</dt>
             <dd className="text-foreground whitespace-pre-wrap break-keep">
               {overview.roadmap_summary || '-'}
             </dd>
           </div>
           {overview.hrd_report_attachment && (
             <div>
-              <dt className="text-muted-foreground">HRD이음 진단 보고서</dt>
+              <dt className="text-muted-foreground">기업HRD이음컨설팅 보고서</dt>
               <dd className="text-foreground">
                 {overview.hrd_report_attachment.file_name}
                 {overview.hrd_report_attachment.size

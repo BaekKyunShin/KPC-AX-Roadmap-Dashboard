@@ -5,6 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTargetTask,
@@ -85,14 +87,14 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
       </div>
 
       {/* ============================================================
-          섹션 A — 훈련대상 업무 선정
+          섹션 A — 가. 훈련대상 업무 선정
           ============================================================ */}
       <section className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">훈련대상 업무 선정</h3>
+            <h3 className="text-sm font-semibold text-foreground">가. 훈련대상 업무 선정</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              후보 업무에 대해 AI기반 문제해결 필요도(1~5)와 선정 여부를 표시하세요.
+              후보 업무에 대해 AI훈련과정 개발 필요성(1~5)과 훈련대상 업무 선정 여부를 표시하세요.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addTask}>
@@ -127,21 +129,19 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   </Button>
                 </div>
 
-                <div>
-                  <Label htmlFor={`tt-task-${task.id}`}>업무명</Label>
+                <FormField label="업무명" htmlFor={`tt-task-${task.id}`}>
                   <Input
                     id={`tt-task-${task.id}`}
                     value={task.task_name}
                     onChange={(e) => updateTask(index, { task_name: e.target.value })}
                     placeholder="예: 외관검사 불량 판정"
-                    className="mt-1"
                   />
-                </div>
+                </FormField>
 
                 <div className="mt-4">
                   <fieldset>
                     <legend className="text-sm font-medium text-foreground mb-2">
-                      AI기반 문제해결 필요도
+                      AI훈련과정 개발 필요성
                     </legend>
                     <div
                       role="radiogroup"
@@ -195,44 +195,56 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                     aria-label={`업무 ${index + 1} 선정`}
                   />
                   <Label htmlFor={`tt-selected-${task.id}`} className="cursor-pointer">
-                    훈련대상 업무로 선정
+                    훈련대상 업무 선정 여부
                   </Label>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </section>
 
-      {/* ============================================================
-          섹션 B — 선정 사유
-          ============================================================ */}
-      <section>
-        <Label htmlFor="tt-selection-reason">
-          AI기반 문제해결의 필요성 (선정 사유) <span className="text-destructive">*</span>
-        </Label>
-        <p className="text-xs text-muted-foreground mt-1 mb-2">
-          선정한 훈련대상 업무에 AI기반 문제해결이 필요한 이유
-        </p>
-        <Textarea
-          id="tt-selection-reason"
-          rows={5}
-          value={value.selection_reason}
-          onChange={(e) => onChange({ ...value, selection_reason: e.target.value })}
-          placeholder="예) 외관검사 공정은 검사원 피로도로 인해 편차 발생. 데이터가 충분하며 AI 자동화 효과가 명확함."
-          className="break-keep"
+        <GuideNote
+          items={[
+            '문제 우선순위에서 도출된 결과를 분석하여 AI를 통해 가장 큰 변화가 예상되는 핵심업무(Task) 단위로 훈련대상 업무를 선정한다.',
+            "해당 업무가 왜 AI훈련에 적합한지 '업무변화' 관점에서 기술한다.",
+            "'AI훈련과정 개발 필요성'은 업무별로 판단하며, △기업 경영 이슈와 연계되는지, △AI가 업무에 적용될 경우 중장기 또는 단기 성과가 나올 수 있는지 △AI훈련 및 평가가 가능한 업무인지 등을 종합적으로 고려해야 함.",
+            "'업무명'은 조직도에서 선택한 부서명을 기반으로 자동 불러옴 처리하며, 내용 수정이 불가함.",
+            "'훈련대상 업무 선정 여부'는 최종적으로 기업 담당자와 논의하여 선정함.",
+            '(목적) 조직, 개인, 업무, 환경의 요구사항을 반영하여 훈련과정 개발 우선순위를 선정',
+          ]}
         />
       </section>
 
       {/* ============================================================
-          섹션 C — 선정 업무 세부내용
+          섹션 B — 나. AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)
+          ============================================================ */}
+      <section>
+        <FormField
+          label="나. AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)"
+          htmlFor="tt-selection-reason"
+          required
+          hint="선정한 훈련대상 업무에 AI기반 문제해결이 필요한 이유"
+        >
+          <Textarea
+            id="tt-selection-reason"
+            rows={5}
+            value={value.selection_reason}
+            onChange={(e) => onChange({ ...value, selection_reason: e.target.value })}
+            placeholder="예) 외관검사 공정은 검사원 피로도로 인해 편차 발생. 데이터가 충분하며 AI 자동화 효과가 명확함."
+            className="break-keep"
+          />
+        </FormField>
+      </section>
+
+      {/* ============================================================
+          섹션 C — 다. 훈련대상 업무 세부내용
           ============================================================ */}
       <section className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">선정 업무 세부내용</h3>
+            <h3 className="text-sm font-semibold text-foreground">다. 훈련대상 업무 세부내용</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              선정된 업무별 As-IS / To-Be / 요구지식 / 요구기술을 작성하세요.
+              선정된 업무별 현재 업무방식(AS-IS) / AI활용방식(TO-BE) / 요구지식 / 기술을 작성하세요.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addDetail}>
@@ -272,71 +284,85 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   </Button>
                 </div>
 
-                <div>
-                  <Label htmlFor={`ttd-task-${detail.id}`}>업무명</Label>
+                <FormField label="업무명" htmlFor={`ttd-task-${detail.id}`}>
                   <Input
                     id={`ttd-task-${detail.id}`}
                     value={detail.task_name}
                     onChange={(e) => updateDetail(index, { task_name: e.target.value })}
                     placeholder="예: 외관검사 불량 판정"
-                    className="mt-1"
                   />
-                </div>
+                </FormField>
 
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`ttd-asis-${detail.id}`}>As-IS (현행 방식)</Label>
+                  <FormField
+                    label="현재 업무방식(AS-IS)"
+                    htmlFor={`ttd-asis-${detail.id}`}
+                  >
                     <Textarea
                       id={`ttd-asis-${detail.id}`}
-                      rows={3}
+                      rows={4}
                       value={detail.as_is}
                       onChange={(e) => updateDetail(index, { as_is: e.target.value })}
                       placeholder="예) 검사원이 육안으로 판정"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`ttd-tobe-${detail.id}`}>To-Be (향후 모습)</Label>
+                  </FormField>
+                  <FormField
+                    label="AI활용방식(TO-BE)"
+                    htmlFor={`ttd-tobe-${detail.id}`}
+                  >
                     <Textarea
                       id={`ttd-tobe-${detail.id}`}
-                      rows={3}
+                      rows={4}
                       value={detail.to_be}
                       onChange={(e) => updateDetail(index, { to_be: e.target.value })}
                       placeholder="예) AI 비전 모델이 자동 판정, 검사원은 리뷰만 수행"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`ttd-knowledge-${detail.id}`}>요구지식</Label>
+                  </FormField>
+                  <FormField
+                    label="요구지식"
+                    htmlFor={`ttd-knowledge-${detail.id}`}
+                  >
                     <Textarea
                       id={`ttd-knowledge-${detail.id}`}
-                      rows={3}
+                      rows={4}
                       value={detail.required_knowledge}
                       onChange={(e) =>
                         updateDetail(index, { required_knowledge: e.target.value })
                       }
                       placeholder="예) 이미지 분류 기본 개념, 불량 유형 분류 기준"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor={`ttd-skill-${detail.id}`}>요구기술</Label>
+                  </FormField>
+                  <FormField
+                    label="기술"
+                    htmlFor={`ttd-skill-${detail.id}`}
+                  >
                     <Textarea
                       id={`ttd-skill-${detail.id}`}
-                      rows={3}
+                      rows={4}
                       value={detail.required_skill}
                       onChange={(e) =>
                         updateDetail(index, { required_skill: e.target.value })
                       }
                       placeholder="예) Python, 이미지 라벨링 도구, 검사 결과 리뷰"
-                      className="mt-1 break-keep"
+                      className="break-keep"
                     />
-                  </div>
+                  </FormField>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        <GuideNote
+          items={[
+            '훈련대상 업무가 AI활용·도입 전후로 어떻게 변화하는지, 그에 따른 어떤 역량이 필요한지, 특히 현재 업무방식(AS-IS)에서 AI로 인해 변화된 업무방식(TO-BE)을 기술한다.',
+            "'세부내용/지식/기술'은 해당 업무를 수행하기 위해 어떠한 과업(task)을 수행해야 하는지, 어떤 지식과 기술이 요구되는지 인터뷰를 통해 도출함. 2개 이상의 과업으로 이루어지는 경우 행 추가하여 작성 필요",
+            "'업무명'은 훈련대상 업무 선정 여부에서 선택된 업무를 자동 불러옴 처리하며, 내용 수정이 불가함.",
+          ]}
+        />
       </section>
     </div>
   );

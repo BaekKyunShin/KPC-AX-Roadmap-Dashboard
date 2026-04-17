@@ -43,17 +43,17 @@ describe('StepPBLProblemDefinition', () => {
     render(
       <StepPBLProblemDefinition value={makeValue()} onChange={vi.fn()} />,
     );
-    expect(screen.getByLabelText(/배경/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/핵심문제/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/문제범위/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/제약조건/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/문제 배경/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/핵심 문제/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/문제 범위/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/제약 조건/)).toBeInTheDocument();
   });
 
   it('배경 입력 시 problem_definition.background가 업데이트된다', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<StepPBLProblemDefinition value={makeValue()} onChange={onChange} />);
-    await user.type(screen.getByLabelText(/배경/), '이');
+    await user.type(screen.getByLabelText(/문제 배경/), '이');
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.problem_definition.background).toBe('이');
   });

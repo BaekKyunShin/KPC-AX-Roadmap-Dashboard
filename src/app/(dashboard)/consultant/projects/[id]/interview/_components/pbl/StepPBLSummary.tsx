@@ -84,7 +84,7 @@ export default function StepPBLSummary({
           <KeyValue label="사업장관리번호" value={courseOverview.business_registration_no} />
           <KeyValue label="훈련과정명" value={courseOverview.course_name} />
           <KeyValue label="NCS 분류" value={courseOverview.ncs_code} />
-          <KeyValue label="훈련시간(H)" value={courseOverview.training_hours} />
+          <KeyValue label="훈련시간(시간)" value={courseOverview.training_hours} />
           <KeyValue label="훈련생(명)" value={courseOverview.trainee_count} />
           <KeyValue label="훈련 직무" value={courseOverview.training_job} />
           <KeyValue label="AI역량 수준" value={courseOverview.ai_level} />
@@ -135,23 +135,33 @@ export default function StepPBLSummary({
       <section className="border border-border rounded-lg p-4">
         <SectionHeader title="3. 기업 훈련환경 분석 (Ⅱ-2)" stepId={3} onEdit={onEditStep} />
         <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <KeyValue label="적정 훈련시간(H)" value={trainingEnvironment.proper_training_hours} />
-          <KeyValue label="훈련장소" value={trainingEnvironment.training_place.type} />
+          <KeyValue label="적정 훈련시간(시간)" value={trainingEnvironment.proper_training_hours} />
           <KeyValue
-            label="사내강사 활용"
-            value={trainingEnvironment.internal_instructor.used ? '사용' : '미사용'}
+            label="적정 훈련장소"
+            value={trainingEnvironment.training_place.types.join(', ') || '—'}
           />
-          <KeyValue label="대상 인원" value={trainingEnvironment.target_count} />
-          <KeyValue label="대상자 경력" value={trainingEnvironment.target_characteristics.career} />
-          <KeyValue label="대상자 수준" value={trainingEnvironment.target_characteristics.level} />
-          <KeyValue label="AI도구 활용" value={trainingEnvironment.ai_infrastructure.ai_tools} />
-          <KeyValue label="네트워크" value={trainingEnvironment.ai_infrastructure.network} />
-          <KeyValue label="PC 수량" value={trainingEnvironment.ai_infrastructure.pc_count} />
+          <KeyValue label="훈련장소" value={trainingEnvironment.training_place.location} />
+          <div className="md:col-span-2">
+            <KeyValue
+              label="훈련장소 특이사항"
+              value={trainingEnvironment.training_place.special_notes}
+            />
+          </div>
+          <KeyValue
+            label="사내 강사 활용 여부"
+            value={trainingEnvironment.internal_instructor.used ? '예' : '아니오'}
+          />
+          <KeyValue label="대상 인원(명)" value={trainingEnvironment.target_count} />
+          <KeyValue label="업무 경력" value={trainingEnvironment.target_characteristics.career} />
+          <KeyValue label="수준" value={trainingEnvironment.target_characteristics.level} />
+          <KeyValue label="AI 도구 사용 가능 환경" value={trainingEnvironment.ai_infrastructure.ai_tools} />
+          <KeyValue label="네트워크 환경" value={trainingEnvironment.ai_infrastructure.network} />
+          <KeyValue label="PC 보유 현황(대)" value={trainingEnvironment.ai_infrastructure.pc_count} />
           <div className="md:col-span-2">
             <KeyValue label="AI훈련 요구분석 결과" value={trainingEnvironment.training_needs_analysis} />
           </div>
-          <KeyValue label="현재(As-Is)" value={trainingEnvironment.expectation.as_is} />
-          <KeyValue label="향후(To-Be)" value={trainingEnvironment.expectation.to_be} />
+          <KeyValue label="As-is (현재 상황)" value={trainingEnvironment.expectation.as_is} />
+          <KeyValue label="To-be (원하는 상황)" value={trainingEnvironment.expectation.to_be} />
         </dl>
       </section>
 
@@ -161,7 +171,7 @@ export default function StepPBLSummary({
         <dl className="mt-3 space-y-3">
           <KeyValue label="훈련 실시 이력" value={`${hrdNecessity.training_history.length}건`} />
           <KeyValue label="훈련 지원 이력" value={`${hrdNecessity.support_history.length}건`} />
-          <KeyValue label="추천 훈련사업" value={`${hrdNecessity.recommendations.length}건`} />
+          <KeyValue label="추천훈련사업" value={`${hrdNecessity.recommendations.length}건`} />
           <div>
             <dt className="text-muted-foreground text-xs">AI훈련과정 개발 필요성</dt>
             <dd className="text-foreground text-sm whitespace-pre-wrap break-keep">
@@ -195,13 +205,13 @@ export default function StepPBLSummary({
       <section className="border border-border rounded-lg p-4">
         <SectionHeader title="6. 문제 도출·우선순위 (Ⅲ-2)" stepId={6} onEdit={onEditStep} />
         <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <KeyValue label="배경" value={problemDefinition.problem_definition.background} />
-          <KeyValue label="핵심문제" value={problemDefinition.problem_definition.core_problem} />
-          <KeyValue label="문제범위" value={problemDefinition.problem_definition.scope} />
-          <KeyValue label="제약조건" value={problemDefinition.problem_definition.constraints} />
+          <KeyValue label="문제 배경" value={problemDefinition.problem_definition.background} />
+          <KeyValue label="핵심 문제" value={problemDefinition.problem_definition.core_problem} />
+          <KeyValue label="문제 범위" value={problemDefinition.problem_definition.scope} />
+          <KeyValue label="제약 조건" value={problemDefinition.problem_definition.constraints} />
           <div className="md:col-span-2">
             <KeyValue
-              label="문제 우선순위"
+              label="문제 해결 우선순위"
               value={`${problemDefinition.problem_priorities.length}건 (선정 ${problemDefinition.problem_priorities.filter((p) => p.selected).length}건)`}
             />
           </div>
@@ -213,27 +223,27 @@ export default function StepPBLSummary({
         <SectionHeader title="7. 훈련대상 업무 (Ⅲ-3)" stepId={7} onEdit={onEditStep} />
         <dl className="mt-3 space-y-3">
           <KeyValue
-            label="업무 선정"
+            label="훈련대상 업무 선정"
             value={`${targetTasks.target_tasks.length}건 (선정 ${targetTasks.target_tasks.filter((t) => t.selected).length}건)`}
           />
           <div>
-            <dt className="text-muted-foreground text-xs">선정 사유</dt>
+            <dt className="text-muted-foreground text-xs">AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)</dt>
             <dd className="text-foreground text-sm whitespace-pre-wrap break-keep">
               {targetTasks.selection_reason || '—'}
             </dd>
           </div>
-          <KeyValue label="업무 세부내용" value={`${targetTasks.target_task_details.length}건`} />
+          <KeyValue label="훈련대상 업무 세부내용" value={`${targetTasks.target_task_details.length}건`} />
         </dl>
       </section>
 
       {/* Ⅲ-4 */}
       <section className="border border-border rounded-lg p-4">
-        <SectionHeader title="8. AI 수준 진단 (Ⅲ-4)" stepId={8} onEdit={onEditStep} />
+        <SectionHeader title="8. AI수준 진단 (Ⅲ-4)" stepId={8} onEdit={onEditStep} />
         <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
           <KeyValue label="현재 AI역량 수준" value={aiLevelDiagnosis.current_ai_level} />
           <KeyValue label="향후 AI역량 수준" value={aiLevelDiagnosis.expected_ai_level} />
           <div className="md:col-span-2">
-            <KeyValue label="향상 사유" value={aiLevelDiagnosis.improvement_reason} />
+            <KeyValue label="AI역량 수준 향상 사유" value={aiLevelDiagnosis.improvement_reason} />
           </div>
         </dl>
       </section>

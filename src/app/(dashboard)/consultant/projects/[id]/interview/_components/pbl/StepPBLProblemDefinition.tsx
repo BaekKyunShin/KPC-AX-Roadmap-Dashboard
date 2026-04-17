@@ -2,9 +2,10 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormField } from '@/components/ui/form-field';
+import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyProblemPriority,
@@ -82,77 +83,75 @@ export default function StepPBLProblemDefinition({
         </p>
       </div>
 
-      {/* 섹션 A — 문제정의서 */}
+      {/* 섹션 A — 가. 문제 도출 (문제 정의서) */}
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">문제정의서</h3>
+        <h3 className="text-sm font-semibold text-foreground">가. 문제 도출 (문제 정의서)</h3>
 
-        <div>
-          <Label htmlFor="pd-background">
-            배경 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="문제 배경" htmlFor="pd-background" required>
           <Textarea
             id="pd-background"
-            rows={3}
+            rows={5}
             value={problem_definition.background}
             onChange={(e) => updateDefinition('background', e.target.value)}
             placeholder="예) 산업 환경 변화·경쟁 심화 등 문제 발생 맥락"
-            className="mt-1 break-keep"
+            className="break-keep"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="pd-core-problem">
-            핵심문제 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="핵심 문제" htmlFor="pd-core-problem" required>
           <Textarea
             id="pd-core-problem"
-            rows={3}
+            rows={5}
             value={problem_definition.core_problem}
             onChange={(e) => updateDefinition('core_problem', e.target.value)}
             placeholder="예) 훈련 대상·업무에서 관찰되는 핵심 문제 서술"
-            className="mt-1 break-keep"
+            className="break-keep"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="pd-scope">
-            문제범위 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="문제 범위" htmlFor="pd-scope" required>
           <Textarea
             id="pd-scope"
-            rows={3}
+            rows={5}
             value={problem_definition.scope}
             onChange={(e) => updateDefinition('scope', e.target.value)}
             placeholder="예) 적용 부서·공정 범위, 영향 대상"
-            className="mt-1 break-keep"
+            className="break-keep"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="pd-constraints">
-            제약조건 <span className="text-destructive">*</span>
-          </Label>
+        <FormField label="제약 조건" htmlFor="pd-constraints" required>
           <Textarea
             id="pd-constraints"
-            rows={3}
+            rows={5}
             value={problem_definition.constraints}
             onChange={(e) => updateDefinition('constraints', e.target.value)}
             placeholder="예) 예산·인력·일정·기술 제약"
-            className="mt-1 break-keep"
+            className="break-keep"
           />
-        </div>
+        </FormField>
+
+        <GuideNote
+          items={[
+            '실제로 직무에 해결해야 할 문제를 선정하기 위한 문제 범위 도출하고 핵심 개념, 문제를 명확히 정의한다.',
+            '외부 전문가, 기업관계자는 AI기술을 활용하여 기업 문제점을 도출하고 정밀 분석한다.(타기업 사례 수집·비교분석 등)',
+            "'문제 배경'은 기업이 직면한 경영 이슈와 현장 애로사항을 구체적으로 기술",
+            "'핵심문제'는 해결해야 할 구체적 문제를 명확히 정의 (예: ~~ 업무의 수작업으로 인한 효율 저하)",
+            "'문제 범위'는 부서, 인원, 업무 프로세스, 작업장 환경 등 직면 문제에 영향을 범위 기술",
+            "'제약 조건'은 시간, 예산, 인력, 기술적 제약 사항을 기술",
+          ]}
+        />
       </section>
 
-      {/* 섹션 B — 문제 우선순위 */}
+      {/* 섹션 B — 나. 문제 우선순위 결정 */}
       <section className="space-y-4 border-t border-border pt-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              문제 우선순위
+              나. 문제 우선순위 결정
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              후보 문제별 중요도(1~5점)를 평가하고, 훈련대상 선정 여부를
-              체크하세요.
+              후보 문제별 문제 해결 우선순위(1~5)를 평가하고, 선정 여부를 체크하세요.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addPriority}>
@@ -194,10 +193,11 @@ export default function StepPBLProblemDefinition({
                   )}
                 </div>
 
-                <div>
-                  <Label htmlFor={`pp-name-${item.id}`}>
-                    문제명 <span className="text-destructive">*</span>
-                  </Label>
+                <FormField
+                  label="문제 정의"
+                  htmlFor={`pp-name-${item.id}`}
+                  required
+                >
                   <Input
                     id={`pp-name-${item.id}`}
                     value={item.problem_name}
@@ -205,18 +205,17 @@ export default function StepPBLProblemDefinition({
                       updatePriority(index, 'problem_name', e.target.value)
                     }
                     placeholder="예) 불량률 증가로 인한 납기 지연"
-                    className="mt-1"
                   />
-                </div>
+                </FormField>
 
                 <div className="mt-4">
                   <fieldset>
                     <legend className="text-sm font-medium text-foreground mb-2">
-                      우선순위 <span className="text-destructive">*</span>
+                      문제 해결 우선순위 <span className="text-destructive">*</span>
                     </legend>
                     <div
                       role="radiogroup"
-                      aria-label="우선순위"
+                      aria-label="문제 해결 우선순위"
                       className="flex flex-wrap gap-2"
                     >
                       {PRIORITY_OPTIONS.map((score) => {
@@ -272,7 +271,7 @@ export default function StepPBLProblemDefinition({
                       aria-label={`문제 ${index + 1} 선정`}
                     />
                     <span className="text-sm text-foreground">
-                      훈련과제로 선정
+                      선정 여부 (훈련과제로 선정)
                     </span>
                   </label>
                 </div>
@@ -280,6 +279,16 @@ export default function StepPBLProblemDefinition({
             ))}
           </div>
         )}
+
+        <GuideNote
+          items={[
+            '문제 정의 분석결과를 토대로 해결해야 할 문제 우선순위를 결정한다.',
+            "'문제 정의'는 문제 정의서의 핵심문제를 중심으로 작성",
+            "'문제해결 우선순위'는 문제 정의 분석결과를 토대로 기업에서 우선적으로 해결해야 할 문제의 우선순위를 결정하고 '훈련대상 업무 선정'과 연계되어야 한다.",
+            'AI를 통해 해결이 가능한 문제에 우선순위를 부여하고 최종 선정 여부를 검토한다.',
+            '(목적) 과정개발 시 기업의 훈련에 대한 요구사항을 반영하기 위함.',
+          ]}
+        />
       </section>
     </div>
   );

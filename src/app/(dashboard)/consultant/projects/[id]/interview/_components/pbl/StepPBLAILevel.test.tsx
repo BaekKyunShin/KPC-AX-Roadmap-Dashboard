@@ -16,7 +16,7 @@ function makeValue(partial: Partial<PBLAILevelDiagnosis> = {}): PBLAILevelDiagno
 describe('StepPBLAILevel', () => {
   it('Ⅲ-4 제목과 두 라디오 그룹 + 향상 사유 Textarea 렌더', () => {
     render(<StepPBLAILevel value={makeValue()} onChange={vi.fn()} />);
-    expect(screen.getByText('Ⅲ-4. AI 수준 진단')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-4. AI수준 진단')).toBeInTheDocument();
     expect(
       screen.getByRole('radiogroup', { name: '현재 AI역량 수준' }),
     ).toBeInTheDocument();

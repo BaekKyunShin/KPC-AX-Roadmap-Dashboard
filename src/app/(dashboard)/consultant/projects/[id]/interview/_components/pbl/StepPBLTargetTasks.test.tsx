@@ -17,9 +17,9 @@ describe('StepPBLTargetTasks', () => {
   it('Ⅲ-3 제목과 3개 섹션 헤더가 렌더링된다', () => {
     render(<StepPBLTargetTasks value={makeValue()} onChange={vi.fn()} />);
     expect(screen.getByText('Ⅲ-3. 훈련대상 업무 선정')).toBeInTheDocument();
-    expect(screen.getByText('훈련대상 업무 선정')).toBeInTheDocument();
+    expect(screen.getByText('가. 훈련대상 업무 선정')).toBeInTheDocument();
     expect(screen.getByLabelText(/AI기반 문제해결의 필요성/)).toBeInTheDocument();
-    expect(screen.getByText('선정 업무 세부내용')).toBeInTheDocument();
+    expect(screen.getByText('다. 훈련대상 업무 세부내용')).toBeInTheDocument();
   });
 
   it('"업무 추가" 버튼 클릭 시 target_tasks에 새 행 추가', async () => {
