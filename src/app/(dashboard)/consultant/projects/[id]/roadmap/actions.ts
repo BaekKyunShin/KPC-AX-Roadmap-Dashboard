@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
@@ -20,6 +21,8 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
+import { buildRoadmapHwpxPayload, generateHwpx } from '@/lib/services/export/hwpx';
+import { createAuditLog } from '@/lib/services/audit';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /** abort 레지스트리 키 생성 */
@@ -347,4 +350,125 @@ export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
 
   cancelAbort(abortKey(auth.user.id));
   return { success: true };
+}
+
+/**
+ * 로드맵 HWPX 내보내기 (Step 7).
+ *
+ * 5단계 패턴:
+ *   1. 세션 + 역할 (CONSULTANT_APPROVED)
+ *   2. 로드맵 접근 권한 (프로젝트 배정)
+ *   3. 입력 검증(roadmapId만)
+ *   4. 데이터 조회 → payload 변환 → Python 함수 호출 → base64
+ *   5. 감사로그 + ActionResult 반환
+ *
+ * 반환값이 Buffer가 아닌 base64 문자열인 이유:
+ *   Server Action 반환값은 JSON 직렬화 대상이므로 Buffer/Blob 직접 반환 불가.
+ *   클라이언트(useHwpxDownload 훅)가 atob로 복원 후 Blob → a.download 처리.
+ */
+export async function exportRoadmapAsHwpxAction(
+  roadmapId: string,
+): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
+  try {
+    // 1) 인증 + 역할
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 HWPX를 내보낼 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    // 2) 입력 검증
+    if (!roadmapId || typeof roadmapId !== 'string') {
+      return { success: false, error: '로드맵 ID가 올바르지 않습니다.' };
+    }
+
+    // 3) 접근 권한 확인 (프로젝트 배정)
+    const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    // 4) 데이터 조회
+    const roadmapRow = await fetchRoadmapVersionService(roadmapId);
+    if (!roadmapRow) {
+      return { success: false, error: '로드맵을 찾을 수 없습니다.' };
+    }
+
+    const { data: projectRow } = await supabase
+      .from('projects')
+      .select('id, company_name')
+      .eq('id', access.projectId)
+      .single();
+    if (!projectRow) {
+      return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+    }
+
+    const { data: interviewRow } = await supabase
+      .from('interviews')
+      .select('*')
+      .eq('project_id', access.projectId)
+      .maybeSingle();
+
+    // 5) payload 변환 + Python 함수 호출
+    const payload = buildRoadmapHwpxPayload({
+      // TypeScript 타입 호환: roadmapRow는 raw DB row이므로 RoadmapVersion으로 단언
+      roadmap: roadmapRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['roadmap'],
+      project: projectRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['project'],
+      interview: (interviewRow ?? null) as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['interview'],
+    });
+
+    // 요청 host에서 현재 deployment URL 추출 — 같은 배포의 Python 함수를 찌른다.
+    // 이렇게 해야 Preview/Production/로컬 어느 환경에서든 자기 자신의 함수를 호출.
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+    const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+    const baseUrl = host ? `${proto}://${host}` : undefined;
+
+    let buffer: Buffer;
+    try {
+      buffer = await generateHwpx(payload, { baseUrl });
+    } catch (error) {
+      console.error('[exportRoadmapAsHwpxAction generateHwpx Error]', {
+        baseUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        success: false,
+        error: 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      };
+    }
+
+    // 6) Buffer → base64 (Next.js 직렬화 제약)
+    const contentBase64 = buffer.toString('base64');
+    console.log('[exportRoadmapAsHwpxAction] payload ready', {
+      bufferLength: buffer.length,
+      base64Length: contentBase64.length,
+      firstMagic: buffer.subarray(0, 4).toString('hex'),  // ZIP: 504b0304
+    });
+
+    // 7) 감사로그
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'ROADMAP_HWPX_EXPORTED',
+        targetType: 'roadmap_version',
+        targetId: roadmapId,
+        meta: {
+          projectId: access.projectId,
+          versionNumber: roadmapRow.version_number,
+          fileSize: buffer.length,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      data: {
+        fileName: payload.fileName,
+        contentBase64,
+        mimeType: 'application/vnd.hancom.hwpx',
+      },
+    };
+  } catch (error) {
+    console.error('[exportRoadmapAsHwpxAction Error]', error);
+    return { success: false, error: 'HWPX 내보내기에 실패했습니다.' };
+  }
 }

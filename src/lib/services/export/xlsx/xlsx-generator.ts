@@ -17,6 +17,7 @@ import type {
   RoadmapCourseSpec,
 } from '../../roadmap/roadmap-types';
 import { buildTrainingStructureTable } from '../../roadmap/roadmap-matrix-builder';
+import { splitByUnit } from '@/lib/utils/list-format';
 import type { RoadmapExportData } from '../../export-pdf';
 import { COLOR, NO_BORDER, STYLE, tableBodyStyle, tableBodyCenterStyle } from './xlsx-styles';
 import {
@@ -375,14 +376,15 @@ export function buildCourseSpecSheet(specs: RoadmapCourseSpec[]): XLSX.WorkSheet
     } else {
       subjects.forEach((sub, sIdx) => {
         const alt = sIdx % 2 === 1;
+        const details = splitByUnit(sub.details) || '-';
         setCell(ctx.ws, ctx.r, 0, sub.name || '-', tableBodyStyle(alt));
-        setCell(ctx.ws, ctx.r, 1, sub.details || '-', tableBodyStyle(alt));
+        setCell(ctx.ws, ctx.r, 1, details, tableBodyStyle(alt));
         setCell(ctx.ws, ctx.r, 2, formatHours(sub.hours ?? 0), tableBodyCenterStyle(alt));
         fillRow(ctx.ws, ctx.r, 3, ctx.lastCol, STYLE.blank);
 
         const rowHeight = Math.max(
           calcRowHeight(sub.name || '-', COL_W[0], 24),
-          calcRowHeight(sub.details || '-', COL_W[1], 24),
+          calcRowHeight(details, COL_W[1], 24),
         );
         ctx.rows[ctx.r] = { hpt: rowHeight };
         ctx.r++;

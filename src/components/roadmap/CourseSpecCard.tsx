@@ -22,6 +22,7 @@ import {
   SectionNumberBadge,
   CARD_HEADER_CLASS,
 } from '@/components/roadmap/shared';
+import { splitByUnit } from '@/lib/utils/list-format';
 
 // ============================================================================
 // 타입
@@ -375,7 +376,7 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
 
       <TableTextCell
         canEdit={canEdit}
-        value={subject.details}
+        value={canEdit ? subject.details : splitByUnit(subject.details)}
         onChange={(v) => onUpdate(sIdx, { details: v })}
         placeholder="세부 내용 (단원, 과제명)"
         ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}

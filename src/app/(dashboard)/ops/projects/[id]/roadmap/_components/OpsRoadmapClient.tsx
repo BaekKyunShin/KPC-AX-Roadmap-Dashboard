@@ -89,7 +89,7 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
       />
 
       {/* 버전 셀렉터 바 */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
+      <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
         <VersionSelector
           versions={versions}
           selectedId={selectedVersion?.id}
@@ -133,7 +133,7 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
           </div>
 
           {/* 탭 (sticky) */}
-          <div className="sticky top-[60px] z-10 bg-card border-b border-gray-200">
+          <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto">
               {ROADMAP_TABS.map((tab) => (
                 <button

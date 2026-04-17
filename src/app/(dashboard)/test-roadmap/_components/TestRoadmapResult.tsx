@@ -255,7 +255,7 @@ export default function TestRoadmapResult({
 
       {/* 로드맵 4섹션 탭 */}
       <Tabs defaultValue="competencies" className="w-full">
-        <div className="sticky top-[60px] z-10 bg-card border-b border-gray-200">
+        <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             {ROADMAP_TABS.map((tab) => (
               <TabsTrigger key={tab.key} value={tab.key}>

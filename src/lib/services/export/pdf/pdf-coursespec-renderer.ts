@@ -4,6 +4,7 @@
  */
 
 import type { RoadmapCourseSpec } from '../../roadmap/roadmap-types';
+import { splitByUnit } from '@/lib/utils/list-format';
 import { LAYOUT, FONT } from './pdf-constants';
 import {
   type DocContext,
@@ -59,7 +60,7 @@ function drawSingleCourseSpec(
   const subjects = spec.subjects ?? [];
   const rows = subjects.map(sub => [
     sub.name || '-',
-    sub.details || '-',
+    splitByUnit(sub.details) || '-',
     `${sub.hours ?? 0}시간`,
   ]);
 
