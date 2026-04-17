@@ -9,7 +9,7 @@ import type {
   RoadmapTrainingStructureItem,
 } from '../../roadmap/roadmap-types';
 import { buildTrainingStructureTable } from '../../roadmap/roadmap-matrix-builder';
-import { LAYOUT } from './pdf-constants';
+import { FONT, LAYOUT } from './pdf-constants';
 import {
   type DocContext,
   drawSectionTitle,
@@ -50,7 +50,13 @@ export function drawStructureSection(
     theme: 'grid',
     ...tableBase,
     columnStyles: {
-      0: { cellWidth: CW * 0.14, fontStyle: 'bold' as const },
+      // 역량명 열은 강조 표시용으로 Bold 폰트를 사용한다.
+      // 주의: `fontStyle: 'bold'`만 쓰면 현재 폰트(Pretendard Regular)의 bold variant를
+      // 찾는데, pdf-font-loader는 Regular과 Bold를 서로 다른 font family(Pretendard/
+      // PretendardBold) + 둘 다 'normal' 스타일로 등록하므로 bold variant가 없어
+      // 기본 폰트(Helvetica)로 fallback → 한글 글리프 깨짐이 발생한다.
+      // `font: FONT.BOLD`로 Bold family를 명시 지정해야 한글이 정상 렌더된다.
+      0: { cellWidth: CW * 0.14, font: FONT.BOLD },
       1: { cellWidth: CW * 0.09, halign: 'center' as const },
       2: { cellWidth: CW * 0.24 },
       3: { cellWidth: CW * 0.14 },

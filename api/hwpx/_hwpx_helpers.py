@@ -125,6 +125,13 @@ def set_cell_multiline(tc, lines: list[str]) -> None:
 
     첫 paragraph를 유지하며 각 줄을 별도 paragraph로 복제 삽입.
     원본 첫 paragraph의 스타일을 보존하기 위해 deepcopy 사용.
+
+    주의 (한컴오피스 호환):
+    - deepcopy된 paragraph의 `<hp:linesegarray>`는 원본 기준 layout 좌표를
+      담고 있어 그대로 두면 한컴이 rendering을 못 해 "알 수 없는 오류"로 거부.
+      복제 후 반드시 제거하여 한컴이 re-layout 하도록 한다.
+    - HWPX는 모든 `<hp:p>`에 유니크 id를 요구한다. 복제된 p는 원본과 같은 id를
+      갖게 되므로 호출부(또는 generate.py 저장 직전)에서 reassign해야 한다.
     """
     sublist = tc.find(f"{HP_NS}subList")
     if sublist is None:
@@ -133,25 +140,23 @@ def set_cell_multiline(tc, lines: list[str]) -> None:
     if not ps:
         return
     first_p = ps[0]
-    # 기존 paragraph 모두 제거
     for p in ps:
         sublist.remove(p)
-    # 최소 1줄은 써야 paragraph 구조가 존재
     if not lines:
         lines = [""]
-    for i, line in enumerate(lines):
+    for line in lines:
         p_copy = deepcopy(first_p)
-        # 첫 run의 첫 t에 텍스트 설정
+        # linesegarray 제거 — 한컴 re-layout에 맡김
+        for ls in p_copy.findall(f"{HP_NS}linesegarray"):
+            p_copy.remove(ls)
         run = p_copy.find(f"{HP_NS}run")
         if run is not None:
             t = run.find(f"{HP_NS}t")
             if t is None:
                 t = ET.SubElement(run, f"{HP_NS}t")
             t.text = line
-            # 나머지 t 비움
             for t_el in run.findall(f"{HP_NS}t")[1:]:
                 t_el.text = ""
-            # 나머지 run의 t 비움
             for r in p_copy.findall(f"{HP_NS}run")[1:]:
                 for t_el in r.findall(f"{HP_NS}t"):
                     t_el.text = ""

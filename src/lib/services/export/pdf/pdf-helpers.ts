@@ -135,6 +135,8 @@ export function getAutoTableStyles(hasFonts: boolean) {
       fontSize: FONT.SIZE.TABLE_HEAD,
       fillColor: LAYOUT.HEADER_COLOR,
       textColor: LAYOUT.HEADER_TEXT_COLOR,
+      // 홈페이지 UI와 동일하게 표 헤더는 가운데 정렬.
+      halign: 'center' as const,
       cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
     },
     alternateRowStyles: {
