@@ -14,6 +14,7 @@ import { buildTrainingStructureTable } from '@/lib/services/roadmap/roadmap-matr
 import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';
 import type { RoadmapResult } from '@/lib/services/roadmap/roadmap-types';
 import type { Interview, Project, RoadmapVersion } from '@/types/database';
+import { bulletize, splitByUnit } from '@/lib/utils/list-format';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
 
@@ -91,11 +92,6 @@ function pickByPosition(
     keywords.some((k) => (p.position || '').includes(k)),
   );
   return found ? { name: found.name || '', position: found.position || '' } : null;
-}
-
-function bulletsJoin(items: string[] | undefined | null): string {
-  if (!items || items.length === 0) return '';
-  return items.join('\n');
 }
 
 function normalizeLevel(level: RoadmapResult['outcome_summary']['ai_competency_level']): string {
@@ -191,9 +187,9 @@ export function buildRoadmapHwpxPayload(
   const competencies = (result.competencies ?? []).map((c) => ({
     name: c.name,
     definition_performance_criteria: c.definition ?? '',
-    knowledge: bulletsJoin(c.knowledge),
-    skill: bulletsJoin(c.skills),
-    attitude: bulletsJoin(c.attitudes),
+    knowledge: bulletize(c.knowledge),
+    skill: bulletize(c.skills),
+    attitude: bulletize(c.attitudes),
   }));
 
   // 9) 연간 훈련계획 items
@@ -215,7 +211,7 @@ export function buildRoadmapHwpxPayload(
     training_target: s.target_audience,
     subjects: (s.subjects ?? []).map((subj) => ({
       subject_name: subj.name,
-      details: subj.details,
+      details: splitByUnit(subj.details),
       hours: String(subj.hours),
     })),
   }));
