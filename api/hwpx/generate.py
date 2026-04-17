@@ -327,8 +327,9 @@ def _fill_table_performance_activities(tables, data, build_table_rows, idx: int 
         )
         _set_cell_text(tbl, main_row, 4, (pm or {}).get("role") or "컨설팅책임자(PM)")
         _set_cell_text(tbl, main_row, 5, (pm or {}).get("name") or "")
-        _set_cell_text(tbl, sub_row, 0, (internal or {}).get("role") or "기업 내부전문가")
-        _set_cell_text(tbl, sub_row, 1, (internal or {}).get("name") or "")
+        # sub_row 는 col 0~3이 병합 셀이므로 col 4(역할)/5(이름)에만 기록
+        _set_cell_text(tbl, sub_row, 4, (internal or {}).get("role") or "기업 내부전문가")
+        _set_cell_text(tbl, sub_row, 5, (internal or {}).get("name") or "")
 
 
 def _fill_table_outcome(tables, data, idx: int = 7):
