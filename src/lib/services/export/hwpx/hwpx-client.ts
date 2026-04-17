@@ -73,16 +73,37 @@ export async function generateHwpx(
     headers['x-vercel-set-bypass-cookie'] = 'samesitenone';
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
+  // 요청 직전 상태 로그 — fetch 실패 시 원인 추적용
+  console.log('[generateHwpx] fetching', {
+    url,
+    hasBypass: Boolean(bypassSecret),
+    bypassLen: bypassSecret?.length ?? 0,
   });
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    // fetch 자체 실패 (네트워크·리다이렉트 무한루프 등). cause까지 로그.
+    const errObj = err as Error & { cause?: unknown };
+    console.error('[generateHwpx] fetch threw', {
+      url,
+      hasBypass: Boolean(bypassSecret),
+      message: errObj?.message,
+      cause: errObj?.cause instanceof Error
+        ? errObj.cause.message
+        : String(errObj?.cause ?? ''),
+    });
+    throw err;
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    // 디버깅을 위해 실제 URL·상태·응답을 로그에 남긴다.
-    console.error('[generateHwpx] fetch failed', {
+    console.error('[generateHwpx] non-ok response', {
       url,
       status: response.status,
       hasBypass: Boolean(bypassSecret),
