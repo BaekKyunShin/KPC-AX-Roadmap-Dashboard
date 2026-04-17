@@ -70,23 +70,24 @@ describe('generateHwpx', () => {
     });
   });
 
-  it('요청 URL은 NEXT_PUBLIC_APP_URL + /api/hwpx/generate 이다', async () => {
+  it('요청 URL은 VERCEL_URL(현재 deployment) 우선 사용', async () => {
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generateHwpx(payload);
+
+    // VERCEL_URL 우선: 서버→서버 내부 호출은 같은 deployment를 찔러야 Preview에서도 안전
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe('https://preview.vercel.app/api/hwpx/generate');
+  });
+
+  it('VERCEL_URL 미설정 + NEXT_PUBLIC_APP_URL 설정 시 NEXT_PUBLIC_APP_URL fallback', async () => {
+    vi.stubEnv('VERCEL_URL', '');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
     await generateHwpx(payload);
 
     const [url] = fetchFn.mock.calls[0];
     expect(url).toBe('https://app.example.com/api/hwpx/generate');
-  });
-
-  it('NEXT_PUBLIC_APP_URL 미설정 + VERCEL_URL 설정 시 VERCEL_URL 사용', async () => {
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
-    const fetchFn = mockFetchOk(new Uint8Array([0]));
-
-    await generateHwpx(payload);
-
-    const [url] = fetchFn.mock.calls[0];
-    expect(url).toBe('https://preview.vercel.app/api/hwpx/generate');
   });
 
   it('NEXT_PUBLIC_APP_URL·VERCEL_URL 모두 미설정 시 localhost로 fallback', async () => {
@@ -122,5 +123,28 @@ describe('generateHwpx', () => {
     mockFetchError(500, 'generation failed: error');
 
     await expect(generateHwpx(payload)).rejects.toThrow(/500/);
+  });
+
+  it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더 추가', async () => {
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'bypass-secret-xyz');
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generateHwpx(payload);
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect((init as RequestInit).headers).toMatchObject({
+      'x-vercel-protection-bypass': 'bypass-secret-xyz',
+      'x-vercel-set-bypass-cookie': 'samesitenone',
+    });
+  });
+
+  it('VERCEL_AUTOMATION_BYPASS_SECRET 미설정 시 bypass 헤더 없음', async () => {
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', '');
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generateHwpx(payload);
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect((init as RequestInit).headers).not.toHaveProperty('x-vercel-protection-bypass');
   });
 });
