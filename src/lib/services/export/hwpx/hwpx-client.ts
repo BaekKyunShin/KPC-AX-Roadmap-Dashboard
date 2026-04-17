@@ -67,10 +67,15 @@ export async function generateHwpx(
   };
 
   // Vercel Deployment Protection (Preview SSO) 우회 헤더
+  // 주의: `x-vercel-set-bypass-cookie`는 의도적으로 보내지 않는다.
+  // 이 헤더가 있으면 Vercel이 `_vercel_jwt` 쿠키를 세팅하는 307 리다이렉트로
+  // 응답하는데, Node fetch는 쿠키를 자동으로 재요청에 포함하지 않아
+  // 리다이렉트 루프에 빠진다 (`redirect count exceeded`).
+  // 서버→서버 단발성 호출에서는 bypass 헤더만으로 충분하며, Vercel이 즉시
+  // 200을 반환한다.
   const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
-    headers['x-vercel-set-bypass-cookie'] = 'samesitenone';
   }
 
   // 요청 직전 상태 로그 — fetch 실패 시 원인 추적용

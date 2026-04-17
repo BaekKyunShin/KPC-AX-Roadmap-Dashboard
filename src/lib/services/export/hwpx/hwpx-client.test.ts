@@ -134,7 +134,7 @@ describe('generateHwpx', () => {
     await expect(generateHwpx(payload)).rejects.toThrow(/500/);
   });
 
-  it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더 추가', async () => {
+  it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더만 추가 (set-bypass-cookie 제외)', async () => {
     vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'bypass-secret-xyz');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
@@ -143,8 +143,9 @@ describe('generateHwpx', () => {
     const [, init] = fetchFn.mock.calls[0];
     expect((init as RequestInit).headers).toMatchObject({
       'x-vercel-protection-bypass': 'bypass-secret-xyz',
-      'x-vercel-set-bypass-cookie': 'samesitenone',
     });
+    // set-bypass-cookie는 Node fetch 리다이렉트 루프를 유발하므로 보내지 않아야 함
+    expect((init as RequestInit).headers).not.toHaveProperty('x-vercel-set-bypass-cookie');
   });
 
   it('VERCEL_AUTOMATION_BYPASS_SECRET 미설정 시 bypass 헤더 없음', async () => {
