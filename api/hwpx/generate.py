@@ -51,7 +51,28 @@ class handler(BaseHTTPRequestHandler):
 
         # 3) 분기
         try:
-            if track == "ROADMAP":
+            # 진단용 모드 — 한글이 파일을 거부하는 단계를 격리하기 위한 테스트.
+            # diag=passthrough  → 원본 템플릿 zip을 그대로 반환 (python-hwpx open/save 없음)
+            # diag=roundtrip    → 원본 템플릿을 open 후 변경 없이 save만 (python-hwpx save 영향 확인)
+            diag = body.get("diag")
+            if diag == "passthrough":
+                with open(ROADMAP_TEMPLATE, "rb") as rf:
+                    hwpx_bytes = rf.read()
+                file_name = "diag-passthrough.hwpx"
+            elif diag == "roundtrip":
+                from hwpx import HwpxDocument
+                doc = HwpxDocument.open(ROADMAP_TEMPLATE)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".hwpx") as tmp:
+                    path = tmp.name
+                try:
+                    doc.save_to_path(path)
+                    with open(path, "rb") as rf:
+                        hwpx_bytes = rf.read()
+                finally:
+                    if os.path.exists(path):
+                        os.unlink(path)
+                file_name = "diag-roundtrip.hwpx"
+            elif track == "ROADMAP":
                 data = body.get("data") or {}
                 hwpx_bytes = _generate_roadmap(data)
             elif track == "PBL":
