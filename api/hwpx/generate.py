@@ -226,6 +226,11 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (첫 paragraph의 첫 run에 기록).
 
     공식 API만 사용. lxml·OXML 직접 편집 금지.
+
+    주의: placeholder 글자 겹침(Ⅰ-2 수행일시 등)을 막으려면 값을 쓰기 전에
+    **모든 run의 text를 무조건 비워야** 한다. `if r.text:` 조건부 비움은
+    run.text getter가 일부 `<hp:t>` 노드를 놓칠 때 잔존 placeholder를
+    남길 수 있다. 아래 순서(전체 비움 → 첫 run에 쓰기)가 안전.
     """
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
         return
@@ -235,19 +240,14 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         return
     if not cell.paragraphs:
         return
-    first_p = cell.paragraphs[0]
-    if not first_p.runs:
-        return
-    # 첫 run에 텍스트 설정, 나머지 run은 비움
-    first_p.runs[0].text = text
-    for r in first_p.runs[1:]:
-        if r.text:
-            r.text = ""
-    # 나머지 paragraph들의 run도 비움 (원본 구조 유지, 값만 초기화)
-    for p in cell.paragraphs[1:]:
+    # Step 1: 셀 내부 모든 run의 text 무조건 비움 (placeholder 흔적 제거)
+    for p in cell.paragraphs:
         for r in p.runs:
-            if r.text:
-                r.text = ""
+            r.text = ""
+    # Step 2: 첫 paragraph의 첫 run에 새 값 기록
+    first_p = cell.paragraphs[0]
+    if first_p.runs:
+        first_p.runs[0].text = text
 
 
 def _replace_in_all_runs(doc, old: str, new: str) -> None:
