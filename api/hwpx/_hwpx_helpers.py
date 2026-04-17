@@ -236,13 +236,16 @@ def ensure_row_count(tbl, header_rows: int, required_data_rows: int) -> None:
 
     `header_rows`: 헤더 행 개수 (복제 대상 아님).
     마지막 데이터 행을 복제해 확장한다. 이미 충분하면 no-op.
+
+    복제 후 반드시 `renumber_row_addrs`를 호출해 cellAddr.rowAddr를 재부여한다.
+    이를 생략하면 HWPX 규격상 각 행의 rowAddr가 중복되어 한컴오피스(한글)가
+    "알 수 없는 오류"로 파일을 거부한다. (python-hwpx는 관대하게 열 수 있음)
     """
     trs = get_trs(tbl)
     data_rows = len(trs) - header_rows
     if data_rows >= required_data_rows:
         return
     to_add = required_data_rows - data_rows
-    # 마지막 데이터 행을 복제 (없으면 헤더 행 복제)
     src_idx = len(trs) - 1 if data_rows > 0 else header_rows - 1
     if src_idx < 0:
         return
@@ -250,6 +253,8 @@ def ensure_row_count(tbl, header_rows: int, required_data_rows: int) -> None:
         trs = get_trs(tbl)
         src_tr = trs[-1]
         clone_tr(tbl, src_tr)
+    # 복제 후 cellAddr 재부여 — HWPX 규격 준수 (한컴오피스 엄격 검증 대응)
+    renumber_row_addrs(tbl)
 
 
 def trim_excess_rows(tbl, header_rows: int, desired_data_rows: int) -> None:
