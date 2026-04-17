@@ -86,9 +86,17 @@ export async function generateHwpx(
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      // Vercel SSO가 POST 요청을 SSO 페이지로 302 리다이렉트하면 undici가
+      // 리다이렉트 루프에 빠진다. manual로 설정하면 첫 응답 그대로 받아
+      // bypass 헤더가 먹혔는지 즉시 판단할 수 있다. curl 테스트에서는
+      // POST + bypass 헤더가 바로 200을 반환하지만 Next.js Server Action의
+      // Node fetch는 다르게 동작하는 것으로 확인됨.
+      redirect: 'manual',
+      // Next.js App Router의 자동 fetch 캐싱을 비활성화 — Server Action 내부
+      // 호출이 의도치 않게 캐싱/재검증 처리되어 요청 shape이 달라지는 것 방지.
+      cache: 'no-store',
     });
   } catch (err) {
-    // fetch 자체 실패 (네트워크·리다이렉트 무한루프 등). cause까지 로그.
     const errObj = err as Error & { cause?: unknown };
     console.error('[generateHwpx] fetch threw', {
       url,
@@ -99,6 +107,23 @@ export async function generateHwpx(
         : String(errObj?.cause ?? ''),
     });
     throw err;
+  }
+
+  // redirect: 'manual'이므로 3xx는 여기서 분기 처리.
+  // Vercel이 SSO로 리다이렉트하려는 경우 (bypass가 무시된 상황).
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location');
+    const setCookie = response.headers.getSetCookie?.() ?? [];
+    console.error('[generateHwpx] unexpected redirect — bypass rejected?', {
+      url,
+      status: response.status,
+      location,
+      hasSetCookie: setCookie.length > 0,
+      setCookieKeys: setCookie.map((c) => c.split('=')[0]),
+    });
+    throw new Error(
+      `HWPX generation failed: unexpected ${response.status} redirect to ${location ?? 'unknown'}`,
+    );
   }
 
   if (!response.ok) {
