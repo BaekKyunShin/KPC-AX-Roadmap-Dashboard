@@ -93,6 +93,16 @@ const { mockAfter } = vi.hoisted(() => {
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
 
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => ({
+    get: (name: string) => {
+      if (name === 'x-forwarded-host' || name === 'host') return 'preview.vercel.app';
+      if (name === 'x-forwarded-proto') return 'https';
+      return null;
+    },
+  })),
+}));
+
 // --- 테스트 헬퍼 -------------------------------------------------------------
 
 const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';

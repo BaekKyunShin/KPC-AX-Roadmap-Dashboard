@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
@@ -414,11 +415,21 @@ export async function exportRoadmapAsHwpxAction(
       interview: (interviewRow ?? null) as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['interview'],
     });
 
+    // 요청 host에서 현재 deployment URL 추출 — 같은 배포의 Python 함수를 찌른다.
+    // 이렇게 해야 Preview/Production/로컬 어느 환경에서든 자기 자신의 함수를 호출.
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+    const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+    const baseUrl = host ? `${proto}://${host}` : undefined;
+
     let buffer: Buffer;
     try {
-      buffer = await generateHwpx(payload);
+      buffer = await generateHwpx(payload, { baseUrl });
     } catch (error) {
-      console.error('[exportRoadmapAsHwpxAction generateHwpx Error]', error);
+      console.error('[exportRoadmapAsHwpxAction generateHwpx Error]', {
+        baseUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return {
         success: false,
         error: 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',

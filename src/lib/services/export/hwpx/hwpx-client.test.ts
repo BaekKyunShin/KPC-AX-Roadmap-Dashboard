@@ -70,17 +70,26 @@ describe('generateHwpx', () => {
     });
   });
 
-  it('요청 URL은 VERCEL_URL(현재 deployment) 우선 사용', async () => {
+  it('options.baseUrl 전달 시 최우선 사용 (Server Action headers 기반)', async () => {
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generateHwpx(payload, { baseUrl: 'https://preview-abc.vercel.app' });
+
+    // 호출자가 전달한 baseUrl이 환경변수보다 우선
+    const [url] = fetchFn.mock.calls[0];
+    expect(url).toBe('https://preview-abc.vercel.app/api/hwpx/generate');
+  });
+
+  it('options.baseUrl 없으면 VERCEL_URL fallback', async () => {
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
     await generateHwpx(payload);
 
-    // VERCEL_URL 우선: 서버→서버 내부 호출은 같은 deployment를 찔러야 Preview에서도 안전
     const [url] = fetchFn.mock.calls[0];
     expect(url).toBe('https://preview.vercel.app/api/hwpx/generate');
   });
 
-  it('VERCEL_URL 미설정 + NEXT_PUBLIC_APP_URL 설정 시 NEXT_PUBLIC_APP_URL fallback', async () => {
+  it('VERCEL_URL 빈 문자열이면 NEXT_PUBLIC_APP_URL fallback', async () => {
     vi.stubEnv('VERCEL_URL', '');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
