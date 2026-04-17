@@ -20,6 +20,7 @@ import json
 import os
 import sys
 import tempfile
+import urllib.parse
 
 # Vercel Python Functions는 동일 디렉터리 모듈만 직접 import 가능.
 _DIR = os.path.dirname(os.path.abspath(__file__))
@@ -68,11 +69,17 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # 4) 응답
+        # Content-Disposition 헤더는 HTTP 1.1 표준상 latin-1 인코딩 제약이 있어
+        # 한글 파일명을 그대로 넣으면 UnicodeEncodeError 발생.
+        # RFC 5987: `filename*=UTF-8''<percent-encoded>` 형식 + ASCII fallback(filename=)
+        # 함께 제공하면 모든 브라우저가 UTF-8 파일명을 올바르게 인식.
+        encoded_name = urllib.parse.quote(file_name, safe="")
+        ascii_fallback = file_name.encode("ascii", "ignore").decode("ascii") or "document.hwpx"
         self.send_response(200)
         self.send_header("Content-Type", "application/vnd.hancom.hwpx")
         self.send_header(
             "Content-Disposition",
-            f'attachment; filename="{file_name}"',
+            f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded_name}",
         )
         self.send_header("Content-Length", str(len(hwpx_bytes)))
         self.end_headers()
