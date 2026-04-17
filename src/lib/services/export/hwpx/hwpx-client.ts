@@ -144,6 +144,19 @@ export async function generateHwpx(
     );
   }
 
-  const buffer = await response.arrayBuffer();
-  return Buffer.from(buffer);
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  // 응답 크기·Content-Encoding 로그 — 클라이언트 다운로드 파일 손상 여부 진단용.
+  // curl로 받은 파일이 정상이므로, Node fetch의 자동 decompression 또는 response
+  // shape 문제로 크기가 다를 가능성 체크.
+  console.log('[generateHwpx] response received', {
+    bufferLength: buffer.length,
+    firstBytes: buffer.subarray(0, 4).toString('hex'),
+    contentEncoding: response.headers.get('content-encoding'),
+    contentLength: response.headers.get('content-length'),
+    contentType: response.headers.get('content-type'),
+  });
+
+  return buffer;
 }

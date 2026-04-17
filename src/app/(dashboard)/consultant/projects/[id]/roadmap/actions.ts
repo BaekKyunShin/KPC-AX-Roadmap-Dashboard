@@ -438,6 +438,11 @@ export async function exportRoadmapAsHwpxAction(
 
     // 6) Buffer → base64 (Next.js 직렬화 제약)
     const contentBase64 = buffer.toString('base64');
+    console.log('[exportRoadmapAsHwpxAction] payload ready', {
+      bufferLength: buffer.length,
+      base64Length: contentBase64.length,
+      firstMagic: buffer.subarray(0, 4).toString('hex'),  // ZIP: 504b0304
+    });
 
     // 7) 감사로그
     after(async () => {
