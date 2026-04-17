@@ -64,9 +64,13 @@
 7. ls src/app/\(dashboard\)/gallery/_components/GalleryContent.tsx src/app/\(dashboard\)/gallery/\[id\]/_components/GalleryDetailContent.tsx  → 기존 컴포넌트
 8. ls src/app/\(dashboard\)/gallery/actions/  → copy, queries, interactions, gallery-utils, index 5개 파일 확인
 9. ls src/app/\(dashboard\)/test-roadmap/  → 평행 구조 참조 (TestRoadmapClient.tsx 루트 위치 확인)
-10. ls src/components/Navigation.tsx  → 메뉴 추가 대상
-11. mcp__supabase__execute_sql({query: "SELECT column_name FROM information_schema.columns WHERE table_name='projects' AND column_name='is_test_mode'"})  → is_test_mode 컬럼 확인
-12. npm run validate              → baseline pass
+10. ls src/app/\(dashboard\)/test-roadmap/_components/ src/app/\(dashboard\)/test-roadmap/_hooks/  → _components·_hooks 하위 구조 참조
+11. ls src/components/Navigation.tsx  → 메뉴 추가 대상
+12. ls src/components/roadmap/RoadmapOverviewSummary.tsx src/components/roadmap/NcsMethodologyBox.tsx src/components/roadmap/CompetencyModelingTable.tsx src/components/roadmap/AnnualTrainingPlanTable.tsx src/components/roadmap/CourseSpecCard.tsx src/components/roadmap/RoadmapMatrix.tsx src/components/roadmap/CoursesList.tsx  → Step 6.5에서 확정된 로드맵 상세 구성 요소 (GalleryDetailContent가 canEdit=false로 재사용)
+13. ls src/components/pbl/PBLOverview.tsx src/components/pbl/PBLTrainingTargets.tsx src/components/pbl/PBLToolUsagePlan.tsx src/components/pbl/PBLTrainingPlan.tsx src/components/pbl/PBLEvaluationPlan.tsx src/components/pbl/PBLPerformanceMetrics.tsx  → Step 9 결과 (GalleryPBLDetailContent가 canEdit=false로 재사용)
+14. mcp__supabase__execute_sql({query: "SELECT column_name FROM information_schema.columns WHERE table_name='projects' AND column_name='is_test_mode'"})  → is_test_mode 컬럼 확인
+15. ls src/lib/schemas/interview-pbl.ts  → test-pbl fixture가 준수할 스키마
+16. npm run validate              → baseline pass
 
 검증 실패 시 즉시 중단. Step 9 미머지면 차단.
 
@@ -86,7 +90,13 @@
 - TRACK_BADGE_COLORS는 src/lib/constants/tracks.ts (Step 2)
 - test-roadmap 평행 구조: **TestRoadmapClient.tsx는 루트(_components/ 아님)**, _components/Test* 단계 컴포넌트, _hooks/useTest* 훅
 - projects.is_test_mode 컬럼은 마이그 032·034부터 사용 중 — test-pbl도 동일 메커니즘
-- e2e/fixtures/pbl-interview-sample.ts 신규 (e2e/fixtures 경로, tests/fixtures 아님)
+- e2e/fixtures/pbl-interview-sample.ts 신규 (e2e/fixtures 경로, tests/fixtures 아님). **Step 8의 src/lib/schemas/interview-pbl.ts 스키마 준수 필수**
+- **GalleryDetailContent (로드맵) 재사용 대상 (Step 6.5 자산)**:
+  - RoadmapOverviewSummary — Ⅰ장 요약 블록
+  - NcsMethodologyBox — 표 전체 단위 NCS 박스 (활용/미활용 2종)
+  - CompetencyModelingTable·AnnualTrainingPlanTable·CourseSpecCard·RoadmapMatrix·CoursesList — 모두 canEdit=false로 호출 (controlled 패턴 Step 6.5 반영 완료)
+  - 내부 표는 @/components/roadmap/shared 공용 키트 기반이라 추가 작업 불필요
+- **GalleryPBLDetailContent (신규, PBL) 재사용 대상 (Step 9 자산)**: PBLOverview·PBLTrainingTargets·PBLToolUsagePlan·PBLTrainingPlan·PBLEvaluationPlan·PBLPerformanceMetrics 모두 canEdit=false
 
 진행 원칙:
 1. feature/ofa-11-gallery-test-track 브랜치

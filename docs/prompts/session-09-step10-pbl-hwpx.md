@@ -56,16 +56,19 @@
 1. cd /Users/baekkyunshin/Desktop/AI-roadmap-dashboard
 2. git fetch origin && git checkout feature/official-form-alignment && git pull
 3. git log --oneline -10           → ofa-07·ofa-09 머지 커밋 확인
-4. ls api/hwpx/generate.py api/hwpx/_placeholders_roadmap.py  → Step 3·7 결과
+4. ls api/hwpx/generate.py api/hwpx/_placeholders_roadmap.py api/hwpx/_hwpx_helpers.py api/hwpx/test_placeholders_roadmap.py  → Step 3·7 결과. **_hwpx_helpers.py 공통 헬퍼 이미 Step 7에서 추출**(OXML 셀 편집·행 복제·플레이스홀더 치환)
 5. ls templates/hwpx/roadmap.hwpx  → Step 7 템플릿
-6. ls src/lib/services/export/hwpx/hwpx-client.ts src/lib/services/export/hwpx/hwpx-payload-roadmap.ts  → Step 7 결과
-7. ls src/hooks/useHwpxDownload.ts  → Step 7 신규 훅
+6. ls src/lib/services/export/hwpx/hwpx-client.ts src/lib/services/export/hwpx/hwpx-payload-roadmap.ts src/lib/services/export/hwpx/index.ts  → Step 7 결과
+7. ls src/hooks/useHwpxDownload.ts  → Step 7 신규 훅 (vitest 5 PASS)
 8. ls src/lib/services/pbl/  → Step 9 결과 (6 파일)
 9. ls src/components/pbl/DownloadButton.tsx  → Step 9 결과
-10. ls docs/references/2.AI*PBL*.hwpx  → 양식 2번 원본
-11. source .venv/bin/activate && python -c "import hwpx"  → Python 환경
-12. echo $HWPX_API_SECRET || vercel env ls  → Step 3 환경변수
-13. npm run validate              → baseline pass
+10. ls docs/references/2.AI*PBL*.hwpx  → 양식 2번 원본 (`2.AI PBL 과정개발보고서 및 결과보고서(양식).hwpx`)
+11. ls docs/references/hwpx-structure-roadmap.md  → Step 7 구조 문서 (본 Step에서 hwpx-structure-pbl.md 평행 작성)
+12. grep -n "type.*==.*['\"]pbl['\"]\\|roadmap.*pbl" api/hwpx/generate.py | head -5  → Step 7에서 type 분기 골격 확인
+13. grep -n "generateHwpx\\|generateRoadmapHwpx" src/lib/services/export/hwpx/hwpx-client.ts src/app/\(dashboard\)/consultant/projects/\[id\]/roadmap/actions.ts  → 리네임 영향 범위 사전 감사
+14. source .venv/bin/activate && python -c "import hwpx"  → Python 환경
+15. echo $HWPX_API_SECRET || vercel env ls  → Step 3 환경변수
+16. npm run validate              → baseline pass
 
 검증 실패 시 즉시 중단. Step 7·9 미머지면 차단.
 
@@ -83,16 +86,26 @@
   - 공통 헬퍼 postToPythonGenerate({type, data}) 추출
   - generateHwpx → generateRoadmapHwpx 리네임 (Step 7의 호출부 함께 rename)
   - generatePBLHwpx 신규
-- serena MCP로 호출부 안전 rename
-- useHwpxDownload 훅(Step 7 신규)을 그대로 재사용 — 신규 작성 금지
-- generate.py에 type='pbl' 분기 추가, 공통 _hwpx_helpers.py 추출
+- 리네임 영향 파일 (serena MCP로 안전 수정):
+  - src/lib/services/export/hwpx/hwpx-client.ts
+  - src/lib/services/export/hwpx/hwpx-client.test.ts
+  - src/lib/services/export/hwpx/hwpx-payload-roadmap.test.ts (import 경로 갱신)
+  - src/lib/services/export/hwpx/index.ts (배럴 export)
+  - src/app/(dashboard)/consultant/projects/[id]/roadmap/actions.ts (exportRoadmapAsHwpxAction이 generateHwpx 호출)
+- useHwpxDownload 훅(Step 7 신규, src/hooks/useHwpxDownload.ts, vitest 5 PASS)을 그대로 재사용 — 신규 작성·인터페이스 변경 금지
+- Python 측:
+  - generate.py에는 Step 7에서 이미 type 분기 골격이 들어가 있음 — 본 Step에서 PBL 경로 실구현만 추가
+  - **_hwpx_helpers.py는 Step 7에서 이미 추출됨** (본 Step에서 추가 추출 작업 불필요. PBL 전용 헬퍼가 필요하면 함수 추가, 기존 함수 시그니처 변경 금지)
+  - _placeholders_pbl.py 신규 + test_placeholders_pbl.py 신규
+- 템플릿: docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).hwpx를 복사해 templates/hwpx/pbl.hwpx로 편집. 구조 분석 문서: docs/references/hwpx-structure-pbl.md (hwpx-structure-roadmap.md 패턴 참고)
 - audit_action 'PBL_HWPX_EXPORTED'는 Step 2 마이그 061에서 추가됨
+- 양식 2번 체크박스 렌더 대상: AI역량 4등급·훈련목표 5종·과정평가 방법 3종(포트폴리오/문제해결시나리오/작업장 평가)·Pass/Fail/예정 마커 — _placeholders_pbl.py에 응집
 
 진행 원칙:
 1. feature/ofa-10-hwpx-pbl 브랜치 + uv .venv 활성화
 2. Task 2: hwpx-docgen scripts/analyze_template.py로 양식 2번 분석 → docs/references/hwpx-structure-pbl.md
 3. Task 3: 템플릿 수동 제작 (templates/hwpx/pbl.hwpx). 결과보고서 파트도 포함. 플레이스홀더 매핑 표는 계획서 본문 그대로
-4. Task 4~5 (Python): _placeholders_pbl.py + generate.py type 분기 + _hwpx_helpers.py 공통 추출
+4. Task 4~5 (Python): _placeholders_pbl.py 신규 + generate.py에 PBL 렌더 실구현 추가 (type 분기 골격은 Step 7에서 이미 존재). _hwpx_helpers.py는 Step 7에서 이미 추출되어 있으므로 함수 추가만 수행(시그니처 변경 금지)
 5. Task 6 (hwpx-payload-pbl.ts): buildPBLHwpxPayload(pbl, project, interview): PBLHwpxPayload
 6. Task 7 (hwpx-client.ts 리팩터):
    - 공통 헬퍼 postToPythonGenerate({type, data}) 추출

@@ -32,8 +32,4 @@ describe('getInterviewSteps', () => {
     const steps = getInterviewSteps('ROADMAP');
     expect(steps).toEqual(ROADMAP_INTERVIEW_STEPS);
   });
-
-  it('PBL 트랙은 미구현 에러 (Step 8 예정)', () => {
-    expect(() => getInterviewSteps('PBL')).toThrow(/PBL/);
-  });
 });

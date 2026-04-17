@@ -1,9 +1,10 @@
 import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
-import { fetchInterview } from './actions';
+import { fetchInterview, fetchPBLInterview } from './actions';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import RoadmapInterviewClient from './_components/RoadmapInterviewClient';
+import PBLInterviewClient from './_components/PBLInterviewClient';
 
 export default async function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,13 +28,9 @@ export default async function InterviewPage({ params }: { params: Promise<{ id: 
   if (!project) notFound();
 
   if (project.track === 'PBL') {
-    return (
-      <div className="max-w-4xl mx-auto p-8">
-        <p className="text-muted-foreground">
-          PBL 인터뷰 화면은 곧 제공됩니다 (OFA Step 8).
-        </p>
-      </div>
-    );
+    const pblInterview = await fetchPBLInterview(project.id);
+    const initialData = (pblInterview?.pbl_data ?? {}) as Record<string, unknown>;
+    return <PBLInterviewClient projectId={project.id} initialData={initialData} />;
   }
 
   const interviewRow = await fetchInterview(id);

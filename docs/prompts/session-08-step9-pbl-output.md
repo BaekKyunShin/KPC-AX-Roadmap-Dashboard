@@ -62,11 +62,15 @@
 6. mcp__supabase__execute_sql({query: "SELECT enumlabel FROM pg_enum WHERE enumtypid='audit_action'::regtype AND enumlabel LIKE 'PBL_%'"})  → PBL_* enum 값 5개 확인
 7. mcp__supabase__execute_sql({query: "SELECT enumlabel FROM pg_enum WHERE enumtypid='pbl_report_status'::regtype"})  → DRAFT/FINAL/ARCHIVED
 8. ls src/lib/schemas/interview-pbl.ts  → Step 8 결과 (PBL 인터뷰 스키마)
-9. ls src/lib/services/roadmap/  → 평행 구조 참조용
-10. ls src/lib/services/export/pdf/ src/lib/services/export/xlsx/  → 기존 export 모듈
-11. npm run validate              → baseline pass
+9. ls src/lib/services/roadmap/  → 평행 구조 참조용 (roadmap-crud/generator/prompts/validator/types/sanitize/matrix-builder/storage-mapper/stt-formatter/time-utils)
+10. ls src/lib/services/export/pdf/ src/lib/services/export/xlsx/  → 기존 export 모듈 (Step 6 4섹션 분할 렌더러 구조: pdf-cover/competency/structure/annual/coursespec-renderer + xlsx-sheet-builder)
+11. ls src/components/roadmap/shared/  → **Step 6.5에서 추출된 공용 디자인 키트** 존재 확인 (TableTextCell/TableInlineCell/TableNumericCell/SyncedTableRow/SectionNumberBadge + table-styles + index.ts)
+12. ls src/components/roadmap/RoadmapStatusBadge.tsx src/components/roadmap/VersionSelector.tsx src/components/roadmap/RegenerateAccordion.tsx src/components/roadmap/RoadmapOverviewSummary.tsx src/components/roadmap/NcsMethodologyBox.tsx  → Step 6/6.5 핵심 UI 자산(패턴 참고용)
+13. ls src/hooks/useRowHeightSync.ts src/components/ui/auto-resize-textarea.tsx  → Step 6.5 공용 훅·컴포넌트
+14. grep -c pbl_data src/app/\(dashboard\)/consultant/projects/\[id\]/interview/actions.ts  → Step 8에서 pbl_data 저장 경로 확인 (>0)
+15. npm run validate              → baseline pass
 
-검증 실패 시 즉시 중단. Step 2·8 미머지면 차단.
+검증 실패 시 즉시 중단. Step 2·8 미머지면 차단. 공용 디자인 키트 누락 시 Step 6.5 머지 재확인.
 
 === 필수 사전 정독 ===
 - 계획서 §0·§3-4
@@ -89,8 +93,15 @@
 - src/lib/services/pbl/는 src/lib/services/roadmap/와 평행 구조 (6 파일: types/validator/prompts/generator/crud + index)
 - pbl_reports + pbl_likes + finalize_pbl RPC 모두 Step 2 마이그 061에서 완료
 - audit_action enum 값(PBL_REPORT_CREATED·FINALIZED·SHARED·HWPX_EXPORTED)도 마이그 061 완료
-- src/components/pbl/PBLStatusBadge.tsx 신규 (RoadmapStatusBadge 패턴)
-- export PDF/XLSX는 기존 generatePDF·generateXLSX와 별도 신규 엔트리 generatePBLPDF·generatePBLXLSX (대문자 패턴 유지)
+- interviews.pbl_data JSONB 컬럼(마이그 063)을 PBL 생성 입력으로 사용. **interviews.answers(레거시)·roadmap_data와 격리**
+- src/components/pbl/PBLStatusBadge.tsx 신규 (src/components/roadmap/RoadmapStatusBadge.tsx 패턴)
+- **Step 6.5 공용 디자인 키트 (반드시 재사용)**:
+  - import: `@/components/roadmap/shared` (배럴 export)
+  - 제공: TableTextCell·TableInlineCell·TableNumericCell·SyncedTableRow·SectionNumberBadge + TABLE_CELL_TEXT_CLASS·TABLE_CELL_INLINE_CLASS·READ_ONLY_TEXT_CLASS·CARD_HEADER_CLASS 상수
+  - 용도: PBL 교과목 프로파일·AI도구 활용계획·시설/장비·수행수준 표 전부
+- **Step 6.5 UI 컨벤션**: AutoResizeTextarea(src/components/ui/auto-resize-textarea.tsx) + useRowHeightSync(src/hooks/useRowHeightSync.ts)로 같은 행 textarea 높이 동기화
+- **Step 6.5 레이아웃**: 사이드바 제거 → VersionSelector + RegenerateAccordion + 풀 너비. ConsultantPBLClient도 동일 레이아웃. 로드맵용 컴포넌트가 타입 제약으로 그대로 재사용 불가하면 PBL 전용 평행 복제(로드맵 컴포넌트 수정 금지)
+- export PDF/XLSX는 기존 generatePDF·generateXLSX와 별도 신규 엔트리 generatePBLPDF·generatePBLXLSX (대문자 패턴 유지). 로드맵 PDF는 Step 6에서 4섹션 분할 렌더러 구조이므로, PBL도 pdf-pbl-overview/requirements/operation/performance-renderer.ts 분할 권장
 - ConsultantPBLClient.tsx는 _components/ 안 (interview 컨벤션과 동일)
 - 운영자용 별도 actions: src/app/(dashboard)/ops/projects/[id]/pbl/actions.ts (디렉터리 신설)
 - **양식 2번 Ⅳ·Ⅴ장 불변 제약 (validator가 반드시 강제)**:
@@ -139,8 +150,10 @@
 === 금지 사항 ===
 - generatePDF·generateXLSX 시그니처 변경 (절대)
 - 기존 roadmap-* 서비스 파일 수정 (PBL은 평행 신규)
-- 마이그레이션 신규 추가
+- 기존 src/components/roadmap/* 수정 — 특히 Step 6.5 공용 키트(src/components/roadmap/shared/*) 및 RoadmapOverviewSummary·NcsMethodologyBox·VersionSelector·RegenerateAccordion은 **읽기만** (필요 시 PBL 평행 복제)
+- 마이그레이션 신규 추가 (정리 마이그는 Step 12에서만)
 - src/lib/services/pbl/ 외 위치에 PBL 서비스 코드 배치
+- interviews.answers(레거시) 또는 interviews.roadmap_data를 PBL 입력으로 사용 (반드시 interviews.pbl_data JSONB만)
 
 === 종료 시 ===
 0. **[필수] 전체 회귀 테스트 수행** — 모든 구현이 끝난 뒤 기존 기능 회귀 방지를 위해 반드시 실행. 건너뛰기 금지.
