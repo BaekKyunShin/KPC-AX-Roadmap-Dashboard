@@ -97,6 +97,7 @@
   - CompetencyModelingTable·AnnualTrainingPlanTable·CourseSpecCard·RoadmapMatrix·CoursesList — 모두 canEdit=false로 호출 (controlled 패턴 Step 6.5 반영 완료)
   - 내부 표는 @/components/roadmap/shared 공용 키트 기반이라 추가 작업 불필요
 - **GalleryPBLDetailContent (신규, PBL) 재사용 대상 (Step 9 자산)**: PBLOverview·PBLTrainingTargets·PBLToolUsagePlan·PBLTrainingPlan·PBLEvaluationPlan·PBLPerformanceMetrics 모두 canEdit=false
+- **⭐ Step 8(Session 7)에서 신설된 공용 UI 자산**: `@/components/ui/form-field`(FormField). 본 Step에서 신규 필터·TrackBadge·테이블 UI 작성 시 일관 사용. 양식 1:1 매칭·Grid 2열 이하·Textarea rows 적정화 원칙 동일 적용. **GuideNote는 본 Step 대상 아님** (갤러리·test-pbl은 샘플/조회 UI이며, 인터뷰 단계에서만 사용)
 
 진행 원칙:
 1. feature/ofa-11-gallery-test-track 브랜치

@@ -100,6 +100,11 @@
 - 템플릿: docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).hwpx를 복사해 templates/hwpx/pbl.hwpx로 편집. 구조 분석 문서: docs/references/hwpx-structure-pbl.md (hwpx-structure-roadmap.md 패턴 참고)
 - audit_action 'PBL_HWPX_EXPORTED'는 Step 2 마이그 061에서 추가됨
 - 양식 2번 체크박스 렌더 대상: AI역량 4등급·훈련목표 5종·과정평가 방법 3종(포트폴리오/문제해결시나리오/작업장 평가)·Pass/Fail/예정 마커 — _placeholders_pbl.py에 응집
+- **⭐ Step 8(Session 7) 최종 `interviews.pbl_data` 스키마 참고 (payload 매핑 시 필수)**:
+  - `training_place: { types: ('사내'|'사외')[], location, special_notes }` — types는 배열(복수 체크). HWPX 렌더 시 `'사내'` 포함 여부로 체크박스 ☑/☐ 판정
+  - `internal_instructor: { used, name, position }` — UI 라벨 "활용/미활용"
+  - AI역량 4등급에 grade("기초/초급/중급/고급") 병기: `src/lib/schemas/interview-pbl.ts`의 `AI_LEVEL_OPTIONS`·`AI_LEVEL_GRADE` 참조
+  - 참석자 4역할: `pm / external_expert / internal_expert / jurisdiction_manager`
 
 진행 원칙:
 1. feature/ofa-10-hwpx-pbl 브랜치 + uv .venv 활성화

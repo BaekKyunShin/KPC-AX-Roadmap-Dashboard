@@ -99,6 +99,20 @@
   - import: `@/components/roadmap/shared` (배럴 export)
   - 제공: TableTextCell·TableInlineCell·TableNumericCell·SyncedTableRow·SectionNumberBadge + TABLE_CELL_TEXT_CLASS·TABLE_CELL_INLINE_CLASS·READ_ONLY_TEXT_CLASS·CARD_HEADER_CLASS 상수
   - 용도: PBL 교과목 프로파일·AI도구 활용계획·시설/장비·수행수준 표 전부
+- **⭐ Step 8(Session 7)에서 신설된 공용 UI 자산 (PBL 산출물 UI에 적용)**:
+  - `@/components/ui/form-field` — `FormField` (Label+hint+Input+FieldError 일관 간격). 모든 편집 가능 폼 필드에 사용, 순수 Label+Input 조합 금지
+  - **⚠️ `GuideNote`는 본 Step에서 사용하지 않음**: 산출물(Ⅳ·Ⅴ장)은 LLM이 초안을 생성하고 컨설턴트는 리뷰·편집하는 구조이므로 "작성 가이드" 문구가 불필요. `GuideNote`는 **컨설턴트가 처음부터 직접 기입하는 인터뷰 단계(Step 8) 전용**
+  - **양식 1:1 매칭 원칙**: 모든 UI 라벨·섹션 타이틀을 양식 2번 PDF 12~17p 원문 그대로. "가./나./다." 하위 번호 + 양식 정확한 표현 일치
+  - **Textarea rows 적정 높이**: 내용 많은 필드 `rows={5~7}`, 짧은 서술 `rows={3~4}`
+  - **텍스트 입력 Grid 2열 제한**: `md:grid-cols-2` 이하 (3열 이상 금지). 숫자·라디오·체크박스만 있는 행은 예외
+  - **AI_LEVEL_OPTIONS의 grade 병기**: `src/lib/schemas/interview-pbl.ts`의 `AI_LEVEL_OPTIONS` (grade·description 포함)를 산출물 AI수준 진단 렌더에 그대로 활용
+  - **자동저장 스키마 완화 패턴**: `pbl_reports` 자동저장 스키마도 `z.object({...}).passthrough() + z.any().optional()` 패턴 사용 (빈 폼 자동저장 실패 토스트 방지)
+- **⭐ Step 8 최종 `interviews.pbl_data` 스키마 구조 (읽기 시 참고)**:
+  - `training_place: { types: ('사내'|'사외')[], location: string, special_notes: string }` (복수 체크 + 구체 장소 + 특이사항)
+  - `internal_instructor: { used: boolean, name, position }` — UI 라벨은 **"활용/미활용"** (사용/미사용 아님)
+  - `ai_infrastructure: { ai_tools: '가능'|'제한적'|'불가능', network: '양호'|'보통'|'개선필요', pc_count, etc_equipment }`
+  - `performance_activities[].participants`: `{ pm, external_expert, internal_expert, jurisdiction_manager }` 4역할
+  - 전체 스키마: `src/lib/schemas/interview-pbl.ts` (`pblInterviewSchema` export)
 - **Step 6.5 UI 컨벤션**: AutoResizeTextarea(src/components/ui/auto-resize-textarea.tsx) + useRowHeightSync(src/hooks/useRowHeightSync.ts)로 같은 행 textarea 높이 동기화
 - **Step 6.5 레이아웃**: 사이드바 제거 → VersionSelector + RegenerateAccordion + 풀 너비. ConsultantPBLClient도 동일 레이아웃. 로드맵용 컴포넌트가 타입 제약으로 그대로 재사용 불가하면 PBL 전용 평행 복제(로드맵 컴포넌트 수정 금지)
 - export PDF/XLSX는 기존 generatePDF·generateXLSX와 별도 신규 엔트리 generatePBLPDF·generatePBLXLSX (대문자 패턴 유지). 로드맵 PDF는 Step 6에서 4섹션 분할 렌더러 구조이므로, PBL도 pdf-pbl-overview/requirements/operation/performance-renderer.ts 분할 권장

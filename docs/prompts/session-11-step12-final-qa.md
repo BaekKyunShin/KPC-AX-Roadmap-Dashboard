@@ -39,6 +39,11 @@
 - [ ] `mcp__supabase__get_advisors` 결과: RLS·성능 경고 0건.
 - [ ] 문서 갱신: `docs/ARCHITECTURE.md`·`docs/RLS.md`·`CLAUDE.md` (필요 시).
 - [ ] `web-design-guidelines` 스킬 최종 UI 감사 통과.
+- [ ] **Step 8(Session 7) UI/UX 원칙 일관 적용 확인** (무작위 5페이지 샘플링):
+  - 모든 폼 필드 `FormField` 래핑
+  - **인터뷰 단계에 한해** 양식 작성 가이드 `GuideNote` 섹션 **하단** 배치 (산출물은 LLM 생성이라 해당 없음)
+  - 텍스트 입력 Grid 2열 이하
+  - 양식 원문 1:1 라벨 매칭
 - [ ] `npm run validate && npm run build && npm run test:e2e` 모두 통과.
 - [ ] **산인공 양식 1번 QA 체크리스트** (계획서 §4 Step 12) 전 항목 ✅ — 로드맵 HWPX 실물 3건 이상 한글 프로그램에서 양식 PDF와 겹쳐 비교, 부제 라벨·NCS 박스·수립 방법·매트릭스 단순 표 전환 모두 확인.
 - [ ] **산인공 양식 2번 QA 체크리스트** 전 항목 ✅ — PBL HWPX 실물 3건 이상, Ⅰ~Ⅴ장 + 결과보고서(수행일지) 전 섹션 + 교과목 프로파일 강사투입시간 합=훈련시간 + 결과평가 4종 설문 문항 수 고정 (5/3/5/4) 확인.

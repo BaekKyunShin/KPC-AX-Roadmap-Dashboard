@@ -369,6 +369,23 @@ docs/references/hwpx-placeholders-pbl.md           # [신규] 양식 2번 플레
 - **검증**: Zod + **네이티브 HTML 폼**(`<form action={serverAction}>`) 패턴. **React Hook Form은 사용하지 않는다** (CLAUDE.md 명시, 프로젝트 컨벤션).
 - **에러 표시**: 필드 하단에 `src/components/ui/field-error.tsx` 재사용. 빨간 테두리·aria-invalid 동시 적용.
 - **동적 배열 UI**(인터뷰 Step 컴포넌트 다수): `TagInput` 또는 프로젝트 내 기존 동적 배열 패턴(`StepJobTasks.tsx`, `StepPainPoints.tsx` 참고)을 재사용. 새 원시 구현 금지.
+- **⭐ FormField 공용 컴포넌트 (Step 8에서 신설)**: `src/components/ui/form-field.tsx`의 `FormField`를 사용해 **Label + hint + Input/Textarea + FieldError 조합**을 일관된 간격으로 묶는다. 순수 `<Label>` + `<p className="text-xs">` + `<Input className="mt-1">` 조합은 **금지** (간격이 제각각 튀는 원인). 모든 폼 필드는 FormField로 래핑. 예외: fieldset/legend 라디오·체크박스 그룹, 동적 배열 행 래퍼, 읽기 전용 dt/dd 구조.
+  ```tsx
+  <FormField label="훈련 직무" htmlFor="co-job" required hint="구체 직무 예시 기재" error={errors?.training_job}>
+    <Input id="co-job" value={...} onChange={...} />
+  </FormField>
+  ```
+- **⭐ GuideNote 공용 컴포넌트 (Step 8에서 신설, 인터뷰 단계 전용)**: `src/components/ui/guide-note.tsx`의 `GuideNote`로 **산인공 양식의 "작성 가이드" 문구**를 표시한다. 배치 규칙: **원본 양식처럼 각 섹션/항목의 맨 아래**. h2 상단 배치 금지. **적용 범위: 컨설턴트가 처음부터 직접 기입하는 인터뷰 Step 컴포넌트에 한정**. 산출물(Ⅳ·Ⅴ장 PBL 보고서, 로드맵 산출물)은 LLM이 초안을 생성하고 컨설턴트는 리뷰·편집만 하므로 작성 가이드 불필요 → `GuideNote` 사용하지 않음.
+  ```tsx
+  <GuideNote items={[
+    "양식 원본의 안내 문구 1",
+    "양식 원본의 안내 문구 2",
+  ]} />
+  ```
+- **⭐ Textarea `rows` 규칙**: 내용 많은 필드는 `rows={5~7}` (경영 이슈·요구분석 결과·문제정의서·선정 사유 등), 짧은 서술은 `rows={3~4}`. 단일 줄 기입은 `Input` 사용.
+- **⭐ 텍스트 입력 2열 제한**: 텍스트 `Input`/`Textarea`가 포함된 그리드는 `md:grid-cols-2` 이하. 3열 이상 금지 (가독성 저하). 숫자·체크박스·라디오만 있는 행은 3열 이상 허용.
+- **⭐ 양식 1:1 매칭 원칙**: 모든 UI 라벨·섹션 타이틀은 산인공 공식 양식(PDF `docs/references/1.*.pdf`·`docs/references/2.*.pdf`) 원문 그대로. "가./나./다." 하위 번호·"AI활용 가능 인프라"·"훈련장소 특이사항" 등 세부 표현까지 일치시킬 것. 스키마 영문 키는 변경 금지 — UI 라벨만 매칭.
+- **⭐ 자동저장 스키마 패턴**: 자동저장용 스키마는 `z.object({ ... }).passthrough()` + 각 필드 `z.any().optional()` 로 완화해야 함. `schema.partial()`만으로는 값 자체의 `min()`·`positive()` 검증이 유지되어 빈 폼 자동저장 시 실패 토스트가 뜬다 (Step 8 `pblInterviewAutoSaveSchema` 참고).
 
 #### 3-4-3. 토스트·피드백
 - **전역 헬퍼만 사용**: `src/lib/utils/toast.ts`의 `showErrorToast`, `showSuccessToast`. 직접 `toast.error(...)` 호출 금지 (로그·i18n 일관성 확보).
@@ -403,6 +420,11 @@ UI를 추가·변경하는 Task 완료 시 **다음 항목 전부 충족**을 �
 - [ ] 신규 페이지·섹션에 `loading.tsx` 제공 + `Skeleton` 컴포넌트 재사용
 - [ ] 모든 인터랙티브 요소가 `src/components/ui/*` 또는 기존 도메인 컴포넌트에서 import
 - [ ] 폼 검증은 Zod + 네이티브 HTML + `field-error`
+- [ ] **`FormField` 공용 컴포넌트로 폼 필드 감싸기** (Label+hint+Input+FieldError 일관 간격)
+- [ ] **인터뷰 단계에 한해**, 양식 원본에 "작성 가이드" 문구가 있으면 `GuideNote`를 해당 섹션/항목 하단에 배치 (산출물은 LLM 생성이라 해당 없음)
+- [ ] **텍스트 입력 Grid는 2열 이하** (3열 이상 금지)
+- [ ] **Textarea rows 적정 높이** (내용 많은 필드 5~7행)
+- [ ] **양식 원본 라벨과 1:1 매칭** (섹션 타이틀·필드 라벨 원문 그대로)
 - [ ] 성공/실패 피드백은 `showSuccessToast`/`showErrorToast`
 - [ ] `PageHeader`, `EmptyState`, `Pagination`, `SearchInput` 중 해당하는 공용 컴포넌트 사용
 - [ ] 색상은 시맨틱 토큰 또는 `status.ts`/`tracks.ts` 상수
