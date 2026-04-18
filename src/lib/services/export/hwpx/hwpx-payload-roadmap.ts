@@ -237,7 +237,7 @@ export function buildRoadmapHwpxPayload(
     : '';
 
   return {
-    track: 'ROADMAP',
+    track: 'ROADMAP' as const,
     fileName: buildFileName(project.company_name, roadmap.version_number),
     data: {
       // 표지

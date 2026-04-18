@@ -24,7 +24,7 @@ import {
 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
-import { generateHwpx } from '@/lib/services/export/hwpx';
+import { generateRoadmapHwpx } from '@/lib/services/export/hwpx';
 
 // --- 외부 모듈 모킹 ---------------------------------------------------------
 
@@ -73,10 +73,16 @@ vi.mock('@/lib/services/abort-registry', () => ({
 }));
 
 vi.mock('@/lib/services/export/hwpx', () => ({
-  generateHwpx: vi.fn().mockResolvedValue(Buffer.from('dummy-hwpx-bytes')),
+  generateRoadmapHwpx: vi.fn().mockResolvedValue(Buffer.from('dummy-hwpx-bytes')),
+  generatePBLHwpx: vi.fn().mockResolvedValue(Buffer.from('dummy-pbl-hwpx-bytes')),
   buildRoadmapHwpxPayload: vi.fn((inputs: Record<string, unknown>) => ({
     track: 'ROADMAP',
     fileName: `${(inputs.project as { company_name?: string })?.company_name ?? '로드맵'}_로드맵_v1.hwpx`,
+    data: {},
+  })),
+  buildPBLHwpxPayload: vi.fn(() => ({
+    track: 'PBL',
+    fileName: 'PBL_v1.hwpx',
     data: {},
   })),
 }));
@@ -1170,7 +1176,7 @@ describe('exportRoadmapAsHwpxAction', () => {
       created_at: '2026-04-17',
       updated_at: '2026-04-17',
     } as never);
-    vi.mocked(generateHwpx).mockRejectedValueOnce(new Error('HWPX generation failed: 500'));
+    vi.mocked(generateRoadmapHwpx).mockRejectedValueOnce(new Error('HWPX generation failed: 500'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await exportRoadmapAsHwpxAction(ROADMAP_ID);

@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import {
   requireAuth,
@@ -25,6 +26,7 @@ import {
 import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-generator';
 import { pblContentSchema } from '@/lib/services/pbl/pbl-validator';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
+import { buildPBLHwpxPayload, generatePBLHwpx } from '@/lib/services/export/hwpx';
 import type { ConsultantProfile } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -491,4 +493,129 @@ export async function cancelPBLGeneration(): Promise<SimpleActionResult> {
   const { cancelAbort } = await import('@/lib/services/abort-registry');
   cancelAbort(abortKey(user.id));
   return { success: true };
+}
+
+// ============================================================================
+// mutation: HWPX 내보내기 (Step 10)
+// ============================================================================
+
+/**
+ * PBL HWPX 내보내기.
+ *
+ * 5단계 패턴:
+ *   1. 세션 + 역할 (CONSULTANT_APPROVED)
+ *   2. PBL 보고서 접근 권한 (PBL 트랙 + 배정 컨설턴트) — `requireConsultantPBLReportAccess`
+ *   3. 입력 검증 (pblId 형식)
+ *   4. 데이터 조회 → payload 변환 → Python 함수 호출 → base64
+ *   5. 감사로그(PBL_HWPX_EXPORTED) + ActionResult
+ *
+ * 반환값은 Buffer가 아닌 base64 문자열 — Next.js Server Action 직렬화 제약.
+ */
+export async function exportPBLAsHwpxAction(
+  pblId: string,
+): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
+  try {
+    // 1) 인증 + 역할
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 PBL HWPX를 내보낼 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
+
+    // 2) 입력 검증
+    if (!pblId || typeof pblId !== 'string') {
+      return { success: false, error: 'PBL 보고서 ID가 올바르지 않습니다.' };
+    }
+
+    // 3) 접근 권한 확인 (PBL 트랙 + 배정 컨설턴트)
+    const access = await requireConsultantPBLReportAccess(user.id, pblId);
+    if (!access.success) return { success: false, error: access.error };
+
+    // 4) 데이터 조회 — pbl_reports + projects + interviews
+    const admin = createAdminClient();
+    const { data: pblRow, error: pblError } = await admin
+      .from('pbl_reports')
+      .select('*')
+      .eq('id', pblId)
+      .single();
+    if (pblError || !pblRow) {
+      return { success: false, error: 'PBL 보고서를 찾을 수 없습니다.' };
+    }
+
+    const { data: projectRow, error: projectError } = await admin
+      .from('projects')
+      .select('*')
+      .eq('id', access.data.projectId)
+      .single();
+    if (projectError || !projectRow) {
+      return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+    }
+
+    const { data: interviewRow } = await admin
+      .from('interviews')
+      .select('*')
+      .eq('project_id', access.data.projectId)
+      .maybeSingle();
+
+    // 5) payload 변환 + Python 함수 호출
+    const payload = buildPBLHwpxPayload({
+      pbl: pblRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['pbl'],
+      project: projectRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['project'],
+      interview: (interviewRow ?? null) as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['interview'],
+    });
+
+    // Server Action 요청 host 기반으로 현재 deployment Python 함수 호출
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+    const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+    const baseUrl = host ? `${proto}://${host}` : undefined;
+
+    let buffer: Buffer;
+    try {
+      buffer = await generatePBLHwpx(payload, { baseUrl });
+    } catch (error) {
+      console.error('[exportPBLAsHwpxAction generatePBLHwpx Error]', {
+        baseUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        success: false,
+        error: 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      };
+    }
+
+    // 6) Buffer → base64
+    const contentBase64 = buffer.toString('base64');
+
+    // 7) 감사로그
+    after(async () => {
+      try {
+        await createAuditLog({
+          actorUserId: user.id,
+          action: 'PBL_HWPX_EXPORTED',
+          targetType: 'pbl_report',
+          targetId: pblId,
+          meta: {
+            projectId: access.data.projectId,
+            versionNumber: pblRow.version_number,
+            fileSize: buffer.length,
+          },
+        });
+      } catch (e) {
+        console.error('[exportPBLAsHwpxAction] 감사로그 실패:', e);
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        fileName: payload.fileName,
+        contentBase64,
+        mimeType: 'application/vnd.hancom.hwpx',
+      },
+    };
+  } catch (error) {
+    console.error('[exportPBLAsHwpxAction Error]', error);
+    return { success: false, error: 'PBL HWPX 내보내기에 실패했습니다.' };
+  }
 }

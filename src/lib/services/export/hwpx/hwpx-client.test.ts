@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { generateHwpx, type RoadmapHwpxPayload } from './hwpx-client';
+import { generateRoadmapHwpx, generatePBLHwpx, type RoadmapHwpxPayload, type PBLHwpxPayload } from './hwpx-client';
 
 // fetch 모킹을 위한 helper
 const _originalFetch = globalThis.fetch;
@@ -39,7 +39,7 @@ function mockFetchError(status: number, text: string) {
   return fn;
 }
 
-describe('generateHwpx', () => {
+describe('generateRoadmapHwpx', () => {
   const payload: RoadmapHwpxPayload = {
     track: 'ROADMAP',
     fileName: 'test.hwpx',
@@ -50,7 +50,7 @@ describe('generateHwpx', () => {
     const body = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic
     mockFetchOk(body);
 
-    const result = await generateHwpx(payload);
+    const result = await generateRoadmapHwpx(payload);
 
     expect(Buffer.isBuffer(result)).toBe(true);
     expect(result.length).toBe(4);
@@ -60,7 +60,7 @@ describe('generateHwpx', () => {
   it('X-HWPX-Secret 헤더를 요청에 포함한다', async () => {
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     expect(fetchFn).toHaveBeenCalledOnce();
     const [, init] = fetchFn.mock.calls[0];
@@ -73,7 +73,7 @@ describe('generateHwpx', () => {
   it('options.baseUrl 전달 시 최우선 사용 (Server Action headers 기반)', async () => {
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload, { baseUrl: 'https://preview-abc.vercel.app' });
+    await generateRoadmapHwpx(payload, { baseUrl: 'https://preview-abc.vercel.app' });
 
     // 호출자가 전달한 baseUrl이 환경변수보다 우선
     const [url] = fetchFn.mock.calls[0];
@@ -83,7 +83,7 @@ describe('generateHwpx', () => {
   it('options.baseUrl 없으면 VERCEL_URL fallback', async () => {
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [url] = fetchFn.mock.calls[0];
     expect(url).toBe('https://preview.vercel.app/api/hwpx/generate');
@@ -93,7 +93,7 @@ describe('generateHwpx', () => {
     vi.stubEnv('VERCEL_URL', '');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [url] = fetchFn.mock.calls[0];
     expect(url).toBe('https://app.example.com/api/hwpx/generate');
@@ -104,7 +104,7 @@ describe('generateHwpx', () => {
     vi.stubEnv('VERCEL_URL', '');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [url] = fetchFn.mock.calls[0];
     expect(url).toBe('http://localhost:3000/api/hwpx/generate');
@@ -113,13 +113,13 @@ describe('generateHwpx', () => {
   it('HWPX_API_SECRET 환경변수가 없으면 에러를 던진다', async () => {
     vi.stubEnv('HWPX_API_SECRET', '');
 
-    await expect(generateHwpx(payload)).rejects.toThrow(/HWPX_API_SECRET/);
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/HWPX_API_SECRET/);
   });
 
   it('요청 body는 track + data JSON', async () => {
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [, init] = fetchFn.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
@@ -131,14 +131,14 @@ describe('generateHwpx', () => {
   it('응답이 500 에러면 예외를 던진다 (메시지에 상태 포함)', async () => {
     mockFetchError(500, 'generation failed: error');
 
-    await expect(generateHwpx(payload)).rejects.toThrow(/500/);
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/500/);
   });
 
   it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더만 추가 (set-bypass-cookie 제외)', async () => {
     vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'bypass-secret-xyz');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [, init] = fetchFn.mock.calls[0];
     expect((init as RequestInit).headers).toMatchObject({
@@ -152,9 +152,55 @@ describe('generateHwpx', () => {
     vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', '');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
-    await generateHwpx(payload);
+    await generateRoadmapHwpx(payload);
 
     const [, init] = fetchFn.mock.calls[0];
     expect((init as RequestInit).headers).not.toHaveProperty('x-vercel-protection-bypass');
+  });
+});
+
+describe('generatePBLHwpx', () => {
+  const pblPayload: PBLHwpxPayload = {
+    track: 'PBL',
+    fileName: 'test-pbl.hwpx',
+    data: { company_name: '테스트(주)', course_name: 'AI 과정' },
+  };
+
+  it('성공 시 HWPX 바이너리를 반환한다', async () => {
+    const body = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+    mockFetchOk(body);
+
+    const result = await generatePBLHwpx(pblPayload);
+
+    expect(Buffer.isBuffer(result)).toBe(true);
+    expect(result[0]).toBe(0x50);
+  });
+
+  it('요청 body는 track=PBL 로 전송된다', async () => {
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generatePBLHwpx(pblPayload);
+
+    const [, init] = fetchFn.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.track).toBe('PBL');
+    expect(body.fileName).toBe('test-pbl.hwpx');
+    expect(body.data.course_name).toBe('AI 과정');
+  });
+
+  it('X-HWPX-Secret 헤더를 동일하게 포함한다', async () => {
+    const fetchFn = mockFetchOk(new Uint8Array([0]));
+
+    await generatePBLHwpx(pblPayload);
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect((init as RequestInit).headers).toMatchObject({
+      'X-HWPX-Secret': 'test-secret',
+    });
+  });
+
+  it('HWPX_API_SECRET 미설정 시 에러', async () => {
+    vi.stubEnv('HWPX_API_SECRET', '');
+    await expect(generatePBLHwpx(pblPayload)).rejects.toThrow(/HWPX_API_SECRET/);
   });
 });

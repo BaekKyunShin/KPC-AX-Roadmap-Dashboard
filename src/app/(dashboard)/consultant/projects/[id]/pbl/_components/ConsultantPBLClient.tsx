@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import { PBLOperationGoal } from '@/components/pbl/PBLOperationGoal';
 import { PBLOverview } from '@/components/pbl/PBLOverview';
 import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
@@ -28,6 +29,7 @@ import type { AILevel, TrainingGoal } from '@/lib/schemas/interview-pbl';
 import {
   cancelPBLGeneration,
   deletePBLAction,
+  exportPBLAsHwpxAction,
   fetchPBLReport,
   fetchPBLVersions,
   finalizePBLAction,
@@ -86,6 +88,14 @@ export default function ConsultantPBLClient({
   const [isSaving, setIsSaving] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
+  const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
+    action: () => exportPBLAsHwpxAction(selected?.id ?? ''),
+    successMessage: 'PBL HWPX 다운로드 완료',
+    errorTitle: 'PBL HWPX 다운로드 실패',
+  });
+  const handleDownloadHwpx = () => {
+    if (selected) void downloadHwpx();
+  };
 
   const canEdit = selected?.status === 'DRAFT';
 
@@ -275,6 +285,19 @@ export default function ConsultantPBLClient({
           )}
           Excel
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadHwpx}
+          disabled={isDownloading !== null || isHwpxDownloading}
+        >
+          {isHwpxDownloading ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1" />
+          )}
+          HWPX
+        </Button>
         {canEdit && (
           <Button
             onClick={handleFinalize}
@@ -310,7 +333,7 @@ export default function ConsultantPBLClient({
       </div>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, isGenerating, isFinalizing, isDeleting, isShareUpdating, canEdit, isDownloading]);
+  }, [selected, isGenerating, isFinalizing, isDeleting, isShareUpdating, canEdit, isDownloading, isHwpxDownloading]);
 
   return (
     <div className="space-y-6">

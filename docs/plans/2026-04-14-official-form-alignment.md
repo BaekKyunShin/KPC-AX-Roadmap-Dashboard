@@ -3972,16 +3972,23 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 
 ---
 
-### Step 11: 갤러리 트랙 라벨·필터 + 프로젝트 목록 트랙 뱃지 + PBL 테스트 페이지
+### Step 11: 갤러리 트랙 라벨·필터 + 프로젝트 목록·상세·대시보드 트랙 UX 일관화 + PBL 테스트 페이지
 
 **브랜치:** `feature/ofa-11-gallery-test-track`
-**규모:** Medium (약 11 Task)
-**호출 스킬:** `frontend-guide`, `composition-patterns`
-**의존:** Step 6.5, Step 9
+**규모:** Medium~Large (약 17 Task — 오늘 Session 09 한컴 검증 중 발견된 전 역할 UX 누락 반영)
+**호출 스킬:** `frontend-guide`, `composition-patterns`, `react-best-practices`
+**의존:** Step 6.5, Step 9, Step 10
 
 **목표:**
 - 갤러리가 로드맵·PBL 양쪽 데이터를 통합 표시 + 트랙 라벨/필터 제공
-- **컨설턴트/운영관리자 프로젝트 목록 테이블에 트랙(로드맵/PBL) 뱃지 컬럼 추가** — Step 8 Playwright 점검에서 발견된 누락(OFA-08 PR 논의)
+- **컨설턴트/운영관리자/시스템관리자 세 역할에서 트랙 구분이 일관되게 노출** — 오늘 Session 09에서 실사용자 테스트 중 발견:
+  - 프로젝트 목록 테이블에 트랙 뱃지 컬럼 부재 (OFA-08 PR 논의에서 지적됨)
+  - 컨설턴트 프로젝트 **상세** 페이지가 트랙 무관하게 `/roadmap`으로만 라우팅 (PBL 프로젝트 진입 시 "로드맵이 없습니다" 빈 화면)
+  - 잘못된 역방향 redirect: `src/app/(dashboard)/consultant/projects/[id]/pbl/page.tsx:36` 에서 `/roadmap`으로 redirect (PBL 페이지에서 오히려 튕겨나감)
+  - 컨설턴트 홈 **대시보드 KPI·상태 분포 차트·최근 프로젝트** 가 ROADMAP_* 상태만 카운트/라벨링 (PBL 상태 누락)
+  - 운영관리자 **프로젝트 대시보드 "월별 로드맵 확정 현황"** 차트와 KPI 통계가 PBL 미포함
+  - 운영관리자 **감사로그 필터** 에 PBL 액션 (`PBL_HWPX_EXPORTED`·`PBL_REPORT_CREATED`·`PBL_REPORT_FINALIZED`·`PBL_REPORT_SHARED`) 라벨 누락 — DB enum은 이미 마이그 061에서 추가됨
+  - project_assignments 레코드 미등록 — PBL 트랙 프로젝트 생성 시 is_current=true 배정 레코드가 누락되는 경우 발견 (Session 09에서 수동 보완 INSERT로 해결. 재발 방지 검증 필요)
 - `/test-pbl` 페이지 신규 (기존 `/test-roadmap`와 평행 구조)
 - **Step 6.5 신규 필드(Ⅰ장 개요·NCS 박스·훈련체계 수립 방법)가 갤러리 카드/상세에서도 올바르게 렌더되도록 확인**
 - **Step 8·9 PBL 양식 2번 전 필드(Ⅰ~Ⅴ장 + 결과평가 설문)가 상세 페이지에 누락 없이 표출되도록 확인**
@@ -3999,8 +4006,20 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-10): PBL H
 - 변경: `src/app/(dashboard)/gallery/page.tsx` (+ `.test.tsx`)
 - 변경: `src/app/(dashboard)/gallery/actions/*.ts`
 - 변경: `src/components/gallery/*.tsx` (트랙 라벨, 필터 UI)
-- 변경: `src/app/(dashboard)/consultant/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
-- 변경: `src/app/(dashboard)/ops/projects/page.tsx` 및 테이블 클라이언트 컴포넌트 (트랙 컬럼 추가)
+- 변경: `src/app/(dashboard)/consultant/projects/_components/ProjectList.tsx` (**실제 파일명 — 계획서 이전 판의 `ConsultantProjectsTable.tsx`는 존재하지 않음**. 트랙 컬럼·뱃지·상태 라벨 트랙별 분기 추가)
+- 변경: `src/app/(dashboard)/ops/projects/_components/ProjectList.tsx` (OPS 목록 — 동일 패턴)
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/page.tsx` (상세 페이지 **트랙 분기 버튼** — PBL 트랙이면 `/pbl`, 아니면 `/roadmap`)
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/pbl/page.tsx:36` (잘못된 `/roadmap` redirect 제거)
+- 변경: `src/app/(dashboard)/ops/projects/[id]/page.tsx` (line 380~400 "AI 교육 로드맵" 블록 트랙 분기)
+- 변경: `src/app/(dashboard)/consultant/home/_components/SummaryCards.tsx` (+ `.test.tsx`) (상태 카드 — PBL 상태 카운트/라벨 추가)
+- 변경: `src/app/(dashboard)/consultant/home/_components/StatusDistributionChart.tsx` (+ `.test.tsx`) (범례·색·라벨 트랙별)
+- 변경: `src/app/(dashboard)/consultant/home/_components/RecentProjects.tsx` (+ `.test.tsx`) (배지·링크 트랙별 분기)
+- 변경: `src/app/(dashboard)/ops/projects/_components/MonthlyCompletionChart.tsx` (+ `.test.tsx`) (월별 "로드맵 확정" → "양식 확정" 또는 트랙별 스택 바)
+- 변경: `src/app/(dashboard)/ops/projects/actions/dashboard.ts:118,183` (`drafting` 상태 카운트에 `PBL_DRAFTED` 추가)
+- 변경: `src/app/(dashboard)/ops/projects/actions/queries.ts:278,289` (상태 스텝 라벨 "로드맵 초안 생성" → 트랙별 분기)
+- 변경: `src/app/(dashboard)/ops/audit/actions.ts:73-75` (감사로그 액션 필터에 `PBL_HWPX_EXPORTED`·`PBL_REPORT_CREATED`·`PBL_REPORT_FINALIZED`·`PBL_REPORT_SHARED` 라벨 추가)
+- 변경: `src/app/(dashboard)/gallery/actions/copy.ts:126` (`revalidatePath` 트랙 분기)
+- 신규: **`src/lib/utils/project-track.ts`** (+ `.test.ts`) — 공통 헬퍼: `projectDetailHref(projectId, track)`, `opsProjectDetailHref(...)`, `statusLabel(status, track)`, `primaryActionLabel(status, track)`
 - 신규: `src/components/ui/TrackBadge.tsx` (+ `.test.tsx`) — 로드맵/PBL 뱃지 공용 컴포넌트 (`tracks.ts` 색상맵 사용)
 - 신규: `src/app/(dashboard)/test-pbl/page.tsx`
 - 신규: `src/app/(dashboard)/test-pbl/TestPBLClient.tsx` (테스트용 정적 인터뷰 데이터로 PBL 생성 — **test-roadmap 컨벤션 준수: 컨테이너 컴포넌트는 루트에 배치, `_components/`는 하위 단계 컴포넌트 전용**)
@@ -4096,24 +4115,128 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 
 > 라우트 구조는 유지(`/gallery/[id]`)하되, 내부에서 트랙 분기를 명시적으로 한다. **쿼리 파라미터가 누락된 경우 기본값 'ROADMAP'**으로 기존 동작을 보존.
 
-- [ ] **Task 4.5: 프로젝트 목록 테이블 트랙 뱃지 컬럼 (RED → GREEN)**
+- [ ] **Task 4.5: 프로젝트 목록 테이블 트랙 뱃지 컬럼 + 트랙별 상태 라벨 (RED → GREEN)**
 
-> 배경: OFA-08 Playwright 점검에서 발견된 이슈. 현재 컨설턴트(`/consultant/projects`)와 운영관리자(`/ops/projects`) 프로젝트 목록 테이블 헤더가 "기업명 · 업종 · 규모 · 상태 · 배정일 · 작업"만 있어 **로드맵/PBL 트랙 구분이 목록에서 불가능**하다. `src/lib/constants/tracks.ts`에 색상 쌍(`ROADMAP=blue, PBL=purple`)이 이미 정의되어 있으니 뱃지 컴포넌트만 추가하면 된다.
+> 배경: OFA-08 Playwright 점검에서 발견된 이슈. 현재 컨설턴트(`/consultant/projects`)와 운영관리자(`/ops/projects`) 프로젝트 목록 테이블 헤더가 "기업명 · 업종 · 규모 · 상태 · 배정일 · 작업"만 있어 **로드맵/PBL 트랙 구분이 목록에서 불가능**하다. `src/lib/constants/tracks.ts`에 색상 쌍(`ROADMAP=blue, PBL=purple`)이 이미 정의되어 있으니 뱃지 컴포넌트만 추가하면 된다. 추가로 Session 09에서 확인된 증상: PBL 트랙 프로젝트가 목록에서 상태 "로드맵 완료"로 표시됨 → 상태 라벨을 트랙별로 분기해야 함.
 
 파일:
-- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 `PROJECT_TRACK_LABEL` + 색상맵 사용. Shadcn `Badge` 기반.
-- 변경: `src/app/(dashboard)/consultant/projects/_components/ConsultantProjectsTable.tsx` (또는 동등 파일) — 헤더에 "트랙" 컬럼 + 각 행에 `<TrackBadge track={p.track} />` 렌더
-- 변경: `src/app/(dashboard)/ops/projects/_components/OpsProjectsTable.tsx` (또는 동등 파일) — 동일 패턴
-- 변경: `src/app/(dashboard)/consultant/projects/actions/queries.ts` / `ops/projects/actions/queries.ts` — `select` 절에 `track` 컬럼 추가 (기존 select가 `track`을 빠뜨리면 클라이언트에 도달하지 않음)
+- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 **`TRACK_LABELS`**(풀네임: `ROADMAP='AI 훈련로드맵'`, `PBL='문제해결형(PBL) AI+직무 훈련과정'`) + `TRACK_BADGE_COLORS` 사용. 다만 뱃지에는 **짧은 축약** 라벨(`로드맵`/`PBL`)이 적합하므로 **컴포넌트 내부에서 축약 매핑을 상수로 유지**(또는 `tracks.ts`에 `TRACK_SHORT_LABELS` 추가 후 재export). Shadcn `Badge` 기반.
+- 변경: `src/app/(dashboard)/consultant/projects/_components/ProjectList.tsx` (**실제 파일명**) — 헤더에 "트랙" 컬럼 + 각 행에 `<TrackBadge track={p.track} />` 렌더 + 상태 라벨 `statusLabel(status, track)` 사용
+- 변경: `src/app/(dashboard)/ops/projects/_components/ProjectList.tsx` (**실제 파일명** — `OpsProjectsTable.tsx` 아님) — 동일 패턴
+- 변경: `src/app/(dashboard)/consultant/projects/actions.ts` / `ops/projects/actions/queries.ts` — `select` 절에 `track` 컬럼 추가 (기존 select가 `track`을 빠뜨리면 클라이언트에 도달하지 않음)
 - 선택: 트랙 필터 드롭다운 (상태 필터 옆) — 필수 아님, UX 개선용. `TrackFilter`와 공통화 가능.
 
 테스트:
 - `TrackBadge.test.tsx` — ROADMAP/PBL 각각 라벨·색상 클래스 검증
-- 각 테이블 `.test.tsx` — 행 렌더 시 뱃지 포함 확인
+- 각 테이블 `.test.tsx` — 행 렌더 시 뱃지 포함 + 트랙별 상태 라벨(PBL 완료 vs 로드맵 완료) 확인
 
 `composition-patterns` 스킬 호출 권장: `TrackBadge`는 갤러리 카드(Task 4)와 프로젝트 테이블 양쪽에서 쓰이므로 한 파일로 집중.
 
-완료 조건: Playwright로 두 목록 방문 시 각 행에 "로드맵" 또는 "PBL" 뱃지가 보임.
+완료 조건: Playwright로 두 목록 방문 시 각 행에 "로드맵" 또는 "PBL" 뱃지 + 해당 트랙에 맞는 상태 라벨.
+
+- [ ] **Task 4.6: 공통 트랙 분기 헬퍼 추출 (RED → GREEN)**
+
+> 배경: 오늘 Session 09에서 확인된 전 역할 UX 누락은 모두 **트랙 분기 로직의 중복·하드코딩** 이 근본 원인. 재발 방지 + Task 4.7~4.10 구현 전제.
+
+파일:
+- 신규: `src/lib/utils/project-track.ts` + `.test.ts`
+  ```ts
+  import type { ProjectTrack } from '@/lib/constants/tracks';
+
+  export function projectDetailHref(projectId: string, track: ProjectTrack): string {
+    return track === 'PBL'
+      ? `/consultant/projects/${projectId}/pbl`
+      : `/consultant/projects/${projectId}/roadmap`;
+  }
+
+  export function opsProjectDetailHref(projectId: string, track: ProjectTrack): string {
+    return track === 'PBL'
+      ? `/ops/projects/${projectId}/pbl`
+      : `/ops/projects/${projectId}/roadmap`;
+  }
+
+  // 트랙 × 상태 → 한글 라벨 매트릭스
+  export function statusLabel(status: string, track: ProjectTrack): string { ... }
+
+  // 상세 페이지 기본 액션 버튼 문구 (status·track 조합)
+  export function primaryActionLabel(status: string, track: ProjectTrack): string { ... }
+  ```
+
+- 테스트: 트랙 × 모든 상태 매트릭스(`ASSIGNED`·`INTERVIEWED`·`ROADMAP_DRAFTED`·`PBL_DRAFTED`·`FINALIZED` 등) 전수 검증.
+
+참고:
+- 마이그 064에서 `PBL_DRAFTED` enum 값 추가됨 (`ALTER TYPE project_status ADD VALUE 'PBL_DRAFTED'`).
+- `src/lib/constants/status.ts` 에 **이미** PBL 대응 상수들이 정의되어 있음: `PBL_ELIGIBLE_STATUSES`, `EXPORT_ELIGIBLE_STATUSES`(ROADMAP_DRAFTED + PBL_DRAFTED), `drafted` 그룹(`['ROADMAP_DRAFTED', 'PBL_DRAFTED']`). 매트릭스 작성 시 이 기존 상수들을 재사용.
+
+- [ ] **Task 4.7: 컨설턴트 프로젝트 상세 페이지 트랙 분기 + PBL redirect 버그 제거 (RED → GREEN)**
+
+> 배경: Session 09에서 확인된 증상 — PBL 트랙 프로젝트의 `/consultant/projects/{id}` 상세 페이지에서 "로드맵 보기" 버튼만 있고 클릭 시 `/roadmap`으로 이동해 "로드맵이 없습니다" 빈 화면. 별도 버그로 `/pbl/page.tsx:36`이 오히려 `/roadmap`으로 redirect해서 영구히 PBL 화면 진입 불가.
+
+파일:
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/page.tsx`
+  - line 119~127 로드맵 링크 블록을 `projectDetailHref(projectId, projectData.track)`·`primaryActionLabel(...)` 사용으로 교체
+  - 상태 조건(`['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED']`) — PBL 상태 추가 (`'PBL_DRAFTED'` 등)
+- 변경: `src/app/(dashboard)/consultant/projects/[id]/pbl/page.tsx:36` — `redirect('/roadmap')` **제거** (이 파일이 PBL 페이지인데 오히려 로드맵으로 튕기는 버그)
+- 테스트: 상세 페이지 .test — PBL 트랙 프로젝트에 대해 "PBL 보고서 보기" 버튼 + 링크 `/pbl` 렌더 검증
+
+- [ ] **Task 4.8: 컨설턴트 홈 대시보드 PBL 반영 (RED → GREEN)**
+
+> 배경: 컨설턴트 홈 대시보드가 ROADMAP_* 상태만 카운트/라벨링. PBL 프로젝트가 없는 것처럼 표시됨.
+
+파일:
+- 변경: `src/app/(dashboard)/consultant/home/_components/SummaryCards.tsx` (+ `.test.tsx`) — `statusFilter` 카드 PBL 상태 추가 (예: "초안 작성 중" 카드가 `ROADMAP_DRAFTED` + `PBL_DRAFTED` 합쳐 카운트. 라벨은 트랙 혼재 카드 고려해 "초안 작성 중" 일반화)
+- 변경: `src/app/(dashboard)/consultant/home/_components/StatusDistributionChart.tsx` (+ `.test.tsx`) — 범례·색·라벨에 PBL 상태 추가. 기존 테스트의 "로드맵 작성 중/완료" 문구는 트랙 혼재 라벨("초안 작성 중/양식 완료" 등)로 대체
+- 변경: `src/app/(dashboard)/consultant/home/_components/RecentProjects.tsx` (+ `.test.tsx`) — 상태 배지 `statusLabel(status, track)`, 카드 링크 `projectDetailHref(id, track)` 사용
+
+- [ ] **Task 4.9: 운영관리자 프로젝트 상세·대시보드·감사로그 PBL 반영 (RED → GREEN)**
+
+> 배경: 운영관리자(OPS_ADMIN)와 시스템관리자(SYSTEM_ADMIN)는 `/ops/*` 경로 공유. 이 경로의 로드맵 중심 UI가 PBL 프로젝트 운영에 맹점 생성.
+
+파일:
+- 변경: `src/app/(dashboard)/ops/projects/[id]/page.tsx` (line 380~400 "AI 교육 로드맵" 블록) — `opsProjectDetailHref(id, track)` 사용. 라벨도 트랙별
+- 변경: `src/app/(dashboard)/ops/projects/_components/MonthlyCompletionChart.tsx` (+ `.test.tsx`) — 제목 "월별 로드맵 확정 현황" → "월별 양식 확정 현황" 또는 트랙별 스택 바. 데이터 소스 확인(`dashboard.ts`에서 PBL finalized 합산)
+- 변경: `src/app/(dashboard)/ops/projects/actions/dashboard.ts` (line 118 `drafting` 정의 주석·line 183 `ROADMAP_DRAFTED` case)
+  - `drafting` 카운트에 `PBL_DRAFTED` 포함 또는 별도 카드 분리
+  - `FINALIZED` 는 트랙 무관이므로 기존 유지
+- 변경: `src/app/(dashboard)/ops/projects/actions/queries.ts` (line 278~292 상태 스텝 라벨 "로드맵 초안 생성") — 프로젝트 트랙에 따라 "PBL 초안 생성" 라벨로 분기
+- 변경: `src/app/(dashboard)/ops/audit/actions.ts:73-75` — 감사로그 액션 라벨 맵에 추가:
+  ```ts
+  { value: 'PBL_REPORT_CREATED', label: 'PBL 보고서 생성' },
+  { value: 'PBL_REPORT_FINALIZED', label: 'PBL 보고서 최종 확정' },
+  { value: 'PBL_REPORT_SHARED', label: 'PBL 보고서 공유 토글' },
+  { value: 'PBL_HWPX_EXPORTED', label: 'PBL HWPX 내보내기' },
+  { value: 'ROADMAP_HWPX_EXPORTED', label: '로드맵 HWPX 내보내기' },
+  ```
+  (DB enum은 마이그 061에서 이미 확정 — 본 Step에서 라벨만 추가)
+
+- [ ] **Task 4.10: 갤러리 `revalidatePath` 트랙 분기 (RED → GREEN)**
+
+> 배경: `src/app/(dashboard)/gallery/actions/copy.ts:126` 이 `revalidatePath('/consultant/projects/${id}/roadmap')` 로만 무효화 — PBL 복사 시 PBL 페이지 재검증 누락.
+
+파일:
+- 변경: `src/app/(dashboard)/gallery/actions/copy.ts:126` — 복사 대상 프로젝트의 track 조회 후 분기
+  ```ts
+  revalidatePath(projectDetailHref(params.targetProjectId, targetTrack));
+  ```
+- 테스트: `copy.test.ts` — PBL 대상 복사 시 `/pbl` 경로 revalidate 호출 확인
+
+- [ ] **Task 4.11: project_assignments 레코드 무결성 검증 (QA)**
+
+> 배경: Session 09에서 "PBL 테스트 기업" 프로젝트의 `project_assignments` 레코드가 누락되어 컨설턴트 목록에 안 보이는 증상 발견(수동 INSERT로 해결). Step 8/9의 프로젝트 생성·배정 로직에서 이 레코드 삽입이 누락되는 시나리오가 있는지 감사.
+
+작업:
+- 감사: `mcp__supabase__execute_sql` 로 `projects.assigned_consultant_id` 값이 있으나 `project_assignments`에 `is_current=true` 레코드 없는 행 수 쿼리
+  ```sql
+  SELECT p.id, p.company_name, p.track, p.assigned_consultant_id
+  FROM projects p
+  LEFT JOIN project_assignments pa
+    ON pa.project_id = p.id AND pa.is_current = true
+  WHERE p.assigned_consultant_id IS NOT NULL
+    AND pa.id IS NULL;
+  ```
+- 발견된 누락 행: 수동 보완 INSERT (Session 09 패턴, `assignment_reason = '테스트 데이터 보완 배정'`)
+- 재발 방지: 배정 서비스(`src/lib/services/assignment.ts` 등) 코드 감사하여 누락 조건 파악 → 필요 시 Task 4.12로 코드 수정 추가
+- 테스트: 감사 SQL 결과 0건, 또는 보완 INSERT 후 0건
 
 - [ ] **Task 5: 갤러리 페이지 통합**
 
@@ -4154,7 +4277,7 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 동작:
 - 정적 PBL 인터뷰 샘플 데이터 로드
 - "PBL 생성" 버튼 → LLM 호출 → DRAFT 저장
-- 컨설턴트 연습용이므로 실 프로젝트와 격리: **기존 `projects.is_test_mode = true` 컬럼 활용**(마이그 032·034 패턴 — `test-roadmap`에서 사용 중인 동일 메커니즘). RLS 정책은 `is_test_mode = true` 분기로 본인이 만든 테스트 데이터만 조회.
+- 컨설턴트 연습용이므로 실 프로젝트와 격리: **기존 `projects.is_test_mode = true` 컬럼 활용** — 이 컬럼은 **마이그 005(`005_rename_case_to_project.sql`)**에서 이미 추가됨(이전 계획서의 "마이그 032·034" 언급은 오기). `test-roadmap` 파이프라인에서 사용 중인 동일 메커니즘. RLS 정책은 `is_test_mode = true` 분기로 본인이 만든 테스트 데이터만 조회.
 - `pbl_reports` 테이블을 그대로 사용하되 연결되는 `projects.is_test_mode = true`. Step 9의 `pbl-crud.ts`를 공유하되 호출 시 test 모드 컨텍스트 명시.
 
 `composition-patterns` 스킬로 공통 컴포넌트 재사용 여부 판단. **test-roadmap 컴포넌트의 PBL 버전 평행 작성이 목표이지 test-roadmap 코드를 수정하지 않는다.**
@@ -4221,9 +4344,12 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 - 본 Step에서 추가할 마이그레이션 번호는 **066_ofa_cleanup.sql** (065는 Step 6.5가 점유).
 - 공용 디자인 키트: `src/components/roadmap/shared/` (Step 6.5 추출).
 - HWPX 템플릿: `templates/hwpx/roadmap.hwpx`(Step 7) + `templates/hwpx/pbl.hwpx`(Step 10).
-- Python 공통 헬퍼: `api/hwpx/_hwpx_helpers.py`(Step 7 추출).
-- HWPX 훅: `src/hooks/useHwpxDownload.ts`(Step 7).
-- Node HWPX 클라이언트: `generateRoadmapHwpx` + `generatePBLHwpx`(Step 10 리네임 완료).
+- Python 플레이스홀더 매핑: `api/hwpx/_placeholders_roadmap.py`(Step 3/7) + `api/hwpx/_placeholders_pbl.py`(Step 10).
+  > ⚠️ 이전 판 계획서에는 "api/hwpx/_hwpx_helpers.py (Step 7 추출)" 로 기록되어 있었으나 **실제로는 추출되지 않음** — `generate.py` 내부에 `_set_cell_text`·`_replace_in_all_runs`·`_collect_tables` 등이 그대로 공유되어 있고 PBL 렌더도 동일 헬퍼를 재사용. 본 Step의 Task에서 **별도 추출이 가치 있는지 여부 판단** (추출 시 검증 부담 vs 코드 중복. 현재는 중복 없음 — 추출 불필요 판정이 기본).
+- HWPX 훅: `src/hooks/useHwpxDownload.ts`(Step 7 신규, Step 10 재사용).
+- Node HWPX 클라이언트: `generateRoadmapHwpx` + `generatePBLHwpx` + 공통 헬퍼 `postToPythonGenerate`(Step 10 리팩터 — 기존 `generateHwpx`는 리네임됨).
+- PBL payload 빌더: `buildPBLHwpxPayload`(Step 10).
+- Server Action: `exportRoadmapAsHwpxAction`(Step 7) + `exportPBLAsHwpxAction`(Step 10, `PBL_HWPX_EXPORTED` 감사로그).
 - 공통 인터뷰 자산: `InterviewStepper` + `useInterviewAutoSave`(Step 5).
 
 **양식 매칭 QA 체크리스트 (본 Step에서 모두 ✅ 해야 머지 가능):**
@@ -4270,29 +4396,54 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 
 - [ ] **Task 1: 브랜치 + 기존 `interview.ts` 최종 제거** (deprecated 표시된 것을 실제 삭제)
 
-삭제 전 의존성 감사 (필수):
+> ⚠️ **Session 09 시점 실측 (2026-04-19): 잔존 import가 매우 많음**. 다음 파일들에서 `@/lib/schemas/interview` import를 여전히 사용:
+> - `src/app/(dashboard)/test-roadmap/actions.ts`
+> - `src/app/(dashboard)/test-roadmap/_components/TestStepBasicInfo.tsx`
+> - `src/app/(dashboard)/test-roadmap/_components/TestStepSummary.tsx`·`.test.tsx`
+> - `src/app/(dashboard)/test-roadmap/_hooks/useStepValidator.ts`
+> - `src/app/(dashboard)/test-roadmap/_hooks/useTestRoadmapForm.ts`
+> - `src/app/(dashboard)/consultant/projects/[id]/interview/actions.ts`
+> - `src/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewClient.test.tsx`
+> - `src/app/(dashboard)/consultant/projects/[id]/interview/_components/StepCompanyDetails.test.tsx`
+>
+> Step 12 진입 전 Task 1을 **두 단계로 분할**:
+>   1-a. **잔존 import를 `interview-roadmap.ts`(Step 5 트랙별 스키마)로 교체**
+>
+>   **⚠️ 단순 rename 아님 — 심볼 재설계 필요**. Session 09 실측: `interview.ts`에서 import되는 심볼 중 `interview-roadmap.ts`에 **동일 이름으로 존재하지 않는** 것이 다수:
+>   - 타입: `SttInsights`, `InterviewInput`, `InterviewParticipant`, `JobTask`, `PainPoint`, `ImprovementGoal`, `CompanyDetails`, `Constraint`
+>   - 함수/상수: `SYSTEM_TOOL_PRESETS`, `createEmptyParticipant`, `createEmptyConstraint`, `createEmptyImprovementGoal`, `createEmptyJobTask`, `createEmptyPainPoint`, `interviewSchema`, `interviewAutoSaveSchema`, `sttInsightsSchema`
+>
+>   이 심볼들을 `interview-roadmap.ts`로 이식하거나, 이미 맵핑된 신규 심볼(`RoadmapInterviewInput`, `Overview`, `TaskWorkflowItem`, `TrainingTarget`, `AnalysisNotes`, `RoadmapParticipant`, `createEmptyOverview`, `createEmptyRoadmapParticipant` 등)로 교체해야 한다. **먼저 심볼별 이관 매핑 표를 작성**(구 이름 → 새 이름/새 위치)한 뒤 파일별 치환. 그래도 남는 legacy 심볼(예: `SttInsights`, `SYSTEM_TOOL_PRESETS`)은 **유지할지, 별도 파일로 분리할지, 그냥 삭제할지 본 Task 시작 시 판단**.
+>
+>   1-b. grep 결과 0건 확인 후 `interview.ts` 파일 삭제 + `npm run typecheck && npm run test` 회귀 0
+
+삭제 전 의존성 감사:
 ```bash
-# src/lib/schemas/interview.ts 를 참조하는 모든 파일 조사
 # 프로젝트 실제 E2E 경로는 e2e/ (tests/ 디렉터리는 존재하지 않음)
-grep -rn "schemas/interview['\"]" src/ e2e/ --include="*.ts" --include="*.tsx"
-grep -rn "from '@/lib/schemas/interview'" src/ e2e/
+# *-pbl.ts / *-roadmap.ts / *-guide.ts 는 제외 대상 (다른 파일)
+grep -rn "schemas/interview['\"]|from '@/lib/schemas/interview'" src/ e2e/ --include="*.ts" --include="*.tsx" | grep -v "interview-roadmap\|interview-pbl\|interview-guide\|interview-steps"
 ```
 
-또는 Claude의 Grep 도구 사용 (권장):
-```
-Grep(pattern: "schemas/interview['\"]|from '@/lib/schemas/interview'", path: "src")
-Grep(pattern: "schemas/interview['\"]|from '@/lib/schemas/interview'", path: "e2e")
-```
-
-기대: Step 5·8·9의 트랙별 스키마로 이미 완전 이관된 상태. 잔존 import가 있다면 해당 파일부터 교체 후 삭제 진행. 삭제 후 `npm run typecheck` + `npm run test` 회귀 0 확인.
+기대: Task 1-a 완료 후 grep 결과 0건. 0이 아니라면 해당 파일부터 교체 후 삭제 진행. 삭제 후 `npm run typecheck` + `npm run test` 회귀 0 확인.
 - [ ] **Task 2: 마이그레이션 066 — legacy 정리 + audit 액션 확장**
 
 > **번호 주의**: 065는 **Step 6.5에서 `065_add_interview_attachments.sql`로 이미 점유**되었다. 따라서 본 Step의 legacy 정리 마이그는 **066**이다. 본 파일명·파일 내용의 숫자는 모두 066을 사용한다.
 
+> ⚠️ **Session 09 시점 실측 (2026-04-19): `roadmap_versions.pbl_course` 타입·코드 참조가 여전히 존재**. 다음 파일들에서 legacy 컬럼을 참조:
+> - `src/types/database.ts:268` (`pbl_course: PBLCourse;` 인터페이스 필드)
+> - `src/app/(dashboard)/consultant/projects/[id]/roadmap/actions.ts` (fromRoadmapVersionColumns 매퍼 입력 타입)
+> - `src/app/(dashboard)/test-roadmap/actions.test.ts`
+> - `src/app/(dashboard)/consultant/projects/[id]/roadmap/actions.test.ts` (테스트 fixture)
+> - `src/app/(dashboard)/gallery/actions/queries.ts`·`queries.test.ts` (row 타입)
+>
+> 따라서 Task 2를 **두 단계로 분할**:
+>   2-a. **코드 레퍼런스 제거 (선행 필수)** — 위 파일들에서 `pbl_course` 참조·fixture·fromRoadmapVersionColumns 매핑을 제거하고 회귀 테스트 0건 확인
+>   2-b. 그 후 마이그 066 적용 → `src/types/database.ts`의 `pbl_course` 필드 수기 제거
+
 파일: `supabase/migrations/066_ofa_cleanup.sql`
 ```sql
 -- 1) roadmap_versions의 legacy pbl_course 컬럼 drop
---    (Step 6에서 코드 참조 제거 완료 → 이 시점에 안전하게 drop 가능)
+--    (Task 2-a에서 코드 참조 제거 완료 → 이 시점에 안전하게 drop 가능)
 --
 -- 참고: 마이그레이션 050에서 chk_pbl_course_size CHECK 제약이 이 컬럼에 부착되어 있다.
 --       PostgreSQL의 DROP COLUMN은 기본적으로 해당 컬럼에 딸린 CHECK 제약·기본값·인덱스를
@@ -4320,6 +4471,38 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 적용: `mcp__supabase__apply_migration` 사용 → `mcp__supabase__list_migrations`로 066 반영 검증.
 
 - [ ] **Task 3: `src/app/api/hwpx-test/route.ts` 제거** (PoC용 일회성 라우트)
+
+- [ ] **Task 3.5: HWPX 양식 세부 수정 (Session 09 한컴 프로그램 검증 피드백 일괄 반영)**
+
+> 배경: Step 10(OFA-10) 세션에서 Preview 배포 후 실제 한글 프로그램으로 HWPX 파일을 열어 **세부 수정 사항을 확인**(사용자 직접 검수). Step 10 PR 범위에서는 반영하지 않고 본 Step 12에서 일괄 처리하기로 결정(2026-04-19 Session 09 종료 시 사용자 지시).
+
+**처리 대상:**
+1. 사용자가 Session 09 한컴 검증에서 발견한 양식 1번(로드맵) 세부 수정 사항 — **본 Task 진입 시 사용자에게 구체 피드백 목록 재요청**. 피드백 예상 항목:
+   - 셀 병합 위치 어긋남
+   - 라벨 누락 또는 오기
+   - 체크박스 위치 잘못 반영
+   - 반복 행 수 초과 시 truncate/확장 여부
+2. 양식 2번(PBL) 세부 수정 사항 — Session 09 Playwright 실제 다운로드에서 `PBL-테스트-기업-PBL-v2.hwpx` 파일 기준 확인 항목:
+   - Ⅰ 훈련과정 개요 (15×5) 전 셀 정확 매핑 (세션 말미에 T1 셀 좌표 일부 보정한 상태 — 최종 검수 필요)
+   - Ⅱ-2 훈련환경 분석 (12×7) 사내강사 라벨·직책 위치 재확인
+   - Ⅳ-3-다 교과목 프로파일 (15×10) 훈련내용 반복 셀 좌표
+   - Ⅳ-4-가 과정평가 (16×9) 체크리스트 7행 위치
+   - 결과보고서 부분 (T42~T51): 훈련 미실시 상태에서 공란 유지하는지 / 일부 표시해야 하는지 확정
+   - 표지 본문 "㈜기업명 기재"·"(훈련과정명)" replace 경로 재검증 (master page/header에 있을 경우 replace_in_all_runs가 닿지 않음)
+
+**구현 위치:**
+- `api/hwpx/generate.py` — `_generate_roadmap` / `_generate_pbl` 내부 셀 좌표·매핑 수정
+- `api/hwpx/_placeholders_roadmap.py` / `api/hwpx/_placeholders_pbl.py` — placeholder 맵·반복 배열 추가·보정
+- `templates/hwpx/roadmap.hwpx` / `templates/hwpx/pbl.hwpx` — 필요 시 템플릿 자체 수정 (원본 양식 순서 재확인)
+- `api/hwpx/test_placeholders_roadmap.py` / `test_placeholders_pbl.py` — 수정된 매핑에 맞춰 테스트 추가·갱신
+
+**검증:**
+- pytest 전체 PASS
+- Preview 배포 후 Playwright MCP로 실제 HWPX 다운로드 → 한글 프로그램 육안 재검 (사용자 승인)
+- 양식 1번 PDF·양식 2번 PDF와 1:1 겹쳐 비교 ( 양식 QA 체크리스트 전 항목 ✅ )
+
+**승인 게이트:** 사용자 한글 프로그램 검수 "통과" 확인 후에만 Task 3.5 완료. 미통과 시 재수정 반복.
+
 - [ ] **Task 4: `test-automator` 서브에이전트로 E2E 스모크 시나리오**
 
 ```
