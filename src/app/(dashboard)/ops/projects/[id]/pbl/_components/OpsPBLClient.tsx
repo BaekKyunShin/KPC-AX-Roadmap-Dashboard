@@ -5,6 +5,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
+import { PBLOperationGoal } from '@/components/pbl/PBLOperationGoal';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
@@ -100,6 +101,11 @@ export default function OpsPBLClient({
 
           {selected && content && (
             <div className="space-y-4">
+              <PBLOperationGoal
+                canEdit={false}
+                value={content.operation_plan.training_goal}
+                onChange={() => {}}
+              />
               <PBLToolUsagePlan
                 canEdit={false}
                 value={content.operation_plan.ai_tool_usage_plan}

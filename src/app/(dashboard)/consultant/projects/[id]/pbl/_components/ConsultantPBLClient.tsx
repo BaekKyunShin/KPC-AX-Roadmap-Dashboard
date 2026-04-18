@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
+import { PBLOperationGoal } from '@/components/pbl/PBLOperationGoal';
 import { PBLOverview } from '@/components/pbl/PBLOverview';
 import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
@@ -189,6 +190,14 @@ export default function ConsultantPBLClient({
 
   const content = selected?.pbl_content;
 
+  const handleTrainingGoalChange = (nextGoal: string) => {
+    if (!content) return;
+    runContentUpdate({
+      ...content,
+      operation_plan: { ...content.operation_plan, training_goal: nextGoal },
+    });
+  };
+
   const handleToolPlanChange = (nextPlan: PBLAIToolUsagePlanItem[]) => {
     if (!content) return;
     runContentUpdate({
@@ -367,6 +376,11 @@ export default function ConsultantPBLClient({
               details={interviewTargets.details}
             />
           )}
+          <PBLOperationGoal
+            canEdit={canEdit}
+            value={content.operation_plan.training_goal}
+            onChange={handleTrainingGoalChange}
+          />
           <PBLToolUsagePlan
             canEdit={canEdit}
             value={content.operation_plan.ai_tool_usage_plan}
