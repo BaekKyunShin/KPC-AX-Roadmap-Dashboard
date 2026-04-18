@@ -21,7 +21,7 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
-import { buildRoadmapHwpxPayload, generateHwpx } from '@/lib/services/export/hwpx';
+import { buildRoadmapHwpxPayload, generateRoadmapHwpx } from '@/lib/services/export/hwpx';
 import { createAuditLog } from '@/lib/services/audit';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -424,9 +424,9 @@ export async function exportRoadmapAsHwpxAction(
 
     let buffer: Buffer;
     try {
-      buffer = await generateHwpx(payload, { baseUrl });
+      buffer = await generateRoadmapHwpx(payload, { baseUrl });
     } catch (error) {
-      console.error('[exportRoadmapAsHwpxAction generateHwpx Error]', {
+      console.error('[exportRoadmapAsHwpxAction generateRoadmapHwpx Error]', {
         baseUrl,
         error: error instanceof Error ? error.message : String(error),
       });
