@@ -36,10 +36,10 @@ describe('PBLPerformanceMetrics', () => {
     expect(next.training_goal_categories).toContain('공정 최적화');
   });
 
-  it('정량 지표 textarea 편집 시 bullet 배열로 반환', () => {
+  it('정량 textarea 편집 시 bullet 배열로 반환', () => {
     const onChange = vi.fn();
     render(<PBLPerformanceMetrics canEdit={true} value={base()} onChange={onChange} />);
-    const textarea = screen.getByLabelText('정량 지표') as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText('정량') as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: '불량률 20% 감소\n처리시간 30% 단축' } });
     const next = onChange.mock.calls[0][0] as PBLPerformanceAnalysis;
     expect(next.quantitative_metrics).toEqual(['불량률 20% 감소', '처리시간 30% 단축']);

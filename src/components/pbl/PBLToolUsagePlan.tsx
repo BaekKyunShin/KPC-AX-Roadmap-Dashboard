@@ -61,7 +61,7 @@ export function PBLToolUsagePlan({ canEdit, value, onChange }: PBLToolUsagePlanP
   return (
     <Card>
       <CardHeader className={CARD_HEADER_CLASS}>
-        <CardTitle className="text-base">Ⅳ-2. AI 도구 활용 계획</CardTitle>
+        <CardTitle className="text-base">Ⅳ-2. AI도구 활용 계획</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         {warnBelowMin && (
@@ -77,7 +77,7 @@ export function PBLToolUsagePlan({ canEdit, value, onChange }: PBLToolUsagePlanP
             <TableHeader className="bg-muted/40">
               <TableRow>
                 <TableHead className="w-[8%] text-center">단계</TableHead>
-                <TableHead className="w-[14%] text-center">주요 활동</TableHead>
+                <TableHead className="w-[14%] text-center">주요활동</TableHead>
                 <TableHead className="w-[16%] text-center">AI 도구</TableHead>
                 <TableHead className="w-[14%] text-center">활용 데이터</TableHead>
                 <TableHead className="w-[16%] text-center">활용 목적</TableHead>
@@ -117,7 +117,7 @@ export function PBLToolUsagePlan({ canEdit, value, onChange }: PBLToolUsagePlanP
                       canEdit={canEdit}
                       value={item.main_activity}
                       onChange={(v) => updateItem(idx, { main_activity: v })}
-                      ariaLabel="주요 활동"
+                      ariaLabel="주요활동"
                     />
                     <TableTextCell
                       canEdit={canEdit}

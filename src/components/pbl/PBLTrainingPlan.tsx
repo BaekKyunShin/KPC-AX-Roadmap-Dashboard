@@ -73,7 +73,7 @@ function OverviewSection({
       <CardHeader className={CARD_HEADER_CLASS}>
         <CardTitle className="text-base">Ⅳ-3. 훈련 실시 계획 &mdash; 가. 훈련과정 개요</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-5">
+      <CardContent className="space-y-4 pt-5">
         <FormField label="과정명" htmlFor="pbl-course-name">
           <Input
             id="pbl-course-name"
@@ -84,11 +84,13 @@ function OverviewSection({
             }
           />
         </FormField>
-        <div className="grid grid-cols-2 gap-2">
-          <FormField label="훈련기간 시작" htmlFor="pbl-period-start">
+        <div>
+          <label className="block text-sm font-medium leading-none mb-1.5">훈련기간</label>
+          <div className="flex items-center gap-2">
             <Input
               id="pbl-period-start"
               type="date"
+              aria-label="훈련기간 시작"
               value={value.overview.training_period.start}
               disabled={!canEdit}
               onChange={(e) =>
@@ -100,11 +102,11 @@ function OverviewSection({
                 })
               }
             />
-          </FormField>
-          <FormField label="훈련기간 종료" htmlFor="pbl-period-end">
+            <span className="text-muted-foreground text-sm shrink-0">~</span>
             <Input
               id="pbl-period-end"
               type="date"
+              aria-label="훈련기간 종료"
               value={value.overview.training_period.end}
               disabled={!canEdit}
               onChange={(e) =>
@@ -116,7 +118,7 @@ function OverviewSection({
                 })
               }
             />
-          </FormField>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -184,16 +186,16 @@ function LearningGroupSection({
         <CardTitle className="text-base">나. 학습그룹 구성</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 pt-5">
-        {/* 훈련강사 */}
+        {/* 훈련 강사 */}
         <section>
-          <h3 className="text-sm font-medium text-foreground mb-2">훈련강사</h3>
+          <h3 className="text-sm font-medium text-foreground mb-2">훈련 강사</h3>
           <div className="overflow-x-auto rounded border border-border">
             <Table className="min-w-[720px]">
               <TableHeader className="bg-muted/40">
                 <TableRow>
                   <TableHead className="w-[10%] text-center">구분</TableHead>
                   <TableHead className="w-[12%] text-center">역할</TableHead>
-                  <TableHead className="w-[22%] text-center">소속</TableHead>
+                  <TableHead className="w-[22%] text-center">소속(부서)</TableHead>
                   <TableHead className="w-[18%] text-center">직위</TableHead>
                   <TableHead className="w-[20%] text-center">성명</TableHead>
                   {canEdit && <TableHead className="w-[8%] text-center">작업</TableHead>}
@@ -237,7 +239,7 @@ function LearningGroupSection({
                         canEdit={canEdit}
                         value={ins.affiliation}
                         onChange={(v) => updateInstructor(idx, { affiliation: v })}
-                        ariaLabel="소속"
+                        ariaLabel="소속(부서)"
                       />
                       <TableInlineCell
                         canEdit={canEdit}
@@ -283,21 +285,22 @@ function LearningGroupSection({
         <section>
           <h3 className="text-sm font-medium text-foreground mb-2">훈련생</h3>
           <div className="overflow-x-auto rounded border border-border">
-            <Table className="min-w-[640px]">
+            <Table className="min-w-[720px]">
               <TableHeader className="bg-muted/40">
                 <TableRow>
+                  <TableHead className="w-[10%] text-center">구분</TableHead>
                   <TableHead className="w-[12%] text-center">역할</TableHead>
-                  <TableHead className="w-[30%] text-center">소속</TableHead>
-                  <TableHead className="w-[24%] text-center">직위</TableHead>
-                  <TableHead className="w-[24%] text-center">성명</TableHead>
-                  {canEdit && <TableHead className="w-[10%] text-center">작업</TableHead>}
+                  <TableHead className="w-[28%] text-center">소속(부서)</TableHead>
+                  <TableHead className="w-[20%] text-center">직위</TableHead>
+                  <TableHead className="w-[22%] text-center">성명</TableHead>
+                  {canEdit && <TableHead className="w-[8%] text-center">작업</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {trainees.length === 0 ? (
                   <TableRow>
                     <td
-                      colSpan={canEdit ? 5 : 4}
+                      colSpan={canEdit ? 6 : 5}
                       className="px-3 py-6 text-center text-sm text-muted-foreground"
                     >
                       훈련생을 추가하세요.
@@ -306,6 +309,9 @@ function LearningGroupSection({
                 ) : (
                   trainees.map((tr, idx) => (
                     <SyncedTableRow key={idx} deps={[tr.affiliation, tr.position, tr.name]}>
+                      <td className="h-0 px-3 py-3 align-top text-center text-sm text-muted-foreground">
+                        내부
+                      </td>
                       <TableInlineCell
                         canEdit={canEdit}
                         value={tr.role}
@@ -318,7 +324,7 @@ function LearningGroupSection({
                         canEdit={canEdit}
                         value={tr.affiliation}
                         onChange={(v) => updateTrainee(idx, { affiliation: v })}
-                        ariaLabel="훈련생 소속"
+                        ariaLabel="훈련생 소속(부서)"
                       />
                       <TableInlineCell
                         canEdit={canEdit}
@@ -425,7 +431,7 @@ function SubjectProfileSection({
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="교과목 과정명" htmlFor="pbl-subject-course-name">
+          <FormField label="과정명" htmlFor="pbl-subject-course-name">
             <Input
               id="pbl-subject-course-name"
               value={profile.course_name}
@@ -433,7 +439,7 @@ function SubjectProfileSection({
               onChange={(e) => updateProfile({ course_name: e.target.value })}
             />
           </FormField>
-          <FormField label="전체 훈련시간(H)" htmlFor="pbl-subject-total-hours">
+          <FormField label="총 훈련시간(H)" htmlFor="pbl-subject-total-hours">
             <Input
               id="pbl-subject-total-hours"
               type="number"
@@ -445,7 +451,7 @@ function SubjectProfileSection({
           </FormField>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="훈련목표 (줄바꿈 구분)" htmlFor="pbl-subject-goals">
+          <FormField label="훈련목표" htmlFor="pbl-subject-goals" hint="각 줄에 하나씩 작성 (불릿 자동 적용)">
             <textarea
               id="pbl-subject-goals"
               className="min-h-[96px] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
@@ -459,7 +465,7 @@ function SubjectProfileSection({
               }
             />
           </FormField>
-          <FormField label="활용 AI 도구 (쉼표 구분)" htmlFor="pbl-subject-ai-tools">
+          <FormField label="활용 AI도구" htmlFor="pbl-subject-ai-tools" hint="쉼표(,)로 구분">
             <Input
               id="pbl-subject-ai-tools"
               value={profile.ai_tools.join(', ')}
@@ -479,12 +485,12 @@ function SubjectProfileSection({
               onChange={(e) => updateProfile({ utilized_data: e.target.value })}
             />
           </FormField>
-          <FormField label="분석 방법" htmlFor="pbl-subject-analysis">
+          <FormField label="분석방법" htmlFor="pbl-subject-analysis">
             <Input
               id="pbl-subject-analysis"
               value={profile.analysis_method}
               disabled={!canEdit}
-              placeholder="예: LLM, RAG 등"
+              placeholder="예: LLM, RGA 등"
               onChange={(e) => updateProfile({ analysis_method: e.target.value })}
             />
           </FormField>
@@ -494,12 +500,17 @@ function SubjectProfileSection({
           <Table className="min-w-[900px]">
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="w-[20%] text-center">업무(단원)명</TableHead>
-                <TableHead className="w-[30%] text-center">세부 내용</TableHead>
-                <TableHead className="w-[12%] text-center">훈련시간(H)</TableHead>
-                <TableHead className="w-[14%] text-center">강사 투입(외부)</TableHead>
-                <TableHead className="w-[14%] text-center">강사 투입(내부)</TableHead>
-                {canEdit && <TableHead className="w-[10%] text-center">작업</TableHead>}
+                <TableHead rowSpan={2} className="w-[18%] text-center align-middle">업무(단원)명</TableHead>
+                <TableHead rowSpan={2} className="w-[30%] text-center align-middle">세부 내용</TableHead>
+                <TableHead rowSpan={2} className="w-[14%] text-center align-middle">훈련시간(H)</TableHead>
+                <TableHead colSpan={2} className="w-[28%] text-center border-b border-border/40">
+                  강사 투입시간(H)
+                </TableHead>
+                {canEdit && <TableHead rowSpan={2} className="w-[10%] text-center align-middle">작업</TableHead>}
+              </TableRow>
+              <TableRow>
+                <TableHead className="text-center">외부</TableHead>
+                <TableHead className="text-center">내부</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -589,7 +600,8 @@ function SubjectProfileSection({
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="text-sm text-muted-foreground">
-            전체 합계 (자동): <strong className="text-foreground">{profile.total_sum_hours}시간</strong>
+            전체시간 (자동 산출):{' '}
+            <strong className="text-foreground">{profile.total_sum_hours}H</strong>
           </div>
           {canEdit && (
             <Button type="button" variant="outline" size="sm" onClick={addRow}>
@@ -634,6 +646,9 @@ function FacilitiesSection({
     <Card>
       <CardHeader className={CARD_HEADER_CLASS}>
         <CardTitle className="text-base">라. 시설·장비</CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          * AI 도구 및 고사양 PC 등 AI훈련에 필요한 인프라는 반드시 기재
+        </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <div className="overflow-x-auto rounded border border-border">
@@ -641,8 +656,8 @@ function FacilitiesSection({
             <TableHeader className="bg-muted/40">
               <TableRow>
                 <TableHead className="w-[8%] text-center">연번</TableHead>
-                <TableHead className="w-[12%] text-center">시설/장비</TableHead>
-                <TableHead className="w-[28%] text-center">명칭</TableHead>
+                <TableHead className="w-[12%] text-center">구분</TableHead>
+                <TableHead className="w-[28%] text-center">시설명</TableHead>
                 <TableHead className="w-[26%] text-center">규격(사양)</TableHead>
                 <TableHead className="w-[18%] text-center">위치</TableHead>
                 {canEdit && <TableHead className="w-[8%] text-center">작업</TableHead>}
@@ -674,13 +689,13 @@ function FacilitiesSection({
                       onChange={(v) =>
                         updateFacility(idx, { category: v === '장비' ? '장비' : '시설' })
                       }
-                      ariaLabel="시설/장비"
+                      ariaLabel="구분 (시설/장비)"
                     />
                     <TableTextCell
                       canEdit={canEdit}
                       value={row.name}
                       onChange={(v) => updateFacility(idx, { name: v })}
-                      ariaLabel="명칭"
+                      ariaLabel="시설명"
                     />
                     <TableTextCell
                       canEdit={canEdit}
@@ -762,7 +777,7 @@ function InstructorsSection({
   return (
     <Card>
       <CardHeader className={CARD_HEADER_CLASS}>
-        <CardTitle className="text-base">마. 훈련강사 세부 정보</CardTitle>
+        <CardTitle className="text-base">마. 훈련강사</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <div className="overflow-x-auto rounded border border-border">
@@ -770,10 +785,15 @@ function InstructorsSection({
             <TableHeader className="bg-muted/40">
               <TableRow>
                 <TableHead className="w-[14%] text-center">성명</TableHead>
-                <TableHead className="w-[10%] text-center">내/외부</TableHead>
-                <TableHead className="w-[10%] text-center">업무경력(년)</TableHead>
+                <TableHead className="w-[10%] text-center">내·외부</TableHead>
+                <TableHead className="w-[10%] text-center">업무경력</TableHead>
                 <TableHead className="w-[22%] text-center">업무명</TableHead>
-                <TableHead className="w-[36%] text-center">세부 교육훈련 내용 (줄바꿈 구분)</TableHead>
+                <TableHead className="w-[36%] text-center">
+                  세부 교육훈련 내용
+                  <span className="block text-[10px] font-normal text-muted-foreground mt-0.5">
+                    각 줄에 하나씩 작성 (불릿 자동 적용)
+                  </span>
+                </TableHead>
                 {canEdit && <TableHead className="w-[8%] text-center">작업</TableHead>}
               </TableRow>
             </TableHeader>
@@ -807,13 +827,13 @@ function InstructorsSection({
                           internal_external: v === '내부' ? '내부' : '외부',
                         })
                       }
-                      ariaLabel="내/외부"
+                      ariaLabel="내·외부"
                     />
                     <TableNumericCell
                       canEdit={canEdit}
                       value={row.career_years}
                       onChange={(v) => updateItem(idx, { career_years: v })}
-                      ariaLabel="업무경력(년)"
+                      ariaLabel="업무경력 (년)"
                       unit="년"
                     />
                     <TableTextCell

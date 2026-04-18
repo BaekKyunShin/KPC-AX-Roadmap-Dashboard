@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { PBLToolUsagePlan } from './PBLToolUsagePlan';
 
 const threeStages = [
-  { stage: '1단계', main_activity: '훈련', ai_tools: ['ChatGPT'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
-  { stage: '2단계', main_activity: '리뷰', ai_tools: ['Cursor'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
-  { stage: '3단계', main_activity: '평가', ai_tools: ['ChatGPT'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+  { stage: '1단계', main_activity: '훈련실시', ai_tools: ['ChatGPT'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+  { stage: '2단계', main_activity: '리뷰 및 피드백', ai_tools: ['Cursor'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+  { stage: '3단계', main_activity: '최종 결과 및 평가', ai_tools: ['ChatGPT'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
 ];
 
 describe('PBLToolUsagePlan', () => {

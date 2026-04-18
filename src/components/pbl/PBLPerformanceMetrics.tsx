@@ -70,64 +70,72 @@ export function PBLPerformanceMetrics({ canEdit, value, onChange }: PBLPerforman
       <CardHeader className={CARD_HEADER_CLASS}>
         <CardTitle className="text-base">Ⅴ. 성과분석 및 확산 전략</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5 pt-5">
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-foreground">Ⅴ-1. 훈련 목표 분류 (체크, 복수 선택)</legend>
-          <div className="flex flex-wrap gap-4">
-            {PBL_TRAINING_GOAL_CATEGORIES.map((category) => {
-              const id = `pbl-goal-category-${category}`;
-              const checked = value.training_goal_categories.includes(category);
-              return (
-                <div key={category} className="flex items-center gap-2">
-                  <Checkbox
-                    id={id}
-                    checked={checked}
-                    disabled={!canEdit}
-                    onCheckedChange={(v) => toggleCategory(category, v === true)}
-                  />
-                  <Label htmlFor={id} className="text-sm cursor-pointer">
-                    {category}
-                  </Label>
-                </div>
-              );
-            })}
+      <CardContent className="space-y-6 pt-5">
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Ⅴ-1. 성과분석 측정 지표</h3>
+          <fieldset className="space-y-2">
+            <legend className="sr-only">훈련 목표 분류 체크박스</legend>
+            <div className="flex flex-wrap gap-4">
+              {PBL_TRAINING_GOAL_CATEGORIES.map((category) => {
+                const id = `pbl-goal-category-${category}`;
+                const checked = value.training_goal_categories.includes(category);
+                return (
+                  <div key={category} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      checked={checked}
+                      disabled={!canEdit}
+                      onCheckedChange={(v) => toggleCategory(category, v === true)}
+                    />
+                    <Label htmlFor={id} className="text-sm cursor-pointer">
+                      {category}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <BulletArea
+              label="정량"
+              htmlFor="pbl-metrics-quant"
+              hint="주요 지표(예시) — 각 줄에 하나씩. 예: 훈련 이후 불량발생률 15% 감소"
+              disabled={!canEdit}
+              value={value.quantitative_metrics}
+              onChange={(next) => update({ quantitative_metrics: next })}
+            />
+            <BulletArea
+              label="정성"
+              htmlFor="pbl-metrics-qual"
+              hint="주요 지표(예시) — 각 줄에 하나씩. 예: 문제해결 역량: 복잡한 현장 문제에 대한 자율적 해결 능력 향상"
+              disabled={!canEdit}
+              value={value.qualitative_metrics}
+              onChange={(next) => update({ qualitative_metrics: next })}
+            />
           </div>
-        </fieldset>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BulletArea
-            label="정량 지표"
-            htmlFor="pbl-metrics-quant"
-            hint="각 줄에 하나씩 작성. 예: 훈련 후 불량발생률 15% 감소"
-            disabled={!canEdit}
-            value={value.quantitative_metrics}
-            onChange={(next) => update({ quantitative_metrics: next })}
-          />
-          <BulletArea
-            label="정성 지표"
-            htmlFor="pbl-metrics-qual"
-            hint="각 줄에 하나씩 작성. 예: 복잡한 현장 문제에 대한 자율적 해결 능력 향상"
-            disabled={!canEdit}
-            value={value.qualitative_metrics}
-            onChange={(next) => update({ qualitative_metrics: next })}
-          />
-          <BulletArea
-            label="Ⅴ-2. 내재화 방안"
-            htmlFor="pbl-internalize"
-            hint="각 줄에 하나씩. 매뉴얼 제작·지식 공유·멘토링·후속 프로젝트·재훈련 체계 등"
-            disabled={!canEdit}
-            value={value.internalization_plan}
-            onChange={(next) => update({ internalization_plan: next })}
-          />
-          <BulletArea
-            label="Ⅴ-2. 전사 확산 방안"
-            htmlFor="pbl-disseminate"
-            hint="각 줄에 하나씩. 성과 발표회·타 부서 확대·경영진 보고 등"
-            disabled={!canEdit}
-            value={value.dissemination_plan}
-            onChange={(next) => update({ dissemination_plan: next })}
-          />
-        </div>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Ⅴ-2. 성과 확산 전략</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <BulletArea
+              label="내재화 방안"
+              htmlFor="pbl-internalize"
+              hint="각 줄에 하나씩. 매뉴얼 제작·지식 공유·멘토링·후속 프로젝트·재훈련 체계 등"
+              disabled={!canEdit}
+              value={value.internalization_plan}
+              onChange={(next) => update({ internalization_plan: next })}
+            />
+            <BulletArea
+              label="전사 확산 방안"
+              htmlFor="pbl-disseminate"
+              hint="각 줄에 하나씩. 성과 발표회·타 부서 확대·경영진 보고 등"
+              disabled={!canEdit}
+              value={value.dissemination_plan}
+              onChange={(next) => update({ dissemination_plan: next })}
+            />
+          </div>
+        </section>
       </CardContent>
     </Card>
   );

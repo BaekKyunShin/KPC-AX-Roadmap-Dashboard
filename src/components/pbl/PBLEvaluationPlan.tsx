@@ -104,7 +104,7 @@ function CourseEvaluationSection({
   return (
     <Card>
       <CardHeader className={CARD_HEADER_CLASS}>
-        <CardTitle className="text-base">Ⅳ-4. 평가 계획 &mdash; 가. 과정평가</CardTitle>
+        <CardTitle className="text-base">Ⅳ-4. 평가 계획 &mdash; 가. 과정평가 계획</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 pt-5">
         <fieldset className="space-y-2">
@@ -131,7 +131,7 @@ function CourseEvaluationSection({
         </fieldset>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="평가 과정명" htmlFor="pbl-eval-course-name">
+          <FormField label="과정명" htmlFor="pbl-eval-course-name">
             <Input
               id="pbl-eval-course-name"
               value={value.course_name}
@@ -139,7 +139,7 @@ function CourseEvaluationSection({
               onChange={(e) => update({ course_name: e.target.value })}
             />
           </FormField>
-          <FormField label="평가 대상" htmlFor="pbl-eval-target">
+          <FormField label="평가대상" htmlFor="pbl-eval-target">
             <Input
               id="pbl-eval-target"
               value={value.evaluation_target}
@@ -147,7 +147,7 @@ function CourseEvaluationSection({
               onChange={(e) => update({ evaluation_target: e.target.value })}
             />
           </FormField>
-          <FormField label="평가 일자" htmlFor="pbl-eval-date">
+          <FormField label="평가일자" htmlFor="pbl-eval-date">
             <Input
               id="pbl-eval-date"
               type="date"
@@ -156,7 +156,7 @@ function CourseEvaluationSection({
               onChange={(e) => update({ evaluation_date: e.target.value })}
             />
           </FormField>
-          <FormField label="평가 결과" htmlFor="pbl-eval-result">
+          <FormField label="평가결과" htmlFor="pbl-eval-result">
             <select
               id="pbl-eval-result"
               className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
@@ -172,7 +172,7 @@ function CourseEvaluationSection({
             </select>
           </FormField>
         </div>
-        <FormField label="평가 기준" htmlFor="pbl-eval-criteria" hint="예: 14개 중 수행수준 4 이상 8개(60%) 이상 시 PASS">
+        <FormField label="평가기준" htmlFor="pbl-eval-criteria" hint="작성 예시: 14개 중 수행 수준 4 이상 8개(60%) 이상시 PASS">
           <textarea
             id="pbl-eval-criteria"
             rows={3}
@@ -184,13 +184,13 @@ function CourseEvaluationSection({
         </FormField>
 
         <section>
-          <h3 className="text-sm font-medium text-foreground mb-2">수행수준 체크리스트 (1~5)</h3>
+          <h3 className="text-sm font-medium text-foreground mb-2">수행 수준 (1~5)</h3>
           <div className="overflow-x-auto rounded border border-border">
             <Table className="min-w-[720px]">
               <TableHeader className="bg-muted/40">
                 <TableRow>
                   <TableHead className="w-[24%] text-center">업무(단원)명</TableHead>
-                  <TableHead className="w-[42%] text-center">평가 기준</TableHead>
+                  <TableHead className="w-[42%] text-center">평가기준</TableHead>
                   <TableHead className="w-[28%] text-center">수행 수준</TableHead>
                   {canEdit && <TableHead className="w-[6%] text-center">작업</TableHead>}
                 </TableRow>
@@ -221,7 +221,7 @@ function CourseEvaluationSection({
                         canEdit={canEdit}
                         value={row.evaluation_criteria}
                         onChange={(v) => updateChecklist(idx, { evaluation_criteria: v })}
-                        ariaLabel="평가 기준"
+                        ariaLabel="평가기준"
                       />
                       <td className="px-3 py-3 align-top">
                         <div
@@ -307,15 +307,15 @@ function CourseEvaluationSection({
             {PBL_EVALUATION_SCALE_ITEMS.map((item) => (
               <div
                 key={item.level}
-                className="flex flex-col gap-1 rounded-md border border-border/40 bg-background px-3 py-2.5"
+                className="flex flex-col gap-1.5 rounded-md border border-border/40 bg-background px-3 py-2.5"
               >
-                <dt className="flex items-baseline gap-1.5">
-                  <span className="text-base font-semibold text-primary tabular-nums">
+                <dt className="flex items-center gap-1.5">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold tabular-nums">
                     {item.level}
                   </span>
-                  <span className="text-xs font-medium text-foreground">{item.label}</span>
+                  <span className="text-xs font-medium text-muted-foreground">수행 수준</span>
                 </dt>
-                <dd className="text-xs text-muted-foreground leading-relaxed break-keep">
+                <dd className="text-xs text-foreground leading-relaxed break-keep">
                   {item.description}
                 </dd>
               </div>
@@ -432,7 +432,7 @@ function ResultEvaluationSection({
   return (
     <Card>
       <CardHeader className={CARD_HEADER_CLASS}>
-        <CardTitle className="text-base">Ⅳ-4. 평가 계획 &mdash; 나. 결과평가</CardTitle>
+        <CardTitle className="text-base">Ⅳ-4. 평가 계획 &mdash; 나. 결과평가 계획</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 pt-5">
         <p className="text-xs text-muted-foreground">

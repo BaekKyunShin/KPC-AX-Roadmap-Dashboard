@@ -31,8 +31,9 @@ describe('PBLTrainingPlan', () => {
   it('overview course_name 입력 시 onChange 호출', () => {
     const onChange = vi.fn();
     render(<PBLTrainingPlan canEdit={true} value={base()} onChange={onChange} />);
-    const input = screen.getByLabelText('과정명') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '새과정' } });
+    // "과정명"은 가. 훈련과정 개요와 다. 훈련 교과목 프로파일에 모두 존재 → 첫 번째(가. 훈련과정 개요) 선택
+    const inputs = screen.getAllByLabelText('과정명') as HTMLInputElement[];
+    fireEvent.change(inputs[0]!, { target: { value: '새과정' } });
     expect(onChange).toHaveBeenCalled();
     const next = onChange.mock.calls[0][0] as PBLTrainingPlanType;
     expect(next.overview.course_name).toBe('새과정');

@@ -223,24 +223,26 @@ export interface PBLValidationResult {
 // ----------------------------------------------------------------------------
 
 /**
- * Ⅳ-4-가 평가척도 설명 (양식 15p 하단 고정 표).
- * 항목 단위 배열로 노출해 UI에서 정돈된 dl/dt/dd로 렌더할 수 있게 한다.
+ * Ⅳ-4-가 평가척도 (양식 15p 하단 고정 표 원문).
+ * 양식에는 별도 라벨 없이 "수행 수준 정도" 설명만 존재한다.
  */
 export const PBL_EVALUATION_SCALE_ITEMS: ReadonlyArray<{
   level: PBLPerformanceLevel;
-  label: '최하' | '하' | '보통' | '상' | '최상';
   description: string;
 }> = [
-  { level: 1, label: '최하', description: '수행준거를 전혀 충족하지 못함' },
-  { level: 2, label: '하', description: '수행준거의 일부만 충족하며 개선이 필요함' },
-  { level: 3, label: '보통', description: '수행준거를 기본 수준으로 충족함' },
-  { level: 4, label: '상', description: '수행준거를 안정적으로 충족하며 실무 적용 가능함' },
-  { level: 5, label: '최상', description: '수행준거를 완전히 충족하며 타인에게 전이 가능함' },
+  { level: 1, description: '업무를 수행하는데 필요한 지식과 기술이 부족함' },
+  { level: 2, description: '업무를 수행할 때 적절한 피드백이 필요한 수행 수준임' },
+  {
+    level: 3,
+    description: '업무를 쉽고 기술적으로 수행할 수 있는 지식과 기술 습득된 수행 수준임',
+  },
+  { level: 4, description: '수행에 필요한 지식과 기술이 충분히 함양되어 있는 수행 수준임' },
+  { level: 5, description: '다른 사람들에게 표준과 기준을 제시해 줄 수 있는 탁월한 수행 수준임' },
 ];
 
-/** LLM 프롬프트·HWPX·DB 호환을 위한 평탄 텍스트 표현(기존 호환 유지). */
+/** LLM 프롬프트·HWPX·DB 호환을 위한 평탄 텍스트 표현. */
 export const PBL_EVALUATION_SCALE_DESCRIPTION = PBL_EVALUATION_SCALE_ITEMS
-  .map((item) => `${item.level}: ${item.label} - ${item.description}`)
+  .map((item) => `${item.level}: ${item.description}`)
   .join('\n');
 
 export const PBL_COURSE_EVALUATION_METHODS: readonly PBLCourseEvaluationMethod[] = [
@@ -251,34 +253,39 @@ export const PBL_COURSE_EVALUATION_METHODS: readonly PBLCourseEvaluationMethod[]
 
 export const PBL_PERFORMANCE_LEVELS: readonly PBLPerformanceLevel[] = [1, 2, 3, 4, 5] as const;
 
-// Ⅳ-4-나 결과평가 고정 문항 (양식 16~17p 원문)
+// Ⅳ-4-나 결과평가 고정 문항 (양식 16~17p 원문 그대로)
+
+/** 만족도 조사 5문항 (양식 16p) */
 export const PBL_SATISFACTION_SURVEY_QUESTIONS = [
-  '훈련 내용이 업무 수행에 도움이 되었다',
-  '훈련 방법(강의, 실습, 토론 등)이 효과적이었다',
-  '훈련 강사의 전문성과 강의 진행이 적절하였다',
-  '훈련 시간과 일정이 적절하였다',
-  '훈련 전반에 대해 만족한다',
+  '본 훈련과정의 교육내용에 대해 만족하십니까? (구성 내용, 교육 수준 등)',
+  '본 훈련과정의 교육방법에 대해 만족하십니까?',
+  '본 훈련과정의 외부 교육강사에 대해 만족하십니까? (강사 전문성, 강의 내용 전달능력 등)',
+  '본 훈련과정의 교육시간에 대해 만족하십니까? (교육 내용 대비 시간 부족, 과다 등)',
+  '본 훈련과정의 교육환경에 대해 만족하십니까? (교육 장소, 시설, 장비, 안전장비, 교육자료 등)',
 ] as const;
 
+/** 성취도 조사 3문항 (양식 16p) */
 export const PBL_ACHIEVEMENT_SURVEY_QUESTIONS = [
-  '훈련 목표(훈련이 목적으로 한 역량)가 달성되었다',
-  '훈련 이후 관련 업무를 스스로 수행할 자신감이 향상되었다',
-  '훈련 내용을 현업에 실제로 적용할 수 있다',
+  '본 훈련과정에서 훈련목표로 제시된 지식 및 기술을 습득하였습니까?',
+  '본 훈련과정을 통해 습득한 지식 및 기술을 실무에 적용할 수 있으십니까?',
+  '본 훈련과정을 통해 업무 전문성 및 업무 수행 자신감이 향상되셨습니까?',
 ] as const;
 
+/** 외부전문가 만족도 조사 5문항 (양식 17p, 현업적용도 조사 안에 포함) */
 export const PBL_EXTERNAL_EXPERT_SURVEY_QUESTIONS = [
-  '훈련 내용이 산업 현장 수요와 부합한다',
-  '훈련 교과·실습의 난이도가 적절하였다',
-  'AI 도구 활용 방법이 실무에서 적용 가능하도록 설계되었다',
-  '훈련 강사의 전문성·현장 경험이 충분하였다',
-  '전반적으로 훈련 품질이 우수하다',
+  '외부전문가가 귀사의 상황을 상세히 파악하고 이해한 후 훈련과정 개발 시 적절히 반영하였습니까?',
+  '외부전문가는 체계적 현장훈련을 진행하는 일련의 과정에 대해 전문성을 갖추었습니까?',
+  '외부강사는 개발된 훈련과정을 토대로 훈련생에게 적절하게 교육하였습니까?',
+  '외부전문가는 체계적 현장훈련을 진행하는 일련의 과정에 성실하고 바람직한 태도로 임하였습니까? (과정개발, 서류 작성 및 행정지원 등)',
+  '외부전문가와 함께 개발한 훈련과정을 진행하면서, 기업의 생산여건 개선 등에 도움이 되었습니까?',
 ] as const;
 
+/** 현업적용도 조사 4문항 (양식 17p) */
 export const PBL_PRACTICAL_APPLICATION_SURVEY_QUESTIONS = [
-  '훈련 내용을 현업 업무에 실제 적용하고 있다',
-  '훈련 후 업무 수행 방식이 개선되었다',
-  '훈련이 부서·동료에게도 확산되고 있다',
-  '훈련 성과가 조직 성과 향상에 기여하고 있다',
+  '본 훈련과정 이수 후 훈련생에게 관련 업무를 수행할 기회를 제공하였습니까?',
+  '훈련생은 본 훈련과정에서 습득한 지식 및 기술을 실무에 적용하였습니까?',
+  '본 훈련과정은 훈련생의 업무 수행에 실질적인 도움이 되었습니까?',
+  '본 훈련과정이 경영상 이슈(예. 불량률 감소/매출액 증대 등) 해결에 기여했다고 생각하십니까?',
 ] as const;
 
 export const PBL_SATISFACTION_SURVEY_LENGTH = PBL_SATISFACTION_SURVEY_QUESTIONS.length;
