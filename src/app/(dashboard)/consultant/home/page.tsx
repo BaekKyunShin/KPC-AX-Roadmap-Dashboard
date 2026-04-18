@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { aggregateProjectStats, formatRelativeTime } from '@/lib/utils/consultant-home';
+import { inferTrack } from '@/lib/utils/project-track';
 import { SummaryCards } from './_components/SummaryCards';
 import { RecentProjects, type RecentProjectItem } from './_components/RecentProjects';
 import { RecentActivity, type RecentActivityItem } from './_components/RecentActivity';
@@ -31,7 +32,7 @@ export default async function ConsultantHomePage() {
   const [{ data: projects }, { data: logs }] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, company_name, industry, company_size, status, updated_at')
+      .select('id, company_name, industry, company_size, status, track, updated_at')
       .eq('assigned_consultant_id', user.id)
       .order('updated_at', { ascending: false }),
     supabase
@@ -54,6 +55,7 @@ export default async function ConsultantHomePage() {
     industry: p.industry,
     companySizeLabel: shortSizeLabel(p.company_size),
     status: p.status,
+    track: inferTrack((p as { track?: string }).track),
     relativeTime: formatRelativeTime(p.updated_at),
   }));
 

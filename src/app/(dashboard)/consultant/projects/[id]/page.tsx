@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import { projectDetailHref, primaryActionLabel, inferTrack } from '@/lib/utils/project-track';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
@@ -116,13 +117,12 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 >
                   인터뷰 수정
                 </Link>
-                {['INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
+                {['INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
                   <Link
-                    href={`/consultant/projects/${projectId}/roadmap`}
+                    href={projectDetailHref(projectId, inferTrack(projectData.track))}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                   >
-                    {projectData.status === 'INTERVIEWED' ? '로드맵 생성' :
-                     projectData.status === 'ROADMAP_DRAFTED' ? '로드맵 편집' : '로드맵 보기'}
+                    {primaryActionLabel(projectData.status, inferTrack(projectData.track))}
                   </Link>
                 )}
               </>

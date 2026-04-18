@@ -15,18 +15,19 @@ import {
 // =============================================================================
 
 describe('CONSULTANT_NAV_ITEMS', () => {
-  test('5개 메뉴 항목을 포함한다', () => {
-    expect(CONSULTANT_NAV_ITEMS).toHaveLength(5);
+  test('6개 메뉴 항목을 포함한다', () => {
+    expect(CONSULTANT_NAV_ITEMS).toHaveLength(6);
   });
 
-  test('공지사항이 맨 앞이고 이후 대시보드, 담당 프로젝트, 테스트 로드맵, 로드맵 갤러리 순서이다', () => {
+  test('공지사항이 맨 앞이고 이후 대시보드, 담당 프로젝트, 테스트 로드맵, PBL 테스트, 로드맵·PBL 갤러리 순서이다', () => {
     const labels = CONSULTANT_NAV_ITEMS.map((item) => item.label);
     expect(labels).toEqual([
       '공지사항',
       '대시보드',
       '담당 프로젝트',
       '테스트 로드맵',
-      '로드맵 갤러리',
+      'PBL 테스트',
+      '로드맵·PBL 갤러리',
     ]);
   });
 
@@ -38,9 +39,14 @@ describe('CONSULTANT_NAV_ITEMS', () => {
     }
   });
 
-  test('로드맵 갤러리 경로는 /gallery이다', () => {
-    const gallery = CONSULTANT_NAV_ITEMS.find((item) => item.label === '로드맵 갤러리');
+  test('로드맵·PBL 갤러리 경로는 /gallery이다', () => {
+    const gallery = CONSULTANT_NAV_ITEMS.find((item) => item.label === '로드맵·PBL 갤러리');
     expect(gallery?.href).toBe('/gallery');
+  });
+
+  test('PBL 테스트 경로는 /test-pbl이다', () => {
+    const testPbl = CONSULTANT_NAV_ITEMS.find((item) => item.label === 'PBL 테스트');
+    expect(testPbl?.href).toBe('/test-pbl');
   });
 });
 
@@ -54,10 +60,10 @@ describe('ADMIN_NAV_GROUPS', () => {
     expect(labels).toEqual(['워크스페이스', '운영관리', '라이브러리']);
   });
 
-  test('워크스페이스 그룹에 프로젝트 관리와 테스트 로드맵이 있다', () => {
+  test('워크스페이스 그룹에 프로젝트 관리, 테스트 로드맵, PBL 테스트가 있다', () => {
     const workspace = ADMIN_NAV_GROUPS[0];
     const labels = workspace.items.map((item) => item.label);
-    expect(labels).toEqual(['프로젝트 관리', '테스트 로드맵']);
+    expect(labels).toEqual(['프로젝트 관리', '테스트 로드맵', 'PBL 테스트']);
   });
 
   test('운영관리 그룹에서 공지 관리가 상단, 이후 사용자 관리·쿼터 관리·감사로그 순이다', () => {
@@ -66,10 +72,10 @@ describe('ADMIN_NAV_GROUPS', () => {
     expect(labels).toEqual(['공지 관리', '사용자 관리', '쿼터 관리', '감사로그']);
   });
 
-  test('라이브러리 그룹에 로드맵 갤러리와 자가진단 템플릿이 있다', () => {
+  test('라이브러리 그룹에 로드맵·PBL 갤러리와 자가진단 템플릿이 있다', () => {
     const library = ADMIN_NAV_GROUPS[2];
     const labels = library.items.map((item) => item.label);
-    expect(labels).toEqual(['로드맵 갤러리', '자가진단 템플릿']);
+    expect(labels).toEqual(['로드맵·PBL 갤러리', '자가진단 템플릿']);
   });
 
   test('자가진단 템플릿 경로는 /ops/templates이다', () => {
@@ -180,9 +186,9 @@ describe('isGroupActive', () => {
 // =============================================================================
 
 describe('getNavItemsForRole', () => {
-  test('컨설턴트: 기본 5개 + 프로필 관리 + 계정 설정 + 메시지 = 8개', () => {
+  test('컨설턴트: 기본 6개 + 프로필 관리 + 계정 설정 + 메시지 = 9개', () => {
     const items = getNavItemsForRole('CONSULTANT_APPROVED');
-    expect(items.length).toBe(8);
+    expect(items.length).toBe(9);
   });
 
   test('컨설턴트: 프로필 관리 항목이 포함된다', () => {
@@ -206,9 +212,9 @@ describe('getNavItemsForRole', () => {
     expect(messages!.href).toBe('/dashboard/messages');
   });
 
-  test('관리자: 그룹 내 전체 아이템 + 계정 설정 + 메시지 = 10개', () => {
+  test('관리자: 그룹 내 전체 아이템 + 계정 설정 + 메시지 = 11개', () => {
     const items = getNavItemsForRole('OPS_ADMIN');
-    expect(items.length).toBe(10);
+    expect(items.length).toBe(11);
   });
 
   test('시스템관리자와 운영관리자 결과가 동일하다', () => {

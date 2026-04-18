@@ -59,13 +59,14 @@ export const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   },
 };
 
-/** 컨설턴트 메뉴 (플랫 5개) */
+/** 컨설턴트 메뉴 (플랫 6개) */
 export const CONSULTANT_NAV_ITEMS: NavItem[] = [
   { href: '/notices', label: '공지사항', icon: Megaphone },
   { href: '/consultant/home', label: '대시보드', icon: Home },
   { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
   { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
-  { href: '/gallery', label: '로드맵 갤러리', icon: Library },
+  { href: '/test-pbl', label: 'PBL 테스트', icon: FlaskConical },
+  { href: '/gallery', label: '로드맵·PBL 갤러리', icon: Library },
 ];
 
 /** 관리자 메뉴 (드롭다운 3그룹) — 운영관리자와 시스템관리자 동일 */
@@ -75,6 +76,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
       { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
+      { href: '/test-pbl', label: 'PBL 테스트', icon: FlaskConical },
     ],
   },
   {
@@ -89,7 +91,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
   {
     label: '라이브러리',
     items: [
-      { href: '/gallery', label: '로드맵 갤러리', icon: Library },
+      { href: '/gallery', label: '로드맵·PBL 갤러리', icon: Library },
       { href: '/ops/templates', label: '자가진단 템플릿', icon: ClipboardList },
     ],
   },

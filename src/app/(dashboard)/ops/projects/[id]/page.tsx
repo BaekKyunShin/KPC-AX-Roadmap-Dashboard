@@ -29,6 +29,7 @@ type ProjectRow = {
   industry: string;
   company_size: string;
   status: string;
+  track: 'ROADMAP' | 'PBL';
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
@@ -265,7 +266,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { data: projectData } = await supabase
     .from('projects')
     .select(`
-      id, company_name, industry, company_size, status,
+      id, company_name, industry, company_size, status, track,
       contact_name, contact_email, contact_phone,
       customer_comment, assigned_consultant_id, is_test_mode,
       created_by, created_at, updated_at,
@@ -377,27 +378,29 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <InterviewSection projectId={id} />
         </Suspense>
 
-        {/* 로드맵 열람 (읽기 전용) */}
-        {['ROADMAP_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
+        {/* 산출물 열람 (읽기 전용) — 트랙별 분기 (OFA-11) */}
+        {['ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED'].includes(projectData.status) && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4 text-purple-600" />
-                AI 교육 로드맵
+                {projectData.track === 'PBL' ? 'PBL 보고서' : 'AI 교육 로드맵'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <p className="text-gray-600">
                   {projectData.status === 'FINALIZED'
-                    ? '최종 확정된 로드맵이 있습니다.'
-                    : '로드맵 초안이 생성되었습니다.'}
+                    ? (projectData.track === 'PBL' ? '최종 확정된 PBL 보고서가 있습니다.' : '최종 확정된 로드맵이 있습니다.')
+                    : (projectData.track === 'PBL' ? 'PBL 보고서 초안이 생성되었습니다.' : '로드맵 초안이 생성되었습니다.')}
                 </p>
                 <Link
-                  href={`/ops/projects/${id}/roadmap`}
+                  href={projectData.track === 'PBL'
+                    ? `/ops/projects/${id}/pbl`
+                    : `/ops/projects/${id}/roadmap`}
                   className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-colors"
                 >
-                  로드맵 보기
+                  {projectData.track === 'PBL' ? 'PBL 보고서 보기' : '로드맵 보기'}
                 </Link>
               </div>
             </CardContent>

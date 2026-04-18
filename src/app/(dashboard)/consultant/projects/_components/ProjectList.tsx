@@ -33,8 +33,11 @@ import {
 } from '@/components/ui/select';
 import { Search, X, ClipboardList } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getConsultantProjectStatusBadge } from '@/lib/constants/status';
+import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import { TrackBadge } from '@/components/ui/TrackBadge';
+import { statusLabel } from '@/lib/utils/project-track';
+import type { ProjectTrack } from '@/lib/constants/tracks';
 
 // =============================================================================
 // Types
@@ -64,9 +67,10 @@ const SEARCH_DEBOUNCE_DELAY = 300;
 /** 테이블 열 설정 */
 const TABLE_COLUMNS = {
   company: 'min-w-[140px]',
+  track: 'min-w-[80px]',
   industry: 'min-w-[100px]',
   size: 'min-w-[80px]',
-  status: 'min-w-[100px]',
+  status: 'min-w-[120px]',
   assignedAt: 'min-w-[100px]',
   actions: 'min-w-[80px]',
 } as const;
@@ -107,19 +111,34 @@ function findStatusLabel(statuses: StatusOption[], value: string): string {
 // =============================================================================
 
 /**
- * 프로젝트 상태 배지
+ * 프로젝트 상태 배지 — 트랙 반영.
+ *  - ASSIGNED + hasInterview → "인터뷰 완료"로 표시 (기존 UX 유지)
+ *  - 그 외는 statusLabel(status, track) 사용 (PBL/ROADMAP 분기 + PBL_DRAFTED 반영)
  */
 function ProjectStatusBadge({
   status,
+  track,
   hasInterview,
 }: {
   status: string;
+  track: ProjectTrack;
   hasInterview: boolean;
 }) {
-  const badge = getConsultantProjectStatusBadge(status, hasInterview);
+  const effective = status === 'ASSIGNED' && hasInterview ? 'INTERVIEWED' : status;
+  const label = statusLabel(effective, track);
+  // 색상은 기존 CONSULTANT_PROJECT_STATUS_CONFIG 매트릭스 + PBL_DRAFTED 보정
+  const colorMap: Record<string, string> = {
+    ASSIGNED: CONSULTANT_PROJECT_STATUS_CONFIG.ASSIGNED?.color ?? 'bg-blue-100 text-blue-800',
+    INTERVIEWED: CONSULTANT_PROJECT_STATUS_CONFIG.INTERVIEWED?.color ?? 'bg-amber-100 text-amber-800',
+    ROADMAP_DRAFTED: CONSULTANT_PROJECT_STATUS_CONFIG.ROADMAP_DRAFTED?.color ?? 'bg-purple-100 text-purple-800',
+    PBL_DRAFTED: 'bg-purple-100 text-purple-800',
+    FINALIZED: CONSULTANT_PROJECT_STATUS_CONFIG.FINALIZED?.color ?? 'bg-green-100 text-green-800',
+  };
+  const color = colorMap[effective] ?? 'bg-gray-100 text-gray-800';
+
   return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
-      {badge.label}
+    <span className={`px-2 py-1 text-xs font-medium rounded-full ${color}`}>
+      {label}
     </span>
   );
 }
@@ -159,10 +178,17 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
           {project.company_name}
         </div>
       </TableCell>
+      <TableCell>
+        <TrackBadge track={project.track} size="sm" />
+      </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
       <TableCell className="text-muted-foreground">{formatCompanySize(project.company_size)}</TableCell>
       <TableCell>
-        <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
+        <ProjectStatusBadge
+          status={project.status}
+          track={project.track}
+          hasInterview={project.has_interview}
+        />
       </TableCell>
       <TableCell className="text-muted-foreground">{formatDateKR(displayDate)}</TableCell>
       <TableCell className="font-medium">
@@ -186,10 +212,15 @@ function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
           <div className="font-medium text-gray-900">{project.company_name}</div>
+          <TrackBadge track={project.track} size="sm" />
         </div>
-        <ProjectStatusBadge status={project.status} hasInterview={project.has_interview} />
+        <ProjectStatusBadge
+          status={project.status}
+          track={project.track}
+          hasInterview={project.has_interview}
+        />
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <div className="text-gray-500">업종</div>
@@ -431,10 +462,11 @@ export default function ProjectList({ initialData = null, initialFilters = null 
               <>
               {/* 데스크톱: 테이블 뷰 */}
               <div className="hidden md:block">
-                <Table className="min-w-[700px]">
+                <Table className="min-w-[780px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className={TABLE_COLUMNS.company}>기업명</TableHead>
+                      <TableHead className={TABLE_COLUMNS.track}>트랙</TableHead>
                       <TableHead className={TABLE_COLUMNS.industry}>업종</TableHead>
                       <TableHead className={TABLE_COLUMNS.size}>규모</TableHead>
                       <TableHead className={TABLE_COLUMNS.status}>상태</TableHead>

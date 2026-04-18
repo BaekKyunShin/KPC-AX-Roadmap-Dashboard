@@ -27,17 +27,11 @@ vi.mock('@/hooks/useDebounce', () => ({
 }));
 
 vi.mock('@/lib/constants/status', () => ({
-  getConsultantProjectStatusBadge: (status: string, hasInterview: boolean) => {
-    if (status === 'ASSIGNED' && hasInterview) {
-      return { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' };
-    }
-    const map: Record<string, { label: string; color: string }> = {
-      ASSIGNED: { label: '인터뷰 대기', color: 'bg-blue-100 text-blue-800' },
-      INTERVIEWED: { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' },
-      ROADMAP_DRAFTED: { label: '로드맵 작성 중', color: 'bg-purple-100 text-purple-800' },
-      FINALIZED: { label: '로드맵 완료', color: 'bg-green-100 text-green-800' },
-    };
-    return map[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+  CONSULTANT_PROJECT_STATUS_CONFIG: {
+    ASSIGNED: { label: '인터뷰 대기', color: 'bg-blue-100 text-blue-800' },
+    INTERVIEWED: { label: '인터뷰 완료', color: 'bg-amber-100 text-amber-800' },
+    ROADMAP_DRAFTED: { label: '로드맵 작성 중', color: 'bg-purple-100 text-purple-800' },
+    FINALIZED: { label: '로드맵 완료', color: 'bg-green-100 text-green-800' },
   },
 }));
 
@@ -82,6 +76,7 @@ function makeProject(overrides: Partial<ConsultantProjectItem> = {}): Consultant
     industry: '제조업',
     company_size: 'small',
     status: 'ASSIGNED',
+    track: 'ROADMAP',
     created_at: '2026-01-15T00:00:00Z',
     assigned_at: '2026-01-20T00:00:00Z',
     has_interview: false,

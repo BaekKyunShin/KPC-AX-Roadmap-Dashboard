@@ -49,8 +49,8 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     await expect(page).toHaveURL('/ops/audit');
   });
 
-  test('라이브러리 드롭다운 — 로드맵 갤러리', async ({ opsPage: page }) => {
-    await clickOpsNavMenu(page, '라이브러리', '로드맵 갤러리');
+  test('라이브러리 드롭다운 — 로드맵·PBL 갤러리', async ({ opsPage: page }) => {
+    await clickOpsNavMenu(page, '라이브러리', '로드맵·PBL 갤러리');
     await expect(page).toHaveURL('/gallery');
   });
 

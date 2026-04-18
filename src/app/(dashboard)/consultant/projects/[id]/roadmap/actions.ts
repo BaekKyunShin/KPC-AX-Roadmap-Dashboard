@@ -299,7 +299,9 @@ export async function editRoadmapManually(
 /**
  * 프로젝트 기본 정보 조회 (회사명 등)
  */
-export async function fetchProjectInfo(projectId: string): Promise<ActionResult<{ companyName: string }>> {
+export async function fetchProjectInfo(
+  projectId: string
+): Promise<ActionResult<{ companyName: string; track: 'ROADMAP' | 'PBL' }>> {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
@@ -311,7 +313,7 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
 
     const { data: project } = await supabase
       .from('projects')
-      .select('company_name, assigned_consultant_id')
+      .select('company_name, assigned_consultant_id, track')
       .eq('id', projectId)
       .single();
 
@@ -330,7 +332,10 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
 
     return {
       success: true,
-      data: { companyName: project.company_name },
+      data: {
+        companyName: project.company_name,
+        track: project.track === 'PBL' ? 'PBL' : 'ROADMAP',
+      },
     };
   } catch (error) {
     console.error('[fetchProjectInfo Error]', error);

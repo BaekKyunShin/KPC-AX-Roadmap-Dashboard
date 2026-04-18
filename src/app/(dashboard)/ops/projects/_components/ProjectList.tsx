@@ -36,6 +36,7 @@ import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/s
 import type { ProjectStatus } from '@/types/database';
 import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
+import { TrackBadge } from '@/components/ui/TrackBadge';
 
 const ITEMS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES = 5;
@@ -76,7 +77,10 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
             <Building2 className="h-4 w-4 text-blue-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-gray-900 break-keep">{project.company_name}</div>
+            <div className="font-medium text-gray-900 break-keep flex items-center gap-2 flex-wrap">
+              {project.company_name}
+              <TrackBadge track={project.track} size="sm" />
+            </div>
             <div className="text-xs text-gray-500 break-all">{project.contact_email}</div>
           </div>
         </div>
@@ -111,6 +115,7 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
           daysInCurrentStatus={project.days_in_current_status}
           showLabel={true}
           showDays={true}
+          track={project.track}
         />
       </div>
     </div>
@@ -368,10 +373,11 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
             <>
               {/* 데스크톱: 테이블 뷰 */}
               <div className="hidden md:block">
-                <Table className="min-w-[900px]">
+                <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[180px]">기업명</TableHead>
+                    <TableHead className="min-w-[80px]">트랙</TableHead>
                     <TableHead className="min-w-[80px]">업종</TableHead>
                     <TableHead className="min-w-[180px] text-center">진행 상태</TableHead>
                     <TableHead className="min-w-[100px]">담당 컨설턴트</TableHead>
@@ -397,6 +403,9 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                             </div>
                           </div>
                         </TableCell>
+                        <TableCell className="align-top">
+                          <TrackBadge track={projectItem.track} size="sm" />
+                        </TableCell>
                         <TableCell className="text-muted-foreground align-top">{projectItem.industry}</TableCell>
                         <TableCell className="align-top">
                           <div className="flex justify-center">
@@ -405,6 +414,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                               daysInCurrentStatus={projectItem.days_in_current_status}
                               showLabel={true}
                               showDays={true}
+                              track={projectItem.track}
                             />
                           </div>
                         </TableCell>

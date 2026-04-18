@@ -7,6 +7,8 @@ import {
   getWorkflowStepIndex,
   getWorkflowStepLabel,
 } from '@/lib/constants/status';
+import type { ProjectTrack } from '@/lib/constants/tracks';
+import { statusLabel } from '@/lib/utils/project-track';
 import { cn } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
 
@@ -15,6 +17,8 @@ interface MiniStepperProps {
   daysInCurrentStatus?: number;
   showLabel?: boolean;
   showDays?: boolean;
+  /** 트랙 컨텍스트 — FINALIZED·초안 라벨 분기에 사용 */
+  track?: ProjectTrack;
 }
 
 export default function MiniStepper({
@@ -22,6 +26,7 @@ export default function MiniStepper({
   daysInCurrentStatus = 0,
   showLabel = true,
   showDays = true,
+  track,
 }: MiniStepperProps) {
   const currentIndex = getWorkflowStepIndex(status);
   const isFinalized = status === 'FINALIZED';
@@ -68,7 +73,7 @@ export default function MiniStepper({
         <div className="flex items-center gap-1.5 text-xs sm:whitespace-nowrap">
           {showLabel && (
             <span className="text-muted-foreground">
-              {getWorkflowStepLabel(status)}
+              {track ? statusLabel(status, track) : getWorkflowStepLabel(status)}
             </span>
           )}
           {showDays && !isFinalized && daysInCurrentStatus > 0 && (

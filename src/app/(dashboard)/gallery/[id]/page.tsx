@@ -3,24 +3,35 @@ import { Factory, Building2, User } from 'lucide-react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
+import { TrackBadge } from '@/components/ui/TrackBadge';
 import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
-import { fetchRoadmapDetail } from '../actions';
+import { fetchRoadmapDetail, fetchPBLReportDetail } from '../actions';
 import { GalleryDetailContent } from './_components/GalleryDetailContent';
+import { GalleryPBLDetailContent } from './_components/GalleryPBLDetailContent';
 
 interface GalleryDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ track?: string }>;
 }
 
-export default async function GalleryDetailPage({ params }: GalleryDetailPageProps) {
+export default async function GalleryDetailPage({
+  params,
+  searchParams,
+}: GalleryDetailPageProps) {
   const { id } = await params;
+  const sp = await searchParams;
+  const track: 'ROADMAP' | 'PBL' = sp.track === 'PBL' ? 'PBL' : 'ROADMAP';
+
   const user = await getCachedUser();
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
   if (!profile) redirect('/login');
 
-  const result = await fetchRoadmapDetail(id);
+  const result = track === 'PBL'
+    ? await fetchPBLReportDetail(id)
+    : await fetchRoadmapDetail(id);
 
   if (!result.success) {
     notFound();
@@ -32,15 +43,18 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
   return (
     <div className="space-y-6">
       <PageHeader
-        title="로드맵 갤러리"
+        title="로드맵·PBL 갤러리"
         backLink={{ href: '/gallery', label: '갤러리로 돌아가기', useBack: true }}
       />
 
       {/* 메타 정보 */}
       <div className="space-y-3">
-        <h2 className="text-xl font-semibold text-gray-900">
-          {detail.title}
-        </h2>
+        <div className="flex items-start gap-3 flex-wrap">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {detail.title}
+          </h2>
+          <TrackBadge track={detail.track} />
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
           <Badge variant="outline">
             <Factory className="mr-1 h-3 w-3" />
@@ -60,11 +74,12 @@ export default async function GalleryDetailPage({ params }: GalleryDetailPagePro
         </div>
       </div>
 
-      {/* 상세 내용 (클라이언트 컴포넌트) */}
-      <GalleryDetailContent
-        detail={detail}
-        isConsultant={isConsultant}
-      />
+      {/* 상세 내용 (클라이언트 컴포넌트 트랙별 분기) */}
+      {detail.track === 'PBL' ? (
+        <GalleryPBLDetailContent detail={detail} isConsultant={isConsultant} />
+      ) : (
+        <GalleryDetailContent detail={detail} isConsultant={isConsultant} />
+      )}
     </div>
   );
 }

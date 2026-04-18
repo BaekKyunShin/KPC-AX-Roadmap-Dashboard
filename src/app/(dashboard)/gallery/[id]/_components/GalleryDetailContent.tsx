@@ -36,6 +36,7 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
       <div className="flex items-center gap-3">
         <LikeButton
           roadmapVersionId={detail.id}
+          track="ROADMAP"
           initialLiked={detail.isLiked}
           initialCount={detail.likeCount}
           size="default"

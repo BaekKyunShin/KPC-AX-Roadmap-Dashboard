@@ -38,7 +38,7 @@ export async function fetchProjectStats(): Promise<ProjectStats> {
 }
 
 /**
- * 월별 로드맵 확정 현황 조회 (최근 6개월)
+ * 월별 양식 확정 현황 조회 (최근 6개월) — 로드맵 + PBL 합산.
  */
 export interface MonthlyCompletion {
   month: string; // YYYY-MM
@@ -54,17 +54,29 @@ export async function fetchMonthlyCompletions(): Promise<MonthlyCompletion[]> {
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-  const { data: versions, error } = await auth.supabase
-    .from('roadmap_versions')
-    .select('finalized_at')
-    .eq('status', 'FINAL')
-    .not('finalized_at', 'is', null)
-    .gte('finalized_at', sixMonthsAgo.toISOString());
+  const [roadmapResult, pblResult] = await Promise.all([
+    auth.supabase
+      .from('roadmap_versions')
+      .select('finalized_at')
+      .eq('status', 'FINAL')
+      .not('finalized_at', 'is', null)
+      .gte('finalized_at', sixMonthsAgo.toISOString()),
+    auth.supabase
+      .from('pbl_reports')
+      .select('finalized_at')
+      .eq('status', 'FINAL')
+      .not('finalized_at', 'is', null)
+      .gte('finalized_at', sixMonthsAgo.toISOString()),
+  ]);
 
-  if (error) {
-    console.error('[fetchMonthlyCompletions Error]', error);
-    return [];
+  if (roadmapResult.error) {
+    console.error('[fetchMonthlyCompletions Error — roadmap]', roadmapResult.error);
   }
+  if (pblResult.error) {
+    console.error('[fetchMonthlyCompletions Error — pbl]', pblResult.error);
+  }
+
+  const versions = [...(roadmapResult.data ?? []), ...(pblResult.data ?? [])];
 
   // 월별 집계
   const monthlyCount: Record<string, number> = {};
@@ -77,7 +89,7 @@ export async function fetchMonthlyCompletions(): Promise<MonthlyCompletion[]> {
   }
 
   // 데이터 집계
-  for (const version of versions || []) {
+  for (const version of versions) {
     if (version.finalized_at) {
       const date = new Date(version.finalized_at);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -115,7 +127,7 @@ export interface ConsultantProgress {
   email: string;
   assigned: number; // 배정 대기 (ASSIGNED 상태)
   interviewing: number; // 인터뷰 중 (INTERVIEWED 상태)
-  drafting: number; // 로드맵 작업 중 (ROADMAP_DRAFTED 상태)
+  drafting: number; // 초안 작성 중 (ROADMAP_DRAFTED + PBL_DRAFTED 합산)
   completed: number; // 완료 (FINALIZED 상태)
   total: number;
 }
@@ -181,6 +193,7 @@ export async function fetchConsultantProgress(): Promise<ConsultantProgress[]> {
           progressMap[consultantId].interviewing++;
           break;
         case 'ROADMAP_DRAFTED':
+        case 'PBL_DRAFTED':
           progressMap[consultantId].drafting++;
           break;
         case 'FINALIZED':

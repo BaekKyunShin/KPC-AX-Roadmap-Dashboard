@@ -140,7 +140,8 @@ describe('Navigation', () => {
       expect(screen.getByText('대시보드')).toBeInTheDocument();
       expect(screen.getByText('담당 프로젝트')).toBeInTheDocument();
       expect(screen.getByText('테스트 로드맵')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 갤러리')).toBeInTheDocument();
+      expect(screen.getByText('PBL 테스트')).toBeInTheDocument();
+      expect(screen.getByText('로드맵·PBL 갤러리')).toBeInTheDocument();
     });
 
     it('관리자 전용 메뉴(워크스페이스, 운영관리, 라이브러리)가 표시되지 않는다', () => {
@@ -272,7 +273,7 @@ describe('Navigation', () => {
       expect(screen.getByText('감사로그')).toBeInTheDocument();
     });
 
-    it('라이브러리 드롭다운에 로드맵 갤러리, 자가진단 템플릿이 표시된다', async () => {
+    it('라이브러리 드롭다운에 로드맵·PBL 갤러리, 자가진단 템플릿이 표시된다', async () => {
       const user = userEvent.setup();
       renderNavigation({ user: createUser({ role: 'OPS_ADMIN' }) });
       // 라이브러리 버튼 — "라이브러리"는 그룹 라벨
@@ -281,7 +282,7 @@ describe('Navigation', () => {
       const groupBtn = libraryButtons.find((el) => el.closest('button'));
       expect(groupBtn).toBeTruthy();
       await user.click(groupBtn!);
-      expect(screen.getByText('로드맵 갤러리')).toBeInTheDocument();
+      expect(screen.getByText('로드맵·PBL 갤러리')).toBeInTheDocument();
       expect(screen.getByText('자가진단 템플릿')).toBeInTheDocument();
     });
 

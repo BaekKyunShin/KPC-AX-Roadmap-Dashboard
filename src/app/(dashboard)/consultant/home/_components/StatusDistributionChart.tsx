@@ -24,7 +24,15 @@ const CHART_COLORS: Record<string, string> = {
   ASSIGNED: '#60A5FA',        // blue-400
   INTERVIEWED: '#FBBF24',     // amber-400
   ROADMAP_DRAFTED: '#A78BFA', // purple-400
+  PBL_DRAFTED: '#C084FC',     // purple-300 (PBL 구분, 보라 계열 유지)
   FINALIZED: '#4ADE80',       // green-400
+};
+
+/** 상태별 커스텀 라벨 — PBL 트랙 반영 */
+const CHART_LABEL_OVERRIDES: Record<string, string> = {
+  ROADMAP_DRAFTED: '로드맵 작성 중',
+  PBL_DRAFTED: 'PBL 작성 중',
+  FINALIZED: '양식 확정',
 };
 
 /** byStatus Record를 차트 데이터로 변환 */
@@ -38,9 +46,13 @@ function toChartData(byStatus: Record<string, number>): ChartDataItem[] {
     }));
 }
 
-/** 상태 키 → 한글 라벨 (CONSULTANT_PROJECT_STATUS_CONFIG에서 파생) */
+/** 상태 키 → 한글 라벨 — 차트 오버라이드 우선, 없으면 CONSULTANT_PROJECT_STATUS_CONFIG */
 function getStatusLabel(statusKey: string): string {
-  return CONSULTANT_PROJECT_STATUS_CONFIG[statusKey]?.label || statusKey;
+  return (
+    CHART_LABEL_OVERRIDES[statusKey] ||
+    CONSULTANT_PROJECT_STATUS_CONFIG[statusKey]?.label ||
+    statusKey
+  );
 }
 
 /** 파이 차트 커스텀 툴팁 */

@@ -2,6 +2,8 @@
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
 import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
+import type { ProjectTrack } from '@/lib/constants/tracks';
+import { inferTrack } from '@/lib/utils/project-track';
 
 export interface ConsultantProjectListParams {
   search?: string;
@@ -14,6 +16,7 @@ export interface ConsultantProjectItem {
   industry: string;
   company_size: string;
   status: string;
+  track: ProjectTrack;
   created_at: string;
   assigned_at: string | null;
   has_interview: boolean;
@@ -52,6 +55,7 @@ export async function fetchConsultantProjects(
       industry,
       company_size,
       status,
+      track,
       created_at,
       self_assessments(id),
       interviews(id),
@@ -93,6 +97,7 @@ export async function fetchConsultantProjects(
     industry: p.industry,
     company_size: p.company_size,
     status: p.status,
+    track: inferTrack(p.track),
     created_at: p.created_at,
     assigned_at: p.project_assignments?.[0]?.assigned_at || null,
     has_interview: Array.isArray(p.interviews) && p.interviews.length > 0,
