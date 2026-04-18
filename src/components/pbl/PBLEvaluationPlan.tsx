@@ -16,7 +16,7 @@ import {
 import {
   PBL_ACHIEVEMENT_SURVEY_QUESTIONS,
   PBL_COURSE_EVALUATION_METHODS,
-  PBL_EVALUATION_SCALE_DESCRIPTION,
+  PBL_EVALUATION_SCALE_ITEMS,
   PBL_EXTERNAL_EXPERT_SURVEY_QUESTIONS,
   PBL_PERFORMANCE_LEVELS,
   PBL_PRACTICAL_APPLICATION_SURVEY_QUESTIONS,
@@ -225,29 +225,37 @@ function CourseEvaluationSection({
                       />
                       <td className="px-3 py-3 align-top">
                         <div
-                          className="flex flex-wrap justify-center gap-3"
+                          className="flex justify-center gap-1.5"
                           role="radiogroup"
                           aria-label={`수행수준 선택 (1~5) — ${row.unit_name || `행 ${idx + 1}`}`}
                         >
                           {PBL_PERFORMANCE_LEVELS.map((lv) => {
                             const id = `pbl-perf-${idx}-${lv}`;
+                            const checked = row.performance_level === lv;
                             return (
-                              <div key={lv} className="flex items-center gap-1">
+                              <label
+                                key={lv}
+                                htmlFor={id}
+                                className={
+                                  checked
+                                    ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground text-xs font-semibold cursor-pointer transition-colors'
+                                    : 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground hover:border-primary/40 hover:text-primary cursor-pointer transition-colors'
+                                }
+                                title={`수행수준 ${lv}`}
+                              >
                                 <input
                                   id={id}
                                   type="radio"
                                   disabled={!canEdit}
                                   name={`pbl-perf-${idx}`}
-                                  checked={row.performance_level === lv}
+                                  checked={checked}
                                   onChange={() =>
                                     updateChecklist(idx, { performance_level: lv as PBLPerformanceLevel })
                                   }
-                                  className="accent-primary"
+                                  className="sr-only"
                                 />
-                                <Label htmlFor={id} className="text-xs cursor-pointer">
-                                  {lv}
-                                </Label>
-                              </div>
+                                {lv}
+                              </label>
                             );
                           })}
                         </div>
@@ -292,10 +300,27 @@ function CourseEvaluationSection({
         </FormField>
 
         <section>
-          <h3 className="text-sm font-medium text-foreground mb-2">평가척도 설명 (5단계 고정)</h3>
-          <pre className="text-xs text-muted-foreground p-3 rounded bg-muted/40 border border-border/40 whitespace-pre-wrap break-words">
-            {value.evaluation_scale || PBL_EVALUATION_SCALE_DESCRIPTION}
-          </pre>
+          <h3 className="text-sm font-medium text-foreground mb-2">
+            평가척도 설명 <span className="text-xs text-muted-foreground font-normal">(5단계 고정)</span>
+          </h3>
+          <dl className="grid grid-cols-1 sm:grid-cols-5 gap-2 rounded-lg border border-border/60 bg-muted/30 p-4">
+            {PBL_EVALUATION_SCALE_ITEMS.map((item) => (
+              <div
+                key={item.level}
+                className="flex flex-col gap-1 rounded-md border border-border/40 bg-background px-3 py-2.5"
+              >
+                <dt className="flex items-baseline gap-1.5">
+                  <span className="text-base font-semibold text-primary tabular-nums">
+                    {item.level}
+                  </span>
+                  <span className="text-xs font-medium text-foreground">{item.label}</span>
+                </dt>
+                <dd className="text-xs text-muted-foreground leading-relaxed break-keep">
+                  {item.description}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
       </CardContent>
     </Card>
@@ -317,57 +342,84 @@ function ResultEvaluationSection({
 }) {
   const update = (patch: Partial<PBLResultEvaluation>) => onChange({ ...value, ...patch });
 
+  const SCALE_LABELS = ['매우 아니다', '아니다', '보통', '그렇다', '매우 그렇다'] as const;
+
   const renderSurvey = (
     title: string,
     questions: readonly string[],
     values: SurveyScale[],
     setValues: (next: SurveyScale[]) => void,
   ) => (
-    <section>
-      <h3 className="text-sm font-medium text-foreground mb-2">{title} <span className="text-xs text-muted-foreground">({questions.length}문항 · 리커트 1~5)</span></h3>
-      <ol className="space-y-2 list-decimal pl-5">
+    <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
+      <header className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <span className="text-xs text-muted-foreground">{questions.length}문항 · 리커트 1~5</span>
+      </header>
+      <ol className="space-y-3">
         {questions.map((q, idx) => (
-          <li key={idx} className="space-y-1">
-            <div className="text-sm text-foreground whitespace-pre-wrap break-words">{q}</div>
+          <li
+            key={idx}
+            className="rounded-md border border-border/40 bg-background px-3 py-2.5 space-y-2"
+          >
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-semibold text-muted-foreground tabular-nums mt-0.5">
+                Q{idx + 1}.
+              </span>
+              <p className="text-sm text-foreground whitespace-pre-wrap break-words flex-1">
+                {q}
+              </p>
+            </div>
             <div
-              className="flex flex-wrap gap-3"
+              className="flex items-center justify-between gap-2 flex-wrap"
               role="radiogroup"
               aria-label={`${title} 문항 ${idx + 1} 응답`}
             >
-              {[1, 2, 3, 4, 5].map((scale) => {
-                const id = `pbl-survey-${title}-${idx}-${scale}`;
-                return (
-                  <div key={scale} className="flex items-center gap-1">
-                    <input
-                      id={id}
-                      type="radio"
-                      name={`pbl-survey-${title}-${idx}`}
-                      disabled={!canEdit}
-                      checked={values[idx] === scale}
-                      onChange={() => {
-                        const next = [...values];
-                        next[idx] = scale as SurveyScale;
-                        setValues(next);
-                      }}
-                      className="accent-primary"
-                    />
-                    <Label htmlFor={id} className="text-xs cursor-pointer">
+              <span className="text-[11px] text-muted-foreground shrink-0">매우 아니다</span>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((scale) => {
+                  const id = `pbl-survey-${title}-${idx}-${scale}`;
+                  const checked = values[idx] === scale;
+                  return (
+                    <label
+                      key={scale}
+                      htmlFor={id}
+                      className={
+                        checked
+                          ? 'inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground text-xs font-semibold cursor-pointer transition-colors'
+                          : 'inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-xs text-muted-foreground hover:border-primary/40 hover:text-primary cursor-pointer transition-colors'
+                      }
+                      title={SCALE_LABELS[scale - 1]}
+                    >
+                      <input
+                        id={id}
+                        type="radio"
+                        name={`pbl-survey-${title}-${idx}`}
+                        disabled={!canEdit}
+                        checked={checked}
+                        onChange={() => {
+                          const next = [...values];
+                          next[idx] = scale as SurveyScale;
+                          setValues(next);
+                        }}
+                        className="sr-only"
+                      />
                       {scale}
-                    </Label>
-                  </div>
-                );
-              })}
-              {canEdit && (
+                    </label>
+                  );
+                })}
+              </div>
+              <span className="text-[11px] text-muted-foreground shrink-0">매우 그렇다</span>
+              {canEdit && values[idx] !== null && (
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground underline"
+                  className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                   onClick={() => {
                     const next = [...values];
                     next[idx] = null;
                     setValues(next);
                   }}
                 >
-                  응답 초기화
+                  초기화
                 </button>
               )}
             </div>

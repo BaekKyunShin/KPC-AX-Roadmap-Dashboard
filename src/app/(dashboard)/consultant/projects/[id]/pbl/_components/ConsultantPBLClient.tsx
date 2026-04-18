@@ -12,7 +12,6 @@ import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
 import { PBLEvaluationPlan } from '@/components/pbl/PBLEvaluationPlan';
 import { PBLPerformanceMetrics } from '@/components/pbl/PBLPerformanceMetrics';
-import { PBLStatusBadge } from '@/components/pbl/PBLStatusBadge';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import { isCancelledError } from '@/lib/services/llm';
@@ -319,20 +318,17 @@ export default function ConsultantPBLClient({
 
       {hasAny && (
         <div className="bg-background border border-border rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <PBLVersionSelector
-              versions={versions}
-              selectedId={selected?.id}
-              onSelect={handleSelect}
-            />
-            {selected && (
-              <PBLStatusBadge
-                status={selected.status}
-                versionNumber={selected.version_number}
-              />
-            )}
-          </div>
-          {isSaving && <span className="text-xs text-muted-foreground">저장 중…</span>}
+          {/* PBLVersionSelector 내부에 이미 상태 배지가 포함돼 있어 외부 배지는 두지 않는다 (중복 방지). */}
+          <PBLVersionSelector
+            versions={versions}
+            selectedId={selected?.id}
+            onSelect={handleSelect}
+          />
+          {isSaving && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> 저장 중…
+            </span>
+          )}
         </div>
       )}
 

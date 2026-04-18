@@ -5,7 +5,6 @@ import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
-import { PBLStatusBadge } from '@/components/pbl/PBLStatusBadge';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
@@ -91,17 +90,12 @@ export default function OpsPBLClient({
       ) : (
         <>
           <div className="bg-background border border-border rounded-lg p-3 flex items-center gap-2 flex-wrap">
+            {/* 상태 배지는 PBLVersionSelector 내부에 포함됨 — 외부 중복 제거 */}
             <PBLVersionSelector
               versions={versions}
               selectedId={selected?.id}
               onSelect={handleSelect}
             />
-            {selected && (
-              <PBLStatusBadge
-                status={selected.status}
-                versionNumber={selected.version_number}
-              />
-            )}
           </div>
 
           {selected && content && (

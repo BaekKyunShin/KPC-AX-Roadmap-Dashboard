@@ -222,13 +222,26 @@ export interface PBLValidationResult {
 // 고정 상수
 // ----------------------------------------------------------------------------
 
-export const PBL_EVALUATION_SCALE_DESCRIPTION = [
-  '1: 최하 - 수행준거를 전혀 충족하지 못함',
-  '2: 하  - 수행준거의 일부만 충족하며 개선이 필요함',
-  '3: 보통 - 수행준거를 기본 수준으로 충족함',
-  '4: 상  - 수행준거를 안정적으로 충족하며 실무 적용 가능함',
-  '5: 최상 - 수행준거를 완전히 충족하며 타인에게 전이 가능함',
-].join('\n');
+/**
+ * Ⅳ-4-가 평가척도 설명 (양식 15p 하단 고정 표).
+ * 항목 단위 배열로 노출해 UI에서 정돈된 dl/dt/dd로 렌더할 수 있게 한다.
+ */
+export const PBL_EVALUATION_SCALE_ITEMS: ReadonlyArray<{
+  level: PBLPerformanceLevel;
+  label: '최하' | '하' | '보통' | '상' | '최상';
+  description: string;
+}> = [
+  { level: 1, label: '최하', description: '수행준거를 전혀 충족하지 못함' },
+  { level: 2, label: '하', description: '수행준거의 일부만 충족하며 개선이 필요함' },
+  { level: 3, label: '보통', description: '수행준거를 기본 수준으로 충족함' },
+  { level: 4, label: '상', description: '수행준거를 안정적으로 충족하며 실무 적용 가능함' },
+  { level: 5, label: '최상', description: '수행준거를 완전히 충족하며 타인에게 전이 가능함' },
+];
+
+/** LLM 프롬프트·HWPX·DB 호환을 위한 평탄 텍스트 표현(기존 호환 유지). */
+export const PBL_EVALUATION_SCALE_DESCRIPTION = PBL_EVALUATION_SCALE_ITEMS
+  .map((item) => `${item.level}: ${item.label} - ${item.description}`)
+  .join('\n');
 
 export const PBL_COURSE_EVALUATION_METHODS: readonly PBLCourseEvaluationMethod[] = [
   '포트폴리오',

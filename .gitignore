@@ -59,6 +59,9 @@ next-env.d.ts
 # tool artifacts
 .playwright-mcp/
 .superpowers/
+# Playwright MCP 검증 시 생성되는 스크린샷
+pbl-*.png
+roadmap-*.png
 
 # Python (HWPX 관련 로컬 도구)
 .venv/
