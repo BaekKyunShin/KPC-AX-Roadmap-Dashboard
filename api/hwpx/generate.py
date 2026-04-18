@@ -773,20 +773,40 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
         return
     tbl = tables[idx]
 
-    # 셀 좌표는 실제 템플릿 T1(15x5) 구조 기준.
-    # row 0 기업명/사업장관리번호, row 1-2 업종, row 3 주소, row 4 훈련실시주소,
-    # row 5 훈련실시주소+관할지부, row 6-7 담당자, row 8 훈련과정명, row 9 NCS,
-    # row 10 훈련시간, row 11 훈련생, row 12 훈련직무, row 13-14 체크박스(전역 replace).
-    # 병합 셀은 _set_cell_text가 첫 셀만 건드려도 HWPX 렌더링에 반영됨.
+    # 셀 좌표는 실제 템플릿 T1(15x5) 구조 기준 (병합 다수):
+    #   row 0: [0,0]=기업명 / [0,1..2]=값 / [0,3]=사업장관리번호 / [0,4]=값
+    #   row 1: [1,0..2]=주요 업종 라벨 (병합) / [1,3..4]=라벨 연장
+    #   row 2: [2,0]=주요 업종 / [2,1..4]=업종코드·주업종 placeholder
+    #   row 3: [3,0]=주소 / [3,1..4]=값
+    #   row 4: [4,0]=훈련실시주소 / [4,1..4]=값
+    #   row 5: [5,0]=훈련실시주소 / [5,3]=관할 지부·지사 / [5,4]=값
+    #   row 6: [6,0]=담당자연락처 / [6,1]=직 위 / [6,2]=값 / [6,3]=성 명 / [6,4]=값
+    #   row 7: [7,0]=담당자연락처 / [7,1]=연락처 / [7,2]=값 / [7,3]=e-mail / [7,4]=값
+    #   row 8: [8,0]=훈련과정명 / [8,1..4]=값
+    #   row 9: [9,0]=NCS 분류 / [9,1..4]=값
+    #   row 10: [10,0]=훈련시간 / [10,1..4]=값
+    #   row 11: [11,0]=훈련생 / [11,1..4]=값
+    #   row 12: [12,0]=훈련 직무 / [12,1..4]=값
+    #   row 13: AI역량 체크박스 (문자열 replace)
+    #   row 14: 훈련 목표 체크박스 (문자열 replace)
     industry_text = data.get("industry_main") or data.get("industry_code") or ""
     if data.get("industry_code") and data.get("industry_main"):
         industry_text = f"업종코드: {data['industry_code']}  주업종: {data['industry_main']}"
+    # 주소/훈련실시주소가 수직 병합이면 한 셀만 남으므로 줄바꿈으로 합쳐서 표시.
+    address_value = data.get("address") or ""
+    training_address = data.get("training_address") or ""
+    address_block = address_value
+    if training_address and training_address != address_value:
+        address_block = (
+            f"{address_value}\n(훈련실시: {training_address})".strip()
+            if address_value
+            else f"훈련실시: {training_address}"
+        )
     mapping = [
         (0, 1, data.get("company_name")),
         (0, 4, data.get("business_registration_no")),
-        (1, 1, industry_text),
-        (3, 1, data.get("address")),
-        (4, 1, data.get("training_address")),
+        (2, 1, industry_text),  # 업종 placeholder가 row 2에 존재
+        (3, 1, address_block),
         (5, 4, data.get("jurisdiction_office")),
         (6, 2, data.get("contact_position")),
         (6, 4, data.get("contact_name")),
@@ -797,7 +817,6 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
         (10, 1, _format_hours(data.get("training_hours"))),
         (11, 1, _format_trainees(data.get("trainee_count"))),
         (12, 1, data.get("training_job")),
-        # row 13 AI역량 체크박스, row 14 훈련목표 체크박스는 문자열 replace로 처리
     ]
     for r, c, text in mapping:
         try:
@@ -846,19 +865,30 @@ def _fill_pbl_training_env(tables, data, idx: int = 7):
         return
     tbl = tables[idx]
 
+    # 실제 T7(12x7) 구조:
+    #   row 1 적정 훈련시간 [1,2..6]=값
+    #   row 2 적정 훈련장소 사내 [2,2]=체크박스, [2,3..6]=location
+    #   row 3 적정 훈련장소 사외 [3,2]=체크박스, [3,3..6]=special_notes
+    #   row 4 사내강사 [4,2]=□예, [4,3]=이름, [4,4..5]=값, [4,6]=□아니오
+    #   row 5 사내강사 [5,3]=직책, [5,4..5]=값
+    #   row 6 대상 인원 [6,2..6]=값
+    #   row 7 대상자 특성 [7,2..6]=값
+    #   row 8 AI활용 가능 인프라 [8,2..6]=값
+    #   row 9 AI훈련 요구분석 결과 [9,2..6]=값
+    #   row 10 기대효과 헤더
+    #   row 11 기대효과 [11,2..4]=As-is, [11,5..6]=To-be
     mapping = [
-        # (row, col, text)  — col 2=내용 시작
-        (1, 2, _str_hours(data.get("proper_training_hours"))),  # 적정 훈련시간
-        (2, 4, data.get("training_place_location")),  # 사내 장소
-        (2, 6, data.get("training_place_special_notes")),
-        (3, 3, data.get("internal_instructor_name")),  # 이름
-        (3, 5, data.get("internal_instructor_position")),  # 직책
-        (4, 2, _str_count(data.get("target_count"))),
-        (5, 2, _str_characteristics(data)),
-        (6, 2, _compose_ai_infra(data)),
-        (7, 2, data.get("training_needs_analysis")),
-        (8, 2, data.get("expectation_as_is")),
-        (8, 4, data.get("expectation_to_be")),
+        (1, 2, _str_hours(data.get("proper_training_hours"))),
+        (2, 3, data.get("training_place_location")),
+        (3, 3, data.get("training_place_special_notes")),
+        (4, 4, data.get("internal_instructor_name")),
+        (5, 4, data.get("internal_instructor_position")),
+        (6, 2, _str_count(data.get("target_count"))),
+        (7, 2, _str_characteristics(data)),
+        (8, 2, _compose_ai_infra(data)),
+        (9, 2, data.get("training_needs_analysis")),
+        (11, 2, data.get("expectation_as_is")),
+        (11, 5, data.get("expectation_to_be")),
     ]
     for r, c, text in mapping:
         try:
