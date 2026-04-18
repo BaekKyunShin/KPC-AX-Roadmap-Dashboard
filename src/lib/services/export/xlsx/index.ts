@@ -19,6 +19,19 @@ export {
   buildCourseSpecSheet,
 } from './xlsx-generator';
 
+// PBL 내보내기 (산인공 양식 2번 Ⅳ·Ⅴ장)
+export {
+  generatePBLXLSX,
+  downloadPBLXLSX,
+  buildPBLOverviewSheet,
+  buildPBLOperationSheet,
+  buildPBLTrainingSheet,
+  buildPBLEvaluationSheet,
+  buildPBLPerformanceSheet,
+  type PBLXLSXInput,
+  type PBLOverviewSheetInput,
+} from './xlsx-pbl-sheet-builder';
+
 // 포맷 헬퍼 (테스트에서 import됨)
 export {
   getStatusLabel,
