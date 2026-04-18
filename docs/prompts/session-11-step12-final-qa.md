@@ -1,7 +1,7 @@
 # Session 11 — Step 12: 최종 QA · 문서 · 배포 점검 + main 머지
 
 ## 세션 목표
-마스터 계획서 §4의 **Step 12** (M, 10 Task) 수행 + **`feature/official-form-alignment` → `main` 최종 PR 1회**. 마이그레이션 065(legacy 정리), E2E 스모크, 성능·보안 감사, **산인공 양식 1번·2번 1:1 정합성 전수 검증**, 문서 갱신, 배포 체크리스트 통과.
+마스터 계획서 §4의 **Step 12** (M, **13 Task**) 수행 + **`feature/official-form-alignment` → `main` 최종 PR 1회**. 마이그레이션 **066**(legacy 정리; 065는 Step 6.5의 interview_attachments가 점유), Task 1·2의 선행 이관, Task 3.5 HWPX 양식 세부 수정(Session 09 피드백), E2E 스모크, 성능·보안 감사, **산인공 양식 1번·2번 1:1 정합성 전수 검증**, 문서 갱신, 배포 체크리스트 통과.
 
 ## 사전 조건
 - Step 1~11 **+ Step 6.5** 모든 PR이 `feature/official-form-alignment`에 머지됨.
@@ -10,7 +10,7 @@
 - 사람 승인 받을 준비 (마지막 main 머지 PR은 팀장 직접 승인 필수).
 
 ## 실행 모드
-**subagent-driven-development** — 10 Task. 마이그·E2E·성능 감사·보안 감사·문서 갱신·UI 감사 모두 분리된 specialist.
+**subagent-driven-development** — **13 Task** (Task 1-a/1-b/2-a/2-b 분할 + Task 3.5 HWPX 피드백 신규 + 기존 3~10). 마이그·E2E·성능 감사·보안 감사·문서 갱신·UI 감사 모두 분리된 specialist.
 
 ## 호출 스킬·MCP·서브에이전트
 - `superpowers:subagent-driven-development`
@@ -51,9 +51,9 @@
 - [ ] **산인공 양식 1번 QA 체크리스트** (계획서 §4 Step 12) 전 항목 ✅ — 로드맵 HWPX 실물 3건 이상 한글 프로그램에서 양식 PDF와 겹쳐 비교, 부제 라벨·NCS 박스·수립 방법·매트릭스 단순 표 전환 모두 확인.
 - [ ] **산인공 양식 2번 QA 체크리스트** 전 항목 ✅ — PBL HWPX 실물 3건 이상, Ⅰ~Ⅴ장 + 결과보고서(수행일지) 전 섹션 + 교과목 프로파일 강사투입시간 합=훈련시간 + 결과평가 4종 설문 문항 수 고정 (5/3/5/4) 확인.
 - [ ] 배포 체크리스트(§8) 모든 항목 ✅:
-  - 환경변수 (`HWPX_API_SECRET` 포함) 등록 확인
-  - Storage 버킷 프로덕션 생성
-  - 마이그레이션 적용 순서 (060→061→062→063→064→065)
+  - 환경변수 (`HWPX_API_SECRET`·`VERCEL_AUTOMATION_BYPASS_SECRET`·`LLM_API_KEY`·`SUPABASE_*` 등) 등록 확인
+  - Storage 버킷 프로덕션 생성 (`notice-attachments`, `interview-attachments`)
+  - 마이그레이션 적용 순서 **060→061→062→063→064→065→066** (065 = Step 6.5 interview_attachments, 066 = Step 12 legacy 정리)
   - pg_dump 백업 준비
 - [ ] PR `feat(ofa): 산인공 공식 양식 정렬 통합` (base = `main`) 생성 — **팀장 직접 승인 + 머지 = 사람만 가능, Claude 자동 머지 절대 금지**.
 
@@ -115,10 +115,12 @@
 
 진행 원칙:
 1. feature/ofa-12-final-qa-docs 브랜치
-2. Task 1 (interview.ts 삭제):
-   - 먼저 grep -rn "schemas/interview['\"]|from '@/lib/schemas/interview'" src/ e2e/ 로 잔존 import 감사
-   - 잔존 0이면 삭제 + npm run typecheck && npm run test 회귀 0 확인
-3. Task 2 (마이그 **066** — 065는 Step 6.5가 점유):
+2. **Task 1 (interview.ts 제거, 두 단계로 분할)**:
+   - **Task 1-a**: 먼저 `grep -rhE "import (type )?\{[^}]*\} from '@/lib/schemas/interview'" src/ e2e/` 로 실제 import되는 심볼 목록 수집. Session 09 실측: `SttInsights`·`InterviewInput`·`InterviewParticipant`·`JobTask`·`PainPoint`·`ImprovementGoal`·`CompanyDetails`·`Constraint`·`SYSTEM_TOOL_PRESETS`·`createEmptyParticipant`·`createEmptyConstraint`·`createEmptyImprovementGoal`·`createEmptyJobTask`·`createEmptyPainPoint`·`interviewSchema`·`interviewAutoSaveSchema`·`sttInsightsSchema` 등. 이 심볼들은 `interview-roadmap.ts`에 **동일 이름으로 존재하지 않음** → 이관 매핑 표 작성(구 이름 → 새 이름/새 위치 또는 "유지"/"삭제" 결정). 파일별 import 교체 후 회귀 확인.
+   - **Task 1-b**: grep 결과 0건 검증 후 `interview.ts` 삭제 + `npm run typecheck && npm run test` 회귀 0
+3. **Task 2 (마이그 066 + pbl_course 정리, 두 단계로 분할)**:
+   - **Task 2-a (선행 필수)**: `roadmap_versions.pbl_course` 코드 레퍼런스 제거. Session 09 실측: `src/types/database.ts:268`, `consultant/projects/[id]/roadmap/actions.ts`, `test-roadmap/actions.test.ts`, `consultant/projects/[id]/roadmap/actions.test.ts`, `gallery/actions/queries.ts`·`queries.test.ts` 등. 회귀 테스트 0건 확인.
+   - **Task 2-b (마이그 적용)** — 065는 Step 6.5가 점유:
    - 파일명: supabase/migrations/**066_ofa_cleanup.sql**
    - roadmap_versions.pbl_course DROP COLUMN (chk_pbl_course_size CHECK 제약은 DROP COLUMN으로 자동 제거 — 주석 명시)
    - audit_action ENUM 추가 항목은 마이그 061에서 이미 처리됨 — 본 마이그에서 발견된 추가 값만 (없으면 빈 블록)

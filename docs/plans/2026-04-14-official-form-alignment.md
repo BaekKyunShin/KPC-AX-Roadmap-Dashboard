@@ -4120,7 +4120,7 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 > 배경: OFA-08 Playwright 점검에서 발견된 이슈. 현재 컨설턴트(`/consultant/projects`)와 운영관리자(`/ops/projects`) 프로젝트 목록 테이블 헤더가 "기업명 · 업종 · 규모 · 상태 · 배정일 · 작업"만 있어 **로드맵/PBL 트랙 구분이 목록에서 불가능**하다. `src/lib/constants/tracks.ts`에 색상 쌍(`ROADMAP=blue, PBL=purple`)이 이미 정의되어 있으니 뱃지 컴포넌트만 추가하면 된다. 추가로 Session 09에서 확인된 증상: PBL 트랙 프로젝트가 목록에서 상태 "로드맵 완료"로 표시됨 → 상태 라벨을 트랙별로 분기해야 함.
 
 파일:
-- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 `PROJECT_TRACK_LABEL` + 색상맵 사용. Shadcn `Badge` 기반.
+- 신규: `src/components/ui/TrackBadge.tsx` + `.test.tsx` — `variant` prop으로 `size='sm'|'md'` 지원. `tracks.ts`의 **`TRACK_LABELS`**(풀네임: `ROADMAP='AI 훈련로드맵'`, `PBL='문제해결형(PBL) AI+직무 훈련과정'`) + `TRACK_BADGE_COLORS` 사용. 다만 뱃지에는 **짧은 축약** 라벨(`로드맵`/`PBL`)이 적합하므로 **컴포넌트 내부에서 축약 매핑을 상수로 유지**(또는 `tracks.ts`에 `TRACK_SHORT_LABELS` 추가 후 재export). Shadcn `Badge` 기반.
 - 변경: `src/app/(dashboard)/consultant/projects/_components/ProjectList.tsx` (**실제 파일명**) — 헤더에 "트랙" 컬럼 + 각 행에 `<TrackBadge track={p.track} />` 렌더 + 상태 라벨 `statusLabel(status, track)` 사용
 - 변경: `src/app/(dashboard)/ops/projects/_components/ProjectList.tsx` (**실제 파일명** — `OpsProjectsTable.tsx` 아님) — 동일 패턴
 - 변경: `src/app/(dashboard)/consultant/projects/actions.ts` / `ops/projects/actions/queries.ts` — `select` 절에 `track` 컬럼 추가 (기존 select가 `track`을 빠뜨리면 클라이언트에 도달하지 않음)
@@ -4164,7 +4164,9 @@ Supabase 모킹 팩토리로 두 테이블 데이터 세팅 → 병합·정렬·
 
 - 테스트: 트랙 × 모든 상태 매트릭스(`ASSIGNED`·`INTERVIEWED`·`ROADMAP_DRAFTED`·`PBL_DRAFTED`·`FINALIZED` 등) 전수 검증.
 
-참고: PBL 관련 신규 상태 값은 마이그 064에서 enum 확장 확인(`src/lib/constants/status.ts` 재검토 후 매트릭스 확정).
+참고:
+- 마이그 064에서 `PBL_DRAFTED` enum 값 추가됨 (`ALTER TYPE project_status ADD VALUE 'PBL_DRAFTED'`).
+- `src/lib/constants/status.ts` 에 **이미** PBL 대응 상수들이 정의되어 있음: `PBL_ELIGIBLE_STATUSES`, `EXPORT_ELIGIBLE_STATUSES`(ROADMAP_DRAFTED + PBL_DRAFTED), `drafted` 그룹(`['ROADMAP_DRAFTED', 'PBL_DRAFTED']`). 매트릭스 작성 시 이 기존 상수들을 재사용.
 
 - [ ] **Task 4.7: 컨설턴트 프로젝트 상세 페이지 트랙 분기 + PBL redirect 버그 제거 (RED → GREEN)**
 
@@ -4405,7 +4407,14 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 > - `src/app/(dashboard)/consultant/projects/[id]/interview/_components/StepCompanyDetails.test.tsx`
 >
 > Step 12 진입 전 Task 1을 **두 단계로 분할**:
->   1-a. **잔존 import를 `interview-roadmap.ts`(Step 5 트랙별 스키마)로 교체** — 각 파일 개별 이관 (타입 이름 매핑 표 작성: `InterviewInput` → `RoadmapInterviewInput` 등)
+>   1-a. **잔존 import를 `interview-roadmap.ts`(Step 5 트랙별 스키마)로 교체**
+>
+>   **⚠️ 단순 rename 아님 — 심볼 재설계 필요**. Session 09 실측: `interview.ts`에서 import되는 심볼 중 `interview-roadmap.ts`에 **동일 이름으로 존재하지 않는** 것이 다수:
+>   - 타입: `SttInsights`, `InterviewInput`, `InterviewParticipant`, `JobTask`, `PainPoint`, `ImprovementGoal`, `CompanyDetails`, `Constraint`
+>   - 함수/상수: `SYSTEM_TOOL_PRESETS`, `createEmptyParticipant`, `createEmptyConstraint`, `createEmptyImprovementGoal`, `createEmptyJobTask`, `createEmptyPainPoint`, `interviewSchema`, `interviewAutoSaveSchema`, `sttInsightsSchema`
+>
+>   이 심볼들을 `interview-roadmap.ts`로 이식하거나, 이미 맵핑된 신규 심볼(`RoadmapInterviewInput`, `Overview`, `TaskWorkflowItem`, `TrainingTarget`, `AnalysisNotes`, `RoadmapParticipant`, `createEmptyOverview`, `createEmptyRoadmapParticipant` 등)로 교체해야 한다. **먼저 심볼별 이관 매핑 표를 작성**(구 이름 → 새 이름/새 위치)한 뒤 파일별 치환. 그래도 남는 legacy 심볼(예: `SttInsights`, `SYSTEM_TOOL_PRESETS`)은 **유지할지, 별도 파일로 분리할지, 그냥 삭제할지 본 Task 시작 시 판단**.
+>
 >   1-b. grep 결과 0건 확인 후 `interview.ts` 파일 삭제 + `npm run typecheck && npm run test` 회귀 0
 
 삭제 전 의존성 감사:
