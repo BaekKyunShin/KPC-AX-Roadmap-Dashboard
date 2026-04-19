@@ -88,10 +88,10 @@ describe('TestRoadmapNavigation', () => {
     });
   });
 
-  describe('테스트 로드맵 생성 버튼 (마지막 스텝)', () => {
-    it('마지막 스텝에서 "테스트 로드맵 생성" 버튼이 표시된다', () => {
+  describe('로드맵 테스트 생성 버튼 (마지막 스텝)', () => {
+    it('마지막 스텝에서 "로드맵 테스트 생성" 버튼이 표시된다', () => {
       render(<TestRoadmapNavigation {...defaultProps} currentStep={LAST_STEP} />);
-      expect(screen.getByRole('button', { name: /테스트 로드맵 생성/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /로드맵 테스트 생성/ })).toBeInTheDocument();
     });
 
     it('모든 필수 스텝이 완료된 경우 생성 버튼이 활성화된다', () => {
@@ -102,7 +102,7 @@ describe('TestRoadmapNavigation', () => {
           isAllRequiredStepsValid={true}
         />
       );
-      expect(screen.getByRole('button', { name: /테스트 로드맵 생성/ })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /로드맵 테스트 생성/ })).not.toBeDisabled();
     });
 
     it('필수 스텝 미완료 시 생성 버튼이 비활성화된다', () => {
@@ -114,7 +114,7 @@ describe('TestRoadmapNavigation', () => {
           incompleteRequiredSteps={[3, 4]}
         />
       );
-      expect(screen.getByRole('button', { name: /테스트 로드맵 생성/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /로드맵 테스트 생성/ })).toBeDisabled();
     });
 
     it('미완료 스텝 수가 표시된다', () => {
@@ -152,7 +152,7 @@ describe('TestRoadmapNavigation', () => {
           isAllRequiredStepsValid={true}
         />
       );
-      await user.click(screen.getByRole('button', { name: /테스트 로드맵 생성/ }));
+      await user.click(screen.getByRole('button', { name: /로드맵 테스트 생성/ }));
       expect(handleSubmit).toHaveBeenCalledTimes(1);
     });
   });

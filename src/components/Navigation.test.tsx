@@ -135,20 +135,18 @@ describe('Navigation', () => {
   // ─── 컨설턴트 역할 ──────────────────────────────────────────────────────
 
   describe('컨설턴트 역할', () => {
-    it('컨설턴트 메뉴 항목이 표시된다', () => {
+    it('컨설턴트 네비 구조: 공지사항 플랫 + 워크스페이스·라이브러리 드롭다운', () => {
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
-      expect(screen.getByText('대시보드')).toBeInTheDocument();
-      expect(screen.getByText('담당 프로젝트')).toBeInTheDocument();
-      expect(screen.getByText('테스트 로드맵')).toBeInTheDocument();
-      expect(screen.getByText('PBL 테스트')).toBeInTheDocument();
-      expect(screen.getByText('로드맵·PBL 갤러리')).toBeInTheDocument();
+      // 플랫 항목
+      expect(screen.getAllByText('공지사항').length).toBeGreaterThan(0);
+      // 그룹 드롭다운 라벨 (관리자와 동일 명칭 — 대칭)
+      expect(screen.getAllByText('워크스페이스').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('라이브러리').length).toBeGreaterThan(0);
     });
 
-    it('관리자 전용 메뉴(워크스페이스, 운영관리, 라이브러리)가 표시되지 않는다', () => {
+    it('운영관리 드롭다운은 표시되지 않는다 (관리자 전용)', () => {
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
-      expect(screen.queryByText('워크스페이스')).not.toBeInTheDocument();
       expect(screen.queryByText('운영관리')).not.toBeInTheDocument();
-      // '라이브러리'는 관리자 그룹 라벨 — 컨설턴트에는 그룹으로 표시되지 않음
     });
 
     it('프로젝트 관리 메뉴가 표시되지 않는다', () => {
@@ -161,11 +159,10 @@ describe('Navigation', () => {
       expect(screen.queryByText('사용자 관리')).not.toBeInTheDocument();
     });
 
-    it('현재 경로에 해당하는 메뉴에 활성 스타일(bg-blue-50)이 적용된다', () => {
-      currentPathname = '/consultant/home';
+    it('현재 경로가 공지사항이면 공지사항 링크에 활성 스타일(bg-blue-50)이 적용된다', () => {
+      currentPathname = '/notices';
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
-      // 데스크톱 + 모바일 = 여러 곳에 "대시보드" 텍스트가 있을 수 있음
-      const links = screen.getAllByText('대시보드');
+      const links = screen.getAllByText('공지사항');
       const activeLink = links.find((link) => {
         const parent = link.closest('a');
         return parent?.className.includes('bg-blue-50');
@@ -173,15 +170,15 @@ describe('Navigation', () => {
       expect(activeLink).toBeTruthy();
     });
 
-    it('현재 경로가 아닌 메뉴에는 활성 스타일이 적용되지 않는다', () => {
+    it('현재 경로가 워크스페이스 그룹 내일 때 워크스페이스 버튼이 활성화된다', () => {
       currentPathname = '/consultant/home';
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
-      const links = screen.getAllByText('담당 프로젝트');
-      const inactiveLink = links.find((link) => {
-        const parent = link.closest('a');
-        return parent && !parent.className.includes('bg-blue-50');
+      const wsButtons = screen.getAllByText('워크스페이스');
+      const activeBtn = wsButtons.find((el) => {
+        const parent = el.closest('button');
+        return parent?.className.includes('bg-blue-50');
       });
-      expect(inactiveLink).toBeTruthy();
+      expect(activeBtn).toBeTruthy();
     });
 
     it('컨설턴트 배지가 표시된다', () => {
@@ -238,7 +235,7 @@ describe('Navigation', () => {
       const workspaceBtn = screen.getByText('워크스페이스');
       await user.click(workspaceBtn);
       expect(screen.getByText('프로젝트 관리')).toBeInTheDocument();
-      expect(screen.getByText('테스트 로드맵')).toBeInTheDocument();
+      expect(screen.getByText('로드맵 테스트')).toBeInTheDocument();
     });
 
     it('드롭다운 열린 상태에서 다시 클릭하면 닫힌다', async () => {
@@ -366,17 +363,14 @@ describe('Navigation', () => {
       expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
     });
 
-    it('모바일 메뉴에서 컨설턴트 메뉴 링크 클릭 시 메뉴가 닫힌다', async () => {
+    it('모바일 메뉴에서 공지사항(플랫) 링크 클릭 시 메뉴가 닫힌다', async () => {
       const user = userEvent.setup();
       renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
       await user.click(screen.getByLabelText('메뉴 열기'));
 
-      // 모바일 메뉴 영역에서 링크 클릭
-      const mobileLinks = screen.getAllByText('대시보드');
-      // 모바일 메뉴 쪽의 링크 클릭
+      const mobileLinks = screen.getAllByText('공지사항');
       const mobileLink = mobileLinks[mobileLinks.length - 1];
       await user.click(mobileLink.closest('a')!);
-      // 닫힌 후 다시 메뉴 열기 버튼이 표시됨
       expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
     });
 

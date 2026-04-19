@@ -13,7 +13,8 @@ KPC AI 훈련 로드맵 대시보드 - 기업 AI 교육 진단, 컨설턴트 매
 ## 명령어
 
 ```bash
-npm run dev              # 개발 서버 시작 (localhost:3000)
+npm run dev              # 개발 서버 시작 (localhost:3000, Next.js 전용)
+npm run dev:vercel       # vercel dev — Python Functions 포함 (HWPX 다운로드 로컬 테스트용)
 npm run build            # 프로덕션 빌드
 npm run lint             # ESLint 검사
 npm run lint:fix         # 린트 오류 자동 수정
@@ -39,6 +40,14 @@ npm run test:e2e:report  # E2E 테스트 리포트 열기
 - 이유: 파일·DB 불일치는 후속 Step·에이전트가 테이블/컬럼 부재로 즉시 차단되는 잠재적 지뢰
 
 **작업 완료 검증:** 코드 수정 작업 완료 시 반드시 `npm run validate && npm run build` 실행 후 통과를 확인할 것
+
+**HWPX 다운로드(로드맵·PBL) 로컬 테스트 규칙:**
+
+- `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`에서는 서빙되지 않는다(404).
+- 로컬에서 HWPX 다운로드를 검증하려면 둘 중 하나를 사용:
+  ① `npm run dev:vercel` (Python 런타임 포함, Vercel CLI 필요)
+  ② 프로젝트를 Vercel Preview로 배포 후 Preview URL에서 테스트
+- `next dev` 환경에서 HWPX 버튼을 누르면 클라이언트에 "HWPX 엔드포인트가 로컬 환경에서 실행되지 않습니다…" 안내 메시지가 표출된다 — 실패가 아닌 환경 제약임을 사용자에게 알리기 위함.
 
 **배포 전 체크리스트:** `npm run validate` (typecheck + lint + test) → `npm run build` → Vercel 배포
 

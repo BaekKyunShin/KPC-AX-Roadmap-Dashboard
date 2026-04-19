@@ -375,21 +375,36 @@ export async function exportRoadmapAsHwpxAction(
   roadmapId: string,
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   try {
-    // 1) 인증 + 역할
-    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
-      roleError: '컨설턴트만 HWPX를 내보낼 수 있습니다.',
-    });
+    // 1) 인증 + 역할 — 컨설턴트 + 운영·시스템관리자
+    const auth = await requireAuthWithRole(
+      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
+      { roleError: '로드맵 HWPX를 내보낼 권한이 없습니다.' },
+    );
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    const { user, role, supabase } = auth;
 
     // 2) 입력 검증
     if (!roadmapId || typeof roadmapId !== 'string') {
       return { success: false, error: '로드맵 ID가 올바르지 않습니다.' };
     }
 
-    // 3) 접근 권한 확인 (프로젝트 배정)
-    const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
-    if ('error' in access) return { success: false, error: access.error };
+    // 3) 접근 권한 확인 — 컨설턴트만 배정 체크, OPS/시스템관리자는 전체 열람 가능
+    let projectId: string;
+    if (role === 'CONSULTANT_APPROVED') {
+      const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+      if ('error' in access) return { success: false, error: access.error };
+      projectId = access.projectId;
+    } else {
+      // OPS_ADMIN / SYSTEM_ADMIN — 프로젝트 id 만 조회
+      const { data: row } = await supabase
+        .from('roadmap_versions')
+        .select('project_id')
+        .eq('id', roadmapId)
+        .single();
+      if (!row) return { success: false, error: '로드맵을 찾을 수 없습니다.' };
+      projectId = row.project_id;
+    }
+    const access = { projectId };
 
     // 4) 데이터 조회
     const roadmapRow = await fetchRoadmapVersionService(roadmapId);
@@ -431,13 +446,17 @@ export async function exportRoadmapAsHwpxAction(
     try {
       buffer = await generateRoadmapHwpx(payload, { baseUrl });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error('[exportRoadmapAsHwpxAction generateRoadmapHwpx Error]', {
         baseUrl,
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       });
+      const isLocalDevFallback = message.includes('로컬 환경에서 실행되지 않습니다');
       return {
         success: false,
-        error: 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        error: isLocalDevFallback
+          ? message
+          : 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
       };
     }
 

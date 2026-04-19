@@ -126,7 +126,7 @@ function convertToRoadmapInput(input: TestInputData): TestRoadmapInput {
 // =============================================================================
 
 /**
- * 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
+ * 로드맵 테스트 생성 (DB 저장 없이 LLM 결과만 반환)
  */
 export async function createTestRoadmap(
   input: TestInputData
@@ -206,7 +206,7 @@ export async function createTestRoadmap(
 }
 
 /**
- * 테스트 로드맵 수정 요청 (DB 저장 없이 LLM 결과만 반환)
+ * 로드맵 테스트 수정 요청 (DB 저장 없이 LLM 결과만 반환)
  */
 export async function reviseTestRoadmap(
   input: TestInputData,
@@ -278,7 +278,7 @@ export async function reviseTestRoadmap(
 }
 
 /**
- * 진행 중인 테스트 로드맵 생성 취소
+ * 진행 중인 로드맵 테스트 생성 취소
  */
 export async function cancelTestRoadmapGeneration(): Promise<SimpleActionResult> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);

@@ -129,7 +129,7 @@ export default function TestRoadmapNavigation({
                 ) : (
                   <>
                     <FlaskConical className="w-4 h-4 mr-1" />
-                    테스트 로드맵 생성
+                    로드맵 테스트 생성
                   </>
                 )}
               </button>

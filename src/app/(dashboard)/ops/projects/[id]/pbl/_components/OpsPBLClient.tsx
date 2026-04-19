@@ -5,6 +5,8 @@ import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
+import { exportPBLAsHwpxAction } from '@/app/(dashboard)/consultant/projects/[id]/pbl/actions';
 import { PBLOperationGoal } from '@/components/pbl/PBLOperationGoal';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
@@ -29,6 +31,11 @@ export default function OpsPBLClient({
   const [versions] = useState<PBLReportRow[]>(initialVersions);
   const [selected, setSelected] = useState<PBLReportRow | null>(initialSelected);
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
+  const { download: downloadHwpx, isLoading: isHwpxLoading } = useHwpxDownload({
+    action: () => exportPBLAsHwpxAction(selected?.id ?? ''),
+    successMessage: 'PBL HWPX 다운로드 완료',
+    errorTitle: 'PBL HWPX 다운로드 실패',
+  });
 
   const handleSelect = async (versionId: string) => {
     try {
@@ -79,6 +86,19 @@ export default function OpsPBLClient({
                   <Download className="h-4 w-4 mr-1" />
                 )}
                 Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadHwpx()}
+                disabled={isHwpxLoading || isDownloading !== null}
+              >
+                {isHwpxLoading ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-1" />
+                )}
+                HWPX
               </Button>
             </div>
           ) : undefined

@@ -59,14 +59,39 @@ export const ROLE_BADGE_CONFIG: Record<string, RoleBadgeConfig> = {
   },
 };
 
-/** 컨설턴트 메뉴 (플랫 6개) */
+/**
+ * 컨설턴트 플랫 메뉴 — "공지사항"만 top-level flat.
+ *
+ * 그룹 드롭다운(워크스페이스·라이브러리)은 `CONSULTANT_NAV_GROUPS`에 정의.
+ * Command Palette·레거시 호환을 위해 평탄화된 목록도 별도로 export(`CONSULTANT_ALL_NAV_ITEMS`).
+ */
 export const CONSULTANT_NAV_ITEMS: NavItem[] = [
   { href: '/notices', label: '공지사항', icon: Megaphone },
-  { href: '/consultant/home', label: '대시보드', icon: Home },
-  { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
-  { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
-  { href: '/test-pbl', label: 'PBL 테스트', icon: FlaskConical },
-  { href: '/gallery', label: '로드맵·PBL 갤러리', icon: Library },
+];
+
+/** 컨설턴트 드롭다운 그룹 (관리자와 동일 구조 — "워크스페이스 · 라이브러리"). */
+export const CONSULTANT_NAV_GROUPS: NavGroup[] = [
+  {
+    label: '워크스페이스',
+    items: [
+      { href: '/consultant/home', label: '대시보드', icon: Home },
+      { href: '/consultant/projects', label: '담당 프로젝트', icon: Briefcase },
+      { href: '/test-roadmap', label: '로드맵 테스트', icon: FlaskConical },
+      { href: '/test-pbl', label: 'PBL 테스트', icon: FlaskConical },
+    ],
+  },
+  {
+    label: '라이브러리',
+    items: [
+      { href: '/gallery', label: '로드맵·PBL 갤러리', icon: Library },
+    ],
+  },
+];
+
+/** 컨설턴트 전 메뉴를 평탄화한 배열 (검색·Command Palette용). */
+export const CONSULTANT_ALL_NAV_ITEMS: NavItem[] = [
+  ...CONSULTANT_NAV_ITEMS,
+  ...CONSULTANT_NAV_GROUPS.flatMap((g) => g.items),
 ];
 
 /** 관리자 메뉴 (드롭다운 3그룹) — 운영관리자와 시스템관리자 동일 */
@@ -75,7 +100,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     label: '워크스페이스',
     items: [
       { href: '/ops/projects', label: '프로젝트 관리', icon: FolderKanban },
-      { href: '/test-roadmap', label: '테스트 로드맵', icon: FlaskConical },
+      { href: '/test-roadmap', label: '로드맵 테스트', icon: FlaskConical },
       { href: '/test-pbl', label: 'PBL 테스트', icon: FlaskConical },
     ],
   },
@@ -138,11 +163,11 @@ const CONSULTANT_EXTRA_ITEMS: NavItem[] = [
 
 type CommandPaletteRole = 'CONSULTANT_APPROVED' | 'OPS_ADMIN' | 'SYSTEM_ADMIN';
 
-/** 역할별 메뉴를 플랫 배열로 반환 */
+/** 역할별 메뉴를 플랫 배열로 반환 (Command Palette·검색용) */
 export function getNavItemsForRole(role: CommandPaletteRole): NavItem[] {
   if (role === 'CONSULTANT_APPROVED') {
     return [
-      ...CONSULTANT_NAV_ITEMS,
+      ...CONSULTANT_ALL_NAV_ITEMS,
       ...CONSULTANT_EXTRA_ITEMS,
       ...COMMON_EXTRA_ITEMS,
     ];

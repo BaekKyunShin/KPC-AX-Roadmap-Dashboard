@@ -52,7 +52,7 @@ function TestModeBanner() {
     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
       <FlaskConical className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
       <div>
-        <h3 className="font-medium text-amber-800">테스트 로드맵</h3>
+        <h3 className="font-medium text-amber-800">로드맵 테스트</h3>
         <p className="text-sm text-amber-700 mt-1">
           이 로드맵은 테스트 목적으로 생성되었습니다. 실제 기업 진단 결과가 아닌 입력된 정보만을
           기반으로 생성되었으므로 참고용으로만 활용하세요.
@@ -204,7 +204,7 @@ function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionReque
 // =============================================================================
 
 /**
- * 테스트 로드맵 결과 컴포넌트 (산인공 양식 4섹션 읽기 전용 표시)
+ * 로드맵 테스트 결과 컴포넌트 (산인공 양식 4섹션 읽기 전용 표시)
  *   Ⅲ-1. 역량 모델링
  *   Ⅲ-2. 훈련체계도
  *   Ⅲ-3. 연간 훈련계획

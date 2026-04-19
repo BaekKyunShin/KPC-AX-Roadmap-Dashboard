@@ -238,7 +238,7 @@ export default function TestStepSummary({
       {/* 최종 확인 메시지 */}
       <InfoBox title="로드맵 생성 준비 완료">
         <p>
-          모든 내용을 확인하셨다면 &quot;테스트 로드맵 생성&quot; 버튼을 클릭하세요.
+          모든 내용을 확인하셨다면 &quot;로드맵 테스트 생성&quot; 버튼을 클릭하세요.
           <strong className="block mt-1 text-amber-700">
             테스트 결과는 저장되지 않으며, 페이지를 떠나면 사라집니다.
           </strong>

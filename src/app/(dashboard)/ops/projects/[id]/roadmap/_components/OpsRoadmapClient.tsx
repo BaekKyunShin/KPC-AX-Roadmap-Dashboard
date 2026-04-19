@@ -6,6 +6,8 @@ import { showErrorToast } from '@/lib/utils/toast';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { PageHeader } from '@/components/ui/page-header';
 import { useRoadmapDownload } from '@/hooks/useRoadmapDownload';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
+import { exportRoadmapAsHwpxAction } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/actions';
 import { DownloadButton } from '@/components/roadmap/DownloadButton';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { NcsMethodologyBox } from '@/components/roadmap/NcsMethodologyBox';
@@ -34,6 +36,11 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
   const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
+  const { download: downloadHwpx, isLoading: isHwpxLoading } = useHwpxDownload({
+    action: () => exportRoadmapAsHwpxAction(selectedVersion?.id ?? ''),
+    successMessage: '로드맵 HWPX 다운로드 완료',
+    errorTitle: '로드맵 HWPX 다운로드 실패',
+  });
 
   async function handleVersionSelect(versionId: string) {
     try {
@@ -82,6 +89,12 @@ export default function OpsRoadmapClient({ projectId, initialVersions }: OpsRoad
                 loading={isDownloading === 'XLSX'}
                 type="Excel"
                 disabled={isDownloading !== null}
+              />
+              <DownloadButton
+                onClick={() => downloadHwpx()}
+                loading={isHwpxLoading}
+                type="HWPX"
+                disabled={isDownloading !== null || isHwpxLoading}
               />
             </div>
           ) : undefined

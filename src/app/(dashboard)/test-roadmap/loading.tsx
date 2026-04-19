@@ -175,7 +175,7 @@ function AdditionalRequirementsSkeleton() {
 // ============================================================================
 
 /**
- * 테스트 로드맵 페이지 로딩 스켈레톤
+ * 로드맵 테스트 페이지 로딩 스켈레톤
  */
 export default function TestRoadmapLoading() {
   return (
@@ -183,8 +183,8 @@ export default function TestRoadmapLoading() {
       {/* 헤더 */}
       <div className="mb-6">
         <PageHeader
-          title="테스트 로드맵"
-          description="시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다."
+          title="로드맵 테스트"
+          description="시스템 사용법 연습을 위한 로드맵 테스트을 생성합니다."
         />
       </div>
 
@@ -193,7 +193,7 @@ export default function TestRoadmapLoading() {
         <Info className="h-4 w-4" />
         <AlertTitle>테스트 모드 안내</AlertTitle>
         <AlertDescription>
-          테스트 로드맵은 실제 기업 진단 결과 없이 입력한 정보만으로 생성됩니다. 실제 컨설팅 시에는
+          로드맵 테스트은 실제 기업 진단 결과 없이 입력한 정보만으로 생성됩니다. 실제 컨설팅 시에는
           진단 결과와 현장 인터뷰 데이터를 바탕으로 더 정확한 로드맵이 생성됩니다.
         </AlertDescription>
       </Alert>

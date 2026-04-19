@@ -29,8 +29,8 @@ test.describe('Phase 2.1: 관리자 네비게이션', () => {
     await expect(page).toHaveURL('/ops/projects');
   });
 
-  test('워크스페이스 드롭다운 — 테스트 로드맵', async ({ opsPage: page }) => {
-    await clickOpsNavMenu(page, '워크스페이스', '테스트 로드맵');
+  test('워크스페이스 드롭다운 — 로드맵 테스트', async ({ opsPage: page }) => {
+    await clickOpsNavMenu(page, '워크스페이스', '로드맵 테스트');
     await expect(page).toHaveURL('/test-roadmap');
   });
 

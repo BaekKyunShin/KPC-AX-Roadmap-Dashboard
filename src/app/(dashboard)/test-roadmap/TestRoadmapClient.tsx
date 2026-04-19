@@ -70,8 +70,8 @@ function TestPageHeader({ isOpsAdmin }: { isOpsAdmin: boolean }) {
   return (
     <div className="mb-6">
       <PageHeader
-        title="테스트 로드맵"
-        description="시스템 사용법 연습을 위한 테스트 로드맵을 생성합니다."
+        title="로드맵 테스트"
+        description="시스템 사용법 연습을 위한 로드맵 테스트을 생성합니다."
         backLink={{ href, label, useBack: true }}
       />
     </div>

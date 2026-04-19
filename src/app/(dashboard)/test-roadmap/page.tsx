@@ -4,7 +4,7 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import TestRoadmapClient from './TestRoadmapClient';
 
 export const metadata = {
-  title: '테스트 로드맵 - KPC AI 로드맵',
+  title: '로드맵 테스트 - KPC AI 로드맵',
   description: 'AI 교육 로드맵 생성 연습',
 };
 

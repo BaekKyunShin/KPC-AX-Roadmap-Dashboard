@@ -60,7 +60,7 @@ export function GalleryCard({ item }: GalleryCardProps) {
               <CardTitle className="text-base leading-tight line-clamp-2 flex-1">
                 {item.title}
               </CardTitle>
-              <TrackBadge track={item.track} size="sm" className="shrink-0" />
+              <TrackBadge track={item.track} className="shrink-0" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs">

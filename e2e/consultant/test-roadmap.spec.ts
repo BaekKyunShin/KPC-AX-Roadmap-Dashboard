@@ -1,11 +1,11 @@
 // e2e/consultant/test-roadmap.spec.ts
-// Phase C-13: 테스트 로드맵 페이지 접근 + 기본 요소 렌더링 (LLM 호출 없음)
+// Phase C-13: 로드맵 테스트 페이지 접근 + 기본 요소 렌더링 (LLM 호출 없음)
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 
-// ─── 테스트 로드맵 페이지 (컨설턴트) ────────────────────────────────────────
+// ─── 로드맵 테스트 페이지 (컨설턴트) ────────────────────────────────────────
 
-test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
+test.describe('로드맵 테스트 페이지 — 컨설턴트', () => {
   test.beforeEach(async ({ consultantPage: page }) => {
     await page.goto('/test-roadmap');
     await page.waitForLoadState('networkidle');
@@ -16,8 +16,8 @@ test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
     await page.goto('/test-roadmap');
     await page.waitForLoadState('networkidle');
 
-    // 페이지 헤더 — "테스트 로드맵" heading 또는 승인 대기 카드
-    const hasHeader = await page.getByRole('heading', { name: '테스트 로드맵' }).isVisible().catch(() => false);
+    // 페이지 헤더 — "로드맵 테스트" heading 또는 승인 대기 카드
+    const hasHeader = await page.getByRole('heading', { name: '로드맵 테스트' }).isVisible().catch(() => false);
     const hasPendingCard = await page.getByText('승인 대기').isVisible().catch(() => false);
 
     // 승인된 컨설턴트이면 헤더가 보이고, 미승인이면 대기 카드가 보임
@@ -37,7 +37,7 @@ test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
 
   test('페이지 기본 요소 렌더링 — 승인된 컨설턴트', async ({ consultantPage: page }) => {
     // 승인된 컨설턴트인 경우에만 메인 폼이 보임
-    const hasMainForm = await page.getByRole('heading', { name: '테스트 로드맵' }).isVisible().catch(() => false);
+    const hasMainForm = await page.getByRole('heading', { name: '로드맵 테스트' }).isVisible().catch(() => false);
 
     if (!hasMainForm) {
       // 미승인 → 대기 카드만 확인하고 종료
@@ -59,9 +59,9 @@ test.describe('테스트 로드맵 페이지 — 컨설턴트', () => {
   });
 });
 
-// ─── 테스트 로드맵 페이지 (운영관리자) ──────────────────────────────────────
+// ─── 로드맵 테스트 페이지 (운영관리자) ──────────────────────────────────────
 
-test.describe('테스트 로드맵 페이지 — 운영관리자', () => {
+test.describe('로드맵 테스트 페이지 — 운영관리자', () => {
   test('OPS 관리자도 접근 가능', async ({ opsPage: page }) => {
     await page.goto('/test-roadmap');
     await page.waitForLoadState('networkidle');
@@ -70,7 +70,7 @@ test.describe('테스트 로드맵 페이지 — 운영관리자', () => {
     await expect(page).not.toHaveURL('/login');
 
     // 페이지 헤더 확인 (CI 환경 클라이언트 컴포넌트 렌더 지연 대비)
-    await expect(page.getByRole('heading', { name: '테스트 로드맵' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: '로드맵 테스트' })).toBeVisible({ timeout: 15_000 });
 
     // OPS 관리자용 뒤로가기 링크
     await expect(page.getByRole('button', { name: /프로젝트 관리로 돌아가기/ })).toBeVisible();
