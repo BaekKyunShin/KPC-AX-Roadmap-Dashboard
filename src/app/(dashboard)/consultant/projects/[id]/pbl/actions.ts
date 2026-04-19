@@ -590,8 +590,9 @@ export async function exportPBLAsHwpxAction(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[exportPBLAsHwpxAction generatePBLHwpx Error]', { baseUrl, error: message });
-      // 로컬 next dev 환경 안내는 hwpx-client에서 throw한 메시지 그대로 표출
-      const isLocalDevFallback = message.includes('로컬 환경에서 실행되지 않습니다');
+      // 로컬 dev 환경 안내(Vercel Python 런타임 설명)는 hwpx-client에서 throw한
+      // 메시지 그대로 표출해 사용자에게 구체적 해결 옵션을 제공한다.
+      const isLocalDevFallback = message.includes('Vercel Python 런타임');
       return {
         success: false,
         error: isLocalDevFallback

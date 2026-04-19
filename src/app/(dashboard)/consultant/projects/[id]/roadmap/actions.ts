@@ -451,7 +451,10 @@ export async function exportRoadmapAsHwpxAction(
         baseUrl,
         error: message,
       });
-      const isLocalDevFallback = message.includes('로컬 환경에서 실행되지 않습니다');
+      // hwpx-client.ts의 로컬 dev fallback 메시지(`Vercel Python 런타임` 키워드
+      // 포함)는 사용자에게 구체적 해결 옵션을 안내하므로 그대로 전달한다.
+      // 그 외 에러는 상세 원인을 숨기고 범용 실패 메시지로 치환.
+      const isLocalDevFallback = message.includes('Vercel Python 런타임');
       return {
         success: false,
         error: isLocalDevFallback

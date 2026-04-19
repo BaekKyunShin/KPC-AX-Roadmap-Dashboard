@@ -173,8 +173,11 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
 
   return (
     <TableRow>
-      <TableCell>
-        <div className="text-sm font-medium text-gray-900">
+      <TableCell className="min-w-0">
+        <div
+          className="text-sm font-medium text-gray-900 truncate"
+          title={project.company_name}
+        >
           {project.company_name}
         </div>
       </TableCell>

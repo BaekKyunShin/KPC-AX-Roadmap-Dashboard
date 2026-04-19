@@ -23,6 +23,7 @@ import type {
 } from '@/lib/schemas/interview-pbl';
 
 import type { PBLHwpxPayload } from './hwpx-client';
+import { sanitizeFileNamePart } from './hwpx-filename';
 
 export interface PBLHwpxPayloadInputs {
   pbl: PBLReportRow;
@@ -31,7 +32,7 @@ export interface PBLHwpxPayloadInputs {
 }
 
 function buildFileName(companyName: string, versionNumber: number): string {
-  const safe = companyName || 'PBL';
+  const safe = sanitizeFileNamePart(companyName, 'PBL');
   return `${safe}_PBL_v${versionNumber}.hwpx`;
 }
 

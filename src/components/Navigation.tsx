@@ -76,6 +76,7 @@ function NavGroupDropdown({
     <div className="relative">
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className={cn(
           'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
           groupActive
@@ -139,6 +140,7 @@ function MobileNavGroup({
     <div>
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className={cn(
           'flex w-full items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
           groupActive
@@ -204,7 +206,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const commandPalette = useCommandPalette();
   const { recentVisits } = useRecentVisits();
 
-  // 바깥 클릭 시 드롭다운 닫기
+  // 바깥 클릭 + Escape 키 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -215,8 +217,19 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpenGroupIndex(null);
+        setIsUserMenuOpen(false);
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const renderRoleBadge = () => {
