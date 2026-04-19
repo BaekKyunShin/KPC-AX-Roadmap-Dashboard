@@ -4543,7 +4543,7 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
    - Task 3.5 에서 준비한 HWPX 브리지 워크플로우(`npm run dev:hwpx:setup` 최초 1회 → `npm run dev:hwpx` + `npm run dev:with-hwpx`) 활성화
    - Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 테스트 계정 각각 로그인. 쿠키·세션 유지.
 3. **순차 실행**: Step 1→11 순서로 시나리오 수행. 각 단계마다 (a) 예상 화면·동작 (b) 실제 결과 (c) 네트워크 오류·콘솔 에러 (d) 스크린샷 기록.
-4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/2026-{YYYY-MM-DD}-session11-playwright-audit.md` 파일로 산출. 우선순위(High/Medium/Low) 분류.
+4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/{YYYY-MM-DD}-session11-playwright-audit.md` 파일로 산출. 우선순위(High/Medium/Low) 분류.
 5. **수정 계획 수립**: High 는 본 Step 내 즉시 수정. Medium 은 시간 여유 있을 때. Low 는 별도 이슈 등록. **수정 계획을 사용자에게 보고 후 승인 받은 뒤 진행.**
 6. **실제 수정**: 계획대로 코드 수정. `npm run validate` 통과 기준.
 7. **재검증**: 수정된 항목을 Playwright MCP 로 재실행해 해결 확인. 감사 리포트 "결과 섹션" 업데이트.
@@ -4564,7 +4564,7 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 - **성능·코드 스멜**: N+1 쿼리, 중복 fetch, SC/CC 경계 오용, 미활용 dynamic import, dead code.
 - **테스트 커버리지**: 신규 스키마·서비스·Server Action 중 테스트 없는 것, 기존 테스트의 스키마 이관 후 mock 누락.
 
-**산출물:** `docs/2026-{YYYY-MM-DD}-session11-code-audit.md` — Step 별 대조표 + 우선순위별 이슈 + 수정 계획.
+**산출물:** `docs/{YYYY-MM-DD}-session11-code-audit.md` — Step 별 대조표 + 우선순위별 이슈 + 수정 계획.
 
 **서브에이전트 활용 권장:**
 - `general-purpose` / `Explore`: Step 별 구현 대조표 병렬 수집

@@ -27,37 +27,36 @@
 **8~12시간** (Task 3.6 Playwright·3.7 코드 감사 추가 반영 — Session 10 종료 시 신설. 감사 결과 대응 시간 별도)
 
 ## 성공 지표
-- [ ] **Task 1-a**: `interview.ts` 잔존 import 이관 (Session 11 실측 18 곳 — `test-roadmap/*`은 Session 11에서 신 스키마로 이관 완료, 잔존은 대부분 `consultant/projects/[id]/interview/*` 실사용 페이지 15개 + 서비스 3개(`roadmap-generator.ts`, `stt.ts`, `roadmap-stt-formatter.ts`)) — `@/lib/schemas/interview-roadmap` 으로 개별 교체
+- [ ] **Task 1-a**: `interview.ts` 잔존 import 이관 (**Session 10 (Step 11) 실측 18 곳** — `test-roadmap/*`은 Session 10 (Step 11)에서 신 스키마로 이관 완료, 잔존은 대부분 `consultant/projects/[id]/interview/*` 실사용 페이지 15개 + 서비스 3개(`roadmap-generator.ts`, `stt.ts`, `roadmap-stt-formatter.ts`)) — `@/lib/schemas/interview-roadmap` 으로 개별 교체
 - [ ] **Task 1-b**: grep 결과 0건 확인 후 `interview.ts` 삭제 + `npm run typecheck` 회귀 0
 - [ ] **Task 2-a**: `roadmap_versions.pbl_course` 코드 레퍼런스 제거 (Session 09 실측: `src/types/database.ts:268`, `consultant/projects/[id]/roadmap/actions.ts`, 테스트 fixture 등) — 선행 필수
 - [ ] **Task 2-b**: `supabase/migrations/066_ofa_cleanup.sql` 작성 + 적용 (**065는 Step 6.5의 `065_add_interview_attachments.sql`가 점유** — 본 Step는 **066**을 사용):
   - `roadmap_versions.pbl_course` DROP COLUMN (chk_pbl_course_size CASCADE 동반 제거 주석 명시)
   - audit/RPC는 마이그 061에서 이미 추가됨 — 본 마이그 추가 항목 0 가능
   - `mcp__supabase__apply_migration` 적용 → `mcp__supabase__list_migrations`로 066 반영 검증
-- [ ] `src/app/api/hwpx-test/route.ts` 제거 (PoC 일회성).
+- [ ] **Task 3**: `src/app/api/hwpx-test/route.ts` 제거 (PoC 일회성).
 - [ ] **Task 3.5 (신규): HWPX 양식 세부 수정** — Session 09 한글 프로그램 검증에서 발견한 세부 수정 사항을 **사용자로부터 재취합**해 일괄 반영. 양식 1번·2번 셀 매핑·라벨·체크박스 위치·병합 처리 정밀 보정 후 한글 프로그램 육안 재검증 통과.
-- [ ] `e2e/workflow/ofa-smoke.spec.ts` 6개 시나리오 작성 + 통과.
-- [ ] **Task 3.6 (신규): Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사** — Session 01~10 의 계획서 §4 각 Step + `docs/prompts/session-0{1..9}-*.md` + `session-10-step11-gallery.md` 를 순서대로 읽고, 각 Step 에서 도입된 핵심 사용자 시나리오를 Playwright MCP 로 실제 브라우저에서 실행·검증. 버그·오류·UX 불편 지점 목록화 → 수정 계획 수립 → 수정 → 재검증. 자세한 절차는 아래 진행 원칙 §3.6.
-- [ ] **Task 3.7 (신규): Session 1~10 코드 레벨 회귀 감사** — Task 3.6 과 **별도·보완** 관계. 각 Session 의 마스터 계획서 Step + 프롬프트 성공 지표를 **코드와 1:1 대조**하여 구현 누락·부분 구현·편차·코드 레벨 버그·에러 처리 누락·성능 병목·테스트 커버리지 공백·보안 체크 누락을 정적으로 식별. 자세한 절차는 아래 진행 원칙 §3.7.
-- [ ] performance-engineer 보고서 (번들 사이즈·인터뷰 위저드 렌더·HWPX 콜드스타트·갤러리 통합 쿼리) — Critical 0건.
-- [ ] security-auditor 보고서 (트랙 격리·HWPX_API_SECRET 동작·Storage signed URL·MIME 검증) — Critical 0건.
-- [ ] `mcp__supabase__get_advisors` 결과: RLS·성능 경고 0건.
-- [ ] 문서 갱신: `docs/ARCHITECTURE.md`·`docs/RLS.md`·`CLAUDE.md` (필요 시).
-- [ ] `web-design-guidelines` 스킬 최종 UI 감사 통과.
+- [ ] **Task 3.6 (신규): Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사** — Session 01~10 의 계획서 §4 각 Step + `docs/prompts/session-0{0..9}-*.md` + `session-05b-*.md` + `session-10-step11-gallery.md` 를 순서대로 읽고, 각 Step 에서 도입된 핵심 사용자 시나리오를 Playwright MCP 로 실제 브라우저에서 실행·검증. 버그·오류·UX 불편 지점 목록화 → 수정 계획 수립 → 수정 → 재검증. 자세한 절차는 아래 진행 원칙.
+- [ ] **Task 3.7 (신규): Session 1~10 코드 레벨 회귀 감사** — Task 3.6 과 **별도·보완** 관계. 각 Session 의 마스터 계획서 Step + 프롬프트 성공 지표를 **코드와 1:1 대조**하여 구현 누락·부분 구현·편차·코드 레벨 버그·에러 처리 누락·성능 병목·테스트 커버리지 공백·보안 체크 누락을 정적으로 식별. 자세한 절차는 아래 진행 원칙.
+- [ ] **Task 4**: `e2e/workflow/ofa-smoke.spec.ts` 6개 시나리오 작성 + 통과.
+- [ ] **Task 5**: performance-engineer 보고서 (번들 사이즈·인터뷰 위저드 렌더·HWPX 콜드스타트·갤러리 통합 쿼리) — Critical 0건.
+- [ ] **Task 6**: security-auditor 보고서 (트랙 격리·HWPX_API_SECRET 동작·Storage signed URL·MIME 검증) — Critical 0건 + `mcp__supabase__get_advisors` 결과 RLS·성능 경고 0건.
+- [ ] **Task 7**: 문서 갱신 — ARCHITECTURE.md(트랙 분리·HWPX 아키텍처·공지 게시판·HWPX 로컬 브리지), RLS.md(pbl_reports·pbl_likes·notices·notice_attachments·interview_attachments 정책), CLAUDE.md(Task 3.6·3.7 결과 기반 추가 갱신만 — HWPX 브리지 워크플로우는 Session 10 Step 11에서 이미 반영됨).
+- [ ] **Task 8**: `web-design-guidelines` 스킬 최종 UI 감사 통과.
 - [ ] **Step 8(Session 7) UI/UX 원칙 일관 적용 확인** (무작위 5페이지 샘플링):
   - 모든 폼 필드 `FormField` 래핑
   - **인터뷰 단계에 한해** 양식 작성 가이드 `GuideNote` 섹션 **하단** 배치 (산출물은 LLM 생성이라 해당 없음)
   - 텍스트 입력 Grid 2열 이하
   - 양식 원문 1:1 라벨 매칭
-- [ ] `npm run validate && npm run build && npm run test:e2e` 모두 통과.
+- [ ] **Task 9**: `npm run validate && npm run build && npm run test:e2e` 모두 통과 + `.venv-hwpx/bin/pytest api/hwpx/` PASS.
 - [ ] **산인공 양식 1번 QA 체크리스트** (계획서 §4 Step 12) 전 항목 ✅ — 로드맵 HWPX 실물 3건 이상 한글 프로그램에서 양식 PDF와 겹쳐 비교, 부제 라벨·NCS 박스·수립 방법·매트릭스 단순 표 전환 모두 확인.
 - [ ] **산인공 양식 2번 QA 체크리스트** 전 항목 ✅ — PBL HWPX 실물 3건 이상, Ⅰ~Ⅴ장 + 결과보고서(수행일지) 전 섹션 + 교과목 프로파일 강사투입시간 합=훈련시간 + 결과평가 4종 설문 문항 수 고정 (5/3/5/4) 확인.
-- [ ] 배포 체크리스트(§8) 모든 항목 ✅:
+- [ ] **Task 10**: 배포 체크리스트(§8) 모든 항목 ✅:
   - 환경변수 (`HWPX_API_SECRET`·`VERCEL_AUTOMATION_BYPASS_SECRET`·`LLM_API_KEY`·`SUPABASE_*` 등) 등록 확인
   - Storage 버킷 프로덕션 생성 (`notice-attachments`, `interview-attachments`)
   - 마이그레이션 적용 순서 **060→061→062→063→064→065→066** (065 = Step 6.5 interview_attachments, 066 = Step 12 legacy 정리)
   - pg_dump 백업 준비
-- [ ] PR `feat(ofa): 산인공 공식 양식 정렬 통합` (base = `main`) 생성 — **팀장 직접 승인 + 머지 = 사람만 가능, Claude 자동 머지 절대 금지**.
+- [ ] **최종 PR** `feat(ofa): 산인공 공식 양식 정렬 통합` (base = `main`) 생성 — **팀장 직접 승인 + 머지 = 사람만 가능, Claude 자동 머지 절대 금지**.
 
 ## 다음 세션 이동 조건
 - 본 세션이 마지막. 사람 승인·머지 후 OFA 프로젝트 종료.
@@ -96,8 +95,8 @@
 11. mcp__supabase__list_migrations  → 060~065 모두 적용 + **066 미적용** 확인
 12. mcp__supabase__get_advisors  → 현재 advisor 경고 상태 baseline
 13. echo $HWPX_API_SECRET || vercel env ls | grep HWPX  → 환경변수 등록 확인
-14. ls .venv-hwpx scripts/dev-hwpx-server.py && grep dev:hwpx package.json  → Session 11에서 도입한 HWPX 로컬 브리지 워크플로우 존재 확인
-15. npm run validate && npm run build && npm run test:e2e  → baseline 통과
+14. ls scripts/dev-hwpx-server.py && grep dev:hwpx package.json  → Session 10 Step 11 에서 도입한 HWPX 로컬 브리지 스크립트·npm 스크립트 존재 확인. (`.venv-hwpx/` 는 최초 실행 시 없을 수 있음 — 없으면 `npm run dev:hwpx:setup` 실행)
+15. npm run validate && npm run build  → baseline 정적 검증 (E2E 는 무겁고 baseline 목적엔 과하므로 Task 9에서만 실행)
 
 **HWPX 로컬 테스트 워크플로우 (직전 세션 Session 10 = Step 11 = OFA-11 에서 도입 — Task 3.5·3.6·4·E2E 에서 필수)**:
 - `npm run dev:hwpx:setup` (최초 1회, `.venv-hwpx` 생성 + python-hwpx·lxml 설치)
@@ -112,7 +111,7 @@
 > 계획서에서 해당 섹션은 `grep -n '^## 0\.\|^### Step 12:\|^## 6\.\|^## 7\.\|^## 8\.' docs/plans/2026-04-14-official-form-alignment.md` 로 정확한 줄 위치 찾아 Read.
 
 - 계획서 §0: 안전장치 (a)~(d) — 본 세션이 이 보장의 최종 게이트
-- 계획서 §4 Step 12: 본 세션 10 Task + 마이그 **066** (065는 Step 6.5가 점유)
+- 계획서 §4 Step 12: 본 세션 **15 Task** (1-a/1-b/2-a/2-b 분할 + 3.5/3.6/3.7 신규 + 기존 3·4·5·6·7·8·9·10) + 마이그 **066** (065는 Step 6.5가 점유)
 - 계획서 §6: 리스크 매트릭스 — 마지막 한 번 검토
 - 계획서 §7: 롤백 전략
 - 계획서 §8: 배포 체크리스트 — 본 세션이 모든 항목 ✅화
@@ -123,45 +122,51 @@
 - (c) Vercel Production Branch = main 단일 고정 재확인 (Vercel 대시보드 → Settings → Git → Production Branch 직접 확인. `vercel inspect`는 부적합)
 - (d) main PR은 팀장 직접 승인. Claude 자동 머지·force push 금지
 
-진행 원칙:
-1. feature/ofa-12-final-qa-docs 브랜치
-2. **Task 1 (interview.ts 제거, 두 단계로 분할)**:
-   - **Task 1-a**: 먼저 `grep -rhE "import (type )?\{[^}]*\} from '@/lib/schemas/interview'" src/ e2e/` 로 실제 import되는 심볼 목록 수집. Session 11 실측(18 파일): `consultant/projects/[id]/interview/*` 15 파일(actions.ts, InterviewClient.tsx + 각 Step 컴포넌트·테스트) + `src/lib/services/roadmap/roadmap-generator.ts` + `src/lib/services/stt.ts` + `src/lib/services/roadmap/roadmap-stt-formatter.ts`. (Session 09 시점과 달리 `test-roadmap/*`는 Session 11에서 신 스키마로 재작성되어 제외.) 이 심볼들은 `interview-roadmap.ts`에 **동일 이름으로 존재하지 않음** → 이관 매핑 표 작성(구 이름 → 새 이름/새 위치 또는 "유지"/"삭제" 결정). 파일별 import 교체 후 회귀 확인.
+진행 원칙 (Task 번호 순 — 각 Task 완료 후 다음 진행):
+
+**0. 브랜치 생성**: `feature/ofa-12-final-qa-docs` (base = `feature/official-form-alignment`)
+
+**Task 1 (interview.ts 제거, 두 단계로 분할)**:
+   - **Task 1-a**: 먼저 `grep -rhE "import (type )?\{[^}]*\} from '@/lib/schemas/interview'" src/ e2e/` 로 실제 import되는 심볼 목록 수집. Session 11 실측(18 파일): `consultant/projects/[id]/interview/*` 15 파일(actions.ts, InterviewClient.tsx + 각 Step 컴포넌트·테스트) + `src/lib/services/roadmap/roadmap-generator.ts` + `src/lib/services/stt.ts` + `src/lib/services/roadmap/roadmap-stt-formatter.ts`. (Session 09 시점과 달리 `test-roadmap/*`는 Session 10 Step 11에서 신 스키마로 재작성되어 제외.) 이 심볼들은 `interview-roadmap.ts`에 **동일 이름으로 존재하지 않음** → 이관 매핑 표 작성(구 이름 → 새 이름/새 위치 또는 "유지"/"삭제" 결정). 파일별 import 교체 후 회귀 확인.
    - **Task 1-b**: grep 결과 0건 검증 후 `interview.ts` 삭제 + `npm run typecheck && npm run test` 회귀 0
-3. **Task 2 (마이그 066 + pbl_course 정리, 두 단계로 분할)**:
+
+**Task 2 (마이그 066 + pbl_course 정리, 두 단계로 분할)**:
    - **Task 2-a (선행 필수)**: `roadmap_versions.pbl_course` 코드 레퍼런스 제거. Session 09 실측: `src/types/database.ts:268`, `consultant/projects/[id]/roadmap/actions.ts`, `test-roadmap/actions.test.ts`, `consultant/projects/[id]/roadmap/actions.test.ts`, `gallery/actions/queries.ts`·`queries.test.ts` 등. 회귀 테스트 0건 확인.
    - **Task 2-b (마이그 적용)** — 065는 Step 6.5가 점유:
-   - 파일명: supabase/migrations/**066_ofa_cleanup.sql**
-   - roadmap_versions.pbl_course DROP COLUMN (chk_pbl_course_size CHECK 제약은 DROP COLUMN으로 자동 제거 — 주석 명시)
-   - audit_action ENUM 추가 항목은 마이그 061에서 이미 처리됨 — 본 마이그에서 발견된 추가 값만 (없으면 빈 블록)
-   - finalize_pbl RPC도 마이그 061에서 처리됨
-   - mcp__supabase__apply_migration로 적용 + mcp__supabase__list_migrations 로 066 반영 검증
-   - src/types/database.ts는 **수동 편집 파일** — generate_typescript_types 전체 덮어쓰기 금지. enum 확장분(있으면)만 수기 병합
-4. Task 3: src/app/api/hwpx-test/route.ts 제거 (PoC 일회성)
-4.5. **Task 3.5 (HWPX 양식 세부 수정 — Session 09 한글 프로그램 검증 피드백 일괄 반영)**:
+     - 파일명: `supabase/migrations/**066_ofa_cleanup.sql**`
+     - `roadmap_versions.pbl_course` DROP COLUMN (chk_pbl_course_size CHECK 제약은 DROP COLUMN 으로 자동 제거 — 주석 명시)
+     - audit_action ENUM 추가 항목은 마이그 061에서 이미 처리됨 — 본 마이그에서 발견된 추가 값만 (없으면 빈 블록)
+     - finalize_pbl RPC도 마이그 061에서 처리됨
+     - `mcp__supabase__apply_migration` 로 적용 + `mcp__supabase__list_migrations` 로 066 반영 검증
+     - `src/types/database.ts` 는 **수동 편집 파일** — `generate_typescript_types` 전체 덮어쓰기 금지. enum 확장분(있으면)만 수기 병합
+
+**Task 3**: `src/app/api/hwpx-test/route.ts` 제거 (PoC 일회성)
+
+**Task 3.5 (HWPX 양식 세부 수정 — Session 09 한글 프로그램 검증 피드백 일괄 반영)**:
    - 본 Task 진입 시 **사용자에게 구체 피드백 목록 재요청** (Session 09 종료 시 "수정 필요 사항이 있지만 Step 12에서 일괄 처리" 합의됨)
    - 대상 위치: `api/hwpx/generate.py` (`_generate_roadmap`/`_generate_pbl` 셀 좌표), `api/hwpx/_placeholders_*.py` (placeholder 맵·반복 배열), `templates/hwpx/*.hwpx` (필요 시 템플릿 수정), 각 테스트 파일
    - **주의사항 (직전 세션 Session 10 = Step 11 에서 파악)**:
      - `src/lib/services/export/hwpx/hwpx-client.ts` 의 에러 메시지를 변경할 경우 `src/app/(dashboard)/consultant/projects/[id]/{roadmap,pbl}/actions.ts` 의 `isLocalDevFallback = message.includes('Vercel Python 런타임')` 키워드와 동기화 필수 (Session 10 회귀 사례 있음).
      - 파일명 생성 규칙은 `src/lib/services/export/hwpx/hwpx-filename.ts` (공통 `sanitizeFileNamePart`) 로 중앙화됨 → 신규 규칙 추가 시 여기만 수정.
-   - 검증: pytest PASS + **로컬 HWPX 브리지(위 사전 검증 14번 워크플로우)** 또는 Preview 배포 후 Playwright MCP로 HWPX 재다운로드 + 한글 프로그램 육안 검수 **사용자 승인 필수**
+   - 검증: pytest PASS + **로컬 HWPX 브리지 워크플로우** (사전 검증에서 안내) 또는 Preview 배포 후 Playwright MCP로 HWPX 재다운로드 + 한글 프로그램 육안 검수 **사용자 승인 필수**
    - 미통과 시 재수정 반복. 완료 없이는 Task 4 이후 진행 금지
-4.6. **Task 3.6 (Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사 — 신규)**:
+
+**Task 3.6 (Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사 — 신규)**:
    - 목적: Step 1~11 전 세션에서 도입된 실 사용자 기능이 현 브랜치(`feature/official-form-alignment`) 최신 상태에서 정상 동작하는지, UX/UI 불편·버그·오류가 없는지 실제 브라우저에서 확인.
-   - 참고 입력 문서 (반드시 정독 — 각 Step 의 "성공 지표" 기반으로 시나리오 추출):
-     - 마스터 계획서 `docs/plans/2026-04-14-official-form-alignment.md` §4 Step 1~11 각각
+   - 참고 입력 문서 (반드시 정독 — 각 Step 의 "성공 지표" 기반으로 시나리오 추출 / **총 13 문서**):
+     - 마스터 계획서 `docs/plans/2026-04-14-official-form-alignment.md` §4 Step 1~11 각각 (1개 파일 안의 11 Step 섹션)
      - `docs/prompts/session-00-overview.md` (전체 개요)
-     - `docs/prompts/session-01-step1-setup.md` ~ `session-09-step10-pbl-hwpx.md`
+     - `docs/prompts/session-01-step1-setup.md` ~ `session-09-step10-pbl-hwpx.md` (9개 파일)
      - `docs/prompts/session-05b-step6.5-form-compliance.md`
      - `docs/prompts/session-10-step11-gallery.md`
    - 테스트 계정:
      - **컨설턴트**: `kpc@test.com` / `aaaa0000`
      - **운영관리자**: `son@test.com` / `aaaa00000`
    - 감사 절차 (엄수):
-     1. **시나리오 추출**: 위 11개 문서 읽고 각 Step 의 핵심 사용자 시나리오 목록화(예: 로그인, 프로젝트 생성, 컨설턴트 배정, 로드맵 인터뷰 6단계, 로드맵 생성·편집·확정, PDF/XLSX/HWPX 다운로드, PBL 인터뷰 9단계, PBL 보고서 생성·편집·확정, 갤러리 트랙 필터·좋아요·공유, 공지사항 작성·첨부, /test-roadmap·/test-pbl, OPS 프로젝트 관리·감사로그·쿼터 등).
-     2. **환경 준비**: 사전 검증 14번 HWPX 브리지 워크플로우 실행. Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 계정 각각 로그인. 쿠키·세션 유지.
+     1. **시나리오 추출**: 위 13 문서 읽고 각 Step 의 핵심 사용자 시나리오 목록화(예: 로그인, 프로젝트 생성, 컨설턴트 배정, 로드맵 인터뷰 6단계, 로드맵 생성·편집·확정, PDF/XLSX/HWPX 다운로드, PBL 인터뷰 9단계, PBL 보고서 생성·편집·확정, 갤러리 트랙 필터·좋아요·공유, 공지사항 작성·첨부, /test-roadmap·/test-pbl, OPS 프로젝트 관리·감사로그·쿼터 등).
+     2. **환경 준비**: 사전 검증에서 안내한 HWPX 브리지 워크플로우(`npm run dev:hwpx:setup` 최초 1회 → `npm run dev:hwpx` + `npm run dev:with-hwpx` 병렬 실행) 활성화. Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 계정 각각 로그인. 쿠키·세션 유지.
      3. **순차 실행**: Step 1→11 순서로 시나리오 수행. 각 단계마다 (a) 예상 화면·동작 (b) 실제 결과 (c) 네트워크 오류·콘솔 에러 (d) 스크린샷(필요 시) 기록.
-     4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/2026-*-session11-playwright-audit.md` 에 우선순위(High/Medium/Low)로 기록.
+     4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/{YYYY-MM-DD}-session11-playwright-audit.md` 에 우선순위(High/Medium/Low)로 기록 ({YYYY-MM-DD} = 본 Task 진입일).
      5. **수정 계획 수립**: High 는 본 Step 내 즉시 수정. Medium 은 시간 여유 있을 때. Low 는 별도 이슈 등록. 수정 계획을 사용자에게 보고 후 승인 받은 뒤 진행.
      6. **실제 수정**: 계획대로 코드 수정. `npm run validate` 통과 기준.
      7. **재검증**: 수정된 항목을 Playwright MCP 로 재실행해 해결 확인. 최종 리포트 업데이트.
@@ -177,11 +182,12 @@
      - **키보드 접근성**: Tab 순서·Escape·Enter — 네비 드롭다운·모달·폼
    - 미통과 시: High 전수 해결 전에는 Task 4 이후 진행 보류 (performance·security 감사 결과와 병합해 최종 수정 PR 로 묶을 수 있음).
    - 본 Task 는 **사용자 승인 게이트**: Playwright 감사 결과 요약 + 수정 계획을 사용자에게 보고하고 승인받은 뒤 수정 실행.
-4.7. **Task 3.7 (Session 1~10 코드 레벨 회귀 감사 — 신규)**:
+
+**Task 3.7 (Session 1~10 코드 레벨 회귀 감사 — 신규)**:
    - 목적: Task 3.6 이 **런타임·UX** 검증이라면, 본 Task 는 **정적·구현 적합성** 검증. 각 Session 이 계획서 성공 지표대로 코드에 반영되었는지, 누락·편차·코드 레벨 버그가 없는지 1:1 대조.
-   - 참고 입력: Task 3.6 과 동일한 13 문서 (마스터 계획서 §4 Step 1~11 각각 + `docs/prompts/session-0{0..9}-*.md` + `session-05b-*.md` + `session-10-*.md`).
+   - 참고 입력: Task 3.6 과 동일한 13 문서.
    - 감사 절차 (엄수):
-     1. **Step 별 대조표 작성**: 각 Session 프롬프트의 "성공 지표" 체크박스를 표로 옮기고, 각 항목 옆에 실제 코드 위치(파일·심볼·라인)·구현 상태(✅/⚠️/❌)·메모 컬럼 기재. 산출: `docs/2026-{YYYY-MM-DD}-session11-code-audit.md`.
+     1. **Step 별 대조표 작성**: 각 Session 프롬프트의 "성공 지표" 체크박스를 표로 옮기고, 각 항목 옆에 실제 코드 위치(파일·심볼·라인)·구현 상태(✅/⚠️/❌)·메모 컬럼 기재. 산출: `docs/{YYYY-MM-DD}-session11-code-audit.md` ({YYYY-MM-DD} = 본 Task 진입일).
      2. **패턴 준수 감사** — 프로젝트 표준과 비교:
         - Server Actions: 세션 확인 → 역할 권한 → Zod 검증 → 비즈니스 → `ActionResult<T>` 5단계 패턴 일관성 (`.claude/skills/check-server-action` 참고)
         - Supabase: 4종 클라이언트(`client`/`server`/`admin`/`middleware`) 적재적소 사용, admin 오용(RLS 우회 남용) 없는지
@@ -219,23 +225,32 @@
      - **선·후 독립 가능**: Task 3.6 과 병렬로 진행해도 됨. 단 Task 3.6 에서 발견된 이슈 중 "원인이 코드 구조에 있는 것"은 Task 3.7 감사 결과와 교차 검토해 근본 원인 확정.
      - 두 Task 모두 완료 후 수정 PR 을 합치거나, 큰 이슈는 별도 sub-PR 로 분리.
    - 본 Task 는 **사용자 승인 게이트**: 대조표 + 우선순위별 이슈 요약 + 수정 계획을 사용자에게 보고하고 승인받은 뒤 수정 실행.
-5. Task 4: Agent(subagent_type:"test-automator", ...) 디스패치 — e2e/workflow/ofa-smoke.spec.ts 6개 시나리오 (계획서 본문 그대로)
-6. Task 5: Agent(subagent_type:"performance-engineer", ...) 성능 감사. Critical 발견 시 별도 PR로 fix
-7. Task 6: Agent(subagent_type:"security-auditor", ...) 최종 보안 감사 (RLS·트랙 격리·HWPX 인증·Storage signed URL·MIME 검증). Critical 발견 시 즉시 차단·수정
-8. Task 7: 문서 갱신 (ARCHITECTURE.md·RLS.md·CLAUDE.md). 트랙 분리·HWPX·게시판 구조 반영
-9. Task 8: web-design-guidelines 스킬로 UI 최종 감사
+
+**Task 4**: `Agent(subagent_type:"test-automator", ...)` 디스패치 — `e2e/workflow/ofa-smoke.spec.ts` 6개 시나리오 (계획서 본문 그대로)
+
+**Task 5**: `Agent(subagent_type:"performance-engineer", ...)` 성능 감사. Critical 발견 시 별도 PR 로 fix
+
+**Task 6**: `Agent(subagent_type:"security-auditor", ...)` 최종 보안 감사 (RLS·트랙 격리·HWPX 인증·Storage signed URL·MIME 검증). Critical 발견 시 즉시 차단·수정. + `mcp__supabase__get_advisors` 로 Supabase advisor 경고 0건 확인.
+
+**Task 7**: 문서 갱신 — 구체 범위:
+   - **`docs/ARCHITECTURE.md`**: 트랙 분리 아키텍처 / HWPX 생성 파이프라인 (Node 클라이언트 → Python Function) / 공지 게시판 구조 / HWPX 로컬 브리지 (scripts/dev-hwpx-server.py + next.config.ts rewrites) / 갤러리 통합 쿼리 / 공용 디자인 키트 위치
+   - **`docs/RLS.md`**: `pbl_reports`·`pbl_likes`·`notices`·`notice_attachments`·`interview_attachments` 정책 각각 명시 (역할별 SELECT/INSERT/UPDATE/DELETE 매트릭스)
+   - **`CLAUDE.md`**: HWPX 로컬 워크플로우·네비 구조·TrackBadge는 Session 10 Step 11 에서 이미 반영됨 → Task 3.6·3.7 결과 기반으로 추가 보완할 것만 수기 추가. 전면 재작성 금지.
+
+**Task 8**: `web-design-guidelines` 스킬로 UI 최종 감사
    - **직전 세션(Session 10 = Step 11 = OFA-11) 변경 체크포인트**:
      - **컨설턴트 네비 구조**가 기존 flat 링크 4개 → 공지사항 flat + 워크스페이스·라이브러리 드롭다운 2개 (OPS 와 동일 패턴). 모바일은 아코디언.
      - 드롭다운 UX: (a) flat 링크 클릭 시 열린 드롭다운 닫힘, (b) `aria-expanded`, (c) Escape 키로 닫기, (d) 바깥 클릭 닫기.
      - 공용 `TrackBadge` (`src/components/ui/TrackBadge.tsx`) 사용 일관성 — 갤러리 카드·프로젝트 테이블·상세 페이지에서 size prop 일관되게 사용.
      - `/test-roadmap`·`/test-pbl` 은 프로덕션 인터뷰 폼과 동일 Step 컴포넌트를 재사용하므로 UI/UX 원칙 자동 준수.
      - HWPX 파일명은 `src/lib/services/export/hwpx/hwpx-filename.ts` 공통 `sanitizeFileNamePart` 로 중앙화.
-10. Task 9: npm run validate && npm run build && npm run test:e2e 모두 통과
-11. Task 10:
-    a. 본 Step의 sub-PR 생성·머지 (gh pr create --base feature/official-form-alignment --title "feat(ofa-12): 최종 QA + 문서")
-    b. mcp__supabase__get_advisors로 RLS·성능 경고 0건 확인
-    c. 배포 체크리스트(§8) 전체 항목 자가 확인 + 사용자 보고
-    d. 최종 main PR 생성:
+
+**Task 9**: `npm run validate && npm run build && npm run test:e2e` 모두 통과 + `.venv-hwpx/bin/pytest api/hwpx/` PASS
+
+**Task 10**: sub-PR + main PR 생성
+   a. 본 Step 의 sub-PR 생성·머지: `gh pr create --base feature/official-form-alignment --head feature/ofa-12-final-qa-docs --title "feat(ofa-12): 최종 QA + 문서"`
+   b. 배포 체크리스트(§8) 전체 항목 자가 확인 + 사용자 보고
+   c. 최종 main PR 생성:
        gh pr create --base main --head feature/official-form-alignment \
          --title "feat(ofa): 산인공 공식 양식 정렬 통합" \
          --body "$(cat <<'EOF'
@@ -257,12 +272,12 @@
        (065 = Step 6.5 interview_attachments, 066 = Step 12 legacy 정리)
        EOF
        )"
-    e. 본 PR 머지는 사용자(팀장)만 수동 수행. Claude는 절대 머지하지 않음
+   d. 본 PR 머지는 사용자(팀장)만 수동 수행. Claude 는 절대 머지하지 않음
 
 === 자동 진행 vs 승인 요청 경계 (Step 12는 신중) ===
 - 자동 진행: Task 1~9 (정리·마이그·E2E·문서) — 단 **Task 3.5·3.6·3.7 는 사용자 승인이 게이트**
 - 승인 요청 (즉시 중단):
-  - Task 1-a: interview.ts 잔존 import 발견 시 (Session 11 실측 18 파일 — `consultant/projects/[id]/interview/*` 15 개 + 서비스 3 개; 해당 파일을 먼저 갱신해야)
+  - Task 1-a: interview.ts 잔존 import 발견 시 (Session 10 (Step 11) 실측 18 파일 — `consultant/projects/[id]/interview/*` 15 개 + 서비스 3 개; 해당 파일을 먼저 갱신해야)
   - Task 2-a: pbl_course 코드 레퍼런스 선제거 누락 시 (Session 09 실측 src/types/database.ts 포함 5+ 곳 — DROP COLUMN 전 필수)
   - **Task 3.5: HWPX 세부 수정 사용자 피드백 목록 재취합 + 수정 결과 한글 검수 통과 여부** — 사용자가 "OK"할 때까지 다음 Task 진행 금지
   - **Task 3.6: Session 1~10 Playwright 감사 결과 요약 + 수정 계획 보고** — 사용자가 수정 범위에 "OK"할 때까지 실제 수정 시작 금지. High 이슈 미해결 시 Task 4 이후 진행 보류.
