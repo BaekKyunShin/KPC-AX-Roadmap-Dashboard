@@ -8,6 +8,10 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:vercel": "vercel dev",
+    "dev:hwpx:setup": "python3 -m venv .venv-hwpx && .venv-hwpx/bin/pip install --upgrade pip && .venv-hwpx/bin/pip install -r api/hwpx/requirements.txt",
+    "dev:hwpx": ".venv-hwpx/bin/python3 scripts/dev-hwpx-server.py",
+    "dev:with-hwpx": "HWPX_DEV_PROXY_URL=http://localhost:3010 next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",

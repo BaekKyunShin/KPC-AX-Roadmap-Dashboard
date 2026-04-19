@@ -23,12 +23,12 @@ export default function MonthlyCompletionChart({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <TrendingUp className="h-5 w-5 text-emerald-600" />
-          월별 로드맵 확정 현황
+          월별 양식 확정 현황
         </CardTitle>
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
-          <div role="img" aria-label="월별 로드맵 확정 현황 바 차트">
+          <div role="img" aria-label="월별 양식 확정 현황 바 차트">
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart data={data}>
               <XAxis

@@ -84,7 +84,7 @@ describe('StatusDistributionChart', () => {
       expect(screen.getByText('인터뷰 대기')).toBeInTheDocument();
       expect(screen.getByText('인터뷰 완료')).toBeInTheDocument();
       expect(screen.getByText('로드맵 작성 중')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 완료')).toBeInTheDocument();
+      expect(screen.getByText('양식 확정')).toBeInTheDocument();
     });
 
     it('범례에 건수를 표시한다', () => {

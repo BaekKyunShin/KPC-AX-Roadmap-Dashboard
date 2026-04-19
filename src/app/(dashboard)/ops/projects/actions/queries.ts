@@ -4,6 +4,8 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { getWorkflowStepIndex, OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
+import type { ProjectTrack } from '@/lib/constants/tracks';
+import { inferTrack } from '@/lib/utils/project-track';
 
 /** Supabase 조인 결과가 배열/단일 객체 모두 가능 — 첫 번째 항목 추출 */
 function unwrapJoinResult<T>(value: T | T[]): T | null {
@@ -149,7 +151,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   // 1. 프로젝트 기본 정보 (선행 필수 — 존재하지 않으면 조기 반환)
   const { data: project, error: projectError } = await auth.supabase
     .from('projects')
-    .select('id, company_name, status, created_at')
+    .select('id, company_name, status, track, created_at')
     .eq('id', projectId)
     .single();
 
@@ -230,6 +232,9 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
 
   // 워크플로우 단계 인덱스 (DIAGNOSED와 MATCH_RECOMMENDED는 같은 단계)
   const currentStepIndex = getWorkflowStepIndex(project.status);
+  const projectTrack = inferTrack((project as { track?: string }).track);
+  const draftStepLabel = projectTrack === 'PBL' ? 'PBL 초안 생성' : '로드맵 초안 생성';
+  const finalStepLabel = projectTrack === 'PBL' ? 'PBL 최종 확정' : '로드맵 최종 확정';
 
   // 타임라인 구성 (6단계 - 워크플로우 기준)
   // - isCompleted: 해당 단계까지 완료됨 (currentStepIndex >= stepIndex)
@@ -276,7 +281,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     },
     {
       step: 'ROADMAP_DRAFTED',
-      label: '로드맵 초안 생성',
+      label: draftStepLabel,
       date: roadmapDraft?.created_at || null,
       detail: roadmapDraft?.version_number
         ? `버전 ${roadmapDraft.version_number}`
@@ -286,7 +291,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     },
     {
       step: 'FINALIZED',
-      label: '로드맵 최종 확정',
+      label: finalStepLabel,
       date: roadmapFinal?.finalized_at || null,
       isCompleted: currentStepIndex >= 5,
       isCurrent: currentStepIndex + 1 === 5, // ROADMAP_DRAFTED(4)일 때 current
@@ -322,6 +327,7 @@ export interface ProjectWithTimeline {
   company_name: string;
   industry: string;
   status: string;
+  track: ProjectTrack;
   created_at: string;
   updated_at: string;
   contact_email: string;
@@ -348,6 +354,7 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       company_name,
       industry,
       status,
+      track,
       created_at,
       updated_at,
       contact_email,
@@ -390,6 +397,7 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       company_name: p.company_name,
       industry: p.industry,
       status: p.status,
+      track: inferTrack(p.track),
       created_at: p.created_at,
       updated_at: p.updated_at,
       contact_email: p.contact_email,

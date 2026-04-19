@@ -23,6 +23,11 @@ export default async function RoadmapPage({
     fetchProjectInfo(id),
   ]);
 
+  // PBL 트랙 프로젝트가 /roadmap 으로 들어오면 상세로 돌려보냄 (PBL 페이지 분기 대칭)
+  if (projectInfoResult.success && projectInfoResult.data.track === 'PBL') {
+    redirect(`/consultant/projects/${id}`);
+  }
+
   const companyName = projectInfoResult.success && projectInfoResult.data
     ? projectInfoResult.data.companyName
     : '';

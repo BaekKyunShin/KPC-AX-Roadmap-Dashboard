@@ -18,9 +18,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { GalleryCard } from '@/components/gallery/GalleryCard';
 import { AdminFilters } from '@/components/gallery/AdminFilters';
+import { TrackFilter, type TrackFilterValue } from '@/components/gallery/TrackFilter';
 import { PROJECT_INDUSTRIES } from '@/lib/constants/industry';
 import { useDebounce } from '@/hooks/useDebounce';
-import { fetchGalleryRoadmaps } from '../actions';
+import { fetchGalleryItems } from '../actions';
 import type { GalleryRoadmapItem, GalleryPaginatedResult } from '../actions';
 
 const DEFAULT_FILTER_VALUE = 'all';
@@ -75,6 +76,10 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
   const [sort, setSort] = useState(
     urlSearchParams.get('sort') || 'latest'
   );
+  const rawTrack = urlSearchParams.get('track');
+  const [track, setTrack] = useState<TrackFilterValue>(
+    rawTrack === 'ROADMAP' || rawTrack === 'PBL' ? rawTrack : 'ALL'
+  );
 
   const debouncedSearch = useDebounce(searchInput, 300);
 
@@ -96,7 +101,7 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
       params[key] = value;
     });
 
-    fetchGalleryRoadmaps(params).then((result) => {
+    fetchGalleryItems(params).then((result) => {
       if (cancelled) return;
       if (result.success) {
         setItems(result.data.items);
@@ -146,11 +151,17 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
     updateParams({ sort: value, page: '1' });
   };
 
+  const handleTrackChange = (value: TrackFilterValue) => {
+    setTrack(value);
+    updateParams({ track: value === 'ALL' ? '' : value, page: '1' });
+  };
+
   const handleResetFilters = () => {
     isResettingRef.current = true;
     setSearchInput('');
     setIndustry(DEFAULT_FILTER_VALUE);
     setSort('latest');
+    setTrack('ALL');
     router.push(pathname);
     setTimeout(() => { isResettingRef.current = false; }, 500);
   };
@@ -158,21 +169,27 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
   const hasFilters =
     debouncedSearch ||
     industry !== DEFAULT_FILTER_VALUE ||
-    sort !== 'latest';
+    sort !== 'latest' ||
+    track !== 'ALL';
 
   return (
     <div className="space-y-4">
       {/* 검색 및 필터 */}
       <Card>
         <CardContent className="p-4">
+          {/* 트랙 필터 (토글형) */}
+          <div className="mb-3">
+            <TrackFilter value={track} onChange={handleTrackChange} />
+          </div>
+
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="로드맵 검색 (기업명, 업종, 키워드...)"
-                aria-label="로드맵 검색"
+                placeholder="검색 (기업명, 업종, 키워드...)"
+                aria-label="검색"
                 className="pl-9"
               />
             </div>
@@ -225,6 +242,13 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
               {sort !== 'latest' && (
                 <FilterBadge label="정렬" value={SORT_OPTIONS.find((o) => o.value === sort)?.label ?? ''} onClear={() => handleSortChange('latest')} />
               )}
+              {track !== 'ALL' && (
+                <FilterBadge
+                  label="트랙"
+                  value={track === 'PBL' ? 'PBL' : '로드맵'}
+                  onClear={() => handleTrackChange('ALL')}
+                />
+              )}
             </div>
           )}
         </CardContent>
@@ -259,8 +283,14 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
             icon={
               <Library className="mx-auto h-12 w-12 text-gray-400" />
             }
-            title="아직 공유된 로드맵이 없습니다"
-            description="로드맵을 확정한 후 갤러리에 공유해보세요."
+            title={
+              track === 'PBL'
+                ? '아직 공유된 PBL 보고서가 없습니다'
+                : track === 'ROADMAP'
+                  ? '아직 공유된 로드맵이 없습니다'
+                  : '아직 공유된 산출물이 없습니다'
+            }
+            description="산출물을 확정한 후 갤러리에 공유해보세요."
           />
         )
       ) : (

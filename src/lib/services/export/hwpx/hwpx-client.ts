@@ -124,13 +124,31 @@ async function postToPythonGenerate(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
+    const isNextDevFallback =
+      response.status === 404 &&
+      (detail.includes('<!DOCTYPE html>') || detail.includes('__next_page'));
+
     console.error('[generateHwpx] non-ok response', {
       url,
       track: payload.track,
       status: response.status,
       hasBypass: Boolean(bypassSecret),
+      isNextDevFallback,
       detail: detail.slice(0, 500),
     });
+
+    if (isNextDevFallback) {
+      // `next dev`는 Vercel Python 함수를 서빙하지 않음 → /api/hwpx/generate 가 404.
+      // HWPX는 `python-hwpx` 라이브러리 의존으로 Next.js에서 네이티브 실행 불가.
+      // 3가지 옵션: ① vercel dev ② Preview 배포 ③ Production 배포
+      throw new Error(
+        'HWPX는 Vercel Python 런타임이 필요합니다. 다음 중 하나로 테스트하세요:\n' +
+          '① 현재 `npm run dev` 중단 후 `npm run dev:vercel` 실행 (Vercel CLI 필요)\n' +
+          '② Preview 배포에서 테스트 (git push → Vercel Preview URL 사용)\n' +
+          '③ Production 배포에서 확인',
+      );
+    }
+
     throw new Error(
       `HWPX generation failed: ${response.status} ${detail.slice(0, 200) || 'unknown error'}`.trim(),
     );

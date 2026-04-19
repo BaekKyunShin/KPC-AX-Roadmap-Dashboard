@@ -318,7 +318,7 @@ export async function generateRoadmap(
 // 테스트 전용 함수 (DB 저장 없음)
 // ============================================================================
 
-/** 테스트 로드맵 생성용 입력 데이터 (산인공 신규 인터뷰 양식) */
+/** 로드맵 테스트 생성용 입력 데이터 (산인공 신규 인터뷰 양식) */
 export interface TestRoadmapInput {
   // 기업 기본정보
   company_name: string;
@@ -411,7 +411,7 @@ function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsigh
 }
 
 /**
- * 테스트 로드맵 생성 (DB 저장 없이 LLM 결과만 반환)
+ * 로드맵 테스트 생성 (DB 저장 없이 LLM 결과만 반환)
  */
 export async function generateTestRoadmap(
   input: TestRoadmapInput,
@@ -442,7 +442,7 @@ export async function generateTestRoadmap(
 }
 
 /**
- * 테스트 로드맵 수정 (DB 저장 없이 LLM 결과만 반환).
+ * 로드맵 테스트 수정 (DB 저장 없이 LLM 결과만 반환).
  * previousResult의 4섹션(competencies / training_structure / annual_plan / course_specs)을
  * 프롬프트에 포함하여 재생성.
  */

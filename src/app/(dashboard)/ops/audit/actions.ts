@@ -81,14 +81,20 @@ export async function getActionTypes(): Promise<{ value: AuditAction; label: str
     { value: 'TEMPLATE_ACTIVATE', label: '템플릿 활성화' },
     { value: 'TEMPLATE_DELETE', label: '템플릿 삭제' },
     { value: 'TEST_PROJECT_CREATE', label: '테스트 프로젝트 생성' },
-    { value: 'TEST_ROADMAP_CREATE', label: '테스트 로드맵 생성' },
-    { value: 'TEST_ROADMAP_REVISE', label: '테스트 로드맵 수정' },
+    { value: 'TEST_ROADMAP_CREATE', label: '로드맵 테스트 생성' },
+    { value: 'TEST_ROADMAP_REVISE', label: '로드맵 테스트 수정' },
     { value: 'TEST_PROJECT_DELETE', label: '테스트 프로젝트 삭제' },
     { value: 'USER_WITHDRAW', label: '사용자 탈퇴' },
     { value: 'ROADMAP_COPY', label: '로드맵 복사' },
     { value: 'QUOTA_UPDATE', label: 'LLM 쿼터 변경' },
     { value: 'ASSESSMENT_TOKEN_CREATE', label: '진단 링크 생성' },
     { value: 'PUBLIC_SELF_ASSESSMENT_CREATE', label: '자가진단 제출' },
+    // PBL 관련 액션 (마이그 061에서 enum 확장됨, OFA-11에서 라벨 추가)
+    { value: 'PBL_REPORT_CREATED', label: 'PBL 보고서 생성' },
+    { value: 'PBL_REPORT_FINALIZED', label: 'PBL 보고서 최종 확정' },
+    { value: 'PBL_REPORT_SHARED', label: 'PBL 보고서 공유 토글' },
+    { value: 'PBL_HWPX_EXPORTED', label: 'PBL HWPX 내보내기' },
+    { value: 'ROADMAP_HWPX_EXPORTED', label: '로드맵 HWPX 내보내기' },
   ];
 }
 
@@ -106,6 +112,7 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
     { value: 'template', label: '템플릿' },
     { value: 'assessment_token', label: '진단 링크' },
     { value: 'roadmap_version', label: '로드맵 버전' },
+    { value: 'pbl_report', label: 'PBL 보고서' },
     { value: 'user_quota', label: 'LLM 쿼터' },
   ];
 }

@@ -515,24 +515,38 @@ export async function exportPBLAsHwpxAction(
   pblId: string,
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   try {
-    // 1) 인증 + 역할
-    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
-      roleError: '컨설턴트만 PBL HWPX를 내보낼 수 있습니다.',
-    });
+    // 1) 인증 + 역할 — 컨설턴트 + 운영·시스템관리자
+    const auth = await requireAuthWithRole(
+      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
+      { roleError: 'PBL HWPX를 내보낼 권한이 없습니다.' },
+    );
     if ('error' in auth) return { success: false, error: auth.error };
-    const { user } = auth;
+    const { user, role } = auth;
 
     // 2) 입력 검증
     if (!pblId || typeof pblId !== 'string') {
       return { success: false, error: 'PBL 보고서 ID가 올바르지 않습니다.' };
     }
 
-    // 3) 접근 권한 확인 (PBL 트랙 + 배정 컨설턴트)
-    const access = await requireConsultantPBLReportAccess(user.id, pblId);
-    if (!access.success) return { success: false, error: access.error };
+    // 3) 접근 권한 확인 — 컨설턴트만 배정 체크, OPS/시스템관리자는 전체 열람 가능
+    const admin = createAdminClient();
+    let projectId: string;
+    if (role === 'CONSULTANT_APPROVED') {
+      const consultantAccess = await requireConsultantPBLReportAccess(user.id, pblId);
+      if (!consultantAccess.success) return { success: false, error: consultantAccess.error };
+      projectId = consultantAccess.data.projectId;
+    } else {
+      const { data: row } = await admin
+        .from('pbl_reports')
+        .select('project_id')
+        .eq('id', pblId)
+        .single();
+      if (!row) return { success: false, error: 'PBL 보고서를 찾을 수 없습니다.' };
+      projectId = row.project_id;
+    }
+    const access = { data: { projectId } } as const;
 
     // 4) 데이터 조회 — pbl_reports + projects + interviews
-    const admin = createAdminClient();
     const { data: pblRow, error: pblError } = await admin
       .from('pbl_reports')
       .select('*')
@@ -574,13 +588,16 @@ export async function exportPBLAsHwpxAction(
     try {
       buffer = await generatePBLHwpx(payload, { baseUrl });
     } catch (error) {
-      console.error('[exportPBLAsHwpxAction generatePBLHwpx Error]', {
-        baseUrl,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[exportPBLAsHwpxAction generatePBLHwpx Error]', { baseUrl, error: message });
+      // 로컬 dev 환경 안내(Vercel Python 런타임 설명)는 hwpx-client에서 throw한
+      // 메시지 그대로 표출해 사용자에게 구체적 해결 옵션을 제공한다.
+      const isLocalDevFallback = message.includes('Vercel Python 런타임');
       return {
         success: false,
-        error: 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        error: isLocalDevFallback
+          ? message
+          : 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
       };
     }
 

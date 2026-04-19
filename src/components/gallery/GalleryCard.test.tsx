@@ -23,6 +23,7 @@ vi.mock('./LikeButton', () => ({
 function makeItem(overrides: Partial<GalleryRoadmapItem> = {}): GalleryRoadmapItem {
   return {
     id: 'rv-1',
+    track: 'ROADMAP',
     title: '삼성전자 — AI 불량 예측',
     industry: '제조업',
     companySize: '300-999',
@@ -55,10 +56,16 @@ describe('GalleryCard', () => {
       expect(screen.getByText('삼성전자 — AI 불량 예측')).toBeInTheDocument();
     });
 
-    it('상세 보기 링크가 올바른 경로를 가진다', () => {
+    it('상세 보기 링크가 올바른 경로(?track 쿼리 포함)를 가진다', () => {
       render(<GalleryCard item={makeItem({ id: 'rv-42' })} />);
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('href', '/gallery/rv-42');
+      expect(link).toHaveAttribute('href', '/gallery/rv-42?track=ROADMAP');
+    });
+
+    it('PBL 트랙 카드는 ?track=PBL 쿼리를 포함한다', () => {
+      render(<GalleryCard item={makeItem({ id: 'pbl-1', track: 'PBL' })} />);
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('href', '/gallery/pbl-1?track=PBL');
     });
 
     it('진단 요약이 표시된다', () => {
@@ -121,8 +128,8 @@ describe('GalleryCard', () => {
       const { container } = render(<GalleryCard item={makeItem({ tags: [] })} />);
       // secondary 배지(태그용)가 없어야 함
       const badges = container.querySelectorAll('[data-slot="badge"]');
-      // 업종 + 기업규모 배지 2개만 있어야 함
-      expect(badges.length).toBe(2);
+      // 트랙 뱃지 + 업종 + 기업규모 = 3개
+      expect(badges.length).toBe(3);
     });
   });
 

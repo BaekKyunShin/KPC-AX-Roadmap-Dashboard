@@ -78,6 +78,7 @@ import type { RoadmapDetailView } from '../../actions';
 
 const mockDetail: RoadmapDetailView = {
   id: 'rv-1',
+  track: 'ROADMAP',
   title: '제조업 AI 로드맵',
   industry: '제조업',
   companySize: '50-299',

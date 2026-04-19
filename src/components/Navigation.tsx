@@ -33,6 +33,7 @@ import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { useRecentVisits } from '@/hooks/useRecentVisits';
 import {
   CONSULTANT_NAV_ITEMS,
+  CONSULTANT_NAV_GROUPS,
   ADMIN_NAV_GROUPS,
   getInitials,
   getRoleBadgeConfig,
@@ -75,6 +76,7 @@ function NavGroupDropdown({
     <div className="relative">
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className={cn(
           'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
           groupActive
@@ -138,6 +140,7 @@ function MobileNavGroup({
     <div>
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         className={cn(
           'flex w-full items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
           groupActive
@@ -203,7 +206,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const commandPalette = useCommandPalette();
   const { recentVisits } = useRecentVisits();
 
-  // 바깥 클릭 시 드롭다운 닫기
+  // 바깥 클릭 + Escape 키 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -214,8 +217,19 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpenGroupIndex(null);
+        setIsUserMenuOpen(false);
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const renderRoleBadge = () => {
@@ -242,9 +256,13 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Logo height={26} className="transition-opacity group-hover:opacity-80" />
             </Link>
 
-            {/* Desktop Navigation — 컨설턴트: 플랫 */}
+            {/* Desktop Navigation — 컨설턴트: 공지사항 flat + 워크스페이스·라이브러리 드롭다운 */}
             {isConsultant && (
-              <div className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
+              <div
+                className="hidden md:flex items-center gap-1"
+                data-testid="desktop-nav"
+                ref={navGroupRef}
+              >
                 {CONSULTANT_NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname.startsWith(item.href);
@@ -254,18 +272,32 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                       key={item.href}
                       href={item.href}
                       prefetch={true}
+                      // flat 링크가 navGroupRef 내부 형제 요소라 handleClickOutside로 드롭다운이 닫히지 않음 → 명시적 닫기
+                      onClick={() => setOpenGroupIndex(null)}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                         isActive
                           ? 'bg-blue-50 text-blue-700'
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                       )}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4 shrink-0" />
                       {item.label}
                     </Link>
                   );
                 })}
+                {CONSULTANT_NAV_GROUPS.map((group, index) => (
+                  <NavGroupDropdown
+                    key={group.label}
+                    group={group}
+                    isOpen={openGroupIndex === index}
+                    onToggle={() =>
+                      setOpenGroupIndex(openGroupIndex === index ? null : index)
+                    }
+                    pathname={pathname}
+                    onNavigate={() => setOpenGroupIndex(null)}
+                  />
+                ))}
               </div>
             )}
 
@@ -408,33 +440,48 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
       {isMobileMenuOpen && (
         <div className="md:hidden border-t bg-white" data-testid="mobile-menu">
           <div className="px-4 py-4 space-y-1">
-            {/* 컨설턴트: 플랫 메뉴 */}
-            {isConsultant &&
-              CONSULTANT_NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname.startsWith(item.href);
+            {/* 컨설턴트: 공지사항 flat + 아코디언 그룹 */}
+            {isConsultant && (
+              <>
+                {CONSULTANT_NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname.startsWith(item.href);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={true}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      'flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5" />
-                      {item.label}
-                    </div>
-                    <ChevronRight className="h-4 w-4 opacity-50" />
-                  </Link>
-                );
-              })}
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={true}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        'flex items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-5 w-5 shrink-0" />
+                        {item.label}
+                      </div>
+                      <ChevronRight className="h-4 w-4 opacity-50" />
+                    </Link>
+                  );
+                })}
+                {CONSULTANT_NAV_GROUPS.map((group, index) => (
+                  <MobileNavGroup
+                    key={group.label}
+                    group={group}
+                    isOpen={openMobileGroup === index}
+                    onToggle={() =>
+                      setOpenMobileGroup(openMobileGroup === index ? null : index)
+                    }
+                    pathname={pathname}
+                    onNavigate={() => setIsMobileMenuOpen(false)}
+                  />
+                ))}
+              </>
+            )}
 
             {/* 관리자: 아코디언 그룹 */}
             {isOpsAdmin &&

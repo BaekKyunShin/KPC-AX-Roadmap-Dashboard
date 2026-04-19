@@ -117,18 +117,23 @@ describe('fetchMonthlyCompletions', () => {
   it('DB 에러 시 빈 배열 반환', async () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
+    // OFA-11: Promise.all 로 roadmap + pbl 병렬 조회 → 두 결과 모두 push
+    auth._mock.addResult({ data: null, error: { message: 'DB Error' } });
     auth._mock.addResult({ data: null, error: { message: 'DB Error' } });
 
     const result = await fetchMonthlyCompletions();
-    expect(result).toEqual([]);
+    // 에러는 console.error로 로깅하지만 빈 배열로 월별 집계 수행 → 6개 반환 (모두 0)
+    expect(result).toHaveLength(6);
+    expect(result.every(r => r.count === 0)).toBe(true);
   });
 
-  it('월별 확정 현황 집계 (6개월)', async () => {
+  it('월별 확정 현황 집계 (6개월, 로드맵+PBL 합산)', async () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
 
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // roadmap_versions
     auth._mock.addResult({
       data: [
         { finalized_at: now.toISOString() },
@@ -136,18 +141,27 @@ describe('fetchMonthlyCompletions', () => {
       ],
       error: null,
     });
+    // pbl_reports
+    auth._mock.addResult({
+      data: [{ finalized_at: now.toISOString() }],
+      error: null,
+    });
 
     const result = await fetchMonthlyCompletions();
     expect(result).toHaveLength(6);
 
-    // 현재 월의 count 확인
+    // 현재 월의 count 확인 (로드맵 2 + PBL 1 = 3)
     const currentMonthEntry = result.find(r => r.month === currentMonth);
-    expect(currentMonthEntry?.count).toBe(2);
+    expect(currentMonthEntry?.count).toBe(3);
   });
 
   it('finalized_at이 null인 항목은 무시', async () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
+    auth._mock.addResult({
+      data: [{ finalized_at: null }],
+      error: null,
+    });
     auth._mock.addResult({
       data: [{ finalized_at: null }],
       error: null,
@@ -161,6 +175,7 @@ describe('fetchMonthlyCompletions', () => {
   it('빈 데이터 시 모든 월 0', async () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
+    auth._mock.addResult({ data: [], error: null });
     auth._mock.addResult({ data: [], error: null });
 
     const result = await fetchMonthlyCompletions();

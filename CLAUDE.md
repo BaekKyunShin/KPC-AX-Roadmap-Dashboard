@@ -13,7 +13,8 @@ KPC AI 훈련 로드맵 대시보드 - 기업 AI 교육 진단, 컨설턴트 매
 ## 명령어
 
 ```bash
-npm run dev              # 개발 서버 시작 (localhost:3000)
+npm run dev              # 개발 서버 시작 (localhost:3000, Next.js 전용)
+npm run dev:vercel       # vercel dev — Python Functions 포함 (HWPX 다운로드 로컬 테스트용)
 npm run build            # 프로덕션 빌드
 npm run lint             # ESLint 검사
 npm run lint:fix         # 린트 오류 자동 수정
@@ -39,6 +40,30 @@ npm run test:e2e:report  # E2E 테스트 리포트 열기
 - 이유: 파일·DB 불일치는 후속 Step·에이전트가 테이블/컬럼 부재로 즉시 차단되는 잠재적 지뢰
 
 **작업 완료 검증:** 코드 수정 작업 완료 시 반드시 `npm run validate && npm run build` 실행 후 통과를 확인할 것
+
+**HWPX 다운로드(로드맵·PBL) 로컬 테스트 규칙:**
+
+- `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`는 Python 런타임을 서빙하지 않고, 구버전 Vercel CLI의 `vercel dev`도 Python 함수 빌드에 실패할 수 있다.
+- **권장 로컬 워크플로우 (브리지 서버 방식 — 검증 완료)**:
+
+  ```bash
+  # 최초 1회: Python venv 생성 + python-hwpx 설치
+  npm run dev:hwpx:setup
+
+  # 터미널 A: HWPX 브리지 서버 (포트 3010)
+  npm run dev:hwpx
+
+  # 터미널 B: HWPX 프록시 활성화된 Next.js dev (포트 3000)
+  npm run dev:with-hwpx
+  ```
+
+  동작 원리: `next.config.ts`의 `rewrites()`가 `HWPX_DEV_PROXY_URL` 환경변수를 감지하면 `/api/hwpx/*` 요청을 브리지 서버(`scripts/dev-hwpx-server.py`)로 포워딩. 브리지 서버는 `api/hwpx/generate.py` 핸들러를 그대로 재사용하므로 프로덕션(Vercel)과 동일한 출력 보장(PBL 117KB·ROADMAP 411KB ZIP 매직 넘버 `504b 0304` 확인 완료).
+
+- 대체 옵션:
+  ① Preview 배포(`git push` → Preview URL)에서 테스트
+  ② `npm run dev:vercel` (Vercel CLI 51.7+ 권장 — 구버전은 Python 런타임 빌드 실패 가능)
+
+- `npm run dev` (브리지 서버 없이)로 HWPX 버튼을 누르면 클라이언트에 안내 메시지가 표출된다(3가지 해결 옵션 포함).
 
 **배포 전 체크리스트:** `npm run validate` (typecheck + lint + test) → `npm run build` → Vercel 배포
 

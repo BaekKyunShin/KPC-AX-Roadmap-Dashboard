@@ -31,8 +31,8 @@ test.describe('갤러리 상세', () => {
     // 상세 페이지 URL 확인
     await expect(page).toHaveURL(/\/gallery\/[a-f0-9-]+/, { timeout: 10_000 });
 
-    // 페이지 헤더 "로드맵 갤러리" 확인 — main 스코핑으로 네비 중복 방지
-    await expect(page.locator('main').getByText('로드맵 갤러리')).toBeVisible();
+    // 페이지 헤더 "로드맵·PBL 갤러리" 확인 — main 스코핑으로 네비 중복 방지
+    await expect(page.locator('main').getByText('로드맵·PBL 갤러리')).toBeVisible();
 
     // "갤러리로 돌아가기" 뒤로가기 링크 확인
     await expect(page.getByRole('link', { name: /갤러리로 돌아가기/ })).toBeVisible();

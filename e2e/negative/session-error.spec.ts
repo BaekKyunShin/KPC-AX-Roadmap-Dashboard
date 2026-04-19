@@ -39,7 +39,7 @@ test.describe('부정 시나리오: 세션 만료 — 비인증 접근', () => {
     { path: '/ops/projects', description: '운영관리 프로젝트' },
     { path: '/consultant/home', description: '컨설턴트 홈' },
     { path: '/notifications', description: '알림' },
-    { path: '/test-roadmap', description: '테스트 로드맵' },
+    { path: '/test-roadmap', description: '로드맵 테스트' },
   ];
 
   for (const { path, description } of sessionExpiredPaths) {

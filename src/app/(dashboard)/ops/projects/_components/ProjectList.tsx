@@ -36,6 +36,7 @@ import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/s
 import type { ProjectStatus } from '@/types/database';
 import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
+import { TrackBadge } from '@/components/ui/TrackBadge';
 
 const ITEMS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES = 5;
@@ -76,7 +77,10 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
             <Building2 className="h-4 w-4 text-blue-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-gray-900 break-keep">{project.company_name}</div>
+            <div className="font-medium text-gray-900 break-keep flex items-center gap-2 flex-wrap">
+              {project.company_name}
+              <TrackBadge track={project.track} size="sm" />
+            </div>
             <div className="text-xs text-gray-500 break-all">{project.contact_email}</div>
           </div>
         </div>
@@ -111,6 +115,7 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
           daysInCurrentStatus={project.days_in_current_status}
           showLabel={true}
           showDays={true}
+          track={project.track}
         />
       </div>
     </div>
@@ -368,15 +373,16 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
             <>
               {/* 데스크톱: 테이블 뷰 */}
               <div className="hidden md:block">
-                <Table className="min-w-[900px]">
+                <Table className="min-w-[1060px] table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[180px]">기업명</TableHead>
-                    <TableHead className="min-w-[80px]">업종</TableHead>
-                    <TableHead className="min-w-[180px] text-center">진행 상태</TableHead>
-                    <TableHead className="min-w-[100px]">담당 컨설턴트</TableHead>
-                    <TableHead className="min-w-[110px]">프로젝트 생성일</TableHead>
-                    <TableHead className="min-w-[70px]">작업</TableHead>
+                    <TableHead className="w-[260px]">기업명</TableHead>
+                    <TableHead className="w-[80px]">트랙</TableHead>
+                    <TableHead className="w-[110px]">업종</TableHead>
+                    <TableHead className="w-[220px] text-center">진행 상태</TableHead>
+                    <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
+                    <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
+                    <TableHead className="w-[80px]">작업</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -387,17 +393,23 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
-                            <div>
-                              <div className="font-medium text-gray-900 break-keep">
+                            <div className="min-w-0">
+                              <div className="font-medium text-gray-900 break-keep truncate" title={projectItem.company_name}>
                                 {projectItem.company_name}
                               </div>
-                              <div className="text-sm text-muted-foreground break-all">
+                              <div
+                                className="text-sm text-muted-foreground truncate"
+                                title={projectItem.contact_email}
+                              >
                                 {projectItem.contact_email}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground align-top">{projectItem.industry}</TableCell>
+                        <TableCell className="align-top">
+                          <TrackBadge track={projectItem.track} />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground align-top truncate" title={projectItem.industry}>{projectItem.industry}</TableCell>
                         <TableCell className="align-top">
                           <div className="flex justify-center">
                             <MiniStepper
@@ -405,15 +417,16 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                               daysInCurrentStatus={projectItem.days_in_current_status}
                               showLabel={true}
                               showDays={true}
+                              track={projectItem.track}
                             />
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground align-top">
+                        <TableCell className="text-muted-foreground align-top truncate">
                           {projectItem.assigned_consultant?.name || (
                             <span className="text-gray-400">미배정</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground align-top">
+                        <TableCell className="text-muted-foreground align-top whitespace-nowrap">
                           {new Date(projectItem.created_at).toLocaleDateString('ko-KR')}
                         </TableCell>
                         <TableCell className="align-top">

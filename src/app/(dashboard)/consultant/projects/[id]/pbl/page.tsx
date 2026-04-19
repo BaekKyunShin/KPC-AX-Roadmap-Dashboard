@@ -32,8 +32,10 @@ export default async function PBLPage({
   if (!projectInfoResult.success) {
     redirect('/dashboard');
   }
+  // 트랙 불일치 시 프로젝트 상세로 돌려보냄 (이전 버전은 /roadmap으로 강제 리다이렉트해
+  // PBL 페이지에서도 튕겨나가는 버그가 있었음 — OFA-11에서 수정)
   if (projectInfoResult.data.track !== 'PBL') {
-    redirect(`/consultant/projects/${id}/roadmap`);
+    redirect(`/consultant/projects/${id}`);
   }
 
   // 인터뷰 PBL 데이터 → Overview/Targets 요약 구성

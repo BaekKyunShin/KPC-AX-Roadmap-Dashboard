@@ -43,9 +43,9 @@ describe('MonthlyCompletionChart', () => {
   // 1. 기본 렌더링
   // --------------------------------------------------------------------------
   describe('기본 렌더링', () => {
-    it('카드 타이틀 "월별 로드맵 확정 현황"을 표시한다', () => {
+    it('카드 타이틀 "월별 양식 확정 현황"을 표시한다', () => {
       render(<MonthlyCompletionChart data={mockData} />);
-      expect(screen.getByText('월별 로드맵 확정 현황')).toBeInTheDocument();
+      expect(screen.getByText('월별 양식 확정 현황')).toBeInTheDocument();
     });
   });
 

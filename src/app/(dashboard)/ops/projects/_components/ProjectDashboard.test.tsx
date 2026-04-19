@@ -147,11 +147,11 @@ describe('ProjectDashboard', () => {
       });
     });
 
-    it('월별 로드맵 확정 현황 카드를 표시한다', async () => {
+    it('월별 양식 확정 현황 카드를 표시한다', async () => {
       setupMocks();
       render(<ProjectDashboard />);
       await waitFor(() => {
-        expect(screen.getByText('월별 로드맵 확정 현황')).toBeInTheDocument();
+        expect(screen.getByText('월별 양식 확정 현황')).toBeInTheDocument();
       });
     });
 

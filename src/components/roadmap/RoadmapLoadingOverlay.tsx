@@ -20,7 +20,7 @@ interface Tip {
 }
 
 interface RoadmapLoadingOverlayProps {
-  /** 테스트 로드맵인지 여부 */
+  /** 로드맵 테스트인지 여부 */
   isTestMode: boolean;
   /** 실제 로드맵일 경우 회사명 */
   companyName?: string;
@@ -100,7 +100,7 @@ const TEST_STEP_MESSAGES: readonly string[] = [
   '단계별 AI 훈련 로드맵을 구성하고 있습니다...',
 ];
 
-// 테스트 로드맵용 팁 메시지
+// 로드맵 테스트용 팁 메시지
 const TEST_TIPS: readonly Tip[] = [
   {
     message: '산업별 강의/컨설팅 경험을 상세히 기록하면 해당 분야 프로젝트 매칭에 유리합니다.',

@@ -11,11 +11,11 @@ test.describe('갤러리 목록', () => {
     await page.waitForLoadState('networkidle');
 
     // "로드맵 갤러리" 헤더 확인
-    await expect(page.getByRole('heading', { name: '로드맵 갤러리' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '로드맵·PBL 갤러리' })).toBeVisible();
 
     // 검색 입력 필드 확인
     await expect(
-      page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)'),
+      page.getByPlaceholder('검색 (기업명, 업종, 키워드...)'),
     ).toBeVisible();
 
     // 카드가 있거나 빈 상태 메시지가 있어야 함
@@ -38,7 +38,7 @@ test.describe('갤러리 목록', () => {
     await page.goto('/gallery');
     await page.waitForLoadState('networkidle');
 
-    const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
+    const searchInput = page.getByPlaceholder('검색 (기업명, 업종, 키워드...)');
     await searchInput.fill('테스트검색어');
 
     // 디바운스 후 URL에 search 파라미터가 반영되는지 확인

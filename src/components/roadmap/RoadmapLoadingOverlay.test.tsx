@@ -122,7 +122,7 @@ describe('RoadmapLoadingOverlay', () => {
       expect(percentEl).not.toBeInTheDocument();
     });
 
-    it('isTestMode=true 이면 테스트 로드맵 단계 메시지를 표시한다', () => {
+    it('isTestMode=true 이면 로드맵 테스트 단계 메시지를 표시한다', () => {
       renderOverlay({ isTestMode: true });
       expect(
         screen.getByText('업무 환경과 개선 목표를 분석하고 있습니다...'),

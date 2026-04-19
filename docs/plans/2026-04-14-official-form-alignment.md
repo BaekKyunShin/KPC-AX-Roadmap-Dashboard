@@ -4321,13 +4321,16 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 ### Step 12: 최종 QA, 문서, 배포 점검
 
 **브랜치:** `feature/ofa-12-final-qa-docs`
-**규모:** Medium (약 10개 Task)
-**호출 스킬:** `test-automator`(서브에이전트), `performance-engineer`(서브에이전트), `security-auditor`(서브에이전트), `web-design-guidelines`, Playwright MCP, `refactoring`
+**규모:** Medium (약 **15개 Task** — Task 1·2 각 2 단계 분할 + Task 3.5 HWPX 세부 + Task 3.6 Playwright 회귀 + Task 3.7 코드 레벨 회귀 + 기존 3·4·5·6·7·8·9·10)
+**호출 스킬:** `test-automator`(서브에이전트), `performance-engineer`(서브에이전트), `security-auditor`(서브에이전트), `general-purpose`/`Explore`(Task 3.7 대조표), `postgres-pro`(Task 3.7 DB 중심), `web-design-guidelines`, Playwright MCP, `refactoring`
 
 **목표:**
 - 전체 E2E 스모크 테스트
 - deprecated된 기존 인터뷰 스키마 최종 제거 (`src/lib/schemas/interview.ts` — Step 5·8에서 트랙별로 분리 완료)
 - `roadmap_versions.pbl_course` 컬럼 drop 마이그레이션
+- HWPX 양식 세부 수정 (Task 3.5 — Session 09 한컴 검증 피드백)
+- **Session 1~10 Playwright 회귀 감사 (Task 3.6 — Session 10 종료 시 사용자 지시로 신설)**
+- **Session 1~10 코드 레벨 회귀 감사 (Task 3.7 — Task 3.6 과 별도·보완)**
 - 문서 갱신 (ARCHITECTURE.md, RLS.md, CLAUDE.md)
 - 배포 체크리스트 검증
 - 성능·보안 최종 감사
@@ -4502,6 +4505,82 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 - 양식 1번 PDF·양식 2번 PDF와 1:1 겹쳐 비교 ( 양식 QA 체크리스트 전 항목 ✅ )
 
 **승인 게이트:** 사용자 한글 프로그램 검수 "통과" 확인 후에만 Task 3.5 완료. 미통과 시 재수정 반복.
+
+- [ ] **Task 3.6: Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사 (신규)**
+
+> 배경: Session 11(OFA-11 Step 11) 종료 시점에 사용자 요청으로 추가됨. Session 1~10 에서 도입된 실 사용자 기능이 최신 `feature/official-form-alignment` 브랜치에서 실제로 동작하는지, 버그·오류·UX 불편이 없는지 실제 브라우저에서 전수 확인한다.
+
+**참고 입력 문서 (반드시 정독):**
+- 마스터 계획서 본 파일 §4 Step 1~11 각각
+- `docs/prompts/session-00-overview.md`
+- `docs/prompts/session-01-step1-setup.md`
+- `docs/prompts/session-02-step2-db-foundation.md`
+- `docs/prompts/session-03-step3-4-parallel.md`
+- `docs/prompts/session-04-step5-roadmap-interview.md`
+- `docs/prompts/session-05-step6-roadmap-output.md`
+- `docs/prompts/session-05b-step6.5-form-compliance.md`
+- `docs/prompts/session-06-step7-roadmap-hwpx.md`
+- `docs/prompts/session-07-step8-pbl-interview.md`
+- `docs/prompts/session-08-step9-pbl-output.md`
+- `docs/prompts/session-09-step10-pbl-hwpx.md`
+- `docs/prompts/session-10-step11-gallery.md`
+
+**테스트 계정:**
+- **컨설턴트**: `kpc@test.com` / `aaaa0000`
+- **운영관리자**: `son@test.com` / `aaaa00000`
+
+**감사 범위:**
+- **인증·RBAC** (Session 01~02): 로그인·회원가입·역할 승인·미승인 접근 거부
+- **프로젝트 라이프사이클** (Session 03~09): 생성 → 진단 → 매칭 → 배정 → 인터뷰 → 산출물 → 확정
+- **로드맵 인터뷰·산출물** (Session 04~06 + 05b): 6단계 인터뷰·자동 저장·LLM 생성·수정·확정·PDF/XLSX/HWPX 다운로드
+- **PBL 인터뷰·산출물** (Session 07~09): 9단계 인터뷰·LLM 생성·수정·확정·PDF/XLSX/HWPX 다운로드
+- **HWPX 실물** (Session 06·09): 로컬 브리지 서버 기반 실제 다운로드 + 파일 크기·ZIP 매직 확인
+- **갤러리·테스트 페이지** (Session 10): 트랙 필터·카드·상세·좋아요·공유·`/test-roadmap`·`/test-pbl`
+- **OPS 관리**: 프로젝트 관리·사용자 관리·템플릿·감사로그·쿼터·공지사항
+- **모바일 반응형**: Playwright viewport 375×667 로 주요 페이지 5개 샘플링
+- **키보드 접근성**: Tab 순서·Escape·Enter — 네비 드롭다운·모달·폼
+
+**감사 절차 (엄수):**
+1. **시나리오 추출**: 위 12개 문서 읽고 각 Step 의 핵심 사용자 시나리오 목록화.
+2. **환경 준비**:
+   - Task 3.5 에서 준비한 HWPX 브리지 워크플로우(`npm run dev:hwpx:setup` 최초 1회 → `npm run dev:hwpx` + `npm run dev:with-hwpx`) 활성화
+   - Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 테스트 계정 각각 로그인. 쿠키·세션 유지.
+3. **순차 실행**: Step 1→11 순서로 시나리오 수행. 각 단계마다 (a) 예상 화면·동작 (b) 실제 결과 (c) 네트워크 오류·콘솔 에러 (d) 스크린샷 기록.
+4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/{YYYY-MM-DD}-session11-playwright-audit.md` 파일로 산출. 우선순위(High/Medium/Low) 분류.
+5. **수정 계획 수립**: High 는 본 Step 내 즉시 수정. Medium 은 시간 여유 있을 때. Low 는 별도 이슈 등록. **수정 계획을 사용자에게 보고 후 승인 받은 뒤 진행.**
+6. **실제 수정**: 계획대로 코드 수정. `npm run validate` 통과 기준.
+7. **재검증**: 수정된 항목을 Playwright MCP 로 재실행해 해결 확인. 감사 리포트 "결과 섹션" 업데이트.
+
+**승인 게이트:** 감사 결과 + 수정 계획을 사용자 보고 → 승인 → 실제 수정 → 재검증 → 최종 리포트 사용자 확인. High 이슈 미해결 시 Task 4 이후 진행 보류.
+
+- [ ] **Task 3.7: Session 1~10 코드 레벨 회귀 감사 (신규 — Task 3.6 의 보완)**
+
+> 배경: Task 3.6 이 **런타임·UX** 관점 감사라면, Task 3.7 은 **정적·구현 적합성** 관점 감사. 둘은 상호 보완적이며 별도로 진행. Session 1~10 각 계획서 성공 지표와 프롬프트 체크박스를 코드와 1:1 대조해 구현 누락·편차·코드 레벨 버그·보안·성능·테스트 공백을 식별한다.
+
+**참고 입력 문서:** Task 3.6 과 동일 13 문서 (마스터 계획서 §4 Step 1~11 각각 + `docs/prompts/session-0{0..9}-*.md` + `session-05b-*.md` + `session-10-*.md`).
+
+**감사 범위:**
+- **Step 별 구현 대조표**: 각 Session 의 "성공 지표" 항목을 실제 코드 위치(파일·심볼·라인) 와 1:1 매핑, 상태(✅/⚠️/❌) 기재.
+- **패턴 준수**: Server Actions 5단계 패턴, Supabase 클라이언트 4종 적재적소, admin 오용 여부, RLS 정책 일관성, 스키마·테스트 쌍, 직렬화 안전성.
+- **에러 처리·UX**: try/catch/finally, 로딩 상태 복구, 사용자 피드백(toast), AbortController 신호 전달, LLM·HWPX 취소·재시도.
+- **보안·권한**: admin 클라이언트 사용처의 RBAC 선행 체크, 컨설턴트 배정 검증, 시크릿 번들 노출, Storage signed URL·서버 측 MIME 검증.
+- **성능·코드 스멜**: N+1 쿼리, 중복 fetch, SC/CC 경계 오용, 미활용 dynamic import, dead code.
+- **테스트 커버리지**: 신규 스키마·서비스·Server Action 중 테스트 없는 것, 기존 테스트의 스키마 이관 후 mock 누락.
+
+**산출물:** `docs/{YYYY-MM-DD}-session11-code-audit.md` — Step 별 대조표 + 우선순위별 이슈 + 수정 계획.
+
+**서브에이전트 활용 권장:**
+- `general-purpose` / `Explore`: Step 별 구현 대조표 병렬 수집
+- `security-auditor`: 보안·권한 섹션 (Task 6 본 실행 전 선행 스크리닝)
+- `performance-engineer`: 성능·코드 스멜 섹션 (Task 5 본 실행 전 선행 스크리닝)
+- `postgres-pro`: RLS·인덱스·JSONB·RPC 코드 적합성
+
+**Task 3.6 과의 관계:**
+- 선·후 독립 가능하며 병렬 진행 허용.
+- Task 3.6 의 런타임 이슈 중 원인이 코드 구조에 있는 것은 Task 3.7 대조표와 교차 검토해 근본 원인 확정.
+- 두 Task 모두 완료 후 수정 PR 을 합치거나, 큰 이슈는 별도 sub-PR 로 분리.
+
+**승인 게이트:** 대조표 + 우선순위별 이슈 요약 + 수정 계획을 사용자 보고 → 승인 → 실제 수정 → 재검증 → 최종 리포트 사용자 확인. High 이슈 미해결 시 Task 4 이후 진행 보류.
 
 - [ ] **Task 4: `test-automator` 서브에이전트로 E2E 스모크 시나리오**
 

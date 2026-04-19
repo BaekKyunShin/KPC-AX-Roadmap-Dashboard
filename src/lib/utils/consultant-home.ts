@@ -6,13 +6,15 @@ export interface ProjectStats {
   total: number;
   waitingInterview: number;   // ASSIGNED
   interviewDone: number;      // INTERVIEWED
-  draftingRoadmap: number;    // ROADMAP_DRAFTED
+  /** 초안 작성 중 (ROADMAP_DRAFTED + PBL_DRAFTED 통합) */
+  draftingRoadmap: number;
   roadmapCompleted: number;   // FINALIZED
   byStatus: Record<string, number>;
 }
 
 /**
- * 프로젝트 목록에서 상태별 통계를 집계
+ * 프로젝트 목록에서 상태별 통계를 집계.
+ * - 초안 작성 중: ROADMAP_DRAFTED + PBL_DRAFTED 합산 (OFA-11에서 PBL 트랙 반영)
  */
 export function aggregateProjectStats(
   projects: { status: string }[]
@@ -25,7 +27,7 @@ export function aggregateProjectStats(
     total: projects.length,
     waitingInterview: byStatus['ASSIGNED'] || 0,
     interviewDone: byStatus['INTERVIEWED'] || 0,
-    draftingRoadmap: byStatus['ROADMAP_DRAFTED'] || 0,
+    draftingRoadmap: (byStatus['ROADMAP_DRAFTED'] || 0) + (byStatus['PBL_DRAFTED'] || 0),
     roadmapCompleted: byStatus['FINALIZED'] || 0,
     byStatus,
   };

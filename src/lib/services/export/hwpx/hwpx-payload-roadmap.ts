@@ -17,6 +17,7 @@ import type { Interview, Project, RoadmapVersion } from '@/types/database';
 import { bulletize, splitByUnit } from '@/lib/utils/list-format';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
+import { sanitizeFileNamePart } from './hwpx-filename';
 
 export interface RoadmapHwpxPayloadInputs {
   roadmap: RoadmapVersion;
@@ -68,7 +69,7 @@ interface InterviewLike {
 }
 
 function buildFileName(companyName: string, versionNumber: number): string {
-  const safe = companyName || '로드맵';
+  const safe = sanitizeFileNamePart(companyName, '로드맵');
   return `${safe}_로드맵_v${versionNumber}.hwpx`;
 }
 
