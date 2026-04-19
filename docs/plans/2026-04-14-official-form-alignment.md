@@ -4550,6 +4550,35 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 
 **승인 게이트:** 감사 결과 + 수정 계획을 사용자 보고 → 승인 → 실제 수정 → 재검증 → 최종 리포트 사용자 확인. High 이슈 미해결 시 Task 4 이후 진행 보류.
 
+- [ ] **Task 3.7: Session 1~10 코드 레벨 회귀 감사 (신규 — Task 3.6 의 보완)**
+
+> 배경: Task 3.6 이 **런타임·UX** 관점 감사라면, Task 3.7 은 **정적·구현 적합성** 관점 감사. 둘은 상호 보완적이며 별도로 진행. Session 1~10 각 계획서 성공 지표와 프롬프트 체크박스를 코드와 1:1 대조해 구현 누락·편차·코드 레벨 버그·보안·성능·테스트 공백을 식별한다.
+
+**참고 입력 문서:** Task 3.6 과 동일 13 문서 (마스터 계획서 §4 Step 1~11 각각 + `docs/prompts/session-0{0..9}-*.md` + `session-05b-*.md` + `session-10-*.md`).
+
+**감사 범위:**
+- **Step 별 구현 대조표**: 각 Session 의 "성공 지표" 항목을 실제 코드 위치(파일·심볼·라인) 와 1:1 매핑, 상태(✅/⚠️/❌) 기재.
+- **패턴 준수**: Server Actions 5단계 패턴, Supabase 클라이언트 4종 적재적소, admin 오용 여부, RLS 정책 일관성, 스키마·테스트 쌍, 직렬화 안전성.
+- **에러 처리·UX**: try/catch/finally, 로딩 상태 복구, 사용자 피드백(toast), AbortController 신호 전달, LLM·HWPX 취소·재시도.
+- **보안·권한**: admin 클라이언트 사용처의 RBAC 선행 체크, 컨설턴트 배정 검증, 시크릿 번들 노출, Storage signed URL·서버 측 MIME 검증.
+- **성능·코드 스멜**: N+1 쿼리, 중복 fetch, SC/CC 경계 오용, 미활용 dynamic import, dead code.
+- **테스트 커버리지**: 신규 스키마·서비스·Server Action 중 테스트 없는 것, 기존 테스트의 스키마 이관 후 mock 누락.
+
+**산출물:** `docs/2026-{YYYY-MM-DD}-session11-code-audit.md` — Step 별 대조표 + 우선순위별 이슈 + 수정 계획.
+
+**서브에이전트 활용 권장:**
+- `general-purpose` / `Explore`: Step 별 구현 대조표 병렬 수집
+- `security-auditor`: 보안·권한 섹션 (Task 6 본 실행 전 선행 스크리닝)
+- `performance-engineer`: 성능·코드 스멜 섹션 (Task 5 본 실행 전 선행 스크리닝)
+- `postgres-pro`: RLS·인덱스·JSONB·RPC 코드 적합성
+
+**Task 3.6 과의 관계:**
+- 선·후 독립 가능하며 병렬 진행 허용.
+- Task 3.6 의 런타임 이슈 중 원인이 코드 구조에 있는 것은 Task 3.7 대조표와 교차 검토해 근본 원인 확정.
+- 두 Task 모두 완료 후 수정 PR 을 합치거나, 큰 이슈는 별도 sub-PR 로 분리.
+
+**승인 게이트:** 대조표 + 우선순위별 이슈 요약 + 수정 계획을 사용자 보고 → 승인 → 실제 수정 → 재검증 → 최종 리포트 사용자 확인. High 이슈 미해결 시 Task 4 이후 진행 보류.
+
 - [ ] **Task 4: `test-automator` 서브에이전트로 E2E 스모크 시나리오**
 
 ```

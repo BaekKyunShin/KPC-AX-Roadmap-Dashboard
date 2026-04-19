@@ -38,6 +38,7 @@
 - [ ] **Task 3.5 (신규): HWPX 양식 세부 수정** — Session 09 한글 프로그램 검증에서 발견한 세부 수정 사항을 **사용자로부터 재취합**해 일괄 반영. 양식 1번·2번 셀 매핑·라벨·체크박스 위치·병합 처리 정밀 보정 후 한글 프로그램 육안 재검증 통과.
 - [ ] `e2e/workflow/ofa-smoke.spec.ts` 6개 시나리오 작성 + 통과.
 - [ ] **Task 3.6 (신규): Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사** — Session 01~10 의 계획서 §4 각 Step + `docs/prompts/session-0{1..9}-*.md` + `session-10-step11-gallery.md` 를 순서대로 읽고, 각 Step 에서 도입된 핵심 사용자 시나리오를 Playwright MCP 로 실제 브라우저에서 실행·검증. 버그·오류·UX 불편 지점 목록화 → 수정 계획 수립 → 수정 → 재검증. 자세한 절차는 아래 진행 원칙 §3.6.
+- [ ] **Task 3.7 (신규): Session 1~10 코드 레벨 회귀 감사** — Task 3.6 과 **별도·보완** 관계. 각 Session 의 마스터 계획서 Step + 프롬프트 성공 지표를 **코드와 1:1 대조**하여 구현 누락·부분 구현·편차·코드 레벨 버그·에러 처리 누락·성능 병목·테스트 커버리지 공백·보안 체크 누락을 정적으로 식별. 자세한 절차는 아래 진행 원칙 §3.7.
 - [ ] performance-engineer 보고서 (번들 사이즈·인터뷰 위저드 렌더·HWPX 콜드스타트·갤러리 통합 쿼리) — Critical 0건.
 - [ ] security-auditor 보고서 (트랙 격리·HWPX_API_SECRET 동작·Storage signed URL·MIME 검증) — Critical 0건.
 - [ ] `mcp__supabase__get_advisors` 결과: RLS·성능 경고 0건.
@@ -176,6 +177,48 @@
      - **키보드 접근성**: Tab 순서·Escape·Enter — 네비 드롭다운·모달·폼
    - 미통과 시: High 전수 해결 전에는 Task 4 이후 진행 보류 (performance·security 감사 결과와 병합해 최종 수정 PR 로 묶을 수 있음).
    - 본 Task 는 **사용자 승인 게이트**: Playwright 감사 결과 요약 + 수정 계획을 사용자에게 보고하고 승인받은 뒤 수정 실행.
+4.7. **Task 3.7 (Session 1~10 코드 레벨 회귀 감사 — 신규)**:
+   - 목적: Task 3.6 이 **런타임·UX** 검증이라면, 본 Task 는 **정적·구현 적합성** 검증. 각 Session 이 계획서 성공 지표대로 코드에 반영되었는지, 누락·편차·코드 레벨 버그가 없는지 1:1 대조.
+   - 참고 입력: Task 3.6 과 동일한 13 문서 (마스터 계획서 §4 Step 1~11 각각 + `docs/prompts/session-0{0..9}-*.md` + `session-05b-*.md` + `session-10-*.md`).
+   - 감사 절차 (엄수):
+     1. **Step 별 대조표 작성**: 각 Session 프롬프트의 "성공 지표" 체크박스를 표로 옮기고, 각 항목 옆에 실제 코드 위치(파일·심볼·라인)·구현 상태(✅/⚠️/❌)·메모 컬럼 기재. 산출: `docs/2026-{YYYY-MM-DD}-session11-code-audit.md`.
+     2. **패턴 준수 감사** — 프로젝트 표준과 비교:
+        - Server Actions: 세션 확인 → 역할 권한 → Zod 검증 → 비즈니스 → `ActionResult<T>` 5단계 패턴 일관성 (`.claude/skills/check-server-action` 참고)
+        - Supabase: 4종 클라이언트(`client`/`server`/`admin`/`middleware`) 적재적소 사용, admin 오용(RLS 우회 남용) 없는지
+        - RLS: 새 테이블이 RLS 정책 누락 없이 적용됐는지 (`supabase/migrations/*` + `docs/RLS.md` 대조)
+        - 스키마·테스트: `src/lib/schemas/*.ts` 마다 `.test.ts` 쌍, 경계값·실패 케이스 포함
+        - Server Action 테스트: 미인증·권한 없음·검증 실패·성공 4케이스 최소
+        - 직렬화: `ActionResult` 반환에 Date·Map·함수 등 non-serializable 없는지
+     3. **에러 처리·UX 감사**:
+        - try/catch·finally 일관성, 로딩 상태 복구 누락
+        - `showErrorToast` 같은 사용자 피드백 누락 분기
+        - AbortController 연결된 cancel 가능 Server Action 에서 실제 signal 전달 확인
+        - LLM 호출·HWPX 호출 등 장시간 작업의 취소·재시도 UX
+     4. **보안·권한**:
+        - `admin.ts` 사용처가 명시적 RBAC 체크 뒤에 있는지
+        - 컨설턴트의 담당 프로젝트 배정 검증(`requireConsultantRoadmapAccess` 등) 일관 적용
+        - 시크릿 토큰(HWPX_API_SECRET, VERCEL_AUTOMATION_BYPASS_SECRET) 클라이언트 bundle 노출 없는지
+        - Storage 접근 시 signed URL 사용·MIME 검증 서버측 강제
+     5. **성능·코드 스멜**:
+        - N+1 쿼리, 중복 데이터 fetch, 불필요 hydration
+        - Server Component vs Client Component 경계 오용
+        - 동적 import·lazy 로딩 가능 지점 미활용
+        - 사용되지 않는 `_components/*`·레거시 hook·dead code
+     6. **테스트 커버리지**:
+        - 신규 도입 스키마·서비스·Server Action 중 테스트 없는 것
+        - 기존 테스트가 신 스키마로 이관됐으나 mock 업데이트 누락된 것
+     7. **이슈 수집 + 수정 계획 수립**: 위 단계에서 발견한 항목을 우선순위(High/Medium/Low)로 분류. **사용자에게 보고 후 승인받아 범위 확정**.
+     8. **실제 수정**: High·Medium 우선 처리. `npm run validate && npm run build` 기준.
+     9. **재검증**: 수정한 이슈에 대해 해당 단위 테스트·E2E 스모크·lint·tsc 재확인. 대조표 상태 컬럼 갱신.
+   - 서브에이전트 활용 권장:
+     - `general-purpose` 또는 `Explore`: Step 별 구현 대조표 병렬 수집
+     - `security-auditor`: 4단계(보안·권한) 전담 — Task 6 본 실행 전 **선행 스크리닝** 역할
+     - `performance-engineer`: 5단계(성능·코드 스멜) 전담 — Task 5 본 실행 전 **선행 스크리닝** 역할
+     - `postgres-pro`: RLS·인덱스·JSONB·RPC 코드 적합성 (Task 5·6 과 겹치지 않는 DB 중심)
+   - Task 3.6 과의 관계:
+     - **선·후 독립 가능**: Task 3.6 과 병렬로 진행해도 됨. 단 Task 3.6 에서 발견된 이슈 중 "원인이 코드 구조에 있는 것"은 Task 3.7 감사 결과와 교차 검토해 근본 원인 확정.
+     - 두 Task 모두 완료 후 수정 PR 을 합치거나, 큰 이슈는 별도 sub-PR 로 분리.
+   - 본 Task 는 **사용자 승인 게이트**: 대조표 + 우선순위별 이슈 요약 + 수정 계획을 사용자에게 보고하고 승인받은 뒤 수정 실행.
 5. Task 4: Agent(subagent_type:"test-automator", ...) 디스패치 — e2e/workflow/ofa-smoke.spec.ts 6개 시나리오 (계획서 본문 그대로)
 6. Task 5: Agent(subagent_type:"performance-engineer", ...) 성능 감사. Critical 발견 시 별도 PR로 fix
 7. Task 6: Agent(subagent_type:"security-auditor", ...) 최종 보안 감사 (RLS·트랙 격리·HWPX 인증·Storage signed URL·MIME 검증). Critical 발견 시 즉시 차단·수정
@@ -221,6 +264,7 @@
   - Task 2-a: pbl_course 코드 레퍼런스 선제거 누락 시 (Session 09 실측 src/types/database.ts 포함 5+ 곳 — DROP COLUMN 전 필수)
   - **Task 3.5: HWPX 세부 수정 사용자 피드백 목록 재취합 + 수정 결과 한글 검수 통과 여부** — 사용자가 "OK"할 때까지 다음 Task 진행 금지
   - **Task 3.6: Session 1~10 Playwright 감사 결과 요약 + 수정 계획 보고** — 사용자가 수정 범위에 "OK"할 때까지 실제 수정 시작 금지. High 이슈 미해결 시 Task 4 이후 진행 보류.
+  - **Task 3.7: Session 1~10 코드 레벨 감사 대조표 + 수정 계획 보고** — 사용자가 수정 범위에 "OK"할 때까지 실제 수정 시작 금지. Task 3.6 결과와 교차 검토.
   - security-auditor가 Critical 발견 시 (즉시 차단·수정)
   - performance-engineer가 회귀 보고 시
   - mcp__supabase__get_advisors 경고 발생 시
