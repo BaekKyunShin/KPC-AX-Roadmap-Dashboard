@@ -1,5 +1,19 @@
 import { z } from 'zod';
-import { sttInsightsSchema } from './interview';
+
+// ============================================================================
+// STT 인사이트 스키마 (LLM이 STT 원문에서 추출하는 구조화 인사이트)
+// ============================================================================
+
+export const sttInsightsSchema = z.object({
+  추가_업무: z.array(z.string()).optional(),
+  추가_페인포인트: z.array(z.string()).optional(),
+  숨은_니즈: z.array(z.string()).optional(),
+  조직_맥락: z.string().optional(),
+  AI_태도: z.string().optional(),
+  주요_인용: z.array(z.string()).optional(),
+});
+
+export type SttInsights = z.infer<typeof sttInsightsSchema>;
 
 // ============================================================================
 // 산인공 로드맵 인터뷰 양식 (docs/references/1.AI훈련로드맵 컨설팅 보고서(양식).pdf)

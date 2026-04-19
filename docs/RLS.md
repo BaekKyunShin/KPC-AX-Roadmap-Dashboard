@@ -303,3 +303,54 @@ is_conversation_member(p_conversation_id) RETURNS BOOLEAN
 | `034_fix_rls_test_select_consultant_check.sql` | 테스트 모드 SELECT/UPDATE/DELETE 정책에 승인 상태 체크 추가 |
 | `040_add_assessment_tokens.sql` | assessment_tokens 테이블, RLS 정책 (OPS_ADMIN+) |
 | `044_audit_logs_archive.sql` | audit_logs_archive 테이블 (아카이브용, RLS 없음) |
+| `060_add_project_track.sql` | `projects.track` ('ROADMAP'|'PBL') ENUM 컬럼 추가 |
+| `061_add_pbl_reports.sql` | `pbl_reports`, `pbl_likes` 테이블 + RLS + `finalize_pbl()` RPC + `audit_action` ENUM 확장 |
+| `062_add_notices.sql` | `notices`, `notice_attachments` 테이블 + RLS + Storage 버킷 |
+| `063_add_interview_pbl_data.sql` | `interviews.pbl_data` JSONB 컬럼 |
+| `064_add_project_status_pbl.sql` | `project_status` ENUM 에 `PBL_DRAFTED` 추가 |
+| `065_add_interview_attachments.sql` | `interview-attachments` Storage 버킷 + RLS (HRD이음 첨부) |
+| `066_ofa_cleanup.sql` | `audit_logs_archive` RLS 활성화 + 3개 함수 `SET search_path = public` (advisor 경고 해결) |
+| `067_ofa12_rls_and_audit.sql` | `ROADMAP_SHARED` audit enum 추가 + `interview-attachments` 정책 `(SELECT auth.uid())` initplan 래핑 |
+
+## OFA (산인공 공식 양식 정렬) 신규 테이블·버킷 RLS 매트릭스
+
+### `pbl_reports` (마이그 061)
+
+| 역할 | SELECT | INSERT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| CONSULTANT_APPROVED | 배정된 프로젝트 본인 작성분 + `is_shared=true` 공개분 | 배정된 프로젝트만 | 본인 작성분만(DRAFT 상태) | 본인 작성분만(DRAFT 상태) |
+| OPS_ADMIN / SYSTEM_ADMIN | 전체 | — | — | — |
+
+### `pbl_likes` (마이그 061)
+
+| 역할 | SELECT | INSERT | DELETE |
+|------|--------|--------|--------|
+| 인증 사용자 | 본인 기록 | 본인 기록 (중복 unique 제약) | 본인 기록 |
+
+### `notices` / `notice_attachments` (마이그 062)
+
+| 역할 | SELECT | INSERT/UPDATE/DELETE |
+|------|--------|--------------------|
+| 인증 사용자 (로그인) | 전체 (is_published=true 또는 작성자) | — |
+| OPS_ADMIN+ | 전체 | 전체 |
+
+첨부파일 Storage 버킷 `notice-attachments`: 공지 본인 작성자 + OPS_ADMIN+ 업로드, 인증 사용자 조회.
+
+### `interview-attachments` Storage 버킷 (마이그 065 + 067)
+
+경로 규칙: `<project_id>/<random>-<filename>`. 첫 세그먼트가 project_id 여야 정책 통과.
+
+| 역할 | SELECT | INSERT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| OPS_ADMIN+ | 전체 | 전체 | 전체 | 전체 |
+| CONSULTANT_APPROVED | 배정 프로젝트만 | 배정 프로젝트만 | 배정 프로젝트만 | 배정 프로젝트만 |
+
+정책은 `(SELECT auth.uid())` initplan 래핑 적용 (067).
+
+### `audit_logs_archive` (마이그 044 + 066)
+
+| 역할 | SELECT | 기타 |
+|------|--------|------|
+| OPS_ADMIN / SYSTEM_ADMIN | 전체 (066 에서 신규 추가) | INSERT 는 `archive_old_audit_logs()` SECURITY DEFINER 함수로만 |
+
+

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile } from '@/types/database';
-import type { SttInsights } from '@/lib/schemas/interview';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import { roadmapContentSchema } from '@/lib/schemas/roadmap';
 import { callLLMForJSON, type LLMMessage } from '../llm';
