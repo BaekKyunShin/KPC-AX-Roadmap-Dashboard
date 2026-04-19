@@ -4328,6 +4328,9 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 - 전체 E2E 스모크 테스트
 - deprecated된 기존 인터뷰 스키마 최종 제거 (`src/lib/schemas/interview.ts` — Step 5·8에서 트랙별로 분리 완료)
 - `roadmap_versions.pbl_course` 컬럼 drop 마이그레이션
+- HWPX 양식 세부 수정 (Task 3.5 — Session 09 한컴 검증 피드백)
+- **Session 1~10 Playwright 회귀 감사 (Task 3.6 — Session 10 종료 시 사용자 지시로 신설)**
+- **Session 1~10 코드 레벨 회귀 감사 (Task 3.7 — Task 3.6 과 별도·보완)**
 - 문서 갱신 (ARCHITECTURE.md, RLS.md, CLAUDE.md)
 - 배포 체크리스트 검증
 - 성능·보안 최종 감사

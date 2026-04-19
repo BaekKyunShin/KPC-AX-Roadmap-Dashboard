@@ -306,7 +306,7 @@
    - `npm run build` (프로덕션 빌드)
    - `npm run test:e2e` (E2E 전체 — 모든 역할 시나리오)
    - `.venv-hwpx/bin/pytest api/hwpx/` (Python 측 placeholder 테스트 — `api/hwpx/test_placeholders_{roadmap,pbl}.py`)
-   - Vercel Preview 배포 후 스모크 테스트
+   - Vercel Preview 배포 후 Playwright MCP 로 스모크 테스트 (Claude 자동 실행 — HWPX 다운로드·로그인·핵심 페이지 도달 확인)
    - 실패 시 원인 분석·수정 후 재실행. 우회·skip 금지.
 1. ofa-12 sub-PR 머지 후 main PR 생성 보고
 2. 배포 체크리스트 §8 항목별 ✅/❌ 보고
@@ -341,8 +341,8 @@
 
 **(4) 프로덕션 환경 준비 확인**
 - 프로덕션 Supabase에 마이그 060~066 적용 순서·백업 계획 (065 = interview_attachments, 066 = ofa_cleanup)
-- `HWPX_API_SECRET` 프로덕션 환경변수 등록
-- `notice-attachments` Storage 버킷 프로덕션 생성
+- `HWPX_API_SECRET`·`VERCEL_AUTOMATION_BYPASS_SECRET`·`LLM_API_KEY`·`SUPABASE_*` 프로덕션 환경변수 등록
+- Storage 버킷 프로덕션 생성: `notice-attachments`, `interview-attachments`
 - pg_dump 백업 준비
 
 **(5) 팀장 최종 승인 후 직접 머지**
