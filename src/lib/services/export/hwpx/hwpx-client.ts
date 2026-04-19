@@ -139,9 +139,13 @@ async function postToPythonGenerate(
 
     if (isNextDevFallback) {
       // `next dev`는 Vercel Python 함수를 서빙하지 않음 → /api/hwpx/generate 가 404.
-      // 로컬에서 HWPX 기능을 테스트하려면 Preview 배포 URL 또는 `vercel dev`를 사용해야 함.
+      // HWPX는 `python-hwpx` 라이브러리 의존으로 Next.js에서 네이티브 실행 불가.
+      // 3가지 옵션: ① vercel dev ② Preview 배포 ③ Production 배포
       throw new Error(
-        'HWPX 엔드포인트가 로컬 환경에서 실행되지 않습니다. `next dev`는 Vercel Python 함수를 서빙할 수 없으므로, Preview 배포에서 테스트하거나 `npm run dev:vercel`을 사용하세요.',
+        'HWPX는 Vercel Python 런타임이 필요합니다. 다음 중 하나로 테스트하세요:\n' +
+          '① 현재 `npm run dev` 중단 후 `npm run dev:vercel` 실행 (Vercel CLI 필요)\n' +
+          '② Preview 배포에서 테스트 (git push → Vercel Preview URL 사용)\n' +
+          '③ Production 배포에서 확인',
       );
     }
 

@@ -259,6 +259,8 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                       key={item.href}
                       href={item.href}
                       prefetch={true}
+                      // flat 링크가 navGroupRef 내부 형제 요소라 handleClickOutside로 드롭다운이 닫히지 않음 → 명시적 닫기
+                      onClick={() => setOpenGroupIndex(null)}
                       className={cn(
                         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
                         isActive
