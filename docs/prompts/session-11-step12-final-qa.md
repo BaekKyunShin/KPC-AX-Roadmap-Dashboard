@@ -1,7 +1,7 @@
 # Session 11 — Step 12: 최종 QA · 문서 · 배포 점검 + main 머지
 
 ## 세션 목표
-마스터 계획서 §4의 **Step 12** (M, **13 Task**) 수행 + **`feature/official-form-alignment` → `main` 최종 PR 1회**. 마이그레이션 **066**(legacy 정리; 065는 Step 6.5의 interview_attachments가 점유), Task 1·2의 선행 이관, Task 3.5 HWPX 양식 세부 수정(Session 09 피드백), E2E 스모크, 성능·보안 감사, **산인공 양식 1번·2번 1:1 정합성 전수 검증**, 문서 갱신, 배포 체크리스트 통과.
+마스터 계획서 §4의 **Step 12** (M, **15 Task**) 수행 + **`feature/official-form-alignment` → `main` 최종 PR 1회**. 마이그레이션 **066**(legacy 정리; 065는 Step 6.5의 interview_attachments가 점유), Task 1·2의 선행 이관, Task 3.5 HWPX 양식 세부 수정(Session 09 피드백), **Task 3.6 Session 1~10 Playwright 회귀 감사 + Task 3.7 Session 1~10 코드 레벨 회귀 감사(Session 10 종료 시 사용자 지시로 신설)**, E2E 스모크, 성능·보안 감사, **산인공 양식 1번·2번 1:1 정합성 전수 검증**, 문서 갱신, 배포 체크리스트 통과.
 
 ## 사전 조건
 - Step 1~11 **+ Step 6.5** 모든 PR이 `feature/official-form-alignment`에 머지됨.
@@ -10,7 +10,7 @@
 - 사람 승인 받을 준비 (마지막 main 머지 PR은 팀장 직접 승인 필수).
 
 ## 실행 모드
-**subagent-driven-development** — **13 Task** (Task 1-a/1-b/2-a/2-b 분할 + Task 3.5 HWPX 피드백 신규 + 기존 3~10). 마이그·E2E·성능 감사·보안 감사·문서 갱신·UI 감사 모두 분리된 specialist.
+**subagent-driven-development** — **15 Task** (Task 1-a/1-b/2-a/2-b 분할 + Task 3.5 HWPX 피드백 + **Task 3.6 Playwright 회귀 감사 + Task 3.7 코드 레벨 회귀 감사(Session 10 종료 시 신설)** + 기존 3·4·5·6·7·8·9·10). 마이그·E2E·성능 감사·보안 감사·회귀 감사·문서 갱신·UI 감사 모두 분리된 specialist.
 
 ## 호출 스킬·MCP·서브에이전트
 - `superpowers:subagent-driven-development`
@@ -24,7 +24,7 @@
 - MCP: `mcp__supabase__get_advisors`, `mcp__supabase__apply_migration`, Playwright
 
 ## 예상 소요
-**4~6시간** (감사 결과 대응 시간 별도)
+**8~12시간** (Task 3.6 Playwright·3.7 코드 감사 추가 반영 — Session 10 종료 시 신설. 감사 결과 대응 시간 별도)
 
 ## 성공 지표
 - [ ] **Task 1-a**: `interview.ts` 잔존 import 이관 (Session 11 실측 18 곳 — `test-roadmap/*`은 Session 11에서 신 스키마로 이관 완료, 잔존은 대부분 `consultant/projects/[id]/interview/*` 실사용 페이지 15개 + 서비스 3개(`roadmap-generator.ts`, `stt.ts`, `roadmap-stt-formatter.ts`)) — `@/lib/schemas/interview-roadmap` 으로 개별 교체
@@ -73,7 +73,7 @@
 - 마스터 계획서: docs/plans/2026-04-14-official-form-alignment.md
 - OFA 프로젝트 **열한 번째(마지막) 세션** — Step 1~11 + **Step 6.5** 모두 머지된 상태
   - 13 Step (Step 6.5 신규 삽입 포함) / 150+ Task / 65+ 신규·변경 파일 모두 통합됨
-- 본 세션: Step 12 (M, 10 Task) + **feature/official-form-alignment → main 최종 PR 1회**
+- 본 세션: Step 12 (M, **15 Task** — Task 1-a/1-b/2-a/2-b 분할 + 3.5/3.6/3.7 신규 + 기존 3·4·5·6·7·8·9·10) + **feature/official-form-alignment → main 최종 PR 1회**
 - 결과물 후 OFA 프로젝트 종료. 추후 변경 사항은 별도 새 계획서.
 
 === 사전 검증 (반드시 첫 번째로 실행) ===
@@ -99,7 +99,7 @@
 14. ls .venv-hwpx scripts/dev-hwpx-server.py && grep dev:hwpx package.json  → Session 11에서 도입한 HWPX 로컬 브리지 워크플로우 존재 확인
 15. npm run validate && npm run build && npm run test:e2e  → baseline 통과
 
-**HWPX 로컬 테스트 워크플로우 (Session 11 도입 — Task 3.5·4·E2E에서 필수)**:
+**HWPX 로컬 테스트 워크플로우 (직전 세션 Session 10 = Step 11 = OFA-11 에서 도입 — Task 3.5·3.6·4·E2E 에서 필수)**:
 - `npm run dev:hwpx:setup` (최초 1회, `.venv-hwpx` 생성 + python-hwpx·lxml 설치)
 - 터미널 A: `npm run dev:hwpx` (브리지 서버 3010)
 - 터미널 B: `npm run dev:with-hwpx` (next dev + HWPX_DEV_PROXY_URL 자동 세팅)
@@ -141,8 +141,8 @@
 4.5. **Task 3.5 (HWPX 양식 세부 수정 — Session 09 한글 프로그램 검증 피드백 일괄 반영)**:
    - 본 Task 진입 시 **사용자에게 구체 피드백 목록 재요청** (Session 09 종료 시 "수정 필요 사항이 있지만 Step 12에서 일괄 처리" 합의됨)
    - 대상 위치: `api/hwpx/generate.py` (`_generate_roadmap`/`_generate_pbl` 셀 좌표), `api/hwpx/_placeholders_*.py` (placeholder 맵·반복 배열), `templates/hwpx/*.hwpx` (필요 시 템플릿 수정), 각 테스트 파일
-   - **주의사항 (Session 11에서 파악)**:
-     - `src/lib/services/export/hwpx/hwpx-client.ts` 의 에러 메시지를 변경할 경우 `src/app/(dashboard)/consultant/projects/[id]/{roadmap,pbl}/actions.ts` 의 `isLocalDevFallback = message.includes('Vercel Python 런타임')` 키워드와 동기화 필수 (Session 11 회귀 사례 있음).
+   - **주의사항 (직전 세션 Session 10 = Step 11 에서 파악)**:
+     - `src/lib/services/export/hwpx/hwpx-client.ts` 의 에러 메시지를 변경할 경우 `src/app/(dashboard)/consultant/projects/[id]/{roadmap,pbl}/actions.ts` 의 `isLocalDevFallback = message.includes('Vercel Python 런타임')` 키워드와 동기화 필수 (Session 10 회귀 사례 있음).
      - 파일명 생성 규칙은 `src/lib/services/export/hwpx/hwpx-filename.ts` (공통 `sanitizeFileNamePart`) 로 중앙화됨 → 신규 규칙 추가 시 여기만 수정.
    - 검증: pytest PASS + **로컬 HWPX 브리지(위 사전 검증 14번 워크플로우)** 또는 Preview 배포 후 Playwright MCP로 HWPX 재다운로드 + 한글 프로그램 육안 검수 **사용자 승인 필수**
    - 미통과 시 재수정 반복. 완료 없이는 Task 4 이후 진행 금지
@@ -224,11 +224,12 @@
 7. Task 6: Agent(subagent_type:"security-auditor", ...) 최종 보안 감사 (RLS·트랙 격리·HWPX 인증·Storage signed URL·MIME 검증). Critical 발견 시 즉시 차단·수정
 8. Task 7: 문서 갱신 (ARCHITECTURE.md·RLS.md·CLAUDE.md). 트랙 분리·HWPX·게시판 구조 반영
 9. Task 8: web-design-guidelines 스킬로 UI 최종 감사
-   - **Session 11 변경 체크포인트**:
+   - **직전 세션(Session 10 = Step 11 = OFA-11) 변경 체크포인트**:
      - **컨설턴트 네비 구조**가 기존 flat 링크 4개 → 공지사항 flat + 워크스페이스·라이브러리 드롭다운 2개 (OPS 와 동일 패턴). 모바일은 아코디언.
      - 드롭다운 UX: (a) flat 링크 클릭 시 열린 드롭다운 닫힘, (b) `aria-expanded`, (c) Escape 키로 닫기, (d) 바깥 클릭 닫기.
      - 공용 `TrackBadge` (`src/components/ui/TrackBadge.tsx`) 사용 일관성 — 갤러리 카드·프로젝트 테이블·상세 페이지에서 size prop 일관되게 사용.
      - `/test-roadmap`·`/test-pbl` 은 프로덕션 인터뷰 폼과 동일 Step 컴포넌트를 재사용하므로 UI/UX 원칙 자동 준수.
+     - HWPX 파일명은 `src/lib/services/export/hwpx/hwpx-filename.ts` 공통 `sanitizeFileNamePart` 로 중앙화.
 10. Task 9: npm run validate && npm run build && npm run test:e2e 모두 통과
 11. Task 10:
     a. 본 Step의 sub-PR 생성·머지 (gh pr create --base feature/official-form-alignment --title "feat(ofa-12): 최종 QA + 문서")
@@ -246,6 +247,7 @@
        ## Test plan
        - [ ] feature 브랜치 Preview에서 운영자/컨설턴트 풀 워크플로우 수동 검증 1주
        - [ ] HWPX 한글 프로그램 검수 3건 이상
+       - [ ] Task 3.6 Playwright 회귀 감사 + Task 3.7 코드 레벨 회귀 감사 완료 + High 이슈 0건
        - [ ] performance-engineer·security-auditor 보고서 통과
        - [ ] §8 배포 체크리스트 전부 ✅
 
@@ -258,7 +260,7 @@
     e. 본 PR 머지는 사용자(팀장)만 수동 수행. Claude는 절대 머지하지 않음
 
 === 자동 진행 vs 승인 요청 경계 (Step 12는 신중) ===
-- 자동 진행: Task 1~9 (정리·마이그·E2E·문서) — 단 Task 3.5·3.6는 사용자 승인이 게이트
+- 자동 진행: Task 1~9 (정리·마이그·E2E·문서) — 단 **Task 3.5·3.6·3.7 는 사용자 승인이 게이트**
 - 승인 요청 (즉시 중단):
   - Task 1-a: interview.ts 잔존 import 발견 시 (Session 11 실측 18 파일 — `consultant/projects/[id]/interview/*` 15 개 + 서비스 3 개; 해당 파일을 먼저 갱신해야)
   - Task 2-a: pbl_course 코드 레퍼런스 선제거 누락 시 (Session 09 실측 src/types/database.ts 포함 5+ 곳 — DROP COLUMN 전 필수)
@@ -288,7 +290,7 @@
    - `npm run validate` (typecheck + lint + unit test 전체)
    - `npm run build` (프로덕션 빌드)
    - `npm run test:e2e` (E2E 전체 — 모든 역할 시나리오)
-   - pytest (Python 측 테스트)
+   - `.venv-hwpx/bin/pytest api/hwpx/` (Python 측 placeholder 테스트 — `api/hwpx/test_placeholders_{roadmap,pbl}.py`)
    - Vercel Preview 배포 후 스모크 테스트
    - 실패 시 원인 분석·수정 후 재실행. 우회·skip 금지.
 1. ofa-12 sub-PR 머지 후 main PR 생성 보고

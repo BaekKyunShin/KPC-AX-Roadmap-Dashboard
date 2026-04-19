@@ -4321,8 +4321,8 @@ gh pr create --base feature/official-form-alignment --title "feat(ofa-11): 갤�
 ### Step 12: 최종 QA, 문서, 배포 점검
 
 **브랜치:** `feature/ofa-12-final-qa-docs`
-**규모:** Medium (약 10개 Task)
-**호출 스킬:** `test-automator`(서브에이전트), `performance-engineer`(서브에이전트), `security-auditor`(서브에이전트), `web-design-guidelines`, Playwright MCP, `refactoring`
+**규모:** Medium (약 **15개 Task** — Task 1·2 각 2 단계 분할 + Task 3.5 HWPX 세부 + Task 3.6 Playwright 회귀 + Task 3.7 코드 레벨 회귀 + 기존 3·4·5·6·7·8·9·10)
+**호출 스킬:** `test-automator`(서브에이전트), `performance-engineer`(서브에이전트), `security-auditor`(서브에이전트), `general-purpose`/`Explore`(Task 3.7 대조표), `postgres-pro`(Task 3.7 DB 중심), `web-design-guidelines`, Playwright MCP, `refactoring`
 
 **목표:**
 - 전체 E2E 스모크 테스트
