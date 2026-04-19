@@ -8,9 +8,10 @@ import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-r
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-generator';
 import { createDraftVersion } from '@/lib/services/pbl/pbl-crud';
+import { pblInterviewSchema } from '@/lib/schemas/interview-pbl';
+import type { PBLInterviewInput } from '@/lib/schemas/interview-pbl';
 import type { ConsultantProfile } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
-import type { PBLInterviewSample } from '../../../../e2e/fixtures/pbl-interview-sample';
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
@@ -24,38 +25,50 @@ export interface TestPBLResult {
 }
 
 /**
- * /test-pbl 에서 호출되는 샘플 기반 PBL 생성 액션.
+ * /test-pbl 에서 호출되는 PBL 생성 액션 (OFA-11 재작성).
+ *
+ * 기존: 고정 fixture(PBL_INTERVIEW_SAMPLE)만 수용 → 폼 편집 불가
+ * 신규: 사용자가 폼에서 편집한 `PBLInterviewInput` 전체를 수용
  *
  * 흐름:
- *  1. 테스트 프로젝트(is_test_mode=true) 생성 — PBL 트랙
- *  2. 샘플 인터뷰 JSONB를 interviews 테이블에 저장
- *  3. generatePBLContent 호출 → PBLContent 초안 생성
- *  4. createDraftVersion 으로 pbl_reports 에 DRAFT 저장
- *  5. 프로젝트 상태를 PBL_DRAFTED로 전이
- *
- * 반환: 생성된 pbl_report id + 테스트 프로젝트 id
+ *  1. 인터뷰 스키마 엄격 검증
+ *  2. 테스트 프로젝트(is_test_mode=true, track=PBL) 생성
+ *  3. 인터뷰 JSONB 저장
+ *  4. generatePBLContent 호출 → PBLContent 초안 생성
+ *  5. createDraftVersion으로 pbl_reports에 DRAFT 저장
+ *  6. 프로젝트 상태를 PBL_DRAFTED로 전이
  */
 export async function generateTestPBL(
-  interviewData: PBLInterviewSample,
+  interviewData: PBLInterviewInput,
 ): Promise<ActionResult<TestPBLResult>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
 
+  // 엄격 검증
+  const parsed = pblInterviewSchema.safeParse(interviewData);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: `PBL 인터뷰 데이터 검증 실패: ${parsed.error.errors[0]?.message ?? '알 수 없는 오류'}`,
+    };
+  }
+  const validatedInput = parsed.data;
+
   const { user } = auth;
   const adminSupabase = createAdminClient();
 
-  const courseOverview = interviewData.courseOverview;
+  const courseOverview = validatedInput.courseOverview;
 
   // 프로젝트 생성 — 테스트 모드, PBL 트랙
   const { data: project, error: projectError } = await adminSupabase
     .from('projects')
     .insert({
-      company_name: `[테스트] ${courseOverview.company_name}`,
+      company_name: `[테스트] ${courseOverview.company_name || '샘플기업'}`,
       industry: courseOverview.industry_main || '제조업',
       company_size: 'medium',
-      contact_name: courseOverview.contact.name || '담당자',
-      contact_email: courseOverview.contact.email || `test-${Date.now()}@example.com`,
-      contact_phone: courseOverview.contact.phone || '',
+      contact_name: courseOverview.contact?.name || '담당자',
+      contact_email: courseOverview.contact?.email || `test-${Date.now()}@example.com`,
+      contact_phone: courseOverview.contact?.phone || '',
       status: 'INTERVIEWED',
       track: 'PBL',
       is_test_mode: true,
@@ -74,7 +87,7 @@ export async function generateTestPBL(
   const { error: interviewError } = await adminSupabase.from('interviews').insert({
     project_id: project.id,
     interview_date: new Date().toISOString().slice(0, 10),
-    pbl_data: interviewData,
+    pbl_data: validatedInput,
     conducted_by: user.id,
   });
   if (interviewError) {
@@ -82,7 +95,6 @@ export async function generateTestPBL(
     return { success: false, error: '테스트 인터뷰 저장에 실패했습니다.' };
   }
 
-  // 컨설턴트 프로필 (있으면 스냅샷에 반영)
   let consultantProfile: ConsultantProfile | null = null;
   const { data: profile } = await adminSupabase
     .from('consultant_profiles')
@@ -91,9 +103,8 @@ export async function generateTestPBL(
     .single();
   if (profile) consultantProfile = profile as ConsultantProfile;
 
-  // 진단 요약
   const diagnosisSummary = [
-    `[테스트] ${courseOverview.company_name} 대상`,
+    `[테스트] ${courseOverview.company_name || '샘플기업'} 대상`,
     courseOverview.training_job ? `${courseOverview.training_job} 직무의` : '',
     `AI 기반 PBL 과정(${courseOverview.course_name ?? '과정명 미지정'})`,
   ]
@@ -104,22 +115,15 @@ export async function generateTestPBL(
 
   try {
     const { content } = await generatePBLContent({
-      interview: interviewData as unknown as Record<string, unknown>,
+      interview: validatedInput as unknown as Record<string, unknown>,
       project: project as unknown as Record<string, unknown>,
       consultantProfile,
       diagnosisSummary,
       signal: abortController.signal,
     });
 
-    const draft = await createDraftVersion(
-      project.id,
-      content,
-      user.id,
-      diagnosisSummary,
-      null,
-    );
+    const draft = await createDraftVersion(project.id, content, user.id, diagnosisSummary, null);
 
-    // 프로젝트 상태 전이
     await adminSupabase
       .from('projects')
       .update({ status: 'PBL_DRAFTED' })
