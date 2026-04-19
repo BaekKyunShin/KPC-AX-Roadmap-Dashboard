@@ -446,7 +446,9 @@ export type AuditAction =
   | 'PBL_REPORT_CREATED'
   | 'PBL_REPORT_FINALIZED'
   | 'PBL_REPORT_SHARED'
-  | 'PBL_HWPX_EXPORTED';
+  | 'PBL_HWPX_EXPORTED'
+  // 마이그 067에서 추가된 OFA-12 액션
+  | 'ROADMAP_SHARED';
 
 // 알림 타입
 export type NotificationType =

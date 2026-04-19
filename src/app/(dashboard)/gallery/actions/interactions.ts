@@ -11,6 +11,7 @@ import {
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { createAuditLog } from '@/lib/services/audit';
 
 // =============================================================================
 // 좋아요 토글
@@ -119,6 +120,18 @@ export async function toggleShare(
     return errorResult('공유 설정 변경 중 오류가 발생했습니다.');
   }
 
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'ROADMAP_SHARED',
+      targetType: 'roadmap_version',
+      targetId: roadmapVersionId,
+      meta: { is_shared: newShared },
+    });
+  } catch (e) {
+    console.error('[toggleShare] 감사로그 실패:', e);
+  }
+
   revalidatePath('/gallery');
 
   return successResult({ isShared: newShared });
@@ -221,6 +234,18 @@ export async function togglePBLShare(
   if (error) {
     console.error('[togglePBLShare Error]', error);
     return errorResult('공유 설정 변경 중 오류가 발생했습니다.');
+  }
+
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PBL_REPORT_SHARED',
+      targetType: 'pbl_report',
+      targetId: pblReportId,
+      meta: { is_shared: newShared },
+    });
+  } catch (e) {
+    console.error('[togglePBLShare] 감사로그 실패:', e);
   }
 
   revalidatePath('/gallery');

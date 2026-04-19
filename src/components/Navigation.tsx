@@ -77,6 +77,7 @@ function NavGroupDropdown({
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
+        aria-haspopup="menu"
         className={cn(
           'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
           groupActive
@@ -141,6 +142,7 @@ function MobileNavGroup({
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
+        aria-haspopup="menu"
         className={cn(
           'flex w-full items-center justify-between px-3 py-3 rounded-lg text-base font-medium transition-colors',
           groupActive
@@ -345,6 +347,7 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                 aria-label="사용자 메뉴"
                 aria-expanded={isUserMenuOpen}
+                aria-haspopup="menu"
               >
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs">

@@ -1,4 +1,4 @@
-import type { SttInsights } from '@/lib/schemas/interview';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 
 // ============================================================================
 // STT 인사이트 관련 헬퍼

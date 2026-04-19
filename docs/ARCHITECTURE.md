@@ -339,3 +339,54 @@ sendMessage() (Server Action)             │
 | 파일 내보내기 | Server Actions | `actions.ts` |
 
 > Server Actions를 우선 사용하고, 스트리밍이나 복잡한 응답이 필요한 경우에만 API Routes를 사용합니다.
+
+## OFA (산인공 공식 양식 정렬) 아키텍처 (2026-04)
+
+### 프로젝트 트랙 분리
+
+`projects.track` ENUM (`ROADMAP` | `PBL`) 로 프로젝트를 두 트랙으로 나눈다. 인터뷰 폼·LLM 프롬프트·산출물·HWPX 템플릿 모두 트랙별로 분리된다.
+
+```text
+projects
+  ├── track = 'ROADMAP' → roadmap_versions (산인공 양식 1번)
+  │                        └── HWPX: templates/hwpx/roadmap.hwpx
+  └── track = 'PBL'     → pbl_reports (산인공 양식 2번 + 결과보고서)
+                           └── HWPX: templates/hwpx/pbl.hwpx
+```
+
+### HWPX 생성 파이프라인
+
+```text
+Next.js Server Action (consultant/projects/[id]/{roadmap,pbl}/actions.ts)
+  ↓
+hwpx-client.ts (Node 클라이언트)
+  ↓ POST /api/hwpx/generate + HWPX_API_SECRET 헤더
+Vercel Python Function (api/hwpx/generate.py)
+  ↓ python-hwpx 로 템플릿 placeholder 치환
+HWPX 파일 (ZIP) ← 클라이언트로 스트리밍 반환
+```
+
+**파일명 규칙**: `src/lib/services/export/hwpx/hwpx-filename.ts` 의 `sanitizeFileNamePart()` 로 중앙화.
+
+**로컬 개발 워크플로우**:
+- `next dev` 는 Python 런타임을 서빙하지 않음
+- `scripts/dev-hwpx-server.py` (포트 3010) 가 `api/hwpx/generate.py` handler 를 재사용
+- `next.config.ts` 의 `rewrites()` 가 `HWPX_DEV_PROXY_URL` 환경변수 감지 시 `/api/hwpx/*` 요청을 브리지 서버로 포워딩
+- `npm run dev:hwpx` + `npm run dev:with-hwpx` 로 병렬 구동
+
+### 공지 게시판
+
+- 단일 페이지(`/notices`) 리스트 + 상세 + 작성. 역할 기반 쓰기 권한(OPS+).
+- 첨부파일은 Storage 버킷 `notice-attachments` 에 저장, 서명 URL 로 다운로드.
+
+### 갤러리 통합 쿼리
+
+- `/gallery` 는 ROADMAP/PBL 두 트랙 카드를 하나의 그리드에 표시.
+- 서버에서 `fetchGalleryRoadmaps()` + `fetchGalleryPBLReports()` 병렬 조회 후 `TrackBadge` 공용 컴포넌트로 뱃지 표시.
+- 필터: 트랙 (`ALL` | `ROADMAP` | `PBL`), 정렬(추천순·최신순·좋아요순).
+
+### 공용 디자인 키트
+
+- `src/components/roadmap/shared/` — 표·섹션·셀 컴포넌트를 로드맵/PBL 양쪽에서 재사용.
+  - `SectionNumberBadge` · `SyncedTableRow` · `TableTextCell` · `TableInlineCell` · `TableNumericCell` · `table-styles`.
+- `src/components/ui/TrackBadge.tsx` — 트랙 뱃지 (size prop 일관).
