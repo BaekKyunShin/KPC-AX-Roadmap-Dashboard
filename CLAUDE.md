@@ -43,11 +43,27 @@ npm run test:e2e:report  # E2E 테스트 리포트 열기
 
 **HWPX 다운로드(로드맵·PBL) 로컬 테스트 규칙:**
 
-- `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`에서는 서빙되지 않는다(404).
-- 로컬에서 HWPX 다운로드를 검증하려면 둘 중 하나를 사용:
-  ① `npm run dev:vercel` (Python 런타임 포함, Vercel CLI 필요)
-  ② 프로젝트를 Vercel Preview로 배포 후 Preview URL에서 테스트
-- `next dev` 환경에서 HWPX 버튼을 누르면 클라이언트에 "HWPX 엔드포인트가 로컬 환경에서 실행되지 않습니다…" 안내 메시지가 표출된다 — 실패가 아닌 환경 제약임을 사용자에게 알리기 위함.
+- `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`는 Python 런타임을 서빙하지 않고, 구버전 Vercel CLI의 `vercel dev`도 Python 함수 빌드에 실패할 수 있다.
+- **권장 로컬 워크플로우 (브리지 서버 방식 — 검증 완료)**:
+
+  ```bash
+  # 최초 1회: Python venv 생성 + python-hwpx 설치
+  npm run dev:hwpx:setup
+
+  # 터미널 A: HWPX 브리지 서버 (포트 3010)
+  npm run dev:hwpx
+
+  # 터미널 B: HWPX 프록시 활성화된 Next.js dev (포트 3000)
+  npm run dev:with-hwpx
+  ```
+
+  동작 원리: `next.config.ts`의 `rewrites()`가 `HWPX_DEV_PROXY_URL` 환경변수를 감지하면 `/api/hwpx/*` 요청을 브리지 서버(`scripts/dev-hwpx-server.py`)로 포워딩. 브리지 서버는 `api/hwpx/generate.py` 핸들러를 그대로 재사용하므로 프로덕션(Vercel)과 동일한 출력 보장(PBL 117KB·ROADMAP 411KB ZIP 매직 넘버 `504b 0304` 확인 완료).
+
+- 대체 옵션:
+  ① Preview 배포(`git push` → Preview URL)에서 테스트
+  ② `npm run dev:vercel` (Vercel CLI 51.7+ 권장 — 구버전은 Python 런타임 빌드 실패 가능)
+
+- `npm run dev` (브리지 서버 없이)로 HWPX 버튼을 누르면 클라이언트에 안내 메시지가 표출된다(3가지 해결 옵션 포함).
 
 **배포 전 체크리스트:** `npm run validate` (typecheck + lint + test) → `npm run build` → Vercel 배포
 

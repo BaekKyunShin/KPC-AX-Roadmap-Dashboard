@@ -65,6 +65,7 @@ roadmap-*.png
 
 # Python (HWPX 관련 로컬 도구)
 .venv/
+.venv-hwpx/
 __pycache__/
 *.pyc
 *.pyo
