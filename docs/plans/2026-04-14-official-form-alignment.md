@@ -4503,6 +4503,53 @@ ALTER TABLE roadmap_versions DROP COLUMN IF EXISTS pbl_course;
 
 **승인 게이트:** 사용자 한글 프로그램 검수 "통과" 확인 후에만 Task 3.5 완료. 미통과 시 재수정 반복.
 
+- [ ] **Task 3.6: Session 1~10 전체 워크플로우 Playwright MCP 회귀 감사 (신규)**
+
+> 배경: Session 11(OFA-11 Step 11) 종료 시점에 사용자 요청으로 추가됨. Session 1~10 에서 도입된 실 사용자 기능이 최신 `feature/official-form-alignment` 브랜치에서 실제로 동작하는지, 버그·오류·UX 불편이 없는지 실제 브라우저에서 전수 확인한다.
+
+**참고 입력 문서 (반드시 정독):**
+- 마스터 계획서 본 파일 §4 Step 1~11 각각
+- `docs/prompts/session-00-overview.md`
+- `docs/prompts/session-01-step1-setup.md`
+- `docs/prompts/session-02-step2-db-foundation.md`
+- `docs/prompts/session-03-step3-4-parallel.md`
+- `docs/prompts/session-04-step5-roadmap-interview.md`
+- `docs/prompts/session-05-step6-roadmap-output.md`
+- `docs/prompts/session-05b-step6.5-form-compliance.md`
+- `docs/prompts/session-06-step7-roadmap-hwpx.md`
+- `docs/prompts/session-07-step8-pbl-interview.md`
+- `docs/prompts/session-08-step9-pbl-output.md`
+- `docs/prompts/session-09-step10-pbl-hwpx.md`
+- `docs/prompts/session-10-step11-gallery.md`
+
+**테스트 계정:**
+- **컨설턴트**: `kpc@test.com` / `aaaa0000`
+- **운영관리자**: `son@test.com` / `aaaa00000`
+
+**감사 범위:**
+- **인증·RBAC** (Session 01~02): 로그인·회원가입·역할 승인·미승인 접근 거부
+- **프로젝트 라이프사이클** (Session 03~09): 생성 → 진단 → 매칭 → 배정 → 인터뷰 → 산출물 → 확정
+- **로드맵 인터뷰·산출물** (Session 04~06 + 05b): 6단계 인터뷰·자동 저장·LLM 생성·수정·확정·PDF/XLSX/HWPX 다운로드
+- **PBL 인터뷰·산출물** (Session 07~09): 9단계 인터뷰·LLM 생성·수정·확정·PDF/XLSX/HWPX 다운로드
+- **HWPX 실물** (Session 06·09): 로컬 브리지 서버 기반 실제 다운로드 + 파일 크기·ZIP 매직 확인
+- **갤러리·테스트 페이지** (Session 10): 트랙 필터·카드·상세·좋아요·공유·`/test-roadmap`·`/test-pbl`
+- **OPS 관리**: 프로젝트 관리·사용자 관리·템플릿·감사로그·쿼터·공지사항
+- **모바일 반응형**: Playwright viewport 375×667 로 주요 페이지 5개 샘플링
+- **키보드 접근성**: Tab 순서·Escape·Enter — 네비 드롭다운·모달·폼
+
+**감사 절차 (엄수):**
+1. **시나리오 추출**: 위 12개 문서 읽고 각 Step 의 핵심 사용자 시나리오 목록화.
+2. **환경 준비**:
+   - Task 3.5 에서 준비한 HWPX 브리지 워크플로우(`npm run dev:hwpx:setup` 최초 1회 → `npm run dev:hwpx` + `npm run dev:with-hwpx`) 활성화
+   - Playwright MCP(`mcp__plugin_playwright_playwright__*`) 로 두 테스트 계정 각각 로그인. 쿠키·세션 유지.
+3. **순차 실행**: Step 1→11 순서로 시나리오 수행. 각 단계마다 (a) 예상 화면·동작 (b) 실제 결과 (c) 네트워크 오류·콘솔 에러 (d) 스크린샷 기록.
+4. **이슈 수집**: 발견된 버그·오류·UX 불편을 `docs/2026-{YYYY-MM-DD}-session11-playwright-audit.md` 파일로 산출. 우선순위(High/Medium/Low) 분류.
+5. **수정 계획 수립**: High 는 본 Step 내 즉시 수정. Medium 은 시간 여유 있을 때. Low 는 별도 이슈 등록. **수정 계획을 사용자에게 보고 후 승인 받은 뒤 진행.**
+6. **실제 수정**: 계획대로 코드 수정. `npm run validate` 통과 기준.
+7. **재검증**: 수정된 항목을 Playwright MCP 로 재실행해 해결 확인. 감사 리포트 "결과 섹션" 업데이트.
+
+**승인 게이트:** 감사 결과 + 수정 계획을 사용자 보고 → 승인 → 실제 수정 → 재검증 → 최종 리포트 사용자 확인. High 이슈 미해결 시 Task 4 이후 진행 보류.
+
 - [ ] **Task 4: `test-automator` 서브에이전트로 E2E 스모크 시나리오**
 
 ```
