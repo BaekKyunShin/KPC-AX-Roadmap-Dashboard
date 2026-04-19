@@ -179,7 +179,7 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         </div>
       </TableCell>
       <TableCell>
-        <TrackBadge track={project.track} size="sm" />
+        <TrackBadge track={project.track} />
       </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
       <TableCell className="text-muted-foreground">{formatCompanySize(project.company_size)}</TableCell>

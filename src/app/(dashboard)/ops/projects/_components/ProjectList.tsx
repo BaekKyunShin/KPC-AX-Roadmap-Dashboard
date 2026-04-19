@@ -404,7 +404,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                           </div>
                         </TableCell>
                         <TableCell className="align-top">
-                          <TrackBadge track={projectItem.track} size="sm" />
+                          <TrackBadge track={projectItem.track} />
                         </TableCell>
                         <TableCell className="text-muted-foreground align-top">{projectItem.industry}</TableCell>
                         <TableCell className="align-top">

@@ -16,7 +16,12 @@ interface TrackBadgeProps {
  */
 export function TrackBadge({ track, size = 'md', className }: TrackBadgeProps) {
   const color = TRACK_BADGE_COLORS[track];
-  const sizeClass = size === 'sm' ? 'text-[10px] px-2 py-0 leading-4' : 'text-xs';
+  // 'md'는 프로젝트 목록·OPS 테이블의 상태 뱃지(px-2 py-1 text-xs font-medium)와 동일 사이즈.
+  // 'sm'은 갤러리 카드·모바일 카드 등 보조 위치에서 여백 절약용.
+  const sizeClass =
+    size === 'sm'
+      ? 'text-[10px] px-2 py-0 leading-4'
+      : 'text-xs px-2 py-1 font-medium';
 
   return (
     <Badge
