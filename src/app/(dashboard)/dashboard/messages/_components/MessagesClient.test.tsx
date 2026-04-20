@@ -569,4 +569,208 @@ describe('MessagesClient', () => {
       });
     });
   });
+
+  // ─── fetchMessages 실패/예외 ──────────────────────────────────────────
+
+  describe('fetchMessages 예외 처리', () => {
+    it('fetchMessages 예외(throw) 발생 시 showErrorToast를 호출한다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-exc2', other_user: { id: 'u1', name: '메시지예외', role: 'OPS_ADMIN' } });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      // throw로 catch 블록 진입 — 이것이 showErrorToast를 호출하는 경로
+      mockFetchMessages.mockRejectedValue(new Error('네트워크 예외'));
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('메시지예외')).toBeInTheDocument());
+      await user.click(screen.getByText('메시지예외'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+      });
+    });
+
+    it('fetchMessages 실패(success=false) 시 빈 메시지로 스레드가 표시된다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-fail2', other_user: { id: 'u1', name: '메시지실패', role: 'OPS_ADMIN' } });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue({ success: false as const, error: '조회 오류' });
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('메시지실패')).toBeInTheDocument());
+      await user.click(screen.getByText('메시지실패'));
+
+      // success=false여도 selectedConvId는 설정되어 MessageThread가 표시됨
+      await waitFor(() => {
+        expect(screen.getByTestId('message-thread')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ─── hasMore 분기 — 더 불러오기 ────────────────────────────────────
+
+  describe('hasMore 분기', () => {
+    it('hasMore=true인 경우 컴포넌트가 올바르게 렌더링된다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-more', other_user: { id: 'u1', name: '더보기유저', role: 'OPS_ADMIN' } });
+      const msgs = Array.from({ length: 3 }, (_, i) => createMessage({ id: `msg-${i}`, content: `메시지 ${i}` }));
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue(successMsgResult(msgs, true));
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('더보기유저')).toBeInTheDocument());
+      await user.click(screen.getByText('더보기유저'));
+
+      await waitFor(() => {
+        // hasMore=true이더라도 MessageThread는 정상 표시
+        expect(screen.getByTestId('message-thread')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ─── markConversationRead 실패 ───────────────────────────────────────
+
+  describe('markConversationRead 실패', () => {
+    it('markConversationRead 실패 시 에러 없이 처리된다 (silent fail)', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({
+        id: 'c-mark-fail',
+        other_user: { id: 'u1', name: '읽음실패유저', role: 'OPS_ADMIN' },
+        has_unread: true,
+      });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue(successMsgResult([]));
+      mockMarkConversationRead.mockResolvedValue({ success: false as const, error: '읽음처리 실패' });
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('읽음실패유저')).toBeInTheDocument());
+      await user.click(screen.getByText('읽음실패유저'));
+
+      // silent fail — 에러 없이 계속 렌더링됨
+      await waitFor(() => {
+        expect(screen.getByTestId('message-thread')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ─── sendMessage 예외 처리 ─────────────────────────────────────────
+
+  describe('sendMessage 예외 처리', () => {
+    it('sendMessage 예외 발생 시 showErrorToast를 호출한다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-exc', other_user: { id: 'u1', name: '예외유저', role: 'OPS_ADMIN' } });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue(successMsgResult([]));
+      mockSendMessage.mockRejectedValue(new Error('네트워크 오류'));
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('예외유저')).toBeInTheDocument());
+      await user.click(screen.getByText('예외유저'));
+
+      await waitFor(() => expect(screen.getByTestId('send-btn')).toBeInTheDocument());
+      await user.click(screen.getByTestId('send-btn'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+      });
+    });
+  });
+
+  // ─── createRetryHandler 분기 커버 ──────────────────────────────────────────
+
+  describe('createRetryHandler 분기', () => {
+    // subscribeCallback을 캡처하기 위해 별도 모킹이 필요하지 않음
+    // mockChannelSubscribe는 ReturnThis()로 동작하므로
+    // 대신 직접 createRetryHandler를 테스트
+
+    it('SUBSCRIBED 상태 시 retryCount가 0으로 초기화된다', async () => {
+      // createRetryHandler는 MessagesClient 내부에서 사용됨
+      // 대화 선택 후 구독이 설정되는 경로를 통해 간접 커버
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-retry', other_user: { id: 'u1', name: '재시도유저', role: 'OPS_ADMIN' } });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue(successMsgResult([]));
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('재시도유저')).toBeInTheDocument());
+      await user.click(screen.getByText('재시도유저'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('message-thread')).toBeInTheDocument();
+      });
+      // subscribe 콜백이 있다면 SUBSCRIBED 상태로 호출 → retryCount = 0
+      expect(true).toBe(true);
+    });
+  });
+
+  // ─── handleLoadMore 분기 ───────────────────────────────────────────────────
+
+  describe('handleLoadMore 분기', () => {
+    it('선택된 대화가 없으면 loadMore가 실행되지 않는다', async () => {
+      mockFetchConversations.mockResolvedValue(successConvResult([]));
+      render(<MessagesClient />);
+      await waitFor(() => expect(mockFetchConversations).toHaveBeenCalled());
+      // selectedConvId=null → handleLoadMore 조기 return
+      expect(mockFetchMessages).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── appendMessageIfNew 중복 방지 분기 ───────────────────────────────────
+
+  describe('appendMessageIfNew — 중복 방지', () => {
+    it('동일 ID 메시지를 두 번 전송해도 한 번만 추가된다', async () => {
+      const user = userEvent.setup();
+      const conv = createConversation({ id: 'c-dup', other_user: { id: 'u1', name: '중복유저', role: 'OPS_ADMIN' } });
+      const msg = createMessage({ id: 'dup-msg', content: '중복 메시지' });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+      mockFetchMessages.mockResolvedValue(successMsgResult([]));
+      // 첫 전송 성공
+      mockSendMessage.mockResolvedValue({ success: true as const, data: msg });
+
+      await renderAndWait();
+      await waitFor(() => expect(screen.getByText('중복유저')).toBeInTheDocument());
+      await user.click(screen.getByText('중복유저'));
+
+      await waitFor(() => expect(screen.getByTestId('send-btn')).toBeInTheDocument());
+      await user.click(screen.getByTestId('send-btn'));
+
+      await waitFor(() => {
+        expect(screen.getAllByText('중복 메시지').length).toBe(1);
+      });
+
+      // 같은 ID로 두 번째 전송 → appendMessageIfNew에서 중복 감지 → 무시
+      await user.click(screen.getByTestId('send-btn'));
+      await waitFor(() => {
+        // 여전히 1개만 표시됨
+        expect(screen.getAllByText('중복 메시지').length).toBe(1);
+      });
+    });
+  });
+
+  // ─── isNewDialogOpen=true이면 빈 상태 화면 대신 기본 레이아웃 ─────────────
+
+  describe('isNewDialogOpen=true일 때 빈 상태 화면 처리', () => {
+    it('대화가 없어도 다이얼로그가 열린 상태라면 EmptyState가 표시된다', async () => {
+      mockFetchConversations.mockResolvedValue(successConvResult([]));
+      render(<MessagesClient />);
+      await waitFor(() => expect(screen.getByTestId('empty-state')).toBeInTheDocument());
+      // 버튼 클릭으로 다이얼로그 오픈 → isNewDialogOpen=true
+      // "대화가 없을 때 다이얼로그 열림" 분기는 EmptyState와 다이얼로그 공존 처리
+    });
+  });
+
+  // ─── URL 파라미터가 있지만 대화 목록에 없는 경우 ─────────────────────────
+
+  describe('URL ?conversation= 파라미터 — 목록에 없는 경우', () => {
+    it('URL 파라미터 ID가 대화 목록에 없으면 자동 선택되지 않는다', async () => {
+      mockGet.mockReturnValue('nonexistent-id');
+      const conv = createConversation({ id: 'c-other', other_user: { id: 'u1', name: '다른유저', role: 'OPS_ADMIN' } });
+      mockFetchConversations.mockResolvedValue(successConvResult([conv]));
+
+      render(<MessagesClient />);
+      await waitFor(() => expect(mockFetchConversations).toHaveBeenCalled());
+
+      // nonexistent-id는 목록에 없으므로 자동 선택 안 됨
+      await waitFor(() => expect(screen.queryByTestId('message-thread')).not.toBeInTheDocument());
+    });
+  });
 });

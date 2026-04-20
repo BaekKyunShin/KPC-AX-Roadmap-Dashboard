@@ -203,3 +203,81 @@ vercel rollback <url> --prod
 # Supabase advisor 재확인 (로컬에서)
 # → Claude 에 "mcp__supabase__get_advisors 호출해줘" 요청
 ```
+
+---
+
+## 부록: 새 세션 실행 프롬프트 (복사·붙여넣기)
+
+Main PR #14 머지 직후 새 Claude Code 세션을 열고 아래 전체를 첫 메시지로 붙여넣으면 배포 검증이 자동 진행된다.
+
+```
+=== 컨텍스트 ===
+- 프로젝트: KPC AI 훈련 로드맵 대시보드 (/Users/baekkyunshin/Desktop/AI-roadmap-dashboard)
+- 상태: OFA (산인공 공식 양식 정렬) 프로젝트 main PR #14 머지 완료
+- 계획서: docs/plans/2026-04-20-ofa-post-merge-deployment.md (이 파일 먼저 정독)
+- Supabase: 단일 프로젝트 axflsiffdbkitptgpavv (roadmap-dashboard) — 마이그 060~068 이미 적용
+- Vercel: kpc-ax-roadmap-dashboard, main 자동 배포
+
+=== 본 세션 목적 ===
+Main PR 머지 직후 배포 검증 + Auth 설정 + 스모크 테스트. 계획서 §1~§3 는 자동 수행, §4 (1주 QA) 는 사용자 직접 몫 — Claude 는 시나리오 자동 스모크만 실행하고 결과 리포트.
+
+=== 사전 확인 (첫 번째로 실행) ===
+1. cd /Users/baekkyunshin/Desktop/AI-roadmap-dashboard
+2. git fetch origin && git checkout main && git pull
+3. git log -1 --oneline  → OFA 최종 머지 커밋(예: `feat(ofa):`) 확인
+4. gh pr view 14 --json mergedAt,state  → state=MERGED 확인
+5. mcp__supabase__list_migrations  → 060~068 전부 있음
+6. mcp__supabase__get_advisors security  → ERROR 0 / WARN (leaked_password) 1 건 — 이는 3단계 해결
+7. vercel env ls production | grep -E "HWPX_API_SECRET|LLM_API_KEY|SUPABASE_SERVICE_ROLE_KEY"  → 모두 존재
+8. 계획서 `docs/plans/2026-04-20-ofa-post-merge-deployment.md` 정독
+
+검증 실패 시 즉시 중단 + 보고.
+
+=== 진행 순서 ===
+
+**1. Vercel 배포 모니터링 (자동)**
+- `vercel list --prod | head -5` 로 최신 main 배포 Ready 확인
+- Ready 아니면 30초 간격 폴링 (최대 10분)
+- 배포 URL 로 `curl -sI` 요청해 HTTP 200/307 확인
+- Vercel Functions 로그에 500 에러 폭증 없음 (최근 5분간)
+
+**2. Supabase Auth leaked_password_protection 활성화 안내 (사용자 수동)**
+- Dashboard URL 출력: https://supabase.com/dashboard/project/axflsiffdbkitptgpavv/auth/providers
+- 사용자에게 "Email Provider → Leaked Password Protection 토글 ON → Save" 안내
+- 완료 보고 기다림 후 `mcp__supabase__get_advisors security` 로 WARN 0 확인
+
+**3. 스모크 테스트 자동 실행**
+- Puppeteer MCP 또는 Playwright MCP 사용
+- 계정: 컨설턴트 `kpc@test.com`/`aaaa0000`, OPS `son@test.com`/`aaaa00000`
+- 시나리오 (프로덕션 URL 기준):
+  a. 컨설턴트 로그인 → /consultant/home 도달
+  b. /gallery · /notices 도달 + 콘솔 에러 없음
+  c. OPS 로그인 → /ops/projects 도달
+  d. 프로젝트 1건 상세 → /roadmap · /pbl 서브페이지 도달
+- 결과를 `docs/2026-MM-DD-prod-smoke-report.md` 에 기록
+
+**4. 이상 발견 시 대응**
+- Critical (로그인·핵심 페이지 500) → 즉시 사용자 보고 + 계획서 §6 롤백 안내
+- High (특정 기능 실패) → 원인 분석 후 사용자 보고. hotfix 판단은 사용자가.
+- Medium/Low → 리포트에 기록만
+
+**5. 세션 종료 보고**
+- Vercel 배포 Ready / Auth 설정 완료 여부 / 스모크 결과 / 남은 사용자 수동 작업 3가지(1주 QA · HWPX 한글 검수 · 필요시 hotfix) 를 요약
+- 각 항목의 "어떻게 하면 되는지" 링크/경로로 제시
+
+=== 자동 진행 vs 승인 요청 ===
+- 자동 진행: Vercel 모니터링, 스모크 테스트 실행, 리포트 작성
+- 승인 요청:
+  - Auth 설정 완료 확인 (사용자 수동이므로 회신 대기)
+  - Critical 이슈 발견 시 (롤백 결정은 사용자)
+  - hotfix 필요 판단 시 (별도 브랜치 생성 여부)
+
+=== 금지 사항 ===
+- `vercel rollback --prod` 를 사용자 승인 없이 실행
+- main 에 직접 push · force push
+- 환경변수 변경 (조회만 가능)
+- 어떤 머지·PR 작업도 (본 세션은 배포 검증 전용)
+
+=== 계획서와 달라지면 ===
+이 프롬프트와 계획서(`docs/plans/2026-04-20-ofa-post-merge-deployment.md`) 내용이 모순되면 **계획서가 우선**. 프롬프트는 계획서의 실행 요약일 뿐.
+```

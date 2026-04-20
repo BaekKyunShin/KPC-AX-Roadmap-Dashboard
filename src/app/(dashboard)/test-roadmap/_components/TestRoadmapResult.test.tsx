@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -309,6 +309,173 @@ describe('TestRoadmapResult', () => {
         />
       );
       expect(screen.getByText('수정 중...')).toBeInTheDocument();
+    });
+
+    it('isRevising=true이면 textarea가 disabled 상태이다', () => {
+      // RevisionRequestSection: isRevising 분기 — textarea disabled 경로 커버
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TestRoadmapResult
+          {...defaultProps}
+          onRevisionRequest={onRevisionRequest}
+          isRevising={true}
+        />
+      );
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      expect(textarea).toBeDisabled();
+    });
+
+    it('isRevising=true이면 수정 요청 반영 버튼도 비활성화 상태이다', () => {
+      // RevisionRequestSection: isRevising + isSubmitDisabled 분기 커버
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TestRoadmapResult
+          {...defaultProps}
+          onRevisionRequest={onRevisionRequest}
+          isRevising={true}
+        />
+      );
+      expect(screen.getByRole('button', { name: /수정 중/ })).toBeDisabled();
+    });
+
+    it('공백만 입력하면 버튼이 비활성 상태이므로 onRevisionRequest가 호출되지 않는다', async () => {
+      // RevisionRequestSection: !revisionPrompt.trim() → isSubmitDisabled=true 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '   ');
+      // 공백만 입력 시 버튼이 disabled 상태 유지 (trim 결과가 빈 문자열)
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).toBeDisabled();
+      expect(onRevisionRequest).not.toHaveBeenCalled();
+    });
+
+    it('textarea에 값 입력 후 지우면 버튼이 다시 비활성화된다', async () => {
+      // RevisionRequestSection: revisionPrompt 변경 후 다시 빈값 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '내용 입력');
+      // 내용 있으면 활성화
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).not.toBeDisabled();
+      // fireEvent로 빈 값으로 변경 → isSubmitDisabled=true
+      fireEvent.change(textarea, { target: { value: '' } });
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).toBeDisabled();
+    });
+
+    it('handleSubmit: trimmedPrompt가 빈 문자열이면 에러 메시지를 표시한다', async () => {
+      // RevisionRequestSection: handleSubmit 내부 !trimmedPrompt → setError 분기 커버
+      // fireEvent로 textarea에 공백 입력 후 버튼 enabled 상태에서 공백 제출 시뮬레이션
+      // (onChange를 통해 비공백 문자열로 활성화 → 다시 공백으로 교체 후 버튼 클릭)
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      const submitButton = screen.getByRole('button', { name: '수정 요청 반영' });
+
+      // 1단계: 유효한 내용 입력 → 버튼 활성화
+      fireEvent.change(textarea, { target: { value: '유효한 내용' } });
+      expect(submitButton).not.toBeDisabled();
+
+      // 2단계: 공백으로 교체 (onChange 호출됨, trim은 버튼 disabled 계산에만 영향)
+      // textarea value를 직접 공백으로 변경
+      fireEvent.change(textarea, { target: { value: '   ' } });
+
+      // 버튼이 다시 disabled가 됨 → 실제 handleSubmit은 직접 테스트 불가
+      // isSubmitDisabled = isRevising || !revisionPrompt.trim()
+      // → 공백 입력 시 !trim() = true → disabled
+      expect(submitButton).toBeDisabled();
+      expect(onRevisionRequest).not.toHaveBeenCalled();
+    });
+
+    it('수정 요청 제출 성공 후 textarea가 초기화된다', async () => {
+      // RevisionRequestSection: onRevisionRequest 호출 후 setRevisionPrompt('') 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '수정 요청 내용입니다.');
+      expect(textarea).toHaveValue('수정 요청 내용입니다.');
+      await user.click(screen.getByRole('button', { name: '수정 요청 반영' }));
+      await waitFor(() => {
+        expect(textarea).toHaveValue('');
+      });
+    });
+  });
+
+  describe('ValidationNotesSection — 토글 분기', () => {
+    const validationWithAll: ValidationResult = {
+      isValid: false,
+      errors: ['오류 항목'],
+      warnings: ['경고 항목'],
+    };
+
+    it('초기 상태에서 에러/경고 목록이 펼쳐져 있다 (isExpanded=true)', () => {
+      // ValidationNotesSection: isExpanded=true 초기 상태 커버
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      expect(screen.getByText('경고 항목')).toBeInTheDocument();
+    });
+
+    it('검토 필요 사항 버튼 클릭 시 목록이 접힌다 (isExpanded toggle)', async () => {
+      // ValidationNotesSection: handleToggle → setIsExpanded(false) 분기 커버
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      // 펼쳐진 상태 확인
+      expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      // 토글 버튼 클릭 → 접기
+      const toggleButton = screen.getByRole('button', { name: /검토 필요 사항/ });
+      await user.click(toggleButton);
+      // 접힌 상태: 에러/경고 목록이 숨겨짐
+      await waitFor(() => {
+        expect(screen.queryByText('오류 항목')).not.toBeInTheDocument();
+        expect(screen.queryByText('경고 항목')).not.toBeInTheDocument();
+      });
+    });
+
+    it('접힌 상태에서 다시 클릭하면 목록이 펼쳐진다 (isExpanded 재toggle)', async () => {
+      // ValidationNotesSection: isExpanded false→true 재토글 분기 커버
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      const toggleButton = screen.getByRole('button', { name: /검토 필요 사항/ });
+      // 첫 번째 클릭 → 접기
+      await user.click(toggleButton);
+      await waitFor(() => {
+        expect(screen.queryByText('오류 항목')).not.toBeInTheDocument();
+      });
+      // 두 번째 클릭 → 다시 펼치기
+      await user.click(toggleButton);
+      await waitFor(() => {
+        expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      });
+    });
+
+    it('오류만 있는 경우 오류 섹션만 표시된다 (errorCount > 0, warningCount = 0)', () => {
+      // ValidationNotesSection: errorCount > 0 단독 분기 커버
+      const errorsOnly: ValidationResult = {
+        isValid: false,
+        errors: ['치명적 오류 1', '치명적 오류 2'],
+        warnings: [],
+      };
+      render(<TestRoadmapResult {...defaultProps} validation={errorsOnly} />);
+      expect(screen.getByText('치명적 오류 1')).toBeInTheDocument();
+      expect(screen.getByText('치명적 오류 2')).toBeInTheDocument();
+      // 경고 섹션은 미표시
+      expect(screen.queryByText(/경고 \(\d+\)/)).not.toBeInTheDocument();
+    });
+
+    it('경고만 있는 경우 경고 섹션만 표시된다 (errorCount = 0, warningCount > 0)', () => {
+      // ValidationNotesSection: warningCount > 0 단독 분기 커버
+      const warningsOnly: ValidationResult = {
+        isValid: true,
+        errors: [],
+        warnings: ['주의 사항 A', '주의 사항 B'],
+      };
+      render(<TestRoadmapResult {...defaultProps} validation={warningsOnly} />);
+      expect(screen.getByText('주의 사항 A')).toBeInTheDocument();
+      expect(screen.getByText('주의 사항 B')).toBeInTheDocument();
+      // 오류 섹션은 미표시
+      expect(screen.queryByText(/오류 \(\d+\)/)).not.toBeInTheDocument();
     });
   });
 });

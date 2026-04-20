@@ -32,4 +32,11 @@ describe('getInterviewSteps', () => {
     const steps = getInterviewSteps('ROADMAP');
     expect(steps).toEqual(ROADMAP_INTERVIEW_STEPS);
   });
+
+  it("PBL 트랙 → PBL_INTERVIEW_STEPS 반환", () => {
+    // interview-steps.ts Line 23: track === 'PBL' 분기 커버
+    const steps = getInterviewSteps('PBL');
+    expect(steps).toBeDefined();
+    expect(steps.length).toBeGreaterThan(0);
+  });
 });

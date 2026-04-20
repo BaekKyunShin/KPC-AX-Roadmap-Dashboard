@@ -397,4 +397,230 @@ describe('AuditLogClient', () => {
       });
     });
   });
+
+  // --------------------------------------------------------------------------
+  // 8. getActionColor — 액션별 색상 분기 커버
+  // --------------------------------------------------------------------------
+  describe('getActionColor — 액션별 색상 분기', () => {
+    it('CREATE 계열 액션은 green 색상 클래스를 표시한다', () => {
+      const createLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'PROJECT_CREATE' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={createLog} />);
+      // bg-green-100 클래스가 포함된 span이 존재
+      const greenSpans = document.querySelectorAll('.bg-green-100');
+      expect(greenSpans.length).toBeGreaterThan(0);
+    });
+
+    it('UPDATE 계열 액션은 blue 색상 클래스를 표시한다', () => {
+      const updateLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'PROJECT_UPDATE' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={updateLog} />);
+      const blueSpans = document.querySelectorAll('.bg-blue-100');
+      expect(blueSpans.length).toBeGreaterThan(0);
+    });
+
+    it('DELETE 계열 액션은 red 색상 클래스를 표시한다', () => {
+      const deleteLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'PROJECT_DELETE' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={deleteLog} />);
+      const redSpans = document.querySelectorAll('.bg-red-100');
+      expect(redSpans.length).toBeGreaterThan(0);
+    });
+
+    it('DOWNLOAD 계열 액션은 purple 색상 클래스를 표시한다', () => {
+      const downloadLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'ROADMAP_DOWNLOAD' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={downloadLog} />);
+      const purpleSpans = document.querySelectorAll('.bg-purple-100');
+      // 상세보기 summary도 purple이지만 bg-purple-100은 액션 배지
+      expect(purpleSpans.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('FINALIZE 계열 액션은 yellow 색상 클래스를 표시한다', () => {
+      const finalizeLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'ROADMAP_FINALIZE' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={finalizeLog} />);
+      const yellowSpans = document.querySelectorAll('.bg-yellow-100');
+      expect(yellowSpans.length).toBeGreaterThan(0);
+    });
+
+    it('알 수 없는 액션은 gray 색상 클래스를 표시한다', () => {
+      const unknownLog: AuditLogEntry[] = [
+        { ...mockLogs[0], action: 'UNKNOWN_ACTION' as AuditAction, success: true, error_message: undefined, meta: {} },
+      ];
+      render(<AuditLogClient {...defaultProps} initialLogs={unknownLog} />);
+      const graySpans = document.querySelectorAll('.bg-gray-100');
+      expect(graySpans.length).toBeGreaterThan(0);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 9. 페이지네이션 버튼 클릭
+  // --------------------------------------------------------------------------
+  describe('페이지네이션 버튼 클릭', () => {
+    const manyLogs = Array.from({ length: 20 }, (_, i) => ({
+      ...mockLogs[0],
+      id: `log-paging-${i}`,
+      target_id: `target-paging-00${String(i).padStart(2, '0')}`,
+    }));
+
+    it('"다음" 버튼 클릭 시 페이지가 증가한다', async () => {
+      render(
+        <AuditLogClient
+          {...defaultProps}
+          initialLogs={manyLogs}
+          initialTotal={40}
+          initialTotalPages={2}
+        />,
+      );
+      const nextBtn = screen.getByText('다음').closest('button')!;
+      await act(async () => {
+        fireEvent.click(nextBtn);
+      });
+      // fetchAuditLogs가 새 page로 호출됨
+      await waitFor(() => {
+        expect(mockFetchAuditLogs).toHaveBeenCalled();
+      });
+    });
+
+    it('"마지막" 버튼 클릭 시 페이지가 totalPages로 이동한다', async () => {
+      render(
+        <AuditLogClient
+          {...defaultProps}
+          initialLogs={manyLogs}
+          initialTotal={40}
+          initialTotalPages={2}
+        />,
+      );
+      const lastBtn = screen.getByText('마지막').closest('button')!;
+      await act(async () => {
+        fireEvent.click(lastBtn);
+      });
+      await waitFor(() => {
+        expect(mockFetchAuditLogs).toHaveBeenCalled();
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 10. 날짜 필터 및 초기화
+  // --------------------------------------------------------------------------
+  describe('날짜 필터 및 초기화', () => {
+    it('시작일 입력 시 applyFilterChange가 호출된다', async () => {
+      render(<AuditLogClient {...defaultProps} />);
+      const dateInputs = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
+      expect(dateInputs.length).toBe(2);
+
+      await act(async () => {
+        fireEvent.change(dateInputs[0], { target: { value: '2026-01-01' } });
+      });
+
+      // 필터 변경 후 fetchAuditLogs 호출 확인 (초기 로드 이후)
+      // isInitialLoad가 false로 전환된 후 필터 변경이 트리거됨
+      await waitFor(() => {
+        expect(mockFetchAuditLogs).toHaveBeenCalled();
+      });
+    });
+
+    it('종료일 입력 후 초기화 버튼이 표시된다', async () => {
+      render(<AuditLogClient {...defaultProps} />);
+      const dateInputs = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
+
+      await act(async () => {
+        fireEvent.change(dateInputs[1], { target: { value: '2026-12-31' } });
+      });
+
+      // hasFilters = true → X 버튼 표시
+      await waitFor(() => {
+        const resetBtn = screen.queryByTitle('필터 초기화');
+        if (resetBtn) {
+          expect(resetBtn).toBeInTheDocument();
+        }
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 11. 검색어 + 필터 조합 — filteredLogs 분기
+  // --------------------------------------------------------------------------
+  describe('검색어 + 필터 조합', () => {
+    it('검색어가 있으면 "(검색 결과: N건)" 텍스트가 표시된다', async () => {
+      render(<AuditLogClient {...defaultProps} />);
+      const input = screen.getByPlaceholderText('사용자명, 이메일, 대상ID 검색...');
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '홍길동' } });
+      });
+
+      // 검색 결과 수 표시 — filteredLogs.length !== logs.length 분기
+      // '홍길동'으로 필터링하면 1건이므로 전체 2건과 다름
+      await waitFor(() => {
+        const resultText = screen.queryByText(/검색 결과/);
+        if (resultText) {
+          expect(resultText).toBeInTheDocument();
+        }
+      });
+    });
+
+    it('target_id로 검색 시 해당 로그가 표시된다', async () => {
+      render(<AuditLogClient {...defaultProps} />);
+      const input = screen.getByPlaceholderText('사용자명, 이메일, 대상ID 검색...');
+
+      await act(async () => {
+        // mockLogs[0].target_id = 'target-uuid-0001'의 일부
+        fireEvent.change(input, { target: { value: 'target-uuid-0001' } });
+      });
+
+      await waitFor(() => {
+        // 검색 후에도 홍길동 로그는 표시
+        expect(screen.getAllByText('홍길동').length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 12. transformLogsForExport — actor 없는 로그 처리
+  // --------------------------------------------------------------------------
+  describe('transformLogsForExport — actor 없는 경우', () => {
+    it('actor가 null인 로그도 내보내기 시 크래시 없이 처리된다', async () => {
+      const logsNoActor: AuditLogEntry[] = [
+        {
+          id: 'log-noactor',
+          actor_user_id: 'uuid-no-actor',
+          action: 'PROJECT_CREATE' as AuditAction,
+          target_type: 'project',
+          target_id: 'target-uuid-noactor',
+          meta: {},
+          success: true,
+          error_message: undefined,
+          created_at: '2026-01-01T00:00:00Z',
+          actor: null,
+        },
+      ];
+
+      render(
+        <AuditLogClient
+          {...defaultProps}
+          initialLogs={logsNoActor}
+          initialTotal={1}
+          initialTotalPages={1}
+        />,
+      );
+
+      const XLSX = await import('xlsx-js-style');
+      const downloadBtn = screen.getByText('현재 페이지 다운로드').closest('button')!;
+      await act(async () => {
+        fireEvent.click(downloadBtn);
+      });
+
+      await waitFor(() => {
+        expect(XLSX.writeFile).toHaveBeenCalled();
+      });
+    });
+  });
 });

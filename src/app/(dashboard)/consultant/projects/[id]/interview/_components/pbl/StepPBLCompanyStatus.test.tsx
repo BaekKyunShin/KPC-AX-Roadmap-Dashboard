@@ -77,4 +77,51 @@ describe('StepPBLCompanyStatus', () => {
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(lastCall.organization[0].tasks).toEqual(['']);
   });
+
+  it('2개 유닛에서 첫 번째 부서명 변경 시 다른 유닛은 유지된다 (Line 23 cond-expr false 분기 커버)', async () => {
+    // branch 0[1]: i !== index → u 그대로 반환하는 false 경로 커버
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StepPBLCompanyStatus
+        value={{
+          business_issues: '',
+          organization: [
+            { id: 'u1', department_name: '생산팀', tasks: [] },
+            { id: 'u2', department_name: '품질팀', tasks: [] },
+          ],
+        }}
+        onChange={onChange}
+      />
+    );
+    // 첫 번째 유닛의 부서명 입력 → updateUnit(0, ...) 호출 → i=1 false 경로 실행
+    const input = screen.getAllByPlaceholderText(/예: 생산팀/)[0];
+    await user.type(input, '가');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    // 두 번째 유닛은 변경 없음
+    expect(last.organization[1].department_name).toBe('품질팀');
+  });
+
+  it('2개 업무가 있는 유닛에서 첫 업무 변경 시 다른 업무 유지 (Line 40 cond-expr false 분기 커버)', async () => {
+    // branch 1[1]: i !== taskIndex → t 그대로 반환하는 false 경로 커버
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StepPBLCompanyStatus
+        value={{
+          business_issues: '',
+          organization: [
+            { id: 'u1', department_name: '생산팀', tasks: ['업무A', '업무B'] },
+          ],
+        }}
+        onChange={onChange}
+      />
+    );
+    // 첫 번째 업무 input에 타이핑 → updateTask(0, 0, ...) → i=1 false 경로
+    const taskInputs = screen.getAllByPlaceholderText(/예: 제품생산직무/);
+    await user.clear(taskInputs[0]);
+    await user.type(taskInputs[0], '새업무');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(last.organization[0].tasks[1]).toBe('업무B');
+  });
 });

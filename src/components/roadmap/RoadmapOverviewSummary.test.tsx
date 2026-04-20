@@ -59,4 +59,35 @@ describe('RoadmapOverviewSummary', () => {
     expect(screen.getByText('선정 과업')).toBeInTheDocument();
     expect(screen.getByText('수립 주요내용 요약')).toBeInTheDocument();
   });
+
+  it('setupNecessity만 있고 selected_tasks가 공백이면 렌더된다', () => {
+    // binary-expr: selected_tasks && selected_tasks.trim() !== '' → false 분기 커버 (id 1 index 3)
+    const { container } = render(
+      <RoadmapOverviewSummary
+        setupNecessity="필요성 존재"
+        outcomeSummary={{
+          ai_competency_level: 'BEGINNER',
+          selected_tasks: '   ', // 공백 → trim()이 '' → false
+          main_content: '',
+        }}
+      />,
+    );
+    // setupNecessity가 있으므로 hasAny=true → 렌더됨
+    expect(container.firstChild).not.toBeNull();
+  });
+
+  it('main_content만 있고 setupNecessity/selected_tasks가 빈 문자열이면 렌더된다', () => {
+    // binary-expr: main_content && main_content.trim() !== '' → true 분기 + selected_tasks false 분기 커버 (id 1 index 5)
+    const { container } = render(
+      <RoadmapOverviewSummary
+        setupNecessity=""
+        outcomeSummary={{
+          ai_competency_level: 'BEGINNER',
+          selected_tasks: '',
+          main_content: '주요 내용 존재',
+        }}
+      />,
+    );
+    expect(container.firstChild).not.toBeNull();
+  });
 });

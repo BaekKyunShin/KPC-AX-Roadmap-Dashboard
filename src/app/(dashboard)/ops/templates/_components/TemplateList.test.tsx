@@ -217,4 +217,157 @@ describe('TemplateList', () => {
       expect(srOnlySpan?.textContent).toBe('작업');
     });
   });
+
+  // =====================================================================
+  // 추가: executeAction·handleSetActive·handleDuplicate·handleDelete 커버리지
+  // =====================================================================
+
+  describe('handleSetActive — 활성화 액션', () => {
+    it('활성화 메뉴 클릭 시 confirm → setActiveTemplate 호출', async () => {
+      // confirm 모킹
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      mockSetActiveTemplate.mockResolvedValue({ success: true });
+
+      render(<TemplateList templates={[inactiveUnusedTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /활성화/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /활성화/ }));
+
+      await waitFor(() => {
+        expect(mockSetActiveTemplate).toHaveBeenCalledWith(inactiveUnusedTemplate.id);
+      });
+
+      confirmSpy.mockRestore();
+    });
+
+    it('confirm 취소 시 setActiveTemplate가 호출되지 않는다', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      // beforeEach에서 vi.restoreAllMocks() 호출하므로 mock 재설정
+      mockSetActiveTemplate.mockResolvedValue({ success: true });
+      // 이전 테스트의 호출 기록 초기화
+      mockSetActiveTemplate.mockClear();
+
+      render(<TemplateList templates={[inactiveUnusedTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /활성화/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /활성화/ }));
+      // confirm이 false를 반환하므로 setActiveTemplate 호출되지 않아야 함
+      expect(confirmSpy).toHaveBeenCalled();
+      expect(mockSetActiveTemplate).not.toHaveBeenCalled();
+
+      confirmSpy.mockRestore();
+    });
+  });
+
+  describe('handleDuplicate — 복제 액션', () => {
+    it('복제 메뉴 클릭 시 duplicateTemplate 호출', async () => {
+      mockDuplicateTemplate.mockResolvedValue({ success: true });
+
+      render(<TemplateList templates={[activeTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /복제/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /복제/ }));
+
+      await waitFor(() => {
+        expect(mockDuplicateTemplate).toHaveBeenCalledWith(activeTemplate.id);
+      });
+    });
+
+    it('복제 실패 시 에러 메시지가 표시된다', async () => {
+      mockDuplicateTemplate.mockResolvedValue({ success: false, error: '복제 서버 오류' });
+
+      render(<TemplateList templates={[activeTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /복제/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /복제/ }));
+
+      await waitFor(() => {
+        expect(screen.getByText('복제 서버 오류')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('handleDelete — 삭제 액션', () => {
+    it('삭제 메뉴 클릭 시 confirm → deleteTemplate 호출', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      mockDeleteTemplate.mockResolvedValue({ success: true });
+
+      render(<TemplateList templates={[inactiveUnusedTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /삭제/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /삭제/ }));
+
+      await waitFor(() => {
+        expect(mockDeleteTemplate).toHaveBeenCalledWith(inactiveUnusedTemplate.id);
+      });
+
+      confirmSpy.mockRestore();
+    });
+
+    it('삭제 실패 시 에러 메시지가 표시된다', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      mockDeleteTemplate.mockResolvedValue({ success: false, error: '삭제 권한 없음' });
+
+      render(<TemplateList templates={[inactiveUnusedTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /삭제/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /삭제/ }));
+
+      await waitFor(() => {
+        expect(screen.getByText('삭제 권한 없음')).toBeInTheDocument();
+      });
+
+      confirmSpy.mockRestore();
+    });
+  });
+
+  describe('executeAction — 예외 처리', () => {
+    it('action이 throw할 때 서버 통신 오류 메시지를 표시한다', async () => {
+      mockDuplicateTemplate.mockRejectedValue(new Error('네트워크 에러'));
+
+      render(<TemplateList templates={[activeTemplate]} />);
+      const trigger = getTable().getByRole('button', { name: /더보기|작업 메뉴/i });
+      openDropdown(trigger);
+
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /복제/ })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('menuitem', { name: /복제/ }));
+
+      await waitFor(() => {
+        expect(screen.getByText('서버와 통신 중 오류가 발생했습니다.')).toBeInTheDocument();
+      });
+    });
+  });
 });

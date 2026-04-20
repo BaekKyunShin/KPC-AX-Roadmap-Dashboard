@@ -37,4 +37,32 @@ describe('PBLToolUsagePlan', () => {
     const next = onChange.mock.calls[0][0] as unknown[];
     expect(next.length).toBe(2);
   });
+
+  // =====================================================================
+  // 추가: updateItem 내부 함수 및 조건 분기 커버리지 확보
+  // =====================================================================
+
+  describe('빈 상태', () => {
+    it('데이터가 없을 때 "단계를 추가하세요." 안내를 표시한다', () => {
+      render(<PBLToolUsagePlan canEdit={true} value={[]} onChange={() => {}} />);
+      expect(screen.getByText('단계를 추가하세요.')).toBeInTheDocument();
+    });
+
+    it('빈 배열은 경고 배너를 표시한다 (0 < MIN)', () => {
+      render(<PBLToolUsagePlan canEdit={true} value={[]} onChange={() => {}} />);
+      expect(screen.getByText(/최소 3단계/)).toBeInTheDocument();
+    });
+  });
+
+  describe('canEdit=false 읽기 전용', () => {
+    it('canEdit=false이면 "단계 추가" 버튼이 없다', () => {
+      render(<PBLToolUsagePlan canEdit={false} value={threeStages} onChange={() => {}} />);
+      expect(screen.queryByRole('button', { name: /단계 추가/ })).not.toBeInTheDocument();
+    });
+
+    it('canEdit=false이면 삭제 버튼이 없다', () => {
+      render(<PBLToolUsagePlan canEdit={false} value={threeStages} onChange={() => {}} />);
+      expect(screen.queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument();
+    });
+  });
 });

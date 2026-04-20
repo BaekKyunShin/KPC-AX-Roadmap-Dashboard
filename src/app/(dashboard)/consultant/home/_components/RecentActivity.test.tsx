@@ -141,4 +141,18 @@ describe('RecentActivity', () => {
       expect(screen.getByText('기업C')).toBeInTheDocument();
     });
   });
+
+  describe('TAG_ICON_MAP 폴백 분기', () => {
+    it('TAG_ICON_MAP에 없는 label이면 FileText 아이콘으로 폴백된다', () => {
+      // Line 38: TAG_ICON_MAP[tagInfo.label] || FileText → false 경로 커버
+      // mock에서 system_auto + 비인터뷰/비로드맵 → label: '시스템' 반환 (map에 없음)
+      const activity = makeActivity({
+        logType: 'system_auto',
+        content: '기타 활동', // 인터뷰/로드맵 아님
+      });
+      // 에러 없이 렌더링되고 '시스템' 태그가 표시됨
+      expect(() => render(<RecentActivity activities={[activity]} />)).not.toThrow();
+      expect(screen.getByText('시스템')).toBeInTheDocument();
+    });
+  });
 });

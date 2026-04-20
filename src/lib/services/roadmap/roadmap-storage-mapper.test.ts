@@ -348,4 +348,148 @@ describe('fromRoadmapVersionColumns — legacy 역량별 NCS 승격', () => {
     expect(restored.ncs_used).toBe(true);
     expect(restored.ncs_methodology).toBe('루트 방법');
   });
+
+  it('competencies 배열에 유효하지 않은 항목(null, string)이 포함되면 필터링된다', () => {
+    // isCompetency: !v || typeof v !== 'object' → false 반환 분기 커버
+    const pbl = {
+      competencies: [
+        null, // !v → false 반환
+        'invalid', // typeof !== 'object' → false 반환
+        { name: '역량1', definition: '정의', knowledge: [], skills: [], attitudes: [] }, // 유효
+      ],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
+    expect(restored.competencies).toHaveLength(1);
+    expect(restored.competencies[0].name).toBe('역량1');
+  });
+
+  it('knowledge/skills/attitudes가 배열이 아니면 빈 배열로 초기화된다', () => {
+    // sanitizeCompetency: Array.isArray 조건 false → [] 분기 커버 (id 18-20)
+    const pbl = {
+      competencies: [
+        {
+          name: '역량1',
+          definition: '정의',
+          knowledge: 'not-array', // 배열이 아님
+          skills: null,           // 배열이 아님
+          attitudes: 42,          // 배열이 아님
+        },
+      ],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
+    expect(restored.competencies[0].knowledge).toEqual([]);
+    expect(restored.competencies[0].skills).toEqual([]);
+    expect(restored.competencies[0].attitudes).toEqual([]);
+  });
+
+  it('training_structure 배열에 유효하지 않은 항목이 포함되면 필터링된다', () => {
+    // isStructureItem: !v || typeof v !== 'object' → false 반환 분기 커버 (id 21)
+    const pbl = {
+      competencies: [],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({
+      pbl_course: pbl,
+      roadmap_matrix: [
+        null, // 필터됨
+        { competency_name: '역량1', level: 'BEGINNER', content: '', target_audience: '', method: '', goal: '' },
+      ],
+    });
+    expect(restored.training_structure).toHaveLength(1);
+  });
+
+  it('annual_plan items에 유효하지 않은 항목이 포함되면 필터링된다', () => {
+    // isAnnualPlanItem: !v || typeof v !== 'object' → false 반환 분기 커버 (id 24)
+    const pbl = {
+      competencies: [],
+      annual_plan: {
+        items: [
+          null, // 필터됨
+          { competency_name: '역량1', course_name: '과정1', format: '집체', hours: 8, notes: '' },
+        ],
+        usage_plan: '',
+      },
+    };
+    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
+    expect(restored.annual_plan.items).toHaveLength(1);
+  });
+
+  it('course_specs에 유효하지 않은 항목이 포함되면 필터링된다', () => {
+    // isCourseSpec: !v || typeof v !== 'object' → false 반환 분기 커버 (id 27)
+    const pbl = {
+      competencies: [],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({
+      pbl_course: pbl,
+      courses: [
+        null, // 필터됨
+        { course_name: '과정1', subjects: [], format: '집체', recommended_program: '', goal: '', main_content: '', target_audience: '' },
+      ],
+    });
+    expect(restored.course_specs).toHaveLength(1);
+  });
+
+  it('NCS legacy 역량들이 divergent(불일치)이면 경고를 출력하고 첫 값을 사용한다', () => {
+    // Lines 196-206: divergent true → firstUsed !== c.ncs_used 분기 커버 (id 41, 45)
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const pbl = {
+      competencies: [
+        { name: 'A', definition: 'a', knowledge: [], skills: [], attitudes: [], ncs_used: true, ncs_methodology: '방법1' },
+        { name: 'B', definition: 'b', knowledge: [], skills: [], attitudes: [], ncs_used: false, ncs_methodology: '방법2' }, // divergent
+      ],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
+    // 첫 번째 값(true) 사용
+    expect(restored.ncs_used).toBe(true);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('NCS methodology divergent 시 첫 번째 비어있지 않은 값만 루트로 승격한다', () => {
+    // Lines 200-206: firstMethodology !== c.ncs_methodology divergent 분기 커버 (id 48)
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const pbl = {
+      competencies: [
+        { name: 'A', definition: 'a', knowledge: [], skills: [], attitudes: [], ncs_methodology: '방법A' },
+        { name: 'B', definition: 'b', knowledge: [], skills: [], attitudes: [], ncs_methodology: '방법B' }, // 다름
+      ],
+      annual_plan: { items: [], usage_plan: '' },
+    };
+    const restored = fromRoadmapVersionColumns({ pbl_course: pbl });
+    expect(restored.ncs_methodology).toBe('방법A');
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('toRoadmapVersionColumns — undefined 필드 기본값', () => {
+  it('RoadmapResult 필드가 undefined이면 기본값으로 폴백된다', () => {
+    // Lines 61-79: ?? 연산자 오른쪽 피연산자 분기 커버 (id 0-10)
+    const result = {
+      diagnosis_summary: undefined as unknown as string,
+      setup_necessity: undefined as unknown as string,
+      outcome_summary: undefined as unknown as RoadmapResult['outcome_summary'],
+      competencies: undefined as unknown as RoadmapResult['competencies'],
+      ncs_used: undefined as unknown as boolean,
+      ncs_methodology: undefined as unknown as string,
+      ncs_derivation_method: undefined as unknown as string,
+      training_structure: undefined as unknown as RoadmapResult['training_structure'],
+      training_structure_method: undefined as unknown as string,
+      annual_plan: undefined as unknown as RoadmapResult['annual_plan'],
+      course_specs: undefined as unknown as RoadmapResult['course_specs'],
+    };
+    const cols = toRoadmapVersionColumns(result as unknown as Parameters<typeof toRoadmapVersionColumns>[0]);
+    expect(cols.diagnosis_summary).toBe('');
+    expect(cols.roadmap_matrix).toEqual([]);
+    expect(cols.pbl_course.competencies).toEqual([]);
+    expect(cols.pbl_course.setup_necessity).toBe('');
+    expect(cols.pbl_course.training_structure_method).toBe('');
+    expect(cols.pbl_course.ncs.used).toBe(false);
+    expect(cols.pbl_course.ncs.methodology).toBe('');
+    expect(cols.pbl_course.ncs.derivation_method).toBe('');
+    expect(cols.courses).toEqual([]);
+  });
 });

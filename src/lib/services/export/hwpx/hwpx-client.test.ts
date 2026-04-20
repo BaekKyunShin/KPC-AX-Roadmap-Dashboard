@@ -204,3 +204,188 @@ describe('generatePBLHwpx', () => {
     await expect(generatePBLHwpx(pblPayload)).rejects.toThrow(/HWPX_API_SECRET/);
   });
 });
+
+// ─── 미커버 분기: 리다이렉트·Next dev fallback·fetch throw ─────────────────
+
+describe('postToPythonGenerate — 미커버 분기', () => {
+  const payload: RoadmapHwpxPayload = {
+    track: 'ROADMAP',
+    fileName: 'test.hwpx',
+    data: {},
+  };
+
+  it('3xx 리다이렉트 응답 → 에러 throw (bypass 거부)', async () => {
+    // Vercel Preview 보호가 활성화되어 307 리다이렉트가 오는 경우
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 307,
+      headers: {
+        get: (name: string) => (name === 'location' ? 'https://vercel.com/sso' : null),
+        getSetCookie: () => ['_vercel_jwt=abc'],
+      },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/307/);
+  });
+
+  it('302 리다이렉트 응답 → 에러 메시지에 위치 포함', async () => {
+    const redirectUrl = 'https://auth.vercel.com/login';
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      headers: {
+        get: (name: string) => (name === 'location' ? redirectUrl : null),
+        getSetCookie: () => [],
+      },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(redirectUrl);
+  });
+
+  it('3xx + setCookie 없음 → 에러 throw', async () => {
+    // getSetCookie가 없는 환경 (구형 fetch polyfill)
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 301,
+      headers: {
+        get: () => '/moved',
+        // getSetCookie 미구현
+      },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/301/);
+  });
+
+  it('404 + Next dev HTML 응답 → Next dev fallback 에러 throw', async () => {
+    // `npm run dev` 환경에서 Python 함수가 없을 때 Next.js가 HTML 404 페이지 반환
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => '<!DOCTYPE html><html><body>Not Found</body></html>',
+      headers: { get: () => null },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/Vercel Python/);
+    consoleSpy.mockRestore();
+  });
+
+  it('404 + __next_page 응답 → Next dev fallback 에러 throw', async () => {
+    // Next.js dev 서버의 다른 형태 404 응답
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => 'Error: __next_page route not found',
+      headers: { get: () => null },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/Vercel Python/);
+    consoleSpy.mockRestore();
+  });
+
+  it('일반 404 (Next dev 아님) → 일반 에러 throw', async () => {
+    // 일반적인 404 에러 (Python 함수 에러 등)
+    const fn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => '{"error": "payload invalid"}',
+      headers: { get: () => null },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/404/);
+    // Next dev fallback 에러 메시지가 아니어야 함
+    await expect(generateRoadmapHwpx(payload)).rejects.not.toThrow(/Vercel Python/);
+    consoleSpy.mockRestore();
+  });
+
+  it('fetch 자체가 throw → 에러 그대로 re-throw', async () => {
+    // 네트워크 연결 실패 등
+    const networkError = new Error('fetch failed');
+    const fn = vi.fn().mockRejectedValue(networkError);
+    globalThis.fetch = fn as typeof fetch;
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow('fetch failed');
+    consoleSpy.mockRestore();
+  });
+
+  it('fetch 에러 객체에 cause 포함 → 로깅 후 re-throw', async () => {
+    // ECONNREFUSED 등 cause를 가진 에러
+    const cause = new Error('ECONNREFUSED');
+    const networkError = Object.assign(new Error('fetch failed'), { cause });
+    const fn = vi.fn().mockRejectedValue(networkError);
+    globalThis.fetch = fn as typeof fetch;
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(generateRoadmapHwpx(payload)).rejects.toThrow('fetch failed');
+    consoleSpy.mockRestore();
+  });
+
+  it('성공 응답의 headers.get 호출 시 예외 발생 → null 폴백', async () => {
+    // response.headers.get이 throw 하는 엣지 케이스 (일부 환경/polyfill)
+    const fn = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new Uint8Array([0x50, 0x4b]).buffer,
+      headers: {
+        get: () => {
+          throw new Error('headers not available');
+        },
+        getSetCookie: () => [],
+      },
+    } as unknown as Response);
+    globalThis.fetch = fn as typeof fetch;
+
+    // 예외가 throw되지 않고 정상적으로 버퍼를 반환해야 함
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const result = await generateRoadmapHwpx(payload);
+    expect(Buffer.isBuffer(result)).toBe(true);
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── resolveBaseUrl ──────────────────────────────────────────────────────────
+
+import { resolveBaseUrl } from './hwpx-client';
+
+describe('resolveBaseUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('override 전달 시 최우선 사용 (후행 슬래시 제거)', () => {
+    expect(resolveBaseUrl('https://example.com/')).toBe('https://example.com');
+  });
+
+  it('override 없이 VERCEL_URL 사용', () => {
+    vi.stubEnv('VERCEL_URL', 'my-app.vercel.app');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    expect(resolveBaseUrl()).toBe('https://my-app.vercel.app');
+  });
+
+  it('VERCEL_URL 후행 슬래시 제거', () => {
+    vi.stubEnv('VERCEL_URL', 'my-app.vercel.app/');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    expect(resolveBaseUrl()).toBe('https://my-app.vercel.app');
+  });
+
+  it('VERCEL_URL 없고 NEXT_PUBLIC_APP_URL 사용', () => {
+    vi.stubEnv('VERCEL_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://my-production.com');
+    expect(resolveBaseUrl()).toBe('https://my-production.com');
+  });
+
+  it('VERCEL_URL·NEXT_PUBLIC_APP_URL 모두 없으면 localhost 반환', () => {
+    vi.stubEnv('VERCEL_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    expect(resolveBaseUrl()).toBe('http://localhost:3000');
+  });
+});

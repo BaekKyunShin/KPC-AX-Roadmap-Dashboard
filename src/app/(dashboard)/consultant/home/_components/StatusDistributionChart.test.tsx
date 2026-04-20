@@ -22,7 +22,35 @@ vi.mock('@/components/ui/chart', () => ({
   ChartContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="chart-container">{children}</div>
   ),
-  ChartTooltip: () => <div data-testid="chart-tooltip" />,
+  // ChartTooltip — content prop(PieTooltipContent)을 active 분기 양쪽으로 직접 호출
+  // samplePayload는 범례에 표시되지 않을 고정 값 사용 (중복 텍스트 방지)
+  ChartTooltip: ({
+    content,
+  }: {
+    content?: React.ReactElement<{ active?: boolean; payload?: unknown[] }>;
+  }) => {
+    if (!content) return <div data-testid="chart-tooltip" />;
+    // __TOOLTIP_SAMPLE__ 은 범례와 겹치지 않는 값
+    const samplePayload = [
+      { payload: { name: '__TOOLTIP_SAMPLE__', value: 999, color: '#FF0000' } },
+    ];
+    return (
+      <div data-testid="chart-tooltip">
+        {/* active=true: 툴팁 내용 렌더링 분기 */}
+        <div data-testid="tooltip-active">
+          {content.type({ ...content.props, active: true, payload: samplePayload })}
+        </div>
+        {/* active=false: null 반환 분기 */}
+        <div data-testid="tooltip-inactive">
+          {content.type({ ...content.props, active: false, payload: samplePayload }) ?? null}
+        </div>
+        {/* payload 빈 배열: null 반환 분기 */}
+        <div data-testid="tooltip-empty-payload">
+          {content.type({ ...content.props, active: true, payload: [] }) ?? null}
+        </div>
+      </div>
+    );
+  },
 }));
 
 vi.mock('@/lib/constants/status', () => ({
@@ -81,6 +109,7 @@ describe('StatusDistributionChart', () => {
 
     it('범례에 한글 상태 라벨을 표시한다', () => {
       render(<StatusDistributionChart byStatus={byStatus} total={10} />);
+      // getAllByText — tooltip sample은 __TOOLTIP_SAMPLE__ 이므로 범례와 겹치지 않음
       expect(screen.getByText('인터뷰 대기')).toBeInTheDocument();
       expect(screen.getByText('인터뷰 완료')).toBeInTheDocument();
       expect(screen.getByText('로드맵 작성 중')).toBeInTheDocument();
@@ -119,6 +148,103 @@ describe('StatusDistributionChart', () => {
       expect(screen.getByTestId('chart-container')).toBeInTheDocument();
       expect(screen.getByText('인터뷰 대기')).toBeInTheDocument();
       expect(screen.getByText('7건')).toBeInTheDocument();
+    });
+  });
+
+  // =====================================================================
+  // 추가: getStatusLabel 오버라이드 분기 + PBL 상태 + 미지정 상태 커버리지
+  // =====================================================================
+
+  describe('getStatusLabel — 라벨 우선순위', () => {
+    it('ROADMAP_DRAFTED는 오버라이드 라벨 "로드맵 작성 중"으로 표시된다', () => {
+      render(
+        <StatusDistributionChart
+          byStatus={{ ROADMAP_DRAFTED: 2 }}
+          total={2}
+        />,
+      );
+      expect(screen.getByText('로드맵 작성 중')).toBeInTheDocument();
+    });
+
+    it('PBL_DRAFTED는 오버라이드 라벨 "PBL 작성 중"으로 표시된다', () => {
+      render(
+        <StatusDistributionChart
+          byStatus={{ PBL_DRAFTED: 1 }}
+          total={1}
+        />,
+      );
+      expect(screen.getByText('PBL 작성 중')).toBeInTheDocument();
+    });
+
+    it('FINALIZED는 오버라이드 라벨 "양식 확정"으로 표시된다', () => {
+      render(
+        <StatusDistributionChart
+          byStatus={{ FINALIZED: 3 }}
+          total={3}
+        />,
+      );
+      // CHART_LABEL_OVERRIDES에 FINALIZED='양식 확정' 정의됨
+      expect(screen.getByText('양식 확정')).toBeInTheDocument();
+    });
+  });
+
+  describe('toChartData — CHART_COLORS에 없는 상태 필터링', () => {
+    it('CHART_COLORS에 없는 상태는 차트 데이터에 포함되지 않는다', () => {
+      // DIAGNOSED는 CHART_COLORS에 없으므로 범례에 표시 안 됨
+      render(
+        <StatusDistributionChart
+          byStatus={{ ASSIGNED: 3, DIAGNOSED: 2 } as Record<string, number>}
+          total={5}
+        />,
+      );
+      // ASSIGNED는 표시됨
+      expect(screen.getByText('인터뷰 대기')).toBeInTheDocument();
+      // DIAGNOSED는 CHART_COLORS에 없으므로 범례에 없음
+      expect(screen.queryByText('DIAGNOSED')).not.toBeInTheDocument();
+    });
+  });
+
+  // =====================================================================
+  // PieTooltipContent 분기 커버 (active/payload 조건)
+  // =====================================================================
+
+  describe('PieTooltipContent 분기', () => {
+    const byStatus = { ASSIGNED: 3, INTERVIEWED: 2 };
+
+    it('active=true이고 payload가 있을 때 툴팁 내용을 렌더링한다 (999건 표시)', () => {
+      render(<StatusDistributionChart byStatus={byStatus} total={5} />);
+      // tooltip mock이 __TOOLTIP_SAMPLE__, 999건을 active=true로 렌더링
+      const activeWrapper = screen.getByTestId('tooltip-active');
+      // getStatusLabel '__TOOLTIP_SAMPLE__' → CONFIG에 없으므로 키 자체 표시
+      expect(activeWrapper.textContent).toMatch(/999건/);
+    });
+
+    it('active=false이면 툴팁 내용이 없다', () => {
+      render(<StatusDistributionChart byStatus={byStatus} total={5} />);
+      const inactiveWrapper = screen.getByTestId('tooltip-inactive');
+      expect(inactiveWrapper.textContent).toBe('');
+    });
+
+    it('payload가 빈 배열이면 툴팁 내용이 없다', () => {
+      render(<StatusDistributionChart byStatus={byStatus} total={5} />);
+      const emptyPayloadWrapper = screen.getByTestId('tooltip-empty-payload');
+      expect(emptyPayloadWrapper.textContent).toBe('');
+    });
+  });
+
+  // =====================================================================
+  // getStatusLabel — CONSULTANT_PROJECT_STATUS_CONFIG 폴백 분기
+  // =====================================================================
+
+  describe('getStatusLabel — 폴백 분기', () => {
+    it('PBL_DRAFTED는 CHART_LABEL_OVERRIDES에 정의된 "PBL 작성 중"을 반환한다', () => {
+      render(
+        <StatusDistributionChart
+          byStatus={{ PBL_DRAFTED: 2 }}
+          total={2}
+        />,
+      );
+      expect(screen.getByText('PBL 작성 중')).toBeInTheDocument();
     });
   });
 });

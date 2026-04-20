@@ -789,4 +789,112 @@ describe('NotificationBell', () => {
       expect(screen.getByLabelText('알림 2개 안읽음')).toBeInTheDocument();
     });
   });
+
+  // ─── 추가 분기 커버리지 ────────────────────────────────────────────────
+
+  describe('fetchNotifications 실패 시 분기', () => {
+    it('Popover 열릴 때 fetchNotifications 실패 시 알림이 추가되지 않는다', async () => {
+      // Line 82: if (result.success) false 분기 커버
+      mockFetchNotifications.mockResolvedValue({ success: false, error: '서버 오류' });
+      const user = userEvent.setup();
+      renderBell();
+      // aria-label 공백 포함("알림 ") 매칭
+      const bellBtn = screen.getByRole('button');
+      await user.click(bellBtn);
+      // 에러 없이 처리됨 (크래시 없음)
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+      // fetchNotifications가 호출됨
+      expect(mockFetchNotifications).toHaveBeenCalled();
+    });
+
+    it('탭 변경 시 fetchNotifications 실패해도 크래시 없이 처리된다', async () => {
+      // Line 106: if (result.success) false 분기 커버 (handleTabChange)
+      mockFetchNotifications.mockResolvedValue({ success: false, error: '탭 fetch 오류' });
+      const user = userEvent.setup();
+      renderBell({ showTabs: true });
+      await user.click(screen.getByLabelText('알림'));
+      // 탭 전환 시도
+      const tabs = await screen.findAllByRole('button');
+      // 탭 버튼 찾기
+      const tabButton = tabs.find(b => b.textContent?.includes('PROJECT'));
+      if (tabButton) {
+        await user.click(tabButton);
+      }
+      // 크래시 없이 렌더링 유지
+      expect(screen.getByTestId('popover-content')).toBeInTheDocument();
+    });
+  });
+
+  describe('markAllNotificationsRead 실패 분기', () => {
+    it('모두 읽음 실패 시 알림 상태가 변경되지 않는다', async () => {
+      // Line 176: if (result.success) false 분기 커버 (handleMarkAllRead)
+      const notification = createNotification({ id: 'n1', title: '읽지 않은 알림', is_read: false });
+      mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
+      mockMarkAllNotificationsRead.mockResolvedValue({ success: false, error: '실패' });
+
+      const user = userEvent.setup();
+      renderBell({ initialUnreadCount: 1 });
+      await user.click(screen.getByLabelText('알림 1개 안읽음'));
+
+      await waitFor(() => {
+        expect(screen.getByText('읽지 않은 알림')).toBeInTheDocument();
+      });
+
+      // "모두 읽음" 버튼 클릭
+      const markAllBtn = screen.getByText('모두 읽음');
+      await user.click(markAllBtn);
+
+      // 실패 시 unreadCount가 그대로 유지 (버튼 여전히 표시됨)
+      await waitFor(() => {
+        expect(screen.getByText('모두 읽음')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('알림 클릭 — n.id !== notification.id 분기', () => {
+    it('안읽은 알림 클릭 시 다른 알림의 is_read 상태는 변경되지 않는다', async () => {
+      // Line 161: n.id === notification.id 조건 false → n 그대로 반환 분기 커버
+      const n1 = createNotification({ id: 'n1', title: '알림 1', is_read: false });
+      const n2 = createNotification({ id: 'n2', title: '알림 2', is_read: false });
+      mockFetchNotifications.mockResolvedValue(createSuccessResult([n1, n2]));
+      mockMarkNotificationRead.mockResolvedValue({ success: true });
+
+      const user = userEvent.setup();
+      renderBell({ initialUnreadCount: 2 });
+      await user.click(screen.getByLabelText('알림 2개 안읽음'));
+
+      await waitFor(() => {
+        expect(screen.getByText('알림 1')).toBeInTheDocument();
+        expect(screen.getByText('알림 2')).toBeInTheDocument();
+      });
+
+      // n1 클릭 → n1만 읽음, n2는 여전히 안읽음 상태 유지
+      await user.click(screen.getByText('알림 1'));
+      // 크래시 없이 처리됨
+      expect(mockMarkNotificationRead).toHaveBeenCalledWith('n1');
+    });
+  });
+
+  describe('알 수 없는 타입 알림 (config 없음)', () => {
+    it('알 수 없는 notification.type이면 기본 스타일로 렌더링된다', async () => {
+      // Lines 310, 312: config?.bgColor || 'bg-gray-50', Icon && → false 분기 커버
+      const notification = createNotification({
+        id: 'n1',
+        title: '알 수 없는 타입',
+        type: 'UNKNOWN_TYPE' as string,
+        is_read: true,
+      });
+      mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));
+
+      const user = userEvent.setup();
+      renderBell();
+      await user.click(screen.getByLabelText('알림'));
+
+      await waitFor(() => {
+        expect(screen.getByText('알 수 없는 타입')).toBeInTheDocument();
+      });
+    });
+  });
 });

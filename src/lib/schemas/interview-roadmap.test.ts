@@ -458,4 +458,223 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.training_targets).toHaveLength(1);
     expect(result.training_targets?.[0].selection_reason).toContain('생산성 20% 향상');
   });
+
+  it('roadmap_ai_necessity가 범위 밖 값(0)이면 3으로 clamp된다', () => {
+    // clampAiNecessity: int < 1 → 3 반환 분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: 0 }],
+      pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
+  });
+
+  it('roadmap_ai_necessity가 범위 밖 값(6)이면 3으로 clamp된다', () => {
+    // clampAiNecessity: int > 5 → 3 반환 분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: 6 }],
+      pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
+  });
+
+  it('roadmap_ai_necessity가 NaN/undefined이면 3으로 clamp된다', () => {
+    // clampAiNecessity: !Number.isFinite → 3 반환 분기 (id: 12 우측 피연산자 커버)
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: undefined }],
+      pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
+  });
+
+  it('roadmap_overview가 있으면 overview를 복원한다 (Ⅰ장)', () => {
+    // Line 363: savedOv truthy → overview 복원 분기 커버
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_overview: {
+          establishment_necessity: 'AI 필요성',
+          ai_competency_level: 'INTERMEDIATE',
+          selected_tasks_summary: '품질 자동화',
+          roadmap_summary: '3단계 로드맵',
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.overview).toMatchObject({
+      establishment_necessity: 'AI 필요성',
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks_summary: '품질 자동화',
+      roadmap_summary: '3단계 로드맵',
+    });
+  });
+
+  it('roadmap_overview.ai_competency_level이 유효하지 않으면 BEGINNER로 fallback된다', () => {
+    // Line 366: validLevels.includes(lvl) false → 'BEGINNER' 분기 커버
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_overview: {
+          establishment_necessity: '',
+          ai_competency_level: 'INVALID_LEVEL',
+          selected_tasks_summary: '',
+          roadmap_summary: '',
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.overview?.ai_competency_level).toBe('BEGINNER');
+  });
+
+  it('roadmap_overview.hrd_report_attachment가 있으면 overview에 첨부 파일 정보를 복원한다', () => {
+    // Line 375-384: att && typeof att.storage_path === 'string' → true 분기 커버
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_overview: {
+          establishment_necessity: '',
+          ai_competency_level: 'BEGINNER',
+          selected_tasks_summary: '',
+          roadmap_summary: '',
+          hrd_report_attachment: {
+            storage_path: 'attachments/report.pdf',
+            file_name: 'report.pdf',
+            mime_type: 'application/pdf',
+            size: 102400,
+            uploaded_at: '2026-01-01T00:00:00Z',
+          },
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.overview?.hrd_report_attachment).toMatchObject({
+      storage_path: 'attachments/report.pdf',
+      file_name: 'report.pdf',
+    });
+  });
+
+  it('roadmap_overview.hrd_report_attachment가 storage_path/file_name이 없으면 undefined 처리', () => {
+    // Line 375: att && typeof att.storage_path !== 'string' → undefined 분기 커버
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_overview: {
+          establishment_necessity: '',
+          ai_competency_level: 'BEGINNER',
+          selected_tasks_summary: '',
+          roadmap_summary: '',
+          hrd_report_attachment: { mime_type: 'application/pdf' }, // storage_path 없음
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.overview?.hrd_report_attachment).toBeUndefined();
+  });
+
+  it('company_details와 customer_requirements 없이 row만 있으면 company_requirements 미설정', () => {
+    // Line 397: else if (row.company_details || row.customer_requirements) false → 미분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+      customer_requirements: '',
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.company_requirements).toBeUndefined();
+  });
+
+  it('company_details가 없고 customer_requirements만 있으면 legacy 경로로 expected_outcomes에 매핑', () => {
+    // Line 397: else if customer_requirements truthy → company_requirements.expected_outcomes 매핑 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+      customer_requirements: '고객 요구사항',
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.company_requirements?.expected_outcomes).toBe('고객 요구사항');
+  });
+
+  it('stt_insights가 객체이면 partial.stt_insights에 할당된다', () => {
+    // Line 432: row.stt_insights && typeof === 'object' → 할당 분기 커버
+    const sttData = { topics: ['AI', '데이터'], summary: '핵심 내용' };
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+      stt_insights: sttData,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.stt_insights).toEqual(sttData);
+  });
+
+  it('stt_insights가 null이면 partial.stt_insights가 설정되지 않는다', () => {
+    // Line 432: row.stt_insights falsy → 비할당 분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+      stt_insights: null,
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.stt_insights).toBeUndefined();
+  });
+
+  it('analysis_notes.attachment_urls가 배열이 아닌 경우 빈 배열로 초기화', () => {
+    // Line 357: !Array.isArray(savedAn.attachment_urls) → [] 분기 커버
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_analysis_notes: {
+          text: '분석 노트',
+          attachment_urls: null, // 배열이 아님
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.analysis_notes?.attachment_urls).toEqual([]);
+  });
+
+  it('job_tasks에 id가 없으면 UUID가 자동 생성된다', () => {
+    // Line 410: t.id ?? crypto.randomUUID() → 우측 피연산자(null) 분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [{ task_name: '검사', task_description: '육안' }], // id 없음
+      pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.task_workflow_items?.[0].id).toBeTruthy();
+  });
+
+  it('improvement_goals에 id가 없으면 UUID가 자동 생성된다', () => {
+    // Line 421: g.id ?? crypto.randomUUID() → 우측 피연산자 분기 커버
+    const row = {
+      participants: [],
+      company_details: null,
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [{ goal_description: '목표', kpi: '지표' }], // id 없음
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.training_targets?.[0].id).toBeTruthy();
+  });
 });

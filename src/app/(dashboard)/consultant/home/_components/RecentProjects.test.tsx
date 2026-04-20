@@ -136,6 +136,18 @@ describe('RecentProjects', () => {
       render(<RecentProjects projects={[makeProject({ status: 'UNKNOWN_STATUS' })]} />);
       expect(screen.getByText('UNKNOWN_STATUS')).toBeInTheDocument();
     });
+
+    it('PBL_DRAFTED 상태 배지를 표시한다 (resolveStatusLabel 분기)', () => {
+      // Line 26: status === 'PBL_DRAFTED' → true 분기 커버
+      render(<RecentProjects projects={[makeProject({ status: 'PBL_DRAFTED', track: 'PBL' })]} />);
+      expect(screen.getByText('PBL 작성 중')).toBeInTheDocument();
+    });
+
+    it('PBL 트랙 FINALIZED 상태는 "PBL 완료" 배지를 표시한다', () => {
+      // Line 34: status === 'FINALIZED' && track === 'PBL' → true 분기 커버
+      render(<RecentProjects projects={[makeProject({ status: 'FINALIZED', track: 'PBL' })]} />);
+      expect(screen.getByText('PBL 완료')).toBeInTheDocument();
+    });
   });
 
   describe('여러 프로젝트', () => {

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TemplateForm from './TemplateForm';
 
@@ -56,16 +56,22 @@ vi.mock('motion/react', () => ({
   useDragControls: () => ({ start: vi.fn() }),
 }));
 
+const mockPush = vi.fn();
+const mockRefresh = vi.fn();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
-    refresh: vi.fn(),
+    push: mockPush,
+    refresh: mockRefresh,
   }),
 }));
 
+const createTemplateMock = vi.fn().mockResolvedValue({ success: true, data: { id: 'new-id' } });
+const updateTemplateMock = vi.fn().mockResolvedValue({ success: true, data: { message: '수정완료' } });
+
 vi.mock('../actions', () => ({
-  createTemplate: vi.fn().mockResolvedValue({ success: true, data: { id: 'new-id' } }),
-  updateTemplate: vi.fn().mockResolvedValue({ success: true, data: {} }),
+  createTemplate: (...args: unknown[]) => createTemplateMock(...args),
+  updateTemplate: (...args: unknown[]) => updateTemplateMock(...args),
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -92,6 +98,10 @@ describe('TemplateForm', () => {
     vi.restoreAllMocks();
     capturedOnReorder = null;
     capturedValues = null;
+    mockPush.mockReset();
+    mockRefresh.mockReset();
+    createTemplateMock.mockResolvedValue({ success: true, data: { id: 'new-id' } });
+    updateTemplateMock.mockResolvedValue({ success: true, data: { message: '수정완료' } });
   });
 
   describe('질문 목록 렌더링', () => {
@@ -232,6 +242,229 @@ describe('TemplateForm', () => {
       fireEvent.click(deleteButton);
 
       expect(screen.getByText('최소 1개의 질문이 필요합니다.')).toBeInTheDocument();
+    });
+
+    it('질문이 2개일 때 삭제하면 1개만 남는다', () => {
+      render(<TemplateForm mode="create" />);
+      fireEvent.click(screen.getByText('+ 질문 추가'));
+      expect(screen.getAllByTestId('reorder-item').length).toBe(2);
+
+      const deleteButtons = screen.getAllByTitle('삭제');
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getAllByTestId('reorder-item').length).toBe(1);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // isInUse prop
+  // --------------------------------------------------------------------------
+  describe('isInUse prop', () => {
+    it('isInUse=true이면 사용 중 안내 메시지를 표시한다', () => {
+      render(<TemplateForm mode="edit" isInUse={true} />);
+      expect(screen.getByText(/이 템플릿은 이미 사용 중입니다/)).toBeInTheDocument();
+    });
+
+    it('isInUse=false이면 사용 중 안내 메시지를 표시하지 않는다', () => {
+      render(<TemplateForm mode="edit" isInUse={false} />);
+      expect(screen.queryByText(/이 템플릿은 이미 사용 중입니다/)).not.toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 폼 제출 검증
+  // --------------------------------------------------------------------------
+  describe('폼 제출 검증', () => {
+    it('이름이 비어있으면 제출 시 에러 메시지를 표시한다', async () => {
+      render(<TemplateForm mode="create" />);
+      // name은 빈 상태
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(screen.getByText('템플릿 이름을 입력하세요.')).toBeInTheDocument();
+      });
+    });
+
+    it('이름은 있지만 질문 내용이 비어있으면 에러 메시지를 표시한다', async () => {
+      render(<TemplateForm mode="create" />);
+      // 이름 입력
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      // 질문 내용은 비어있는 상태로 제출
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(screen.getByText(/질문 #1의 내용을 입력하세요/)).toBeInTheDocument();
+      });
+    });
+
+    it('가중치가 범위를 벗어나면 에러 메시지를 표시한다', async () => {
+      render(<TemplateForm mode="create" />);
+      // 이름 + 질문 내용 입력
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '테스트 질문' } });
+      // 가중치를 0으로 설정 (범위 위반)
+      const weightInputs = screen.getAllByDisplayValue('1');
+      fireEvent.change(weightInputs[0], { target: { value: '0.05' } });
+
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(screen.getByText(/가중치는 0.1~10 사이여야 합니다/)).toBeInTheDocument();
+      });
+    });
+
+    it('create 모드에서 성공 시 router.push로 이동한다', async () => {
+      createTemplateMock.mockResolvedValue({ success: true, data: { id: 'new-id' } });
+      render(<TemplateForm mode="create" />);
+      // 이름 + 질문 내용 입력
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '테스트 질문' } });
+
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/ops/templates/new-id');
+      });
+    });
+
+    it('edit 모드에서 성공 시 router.refresh를 호출한다', async () => {
+      const mockTemplate = {
+        id: 'tmpl-1',
+        name: '기존 템플릿',
+        description: '',
+        questions: [
+          { id: 'q1', order: 1, dimension: 'AI 성숙도', question_text: '기존 질문', weight: 1 },
+        ],
+        version: 1,
+        is_active: true,
+        created_at: '',
+        updated_at: '',
+      };
+      updateTemplateMock.mockResolvedValue({
+        success: true,
+        data: { message: '수정완료' },
+      });
+      render(<TemplateForm mode="edit" template={mockTemplate} />);
+
+      const form = screen.getByRole('button', { name: '저장' }).closest('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+      await waitFor(() => {
+        expect(updateTemplateMock).toHaveBeenCalled();
+      });
+    });
+
+    it('서버 오류 응답 시 에러 메시지를 표시한다', async () => {
+      createTemplateMock.mockResolvedValue({ success: false, error: '서버 오류 발생' });
+      render(<TemplateForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '테스트 질문' } });
+
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+      await waitFor(() => {
+        expect(screen.getByText('서버 오류 발생')).toBeInTheDocument();
+      });
+    });
+
+    it('예외 발생 시 "저장에 실패했습니다." 메시지를 표시한다', async () => {
+      createTemplateMock.mockRejectedValue(new Error('네트워크 오류'));
+      render(<TemplateForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '테스트 질문' } });
+
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+      await waitFor(() => {
+        expect(screen.getByText('저장에 실패했습니다.')).toBeInTheDocument();
+      });
+    });
+
+    it('success 응답 시 성공 메시지를 표시한다', async () => {
+      createTemplateMock.mockResolvedValue({
+        success: true,
+        data: { id: 'new-id', message: '생성이 완료되었습니다.' },
+      });
+      render(<TemplateForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/템플릿 이름/), {
+        target: { value: '테스트 템플릿' },
+      });
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '테스트 질문' } });
+
+      const form = screen.getByRole('button', { name: '생성' }).closest('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/ops/templates/new-id');
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 드래그 리오더 — ID 불일치 안전 장치
+  // --------------------------------------------------------------------------
+  describe('handleDragReorder — ID 불일치 안전 장치', () => {
+    it('존재하지 않는 ID가 포함된 경우 상태를 변경하지 않는다', () => {
+      render(<TemplateForm mode="create" />);
+      // 2개 질문 추가
+      fireEvent.click(screen.getByText('+ 질문 추가'));
+      const textareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textareas[0], { target: { value: '질문A' } });
+      fireEvent.change(textareas[1], { target: { value: '질문B' } });
+
+      expect(capturedOnReorder).not.toBeNull();
+
+      // 존재하지 않는 ID 포함 → 상태 변경 없이 return
+      act(() => {
+        capturedOnReorder!(['not-existing-id', 'another-bad-id']);
+      });
+
+      // 순서 그대로 유지
+      const updatedTextareas = screen.getAllByPlaceholderText('질문 내용을 입력하세요');
+      expect(updatedTextareas[0]).toHaveValue('질문A');
+      expect(updatedTextareas[1]).toHaveValue('질문B');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 질문 변경 핸들러
+  // --------------------------------------------------------------------------
+  describe('질문 변경 핸들러', () => {
+    it('가중치 input 변경 시 값이 업데이트된다', () => {
+      render(<TemplateForm mode="create" />);
+      const weightInputs = screen.getAllByDisplayValue('1');
+      fireEvent.change(weightInputs[0], { target: { value: '3' } });
+      expect((weightInputs[0] as HTMLInputElement).value).toBe('3');
+    });
+
+    it('질문 텍스트 변경 시 값이 업데이트된다', () => {
+      render(<TemplateForm mode="create" />);
+      const textarea = screen.getByPlaceholderText('질문 내용을 입력하세요');
+      fireEvent.change(textarea, { target: { value: '새 질문 내용' } });
+      expect((textarea as HTMLTextAreaElement).value).toBe('새 질문 내용');
     });
   });
 });

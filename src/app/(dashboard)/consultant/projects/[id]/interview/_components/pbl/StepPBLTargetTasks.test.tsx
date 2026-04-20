@@ -92,6 +92,54 @@ describe('StepPBLTargetTasks', () => {
     );
   });
 
+  it('2개 target_tasks에서 첫 번째 업무명 변경 시 두 번째 업무 유지 (Line 38 cond-expr false 분기)', async () => {
+    // branch 0[1]: i !== index → t 그대로 반환하는 false 경로 커버
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StepPBLTargetTasks
+        value={makeValue({
+          target_tasks: [
+            { id: 't1', task_name: '외관검사', necessity: 3, selected: false },
+            { id: 't2', task_name: '공정분석', necessity: 4, selected: true },
+          ],
+        })}
+        onChange={onChange}
+      />,
+    );
+    // 첫 번째 업무명 input 변경 → updateTask(0, ...) → i=1 false 경로
+    const taskNameInputs = screen.getAllByPlaceholderText(/예: 외관검사 불량 판정/);
+    await user.clear(taskNameInputs[0]);
+    await user.type(taskNameInputs[0], '새업무');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PBLTargetTasks;
+    expect(last.target_tasks[1].task_name).toBe('공정분석');
+  });
+
+  it('2개 target_task_details에서 첫 번째 세부내용 변경 시 두 번째 유지 (Line 60 cond-expr false 분기)', async () => {
+    // branch 1 (both arms): i !== index → d 그대로 반환하는 false 경로 커버
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StepPBLTargetTasks
+        value={makeValue({
+          target_task_details: [
+            { id: 'd1', task_name: '외관검사', as_is: 'A1', to_be: 'B1', required_knowledge: 'K1', required_skill: 'S1' },
+            { id: 'd2', task_name: '공정분석', as_is: 'A2', to_be: 'B2', required_knowledge: 'K2', required_skill: 'S2' },
+          ],
+        })}
+        onChange={onChange}
+      />,
+    );
+    // 세부내용 task_name inputs
+    const detailInputs = screen.getAllByPlaceholderText(/예: 외관검사 불량 판정/);
+    // detailInputs[1]은 target_task_details 섹션의 첫 번째 업무명
+    const sectionInputs = detailInputs.filter((_, i) => i >= detailInputs.length - 2);
+    await user.clear(sectionInputs[0]);
+    await user.type(sectionInputs[0], '새세부내용');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PBLTargetTasks;
+    expect(last.target_task_details[1].task_name).toBe('공정분석');
+  });
+
   it('"업무 세부내용 추가" 버튼 클릭 시 target_task_details에 새 행 추가 + 삭제 버튼 작동', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

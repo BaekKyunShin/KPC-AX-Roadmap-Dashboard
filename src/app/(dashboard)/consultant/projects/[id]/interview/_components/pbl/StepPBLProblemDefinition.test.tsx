@@ -126,4 +126,40 @@ describe('StepPBLProblemDefinition', () => {
       screen.getByText(/아직 등록된 문제가 없습니다/),
     ).toBeInTheDocument();
   });
+
+  it('2개 문제에서 첫 번째 문제 이름 변경 시 두 번째 문제는 유지된다 (Line 54 cond-expr false 분기 커버)', async () => {
+    // branch 0[1]: i !== index → item 그대로 반환하는 false 경로 커버
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StepPBLProblemDefinition
+        value={makeValue({
+          problem_priorities: [
+            makePriority({ id: 'p1', problem_name: '문제A' }),
+            makePriority({ id: 'p2', problem_name: '문제B' }),
+          ],
+        })}
+        onChange={onChange}
+      />,
+    );
+    // 첫 번째 문제명 input 변경 → updatePriority(0, 'problem_name', ...) → i=1 false 경로
+    const nameInputs = screen.getAllByPlaceholderText(/예\) 불량률/);
+    await user.clear(nameInputs[0]);
+    await user.type(nameInputs[0], '새문제A');
+    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PBLProblemDefinition;
+    expect(last.problem_priorities[1].problem_name).toBe('문제B');
+  });
+
+  it('1개 문제만 있을 때 삭제 버튼이 없어 removePriority early return 분기는 UI로 미노출 (렌더 확인)', () => {
+    // branch 1[0]: problem_priorities.length <= 1 → return 경로
+    // 삭제 버튼이 렌더되지 않으므로 버튼 부재 확인으로 갈음
+    render(
+      <StepPBLProblemDefinition
+        value={makeValue({ problem_priorities: [makePriority()] })}
+        onChange={vi.fn()}
+      />,
+    );
+    // 1개일 때는 삭제 버튼이 없음
+    expect(screen.queryByRole('button', { name: /문제 1 삭제/ })).not.toBeInTheDocument();
+  });
 });

@@ -51,4 +51,95 @@ describe('StepBasicInfoRoadmap', () => {
     render(<StepBasicInfoRoadmap {...baseProps()} />);
     expect(screen.queryByRole('button', { name: /참석자 1 삭제/ })).not.toBeInTheDocument();
   });
+
+  // =====================================================================
+  // 추가: 내부 함수 커버리지 확보
+  // =====================================================================
+
+  describe('updateParticipant — 참석자 필드 변경', () => {
+    it('참석자 성명 입력 시 onParticipantsChange 호출', async () => {
+      const user = userEvent.setup();
+      const onParticipantsChange = vi.fn();
+      const props = baseProps({ onParticipantsChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const nameInput = screen.getByLabelText(/참석자 1 성명/);
+      await user.type(nameInput, '홍');
+      const last = onParticipantsChange.mock.calls[onParticipantsChange.mock.calls.length - 1][0];
+      expect(last[0].name).toBe('홍');
+    });
+
+    it('참석자 소속/직급 입력 시 onParticipantsChange 호출', async () => {
+      const user = userEvent.setup();
+      const onParticipantsChange = vi.fn();
+      const props = baseProps({ onParticipantsChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const positionInput = screen.getByLabelText(/참석자 1 소속\/직급/);
+      await user.type(positionInput, '팀');
+      const last = onParticipantsChange.mock.calls[onParticipantsChange.mock.calls.length - 1][0];
+      expect(last[0].position).toBe('팀');
+    });
+  });
+
+  describe('removeParticipant — 참석자 삭제', () => {
+    it('참석자가 2명일 때 삭제 버튼 클릭 시 onParticipantsChange에 1명 배열 전달', async () => {
+      const user = userEvent.setup();
+      const onParticipantsChange = vi.fn();
+      const p1 = createEmptyRoadmapParticipant();
+      const p2 = createEmptyRoadmapParticipant();
+      const props = baseProps({ participants: [p1, p2], onParticipantsChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const deleteBtn = screen.getAllByRole('button', { name: /참석자 1 삭제/ });
+      await user.click(deleteBtn[0]);
+      const [next] = onParticipantsChange.mock.calls[0];
+      expect(next).toHaveLength(1);
+    });
+
+    it('참석자가 1명일 때는 삭제 버튼이 없어서 removeParticipant가 호출되지 않음', () => {
+      const onParticipantsChange = vi.fn();
+      const props = baseProps({ onParticipantsChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      expect(screen.queryAllByRole('button', { name: /참석자 \d+ 삭제/ })).toHaveLength(0);
+    });
+  });
+
+  describe('updateParticipant — 2번째 참석자 유지 (cond-expr false 분기 커버)', () => {
+    it('2명 참석자에서 첫 번째 참석자 성명 변경 시 두 번째 참석자 유지 (Line 55 false 경로)', async () => {
+      // branch 0[1]: i !== index → p 그대로 반환하는 false 경로 커버
+      const user = userEvent.setup();
+      const onParticipantsChange = vi.fn();
+      const p1 = createEmptyRoadmapParticipant();
+      const p2 = { ...createEmptyRoadmapParticipant(), name: '이유지' };
+      const props = baseProps({ participants: [p1, p2], onParticipantsChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      // 첫 번째 참석자 성명 → updateParticipant(0, 'name', ...) → i=1 false 경로
+      const nameInputs = screen.getAllByPlaceholderText(/성명/);
+      await user.type(nameInputs[0], '홍');
+      const last = onParticipantsChange.mock.calls[onParticipantsChange.mock.calls.length - 1][0];
+      expect(last[1].name).toBe('이유지');
+    });
+  });
+
+  describe('이벤트 핸들러 — 날짜·시간·차수·방법 변경', () => {
+    it('수행 일자 변경 시 onInterviewDateChange 호출', async () => {
+      const user = userEvent.setup();
+      const onInterviewDateChange = vi.fn();
+      const props = baseProps({ onInterviewDateChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const dateInput = screen.getByLabelText(/수행 일자/);
+      await user.clear(dateInput);
+      await user.type(dateInput, '2026-05-01');
+      expect(onInterviewDateChange).toHaveBeenCalled();
+    });
+
+    it('수행 시간 변경 시 onInterviewTimeChange 호출', async () => {
+      const user = userEvent.setup();
+      const onInterviewTimeChange = vi.fn();
+      const props = baseProps({ onInterviewTimeChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const timeInput = screen.getByLabelText(/수행 시간/);
+      await user.clear(timeInput);
+      await user.type(timeInput, '14:00');
+      expect(onInterviewTimeChange).toHaveBeenCalled();
+    });
+  });
 });

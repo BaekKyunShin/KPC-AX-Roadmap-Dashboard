@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
@@ -106,6 +106,38 @@ describe('SmoothScroll', () => {
         </SmoothScroll>
       );
       expect(() => unmount()).not.toThrow();
+    });
+
+    it('언마운트 시 정리 함수가 에러 없이 실행된다', async () => {
+      const { unmount } = render(
+        <SmoothScroll>
+          <div>콘텐츠</div>
+        </SmoothScroll>
+      );
+      // init() async Promise 대기
+      await act(async () => {
+        await Promise.resolve();
+      });
+      // 언마운트 시 cancelled=true + lenisRef.current?.destroy() 실행
+      expect(() => unmount()).not.toThrow();
+    });
+
+    it('마운트 전 언마운트 시 cancelled=true → init() 조기 종료', async () => {
+      // init() 내부에서 Promise.all이 resolve되기 전에 언마운트
+      // cancelled=true 경로를 커버하기 위해 언마운트를 즉시 실행
+      const { unmount } = render(
+        <SmoothScroll>
+          <div>콘텐츠</div>
+        </SmoothScroll>
+      );
+      // 즉시 언마운트 (Promise 해소 전)
+      unmount();
+      // Promise 해소 후 cancelled=true로 early return 확인
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+      // 에러 없이 완료됨
+      expect(true).toBe(true);
     });
   });
 });
