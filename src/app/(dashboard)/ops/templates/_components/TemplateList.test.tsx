@@ -29,9 +29,10 @@ function openDropdown(trigger: HTMLElement) {
 // 모킹
 // =============================================================================
 
-const mockSetActiveTemplate = vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true });
-const mockDuplicateTemplate = vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true });
-const mockDeleteTemplate = vi.fn<() => Promise<{ success: boolean }>>().mockResolvedValue({ success: true });
+type SimpleResult = { success: true } | { success: false; error: string };
+const mockSetActiveTemplate = vi.fn<() => Promise<SimpleResult>>().mockResolvedValue({ success: true });
+const mockDuplicateTemplate = vi.fn<() => Promise<SimpleResult>>().mockResolvedValue({ success: true });
+const mockDeleteTemplate = vi.fn<() => Promise<SimpleResult>>().mockResolvedValue({ success: true });
 
 vi.mock('../actions', () => ({
   setActiveTemplate: (...args: unknown[]) => mockSetActiveTemplate(...args as []),

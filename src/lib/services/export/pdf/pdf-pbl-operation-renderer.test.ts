@@ -12,6 +12,9 @@ import type {
   PBLCourseEvaluation,
   PBLResultEvaluation,
 } from '../../pbl/pbl-types';
+import type { default as autoTableFn } from 'jspdf-autotable';
+
+type AutoTableFn = typeof autoTableFn;
 
 function createMockDoc() {
   return {
@@ -129,13 +132,17 @@ function baseOperationPlan(): PBLOperationPlan {
 describe('drawPBLOperationSection', () => {
   let mockDoc: ReturnType<typeof createMockDoc>;
   let ctx: DocContext;
-  let autoTable: ReturnType<typeof vi.fn>;
+  // autoTableMock은 vi.fn()으로 호출 기록을 추적하고, 함수 인자에 넘길 때 AutoTableFn으로 캐스팅
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let autoTableMock: ReturnType<typeof vi.fn<(d: any, opts: any) => void>>;
+  let autoTable: AutoTableFn;
   let tableBase: ReturnType<typeof getAutoTableStyles>;
 
   beforeEach(() => {
     mockDoc = createMockDoc();
     ctx = { doc: mockDoc as never, y: 30, hasFonts: false };
-    autoTable = vi.fn();
+    autoTableMock = vi.fn();
+    autoTable = autoTableMock as unknown as AutoTableFn;
     tableBase = getAutoTableStyles(false);
   });
 
@@ -182,8 +189,8 @@ describe('drawPBLOperationSection', () => {
   it('AI 도구 활용 계획 autoTable 을 호출한다 (6열 헤더)', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     // 첫 번째 autoTable 호출이 AI 도구 활용 계획 표
-    expect(autoTable.mock.calls.length).toBeGreaterThanOrEqual(1);
-    const firstHead = autoTable.mock.calls[0][1].head[0];
+    expect(autoTableMock.mock.calls.length).toBeGreaterThanOrEqual(1);
+    const firstHead = autoTableMock.mock.calls[0][1].head[0];
     expect(firstHead).toContain('단계');
     expect(firstHead).toContain('주요 활동');
     expect(firstHead).toContain('AI 도구');
@@ -191,7 +198,7 @@ describe('drawPBLOperationSection', () => {
 
   it('ai_tools 배열을 join 하여 표 body 에 넣는다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const firstBody = autoTable.mock.calls[0][1].body;
+    const firstBody = autoTableMock.mock.calls[0][1].body;
     expect(firstBody[0][2]).toBe('ChatGPT, Copilot');
   });
 
@@ -240,7 +247,7 @@ describe('drawPBLOperationSection', () => {
   // ── Ⅳ-3-나: 강사 테이블 ─────────────────────────────────────────────
   it('강사 테이블 헤더가 5열(구분·역할·소속·직위·성명)을 포함한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const instructorCall = autoTable.mock.calls.find(
+    const instructorCall = autoTableMock.mock.calls.find(
       (c) => c[1].head[0].includes('구분') && c[1].head[0].includes('역할'),
     );
     expect(instructorCall).toBeDefined();
@@ -255,7 +262,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const instructorCall = autoTable.mock.calls.find(
+    const instructorCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('구분') && c[1].head[0].includes('역할'),
     );
     expect(instructorCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
@@ -264,7 +271,7 @@ describe('drawPBLOperationSection', () => {
   // ── Ⅳ-3-나: 훈련생 테이블 ────────────────────────────────────────────
   it('훈련생 테이블 헤더가 4열(역할·소속·직위·성명)을 포함한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const traineeCall = autoTable.mock.calls.find(
+    const traineeCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.length === 4 &&
         c[1].head[0].includes('역할') &&
@@ -285,7 +292,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const traineeCall = autoTable.mock.calls.find(
+    const traineeCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.length === 4 &&
         c[1].head[0].includes('역할') &&
@@ -335,7 +342,7 @@ describe('drawPBLOperationSection', () => {
 
   it('교과목 프로파일 훈련내용 테이블(5열)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const profileCall = autoTable.mock.calls.find(
+    const profileCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)'),
     );
     expect(profileCall).toBeDefined();
@@ -353,7 +360,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const profileCall = autoTable.mock.calls.find(
+    const profileCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)'),
     );
     expect(profileCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
@@ -362,7 +369,7 @@ describe('drawPBLOperationSection', () => {
   // ── Ⅳ-3-라: 시설·장비 ───────────────────────────────────────────────
   it('시설·장비 테이블(5열)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const facilityCall = autoTable.mock.calls.find(
+    const facilityCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.includes('연번') &&
         c[1].head[0].includes('구분') &&
@@ -380,7 +387,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const facilityCall = autoTable.mock.calls.find(
+    const facilityCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('연번') && c[1].head[0].includes('위치'),
     );
     expect(facilityCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
@@ -389,7 +396,7 @@ describe('drawPBLOperationSection', () => {
   // ── Ⅳ-3-마: 훈련강사 ────────────────────────────────────────────────
   it('훈련강사 테이블(5열: 성명·내외부·경력·업무명·세부내용)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    const instructorTableCall = autoTable.mock.calls.find(
+    const instructorTableCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)'),
     );
     expect(instructorTableCall).toBeDefined();
@@ -404,7 +411,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const instTableCall = autoTable.mock.calls.find(
+    const instTableCall = autoTableMock.mock.calls.find(
       (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)'),
     );
     expect(instTableCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
@@ -453,7 +460,7 @@ describe('drawPBLOperationSection', () => {
   it('수행수준 체크리스트 테이블(3열)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     // 헤더가 정확히 ['업무(단원)명', '평가 기준', '수행 수준 (1~5)'] 인 호출
-    const checkCall = autoTable.mock.calls.find(
+    const checkCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.length === 3 &&
         c[1].head[0][0] === '업무(단원)명' &&
@@ -474,7 +481,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
-    const checkCall = autoTable.mock.calls.find(
+    const checkCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.length === 3 &&
         c[1].head[0][0] === '업무(단원)명' &&
@@ -520,7 +527,7 @@ describe('drawPBLOperationSection', () => {
 
   it('autoTable 이 최소 6회 이상 호출된다 (AI표·강사2·교과목·시설·훈련강사·평가체크)', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
-    expect(autoTable.mock.calls.length).toBeGreaterThanOrEqual(6);
+    expect(autoTableMock.mock.calls.length).toBeGreaterThanOrEqual(6);
   });
 
   // ── course_evaluation 필드 빈값 → "-" 분기 커버 ──────────────────────

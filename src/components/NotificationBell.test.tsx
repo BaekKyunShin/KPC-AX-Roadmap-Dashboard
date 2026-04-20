@@ -118,7 +118,7 @@ vi.mock('@/components/ui/popover', async () => {
 // ─── Import ─────────────────────────────────────────────────────────────────
 
 import NotificationBell from './NotificationBell';
-import type { Notification, UserRole } from '@/types/database';
+import type { Notification, UserRole, NotificationType } from '@/types/database';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -813,7 +813,7 @@ describe('NotificationBell', () => {
       // Line 106: if (result.success) false 분기 커버 (handleTabChange)
       mockFetchNotifications.mockResolvedValue({ success: false, error: '탭 fetch 오류' });
       const user = userEvent.setup();
-      renderBell({ showTabs: true });
+      renderBell();
       await user.click(screen.getByLabelText('알림'));
       // 탭 전환 시도
       const tabs = await screen.findAllByRole('button');
@@ -883,7 +883,7 @@ describe('NotificationBell', () => {
       const notification = createNotification({
         id: 'n1',
         title: '알 수 없는 타입',
-        type: 'UNKNOWN_TYPE' as string,
+        type: 'UNKNOWN_TYPE' as unknown as NotificationType,
         is_read: true,
       });
       mockFetchNotifications.mockResolvedValue(createSuccessResult([notification]));

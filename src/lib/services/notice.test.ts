@@ -55,9 +55,9 @@ function createMockSupabase() {
 
   // Storage 모킹
   const storageMethods = {
-    upload: vi.fn(() => Promise.resolve({ data: { path: 'ok' }, error: null })),
-    remove: vi.fn(() => Promise.resolve({ data: [], error: null })),
-    createSignedUrl: vi.fn(() =>
+    upload: vi.fn<() => Promise<{ data: { path: string } | null; error: { message: string } | null }>>(() => Promise.resolve({ data: { path: 'ok' }, error: null })),
+    remove: vi.fn<() => Promise<{ data: unknown[] | null; error: { message: string } | null }>>(() => Promise.resolve({ data: [], error: null })),
+    createSignedUrl: vi.fn<() => Promise<{ data: { signedUrl: string } | null; error: { message: string } | null }>>(() =>
       Promise.resolve({
         data: { signedUrl: 'https://signed.example/path' },
         error: null,
@@ -68,7 +68,7 @@ function createMockSupabase() {
 
   const mockClient = {
     from: vi.fn(() => chainable),
-    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    rpc: vi.fn<() => Promise<{ data: unknown; error: { message: string } | null }>>(() => Promise.resolve({ data: null, error: null })),
     storage,
   };
 

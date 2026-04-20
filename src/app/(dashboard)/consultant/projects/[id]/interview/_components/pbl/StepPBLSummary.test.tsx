@@ -160,9 +160,9 @@ describe('StepPBLSummary', () => {
   // 분기 커버: training_place.types 배열 join
   it('training_place.types가 있으면 join된 값을 표시한다', () => {
     const props = mkProps();
-    props.trainingEnvironment.training_place.types = ['집체', '원격'];
+    props.trainingEnvironment.training_place.types = ['사내', '사외'];
     render(<StepPBLSummary {...props} />);
-    expect(screen.getByText('집체, 원격')).toBeInTheDocument();
+    expect(screen.getByText('사내, 사외')).toBeInTheDocument();
   });
 
   // 분기 커버: internal_instructor.used = true일 때 '예' 표시
@@ -177,7 +177,15 @@ describe('StepPBLSummary', () => {
   it('performance_activities가 있으면 차수 목록을 표시한다', () => {
     const props = mkProps();
     props.performanceActivities.performance_activities = [
-      { id: 'pa-1', round: 1, date: '2026-01-01', content: '1차 인터뷰', facilitators: [] },
+      {
+        id: 'pa-1',
+        round: 1,
+        date: '2026-01-01',
+        content: '1차 인터뷰',
+        method: '워크숍',
+        operation_mode: '대면',
+        participants: { pm: '', external_expert: '', internal_expert: '', jurisdiction_manager: '' },
+      },
     ];
     render(<StepPBLSummary {...props} />);
     // "1차 · 2026-01-01 · 1차 인터뷰" 형태로 표시됨
@@ -188,8 +196,8 @@ describe('StepPBLSummary', () => {
   it('problem_priorities.selected 개수가 카운트에 반영된다', () => {
     const props = mkProps();
     props.problemDefinition.problem_priorities = [
-      { id: 'pp-1', content: '문제1', selected: true, priority: 1 },
-      { id: 'pp-2', content: '문제2', selected: false, priority: 2 },
+      { id: 'pp-1', problem_name: '문제1', selected: true, priority: 1 },
+      { id: 'pp-2', problem_name: '문제2', selected: false, priority: 2 },
     ];
     render(<StepPBLSummary {...props} />);
     // "2건 (선정 1건)" 텍스트 확인
@@ -200,9 +208,9 @@ describe('StepPBLSummary', () => {
   it('target_tasks.selected 개수가 카운트에 반영된다', () => {
     const props = mkProps();
     props.targetTasks.target_tasks = [
-      { id: 'tt-1', task: '업무A', selected: true },
-      { id: 'tt-2', task: '업무B', selected: true },
-      { id: 'tt-3', task: '업무C', selected: false },
+      { id: 'tt-1', task_name: '업무A', selected: true, necessity: 3 },
+      { id: 'tt-2', task_name: '업무B', selected: true, necessity: 3 },
+      { id: 'tt-3', task_name: '업무C', selected: false, necessity: 3 },
     ];
     props.targetTasks.selection_reason = '핵심 업무 선정 이유';
     render(<StepPBLSummary {...props} />);

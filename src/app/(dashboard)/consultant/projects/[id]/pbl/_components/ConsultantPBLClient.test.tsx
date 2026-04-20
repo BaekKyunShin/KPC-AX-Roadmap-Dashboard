@@ -465,7 +465,7 @@ describe('ConsultantPBLClient', () => {
             trainingHours: 40,
             traineeCount: 10,
             trainingJob: '직무',
-            aiLevel: 'BEGINNER',
+            aiLevel: 'AI기초형',
             trainingGoals: [],
           }}
         />,

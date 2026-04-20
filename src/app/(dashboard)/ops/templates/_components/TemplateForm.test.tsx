@@ -349,6 +349,7 @@ describe('TemplateForm', () => {
         is_active: true,
         created_at: '',
         updated_at: '',
+        created_by: 'user-1',
       };
       updateTemplateMock.mockResolvedValue({
         success: true,

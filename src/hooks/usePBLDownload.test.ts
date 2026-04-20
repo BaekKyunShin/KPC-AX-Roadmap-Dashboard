@@ -283,7 +283,7 @@ describe('usePBLDownload', () => {
   // ─── isDownloading 상태 전환 ────────────────────────────────────────────
 
   test('PDF 다운로드 중 isDownloading이 "PDF"로 설정된다', async () => {
-    let capturedDownloading: string | null = null;
+    const capturedDownloading: string | null = null;
 
     // preparePBLExportData가 호출되는 시점에 상태를 캡처
     mockPreparePBLExportData.mockImplementation(async () => {

@@ -33,22 +33,25 @@ vi.mock('recharts', () => ({
     }>;
   }) => {
     if (!content) return null;
+    const resolvedContent = content;
     const samplePayload = [
       { payload: { name: '__tooltip_test__', value: 99, stepKey: 'new' } },
     ];
+    type TooltipRenderer = (p: { active?: boolean; payload?: unknown }) => React.ReactNode;
+    const renderTooltip = resolvedContent.type as TooltipRenderer;
     return (
       <div data-testid="tooltip-wrapper">
         {/* active=true: 툴팁 내용 표시 분기 → data-testid로 감쌈 */}
         <div data-testid="tooltip-active">
-          {content.type({ ...content.props, active: true, payload: samplePayload })}
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: samplePayload })}
         </div>
         {/* active=false: null 반환 분기 */}
         <div data-testid="tooltip-inactive">
-          {content.type({ ...content.props, active: false, payload: samplePayload }) ?? null}
+          {renderTooltip({ ...resolvedContent.props, active: false, payload: samplePayload }) ?? null}
         </div>
         {/* payload=undefined: null 반환 분기 */}
         <div data-testid="tooltip-no-payload">
-          {content.type({ ...content.props, active: true, payload: undefined }) ?? null}
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: undefined }) ?? null}
         </div>
       </div>
     );

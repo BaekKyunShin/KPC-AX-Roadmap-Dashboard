@@ -1,4 +1,4 @@
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -49,13 +49,13 @@ function makeValidInitialData() {
       establishment_necessity: '필요성 입력',
       selected_tasks_summary: '과업 요약',
       roadmap_summary: '로드맵 요약',
-      ai_competency_levels: [],
-      hrd_report_attachment_urls: [],
+      ai_competency_level: 'BEGINNER' as const,
     },
     interview_date: '2026-01-01',
+    interview_round: 1,
     interview_time: '10:00',
     interview_method: 'ONSITE' as const,
-    participants: [{ id: 'p1', name: '참석자', role: '팀장', department: '개발팀' }],
+    participants: [{ id: 'p1', name: '참석자', position: '팀장' }],
     company_requirements: {
       company_status: '현황',
       main_problems: '문제점',
@@ -70,10 +70,10 @@ function makeValidInitialData() {
         as_is: '현재',
         problems: '문제',
         data_availability: '가능',
-        to_be: '',
-        ai_application: '',
+        ai_necessity: 3,
       },
     ],
+    analysis_notes: { text: '', attachment_urls: [] },
     training_targets: [
       {
         id: 'tt1',
@@ -81,10 +81,9 @@ function makeValidInitialData() {
         selection_reason: '선정사유',
         as_is: '현재상황',
         to_be: '목표상황',
-        expected_ai_level: '',
-        notes: '',
       },
     ],
+    notes: '',
   };
 }
 

@@ -1,7 +1,6 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { createRef, useRef } from 'react';
-import { renderHook } from '@testing-library/react';
+import { createRef } from 'react';
 import { AutoResizeTextarea } from './auto-resize-textarea';
 
 describe('AutoResizeTextarea', () => {

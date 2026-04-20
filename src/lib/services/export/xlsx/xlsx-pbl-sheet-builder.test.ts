@@ -162,11 +162,6 @@ function makeOverviewInput(
   };
 }
 
-/** 셀 참조(예: "A1")에서 값(v)을 꺼내는 헬퍼 */
-function cellValue(ws: WorkSheet, ref: string): unknown {
-  return ws[ref]?.v;
-}
-
 /** 시트에 특정 값이 존재하는지 검색 */
 function findCellWithValue(ws: WorkSheet, target: string): boolean {
   return Object.entries(ws).some(
@@ -870,7 +865,7 @@ describe('generatePBLXLSX', () => {
 describe('downloadPBLXLSX', () => {
   let originalCreateObjectURL: typeof URL.createObjectURL;
   let originalRevokeObjectURL: typeof URL.revokeObjectURL;
-  let createElementSpy: ReturnType<typeof vi.spyOn>;
+  let _createElementSpy: ReturnType<typeof vi.spyOn>;
   let appendChildSpy: ReturnType<typeof vi.spyOn>;
   let removeChildSpy: ReturnType<typeof vi.spyOn>;
 
@@ -889,7 +884,7 @@ describe('downloadPBLXLSX', () => {
     URL.revokeObjectURL = vi.fn();
 
     // DOM 메서드 모킹
-    createElementSpy = vi
+    _createElementSpy = vi
       .spyOn(document, 'createElement')
       .mockReturnValue(fakeAnchor as unknown as HTMLAnchorElement);
     appendChildSpy = vi

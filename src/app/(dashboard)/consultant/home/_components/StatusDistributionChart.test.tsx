@@ -30,23 +30,26 @@ vi.mock('@/components/ui/chart', () => ({
     content?: React.ReactElement<{ active?: boolean; payload?: unknown[] }>;
   }) => {
     if (!content) return <div data-testid="chart-tooltip" />;
+    const resolvedContent = content;
     // __TOOLTIP_SAMPLE__ 은 범례와 겹치지 않는 값
     const samplePayload = [
       { payload: { name: '__TOOLTIP_SAMPLE__', value: 999, color: '#FF0000' } },
     ];
+    type TooltipRenderer = (p: { active?: boolean; payload?: unknown[] }) => React.ReactNode;
+    const renderTooltip = resolvedContent.type as TooltipRenderer;
     return (
       <div data-testid="chart-tooltip">
         {/* active=true: 툴팁 내용 렌더링 분기 */}
         <div data-testid="tooltip-active">
-          {content.type({ ...content.props, active: true, payload: samplePayload })}
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: samplePayload })}
         </div>
         {/* active=false: null 반환 분기 */}
         <div data-testid="tooltip-inactive">
-          {content.type({ ...content.props, active: false, payload: samplePayload }) ?? null}
+          {renderTooltip({ ...resolvedContent.props, active: false, payload: samplePayload }) ?? null}
         </div>
         {/* payload 빈 배열: null 반환 분기 */}
         <div data-testid="tooltip-empty-payload">
-          {content.type({ ...content.props, active: true, payload: [] }) ?? null}
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: [] }) ?? null}
         </div>
       </div>
     );

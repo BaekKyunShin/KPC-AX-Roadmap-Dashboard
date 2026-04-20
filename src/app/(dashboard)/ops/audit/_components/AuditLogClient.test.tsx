@@ -599,7 +599,7 @@ describe('AuditLogClient', () => {
           success: true,
           error_message: undefined,
           created_at: '2026-01-01T00:00:00Z',
-          actor: null,
+          actor: undefined,
         },
       ];
 
