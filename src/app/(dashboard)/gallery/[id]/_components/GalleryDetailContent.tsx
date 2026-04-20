@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
-import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
+import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { LikeButton } from '@/components/gallery/LikeButton';
 import { UseRoadmapDialog } from '@/components/gallery/UseRoadmapDialog';
-import { ROADMAP_TABS } from '@/types/roadmap-ui';
-import type { RoadmapTabKey } from '@/types/roadmap-ui';
-import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
+import { ROADMAP_TABS, type RoadmapTabKey } from '@/types/roadmap-ui';
+import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';
 import type { RoadmapDetailView } from '../../actions';
 
 interface GalleryDetailContentProps {
@@ -19,12 +19,16 @@ interface GalleryDetailContentProps {
 }
 
 export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailContentProps) {
-  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const matrix = detail.roadmapMatrix as RoadmapRow[];
-  const pblCourse = detail.pblCourse as PBLCourse;
-  const courses = detail.courses as RoadmapCell[];
+  // DB legacy 컬럼(roadmap_matrix/pbl_course/courses) → 신규 4섹션 RoadmapResult
+  const result = fromRoadmapVersionColumns({
+    diagnosis_summary: detail.diagnosisSummary,
+    roadmap_matrix: detail.roadmapMatrix,
+    pbl_course: detail.pblCourse,
+    courses: detail.courses,
+  });
 
   return (
     <>
@@ -32,6 +36,7 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
       <div className="flex items-center gap-3">
         <LikeButton
           roadmapVersionId={detail.id}
+          track="ROADMAP"
           initialLiked={detail.isLiked}
           initialCount={detail.likeCount}
           size="default"
@@ -48,21 +53,21 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
       </div>
 
       {/* 진단 요약 */}
-      {detail.diagnosisSummary && (
+      {result.diagnosis_summary && (
         <div className="rounded-lg border bg-gray-50 px-4 py-3">
-          <p className="text-sm text-gray-700">{detail.diagnosisSummary}</p>
+          <p className="text-sm text-gray-700">{result.diagnosis_summary}</p>
         </div>
       )}
 
       {/* 탭 + 콘텐츠 */}
       <div className="bg-white shadow rounded-lg">
         <div className="border-b">
-          <nav className="flex -mb-px">
+          <nav className="flex -mb-px overflow-x-auto">
             {ROADMAP_TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
                   activeTab === tab.key
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -75,14 +80,25 @@ export function GalleryDetailContent({ detail, isConsultant }: GalleryDetailCont
         </div>
 
         <div className="p-6">
-          {activeTab === 'matrix' && (
-            <RoadmapMatrix matrix={matrix} canEdit={false} />
+          {activeTab === 'competencies' && (
+            <CompetencyModelingTable competencies={result.competencies} canEdit={false} />
           )}
-          {activeTab === 'courses' && (
-            <CoursesList courses={courses} canEdit={false} />
+          {activeTab === 'structure' && (
+            <RoadmapMatrix
+              competencies={result.competencies}
+              trainingStructure={result.training_structure}
+              canEdit={false}
+            />
           )}
-          {activeTab === 'pbl' && (
-            <PBLCourseView course={pblCourse} />
+          {activeTab === 'plan' && (
+            <AnnualTrainingPlanTable
+              plan={result.annual_plan}
+              competencies={result.competencies}
+              canEdit={false}
+            />
+          )}
+          {activeTab === 'specs' && (
+            <CoursesList specs={result.course_specs} canEdit={false} />
           )}
         </div>
       </div>

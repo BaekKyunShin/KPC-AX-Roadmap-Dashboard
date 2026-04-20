@@ -187,4 +187,95 @@ describe('useCommandPalette', () => {
     // 언마운트 후에는 상태 접근 불가 — 에러 없이 완료되면 성공
     expect(result.current.open).toBe(false);
   });
+
+  // ─── 추가 분기 커버리지 ────────────────────────────────────────────────
+
+  test('CMD+K 키 입력으로 open이 true로 토글된다 (Line 23 metaKey 분기)', () => {
+    // Line 23: (e.metaKey || e.ctrlKey) && e.key === 'k' → metaKey true 분기 커버
+    const { result } = renderHook(() => useCommandPalette());
+    expect(result.current.open).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+    });
+
+    expect(result.current.open).toBe(true);
+  });
+
+  test('Ctrl+K 키 입력으로 open이 토글된다 (Line 23 ctrlKey 분기)', () => {
+    // Line 23: e.ctrlKey → binary-expr 우측 피연산자 커버 (metaKey=false, ctrlKey=true)
+    const { result } = renderHook(() => useCommandPalette());
+    expect(result.current.open).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+    });
+
+    expect(result.current.open).toBe(true);
+  });
+
+  test('handleOpenChange(true) 호출 시 open만 변경되고 쿼리는 유지된다 (Line 66 nextOpen=true 분기)', () => {
+    // Line 66: if (!nextOpen) → false 분기 커버 (nextOpen=true일 때 쿼리 초기화 안됨)
+    const { result } = renderHook(() => useCommandPalette());
+
+    // 쿼리 입력
+    act(() => {
+      result.current.setQuery('검색어');
+    });
+
+    // handleOpenChange(true) → 쿼리 초기화 안됨
+    act(() => {
+      result.current.handleOpenChange(true);
+    });
+
+    expect(result.current.query).toBe('검색어'); // 쿼리 유지
+    expect(result.current.open).toBe(true);
+  });
+
+  test('handleOpenChange(false) 호출 시 쿼리와 dbResults가 초기화된다 (Line 66 !nextOpen=true 분기)', () => {
+    // Line 66: if (!nextOpen) → true 분기 커버
+    const { result } = renderHook(() => useCommandPalette());
+
+    // open 설정
+    act(() => {
+      result.current.setOpen(true);
+    });
+
+    // 쿼리 입력
+    act(() => {
+      result.current.setQuery('검색어');
+    });
+
+    // handleOpenChange(false) → 쿼리/결과 초기화
+    act(() => {
+      result.current.handleOpenChange(false);
+    });
+
+    expect(result.current.query).toBe('');
+    expect(result.current.dbResults).toBeNull();
+    expect(result.current.open).toBe(false);
+  });
+
+  test('unifiedSearch 성공 시 dbResults가 설정된다 (Line 48 result.success=true 분기)', async () => {
+    // Line 48: if (result.success) → true 분기 커버
+    mockUnifiedSearch.mockResolvedValue({
+      success: true,
+      data: {
+        projects: [{ id: 'p1', label: '테스트 기업', href: '/ops/projects/p1', category: 'project' }],
+        users: [],
+        gallery: [],
+      },
+    });
+
+    const { result } = renderHook(() => useCommandPalette());
+
+    await act(async () => {
+      result.current.setQuery('테스트');
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.dbResults).not.toBeNull();
+      expect(result.current.dbResults?.projects).toHaveLength(1);
+    });
+  });
 });

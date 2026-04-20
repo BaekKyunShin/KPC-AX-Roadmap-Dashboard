@@ -207,4 +207,12 @@ describe('TemplatePreview', () => {
     const descriptionParagraph = header?.querySelector('p');
     expect(descriptionParagraph).toBeNull();
   });
+
+  test('questions가 undefined인 템플릿은 빈 배열로 폴백 처리된다', () => {
+    // Lines 23, 27: template.questions || [] → 우측 피연산자 분기 커버
+    const template = makeTemplate({ questions: undefined as unknown as SelfAssessmentQuestion[] });
+    render(<TemplatePreview template={template} />);
+    expect(screen.getByText('총 0문항')).toBeInTheDocument();
+    expect(screen.getByText('0개 차원')).toBeInTheDocument();
+  });
 });

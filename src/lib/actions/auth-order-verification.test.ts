@@ -13,12 +13,11 @@
  *   4. createSelfAssessment (ops/projects/actions/crud) — FormData, 인증 → Zod
  *   5. assignConsultant (ops/projects/actions/crud) — FormData, 인증 → Zod
  *   6. updateQuota (ops/quota) — 인증 → Zod
- *   7. saveInterview (consultant/interview) — 인증 → Zod
- *   8. createActivityLog (consultant/projects/[id]) — 인증 → Zod
- *   9. updateActivityLog (consultant/projects/[id]) — 인증 → Zod
- *  10. sendMessage (messages) — 인증 → Zod
- *  11. createConversation (messages) — 인증 → Zod
- *  12. createTestRoadmap (test-roadmap) — 인증 → Zod
+ *   7. createActivityLog (consultant/projects/[id]) — 인증 → Zod
+ *   8. updateActivityLog (consultant/projects/[id]) — 인증 → Zod
+ *   9. sendMessage (messages) — 인증 → Zod
+ *  10. createConversation (messages) — 인증 → Zod
+ *  11. createTestRoadmap (test-roadmap) — 인증 → Zod
  *
  * 수정된 위반:
  *  - createRoadmap (consultant/roadmap): Zod가 인증보다 먼저 실행되던 문제
@@ -324,38 +323,6 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
 
       // 둘 다 undefined → Zod 실패 (최소 하나는 필요)
       const result = await updateQuota('not-uuid', undefined, undefined);
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toMatch(AUTH_ERROR_PATTERN);
-        expect(result.error).not.toMatch(ZOD_ERROR_PATTERN);
-      }
-    });
-  });
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // consultant/interview — saveInterview
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  describe('saveInterview', () => {
-    it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
-      setupRoleAuthFailure();
-
-      const { saveInterview } = await import(
-        '@/app/(dashboard)/consultant/projects/[id]/interview/actions'
-      );
-
-      // 완전히 잘못된 인터뷰 데이터 (Zod 실패 확실)
-      const invalidData = {
-        interview_date: '',
-        participants: [],
-        company_details: {},
-        job_tasks: [],
-        pain_points: [],
-        improvement_goals: [],
-      };
-
-      const result = await saveInterview('some-project-id', invalidData as never);
 
       expect(result.success).toBe(false);
       if (!result.success) {

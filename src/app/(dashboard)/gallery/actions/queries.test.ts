@@ -42,6 +42,9 @@ import {
   fetchRoadmapDetail,
   fetchEligibleProjects,
   fetchConsultantOptions,
+  fetchGalleryPBLReports,
+  fetchPBLReportDetail,
+  fetchGalleryItems,
 } from './queries';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
@@ -780,5 +783,465 @@ describe('fetchConsultantOptions', () => {
       success: false,
       error: '컨설턴트 목록을 불러오는 중 오류가 발생했습니다.',
     });
+  });
+});
+
+// ─── fetchGalleryPBLReports ──────────────────────────────────────────────────
+
+/** PBL 갤러리 조회용 mock 데이터 1행 */
+function makePBLRow(overrides?: Record<string, unknown>) {
+  return {
+    id: '550e8400-e29b-41d4-a716-446655440030',
+    status: 'FINAL',
+    is_shared: true,
+    diagnosis_summary: 'PBL 진단 요약',
+    pbl_content: {
+      operation_plan: {
+        training_plan: {
+          subject_profile: {
+            course_name: 'AI PBL 과정',
+            total_hours: 120,
+            training_goals: ['데이터분석 역량 강화', '머신러닝 실습'],
+          },
+        },
+      },
+    },
+    version_number: 1,
+    created_at: '2026-01-15T00:00:00Z',
+    created_by: TEST_USER_ID,
+    like_count: 5,
+    projects: {
+      company_name: 'PBL기업',
+      industry: '제조/생산',
+      company_size: '중견기업',
+    },
+    users: { name: '홍길동' },
+    ...overrides,
+  };
+}
+
+describe('fetchGalleryPBLReports', () => {
+  it('미인증 → error 반환', async () => {
+    setupAuthFailure();
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result).toEqual({ success: false, error: '로그인이 필요합니다.' });
+  });
+
+  it('role null → error 반환', async () => {
+    setupAuth({ role: null });
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result).toEqual({ success: false, error: '사용자 정보를 찾을 수 없습니다.' });
+  });
+
+  it('Zod 검증 실패 → error 반환', async () => {
+    setupAuth();
+
+    const result = await fetchGalleryPBLReports({ sort: 'invalid_value' });
+
+    expect(result).toEqual({ success: false, error: '잘못된 필터 값입니다.' });
+  });
+
+  it('컨설턴트 → is_shared=true + status=FINAL 필터', async () => {
+    setupAuth({ role: 'CONSULTANT_APPROVED' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports();
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('is_shared', true);
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('status', 'FINAL');
+  });
+
+  it('관리자 → 전체 조회 (컨설턴트 필터 없음)', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports();
+
+    const eqCalls = adminMock.chainable.eq.mock.calls;
+    const hasSharedFilter = eqCalls.some(
+      (c: unknown[]) => c[0] === 'is_shared' && c[1] === true,
+    );
+    expect(hasSharedFilter).toBe(false);
+  });
+
+  it('관리자 status 필터', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ status: 'DRAFT' });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('status', 'DRAFT');
+  });
+
+  it('관리자 isShared=true 필터', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ isShared: 'true' });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('is_shared', true);
+  });
+
+  it('관리자 isShared=false 필터', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ isShared: 'false' });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('is_shared', false);
+  });
+
+  it('관리자 consultantId 필터', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    const consultantId = '550e8400-e29b-41d4-a716-446655440099';
+    await fetchGalleryPBLReports({ consultantId });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('created_by', consultantId);
+  });
+
+  it('industry 필터 적용', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ industry: '제조' });
+
+    expect(adminMock.chainable.eq).toHaveBeenCalledWith('projects.industry', '제조');
+  });
+
+  it('search 필터 → 2단계 쿼리 (projects 조회 후 or 필터)', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // 1차: projects에서 company_name 매칭
+    adminMock.addResult({ data: [{ id: 'proj-1' }], error: null });
+    // 2차: 메인 pbl_reports 쿼리
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ search: '테스트' });
+
+    expect(adminMock.client.from).toHaveBeenCalledWith('projects');
+    expect(adminMock.chainable.or).toHaveBeenCalledWith(
+      expect.stringContaining('project_id.in.'),
+    );
+  });
+
+  it('search 필터 → 매칭 없으면 ilike만', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ search: '없는검색어' });
+
+    expect(adminMock.chainable.or).not.toHaveBeenCalled();
+    expect(adminMock.chainable.ilike).toHaveBeenCalledWith(
+      'diagnosis_summary',
+      expect.any(String),
+    );
+  });
+
+  it('sort=latest → order(created_at)', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ sort: 'latest' });
+
+    expect(adminMock.chainable.order).toHaveBeenCalledWith('created_at', { ascending: false });
+  });
+
+  it('sort=popular → order(like_count)', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null });
+
+    await fetchGalleryPBLReports({ sort: 'popular' });
+
+    expect(adminMock.chainable.order).toHaveBeenCalledWith('like_count', { ascending: false });
+  });
+
+  it('데이터 변환 + isLiked 판정', async () => {
+    const PBL_ID = '550e8400-e29b-41d4-a716-446655440030';
+    setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
+    const row = makePBLRow({ id: PBL_ID });
+    // 1차: pbl_reports 쿼리
+    adminMock.addResult({ data: [row], error: null, count: 1 });
+    // 2차: pbl_likes 조회 — 좋아요 있음
+    adminMock.addResult({ data: [{ pbl_report_id: PBL_ID }], error: null });
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const item = result.data.items[0];
+      expect(item.track).toBe('PBL');
+      expect(item.title).toBe('PBL기업 — AI PBL 과정');
+      expect(item.pblCourseName).toBe('AI PBL 과정');
+      expect(item.pblTotalHours).toBe(120);
+      expect(item.likeCount).toBe(5);
+      expect(item.isLiked).toBe(true);
+    }
+  });
+
+  it('pbl_content 없을 때 기본값 처리', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makePBLRow({ pbl_content: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
+    adminMock.addResult({ data: [], error: null });
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.items[0].title).toBe('PBL기업 PBL');
+      expect(result.data.items[0].pblTotalHours).toBe(0);
+    }
+  });
+
+  it('creator null → createdByName "알 수 없음"', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makePBLRow({ users: null });
+    adminMock.addResult({ data: [row], error: null, count: 1 });
+    adminMock.addResult({ data: [], error: null });
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.items[0].createdByName).toBe('알 수 없음');
+    }
+  });
+
+  it('DB 에러 → error 반환', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: null, error: { message: 'DB error' } });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await fetchGalleryPBLReports();
+
+    expect(result).toEqual({
+      success: false,
+      error: 'PBL 갤러리를 불러오는 중 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('total=0 → totalPages=0', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const result = await fetchGalleryPBLReports();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.total).toBe(0);
+      expect(result.data.totalPages).toBe(0);
+    }
+  });
+});
+
+// ─── fetchPBLReportDetail ────────────────────────────────────────────────────
+
+const TEST_PBL_REPORT_ID = '550e8400-e29b-41d4-a716-446655440031';
+
+describe('fetchPBLReportDetail', () => {
+  it('미인증 → error 반환', async () => {
+    setupAuthFailure();
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result).toEqual({ success: false, error: '로그인이 필요합니다.' });
+  });
+
+  it('role null → error 반환', async () => {
+    setupAuth({ role: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result).toEqual({ success: false, error: '사용자 정보를 찾을 수 없습니다.' });
+  });
+
+  it('미존재(DB 에러) → error 반환', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // 메인 쿼리 실패
+    adminMock.addResult({ data: null, error: { message: 'not found' } });
+    // 좋아요 확인
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result).toEqual({ success: false, error: 'PBL 보고서를 찾을 수 없습니다.' });
+  });
+
+  it('컨설턴트 비공유 PBL → 접근 차단', async () => {
+    setupAuth({ role: 'CONSULTANT_APPROVED' });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID, is_shared: false, status: 'FINAL' });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result).toEqual({ success: false, error: '접근 권한이 없습니다.' });
+  });
+
+  it('컨설턴트 비FINAL PBL → 접근 차단', async () => {
+    setupAuth({ role: 'CONSULTANT_APPROVED' });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID, is_shared: true, status: 'DRAFT' });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result).toEqual({ success: false, error: '접근 권한이 없습니다.' });
+  });
+
+  it('관리자 → 비공유 DRAFT도 접근 가능', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID, is_shared: false, status: 'DRAFT' });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('성공 + 데이터 변환', async () => {
+    setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID });
+    // 1차: 메인 쿼리
+    adminMock.addResult({ data: row, error: null });
+    // 2차: 좋아요 확인 — 좋아요 있음
+    adminMock.addResult({ data: { id: 'like-pbl-1' }, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.id).toBe(TEST_PBL_REPORT_ID);
+      expect(result.data.track).toBe('PBL');
+      expect(result.data.title).toBe('PBL기업 — AI PBL 과정');
+      expect(result.data.companyName).toBe('PBL기업');
+      expect(result.data.createdByName).toBe('홍길동');
+      expect(result.data.likeCount).toBe(5);
+      expect(result.data.isLiked).toBe(true);
+      expect(result.data.isShared).toBe(true);
+      expect(result.data.status).toBe('FINAL');
+    }
+  });
+
+  it('pbl_content null → 빈 객체 + 기본 제목 "회사명 PBL"', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID, pbl_content: null });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.title).toBe('PBL기업 PBL');
+      expect(result.data.pblContent).toEqual({});
+    }
+  });
+
+  it('creator null → createdByName "알 수 없음"', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    const row = makePBLRow({ id: TEST_PBL_REPORT_ID, users: null });
+    adminMock.addResult({ data: row, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await fetchPBLReportDetail(TEST_PBL_REPORT_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.createdByName).toBe('알 수 없음');
+    }
+  });
+});
+
+// ─── fetchGalleryItems (통합 갤러리) ────────────────────────────────────────
+
+describe('fetchGalleryItems', () => {
+  it('Zod 검증 실패 → error 반환', async () => {
+    const result = await fetchGalleryItems({ sort: 'bad_value' });
+
+    expect(result).toEqual({ success: false, error: '잘못된 필터 값입니다.' });
+  });
+
+  it('track=ROADMAP → fetchGalleryRoadmaps 위임', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const result = await fetchGalleryItems({ track: 'ROADMAP' });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.items).toEqual([]);
+    }
+  });
+
+  it('track=PBL → fetchGalleryPBLReports 위임', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const result = await fetchGalleryItems({ track: 'PBL' });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.items).toEqual([]);
+    }
+  });
+
+  it('track=ALL → 성공 시 total = ROADMAP + PBL 합산', async () => {
+    setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
+
+    // 병렬 Promise.all — adminMock 큐는 순서 불확실할 수 있으므로
+    // 각 sub-쿼리가 빈 결과를 받아 total만 확인
+    // fetchGalleryRoadmaps: 메인 쿼리 (count=3)
+    adminMock.addResult({ data: [], error: null, count: 3 });
+    // fetchGalleryPBLReports: 메인 쿼리 (count=2)
+    adminMock.addResult({ data: [], error: null, count: 2 });
+
+    const result = await fetchGalleryItems({ track: 'ALL' });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // 두 쿼리의 total 합산 = 3 + 2 = 5
+      expect(result.data.total).toBe(5);
+      expect(result.data.totalPages).toBe(1); // 5 / 12 = 1페이지
+    }
+  });
+
+  it('track=ALL → ROADMAP 조회 실패 시 error 반환', async () => {
+    setupAuth({ role: 'OPS_ADMIN' });
+    // 두 쿼리 중 하나를 에러로 설정
+    // fetchGalleryRoadmaps: DB 에러
+    adminMock.addResult({ data: null, error: { message: 'roadmap error' } });
+    // fetchGalleryPBLReports: 성공 (병렬이라 둘 다 호출됨)
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await fetchGalleryItems({ track: 'ALL' });
+
+    expect(result.success).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  it('track 미지정(기본값) → ALL로 처리 (빈 결과)', async () => {
+    setupAuth({ role: 'OPS_ADMIN', userId: TEST_USER_ID });
+
+    // 두 sub-쿼리 모두 빈 결과
+    adminMock.addResult({ data: [], error: null, count: 0 });
+    adminMock.addResult({ data: [], error: null, count: 0 });
+
+    const result = await fetchGalleryItems();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.total).toBe(0);
+      expect(result.data.items).toEqual([]);
+    }
   });
 });

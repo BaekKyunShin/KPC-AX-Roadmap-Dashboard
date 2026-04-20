@@ -3,10 +3,13 @@
 import { useState, useTransition } from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toggleLike } from '@/app/(dashboard)/gallery/actions';
+import { toggleLike, togglePBLLike } from '@/app/(dashboard)/gallery/actions';
+import type { ProjectTrack } from '@/lib/constants/tracks';
 
 interface LikeButtonProps {
   roadmapVersionId: string;
+  /** 트랙 — PBL이면 pbl_likes 대상, 그 외 roadmap_likes (OFA-11 신규) */
+  track?: ProjectTrack;
   initialLiked: boolean;
   initialCount: number;
   size?: 'sm' | 'default';
@@ -14,6 +17,7 @@ interface LikeButtonProps {
 
 export function LikeButton({
   roadmapVersionId,
+  track = 'ROADMAP',
   initialLiked,
   initialCount,
   size = 'sm',
@@ -28,7 +32,9 @@ export function LikeButton({
     setCount((prev) => (liked ? prev - 1 : prev + 1));
 
     startTransition(async () => {
-      const result = await toggleLike(roadmapVersionId);
+      const result = track === 'PBL'
+        ? await togglePBLLike(roadmapVersionId)
+        : await toggleLike(roadmapVersionId);
       if (result.success) {
         setLiked(result.data.liked);
         setCount(result.data.count);

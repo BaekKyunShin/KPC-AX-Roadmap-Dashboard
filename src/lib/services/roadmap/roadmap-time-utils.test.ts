@@ -1,76 +1,31 @@
 /**
  * roadmap-time-utils.ts 테스트
- * - sumModuleHours: 커리큘럼 모듈 시간 합산
- * - normalizeCoursesHours: courses의 recommended_hours 보정
- * - normalizePBLHours: PBL 과정의 total_hours 보정
- * - normalizeRoadmapHours: 전체 로드맵 시간 보정
+ * - sumModuleHours: 시간 합산 (음수/NaN/null 처리)
+ * - normalizeRoadmapHours: course_specs.subjects.hours, annual_plan.items.hours 보정
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  sumModuleHours,
-  normalizeCoursesHours,
-  normalizePBLHours,
-  normalizeRoadmapHours,
-} from './roadmap-time-utils';
-import type { RoadmapCell, PBLCourse } from './roadmap-types';
+import { sumModuleHours, normalizeRoadmapHours } from './roadmap-time-utils';
+import type { LLMRoadmapResult } from './roadmap-types';
 
-// ─── 팩토리 함수 ──────────────────────────────────────────────────────────
+// ─── 헬퍼 ─────────────────────────────────────────────────────────────────
 
-function makeModule(hours: number) {
-  return { module_name: '모듈', hours, details: ['상세'], practice: '실습' };
-}
-
-function makePBLModule(hours: number) {
+function makeResult(overrides: Partial<LLMRoadmapResult> = {}): LLMRoadmapResult {
   return {
-    module_name: '모듈',
-    hours,
-    details: ['상세'],
-    practice: '실습',
-    deliverables: ['산출물'],
-    tools: [{ name: 'ChatGPT', free_tier_info: '무료' }],
-    topics: ['주제'],
-    practice_project: '프로젝트',
-  };
-}
-
-function makeCourse(overrides: Partial<RoadmapCell> = {}): RoadmapCell {
-  return {
-    course_name: '테스트 과정',
-    level: 'BEGINNER',
-    target_task: '데이터 분석',
-    target_audience: '전 직원',
-    recommended_hours: 24,
-    curriculum: [makeModule(8), makeModule(8), makeModule(8)],
-    tools: [{ name: 'ChatGPT', free_tier_info: '무료' }],
-    expected_outcome: '효과',
-    measurement_method: '측정',
-    prerequisites: ['준비물'],
-    ...overrides,
-  };
-}
-
-function makePBLCourse(overrides: Partial<PBLCourse> = {}): PBLCourse {
-  return {
-    selected_course_name: '테스트 과정',
-    selected_course_level: 'BEGINNER',
-    selected_course_task: '데이터 분석',
-    selection_rationale: {
-      consultant_expertise_fit: '적합',
-      pain_point_alignment: '연관',
-      feasibility_assessment: '가능',
-      summary: '요약',
+    diagnosis_summary: '진단',
+    setup_necessity: '',
+    outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
+    competencies: [],
+    ncs_used: false,
+    ncs_methodology: '',
+    ncs_derivation_method: '',
+    training_structure: [],
+    training_structure_method: '',
+    annual_plan: {
+      items: [],
+      usage_plan: '활용방안',
     },
-    course_name: 'PBL 테스트 과정',
-    total_hours: 16,
-    target_tasks: ['데이터 분석'],
-    target_audience: '전 직원',
-    curriculum: [makePBLModule(8), makePBLModule(8)],
-    final_deliverables: ['최종 산출물'],
-    expected_outcomes: ['기대 효과'],
-    business_impact: '비즈니스 임팩트',
-    measurement_methods: ['측정 방법'],
-    prerequisites: ['준비물'],
+    course_specs: [],
     ...overrides,
   };
 }
@@ -78,112 +33,227 @@ function makePBLCourse(overrides: Partial<PBLCourse> = {}): PBLCourse {
 // ─── sumModuleHours ───────────────────────────────────────────────────────
 
 describe('sumModuleHours', () => {
-  it('undefined 입력 시 0을 반환한다', () => {
+  it('undefined → 0', () => {
     expect(sumModuleHours(undefined)).toBe(0);
   });
 
-  it('빈 배열 입력 시 0을 반환한다', () => {
+  it('null → 0', () => {
+    expect(sumModuleHours(null)).toBe(0);
+  });
+
+  it('빈 배열 → 0', () => {
     expect(sumModuleHours([])).toBe(0);
   });
 
-  it('정상 배열의 시간을 합산한다', () => {
-    expect(sumModuleHours([{ hours: 4 }, { hours: 8 }])).toBe(12);
+  it('정상 시간 합산', () => {
+    expect(sumModuleHours([{ hours: 4 }, { hours: 8 }, { hours: 2 }])).toBe(14);
   });
 
-  it('hours가 0인 모듈을 포함해도 올바르게 합산한다', () => {
-    expect(sumModuleHours([{ hours: 0 }, { hours: 6 }, { hours: 4 }])).toBe(10);
-  });
-});
-
-// ─── normalizeCoursesHours ────────────────────────────────────────────────
-
-describe('normalizeCoursesHours', () => {
-  it('빈 배열을 전달하면 빈 배열을 반환한다', () => {
-    expect(normalizeCoursesHours([])).toEqual([]);
+  it('0 시간은 그대로 0', () => {
+    expect(sumModuleHours([{ hours: 0 }, { hours: 5 }])).toBe(5);
   });
 
-  it('curriculum 시간합이 recommended_hours와 같으면 원본 참조를 그대로 반환한다', () => {
-    const course = makeCourse({ recommended_hours: 24 }); // 8+8+8 = 24
-    const result = normalizeCoursesHours([course]);
-    expect(result[0]).toBe(course);
+  it('음수 시간은 합산에서 제외', () => {
+    expect(sumModuleHours([{ hours: -3 }, { hours: 10 }])).toBe(10);
   });
 
-  it('curriculum 시간합이 recommended_hours와 다르면 recommended_hours를 보정한다', () => {
-    const course = makeCourse({ recommended_hours: 30 }); // 8+8+8 = 24 != 30
-    const result = normalizeCoursesHours([course]);
-    expect(result[0].recommended_hours).toBe(24);
+  it('NaN은 합산에서 제외', () => {
+    expect(sumModuleHours([{ hours: Number.NaN }, { hours: 7 }])).toBe(7);
   });
 
-  it('curriculum이 undefined이거나 빈 배열이면 보정하지 않는다', () => {
-    const courseUndefined = makeCourse({
-      recommended_hours: 30,
-      curriculum: undefined as unknown as RoadmapCell['curriculum'],
-    });
-    const courseEmpty = makeCourse({ recommended_hours: 30, curriculum: [] });
+  it('Infinity는 합산에서 제외', () => {
+    expect(sumModuleHours([{ hours: Number.POSITIVE_INFINITY }, { hours: 4 }])).toBe(4);
+  });
 
-    const result = normalizeCoursesHours([courseUndefined, courseEmpty]);
-    expect(result[0]).toBe(courseUndefined);
-    expect(result[1]).toBe(courseEmpty);
+  it('hours가 undefined/null인 항목은 무시', () => {
+    expect(sumModuleHours([{ hours: undefined }, { hours: null }, { hours: 6 }])).toBe(6);
   });
 });
 
-// ─── normalizePBLHours ────────────────────────────────────────────────────
-
-describe('normalizePBLHours', () => {
-  it('curriculum 시간합이 total_hours와 같으면 원본을 반환한다', () => {
-    const pbl = makePBLCourse({ total_hours: 16 }); // 8+8 = 16
-    expect(normalizePBLHours(pbl)).toBe(pbl);
-  });
-
-  it('curriculum 시간합이 total_hours와 다르면 total_hours를 보정한다', () => {
-    const pbl = makePBLCourse({ total_hours: 20 }); // 8+8 = 16 != 20
-    const result = normalizePBLHours(pbl);
-    expect(result.total_hours).toBe(16);
-  });
-
-  it('modulesTotal이 0이면 보정하지 않는다', () => {
-    const pbl = makePBLCourse({ total_hours: 20, curriculum: [] });
-    expect(normalizePBLHours(pbl)).toBe(pbl);
-  });
-});
-
-// ─── normalizeRoadmapHours ────────────────────────────────────────────────
+// ─── normalizeRoadmapHours ───────────────────────────────────────────────
 
 describe('normalizeRoadmapHours', () => {
-  it('courses와 pbl_course를 동시에 보정한다', () => {
-    const input = {
-      diagnosis_summary: '진단 요약',
-      courses: [makeCourse({ recommended_hours: 30 })], // 24 != 30
-      pbl_course: makePBLCourse({ total_hours: 20 }), // 16 != 20
-    };
+  it('정상 값은 그대로 보존', () => {
+    const input = makeResult({
+      annual_plan: {
+        items: [
+          { competency_name: 'A', course_name: 'C', format: '집체', hours: 16, notes: '' },
+        ],
+        usage_plan: '활용',
+      },
+      course_specs: [
+        {
+          course_name: 'C',
+          format: '집체',
+          recommended_program: 'K-Digital',
+          goal: 'goal',
+          main_content: 'content',
+          target_audience: '전 직원',
+          subjects: [{ name: 'S1', details: 'd', hours: 8 }],
+        },
+      ],
+    });
 
     const result = normalizeRoadmapHours(input);
-    expect(result.courses[0].recommended_hours).toBe(24);
-    expect(result.pbl_course.total_hours).toBe(16);
+
+    expect(result.annual_plan.items[0].hours).toBe(16);
+    expect(result.course_specs[0].subjects[0].hours).toBe(8);
   });
 
-  it('diagnosis_summary가 유지된다', () => {
-    const input = {
-      diagnosis_summary: '중요한 진단 내용',
-      courses: [makeCourse()],
-      pbl_course: makePBLCourse(),
-    };
+  it('annual_plan.items의 음수 hours → 0', () => {
+    const input = makeResult({
+      annual_plan: {
+        items: [
+          { competency_name: 'A', course_name: 'C', format: '집체', hours: -10, notes: '' },
+        ],
+        usage_plan: '활용',
+      },
+    });
 
     const result = normalizeRoadmapHours(input);
-    expect(result.diagnosis_summary).toBe('중요한 진단 내용');
+    expect(result.annual_plan.items[0].hours).toBe(0);
   });
 
-  it('보정이 불필요한 경우 원본 구조를 유지한다', () => {
-    const course = makeCourse({ recommended_hours: 24 }); // 8+8+8 = 24
-    const pbl = makePBLCourse({ total_hours: 16 }); // 8+8 = 16
-    const input = {
-      diagnosis_summary: '진단 요약',
-      courses: [course],
-      pbl_course: pbl,
-    };
+  it('annual_plan.items의 NaN → 0', () => {
+    const input = makeResult({
+      annual_plan: {
+        items: [
+          { competency_name: 'A', course_name: 'C', format: '집체', hours: Number.NaN, notes: '' },
+        ],
+        usage_plan: '활용',
+      },
+    });
 
     const result = normalizeRoadmapHours(input);
-    expect(result.courses[0]).toBe(course);
-    expect(result.pbl_course).toBe(pbl);
+    expect(result.annual_plan.items[0].hours).toBe(0);
+  });
+
+  it('course_specs.subjects의 음수 hours → 0', () => {
+    const input = makeResult({
+      course_specs: [
+        {
+          course_name: 'C',
+          format: '집체',
+          recommended_program: 'K-Digital',
+          goal: 'goal',
+          main_content: 'content',
+          target_audience: '전 직원',
+          subjects: [{ name: 'S1', details: 'd', hours: -5 }],
+        },
+      ],
+    });
+
+    const result = normalizeRoadmapHours(input);
+    expect(result.course_specs[0].subjects[0].hours).toBe(0);
+  });
+
+  it('course_specs.subjects의 Infinity → 0', () => {
+    const input = makeResult({
+      course_specs: [
+        {
+          course_name: 'C',
+          format: '집체',
+          recommended_program: 'K-Digital',
+          goal: 'goal',
+          main_content: 'content',
+          target_audience: '전 직원',
+          subjects: [{ name: 'S1', details: 'd', hours: Number.POSITIVE_INFINITY }],
+        },
+      ],
+    });
+
+    const result = normalizeRoadmapHours(input);
+    expect(result.course_specs[0].subjects[0].hours).toBe(0);
+  });
+
+  it('course_specs.subjects의 hours가 undefined → 0', () => {
+    const input = makeResult({
+      course_specs: [
+        {
+          course_name: 'C',
+          format: '집체',
+          recommended_program: 'K-Digital',
+          goal: 'goal',
+          main_content: 'content',
+          target_audience: '전 직원',
+          // hours 없이 들어온 경우 (as-cast로 재현)
+          subjects: [{ name: 'S1', details: 'd' } as unknown as { name: string; details: string; hours: number }],
+        },
+      ],
+    });
+
+    const result = normalizeRoadmapHours(input);
+    expect(result.course_specs[0].subjects[0].hours).toBe(0);
+  });
+
+  it('diagnosis_summary / competencies / training_structure는 변경되지 않음', () => {
+    const input = makeResult({
+      diagnosis_summary: '진단 요약',
+      competencies: [
+        {
+          name: 'A',
+          definition: 'def',
+          knowledge: [],
+          skills: [],
+          attitudes: [],
+        },
+      ],
+      training_structure: [
+        {
+          competency_name: 'A',
+          level: 'BEGINNER',
+          content: 'c',
+          target_audience: 't',
+          method: '집체',
+          goal: 'g',
+        },
+      ],
+    });
+
+    const result = normalizeRoadmapHours(input);
+    expect(result.diagnosis_summary).toBe('진단 요약');
+    expect(result.competencies).toEqual(input.competencies);
+    expect(result.training_structure).toEqual(input.training_structure);
+  });
+
+  it('annual_plan.items / course_specs가 빈 배열이어도 안전하게 처리', () => {
+    const input = makeResult();
+    const result = normalizeRoadmapHours(input);
+
+    expect(result.annual_plan.items).toEqual([]);
+    expect(result.course_specs).toEqual([]);
+  });
+
+  it('annual_plan.usage_plan은 보존된다', () => {
+    const input = makeResult({
+      annual_plan: {
+        items: [
+          { competency_name: 'A', course_name: 'C', format: '집체', hours: 10, notes: '' },
+        ],
+        usage_plan: '활용 계획 원본',
+      },
+    });
+
+    const result = normalizeRoadmapHours(input);
+    expect(result.annual_plan.usage_plan).toBe('활용 계획 원본');
+  });
+
+  it('원본 입력은 변경되지 않는다 (불변성)', () => {
+    const input = makeResult({
+      course_specs: [
+        {
+          course_name: 'C',
+          format: '집체',
+          recommended_program: 'K-Digital',
+          goal: 'goal',
+          main_content: 'content',
+          target_audience: '전 직원',
+          subjects: [{ name: 'S1', details: 'd', hours: -5 }],
+        },
+      ],
+    });
+
+    normalizeRoadmapHours(input);
+    expect(input.course_specs[0].subjects[0].hours).toBe(-5);
   });
 });

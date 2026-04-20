@@ -18,7 +18,14 @@ export type ProjectStatus =
   | 'ASSIGNED'
   | 'INTERVIEWED'
   | 'ROADMAP_DRAFTED'
+  | 'PBL_DRAFTED'
   | 'FINALIZED';
+
+// 프로젝트 트랙 (마이그 060)
+export type ProjectTrack = 'ROADMAP' | 'PBL';
+
+// PBL 보고서 상태 (마이그 061)
+export type PblReportStatus = 'DRAFT' | 'FINAL' | 'ARCHIVED';
 
 // 로드맵 버전 상태
 export type RoadmapVersionStatus = 'DRAFT' | 'FINAL' | 'ARCHIVED';
@@ -78,6 +85,8 @@ export interface Project {
   // 상태 관리
   status: ProjectStatus;
   assigned_consultant_id?: string;
+  // OFA 트랙 (마이그 060) — ROADMAP/PBL
+  track: ProjectTrack;
   // OPS 입력 추가 정보
   customer_comment?: string; // 고객 코멘트/요청사항
   // 테스트 모드 (컨설턴트 연습용)
@@ -427,7 +436,19 @@ export type AuditAction =
   | 'ROADMAP_COPY'
   | 'QUOTA_UPDATE'
   | 'ASSESSMENT_TOKEN_CREATE'
-  | 'PUBLIC_SELF_ASSESSMENT_CREATE';
+  | 'PUBLIC_SELF_ASSESSMENT_CREATE'
+  // 마이그 061에서 추가된 OFA 관련 액션
+  | 'NOTICE_CREATED'
+  | 'NOTICE_UPDATED'
+  | 'NOTICE_DELETED'
+  | 'ROADMAP_HWPX_EXPORTED'
+  | 'PBL_INTERVIEW_SAVED'
+  | 'PBL_REPORT_CREATED'
+  | 'PBL_REPORT_FINALIZED'
+  | 'PBL_REPORT_SHARED'
+  | 'PBL_HWPX_EXPORTED'
+  // 마이그 067에서 추가된 OFA-12 액션
+  | 'ROADMAP_SHARED';
 
 // 알림 타입
 export type NotificationType =
@@ -526,4 +547,60 @@ export interface UserQuota {
   monthly_limit: number;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// OFA (산인공 공식 양식 정렬) 신규 테이블 — 마이그 061·062
+// ============================================================================
+
+// PBL 보고서 (마이그 061). pbl_content 타입은 src/lib/services/pbl/pbl-types.ts에서 정의.
+export interface PblReport {
+  id: string;
+  project_id: string;
+  version_number: number;
+  status: PblReportStatus;
+  consultant_profile_snapshot: Record<string, unknown>;
+  diagnosis_summary: string;
+  pbl_content: Record<string, unknown>;
+  free_tool_validated: boolean;
+  time_limit_validated: boolean;
+  revision_prompt?: string | null;
+  is_shared: boolean;
+  like_count: number;
+  created_by: string;
+  finalized_by?: string | null;
+  finalized_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// PBL 좋아요 (마이그 061)
+export interface PblLike {
+  id: string;
+  user_id: string;
+  pbl_report_id: string;
+  created_at: string;
+}
+
+// 공지 (마이그 062)
+export interface Notice {
+  id: string;
+  title: string;
+  body: string;
+  author_id?: string | null;
+  is_pinned: boolean;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 공지 첨부 (마이그 062)
+export interface NoticeAttachment {
+  id: string;
+  notice_id: string;
+  file_name: string;
+  storage_path: string;
+  mime_type: string;
+  file_size: number;
+  uploaded_at: string;
 }

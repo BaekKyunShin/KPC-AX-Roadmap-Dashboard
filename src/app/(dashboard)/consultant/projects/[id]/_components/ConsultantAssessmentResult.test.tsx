@@ -15,7 +15,20 @@ vi.mock('recharts', () => ({
   Cell: ({ fill }: { fill: string }) => (
     <div data-testid="cell" data-fill={fill} />
   ),
-  Label: () => <div data-testid="label" />,
+  // Label mock: content 함수를 직접 호출하여 viewBox 분기 커버
+  Label: ({ content }: { content?: (props: { viewBox?: { cx?: number; cy?: number } }) => React.ReactNode }) => {
+    if (!content) return <div data-testid="label" />;
+    // viewBox가 cx, cy를 가지는 경우 (true 분기)
+    const withViewBox = content({ viewBox: { cx: 45, cy: 45 } });
+    // viewBox가 없는 경우 (false 분기)
+    const withoutViewBox = content({ viewBox: undefined });
+    return (
+      <div data-testid="label">
+        <div data-testid="label-with-viewbox">{withViewBox}</div>
+        <div data-testid="label-without-viewbox">{withoutViewBox ?? null}</div>
+      </div>
+    );
+  },
 }));
 
 vi.mock('@/components/ui/chart', () => ({
@@ -82,9 +95,10 @@ describe('ConsultantAssessmentResult', () => {
     });
 
     it('백분율을 표시한다', () => {
-      // 70/100 = 70%
+      // 70/100 = 70% — Label mock이 tspan도 렌더링하므로 getAllByText 사용
       render(<ConsultantAssessmentResult scores={makeScores({ total_score: 70, max_possible_score: 100 })} />);
-      expect(screen.getByText('70%')).toBeInTheDocument();
+      const pctElements = screen.getAllByText('70%');
+      expect(pctElements.length).toBeGreaterThanOrEqual(1);
     });
 
     it('total_score가 없으면 0으로 처리한다', () => {
@@ -94,6 +108,36 @@ describe('ConsultantAssessmentResult', () => {
         />,
       );
       expect(screen.getByText('0')).toBeInTheDocument();
+    });
+
+    it('max_possible_score가 없으면 100을 기본값으로 사용한다', () => {
+      // Line 82: scores.max_possible_score || 100 분기 커버 (|| 100 경로)
+      render(
+        <ConsultantAssessmentResult
+          scores={makeScores({ total_score: 50, max_possible_score: undefined })}
+        />,
+      );
+      // max가 100으로 폴백 → pct = round(50/100*100) = 50
+      expect(screen.getByText('/ 100')).toBeInTheDocument();
+    });
+
+    it('Label content가 viewBox 없이 호출되면 null을 반환한다', () => {
+      // Label mock에서 viewBox=undefined 경로 커버 (id 0, 1 false 분기)
+      render(<ConsultantAssessmentResult scores={makeScores()} />);
+      // label-without-viewbox 내용이 비어있어야 함 (undefined 반환)
+      const withoutViewBox = document.querySelector('[data-testid="label-without-viewbox"]');
+      expect(withoutViewBox).toBeInTheDocument();
+      expect(withoutViewBox?.textContent).toBe('');
+    });
+
+    it('Label content가 viewBox(cx, cy 포함)로 호출되면 텍스트를 렌더링한다', () => {
+      // Label mock에서 viewBox={cx, cy} 경로 커버 (id 0, 1 true 분기)
+      render(<ConsultantAssessmentResult scores={makeScores()} />);
+      // label-with-viewbox 내용에 퍼센트 텍스트가 있어야 함
+      const withViewBox = document.querySelector('[data-testid="label-with-viewbox"]');
+      expect(withViewBox).toBeInTheDocument();
+      // pct 텍스트 포함 확인 (80% = 8/10)
+      expect(withViewBox?.textContent).toContain('%');
     });
   });
 
@@ -140,12 +184,13 @@ describe('ConsultantAssessmentResult', () => {
 
   describe('점수 범주별 색상', () => {
     it('60% 초과 점수는 그린 계열 퍼센트를 표시한다 (70%)', () => {
+      // Label mock이 tspan도 렌더링하므로 getAllByText 사용
       render(
         <ConsultantAssessmentResult
           scores={makeScores({ total_score: 70, max_possible_score: 100 })}
         />,
       );
-      expect(screen.getByText('70%')).toBeInTheDocument();
+      expect(screen.getAllByText('70%').length).toBeGreaterThanOrEqual(1);
     });
 
     it('30~60% 점수는 앰버 계열 퍼센트를 표시한다 (50%)', () => {

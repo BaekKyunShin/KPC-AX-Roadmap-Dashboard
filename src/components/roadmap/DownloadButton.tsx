@@ -5,7 +5,7 @@ import { Download, Loader2 } from 'lucide-react';
 export interface DownloadButtonProps {
   onClick: () => void;
   loading: boolean;
-  type: 'PDF' | 'Excel';
+  type: 'PDF' | 'Excel' | 'HWPX';
   disabled: boolean;
 }
 

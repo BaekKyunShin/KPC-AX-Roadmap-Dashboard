@@ -25,6 +25,22 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  async rewrites() {
+    // 로컬 개발 시 HWPX Python 함수를 로컬 브리지 서버로 포워딩.
+    // next dev / vercel dev 모두 Python 런타임 구성에 실패할 수 있으므로,
+    // scripts/dev-hwpx-server.py 를 별도 터미널에서 실행 후
+    // HWPX_DEV_PROXY_URL=http://localhost:3010 을 지정하면 동작한다.
+    const hwpxProxyUrl = process.env.HWPX_DEV_PROXY_URL;
+    if (hwpxProxyUrl) {
+      return [
+        {
+          source: '/api/hwpx/:path*',
+          destination: `${hwpxProxyUrl.replace(/\/$/, '')}/api/hwpx/:path*`,
+        },
+      ];
+    }
+    return [];
+  },
   experimental: {
     optimizePackageImports: [
       'lucide-react',

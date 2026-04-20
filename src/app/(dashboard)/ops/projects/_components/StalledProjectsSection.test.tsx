@@ -164,4 +164,33 @@ describe('StalledProjectsSection', () => {
       expect(screen.getByText('현장 인터뷰 후')).toBeInTheDocument();
     });
   });
+
+  // --------------------------------------------------------------------------
+  // 7. 알 수 없는 상태 — 폴백 분기 커버
+  // --------------------------------------------------------------------------
+  describe('알 수 없는 상태 폴백', () => {
+    const unknownProject: StalledProject[] = [
+      {
+        id: 'p-unknown',
+        company_name: '알수없는기업',
+        contact_email: 'x@test.com',
+        status: 'UNKNOWN_STATUS' as StalledProject['status'],
+        days_stalled: 10,
+        assigned_consultant: null,
+        severity: 'medium',
+      },
+    ];
+
+    it('STALLED_STATUS_MESSAGES에 없는 상태는 "상태 변경 후" 폴백 메시지를 표시한다', () => {
+      // Line 25: STALLED_STATUS_MESSAGES[projectStatus] ?? '상태 변경 후' → 우측 피연산자 커버
+      render(<StalledProjectsSection projects={unknownProject} />);
+      expect(screen.getByText('상태 변경 후')).toBeInTheDocument();
+    });
+
+    it('PROJECT_STATUS_CONFIG에 없는 상태는 원본 status 값을 배지로 표시한다', () => {
+      // Lines 54, 56: statusConfig?.color || 'bg-gray-100', statusConfig?.label || project.status 커버
+      render(<StalledProjectsSection projects={unknownProject} />);
+      expect(screen.getByText('UNKNOWN_STATUS')).toBeInTheDocument();
+    });
+  });
 });

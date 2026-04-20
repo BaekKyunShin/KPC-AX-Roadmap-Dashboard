@@ -3,10 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { VersionHistoryList } from './VersionHistoryList';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
-import type { RoadmapRow, PBLCourse, RoadmapCell } from '@/lib/services/roadmap';
 
 // ============================================================================
-// 테스트 데이터 헬퍼
+// 테스트 데이터 헬퍼 (신규 4섹션 구조)
 // ============================================================================
 
 function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionUI {
@@ -15,11 +14,16 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
     version_number: 1,
     status: 'DRAFT',
     diagnosis_summary: '진단 요약',
-    roadmap_matrix: [] as RoadmapRow[],
-    pbl_course: {} as PBLCourse,
-    courses: [] as RoadmapCell[],
-    free_tool_validated: true,
-    time_limit_validated: true,
+    setup_necessity: '',
+    outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
+    competencies: [],
+    ncs_used: false,
+    ncs_methodology: '',
+    ncs_derivation_method: '',
+    training_structure: [],
+    training_structure_method: '',
+    annual_plan: { items: [], usage_plan: '' },
+    course_specs: [],
     revision_prompt: null,
     is_shared: false,
     created_at: '2026-01-20T10:00:00Z',

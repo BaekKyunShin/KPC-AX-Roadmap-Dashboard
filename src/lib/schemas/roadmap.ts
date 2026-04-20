@@ -1,82 +1,103 @@
 import { z } from 'zod';
 
 // ============================================================================
-// 로드맵 관련 Zod 스키마
-// createRoadmapInputSchema: 로드맵 생성 입력 검증
-// editRoadmapUpdatesSchema: 로드맵 수동 편집 입력 검증
+// 로드맵 Zod 스키마 — 산인공 공식 로드맵 보고서 양식(Ⅰ·Ⅱ·Ⅲ장) 기반
+//   Ⅰ-1. 수립 필요성        → setup_necessity
+//   Ⅰ-3. 수립 주요 결과      → outcome_summary (3필드)
+//   Ⅲ-1. 역량 모델링        → competencies + NCS 박스 (표 전체 단위)
+//   Ⅲ-2. 훈련체계도         → training_structure + training_structure_method
+//   Ⅲ-3. 연간 훈련계획      → annualPlan
+//   Ⅲ-4. 훈련과정 명세서    → courseSpecs (최소 3개)
 // ============================================================================
 
-// RoadmapMatrixCell
-const roadmapMatrixCellSchema = z.object({
-  course_name: z.string().min(1),
-  recommended_hours: z.number().positive(),
+// Ⅰ-3 수립 주요 결과
+const outcomeSummarySchema = z.object({
+  ai_competency_level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+  selected_tasks: z.string(),
+  main_content: z.string(),
 });
 
-// RoadmapRow
-const roadmapRowSchema = z.object({
-  task_id: z.string().min(1),
-  task_name: z.string().min(1),
-  beginner: z.array(roadmapMatrixCellSchema),
-  intermediate: z.array(roadmapMatrixCellSchema),
-  advanced: z.array(roadmapMatrixCellSchema),
+// Ⅲ-1. 역량 모델링 (NCS 필드는 루트로 이동)
+const competencySchema = z.object({
+  name: z.string().min(1),
+  definition: z.string().min(1),
+  knowledge: z.array(z.string()),
+  skills: z.array(z.string()),
+  attitudes: z.array(z.string()),
 });
 
-// CurriculumModule
-const curriculumModuleSchema = z.object({
-  module_name: z.string().min(1),
-  hours: z.number().positive(),
-  details: z.array(z.string()),
-  practice: z.string(),
-});
-
-// 도구 스키마 (공통)
-const toolSchema = z.object({
-  name: z.string(),
-  free_tier_info: z.string(),
-});
-
-// RoadmapCell (과정 상세)
-const roadmapCellSchema = z.object({
-  course_name: z.string().min(1),
+// Ⅲ-2. 훈련체계도
+const trainingStructureItemSchema = z.object({
+  competency_name: z.string().min(1),
   level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
-  target_task: z.string(),
+  content: z.string(),
   target_audience: z.string(),
-  recommended_hours: z.number().positive(),
-  curriculum: z.array(curriculumModuleSchema),
-  tools: z.array(toolSchema),
-  expected_outcome: z.string(),
-  measurement_method: z.string(),
-  prerequisites: z.array(z.string()),
+  method: z.string(),
+  goal: z.string(),
 });
 
-// PBLCurriculumModule (CurriculumModule 확장)
-const pblCurriculumModuleSchema = curriculumModuleSchema.extend({
-  deliverables: z.array(z.string()),
-  tools: z.array(toolSchema),
-});
-
-// PBLCourse
-const pblCourseSchema = z.object({
-  selected_course_name: z.string().min(1),
-  selected_course_level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
-  selected_course_task: z.string(),
-  selection_rationale: z.object({
-    consultant_expertise_fit: z.string(),
-    pain_point_alignment: z.string(),
-    feasibility_assessment: z.string(),
-    summary: z.string(),
-  }),
+// Ⅲ-3. 연간 훈련계획
+const annualPlanItemSchema = z.object({
+  competency_name: z.string().min(1),
   course_name: z.string().min(1),
-  total_hours: z.number().positive(),
-  target_tasks: z.array(z.string()),
-  target_audience: z.string(),
-  curriculum: z.array(pblCurriculumModuleSchema),
-  final_deliverables: z.array(z.string()),
-  expected_outcomes: z.array(z.string()),
-  business_impact: z.string(),
-  measurement_methods: z.array(z.string()),
-  prerequisites: z.array(z.string()),
+  format: z.string(),
+  hours: z.number().positive(),
+  notes: z.string(),
 });
+
+const annualPlanSchema = z.object({
+  items: z.array(annualPlanItemSchema),
+  usage_plan: z.string(),
+});
+
+// Ⅲ-4. 훈련과정 명세서
+const courseSubjectSchema = z.object({
+  name: z.string().min(1),
+  details: z.string(),
+  hours: z.number().positive(),
+});
+
+const courseSpecSchema = z.object({
+  course_name: z.string().min(1),
+  format: z.string(),
+  recommended_program: z.string(),
+  goal: z.string(),
+  main_content: z.string(),
+  target_audience: z.string(),
+  subjects: z.array(courseSubjectSchema).min(1, '교과목은 최소 1개 이상이어야 합니다.'),
+});
+
+const courseSpecsSchema = z
+  .array(courseSpecSchema)
+  .min(3, '훈련과정 명세서는 최소 3개 이상이어야 합니다.');
+
+// 전체 로드맵 콘텐츠 스키마 (LLM 응답/DB 저장용 검증)
+// 정합성 규칙 (산인공 양식 Ⅲ-1):
+//  - ncs_used=true  → ncs_methodology 필수 (공백 불가)
+//  - ncs_used=false → ncs_derivation_method 필수 (공백 불가)
+export const roadmapContentSchema = z
+  .object({
+    diagnosis_summary: z.string(),
+    setup_necessity: z.string(),
+    outcome_summary: outcomeSummarySchema,
+    competencies: z.array(competencySchema).min(1),
+    ncs_used: z.boolean(),
+    ncs_methodology: z.string(),
+    ncs_derivation_method: z.string(),
+    training_structure: z.array(trainingStructureItemSchema).min(1),
+    training_structure_method: z.string().min(1, '훈련체계 수립 방법을 입력해주세요.'),
+    annual_plan: annualPlanSchema,
+    course_specs: courseSpecsSchema,
+  })
+  .refine(
+    (data) =>
+      data.ncs_used ? data.ncs_methodology.trim() !== '' : data.ncs_derivation_method.trim() !== '',
+    {
+      message:
+        'NCS 활용 여부에 맞는 근거(활용 방법 또는 도출 방법)가 반드시 필요합니다.',
+      path: ['ncs_methodology'],
+    },
+  );
 
 // createRoadmap 입력 스키마
 export const createRoadmapInputSchema = z.object({
@@ -84,19 +105,91 @@ export const createRoadmapInputSchema = z.object({
   revisionPrompt: z.string().trim().min(1).max(2000).optional(),
 });
 
+// ============================================================================
+// 편집 중(DRAFT) 임시 저장용 loose 스키마
+// ----------------------------------------------------------------------------
+// 사용자가 "역량 추가" 버튼으로 빈 역량을 일단 추가하거나, 과정명을 지웠다가
+// 다시 채우는 등 중간 상태가 저장되어야 한다. 따라서 editRoadmapUpdatesSchema
+// 에서 쓰는 sub-schema는 엄격한 min(1)·positive()를 완화한다.
+// 최종 확정(FINAL)은 validateRoadmap가 별도로 엄격 검증한다.
+// ============================================================================
+
+const editableCompetencySchema = z.object({
+  name: z.string(),
+  definition: z.string(),
+  knowledge: z.array(z.string()),
+  skills: z.array(z.string()),
+  attitudes: z.array(z.string()),
+});
+
+const editableTrainingStructureItemSchema = z.object({
+  competency_name: z.string(),
+  level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+  content: z.string(),
+  target_audience: z.string(),
+  method: z.string(),
+  goal: z.string(),
+});
+
+const editableAnnualPlanItemSchema = z.object({
+  competency_name: z.string(),
+  course_name: z.string(),
+  format: z.string(),
+  hours: z.number().nonnegative(),
+  notes: z.string(),
+});
+
+const editableAnnualPlanSchema = z.object({
+  items: z.array(editableAnnualPlanItemSchema),
+  usage_plan: z.string(),
+});
+
+const editableCourseSubjectSchema = z.object({
+  name: z.string(),
+  details: z.string(),
+  hours: z.number().nonnegative(),
+});
+
+const editableCourseSpecSchema = z.object({
+  course_name: z.string(),
+  format: z.string(),
+  recommended_program: z.string(),
+  goal: z.string(),
+  main_content: z.string(),
+  target_audience: z.string(),
+  subjects: z.array(editableCourseSubjectSchema),
+});
+
+const editableCourseSpecsSchema = z.array(editableCourseSpecSchema);
+
 // editRoadmapManually updates 스키마
+// 신규 필드 포함, 최소 1개 이상 필드 수정 필수. DRAFT 중간 상태 허용 (loose)
 export const editRoadmapUpdatesSchema = z
   .object({
     diagnosis_summary: z.string().max(5000).optional(),
-    roadmap_matrix: z.array(roadmapRowSchema).optional(),
-    pbl_course: pblCourseSchema.optional(),
-    courses: z.array(roadmapCellSchema).optional(),
+    setup_necessity: z.string().max(5000).optional(),
+    outcome_summary: outcomeSummarySchema.optional(),
+    competencies: z.array(editableCompetencySchema).optional(),
+    ncs_used: z.boolean().optional(),
+    ncs_methodology: z.string().max(5000).optional(),
+    ncs_derivation_method: z.string().max(5000).optional(),
+    training_structure: z.array(editableTrainingStructureItemSchema).optional(),
+    training_structure_method: z.string().max(5000).optional(),
+    annual_plan: editableAnnualPlanSchema.optional(),
+    course_specs: editableCourseSpecsSchema.optional(),
   })
   .refine(
     (data) =>
       data.diagnosis_summary !== undefined ||
-      data.roadmap_matrix !== undefined ||
-      data.pbl_course !== undefined ||
-      data.courses !== undefined,
-    { message: '수정할 항목이 최소 하나 이상 필요합니다.' }
+      data.setup_necessity !== undefined ||
+      data.outcome_summary !== undefined ||
+      data.competencies !== undefined ||
+      data.ncs_used !== undefined ||
+      data.ncs_methodology !== undefined ||
+      data.ncs_derivation_method !== undefined ||
+      data.training_structure !== undefined ||
+      data.training_structure_method !== undefined ||
+      data.annual_plan !== undefined ||
+      data.course_specs !== undefined,
+    { message: '수정할 항목이 최소 하나 이상 필요합니다.' },
   );

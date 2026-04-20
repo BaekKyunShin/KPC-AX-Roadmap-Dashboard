@@ -2,7 +2,19 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from '@/lib/actions/auth-helpers';
-import { interviewSchema, interviewAutoSaveSchema, type InterviewInput, type SttInsights } from '@/lib/schemas/interview';
+import {
+  roadmapInterviewSchema,
+  roadmapInterviewAutoSaveSchema,
+  type RoadmapInterviewInput,
+  type RoadmapInterviewAutoSaveInput,
+  type SttInsights,
+} from '@/lib/schemas/interview-roadmap';
+import {
+  pblInterviewSchema,
+  pblInterviewAutoSaveSchema,
+  type PBLInterviewInput,
+  type PBLInterviewAutoSaveInput,
+} from '@/lib/schemas/interview-pbl';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
@@ -38,13 +50,91 @@ async function verifyProjectAccess(
 }
 
 // ============================================================================
-// 인터뷰 저장/조회
+// 산인공 로드맵 인터뷰 저장 (OFA-05)
+// ----------------------------------------------------------------------------
+// 기존 interviews 테이블 컬럼(company_details, job_tasks, improvement_goals 등)을
+// 애플리케이션 레이어 매핑으로 재사용. 본 Step에서 DB 마이그레이션은 추가하지 않음.
+// 분리 전용 컬럼(roadmap_data JSONB)은 Step 12에서 도입 검토.
 // ============================================================================
 
-export async function saveInterview(
+function mapRoadmapToLegacyColumns(
+  data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
+): {
+  interview_date: string | null;
+  interview_round: number;
+  interview_time: string | null;
+  participants: unknown;
+  company_details: unknown;
+  job_tasks: unknown;
+  pain_points: unknown;
+  constraints: unknown;
+  improvement_goals: unknown;
+  notes: string;
+  customer_requirements: string;
+  stt_insights: unknown;
+} {
+  const cr = data.company_requirements ?? {
+    company_status: '',
+    main_problems: '',
+    push_willingness: '',
+    expected_outcomes: '',
+  };
+  const tasks = data.task_workflow_items ?? [];
+  const targets = data.training_targets ?? [];
+  const an = data.analysis_notes ?? { text: '', attachment_urls: [] };
+
+  return {
+    interview_date: data.interview_date ?? null,
+    interview_round: data.interview_round ?? 1,
+    interview_time: data.interview_time ?? null,
+    participants: data.participants ?? [],
+    company_details: {
+      ai_experience: cr.company_status ?? '',
+      systems_and_tools: [],
+      // 신규 4필드 + 수행 방법 + 분석 노트를 병행 저장해 Step 12 이전에도 원본 복구 가능
+      roadmap_company_requirements: cr,
+      roadmap_interview_method: data.interview_method ?? 'ONSITE',
+      roadmap_analysis_notes: an,
+      // Ⅰ장 개요 (OFA-06.5 신규 — HRD이음 첨부 메타 포함)
+      roadmap_overview: data.overview ?? null,
+    },
+    job_tasks: tasks.map((t) => ({
+      id: t.id,
+      task_name: t.task_name,
+      task_description: t.as_is,
+      roadmap_job: t.job,
+      roadmap_problems: t.problems,
+      roadmap_data_availability: t.data_availability,
+      roadmap_ai_necessity: t.ai_necessity,
+    })),
+    pain_points: tasks.map((t) => ({
+      id: t.id,
+      description: t.problems ?? '',
+      severity: 'MEDIUM' as const,
+    })),
+    constraints: [],
+    improvement_goals: targets.map((g) => ({
+      id: g.id,
+      goal_description: g.selection_reason,
+      kpi: g.task_name,
+      roadmap_as_is: g.as_is,
+      roadmap_to_be: g.to_be,
+    })),
+    notes: data.notes ?? '',
+    customer_requirements: cr.expected_outcomes ?? '',
+    stt_insights: data.stt_insights ?? null,
+  };
+}
+
+/**
+ * 로드맵 트랙 전용 인터뷰 저장 (OFA-05 산인공 양식)
+ *
+ * 5단계 패턴: 인증 → 역할 → track 가드 → Zod → admin client 저장 → 상태 전이
+ */
+export async function saveRoadmapInterview(
   projectId: string,
-  data: InterviewInput,
-  options?: { autoSave?: boolean }
+  data: RoadmapInterviewInput | RoadmapInterviewAutoSaveInput,
+  options?: { autoSave?: boolean },
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -53,10 +143,9 @@ export async function saveInterview(
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
 
-    // 프로젝트 접근 권한 확인 (배정된 컨설턴트만)
     const { data: projectData } = await supabase
       .from('projects')
-      .select('id, status, assigned_consultant_id, company_name, is_test_mode')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
       .eq('id', projectId)
       .eq('assigned_consultant_id', user.id)
       .single();
@@ -64,73 +153,58 @@ export async function saveInterview(
     if (!projectData) {
       return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
     }
+    if (projectData.track !== 'ROADMAP') {
+      return { success: false, error: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.' };
+    }
 
-    // 데이터 검증: 자동저장은 완화된 스키마, 수동 저장은 엄격한 스키마 적용
-    const schema = options?.autoSave ? interviewAutoSaveSchema : interviewSchema;
+    const schema = options?.autoSave ? roadmapInterviewAutoSaveSchema : roadmapInterviewSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
       return { success: false, error: validation.error.errors[0].message };
     }
-    const validatedData = validation.data;
+    const validated = validation.data;
 
     const adminSupabase = createAdminClient();
 
-    // 기존 인터뷰 확인 (maybeSingle을 사용하여 없는 경우에도 에러 없이 null 반환)
-    const { data: existingInterview, error: fetchError } = await adminSupabase
+    const { data: existing, error: fetchError } = await adminSupabase
       .from('interviews')
       .select('id')
       .eq('project_id', projectId)
       .maybeSingle();
 
     if (fetchError) {
-      console.error('[saveInterview Error] Fetch:', fetchError.message);
+      console.error('[saveRoadmapInterview] Fetch:', fetchError.message);
       return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
     }
 
-    const interviewData = {
+    const legacyColumns = mapRoadmapToLegacyColumns(validated);
+    const row = {
       project_id: projectId,
       interviewer_id: user.id,
-      interview_date: validatedData.interview_date,
-      interview_round: validatedData.interview_round ?? 1,
-      interview_time: validatedData.interview_time || null,
-      participants: validatedData.participants,
-      company_details: validatedData.company_details,
-      job_tasks: validatedData.job_tasks,
-      pain_points: validatedData.pain_points,
-      constraints: validatedData.constraints || [],
-      improvement_goals: validatedData.improvement_goals,
-      notes: validatedData.notes || '',
-      customer_requirements: validatedData.customer_requirements || '',
+      ...legacyColumns,
     };
 
     let auditAction: 'INTERVIEW_CREATE' | 'INTERVIEW_UPDATE';
 
-    if (existingInterview) {
+    if (existing) {
       const { error: updateError } = await adminSupabase
         .from('interviews')
-        .update(interviewData)
-        .eq('id', existingInterview.id);
-
+        .update(row)
+        .eq('id', existing.id);
       if (updateError) {
-        console.error('[saveInterview Error] Update:', updateError.message);
+        console.error('[saveRoadmapInterview] Update:', updateError.message);
         return { success: false, error: '인터뷰 수정에 실패했습니다.' };
       }
       auditAction = 'INTERVIEW_UPDATE';
     } else {
-      const { error: insertError } = await adminSupabase
-        .from('interviews')
-        .insert(interviewData);
-
+      const { error: insertError } = await adminSupabase.from('interviews').insert(row);
       if (insertError) {
-        console.error('[saveInterview Error] Insert:', insertError.message);
+        console.error('[saveRoadmapInterview] Insert:', insertError.message);
         return { success: false, error: '인터뷰 저장에 실패했습니다.' };
       }
       auditAction = 'INTERVIEW_CREATE';
     }
 
-    // 수동 저장일 때만 상태 전환
-    // (자동저장은 작성 중인 데이터 보존이 목적이므로 프로젝트 상태를 변경하지 않음)
-    // validateStatusTransition이 이미 전환된 상태(INTERVIEWED→INTERVIEWED)는 거부하므로 중복 전환 방지됨
     let statusTransitioned = false;
     if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
       await adminSupabase
@@ -140,9 +214,7 @@ export async function saveInterview(
       statusTransitioned = true;
     }
 
-    // 알림/감사로그/활동로그는 응답 블로킹 불필요 → after()로 비동기 실행
     after(async () => {
-      // 운영관리자에게 인터뷰 완료 알림 (테스트 프로젝트 제외)
       if (statusTransitioned && !projectData.is_test_mode) {
         await createNotificationForAdmins({
           type: 'interview_complete',
@@ -158,13 +230,12 @@ export async function saveInterview(
         targetType: 'interview',
         targetId: projectId,
         meta: {
-          job_tasks_count: validatedData.job_tasks.length,
-          pain_points_count: validatedData.pain_points.length,
-          goals_count: validatedData.improvement_goals.length,
+          track: 'ROADMAP',
+          task_items_count: validated.task_workflow_items?.length ?? 0,
+          training_targets_count: validated.training_targets?.length ?? 0,
         },
       });
 
-      // 활동 일지 자동 기록 (자동저장 모드가 아닌 경우에만)
       if (!options?.autoSave) {
         const logContent = auditAction === 'INTERVIEW_CREATE'
           ? '인터뷰가 저장되었습니다.'
@@ -175,8 +246,325 @@ export async function saveInterview(
 
     return { success: true };
   } catch (error) {
-    console.error('[saveInterview Error]', error);
+    console.error('[saveRoadmapInterview Error]', error);
     return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// HRD이음 진단 보고서 첨부 (산인공 양식 1번 Ⅱ-1)
+// ============================================================================
+
+const HRD_ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/vnd.hancom.hwpx',
+  'application/x-hwp',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+const HRD_MAX_BYTES = 20 * 1024 * 1024; // 20MB
+const HRD_BUCKET = 'interview-attachments';
+
+export interface HrdReportUploadResult {
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  uploaded_at: string;
+}
+
+/** HRD이음 진단 보고서 업로드 (Storage 'interview-attachments' 버킷) */
+export async function uploadHrdReportAttachment(
+  projectId: string,
+  formData: FormData,
+): Promise<ActionResult<HrdReportUploadResult>> {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return { success: false, error: '파일이 첨부되지 않았습니다.' };
+    }
+
+    if (file.size === 0) {
+      return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
+    }
+    if (file.size > HRD_MAX_BYTES) {
+      return { success: false, error: '파일 크기는 최대 20MB까지 허용됩니다.' };
+    }
+    const mimeType = file.type || 'application/octet-stream';
+    if (!HRD_ALLOWED_MIMES.has(mimeType)) {
+      return { success: false, error: `허용되지 않은 파일 형식입니다 (${mimeType}).` };
+    }
+
+    const supabase = createAdminClient();
+
+    // 경로: <project_id>/hrd-<random>.<ext>  (project_id가 첫 segment여야 RLS 통과)
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const safeExt = ext ? `.${ext}` : '';
+    const random = crypto.randomUUID();
+    const storagePath = `${projectId}/hrd-${random}${safeExt}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from(HRD_BUCKET)
+      .upload(storagePath, arrayBuffer, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[uploadHrdReportAttachment] upload error:', uploadError);
+      return { success: false, error: `업로드 실패: ${uploadError.message}` };
+    }
+
+    return {
+      success: true,
+      data: {
+        storage_path: storagePath,
+        file_name: file.name,
+        mime_type: mimeType,
+        size: file.size,
+        uploaded_at: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('[uploadHrdReportAttachment Error]', error);
+    return { success: false, error: '서버 오류로 업로드에 실패했습니다.' };
+  }
+}
+
+/** HRD이음 첨부 삭제 + signed URL 생성을 위한 헬퍼 */
+export async function removeHrdReportAttachment(
+  projectId: string,
+  storagePath: string,
+): Promise<SimpleActionResult> {
+  try {
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+
+    // 안전: 경로가 해당 projectId로 시작해야 함
+    if (!storagePath.startsWith(`${projectId}/`)) {
+      return { success: false, error: '잘못된 파일 경로입니다.' };
+    }
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.storage.from(HRD_BUCKET).remove([storagePath]);
+    if (error) {
+      console.error('[removeHrdReportAttachment] remove error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[removeHrdReportAttachment Error]', error);
+    return { success: false, error: '서버 오류로 삭제에 실패했습니다.' };
+  }
+}
+
+/** HRD이음 첨부의 1시간 짜리 signed URL 발급 (다운로드/미리보기용) */
+export async function createHrdReportSignedUrl(
+  projectId: string,
+  storagePath: string,
+): Promise<ActionResult<{ url: string }>> {
+  try {
+    const auth = await requireAuthWithRole(
+      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
+      { roleError: '첨부 파일 조회 권한이 없습니다.' },
+    );
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, role, supabase: serverSupabase } = auth;
+
+    if (!storagePath.startsWith(`${projectId}/`)) {
+      return { success: false, error: '잘못된 파일 경로입니다.' };
+    }
+
+    if (role === 'CONSULTANT_APPROVED') {
+      const accessCheck = await requireConsultantProjectAccess(
+        serverSupabase,
+        user.id,
+        projectId,
+        '해당 프로젝트의 첨부 파일 접근 권한이 없습니다.',
+      );
+      if (accessCheck !== true) return { success: false, error: accessCheck.error };
+    }
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.storage
+      .from(HRD_BUCKET)
+      .createSignedUrl(storagePath, 3600);
+    if (error || !data) {
+      return { success: false, error: error?.message || 'URL 생성 실패' };
+    }
+    return { success: true, data: { url: data.signedUrl } };
+  } catch (error) {
+    console.error('[createHrdReportSignedUrl Error]', error);
+    return { success: false, error: '서버 오류로 URL 생성에 실패했습니다.' };
+  }
+}
+
+// ============================================================================
+// PBL 인터뷰 저장/조회 (OFA-08)
+// ----------------------------------------------------------------------------
+// Step 2 마이그 063에서 추가된 `interviews.pbl_data JSONB` 컬럼을 사용한다.
+// 로드맵 트랙 컬럼(company_details·job_tasks·improvement_goals 등)은 건드리지 않는다.
+// ============================================================================
+
+/**
+ * PBL 인터뷰 조회 — 컨설턴트 전용 (배정된 프로젝트에 한함)
+ */
+export async function fetchPBLInterview(
+  projectId: string,
+): Promise<{ pbl_data: Record<string, unknown> } | null> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('assigned_consultant_id, track')
+      .eq('id', projectId)
+      .single();
+
+    if (!projectData || projectData.assigned_consultant_id !== user.id) {
+      return null;
+    }
+    if (projectData.track !== 'PBL') return null;
+
+    const { data: interview } = await supabase
+      .from('interviews')
+      .select('pbl_data')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (!interview) return { pbl_data: {} };
+    return { pbl_data: (interview.pbl_data as Record<string, unknown> | null) ?? {} };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PBL 인터뷰 저장 (OFA-08 산인공 양식 2번)
+ *
+ * 5단계 패턴: 인증·역할 → track=PBL 가드 → Zod 검증 → admin 저장 → 상태 전이 + 감사로그
+ */
+export async function savePBLInterview(
+  projectId: string,
+  data: PBLInterviewInput | PBLInterviewAutoSaveInput,
+  options?: { autoSave?: boolean },
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.track !== 'PBL') {
+      return { success: false, error: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.' };
+    }
+
+    const schema = options?.autoSave ? pblInterviewAutoSaveSchema : pblInterviewSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+    const validated = validation.data;
+
+    const adminSupabase = createAdminClient();
+
+    const { data: existing, error: fetchError } = await adminSupabase
+      .from('interviews')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[savePBLInterview] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+    }
+
+    if (existing) {
+      const { error: updateError } = await adminSupabase
+        .from('interviews')
+        .update({ pbl_data: validated })
+        .eq('id', existing.id);
+      if (updateError) {
+        console.error('[savePBLInterview] Update:', updateError.message);
+        return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
+      }
+    } else {
+      const { error: insertError } = await adminSupabase.from('interviews').insert({
+        project_id: projectId,
+        interviewer_id: user.id,
+        pbl_data: validated,
+      });
+      if (insertError) {
+        console.error('[savePBLInterview] Insert:', insertError.message);
+        return { success: false, error: 'PBL 인터뷰 저장에 실패했습니다.' };
+      }
+    }
+
+    let statusTransitioned = false;
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      statusTransitioned = true;
+    }
+
+    after(async () => {
+      if (statusTransitioned && !projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: 'PBL 인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} PBL 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
+
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'PBL_INTERVIEW_SAVED',
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          track: 'PBL',
+          auto_save: Boolean(options?.autoSave),
+        },
+      });
+
+      if (!options?.autoSave) {
+        await insertSystemActivityLog(
+          projectId,
+          user.id,
+          'PBL 인터뷰가 저장되었습니다.',
+        );
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[savePBLInterview Error]', error);
+    return { success: false, error: 'PBL 인터뷰 저장 중 오류가 발생했습니다.' };
   }
 }
 

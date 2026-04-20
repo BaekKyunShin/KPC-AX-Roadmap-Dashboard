@@ -14,6 +14,7 @@ import { COMPANY_SIZE_LABELS } from '@/lib/constants/company-size';
 import type { CompanySizeValue } from '@/lib/constants/company-size';
 import type { GalleryRoadmapItem } from '@/app/(dashboard)/gallery/actions';
 import { LikeButton } from './LikeButton';
+import { TrackBadge } from '@/components/ui/TrackBadge';
 
 const AVATAR_COLORS = [
   'bg-blue-600',
@@ -46,14 +47,21 @@ function formatCompanySize(raw: string): string {
 }
 
 export function GalleryCard({ item }: GalleryCardProps) {
+  // 트랙 정보는 ?track 쿼리로 명시 — roadmap_versions.id와 pbl_reports.id 모두 UUID라
+  // id만으로 테이블 판별 불가.
+  const detailHref = `/gallery/${item.id}?track=${item.track}`;
+
   return (
-    <Link href={`/gallery/${item.id}`} className="block group">
+    <Link href={detailHref} className="block group">
       <Card className="overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md">
         <CardHeader className="pb-3">
           <div className="space-y-2">
-            <CardTitle className="text-base leading-tight line-clamp-2">
-              {item.title}
-            </CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-base leading-tight line-clamp-2 flex-1">
+                {item.title}
+              </CardTitle>
+              <TrackBadge track={item.track} className="shrink-0" />
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs">
                 <Factory className="mr-1 h-3 w-3" />
@@ -76,7 +84,9 @@ export function GalleryCard({ item }: GalleryCardProps) {
 
           {item.pblCourseName && (
             <div className="rounded-md bg-gray-50 px-3 py-2">
-              <p className="text-xs text-gray-500">PBL 최적 과정</p>
+              <p className="text-xs text-gray-500">
+                {item.track === 'PBL' ? '훈련과정' : 'PBL 최적 과정'}
+              </p>
               <p className="text-sm font-medium text-gray-800">
                 {item.pblCourseName}
                 {item.pblTotalHours > 0 && (
@@ -120,6 +130,7 @@ export function GalleryCard({ item }: GalleryCardProps) {
               </div>
               <LikeButton
                 roadmapVersionId={item.id}
+                track={item.track}
                 initialLiked={item.isLiked}
                 initialCount={item.likeCount}
               />

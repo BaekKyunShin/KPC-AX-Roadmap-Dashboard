@@ -777,72 +777,48 @@ export function PaginationSkeleton() {
 }
 
 // ============================================================================
-// 로드맵 스켈레톤 컴포넌트
+// 로드맵 스켈레톤 컴포넌트 (Step 6/6.5 재설계 반영)
+// ============================================================================
+//
+// 실제 UI 구조 (ConsultantRoadmapClient):
+//   PageHeader (제목 + 다운로드/확정 버튼)
+//   └─ VersionSelector 바 (sticky)
+//   └─ RegenerateAccordion (수정 요청 아코디언)
+//   └─ 버전 카드
+//        ├─ 헤더: 버전 뱃지 + revision prompt
+//        ├─ RoadmapOverviewSummary (Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과)
+//        ├─ diagnosis_summary
+//        ├─ 4개 탭 (sticky, 역량 모델링·훈련체계도·연간계획·명세서)
+//        └─ 탭 컨텐츠 (기본: 역량 모델링 표 + NCS 박스)
 // ============================================================================
 
-/** 로드맵 버전 히스토리 카드 스켈레톤 */
-function VersionHistorySkeleton({ rows = 3 }: { rows?: number }) {
+/** 역량 모델링 표 스켈레톤 (Ⅲ-1, 5열: 역량명·정의·지식·기술·태도) */
+function CompetencyModelingTableSkeleton({ rows = 3 }: { rows?: number }) {
+  const COLUMNS = ['역량명', '역량 정의 (수행준거)', '지식', '기술', '태도'];
   return (
-    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
-      <SkeletonBar height="h-4" width="w-24" className="mb-3" />
-      <div className="space-y-2">
-        {renderItems(rows, (i) => (
-          <div key={i} className="px-3 py-2 rounded bg-gray-50">
-            <div className="flex items-center justify-between mb-1">
-              <SkeletonBar height="h-4" width="w-8" />
-              <SkeletonBar height="h-5" width="w-14" />
-            </div>
-            <SkeletonBar height="h-3" width="w-20" variant="secondary" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** 로드맵 생성 카드 스켈레톤 (컨설턴트용) */
-function RoadmapGenerateCardSkeleton() {
-  return (
-    <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
-      <SkeletonBar height="h-4" width="w-20" className="mb-3" />
-      <SkeletonBar height="h-20" width="w-full" className="mb-2" />
-      <SkeletonBar height="h-9" width="w-full" />
-    </div>
-  );
-}
-
-/** 로드맵 매트릭스 스켈레톤 */
-function RoadmapMatrixSkeleton() {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[800px] table-fixed border-collapse">
-        <thead>
+    <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <table className="w-full min-w-[900px] table-fixed border-collapse">
+        <thead className="bg-gray-50">
           <tr>
-            <th className="w-[100px] px-3 py-2 text-left text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200">
-              <SkeletonBar height="h-4" width="w-16" />
-            </th>
-            {['초급', '중급', '고급'].map((level) => (
-              <th key={level} className="px-3 py-2 text-center text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200">
-                {level}
+            {COLUMNS.map((header) => (
+              <th
+                key={header}
+                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
+              >
+                {header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
-          {renderItems(4, (rowIndex) => (
-            <tr key={rowIndex}>
-              <td className="px-3 py-3 text-sm font-medium text-gray-900 bg-gray-50 border border-gray-200">
-                <SkeletonBar height="h-4" width="w-20" />
-              </td>
-              {renderItems(3, (colIndex) => (
-                <td key={colIndex} className="px-3 py-3 border border-gray-200 align-top">
-                  <div className="space-y-2">
-                    {renderItems(rowIndex % 2 === 0 ? 2 : 1, (i) => (
-                      <div key={i} className="p-2 bg-gray-50 rounded">
-                        <SkeletonBar height="h-4" width="w-full" className="mb-1" />
-                        <SkeletonBar height="h-3" width="w-16" variant="secondary" />
-                      </div>
-                    ))}
+        <tbody className="bg-white divide-y divide-gray-200">
+          {renderItems(rows, (rowIdx) => (
+            <tr key={rowIdx}>
+              {renderItems(5, (colIdx) => (
+                <td key={colIdx} className="px-3 py-3 align-top">
+                  <div className="space-y-1.5">
+                    <SkeletonBar height="h-3.5" width="w-full" />
+                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-4/5" variant="secondary" />}
+                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-3/5" variant="secondary" />}
                   </div>
                 </td>
               ))}
@@ -854,41 +830,110 @@ function RoadmapMatrixSkeleton() {
   );
 }
 
-/** 로드맵 내용 영역 스켈레톤 */
-function RoadmapContentSkeleton() {
+/** NCS 방법론 박스 스켈레톤 (Step 6.5 신규 — 역량 모델링 탭 하단) */
+function NcsMethodologyBoxSkeleton() {
   return (
-    <div className={CARD_STYLES.base}>
-      {/* 버전 헤더 */}
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <SkeletonBar height="h-6" width="w-20" />
-            <SkeletonBar height="h-5" width="w-14" />
-            <SkeletonBar height="h-4" width="w-24" variant="secondary" />
+    <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <SkeletonBar height="h-4" width="w-4" />
+        <SkeletonBar height="h-4" width="w-24" />
+      </div>
+      <SkeletonBar height="h-4" width="w-48" variant="secondary" />
+      <div className="space-y-2 pt-2">
+        <SkeletonBar height="h-3.5" width="w-full" />
+        <SkeletonBar height="h-3.5" width="w-11/12" />
+        <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
+      </div>
+    </div>
+  );
+}
+
+/** 로드맵 개요 요약 스켈레톤 (Step 6.5 신규 — Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과) */
+function RoadmapOverviewSummarySkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {renderItems(2, (i) => (
+        <div key={i} className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <SkeletonBar height="h-3.5" width="w-4" />
+            <SkeletonBar height="h-4" width="w-28" />
           </div>
-          <div className="flex items-center space-x-2">
-            <SkeletonBar height="h-9" width="w-24" />
-            <SkeletonBar height="h-9" width="w-24" />
-            <SkeletonBar height="h-9" width="w-28" />
-          </div>
+          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-5/6" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-2/3" variant="secondary" />
         </div>
-        <SkeletonBar height="h-4" width="w-3/4" className="mt-3" />
+      ))}
+    </div>
+  );
+}
+
+/** VersionSelector 바 스켈레톤 (sticky 바 형태) */
+function VersionSelectorBarSkeleton() {
+  return (
+    <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center gap-2">
+        <SkeletonBar height="h-9" width="w-32" />
+        <SkeletonBar height="h-6" width="w-16" variant="secondary" />
+      </div>
+      <SkeletonBar height="h-8" width="w-24" variant="secondary" />
+    </div>
+  );
+}
+
+/** RegenerateAccordion 스켈레톤 (수정 요청 아코디언 접힘 상태) */
+function RegenerateAccordionSkeleton() {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <SkeletonBar height="h-4" width="w-4" />
+          <SkeletonBar height="h-4" width="w-28" />
+        </div>
+        <SkeletonBar height="h-4" width="w-4" variant="secondary" />
+      </div>
+    </div>
+  );
+}
+
+/** 로드맵 버전 카드 스켈레톤 (Step 6/6.5 4탭 구조) */
+function RoadmapVersionCardSkeleton() {
+  const TAB_LABELS = ['역량 모델링', '훈련체계도', '연간 훈련계획', '훈련과정 명세서'];
+  return (
+    <div className={`${CARD_STYLES.base} pb-1`}>
+      {/* 헤더 영역: 버전 뱃지 + Overview 요약 + 진단 요약 */}
+      <div className="px-6 py-5 border-b border-gray-200 space-y-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <SkeletonBar height="h-6" width="w-20" />
+          <SkeletonBar height="h-6" width="w-14" />
+        </div>
+        <RoadmapOverviewSummarySkeleton />
+        <div className="space-y-2">
+          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
+        </div>
       </div>
 
-      {/* 탭 */}
-      <div className="border-b border-gray-200">
-        <div className="flex -mb-px">
-          {renderItems(3, (i) => (
-            <div key={i} className="px-6 py-3">
-              <SkeletonBar height="h-4" width="w-20" />
+      {/* 탭 바 (4개) */}
+      <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
+        <nav className="flex -mb-px overflow-x-auto">
+          {TAB_LABELS.map((label, i) => (
+            <div
+              key={label}
+              className={`px-3 py-2 sm:px-6 sm:py-3 flex-shrink-0 border-b-2 ${
+                i === 0 ? 'border-purple-300' : 'border-transparent'
+              }`}
+            >
+              <SkeletonBar height="h-4" width="w-20" variant={i === 0 ? 'primary' : 'secondary'} />
             </div>
           ))}
-        </div>
+        </nav>
       </div>
 
-      {/* 내용 */}
-      <div className="p-6">
-        <RoadmapMatrixSkeleton />
+      {/* 기본 탭(역량 모델링) 컨텐츠 */}
+      <div className="p-4 sm:p-6 space-y-5">
+        <CompetencyModelingTableSkeleton />
+        <NcsMethodologyBoxSkeleton />
       </div>
     </div>
   );
@@ -897,41 +942,45 @@ function RoadmapContentSkeleton() {
 /** 로드맵 페이지 스켈레톤 공통 레이아웃 */
 function RoadmapPageSkeletonBase({
   showDescription = false,
-  showGenerateCard = false,
+  showRegenerateAccordion = false,
 }: {
   showDescription?: boolean;
-  showGenerateCard?: boolean;
+  showRegenerateAccordion?: boolean;
 }) {
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
+      {/* PageHeader: 뒤로가기 + 제목 + 다운로드 버튼 그룹 */}
       <div>
-        <SkeletonBar height="h-4" width="w-32" className="mb-2" />
-        <SkeletonBar height="h-8" width="w-48" />
+        <SkeletonBar height="h-3.5" width="w-32" className="mb-2" variant="secondary" />
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <SkeletonBar height="h-7" width="w-48" />
+          <div className="flex items-center gap-2">
+            {/* PDF / Excel / HWPX 다운로드 버튼 3종 */}
+            <SkeletonBar height="h-9" width="w-20" />
+            <SkeletonBar height="h-9" width="w-20" />
+            <SkeletonBar height="h-9" width="w-20" />
+          </div>
+        </div>
         {showDescription && (
-          <SkeletonBar height="h-4" width="w-64" className="mt-1" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-64" className="mt-2" variant="secondary" />
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* 왼쪽: 생성 카드(선택) + 버전 목록 */}
-        <div className="lg:col-span-1 space-y-4">
-          {showGenerateCard && <RoadmapGenerateCardSkeleton />}
-          <VersionHistorySkeleton />
-        </div>
+      {/* VersionSelector 바 (sticky) */}
+      <VersionSelectorBarSkeleton />
 
-        {/* 오른쪽: 로드맵 내용 */}
-        <div className="lg:col-span-3">
-          <RoadmapContentSkeleton />
-        </div>
-      </div>
+      {/* 수정 요청 아코디언 (컨설턴트 전용) */}
+      {showRegenerateAccordion && <RegenerateAccordionSkeleton />}
+
+      {/* 버전 카드 (4탭 구조) */}
+      <RoadmapVersionCardSkeleton />
     </div>
   );
 }
 
-/** 로드맵 페이지 스켈레톤 (컨설턴트용 - 생성 버튼 포함) */
+/** 로드맵 페이지 스켈레톤 (컨설턴트용 - 수정 요청 아코디언 포함) */
 export function RoadmapPageSkeleton() {
-  return <RoadmapPageSkeletonBase showGenerateCard />;
+  return <RoadmapPageSkeletonBase showRegenerateAccordion />;
 }
 
 /** 로드맵 페이지 스켈레톤 (OPS용 - 읽기 전용) */

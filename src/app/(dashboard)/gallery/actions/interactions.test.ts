@@ -23,7 +23,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { toggleLike, toggleShare } from './interactions';
+import { toggleLike, toggleShare, togglePBLLike, togglePBLShare } from './interactions';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
@@ -42,6 +42,10 @@ vi.mock('@/lib/supabase/admin', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
+}));
+
+vi.mock('@/lib/services/audit', () => ({
+  createAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── 테스트 상수 ────────────────────────────────────────────────────────────
@@ -409,6 +413,275 @@ describe('toggleShare — 추가 에지 케이스', () => {
     setupAuthWithRole();
 
     const result = await toggleShare('');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+});
+
+// ─── togglePBLLike ────────────────────────────────────────────────────────────
+
+const TEST_PBL_ID = '550e8400-e29b-41d4-a716-446655440020';
+
+describe('togglePBLLike', () => {
+  it('미인증 → error 반환', async () => {
+    mockRequireAuth.mockResolvedValue({ error: '인증이 필요합니다.' });
+
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result).toEqual({ success: false, error: '인증이 필요합니다.' });
+  });
+
+  it('UUID 검증 실패 → error 반환', async () => {
+    setupAuth();
+
+    const result = await togglePBLLike('not-a-uuid');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+
+  it('기존 좋아요 있음 → 삭제 (unlike)', async () => {
+    const { revalidatePath } = await import('next/cache');
+    setupAuth();
+
+    // 1. maybeSingle: 기존 PBL 좋아요 존재
+    serverMock.addResult({ data: { id: 'pbl-like-1' }, error: null });
+    // 2. delete → then
+    serverMock.addResult({ data: null, error: null });
+    // 3. count 조회 → then
+    serverMock.addResult({ data: null, error: null, count: 3 });
+
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.liked).toBe(false);
+      expect(result.data.count).toBe(3);
+    }
+    expect(serverMock.chainable.delete).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith('/gallery');
+  });
+
+  it('기존 좋아요 없음 → 추가 (like)', async () => {
+    const { revalidatePath } = await import('next/cache');
+    setupAuth();
+
+    // 1. maybeSingle: 기존 없음
+    serverMock.addResult({ data: null, error: null });
+    // 2. insert → then
+    serverMock.addResult({ data: null, error: null });
+    // 3. count 조회
+    serverMock.addResult({ data: null, error: null, count: 7 });
+
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.liked).toBe(true);
+      expect(result.data.count).toBe(7);
+    }
+    expect(serverMock.chainable.insert).toHaveBeenCalledWith({
+      user_id: TEST_USER_ID,
+      pbl_report_id: TEST_PBL_ID,
+    });
+    expect(revalidatePath).toHaveBeenCalledWith('/gallery');
+  });
+
+  it('좋아요 추가 실패 → error 반환', async () => {
+    setupAuth();
+
+    serverMock.addResult({ data: null, error: null });
+    serverMock.addResult({ data: null, error: { message: 'insert failed' } });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result).toEqual({ success: false, error: '좋아요 처리 중 오류가 발생했습니다.' });
+    consoleSpy.mockRestore();
+  });
+
+  it('count null → 0 반환', async () => {
+    setupAuth();
+
+    serverMock.addResult({ data: null, error: null });
+    serverMock.addResult({ data: null, error: null });
+    serverMock.addResult({ data: null, error: null, count: null });
+
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.count).toBe(0);
+    }
+  });
+
+  it('빈 문자열 ID → UUID 검증 실패', async () => {
+    setupAuth();
+
+    const result = await togglePBLLike('');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+});
+
+// ─── togglePBLShare ──────────────────────────────────────────────────────────
+
+describe('togglePBLShare', () => {
+  it('미인증 → error 반환', async () => {
+    mockRequireAuthWithRole.mockResolvedValue({ error: '인증이 필요합니다.' });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({ success: false, error: '인증이 필요합니다.' });
+  });
+
+  it('비컨설턴트 → error 반환', async () => {
+    mockRequireAuthWithRole.mockResolvedValue({
+      error: '컨설턴트만 공유 설정을 변경할 수 있습니다.',
+    });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '컨설턴트만 공유 설정을 변경할 수 있습니다.',
+    });
+  });
+
+  it('UUID 검증 실패 → error 반환', async () => {
+    setupAuthWithRole();
+
+    const result = await togglePBLShare('not-a-uuid');
+
+    expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
+  });
+
+  it('PBL 보고서 미존재 → error 반환', async () => {
+    setupAuthWithRole();
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({ success: false, error: 'PBL 보고서를 찾을 수 없습니다.' });
+  });
+
+  it('본인 아님 → error 반환', async () => {
+    setupAuthWithRole({ userId: TEST_USER_ID });
+    adminMock.addResult({
+      data: {
+        id: TEST_PBL_ID,
+        is_shared: false,
+        status: 'FINAL',
+        created_by: 'other-user-id',
+      },
+      error: null,
+    });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '본인이 작성한 PBL 보고서만 공유할 수 있습니다.',
+    });
+  });
+
+  it('FINAL 아님 → error 반환', async () => {
+    setupAuthWithRole({ userId: TEST_USER_ID });
+    adminMock.addResult({
+      data: {
+        id: TEST_PBL_ID,
+        is_shared: false,
+        status: 'DRAFT',
+        created_by: TEST_USER_ID,
+      },
+      error: null,
+    });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '확정된 PBL 보고서만 공유할 수 있습니다.',
+    });
+  });
+
+  it('is_shared=false → true 토글 성공', async () => {
+    const { revalidatePath } = await import('next/cache');
+    setupAuthWithRole({ userId: TEST_USER_ID });
+
+    adminMock.addResult({
+      data: {
+        id: TEST_PBL_ID,
+        is_shared: false,
+        status: 'FINAL',
+        created_by: TEST_USER_ID,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.isShared).toBe(true);
+    }
+    expect(adminMock.chainable.update).toHaveBeenCalledWith({ is_shared: true });
+    expect(revalidatePath).toHaveBeenCalledWith('/gallery');
+  });
+
+  it('is_shared=true → false 토글 성공', async () => {
+    const { revalidatePath } = await import('next/cache');
+    setupAuthWithRole({ userId: TEST_USER_ID });
+
+    adminMock.addResult({
+      data: {
+        id: TEST_PBL_ID,
+        is_shared: true,
+        status: 'FINAL',
+        created_by: TEST_USER_ID,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.isShared).toBe(false);
+    }
+    expect(adminMock.chainable.update).toHaveBeenCalledWith({ is_shared: false });
+    expect(revalidatePath).toHaveBeenCalledWith('/gallery');
+  });
+
+  it('DB update 실패 → error 반환', async () => {
+    setupAuthWithRole({ userId: TEST_USER_ID });
+
+    adminMock.addResult({
+      data: {
+        id: TEST_PBL_ID,
+        is_shared: false,
+        status: 'FINAL',
+        created_by: TEST_USER_ID,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: { message: 'update failed' } });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await togglePBLShare(TEST_PBL_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '공유 설정 변경 중 오류가 발생했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('빈 문자열 ID → UUID 검증 실패', async () => {
+    setupAuthWithRole();
+
+    const result = await togglePBLShare('');
 
     expect(result).toEqual({ success: false, error: '유효하지 않은 요청입니다.' });
   });

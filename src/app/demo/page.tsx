@@ -5,27 +5,29 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
-
-// 로드맵 컴포넌트 — 코드 분할 (초기 번들에서 제외)
-const RoadmapMatrix = dynamic(
-  () => import('@/components/roadmap/RoadmapMatrix').then(m => ({ default: m.RoadmapMatrix }))
-);
-const PBLCourseView = dynamic(
-  () => import('@/components/roadmap/PBLCourseView').then(m => ({ default: m.PBLCourseView }))
-);
-const CoursesList = dynamic(
-  () => import('@/components/roadmap/CoursesList').then(m => ({ default: m.CoursesList }))
-);
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
-import {
-  SAMPLE_COMPANY,
-  SAMPLE_COURSES,
-  SAMPLE_MATRIX,
-  SAMPLE_PBL,
-} from '@/lib/data/demo-sample';
+import { SAMPLE_COMPANY, SAMPLE_ROADMAP_RESULT } from '@/lib/data/demo-sample';
+
+// 신규 4섹션 컴포넌트 — 코드 분할 (초기 번들에서 제외)
+const CompetencyModelingTable = dynamic(() =>
+  import('@/components/roadmap/CompetencyModelingTable').then((m) => ({
+    default: m.CompetencyModelingTable,
+  })),
+);
+const RoadmapMatrix = dynamic(() =>
+  import('@/components/roadmap/RoadmapMatrix').then((m) => ({ default: m.RoadmapMatrix })),
+);
+const AnnualTrainingPlanTable = dynamic(() =>
+  import('@/components/roadmap/AnnualTrainingPlanTable').then((m) => ({
+    default: m.AnnualTrainingPlanTable,
+  })),
+);
+const CoursesList = dynamic(() =>
+  import('@/components/roadmap/CoursesList').then((m) => ({ default: m.CoursesList })),
+);
 
 export default function DemoPage() {
-  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('matrix');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,7 +97,15 @@ export default function DemoPage() {
           </div>
         </div>
 
-        {/* 로드맵 */}
+        {/* 진단 요약 */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">진단 요약</h2>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            {SAMPLE_ROADMAP_RESULT.diagnosis_summary}
+          </p>
+        </div>
+
+        {/* 로드맵 4섹션 */}
         <div className="bg-white shadow rounded-lg">
           {/* 탭 */}
           <div className="border-b border-gray-200">
@@ -118,9 +128,29 @@ export default function DemoPage() {
 
           {/* 탭 내용 */}
           <div className="p-6">
-            {activeTab === 'matrix' && <RoadmapMatrix matrix={SAMPLE_MATRIX} />}
-            {activeTab === 'courses' && <CoursesList courses={SAMPLE_COURSES} />}
-            {activeTab === 'pbl' && <PBLCourseView course={SAMPLE_PBL} />}
+            {activeTab === 'competencies' && (
+              <CompetencyModelingTable
+                competencies={SAMPLE_ROADMAP_RESULT.competencies}
+                canEdit={false}
+              />
+            )}
+            {activeTab === 'structure' && (
+              <RoadmapMatrix
+                competencies={SAMPLE_ROADMAP_RESULT.competencies}
+                trainingStructure={SAMPLE_ROADMAP_RESULT.training_structure}
+                canEdit={false}
+              />
+            )}
+            {activeTab === 'plan' && (
+              <AnnualTrainingPlanTable
+                plan={SAMPLE_ROADMAP_RESULT.annual_plan}
+                competencies={SAMPLE_ROADMAP_RESULT.competencies}
+                canEdit={false}
+              />
+            )}
+            {activeTab === 'specs' && (
+              <CoursesList specs={SAMPLE_ROADMAP_RESULT.course_specs} canEdit={false} />
+            )}
           </div>
         </div>
 

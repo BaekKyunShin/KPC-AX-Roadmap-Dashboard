@@ -45,8 +45,8 @@ const CONSULTANT_TABLE_COLUMNS: ConsultantTableColumn[] = [
   { key: 'total', label: '총 담당 프로젝트' },
   { key: 'assigned', label: '프로젝트 수행 전' },
   { key: 'interviewing', label: '현장 인터뷰 완료' },
-  { key: 'drafting', label: '로드맵 초안 완료' },
-  { key: 'completed', label: '로드맵 확정 완료' },
+  { key: 'drafting', label: '초안 완료' },
+  { key: 'completed', label: '최종 확정' },
 ] as const;
 
 /** 공통 스타일 */

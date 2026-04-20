@@ -10,9 +10,12 @@ import {
   getWorkflowStepLabel,
   getProjectStatusBadge,
   getConsultantProjectStatusBadge,
+  getProjectWorkflowStepsByTrack,
   PROJECT_WORKFLOW_STEPS,
   PROJECT_STATUS_CONFIG,
   CONSULTANT_PROJECT_STATUS_CONFIG,
+  EXPORT_ELIGIBLE_STATUSES,
+  PBL_ELIGIBLE_STATUSES,
   OPS_MANAGER_ROLES,
   CONSULTANT_ROLES,
   OPS_ADMIN_ROLES,
@@ -29,6 +32,7 @@ describe('ALLOWED_STATUS_TRANSITIONS', () => {
       'ASSIGNED',
       'INTERVIEWED',
       'ROADMAP_DRAFTED',
+      'PBL_DRAFTED',
       'FINALIZED',
     ];
     for (const status of allStatuses) {
@@ -51,13 +55,16 @@ describe('validateStatusTransition', () => {
     ['MATCH_RECOMMENDED', 'ASSIGNED', '정방향'],
     ['ASSIGNED', 'INTERVIEWED', '정방향'],
     ['INTERVIEWED', 'ROADMAP_DRAFTED', '정방향'],
+    ['INTERVIEWED', 'PBL_DRAFTED', 'PBL 트랙 초안'],
     ['ROADMAP_DRAFTED', 'FINALIZED', '정방향'],
+    ['PBL_DRAFTED', 'FINALIZED', 'PBL 트랙 확정'],
     // 스킵 전이
     ['NEW', 'MATCH_RECOMMENDED', '자가진단 없이 매칭 추천'],
     ['DIAGNOSED', 'ASSIGNED', '매칭 추천 없이 직접 배정'],
     // 동일 상태 재실행
     ['ASSIGNED', 'ASSIGNED', '컨설턴트 재배정'],
     ['ROADMAP_DRAFTED', 'ROADMAP_DRAFTED', '로드맵 재생성'],
+    ['PBL_DRAFTED', 'PBL_DRAFTED', 'PBL 재생성'],
   ])('%s → %s 허용 (%s)', (from, to) => {
     expect(validateStatusTransition(from, to)).toBe(true);
   });
@@ -169,6 +176,7 @@ describe('getWorkflowStepIndex', () => {
     ['ASSIGNED', 2],
     ['INTERVIEWED', 3],
     ['ROADMAP_DRAFTED', 4],
+    ['PBL_DRAFTED', 4],
     ['FINALIZED', 5],
   ])('상태 "%s" → 인덱스 %d', (status, expected) => {
     expect(getWorkflowStepIndex(status)).toBe(expected);
@@ -186,8 +194,9 @@ describe('getWorkflowStepLabel', () => {
     ['MATCH_RECOMMENDED', '진단결과 입력 완료'],
     ['ASSIGNED', '컨설턴트 배정 완료'],
     ['INTERVIEWED', '현장 인터뷰 완료'],
-    ['ROADMAP_DRAFTED', '로드맵 초안 완료'],
-    ['FINALIZED', '로드맵 최종 확정'],
+    ['ROADMAP_DRAFTED', '초안 완료'],
+    ['PBL_DRAFTED', '초안 완료'],
+    ['FINALIZED', '최종 확정'],
   ])('상태 "%s" → 라벨 "%s"', (status, expected) => {
     expect(getWorkflowStepLabel(status)).toBe(expected);
   });
@@ -200,7 +209,7 @@ describe('getWorkflowStepLabel', () => {
 describe('getProjectStatusBadge', () => {
   it.each<ProjectStatus>([
     'NEW', 'DIAGNOSED', 'MATCH_RECOMMENDED', 'ASSIGNED',
-    'INTERVIEWED', 'ROADMAP_DRAFTED', 'FINALIZED',
+    'INTERVIEWED', 'ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED',
   ])('상태 "%s"에 대해 label과 color를 포함한 객체를 반환한다', (status) => {
     const badge = getProjectStatusBadge(status);
     expect(badge).toHaveProperty('label');
@@ -279,5 +288,68 @@ describe('상수 일관성', () => {
     const diagnosedIdx = getWorkflowStepIndex('DIAGNOSED');
     const matchIdx = getWorkflowStepIndex('MATCH_RECOMMENDED');
     expect(diagnosedIdx).toBe(matchIdx);
+  });
+
+  it('ROADMAP_DRAFTED와 PBL_DRAFTED는 같은 워크플로우 단계(drafted)에 속한다', () => {
+    expect(getWorkflowStepIndex('ROADMAP_DRAFTED')).toBe(getWorkflowStepIndex('PBL_DRAFTED'));
+  });
+});
+
+// =============================================================================
+// 트랙별 워크플로우
+// =============================================================================
+
+describe('getProjectWorkflowStepsByTrack', () => {
+  it('ROADMAP 트랙은 drafted 단계가 로드맵 초안 완료 라벨과 ROADMAP_DRAFTED 상태만 포함한다', () => {
+    const steps = getProjectWorkflowStepsByTrack('ROADMAP');
+    const drafted = steps.find((s) => s.key === 'drafted');
+    expect(drafted?.label).toBe('로드맵 초안 완료');
+    expect(drafted?.statuses).toEqual(['ROADMAP_DRAFTED']);
+  });
+
+  it('PBL 트랙은 drafted 단계가 PBL 초안 완료 라벨과 PBL_DRAFTED 상태만 포함한다', () => {
+    const steps = getProjectWorkflowStepsByTrack('PBL');
+    const drafted = steps.find((s) => s.key === 'drafted');
+    expect(drafted?.label).toBe('PBL 초안 완료');
+    expect(drafted?.statuses).toEqual(['PBL_DRAFTED']);
+  });
+
+  it('두 트랙 모두 동일한 단계 수와 동일한 key 순서를 가진다', () => {
+    const roadmap = getProjectWorkflowStepsByTrack('ROADMAP');
+    const pbl = getProjectWorkflowStepsByTrack('PBL');
+    expect(roadmap.map((s) => s.key)).toEqual(pbl.map((s) => s.key));
+    expect(roadmap).toHaveLength(PROJECT_WORKFLOW_STEPS.length);
+  });
+
+  it('finalized 단계 라벨도 트랙별로 다르다', () => {
+    const roadmap = getProjectWorkflowStepsByTrack('ROADMAP');
+    const pbl = getProjectWorkflowStepsByTrack('PBL');
+    expect(roadmap.find((s) => s.key === 'finalized')?.label).toBe('로드맵 최종 확정');
+    expect(pbl.find((s) => s.key === 'finalized')?.label).toBe('PBL 최종 확정');
+  });
+});
+
+// =============================================================================
+// 내보내기 가능 / PBL 생성 가능 상태
+// =============================================================================
+
+describe('EXPORT_ELIGIBLE_STATUSES', () => {
+  it('ROADMAP_DRAFTED, PBL_DRAFTED, FINALIZED를 모두 포함한다', () => {
+    expect(EXPORT_ELIGIBLE_STATUSES).toEqual(['ROADMAP_DRAFTED', 'PBL_DRAFTED', 'FINALIZED']);
+  });
+});
+
+describe('PBL_ELIGIBLE_STATUSES', () => {
+  it('INTERVIEWED, PBL_DRAFTED, FINALIZED를 포함한다', () => {
+    expect(PBL_ELIGIBLE_STATUSES).toEqual(['INTERVIEWED', 'PBL_DRAFTED', 'FINALIZED']);
+  });
+});
+
+describe('PROJECT_STATUS_CONFIG PBL_DRAFTED', () => {
+  it('PBL_DRAFTED 라벨은 "PBL 초안 완료"이다', () => {
+    expect(PROJECT_STATUS_CONFIG.PBL_DRAFTED.label).toBe('PBL 초안 완료');
+  });
+  it('PBL_DRAFTED 배지 색상은 purple 계열이다', () => {
+    expect(PROJECT_STATUS_CONFIG.PBL_DRAFTED.color).toContain('purple');
   });
 });

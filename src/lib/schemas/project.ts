@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
 import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+import { PROJECT_TRACKS } from '@/lib/constants/tracks';
 
 // 프로젝트 상태
 export const projectStatusSchema = z.enum([
@@ -11,6 +12,7 @@ export const projectStatusSchema = z.enum([
   'ASSIGNED',
   'INTERVIEWED',
   'ROADMAP_DRAFTED',
+  'PBL_DRAFTED',
   'FINALIZED',
 ]);
 
@@ -30,6 +32,7 @@ export const createProjectSchema = z.object({
   contact_phone: z.string().optional(),
   company_address: z.string().optional(),
   customer_comment: z.string().max(2000).optional(),
+  track: z.enum(PROJECT_TRACKS).default('ROADMAP'),
 });
 
 // 프로젝트 수정 스키마

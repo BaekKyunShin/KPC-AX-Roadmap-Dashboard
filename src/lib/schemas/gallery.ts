@@ -7,6 +7,8 @@ export const galleryFiltersSchema = z.object({
   search: z.string().max(200).optional().default(''),
   industry: z.string().max(50).optional().default(''),
   sort: z.enum(['latest', 'popular']).optional().default('latest'),
+  // 트랙 필터 (ALL/ROADMAP/PBL) — 기본 ALL
+  track: z.enum(['ALL', 'ROADMAP', 'PBL']).optional().default('ALL'),
   // 관리자 전용 필터
   status: z.enum(['DRAFT', 'FINAL', 'ARCHIVED']).optional(),
   isShared: z.enum(['true', 'false']).optional(),
@@ -28,6 +30,16 @@ export const toggleShareSchema = z.object({
   roadmapVersionId: z.string().uuid('유효하지 않은 로드맵 ID입니다.'),
 });
 
+/** PBL 좋아요 토글 스키마 */
+export const togglePBLLikeSchema = z.object({
+  pblReportId: z.string().uuid('유효하지 않은 PBL 보고서 ID입니다.'),
+});
+
+/** PBL 공유 토글 스키마 */
+export const togglePBLShareSchema = z.object({
+  pblReportId: z.string().uuid('유효하지 않은 PBL 보고서 ID입니다.'),
+});
+
 /** 로드맵 복제 스키마 */
 export const copyRoadmapSchema = z.object({
   sourceRoadmapVersionId: z.string().uuid('유효하지 않은 원본 로드맵 ID입니다.'),
@@ -36,4 +48,6 @@ export const copyRoadmapSchema = z.object({
 
 export type ToggleLikeInput = z.infer<typeof toggleLikeSchema>;
 export type ToggleShareInput = z.infer<typeof toggleShareSchema>;
+export type TogglePBLLikeInput = z.infer<typeof togglePBLLikeSchema>;
+export type TogglePBLShareInput = z.infer<typeof togglePBLShareSchema>;
 export type CopyRoadmapInput = z.infer<typeof copyRoadmapSchema>;

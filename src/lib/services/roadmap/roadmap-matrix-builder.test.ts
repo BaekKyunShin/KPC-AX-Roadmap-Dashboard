@@ -1,164 +1,250 @@
 /**
  * roadmap-matrix-builder.ts 테스트
- * - buildRoadmapMatrixFromCourses: 레벨/업무별 과정 배치 로직
+ * - buildTrainingStructureMatrix: 역량 × 수준 매트릭스 생성 (UI용)
+ * - buildTrainingStructureTable: 6열 단순 표 변환 (HWPX/PDF 출력용)
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';
-import type { RoadmapCell } from './roadmap-types';
+import { buildTrainingStructureMatrix, buildTrainingStructureTable } from './roadmap-matrix-builder';
+import type {
+  RoadmapCompetency,
+  RoadmapTrainingStructureItem,
+  TrainingLevel,
+} from './roadmap-types';
 
-// ─── 헬퍼: 최소 RoadmapCell 생성 ─────────────────────────────────────────
+// ─── 헬퍼 ─────────────────────────────────────────────────────────────────
 
-function createCourse(
-  overrides: Partial<RoadmapCell> & Pick<RoadmapCell, 'course_name' | 'level' | 'target_task'>
-): RoadmapCell {
+function makeCompetency(
+  name: string,
+  overrides: Partial<RoadmapCompetency> = {},
+): RoadmapCompetency {
   return {
-    target_audience: '전 직원',
-    recommended_hours: 8,
-    curriculum: [],
-    tools: [],
-    expected_outcome: '기대 효과',
-    measurement_method: '측정 방법',
-    prerequisites: [],
+    name,
+    definition: `${name} 정의`,
+    knowledge: ['K1'],
+    skills: ['S1'],
+    attitudes: ['A1'],
     ...overrides,
   };
 }
 
-// ─── 테스트 ────────────────────────────────────────────────────────────────
+function makeItem(
+  competency_name: string,
+  level: TrainingLevel,
+  overrides: Partial<RoadmapTrainingStructureItem> = {},
+): RoadmapTrainingStructureItem {
+  return {
+    competency_name,
+    level,
+    content: `${competency_name} ${level} 내용`,
+    target_audience: '전 직원',
+    method: '집체',
+    goal: '훈련 목표',
+    ...overrides,
+  };
+}
 
-describe('buildRoadmapMatrixFromCourses', () => {
-  it('빈 courses 배열은 빈 배열을 반환한다', () => {
-    const result = buildRoadmapMatrixFromCourses([]);
-    expect(result).toEqual([]);
+// ─── 테스트 ──────────────────────────────────────────────────────────────
+
+describe('buildTrainingStructureMatrix', () => {
+  it('빈 competencies + 빈 structure → 빈 배열', () => {
+    expect(buildTrainingStructureMatrix([], [])).toEqual([]);
   });
 
-  it('단일 BEGINNER 과정을 beginner 셀에 배치한다', () => {
-    const courses = [
-      createCourse({ course_name: 'AI 기초', level: 'BEGINNER', target_task: '데이터 분석' }),
-    ];
+  it('competencies만 있고 structure는 비어있으면 빈 셀만 가진 행들 반환', () => {
+    const result = buildTrainingStructureMatrix(
+      [makeCompetency('데이터 분석'), makeCompetency('AI 활용')],
+      [],
+    );
 
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].task_name).toBe('데이터 분석');
-    expect(result[0].beginner).toEqual([{ course_name: 'AI 기초', recommended_hours: 8 }]);
-    expect(result[0].intermediate).toEqual([]);
-    expect(result[0].advanced).toEqual([]);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      competency_name: '데이터 분석',
+      beginner: [],
+      intermediate: [],
+      advanced: [],
+    });
+    expect(result[1].competency_name).toBe('AI 활용');
   });
 
-  it('단일 INTERMEDIATE 과정을 intermediate 셀에 배치한다', () => {
-    const courses = [
-      createCourse({ course_name: '머신러닝 실무', level: 'INTERMEDIATE', target_task: '모델링' }),
+  it('역량 2개 × 수준 3개 매트릭스 생성 (전부 채워짐)', () => {
+    const competencies = [makeCompetency('데이터 분석'), makeCompetency('AI 활용')];
+    const structure = [
+      makeItem('데이터 분석', 'BEGINNER'),
+      makeItem('데이터 분석', 'INTERMEDIATE'),
+      makeItem('데이터 분석', 'ADVANCED'),
+      makeItem('AI 활용', 'BEGINNER'),
+      makeItem('AI 활용', 'INTERMEDIATE'),
+      makeItem('AI 활용', 'ADVANCED'),
     ];
 
-    const result = buildRoadmapMatrixFromCourses(courses);
+    const result = buildTrainingStructureMatrix(competencies, structure);
 
-    expect(result[0].intermediate).toEqual([{ course_name: '머신러닝 실무', recommended_hours: 8 }]);
-    expect(result[0].beginner).toEqual([]);
-    expect(result[0].advanced).toEqual([]);
-  });
-
-  it('단일 ADVANCED 과정을 advanced 셀에 배치한다', () => {
-    const courses = [
-      createCourse({ course_name: 'MLOps 심화', level: 'ADVANCED', target_task: '배포' }),
-    ];
-
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    expect(result[0].advanced).toEqual([{ course_name: 'MLOps 심화', recommended_hours: 8 }]);
-    expect(result[0].beginner).toEqual([]);
-    expect(result[0].intermediate).toEqual([]);
-  });
-
-  it('같은 업무의 다른 레벨 과정을 한 행에 모은다', () => {
-    const courses = [
-      createCourse({ course_name: '기초', level: 'BEGINNER', target_task: '데이터 분석' }),
-      createCourse({ course_name: '실무', level: 'INTERMEDIATE', target_task: '데이터 분석' }),
-      createCourse({ course_name: '심화', level: 'ADVANCED', target_task: '데이터 분석' }),
-    ];
-
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].task_name).toBe('데이터 분석');
+    expect(result).toHaveLength(2);
     expect(result[0].beginner).toHaveLength(1);
     expect(result[0].intermediate).toHaveLength(1);
     expect(result[0].advanced).toHaveLength(1);
+    expect(result[1].beginner).toHaveLength(1);
+    expect(result[1].intermediate).toHaveLength(1);
+    expect(result[1].advanced).toHaveLength(1);
   });
 
-  it('다른 업무의 과정은 별도 행으로 분리한다', () => {
-    const courses = [
-      createCourse({ course_name: 'AI 기초', level: 'BEGINNER', target_task: '데이터 분석' }),
-      createCourse({ course_name: '챗봇 기초', level: 'BEGINNER', target_task: '고객 응대' }),
+  it('일부 수준만 채워지면 나머지 셀은 빈 배열로 유지', () => {
+    const result = buildTrainingStructureMatrix(
+      [makeCompetency('데이터 분석')],
+      [makeItem('데이터 분석', 'BEGINNER')],
+    );
+
+    expect(result[0].beginner).toHaveLength(1);
+    expect(result[0].intermediate).toEqual([]);
+    expect(result[0].advanced).toEqual([]);
+  });
+
+  it('같은 (역량, 수준) 셀에 여러 항목이 들어가면 배열에 누적', () => {
+    const structure = [
+      makeItem('데이터 분석', 'BEGINNER', { content: '기초 1' }),
+      makeItem('데이터 분석', 'BEGINNER', { content: '기초 2' }),
+      makeItem('데이터 분석', 'BEGINNER', { content: '기초 3' }),
     ];
 
-    const result = buildRoadmapMatrixFromCourses(courses);
+    const result = buildTrainingStructureMatrix(
+      [makeCompetency('데이터 분석')],
+      structure,
+    );
+
+    expect(result[0].beginner).toHaveLength(3);
+    expect(result[0].beginner.map((i) => i.content)).toEqual(['기초 1', '기초 2', '기초 3']);
+  });
+
+  it('미참조 역량 (structure에는 있으나 competencies에 없음)은 끝에 별도 행으로 추가', () => {
+    const competencies = [makeCompetency('데이터 분석')];
+    const structure = [
+      makeItem('데이터 분석', 'BEGINNER'),
+      makeItem('알 수 없는 역량', 'INTERMEDIATE'),
+    ];
+
+    const result = buildTrainingStructureMatrix(competencies, structure);
 
     expect(result).toHaveLength(2);
-    expect(result[0].task_name).toBe('데이터 분석');
-    expect(result[1].task_name).toBe('고객 응대');
+    expect(result[0].competency_name).toBe('데이터 분석');
+    expect(result[1].competency_name).toBe('알 수 없는 역량');
+    expect(result[1].intermediate).toHaveLength(1);
   });
 
-  it('같은 업무·같은 레벨의 여러 과정을 한 셀에 모은다', () => {
-    const courses = [
-      createCourse({ course_name: 'Python 기초', level: 'BEGINNER', target_task: '데이터 분석', recommended_hours: 4 }),
-      createCourse({ course_name: 'Excel 분석', level: 'BEGINNER', target_task: '데이터 분석', recommended_hours: 6 }),
+  it('competencies의 순서를 보존한다', () => {
+    const competencies = [
+      makeCompetency('C'),
+      makeCompetency('A'),
+      makeCompetency('B'),
     ];
 
-    const result = buildRoadmapMatrixFromCourses(courses);
+    const result = buildTrainingStructureMatrix(competencies, []);
+
+    expect(result.map((r) => r.competency_name)).toEqual(['C', 'A', 'B']);
+  });
+
+  it('구조 항목의 level에 따라 올바른 셀에 분배한다', () => {
+    const structure = [
+      makeItem('역량1', 'BEGINNER', { content: 'B' }),
+      makeItem('역량1', 'INTERMEDIATE', { content: 'I' }),
+      makeItem('역량1', 'ADVANCED', { content: 'A' }),
+    ];
+
+    const result = buildTrainingStructureMatrix(
+      [makeCompetency('역량1')],
+      structure,
+    );
+
+    expect(result[0].beginner[0].content).toBe('B');
+    expect(result[0].intermediate[0].content).toBe('I');
+    expect(result[0].advanced[0].content).toBe('A');
+  });
+
+  it('competencies만으로 생성된 행 + 미참조 역량 행이 섞인 순서 보존', () => {
+    const competencies = [makeCompetency('A'), makeCompetency('B')];
+    const structure = [
+      makeItem('Unknown1', 'BEGINNER'),
+      makeItem('A', 'BEGINNER'),
+      makeItem('Unknown2', 'ADVANCED'),
+    ];
+
+    const result = buildTrainingStructureMatrix(competencies, structure);
+
+    // 순서: competencies 먼저(A, B) → 등장 순서대로 미참조(Unknown1, Unknown2)
+    expect(result.map((r) => r.competency_name)).toEqual(['A', 'B', 'Unknown1', 'Unknown2']);
+  });
+
+  it('중복된 미참조 역량은 같은 행에 병합된다', () => {
+    const structure = [
+      makeItem('Unknown', 'BEGINNER', { content: 'x' }),
+      makeItem('Unknown', 'INTERMEDIATE', { content: 'y' }),
+      makeItem('Unknown', 'BEGINNER', { content: 'z' }),
+    ];
+
+    const result = buildTrainingStructureMatrix([], structure);
 
     expect(result).toHaveLength(1);
-    expect(result[0].beginner).toEqual([
-      { course_name: 'Python 기초', recommended_hours: 4 },
-      { course_name: 'Excel 분석', recommended_hours: 6 },
+    expect(result[0].beginner).toHaveLength(2);
+    expect(result[0].intermediate).toHaveLength(1);
+  });
+});
+
+describe('buildTrainingStructureTable', () => {
+  it('빈 structure → 빈 배열', () => {
+    expect(buildTrainingStructureTable([makeCompetency('역량1')], [])).toEqual([]);
+  });
+
+  it('역량×수준 항목을 6열 행으로 전개 (역량명·훈련수준·내용·대상·방법·목표)', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('데이터 분석'), makeCompetency('AI 활용')],
+      [
+        makeItem('데이터 분석', 'BEGINNER'),
+        makeItem('데이터 분석', 'ADVANCED'),
+        makeItem('AI 활용', 'INTERMEDIATE'),
+      ],
+    );
+
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({
+      competency_name: '데이터 분석',
+      level_label: '초급',
+      content: '데이터 분석 BEGINNER 내용',
+      target_audience: '전 직원',
+      method: '집체',
+      goal: '훈련 목표',
+    });
+    expect(rows[1].level_label).toBe('고급');
+    expect(rows[2]).toMatchObject({ competency_name: 'AI 활용', level_label: '중급' });
+  });
+
+  it('competencies 순서 + 수준 오름차순(초/중/고) 정렬', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('A'), makeCompetency('B')],
+      [
+        makeItem('B', 'ADVANCED'),
+        makeItem('A', 'INTERMEDIATE'),
+        makeItem('A', 'BEGINNER'),
+        makeItem('B', 'BEGINNER'),
+      ],
+    );
+
+    expect(rows.map((r) => `${r.competency_name}/${r.level_label}`)).toEqual([
+      'A/초급',
+      'A/중급',
+      'B/초급',
+      'B/고급',
     ]);
   });
 
-  it('task_id를 순차적으로 생성한다 (task_1, task_2, ...)', () => {
-    const courses = [
-      createCourse({ course_name: '과정A', level: 'BEGINNER', target_task: '업무1' }),
-      createCourse({ course_name: '과정B', level: 'BEGINNER', target_task: '업무2' }),
-      createCourse({ course_name: '과정C', level: 'BEGINNER', target_task: '업무3' }),
-    ];
+  it('미참조 역량은 competencies 뒤에 추가, 수준 순서 유지', () => {
+    const rows = buildTrainingStructureTable(
+      [makeCompetency('A')],
+      [
+        makeItem('Unknown', 'BEGINNER'),
+        makeItem('A', 'BEGINNER'),
+      ],
+    );
 
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    expect(result[0].task_id).toBe('task_1');
-    expect(result[1].task_id).toBe('task_2');
-    expect(result[2].task_id).toBe('task_3');
-  });
-
-  it('입력 순서대로 행이 생성된다', () => {
-    const courses = [
-      createCourse({ course_name: '과정C', level: 'ADVANCED', target_task: '세번째 업무' }),
-      createCourse({ course_name: '과정A', level: 'BEGINNER', target_task: '첫번째 업무' }),
-      createCourse({ course_name: '과정B', level: 'INTERMEDIATE', target_task: '두번째 업무' }),
-    ];
-
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    expect(result[0].task_name).toBe('세번째 업무');
-    expect(result[1].task_name).toBe('첫번째 업무');
-    expect(result[2].task_name).toBe('두번째 업무');
-  });
-
-  it('RoadmapMatrixCell에 course_name과 recommended_hours만 포함한다', () => {
-    const courses = [
-      createCourse({
-        course_name: 'AI 기초',
-        level: 'BEGINNER',
-        target_task: '업무',
-        recommended_hours: 16,
-        target_audience: '개발팀',
-        expected_outcome: '기대효과',
-      }),
-    ];
-
-    const result = buildRoadmapMatrixFromCourses(courses);
-
-    const cell = result[0].beginner[0];
-    expect(Object.keys(cell)).toEqual(['course_name', 'recommended_hours']);
-    expect(cell.course_name).toBe('AI 기초');
-    expect(cell.recommended_hours).toBe(16);
+    expect(rows.map((r) => r.competency_name)).toEqual(['A', 'Unknown']);
   });
 });

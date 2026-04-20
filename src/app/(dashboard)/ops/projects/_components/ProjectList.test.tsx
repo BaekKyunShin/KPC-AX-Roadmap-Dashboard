@@ -45,6 +45,7 @@ function makeProject(overrides: Partial<ProjectWithTimeline> = {}): ProjectWithT
     company_name: '테스트기업',
     industry: 'IT',
     status: 'NEW',
+    track: 'ROADMAP',
     created_at: '2026-03-01T10:00:00Z',
     updated_at: '2026-03-01T10:00:00Z',
     contact_email: 'test@corp.com',

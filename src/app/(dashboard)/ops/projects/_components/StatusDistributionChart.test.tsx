@@ -7,16 +7,58 @@ import type { ProjectStats } from '../actions';
 // 모킹
 // ============================================================================
 
+// Tooltip mock — content prop(PieTooltipContent)을 active 분기 양쪽으로 직접 호출
+// 고정 payload 사용 시 범례와 텍스트 중복 → data-testid 기반으로 존재 여부만 검증
 vi.mock('recharts', () => ({
-  PieChart: ({ children }: { children: React.ReactNode }) => <div data-testid="pie-chart">{children}</div>,
-  Pie: ({ children }: { children: React.ReactNode }) => <div data-testid="pie">{children}</div>,
+  PieChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
+  Pie: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie">{children}</div>
+  ),
   Cell: () => <div data-testid="cell" />,
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: () => <div data-testid="bar" />,
   XAxis: () => null,
   YAxis: () => null,
-  Tooltip: () => null,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  // Tooltip — content prop을 active=true/false/payload=undefined 세 경우로 호출
+  Tooltip: ({
+    content,
+  }: {
+    content?: React.ReactElement<{
+      active?: boolean;
+      payload?: Array<{ payload: { name: string; value: number; stepKey: string } }>;
+    }>;
+  }) => {
+    if (!content) return null;
+    const resolvedContent = content;
+    const samplePayload = [
+      { payload: { name: '__tooltip_test__', value: 99, stepKey: 'new' } },
+    ];
+    type TooltipRenderer = (p: { active?: boolean; payload?: unknown }) => React.ReactNode;
+    const renderTooltip = resolvedContent.type as TooltipRenderer;
+    return (
+      <div data-testid="tooltip-wrapper">
+        {/* active=true: 툴팁 내용 표시 분기 → data-testid로 감쌈 */}
+        <div data-testid="tooltip-active">
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: samplePayload })}
+        </div>
+        {/* active=false: null 반환 분기 */}
+        <div data-testid="tooltip-inactive">
+          {renderTooltip({ ...resolvedContent.props, active: false, payload: samplePayload }) ?? null}
+        </div>
+        {/* payload=undefined: null 반환 분기 */}
+        <div data-testid="tooltip-no-payload">
+          {renderTooltip({ ...resolvedContent.props, active: true, payload: undefined }) ?? null}
+        </div>
+      </div>
+    );
+  },
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   Label: () => null,
 }));
 
@@ -100,17 +142,16 @@ describe('StatusDistributionChart', () => {
   describe('범례 렌더링', () => {
     it('값이 0보다 큰 단계의 라벨만 범례에 표시한다', () => {
       render(<StatusDistributionChart stats={mockStats} />);
-      // byStatus에 값이 있는 단계들의 라벨 확인
-      expect(screen.getByText('신규 등록 완료')).toBeInTheDocument();
-      expect(screen.getByText('컨설턴트 배정 완료')).toBeInTheDocument();
-      expect(screen.getByText('현장 인터뷰 완료')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 초안 완료')).toBeInTheDocument();
-      expect(screen.getByText('로드맵 최종 확정')).toBeInTheDocument();
+      // getAllByText 로 중복 허용 — 범례 + 툴팁 모두 포함
+      expect(screen.getAllByText('신규 등록 완료').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('컨설턴트 배정 완료').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('현장 인터뷰 완료').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('초안 완료').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('최종 확정').length).toBeGreaterThanOrEqual(1);
     });
 
     it('범례에 "건" 단위가 포함된 수치를 표시한다', () => {
       render(<StatusDistributionChart stats={mockStats} />);
-      // 예: "3건 (20%)"
       const legendItems = screen.getAllByText(/건/);
       expect(legendItems.length).toBeGreaterThan(0);
     });
@@ -123,7 +164,7 @@ describe('StatusDistributionChart', () => {
 
     it('단일 상태만 있을 때 해당 상태 라벨을 표시한다', () => {
       render(<StatusDistributionChart stats={singleStatusStats} />);
-      expect(screen.getByText('신규 등록 완료')).toBeInTheDocument();
+      expect(screen.getAllByText('신규 등록 완료').length).toBeGreaterThanOrEqual(1);
     });
 
     it('단일 상태일 때 100%를 표시한다', () => {
@@ -138,15 +179,56 @@ describe('StatusDistributionChart', () => {
   describe('진단결과 단계 집계', () => {
     it('진단결과 입력 완료 라벨을 표시한다', () => {
       render(<StatusDistributionChart stats={mockStats} />);
-      expect(screen.getByText('진단결과 입력 완료')).toBeInTheDocument();
+      expect(screen.getAllByText('진단결과 입력 완료').length).toBeGreaterThanOrEqual(1);
     });
 
     it('DIAGNOSED(2) + MATCH_RECOMMENDED(1) = 3건을 합산하여 표시한다', () => {
       render(<StatusDistributionChart stats={mockStats} />);
-      // 진단결과 범례 항목에서 3건이 표시됨
+      // 범례 내 3건 (20%) 텍스트 확인
       const legendTexts = screen.getAllByText(/건/);
-      const diagnosedEntry = legendTexts.find(el => el.textContent === '3건 (20%)');
+      const diagnosedEntry = legendTexts.find((el) => el.textContent === '3건 (20%)');
       expect(diagnosedEntry).toBeTruthy();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 5. PieTooltipContent 분기 커버 (active/payload 조건)
+  // --------------------------------------------------------------------------
+  describe('PieTooltipContent 분기', () => {
+    it('active=true이고 payload가 있을 때 툴팁 내용을 렌더링한다 (99건 표시)', () => {
+      render(<StatusDistributionChart stats={mockStats} />);
+      // tooltip mock이 __tooltip_test__ 라벨, 99건을 active=true로 렌더링
+      const activeWrapper = screen.getByTestId('tooltip-active');
+      expect(activeWrapper.textContent).toMatch(/99건/);
+    });
+
+    it('active=false이면 툴팁 내용이 없다', () => {
+      render(<StatusDistributionChart stats={mockStats} />);
+      const inactiveWrapper = screen.getByTestId('tooltip-inactive');
+      expect(inactiveWrapper.textContent).toBe('');
+    });
+
+    it('payload=undefined이면 툴팁 내용이 없다', () => {
+      render(<StatusDistributionChart stats={mockStats} />);
+      const noPayloadWrapper = screen.getByTestId('tooltip-no-payload');
+      expect(noPayloadWrapper.textContent).toBe('');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. ChartLegendItem — total=0 분기
+  // --------------------------------------------------------------------------
+  describe('ChartLegendItem total=0 분기', () => {
+    it('stats.total=0이고 byStatus가 비어있으면 데이터 없음 메시지를 표시한다', () => {
+      render(
+        <StatusDistributionChart
+          stats={{
+            total: 0,
+            byStatus: {},
+          }}
+        />,
+      );
+      expect(screen.getByText('데이터가 없습니다')).toBeInTheDocument();
     });
   });
 });

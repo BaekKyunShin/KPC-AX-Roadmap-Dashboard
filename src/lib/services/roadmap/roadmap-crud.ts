@@ -1,12 +1,23 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
-import type { RoadmapRow, PBLCourse, RoadmapCell, RoadmapResult } from './roadmap-types';
-import { buildRoadmapMatrixFromCourses } from './roadmap-matrix-builder';
+import type {
+  RoadmapAnnualPlan,
+  RoadmapCompetency,
+  RoadmapCourseSpec,
+  RoadmapOutcomeSummary,
+  RoadmapResult,
+  RoadmapTrainingStructureItem,
+  ValidationResult,
+} from './roadmap-types';
 import { validateRoadmap } from './roadmap-validator';
-import type { ValidationResult } from './roadmap-types';
+import { sanitizeRoadmapResult } from './roadmap-sanitize';
+import {
+  fromRoadmapVersionColumns,
+  toRoadmapVersionColumns,
+} from './roadmap-storage-mapper';
 
-/** roadmap_versions 테이블의 공통 select 컬럼 */
+/** roadmap_versions 테이블의 공통 select 컬럼 (legacy 이름 유지; Step 12에서 변경 예정) */
 const ROADMAP_VERSION_COLUMNS =
   'id, project_id, version_number, status, consultant_profile_snapshot, diagnosis_summary, roadmap_matrix, pbl_course, courses, free_tool_validated, time_limit_validated, revision_prompt, is_shared, like_count, created_by, finalized_by, finalized_at, created_at, updated_at';
 
@@ -25,12 +36,10 @@ type FinalizeRoadmapRpcResult =
  */
 export async function finalizeRoadmap(
   roadmapId: string,
-  actorUserId: string
+  actorUserId: string,
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  // RPC로 원자적 확정 (검증 + 3개 UPDATE를 단일 트랜잭션에서 실행)
-  // 상태 전이는 RPC 내부의 선행 조건(DRAFT 상태 확인)으로 제한됨
   const { data, error } = await supabase.rpc('finalize_roadmap', {
     p_roadmap_id: roadmapId,
     p_actor_user_id: actorUserId,
@@ -82,9 +91,7 @@ export async function finalizeRoadmap(
   }
 }
 
-/**
- * 로드맵 조회
- */
+/** 로드맵 버전 목록 조회 (raw row 반환; 호출자에서 fromRoadmapVersionColumns로 변환) */
 export async function fetchRoadmapVersions(projectId: string) {
   const supabase = createAdminClient();
 
@@ -97,9 +104,7 @@ export async function fetchRoadmapVersions(projectId: string) {
   return versions || [];
 }
 
-/**
- * 특정 로드맵 버전 조회
- */
+/** 특정 로드맵 버전 조회 (raw row 반환) */
 export async function fetchRoadmapVersion(roadmapId: string) {
   const supabase = createAdminClient();
 
@@ -112,17 +117,17 @@ export async function fetchRoadmapVersion(roadmapId: string) {
   return data;
 }
 
-/** projects JOIN 포함 로드맵 조회 결과 타입 */
+/** projects JOIN 포함 로드맵 조회 결과 타입 (legacy 컬럼은 unknown으로 두고 매퍼로 변환) */
 interface RoadmapWithProject {
   id: string;
   project_id: string;
   version_number: number;
   status: string;
   consultant_profile_snapshot: unknown;
-  diagnosis_summary: string;
-  roadmap_matrix: RoadmapRow[];
-  pbl_course: PBLCourse;
-  courses: RoadmapCell[];
+  diagnosis_summary: string | null;
+  roadmap_matrix: unknown;
+  pbl_course: unknown;
+  courses: unknown;
   free_tool_validated: boolean;
   time_limit_validated: boolean;
   revision_prompt: string | null;
@@ -137,20 +142,30 @@ interface RoadmapWithProject {
 }
 
 /**
- * 로드맵 수동 편집
- * DRAFT 상태의 로드맵만 편집 가능
+ * 로드맵 수동 편집 (산인공 4섹션 부분 업데이트).
+ * DRAFT 상태의 로드맵만 편집 가능.
+ * 배정된 컨설턴트만 편집 가능.
  */
 export async function updateRoadmapManually(
   roadmapId: string,
   actorUserId: string,
   updates: {
     diagnosis_summary?: string;
-    roadmap_matrix?: RoadmapRow[];
-    pbl_course?: PBLCourse;
-    courses?: RoadmapCell[];
-  }
+    setup_necessity?: string;
+    outcome_summary?: RoadmapOutcomeSummary;
+    competencies?: RoadmapCompetency[];
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
+    training_structure?: RoadmapTrainingStructureItem[];
+    training_structure_method?: string;
+    annual_plan?: RoadmapAnnualPlan;
+    course_specs?: RoadmapCourseSpec[];
+  },
 ): Promise<{ success: boolean; validation: ValidationResult; error?: string }> {
   const supabase = createAdminClient();
+
+  const emptyValidation: ValidationResult = { isValid: false, errors: [], warnings: [] };
 
   // 현재 로드맵 조회
   const { data: roadmap, error: fetchError } = await supabase
@@ -161,44 +176,63 @@ export async function updateRoadmapManually(
     .single();
 
   if (fetchError || !roadmap) {
-    return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '로드맵을 찾을 수 없습니다.' };
+    return {
+      success: false,
+      validation: emptyValidation,
+      error: '로드맵을 찾을 수 없습니다.',
+    };
   }
 
-  // DRAFT 상태만 편집 가능
   if (roadmap.status !== 'DRAFT') {
-    return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: 'DRAFT 상태의 로드맵만 편집할 수 있습니다.' };
+    return {
+      success: false,
+      validation: emptyValidation,
+      error: 'DRAFT 상태의 로드맵만 편집할 수 있습니다.',
+    };
   }
 
-  // 배정된 컨설턴트 확인
   if (roadmap.projects.assigned_consultant_id !== actorUserId) {
-    return { success: false, validation: { isValid: false, errors: [], warnings: [] }, error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.' };
+    return {
+      success: false,
+      validation: emptyValidation,
+      error: '배정된 컨설턴트만 로드맵을 편집할 수 있습니다.',
+    };
   }
 
-  // 새 데이터 구성
-  const newCourses = updates.courses ?? roadmap.courses;
-  const newResult: RoadmapResult = {
-    diagnosis_summary: updates.diagnosis_summary ?? roadmap.diagnosis_summary,
-    // courses가 업데이트되면 roadmap_matrix 자동 재생성
-    roadmap_matrix: updates.courses
-      ? buildRoadmapMatrixFromCourses(newCourses)
-      : (updates.roadmap_matrix ?? roadmap.roadmap_matrix),
-    pbl_course: updates.pbl_course ?? roadmap.pbl_course,
-    courses: newCourses,
+  // 기존 데이터 복원 → updates 적용 → 신규 RoadmapResult 구성
+  const current = fromRoadmapVersionColumns(roadmap);
+  const mergedRaw: RoadmapResult = {
+    diagnosis_summary: updates.diagnosis_summary ?? current.diagnosis_summary,
+    setup_necessity: updates.setup_necessity ?? current.setup_necessity,
+    outcome_summary: updates.outcome_summary ?? current.outcome_summary,
+    competencies: updates.competencies ?? current.competencies,
+    ncs_used: updates.ncs_used ?? current.ncs_used,
+    ncs_methodology: updates.ncs_methodology ?? current.ncs_methodology,
+    ncs_derivation_method: updates.ncs_derivation_method ?? current.ncs_derivation_method,
+    training_structure: updates.training_structure ?? current.training_structure,
+    training_structure_method: updates.training_structure_method ?? current.training_structure_method,
+    annual_plan: updates.annual_plan ?? current.annual_plan,
+    course_specs: updates.course_specs ?? current.course_specs,
   };
 
-  // 검증 실행
-  const validation = validateRoadmap(newResult);
+  // 빈 행 자동 정리 — "역량/훈련과정/명세서/교과목 추가" 후 미입력 저장 시 제거.
+  const merged = sanitizeRoadmapResult(mergedRaw);
 
-  // DB 업데이트
+  // 검증 실행
+  const validation = validateRoadmap(merged);
+
+  // DB 업데이트 (legacy 컬럼 매핑)
+  const cols = toRoadmapVersionColumns(merged);
   const { error: updateError } = await supabase
     .from('roadmap_versions')
     .update({
-      diagnosis_summary: newResult.diagnosis_summary,
-      roadmap_matrix: newResult.roadmap_matrix,
-      pbl_course: newResult.pbl_course,
-      courses: newResult.courses,
-      free_tool_validated: validation.errors.filter(e => e.includes('무료') || e.includes('유료')).length === 0,
-      time_limit_validated: validation.errors.filter(e => e.includes('시간')).length === 0,
+      diagnosis_summary: cols.diagnosis_summary,
+      roadmap_matrix: cols.roadmap_matrix,
+      pbl_course: cols.pbl_course,
+      courses: cols.courses,
+      // legacy 플래그: Step 12에서 제거 예정. 현재는 true 고정.
+      free_tool_validated: true,
+      time_limit_validated: true,
       updated_at: new Date().toISOString(),
     })
     .eq('id', roadmapId);
@@ -227,3 +261,6 @@ export async function updateRoadmapManually(
 
   return { success: true, validation };
 }
+
+// ─── 매퍼 재-export (CRUD 호출부가 raw row를 신규 구조로 변환하도록) ────
+export { fromRoadmapVersionColumns, toRoadmapVersionColumns } from './roadmap-storage-mapper';

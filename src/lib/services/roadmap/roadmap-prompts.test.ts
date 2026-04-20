@@ -1,15 +1,15 @@
 /**
- * roadmap-prompts.ts 테스트 (~15 케이스)
+ * roadmap-prompts.ts 테스트 — 산인공 4섹션 구조 검증
  *
- * - buildSystemPrompt(): 핵심 키워드 포함 검증 (스냅샷 기반)
- * - buildUserPrompt(input): 입력 조합별 프롬프트 생성 검증
+ * - buildSystemPrompt(): 신규 4섹션 키워드·제약·JSON 키 포함, 구형 키 미포함
+ * - buildUserPrompt(): 신규 인터뷰 필드 포함, 구형 필드 미포함, 분기 동작
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
 import type { ConsultantProfile } from '@/types/database';
 
-// STT formatter 모킹 — 프롬프트 빌더 자체의 로직만 테스트
+// STT formatter 모킹 — 프롬프트 빌더 자체 로직만 테스트
 vi.mock('./roadmap-stt-formatter', () => ({
   buildSttInsightsSection: vi.fn(() => ''),
 }));
@@ -31,12 +31,45 @@ function makeProjectData(overrides: Record<string, unknown> = {}) {
 
 function makeInterview(overrides: Record<string, unknown> = {}) {
   return {
-    job_tasks: [{ name: '데이터 분석', description: '생산 데이터 분석' }],
-    pain_points: [{ description: '수동 입력', severity: 'HIGH' }],
-    constraints: [{ description: '보안 정책', type: 'security' }],
-    improvement_goals: [{ goal: '자동화', kpi: '시간 50% 감소' }],
-    customer_requirements: '3개월 내 성과',
-    notes: '추가 확인 필요',
+    overview: {
+      establishment_necessity: '품질검사 업무 자동화 필요성',
+      ai_competency_level: 'INTERMEDIATE',
+      selected_tasks_summary: '생산 실적 집계 / 불량 탐지',
+      roadmap_summary: '3단계 AI 인력 양성',
+    },
+    interview_date: '2026-04-16',
+    interview_round: 1,
+    interview_time: '14:00',
+    interview_method: 'ONSITE',
+    participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
+    company_requirements: {
+      company_status: 'ERP 운영 중, AI 도입 초기 단계',
+      main_problems: '수동 데이터 입력으로 오류 빈번',
+      push_willingness: '경영진 전폭 지원',
+      expected_outcomes: '업무 자동화로 생산성 30% 향상',
+    },
+    task_workflow_items: [
+      {
+        id: 't1',
+        job: '생산관리',
+        task_name: '생산 실적 집계',
+        as_is: 'Excel 수동 입력',
+        problems: '입력 오류, 시간 소요',
+        data_availability: 'ERP 데이터 보유',
+        ai_necessity: 4,
+      },
+    ],
+    analysis_notes: { text: '현장 관찰 완료', attachment_urls: [] },
+    training_targets: [
+      {
+        id: 'tt1',
+        task_name: '생산 실적 집계',
+        selection_reason: 'AI 자동화 효과 최대',
+        as_is: 'Excel 수동 집계',
+        to_be: 'AI 자동 집계 및 보고서 생성',
+      },
+    ],
+    notes: '2차 인터뷰 예정',
     ...overrides,
   };
 }
@@ -72,55 +105,101 @@ function makeConsultantProfileData(
 }
 
 // ============================================================================
-// buildSystemPrompt
+// buildSystemPrompt — 신규 4섹션 구조 검증
 // ============================================================================
 
 describe('buildSystemPrompt', () => {
   const prompt = buildSystemPrompt();
 
-  it('기업 AI 교육 로드맵 전문가 역할이 명시되어 있다', () => {
-    expect(prompt).toContain('기업 AI 교육 로드맵 전문가');
+  it('산인공 AI 훈련 로드맵 전문가 역할이 명시되어 있다', () => {
+    expect(prompt).toContain('AI 훈련 로드맵 설계 전문가');
   });
 
-  it('업무(target_task) 제한 원칙이 포함되어 있다', () => {
-    expect(prompt).toContain('업무(target_task) 제한');
-    expect(prompt).toContain('세부업무(job_tasks)');
+  it('4섹션 키워드가 모두 포함되어 있다', () => {
+    expect(prompt).toContain('역량 모델링');
+    expect(prompt).toContain('훈련체계도');
+    expect(prompt).toContain('연간 훈련계획');
+    expect(prompt).toContain('훈련과정 명세서');
   });
 
-  it('무료 도구 전제 원칙이 포함되어 있다', () => {
-    expect(prompt).toContain('무료 도구 전제');
+  it('신규 최상위 JSON 키가 모두 포함되어 있다', () => {
+    expect(prompt).toContain('competencies');
+    expect(prompt).toContain('training_structure');
+    expect(prompt).toContain('annual_plan');
+    expect(prompt).toContain('course_specs');
+    expect(prompt).toContain('diagnosis_summary');
+    expect(prompt).toContain('setup_necessity');
+    expect(prompt).toContain('outcome_summary');
+    expect(prompt).toContain('training_structure_method');
+  });
+
+  it('NCS 분기 필드가 루트 레벨에 명시되어 있다', () => {
+    expect(prompt).toContain('ncs_used');
+    expect(prompt).toContain('ncs_methodology');
+    expect(prompt).toContain('ncs_derivation_method');
+  });
+
+  it('setup_necessity·outcome_summary.ai_competency_level는 인터뷰 값을 그대로 복사하도록 지시', () => {
+    expect(prompt).toMatch(/setup_necessity[^\n]*그대로 복사|그대로 복사[^\n]*setup_necessity/);
+    expect(prompt).toMatch(/ai_competency_level[^\n]*그대로 복사|그대로 복사[^\n]*ai_competency_level/);
+  });
+
+  it('course_specs 최소 3개 제약이 명시되어 있다', () => {
+    expect(prompt).toContain('최소 3개');
+  });
+
+  it('subjects 필드가 명시되어 있다', () => {
+    expect(prompt).toContain('subjects');
+  });
+
+  it('recommended_program 필드가 명시되어 있다', () => {
+    expect(prompt).toContain('recommended_program');
+  });
+
+  it('역량명 일관성 제약(competency_name 참조)이 명시되어 있다', () => {
+    expect(prompt).toContain('competency_name');
+    expect(prompt).toContain('competencies[*].name');
+  });
+
+  it('과정명 일관성 제약(annual_plan.items와 일치)이 명시되어 있다', () => {
+    expect(prompt).toContain('annual_plan.items[*].course_name');
+  });
+
+  it('무료 도구 정책이 포함되어 있다', () => {
     expect(prompt).toContain('무료 범위');
   });
 
-  it('40시간 제한 원칙이 포함되어 있다', () => {
-    expect(prompt).toContain('40시간 제한');
-    expect(prompt).toContain('50시간 이하');
+  it('노코드/로코드 원칙이 포함되어 있다', () => {
+    expect(prompt).toContain('노코드');
   });
 
-  it('시간 일관성 원칙이 포함되어 있다', () => {
-    expect(prompt).toContain('시간 일관성');
-    expect(prompt).toContain('recommended_hours = curriculum');
+  it('40시간 제한 정책이 포함되어 있다', () => {
+    expect(prompt).toContain('40시간 이하');
   });
 
-  it('PBL 과정 선정 원칙이 포함되어 있다', () => {
-    expect(prompt).toContain('PBL 과정은 반드시 courses에서 선정');
-    expect(prompt).toContain('selected_course_name');
+  it('JSON 전용 출력 지시가 포함되어 있다', () => {
+    expect(prompt).toContain('JSON 외 다른 텍스트를 출력하지 마라');
   });
 
-  it('JSON 출력 형식 지시가 포함되어 있다', () => {
-    expect(prompt).toContain('JSON 구조로만 응답');
-    expect(prompt).toContain('diagnosis_summary');
-    expect(prompt).toContain('courses');
-    expect(prompt).toContain('pbl_course');
+  it('구형 키(pbl_course)가 포함되지 않는다', () => {
+    expect(prompt).not.toContain('pbl_course');
   });
 
-  it('교육 난이도 원칙(노코드/로우코드 중심)이 포함되어 있다', () => {
-    expect(prompt).toContain('노코드/로우코드');
+  it('구형 키(roadmap_matrix)가 포함되지 않는다', () => {
+    expect(prompt).not.toContain('roadmap_matrix');
+  });
+
+  it('구형 키(RoadmapCell)가 포함되지 않는다', () => {
+    expect(prompt).not.toContain('RoadmapCell');
+  });
+
+  it('구형 키(PBLCourse)가 포함되지 않는다', () => {
+    expect(prompt).not.toContain('PBLCourse');
   });
 });
 
 // ============================================================================
-// buildUserPrompt
+// buildUserPrompt — 신규 인터뷰 필드 및 분기 동작 검증
 // ============================================================================
 
 describe('buildUserPrompt', () => {
@@ -138,7 +217,104 @@ describe('buildUserPrompt', () => {
     expect(prompt).toContain('자동차, 전자');
   });
 
-  it('selfAssessment가 null이면 scores를 null로 직렬화한다', () => {
+  it('인터뷰 overview 블록(Ⅰ-1·Ⅰ-3)이 포함된다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null,
+    );
+
+    expect(prompt).toContain('establishment_necessity');
+    expect(prompt).toContain('품질검사 업무 자동화 필요성');
+    expect(prompt).toContain('ai_competency_level');
+  });
+
+  it('신규 인터뷰 필드(company_requirements)가 포함된다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).toContain('company_status');
+    expect(prompt).toContain('기업 요구분석');
+  });
+
+  it('신규 인터뷰 필드(task_workflow_items)가 포함된다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).toContain('생산 실적 집계');
+    expect(prompt).toContain('과업·워크플로우 분석');
+  });
+
+  it('신규 인터뷰 필드(training_targets)가 포함된다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).toContain('selection_reason');
+    expect(prompt).toContain('훈련대상 과업 선정');
+  });
+
+  it('구형 인터뷰 필드(job_tasks)가 포함되지 않는다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).not.toContain('세부업무(job_tasks)');
+    expect(prompt).not.toContain('"job_tasks"');
+  });
+
+  it('구형 인터뷰 필드(pain_points)가 포함되지 않는다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).not.toContain('"pain_points"');
+    expect(prompt).not.toContain('페인포인트\n');
+  });
+
+  it('구형 인터뷰 필드(improvement_goals)가 포함되지 않는다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    expect(prompt).not.toContain('"improvement_goals"');
+    expect(prompt).not.toContain('개선 목표\n');
+  });
+
+  it('구형 인터뷰 필드(customer_requirements)가 포함되지 않는다', () => {
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      makeInterview(),
+      null
+    );
+
+    // interview.customer_requirements는 더 이상 별도 섹션으로 출력하지 않음
+    expect(prompt).not.toContain('기업 요구사항\n');
+  });
+
+  it('selfAssessment가 null이면 자가진단 결과 섹션이 포함된다', () => {
     const prompt = buildUserPrompt(
       makeProjectData(),
       null,
@@ -146,8 +322,6 @@ describe('buildUserPrompt', () => {
       null
     );
 
-    // selfAssessment가 null이면 null?.scores → undefined → JSON.stringify(undefined) = undefined 출력
-    // 실제 코드: JSON.stringify(selfAssessment?.scores, null, 2)
     expect(prompt).toContain('자가진단 결과');
   });
 
@@ -226,11 +400,11 @@ describe('buildUserPrompt', () => {
       makeSelfAssessmentData(),
       makeInterview(),
       null,
-      '초급 과정을 추가해주세요'
+      '역량 모델링 항목을 추가해주세요'
     );
 
     expect(prompt).toContain('수정 요청');
-    expect(prompt).toContain('초급 과정을 추가해주세요');
+    expect(prompt).toContain('역량 모델링 항목을 추가해주세요');
     expect(prompt).toContain('수정 요청을 반영하여 로드맵을 재생성');
   });
 
@@ -267,7 +441,7 @@ describe('buildUserPrompt', () => {
     expect(prompt).toContain('요청사항: 없음');
   });
 
-  it('인터뷰 결과가 프롬프트에 포함된다', () => {
+  it('프롬프트 끝에 산인공 4섹션 양식 JSON 응답 지시가 포함된다', () => {
     const prompt = buildUserPrompt(
       makeProjectData(),
       makeSelfAssessmentData(),
@@ -275,24 +449,7 @@ describe('buildUserPrompt', () => {
       null
     );
 
-    expect(prompt).toContain('현장 인터뷰 결과');
-    expect(prompt).toContain('세부업무');
-    expect(prompt).toContain('페인포인트');
-    expect(prompt).toContain('제약사항');
-    expect(prompt).toContain('개선 목표');
-    expect(prompt).toContain('3개월 내 성과');
-    expect(prompt).toContain('추가 확인 필요');
-  });
-
-  it('프롬프트 끝에 JSON 응답 지시가 포함된다', () => {
-    const prompt = buildUserPrompt(
-      makeProjectData(),
-      makeSelfAssessmentData(),
-      makeInterview(),
-      null
-    );
-
-    expect(prompt).toContain('맞춤형 AI 교육 로드맵을 생성해주세요');
+    expect(prompt).toContain('산인공 4섹션 양식');
     expect(prompt).toContain('JSON 형식으로만 응답');
   });
 

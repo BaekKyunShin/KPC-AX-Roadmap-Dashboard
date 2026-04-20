@@ -32,6 +32,7 @@ function makeProject(overrides: Partial<RecentProjectItem> = {}): RecentProjectI
     industry: '제조업',
     companySizeLabel: '중소기업',
     status: 'ASSIGNED',
+    track: 'ROADMAP',
     relativeTime: '오늘 14:30',
     ...overrides,
   };
@@ -93,24 +94,30 @@ describe('RecentProjects', () => {
   });
 
   describe('링크', () => {
-    it('프로젝트 상세 링크가 올바른 href를 가진다', () => {
-      render(<RecentProjects projects={[makeProject({ id: 'proj-abc' })]} />);
+    it('ROADMAP 트랙 프로젝트는 /roadmap 경로로 링크된다', () => {
+      render(<RecentProjects projects={[makeProject({ id: 'proj-abc', track: 'ROADMAP' })]} />);
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('href', '/consultant/projects/proj-abc');
+      expect(link).toHaveAttribute('href', '/consultant/projects/proj-abc/roadmap');
     });
 
-    it('여러 프로젝트가 있을 때 각각 링크를 가진다', () => {
+    it('PBL 트랙 프로젝트는 /pbl 경로로 링크된다', () => {
+      render(<RecentProjects projects={[makeProject({ id: 'proj-xyz', track: 'PBL' })]} />);
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('href', '/consultant/projects/proj-xyz/pbl');
+    });
+
+    it('여러 프로젝트가 있을 때 각각 트랙별 링크를 가진다', () => {
       const projects = [
-        makeProject({ id: 'proj-1', companyName: '기업A' }),
-        makeProject({ id: 'proj-2', companyName: '기업B' }),
-        makeProject({ id: 'proj-3', companyName: '기업C' }),
+        makeProject({ id: 'proj-1', companyName: '기업A', track: 'ROADMAP' }),
+        makeProject({ id: 'proj-2', companyName: '기업B', track: 'PBL' }),
+        makeProject({ id: 'proj-3', companyName: '기업C', track: 'ROADMAP' }),
       ];
       render(<RecentProjects projects={projects} />);
       const links = screen.getAllByRole('link');
       expect(links).toHaveLength(3);
-      expect(links[0]).toHaveAttribute('href', '/consultant/projects/proj-1');
-      expect(links[1]).toHaveAttribute('href', '/consultant/projects/proj-2');
-      expect(links[2]).toHaveAttribute('href', '/consultant/projects/proj-3');
+      expect(links[0]).toHaveAttribute('href', '/consultant/projects/proj-1/roadmap');
+      expect(links[1]).toHaveAttribute('href', '/consultant/projects/proj-2/pbl');
+      expect(links[2]).toHaveAttribute('href', '/consultant/projects/proj-3/roadmap');
     });
   });
 
@@ -128,6 +135,18 @@ describe('RecentProjects', () => {
     it('알 수 없는 상태는 원본 값을 표시한다', () => {
       render(<RecentProjects projects={[makeProject({ status: 'UNKNOWN_STATUS' })]} />);
       expect(screen.getByText('UNKNOWN_STATUS')).toBeInTheDocument();
+    });
+
+    it('PBL_DRAFTED 상태 배지를 표시한다 (resolveStatusLabel 분기)', () => {
+      // Line 26: status === 'PBL_DRAFTED' → true 분기 커버
+      render(<RecentProjects projects={[makeProject({ status: 'PBL_DRAFTED', track: 'PBL' })]} />);
+      expect(screen.getByText('PBL 작성 중')).toBeInTheDocument();
+    });
+
+    it('PBL 트랙 FINALIZED 상태는 "PBL 완료" 배지를 표시한다', () => {
+      // Line 34: status === 'FINALIZED' && track === 'PBL' → true 분기 커버
+      render(<RecentProjects projects={[makeProject({ status: 'FINALIZED', track: 'PBL' })]} />);
+      expect(screen.getByText('PBL 완료')).toBeInTheDocument();
     });
   });
 

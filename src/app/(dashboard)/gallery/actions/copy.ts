@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
 import { copyRoadmapSchema } from '@/lib/schemas/gallery';
+import { projectDetailHref, inferTrack } from '@/lib/utils/project-track';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
 
@@ -44,7 +45,7 @@ export async function copyRoadmapToProject(params: {
   const [projectResult, sourceResult] = await Promise.all([
     supabase
       .from('projects')
-      .select('id, assigned_consultant_id, company_name')
+      .select('id, assigned_consultant_id, company_name, track')
       .eq('id', params.targetProjectId)
       .single(),
     adminClient
@@ -123,7 +124,8 @@ export async function copyRoadmapToProject(params: {
     },
   });
 
-  revalidatePath(`/consultant/projects/${params.targetProjectId}/roadmap`);
+  const targetTrack = inferTrack((projectData as { track?: string }).track);
+  revalidatePath(projectDetailHref(params.targetProjectId, targetTrack));
   revalidatePath('/gallery');
 
   return successResult({

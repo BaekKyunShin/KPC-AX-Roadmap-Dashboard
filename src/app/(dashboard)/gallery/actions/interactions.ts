@@ -2,10 +2,16 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
-import { toggleLikeSchema, toggleShareSchema } from '@/lib/schemas/gallery';
+import {
+  toggleLikeSchema,
+  toggleShareSchema,
+  togglePBLLikeSchema,
+  togglePBLShareSchema,
+} from '@/lib/schemas/gallery';
 import type { ActionResult } from '@/lib/types/action-result';
 import { successResult, errorResult } from '@/lib/types/action-result';
 import { requireAuth, requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { createAuditLog } from '@/lib/services/audit';
 
 // =============================================================================
 // 좋아요 토글
@@ -112,6 +118,134 @@ export async function toggleShare(
   if (error) {
     console.error('[toggleShare Error]', error);
     return errorResult('공유 설정 변경 중 오류가 발생했습니다.');
+  }
+
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'ROADMAP_SHARED',
+      targetType: 'roadmap_version',
+      targetId: roadmapVersionId,
+      meta: { is_shared: newShared },
+    });
+  } catch (e) {
+    console.error('[toggleShare] 감사로그 실패:', e);
+  }
+
+  revalidatePath('/gallery');
+
+  return successResult({ isShared: newShared });
+}
+
+// =============================================================================
+// PBL 좋아요 토글
+// =============================================================================
+
+export async function togglePBLLike(
+  pblReportId: string
+): Promise<ActionResult<{ liked: boolean; count: number }>> {
+  const auth = await requireAuth('인증이 필요합니다.');
+  if ('error' in auth) return errorResult(auth.error);
+  const { user, supabase } = auth;
+
+  const parsed = togglePBLLikeSchema.safeParse({ pblReportId });
+  if (!parsed.success) {
+    return errorResult('유효하지 않은 요청입니다.');
+  }
+
+  const { data: existing } = await supabase
+    .from('pbl_likes')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('pbl_report_id', pblReportId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('pbl_likes').delete().eq('id', existing.id);
+  } else {
+    const { error } = await supabase
+      .from('pbl_likes')
+      .insert({ user_id: user.id, pbl_report_id: pblReportId });
+
+    if (error) {
+      console.error('[togglePBLLike Error]', error);
+      return errorResult('좋아요 처리 중 오류가 발생했습니다.');
+    }
+  }
+
+  const { count } = await supabase
+    .from('pbl_likes')
+    .select('id', { count: 'exact', head: true })
+    .eq('pbl_report_id', pblReportId);
+
+  revalidatePath('/gallery');
+
+  return successResult({
+    liked: !existing,
+    count: count || 0,
+  });
+}
+
+// =============================================================================
+// PBL 공유 토글
+// =============================================================================
+
+export async function togglePBLShare(
+  pblReportId: string
+): Promise<ActionResult<{ isShared: boolean }>> {
+  const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+    authError: '인증이 필요합니다.',
+    roleError: '컨설턴트만 공유 설정을 변경할 수 있습니다.',
+  });
+  if ('error' in auth) return errorResult(auth.error);
+  const { user } = auth;
+
+  const parsed = togglePBLShareSchema.safeParse({ pblReportId });
+  if (!parsed.success) {
+    return errorResult('유효하지 않은 요청입니다.');
+  }
+
+  const adminClient = createAdminClient();
+  const { data: report } = await adminClient
+    .from('pbl_reports')
+    .select('id, is_shared, status, created_by')
+    .eq('id', pblReportId)
+    .single();
+
+  if (!report) {
+    return errorResult('PBL 보고서를 찾을 수 없습니다.');
+  }
+
+  if (report.created_by !== user.id) {
+    return errorResult('본인이 작성한 PBL 보고서만 공유할 수 있습니다.');
+  }
+
+  if (report.status !== 'FINAL') {
+    return errorResult('확정된 PBL 보고서만 공유할 수 있습니다.');
+  }
+
+  const newShared = !report.is_shared;
+
+  const { error } = await adminClient
+    .from('pbl_reports')
+    .update({ is_shared: newShared })
+    .eq('id', pblReportId);
+
+  if (error) {
+    console.error('[togglePBLShare Error]', error);
+    return errorResult('공유 설정 변경 중 오류가 발생했습니다.');
+  }
+
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'PBL_REPORT_SHARED',
+      targetType: 'pbl_report',
+      targetId: pblReportId,
+      meta: { is_shared: newShared },
+    });
+  } catch (e) {
+    console.error('[togglePBLShare] 감사로그 실패:', e);
   }
 
   revalidatePath('/gallery');

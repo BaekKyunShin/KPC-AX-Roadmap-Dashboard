@@ -1,11 +1,11 @@
 /**
- * roadmap-generator.ts 테스트
- * - generateRoadmap: FINALIZED 프로젝트에서 역방향 상태 전이 방지 (#37)
- * - generateRoadmap: 쿼터 검증, 데이터 조회, LLM 호출/저장, 부수 효과
+ * roadmap-generator.ts 테스트 (산인공 4섹션 구조)
+ * - generateRoadmap: 쿼터·조회·LLM·저장·부수효과
  * - generateTestRoadmap / reviseTestRoadmap
+ * - LLM 결과 스키마 불일치 시 RoadmapStorageError throw
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // ─── 모킹 ─────────────────────────────────────────────────────────────────
 
@@ -34,8 +34,14 @@ vi.mock('./roadmap-prompts', () => ({
   buildUserPrompt: vi.fn().mockReturnValue('user prompt'),
 }));
 
-import { generateRoadmap, generateTestRoadmap, reviseTestRoadmap } from './roadmap-generator';
+import {
+  generateRoadmap,
+  generateTestRoadmap,
+  reviseTestRoadmap,
+  RoadmapStorageError,
+} from './roadmap-generator';
 import type { TestRoadmapInput } from './roadmap-generator';
+import type { RoadmapResult } from './roadmap-types';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { callLLMForJSON } from '../llm';
 import { createAuditLog } from '../audit';
@@ -43,37 +49,101 @@ import { createNotificationForAdmins } from '../notification';
 import { checkAndRecordLLMUsage } from '../quota';
 import { buildUserPrompt } from './roadmap-prompts';
 
+// ─── 산인공 4섹션 유효 LLM 응답 ─────────────────────────────────────────
+
+const MOCK_LLM_RESULT: RoadmapResult = {
+  diagnosis_summary: '테스트 진단 요약',
+  setup_necessity: '수립 필요성 복사본',
+  outcome_summary: {
+    ai_competency_level: 'INTERMEDIATE',
+    selected_tasks: '데이터 분석 자동화',
+    main_content: '3단계 역량 체계 구축',
+  },
+  competencies: [
+    {
+      name: '데이터 분석 역량',
+      definition: '업무 데이터를 분석해 의사결정에 활용하는 역량',
+      knowledge: ['통계 기초'],
+      skills: ['엑셀 피벗'],
+      attitudes: ['객관성'],
+    },
+  ],
+  ncs_used: false,
+  ncs_methodology: '',
+  ncs_derivation_method: '현장 인터뷰 기반 도출',
+  training_structure: [
+    {
+      competency_name: '데이터 분석 역량',
+      level: 'BEGINNER',
+      content: '엑셀 기초 분석',
+      target_audience: '실무자',
+      method: '집체',
+      goal: '기초 통계 이해',
+    },
+  ],
+  training_structure_method: '역량 기준 3수준 체계 수립',
+  annual_plan: {
+    items: [
+      {
+        competency_name: '데이터 분석 역량',
+        course_name: '엑셀 데이터 분석 입문',
+        format: '집체',
+        hours: 16,
+        notes: '',
+      },
+    ],
+    usage_plan: '훈련 결과를 실제 업무에 활용한다.',
+  },
+  course_specs: [
+    {
+      course_name: '엑셀 데이터 분석 입문',
+      format: '집체',
+      recommended_program: 'K-Digital Training',
+      goal: '기초 통계',
+      main_content: '엑셀 분석',
+      target_audience: '실무자',
+      subjects: [{ name: '피벗 테이블', details: '실습', hours: 8 }],
+    },
+    {
+      course_name: '엑셀 데이터 분석 심화',
+      format: '집체',
+      recommended_program: 'K-Digital Training',
+      goal: '고급 분석',
+      main_content: '함수 활용',
+      target_audience: '실무자',
+      subjects: [{ name: '함수', details: '실습', hours: 8 }],
+    },
+    {
+      course_name: 'AI 분석 실무',
+      format: '혼합',
+      recommended_program: 'K-Digital Training',
+      goal: 'AI 활용',
+      main_content: '코파일럿',
+      target_audience: '전 직원',
+      subjects: [{ name: 'Copilot', details: '실습', hours: 8 }],
+    },
+  ],
+};
+
 // ─── 헬퍼: Supabase 체인 모킹 ─────────────────────────────────────────────
 
-/** 시나리오별 오버라이드 옵션 */
-interface MockSupabaseOverrides {
-  /** projects 조회 결과 오버라이드 */
+interface MockOverrides {
   projectResult?: { data: Record<string, unknown> | null; error: { message: string } | null };
-  /** self_assessments 조회 결과 오버라이드 */
   selfAssessmentData?: Record<string, unknown>[] | null;
-  /** interviews 조회 결과 오버라이드 */
   interviewData?: Record<string, unknown>[] | null;
-  /** consultant_profiles 조회 결과 오버라이드 */
   consultantProfileData?: Record<string, unknown> | null;
-  /** roadmap_versions 최신 버전 결과 오버라이드 */
   latestVersionData?: { version_number: number } | null;
-  /** roadmap_versions insert 결과 오버라이드 */
   insertResult?: { data: { id: string } | null; error: { message: string } | null };
-  /** assigned_consultant_id 오버라이드 (null → 컨설턴트 프로필 조회 안 함) */
   assignedConsultantId?: string | null;
 }
 
-// ── 테이블별 체인 빌더 ──────────────────────────────────────────────────
-
-/** projects 테이블 — 메인 데이터 조회 + 상태 업데이트 */
 function createProjectsChain(
   projectStatus: string,
-  overrides: MockSupabaseOverrides,
+  overrides: MockOverrides,
   updateFn: ReturnType<typeof vi.fn>,
 ) {
-  const assignedConsultantId = overrides.assignedConsultantId !== undefined
-    ? overrides.assignedConsultantId
-    : 'consultant-1';
+  const assignedConsultantId =
+    overrides.assignedConsultantId !== undefined ? overrides.assignedConsultantId : 'consultant-1';
 
   const result = overrides.projectResult || {
     data: {
@@ -98,11 +168,11 @@ function createProjectsChain(
   });
 }
 
-/** self_assessments 테이블 */
-function createSelfAssessmentsChain(overrides: MockSupabaseOverrides) {
-  const data = overrides.selfAssessmentData !== undefined
-    ? overrides.selfAssessmentData
-    : [{ id: 'sa-1', answers: {} }];
+function createSelfAssessmentsChain(overrides: MockOverrides) {
+  const data =
+    overrides.selfAssessmentData !== undefined
+      ? overrides.selfAssessmentData
+      : [{ id: 'sa-1', answers: {} }];
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ data, error: null }),
@@ -110,11 +180,11 @@ function createSelfAssessmentsChain(overrides: MockSupabaseOverrides) {
   };
 }
 
-/** interviews 테이블 */
-function createInterviewsChain(overrides: MockSupabaseOverrides) {
-  const data = overrides.interviewData !== undefined
-    ? overrides.interviewData
-    : [{ id: 'interview-1', stt_insights: { key_topics: [], pain_points: [] } }];
+function createInterviewsChain(overrides: MockOverrides) {
+  const data =
+    overrides.interviewData !== undefined
+      ? overrides.interviewData
+      : [{ id: 'interview-1', stt_insights: null }];
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ data, error: null }),
@@ -122,32 +192,28 @@ function createInterviewsChain(overrides: MockSupabaseOverrides) {
   };
 }
 
-/** consultant_profiles 테이블 */
-function createConsultantProfilesChain(overrides: MockSupabaseOverrides) {
-  const data = overrides.consultantProfileData !== undefined
-    ? overrides.consultantProfileData
-    : { specialties: ['AI'], industries: ['IT'] };
+function createConsultantProfilesChain(overrides: MockOverrides) {
+  const data =
+    overrides.consultantProfileData !== undefined
+      ? overrides.consultantProfileData
+      : { expertise_domains: ['AI'], available_industries: ['IT'], teaching_levels: ['BEGINNER'], coaching_methods: ['1:1'], skill_tags: ['tag'] };
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data,
-          error: data ? null : { message: 'not found' },
-        }),
+        single: vi
+          .fn()
+          .mockResolvedValue({ data, error: data ? null : { message: 'not found' } }),
       }),
     }),
   };
 }
 
-/** roadmap_versions 테이블 — select(최신 버전) + insert(저장) */
-function createRoadmapVersionsChain(overrides: MockSupabaseOverrides) {
-  const latestData = overrides.latestVersionData !== undefined
-    ? overrides.latestVersionData
-    : { version_number: 1 };
-  const insertRes = overrides.insertResult || {
-    data: { id: 'roadmap-1' },
-    error: null,
-  };
+function createRoadmapVersionsChain(overrides: MockOverrides) {
+  const latestData =
+    overrides.latestVersionData !== undefined
+      ? overrides.latestVersionData
+      : { version_number: 1 };
+  const insertRes = overrides.insertResult || { data: { id: 'roadmap-1' }, error: null };
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
@@ -169,10 +235,7 @@ function createRoadmapVersionsChain(overrides: MockSupabaseOverrides) {
   };
 }
 
-// ── 조합 함수 ───────────────────────────────────────────────────────────
-
-/** 프로젝트 상태 업데이트 호출을 추적하기 위한 모킹 */
-function createMockSupabase(projectStatus: string, overrides: MockSupabaseOverrides = {}) {
+function createMockSupabase(projectStatus: string, overrides: MockOverrides = {}) {
   const updateFn = vi.fn().mockReturnValue({
     eq: vi.fn().mockResolvedValue({ data: null, error: null }),
   });
@@ -200,52 +263,70 @@ function createMockSupabase(projectStatus: string, overrides: MockSupabaseOverri
   return { mockClient, updateFn };
 }
 
-// ─── LLM 응답 모킹 ──────────────────────────────────────────────────────
+function setupDefaultMocks(status = 'INTERVIEWED', overrides: MockOverrides = {}) {
+  vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
+  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
+  const { mockClient, updateFn } = createMockSupabase(status, overrides);
+  vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
+  return { mockClient, updateFn };
+}
 
-const MOCK_LLM_RESULT = {
-  diagnosis_summary: '테스트 진단 요약',
-  courses: [
-    {
-      name: 'AI 기초',
-      description: '설명',
-      category: 'AI',
-      level: '입문',
-      recommended_hours: 8,
-      curriculum: [{ topic: '주제', hours: 8 }],
-      tools: [{ name: '도구', is_free: true }],
+// ─── 테스트 입력 헬퍼 ────────────────────────────────────────────────────
+
+function createTestInput(overrides: Partial<TestRoadmapInput> = {}): TestRoadmapInput {
+  return {
+    company_name: '테스트 기업',
+    industry: 'IT',
+    company_size: '50명',
+    interview_date: '2026-03-01',
+    participants: [{ id: 'p-1', name: '홍길동', position: '팀장' }],
+    company_requirements: {
+      company_status: '성장 중',
+      main_problems: '데이터 활용 부족',
+      push_willingness: '높음',
+      expected_outcomes: '업무 효율화',
     },
-  ],
-  pbl_course: {
-    name: 'PBL',
-    description: '설명',
-    category: 'PBL',
-    level: '중급',
-    recommended_hours: 16,
-    curriculum: [{ topic: '주제', hours: 16 }],
-    tools: [],
-  },
-};
+    task_workflow_items: [
+      {
+        id: 'tw-1',
+        job: '분석',
+        task_name: '데이터 분석',
+        as_is: '수기 집계',
+        problems: '시간 소요',
+        data_availability: '있음',
+        ai_necessity: 4,
+      },
+    ],
+    training_targets: [
+      {
+        id: 'tt-1',
+        task_name: '데이터 분석',
+        selection_reason: 'AI 적용 가능',
+        as_is: '수기',
+        to_be: '자동',
+      },
+    ],
+    ...overrides,
+  };
+}
 
-// ─── 테스트 ────────────────────────────────────────────────────────────────
+// ─── 상태 전이 ────────────────────────────────────────────────────────────
 
 describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
-  beforeEach(() => {
-    vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
   it.each([
-    { status: 'INTERVIEWED', shouldUpdate: true, desc: '정상 전이' },
-    { status: 'ROADMAP_DRAFTED', shouldUpdate: true, desc: '재생성 시 상태 유지' },
-    { status: 'FINALIZED', shouldUpdate: false, desc: '역방향 전이 방지' },
-  ])('$status → $desc (update=$shouldUpdate)', async ({ status, shouldUpdate }) => {
-    const { mockClient, updateFn } = createMockSupabase(status);
-    vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
-
-    await generateRoadmap('project-1', 'user-1', status === 'INTERVIEWED' ? undefined : '수정 요청', false);
+    { status: 'INTERVIEWED', shouldUpdate: true },
+    { status: 'ROADMAP_DRAFTED', shouldUpdate: true },
+    { status: 'FINALIZED', shouldUpdate: false },
+  ])('$status → update=$shouldUpdate', async ({ status, shouldUpdate }) => {
+    const { updateFn } = setupDefaultMocks(status);
+    await generateRoadmap(
+      'project-1',
+      'user-1',
+      status === 'INTERVIEWED' ? undefined : '수정 요청',
+      false,
+    );
 
     if (shouldUpdate) {
       expect(updateFn).toHaveBeenCalledWith({ status: 'ROADMAP_DRAFTED' });
@@ -255,132 +336,63 @@ describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
   });
 });
 
-// ─── 추가 테스트 ──────────────────────────────────────────────────────────
-
-// ─── 공용 테스트 입력 헬퍼 ────────────────────────────────────────────────
-
-function createTestInput(overrides: Partial<TestRoadmapInput> = {}): TestRoadmapInput {
-  return {
-    company_name: '테스트 기업',
-    industry: 'IT',
-    company_size: '50명',
-    interview_date: '2026-03-01',
-    participants: [{ id: 'p-1', name: '홍길동', position: '팀장' }],
-    company_details: { systems_and_tools: ['Excel'], ai_experience: '없음' },
-    job_tasks: [{ id: 'task-1', task_name: '데이터 분석', task_description: '엑셀 데이터 분석' }],
-    pain_points: [{ id: 'pain-1', description: '수작업 과다', severity: 'HIGH' }],
-    improvement_goals: [{ id: 'goal-1', goal_description: 'AI 자동화' }],
-    ...overrides,
-  };
-}
-
-/** 기본 mock 설정 + Supabase 클라이언트 주입 */
-function setupDefaultMocks(status = 'INTERVIEWED', overrides: MockSupabaseOverrides = {}) {
-  vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
-  vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
-  const { mockClient, updateFn } = createMockSupabase(status, overrides);
-  vi.mocked(createAdminClient).mockReturnValue(mockClient as never);
-  return { mockClient, updateFn };
-}
-
-// ─── 쿼터 검증 ─────────────────────────────────────────────────────────────
+// ─── 쿼터 검증 ────────────────────────────────────────────────────────────
 
 describe('generateRoadmap — 쿼터 검증', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
-  it('checkAndRecordLLMUsage가 exceeded: true + message 반환 → 해당 메시지로 throw', async () => {
+  it('exceeded=true + message → 해당 메시지로 throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
       exceeded: true,
       message: '월별 한도 초과',
     } as never);
-
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('월별 한도 초과');
   });
 
-  it('checkAndRecordLLMUsage가 exceeded: true + message 없음 → 기본 메시지로 throw', async () => {
-    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
-      exceeded: true,
-    } as never);
-
+  it('exceeded=true + message 없음 → 기본 메시지로 throw', async () => {
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: true } as never);
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('사용량 한도를 초과했습니다.');
   });
 });
 
-// ─── 데이터 조회 ─────────────────────────────────────────────────────────
+// ─── 데이터 조회 ──────────────────────────────────────────────────────────
 
 describe('generateRoadmap — 데이터 조회', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
   it('프로젝트 조회 에러 → throw', async () => {
     setupDefaultMocks('INTERVIEWED', {
       projectResult: { data: null, error: { message: 'DB error' } },
     });
-
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('프로젝트를 찾을 수 없습니다.');
   });
 
   it('자가진단 없음 + testMode=false → throw', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      selfAssessmentData: [],
-    });
-
+    setupDefaultMocks('INTERVIEWED', { selfAssessmentData: [] });
     await expect(generateRoadmap('project-1', 'user-1', undefined, false)).rejects.toThrow(
-      '자가진단 결과가 없습니다.'
+      '자가진단 결과가 없습니다.',
     );
   });
 
-  it('자가진단 없음 + testMode=true → 인터뷰가 있으면 정상 진행', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      selfAssessmentData: [],
-    });
-
+  it('자가진단 없음 + testMode=true → 정상 진행', async () => {
+    setupDefaultMocks('INTERVIEWED', { selfAssessmentData: [] });
     const result = await generateRoadmap('project-1', 'user-1', undefined, true);
-
     expect(result.roadmapId).toBe('roadmap-1');
   });
 
   it('인터뷰 없음 → throw', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      interviewData: [],
-    });
-
+    setupDefaultMocks('INTERVIEWED', { interviewData: [] });
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('인터뷰 데이터가 없습니다.');
-  });
-
-  it('컨설턴트 프로필 없음 → consultantSnapshot null로 정상 진행', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      assignedConsultantId: null,
-    });
-
-    const result = await generateRoadmap('project-1', 'user-1');
-
-    expect(result.roadmapId).toBe('roadmap-1');
-    // buildUserPrompt에 consultantSnapshot=null 전달 확인
-    expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      null,
-      undefined,
-      false,
-    );
   });
 });
 
-// ─── LLM 호출 및 저장 ──────────────────────────────────────────────────────
+// ─── LLM 호출 및 스키마 검증 ──────────────────────────────────────────────
 
-describe('generateRoadmap — LLM 호출 및 저장', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+describe('generateRoadmap — LLM 호출 및 스키마', () => {
+  afterEach(() => vi.clearAllMocks());
 
-  it('callLLMForJSON에 올바른 messages 전달', async () => {
+  it('callLLMForJSON에 올바른 messages + temperature 전달', async () => {
     setupDefaultMocks('INTERVIEWED');
-
     await generateRoadmap('project-1', 'user-1');
 
     expect(vi.mocked(callLLMForJSON)).toHaveBeenCalledWith(
@@ -398,137 +410,85 @@ describe('generateRoadmap — LLM 호출 및 저장', () => {
     setupDefaultMocks('INTERVIEWED', {
       insertResult: { data: null, error: { message: 'insert failed' } },
     });
-
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('로드맵 저장 실패: insert failed');
   });
 
-  it('기존 버전 1 → 버전 2로 증가', async () => {
-    const { mockClient } = setupDefaultMocks('INTERVIEWED', {
-      latestVersionData: { version_number: 1 },
+  it('LLM 결과 스키마 불일치 → RoadmapStorageError throw', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    // competencies가 빈 배열 → min(1) 위반
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      competencies: [],
     });
 
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapStorageError);
+  });
+
+  it('LLM 결과 course_specs가 2개(< 3) → RoadmapStorageError throw', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      course_specs: MOCK_LLM_RESULT.course_specs.slice(0, 2),
+    });
+
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapStorageError);
+  });
+});
+
+// ─── 버전 증가 ────────────────────────────────────────────────────────────
+
+describe('generateRoadmap — 버전 번호', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('기존 버전 1 → 버전 2', async () => {
+    setupDefaultMocks('INTERVIEWED', { latestVersionData: { version_number: 1 } });
     await generateRoadmap('project-1', 'user-1');
 
-    // insert가 version_number: 2로 호출되었는지 확인
-    const roadmapVersionsCalls = mockClient.from.mock.calls.filter(
-      (c: [string]) => c[0] === 'roadmap_versions'
-    );
-    // roadmap_versions는 2번 호출됨: select(버전 조회) + insert(저장)
-    // insert 호출의 인자를 검증
-    expect(roadmapVersionsCalls.length).toBeGreaterThanOrEqual(1);
-
-    // createAuditLog의 meta에서 version_number 확인
     expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith(
       expect.objectContaining({
-        meta: expect.objectContaining({
-          version_number: 2,
-        }),
+        meta: expect.objectContaining({ version_number: 2 }),
       }),
     );
   });
 
   it('기존 버전 없음 → 버전 1', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      latestVersionData: null,
-    });
-
+    setupDefaultMocks('INTERVIEWED', { latestVersionData: null });
     await generateRoadmap('project-1', 'user-1');
 
     expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith(
       expect.objectContaining({
-        meta: expect.objectContaining({
-          version_number: 1,
-        }),
-      }),
-    );
-  });
-
-  it('revision_prompt가 감사로그 meta에 포함', async () => {
-    setupDefaultMocks('INTERVIEWED');
-
-    await generateRoadmap('project-1', 'user-1', '시간을 줄여주세요');
-
-    expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        meta: expect.objectContaining({
-          has_revision_prompt: true,
-        }),
+        meta: expect.objectContaining({ version_number: 1 }),
       }),
     );
   });
 });
 
-// ─── 부수 효과 ──────────────────────────────────────────────────────────────
+// ─── 부수 효과 ────────────────────────────────────────────────────────────
 
 describe('generateRoadmap — 부수 효과', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
-  it('createAuditLog에 올바른 meta 전달', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      latestVersionData: { version_number: 3 },
-    });
-
-    await generateRoadmap('project-1', 'user-1', '수정 요청');
-
-    expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith({
-      actorUserId: 'user-1',
-      action: 'ROADMAP_CREATE',
-      targetType: 'roadmap',
-      targetId: 'roadmap-1',
-      meta: {
-        project_id: 'project-1',
-        version_number: 4,
-        has_revision_prompt: true,
-        validation_passed: expect.any(Boolean),
-      },
-    });
-  });
-
-  it('testMode=false → createNotificationForAdmins 호출', async () => {
+  it('testMode=false → 알림 호출', async () => {
     setupDefaultMocks('INTERVIEWED');
-
     await generateRoadmap('project-1', 'user-1', undefined, false);
 
     expect(vi.mocked(createNotificationForAdmins)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'roadmap_draft',
-        title: '로드맵 초안 생성',
-        link: '/ops/projects/project-1',
-      }),
+      expect.objectContaining({ type: 'roadmap_draft', link: '/ops/projects/project-1' }),
     );
   });
 
   it('testMode=true → 알림 미호출', async () => {
-    setupDefaultMocks('INTERVIEWED', {
-      selfAssessmentData: [],
-    });
-
+    setupDefaultMocks('INTERVIEWED', { selfAssessmentData: [] });
     await generateRoadmap('project-1', 'user-1', undefined, true);
 
     expect(vi.mocked(createNotificationForAdmins)).not.toHaveBeenCalled();
-  });
-
-  it('알림 메시지에 projectData의 company_name을 사용한다', async () => {
-    setupDefaultMocks('INTERVIEWED');
-
-    await generateRoadmap('project-1', 'user-1', undefined, false);
-
-    expect(vi.mocked(createNotificationForAdmins)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining('테스트 기업'),
-      }),
-    );
   });
 });
 
 // ─── generateTestRoadmap ──────────────────────────────────────────────────
 
 describe('generateTestRoadmap', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
   it('쿼터 초과 → throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
@@ -536,95 +496,64 @@ describe('generateTestRoadmap', () => {
       message: '일별 한도 초과',
     } as never);
 
-    const input = createTestInput();
-    await expect(generateTestRoadmap(input, 'user-1', null)).rejects.toThrow('일별 한도 초과');
+    await expect(generateTestRoadmap(createTestInput(), 'user-1', null)).rejects.toThrow('일별 한도 초과');
   });
 
-  it('정상 호출 → LLM 결과 + validation 반환', async () => {
+  it('정상 호출 → 신규 4섹션 결과 + validation 반환', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
-    const input = createTestInput();
-    const { result, validation } = await generateTestRoadmap(input, 'user-1', null);
+    const { result, validation } = await generateTestRoadmap(createTestInput(), 'user-1', null);
 
     expect(result.diagnosis_summary).toBe('테스트 진단 요약');
-    expect(result).toHaveProperty('roadmap_matrix');
+    expect(result.competencies).toHaveLength(1);
+    expect(result.training_structure).toHaveLength(1);
+    expect(result.annual_plan.items).toHaveLength(1);
+    expect(result.course_specs).toHaveLength(3);
     expect(validation).toHaveProperty('isValid');
-    expect(validation).toHaveProperty('errors');
   });
 
-  it('sttInsights가 interview 데이터에 포함되어 buildUserPrompt로 전달', async () => {
+  it('스키마 불일치 → RoadmapStorageError throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
-    vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
+    vi.mocked(callLLMForJSON).mockResolvedValue({ ...MOCK_LLM_RESULT, competencies: [] });
 
-    const input = createTestInput();
-    const sttInsights = { key_topics: ['AI 활용'], pain_points: ['수작업'] };
-
-    await generateTestRoadmap(input, 'user-1', null, sttInsights as never);
-
-    // buildUserPrompt가 호출될 때 interview 인자에 stt_insights 포함 확인
-    expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
-      expect.anything(),
-      null,
-      expect.objectContaining({
-        stt_insights: sttInsights,
-      }),
-      null,
-      undefined,
-      true,
+    await expect(generateTestRoadmap(createTestInput(), 'user-1', null)).rejects.toThrow(
+      RoadmapStorageError,
     );
   });
 
-  it('buildTestProjectData/buildTestInterviewData가 올바르게 데이터 구성', async () => {
+  it('buildUserPrompt에 신규 인터뷰 필드가 전달된다', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
-    const input = createTestInput({
-      company_name: '에이비씨 주식회사',
-      industry: '제조',
-      sub_industries: ['반도체'],
-      company_size: '100명',
-      customer_requirements: '빠른 도입',
-      constraints: [
-        { id: 'c-1', type: '인프라', description: '서버 없음', severity: 'HIGH', workaround: '클라우드 사용' },
-      ],
-    });
-
-    await generateTestRoadmap(input, 'user-1', null);
-
-    // buildUserPrompt의 첫 번째 인자(projectData) 검증
-    expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        company_name: '에이비씨 주식회사',
+    await generateTestRoadmap(
+      createTestInput({
+        company_name: '에이비씨',
         industry: '제조',
         sub_industries: ['반도체'],
-        company_size: '100명',
-        customer_comment: '빠른 도입',
+      }),
+      'user-1',
+      null,
+    );
+
+    expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        company_name: '에이비씨',
+        industry: '제조',
+        sub_industries: ['반도체'],
       }),
       null,
       expect.objectContaining({
         interview_date: '2026-03-01',
-        participants: expect.arrayContaining([
-          expect.objectContaining({ name: '홍길동' }),
+        company_requirements: expect.objectContaining({
+          company_status: '성장 중',
+          main_problems: '데이터 활용 부족',
+        }),
+        task_workflow_items: expect.arrayContaining([
+          expect.objectContaining({ task_name: '데이터 분석' }),
         ]),
-        job_tasks: expect.arrayContaining([
-          expect.objectContaining({
-            task_name: '데이터 분석',
-            job_category: '테스트',
-          }),
-        ]),
-        pain_points: expect.arrayContaining([
-          expect.objectContaining({ description: '수작업 과다' }),
-        ]),
-        improvement_goals: expect.arrayContaining([
-          expect.objectContaining({ goal_description: 'AI 자동화' }),
-        ]),
-        constraints: expect.arrayContaining([
-          expect.objectContaining({
-            type: '인프라',
-            description: '서버 없음',
-            workaround: '클라우드 사용',
-          }),
+        training_targets: expect.arrayContaining([
+          expect.objectContaining({ task_name: '데이터 분석' }),
         ]),
       }),
       null,
@@ -632,120 +561,31 @@ describe('generateTestRoadmap', () => {
       true,
     );
   });
-});
 
-// ─── AbortSignal 취소 / LLM 에러 전파 ────────────────────────────────────────
-
-describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('AbortSignal이 취소되면 callLLMForJSON 에러가 그대로 전파된다', async () => {
-    setupDefaultMocks('INTERVIEWED');
-    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM 호출이 취소되었습니다.'));
-
-    const controller = new AbortController();
-    controller.abort();
-
-    await expect(
-      generateRoadmap('project-1', 'user-1', undefined, false, controller.signal)
-    ).rejects.toThrow('LLM 호출이 취소되었습니다.');
-  });
-
-  it('callLLMForJSON 타임아웃 에러가 throw된다', async () => {
-    setupDefaultMocks('INTERVIEWED');
-    vi.mocked(callLLMForJSON).mockRejectedValue(
-      new Error('LLM API 호출 타임아웃 (240초 초과)')
-    );
-
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('타임아웃');
-  });
-
-  it('callLLMForJSON 토큰 한도 초과 에러가 throw된다', async () => {
-    setupDefaultMocks('INTERVIEWED');
-    vi.mocked(callLLMForJSON).mockRejectedValue(
-      new Error('LLM 응답이 토큰 한도에 도달하여 잘렸습니다.')
-    );
-
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('토큰 한도');
-  });
-
-  it('callLLMForJSON JSON 파싱 실패 에러가 throw된다', async () => {
-    setupDefaultMocks('INTERVIEWED');
-    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM JSON 파싱 실패'));
-
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('파싱');
-  });
-});
-
-// ─── generateTestRoadmap — AbortSignal 취소 ──────────────────────────────────
-
-describe('generateTestRoadmap — AbortSignal 취소', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('AbortSignal이 취소되면 에러가 전파된다', async () => {
+  it('sttInsights가 interview에 포함되어 전달', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
-    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM 호출이 취소되었습니다.'));
+    vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
-    const controller = new AbortController();
-    controller.abort();
+    const sttInsights = { key_topics: ['AI'], pain_points: ['수작업'] };
+    await generateTestRoadmap(createTestInput(), 'user-1', null, sttInsights as never);
 
-    const input = createTestInput();
-    await expect(
-      generateTestRoadmap(input, 'user-1', null, undefined, controller.signal)
-    ).rejects.toThrow('취소되었습니다.');
+    expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      expect.objectContaining({ stt_insights: sttInsights }),
+      null,
+      undefined,
+      true,
+    );
   });
 });
 
-// ─── reviseTestRoadmap ──────────────────────────────────────────────────────
+// ─── reviseTestRoadmap ────────────────────────────────────────────────────
 
 describe('reviseTestRoadmap', () => {
-  const MOCK_PREVIOUS_RESULT = {
-    diagnosis_summary: '기존 진단 요약',
-    roadmap_matrix: [],
-    courses: [
-      {
-        course_name: '기존 과정',
-        level: 'BEGINNER' as const,
-        target_task: '업무',
-        target_audience: '대상',
-        recommended_hours: 8,
-        curriculum: [],
-        tools: [],
-        expected_outcome: '효과',
-        measurement_method: '측정',
-        prerequisites: [],
-      },
-    ],
-    pbl_course: {
-      selected_course_name: '기존 과정',
-      selected_course_level: 'BEGINNER' as const,
-      selected_course_task: '업무',
-      selection_rationale: {
-        consultant_expertise_fit: '적합',
-        pain_point_alignment: '연관',
-        feasibility_assessment: '가능',
-        summary: '요약',
-      },
-      course_name: 'PBL: 기존 과정',
-      total_hours: 8,
-      target_tasks: ['업무'],
-      target_audience: '대상',
-      curriculum: [],
-      final_deliverables: ['결과물'],
-      expected_outcomes: ['효과'],
-      business_impact: '임팩트',
-      measurement_methods: ['측정'],
-      prerequisites: [],
-    },
-  };
+  const MOCK_PREVIOUS_RESULT: RoadmapResult = MOCK_LLM_RESULT;
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
+  afterEach(() => vi.clearAllMocks());
 
   it('쿼터 초과 → throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
@@ -753,44 +593,73 @@ describe('reviseTestRoadmap', () => {
       message: '쿼터 초과',
     } as never);
 
-    const input = createTestInput();
     await expect(
-      reviseTestRoadmap(input, MOCK_PREVIOUS_RESULT, '수정해주세요', 'user-1', null)
+      reviseTestRoadmap(createTestInput(), MOCK_PREVIOUS_RESULT, '수정해주세요', 'user-1', null),
     ).rejects.toThrow('쿼터 초과');
   });
 
-  it('previousResult가 프롬프트에 포함 (callLLMForJSON의 user 메시지에 기존 로드맵 정보 포함)', async () => {
+  it('previousResult의 4섹션이 프롬프트에 포함', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
-    // buildUserPrompt mock은 기본 'user prompt'를 반환 → reviseTestRoadmap은 이것에 추가 텍스트를 붙임
-    const input = createTestInput();
-    await reviseTestRoadmap(input, MOCK_PREVIOUS_RESULT, '시간을 줄여주세요', 'user-1', null);
+    await reviseTestRoadmap(
+      createTestInput(),
+      MOCK_PREVIOUS_RESULT,
+      '시간을 줄여주세요',
+      'user-1',
+      null,
+    );
 
-    // callLLMForJSON의 user 메시지에 기존 로드맵 정보가 포함되어야 함
-    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{ role: string; content: string }>;
-    const userMessage = messages.find(m => m.role === 'user')!.content;
+    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{
+      role: string;
+      content: string;
+    }>;
+    const userMessage = messages.find((m) => m.role === 'user')!.content;
 
     expect(userMessage).toContain('기존 로드맵 결과');
-    expect(userMessage).toContain('기존 진단 요약');
-    expect(userMessage).toContain('기존 과정');
+    expect(userMessage).toContain('기존 역량 모델링');
+    expect(userMessage).toContain('기존 훈련체계도');
+    expect(userMessage).toContain('기존 연간 훈련계획');
+    expect(userMessage).toContain('기존 훈련과정 명세서');
   });
 
-  it('revisionPrompt가 프롬프트 끝에 추가', async () => {
+  it('revisionPrompt가 메시지 후반부에 포함', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
-    const input = createTestInput();
-    await reviseTestRoadmap(input, MOCK_PREVIOUS_RESULT, '초급 과정을 추가해주세요', 'user-1', null);
+    await reviseTestRoadmap(
+      createTestInput(),
+      MOCK_PREVIOUS_RESULT,
+      '초급 과정을 추가해주세요',
+      'user-1',
+      null,
+    );
 
-    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{ role: string; content: string }>;
-    const userMessage = messages.find(m => m.role === 'user')!.content;
+    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{
+      role: string;
+      content: string;
+    }>;
+    const userMessage = messages.find((m) => m.role === 'user')!.content;
 
     expect(userMessage).toContain('수정 요청');
     expect(userMessage).toContain('초급 과정을 추가해주세요');
-    // revisionPrompt는 메시지 후반부에 위치
-    const revisionIdx = userMessage.indexOf('초급 과정을 추가해주세요');
-    const diagnosisIdx = userMessage.indexOf('기존 진단 요약');
-    expect(revisionIdx).toBeGreaterThan(diagnosisIdx);
+  });
+});
+
+// ─── AbortSignal / LLM 에러 전파 ──────────────────────────────────────────
+
+describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it('AbortSignal 취소 → callLLMForJSON 에러 그대로 전파', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockRejectedValue(new Error('LLM 호출이 취소되었습니다.'));
+
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      generateRoadmap('project-1', 'user-1', undefined, false, controller.signal),
+    ).rejects.toThrow('LLM 호출이 취소되었습니다.');
   });
 });

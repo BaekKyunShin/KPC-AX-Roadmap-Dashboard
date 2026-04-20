@@ -34,7 +34,7 @@ describeOrSkip('SYSTEM_ADMIN 라우트 접근', () => {
     expect(getErrors()).toEqual([]);
   });
 
-  test('테스트 로드맵 페이지 접근 가능', async ({ systemAdminPage: page }) => {
+  test('로드맵 테스트 페이지 접근 가능', async ({ systemAdminPage: page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 
     await page.goto(URLS.testRoadmap);

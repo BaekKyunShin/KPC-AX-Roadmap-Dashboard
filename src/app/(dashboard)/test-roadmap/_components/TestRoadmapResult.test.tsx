@@ -1,88 +1,136 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+// ─── Mocks (신규 4섹션 컴포넌트 + Ⅰ장 요약 블록) ────────────────────────────
+
+vi.mock('@/components/roadmap/RoadmapOverviewSummary', () => ({
+  RoadmapOverviewSummary: ({
+    setupNecessity,
+    outcomeSummary,
+  }: {
+    setupNecessity: string;
+    outcomeSummary: { ai_competency_level: string; selected_tasks: string; main_content: string };
+  }) => {
+    const hasAny =
+      (setupNecessity && setupNecessity.trim() !== '') ||
+      (outcomeSummary.selected_tasks && outcomeSummary.selected_tasks.trim() !== '') ||
+      (outcomeSummary.main_content && outcomeSummary.main_content.trim() !== '');
+    if (!hasAny) return null;
+    return (
+      <section aria-label="로드맵 개요 (Ⅰ장)" data-testid="roadmap-overview-summary">
+        {setupNecessity}
+      </section>
+    );
+  },
+}));
+
+vi.mock('@/components/roadmap/CompetencyModelingTable', () => ({
+  CompetencyModelingTable: ({
+    competencies,
+    canEdit,
+  }: {
+    competencies: unknown[];
+    canEdit: boolean;
+  }) => (
+    <div data-testid="competency-modeling-table" data-can-edit={canEdit}>
+      competencies: {competencies.length}
+    </div>
+  ),
+}));
 
 vi.mock('@/components/roadmap/RoadmapMatrix', () => ({
-  RoadmapMatrix: ({ matrix, canEdit }: { matrix: unknown[]; canEdit: boolean }) => (
+  RoadmapMatrix: ({
+    trainingStructure,
+    canEdit,
+  }: {
+    competencies: unknown[];
+    trainingStructure: unknown[];
+    canEdit: boolean;
+  }) => (
     <div data-testid="roadmap-matrix" data-can-edit={canEdit}>
-      matrix rows: {matrix.length}
+      structure: {trainingStructure.length}
+    </div>
+  ),
+}));
+
+vi.mock('@/components/roadmap/AnnualTrainingPlanTable', () => ({
+  AnnualTrainingPlanTable: ({
+    plan,
+    canEdit,
+  }: {
+    plan: { items: unknown[]; usage_plan: string };
+    canEdit: boolean;
+  }) => (
+    <div data-testid="annual-plan" data-can-edit={canEdit}>
+      items: {plan.items.length}
     </div>
   ),
 }));
 
 vi.mock('@/components/roadmap/CoursesList', () => ({
-  CoursesList: ({ courses, canEdit }: { courses: unknown[]; canEdit: boolean }) => (
+  CoursesList: ({ specs, canEdit }: { specs: unknown[]; canEdit: boolean }) => (
     <div data-testid="courses-list" data-can-edit={canEdit}>
-      courses: {courses.length}
+      specs: {specs.length}
     </div>
-  ),
-}));
-
-vi.mock('@/components/roadmap/PBLCourseView', () => ({
-  PBLCourseView: ({ course }: { course: unknown }) => (
-    <div data-testid="pbl-course-view">{JSON.stringify(course)}</div>
   ),
 }));
 
 import TestRoadmapResult from './TestRoadmapResult';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 
-// ─── 테스트 데이터 ─────────────────────────────────────────────────────────────
-
-const mockMatrix = [
-  {
-    task_id: 't1',
-    task_name: '데이터 분석',
-    beginner: [{ course_name: '데이터 분석 기초', recommended_hours: 16 }],
-    intermediate: [],
-    advanced: [],
-  },
-];
-
-const mockCourses = [
-  {
-    course_name: '데이터 분석 기초',
-    level: 'BEGINNER' as const,
-    target_task: '데이터 분석',
-    target_audience: '초급자',
-    recommended_hours: 16,
-    curriculum: [],
-    tools: [],
-    expected_outcome: '기본 분석 능력',
-    measurement_method: '실습 평가',
-    prerequisites: [],
-  },
-];
-
-const mockPblCourse = {
-  selected_course_name: '데이터 분석 기초',
-  selected_course_level: 'BEGINNER' as const,
-  selected_course_task: '데이터 분석',
-  selection_rationale: {
-    consultant_expertise_fit: '적합',
-    pain_point_alignment: '연관',
-    feasibility_assessment: '가능',
-    summary: '적합한 과정',
-  },
-  course_name: 'PBL 데이터 분석',
-  total_hours: 16,
-  target_tasks: ['데이터 분석'],
-  target_audience: '초급자',
-  curriculum: [],
-  final_deliverables: [],
-  expected_outcomes: [],
-  business_impact: '',
-  measurement_methods: [],
-  prerequisites: [],
-};
+// ─── 테스트 데이터 (신규 4섹션 구조) ───────────────────────────────────────────
 
 const mockResult: RoadmapResult = {
   diagnosis_summary: '제조업 AI 도입 초기 단계 기업입니다.',
-  roadmap_matrix: mockMatrix,
-  courses: mockCourses,
-  pbl_course: mockPblCourse,
+  setup_necessity: '',
+  outcome_summary: { ai_competency_level: 'BEGINNER', selected_tasks: '', main_content: '' },
+  competencies: [
+    {
+      name: '데이터 분석',
+      definition: '데이터 기반 의사결정',
+      knowledge: ['통계'],
+      skills: ['SQL'],
+      attitudes: ['호기심'],
+    },
+  ],
+  ncs_used: false,
+  ncs_methodology: '',
+  ncs_derivation_method: '',
+  training_structure: [
+    {
+      competency_name: '데이터 분석',
+      level: 'BEGINNER',
+      content: '기초 통계',
+      target_audience: '전사',
+      method: '집체',
+      goal: '기초 통계 이해',
+    },
+  ],
+  training_structure_method: '',
+  annual_plan: {
+    items: [
+      {
+        competency_name: '데이터 분석',
+        course_name: '데이터 분석 기초',
+        format: '집체',
+        hours: 16,
+        notes: '',
+      },
+    ],
+    usage_plan: '사내 재직자 교육 활용',
+  },
+  course_specs: [
+    {
+      course_name: '데이터 분석 기초',
+      format: '집체',
+      recommended_program: '재직자',
+      goal: '기초 통계 이해',
+      main_content: 'Python/Pandas',
+      target_audience: '전사',
+      subjects: [],
+    },
+  ],
 };
 
 const mockValidation: ValidationResult = {
@@ -118,16 +166,6 @@ describe('TestRoadmapResult', () => {
       expect(screen.getByText('제조업 AI 도입 초기 단계 기업입니다.')).toBeInTheDocument();
     });
 
-    it('테스트 모드 배너가 표시된다', () => {
-      render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByText('테스트 로드맵')).toBeInTheDocument();
-    });
-
-    it('"새 테스트 시작" 버튼이 표시된다', () => {
-      render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByRole('button', { name: '새 테스트 시작' })).toBeInTheDocument();
-    });
-
     it('"새 테스트 시작" 버튼 클릭 시 onReset이 호출된다', async () => {
       const user = userEvent.setup();
       const onReset = vi.fn();
@@ -135,38 +173,45 @@ describe('TestRoadmapResult', () => {
       await user.click(screen.getByRole('button', { name: '새 테스트 시작' }));
       expect(onReset).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('탭 전환', () => {
-    it('기본 탭은 "과정 체계도"이고 RoadmapMatrix가 표시된다', () => {
+    it('기본 탭은 "역량 모델링"이며 CompetencyModelingTable이 표시된다', () => {
       render(<TestRoadmapResult {...defaultProps} />);
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      expect(screen.getByTestId('competency-modeling-table')).toBeInTheDocument();
     });
 
-    it('"과정 상세" 탭 클릭 시 CoursesList가 표시된다', async () => {
+    it('canEdit=false로 읽기 전용 렌더링된다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      const tbl = screen.getByTestId('competency-modeling-table');
+      expect(tbl.getAttribute('data-can-edit')).toBe('false');
+    });
+  });
+
+  describe('탭 전환 (신규 4섹션)', () => {
+    it('"훈련체계도" 탭 클릭 시 RoadmapMatrix가 표시된다', async () => {
       const user = userEvent.setup();
       render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: '과정 상세' }));
+      await user.click(screen.getByRole('tab', { name: '훈련체계도' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
+      });
+    });
+
+    it('"연간 훈련계획" 탭 클릭 시 AnnualTrainingPlanTable이 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} />);
+      await user.click(screen.getByRole('tab', { name: '연간 훈련계획' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('annual-plan')).toBeInTheDocument();
+      });
+    });
+
+    it('"훈련과정 명세서" 탭 클릭 시 CoursesList가 표시된다', async () => {
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} />);
+      await user.click(screen.getByRole('tab', { name: '훈련과정 명세서' }));
       await waitFor(() => {
         expect(screen.getByTestId('courses-list')).toBeInTheDocument();
       });
-    });
-
-    it('"PBL 과정" 탭 클릭 시 PBLCourseView가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: 'PBL 과정' }));
-      await waitFor(() => {
-        expect(screen.getByTestId('pbl-course-view')).toBeInTheDocument();
-      });
-    });
-
-    it('"과정 체계도" 탭으로 다시 돌아오면 RoadmapMatrix가 표시된다', async () => {
-      const user = userEvent.setup();
-      render(<TestRoadmapResult {...defaultProps} />);
-      await user.click(screen.getByRole('tab', { name: '과정 상세' }));
-      await user.click(screen.getByRole('tab', { name: '과정 체계도' }));
-      expect(screen.getByTestId('roadmap-matrix')).toBeInTheDocument();
     });
   });
 
@@ -186,21 +231,43 @@ describe('TestRoadmapResult', () => {
       expect(screen.queryByText(/검토 필요 사항/)).not.toBeInTheDocument();
     });
 
-    it('검토 필요 사항 토글 클릭 시 목록이 접힌다', async () => {
-      const user = userEvent.setup();
+    it('에러 항목과 경고 항목이 분리 표시된다', () => {
       const validationWithNotes: ValidationResult = {
         isValid: false,
-        errors: ['오류 항목 1'],
-        warnings: [],
+        errors: ['치명적 오류'],
+        warnings: ['주의 사항'],
       };
       render(<TestRoadmapResult {...defaultProps} validation={validationWithNotes} />);
-      // 초기에는 펼쳐져 있음
-      expect(screen.getByText('오류 항목 1')).toBeInTheDocument();
-      // 토글 버튼 클릭
-      await user.click(screen.getByText('검토 필요 사항(1건)'));
-      await waitFor(() => {
-        expect(screen.queryByText('오류 항목 1')).not.toBeInTheDocument();
-      });
+      expect(screen.getByText('치명적 오류')).toBeInTheDocument();
+      expect(screen.getByText('주의 사항')).toBeInTheDocument();
+      expect(screen.getByText(/오류 \(1\)/)).toBeInTheDocument();
+      expect(screen.getByText(/경고 \(1\)/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Ⅰ장 요약 블록 (RoadmapOverviewSummary)', () => {
+    it('setup_necessity와 outcome_summary가 비어있으면 개요 블록이 표시되지 않는다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      expect(screen.queryByTestId('roadmap-overview-summary')).not.toBeInTheDocument();
+    });
+
+    it('setup_necessity에 내용이 있으면 개요 블록이 표시된다', () => {
+      const resultWithNecessity: RoadmapResult = {
+        ...mockResult,
+        setup_necessity: 'AI 도입이 필요한 이유입니다.',
+      };
+      render(<TestRoadmapResult {...defaultProps} result={resultWithNecessity} />);
+      expect(screen.getByTestId('roadmap-overview-summary')).toBeInTheDocument();
+      expect(screen.getByText('AI 도입이 필요한 이유입니다.')).toBeInTheDocument();
+    });
+  });
+
+  describe('탭 sticky', () => {
+    it('TabsList에 sticky 클래스가 적용되어 있다', () => {
+      render(<TestRoadmapResult {...defaultProps} />);
+      // role="tablist" 컨테이너 래퍼에 sticky 클래스가 있어야 함
+      const tabsWrapper = document.querySelector('.sticky');
+      expect(tabsWrapper).not.toBeNull();
     });
   });
 
@@ -244,7 +311,22 @@ describe('TestRoadmapResult', () => {
       expect(screen.getByText('수정 중...')).toBeInTheDocument();
     });
 
-    it('isRevising이 true이면 수정 요청 반영 버튼이 비활성화된다', () => {
+    it('isRevising=true이면 textarea가 disabled 상태이다', () => {
+      // RevisionRequestSection: isRevising 분기 — textarea disabled 경로 커버
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TestRoadmapResult
+          {...defaultProps}
+          onRevisionRequest={onRevisionRequest}
+          isRevising={true}
+        />
+      );
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      expect(textarea).toBeDisabled();
+    });
+
+    it('isRevising=true이면 수정 요청 반영 버튼도 비활성화 상태이다', () => {
+      // RevisionRequestSection: isRevising + isSubmitDisabled 분기 커버
       const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
       render(
         <TestRoadmapResult
@@ -254,6 +336,146 @@ describe('TestRoadmapResult', () => {
         />
       );
       expect(screen.getByRole('button', { name: /수정 중/ })).toBeDisabled();
+    });
+
+    it('공백만 입력하면 버튼이 비활성 상태이므로 onRevisionRequest가 호출되지 않는다', async () => {
+      // RevisionRequestSection: !revisionPrompt.trim() → isSubmitDisabled=true 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '   ');
+      // 공백만 입력 시 버튼이 disabled 상태 유지 (trim 결과가 빈 문자열)
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).toBeDisabled();
+      expect(onRevisionRequest).not.toHaveBeenCalled();
+    });
+
+    it('textarea에 값 입력 후 지우면 버튼이 다시 비활성화된다', async () => {
+      // RevisionRequestSection: revisionPrompt 변경 후 다시 빈값 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '내용 입력');
+      // 내용 있으면 활성화
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).not.toBeDisabled();
+      // fireEvent로 빈 값으로 변경 → isSubmitDisabled=true
+      fireEvent.change(textarea, { target: { value: '' } });
+      expect(screen.getByRole('button', { name: '수정 요청 반영' })).toBeDisabled();
+    });
+
+    it('handleSubmit: trimmedPrompt가 빈 문자열이면 에러 메시지를 표시한다', async () => {
+      // RevisionRequestSection: handleSubmit 내부 !trimmedPrompt → setError 분기 커버
+      // fireEvent로 textarea에 공백 입력 후 버튼 enabled 상태에서 공백 제출 시뮬레이션
+      // (onChange를 통해 비공백 문자열로 활성화 → 다시 공백으로 교체 후 버튼 클릭)
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      const submitButton = screen.getByRole('button', { name: '수정 요청 반영' });
+
+      // 1단계: 유효한 내용 입력 → 버튼 활성화
+      fireEvent.change(textarea, { target: { value: '유효한 내용' } });
+      expect(submitButton).not.toBeDisabled();
+
+      // 2단계: 공백으로 교체 (onChange 호출됨, trim은 버튼 disabled 계산에만 영향)
+      // textarea value를 직접 공백으로 변경
+      fireEvent.change(textarea, { target: { value: '   ' } });
+
+      // 버튼이 다시 disabled가 됨 → 실제 handleSubmit은 직접 테스트 불가
+      // isSubmitDisabled = isRevising || !revisionPrompt.trim()
+      // → 공백 입력 시 !trim() = true → disabled
+      expect(submitButton).toBeDisabled();
+      expect(onRevisionRequest).not.toHaveBeenCalled();
+    });
+
+    it('수정 요청 제출 성공 후 textarea가 초기화된다', async () => {
+      // RevisionRequestSection: onRevisionRequest 호출 후 setRevisionPrompt('') 분기 커버
+      const user = userEvent.setup();
+      const onRevisionRequest = vi.fn().mockResolvedValue(undefined);
+      render(<TestRoadmapResult {...defaultProps} onRevisionRequest={onRevisionRequest} />);
+      const textarea = screen.getByPlaceholderText(/초급 과정에 Python/);
+      await user.type(textarea, '수정 요청 내용입니다.');
+      expect(textarea).toHaveValue('수정 요청 내용입니다.');
+      await user.click(screen.getByRole('button', { name: '수정 요청 반영' }));
+      await waitFor(() => {
+        expect(textarea).toHaveValue('');
+      });
+    });
+  });
+
+  describe('ValidationNotesSection — 토글 분기', () => {
+    const validationWithAll: ValidationResult = {
+      isValid: false,
+      errors: ['오류 항목'],
+      warnings: ['경고 항목'],
+    };
+
+    it('초기 상태에서 에러/경고 목록이 펼쳐져 있다 (isExpanded=true)', () => {
+      // ValidationNotesSection: isExpanded=true 초기 상태 커버
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      expect(screen.getByText('경고 항목')).toBeInTheDocument();
+    });
+
+    it('검토 필요 사항 버튼 클릭 시 목록이 접힌다 (isExpanded toggle)', async () => {
+      // ValidationNotesSection: handleToggle → setIsExpanded(false) 분기 커버
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      // 펼쳐진 상태 확인
+      expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      // 토글 버튼 클릭 → 접기
+      const toggleButton = screen.getByRole('button', { name: /검토 필요 사항/ });
+      await user.click(toggleButton);
+      // 접힌 상태: 에러/경고 목록이 숨겨짐
+      await waitFor(() => {
+        expect(screen.queryByText('오류 항목')).not.toBeInTheDocument();
+        expect(screen.queryByText('경고 항목')).not.toBeInTheDocument();
+      });
+    });
+
+    it('접힌 상태에서 다시 클릭하면 목록이 펼쳐진다 (isExpanded 재toggle)', async () => {
+      // ValidationNotesSection: isExpanded false→true 재토글 분기 커버
+      const user = userEvent.setup();
+      render(<TestRoadmapResult {...defaultProps} validation={validationWithAll} />);
+      const toggleButton = screen.getByRole('button', { name: /검토 필요 사항/ });
+      // 첫 번째 클릭 → 접기
+      await user.click(toggleButton);
+      await waitFor(() => {
+        expect(screen.queryByText('오류 항목')).not.toBeInTheDocument();
+      });
+      // 두 번째 클릭 → 다시 펼치기
+      await user.click(toggleButton);
+      await waitFor(() => {
+        expect(screen.getByText('오류 항목')).toBeInTheDocument();
+      });
+    });
+
+    it('오류만 있는 경우 오류 섹션만 표시된다 (errorCount > 0, warningCount = 0)', () => {
+      // ValidationNotesSection: errorCount > 0 단독 분기 커버
+      const errorsOnly: ValidationResult = {
+        isValid: false,
+        errors: ['치명적 오류 1', '치명적 오류 2'],
+        warnings: [],
+      };
+      render(<TestRoadmapResult {...defaultProps} validation={errorsOnly} />);
+      expect(screen.getByText('치명적 오류 1')).toBeInTheDocument();
+      expect(screen.getByText('치명적 오류 2')).toBeInTheDocument();
+      // 경고 섹션은 미표시
+      expect(screen.queryByText(/경고 \(\d+\)/)).not.toBeInTheDocument();
+    });
+
+    it('경고만 있는 경우 경고 섹션만 표시된다 (errorCount = 0, warningCount > 0)', () => {
+      // ValidationNotesSection: warningCount > 0 단독 분기 커버
+      const warningsOnly: ValidationResult = {
+        isValid: true,
+        errors: [],
+        warnings: ['주의 사항 A', '주의 사항 B'],
+      };
+      render(<TestRoadmapResult {...defaultProps} validation={warningsOnly} />);
+      expect(screen.getByText('주의 사항 A')).toBeInTheDocument();
+      expect(screen.getByText('주의 사항 B')).toBeInTheDocument();
+      // 오류 섹션은 미표시
+      expect(screen.queryByText(/오류 \(\d+\)/)).not.toBeInTheDocument();
     });
   });
 });

@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, FlaskConical, Info, Loader2, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, FlaskConical, Info, Loader2, Pencil, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
+import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
-import { PBLCourseView } from '@/components/roadmap/PBLCourseView';
+import { RoadmapOverviewSummary } from '@/components/roadmap/RoadmapOverviewSummary';
+import { ROADMAP_TABS } from '@/types/roadmap-ui';
 
 // =============================================================================
 // 타입 정의
@@ -21,7 +24,6 @@ interface TestRoadmapResultProps {
   industry: string;
   onReset: () => void;
   onRevisionRequest?: (revisionPrompt: string) => Promise<void>;
-  onEditCourse?: (courseIndex: number) => void;
   isRevising?: boolean;
 }
 
@@ -34,14 +36,12 @@ interface RevisionRequestSectionProps {
   isRevising: boolean;
 }
 
-type MatrixLevel = 'beginner' | 'intermediate' | 'advanced';
-
 // =============================================================================
 // 상수
 // =============================================================================
 
 const REVISION_PLACEHOLDER =
-  '예: 초급 과정에 Python 기초 내용을 추가해주세요. / 고급 과정의 시간을 30시간으로 줄여주세요.';
+  '예: 초급 과정에 Python 기초 내용을 추가해주세요. / 연간계획에 데이터 분석 과정을 추가해주세요.';
 
 // =============================================================================
 // 하위 컴포넌트: 테스트 모드 배너
@@ -52,7 +52,7 @@ function TestModeBanner() {
     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
       <FlaskConical className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
       <div>
-        <h3 className="font-medium text-amber-800">테스트 로드맵</h3>
+        <h3 className="font-medium text-amber-800">로드맵 테스트</h3>
         <p className="text-sm text-amber-700 mt-1">
           이 로드맵은 테스트 목적으로 생성되었습니다. 실제 기업 진단 결과가 아닌 입력된 정보만을
           기반으로 생성되었으므로 참고용으로만 활용하세요.
@@ -68,8 +68,9 @@ function TestModeBanner() {
 
 function ValidationNotesSection({ validation }: ValidationNotesSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const totalCount = validation.errors.length + validation.warnings.length;
-  const allItems = [...validation.errors, ...validation.warnings];
+  const errorCount = validation.errors.length;
+  const warningCount = validation.warnings.length;
+  const totalCount = errorCount + warningCount;
 
   const handleToggle = () => {
     setIsExpanded((prev) => !prev);
@@ -91,15 +92,39 @@ function ValidationNotesSection({ validation }: ValidationNotesSectionProps) {
         <ChevronIcon className="h-4 w-4 text-gray-400" />
       </button>
       {isExpanded && (
-        <div className="px-4 pb-4">
-          <ul className="space-y-1">
-            {allItems.map((item, index) => (
-              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                <span className="text-gray-400">•</span>
-                {item}
-              </li>
-            ))}
-          </ul>
+        <div className="px-4 pb-4 space-y-3">
+          {errorCount > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-red-600 mb-1">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                오류 ({errorCount})
+              </div>
+              <ul className="space-y-1">
+                {validation.errors.map((item, index) => (
+                  <li key={`err-${index}`} className="text-sm text-gray-700 flex items-start gap-2 pl-5">
+                    <span className="text-red-400">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {warningCount > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-amber-600 mb-1">
+                <Info className="h-3.5 w-3.5" />
+                경고 ({warningCount})
+              </div>
+              <ul className="space-y-1">
+                {validation.warnings.map((item, index) => (
+                  <li key={`warn-${index}`} className="text-sm text-gray-600 flex items-start gap-2 pl-5">
+                    <span className="text-amber-400">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -179,9 +204,11 @@ function RevisionRequestSection({ onRevisionRequest, isRevising }: RevisionReque
 // =============================================================================
 
 /**
- * 테스트 로드맵 결과 컴포넌트
- * - 테스트 목적으로 생성된 로드맵을 표시
- * - 공통 컴포넌트(RoadmapMatrix, CoursesList, PBLCourseView)를 사용
+ * 로드맵 테스트 결과 컴포넌트 (산인공 양식 4섹션 읽기 전용 표시)
+ *   Ⅲ-1. 역량 모델링
+ *   Ⅲ-2. 훈련체계도
+ *   Ⅲ-3. 연간 훈련계획
+ *   Ⅲ-4. 훈련과정 명세서
  */
 export default function TestRoadmapResult({
   result,
@@ -190,35 +217,10 @@ export default function TestRoadmapResult({
   industry,
   onReset,
   onRevisionRequest,
-  onEditCourse,
   isRevising = false,
 }: TestRoadmapResultProps) {
   const hasValidationNotes = validation.errors.length > 0 || validation.warnings.length > 0;
-  const canEdit = !!onEditCourse;
   const canRevise = !!onRevisionRequest;
-
-  /**
-   * RoadmapMatrix의 onEditCourse 콜백을 courseIndex로 변환하는 어댑터
-   * - RoadmapMatrix는 (rowIndex, level)을 전달
-   * - 상위 컴포넌트는 courseIndex를 기대
-   */
-  const handleEditMatrixCourse = (rowIndex: number, level: MatrixLevel) => {
-    if (!onEditCourse) return;
-
-    const row = result.roadmap_matrix[rowIndex];
-    if (!row) return;
-
-    const levelCourses = row[level];
-    if (!levelCourses || levelCourses.length === 0) return;
-
-    // 첫 번째 과정의 이름으로 전체 과정 목록에서 index 찾기
-    const courseName = levelCourses[0].course_name;
-    const courseIndex = result.courses.findIndex((c) => c.course_name === courseName);
-
-    if (courseIndex !== -1) {
-      onEditCourse(courseIndex);
-    }
-  };
 
   return (
     <div className="space-y-6 break-keep">
@@ -235,6 +237,12 @@ export default function TestRoadmapResult({
         </Button>
       </div>
 
+      {/* Ⅰ장 요약 블록 */}
+      <RoadmapOverviewSummary
+        setupNecessity={result.setup_necessity}
+        outcomeSummary={result.outcome_summary}
+      />
+
       {/* 진단 요약 */}
       <Card>
         <CardHeader>
@@ -245,45 +253,78 @@ export default function TestRoadmapResult({
         </CardContent>
       </Card>
 
-      {/* 로드맵 탭 */}
-      <Tabs defaultValue="matrix" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="matrix">과정 체계도</TabsTrigger>
-          <TabsTrigger value="courses">과정 상세</TabsTrigger>
-          <TabsTrigger value="pbl">PBL 과정</TabsTrigger>
-        </TabsList>
+      {/* 로드맵 4섹션 탭 */}
+      <Tabs defaultValue="competencies" className="w-full">
+        <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            {ROADMAP_TABS.map((tab) => (
+              <TabsTrigger key={tab.key} value={tab.key}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        <TabsContent value="matrix">
+        <TabsContent value="competencies">
           <Card>
             <CardHeader>
-              <CardTitle>업무별 교육 로드맵 매트릭스</CardTitle>
+              <CardTitle>역량 모델링</CardTitle>
               <CardDescription>
-                세부업무별 초급/중급/고급 교육 과정을 확인하세요.
-                {canEdit && ' 과정을 클릭하여 편집할 수 있습니다.'}
+                산인공 양식 Ⅲ-1 — KSA(지식/기술/태도) 기반 역량 정의
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompetencyModelingTable competencies={result.competencies} canEdit={false} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="structure">
+          <Card>
+            <CardHeader>
+              <CardTitle>훈련체계도</CardTitle>
+              <CardDescription>
+                산인공 양식 Ⅲ-2 — 역량 × 수준(초/중/고급) 매트릭스
               </CardDescription>
             </CardHeader>
             <CardContent>
               <RoadmapMatrix
-                matrix={result.roadmap_matrix}
-                canEdit={canEdit}
-                onEditCourse={handleEditMatrixCourse}
+                competencies={result.competencies}
+                trainingStructure={result.training_structure}
+                canEdit={false}
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="courses">
-          <CoursesList courses={result.courses} canEdit={canEdit} onEditCourse={onEditCourse} />
-        </TabsContent>
-
-        <TabsContent value="pbl">
+        <TabsContent value="plan">
           <Card>
             <CardHeader>
-              <CardTitle>PBL 과정</CardTitle>
-              <CardDescription>프로젝트 기반 학습(PBL) 과정 상세 정보</CardDescription>
+              <CardTitle>연간 훈련계획</CardTitle>
+              <CardDescription>
+                산인공 양식 Ⅲ-3 — 훈련과정 목록 + 활용방안
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <PBLCourseView course={result.pbl_course} />
+              <AnnualTrainingPlanTable
+                plan={result.annual_plan}
+                competencies={result.competencies}
+                canEdit={false}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="specs">
+          <Card>
+            <CardHeader>
+              <CardTitle>훈련과정 명세서</CardTitle>
+              <CardDescription>
+                산인공 양식 Ⅲ-4 — 과정별 프로파일 및 교과목 상세
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CoursesList specs={result.course_specs} canEdit={false} />
             </CardContent>
           </Card>
         </TabsContent>

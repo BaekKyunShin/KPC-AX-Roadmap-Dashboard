@@ -1,11 +1,10 @@
 /**
- * xlsx-generator.ts 테스트
+ * xlsx-generator.ts 테스트 (산인공 4섹션 전환)
  * generateXLSX 함수의 메인 오케스트레이션 검증
  *
  * - 유효한 데이터 → Uint8Array 반환
- * - 4개 시트 생성 확인
- * - 빈 과정 목록 → 에러 없이 처리
- * - PBL 과정 포함 시 PBL 시트 렌더링
+ * - 5개 시트 생성 확인 (개요/역량모델링/훈련체계도/연간계획/명세서)
+ * - 빈 데이터 → 에러 없이 처리
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -52,70 +51,46 @@ function createTestExportData(overrides: Partial<RoadmapExportData> = {}): Roadm
     versionNumber: 1,
     status: 'DRAFT',
     diagnosisSummary: '진단 요약 텍스트입니다.',
-    roadmapMatrix: [
+    competencies: [
       {
-        task_id: 'task-1',
-        task_name: '데이터 분석',
-        beginner: [{ course_name: 'AI 기초', recommended_hours: 8 }],
-        intermediate: [{ course_name: '데이터 처리', recommended_hours: 16 }],
-        advanced: [],
+        name: '데이터 분석 역량',
+        definition: '정의',
+        knowledge: ['K1'],
+        skills: ['S1'],
+        attitudes: ['A1'],
       },
     ],
-    pblCourse: {
-      selected_course_name: 'AI 기초',
-      selected_course_level: 'BEGINNER',
-      selected_course_task: '데이터 분석',
-      selection_rationale: {
-        consultant_expertise_fit: '전문가 적합',
-        pain_point_alignment: '페인포인트 일치',
-        feasibility_assessment: '실현 가능',
-        summary: '종합 선정 이유',
+    trainingStructure: [
+      {
+        competency_name: '데이터 분석 역량',
+        level: 'BEGINNER',
+        content: '내용',
+        target_audience: '대상',
+        method: '방법',
+        goal: '목표',
       },
-      course_name: 'PBL: AI 기초 실습',
-      total_hours: 16,
-      target_tasks: ['데이터 분석'],
-      target_audience: '신입 사원',
-      curriculum: [
+    ],
+    annualPlan: {
+      items: [
         {
-          module_name: '데이터 수집',
-          hours: 8,
-          details: ['크롤링 기초', 'API 활용'],
-          practice: '실습: 공공데이터 수집',
-          deliverables: ['수집 스크립트'],
-          tools: [{ name: 'Python', free_tier_info: '무료' }],
+          competency_name: '데이터 분석 역량',
+          course_name: '과정',
+          format: '집체',
+          hours: 16,
+          notes: '-',
         },
       ],
-      final_deliverables: ['최종 보고서'],
-      expected_outcomes: ['데이터 분석 역량 강화'],
-      business_impact: '업무 효율 30% 향상',
-      measurement_methods: ['실습 평가'],
-      prerequisites: ['노트북 지참'],
+      usage_plan: '활용방안',
     },
-    courses: [
+    courseSpecs: [
       {
-        course_name: 'AI 기초',
-        level: 'BEGINNER',
-        target_task: '데이터 분석',
-        target_audience: '신입 사원',
-        recommended_hours: 8,
-        curriculum: [
-          {
-            module_name: '소개',
-            hours: 4,
-            details: ['AI 개요'],
-            practice: '실습: Hello AI',
-          },
-          {
-            module_name: '실습',
-            hours: 4,
-            details: ['실전 연습'],
-            practice: '실습: 데이터 분석',
-          },
-        ],
-        tools: [{ name: 'ChatGPT', free_tier_info: '무료 플랜' }],
-        expected_outcome: 'AI 기초 이해',
-        measurement_method: '퀴즈',
-        prerequisites: ['없음'],
+        course_name: '과정명',
+        format: '집체',
+        recommended_program: 'S-OJT',
+        goal: '목표',
+        main_content: '내용',
+        target_audience: '대상',
+        subjects: [{ name: '과목1', details: '세부', hours: 4 }],
       },
     ],
     createdAt: '2026-02-01T00:00:00Z',
@@ -140,26 +115,29 @@ describe('generateXLSX', () => {
     expect(result).toBeInstanceOf(Uint8Array);
   });
 
-  it('4개 시트(개요, 과정 체계도, 교육 과정 상세, PBL 프로그램)를 생성한다', async () => {
+  it('5개 시트를 생성한다 (개요/역량모델링/훈련체계도/연간계획/명세서)', async () => {
     const XLSX = await import('xlsx-js-style');
     const { generateXLSX } = await import('./xlsx-generator');
     const data = createTestExportData();
 
     await generateXLSX(data);
 
-    // book_append_sheet가 4번 호출되었는지 확인
-    expect(XLSX.utils.book_append_sheet).toHaveBeenCalledTimes(4);
+    expect(XLSX.utils.book_append_sheet).toHaveBeenCalledTimes(5);
 
-    // 각 시트 이름 확인
     const sheetNames = (XLSX.utils.book_append_sheet as ReturnType<typeof vi.fn>).mock.calls.map(
       (c: unknown[]) => c[2],
     );
-    expect(sheetNames).toEqual(['개요', '과정 체계도', '교육 과정 상세', 'PBL 프로그램']);
+    expect(sheetNames).toEqual(['개요', '역량모델링', '훈련체계도', '연간계획', '명세서']);
   });
 
-  it('빈 과정 목록이어도 에러 없이 처리한다', async () => {
+  it('빈 competencies/structure/plan/specs에도 에러 없이 처리한다', async () => {
     const { generateXLSX } = await import('./xlsx-generator');
-    const data = createTestExportData({ courses: [] });
+    const data = createTestExportData({
+      competencies: [],
+      trainingStructure: [],
+      annualPlan: { items: [], usage_plan: '' },
+      courseSpecs: [],
+    });
 
     const result = await generateXLSX(data);
 
@@ -173,70 +151,32 @@ describe('generateXLSX', () => {
 
     await generateXLSX(data);
 
-    expect(XLSX.write).toHaveBeenCalledWith(
-      expect.anything(),
-      { type: 'array', bookType: 'xlsx' },
-    );
+    expect(XLSX.write).toHaveBeenCalledWith(expect.anything(), { type: 'array', bookType: 'xlsx' });
   });
 
-  it('pblCourse가 없으면 PBL 시트를 건너뛴다', async () => {
-    const { generateXLSX } = await import('./xlsx-generator');
-    // pblCourse를 최소 데이터로 구성 — PBL 시트는 여전히 생성되지만 내용이 최소
-    const data = createTestExportData({
-      pblCourse: {
-        selected_course_name: '',
-        selected_course_level: 'BEGINNER',
-        selected_course_task: '',
-        selection_rationale: { consultant_expertise_fit: '', pain_point_alignment: '', feasibility_assessment: '', summary: '' },
-        course_name: '-',
-        total_hours: 0,
-        target_tasks: [],
-        target_audience: '-',
-        curriculum: [],
-        final_deliverables: [],
-        expected_outcomes: [],
-        business_impact: '',
-        measurement_methods: [],
-        prerequisites: [],
-      },
-    });
-
-    const result = await generateXLSX(data);
-
-    // PBL 데이터가 최소여도 에러 없이 Uint8Array를 반환
-    expect(result).toBeInstanceOf(Uint8Array);
-  });
-
-  it('roadmapMatrix가 빈 배열이어도 에러 없이 처리한다', async () => {
-    const { generateXLSX } = await import('./xlsx-generator');
-    const data = createTestExportData({ roadmapMatrix: [] });
-
-    const result = await generateXLSX(data);
-
-    expect(result).toBeInstanceOf(Uint8Array);
-  });
-
-  it('courses가 비어있고 pblCourse도 없는 최소 데이터로 동작한다', async () => {
+  it('다중 courseSpecs도 에러 없이 처리한다', async () => {
     const { generateXLSX } = await import('./xlsx-generator');
     const data = createTestExportData({
-      courses: [],
-      roadmapMatrix: [],
-      pblCourse: {
-        selected_course_name: '',
-        selected_course_level: 'BEGINNER',
-        selected_course_task: '',
-        selection_rationale: { consultant_expertise_fit: '', pain_point_alignment: '', feasibility_assessment: '', summary: '' },
-        course_name: '-',
-        total_hours: 0,
-        target_tasks: [],
-        target_audience: '-',
-        curriculum: [],
-        final_deliverables: [],
-        expected_outcomes: [],
-        business_impact: '',
-        measurement_methods: [],
-        prerequisites: [],
-      },
+      courseSpecs: [
+        {
+          course_name: '과정1',
+          format: '집체',
+          recommended_program: 'S-OJT',
+          goal: '-',
+          main_content: '-',
+          target_audience: '-',
+          subjects: [{ name: '과목A', details: '-', hours: 4 }],
+        },
+        {
+          course_name: '과정2',
+          format: '원격',
+          recommended_program: '국민내일',
+          goal: '-',
+          main_content: '-',
+          target_audience: '-',
+          subjects: [{ name: '과목B', details: '-', hours: 8 }],
+        },
+      ],
     });
 
     const result = await generateXLSX(data);

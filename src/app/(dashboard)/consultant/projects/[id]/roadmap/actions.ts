@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
@@ -9,18 +10,55 @@ import {
   fetchRoadmapVersions as fetchRoadmapVersionsService,
   fetchRoadmapVersion as fetchRoadmapVersionService,
   updateRoadmapManually,
-  type RoadmapRow,
-  type PBLCourse,
-  type RoadmapCell,
+  fromRoadmapVersionColumns,
+  type RoadmapCompetency,
+  type RoadmapOutcomeSummary,
+  type RoadmapTrainingStructureItem,
+  type RoadmapAnnualPlan,
+  type RoadmapCourseSpec,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
+import { buildRoadmapHwpxPayload, generateRoadmapHwpx } from '@/lib/services/export/hwpx';
+import { createAuditLog } from '@/lib/services/audit';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /** abort 레지스트리 키 생성 */
 function abortKey(userId: string) { return `roadmap:${userId}`; }
+
+/**
+ * raw row → RoadmapVersionUI 호환 형태로 변환.
+ * legacy 컬럼(roadmap_matrix/pbl_course/courses)을 fromRoadmapVersionColumns로
+ * 신규 4섹션 구조(competencies/training_structure/annual_plan/course_specs)로 매핑.
+ */
+function toRoadmapVersionUI<
+  R extends {
+    id: string;
+    version_number: number;
+    status: string;
+    diagnosis_summary?: string | null;
+    roadmap_matrix?: unknown;
+    pbl_course?: unknown;
+    courses?: unknown;
+    revision_prompt: string | null;
+    is_shared: boolean;
+    created_at: string;
+    finalized_at: string | null;
+  },
+>(row: R) {
+  return {
+    id: row.id,
+    version_number: row.version_number,
+    status: row.status,
+    revision_prompt: row.revision_prompt,
+    is_shared: row.is_shared,
+    created_at: row.created_at,
+    finalized_at: row.finalized_at,
+    ...fromRoadmapVersionColumns(row),
+  };
+}
 
 /**
  * 로드맵 생성
@@ -134,7 +172,7 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
 }
 
 /**
- * 로드맵 버전 목록 조회
+ * 로드맵 버전 목록 조회 (신규 4섹션 구조로 변환된 RoadmapVersionUI 호환 형태)
  */
 export async function fetchRoadmapVersions(projectId: string) {
   try {
@@ -159,14 +197,15 @@ export async function fetchRoadmapVersions(projectId: string) {
       return [];
     }
 
-    return await fetchRoadmapVersionsService(projectId);
+    const rawVersions = await fetchRoadmapVersionsService(projectId);
+    return rawVersions.map(toRoadmapVersionUI);
   } catch {
     return [];
   }
 }
 
 /**
- * 특정 로드맵 버전 조회
+ * 특정 로드맵 버전 조회 (신규 4섹션 구조로 변환)
  */
 export async function fetchRoadmapVersion(roadmapId: string) {
   try {
@@ -194,22 +233,29 @@ export async function fetchRoadmapVersion(roadmapId: string) {
       return null;
     }
 
-    return roadmap;
+    return toRoadmapVersionUI(roadmap);
   } catch {
     return null;
   }
 }
 
 /**
- * 로드맵 수동 편집
+ * 로드맵 수동 편집 (산인공 4섹션 신규 구조)
  */
 export async function editRoadmapManually(
   roadmapId: string,
   updates: {
     diagnosis_summary?: string;
-    roadmap_matrix?: RoadmapRow[];
-    pbl_course?: PBLCourse;
-    courses?: RoadmapCell[];
+    setup_necessity?: string;
+    outcome_summary?: RoadmapOutcomeSummary;
+    competencies?: RoadmapCompetency[];
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
+    training_structure?: RoadmapTrainingStructureItem[];
+    training_structure_method?: string;
+    annual_plan?: RoadmapAnnualPlan;
+    course_specs?: RoadmapCourseSpec[];
   }
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
@@ -253,7 +299,9 @@ export async function editRoadmapManually(
 /**
  * 프로젝트 기본 정보 조회 (회사명 등)
  */
-export async function fetchProjectInfo(projectId: string): Promise<ActionResult<{ companyName: string }>> {
+export async function fetchProjectInfo(
+  projectId: string
+): Promise<ActionResult<{ companyName: string; track: 'ROADMAP' | 'PBL' }>> {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
@@ -265,7 +313,7 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
 
     const { data: project } = await supabase
       .from('projects')
-      .select('company_name, assigned_consultant_id')
+      .select('company_name, assigned_consultant_id, track')
       .eq('id', projectId)
       .single();
 
@@ -284,7 +332,10 @@ export async function fetchProjectInfo(projectId: string): Promise<ActionResult<
 
     return {
       success: true,
-      data: { companyName: project.company_name },
+      data: {
+        companyName: project.company_name,
+        track: project.track === 'PBL' ? 'PBL' : 'ROADMAP',
+      },
     };
   } catch (error) {
     console.error('[fetchProjectInfo Error]', error);
@@ -306,3 +357,145 @@ export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
   return { success: true };
 }
 
+/**
+ * 로드맵 HWPX 내보내기 (Step 7).
+ *
+ * 5단계 패턴:
+ *   1. 세션 + 역할 (CONSULTANT_APPROVED)
+ *   2. 로드맵 접근 권한 (프로젝트 배정)
+ *   3. 입력 검증(roadmapId만)
+ *   4. 데이터 조회 → payload 변환 → Python 함수 호출 → base64
+ *   5. 감사로그 + ActionResult 반환
+ *
+ * 반환값이 Buffer가 아닌 base64 문자열인 이유:
+ *   Server Action 반환값은 JSON 직렬화 대상이므로 Buffer/Blob 직접 반환 불가.
+ *   클라이언트(useHwpxDownload 훅)가 atob로 복원 후 Blob → a.download 처리.
+ */
+export async function exportRoadmapAsHwpxAction(
+  roadmapId: string,
+): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
+  try {
+    // 1) 인증 + 역할 — 컨설턴트 + 운영·시스템관리자
+    const auth = await requireAuthWithRole(
+      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
+      { roleError: '로드맵 HWPX를 내보낼 권한이 없습니다.' },
+    );
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, role, supabase } = auth;
+
+    // 2) 입력 검증
+    if (!roadmapId || typeof roadmapId !== 'string') {
+      return { success: false, error: '로드맵 ID가 올바르지 않습니다.' };
+    }
+
+    // 3) 접근 권한 확인 — 컨설턴트만 배정 체크, OPS/시스템관리자는 전체 열람 가능
+    let projectId: string;
+    if (role === 'CONSULTANT_APPROVED') {
+      const access = await requireConsultantRoadmapAccess(supabase, user.id, roadmapId);
+      if ('error' in access) return { success: false, error: access.error };
+      projectId = access.projectId;
+    } else {
+      // OPS_ADMIN / SYSTEM_ADMIN — 프로젝트 id 만 조회
+      const { data: row } = await supabase
+        .from('roadmap_versions')
+        .select('project_id')
+        .eq('id', roadmapId)
+        .single();
+      if (!row) return { success: false, error: '로드맵을 찾을 수 없습니다.' };
+      projectId = row.project_id;
+    }
+    const access = { projectId };
+
+    // 4) 데이터 조회
+    const roadmapRow = await fetchRoadmapVersionService(roadmapId);
+    if (!roadmapRow) {
+      return { success: false, error: '로드맵을 찾을 수 없습니다.' };
+    }
+
+    const { data: projectRow } = await supabase
+      .from('projects')
+      .select('id, company_name')
+      .eq('id', access.projectId)
+      .single();
+    if (!projectRow) {
+      return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
+    }
+
+    const { data: interviewRow } = await supabase
+      .from('interviews')
+      .select('*')
+      .eq('project_id', access.projectId)
+      .maybeSingle();
+
+    // 5) payload 변환 + Python 함수 호출
+    const payload = buildRoadmapHwpxPayload({
+      // TypeScript 타입 호환: roadmapRow는 raw DB row이므로 RoadmapVersion으로 단언
+      roadmap: roadmapRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['roadmap'],
+      project: projectRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['project'],
+      interview: (interviewRow ?? null) as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['interview'],
+    });
+
+    // 요청 host에서 현재 deployment URL 추출 — 같은 배포의 Python 함수를 찌른다.
+    // 이렇게 해야 Preview/Production/로컬 어느 환경에서든 자기 자신의 함수를 호출.
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+    const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+    const baseUrl = host ? `${proto}://${host}` : undefined;
+
+    let buffer: Buffer;
+    try {
+      buffer = await generateRoadmapHwpx(payload, { baseUrl });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[exportRoadmapAsHwpxAction generateRoadmapHwpx Error]', {
+        baseUrl,
+        error: message,
+      });
+      // hwpx-client.ts의 로컬 dev fallback 메시지(`Vercel Python 런타임` 키워드
+      // 포함)는 사용자에게 구체적 해결 옵션을 안내하므로 그대로 전달한다.
+      // 그 외 에러는 상세 원인을 숨기고 범용 실패 메시지로 치환.
+      const isLocalDevFallback = message.includes('Vercel Python 런타임');
+      return {
+        success: false,
+        error: isLocalDevFallback
+          ? message
+          : 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      };
+    }
+
+    // 6) Buffer → base64 (Next.js 직렬화 제약)
+    const contentBase64 = buffer.toString('base64');
+    console.log('[exportRoadmapAsHwpxAction] payload ready', {
+      bufferLength: buffer.length,
+      base64Length: contentBase64.length,
+      firstMagic: buffer.subarray(0, 4).toString('hex'),  // ZIP: 504b0304
+    });
+
+    // 7) 감사로그
+    after(async () => {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'ROADMAP_HWPX_EXPORTED',
+        targetType: 'roadmap_version',
+        targetId: roadmapId,
+        meta: {
+          projectId: access.projectId,
+          versionNumber: roadmapRow.version_number,
+          fileSize: buffer.length,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      data: {
+        fileName: payload.fileName,
+        contentBase64,
+        mimeType: 'application/vnd.hancom.hwpx',
+      },
+    };
+  } catch (error) {
+    console.error('[exportRoadmapAsHwpxAction Error]', error);
+    return { success: false, error: 'HWPX 내보내기에 실패했습니다.' };
+  }
+}

@@ -9,6 +9,7 @@ import { COMPANY_SIZE_OPTIONS } from '@/lib/constants/company-size';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { PROJECT_INDUSTRIES, SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+import { PROJECT_TRACKS, TRACK_LABELS, type ProjectTrack } from '@/lib/constants/tracks';
 import { TagInput } from '@/components/ui/tag-input';
 import {
   Select,
@@ -27,6 +28,7 @@ export default function NewProjectPage() {
   const [subIndustries, setSubIndustries] = useState<string[]>([]);
   const [companySize, setCompanySize] = useState<string>('');
   const [industry, setIndustry] = useState<string>('');
+  const [track, setTrack] = useState<ProjectTrack>('ROADMAP');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -53,6 +55,7 @@ export default function NewProjectPage() {
       formData.set('company_size', companySize);
       formData.set('industry', industry);
       formData.set('sub_industries', JSON.stringify(subIndustries));
+      formData.set('track', track);
       const result = await createProject(formData);
 
       if (result.success) {
@@ -91,6 +94,40 @@ export default function NewProjectPage() {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="bg-white shadow rounded-lg p-6 space-y-6">
+        {/* 트랙 선택 */}
+        <div>
+          <span className="block text-sm font-medium text-gray-700">프로젝트 트랙 *</span>
+          <p className="text-xs text-gray-500 mt-1 mb-2">
+            생성 후 변경할 수 없습니다. 기업당 트랙별로 별도 프로젝트를 생성하세요.
+          </p>
+          <div
+            role="radiogroup"
+            aria-label="프로젝트 트랙"
+            className="grid gap-3 sm:grid-cols-2"
+          >
+            {PROJECT_TRACKS.map((t) => (
+              <label
+                key={t}
+                className={`flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 text-sm transition-colors ${
+                  track === t
+                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="track"
+                  value={t}
+                  checked={track === t}
+                  onChange={() => setTrack(t)}
+                  className="mt-0.5"
+                />
+                <span className="font-medium text-gray-900">{TRACK_LABELS[t]}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         {/* 회사명, 기업 규모 */}
         <div className="grid gap-4 md:grid-cols-2">
           <div>

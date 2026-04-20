@@ -45,7 +45,9 @@ const CARDS = [
     statusFilter: 'INTERVIEWED',
   },
   {
-    label: '로드맵 작성 중',
+    // ROADMAP_DRAFTED + PBL_DRAFTED 합산. 링크는 ROADMAP_DRAFTED 기본(PBL은 아래 카드에 별도 표시 가능하나
+    // 목록 필터가 단일 값이라 공용 "초안 작성 중" 카드로 일반화).
+    label: '초안 작성 중',
     icon: PenLine,
     borderColor: 'border-purple-400',
     textColor: 'text-purple-600',
@@ -54,7 +56,7 @@ const CARDS = [
     statusFilter: 'ROADMAP_DRAFTED',
   },
   {
-    label: '로드맵 완료',
+    label: '양식 확정',
     icon: CheckCircle2,
     borderColor: 'border-green-400',
     textColor: 'text-green-600',

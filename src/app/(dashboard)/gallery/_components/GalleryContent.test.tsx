@@ -25,6 +25,7 @@ const mockFetchGalleryRoadmaps = vi.fn();
 
 vi.mock('../actions', () => ({
   fetchGalleryRoadmaps: (...args: unknown[]) => mockFetchGalleryRoadmaps(...args),
+  fetchGalleryItems: (...args: unknown[]) => mockFetchGalleryRoadmaps(...args),
 }));
 
 vi.mock('@/components/gallery/GalleryCard', () => ({
@@ -134,6 +135,7 @@ import type { GalleryRoadmapItem } from '../actions';
 const mockItems: GalleryRoadmapItem[] = [
   {
     id: 'rv-1',
+    track: 'ROADMAP',
     title: '제조업 AI 로드맵',
     industry: '제조업',
     companySize: '50-299',
@@ -152,6 +154,7 @@ const mockItems: GalleryRoadmapItem[] = [
   },
   {
     id: 'rv-2',
+    track: 'ROADMAP',
     title: '서비스업 AI 로드맵',
     industry: '서비스업',
     companySize: '10-49',
@@ -188,7 +191,7 @@ describe('GalleryContent', () => {
       render(<GalleryContent isAdmin={false} searchParams={{}} />);
       await waitFor(() => {
         expect(
-          screen.getByPlaceholderText('로드맵 검색 (기업명, 업종, 키워드...)')
+          screen.getByPlaceholderText('검색 (기업명, 업종, 키워드...)')
         ).toBeInTheDocument();
       });
     });
@@ -232,7 +235,7 @@ describe('GalleryContent', () => {
       render(<GalleryContent isAdmin={false} searchParams={{}} />);
       await waitFor(() => {
         expect(screen.getByTestId('empty-state')).toBeInTheDocument();
-        expect(screen.getByText('아직 공유된 로드맵이 없습니다')).toBeInTheDocument();
+        expect(screen.getByText('아직 공유된 산출물이 없습니다')).toBeInTheDocument();
       });
     });
   });
@@ -258,9 +261,9 @@ describe('GalleryContent', () => {
       const user = userEvent.setup();
       render(<GalleryContent isAdmin={false} searchParams={{}} />);
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/로드맵 검색/)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/검색/)).toBeInTheDocument();
       });
-      const searchInput = screen.getByPlaceholderText(/로드맵 검색/);
+      const searchInput = screen.getByPlaceholderText(/검색/);
       await user.type(searchInput, '제조업');
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalled();

@@ -1,109 +1,116 @@
 // ============================================================================
-// 로드맵 타입 정의
+// 로드맵 타입 정의 — 산인공 공식 로드맵 보고서 양식(Ⅰ·Ⅱ·Ⅲ장) 기반
+//   Ⅰ-1. 수립 필요성        → setup_necessity
+//   Ⅰ-3. 수립 주요 결과      → outcome_summary (3필드)
+//   Ⅲ-1. 역량 모델링        → RoadmapCompetency[] + ncs_* (표 전체 단위)
+//   Ⅲ-2. 훈련체계도         → RoadmapTrainingStructureItem[] + training_structure_method
+//   Ⅲ-3. 연간 훈련계획      → RoadmapAnnualPlan
+//   Ⅲ-4. 훈련과정 명세서    → RoadmapCourseSpec[] (최소 3개)
 // ============================================================================
 
-// 커리큘럼 모듈 타입 (courses용)
-export interface CurriculumModule {
-  module_name: string; // 모듈명
-  hours: number; // 모듈 시간 (각 모듈마다 다를 수 있음)
-  details: string[]; // 세부 커리큘럼 (개조식, 2~5개)
-  practice: string; // 실습/과제 내용
+// 훈련 수준
+export type TrainingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+
+// ----------------------------------------------------------------------------
+// Ⅰ-3. 수립 주요 결과
+// ----------------------------------------------------------------------------
+// ai_competency_level: Ⅰ-3 기업 AI 역량 수준
+//   BEGINNER=초급(AI기초형) / INTERMEDIATE=중급(AI탐구형) / ADVANCED=고급(AI활용형·선도형)
+export interface RoadmapOutcomeSummary {
+  ai_competency_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  selected_tasks: string;
+  main_content: string;
 }
 
-// 과정 상세 타입 (courses 배열용)
-export interface RoadmapCell {
-  course_name: string;
-  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-  target_task: string; // 대상 업무
-  target_audience: string; // 교육 대상
-  recommended_hours: number; // 권장 시간 (= curriculum 모듈 시간 합계)
-  curriculum: CurriculumModule[]; // 커리큘럼 모듈 배열
-  tools: {
-    name: string;
-    free_tier_info: string; // 무료 범위 표기 (필수)
-  }[];
-  expected_outcome: string; // 기대 효과
-  measurement_method: string; // 측정 방법
-  prerequisites: string[]; // 준비물/데이터/권한
+// ----------------------------------------------------------------------------
+// Ⅲ-1. 역량 모델링 (NCS 관련 필드는 루트로 이동 — 양식상 표 전체 단위이므로)
+// ----------------------------------------------------------------------------
+export interface RoadmapCompetency {
+  name: string;               // 역량명
+  definition: string;         // 역량 정의(수행준거)
+  knowledge: string[];        // 지식(학술, 업무지식)
+  skills: string[];           // 기술(기능)
+  attitudes: string[];        // 태도
 }
 
-// 로드맵 매트릭스 셀 타입 (간소화된 버전 - UI 표시용)
-export interface RoadmapMatrixCell {
-  course_name: string;
-  recommended_hours: number;
+// ----------------------------------------------------------------------------
+// Ⅲ-2. 훈련체계도 (역량 × 수준)
+// ----------------------------------------------------------------------------
+export interface RoadmapTrainingStructureItem {
+  competency_name: string;   // 역량명 (RoadmapCompetency.name 참조)
+  level: TrainingLevel;      // 훈련 수준
+  content: string;           // 훈련 내용
+  target_audience: string;   // 훈련 대상
+  method: string;            // 훈련 방법
+  goal: string;              // 훈련 목표
 }
 
-// 로드맵 행 (업무별) - 한 셀에 여러 과정 가능
-export interface RoadmapRow {
-  task_id: string;
-  task_name: string;
-  beginner: RoadmapMatrixCell[]; // 한 셀에 여러 과정 가능
-  intermediate: RoadmapMatrixCell[];
-  advanced: RoadmapMatrixCell[];
+// ----------------------------------------------------------------------------
+// Ⅲ-3. 연간 훈련계획
+// ----------------------------------------------------------------------------
+export interface RoadmapAnnualPlanItem {
+  competency_name: string;   // 역량명 (RoadmapCompetency.name 참조)
+  course_name: string;       // 훈련과정명
+  format: string;            // 훈련형태 (집체/원격/혼합 등)
+  hours: number;             // 훈련시간
+  notes: string;             // 비고
 }
 
-// PBL 커리큘럼 모듈 타입 (courses의 CurriculumModule 확장)
-export interface PBLCurriculumModule extends CurriculumModule {
-  // CurriculumModule 기본 필드: module_name, hours, details, practice
-  // PBL 확장 필드:
-  deliverables: string[]; // 각 모듈에서 산출되는 결과물
-  tools: {
-    name: string;
-    free_tier_info: string;
-  }[];
+export interface RoadmapAnnualPlan {
+  items: RoadmapAnnualPlanItem[];
+  usage_plan: string;        // 활용방안
 }
 
-// PBL 최적 과정 (과정 상세에서 선정된 과정)
-export interface PBLCourse {
-  // 선정된 과정 정보 (courses 배열에서 선택)
-  selected_course_name: string; // courses 배열에 있는 과정명과 일치해야 함
-  selected_course_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'; // 선택된 과정의 레벨
-  selected_course_task: string; // 선택된 과정의 대상 업무
-
-  // 선정 이유 (컨설턴트 전문성, 페인포인트, 현실 가능성 종합 고려)
-  selection_rationale: {
-    consultant_expertise_fit: string; // 컨설턴트 전문성 적합도 설명
-    pain_point_alignment: string; // 고객사 페인포인트와의 연관성
-    feasibility_assessment: string; // 현실 가능성 평가
-    summary: string; // 종합 선정 이유 요약
-  };
-
-  // PBL 상세 설계 (선정된 과정과 기본 구조 동일)
-  course_name: string; // PBL 과정명 (선정된 과정 기반)
-  total_hours: number; // = curriculum 모듈 시간 합계 (선정된 과정의 recommended_hours와 동일)
-  target_tasks: string[]; // 대상 업무들
-  target_audience: string;
-
-  // PBL 커리큘럼 (선정된 과정의 curriculum 기반 + PBL 상세화)
-  // - module_name, hours, details: 선정된 과정과 동일
-  // - practice: 더 구체적인 실습 내용으로 확장
-  // - deliverables, tools: PBL 전용 상세 정보
-  curriculum: PBLCurriculumModule[];
-
-  // 최종 결과물 및 효과
-  final_deliverables: string[]; // PBL 완료 시 최종 산출물
-  expected_outcomes: string[]; // 기대 효과
-  business_impact: string; // 비즈니스 임팩트/ROI 설명
-  measurement_methods: string[]; // 측정 방법
-  prerequisites: string[]; // 준비물/데이터/권한
+// ----------------------------------------------------------------------------
+// Ⅲ-4. 훈련과정 명세서 (최소 3개)
+// ----------------------------------------------------------------------------
+export interface RoadmapCourseSubject {
+  name: string;              // 과목명
+  details: string;           // 세부 내용 (단원, 과제명)
+  hours: number;             // 시간
 }
 
-// LLM 출력용 로드맵 결과 (roadmap_matrix 없음)
+export interface RoadmapCourseSpec {
+  course_name: string;       // 과정명
+  format: string;            // 훈련형태
+  recommended_program: string; // 추천 훈련사업
+  goal: string;              // 훈련목표
+  main_content: string;      // 주요 훈련내용
+  target_audience: string;   // 훈련대상
+  subjects: RoadmapCourseSubject[]; // 교과목
+}
+
+// ----------------------------------------------------------------------------
+// 최상위 결과 구조
+// ----------------------------------------------------------------------------
 export interface LLMRoadmapResult {
   diagnosis_summary: string;
-  pbl_course: PBLCourse;
-  courses: RoadmapCell[]; // 모든 과정 상세 리스트
+
+  // Ⅰ-1 · Ⅰ-3 — 인터뷰 입력값을 그대로 복사 (LLM 재창작 금지)
+  setup_necessity: string;
+  outcome_summary: RoadmapOutcomeSummary;
+
+  // Ⅲ-1 역량 모델링
+  competencies: RoadmapCompetency[];
+  ncs_used: boolean;              // 표 전체 단위 NCS 활용 여부
+  ncs_methodology: string;        // ncs_used=true → 필수
+  ncs_derivation_method: string;  // ncs_used=false → 필수
+
+  // Ⅲ-2 훈련체계도
+  training_structure: RoadmapTrainingStructureItem[];
+  training_structure_method: string; // Ⅲ-2 수립 방법 텍스트 박스
+
+  // Ⅲ-3 연간 훈련계획 / Ⅲ-4 훈련과정 명세서
+  annual_plan: RoadmapAnnualPlan;
+  course_specs: RoadmapCourseSpec[];
 }
 
-// 전체 로드맵 결과 (UI/DB용 - roadmap_matrix 포함)
-export interface RoadmapResult {
-  diagnosis_summary: string;
-  roadmap_matrix: RoadmapRow[]; // courses에서 자동 생성
-  pbl_course: PBLCourse;
-  courses: RoadmapCell[]; // 모든 과정 상세 리스트
-}
+// 현재는 LLM 출력 = DB/UI 표현이 동일한 구조
+export type RoadmapResult = LLMRoadmapResult;
 
+// ----------------------------------------------------------------------------
 // 검증 결과
+// ----------------------------------------------------------------------------
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];

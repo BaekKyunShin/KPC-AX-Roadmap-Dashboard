@@ -37,15 +37,15 @@ describe('SummaryCards', () => {
       expect(screen.getByText('2')).toBeInTheDocument();
     });
 
-    it('로드맵 작성 중 카드에 올바른 값을 표시한다', () => {
+    it('초안 작성 중 카드에 올바른 값을 표시한다', () => {
       render(<SummaryCards {...defaultProps} />);
-      expect(screen.getByText('로드맵 작성 중')).toBeInTheDocument();
+      expect(screen.getByText('초안 작성 중')).toBeInTheDocument();
       expect(screen.getByText('4')).toBeInTheDocument();
     });
 
-    it('로드맵 완료 카드에 올바른 값을 표시한다', () => {
+    it('양식 확정 카드에 올바른 값을 표시한다', () => {
       render(<SummaryCards {...defaultProps} />);
-      expect(screen.getByText('로드맵 완료')).toBeInTheDocument();
+      expect(screen.getByText('양식 확정')).toBeInTheDocument();
       expect(screen.getByText('1')).toBeInTheDocument();
     });
   });
@@ -97,15 +97,15 @@ describe('SummaryCards', () => {
       expect(link).toHaveAttribute('href', '/consultant/projects?status=INTERVIEWED');
     });
 
-    it('로드맵 작성 중 카드는 /consultant/projects?status=ROADMAP_DRAFTED로 링크된다', () => {
+    it('초안 작성 중 카드는 /consultant/projects?status=ROADMAP_DRAFTED로 링크된다', () => {
       render(<SummaryCards {...defaultProps} />);
-      const link = screen.getByText('로드맵 작성 중').closest('a');
+      const link = screen.getByText('초안 작성 중').closest('a');
       expect(link).toHaveAttribute('href', '/consultant/projects?status=ROADMAP_DRAFTED');
     });
 
-    it('로드맵 완료 카드는 /consultant/projects?status=FINALIZED로 링크된다', () => {
+    it('양식 확정 카드는 /consultant/projects?status=FINALIZED로 링크된다', () => {
       render(<SummaryCards {...defaultProps} />);
-      const link = screen.getByText('로드맵 완료').closest('a');
+      const link = screen.getByText('양식 확정').closest('a');
       expect(link).toHaveAttribute('href', '/consultant/projects?status=FINALIZED');
     });
   });

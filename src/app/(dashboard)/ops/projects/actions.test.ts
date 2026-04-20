@@ -1138,11 +1138,11 @@ describe('fetchMonthlyCompletions', () => {
     expect(result).toEqual([]);
   });
 
-  it('정상 반환 — 6개월 데이터 (월별 집계)', async () => {
+  it('정상 반환 — 6개월 데이터 (로드맵+PBL 합산)', async () => {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    // 이번 달에 2건의 FINAL 로드맵
+    // 이번 달: 로드맵 2건
     serverMock.addResult({
       data: [
         { finalized_at: new Date(now.getFullYear(), now.getMonth(), 5).toISOString() },
@@ -1150,30 +1150,42 @@ describe('fetchMonthlyCompletions', () => {
       ],
       error: null,
     });
+    // 이번 달: PBL 1건
+    serverMock.addResult({
+      data: [
+        { finalized_at: new Date(now.getFullYear(), now.getMonth(), 20).toISOString() },
+      ],
+      error: null,
+    });
 
     const result = await fetchMonthlyCompletions();
 
-    // 항상 6개월 분량 반환
     expect(result).toHaveLength(6);
-    // 각 항목에 month, label, count 존재
     for (const item of result) {
       expect(item).toHaveProperty('month');
       expect(item).toHaveProperty('label');
       expect(item).toHaveProperty('count');
     }
-    // 이번 달 데이터 확인
+    // 이번 달 합산 — 로드맵 2 + PBL 1 = 3
     const currentMonthData = result.find((r) => r.month === currentMonth);
-    expect(currentMonthData?.count).toBe(2);
+    expect(currentMonthData?.count).toBe(3);
   });
 
-  it('DB 에러 → 빈 배열', async () => {
+  it('DB 에러 → 빈 배열 (로그)', async () => {
+    // OFA-11: roadmap + pbl 병렬 조회 — 양쪽 모두 에러 시나리오
+    serverMock.addResult({ data: null, error: { message: 'DB error' } });
     serverMock.addResult({ data: null, error: { message: 'DB error' } });
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await fetchMonthlyCompletions();
 
-    expect(result).toEqual([]);
-    expect(consoleSpy).toHaveBeenCalledWith('[fetchMonthlyCompletions Error]', expect.anything());
+    // 각 에러가 개별 로깅된 뒤, 빈 데이터로 6개월 집계 → 모두 count=0
+    expect(result).toHaveLength(6);
+    expect(result.every(r => r.count === 0)).toBe(true);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[fetchMonthlyCompletions Error — roadmap]',
+      expect.anything(),
+    );
     consoleSpy.mockRestore();
   });
 });

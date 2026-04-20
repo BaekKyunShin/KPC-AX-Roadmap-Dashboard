@@ -5,15 +5,23 @@
  * 기존 import 경로를 유지하기 위한 re-export 파일.
  */
 
-export { generateXLSX, downloadXLSX } from './export/xlsx/xlsx-generator';
+export {
+  generateXLSX,
+  downloadXLSX,
+  buildOverviewSheet,
+  buildCompetencySheet,
+  buildStructureSheet,
+  buildAnnualPlanSheet,
+  buildCourseSpecSheet,
+} from './export/xlsx/xlsx-generator';
 
 export {
   getStatusLabel,
   formatDate,
-  buildCourseNumberMap,
-  formatMatrixCell,
-  sumMatrixHours,
-  formatTools,
-  calcRowHeight,
+  getLevelLabel,
   formatHours,
+  formatBulletLines,
+  formatNcsUsed,
+  sumSubjectHours,
+  calcRowHeight,
 } from './export/xlsx/xlsx-formatter';
