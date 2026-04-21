@@ -144,8 +144,12 @@ test.describe('Phase OFA-04: 공지 게시판 — 컨설턴트 플로우', () =>
     await page.goto('/notices');
     await page.waitForLoadState('networkidle');
 
-    // 첨부가 있는 고정 공지 클릭
-    await page.getByRole('link', { name: new RegExp(PINNED_TITLE) }).click();
+    // 첨부가 있는 고정 공지 클릭 — PINNED_TITLE에 `[`가 있어 regex 대신 string으로 부분 매칭
+    await page
+      .locator('table')
+      .getByRole('link', { name: PINNED_TITLE })
+      .first()
+      .click();
     await page.waitForLoadState('networkidle');
 
     // 상세 페이지 헤더

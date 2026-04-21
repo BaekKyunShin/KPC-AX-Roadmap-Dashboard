@@ -116,7 +116,7 @@ test.describe('갤러리 목록', () => {
     await consultantPage.waitForLoadState('networkidle');
 
     // 갤러리 헤더가 로드된 후 관리자 필터가 없는지 확인
-    await expect(consultantPage.getByRole('heading', { name: '로드맵 갤러리' })).toBeVisible({ timeout: 10_000 });
+    await expect(consultantPage.getByRole('heading', { name: '로드맵·PBL 갤러리' })).toBeVisible({ timeout: 10_000 });
     await expect(consultantPage.getByText('관리자 필터')).not.toBeVisible();
   });
 });

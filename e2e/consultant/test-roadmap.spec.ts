@@ -47,14 +47,14 @@ test.describe('로드맵 테스트 페이지 — 컨설턴트', () => {
 
     // 테스트 모드 안내 알림
     await expect(page.getByText('테스트 모드 안내')).toBeVisible();
-    await expect(page.getByText(/테스트 결과는 저장되지 않으며/)).toBeVisible();
+    await expect(page.getByText(/입력값은 DB에 저장되지 않으며/)).toBeVisible();
 
     // 뒤로가기 버튼 (backLink.useBack: true → BackButton = <button>)
     await expect(page.getByRole('button', { name: /담당 프로젝트로 돌아가기/ })).toBeVisible();
 
     // 스테퍼가 표시됨 (인터뷰 스텝)
-    // 스텝 컨텐츠 영역이 존재
-    const contentArea = page.locator('.bg-white.shadow.rounded-lg');
+    // 스텝 컨텐츠 영역이 존재 (Tailwind 토큰화 이후 bg-card로 변경됨)
+    const contentArea = page.locator('.bg-card.shadow.rounded-lg');
     await expect(contentArea.first()).toBeVisible();
   });
 });

@@ -30,11 +30,13 @@ test.describe('컨설턴트 PBL 보고서', () => {
     await page.goto(pblUrl);
     await page.waitForLoadState('networkidle');
 
-    // PBL 트랙이 아닐 경우 ConsultantPBL page는 /roadmap으로 리다이렉트한다.
+    // PBL 트랙이 아니면 트랙 가드가 동작 — OFA-11 이후에는 프로젝트 상세로 리다이렉트
+    // (이전에는 /roadmap으로 보냈으나, PBL 페이지에서 다시 튕겨나가는 버그가 있어서 변경됨)
     const currentUrl = page.url();
-    if (currentUrl.includes('/roadmap')) {
+    const redirectedToProjectDetail = /\/consultant\/projects\/[a-f0-9-]+(?:\?|$)/.test(currentUrl)
+      && !currentUrl.includes('/pbl');
+    if (currentUrl.includes('/roadmap') || redirectedToProjectDetail) {
       // 정상적인 트랙 가드 동작
-      expect(currentUrl).toMatch(/\/consultant\/projects\/.*\/roadmap/);
       return;
     }
 

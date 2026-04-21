@@ -36,8 +36,8 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
     const stepper = page.locator('nav[aria-label="Progress"]');
     await expect(stepper).toBeVisible();
 
-    // Step 1 = 개요 (수립 필요성 · AI 역량 수준 라디오 · 선정 과업 · 수립 주요내용)
-    await expect(page.getByRole('heading', { name: /^개요$/ })).toBeVisible();
+    // Step 1 = 개요 (heading은 "Ⅰ. 개요" 형식 — 산인공 양식 번호 접두사 포함)
+    await expect(page.getByRole('heading', { name: /개요/ })).toBeVisible();
     await expect(page.getByLabel(/수립 필요성/)).toBeVisible();
     await expect(page.getByRole('radiogroup', { name: /AI 역량 수준/ })).toBeVisible();
     await expect(page.getByLabel(/선정 과업/)).toBeVisible();
@@ -80,14 +80,17 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
 
     await expect(page.getByRole('heading', { name: /과업.*분석/ })).toBeVisible();
 
-    await expect(page.getByRole('radiogroup', { name: 'AI 도입 필요도' }).first()).toBeVisible();
+    // aria-label="AI도입·활용 필요도" (중점 `·`, 공백 없음) — 실제 UI 기준
+    await expect(page.getByRole('radiogroup', { name: 'AI도입·활용 필요도' }).first()).toBeVisible();
 
     const addBtn = page.getByRole('button', { name: /과업 추가/ });
     await expect(addBtn).toBeVisible();
-    await addBtn.click();
 
-    const removeButtons = page.getByRole('button', { name: /행 삭제/ });
-    await expect(removeButtons).toHaveCount(2);
+    // 현재 행 수 파악 후 추가 → 한 개 증가 확인 (자동저장된 데이터로 1개 이상일 수 있음)
+    const removeButtonSelector = page.getByRole('button', { name: /행 삭제/ });
+    const initialCount = await removeButtonSelector.count();
+    await addBtn.click();
+    await expect(removeButtonSelector).toHaveCount(initialCount + 1);
   });
 
   test('Step 6: 확인·제출 화면 + 필수 미완료 시 경고', async ({ consultantPage: page }) => {
