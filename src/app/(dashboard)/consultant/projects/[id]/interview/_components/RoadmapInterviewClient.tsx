@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
@@ -21,10 +21,14 @@ import {
   type AnalysisNotes,
   type InterviewMethod,
   type Overview,
+  type CompetencyModel,
+  type NcsUsage,
   createEmptyOverview,
   createEmptyRoadmapParticipant,
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
+  createEmptyCompetencyModel,
+  createEmptyNcsUsage,
 } from '@/lib/schemas/interview-roadmap';
 import {
   saveRoadmapInterview,
@@ -38,6 +42,7 @@ import StepBasicInfoRoadmap from './roadmap/StepBasicInfoRoadmap';
 import StepCompanyRequirements from './roadmap/StepCompanyRequirements';
 import StepTaskWorkflowAnalysis from './roadmap/StepTaskWorkflowAnalysis';
 import StepTrainingTargets from './roadmap/StepTrainingTargets';
+import StepCompetencyModeling from './roadmap/StepCompetencyModeling';
 import StepSummaryRoadmap from './roadmap/StepSummaryRoadmap';
 import { useInterviewAutoSave } from '../_hooks/useInterviewAutoSave';
 
@@ -98,6 +103,14 @@ export default function RoadmapInterviewClient({
   const [analysisNotes, setAnalysisNotes] = useState<AnalysisNotes>(
     () => initialData.analysis_notes ?? emptyAnalysisNotes(),
   );
+  const [competencyModels, setCompetencyModels] = useState<CompetencyModel[]>(
+    () => initialData.competency_models?.length
+      ? initialData.competency_models
+      : [createEmptyCompetencyModel()],
+  );
+  const [ncsUsage, setNcsUsage] = useState<NcsUsage>(
+    () => initialData.ncs_usage ?? createEmptyNcsUsage(),
+  );
   const [notes, setNotes] = useState(initialData.notes ?? '');
   const [sttInsights] = useState<RoadmapInterview['stt_insights']>(initialData.stt_insights);
 
@@ -113,6 +126,8 @@ export default function RoadmapInterviewClient({
       task_workflow_items: taskWorkflowItems,
       training_targets: trainingTargets,
       analysis_notes: analysisNotes,
+      competency_models: competencyModels,
+      ncs_usage: ncsUsage,
       notes,
       stt_insights: sttInsights,
     }),
@@ -127,6 +142,8 @@ export default function RoadmapInterviewClient({
       taskWorkflowItems,
       trainingTargets,
       analysisNotes,
+      competencyModels,
+      ncsUsage,
       notes,
       sttInsights,
     ],
@@ -136,6 +153,23 @@ export default function RoadmapInterviewClient({
     data: formData,
     save: async (data) => saveRoadmapInterview(projectId, data, { autoSave: true }),
   });
+
+  // Ⅰ-3 선정 과업 자동 prefill — Ⅱ-4 훈련대상 입력 시 Ⅰ-3 요약란이 비어 있으면 채움 (ISSUE-04).
+  // 컨설턴트가 수동 편집한 값은 존중하기 위해 비어 있을 때만 동작.
+  useEffect(() => {
+    const summary = overview.selected_tasks_summary.trim();
+    const taskNames = trainingTargets
+      .map((t) => t.task_name.trim())
+      .filter(Boolean);
+    if (summary === '' && taskNames.length > 0) {
+      setOverview((prev) => ({
+        ...prev,
+        selected_tasks_summary: taskNames.join(', '),
+      }));
+    }
+    // trainingTargets 의 task_name 리스트만 의존 (overview 는 피드백 루프 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainingTargets.map((t) => t.task_name).join('')]);
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -174,7 +208,24 @@ export default function RoadmapInterviewClient({
             (t) => t.task_name && t.selection_reason && t.as_is && t.to_be,
           )
         );
-      case 6:
+      case 6: {
+        // Ⅲ-1 역량 모델링: 최소 1개 역량 + 5필드 모두 채워야 함 + NCS 조건부 필드 채움
+        const competenciesValid =
+          competencyModels.length > 0 &&
+          competencyModels.every(
+            (c) =>
+              c.competency_name.trim() !== '' &&
+              c.competency_definition.trim() !== '' &&
+              c.knowledge.trim() !== '' &&
+              c.skill.trim() !== '' &&
+              c.attitude.trim() !== '',
+          );
+        const ncsValid = ncsUsage.uses_ncs
+          ? (ncsUsage.ncs_usage_method ?? '').trim() !== ''
+          : (ncsUsage.competency_derivation_method ?? '').trim() !== '';
+        return competenciesValid && ncsValid;
+      }
+      case 7:
         return ROADMAP_REQUIRED_STEP_IDS.every((s) => validateStep(s));
       default:
         return false;
@@ -279,6 +330,15 @@ export default function RoadmapInterviewClient({
         return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
       case 6:
         return (
+          <StepCompetencyModeling
+            competencies={competencyModels}
+            ncsUsage={ncsUsage}
+            onCompetenciesChange={setCompetencyModels}
+            onNcsUsageChange={setNcsUsage}
+          />
+        );
+      case 7:
+        return (
           <StepSummaryRoadmap
             overview={overview}
             interviewDate={interviewDate}
@@ -290,6 +350,8 @@ export default function RoadmapInterviewClient({
             taskWorkflowItems={taskWorkflowItems}
             analysisNotes={analysisNotes}
             trainingTargets={trainingTargets}
+            competencyModels={competencyModels}
+            ncsUsage={ncsUsage}
             notes={notes}
             onEditStep={goToStep}
             onNotesChange={setNotes}

@@ -30,8 +30,9 @@ interface StepOverviewProps {
   onDownloadHrdReport?: (storagePath: string) => Promise<{ url: string } | null>;
 }
 
+// Ⅰ-1·Ⅰ-3 사용자 입력 텍스트 필드 (roadmap_summary 는 LLM 자동 생성으로 분리됨, ISSUE-04)
 const TEXT_FIELDS: ReadonlyArray<{
-  key: 'establishment_necessity' | 'selected_tasks_summary' | 'roadmap_summary';
+  key: 'establishment_necessity' | 'selected_tasks_summary';
   label: string;
   hint: string;
   placeholder: string;
@@ -48,17 +49,9 @@ const TEXT_FIELDS: ReadonlyArray<{
   {
     key: 'selected_tasks_summary',
     label: '선정 과업',
-    hint: '훈련 대상으로 확정된 과업을 간단히 나열 (양식 Ⅰ-3)',
+    hint: 'Ⅱ-4 훈련대상 과업 입력 시 자동 채움 (편집 가능, 양식 Ⅰ-3)',
     placeholder: '예) 1) 품질검사 1차 스크리닝 자동화  2) 월간 보고서 초안 생성  3) 현장 설비 이상 감지',
     rows: 5,
-  },
-  {
-    key: 'roadmap_summary',
-    label: 'AI훈련로드맵 수립 주요내용 (요약)',
-    hint: '훈련요구 분석 및 로드맵 수립 결과를 1장 이내로 요약 (양식 Ⅰ-3)',
-    placeholder:
-      '예) 전사 3단계 AI 인력 양성 로드맵(기초/탐구/활용). 생산기술팀 15명 대상. 집체 + 원격 혼합. 2026 상반기 기초 과정 시작.',
-    rows: 6,
   },
 ];
 
@@ -86,7 +79,7 @@ export default function StepOverview({
   const [isUploading, setIsUploading] = useState(false);
 
   const handleText = (
-    key: 'establishment_necessity' | 'selected_tasks_summary' | 'roadmap_summary',
+    key: 'establishment_necessity' | 'selected_tasks_summary',
     next: string,
   ) => {
     onChange({ ...value, [key]: next });
@@ -181,16 +174,38 @@ export default function StepOverview({
                   ]}
                 />
               )}
-              {key === 'roadmap_summary' && (
+              {key === 'selected_tasks_summary' && (
                 <GuideNote
                   items={[
-                    '뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약하여 작성',
+                    'Ⅱ-4 훈련대상 과업 선정을 완료하면 과업명 목록이 자동으로 채워집니다. 필요 시 직접 수정해도 됩니다.',
                   ]}
                 />
               )}
             </div>
           );
         })}
+
+        {/* Ⅰ-3 수립 주요내용 요약: 로드맵 생성 시 LLM 이 자동 작성 (ISSUE-04 확정) */}
+        <div
+          className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-4"
+          role="note"
+          aria-label="AI훈련로드맵 수립 주요내용 자동 생성 안내"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5">
+                  자동 생성 예정
+                </span>
+                AI훈련로드맵 수립 주요내용 (Ⅰ-3 요약)
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                훈련요구 분석·역량 모델링·훈련계획이 완성된 후 <strong>로드맵 생성</strong> 단계에서
+                AI 가 1장 이내 요약을 자동으로 작성합니다. 필요 시 로드맵 편집 단계에서 직접 수정할 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <fieldset>
           <legend className="mb-1 block text-sm font-medium">
