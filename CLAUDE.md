@@ -245,6 +245,8 @@ fix: 컨설턴트 매칭 점수 계산 오류 수정
 - calculateScore 함수에 industryWeight 반영
 ```
 
+**PR 제목도 동일 규칙을 따를 것.** 이 저장소는 Squash merge를 사용하므로 PR 제목이 그대로 main의 커밋 메시지가 된다. `feat:`, `fix:`, `test(e2e):` 같은 타입(+scope)·한국어 제목 규칙을 PR 제목에도 반드시 적용한다.
+
 ## 스킬 규칙
 
 IMPORTANT: Superpowers 플러그인이 설치되어 있음. 모든 작업 전에 관련 superpowers 스킬을 확인하고 호출할 것. TDD는 전면 적용 (예외: 일회성 프로토타입, 생성 코드, 설정 파일만).
