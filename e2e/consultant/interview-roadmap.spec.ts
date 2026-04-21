@@ -112,9 +112,9 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 7스텝)', () => {
       await page.getByRole('button', { name: /^다음$/ }).click();
     }
 
-    // 역량 모델링 스텝 제목 + 5필드 노출
+    // 역량 모델링 스텝 제목 + 5필드 노출 (FormField required 시 label 끝에 * 가 붙음)
     await expect(page.getByRole('heading', { name: /역량 모델링/ })).toBeVisible();
-    await expect(page.getByLabel(/^역량명$/).first()).toBeVisible();
+    await expect(page.getByLabel(/역량명/).first()).toBeVisible();
     await expect(page.getByLabel(/역량 정의/).first()).toBeVisible();
     await expect(page.getByLabel(/필요 지식/).first()).toBeVisible();
     await expect(page.getByLabel(/필요 기술/).first()).toBeVisible();
@@ -123,13 +123,14 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 7스텝)', () => {
     // NCS 활용 라디오
     await expect(page.getByRole('radiogroup', { name: /NCS 능력단위 활용 여부/ })).toBeVisible();
 
-    // 역량 추가 버튼 동작 확인
+    // 역량 추가 버튼 동작 확인 — 역량이 1개일 땐 삭제 버튼이 숨겨지므로 역량
+    // 필드(역량명 input) 개수 증가로 검증. 초기 1개 → 추가 후 2개.
     const addBtn = page.getByRole('button', { name: /역량 추가/ });
     await expect(addBtn).toBeVisible();
-    const removeButtons = page.getByRole('button', { name: /행 삭제: 역량/ });
-    const initialCount = await removeButtons.count();
+    const nameFields = page.getByLabel(/역량명/);
+    const initialCount = await nameFields.count();
     await addBtn.click();
-    await expect(removeButtons).toHaveCount(initialCount + 1);
+    await expect(nameFields).toHaveCount(initialCount + 1);
   });
 
   // 분류 (a) selector 업데이트: 스텝 개수 6→7, 확인은 Step 7
