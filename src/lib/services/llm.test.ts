@@ -587,6 +587,23 @@ describe('callLLMForJSON', () => {
       ).rejects.toThrow(LLMResponseInvalidError);
     });
 
+    it('validator 실패 error 가 Error 인스턴스면 message·cause 가 그대로 전파', async () => {
+      mockAnthropicResponse('{"x": 1}');
+      mockAnthropicResponse('{"x": 2}');
+      mockAnthropicResponse('{"x": 3}');
+
+      const rootCause = new Error('zod 상세 원인');
+      const validator = () => ({ success: false as const, error: rootCause });
+
+      await expect(
+        callLLMForJSON([{ role: 'user', content: '테스트' }], {}, 2, undefined, validator),
+      ).rejects.toMatchObject({
+        name: 'LLMResponseInvalidError',
+        message: expect.stringContaining('zod 상세 원인'),
+        cause: rootCause,
+      });
+    });
+
     it('JSON 파싱 실패와 validator 실패가 섞여도 재시도 한도까지 시도', async () => {
       // 1회: JSON 파싱 실패 (재시도 소비)
       mockAnthropicResponse('invalid json text');
