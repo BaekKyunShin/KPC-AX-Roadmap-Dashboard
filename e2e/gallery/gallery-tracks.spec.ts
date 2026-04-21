@@ -63,8 +63,14 @@ test.describe('갤러리 트랙 필터·뱃지·상세 분기', () => {
     const count = await badges.count();
 
     if (count === 0) {
-      // 빈 상태 메시지
-      await expect(page.getByText(/공유된.*(PBL|산출물).*없습니다/)).toBeVisible();
+      // 빈 상태 메시지 — GalleryContent는 필터 상태에 따라 아래 셋 중 하나 노출:
+      //   "아직 공유된 PBL 보고서가 없습니다"
+      //   "아직 공유된 로드맵이 없습니다"
+      //   "아직 공유된 산출물이 없습니다"
+      //   (검색 결과가 비면 "검색 결과가 없습니다"도 가능)
+      await expect(
+        page.getByText(/아직 공유된|검색 결과가 없습니다/),
+      ).toBeVisible();
     } else {
       // 모든 뱃지가 PBL
       for (let i = 0; i < count; i++) {

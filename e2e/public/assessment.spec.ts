@@ -1,17 +1,94 @@
 // e2e/public/assessment.spec.ts
 // 공개 자가진단 페이지 E2E 테스트
 import { test, expect } from '@playwright/test';
+import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
-import { ensureAssessmentToken } from '../helpers/cleanup.helper';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+const TEST_COMPANY = 'E2E공개자가진단테스트';
 
 let validToken: string | null = null;
+let seededProjectId: string | null = null;
+let opsAdminUserId: string | null = null;
+
+/**
+ * beforeAll의 선청소: 이전 실행이 afterAll 도달 전 중단됐어도
+ * 다시 시드가 가능하도록 동명 기업의 잔여 프로젝트·토큰을 먼저 지운다.
+ */
+async function purgePriorSeed() {
+  const { data: prior } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('company_name', TEST_COMPANY);
+  if (prior && prior.length > 0) {
+    const ids = prior.map((p) => p.id as string);
+    await supabase.from('assessment_tokens').delete().in('project_id', ids);
+    await supabase.from('projects').delete().in('id', ids);
+  }
+}
 
 test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
   test.describe.configure({ mode: 'parallel' });
 
-  // 유효한 토큰 보장 — 없으면 자동 생성
+  // 자체 hermetic 시드 — 전용 NEW 프로젝트 + 유효 토큰 생성.
+  // 다른 테스트·외부 환경의 NEW 프로젝트 유무에 의존하지 않는다.
   test.beforeAll(async () => {
-    validToken = process.env.E2E_ASSESSMENT_TOKEN || await ensureAssessmentToken();
+    await purgePriorSeed();
+
+    // OPS_ADMIN user_id 조회 (assessment_tokens.created_by FK 필수)
+    const { data: ops } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'OPS_ADMIN')
+      .eq('status', 'ACTIVE')
+      .limit(1)
+      .maybeSingle();
+    if (!ops) return; // OPS 없는 환경이면 validToken=null로 남아 skip
+    opsAdminUserId = ops.id as string;
+
+    // 전용 NEW 상태 프로젝트
+    const { data: project } = await supabase
+      .from('projects')
+      .insert({
+        company_name: TEST_COMPANY,
+        contact_name: 'E2E공개진단담당',
+        contact_email: 'e2e-assessment@example.com',
+        industry: '제조업',
+        company_size: '50~299명',
+        status: 'NEW',
+        track: 'ROADMAP',
+        created_by: opsAdminUserId,
+      })
+      .select('id')
+      .single();
+    if (!project) return;
+    seededProjectId = project.id as string;
+
+    // 유효 토큰 (14일)
+    const token = process.env.E2E_ASSESSMENT_TOKEN
+      ?? crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('assessment_tokens').insert({
+      token,
+      project_id: seededProjectId,
+      expires_at: expiresAt,
+      created_by: opsAdminUserId,
+    });
+    if (!error) {
+      validToken = token;
+    }
+  });
+
+  test.afterAll(async () => {
+    if (seededProjectId) {
+      await supabase.from('assessment_tokens').delete().eq('project_id', seededProjectId);
+      await supabase.from('projects').delete().eq('id', seededProjectId);
+    }
   });
 
   test('유효하지 않은 토큰 → 404 페이지', async ({ page }) => {
@@ -59,8 +136,10 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
     // 200 응답 (유효한 토큰)
     expect(response?.status()).toBe(200);
 
-    // 자가진단 폼 요소 확인
-    await expect(page.getByText('자가진단')).toBeVisible({ timeout: 10_000 });
+    // 자가진단 안내 제목 확인 ("AI 훈련 수준 자가진단" 헤딩)
+    await expect(
+      page.getByRole('heading', { name: /자가진단/ }),
+    ).toBeVisible({ timeout: 10_000 });
 
     // "진단 시작" 버튼 또는 진단 폼 요소 확인
     const hasStartButton = await page.getByRole('button', { name: /진단 시작|제출|완료/ })

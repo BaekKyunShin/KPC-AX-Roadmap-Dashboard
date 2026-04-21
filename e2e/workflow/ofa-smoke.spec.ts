@@ -1,15 +1,14 @@
 // e2e/workflow/ofa-smoke.spec.ts
 // OFA (Official Form Alignment) Session 1~11 회귀 차단용 스모크 테스트
 // 실제 폼 제출·LLM 호출·HWPX 다운로드는 제외. 라우팅·도달·렌더링 확인에 집중.
-import path from 'path';
-import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { test, expect } from '../fixtures/auth.fixture';
 
-// playwright.config.ts 는 .env.test (로컬 Supabase 설정) 를 로드함.
-// 스모크 스펙의 DB 조회는 앱과 동일한 원격 Supabase 를 써야 하므로
-// .env.local 을 추가 로드하여 NEXT_PUBLIC_SUPABASE_URL 등을 오버라이드한다.
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
+// 이 spec은 앱(dev 서버)과 동일한 Supabase 인스턴스에서 프로젝트 ID를 조회해야 한다.
+// playwright.config.ts의 webServer.env가 `.env.test`(로컬 Supabase)를 주입하므로
+// spec도 같은 `.env.test` 환경(Playwright 프로세스의 dotenv 주입)을 그대로 사용한다.
+// 과거에는 `.env.local`을 override 로 덮어써 클라우드 DB를 강제했지만, 이 경로에서는
+// dev 서버(로컬)와 spec(클라우드)이 어긋나 잘못된 프로젝트 ID로 404 페이지가 나왔다.
 
 test.describe.configure({ mode: 'serial' });
 
@@ -22,10 +21,10 @@ async function getConsultantProjectId(): Promise<string | null> {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // 컨설턴트 계정의 user.id 조회
+  // 컨설턴트 계정의 user.id 조회 — 로컬/원격 모두 `public.users` 테이블 사용
   const consultantEmail = process.env.E2E_CONSULTANT_EMAIL!;
   const { data: user } = await supabase
-    .from('profiles')
+    .from('users')
     .select('id')
     .eq('email', consultantEmail)
     .maybeSingle();
