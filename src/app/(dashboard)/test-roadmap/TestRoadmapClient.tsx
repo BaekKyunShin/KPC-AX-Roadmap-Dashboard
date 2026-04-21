@@ -138,10 +138,10 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
+        // roadmap_summary 는 LLM 자동 생성 예정(ISSUE-04)이라 Step 1 검증 대상 아님
         return (
           overview.establishment_necessity.trim() !== '' &&
-          overview.selected_tasks_summary.trim() !== '' &&
-          overview.roadmap_summary.trim() !== ''
+          overview.selected_tasks_summary.trim() !== ''
         );
       case 2:
         return (

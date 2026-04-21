@@ -167,7 +167,7 @@ export default function StepOverview({
                 <Textarea
                   id={fieldId}
                   rows={rows}
-                  value={value[key]}
+                  value={value[key] ?? ''}
                   onChange={(e) => handleText(key, e.target.value)}
                   placeholder={placeholder}
                   aria-invalid={Boolean(errorMsg) || undefined}

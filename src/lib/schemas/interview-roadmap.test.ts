@@ -11,6 +11,10 @@ import {
   roadmapInterviewAutoSaveSchema,
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
+  competencyModelSchema,
+  ncsUsageSchema,
+  createEmptyCompetencyModel,
+  createEmptyNcsUsage,
   mapInterviewRowToRoadmapInterview,
 } from './interview-roadmap';
 
@@ -18,7 +22,20 @@ const baseOverview = {
   establishment_necessity: 'AI 훈련 로드맵 수립 필요성',
   ai_competency_level: 'INTERMEDIATE' as const,
   selected_tasks_summary: '품질검사 자동화',
-  roadmap_summary: '전사 AI 인력 양성 3단계',
+};
+
+const baseCompetencyModel = {
+  id: 'cm1',
+  competency_name: '데이터 해석 역량',
+  competency_definition: '수집된 데이터를 바탕으로 품질 이슈를 식별하고 의사결정한다.',
+  knowledge: '기초 통계, 엑셀 함수, QMS 지표 체계',
+  skill: '피벗 테이블 구축, 시각화 도구 활용, 지표 분석',
+  attitude: '데이터 기반 의사결정을 선호하고 지속 학습한다.',
+};
+
+const baseNcsUsage = {
+  uses_ncs: false as const,
+  competency_derivation_method: '현장 인터뷰 + 업계 벤치마킹으로 역량을 도출함.',
 };
 
 describe('companyRequirementsSchema', () => {
@@ -112,16 +129,25 @@ describe('AI_COMPETENCY_LEVEL', () => {
 });
 
 describe('overviewSchema', () => {
-  it('4개 텍스트 필드가 필수 (산인공 Ⅰ-1·Ⅰ-3)', () => {
+  it('establishment_necessity·selected_tasks_summary 는 필수 (산인공 Ⅰ-1·Ⅰ-3)', () => {
     expect(overviewSchema.safeParse(baseOverview).success).toBe(true);
 
-    for (const key of [
-      'establishment_necessity',
-      'selected_tasks_summary',
-      'roadmap_summary',
-    ] as const) {
+    for (const key of ['establishment_necessity', 'selected_tasks_summary'] as const) {
       expect(overviewSchema.safeParse({ ...baseOverview, [key]: '' }).success).toBe(false);
     }
+  });
+
+  it('roadmap_summary 는 LLM 자동생성으로 전환되어 optional (ISSUE-04)', () => {
+    // 없어도 통과
+    expect(overviewSchema.safeParse(baseOverview).success).toBe(true);
+    // 빈 문자열도 통과 (자동저장 중간 상태)
+    expect(
+      overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '' }).success,
+    ).toBe(true);
+    // 있어도 통과 (로드맵 생성 후 자동 채워진 값)
+    expect(
+      overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '자동 생성 요약' }).success,
+    ).toBe(true);
   });
 
   it('ai_competency_level enum 외 값 거부', () => {
@@ -155,13 +181,77 @@ describe('overviewSchema', () => {
 });
 
 describe('createEmptyOverview', () => {
-  it('기본값은 BEGINNER + 빈 텍스트', () => {
+  it('기본값은 BEGINNER + 빈 텍스트 (roadmap_summary 는 LLM 자동생성이므로 포함하지 않음)', () => {
     const empty = createEmptyOverview();
     expect(empty.ai_competency_level).toBe('BEGINNER');
     expect(empty.establishment_necessity).toBe('');
     expect(empty.selected_tasks_summary).toBe('');
-    expect(empty.roadmap_summary).toBe('');
+    expect(empty.roadmap_summary).toBeUndefined();
     expect(empty.hrd_report_attachment).toBeUndefined();
+  });
+});
+
+describe('competencyModelSchema (ISSUE-04 Ⅲ-1)', () => {
+  it('유효한 역량 모델은 통과', () => {
+    expect(competencyModelSchema.safeParse(baseCompetencyModel).success).toBe(true);
+  });
+
+  it('역량명·정의·지식·기술·태도 5필드 모두 필수', () => {
+    for (const key of [
+      'competency_name',
+      'competency_definition',
+      'knowledge',
+      'skill',
+      'attitude',
+    ] as const) {
+      expect(
+        competencyModelSchema.safeParse({ ...baseCompetencyModel, [key]: '' }).success,
+      ).toBe(false);
+    }
+  });
+});
+
+describe('ncsUsageSchema (ISSUE-04 Ⅲ-1)', () => {
+  it('uses_ncs=true 이면 ncs_usage_method 필수', () => {
+    expect(ncsUsageSchema.safeParse({ uses_ncs: true }).success).toBe(false);
+    expect(
+      ncsUsageSchema.safeParse({ uses_ncs: true, ncs_usage_method: '' }).success,
+    ).toBe(false);
+    expect(
+      ncsUsageSchema.safeParse({
+        uses_ncs: true,
+        ncs_usage_method: 'NCS 20.02.01 빅데이터분석 세분류 능력단위 차용',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('uses_ncs=false 이면 competency_derivation_method 필수', () => {
+    expect(ncsUsageSchema.safeParse({ uses_ncs: false }).success).toBe(false);
+    expect(
+      ncsUsageSchema.safeParse({ uses_ncs: false, competency_derivation_method: '' }).success,
+    ).toBe(false);
+    expect(ncsUsageSchema.safeParse(baseNcsUsage).success).toBe(true);
+  });
+});
+
+describe('createEmptyCompetencyModel', () => {
+  it('UUID id + 빈 5필드', () => {
+    const empty = createEmptyCompetencyModel();
+    expect(empty.id).toBeTruthy();
+    expect(empty.competency_name).toBe('');
+    expect(empty.competency_definition).toBe('');
+    expect(empty.knowledge).toBe('');
+    expect(empty.skill).toBe('');
+    expect(empty.attitude).toBe('');
+  });
+});
+
+describe('createEmptyNcsUsage', () => {
+  it('uses_ncs=false + 빈 competency_derivation_method', () => {
+    const empty = createEmptyNcsUsage();
+    expect(empty.uses_ncs).toBe(false);
+    expect(empty.competency_derivation_method).toBe('');
+    expect(empty.ncs_usage_method).toBeUndefined();
   });
 });
 
@@ -200,6 +290,8 @@ describe('roadmapInterviewSchema', () => {
         to_be: 'AI',
       },
     ],
+    competency_models: [baseCompetencyModel],
+    ncs_usage: baseNcsUsage,
     notes: '',
   };
 
@@ -226,6 +318,25 @@ describe('roadmapInterviewSchema', () => {
     const { overview: _overview, ...withoutOverview } = baseValid;
     expect(roadmapInterviewSchema.safeParse(withoutOverview).success).toBe(false);
   });
+
+  it('역량 모델 최소 1개 필요 (ISSUE-04 Ⅲ-1)', () => {
+    const invalid = { ...baseValid, competency_models: [] };
+    expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('ncs_usage 섹션 필수 (ISSUE-04 Ⅲ-1)', () => {
+    const { ncs_usage: _ncs, ...withoutNcs } = baseValid;
+    expect(roadmapInterviewSchema.safeParse(withoutNcs).success).toBe(false);
+  });
+
+  it('overview.roadmap_summary 는 없어도 통과 (LLM 자동생성 예정)', () => {
+    const { overview, ...rest } = baseValid;
+    const { roadmap_summary: _s, ...overviewWithoutSummary } = overview as typeof overview & {
+      roadmap_summary?: string;
+    };
+    const input = { ...rest, overview: overviewWithoutSummary };
+    expect(roadmapInterviewSchema.safeParse(input).success).toBe(true);
+  });
 });
 
 describe('roadmapInterviewAutoSaveSchema', () => {
@@ -236,6 +347,21 @@ describe('roadmapInterviewAutoSaveSchema', () => {
         interview_date: '2026-04-16',
         task_workflow_items: [],
       }).success
+    ).toBe(true);
+  });
+
+  it('competency_models·ncs_usage 는 optional 이며 부분 입력 허용 (ISSUE-04)', () => {
+    // 역량 모델 입력 중 일부 필드 비어 있어도 통과
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({
+        competency_models: [{ id: 'cm1', competency_name: '데이터 해석' }],
+      }).success,
+    ).toBe(true);
+    // NCS 활용 토글만 저장된 상태도 허용
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({
+        ncs_usage: { uses_ncs: true },
+      }).success,
     ).toBe(true);
   });
 });
@@ -676,5 +802,113 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.training_targets?.[0].id).toBeTruthy();
+  });
+
+  it('roadmap_competency_models 복원 (ISSUE-04 Ⅲ-1)', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_competency_models: [
+          {
+            id: 'cm1',
+            competency_name: '데이터 해석',
+            competency_definition: '정의',
+            knowledge: '지식',
+            skill: '기술',
+            attitude: '태도',
+          },
+        ],
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.competency_models).toHaveLength(1);
+    expect(result.competency_models?.[0]).toMatchObject({
+      competency_name: '데이터 해석',
+      knowledge: '지식',
+      skill: '기술',
+      attitude: '태도',
+    });
+  });
+
+  it('roadmap_competency_models 원소에 id 없으면 UUID 자동 생성', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_competency_models: [
+          {
+            competency_name: '역량',
+            competency_definition: '정의',
+            knowledge: 'K',
+            skill: 'S',
+            attitude: 'A',
+          },
+        ],
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.competency_models?.[0].id).toBeTruthy();
+  });
+
+  it('roadmap_ncs_usage 복원 (uses_ncs=true + ncs_usage_method)', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_ncs_usage: {
+          uses_ncs: true,
+          ncs_usage_method: 'NCS 20.02.01 능력단위 차용',
+        },
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.ncs_usage).toEqual({
+      uses_ncs: true,
+      ncs_usage_method: 'NCS 20.02.01 능력단위 차용',
+    });
+  });
+
+  it('roadmap_ncs_usage 복원 (uses_ncs=false + competency_derivation_method)', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_ncs_usage: {
+          uses_ncs: false,
+          competency_derivation_method: '인터뷰 + 벤치마킹으로 도출',
+        },
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.ncs_usage).toEqual({
+      uses_ncs: false,
+      competency_derivation_method: '인터뷰 + 벤치마킹으로 도출',
+    });
+  });
+
+  it('roadmap_competency_models 과 roadmap_ncs_usage 가 없으면 해당 필드 미설정 (legacy 호환)', () => {
+    const row = {
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.competency_models).toBeUndefined();
+    expect(result.ncs_usage).toBeUndefined();
   });
 });
