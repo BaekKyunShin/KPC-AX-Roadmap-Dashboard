@@ -2,7 +2,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.test' });
+// .env.test를 Playwright 프로세스와 webServer에 주입.
+// parsed 맵을 별도 보관해 webServer.env에 spread — dev 서버가 .env.local(클라우드
+// Supabase)을 읽지 않고 로컬 Supabase(127.0.0.1:54321)로 기동되도록 강제한다.
+const testEnv = dotenv.config({ path: '.env.test' }).parsed ?? {};
 
 const isCI = !!process.env.CI;
 
@@ -33,6 +36,8 @@ export default defineConfig({
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // .env.local(클라우드 Supabase)을 덮어쓰고 로컬 Supabase로 기동.
+    env: testEnv,
   },
 
   projects: [
