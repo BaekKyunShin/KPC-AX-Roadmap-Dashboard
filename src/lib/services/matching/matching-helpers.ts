@@ -44,7 +44,8 @@ export const llmMatchingResponseSchema = z.object({
   recommendations: z.array(
     z.object({
       userId: z.string(),
-      score: z.number(),
+      // 0~100 범위 — 후속 clamp 는 그대로 유지하되 validator 단계에서 1차 차단
+      score: z.number().min(0).max(100),
       analysis: z.string(),
       strengths: z.array(z.string()).default([]),
       considerations: z.array(z.string()).default([]),

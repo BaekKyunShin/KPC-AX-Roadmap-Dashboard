@@ -144,7 +144,14 @@ export function fillMissingRoadmapFields(
   };
 }
 
-/** LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행 */
+/**
+ * LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행.
+ *
+ * 로드맵 경로는 `fillMissingRoadmapFields` 가 인터뷰 Ⅲ-1 입력(competency_models·
+ * ncs_usage) 을 fallback 으로 충분히 회복시키므로, Critical 3건 중 매칭·사전분석과
+ * 달리 callLLMForJSON 의 validator 재시도 경로를 별도로 두지 않는다. 대신 스키마
+ * 검증 실패 시에만 `RoadmapStorageError` 로 변환해 UI 에 "수동 편집 필요" 를 안내한다.
+ */
 async function callLLMAndBuildRoadmap(
   messages: LLMMessage[],
   signal?: AbortSignal,
@@ -189,11 +196,19 @@ async function callLLMAndBuildRoadmap(
  */
 async function persistRoadmapSummaryToInterview(
   supabase: ReturnType<typeof createAdminClient>,
-  projectId: string,
   interviewRow: Record<string, unknown>,
   mainContent: string,
 ): Promise<void> {
   if (!mainContent || mainContent.trim() === '') return;
+
+  // 단일 interview row id 기반으로 업데이트 — project_id 로만 좁히면 동일 프로젝트에
+  // 중복 row 가 존재할 때 의도치 않게 일괄 덮어쓰기 위험이 있음. row.id 로 정확히 한정.
+  const interviewId =
+    typeof interviewRow.id === 'string' && interviewRow.id.length > 0
+      ? interviewRow.id
+      : null;
+  if (!interviewId) return;
+
   const details = (interviewRow.company_details as Record<string, unknown> | null) ?? {};
   const currentOverview = (details.roadmap_overview as Record<string, unknown> | null) ?? {};
   const existingSummary = typeof currentOverview.roadmap_summary === 'string'
@@ -213,7 +228,7 @@ async function persistRoadmapSummaryToInterview(
   const { error } = await supabase
     .from('interviews')
     .update({ company_details: nextDetails })
-    .eq('project_id', projectId);
+    .eq('id', interviewId);
 
   if (error) {
     console.warn(
@@ -364,7 +379,6 @@ export async function generateRoadmap(
   // 다음 로드맵 재생성·Export 시 이 요약이 일관되게 재사용된다.
   await persistRoadmapSummaryToInterview(
     supabase,
-    projectId,
     interview,
     result.outcome_summary.main_content,
   );
