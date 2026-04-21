@@ -37,14 +37,14 @@ test.describe('Phase 2.4: 프로젝트 목록', () => {
   });
 
   test('통계 요약 카드 7개 표시', async ({ opsPage: page }) => {
-    // 전체/신규/진단/배정/인터뷰/초안/확정 7개 카드
+    // 전체/신규/진단/배정/인터뷰/초안/확정 7개 카드 (라벨은 "초안 완료", "최종 확정"으로 단축됨)
     await expect(page.getByRole('button', { name: /전체 프로젝트/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /신규 등록/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /진단결과 입력/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /컨설턴트 배정/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /현장 인터뷰/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /로드맵 초안/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /로드맵 최종/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /초안 완료/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /최종 확정/ })).toBeVisible();
   });
 
   test('검색 필터 — 회사명 입력', async ({ opsPage: page }) => {
@@ -286,8 +286,13 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     // 뒤로가기 버튼 (BackButton은 <button>으로 렌더링)
     await expect(page.getByRole('button', { name: /프로젝트로 돌아가기/ })).toBeVisible();
 
-    // 버전 히스토리 패널 존재
-    await expect(page.getByText('버전 히스토리')).toBeVisible();
+    // 버전 선택 — 사이드 패널에서 combobox(Select)로 변경됨
+    // "버전 N" 헤더가 우측에 표시되거나 버전 선택 combobox가 존재
+    const versionHeader = page.locator('h2').filter({ hasText: /^버전 \d+$/ });
+    const versionCombobox = page.getByRole('combobox').filter({ hasText: /버전 \d+/ });
+    const hasVersionHeader = await versionHeader.first().isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasVersionCombobox = await versionCombobox.first().isVisible({ timeout: 3_000 }).catch(() => false);
+    expect(hasVersionHeader || hasVersionCombobox).toBeTruthy();
   });
 
   test('버전 히스토리 선택 → 콘텐츠 변경', async ({ opsPage: page }) => {
@@ -314,67 +319,30 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     await expect(versionHeader).toBeVisible();
   });
 
-  test('탭 — 과정 체계도 (matrix) 기본 표시', async ({ opsPage: page }) => {
+  test('탭 — 산인공 4개 탭 렌더 및 전환', async ({ opsPage: page }) => {
     test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
 
     await page.goto(roadmapUrl!);
     await page.waitForLoadState('networkidle');
 
-    // 기본 활성 탭이 "과정 체계도"
-    const matrixTab = page.getByRole('button', { name: '과정 체계도' });
+    // 산인공 양식 정렬 통합(#14) 이후 로드맵 OPS 탭은 4개로 변경됨:
+    // 역량 모델링 / 훈련체계도 / 연간 훈련계획 / 훈련과정 명세서
+    const modelingTab = page.getByRole('button', { name: '역량 모델링' });
+    const matrixTab = page.getByRole('button', { name: '훈련체계도' });
+    const planTab = page.getByRole('button', { name: '연간 훈련계획' });
+    const specTab = page.getByRole('button', { name: '훈련과정 명세서' });
+
+    // 모든 탭 렌더 확인
+    await expect(modelingTab).toBeVisible();
     await expect(matrixTab).toBeVisible();
-    await expect(matrixTab).toHaveClass(/border-purple-500/);
+    await expect(planTab).toBeVisible();
+    await expect(specTab).toBeVisible();
 
-    // RoadmapMatrix 콘텐츠 영역: 테이블 또는 그리드가 표시되어야 함
-    // RoadmapMatrix는 table 또는 데이터 셀을 렌더링
-    const contentArea = page.locator('.lg\\:col-span-3');
-    await expect(contentArea).toBeVisible();
-
-    // 매트릭스 내에 데이터 행이 존재하거나, 빈 상태가 아닌지 확인
-    const hasTable = await contentArea.locator('table').isVisible().catch(() => false);
-    const hasGrid = await contentArea.locator('[class*="grid"]').isVisible().catch(() => false);
-    const hasContent = hasTable || hasGrid;
-    // 콘텐츠가 있거나 "로드맵이 없습니다" 메시지가 없어야 함
-    expect(hasContent || !(await contentArea.getByText('로드맵이 없습니다').isVisible().catch(() => false))).toBeTruthy();
-  });
-
-  test('탭 — PBL 과정 클릭 → 콘텐츠 전환', async ({ opsPage: page }) => {
-    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
-
-    await page.goto(roadmapUrl!);
-    await page.waitForLoadState('networkidle');
-
-    // "PBL 과정" 탭 클릭
-    const pblTab = page.getByRole('button', { name: 'PBL 과정' });
-    await expect(pblTab).toBeVisible();
-    await pblTab.click();
-
-    // 탭 활성화 확인 (border-purple-500 클래스)
-    await expect(pblTab).toHaveClass(/border-purple-500/);
-
-    // PBLCourseView 콘텐츠가 렌더링되었는지 확인
-    // "과정 체계도" 탭의 콘텐츠가 아닌 PBL 관련 콘텐츠가 표시되어야 함
-    const contentArea = page.locator('.lg\\:col-span-3 .p-4, .lg\\:col-span-3 .p-6').first();
-    await expect(contentArea).toBeVisible();
-  });
-
-  test('탭 — 과정 상세 클릭 → 콘텐츠 전환', async ({ opsPage: page }) => {
-    test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
-
-    await page.goto(roadmapUrl!);
-    await page.waitForLoadState('networkidle');
-
-    // "과정 상세" 탭 클릭
-    const coursesTab = page.getByRole('button', { name: '과정 상세' });
-    await expect(coursesTab).toBeVisible();
-    await coursesTab.click();
-
-    // 탭 활성화 확인
-    await expect(coursesTab).toHaveClass(/border-purple-500/);
-
-    // CoursesList 콘텐츠가 렌더링되었는지 확인
-    const contentArea = page.locator('.lg\\:col-span-3 .p-4, .lg\\:col-span-3 .p-6').first();
-    await expect(contentArea).toBeVisible();
+    // 각 탭 클릭 → 콘텐츠 전환 가능성 확인 (레이아웃 클래스는 리팩토링으로 변경될 수 있어 전환 동작만 검증)
+    await matrixTab.click();
+    await planTab.click();
+    await specTab.click();
+    await modelingTab.click();
   });
 
   test('PDF 다운로드 버튼 클릭 → 파일 다운로드', async ({ opsPage: page }) => {

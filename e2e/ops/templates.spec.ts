@@ -167,10 +167,11 @@ test.describe('템플릿 편집', () => {
     // "질문 추가" 버튼 클릭
     await page.getByText('+ 질문 추가').click();
 
-    // 새로 추가된 질문의 textarea에 내용 입력 (마지막 textarea)
-    const textareas = page.locator('textarea');
-    const lastTextarea = textareas.last();
-    await lastTextarea.fill('E2E 추가된 질문입니다.');
+    // 새로 추가된 질문의 textarea에 내용 입력 — 외부 위젯(Agentation) textarea 간섭을 피하기 위해
+    // 편집 폼 내부의 "질문 내용" placeholder textarea만 선택
+    const questionTextareas = page.locator('textarea[placeholder="질문 내용을 입력하세요"]');
+    await expect(questionTextareas).toHaveCount(initialCount + 1);
+    await questionTextareas.last().fill('E2E 추가된 질문입니다.');
 
     // 저장
     await page.getByRole('button', { name: '저장' }).click();

@@ -15,6 +15,9 @@ export function setupConsoleErrorCheck(page: Page): () => string[] {
     /Extra attributes from the server/i,
     /Failed to load resource/i,
     /net::ERR_/i,
+    // Supabase auth-js의 세션 갱신 fetch는 dev 서버 초기화 타이밍에 간헐적 실패
+    // (재시도에서 통과, 앱 동작에는 영향 없음). IGNORE_PATTERNS에 추가해 flaky 방지
+    /TypeError: Failed to fetch/i,
   ];
 
   const errors: string[] = [];

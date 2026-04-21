@@ -3,7 +3,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('PBL 테스트 페이지 — 컨설턴트', () => {
-  test('/test-pbl 접근 + 샘플 요약·PBL 생성 버튼 렌더', async ({ consultantPage: page }) => {
+  test('/test-pbl 접근 + 샘플 데이터 prefill 확인', async ({ consultantPage: page }) => {
     await page.goto('/test-pbl');
     await page.waitForLoadState('networkidle');
 
@@ -15,12 +15,14 @@ test.describe('PBL 테스트 페이지 — 컨설턴트', () => {
     // 테스트 모드 안내 alert
     await expect(page.getByText('테스트 모드 안내')).toBeVisible();
 
-    // 샘플 요약 카드 (PBL 뱃지 + "샘플정밀공업" 또는 "테스트" 표시)
-    await expect(page.getByText('샘플 PBL 인터뷰 요약')).toBeVisible();
-    await expect(page.getByText('AI 활용 불량 예측 PBL 과정')).toBeVisible();
+    // PBL 인터뷰 폼 전체에 샘플 데이터가 미리 채워져 있음 (OFA Step 9 이후 구조)
+    // 훈련과정명 textbox value로 확인 (getByText는 input value를 찾지 못함)
+    const courseNameInput = page.getByRole('textbox', { name: /훈련과정명/ });
+    await expect(courseNameInput).toBeVisible();
+    await expect(courseNameInput).toHaveValue(/PBL 과정/);
 
-    // PBL 생성 버튼
-    await expect(page.getByTestId('test-pbl-generate-button')).toBeVisible();
+    // 스테퍼가 렌더되는지 확인 (PBL 인터뷰 다단계 폼)
+    await expect(page.locator('nav[aria-label="Progress"]')).toBeVisible();
   });
 
   test('네비게이션에서 "PBL 테스트" 메뉴 진입 가능', async ({ consultantPage: page }) => {

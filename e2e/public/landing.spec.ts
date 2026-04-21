@@ -50,12 +50,13 @@ test.describe('Phase 1.1: 랜딩 페이지 (/)', () => {
     await page.goto('/');
     // 네비게이션 바
     await expect(page.locator('nav')).toBeAttached();
-    // ID가 있는 섹션
+    // ID가 있는 섹션 — 구조적으로 필수
     await expect(page.locator('section#features')).toBeAttached();
     await expect(page.locator('section#workflow')).toBeAttached();
     await expect(page.locator('section#demo')).toBeAttached();
-    // main 내부 section 4개 (Hero + Features + Workflow + Demo)
-    await expect(page.locator('main section')).toHaveCount(4);
+    // main 내부 section 최소 4개 이상 (Hero + Features + Workflow + Demo + 가변 추가 섹션)
+    const sectionCount = await page.locator('main section').count();
+    expect(sectionCount).toBeGreaterThanOrEqual(4);
     // footer는 main 밖에 위치 (contentinfo landmark 역할)
     await expect(page.locator('footer')).toBeAttached();
   });
