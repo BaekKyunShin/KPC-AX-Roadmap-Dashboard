@@ -183,6 +183,15 @@ describe('generateInterviewGuideData', () => {
     expect(result).toEqual(MOCK_GUIDE_DATA);
   });
 
+  it('callLLMForJSON 에 5번째 인자로 스키마 validator 를 전달한다 (ISSUE-07)', async () => {
+    vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_GUIDE_DATA);
+    await generateInterviewGuideData(createTestInput());
+    const call = vi.mocked(callLLMForJSON).mock.calls[0];
+    // [messages, config, maxRetries?, signal?, validator?]
+    expect(call.length).toBeGreaterThanOrEqual(5);
+    expect(typeof call[4]).toBe('function');
+  });
+
   it('응답에서 미응답 문항은 "미응답"으로 표시된다', async () => {
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_GUIDE_DATA);
 

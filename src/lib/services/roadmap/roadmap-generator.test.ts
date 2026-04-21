@@ -39,6 +39,7 @@ import {
   generateTestRoadmap,
   reviseTestRoadmap,
   RoadmapStorageError,
+  fillMissingRoadmapFields,
 } from './roadmap-generator';
 import type { TestRoadmapInput } from './roadmap-generator';
 import type { RoadmapResult } from './roadmap-types';
@@ -188,6 +189,10 @@ function createInterviewsChain(overrides: MockOverrides) {
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ data, error: null }),
+    }),
+    // persistRoadmapSummaryToInterview 가 호출하는 update path (ISSUE-04)
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
     }),
   };
 }
@@ -661,5 +666,81 @@ describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
     await expect(
       generateRoadmap('project-1', 'user-1', undefined, false, controller.signal),
     ).rejects.toThrow('LLM 호출이 취소되었습니다.');
+  });
+});
+
+// ─── fillMissingRoadmapFields — ISSUE-04 자동 채움 분기 ──────────────────
+
+describe('fillMissingRoadmapFields (ISSUE-04 자동 채움)', () => {
+  const baseRaw = {
+    diagnosis_summary: '요약',
+    setup_necessity: '필요성',
+    outcome_summary: {
+      ai_competency_level: 'INTERMEDIATE' as const,
+      selected_tasks: '과업',
+      main_content: '내용',
+    },
+    training_structure: [] as RoadmapResult['training_structure'],
+    training_structure_method: '방법',
+    annual_plan: { items: [], usage_plan: '' },
+    course_specs: [] as RoadmapResult['course_specs'],
+  };
+
+  it('LLM 이 competencies=[] 를 반환해도 인터뷰 competency_models 로 자동 채운다', () => {
+    const result = fillMissingRoadmapFields(
+      { ...baseRaw, competencies: [] },
+      undefined,
+      [
+        {
+          id: 'cm1',
+          competency_name: '데이터 해석',
+          competency_definition: '정의',
+          knowledge: '통계',
+          skill: '엑셀',
+          attitude: '객관성',
+        },
+      ],
+      { uses_ncs: false, competency_derivation_method: '인터뷰 도출' },
+    );
+    expect(result.competencies).toHaveLength(1);
+    expect(result.competencies[0]).toEqual({
+      name: '데이터 해석',
+      definition: '정의',
+      knowledge: ['통계'],
+      skills: ['엑셀'],
+      attitudes: ['객관성'],
+    });
+  });
+
+  it('인터뷰 ncs_usage 의 uses_ncs=true 를 기준값으로 채운다', () => {
+    const result = fillMissingRoadmapFields(
+      { ...baseRaw, competencies: [{ name: 'c', definition: 'd', knowledge: [], skills: [], attitudes: [] }] },
+      undefined,
+      undefined,
+      { uses_ncs: true, ncs_usage_method: 'NCS 20.02.01 차용' },
+    );
+    expect(result.ncs_used).toBe(true);
+    expect(result.ncs_methodology).toBe('NCS 20.02.01 차용');
+  });
+
+  it('LLM 이 competencies 를 반환하면 인터뷰 fallback 을 사용하지 않는다', () => {
+    const llmCompetencies = [
+      { name: 'LLM 역량', definition: 'd', knowledge: ['k1', 'k2'], skills: ['s1'], attitudes: ['a1'] },
+    ];
+    const result = fillMissingRoadmapFields(
+      { ...baseRaw, competencies: llmCompetencies },
+      undefined,
+      [
+        {
+          id: 'cm1',
+          competency_name: '인터뷰 역량',
+          competency_definition: '정의',
+          knowledge: 'k',
+          skill: 's',
+          attitude: 'a',
+        },
+      ],
+    );
+    expect(result.competencies).toEqual(llmCompetencies);
   });
 });

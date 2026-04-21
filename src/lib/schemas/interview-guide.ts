@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { LLMValidatorResult } from '@/lib/services/llm';
 
 // ============================================================================
 // guide_data JSONB 내부 구조 스키마
@@ -52,3 +53,16 @@ export type GuideKeyPoint = z.infer<typeof guideKeyPointSchema>;
 export type GuideQuestion = z.infer<typeof guideQuestionSchema>;
 export type GuideData = z.infer<typeof guideDataSchema>;
 export type UpdateGuideQuestionsInput = z.infer<typeof updateGuideQuestionsSchema>;
+
+/**
+ * callLLMForJSON validator — LLM 응답을 런타임 Zod 검증으로 통과시킨다.
+ * ISSUE-07 방어적 하드닝: 타입 캐스팅만 하던 기존 경로에서
+ * 실제 key_points·questions 존재 여부를 강제해 UI 렌더링 크래시를 방지.
+ */
+export function validateGuideData(raw: unknown): LLMValidatorResult<GuideData> {
+  const result = guideDataSchema.safeParse(raw);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
+}
