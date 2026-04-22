@@ -357,4 +357,165 @@ describe('buildRoadmapHwpxPayload', () => {
     });
     expect(p.data.hrd_report_attachment).toBe('https://hrd.example.com/report.pdf');
   });
+
+  // === Fallback 분기 보강 (branches 커버리지) ===
+
+  it('LLM setup_necessity 비어있으면 interview overview.establishment_necessity 로 fallback', () => {
+    const roadmap = makeRoadmapVersion({
+      pbl_course: {
+        competencies: [],
+        annual_plan: { items: [], usage_plan: '' },
+        setup_necessity: '',
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER' as const,
+          selected_tasks: '',
+          main_content: '',
+        },
+        training_structure_method: '',
+        ncs: { used: false, methodology: '', derivation_method: '' },
+      } as unknown as RoadmapHwpxPayloadInputs['roadmap']['pbl_course'],
+    });
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    expect(p.data.establishment_necessity).toBe('인터뷰 수집 필요성');
+  });
+
+  it('interview.overview 가 undefined 면 selected_tasks/roadmap_summary 빈 문자열', () => {
+    const iv = makeInterview({
+      company_details: {},
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const roadmap = makeRoadmapVersion({
+      pbl_course: {
+        competencies: [],
+        annual_plan: { items: [], usage_plan: '' },
+        setup_necessity: '',
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER' as const,
+          // selected_tasks, main_content 누락 + overview 도 비어있음
+        },
+        training_structure_method: '',
+        ncs: { used: false, methodology: '', derivation_method: '' },
+      } as unknown as RoadmapHwpxPayloadInputs['roadmap']['pbl_course'],
+    });
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.selected_tasks_text).toBe('');
+    expect(p.data.roadmap_summary).toBe('');
+    expect(p.data.establishment_necessity).toBe('');
+  });
+
+  it('NCS false 케이스: ncs_used=false + derivation_method 매핑', () => {
+    const roadmap = makeRoadmapVersion({
+      pbl_course: {
+        competencies: [],
+        annual_plan: { items: [], usage_plan: '' },
+        setup_necessity: '필요성',
+        outcome_summary: {
+          ai_competency_level: 'ADVANCED' as const,
+          selected_tasks: '',
+          main_content: '',
+        },
+        training_structure_method: '',
+        ncs: { used: false, methodology: '', derivation_method: '벤치마킹 기반 도출' },
+      } as unknown as RoadmapHwpxPayloadInputs['roadmap']['pbl_course'],
+    });
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: null,
+    });
+    expect(p.data.ncs_used).toBe(false);
+    expect(p.data.ncs_derivation_method).toBe('벤치마킹 기반 도출');
+    expect(p.data.ai_competency_level).toBe('ADVANCED');
+  });
+
+  it('interview_method 가 "비대면" 이면 performance_activities.method = "비대면(화상회의)"', () => {
+    const iv = makeInterview({
+      interview_method: '비대면',
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
+    expect(first.method).toBe('비대면(화상회의)');
+  });
+
+  it('interview_method 가 기타 문자열이면 그대로 사용', () => {
+    const iv = makeInterview({
+      interview_method: '하이브리드',
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
+    expect(first.method).toBe('하이브리드');
+  });
+
+  it('HRD 보고서 URL이 pbl_course.hrd_report_attachment_url 에만 있으면 legacy fallback 사용', () => {
+    const iv = makeInterview({
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '필요성',
+          ai_competency_level: 'BEGINNER',
+        },
+      },
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const roadmap = makeRoadmapVersion({
+      pbl_course: {
+        competencies: [],
+        annual_plan: { items: [], usage_plan: '' },
+        setup_necessity: '',
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER' as const,
+          selected_tasks: '',
+          main_content: '',
+        },
+        training_structure_method: '',
+        ncs: { used: false, methodology: '', derivation_method: '' },
+        hrd_report_attachment_url: 'https://legacy.example.com/hrd.pdf',
+      } as unknown as RoadmapHwpxPayloadInputs['roadmap']['pbl_course'],
+    });
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.hrd_report_attachment).toBe('https://legacy.example.com/hrd.pdf');
+  });
+
+  it('participants 에 PM/내부전문가 직위가 없으면 pm_name/internal_expert_name 은 빈 문자열', () => {
+    const iv = makeInterview({
+      participants: [{ id: '3', name: '이사람', position: '일반직원' }],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.pm_name).toBe('');
+    expect(p.data.internal_expert_name).toBe('');
+  });
+
+  it('finalized_at 가 있으면 report_date 는 finalized_at 기준', () => {
+    const roadmap = makeRoadmapVersion({
+      finalized_at: '2026-04-20T00:00:00Z',
+    } as unknown as Parameters<typeof makeRoadmapVersion>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    expect(p.data.report_date).toContain('2026');
+    expect(p.data.report_date).toContain('04');
+  });
 });

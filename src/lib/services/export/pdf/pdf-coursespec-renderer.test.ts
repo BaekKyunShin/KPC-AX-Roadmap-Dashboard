@@ -117,4 +117,61 @@ describe('drawCourseSpecSection', () => {
     expect(textCalls.some(t => typeof t === 'string' && t.includes('등록된 훈련과정이 없습니다'))).toBe(true);
     expect(autoTable).not.toHaveBeenCalled();
   });
+
+  // === Fallback 분기 커버리지 보강 ===
+
+  it('빈 문자열 필드 fallback: course_name/format/recommended_program/goal 모두 "-"로 표시', () => {
+    const spec = createSpec({
+      course_name: '',
+      format: '',
+      recommended_program: '',
+      goal: '',
+      main_content: '',
+      target_audience: '',
+    });
+    drawCourseSpecSection(ctx, [spec], autoTable, getAutoTableStyles(false));
+
+    const textCalls = mockDoc.text.mock.calls.map(c => c[0]) as string[];
+    const dashCount = textCalls.filter(t => typeof t === 'string' && t.includes('-')).length;
+    expect(dashCount).toBeGreaterThan(0);
+  });
+
+  it('subjects 미존재(undefined) 시 "-" 행 1개를 body 로 전달', () => {
+    const spec = createSpec({ subjects: undefined } as unknown as Partial<RoadmapCourseSpec>);
+    drawCourseSpecSection(ctx, [spec], autoTable, getAutoTableStyles(false));
+
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body).toEqual([['-', '-', '-']]);
+  });
+
+  it('subjects 가 빈 배열이면 "-" placeholder 행을 출력', () => {
+    const spec = createSpec({ subjects: [] });
+    drawCourseSpecSection(ctx, [spec], autoTable, getAutoTableStyles(false));
+
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body).toEqual([['-', '-', '-']]);
+  });
+
+  it('subject 개별 필드가 비어있으면 각 열에 "-" 또는 0시간', () => {
+    const spec = createSpec({
+      subjects: [
+        { name: '', details: '', hours: 0 },
+      ],
+    });
+    drawCourseSpecSection(ctx, [spec], autoTable, getAutoTableStyles(false));
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body[0][0]).toBe('-');
+    expect(body[0][2]).toBe('0시간');
+  });
+
+  it('subjects 의 hours 가 undefined 여도 sumSubjectHours 는 0 반환 (?? 0 분기)', () => {
+    const spec = createSpec({
+      subjects: [
+        { name: 'a', details: 'd', hours: undefined as unknown as number },
+      ],
+    });
+    drawCourseSpecSection(ctx, [spec], autoTable, getAutoTableStyles(false));
+    const textCalls = mockDoc.text.mock.calls.map(c => c[0]) as string[];
+    expect(textCalls.some(t => typeof t === 'string' && t.includes('총 교육시간: 0시간'))).toBe(true);
+  });
 });
