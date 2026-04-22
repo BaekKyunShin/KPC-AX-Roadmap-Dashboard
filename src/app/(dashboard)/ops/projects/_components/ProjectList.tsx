@@ -37,6 +37,7 @@ import type { ProjectStatus } from '@/types/database';
 import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
 
 const ITEMS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES = 5;
@@ -104,7 +105,7 @@ function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
         </div>
         <div className="text-gray-500">생성일</div>
         <div className="text-gray-900">
-          {new Date(project.created_at).toLocaleDateString('ko-KR')}
+          {formatDateKR(project.created_at)}
         </div>
       </div>
 
@@ -341,7 +342,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
 
       {/* 결과 요약 */}
       <div className="flex items-center justify-between text-base text-muted-foreground">
-        <span>총 {total.toLocaleString()}개의 프로젝트</span>
+        <span>총 {formatNumberKR(total)}개의 프로젝트</span>
         {totalPages > 0 && (
           <span>
             {page} / {totalPages} 페이지
@@ -427,7 +428,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground align-top whitespace-nowrap">
-                          {new Date(projectItem.created_at).toLocaleDateString('ko-KR')}
+                          {formatDateKR(projectItem.created_at)}
                         </TableCell>
                         <TableCell className="align-top">
                           <Link

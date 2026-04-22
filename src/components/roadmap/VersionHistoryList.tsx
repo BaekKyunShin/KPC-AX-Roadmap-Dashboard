@@ -2,6 +2,7 @@
 
 import { CheckCircle } from 'lucide-react';
 import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
+import { formatDateKR } from '@/lib/utils/date';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 interface VersionHistoryListProps {
@@ -45,7 +46,7 @@ export function VersionHistoryList({
               <RoadmapStatusBadge status={v.status} versionNumber={v.version_number} />
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {new Date(v.created_at).toLocaleDateString('ko-KR')}
+              {formatDateKR(v.created_at)}
             </div>
           </button>
         </li>

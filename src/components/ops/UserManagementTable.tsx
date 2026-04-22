@@ -21,6 +21,7 @@ import {
   TableCell,
   TableActionLink,
 } from '@/components/ui/table';
+import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
 // Types
@@ -118,7 +119,7 @@ function UserMobileCard({
         <div>{getStatusBadge(user.status)}</div>
         <div className="text-gray-500">가입일</div>
         <div className="text-gray-900">
-          {new Date(user.created_at).toLocaleDateString('ko-KR')}
+          {formatDateKR(user.created_at)}
         </div>
       </div>
 
@@ -337,7 +338,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
 
                 {/* 가입일 */}
                 <TableCell className="text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString('ko-KR')}
+                  {formatDateKR(user.created_at)}
                 </TableCell>
 
                 {/* 관리 */}
@@ -405,7 +406,7 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-1">프로필 등록일</h4>
                   <p className="text-base">
-                    {new Date(selectedProfile.profile.created_at).toLocaleDateString('ko-KR')}
+                    {formatDateKR(selectedProfile.profile.created_at)}
                   </p>
                 </div>
               </div>

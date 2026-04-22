@@ -5,6 +5,7 @@ import { RefreshCw, Download, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
+import { formatDateKR } from '@/lib/utils/date';
 import type { GuideData, GuideQuestion } from '@/lib/schemas/interview-guide';
 import { InterviewGuideEmpty } from './InterviewGuideEmpty';
 import { GuideKeyPoints } from './GuideKeyPoints';
@@ -101,7 +102,7 @@ export function InterviewGuide({
             <h2 className="text-lg font-semibold text-gray-900">인터뷰 사전 분석</h2>
             {guideCreatedAt && (
               <span className="text-xs text-gray-400">
-                {new Date(guideCreatedAt).toLocaleDateString('ko-KR')} 생성
+                {formatDateKR(guideCreatedAt)} 생성
               </span>
             )}
           </div>

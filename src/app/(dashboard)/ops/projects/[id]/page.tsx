@@ -18,6 +18,7 @@ import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/comp
 import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
 import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { formatDateKR } from '@/lib/utils/date';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import { getLatestToken } from '../actions';
@@ -252,7 +253,7 @@ async function InterviewSection({
           </CardTitle>
           {interview.interview_date && (
             <span className="text-sm text-gray-500">
-              {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+              {formatDateKR(interview.interview_date)} 인터뷰
             </span>
           )}
         </div>

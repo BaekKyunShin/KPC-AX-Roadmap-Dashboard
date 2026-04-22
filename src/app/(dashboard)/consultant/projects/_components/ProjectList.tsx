@@ -37,6 +37,7 @@ import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 import { statusLabel } from '@/lib/utils/project-track';
+import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
 import type { ProjectTrack } from '@/lib/constants/tracks';
 
 // =============================================================================
@@ -81,13 +82,6 @@ const INITIAL_FILTER_OPTIONS: FilterOptions = { statuses: [] };
 // =============================================================================
 // Helpers
 // =============================================================================
-
-/**
- * 날짜를 한국어 형식으로 포맷팅
- */
-function formatDateKR(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('ko-KR');
-}
 
 /**
  * 기업 규모 라벨을 간략화 (인원수·괄호 제거)
@@ -435,7 +429,7 @@ export default function ProjectList({ initialData = null, initialFilters = null 
 
       {/* 결과 요약 */}
       <div className="flex items-center justify-between text-base text-muted-foreground">
-        <span>총 {total.toLocaleString()}개의 프로젝트</span>
+        <span>총 {formatNumberKR(total)}개의 프로젝트</span>
       </div>
 
       {/* 테이블 */}

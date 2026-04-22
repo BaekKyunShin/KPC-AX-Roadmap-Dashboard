@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { formatDateLongKR } from '@/lib/utils/date';
 
 // =============================================================================
 // 타입 정의
@@ -38,18 +39,10 @@ const SEVERITY_LABELS: Record<SeverityLevel, string> = {
 // =============================================================================
 
 /**
- * 날짜 문자열을 한국어 형식으로 포맷팅
+ * 날짜 문자열을 "yyyy년 M월 D일" 형식으로 포맷팅 (KST timezone 명시).
  */
 export function formatKoreanDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
+  return formatDateLongKR(dateStr) || dateStr;
 }
 
 // =============================================================================

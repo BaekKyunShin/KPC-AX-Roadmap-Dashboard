@@ -2,6 +2,7 @@ import {
   type SelfAssessmentScores,
   getScoreColor,
 } from '@/lib/constants/score-color';
+import { formatDateKR } from '@/lib/utils/date';
 
 interface SelfAssessmentResultProps {
   scores: SelfAssessmentScores;
@@ -37,7 +38,7 @@ export function SelfAssessmentResult({ scores, createdAt }: SelfAssessmentResult
               </span>
               {createdAt && (
                 <span className="text-xs text-gray-400">
-                  {new Date(createdAt).toLocaleDateString('ko-KR')} 진단
+                  {formatDateKR(createdAt)} 진단
                 </span>
               )}
             </div>

@@ -10,6 +10,7 @@ import type { SelfAssessmentScores } from '@/lib/constants/score-color';
 import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
 import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
 import { TrackBadge } from '@/components/ui/TrackBadge';
+import { formatDateKR } from '@/lib/utils/date';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import type { ProjectTrack } from '@/lib/constants/tracks';
@@ -161,7 +162,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
                 {selfAssessment?.created_at && (
                   <span className="text-sm text-gray-500">
-                    {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
+                    {formatDateKR(selfAssessment.created_at)} 진단
                   </span>
                 )}
               </div>
@@ -196,7 +197,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 <h2 className="text-lg font-semibold text-gray-900">인터뷰 기록</h2>
                 {interview.interview_date && (
                   <span className="text-sm text-gray-500">
-                    {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
+                    {formatDateKR(interview.interview_date)} 인터뷰
                   </span>
                 )}
               </div>
