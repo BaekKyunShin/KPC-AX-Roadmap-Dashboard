@@ -85,18 +85,17 @@ function mapRoadmapToLegacyColumns(
   const targets = data.training_targets ?? [];
   const an = data.analysis_notes ?? { text: '', attachment_files: [] };
 
-  // ISSUE-10: 신규 시작/종료 시간을 단일 interview_time DB 컬럼으로 직렬화 (legacy 호환).
-  // Step C-2 에서 시작/종료 컬럼 분리 시 mapInterviewRow* fallback 로직과 함께 갱신 예정.
+  // ISSUE-10 Step C-2: 시작/종료 시간 정식 저장.
+  //   - company_details.roadmap_interview_time JSONB { start, end } 가 정식 경로
+  //   - 단일 `interview_time` 컬럼은 시작 시간만 legacy 호환용으로 함께 저장
+  //     (mapInterviewRow 의 3순위 fallback + 외부 SQL/리포트 호환)
   const startTime = (data as { interview_start_time?: string }).interview_start_time ?? '';
   const endTime = (data as { interview_end_time?: string }).interview_end_time ?? '';
-  const serializedTime = startTime && endTime
-    ? `${startTime}~${endTime}`
-    : (startTime || endTime || null);
 
   return {
     interview_date: data.interview_date ?? null,
     interview_round: data.interview_round ?? 1,
-    interview_time: serializedTime,
+    interview_time: startTime || null,
     participants: data.participants ?? [],
     company_details: {
       ai_experience: cr.company_status ?? '',
@@ -110,6 +109,8 @@ function mapRoadmapToLegacyColumns(
       // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04, 2026-04-21 신규)
       roadmap_competency_models: data.competency_models ?? [],
       roadmap_ncs_usage: data.ncs_usage ?? null,
+      // ISSUE-10 Step C-2: 시작/종료 시간 JSONB
+      roadmap_interview_time: { start: startTime, end: endTime },
     },
     job_tasks: tasks.map((t) => ({
       id: t.id,

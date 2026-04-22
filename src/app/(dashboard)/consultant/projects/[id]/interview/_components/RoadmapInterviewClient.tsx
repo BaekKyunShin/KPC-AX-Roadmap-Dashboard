@@ -78,9 +78,10 @@ export default function RoadmapInterviewClient({
     initialData.interview_date || new Date().toISOString().split('T')[0],
   );
   const [interviewRound, setInterviewRound] = useState<number>(initialData.interview_round ?? 1);
-  // Step A: 단일 시간 → 시작/종료 분리 토대 마련. Step C-2 가 정식 시작/종료 입력 UI 추가 예정.
-  // 현재는 기존 단일 입력을 시작 시간으로 매핑하고, 종료 시간은 빈 문자열로 둔다.
-  const [interviewTime, setInterviewTime] = useState(initialData.interview_start_time ?? '');
+  // ISSUE-10 Step C-2: 시작/종료 두 input 으로 분리. legacy 단일 값은
+  // mapInterviewRowToRoadmapInterview 가 interview_start_time 으로 fallback 한다.
+  const [interviewStartTime, setInterviewStartTime] = useState(initialData.interview_start_time ?? '');
+  const [interviewEndTime, setInterviewEndTime] = useState(initialData.interview_end_time ?? '');
   const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>(
     initialData.interview_method ?? 'ONSITE',
   );
@@ -121,8 +122,8 @@ export default function RoadmapInterviewClient({
       overview,
       interview_date: interviewDate,
       interview_round: interviewRound,
-      interview_start_time: interviewTime,
-      interview_end_time: '',
+      interview_start_time: interviewStartTime,
+      interview_end_time: interviewEndTime,
       interview_method: interviewMethod,
       participants,
       company_requirements: companyRequirements,
@@ -138,7 +139,8 @@ export default function RoadmapInterviewClient({
       overview,
       interviewDate,
       interviewRound,
-      interviewTime,
+      interviewStartTime,
+      interviewEndTime,
       interviewMethod,
       participants,
       companyRequirements,
@@ -185,7 +187,10 @@ export default function RoadmapInterviewClient({
       case 2:
         return (
           Boolean(interviewDate) &&
-          Boolean(interviewTime) &&
+          Boolean(interviewStartTime) &&
+          Boolean(interviewEndTime) &&
+          // 시작 < 종료 (HTML time 문자열은 lexicographic 비교가 정확)
+          interviewStartTime < interviewEndTime &&
           Boolean(interviewMethod) &&
           participants.length > 0 &&
           participants.every((p) => p.name.trim() !== '')
@@ -308,12 +313,14 @@ export default function RoadmapInterviewClient({
           <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             onInterviewDateChange={setInterviewDate}
             onInterviewRoundChange={setInterviewRound}
-            onInterviewTimeChange={setInterviewTime}
+            onInterviewStartTimeChange={setInterviewStartTime}
+            onInterviewEndTimeChange={setInterviewEndTime}
             onInterviewMethodChange={setInterviewMethod}
             onParticipantsChange={setParticipants}
           />
@@ -346,7 +353,8 @@ export default function RoadmapInterviewClient({
             overview={overview}
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             companyRequirements={companyRequirements}

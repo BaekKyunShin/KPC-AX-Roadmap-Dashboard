@@ -15,6 +15,7 @@ import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storag
 import type { RoadmapResult } from '@/lib/services/roadmap/roadmap-types';
 import type { Interview, Project, RoadmapVersion } from '@/types/database';
 import { bulletize, splitByUnit } from '@/lib/utils/list-format';
+import { formatTimeRange } from '@/lib/utils/time';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
 import { sanitizeFileNamePart } from './hwpx-filename';
@@ -43,6 +44,11 @@ interface InterviewLike {
     roadmap_analysis_notes?: {
       text?: string;
       attachment_urls?: string[];
+    };
+    // ISSUE-10 Step C-2: 시작/종료 시간 JSONB
+    roadmap_interview_time?: {
+      start?: string;
+      end?: string;
     };
   };
   job_tasks?: Array<{
@@ -161,6 +167,13 @@ export function buildRoadmapHwpxPayload(
   const finalHrdUrl = hrdAttachmentUrl || hrdFromLegacy;
 
   // 7) 수행일지 차수 — interview 1차 자동 집계 (Step 12에서 차수별 확장)
+  // ISSUE-10 Step C-2: 시간 표시 우선순위
+  //   1) company_details.roadmap_interview_time JSONB { start, end } 정식 경로
+  //   2) interview_time 단일 컬럼 (legacy production 3건 호환)
+  const savedInterviewTime = typedInterview?.company_details?.roadmap_interview_time;
+  const interviewTimeText = savedInterviewTime?.start || savedInterviewTime?.end
+    ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
+    : (typedInterview?.interview_time ?? '');
   const performanceActivities =
     typedInterview
       ? [
@@ -168,7 +181,7 @@ export function buildRoadmapHwpxPayload(
             round: typedInterview.interview_round ?? 1,
             date: [
               typedInterview.interview_date ?? '',
-              typedInterview.interview_time ?? '',
+              interviewTimeText,
             ]
               .filter(Boolean)
               .join('\n'),

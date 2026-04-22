@@ -937,6 +937,47 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.interview_end_time).toBe('12:00');
   });
 
+  // Step C-2 — JSONB 우선 매핑 (정식 저장 경로)
+  it('company_details.roadmap_interview_time JSONB 가 있으면 우선 사용한다 (Step C-2)', () => {
+    const row = {
+      interview_time: '08:00', // legacy 단일 값이 있어도 JSONB 우선
+      participants: [],
+      company_details: {
+        roadmap_interview_time: { start: '14:00', end: '16:00' },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_start_time).toBe('14:00');
+    expect(result.interview_end_time).toBe('16:00');
+  });
+
+  it('roadmap_interview_time.end 누락 시 빈 문자열 fallback (Step C-2)', () => {
+    const row = {
+      participants: [],
+      company_details: {
+        roadmap_interview_time: { start: '14:00' },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_start_time).toBe('14:00');
+    expect(result.interview_end_time).toBe('');
+  });
+
+  it('roadmap_interview_time 이 없으면 legacy interview_time 으로 fallback (Step C-2)', () => {
+    // Step A 임시 직렬화 코드 호환 — production 3건 시나리오
+    const row = {
+      interview_time: '14:00',
+      participants: [],
+      company_details: { roadmap_company_requirements: { company_status: 'X', main_problems: '', push_willingness: '', expected_outcomes: '' } },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_start_time).toBe('14:00');
+    expect(result.interview_end_time).toBe('');
+  });
+
   it('job_tasks에 id가 없으면 UUID가 자동 생성된다', () => {
     // Line 410: t.id ?? crypto.randomUUID() → 우측 피연산자(null) 분기 커버
     const row = {

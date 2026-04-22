@@ -51,6 +51,23 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 7스텝)', () => {
     expect(getErrors()).toEqual([]);
   });
 
+  test('Step 2: 수행 시간 시작/종료 두 input 노출 (ISSUE-10 Step C-2)', async ({ consultantPage: page }) => {
+    test.skip(!interviewUrl, '인터뷰 URL 없음');
+    await page.goto(interviewUrl!);
+    await page.waitForLoadState('networkidle');
+
+    const isRoadmap = await page.getByText('현장 인터뷰 (로드맵)').isVisible().catch(() => false);
+    test.skip(!isRoadmap, '로드맵 트랙 아님');
+
+    // Step 1 → Step 2
+    await page.getByRole('button', { name: /^다음$/ }).click();
+
+    await expect(page.getByRole('heading', { name: /주요 활동/ })).toBeVisible();
+    // 단일 "수행 시간" → 시작/종료 두 input 으로 분리
+    await expect(page.getByLabel(/수행 시간 \(시작\)/)).toBeVisible();
+    await expect(page.getByLabel(/수행 시간 \(종료\)/)).toBeVisible();
+  });
+
   test('Step 3: 기업 요구분석 4 textarea 노출 (개요 + 기본 정보 이후)', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);

@@ -19,12 +19,15 @@ import {
   AI_COMPETENCY_LEVEL_SUBTITLE,
   INTERVIEW_METHOD_LABEL,
 } from '@/lib/schemas/interview-roadmap';
+import { formatTimeRange } from '@/lib/utils/time';
 
 interface StepSummaryRoadmapProps {
   overview: Overview;
   interviewDate: string;
   interviewRound: number;
-  interviewTime: string;
+  // ISSUE-10 Step C-2: 시작/종료 두 필드
+  interviewStartTime: string;
+  interviewEndTime: string;
   interviewMethod: InterviewMethod;
   participants: RoadmapParticipant[];
   companyRequirements: CompanyRequirements;
@@ -55,7 +58,8 @@ export default function StepSummaryRoadmap({
   overview,
   interviewDate,
   interviewRound,
-  interviewTime,
+  interviewStartTime,
+  interviewEndTime,
   interviewMethod,
   participants,
   companyRequirements,
@@ -69,6 +73,7 @@ export default function StepSummaryRoadmap({
   onNotesChange,
   sttInsights,
 }: StepSummaryRoadmapProps) {
+  const interviewTimeRange = formatTimeRange(interviewStartTime, interviewEndTime);
   return (
     <div className="space-y-6">
       <div>
@@ -134,7 +139,7 @@ export default function StepSummaryRoadmap({
           <div>
             <dt className="text-muted-foreground">수행 차수 / 일시</dt>
             <dd className="text-foreground">
-              {interviewRound}차 · {interviewDate || '-'} · {interviewTime || '-'}
+              {interviewRound}차 · {interviewDate || '-'} · {interviewTimeRange || '-'}
             </dd>
           </div>
           <div>

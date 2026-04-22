@@ -177,6 +177,59 @@ describe('saveRoadmapInterview', () => {
     );
   });
 
+  // ISSUE-10 Step C-2: 시작/종료 시간 정식 직렬화 검증
+  it('시작/종료 시간을 company_details.roadmap_interview_time JSONB 객체로 저장하고 interview_time 컬럼에는 시작 시간만 저장한다', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // existing maybeSingle → null
+    adminMock.addResult({ data: null, error: null }); // insert → ok
+    adminMock.addResult({ data: null, error: null }); // project status update → ok
+
+    const data = { ...validRoadmapData(), interview_start_time: '14:00', interview_end_time: '16:00' };
+    const r = await saveRoadmapInterview(PROJECT_ID, data);
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    // adminMock.chainable.insert(row) 호출 인자 검증
+    const insertCalls = adminMock.chainable.insert.mock.calls as Array<[Record<string, unknown>]>;
+    expect(insertCalls.length).toBeGreaterThan(0);
+    const inserted = insertCalls[0][0];
+    // 단일 컬럼: 시작 시간만 (legacy 호환)
+    expect(inserted.interview_time).toBe('14:00');
+    // JSONB: 시작/종료 두 필드 모두 저장
+    const companyDetails = inserted.company_details as Record<string, unknown>;
+    expect(companyDetails.roadmap_interview_time).toEqual({ start: '14:00', end: '16:00' });
+  });
+
+  it('시작 시간만 입력하고 종료 시간이 없으면 interview_time = 시작 + JSONB end = 빈 문자열', async () => {
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { id: PROJECT_ID, status: 'ASSIGNED', track: 'ROADMAP', assigned_consultant_id: USER_A, company_name: '테스트', is_test_mode: false },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    // autoSave 경로에서 종료 시간 미입력 상태도 허용
+    const partial = {
+      interview_start_time: '14:00',
+      interview_end_time: '',
+    };
+    const r = await saveRoadmapInterview(PROJECT_ID, partial, { autoSave: true });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const insertCalls = adminMock.chainable.insert.mock.calls as Array<[Record<string, unknown>]>;
+    expect(insertCalls.length).toBeGreaterThan(0);
+    const inserted = insertCalls[0][0];
+    expect(inserted.interview_time).toBe('14:00');
+    const companyDetails = inserted.company_details as Record<string, unknown>;
+    expect(companyDetails.roadmap_interview_time).toEqual({ start: '14:00', end: '' });
+  });
+
   // ============================================================================
   // uploadInterviewAttachment / removeInterviewAttachment (Step B-2, ISSUE-14)
   // ----------------------------------------------------------------------------

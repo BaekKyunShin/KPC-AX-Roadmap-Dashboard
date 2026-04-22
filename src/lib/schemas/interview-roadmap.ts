@@ -403,6 +403,12 @@ interface LegacyCompanyDetails {
     ncs_usage_method?: string;
     competency_derivation_method?: string;
   } | null;
+  // ISSUE-10 Step C-2: 시작/종료 시간 정식 저장 (JSONB).
+  //   `interview_time` 단일 컬럼은 시작 시간만 legacy 호환용으로 함께 저장.
+  roadmap_interview_time?: {
+    start?: string;
+    end?: string;
+  } | null;
 }
 
 interface LegacyJobTask {
@@ -457,10 +463,15 @@ export function mapInterviewRowToRoadmapInterview(
   if (row.interview_date) partial.interview_date = row.interview_date;
   if (typeof row.interview_round === 'number') partial.interview_round = row.interview_round;
 
-  // ISSUE-10: 시간 필드 매핑.
-  // 우선순위: 신규 interview_start_time/end_time → legacy 단일 interview_time → 미설정.
-  // production 3건의 legacy row 는 단일 값 → start_time fallback, end_time 은 빈 문자열.
-  if (row.interview_start_time || row.interview_end_time) {
+  // ISSUE-10 Step C-2: 시간 필드 매핑 우선순위.
+  //   1) company_details.roadmap_interview_time JSONB { start, end } — 정식 저장 경로
+  //   2) interview_start_time / interview_end_time 컬럼 — 향후 마이그 대비 hook
+  //   3) legacy 단일 interview_time 컬럼 → start 로 fallback (production 3건 호환)
+  const savedTime = row.company_details?.roadmap_interview_time;
+  if (savedTime?.start || savedTime?.end) {
+    partial.interview_start_time = savedTime.start ?? '';
+    partial.interview_end_time = savedTime.end ?? '';
+  } else if (row.interview_start_time || row.interview_end_time) {
     partial.interview_start_time = row.interview_start_time ?? '';
     partial.interview_end_time = row.interview_end_time ?? '';
   } else if (row.interview_time) {

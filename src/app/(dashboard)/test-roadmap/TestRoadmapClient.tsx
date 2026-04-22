@@ -46,6 +46,7 @@ import StepTaskWorkflowAnalysis from '@/app/(dashboard)/consultant/projects/[id]
 import StepTrainingTargets from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTrainingTargets';
 import StepCompetencyModeling from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
 import StepSummaryRoadmap from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepSummaryRoadmap';
+import { formatTimeRange } from '@/lib/utils/time';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import {
   createTestRoadmap,
@@ -110,7 +111,9 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     new Date().toISOString().split('T')[0],
   );
   const [interviewRound, setInterviewRound] = useState<number>(1);
-  const [interviewTime, setInterviewTime] = useState('');
+  // ISSUE-10 Step C-2: 단일 시간 → 시작/종료 두 입력
+  const [interviewStartTime, setInterviewStartTime] = useState('');
+  const [interviewEndTime, setInterviewEndTime] = useState('');
   const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>('ONSITE');
   const [participants, setParticipants] = useState<RoadmapParticipant[]>([
     createEmptyRoadmapParticipant(),
@@ -239,7 +242,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     overview: overview as TestRoadmapInput['overview'],
     interview_date: interviewDate,
     interview_round: interviewRound,
-    interview_time: interviewTime,
+    interview_time: formatTimeRange(interviewStartTime, interviewEndTime),
     interview_method: interviewMethod,
     participants: participants.map((p, i) => ({
       id: p.id || `test-p-${i}`,
@@ -408,12 +411,14 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             onInterviewDateChange={setInterviewDate}
             onInterviewRoundChange={setInterviewRound}
-            onInterviewTimeChange={setInterviewTime}
+            onInterviewStartTimeChange={setInterviewStartTime}
+            onInterviewEndTimeChange={setInterviewEndTime}
             onInterviewMethodChange={setInterviewMethod}
             onParticipantsChange={setParticipants}
           />
@@ -448,7 +453,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             overview={overview}
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             companyRequirements={companyRequirements}
