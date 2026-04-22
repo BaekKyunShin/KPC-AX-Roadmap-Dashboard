@@ -103,14 +103,12 @@ test.describe('쿼터 초과 시 LLM 차단', () => {
     await page.waitForLoadState('networkidle');
     await waitForPageLoad(page);
 
-    // RegenerateAccordion: "새 버전 생성" 버튼 → 패널 → "생성 시작" 버튼이 createRoadmap 트리거
-    const accordionToggle = page.getByRole('button', { name: '새 버전 생성' });
-    await expect(accordionToggle).toBeVisible({ timeout: 10_000 });
-    await accordionToggle.click();
-
-    const submitButton = page.getByRole('button', { name: '생성 시작' });
-    await expect(submitButton).toBeVisible({ timeout: 5_000 });
-    await submitButton.click();
+    // ISSUE-18 (Step D-2): versions=0 일 때는 RegenerateAccordion 이 숨겨지고
+    // EmptyRoadmapState 안에 큰 "AI 로드맵 생성" 버튼이 단독 노출된다.
+    // 본 시나리오는 신규 프로젝트 (versions=0) 이므로 빈 상태 큰 버튼 흐름을 사용.
+    const generateButton = page.getByRole('button', { name: 'AI 로드맵 생성' });
+    await expect(generateButton).toBeVisible({ timeout: 10_000 });
+    await generateButton.click();
 
     // 에러 토스트 — createRoadmap이 getLLMUserFriendlyError로 메시지를 일반화하므로
     // 제목("로드맵 생성 실패") 기준으로 매칭. (RPC 원문은 "일일 사용량(0회)을 초과했습니다.")

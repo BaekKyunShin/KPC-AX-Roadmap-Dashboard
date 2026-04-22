@@ -226,8 +226,9 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.locator('#basic-method').click();
     await expect(page.getByRole('option').first()).toBeVisible({ timeout: 5_000 });
     await page.getByRole('option').first().click();
-    // 수행 시간 (일자는 기본값)
-    await page.locator('#basic-time').fill('09:00');
+    // ISSUE-10 (Step C-2): 수행 시간이 시작/종료 두 input 으로 분리됨
+    await page.locator('#basic-start-time').fill('09:00');
+    await page.locator('#basic-end-time').fill('11:00');
     // 참석자 1명 입력
     await page.getByRole('textbox', { name: /참석자 1 성명/ }).fill('E2E 참석자');
     await page.getByRole('textbox', { name: /참석자 1 소속/ }).fill('팀장');
