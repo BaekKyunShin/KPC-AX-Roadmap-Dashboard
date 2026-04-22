@@ -16,7 +16,7 @@ test.describe('모바일 갤러리 — 레이아웃', () => {
     await page.waitForLoadState('networkidle');
 
     // 갤러리 헤더 확인
-    await expect(page.getByRole('heading', { name: '로드맵 갤러리' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '로드맵·PBL 갤러리' })).toBeVisible();
 
     // 카드 그리드가 1열(grid-cols-1)로 렌더링됨 확인
     // lg:grid-cols-2이지만 모바일에서는 grid-cols-1
@@ -59,7 +59,7 @@ test.describe('모바일 갤러리 — 레이아웃', () => {
     await page.goto('/gallery');
     await page.waitForLoadState('networkidle');
 
-    const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
+    const searchInput = page.getByPlaceholder('검색 (기업명, 업종, 키워드...)');
     await expect(searchInput).toBeVisible();
 
     // 검색 입력이 화면 너비에 가깝게 표시됨 (패딩 고려)
@@ -85,7 +85,7 @@ test.describe('모바일 갤러리 — 필터', () => {
 
     // 필터 영역: flex-col로 변경되어 검색과 셀렉트가 세로 배치
     // 검색 입력과 셀렉트 트리거가 모두 표시됨
-    const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
+    const searchInput = page.getByPlaceholder('검색 (기업명, 업종, 키워드...)');
     await expect(searchInput).toBeVisible();
 
     // 셀렉트 트리거(업종, 정렬)가 표시됨

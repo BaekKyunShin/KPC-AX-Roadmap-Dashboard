@@ -83,11 +83,13 @@ test.describe('모바일 컨설턴트 홈 — KPI 카드 레이아웃', () => {
     await page.waitForLoadState('networkidle');
 
     // KPI 카드 라벨 확인 (CI 환경 느린 로드 대응)
+    // OFA 이후 SummaryCards 라벨: 전체 프로젝트·인터뷰 대기·인터뷰 완료·초안 작성 중·양식 확정
+    // (트랙 통합 — ROADMAP/PBL 공용 "초안 작성 중", FINALIZED 공용 "양식 확정")
     await expect(page.getByText('전체 프로젝트')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('인터뷰 대기').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('인터뷰 완료').first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('로드맵 작성 중').first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('로드맵 완료').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('초안 작성 중').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('양식 확정').first()).toBeVisible({ timeout: 15_000 });
 
     await context.close();
   });
