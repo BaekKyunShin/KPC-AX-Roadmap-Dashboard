@@ -7,6 +7,7 @@ import {
   filterValidRecommendations,
   saveRecommendations,
   updateProjectStatusIfNeeded,
+  validateLlmMatchingResponse,
   LEVEL_LABEL_MAP,
   LLM_LIMITS,
 } from './matching-helpers';
@@ -37,12 +38,17 @@ export async function generateLLMMatchingRecommendations(
     await fetchMatchingData(supabase, projectId);
 
   // 2. LLM 프롬프트 구성 및 호출
+  //    ISSUE-06 방어적 하드닝: validator 로 recommendations 배열 존재를 보장해
+  //    하위에서 .filter() 호출 시 런타임 crash 가 발생하지 않도록 함.
   const llmResponse = await callLLMForJSON<LLMMatchingResponse>(
     [
       { role: 'system', content: buildLLMSystemPrompt() },
       { role: 'user', content: buildLLMUserPrompt(projectData, assessmentScores, candidatesWithProfile) },
     ],
-    { temperature: MATCHING_LLM_TEMPERATURE, maxTokens: MATCHING_LLM_MAX_TOKENS }
+    { temperature: MATCHING_LLM_TEMPERATURE, maxTokens: MATCHING_LLM_MAX_TOKENS },
+    2,
+    undefined,
+    validateLlmMatchingResponse,
   );
 
   // 3. LLM 응답 검증 — hallucinated userId 필터링

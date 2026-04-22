@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { guideDataSchema, guideQuestionSchema, guideKeyPointSchema, updateGuideQuestionsSchema } from './interview-guide';
+import {
+  guideDataSchema,
+  guideQuestionSchema,
+  guideKeyPointSchema,
+  updateGuideQuestionsSchema,
+  validateGuideData,
+} from './interview-guide';
 
 // ============================================================================
 // 유효한 테스트 데이터
@@ -156,5 +162,22 @@ describe('updateGuideQuestionsSchema', () => {
 
   it('빈 배열이면 실패', () => {
     expect(updateGuideQuestionsSchema.safeParse({ questions: [] }).success).toBe(false);
+  });
+});
+
+// ============================================================================
+// validateGuideData (ISSUE-07 callLLMForJSON validator 어댑터)
+// ============================================================================
+
+describe('validateGuideData', () => {
+  it('정상 GuideData 는 success:true 반환', () => {
+    const r = validateGuideData(validGuideData);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.key_points).toHaveLength(1);
+  });
+
+  it('key_points 누락 시 success:false + error 반환', () => {
+    const r = validateGuideData({ ...validGuideData, key_points: [] });
+    expect(r.success).toBe(false);
   });
 });

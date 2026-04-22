@@ -8,7 +8,7 @@
  * 호출해 LLM 결과만 받아온다.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Check, Loader2, Info, FlaskConical } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -33,6 +33,10 @@ import {
   type TrainingTarget,
   type AnalysisNotes,
   type InterviewMethod,
+  type CompetencyModel,
+  type NcsUsage,
+  createEmptyCompetencyModel,
+  createEmptyNcsUsage,
 } from '@/lib/schemas/interview-roadmap';
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import StepOverview from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepOverview';
@@ -40,6 +44,7 @@ import StepBasicInfoRoadmap from '@/app/(dashboard)/consultant/projects/[id]/int
 import StepCompanyRequirements from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements';
 import StepTaskWorkflowAnalysis from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskWorkflowAnalysis';
 import StepTrainingTargets from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTrainingTargets';
+import StepCompetencyModeling from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
 import StepSummaryRoadmap from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepSummaryRoadmap';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import {
@@ -119,12 +124,31 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     createEmptyTrainingTarget(),
   ]);
   const [analysisNotes, setAnalysisNotes] = useState<AnalysisNotes>(emptyAnalysisNotes());
+  const [competencyModels, setCompetencyModels] = useState<CompetencyModel[]>([
+    createEmptyCompetencyModel(),
+  ]);
+  const [ncsUsage, setNcsUsage] = useState<NcsUsage>(createEmptyNcsUsage());
   const [notes, setNotes] = useState('');
 
   // 테스트 전용: 기업 기본정보 (프로젝트 DB 없이 수동 입력)
   const [companyName, setCompanyName] = useState('테스트 기업');
   const [industry, setIndustry] = useState('제조/생산');
   const [companySize, setCompanySize] = useState('small');
+
+  // Ⅰ-3 선정 과업 자동 prefill — Ⅱ-4 훈련대상 입력 시 요약란이 비어 있으면 채움 (ISSUE-04).
+  useEffect(() => {
+    const summary = overview.selected_tasks_summary.trim();
+    const taskNames = trainingTargets
+      .map((t) => t.task_name.trim())
+      .filter(Boolean);
+    if (summary === '' && taskNames.length > 0) {
+      setOverview((prev) => ({
+        ...prev,
+        selected_tasks_summary: taskNames.join(', '),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainingTargets.map((t) => t.task_name).join('')]);
 
   // ─── 생성 상태 ───
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,10 +162,10 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
+        // roadmap_summary 는 LLM 자동 생성 예정(ISSUE-04)이라 Step 1 검증 대상 아님
         return (
           overview.establishment_necessity.trim() !== '' &&
-          overview.selected_tasks_summary.trim() !== '' &&
-          overview.roadmap_summary.trim() !== ''
+          overview.selected_tasks_summary.trim() !== ''
         );
       case 2:
         return (
@@ -166,7 +190,23 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           trainingTargets.length > 0 &&
           trainingTargets.every((t) => t.task_name && t.selection_reason && t.as_is && t.to_be)
         );
-      case 6:
+      case 6: {
+        const competenciesValid =
+          competencyModels.length > 0 &&
+          competencyModels.every(
+            (c) =>
+              c.competency_name.trim() !== '' &&
+              c.competency_definition.trim() !== '' &&
+              c.knowledge.trim() !== '' &&
+              c.skill.trim() !== '' &&
+              c.attitude.trim() !== '',
+          );
+        const ncsValid = ncsUsage.uses_ncs
+          ? (ncsUsage.ncs_usage_method ?? '').trim() !== ''
+          : (ncsUsage.competency_derivation_method ?? '').trim() !== '';
+        return competenciesValid && ncsValid;
+      }
+      case 7:
         return ROADMAP_REQUIRED_STEP_IDS.every((s) => validateStep(s));
       default:
         return false;
@@ -209,8 +249,11 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     task_workflow_items: taskWorkflowItems,
     training_targets: trainingTargets,
     analysis_notes: analysisNotes,
+    // 인터뷰 단계의 Ⅲ-1 역량 모델링 + NCS 활용을 테스트 입력에 포함 (Step C 에서 프롬프트에 반영)
+    competency_models: competencyModels,
+    ncs_usage: ncsUsage,
     notes,
-  });
+  } as TestRoadmapInput);
 
   const handleSubmit = async () => {
     if (!isAllRequiredStepsValid) {
@@ -391,6 +434,15 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
         return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
       case 6:
         return (
+          <StepCompetencyModeling
+            competencies={competencyModels}
+            ncsUsage={ncsUsage}
+            onCompetenciesChange={setCompetencyModels}
+            onNcsUsageChange={setNcsUsage}
+          />
+        );
+      case 7:
+        return (
           <StepSummaryRoadmap
             overview={overview}
             interviewDate={interviewDate}
@@ -402,6 +454,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             taskWorkflowItems={taskWorkflowItems}
             analysisNotes={analysisNotes}
             trainingTargets={trainingTargets}
+            competencyModels={competencyModels}
+            ncsUsage={ncsUsage}
             notes={notes}
             onEditStep={goToStep}
             onNotesChange={setNotes}

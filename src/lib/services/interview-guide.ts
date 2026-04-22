@@ -4,6 +4,7 @@
  */
 
 import type { GuideData } from '@/lib/schemas/interview-guide';
+import { validateGuideData } from '@/lib/schemas/interview-guide';
 import type { SelfAssessmentScores, DimensionScore } from '@/lib/constants/score-color';
 import { callLLMForJSON } from './llm';
 
@@ -159,9 +160,15 @@ export async function generateInterviewGuideData(
     { role: 'user' as const, content: buildUserPrompt(input) },
   ];
 
-  const result = await callLLMForJSON<GuideData>(messages, {
-    maxTokens: INTERVIEW_GUIDE_LLM_MAX_TOKENS,
-  });
+  // ISSUE-07 방어적 하드닝: validator 를 전달해 key_points·questions 누락을
+  // 재시도로 해결하고, 최종 실패 시 LLMResponseInvalidError 로 구체적 에러 전달.
+  const result = await callLLMForJSON<GuideData>(
+    messages,
+    { maxTokens: INTERVIEW_GUIDE_LLM_MAX_TOKENS },
+    2,
+    undefined,
+    validateGuideData,
+  );
 
   return result;
 }

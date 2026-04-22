@@ -11,6 +11,8 @@ import type {
   AnalysisNotes,
   InterviewMethod,
   Overview,
+  CompetencyModel,
+  NcsUsage,
 } from '@/lib/schemas/interview-roadmap';
 import {
   AI_COMPETENCY_LEVEL_LABEL,
@@ -29,6 +31,8 @@ interface StepSummaryRoadmapProps {
   taskWorkflowItems: TaskWorkflowItem[];
   analysisNotes: AnalysisNotes;
   trainingTargets: TrainingTarget[];
+  competencyModels: CompetencyModel[];
+  ncsUsage: NcsUsage;
   notes: string;
   onEditStep: (stepId: number) => void;
   onNotesChange: (notes: string) => void;
@@ -58,6 +62,8 @@ export default function StepSummaryRoadmap({
   taskWorkflowItems,
   analysisNotes,
   trainingTargets,
+  competencyModels,
+  ncsUsage,
   notes,
   onEditStep,
   onNotesChange,
@@ -97,9 +103,15 @@ export default function StepSummaryRoadmap({
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">AI훈련로드맵 수립 주요내용 (요약)</dt>
-            <dd className="text-foreground whitespace-pre-wrap break-keep">
-              {overview.roadmap_summary || '-'}
+            <dt className="text-muted-foreground flex items-center gap-2">
+              <span>AI훈련로드맵 수립 주요내용 (요약)</span>
+              <span className="inline-flex items-center rounded-full bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5">
+                자동 생성 예정
+              </span>
+            </dt>
+            <dd className="text-muted-foreground text-xs leading-relaxed">
+              로드맵 생성 단계에서 AI 가 훈련요구 분석·역량 모델링·훈련계획을 종합해 1장 이내
+              요약을 자동 작성합니다. 로드맵 편집 단계에서 직접 수정할 수 있습니다.
             </dd>
           </div>
           {overview.hrd_report_attachment && (
@@ -234,6 +246,55 @@ export default function StepSummaryRoadmap({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="border border-border rounded-lg p-4">
+        <SectionHeader title="6. 역량 모델링 (Ⅲ-1)" stepId={6} onEdit={onEditStep} />
+        {competencyModels.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">작성된 역량이 없습니다.</p>
+        ) : (
+          <ul className="mt-3 space-y-3 text-sm">
+            {competencyModels.map((item, i) => (
+              <li key={item.id} className="border-l-2 border-primary/30 pl-3">
+                <p className="font-medium text-foreground">
+                  #{i + 1} {item.competency_name || '(역량명 미입력)'}
+                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap break-keep">
+                  <span className="font-medium text-foreground">정의:</span> {item.competency_definition || '-'}
+                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap break-keep">
+                  <span className="font-medium text-foreground">K(지식):</span> {item.knowledge || '-'}
+                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap break-keep">
+                  <span className="font-medium text-foreground">S(기술):</span> {item.skill || '-'}
+                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap break-keep">
+                  <span className="font-medium text-foreground">A(태도):</span> {item.attitude || '-'}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-4 pt-3 border-t border-border/60 text-sm">
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">NCS 활용:</span>{' '}
+            {ncsUsage.uses_ncs ? (
+              <>
+                예 ·{' '}
+                <span className="whitespace-pre-wrap break-keep">
+                  {ncsUsage.ncs_usage_method?.trim() || '(활용 방법 미입력)'}
+                </span>
+              </>
+            ) : (
+              <>
+                아니오 ·{' '}
+                <span className="whitespace-pre-wrap break-keep">
+                  {ncsUsage.competency_derivation_method?.trim() || '(도출 방법 미입력)'}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
       </section>
 
       <section className="border border-border rounded-lg p-4">

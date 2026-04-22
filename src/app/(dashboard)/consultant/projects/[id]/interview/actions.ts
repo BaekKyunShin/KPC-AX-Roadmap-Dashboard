@@ -97,6 +97,9 @@ function mapRoadmapToLegacyColumns(
       roadmap_analysis_notes: an,
       // Ⅰ장 개요 (OFA-06.5 신규 — HRD이음 첨부 메타 포함)
       roadmap_overview: data.overview ?? null,
+      // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04, 2026-04-21 신규)
+      roadmap_competency_models: data.competency_models ?? [],
+      roadmap_ncs_usage: data.ncs_usage ?? null,
     },
     job_tasks: tasks.map((t) => ({
       id: t.id,

@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile } from '@/types/database';
-import type { SttInsights } from '@/lib/schemas/interview-roadmap';
+import type {
+  SttInsights,
+  CompetencyModel,
+  NcsUsage,
+} from '@/lib/schemas/interview-roadmap';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import { roadmapContentSchema } from '@/lib/schemas/roadmap';
 import { callLLMForJSON, type LLMMessage } from '../llm';
@@ -34,10 +38,15 @@ export class RoadmapStorageError extends Error {
 }
 
 /**
- * LLM 응답 신규 필드(OFA-06.5) 자동 보정.
- * LLM이 인스트럭션을 빠뜨려도 인터뷰 overview·기본값으로 채워 schema 검증을 통과시킨다.
+ * LLM 응답 신규 필드(OFA-06.5·ISSUE-04) 자동 보정.
+ * LLM이 인스트럭션을 빠뜨려도 인터뷰 입력값으로 채워 schema 검증을 통과시키고
+ * 콘텐츠 품질을 최대한 보존한다.
+ *
+ * @param interviewCompetencies 인터뷰 Ⅲ-1 에서 컨설턴트가 직접 입력한 역량 목록.
+ *   LLM 이 `competencies=[]` 반환 시 이 값을 학습 설계용 배열로 확장해 채움.
+ * @param interviewNcsUsage 인터뷰 Ⅲ-1 의 NCS 활용 블록. LLM 이 ncs_* 누락 시 기준값.
  */
-function fillMissingRoadmapFields(
+export function fillMissingRoadmapFields(
   raw: Partial<LLMRoadmapResult> & Record<string, unknown>,
   interviewOverview?: {
     establishment_necessity?: string;
@@ -45,6 +54,8 @@ function fillMissingRoadmapFields(
     selected_tasks_summary?: string;
     roadmap_summary?: string;
   },
+  interviewCompetencies?: CompetencyModel[],
+  interviewNcsUsage?: NcsUsage,
 ): LLMRoadmapResult {
   const overview = interviewOverview ?? {};
   const r = raw as Record<string, unknown>;
@@ -73,21 +84,44 @@ function fillMissingRoadmapFields(
         : overview.roadmap_summary ?? '',
   };
 
-  const ncsUsed = typeof r.ncs_used === 'boolean' ? r.ncs_used : false;
-  const ncsMethodology = typeof r.ncs_methodology === 'string' ? r.ncs_methodology : '';
-  const ncsDerivationMethod =
-    typeof r.ncs_derivation_method === 'string' ? r.ncs_derivation_method : '';
+  // ISSUE-04 연동: competencies 가 비어있으면 인터뷰 Ⅲ-1 입력으로 채움.
+  // 인터뷰 입력은 각 K/S/A 가 문자열이므로 단일 원소 배열로 감싸 LLM 출력 스키마와 맞춘다.
+  const llmCompetencies = (r.competencies as LLMRoadmapResult['competencies']) ?? [];
+  const hasLlmCompetencies = Array.isArray(llmCompetencies) && llmCompetencies.length > 0;
+  const fallbackCompetencies: LLMRoadmapResult['competencies'] = (
+    interviewCompetencies ?? []
+  ).map((c) => ({
+    name: c.competency_name,
+    definition: c.competency_definition,
+    knowledge: [c.knowledge],
+    skills: [c.skill],
+    attitudes: [c.attitude],
+  }));
+  const competencies = hasLlmCompetencies ? llmCompetencies : fallbackCompetencies;
 
-  // refine: ncs_used=true → methodology 필요 / false → derivation 필요
-  // LLM이 빈 값을 보냈을 경우 양쪽 모두 placeholder 채워 schema 통과
+  // NCS 활용 정책: LLM 값 우선, 없으면 인터뷰 ncs_usage, 마지막으로 placeholder
+  const ncsUsed =
+    typeof r.ncs_used === 'boolean'
+      ? r.ncs_used
+      : interviewNcsUsage?.uses_ncs ?? false;
+  const rawNcsMethodology =
+    typeof r.ncs_methodology === 'string' && r.ncs_methodology.trim() !== ''
+      ? r.ncs_methodology
+      : interviewNcsUsage?.ncs_usage_method ?? '';
+  const rawNcsDerivation =
+    typeof r.ncs_derivation_method === 'string' && r.ncs_derivation_method.trim() !== ''
+      ? r.ncs_derivation_method
+      : interviewNcsUsage?.competency_derivation_method ?? '';
+
+  // refine 통과를 위한 최종 placeholder: ncs_used 결과에 맞춰 필수 필드만 채움
   const safeNcsMethodology =
-    ncsUsed && ncsMethodology.trim() === ''
+    ncsUsed && rawNcsMethodology.trim() === ''
       ? '(생성 시 NCS 활용 방법이 누락되었습니다. 수동 입력 필요.)'
-      : ncsMethodology;
+      : rawNcsMethodology;
   const safeNcsDerivation =
-    !ncsUsed && ncsDerivationMethod.trim() === ''
+    !ncsUsed && rawNcsDerivation.trim() === ''
       ? '(생성 시 역량별 도출 방법이 누락되었습니다. 수동 입력 필요.)'
-      : ncsDerivationMethod;
+      : rawNcsDerivation;
 
   const trainingStructureMethod =
     typeof r.training_structure_method === 'string' && r.training_structure_method.trim() !== ''
@@ -98,7 +132,7 @@ function fillMissingRoadmapFields(
     diagnosis_summary: typeof r.diagnosis_summary === 'string' ? r.diagnosis_summary : '',
     setup_necessity: setupNecessity,
     outcome_summary: outcomeSummary,
-    competencies: (r.competencies as LLMRoadmapResult['competencies']) ?? [],
+    competencies,
     ncs_used: ncsUsed,
     ncs_methodology: safeNcsMethodology,
     ncs_derivation_method: safeNcsDerivation,
@@ -110,11 +144,20 @@ function fillMissingRoadmapFields(
   };
 }
 
-/** LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행 */
+/**
+ * LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행.
+ *
+ * 로드맵 경로는 `fillMissingRoadmapFields` 가 인터뷰 Ⅲ-1 입력(competency_models·
+ * ncs_usage) 을 fallback 으로 충분히 회복시키므로, Critical 3건 중 매칭·사전분석과
+ * 달리 callLLMForJSON 의 validator 재시도 경로를 별도로 두지 않는다. 대신 스키마
+ * 검증 실패 시에만 `RoadmapStorageError` 로 변환해 UI 에 "수동 편집 필요" 를 안내한다.
+ */
 async function callLLMAndBuildRoadmap(
   messages: LLMMessage[],
   signal?: AbortSignal,
   interviewOverview?: Parameters<typeof fillMissingRoadmapFields>[1],
+  interviewCompetencies?: CompetencyModel[],
+  interviewNcsUsage?: NcsUsage,
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   const rawLlmResult = await callLLMForJSON<Partial<LLMRoadmapResult>>(
     messages,
@@ -123,8 +166,13 @@ async function callLLMAndBuildRoadmap(
     signal,
   );
 
-  // OFA-06.5 신규 필드 누락 시 인터뷰 입력값/기본값으로 자동 보정
-  const filled = fillMissingRoadmapFields(rawLlmResult, interviewOverview);
+  // OFA-06.5·ISSUE-04 신규 필드 누락 시 인터뷰 입력값/기본값으로 자동 보정
+  const filled = fillMissingRoadmapFields(
+    rawLlmResult,
+    interviewOverview,
+    interviewCompetencies,
+    interviewNcsUsage,
+  );
 
   // Zod 스키마 검증 — 실패 시 수동편집 유도
   const parsed = roadmapContentSchema.safeParse(filled);
@@ -139,6 +187,55 @@ async function callLLMAndBuildRoadmap(
   const result: RoadmapResult = normalizeRoadmapHours(parsed.data);
   const validation = validateRoadmap(result);
   return { result, validation };
+}
+
+/**
+ * LLM 이 생성한 Ⅰ-3 요약을 인터뷰 row 의 roadmap_overview.roadmap_summary 에 역반영.
+ * Export·재생성 시 일관된 요약이 사용되도록 보장 (ISSUE-04).
+ * 실패해도 로드맵 생성 자체는 성공 처리해야 하므로 에러는 로그만 남기고 삼킨다.
+ */
+async function persistRoadmapSummaryToInterview(
+  supabase: ReturnType<typeof createAdminClient>,
+  interviewRow: Record<string, unknown>,
+  mainContent: string,
+): Promise<void> {
+  if (!mainContent || mainContent.trim() === '') return;
+
+  // 단일 interview row id 기반으로 업데이트 — project_id 로만 좁히면 동일 프로젝트에
+  // 중복 row 가 존재할 때 의도치 않게 일괄 덮어쓰기 위험이 있음. row.id 로 정확히 한정.
+  const interviewId =
+    typeof interviewRow.id === 'string' && interviewRow.id.length > 0
+      ? interviewRow.id
+      : null;
+  if (!interviewId) return;
+
+  const details = (interviewRow.company_details as Record<string, unknown> | null) ?? {};
+  const currentOverview = (details.roadmap_overview as Record<string, unknown> | null) ?? {};
+  const existingSummary = typeof currentOverview.roadmap_summary === 'string'
+    ? currentOverview.roadmap_summary.trim()
+    : '';
+  // 사용자가 수동 편집한 요약은 존중한다 — 비어있을 때만 LLM 결과로 채움
+  if (existingSummary !== '') return;
+
+  const nextDetails = {
+    ...details,
+    roadmap_overview: {
+      ...currentOverview,
+      roadmap_summary: mainContent,
+    },
+  };
+
+  const { error } = await supabase
+    .from('interviews')
+    .update({ company_details: nextDetails })
+    .eq('id', interviewId);
+
+  if (error) {
+    console.warn(
+      '[persistRoadmapSummaryToInterview] 요약 역반영 실패 (생성은 완료됨):',
+      error.message,
+    );
+  }
 }
 
 // ============================================================================
@@ -232,6 +329,8 @@ export async function generateRoadmap(
       ],
       signal,
       promptInterview.overview,
+      roadmapInterview.competency_models,
+      roadmapInterview.ncs_usage,
     ),
     supabase
       .from('roadmap_versions')
@@ -274,6 +373,15 @@ export async function generateRoadmap(
   if (insertError || !newRoadmap) {
     throw new Error(`로드맵 저장 실패: ${insertError?.message}`);
   }
+
+  // ISSUE-04: LLM 이 생성한 Ⅰ-3 요약(outcome_summary.main_content)을
+  // interviews.company_details.roadmap_overview.roadmap_summary 에 역반영한다.
+  // 다음 로드맵 재생성·Export 시 이 요약이 일관되게 재사용된다.
+  await persistRoadmapSummaryToInterview(
+    supabase,
+    interview,
+    result.outcome_summary.main_content,
+  );
 
   // 프로젝트 상태 업데이트 (중앙 전이 검증 — FINALIZED 역방향 전이 방지 포함)
   if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) {
@@ -371,6 +479,10 @@ export interface TestRoadmapInput {
     to_be: string;
   }[];
 
+  // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
+  competency_models?: CompetencyModel[];
+  ncs_usage?: NcsUsage;
+
   notes?: string;
   analysis_notes?: { text: string; attachment_urls: string[] };
 }
@@ -403,6 +515,8 @@ function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsigh
     company_requirements: input.company_requirements,
     task_workflow_items: input.task_workflow_items,
     training_targets: input.training_targets,
+    competency_models: input.competency_models ?? [],
+    ncs_usage: input.ncs_usage,
     analysis_notes: input.analysis_notes ?? { text: '', attachment_urls: [] },
     notes: input.notes || '',
     customer_requirements: input.customer_requirements || '',
@@ -438,6 +552,8 @@ export async function generateTestRoadmap(
     ],
     signal,
     input.overview,
+    input.competency_models,
+    input.ncs_usage,
   );
 }
 
@@ -501,5 +617,7 @@ ${revisionPrompt}
     ],
     signal,
     input.overview,
+    input.competency_models,
+    input.ncs_usage,
   );
 }

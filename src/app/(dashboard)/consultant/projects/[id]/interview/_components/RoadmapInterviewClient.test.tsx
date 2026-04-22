@@ -48,7 +48,7 @@ function makeValidInitialData() {
     overview: {
       establishment_necessity: '필요성 입력',
       selected_tasks_summary: '과업 요약',
-      roadmap_summary: '로드맵 요약',
+      // roadmap_summary 는 LLM 자동 생성 (ISSUE-04)
       ai_competency_level: 'BEGINNER' as const,
     },
     interview_date: '2026-01-01',
@@ -83,6 +83,21 @@ function makeValidInitialData() {
         to_be: '목표상황',
       },
     ],
+    // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규)
+    competency_models: [
+      {
+        id: 'cm1',
+        competency_name: '데이터 해석',
+        competency_definition: '정의',
+        knowledge: '지식',
+        skill: '기술',
+        attitude: '태도',
+      },
+    ],
+    ncs_usage: {
+      uses_ncs: false as const,
+      competency_derivation_method: '인터뷰 기반 도출',
+    },
     notes: '',
   };
 }
@@ -111,7 +126,8 @@ describe('RoadmapInterviewClient', () => {
 
   it('마지막 스텝(확인)까지 이동하면 제출 버튼 노출', async () => {
     render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
-    for (let i = 0; i < 5; i++) {
+    // 7스텝 (Ⅲ-1 역량 모델링 추가, ISSUE-04) — "다음" 버튼 6회 클릭해 마지막(확인) 스텝 도달
+    for (let i = 0; i < 6; i++) {
       await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
     }
     expect(screen.getByRole('heading', { name: /확인.*제출/ })).toBeInTheDocument();
@@ -136,7 +152,8 @@ describe('RoadmapInterviewClient', () => {
   it('필수 미완료 상태에서 제출 시 에러 토스트 + saveRoadmapInterview 미호출', async () => {
     const { showErrorToast } = await import('@/lib/utils');
     render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
-    for (let i = 0; i < 5; i++) {
+    // 7스텝 (Ⅲ-1 역량 모델링 추가, ISSUE-04) — "다음" 버튼 6회 클릭해 마지막(확인) 스텝 도달
+    for (let i = 0; i < 6; i++) {
       await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
     }
     await userEvent.click(screen.getByRole('button', { name: /^저장$/ }));
@@ -153,7 +170,8 @@ describe('RoadmapInterviewClient', () => {
 
     render(<RoadmapInterviewClient projectId="p1" initialData={makeValidInitialData()} />);
     // 마지막 스텝으로 이동
-    for (let i = 0; i < 5; i++) {
+    // 7스텝 (Ⅲ-1 역량 모델링 추가, ISSUE-04) — "다음" 버튼 6회 클릭해 마지막(확인) 스텝 도달
+    for (let i = 0; i < 6; i++) {
       await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
     }
     await userEvent.click(screen.getByRole('button', { name: /^저장$/ }));
@@ -171,7 +189,8 @@ describe('RoadmapInterviewClient', () => {
     saveRoadmapInterview.mockResolvedValue({ success: false, error: '서버 오류' });
 
     render(<RoadmapInterviewClient projectId="p1" initialData={makeValidInitialData()} />);
-    for (let i = 0; i < 5; i++) {
+    // 7스텝 (Ⅲ-1 역량 모델링 추가, ISSUE-04) — "다음" 버튼 6회 클릭해 마지막(확인) 스텝 도달
+    for (let i = 0; i < 6; i++) {
       await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
     }
     await userEvent.click(screen.getByRole('button', { name: /^저장$/ }));
@@ -186,7 +205,8 @@ describe('RoadmapInterviewClient', () => {
     saveRoadmapInterview.mockRejectedValue(new Error('네트워크 오류'));
 
     render(<RoadmapInterviewClient projectId="p1" initialData={makeValidInitialData()} />);
-    for (let i = 0; i < 5; i++) {
+    // 7스텝 (Ⅲ-1 역량 모델링 추가, ISSUE-04) — "다음" 버튼 6회 클릭해 마지막(확인) 스텝 도달
+    for (let i = 0; i < 6; i++) {
       await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
     }
     await userEvent.click(screen.getByRole('button', { name: /^저장$/ }));

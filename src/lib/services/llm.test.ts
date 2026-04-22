@@ -12,6 +12,7 @@ import {
   callLLMForJSON,
   getLLMUserFriendlyError,
   isCancelledError,
+  LLMResponseInvalidError,
   _resetClient,
   type LLMMessage,
 } from './llm';
@@ -517,6 +518,128 @@ describe('callLLMForJSON', () => {
     expect(messages[0].content).toBe('시스템 메시지');
     expect(messages[1].content).toBe('원래 메시지');
   });
+
+  // ─── validator 검증 (ISSUE-06·07·19 방어적 하드닝) ─────────────────────
+  describe('validator 인자', () => {
+    it('validator 가 성공하면 검증된 값을 반환한다', async () => {
+      mockAnthropicResponse('{"name": "테스트", "score": 90}');
+
+      const validator = (raw: unknown): { success: true; data: { name: string; score: number } } => ({
+        success: true,
+        data: raw as { name: string; score: number },
+      });
+
+      const result = await callLLMForJSON<{ name: string; score: number }>(
+        [{ role: 'user', content: '테스트' }],
+        {},
+        2,
+        undefined,
+        validator,
+      );
+
+      expect(result.name).toBe('테스트');
+      expect(result.score).toBe(90);
+    });
+
+    it('validator 가 첫 시도에서 실패 → 재시도 후 성공 시 검증된 값 반환', async () => {
+      // 1회: 스키마 불일치 응답
+      mockAnthropicResponse('{"recommendations": null}');
+      // 2회: 올바른 응답
+      mockAnthropicResponse('{"recommendations": [{"id": 1}]}');
+
+      let callCount = 0;
+      const validator = (raw: unknown) => {
+        callCount++;
+        const obj = raw as { recommendations?: unknown };
+        if (!Array.isArray(obj.recommendations)) {
+          return { success: false as const, error: '배열 필요' };
+        }
+        return { success: true as const, data: obj as { recommendations: { id: number }[] } };
+      };
+
+      const result = await callLLMForJSON<{ recommendations: { id: number }[] }>(
+        [{ role: 'user', content: '테스트' }],
+        {},
+        2,
+        undefined,
+        validator,
+      );
+
+      expect(callCount).toBe(2);
+      expect(result.recommendations).toHaveLength(1);
+    });
+
+    it('validator 가 모든 시도에서 실패하면 LLMResponseInvalidError 를 throw 한다', async () => {
+      mockAnthropicResponse('{"wrong": 1}');
+      mockAnthropicResponse('{"wrong": 2}');
+      mockAnthropicResponse('{"wrong": 3}');
+
+      const validator = () => ({ success: false as const, error: 'always-fail' });
+
+      await expect(
+        callLLMForJSON(
+          [{ role: 'user', content: '테스트' }],
+          {},
+          2,
+          undefined,
+          validator,
+        ),
+      ).rejects.toThrow(LLMResponseInvalidError);
+    });
+
+    it('validator 실패 error 가 Error 인스턴스면 message·cause 가 그대로 전파', async () => {
+      mockAnthropicResponse('{"x": 1}');
+      mockAnthropicResponse('{"x": 2}');
+      mockAnthropicResponse('{"x": 3}');
+
+      const rootCause = new Error('zod 상세 원인');
+      const validator = () => ({ success: false as const, error: rootCause });
+
+      await expect(
+        callLLMForJSON([{ role: 'user', content: '테스트' }], {}, 2, undefined, validator),
+      ).rejects.toMatchObject({
+        name: 'LLMResponseInvalidError',
+        message: expect.stringContaining('zod 상세 원인'),
+        cause: rootCause,
+      });
+    });
+
+    it('JSON 파싱 실패와 validator 실패가 섞여도 재시도 한도까지 시도', async () => {
+      // 1회: JSON 파싱 실패 (재시도 소비)
+      mockAnthropicResponse('invalid json text');
+      // 2회: JSON 은 성공했으나 validator 실패 (재시도 소비)
+      mockAnthropicResponse('{"wrong": 1}');
+      // 3회: 성공
+      mockAnthropicResponse('{"ok": true}');
+
+      const validator = (raw: unknown) => {
+        const obj = raw as { ok?: boolean };
+        return obj.ok
+          ? { success: true as const, data: obj as { ok: true } }
+          : { success: false as const, error: 'missing ok' };
+      };
+
+      const result = await callLLMForJSON<{ ok: true }>(
+        [{ role: 'user', content: '테스트' }],
+        {},
+        2,
+        undefined,
+        validator,
+      );
+
+      expect(result.ok).toBe(true);
+    });
+  });
+});
+
+describe('LLMResponseInvalidError', () => {
+  it('name 과 cause 를 올바르게 보관한다', () => {
+    const cause = new Error('original');
+    const err = new LLMResponseInvalidError('검증 실패', { cause });
+    expect(err.name).toBe('LLMResponseInvalidError');
+    expect(err.message).toBe('검증 실패');
+    expect(err.cause).toBe(cause);
+  });
 });
 
 // ─── getLLMUserFriendlyError ─────────────────────────────────────────────────
@@ -577,6 +700,13 @@ describe('getLLMUserFriendlyError', () => {
     const error = new Error('LLM 호출이 취소되었습니다.');
     expect(getLLMUserFriendlyError(error)).toBe(
       '로드맵 생성이 취소되었습니다.',
+    );
+  });
+
+  it('LLMResponseInvalidError 는 스키마 검증 실패 전용 메시지', () => {
+    const error = new LLMResponseInvalidError('매칭 응답 검증 실패');
+    expect(getLLMUserFriendlyError(error)).toBe(
+      'AI 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.',
     );
   });
 

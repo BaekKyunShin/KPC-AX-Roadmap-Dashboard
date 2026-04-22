@@ -24,6 +24,9 @@ vi.mock('./matching-helpers', () => ({
   filterValidRecommendations: vi.fn(),
   saveRecommendations: vi.fn().mockResolvedValue(undefined),
   updateProjectStatusIfNeeded: vi.fn().mockResolvedValue(undefined),
+  // ISSUE-06: matching-llm.ts 는 callLLMForJSON 에 validator 로 이 함수를 전달.
+  // 테스트에서는 callLLMForJSON 자체가 mock 이라 validator 는 호출되지 않음.
+  validateLlmMatchingResponse: vi.fn((raw: unknown) => ({ success: true, data: raw })),
   LEVEL_LABEL_MAP: {
     BEGINNER: '입문',
     INTERMEDIATE: '실무',
@@ -493,6 +496,14 @@ describe('generateLLMMatchingRecommendations', () => {
   });
 
   // ─── 자가진단 결과 없음 ──────────────────────────────────────────────────
+
+  it('callLLMForJSON 에 5번째 인자로 스키마 validator 를 전달한다 (ISSUE-06)', async () => {
+    await generateLLMMatchingRecommendations('project-1', 'actor-1');
+    const call = vi.mocked(callLLMForJSON).mock.calls[0];
+    // [messages, config, maxRetries?, signal?, validator?]
+    expect(call.length).toBeGreaterThanOrEqual(5);
+    expect(typeof call[4]).toBe('function');
+  });
 
   it('자가진단 dimension_scores가 null이면 프롬프트에 미포함 안내 표시', async () => {
     vi.mocked(fetchMatchingData).mockResolvedValue({

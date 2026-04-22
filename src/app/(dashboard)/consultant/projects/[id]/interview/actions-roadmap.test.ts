@@ -44,7 +44,7 @@ function validRoadmapData(): RoadmapInterviewInput {
       establishment_necessity: '공정 품질 편차 개선을 위한 AI 훈련',
       ai_competency_level: 'INTERMEDIATE',
       selected_tasks_summary: '품질검사 자동화',
-      roadmap_summary: '3단계 AI 인력 양성',
+      // roadmap_summary 는 로드맵 생성 시 LLM 이 자동 생성 (ISSUE-04)
     },
     interview_date: '2026-04-16',
     interview_round: 1,
@@ -74,6 +74,18 @@ function validRoadmapData(): RoadmapInterviewInput {
       as_is: '육안',
       to_be: 'AI 1차',
     }],
+    competency_models: [{
+      id: 'cm1',
+      competency_name: '품질 검사 데이터 해석',
+      competency_definition: '검사 이미지 데이터에서 불량 패턴을 식별하고 대응한다.',
+      knowledge: '이미지 분류 기초, QMS 지표',
+      skill: '이미지 레이블링, 지표 모니터링',
+      attitude: '데이터 기반 의사결정 선호',
+    }],
+    ncs_usage: {
+      uses_ncs: false,
+      competency_derivation_method: '현장 인터뷰 + 업계 벤치마킹 기반 역량 도출',
+    },
     notes: '',
   };
 }

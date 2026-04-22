@@ -77,11 +77,13 @@ export const hrdReportAttachmentSchema = z.object({
 });
 export type HrdReportAttachment = z.infer<typeof hrdReportAttachmentSchema>;
 
+// Ⅰ-3 `roadmap_summary`(수립 주요내용 요약)는 로드맵 생성 시 LLM 이 자동 생성한다
+// (ISSUE-04, 2026-04-21 담당자 확정). 사용자 입력 필드에서는 optional 로 완화.
 export const overviewSchema = z.object({
   establishment_necessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
   ai_competency_level: AI_COMPETENCY_LEVEL,
   selected_tasks_summary: z.string().min(1, '선정 과업을 입력하세요.'),
-  roadmap_summary: z.string().min(1, '수립 주요내용 요약을 입력하세요 (1장 이내).'),
+  roadmap_summary: z.string().optional(),
   hrd_report_attachment: hrdReportAttachmentSchema.optional(),
 });
 
@@ -119,6 +121,39 @@ export const analysisNotesSchema = z.object({
   attachment_urls: z.array(z.string().url()).default([]),
 });
 
+// Ⅲ-1. 역량 모델링 (ISSUE-04, 2026-04-21 담당자 확정)
+// 산인공 양식 1번 Ⅲ-1 표 기준으로 역량 1건은 역량명·정의·지식(K)·기술(S)·태도(A) 를
+// 각각 자유 서술 블록으로 받는다. LLM 은 이 요약 텍스트를 받아 학습 설계용 배열
+// (knowledge[]·skills[]·attitudes[]) 로 확장한다.
+export const competencyModelSchema = z.object({
+  id: z.string(),
+  competency_name: z.string().min(1, '역량명을 입력하세요.'),
+  competency_definition: z.string().min(1, '역량 정의(수행준거)를 입력하세요.'),
+  knowledge: z.string().min(1, '필요 지식을 입력하세요.'),
+  skill: z.string().min(1, '필요 기술을 입력하세요.'),
+  attitude: z.string().min(1, '필요 태도를 입력하세요.'),
+});
+
+// Ⅲ-1. NCS 활용 블록 (루트 1건)
+// uses_ncs=true → NCS 능력단위를 어떻게 참고·수정했는지 서술 (ncs_usage_method)
+// uses_ncs=false → NCS 없이 어떻게 도출했는지 서술 (competency_derivation_method)
+export const ncsUsageSchema = z
+  .object({
+    uses_ncs: z.boolean(),
+    ncs_usage_method: z.string().optional(),
+    competency_derivation_method: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      d.uses_ncs
+        ? (d.ncs_usage_method?.trim() ?? '') !== ''
+        : (d.competency_derivation_method?.trim() ?? '') !== '',
+    {
+      message: 'NCS 활용 여부에 맞는 내용을 입력하세요.',
+      path: ['ncs_usage_method'],
+    },
+  );
+
 // 참석자 (interview.ts와 호환 유지)
 export const roadmapParticipantSchema = z.object({
   id: z.string(),
@@ -138,6 +173,10 @@ export const roadmapInterviewSchema = z.object({
   task_workflow_items: z.array(taskWorkflowItemSchema).min(1, '최소 1개의 과업을 분석하세요.'),
   analysis_notes: analysisNotesSchema.default({ text: '', attachment_urls: [] }),
   training_targets: z.array(trainingTargetSchema).min(1, '최소 1개의 훈련대상 과업을 선정하세요.'),
+  competency_models: z
+    .array(competencyModelSchema)
+    .min(1, '최소 1개의 역량 모델을 입력하세요.'),
+  ncs_usage: ncsUsageSchema,
   notes: z.string().default(''),
   stt_insights: sttInsightsSchema.optional(),
 });
@@ -188,6 +227,27 @@ export const roadmapInterviewAutoSaveSchema = z.object({
     as_is: z.string(),
     to_be: z.string(),
   })).optional(),
+  // 자동저장 중간 상태 허용: 역량 필드 일부가 비어 있어도 통과
+  competency_models: z
+    .array(
+      z.object({
+        id: z.string(),
+        competency_name: z.string().optional(),
+        competency_definition: z.string().optional(),
+        knowledge: z.string().optional(),
+        skill: z.string().optional(),
+        attitude: z.string().optional(),
+      }),
+    )
+    .optional(),
+  // 자동저장 중간 상태 허용: refine 없이 느슨하게
+  ncs_usage: z
+    .object({
+      uses_ncs: z.boolean(),
+      ncs_usage_method: z.string().optional(),
+      competency_derivation_method: z.string().optional(),
+    })
+    .optional(),
   notes: z.string().optional(),
   stt_insights: sttInsightsSchema.optional(),
 });
@@ -202,6 +262,8 @@ export type TaskWorkflowItem = z.infer<typeof taskWorkflowItemSchema>;
 export type TrainingTarget = z.infer<typeof trainingTargetSchema>;
 export type AnalysisNotes = z.infer<typeof analysisNotesSchema>;
 export type RoadmapParticipant = z.infer<typeof roadmapParticipantSchema>;
+export type CompetencyModel = z.infer<typeof competencyModelSchema>;
+export type NcsUsage = z.infer<typeof ncsUsageSchema>;
 export type RoadmapInterview = z.infer<typeof roadmapInterviewSchema>;
 export type RoadmapInterviewInput = z.input<typeof roadmapInterviewSchema>;
 export type RoadmapInterviewAutoSaveInput = z.input<typeof roadmapInterviewAutoSaveSchema>;
@@ -211,11 +273,11 @@ export type RoadmapInterviewAutoSaveInput = z.input<typeof roadmapInterviewAutoS
 // ============================================================================
 
 export function createEmptyOverview(): Overview {
+  // roadmap_summary 는 LLM 자동생성이므로 초기에 포함하지 않는다 (undefined).
   return {
     establishment_necessity: '',
     ai_competency_level: 'BEGINNER',
     selected_tasks_summary: '',
-    roadmap_summary: '',
   };
 }
 
@@ -246,6 +308,24 @@ export function createEmptyTrainingTarget(): TrainingTarget {
     selection_reason: '',
     as_is: '',
     to_be: '',
+  };
+}
+
+export function createEmptyCompetencyModel(): CompetencyModel {
+  return {
+    id: crypto.randomUUID(),
+    competency_name: '',
+    competency_definition: '',
+    knowledge: '',
+    skill: '',
+    attitude: '',
+  };
+}
+
+export function createEmptyNcsUsage(): NcsUsage {
+  return {
+    uses_ncs: false,
+    competency_derivation_method: '',
   };
 }
 
@@ -285,6 +365,20 @@ interface LegacyCompanyDetails {
       size?: number;
       uploaded_at?: string;
     } | null;
+  } | null;
+  // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
+  roadmap_competency_models?: Array<{
+    id?: string;
+    competency_name?: string;
+    competency_definition?: string;
+    knowledge?: string;
+    skill?: string;
+    attitude?: string;
+  }> | null;
+  roadmap_ncs_usage?: {
+    uses_ncs?: boolean;
+    ncs_usage_method?: string;
+    competency_derivation_method?: string;
   } | null;
 }
 
@@ -425,6 +519,29 @@ export function mapInterviewRowToRoadmapInterview(
       as_is: g.roadmap_as_is ?? '',
       to_be: g.roadmap_to_be ?? '',
     }));
+  }
+
+  // Ⅲ-1 역량 모델링 + NCS 활용 복원 (ISSUE-04 신규)
+  const savedCompetencies = row.company_details?.roadmap_competency_models;
+  if (Array.isArray(savedCompetencies) && savedCompetencies.length > 0) {
+    partial.competency_models = savedCompetencies.map((c) => ({
+      id: c.id ?? crypto.randomUUID(),
+      competency_name: c.competency_name ?? '',
+      competency_definition: c.competency_definition ?? '',
+      knowledge: c.knowledge ?? '',
+      skill: c.skill ?? '',
+      attitude: c.attitude ?? '',
+    }));
+  }
+
+  const savedNcs = row.company_details?.roadmap_ncs_usage;
+  if (savedNcs && typeof savedNcs.uses_ncs === 'boolean') {
+    partial.ncs_usage = savedNcs.uses_ncs
+      ? { uses_ncs: true, ncs_usage_method: savedNcs.ncs_usage_method ?? '' }
+      : {
+          uses_ncs: false,
+          competency_derivation_method: savedNcs.competency_derivation_method ?? '',
+        };
   }
 
   if (typeof row.notes === 'string') partial.notes = row.notes;

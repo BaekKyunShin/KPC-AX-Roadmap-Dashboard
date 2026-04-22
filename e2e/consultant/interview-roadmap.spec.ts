@@ -1,5 +1,7 @@
 // e2e/consultant/interview-roadmap.spec.ts
-// OFA-06.5: 산인공 AI 훈련 로드맵 인터뷰 6스텝 E2E (개요 스텝 추가)
+// ISSUE-04 (2026-04-21 담당자 확정안): 산인공 로드맵 인터뷰 7스텝 E2E
+//   - Step 6 역량 모델링(Ⅲ-1) 신규 스텝 추가 ↔ 기존 확인/제출은 Step 7 로 이동
+//   - Step 1 개요: `roadmap_summary` 입력란 제거 → "자동 생성 예정" 배지
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 import { findFirstLinkHref } from '../helpers/navigation.helper';
@@ -8,8 +10,8 @@ test.describe.configure({ mode: 'serial' });
 
 let interviewUrl: string | null = null;
 
-test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
-  test('로드맵 인터뷰 페이지 로드 + 6스텝 스테퍼 + 개요 스텝 렌더', async ({ consultantPage: page }) => {
+test.describe('컨설턴트 로드맵 인터뷰 (산인공 7스텝)', () => {
+  test('로드맵 인터뷰 페이지 로드 + 7스텝 스테퍼 + 개요 스텝 렌더 (roadmap_summary 자동생성 배지 확인)', async ({ consultantPage: page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 
     await page.goto('/consultant/projects');
@@ -41,7 +43,10 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
     await expect(page.getByLabel(/수립 필요성/)).toBeVisible();
     await expect(page.getByRole('radiogroup', { name: /AI 역량 수준/ })).toBeVisible();
     await expect(page.getByLabel(/선정 과업/)).toBeVisible();
-    await expect(page.getByLabel(/수립 주요내용/)).toBeVisible();
+
+    // 분류 (c) 시나리오 재작성: roadmap_summary 입력란 제거 → "자동 생성 예정" 배지 확인
+    await expect(page.getByLabel(/^수립 주요내용/)).toHaveCount(0);
+    await expect(page.getByText(/자동 생성 예정/)).toBeVisible();
 
     expect(getErrors()).toEqual([]);
   });
@@ -93,7 +98,8 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
     await expect(removeButtonSelector).toHaveCount(initialCount + 1);
   });
 
-  test('Step 6: 확인·제출 화면 + 필수 미완료 시 경고', async ({ consultantPage: page }) => {
+  // 분류 (b) 시나리오 확장: Step 6 역량 모델링 신규 추가 (ISSUE-04 Ⅲ-1)
+  test('Step 6: 역량 모델링 — 역량 추가/삭제 + NCS 활용 라디오', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
@@ -106,9 +112,46 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 6스텝)', () => {
       await page.getByRole('button', { name: /^다음$/ }).click();
     }
 
-    await expect(page.getByRole('heading', { name: /확인.*제출/ })).toBeVisible();
+    // 역량 모델링 스텝 제목 + 5필드 노출 (FormField required 시 label 끝에 * 가 붙음)
+    await expect(page.getByRole('heading', { name: /역량 모델링/ })).toBeVisible();
+    await expect(page.getByLabel(/역량명/).first()).toBeVisible();
+    await expect(page.getByLabel(/역량 정의/).first()).toBeVisible();
+    await expect(page.getByLabel(/필요 지식/).first()).toBeVisible();
+    await expect(page.getByLabel(/필요 기술/).first()).toBeVisible();
+    await expect(page.getByLabel(/필요 태도/).first()).toBeVisible();
 
+    // NCS 활용 라디오
+    await expect(page.getByRole('radiogroup', { name: /NCS 능력단위 활용 여부/ })).toBeVisible();
+
+    // 역량 추가 버튼 동작 확인 — 역량이 1개일 땐 삭제 버튼이 숨겨지므로 역량
+    // 필드(역량명 input) 개수 증가로 검증. 초기 1개 → 추가 후 2개.
+    const addBtn = page.getByRole('button', { name: /역량 추가/ });
+    await expect(addBtn).toBeVisible();
+    const nameFields = page.getByLabel(/역량명/);
+    const initialCount = await nameFields.count();
+    await addBtn.click();
+    await expect(nameFields).toHaveCount(initialCount + 1);
+  });
+
+  // 분류 (a) selector 업데이트: 스텝 개수 6→7, 확인은 Step 7
+  test('Step 7: 확인·제출 화면 + 필수 미완료 시 경고', async ({ consultantPage: page }) => {
+    test.skip(!interviewUrl, '인터뷰 URL 없음');
+    await page.goto(interviewUrl!);
+    await page.waitForLoadState('networkidle');
+
+    const isRoadmap = await page.getByText('현장 인터뷰 (로드맵)').isVisible().catch(() => false);
+    test.skip(!isRoadmap, '로드맵 트랙 아님');
+
+    // Step 1 → Step 7 (다음 6회)
+    for (let i = 0; i < 6; i++) {
+      await page.getByRole('button', { name: /^다음$/ }).click();
+    }
+
+    await expect(page.getByRole('heading', { name: /확인.*제출/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^저장$/ })).toBeVisible();
+
+    // 확인 화면에 Ⅲ-1 역량 모델링 섹션도 함께 노출되는지 확인 (분류 (b))
+    await expect(page.getByRole('heading', { name: /6\.\s*역량 모델링/ })).toBeVisible();
 
     const warning = page.getByText(/필수 단계 미완료/);
     await expect(warning).toBeVisible();

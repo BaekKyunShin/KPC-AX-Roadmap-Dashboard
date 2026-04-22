@@ -19,14 +19,20 @@ export function buildSystemPrompt(): string {
 ### Ⅰ-3. 수립 주요 결과 (outcome_summary)
 - ai_competency_level: 인터뷰 overview.ai_competency_level 값을 **그대로 복사**하라. 재창작 금지.
 - selected_tasks: 훈련대상 과업(training_targets) 핵심을 2~3문장으로 요약.
-- main_content: 수립된 훈련과정·대상·운영 방식 핵심을 1문단 이내로 요약.
+- main_content: 수립된 훈련과정·대상·운영 방식 핵심을 1문단 이내로 요약 (Ⅰ-3 요약).
+  - 인터뷰 overview.roadmap_summary 가 비어있거나 생략된 경우, Ⅱ·Ⅲ 분석 결과 + Ⅲ-1 역량 모델링을 종합해 **새로 작성**하라.
+  - 이미 overview.roadmap_summary 에 값이 있으면 그 톤을 참고하되, 본 섹션은 수립된 로드맵을 한눈에 파악 가능한 요약으로 명확히 기술하라.
 
 ### Ⅲ-1. 역량 모델링 (competencies)
-- 훈련대상 과업(training_targets)에서 필요 역량을 도출하라.
-- 각 역량: knowledge(지식, 학술·업무지식), skills(기술, 기능), attitudes(태도) 항목을 구분하라.
+- **1순위 출발점**: 인터뷰 competency_models 에 컨설턴트가 직접 입력한 역량이 있으면 이를 기반으로 사용.
+  - 입력의 competency_name/competency_definition/knowledge/skill/attitude 각 필드는 요약된 문장이므로, 학습 설계에 필요한 배열(knowledge[]·skills[]·attitudes[])로 **세부 항목을 풍부화**하라.
+  - 인터뷰에서 입력된 역량명·정의는 원문을 최대한 보존한다.
+- 인터뷰 입력이 없거나 부족하면 훈련대상 과업(training_targets)에서 추가 역량을 도출하라.
+- 각 역량: knowledge(지식, 학술·업무지식), skills(기술, 기능), attitudes(태도) 항목을 배열로 구분하라.
 - **NCS 활용 방법은 표 전체 단위(루트)에 기술**한다. 개별 역량에는 NCS 필드를 두지 마라.
-  - ncs_used=true → ncs_methodology 필수 (양식 공통 NCS 활용 방법)
-  - ncs_used=false → ncs_derivation_method 필수 (인터뷰·전문가 인터뷰·벤치마킹 등 도출 방법)
+  - 인터뷰 ncs_usage.uses_ncs 를 그대로 따르라. LLM 이 임의로 변경하지 마라.
+  - ncs_used=true → ncs_methodology 필수 (양식 공통 NCS 활용 방법) — 인터뷰 ncs_usage.ncs_usage_method 를 기반으로 구체화
+  - ncs_used=false → ncs_derivation_method 필수 — 인터뷰 ncs_usage.competency_derivation_method 를 기반으로 구체화
 
 ### Ⅲ-2. 훈련체계도 (training_structure + training_structure_method)
 - competency_name은 competencies[*].name 집합 안의 값만 사용하라.
@@ -159,6 +165,12 @@ ${JSON.stringify(interview.task_workflow_items, null, 2)}
 
 ### 훈련대상 과업 선정 (Ⅱ-4)
 ${JSON.stringify(interview.training_targets, null, 2)}
+
+### 역량 모델링 — 컨설턴트 입력 (Ⅲ-1) — 최우선 기반
+${JSON.stringify(interview.competency_models ?? [], null, 2)}
+
+### NCS 활용 — 컨설턴트 입력 (Ⅲ-1) — 인터뷰 설정 그대로 반영
+${JSON.stringify(interview.ncs_usage ?? null, null, 2)}
 
 ### 추가 메모
 ${interview.notes || '없음'}

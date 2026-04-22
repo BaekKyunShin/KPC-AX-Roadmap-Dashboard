@@ -12,6 +12,8 @@ import {
   fetchMatchingData,
   saveRecommendations,
   updateProjectStatusIfNeeded,
+  llmMatchingResponseSchema,
+  validateLlmMatchingResponse,
 } from './matching-helpers';
 import type { LLMMatchingResponse, LLMCandidateScore } from './matching-helpers';
 
@@ -461,5 +463,51 @@ describe('filterValidRecommendations — 빈 validCandidateIds', () => {
 
     const result = filterValidRecommendations(recommendations, []);
     expect(result).toHaveLength(0);
+  });
+});
+
+// ─── llmMatchingResponseSchema / validateLlmMatchingResponse (ISSUE-06) ─────
+
+describe('llmMatchingResponseSchema', () => {
+  it('recommendations 배열이 없는 응답은 검증 실패', () => {
+    const result = llmMatchingResponseSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('recommendations 가 null 이면 검증 실패', () => {
+    const result = llmMatchingResponseSchema.safeParse({ recommendations: null });
+    expect(result.success).toBe(false);
+  });
+
+  it('정상 응답은 검증 통과하며 strengths/considerations 기본값 적용', () => {
+    const result = llmMatchingResponseSchema.safeParse({
+      recommendations: [
+        { userId: 'u1', score: 90, analysis: '분석' },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recommendations[0].strengths).toEqual([]);
+      expect(result.data.recommendations[0].considerations).toEqual([]);
+    }
+  });
+});
+
+describe('validateLlmMatchingResponse', () => {
+  it('recommendations 누락 시 success:false 반환', () => {
+    const r = validateLlmMatchingResponse({ foo: 'bar' });
+    expect(r.success).toBe(false);
+  });
+
+  it('정상 응답 시 success:true 와 파싱된 데이터 반환', () => {
+    const r = validateLlmMatchingResponse({
+      recommendations: [
+        { userId: 'u1', score: 85, analysis: '텍스트', strengths: ['s'], considerations: ['c'] },
+      ],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.recommendations).toHaveLength(1);
+    }
   });
 });

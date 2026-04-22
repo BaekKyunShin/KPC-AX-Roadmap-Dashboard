@@ -1,6 +1,8 @@
+import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SelfAssessmentScore } from '@/types/database';
 import { validateStatusTransition } from '@/lib/constants/status';
+import type { LLMValidatorResult } from '../llm';
 
 /** LLM 매칭 후보 점수 */
 export interface LLMCandidateScore {
@@ -31,6 +33,35 @@ export interface LLMMatchingResponse {
     strengths: string[];
     considerations: string[];
   }[];
+}
+
+/**
+ * LLM 매칭 응답 런타임 검증 스키마 (ISSUE-06).
+ * strengths·considerations 는 LLM 이 누락해도 빈 배열 기본값으로 보완한다 —
+ * 최상위 recommendations 배열이 누락된 경우만 실패로 처리.
+ */
+export const llmMatchingResponseSchema = z.object({
+  recommendations: z.array(
+    z.object({
+      userId: z.string(),
+      // 0~100 범위 — 후속 clamp 는 그대로 유지하되 validator 단계에서 1차 차단
+      score: z.number().min(0).max(100),
+      analysis: z.string(),
+      strengths: z.array(z.string()).default([]),
+      considerations: z.array(z.string()).default([]),
+    }),
+  ),
+});
+
+/** callLLMForJSON validator 로 그대로 전달할 수 있는 어댑터 */
+export function validateLlmMatchingResponse(
+  raw: unknown,
+): LLMValidatorResult<LLMMatchingResponse> {
+  const result = llmMatchingResponseSchema.safeParse(raw);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
 }
 
 /** LLM 응답 제한 */
