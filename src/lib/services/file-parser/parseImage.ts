@@ -23,9 +23,32 @@ const ALLOWED_IMAGE_MIMES = new Set([
 
 type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
 
-// 메모리 캐시 (모듈 수명 내 유효). LRU 가 아닌 단순 Map — 인터뷰 첨부는 동일 세션 내
-// 중복 업로드 빈도가 낮고, 서버리스 환경에서 콜드 스타트마다 리셋되므로 충분.
+// 메모리 캐시 (모듈 수명 내 유효).
+// LRU 50 entry 제한으로 long-lived warm Vercel Function 인스턴스의 OOM 위험 방지.
+// 5000자 × 50 = 약 250KB 상한. 외부 의존성 없이 Map 의 insertion order 를 활용한 LRU.
+const MAX_CACHE_ENTRIES = 50;
 const cache = new Map<string, string>();
+
+function cacheGet(key: string): string | undefined {
+  const value = cache.get(key);
+  if (value !== undefined) {
+    // LRU: 최근 사용 항목을 끝으로 재삽입 (insertion order 갱신)
+    cache.delete(key);
+    cache.set(key, value);
+  }
+  return value;
+}
+
+function cacheSet(key: string, value: string): void {
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+  // 초과분 제거 (가장 오래 사용 안 한 = 첫 항목)
+  while (cache.size > MAX_CACHE_ENTRIES) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey === undefined) break;
+    cache.delete(firstKey);
+  }
+}
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -49,7 +72,7 @@ export async function parseImage(
   const buf = buffer instanceof Buffer ? buffer : Buffer.from(buffer);
   const cacheKey = createHash('sha256').update(buf).digest('hex');
 
-  const hit = cache.get(cacheKey);
+  const hit = cacheGet(cacheKey);
   if (hit !== undefined) return hit;
 
   const client = getClient();
@@ -77,9 +100,22 @@ export async function parseImage(
   const textBlock = response.content.find((b) => b.type === 'text');
   const text = textBlock && 'text' in textBlock ? (textBlock.text ?? '') : '';
 
-  cache.set(cacheKey, text);
+  cacheSet(cacheKey, text);
   return text;
 }
+
+/** 테스트 전용 — 현재 캐시 크기 (LRU 검증용) */
+export function _getImageCacheSize(): number {
+  return cache.size;
+}
+
+/** 테스트 전용 — 현재 캐시 키 순서 (insertion order, LRU 위치 검증용) */
+export function _getImageCacheKeys(): string[] {
+  return Array.from(cache.keys());
+}
+
+/** 테스트 전용 — LRU 최대 entry 수 */
+export const _MAX_IMAGE_CACHE_ENTRIES = MAX_CACHE_ENTRIES;
 
 /** 테스트 전용 — 캐시 초기화 */
 export function _resetImageCache(): void {

@@ -24,8 +24,20 @@ describe('parsePptx', () => {
     expect(text.indexOf('슬라이드1')).toBeLessThan(text.indexOf('슬라이드2'));
   });
 
-  it('손상된 버퍼 → throw', async () => {
+  it('손상된 버퍼 → 사용자 안내 메시지로 throw', async () => {
     const corrupt = Buffer.from('not a pptx zip');
-    await expect(parsePptx(corrupt)).rejects.toThrow();
+    await expect(parsePptx(corrupt)).rejects.toThrow(
+      /구버전 \.ppt 형식은 지원하지 않습니다\. \.pptx 로 변환 후 다시 업로드해 주세요\./,
+    );
+  });
+
+  it('OLE compound (구 .ppt) magic byte → jszip 호출 전 명시적 안내', async () => {
+    // OLE2/CFB header: D0 CF 11 E0 A1 B1 1A E1 + padding
+    const ole = Buffer.from([
+      0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    await expect(parsePptx(ole)).rejects.toThrow(
+      '구버전 .ppt 형식은 지원하지 않습니다. .pptx 로 변환 후 다시 업로드해 주세요.',
+    );
   });
 });
