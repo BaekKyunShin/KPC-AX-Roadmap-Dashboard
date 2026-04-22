@@ -89,4 +89,37 @@ describe('drawAnnualPlanSection', () => {
     expect(body).toHaveLength(1);
     expect(body[0][0]).toBe('-');
   });
+
+  it('item 필드들 모두 비어있으면 "-" placeholder + hours=0 시간', () => {
+    drawAnnualPlanSection(
+      ctx,
+      {
+        items: [
+          {
+            competency_name: '',
+            course_name: '',
+            format: '',
+            hours: undefined as unknown as number,
+            notes: '',
+          },
+        ],
+        usage_plan: '',
+      },
+      autoTable,
+      getAutoTableStyles(false),
+    );
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body[0]).toEqual(['-', '-', '-', '0시간', '-']);
+  });
+
+  it('plan.usage_plan 이 빈 문자열이면 활용방안 본문에 "-" 표시', () => {
+    drawAnnualPlanSection(
+      ctx,
+      { items: [], usage_plan: '' },
+      autoTable,
+      getAutoTableStyles(false),
+    );
+    const splitCalls = mockDoc.splitTextToSize.mock.calls.map((c: unknown[]) => c[0]);
+    expect(splitCalls.some((t: unknown) => t === '-')).toBe(true);
+  });
 });

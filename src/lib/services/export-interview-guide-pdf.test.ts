@@ -196,4 +196,48 @@ describe('generateInterviewGuidePDF', () => {
     expect(hasFooterLabel).toBe(true);
     expect(hasPageNumber).toBe(true);
   });
+
+  it('fetch response.ok=false 면 loadFonts 가 hasFonts=false 반환 (helvetica fallback)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    } as Response);
+
+    const data = createTestGuideData();
+    const result = await generateInterviewGuidePDF(data);
+    expect(result).toBeInstanceOf(Blob);
+    // Pretendard 폰트 없으므로 helvetica 로 호출
+    const fontCalls = mockDoc.setFont.mock.calls as unknown[][];
+    expect(fontCalls.some((c) => c[0] === 'helvetica')).toBe(true);
+  });
+
+  it('fetch 성공 + arrayBuffer 해석 시 hasFonts=true 경로에서 PretendardBold 폰트 사용', async () => {
+    const bytes = new Uint8Array([0x00, 0x01, 0x02]).buffer;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: vi.fn().mockResolvedValue(bytes),
+    } as unknown as Response);
+
+    const data = createTestGuideData();
+    const result = await generateInterviewGuidePDF(data);
+    expect(result).toBeInstanceOf(Blob);
+    const fontCalls = mockDoc.setFont.mock.calls as unknown[][];
+    // addFont 가 호출되었고 Pretendard/PretendardBold 폰트 지정
+    expect(mockDoc.addFont).toHaveBeenCalled();
+    expect(fontCalls.some((c) => c[0] === 'PretendardBold')).toBe(true);
+  });
+
+  it('splitTextToSize 가 여러 줄을 반환하면 각 라인마다 text 호출', async () => {
+    mockDoc.splitTextToSize.mockImplementation((text: string) => {
+      // 일부러 3줄로 분할
+      return text.length > 20 ? [text.slice(0, 20), text.slice(20, 40), text.slice(40)] : [text];
+    });
+    const data = createTestGuideData({
+      company_summary: '가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사',
+    });
+
+    await generateInterviewGuidePDF(data);
+    // splitTextToSize 가 여러 줄로 분할됐고 text 가 충분히 많이 호출
+    expect(mockDoc.text.mock.calls.length).toBeGreaterThan(5);
+  });
 });

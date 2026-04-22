@@ -430,6 +430,20 @@ describe('pbl-crud', () => {
       await expect(deleteDraft('pbl-1')).rejects.toThrow(/DRAFT 상태/);
     });
 
+    it('대상 보고서가 없으면 "찾을 수 없습니다" 예외', async () => {
+      const client = {
+        from: vi.fn(() => ({
+          select: () => ({
+            eq: () => ({
+              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        })),
+      };
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+      await expect(deleteDraft('pbl-missing')).rejects.toThrow(/찾을 수 없습니다/);
+    });
+
     it('DRAFT면 delete 호출', async () => {
       const deleteEq = vi.fn().mockResolvedValue({ error: null });
       const client = {
@@ -445,6 +459,24 @@ describe('pbl-crud', () => {
       vi.mocked(createAdminClient).mockReturnValue(client as never);
       await deleteDraft('pbl-1');
       expect(deleteEq).toHaveBeenCalledWith('id', 'pbl-1');
+    });
+
+    it('delete 에러 응답 시 "삭제 실패" 예외', async () => {
+      const deleteEq = vi
+        .fn()
+        .mockResolvedValue({ error: { message: 'FK 제약 위반' } });
+      const client = {
+        from: vi.fn(() => ({
+          select: () => ({
+            eq: () => ({
+              single: vi.fn().mockResolvedValue({ data: { status: 'DRAFT' }, error: null }),
+            }),
+          }),
+          delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+        })),
+      };
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+      await expect(deleteDraft('pbl-1')).rejects.toThrow(/삭제 실패.*FK 제약/);
     });
   });
 
@@ -482,6 +514,43 @@ describe('pbl-crud', () => {
 
       const result = await sharePBL('pbl-1', true);
       expect(result.is_shared).toBe(true);
+    });
+
+    it('fetch 에러 응답 시 "찾을 수 없습니다" 예외', async () => {
+      const client = {
+        from: vi.fn(() => ({
+          select: () => ({
+            eq: () => ({
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'RLS 거부' } }),
+            }),
+          }),
+        })),
+      };
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+      await expect(sharePBL('pbl-1', true)).rejects.toThrow(/찾을 수 없습니다/);
+    });
+
+    it('update 에러 응답 시 "공유 토글 실패" 예외', async () => {
+      const updateEq = vi.fn().mockReturnValue({
+        select: () => ({
+          single: vi
+            .fn()
+            .mockResolvedValue({ data: null, error: { message: '동시성 충돌' } }),
+        }),
+      });
+      const client = {
+        from: vi.fn(() => ({
+          select: () => ({
+            eq: () => ({
+              single: vi.fn().mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({ eq: updateEq }),
+        })),
+      };
+      vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+      await expect(sharePBL('pbl-1', true)).rejects.toThrow(/공유 토글 실패.*동시성/);
     });
   });
 });

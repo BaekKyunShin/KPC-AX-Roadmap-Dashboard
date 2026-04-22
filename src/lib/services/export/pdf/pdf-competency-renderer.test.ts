@@ -134,4 +134,40 @@ describe('drawCompetencySection', () => {
 
     expect(ctx.y).toBeGreaterThan(150);
   });
+
+  it('역량 필드 전부 비어있으면 "-" 로 placeholder 채움', () => {
+    const comps: RoadmapCompetency[] = [
+      {
+        name: '',
+        definition: '',
+        knowledge: [],
+        skills: [],
+        attitudes: [],
+      },
+    ];
+    drawCompetencySection(ctx, comps, autoTable, getAutoTableStyles(false));
+
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body[0]).toEqual(['-', '-', '-', '-', '-']);
+  });
+
+  it('ncs_used=true 인데 methodology 가 빈 문자열(trim 후)이면 "-" 표시', () => {
+    drawCompetencySection(ctx, [], autoTable, getAutoTableStyles(false), {
+      ncs_used: true,
+      ncs_methodology: '   ',
+      ncs_derivation_method: '',
+    });
+    const ncsCall = autoTable.mock.calls[1][1];
+    expect(ncsCall.body[0][0]).toBe('-');
+  });
+
+  it('ncs_used=false 인데 derivation_method 가 빈 문자열(trim 후)이면 "-" 표시', () => {
+    drawCompetencySection(ctx, [], autoTable, getAutoTableStyles(false), {
+      ncs_used: false,
+      ncs_methodology: '',
+      ncs_derivation_method: '',
+    });
+    const ncsCall = autoTable.mock.calls[1][1];
+    expect(ncsCall.body[0][0]).toBe('-');
+  });
 });

@@ -183,4 +183,68 @@ describe('generateXLSX', () => {
 
     expect(result).toBeInstanceOf(Uint8Array);
   });
+
+  it('subjects 가 빈 배열인 course_spec 도 "-" placeholder 로 처리한다', async () => {
+    const { generateXLSX } = await import('./xlsx-generator');
+    const data = createTestExportData({
+      courseSpecs: [
+        {
+          course_name: '빈 과정',
+          format: '집체',
+          recommended_program: 'S-OJT',
+          goal: '',
+          main_content: '',
+          target_audience: '',
+          subjects: [],
+        },
+      ],
+    });
+
+    const result = await generateXLSX(data);
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+
+  it('NCS 활용 없음 + 비어있는 NCS 필드도 기본값(ncsUsed=false) 분기로 처리', async () => {
+    const { generateXLSX } = await import('./xlsx-generator');
+    const data = createTestExportData();
+    // ncsUsed 미지정 → ?? false fallback
+    delete (data as Partial<RoadmapExportData>).ncsUsed;
+
+    const result = await generateXLSX(data);
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+});
+
+describe('downloadXLSX', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('generateXLSX 결과를 Blob 으로 감싸 <a> 엘리먼트 다운로드를 트리거한다', async () => {
+    const { downloadXLSX } = await import('./xlsx-generator');
+    const data = createTestExportData();
+
+    // URL.createObjectURL / revokeObjectURL 모킹
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true });
+
+    // a 태그 click 감시
+    const click = vi.fn();
+    const originalCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreate(tag);
+      if (tag === 'a') {
+        Object.defineProperty(el, 'click', { value: click, writable: true });
+      }
+      return el;
+    });
+
+    await downloadXLSX(data, 'roadmap.xlsx');
+
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalled();
+  });
 });

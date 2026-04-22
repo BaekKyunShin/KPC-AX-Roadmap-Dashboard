@@ -135,4 +135,41 @@ describe('drawStructureSection (양식 1번 Ⅲ-2 6열 단순 표)', () => {
 
     expect(autoTable).toHaveBeenCalledTimes(1);
   });
+
+  it('rows 항목의 각 필드가 비어있으면 "-" 로 치환된다', () => {
+    const comps: RoadmapCompetency[] = [
+      { name: '역량A', definition: '-', knowledge: [], skills: [], attitudes: [] },
+    ];
+    const struct: RoadmapTrainingStructureItem[] = [
+      {
+        competency_name: '역량A',
+        level: 'BEGINNER',
+        content: '',
+        target_audience: '',
+        method: '',
+        goal: '',
+      },
+    ];
+
+    drawStructureSection(ctx, comps, struct, autoTable, getAutoTableStyles(false));
+
+    const body = autoTable.mock.calls[0][1].body;
+    // competency_name 존재 + level_label + content/target/method/goal 비어있음 → 4개 "-"
+    expect(body[0][2]).toBe('-');
+    expect(body[0][3]).toBe('-');
+    expect(body[0][4]).toBe('-');
+    expect(body[0][5]).toBe('-');
+  });
+
+  it('competencies/structure 둘 다 undefined 로 전달되어도 안전하게 placeholder row', () => {
+    drawStructureSection(
+      ctx,
+      undefined as unknown as RoadmapCompetency[],
+      undefined as unknown as RoadmapTrainingStructureItem[],
+      autoTable,
+      getAutoTableStyles(false),
+    );
+    const body = autoTable.mock.calls[0][1].body;
+    expect(body[0]).toEqual(['-', '-', '-', '-', '-', '-']);
+  });
 });
