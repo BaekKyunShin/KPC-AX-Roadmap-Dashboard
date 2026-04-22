@@ -173,4 +173,26 @@ test.describe('컨설턴트 로드맵 인터뷰 (산인공 7스텝)', () => {
     const warning = page.getByText(/필수 단계 미완료/);
     await expect(warning).toBeVisible();
   });
+
+  // ISSUE-15 (Step C-3): 다음/이전 클릭 시 페이지 상단으로 자동 스크롤
+  test('"다음" 클릭 시 페이지 상단으로 자동 스크롤된다 (ISSUE-15)', async ({ consultantPage: page }) => {
+    test.skip(!interviewUrl, '인터뷰 URL 없음');
+    await page.goto(interviewUrl!);
+    await page.waitForLoadState('networkidle');
+
+    const isRoadmap = await page.getByText('현장 인터뷰 (로드맵)').isVisible().catch(() => false);
+    test.skip(!isRoadmap, '로드맵 트랙 아님');
+
+    // Step 1 → Step 2 진입 후 페이지 하단으로 강제 스크롤
+    await page.getByRole('button', { name: /^다음$/ }).click();
+    await expect(page.getByRole('heading', { name: /주요 활동/ })).toBeVisible();
+
+    await page.evaluate(() => window.scrollTo(0, 800));
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+    // 다음 클릭 → scrollToPageTop 트리거 (setTimeout 100ms + smooth scroll 여유)
+    await page.getByRole('button', { name: /^다음$/ }).click();
+    await page.waitForFunction(() => window.scrollY === 0, undefined, { timeout: 3000 });
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
 });

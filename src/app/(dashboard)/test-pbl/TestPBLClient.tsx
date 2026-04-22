@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
-import { showErrorToast } from '@/lib/utils';
+import { showErrorToast, scrollToPageTop } from '@/lib/utils';
 import {
   PBL_INTERVIEW_STEPS,
   PBL_REQUIRED_STEP_IDS,
@@ -190,10 +190,12 @@ export default function TestPBLClient({ user, canAccess, sampleData }: TestPBLCl
   const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
 
   const goToStep = (step: number) => {
+    if (step === currentStep) return;
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
     setCurrentStep(step);
+    scrollToPageTop();
   };
   const goToNextStep = () => {
     if (currentStep < PBL_TOTAL_STEPS) goToStep(currentStep + 1);

@@ -217,10 +217,12 @@ export default function PBLInterviewClient({
   const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
 
   const goToStep = (step: number) => {
+    if (step === currentStep) return;
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
     setCurrentStep(step);
+    scrollToPageTop();
   };
 
   const goToNextStep = () => {

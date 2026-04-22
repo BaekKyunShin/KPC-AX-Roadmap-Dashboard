@@ -54,7 +54,7 @@ import {
   reviseTestRoadmap,
 } from './actions';
 import { isCancelledError } from '@/lib/services/llm';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import type { RoadmapResult, ValidationResult, TestRoadmapInput } from '@/lib/services/roadmap';
 
 interface UserInfo {
@@ -221,10 +221,12 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
 
   const goToStep = (step: number) => {
+    if (step === currentStep) return;
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
     setCurrentStep(step);
+    scrollToPageTop();
   };
   const goToNextStep = () => {
     if (currentStep < ROADMAP_TOTAL_STEPS) goToStep(currentStep + 1);

@@ -264,4 +264,14 @@ describe('RoadmapInterviewClient', () => {
     // Step 2로 이동
     expect(screen.queryByRole('heading', { name: /Ⅰ\. 개요/ })).not.toBeInTheDocument();
   }, 10000);
+
+  // ---------------------------------------------------------------------------
+  // 7. 스텝 전환 시 페이지 상단 자동 스크롤 (ISSUE-15)
+  // ---------------------------------------------------------------------------
+  it('"다음" 클릭 시 scrollToPageTop이 호출된다', async () => {
+    const { scrollToPageTop } = await import('@/lib/utils');
+    render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
+    await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
+    expect(scrollToPageTop).toHaveBeenCalled();
+  });
 });
