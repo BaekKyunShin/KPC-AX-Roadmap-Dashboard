@@ -76,6 +76,10 @@ function mkProps(overrides: Partial<Props> = {}): Props {
     targetTasks,
     aiLevelDiagnosis,
     onEditStep: vi.fn(),
+    // ISSUE-16 STT 업로드 복원 — 기본 stub
+    sttInsights: undefined,
+    onSttInsightsChange: vi.fn(),
+    onExtractSttInsights: vi.fn().mockResolvedValue({ success: true, data: {} }),
     ...overrides,
   };
 }

@@ -468,6 +468,13 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             notes={notes}
             onEditStep={goToStep}
             onNotesChange={setNotes}
+            // ISSUE-16 테스트 페이지 — STT 인사이트 컴포넌트 노출만 하고 LLM 호출은 막아둔다.
+            sttInsights={undefined}
+            onSttInsightsChange={() => {}}
+            onExtractSttInsights={async () => ({
+              success: false,
+              error: '테스트 페이지에서는 STT 추출이 비활성화되어 있습니다.',
+            })}
           />
         );
       default:

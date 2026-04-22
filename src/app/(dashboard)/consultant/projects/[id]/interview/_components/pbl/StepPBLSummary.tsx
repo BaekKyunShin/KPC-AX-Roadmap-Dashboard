@@ -12,6 +12,8 @@ import type {
   PBLTargetTasks,
   PBLAILevelDiagnosis,
 } from '@/lib/schemas/interview-pbl';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
+import { StepSttUpload } from '@/components/interview/StepSttUpload';
 
 interface StepPBLSummaryProps {
   courseOverview: PBLCourseOverview;
@@ -23,6 +25,12 @@ interface StepPBLSummaryProps {
   targetTasks: PBLTargetTasks;
   aiLevelDiagnosis: PBLAILevelDiagnosis;
   onEditStep: (stepId: number) => void;
+  // ISSUE-16 STT 업로드 복원 (PBL 트랙)
+  sttInsights?: SttInsights;
+  onSttInsightsChange: (insights: SttInsights | undefined) => void;
+  onExtractSttInsights: (
+    sttText: string,
+  ) => Promise<{ success: true; data: SttInsights } | { success: false; error: string }>;
 }
 
 function SectionHeader({
@@ -66,6 +74,9 @@ export default function StepPBLSummary({
   targetTasks,
   aiLevelDiagnosis,
   onEditStep,
+  sttInsights,
+  onSttInsightsChange,
+  onExtractSttInsights,
 }: StepPBLSummaryProps) {
   return (
     <div className="space-y-6">
@@ -247,6 +258,13 @@ export default function StepPBLSummary({
           </div>
         </dl>
       </section>
+
+      {/* ISSUE-16 STT 인사이트 (PBL 트랙) */}
+      <StepSttUpload
+        insights={sttInsights}
+        onChange={onSttInsightsChange}
+        onExtract={onExtractSttInsights}
+      />
     </div>
   );
 }

@@ -28,7 +28,8 @@ import {
   createEmptyTargetTask,
   createEmptyTargetTaskDetail,
 } from '@/lib/schemas/interview-pbl';
-import { savePBLInterview } from '../actions';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
+import { savePBLInterview, extractSttInsights } from '../actions';
 import InterviewStepper from './InterviewStepper';
 
 const StepPBLCourseOverview = lazy(() => import('./pbl/StepPBLCourseOverview'));
@@ -118,6 +119,10 @@ export default function PBLInterviewClient({
   const [aiLevelDiagnosis, setAILevelDiagnosis] = useState<PBLAILevelDiagnosis>(
     () => (initialData.aiLevelDiagnosis as PBLAILevelDiagnosis) ?? (defaults.aiLevelDiagnosis as PBLAILevelDiagnosis)
   );
+  // ISSUE-16 Step C-4: PBL 트랙도 STT 인사이트 입력을 폼 state 로 관리. 자동저장이 영속화한다.
+  const [sttInsights, setSttInsights] = useState<SttInsights | undefined>(
+    () => initialData.sttInsights as SttInsights | undefined,
+  );
 
   const formData = useMemo(
     () => ({
@@ -129,6 +134,7 @@ export default function PBLInterviewClient({
       problemDefinition,
       targetTasks,
       aiLevelDiagnosis,
+      sttInsights,
     }),
     [
       courseOverview,
@@ -139,6 +145,7 @@ export default function PBLInterviewClient({
       problemDefinition,
       targetTasks,
       aiLevelDiagnosis,
+      sttInsights,
     ],
   );
 
@@ -297,6 +304,9 @@ export default function PBLInterviewClient({
             targetTasks={targetTasks}
             aiLevelDiagnosis={aiLevelDiagnosis}
             onEditStep={goToStep}
+            sttInsights={sttInsights}
+            onSttInsightsChange={setSttInsights}
+            onExtractSttInsights={(text: string) => extractSttInsights(projectId, text)}
           />
         );
       default:

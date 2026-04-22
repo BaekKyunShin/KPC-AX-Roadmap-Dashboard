@@ -35,6 +35,7 @@ import {
   uploadHrdReportAttachment,
   removeHrdReportAttachment,
   createHrdReportSignedUrl,
+  extractSttInsights,
 } from '../actions';
 import InterviewStepper from './InterviewStepper';
 import StepOverview from './roadmap/StepOverview';
@@ -115,7 +116,10 @@ export default function RoadmapInterviewClient({
     () => initialData.ncs_usage ?? createEmptyNcsUsage(),
   );
   const [notes, setNotes] = useState(initialData.notes ?? '');
-  const [sttInsights] = useState<RoadmapInterview['stt_insights']>(initialData.stt_insights);
+  // ISSUE-16 Step C-4: STT 업로드 복원 — setter 정식화. 인사이트는 폼 state 의 일부로 자동저장된다.
+  const [sttInsights, setSttInsights] = useState<RoadmapInterview['stt_insights']>(
+    initialData.stt_insights,
+  );
 
   const formData = useMemo(
     () => ({
@@ -369,6 +373,8 @@ export default function RoadmapInterviewClient({
             onEditStep={goToStep}
             onNotesChange={setNotes}
             sttInsights={sttInsights}
+            onSttInsightsChange={setSttInsights}
+            onExtractSttInsights={(text: string) => extractSttInsights(projectId, text)}
           />
         );
       default:

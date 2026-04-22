@@ -833,6 +833,51 @@ export async function processSttFile(
 }
 
 /**
+ * STT 인사이트 추출 전용 (ISSUE-16, Step C-4)
+ *
+ * `processSttFile` 와 달리 DB 저장은 하지 않고 LLM 추출 결과만 반환한다.
+ * 호출 측(StepSttUpload)이 setter 로 폼 state 에 반영하면 자동저장
+ * (`useInterviewAutoSave`)이 stt_insights 필드를 영속화한다.
+ *
+ * 5단계 패턴:
+ *   1) 인증/역할 검증 (verifyProjectAccess)
+ *   2) 컨설턴트 프로젝트 배정 검증 (verifyProjectAccess 내부)
+ *   3) 입력 검증 (길이 + STT 사이즈)
+ *   4) 비즈니스 로직 (extractInsightsFromStt)
+ *   5) ActionResult 반환
+ */
+export async function extractSttInsights(
+  projectId: string,
+  sttText: string,
+): Promise<ActionResult<SttInsights>> {
+  try {
+    const authResult = await verifyProjectAccess(projectId);
+    if ('error' in authResult) {
+      return { success: false, error: authResult.error };
+    }
+
+    const text = (sttText ?? '').trim();
+    if (text.length < 10) {
+      return { success: false, error: 'STT 텍스트가 너무 짧습니다 (10자 이상).' };
+    }
+
+    const sizeValidation = validateSttTextSize(text);
+    if (!sizeValidation.valid) {
+      return { success: false, error: sizeValidation.error };
+    }
+
+    const insights = await extractInsightsFromStt(text);
+    return { success: true, data: insights };
+  } catch (error) {
+    console.error('[extractSttInsights Error]', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'STT 추출 중 오류가 발생했습니다.',
+    };
+  }
+}
+
+/**
  * STT 인사이트 삭제
  */
 export async function deleteSttInsights(projectId: string): Promise<SimpleActionResult> {

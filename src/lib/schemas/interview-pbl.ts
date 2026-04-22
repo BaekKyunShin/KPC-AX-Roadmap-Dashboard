@@ -1,4 +1,6 @@
 import { z } from 'zod';
+// ISSUE-16: PBL 인터뷰도 ROADMAP 과 동일한 6 카테고리 STT 인사이트 스키마를 공유한다.
+import { sttInsightsSchema } from './interview-roadmap';
 
 // ============================================================================
 // 산인공 PBL 인터뷰 양식 (docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).pdf 3~11p)
@@ -311,6 +313,8 @@ export const pblInterviewSchema = z.object({
   problemDefinition: problemDefinitionSchema,
   targetTasks: targetTasksSchema,
   aiLevelDiagnosis: aiLevelDiagnosisSchema,
+  // ISSUE-16: STT 인사이트는 선택 — 입력 안 해도 인터뷰가 통과되어야 한다.
+  sttInsights: sttInsightsSchema.optional(),
 });
 export type PBLInterview = z.infer<typeof pblInterviewSchema>;
 export type PBLInterviewInput = z.input<typeof pblInterviewSchema>;
