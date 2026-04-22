@@ -13,6 +13,7 @@ import {
   type TaskWorkflowItem,
 } from '@/lib/schemas/interview-roadmap';
 import { AttachmentFileList } from '@/components/interview/AttachmentFileList';
+import { AI_NECESSITY_LABELS, AI_NECESSITY_OPTIONS } from '@/lib/constants/interview';
 
 interface StepTaskWorkflowAnalysisProps {
   items: TaskWorkflowItem[];
@@ -33,15 +34,6 @@ interface StepTaskWorkflowAnalysisProps {
     storagePath: string,
   ) => Promise<{ success: true } | { success: false; error: string }>;
 }
-
-const AI_NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
-const AI_NECESSITY_LABELS: Record<number, string> = {
-  1: '매우 낮음',
-  2: '낮음',
-  3: '보통',
-  4: '높음',
-  5: '매우 높음',
-};
 
 export default function StepTaskWorkflowAnalysis({
   items,
