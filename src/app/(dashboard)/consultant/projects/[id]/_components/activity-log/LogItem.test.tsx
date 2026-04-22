@@ -53,59 +53,6 @@ vi.mock('./helpers', () => ({
   formatRelativeTime: (dateStr: string) => `${dateStr} 시간`,
 }));
 
-// DropdownMenu를 간단한 mock으로 대체
-vi.mock('@/components/ui/dropdown-menu', async () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react');
-
-  function DropdownMenu({ children }: { children: React.ReactNode }) {
-    const [open, setOpen] = React.useState(false);
-    return (
-      <div data-testid="dropdown-menu">
-        {React.Children.map(children, (child: React.ReactElement) =>
-          React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setOpen: (v: boolean) => void }>, { isOpen: open, setOpen })
-            : child,
-        )}
-      </div>
-    );
-  }
-
-  function DropdownMenuTrigger({ children, asChild, isOpen, setOpen, ...props }: {
-    children: React.ReactNode;
-    asChild?: boolean;
-    isOpen?: boolean;
-    setOpen?: (v: boolean) => void;
-    [key: string]: unknown;
-  }) {
-    if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children as React.ReactElement<{ onClick: () => void }>, {
-        onClick: () => setOpen?.(!isOpen),
-      });
-    }
-    return <button onClick={() => setOpen?.(!isOpen)} {...props}>{children}</button>;
-  }
-
-  function DropdownMenuContent({ children, isOpen, ...props }: {
-    children: React.ReactNode;
-    isOpen?: boolean;
-    [key: string]: unknown;
-  }) {
-    if (!isOpen) return null;
-    return <div role="menu" {...props}>{children}</div>;
-  }
-
-  function DropdownMenuItem({ children, onClick, ...props }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    [key: string]: unknown;
-  }) {
-    return <button role="menuitem" onClick={onClick} {...props}>{children}</button>;
-  }
-
-  return { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem };
-});
-
 // =============================================================================
 // Import
 // =============================================================================
@@ -178,7 +125,7 @@ describe('LogItem', () => {
       expect(screen.getByText(/시간/)).toBeInTheDocument();
     });
 
-    it('시스템 기록에는 더보기 메뉴가 표시되지 않는다', () => {
+    it('시스템 자동 기록에는 수정/삭제 버튼이 노출되지 않는다', () => {
       render(
         <LogItem
           log={makeLog({ type: 'system_auto' })}
@@ -186,7 +133,12 @@ describe('LogItem', () => {
           onUpdated={onUpdated}
         />,
       );
-      expect(screen.queryByTestId('more-actions-button')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '기록 수정' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '기록 삭제' }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -236,6 +188,14 @@ describe('LogItem', () => {
       );
       expect(screen.getAllByTestId('mock-icon').length).toBeGreaterThan(0);
     });
+
+    it('수동 기록에 수정/삭제 버튼이 직접 노출된다', () => {
+      render(
+        <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
+      );
+      expect(screen.getByRole('button', { name: '기록 수정' })).toBeVisible();
+      expect(screen.getByRole('button', { name: '기록 삭제' })).toBeVisible();
+    });
   });
 
   describe('긴 내용 펼치기/접기', () => {
@@ -283,16 +243,15 @@ describe('LogItem', () => {
   });
 
   describe('수정 기능', () => {
-    it('더보기 메뉴에서 수정을 선택하면 편집 모드로 전환된다', async () => {
+    it('수정 버튼 클릭 시 편집 모드로 전환된다', async () => {
       const user = userEvent.setup();
       render(
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
-      await user.click(screen.getByTestId('more-actions-button'));
-      await user.click(screen.getByText('수정'));
+      await user.click(screen.getByRole('button', { name: '기록 수정' }));
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toBeVisible();
       expect(screen.getByText('저장')).toBeInTheDocument();
       expect(screen.getByText('취소')).toBeInTheDocument();
     });
@@ -303,8 +262,7 @@ describe('LogItem', () => {
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
-      await user.click(screen.getByTestId('more-actions-button'));
-      await user.click(screen.getByText('수정'));
+      await user.click(screen.getByRole('button', { name: '기록 수정' }));
       await user.click(screen.getByText('취소'));
 
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -317,26 +275,40 @@ describe('LogItem', () => {
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
-      await user.click(screen.getByTestId('more-actions-button'));
-      await user.click(screen.getByText('수정'));
+      await user.click(screen.getByRole('button', { name: '기록 수정' }));
       await user.click(screen.getByText('저장'));
 
       await waitFor(() => {
         expect(onUpdated).toHaveBeenCalled();
       });
     });
+
+    it('편집 모드에서는 수정/삭제 버튼이 사라진다', async () => {
+      const user = userEvent.setup();
+      render(
+        <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: '기록 수정' }));
+
+      expect(
+        screen.queryByRole('button', { name: '기록 수정' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '기록 삭제' }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('삭제 기능', () => {
-    it('삭제 성공 시 onUpdated가 호출된다', async () => {
+    it('삭제 버튼 클릭 시 confirm 후 deleteActivityLog 호출', async () => {
       mockDeleteActivityLog.mockResolvedValue({ success: true });
       const user = userEvent.setup();
       render(
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
-      await user.click(screen.getByTestId('more-actions-button'));
-      await user.click(screen.getByText('삭제'));
+      await user.click(screen.getByRole('button', { name: '기록 삭제' }));
 
       await waitFor(() => {
         expect(mockDeleteActivityLog).toHaveBeenCalledWith('log-1', 'proj-1');
@@ -351,8 +323,7 @@ describe('LogItem', () => {
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
-      await user.click(screen.getByTestId('more-actions-button'));
-      await user.click(screen.getByText('삭제'));
+      await user.click(screen.getByRole('button', { name: '기록 삭제' }));
 
       expect(mockDeleteActivityLog).not.toHaveBeenCalled();
     });
