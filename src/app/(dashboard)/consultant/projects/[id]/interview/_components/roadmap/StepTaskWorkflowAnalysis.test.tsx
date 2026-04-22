@@ -14,7 +14,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -29,7 +29,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -50,7 +50,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -69,7 +69,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -81,7 +81,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -98,7 +98,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -118,7 +118,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -135,7 +135,7 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={vi.fn()}
       />,
     );
@@ -148,29 +148,35 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
+        analysisNotes={{ text: '', attachment_files: [] }}
         onAnalysisNotesChange={onAnalysisNotesChange}
       />,
     );
     await userEvent.type(screen.getByLabelText('분석 내용'), 'A');
     expect(onAnalysisNotesChange).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'A', attachment_urls: [] }),
+      expect.objectContaining({ text: 'A', attachment_files: [] }),
     );
   });
 
-  it('URL 추가 버튼 클릭 시 attachment_urls에 빈 문자열 추가', async () => {
-    const onAnalysisNotesChange = vi.fn();
+  it('attachment_files 배열에 파일이 있으면 file_name 이 표시된다 (ISSUE-14)', () => {
+    // Step A: URL 입력 UI 제거 — 파일 업로드 정식 UI 는 Step C-5 책임.
+    // 현재는 attachment_files 표시만 검증.
     render(
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_urls: [] }}
-        onAnalysisNotesChange={onAnalysisNotesChange}
+        analysisNotes={{
+          text: '',
+          attachment_files: [
+            {
+              storage_path: 'interview-attachments/p1/공정.pdf',
+              file_name: '공정.pdf',
+            },
+          ],
+        }}
+        onAnalysisNotesChange={vi.fn()}
       />,
     );
-    await userEvent.click(screen.getByRole('button', { name: /URL 추가/ }));
-    expect(onAnalysisNotesChange).toHaveBeenCalledWith(
-      expect.objectContaining({ attachment_urls: [''] }),
-    );
+    expect(screen.getByText(/공정\.pdf/)).toBeInTheDocument();
   });
 });

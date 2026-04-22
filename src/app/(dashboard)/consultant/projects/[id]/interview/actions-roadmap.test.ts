@@ -48,7 +48,8 @@ function validRoadmapData(): RoadmapInterviewInput {
     },
     interview_date: '2026-04-16',
     interview_round: 1,
-    interview_time: '09:00',
+    interview_start_time: '09:00',
+    interview_end_time: '11:00',
     interview_method: 'ONSITE',
     participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
     company_requirements: {
@@ -66,7 +67,7 @@ function validRoadmapData(): RoadmapInterviewInput {
       data_availability: '2년치',
       ai_necessity: 4,
     }],
-    analysis_notes: { text: '', attachment_urls: [] },
+    analysis_notes: { text: '', attachment_files: [] },
     training_targets: [{
       id: 'tg1',
       task_name: '검사 자동화',

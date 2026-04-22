@@ -198,7 +198,7 @@ export default function StepSummaryRoadmap({
             ))}
           </ul>
         )}
-        {(analysisNotes.text || analysisNotes.attachment_urls.length > 0) && (
+        {(analysisNotes.text || analysisNotes.attachment_files.length > 0) && (
           <div className="mt-4 pt-3 border-t border-border/60 space-y-2 text-sm">
             <p className="text-muted-foreground">
               <span className="font-medium text-foreground">분석 내용:</span>{' '}
@@ -208,13 +208,13 @@ export default function StepSummaryRoadmap({
                 '-'
               )}
             </p>
-            {analysisNotes.attachment_urls.length > 0 && (
+            {analysisNotes.attachment_files.length > 0 && (
               <div>
-                <span className="font-medium text-foreground">참고자료: </span>
+                <span className="font-medium text-foreground">참고 파일: </span>
                 <ul className="list-disc ml-5 text-xs">
-                  {analysisNotes.attachment_urls.map((url, i) => (
-                    <li key={i} className="text-primary truncate">
-                      {url || '(빈 URL)'}
+                  {analysisNotes.attachment_files.map((file, i) => (
+                    <li key={`${file.storage_path}-${i}`} className="truncate">
+                      {file.file_name}
                     </li>
                   ))}
                 </ul>

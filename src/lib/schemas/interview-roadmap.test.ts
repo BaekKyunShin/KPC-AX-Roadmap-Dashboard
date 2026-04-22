@@ -106,15 +106,56 @@ describe('trainingTargetSchema', () => {
   });
 });
 
-describe('analysisNotesSchema', () => {
-  it('기본값 허용', () => {
+describe('analysisNotesSchema (ISSUE-14: URL → 파일 객체)', () => {
+  it('기본값 허용 — attachment_files 는 빈 배열', () => {
     const result = analysisNotesSchema.parse({});
-    expect(result).toEqual({ text: '', attachment_urls: [] });
+    expect(result).toEqual({ text: '', attachment_files: [] });
   });
 
-  it('attachment_urls는 URL만 허용', () => {
-    expect(analysisNotesSchema.safeParse({ text: '', attachment_urls: ['not-a-url'] }).success).toBe(false);
-    expect(analysisNotesSchema.safeParse({ text: '', attachment_urls: ['https://example.com/a.pdf'] }).success).toBe(true);
+  it('attachment_files 는 HrdReportAttachment 객체 배열만 허용', () => {
+    // 문자열(URL) 배열은 거부
+    expect(
+      analysisNotesSchema.safeParse({
+        text: '',
+        attachment_files: ['https://example.com/a.pdf'],
+      }).success,
+    ).toBe(false);
+
+    // 유효한 첨부 객체는 통과
+    expect(
+      analysisNotesSchema.safeParse({
+        text: '현장 분석',
+        attachment_files: [
+          {
+            storage_path: 'interview-attachments/p1/공정분석.pdf',
+            file_name: '공정분석.pdf',
+            mime_type: 'application/pdf',
+            size: 10240,
+          },
+        ],
+      }).success,
+    ).toBe(true);
+
+    // storage_path 비어 있으면 거부 (hrdReportAttachmentSchema 재사용)
+    expect(
+      analysisNotesSchema.safeParse({
+        text: '',
+        attachment_files: [{ storage_path: '', file_name: 'a.pdf' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('attachment_urls 필드는 더 이상 허용하지 않는다 (ISSUE-14 단순 교체)', () => {
+    // 새 스키마는 attachment_files 만 인식한다. attachment_urls 만 온 경우
+    // 스키마는 통과시키되 결과에 기본값(빈 배열)이 적용된다.
+    const result = analysisNotesSchema.safeParse({
+      text: '레거시',
+      attachment_urls: ['https://example.com/a.pdf'],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.attachment_files).toEqual([]);
+    }
   });
 });
 
@@ -260,7 +301,8 @@ describe('roadmapInterviewSchema', () => {
     overview: baseOverview,
     interview_date: '2026-04-16',
     interview_round: 1,
-    interview_time: '오전 10:00',
+    interview_start_time: '10:00',
+    interview_end_time: '12:00',
     interview_method: 'ONSITE' as const,
     participants: [{ id: 'p1', name: '홍길동', position: '팀장' }],
     company_requirements: {
@@ -280,7 +322,7 @@ describe('roadmapInterviewSchema', () => {
         ai_necessity: 4,
       },
     ],
-    analysis_notes: { text: '', attachment_urls: [] },
+    analysis_notes: { text: '', attachment_files: [] },
     training_targets: [
       {
         id: 'tg1',
@@ -297,6 +339,47 @@ describe('roadmapInterviewSchema', () => {
 
   it('유효한 전체 구조는 통과', () => {
     expect(roadmapInterviewSchema.safeParse(baseValid).success).toBe(true);
+  });
+
+  it('interview_start_time / interview_end_time 둘 다 필수 (ISSUE-10 단일값 → 분리)', () => {
+    // start_time 누락
+    const { interview_start_time: _s, ...withoutStart } = baseValid;
+    expect(roadmapInterviewSchema.safeParse(withoutStart).success).toBe(false);
+    // end_time 누락
+    const { interview_end_time: _e, ...withoutEnd } = baseValid;
+    expect(roadmapInterviewSchema.safeParse(withoutEnd).success).toBe(false);
+    // start_time 빈 문자열
+    expect(
+      roadmapInterviewSchema.safeParse({ ...baseValid, interview_start_time: '' }).success,
+    ).toBe(false);
+    // end_time 빈 문자열
+    expect(
+      roadmapInterviewSchema.safeParse({ ...baseValid, interview_end_time: '' }).success,
+    ).toBe(false);
+  });
+
+  it('레거시 단일 interview_time 필드는 더 이상 지원하지 않는다 (ISSUE-10)', () => {
+    const { interview_start_time: _s, interview_end_time: _e, ...withoutTimes } = baseValid;
+    const legacy = { ...withoutTimes, interview_time: '10:00' };
+    expect(roadmapInterviewSchema.safeParse(legacy).success).toBe(false);
+  });
+
+  it('analysis_notes 는 attachment_files 객체 배열을 사용한다 (ISSUE-14)', () => {
+    const withFiles = {
+      ...baseValid,
+      analysis_notes: {
+        text: '분석',
+        attachment_files: [
+          {
+            storage_path: 'interview-attachments/p1/공정.pdf',
+            file_name: '공정.pdf',
+            mime_type: 'application/pdf',
+            size: 1024,
+          },
+        ],
+      },
+    };
+    expect(roadmapInterviewSchema.safeParse(withFiles).success).toBe(true);
   });
 
   it('참석자 최소 1명 필요', () => {
@@ -361,6 +444,28 @@ describe('roadmapInterviewAutoSaveSchema', () => {
     expect(
       roadmapInterviewAutoSaveSchema.safeParse({
         ncs_usage: { uses_ncs: true },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('interview_start_time / interview_end_time 단독 저장 허용 (ISSUE-10 자동저장)', () => {
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({ interview_start_time: '10:00' }).success,
+    ).toBe(true);
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({ interview_end_time: '12:00' }).success,
+    ).toBe(true);
+  });
+
+  it('analysis_notes.attachment_files 부분 입력 허용 (ISSUE-14 자동저장)', () => {
+    expect(
+      roadmapInterviewAutoSaveSchema.safeParse({
+        analysis_notes: {
+          text: '메모',
+          attachment_files: [
+            { storage_path: 'a.pdf', file_name: 'a.pdf' },
+          ],
+        },
       }).success,
     ).toBe(true);
   });
@@ -546,23 +651,50 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(mapInterviewRowToRoadmapInterview(row).interview_method).toBe('ONSITE');
   });
 
-  it('roadmap_analysis_notes 복원 (text + attachment_urls)', () => {
+  it('roadmap_analysis_notes 복원 (text + attachment_files, ISSUE-14)', () => {
     const row = {
       participants: [],
       company_details: {
         ai_experience: '',
         roadmap_analysis_notes: {
           text: '그룹 인터뷰로 도출',
-          attachment_urls: ['https://example.com/a.pdf'],
+          attachment_files: [
+            {
+              storage_path: 'interview-attachments/p1/공정.pdf',
+              file_name: '공정.pdf',
+              mime_type: 'application/pdf',
+              size: 1024,
+            },
+          ],
         },
       },
       job_tasks: [], pain_points: [], improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const r = mapInterviewRowToRoadmapInterview(row);
-    expect(r.analysis_notes).toEqual({
-      text: '그룹 인터뷰로 도출',
-      attachment_urls: ['https://example.com/a.pdf'],
+    expect(r.analysis_notes?.text).toBe('그룹 인터뷰로 도출');
+    expect(r.analysis_notes?.attachment_files).toHaveLength(1);
+    expect(r.analysis_notes?.attachment_files?.[0]).toMatchObject({
+      storage_path: 'interview-attachments/p1/공정.pdf',
+      file_name: '공정.pdf',
     });
+  });
+
+  it('레거시 attachment_urls 만 있는 row 는 attachment_files 빈 배열로 변환 (ISSUE-14 안전장치)', () => {
+    // production 에서는 0건이지만 안전장치 — URL 정보는 무시한다.
+    const row = {
+      participants: [],
+      company_details: {
+        ai_experience: '',
+        roadmap_analysis_notes: {
+          text: '레거시 메모',
+          attachment_urls: ['https://example.com/legacy.pdf'],
+        },
+      },
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const r = mapInterviewRowToRoadmapInterview(row);
+    expect(r.analysis_notes?.text).toBe('레거시 메모');
+    expect(r.analysis_notes?.attachment_files).toEqual([]);
   });
 
   it('레거시 improvement_goals를 training_targets로 변환', () => {
@@ -762,21 +894,47 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.stt_insights).toBeUndefined();
   });
 
-  it('analysis_notes.attachment_urls가 배열이 아닌 경우 빈 배열로 초기화', () => {
-    // Line 357: !Array.isArray(savedAn.attachment_urls) → [] 분기 커버
+  it('analysis_notes.attachment_files가 배열이 아닌 경우 빈 배열로 초기화', () => {
+    // !Array.isArray(savedAn.attachment_files) → [] 분기 커버
     const row = {
       participants: [],
       company_details: {
         ai_experience: '',
         roadmap_analysis_notes: {
           text: '분석 노트',
-          attachment_urls: null, // 배열이 아님
+          attachment_files: null, // 배열이 아님
         },
       },
       job_tasks: [], pain_points: [], improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.analysis_notes?.attachment_urls).toEqual([]);
+    expect(result.analysis_notes?.attachment_files).toEqual([]);
+  });
+
+  it('레거시 단일 interview_time row 는 interview_start_time 으로 fallback (ISSUE-10 production 3건 대응)', () => {
+    // 사전 SQL 검증: legacy_interview_time_count = 3
+    const row = {
+      interview_time: '14:00',
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_start_time).toBe('14:00');
+    expect(result.interview_end_time).toBe('');
+  });
+
+  it('interview_start_time / interview_end_time 신규 컬럼이 모두 있으면 그대로 매핑한다', () => {
+    const row = {
+      interview_start_time: '10:00',
+      interview_end_time: '12:00',
+      participants: [],
+      company_details: null,
+      job_tasks: [], pain_points: [], improvement_goals: [],
+    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
+    const result = mapInterviewRowToRoadmapInterview(row);
+    expect(result.interview_start_time).toBe('10:00');
+    expect(result.interview_end_time).toBe('12:00');
   });
 
   it('job_tasks에 id가 없으면 UUID가 자동 생성된다', () => {

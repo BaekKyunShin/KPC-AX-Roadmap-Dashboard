@@ -86,7 +86,8 @@ function emptyCompanyRequirements(): CompanyRequirements {
 }
 
 function emptyAnalysisNotes(): AnalysisNotes {
-  return { text: '', attachment_urls: [] };
+  // ISSUE-14: attachment_urls(string[]) → attachment_files(HrdReportAttachment[])
+  return { text: '', attachment_files: [] };
 }
 
 interface TestResult {

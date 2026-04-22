@@ -53,7 +53,8 @@ function makeValidInitialData() {
     },
     interview_date: '2026-01-01',
     interview_round: 1,
-    interview_time: '10:00',
+    interview_start_time: '10:00',
+    interview_end_time: '12:00',
     interview_method: 'ONSITE' as const,
     participants: [{ id: 'p1', name: '참석자', position: '팀장' }],
     company_requirements: {
@@ -73,7 +74,7 @@ function makeValidInitialData() {
         ai_necessity: 3,
       },
     ],
-    analysis_notes: { text: '', attachment_urls: [] },
+    analysis_notes: { text: '', attachment_files: [] },
     training_targets: [
       {
         id: 'tt1',

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { GuideNote } from '@/components/ui/guide-note';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTaskWorkflowItem,
   type AnalysisNotes,
@@ -53,26 +53,8 @@ export default function StepTaskWorkflowAnalysis({
     onChange(items.filter((_, i) => i !== index));
   };
 
-  const addAttachmentUrl = () => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: [...analysisNotes.attachment_urls, ''],
-    });
-  };
-
-  const updateAttachmentUrl = (index: number, url: string) => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: analysisNotes.attachment_urls.map((u, i) => (i === index ? url : u)),
-    });
-  };
-
-  const removeAttachmentUrl = (index: number) => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: analysisNotes.attachment_urls.filter((_, i) => i !== index),
-    });
-  };
+  // Step A: ISSUE-14 로 attachment_urls(string[]) → attachment_files(HrdReportAttachment[]) 으로 교체.
+  // 파일 업로드 UI 본격 구현은 Step C-5 책임. 현재는 attachment_files 표시만 한다.
 
   return (
     <div className="space-y-6">
@@ -251,42 +233,22 @@ export default function StepTaskWorkflowAnalysis({
         />
 
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <Label className="block">첨부파일 (URL)</Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                공정 분석, 업로드 자료 등 참고 URL을 첨부하세요. 파일 업로드는 로드맵 단계에서 제공됩니다.
-              </p>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={addAttachmentUrl}>
-              <Plus className="w-4 h-4 mr-1" />
-              URL 추가
-            </Button>
+          <div className="mb-2">
+            <Label className="block">첨부 파일</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              공정 분석, 업로드 자료 등 참고 파일을 첨부하세요. (파일 업로드 UI 는 곧 제공됩니다 — Step C-5)
+            </p>
           </div>
-          {analysisNotes.attachment_urls.length === 0 ? (
-            <p className="text-xs text-muted-foreground">등록된 참고자료가 없습니다.</p>
+          {analysisNotes.attachment_files.length === 0 ? (
+            <p className="text-xs text-muted-foreground">등록된 첨부 파일이 없습니다.</p>
           ) : (
-            <div className="space-y-2">
-              {analysisNotes.attachment_urls.map((url, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    type="url"
-                    value={url}
-                    onChange={(e) => updateAttachmentUrl(index, e.target.value)}
-                    placeholder="https://example.com/공정분석.pdf"
-                    aria-label={`참고자료 URL ${index + 1}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeAttachmentUrl(index)}
-                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label={`참고자료 ${index + 1} 삭제`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+            <ul className="space-y-1 text-xs text-foreground">
+              {analysisNotes.attachment_files.map((file, index) => (
+                <li key={`${file.storage_path}-${index}`} className="truncate">
+                  · {file.file_name}
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 

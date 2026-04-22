@@ -81,12 +81,20 @@ function mapRoadmapToLegacyColumns(
   };
   const tasks = data.task_workflow_items ?? [];
   const targets = data.training_targets ?? [];
-  const an = data.analysis_notes ?? { text: '', attachment_urls: [] };
+  const an = data.analysis_notes ?? { text: '', attachment_files: [] };
+
+  // ISSUE-10: 신규 시작/종료 시간을 단일 interview_time DB 컬럼으로 직렬화 (legacy 호환).
+  // Step C-2 에서 시작/종료 컬럼 분리 시 mapInterviewRow* fallback 로직과 함께 갱신 예정.
+  const startTime = (data as { interview_start_time?: string }).interview_start_time ?? '';
+  const endTime = (data as { interview_end_time?: string }).interview_end_time ?? '';
+  const serializedTime = startTime && endTime
+    ? `${startTime}~${endTime}`
+    : (startTime || endTime || null);
 
   return {
     interview_date: data.interview_date ?? null,
     interview_round: data.interview_round ?? 1,
-    interview_time: data.interview_time ?? null,
+    interview_time: serializedTime,
     participants: data.participants ?? [],
     company_details: {
       ai_experience: cr.company_status ?? '',

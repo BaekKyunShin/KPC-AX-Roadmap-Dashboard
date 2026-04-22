@@ -58,7 +58,7 @@ function emptyCompanyRequirements(): CompanyRequirements {
 }
 
 function emptyAnalysisNotes(): AnalysisNotes {
-  return { text: '', attachment_urls: [] };
+  return { text: '', attachment_files: [] };
 }
 
 export default function RoadmapInterviewClient({
@@ -78,7 +78,9 @@ export default function RoadmapInterviewClient({
     initialData.interview_date || new Date().toISOString().split('T')[0],
   );
   const [interviewRound, setInterviewRound] = useState<number>(initialData.interview_round ?? 1);
-  const [interviewTime, setInterviewTime] = useState(initialData.interview_time ?? '');
+  // Step A: 단일 시간 → 시작/종료 분리 토대 마련. Step C-2 가 정식 시작/종료 입력 UI 추가 예정.
+  // 현재는 기존 단일 입력을 시작 시간으로 매핑하고, 종료 시간은 빈 문자열로 둔다.
+  const [interviewTime, setInterviewTime] = useState(initialData.interview_start_time ?? '');
   const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>(
     initialData.interview_method ?? 'ONSITE',
   );
@@ -119,7 +121,8 @@ export default function RoadmapInterviewClient({
       overview,
       interview_date: interviewDate,
       interview_round: interviewRound,
-      interview_time: interviewTime,
+      interview_start_time: interviewTime,
+      interview_end_time: '',
       interview_method: interviewMethod,
       participants,
       company_requirements: companyRequirements,
