@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
@@ -364,12 +364,15 @@ export default function ConsultantPBLClient({
         </div>
       )}
 
-      <RegenerateAccordion
-        value={revisionPrompt}
-        onChange={setRevisionPrompt}
-        onSubmit={handleGenerate}
-        isLoading={isGenerating}
-      />
+      {/* 수정 요청 아코디언 — 버전이 있을 때만 노출 (빈 상태에서는 큰 생성 버튼 단독 노출) */}
+      {hasAny && (
+        <RegenerateAccordion
+          value={revisionPrompt}
+          onChange={setRevisionPrompt}
+          onSubmit={handleGenerate}
+          isLoading={isGenerating}
+        />
+      )}
 
       {isGenerating && (
         <div className="flex items-center justify-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
@@ -383,9 +386,33 @@ export default function ConsultantPBLClient({
         </div>
       )}
 
-      {!selected && !isGenerating && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-          아직 생성된 PBL 보고서가 없습니다. 상단 &ldquo;PBL 보고서 생성&rdquo; 버튼으로 초안을 생성하세요.
+      {!selected && (
+        <div className="bg-white shadow rounded-lg p-12 text-center">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-4 text-base font-semibold text-gray-900">
+            아직 생성된 PBL 보고서가 없습니다
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            인터뷰가 완료되면 AI가 산인공 양식 2번 Ⅳ·Ⅴ장 기반으로 PBL 보고서를 생성합니다.
+          </p>
+          <Button
+            type="button"
+            size="lg"
+            className="mt-6"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            data-testid="empty-pbl-generate-btn"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중…
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" /> AI PBL 보고서 생성
+              </>
+            )}
+          </Button>
         </div>
       )}
 

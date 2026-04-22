@@ -371,14 +371,31 @@ describe('ConsultantRoadmapClient', () => {
           companyName={TEST_COMPANY_NAME}
         />,
       );
-      expect(screen.getByText('로드맵이 없습니다')).toBeInTheDocument();
+      expect(screen.getByText('아직 생성된 로드맵이 없습니다')).toBeInTheDocument();
     });
 
-    it('버전이 없으면 RegenerateAccordion을 표시한다', () => {
+    // ISSUE-18 (Step D-2): 빈 상태에서는 RegenerateAccordion 대신 큰 단독 버튼만 노출
+    it('버전이 없으면 RegenerateAccordion을 숨기고 "AI 로드맵 생성" 버튼을 단독 노출한다', () => {
       render(
         <ConsultantRoadmapClient
           projectId={TEST_PROJECT_ID}
           initialVersions={[]}
+          companyName={TEST_COMPANY_NAME}
+        />,
+      );
+      // RegenerateAccordion 미노출
+      expect(screen.queryByTestId('regenerate-accordion')).not.toBeInTheDocument();
+      // VersionSelector 미노출 (버전이 없으므로)
+      expect(screen.queryByTestId('version-selector')).not.toBeInTheDocument();
+      // "AI 로드맵 생성" 버튼이 보임
+      expect(screen.getByRole('button', { name: /AI 로드맵 생성/ })).toBeInTheDocument();
+    });
+
+    it('버전이 있으면 RegenerateAccordion을 정상 노출한다 (회귀 가드)', () => {
+      render(
+        <ConsultantRoadmapClient
+          projectId={TEST_PROJECT_ID}
+          initialVersions={[makeVersion()]}
           companyName={TEST_COMPANY_NAME}
         />,
       );
@@ -638,7 +655,8 @@ describe('ConsultantRoadmapClient', () => {
   // 5. 로드맵 생성 & 취소
   // ---------------------------------------------------------------------------
   describe('로드맵 생성', () => {
-    it('생성 버튼 클릭 시 createRoadmap을 호출한다', async () => {
+    it('생성 버튼 클릭 시 createRoadmap을 호출한다 (빈 상태 큰 버튼)', async () => {
+      // ISSUE-18 (Step D-2): 빈 상태에서는 RegenerateAccordion 대신 큰 단독 버튼이 노출됨
       const user = userEvent.setup();
       mockCreateRoadmap.mockResolvedValue({ success: true });
       mockFetchRoadmapVersions.mockResolvedValue([]);
@@ -647,6 +665,53 @@ describe('ConsultantRoadmapClient', () => {
         <ConsultantRoadmapClient
           projectId={TEST_PROJECT_ID}
           initialVersions={[]}
+          companyName={TEST_COMPANY_NAME}
+        />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /AI 로드맵 생성/ }));
+      expect(mockCreateRoadmap).toHaveBeenCalledWith(TEST_PROJECT_ID, undefined);
+    });
+
+    it('isGenerating=true이면 빈 상태 버튼이 disabled되고 "생성 중…" 라벨이 표시된다', async () => {
+      // 생성 액션을 pending 상태로 유지하여 isGenerating=true 분기 확인
+      const user = userEvent.setup();
+      let resolveCreate: (value: unknown) => void;
+      mockCreateRoadmap.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCreate = resolve;
+          }),
+      );
+
+      render(
+        <ConsultantRoadmapClient
+          projectId={TEST_PROJECT_ID}
+          initialVersions={[]}
+          companyName={TEST_COMPANY_NAME}
+        />,
+      );
+
+      const generateBtn = screen.getByRole('button', { name: /AI 로드맵 생성/ });
+      await user.click(generateBtn);
+
+      // 생성 중 라벨 + disabled 확인
+      const generatingBtn = await screen.findByRole('button', { name: /생성 중…/ });
+      expect(generatingBtn).toBeDisabled();
+
+      // 정리
+      resolveCreate!({ success: false });
+    });
+
+    it('생성 버튼 클릭 시 createRoadmap을 호출한다 (RegenerateAccordion — 버전 ≥ 1 회귀 가드)', async () => {
+      const user = userEvent.setup();
+      mockCreateRoadmap.mockResolvedValue({ success: true });
+      mockFetchRoadmapVersions.mockResolvedValue([makeVersion()]);
+
+      render(
+        <ConsultantRoadmapClient
+          projectId={TEST_PROJECT_ID}
+          initialVersions={[makeVersion()]}
           companyName={TEST_COMPANY_NAME}
         />,
       );
@@ -668,7 +733,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByTestId('regenerate-submit'));
+      await user.click(screen.getByRole('button', { name: /AI 로드맵 생성/ }));
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith(
           '로드맵 생성 완료',
@@ -689,7 +754,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByTestId('regenerate-submit'));
+      await user.click(screen.getByRole('button', { name: /AI 로드맵 생성/ }));
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('로드맵 생성 실패', '생성 오류');
       });
@@ -714,7 +779,7 @@ describe('ConsultantRoadmapClient', () => {
         />,
       );
 
-      await user.click(screen.getByTestId('regenerate-submit'));
+      await user.click(screen.getByRole('button', { name: /AI 로드맵 생성/ }));
       await user.click(screen.getByTestId('cancel-generation'));
       expect(mockCancelRoadmapGeneration).toHaveBeenCalled();
 
