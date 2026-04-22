@@ -176,3 +176,69 @@ test.describe('Phase OFA-04: 공지 게시판 — 컨설턴트 플로우', () =>
     }
   });
 });
+
+// ISSUE-01 회귀 검증: 한글 원본 파일명이 다운로드 시 그대로 유지되어야 함.
+// 회귀 시나리오:
+//   - 한글이 포함된 파일명 (예: "AI 컨설팅 보고서.txt") 으로 첨부 업로드
+//   - 컨설턴트가 다운로드 → suggestedFilename 이 한글 그대로 보존되는지 확인
+//   - 회귀 전: createSignedUrl 의 download 옵션 미사용 → storage_path (UUID-_____ 형태) 그대로 저장
+//   - 회귀 후: download 옵션으로 Content-Disposition RFC 5987 인코딩이 강제되어 한글 파일명 복원
+const HANGUL_TIMESTAMP = Date.now();
+const HANGUL_NOTICE_TITLE = `[E2E] 한글 첨부 공지 ${HANGUL_TIMESTAMP}`;
+const HANGUL_FILE_NAME = `AI 컨설팅 보고서_${HANGUL_TIMESTAMP}.txt`;
+
+test.describe('Phase OFA-04: 공지 첨부 — 한글 파일명 다운로드 (ISSUE-01)', () => {
+  test.afterAll(async () => {
+    await deleteNoticesByTitle(`%E2E] 한글 첨부%${HANGUL_TIMESTAMP}%`);
+  });
+
+  test('운영자: 한글 파일명으로 공지 첨부 업로드', async ({
+    opsPage: page,
+  }) => {
+    await page.goto('/ops/notices/new');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel(/제목/).fill(HANGUL_NOTICE_TITLE);
+    await page.getByLabel('본문').fill('한글 파일명 회귀 테스트');
+
+    const fileInput = page.getByTestId('attachment-input');
+    await fileInput.setInputFiles({
+      name: HANGUL_FILE_NAME,
+      mimeType: 'text/plain',
+      buffer: Buffer.from('한글 파일명 보존 검증'),
+    });
+
+    await expect(page.getByTestId('pending-attachments')).toBeVisible({
+      timeout: 5_000,
+    });
+
+    await page.getByRole('button', { name: '작성' }).click();
+    await expect(page).toHaveURL(/\/ops\/notices(?:\?.*)?$/, { timeout: 20_000 });
+    await expect(page.getByText(HANGUL_NOTICE_TITLE)).toBeVisible();
+  });
+
+  test('컨설턴트: 다운로드 시 한글 원본 파일명이 그대로 보존된다', async ({
+    consultantPage: page,
+  }) => {
+    await page.goto('/notices');
+    await page.waitForLoadState('networkidle');
+
+    await page
+      .locator('table')
+      .getByRole('link', { name: HANGUL_NOTICE_TITLE })
+      .first()
+      .click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('attachment-list')).toBeVisible();
+    const downloadBtn = page.getByRole('button', { name: '다운로드' }).first();
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 15_000 }),
+      downloadBtn.click(),
+    ]);
+
+    // 핵심 검증: Content-Disposition 헤더로부터 추출된 한글 파일명 복원
+    expect(download.suggestedFilename()).toBe(HANGUL_FILE_NAME);
+  });
+});

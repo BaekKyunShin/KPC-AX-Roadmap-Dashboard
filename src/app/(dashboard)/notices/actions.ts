@@ -30,7 +30,30 @@ export async function getAttachmentDownloadUrl(
   }
 
   const adminClient = createAdminClient();
-  const url = await createAttachmentSignedUrl(storagePath, adminClient, 300);
+
+  // storage_path 로 attachment 행을 조회해 file_name 을 서버에서 직접 획득한다.
+  // 클라이언트가 임의의 file_name 을 주입하지 못하도록 위변조 방지.
+  const { data: attachment, error: attachmentError } = await adminClient
+    .from('notice_attachments')
+    .select('file_name')
+    .eq('storage_path', storagePath)
+    .maybeSingle();
+
+  if (attachmentError) {
+    console.error('[getAttachmentDownloadUrl] attachment lookup failed:', attachmentError.message);
+    return { success: false, error: '첨부 파일 조회에 실패했습니다.' };
+  }
+
+  if (!attachment) {
+    return { success: false, error: '첨부 파일을 찾을 수 없습니다.' };
+  }
+
+  const url = await createAttachmentSignedUrl(
+    storagePath,
+    adminClient,
+    300,
+    attachment.file_name,
+  );
   if (!url) {
     return { success: false, error: '다운로드 링크 생성에 실패했습니다.' };
   }

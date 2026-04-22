@@ -492,15 +492,19 @@ export async function deleteAttachment(
 /**
  * 첨부 다운로드용 서명 URL 생성 (비공개 버킷).
  * - 기본 만료 60초 (한 번 다운로드 용도)
+ * - fileName 지정 시 createSignedUrl({ download }) 옵션으로 Content-Disposition
+ *   헤더에 원본 파일명을 박아 한글 파일명도 RFC 5987 로 자동 인코딩되어 다운로드됨.
  */
 export async function createAttachmentSignedUrl(
   storagePath: string,
   client: SupaClient,
   expiresInSeconds = 60,
+  fileName?: string,
 ): Promise<string | null> {
+  const options = fileName ? { download: fileName } : undefined;
   const { data, error } = await client.storage
     .from('notice-attachments')
-    .createSignedUrl(storagePath, expiresInSeconds);
+    .createSignedUrl(storagePath, expiresInSeconds, options);
 
   if (error || !data) {
     if (error)
