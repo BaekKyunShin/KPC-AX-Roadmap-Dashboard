@@ -135,7 +135,7 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 
 > 💡 **공통 주의사항 (ISSUE-05 ~ ISSUE-20 전체 적용)**:
 > 1. 사용자가 컨설턴트 계정의 로드맵 트랙에서만 확인했지만, **PBL 트랙 및 운영관리자/시스템관리자 계정에 동일 기능·메뉴가 있으면 함께 일괄 수정**.
-> 2. **Critical 3건(ISSUE-06·07·19) 처리 시점**: "나머지 QA 완료 후 묶어서 Plan Mode 진입" 확정 (2026-04-21). 그 전에는 QA 지속 진행.
+> 2. ~~**Critical 3건(ISSUE-06·07·19) 처리 시점**: "나머지 QA 완료 후 묶어서 Plan Mode 진입" 확정 (2026-04-21).~~ → ✅ **Batch 1 완료 (PR #18 머지, 2026-04-22, main `134fb25`)**. ISSUE-04·06·07·19 4건 해결.
 > 3. **산인공 공식 양식 파일 교체**: 기존 `.hwpx` 는 `docs/references/archive/` 로 보존, 신버전 `.hwp` (폰트·서식만 변경, 내용 구조 동일) 를 `docs/references/1.*.hwp`·`2.*.hwp` 로 배치 (2026-04-21). PDF 는 기존 유지.
 
 ---
@@ -168,6 +168,8 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 ---
 
 ### ISSUE-19: 로드맵 생성 실패 — "AI 서비스에 일시적인 문제가 있습니다"
+
+> ✅ **해결 완료** — Batch 1 PR #18 (main `134fb25`, 2026-04-22). `fillMissingRoadmapFields` 인터뷰 기반 자동 채움 + `callLLMForJSON` validator + Ⅲ-1 프롬프트 강화로 복구.
 
 - **카테고리**: ROADMAP
 - **심각도**: **🚨 Critical** (핵심 산출물 생성 기능 차단)
@@ -390,6 +392,9 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 
 ### ISSUE-07: 사전 분석 실패 — "AI 분석 중 오류가 발생했습니다"
 
+> ✅ **해결 완료** — Batch 1 PR #18 (main `134fb25`, 2026-04-22). `guideDataSchema` 런타임 검증 + validator 재시도 + 에러 메시지 상세화.
+
+
 - **카테고리**: 기타 (사전 분석)
 - **심각도**: **🚨 Critical** (핵심 기능 차단)
 - **환경**: 데스크톱 (컨설턴트 로그인)
@@ -411,6 +416,9 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 ---
 
 ### ISSUE-06: 컨설턴트 자동 매칭 실패 — "매칭 추천 생성 중 오류가 발생했습니다"
+
+> ✅ **해결 완료** — Batch 1 PR #18 (main `134fb25`, 2026-04-22). `llmMatchingResponseSchema` 신규 + hallucinated userId 필터링 + 재시도 로직 강화.
+
 
 - **카테고리**: OPS (프로젝트 상세 → 컨설턴트 배정)
 - **심각도**: **🚨 Critical** (핵심 플로우 차단 — 프로젝트 진행 자체 불가)
@@ -451,6 +459,9 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 ---
 
 ### ISSUE-04: 담당자 확정안 반영 — 로드맵 인터뷰 범위 재정의 + Ⅲ-1 역량 모델링 스텝 신규 추가
+
+> ✅ **해결 완료** — Batch 1 PR #18 (main `134fb25`, 2026-04-22). 인터뷰 6→7스텝 + `competencyModelSchema`/`ncsUsageSchema` 신규 + `StepCompetencyModeling.tsx` UI + Ⅰ-3 `roadmap_summary` LLM 자동생성 전환.
+
 
 > 💡 **출처**: 담당자 Q&A (2026-04-21). 산인공 양식 1번(AI훈련로드맵 컨설팅 보고서) 기준 "대시보드 인터뷰로 대체할 사용자 입력 범위" 를 담당자가 공식 확정.
 
@@ -674,10 +685,12 @@ Claude 기록 후 "이렇게 작성했는데 맞아?" 확인 → 오류 시 교�
 
 20건을 2개 배치로 분할해 처리합니다. 각 배치별 Claude 호출 프롬프트는 **별도 파일**로 분리되어 있습니다:
 
-| 배치 | 대상 이슈 | 브랜치 | 프롬프트 파일 |
-|------|---------|--------|-------------|
-| 🔴 Batch 1 | ISSUE-04·06·07·19 (Critical/High 4건 — LLM/스키마) | `fix/batch-1-llm-and-schema` | `docs/prompts/2026-04-22-batch-1-llm-schema.md` |
-| 🟡 Batch 2 | ISSUE-01·02·03·05·08~18·**20** (UI/UX 16건) | `fix/batch-2-ui-ux` | `docs/prompts/2026-04-22-batch-2-ui-ux.md` |
+| 배치 | 대상 이슈 | 브랜치 | 프롬프트 파일 | 상태 |
+|------|---------|--------|-------------|------|
+| 🔴 Batch 1 | ISSUE-04·06·07·19 (Critical/High 4건 — LLM/스키마) | `fix/batch-1-llm-and-schema` | `docs/prompts/2026-04-22-batch-1-llm-schema.md` | ✅ 머지 (PR #18, main `134fb25`, 2026-04-22) |
+| 🟢 인프라 | 커버리지 flaky 마진 보강 | `chore/coverage-margin-boost` | — | ✅ 머지 (PR #19, main `069df4f`, 2026-04-22) |
+| 🟢 인프라 | main CI E2E 회귀 수정 (PR E2E 실행·OFA/Batch 1 selector) | `fix/ci-e2e-regressions` | — | ✅ 머지 예정 (PR #20 계획) |
+| 🟡 Batch 2 | ISSUE-01·02·03·05·08~18·**20** (UI/UX 16건) | `fix/batch-2-ui-ux` | `docs/prompts/2026-04-22-batch-2-ui-ux.md` | ⏳ 대기 |
 
 ### 사용 방법
 

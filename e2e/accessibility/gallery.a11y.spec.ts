@@ -18,11 +18,11 @@ test.describe('갤러리 (/gallery) 접근성', () => {
   });
 
   test('페이지 헤딩 존재', async ({ opsPage: page }) => {
-    await expect(page.getByRole('heading', { name: '로드맵 갤러리' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '로드맵·PBL 갤러리' })).toBeVisible();
   });
 
   test('검색 입력 필드에 접근 가능한 이름 존재', async ({ opsPage: page }) => {
-    const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
+    const searchInput = page.getByPlaceholder('검색 (기업명, 업종, 키워드...)');
     const hasSearch = await searchInput.isVisible().catch(() => false);
 
     if (hasSearch) {
@@ -120,7 +120,7 @@ test.describe('갤러리 (/gallery) 접근성', () => {
 
   test('빈 상태 메시지 접근성', async ({ opsPage: page }) => {
     // 검색으로 결과가 없는 상태를 만듦
-    const searchInput = page.getByPlaceholder('로드맵 검색 (기업명, 업종, 키워드...)');
+    const searchInput = page.getByPlaceholder('검색 (기업명, 업종, 키워드...)');
     const hasSearch = await searchInput.isVisible().catch(() => false);
 
     if (hasSearch) {

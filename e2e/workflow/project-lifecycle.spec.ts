@@ -200,14 +200,19 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, { timeout: 10_000 });
     await page.waitForLoadState('networkidle');
 
-    // OFA-06.5 이후 로드맵 트랙 인터뷰는 산인공 양식 기반 6스텝:
-    // 1) 개요 2) 기본 정보·참석자 3) 기업 요구분석 4) 과업·워크플로우 분석 5) 훈련대상 과업 선정 6) 확인·제출
+    // Batch 1 (ISSUE-04) 이후 로드맵 트랙 인터뷰는 산인공 양식 기반 7스텝:
+    // 1) 개요 2) 기본 정보·참석자 3) 기업 요구분석 4) 과업·워크플로우 분석
+    // 5) 훈련대상 과업 선정 6) 역량 모델링(Ⅲ-1 신규) 7) 확인·제출
 
-    // ── 스텝 1: 개요 (수립 필요성·선정 과업·수립 주요내용 + AI 역량 수준 radio) ──
+    // ── 스텝 1: 개요 (수립 필요성·선정 과업 + AI 역량 수준 radio) ──
+    //   Batch 1 이후 "수립 주요내용" 입력란은 제거되고 LLM 자동생성 배지로 교체됨
     await expect(page.getByRole('heading', { name: /개요/ }).first()).toBeVisible({ timeout: 10_000 });
     await page.getByLabel(/수립 필요성/).fill('E2E 테스트 수립 필요성 — AI 도입 필요');
     await page.getByLabel(/선정 과업/).fill('E2E 테스트 과업 — 품질검사');
-    await page.getByLabel(/수립 주요내용/).fill('E2E 테스트 수립 주요내용 요약');
+    // 수립 주요내용은 로드맵 생성 시 LLM 이 자동 생성 — "자동 생성 안내" 배지 노출 확인
+    await expect(
+      page.getByRole('note', { name: /수립 주요내용 자동 생성/ }),
+    ).toBeVisible();
     // AI 역량 수준은 기본값(초급) 체크됨
     await page.getByRole('button', { name: '다음' }).click();
 
@@ -261,7 +266,18 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.getByLabel(/개선.*To-Be/).first().fill('AI 비전 검사 + 작업자 최종 확인');
     await page.getByRole('button', { name: '다음' }).click();
 
-    // ── 스텝 6: 확인·제출 ──
+    // ── 스텝 6: 역량 모델링 (Batch 1 Ⅲ-1 신규) ──
+    await expect(page.getByRole('heading', { name: /역량 모델링/ }).first()).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel(/역량명/).first().fill('외관 검사 데이터 해석 역량');
+    await page.getByLabel(/역량 정의/).first().fill('검사 이미지에서 불량 패턴을 식별·분류할 수 있다');
+    await page.getByLabel(/필요 지식/).first().fill('이미지 분류 기초, QMS 지표 체계');
+    await page.getByLabel(/필요 기술/).first().fill('이미지 레이블링, 시각화 도구');
+    await page.getByLabel(/필요 태도/).first().fill('데이터 기반 의사결정 선호');
+    // NCS 활용 여부 — 기본값 false (아니오) → 도출 방법 필수
+    await page.getByLabel(/역량 도출 방법/).fill('3개 현장 인터뷰 + 업계 벤치마킹');
+    await page.getByRole('button', { name: '다음' }).click();
+
+    // ── 스텝 7: 확인·제출 ──
     await expect(page.getByRole('heading', { name: /확인.*제출/ }).first()).toBeVisible({ timeout: 5_000 });
     const saveButton = page.getByRole('button', { name: /^저장$/ });
     await expect(saveButton).toBeVisible({ timeout: 5_000 });
