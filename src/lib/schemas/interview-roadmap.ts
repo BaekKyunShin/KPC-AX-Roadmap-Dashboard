@@ -67,13 +67,17 @@ export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
   { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
 ];
 
-// HRD이음 진단 보고서 첨부 메타 (Storage 'interview-attachments' 버킷)
+// HRD이음 진단 보고서 / 분석노트 첨부 메타 (Storage 'interview-attachments' 버킷)
+// extracted_text: file-parser 모듈로 업로드 직후 동기 추출한 본문 (5000자 truncate)
+// parse_error  : 파싱 실패 시 사유 (텍스트 미추출 사유를 LLM 프롬프트에 노출)
 export const hrdReportAttachmentSchema = z.object({
   storage_path: z.string().min(1),
   file_name: z.string().min(1),
   mime_type: z.string().optional(),
   size: z.number().nonnegative().optional(),
   uploaded_at: z.string().optional(),
+  extracted_text: z.string().optional(),
+  parse_error: z.string().optional(),
 });
 export type HrdReportAttachment = z.infer<typeof hrdReportAttachmentSchema>;
 
@@ -364,6 +368,8 @@ interface LegacyCompanyDetails {
       mime_type?: string;
       size?: number;
       uploaded_at?: string;
+      extracted_text?: string;
+      parse_error?: string;
     }>;
     attachment_urls?: string[];
   };
@@ -379,6 +385,8 @@ interface LegacyCompanyDetails {
       mime_type?: string;
       size?: number;
       uploaded_at?: string;
+      extracted_text?: string;
+      parse_error?: string;
     } | null;
   } | null;
   // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
@@ -479,7 +487,7 @@ export function mapInterviewRowToRoadmapInterview(
     const rawFiles = Array.isArray(savedAn.attachment_files) ? savedAn.attachment_files : [];
     const attachmentFiles: HrdReportAttachment[] = rawFiles
       .filter(
-        (f): f is { storage_path: string; file_name: string; mime_type?: string; size?: number; uploaded_at?: string } =>
+        (f): f is { storage_path: string; file_name: string; mime_type?: string; size?: number; uploaded_at?: string; extracted_text?: string; parse_error?: string } =>
           !!f && typeof f.storage_path === 'string' && typeof f.file_name === 'string',
       )
       .map((f) => ({
@@ -488,6 +496,8 @@ export function mapInterviewRowToRoadmapInterview(
         mime_type: f.mime_type,
         size: f.size,
         uploaded_at: f.uploaded_at,
+        extracted_text: f.extracted_text,
+        parse_error: f.parse_error,
       }));
     partial.analysis_notes = {
       text: savedAn.text ?? '',
@@ -517,6 +527,8 @@ export function mapInterviewRowToRoadmapInterview(
               mime_type: att.mime_type,
               size: att.size,
               uploaded_at: att.uploaded_at,
+              extracted_text: att.extracted_text,
+              parse_error: att.parse_error,
             }
           : undefined,
     };

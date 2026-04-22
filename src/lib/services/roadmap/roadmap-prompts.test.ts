@@ -464,4 +464,96 @@ describe('buildUserPrompt', () => {
 
     expect(prompt).toContain('선호 세부 업종: 미지정');
   });
+
+  // ISSUE-04 + ISSUE-14: HRD이음 첨부 본문이 LLM 프롬프트에 포함되어야 함
+  it('HRD이음 첨부의 extracted_text 본문이 프롬프트에 포함된다', () => {
+    const interview = makeInterview({
+      overview: {
+        establishment_necessity: '품질검사 업무 자동화 필요성',
+        ai_competency_level: 'INTERMEDIATE',
+        selected_tasks_summary: '생산 실적 집계 / 불량 탐지',
+        roadmap_summary: '3단계 AI 인력 양성',
+        hrd_report_attachment: {
+          storage_path: 'project-1/hrd-abc.pdf',
+          file_name: 'HRD진단보고서.pdf',
+          mime_type: 'application/pdf',
+          size: 12345,
+          extracted_text: '진단 점수: 데이터 3점, 프로세스 4점, 활용 사례: 품질검사 자동화',
+        },
+      },
+    });
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      interview,
+      null,
+    );
+
+    expect(prompt).toContain('HRD이음 진단 보고서');
+    expect(prompt).toContain('HRD진단보고서.pdf');
+    expect(prompt).toContain('보고서 본문');
+    expect(prompt).toContain('진단 점수: 데이터 3점, 프로세스 4점');
+    expect(prompt).toContain('품질검사 자동화');
+  });
+
+  it('HRD 첨부에 extracted_text 가 없으면 본문 추출 실패 안내를 표시한다', () => {
+    const interview = makeInterview({
+      overview: {
+        establishment_necessity: '필요성',
+        ai_competency_level: 'INTERMEDIATE',
+        selected_tasks_summary: '요약',
+        hrd_report_attachment: {
+          storage_path: 'p/x.pdf',
+          file_name: 'broken.pdf',
+          mime_type: 'application/pdf',
+          parse_error: '파싱 실패: 손상된 PDF',
+        },
+      },
+    });
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      interview,
+      null,
+    );
+
+    expect(prompt).toContain('broken.pdf');
+    expect(prompt).toContain('본문 추출 실패');
+  });
+
+  // ISSUE-14: 분석 노트 첨부 파일 본문이 LLM 프롬프트에 포함되어야 함
+  it('analysis_notes.attachment_files 의 extracted_text 가 프롬프트에 포함된다', () => {
+    const interview = makeInterview({
+      analysis_notes: {
+        text: '컨설턴트 자체 메모',
+        attachment_files: [
+          {
+            storage_path: 'p/note.docx',
+            file_name: '현장노트.docx',
+            mime_type:
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            extracted_text: '직무 인터뷰 핵심 키워드: 머신비전, 결함 탐지',
+          },
+          {
+            storage_path: 'p/photo.png',
+            file_name: '워크숍사진.png',
+            mime_type: 'image/png',
+            parse_error: 'Anthropic Vision 호출 실패',
+          },
+        ],
+      },
+    });
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      interview,
+      null,
+    );
+
+    expect(prompt).toContain('분석 노트 첨부');
+    expect(prompt).toContain('현장노트.docx');
+    expect(prompt).toContain('머신비전, 결함 탐지');
+    expect(prompt).toContain('워크숍사진.png');
+    expect(prompt).toContain('본문 추출 실패');
+  });
 });

@@ -8,7 +8,9 @@ import {
   type RoadmapInterviewInput,
   type RoadmapInterviewAutoSaveInput,
   type SttInsights,
+  type HrdReportAttachment,
 } from '@/lib/schemas/interview-roadmap';
+import { extractTextFromAttachment } from '@/lib/services/file-parser';
 import {
   pblInterviewSchema,
   pblInterviewAutoSaveSchema,
@@ -374,6 +376,164 @@ export async function removeHrdReportAttachment(
     return { success: true };
   } catch (error) {
     console.error('[removeHrdReportAttachment Error]', error);
+    return { success: false, error: '서버 오류로 삭제에 실패했습니다.' };
+  }
+}
+
+// ============================================================================
+// 인터뷰 분석 노트 첨부 (Step B-2 — ISSUE-14)
+// ----------------------------------------------------------------------------
+// `analysis_notes.attachment_files[]` 용 범용 첨부. file-parser 모듈로 업로드 직후
+// 동기 본문 추출까지 수행해 LLM 프롬프트에 직접 포함시킨다.
+//
+// HRD 전용 함수(uploadHrdReportAttachment)와 분리한 이유:
+//   - HRD 첨부는 단일 슬롯·신뢰성 높은 양식
+//   - 분석 노트는 다중 첨부·다양한 포맷·LLM 본문 활용이 핵심 가치
+// 두 함수는 동일한 'interview-attachments' Storage 버킷을 공유한다.
+// ============================================================================
+
+const INTERVIEW_ATTACHMENT_ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/png',
+  'image/jpeg',
+]);
+const INTERVIEW_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+const INTERVIEW_ATTACHMENT_BUCKET = 'interview-attachments';
+
+/**
+ * 인터뷰 첨부 업로드 — 분석 노트(`analysis_notes.attachment_files[]`) 용.
+ *
+ * 5단계 패턴:
+ *   1) 인증·역할 (CONSULTANT_APPROVED)
+ *   2) 컨설턴트 배정 검증 (요청한 projectId 의 assigned_consultant_id === user.id)
+ *   3) 입력 검증 (file 존재·MIME 화이트리스트·size 가드)
+ *   4) Storage 업로드 → 파싱 (file-parser 디스패처) → 메타 객체 생성
+ *   5) ActionResult<HrdReportAttachment> 반환 (extracted_text or parse_error 포함)
+ */
+export async function uploadInterviewAttachment(
+  projectId: string,
+  formData: FormData,
+): Promise<ActionResult<HrdReportAttachment>> {
+  try {
+    // (1) 인증·역할
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 첨부 파일을 업로드할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+
+    // (2) 배정 검증 (ROADMAP 트랙 한정 — PBL 미래 확장 대비 명시적 거부)
+    const accessCheck = await requireConsultantProjectAccess(
+      auth.supabase,
+      auth.user.id,
+      projectId,
+      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+    );
+    if (accessCheck !== true) return { success: false, error: accessCheck.error };
+
+    // (3) 입력 검증
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return { success: false, error: '파일이 첨부되지 않았습니다.' };
+    }
+    if (file.size === 0) {
+      return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
+    }
+    if (file.size > INTERVIEW_ATTACHMENT_MAX_BYTES) {
+      return { success: false, error: '파일 크기는 최대 10MB까지 허용됩니다.' };
+    }
+    const mimeType = file.type || 'application/octet-stream';
+    if (!INTERVIEW_ATTACHMENT_ALLOWED_MIMES.has(mimeType)) {
+      return {
+        success: false,
+        error: `허용되지 않은 파일 형식입니다 (${mimeType}). PDF/DOCX/PPTX/XLSX/PNG/JPG 만 가능합니다.`,
+      };
+    }
+
+    // (4) Storage 업로드 + 동기 파싱
+    const supabase = createAdminClient();
+
+    // 안전 파일명: 한글 보존을 위해 file_name 은 원본을 메타에 보관하고,
+    // storage path 는 UUID + 확장자만 사용한다.
+    const ext = (file.name.split('.').pop() ?? 'bin')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+    const safeExt = ext ? `.${ext}` : '';
+    const random = crypto.randomUUID();
+    const storagePath = `${projectId}/note-${random}${safeExt}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { error: uploadError } = await supabase.storage
+      .from(INTERVIEW_ATTACHMENT_BUCKET)
+      .upload(storagePath, buffer, { contentType: mimeType, upsert: false });
+
+    if (uploadError) {
+      console.error('[uploadInterviewAttachment] upload error:', uploadError);
+      return { success: false, error: `업로드 실패: ${uploadError.message}` };
+    }
+
+    // 파싱은 file-parser 디스패처가 throw 없이 격리된 결과를 반환한다.
+    const parsed = await extractTextFromAttachment(buffer, mimeType);
+
+    // (5) 결과 반환 — extracted_text / parse_error 둘 중 하나만 채워진다.
+    const attachment: HrdReportAttachment = {
+      storage_path: storagePath,
+      file_name: file.name,
+      mime_type: mimeType,
+      size: file.size,
+      uploaded_at: new Date().toISOString(),
+      ...(parsed.text != null ? { extracted_text: parsed.text } : {}),
+      ...(parsed.parseError ? { parse_error: parsed.parseError } : {}),
+    };
+
+    return { success: true, data: attachment };
+  } catch (error) {
+    console.error('[uploadInterviewAttachment Error]', error);
+    return { success: false, error: '서버 오류로 업로드에 실패했습니다.' };
+  }
+}
+
+/** 인터뷰 첨부 삭제 — 컨설턴트 배정 검증 + 경로 가드 */
+export async function removeInterviewAttachment(
+  projectId: string,
+  storagePath: string,
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 첨부 파일을 삭제할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+
+    const accessCheck = await requireConsultantProjectAccess(
+      auth.supabase,
+      auth.user.id,
+      projectId,
+      '해당 프로젝트에 대한 접근 권한이 없습니다.',
+    );
+    if (accessCheck !== true) return { success: false, error: accessCheck.error };
+
+    if (!storagePath.startsWith(`${projectId}/`)) {
+      return { success: false, error: '잘못된 파일 경로입니다.' };
+    }
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.storage
+      .from(INTERVIEW_ATTACHMENT_BUCKET)
+      .remove([storagePath]);
+    if (error) {
+      console.error('[removeInterviewAttachment] remove error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('[removeInterviewAttachment Error]', error);
     return { success: false, error: '서버 오류로 삭제에 실패했습니다.' };
   }
 }

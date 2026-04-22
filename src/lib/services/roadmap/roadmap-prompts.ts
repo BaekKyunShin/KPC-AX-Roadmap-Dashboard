@@ -121,6 +121,64 @@ export function buildSystemPrompt(): string {
 }`;
 }
 
+// ----------------------------------------------------------------------------
+// 첨부 파일 본문 통합 헬퍼 (ISSUE-04 · ISSUE-14)
+// ----------------------------------------------------------------------------
+// HRD이음 보고서·분석 노트 첨부의 extracted_text 를 프롬프트 본문에 직접 포함시켜
+// LLM 이 보고서 내용을 반영한 로드맵을 설계할 수 있도록 한다.
+// 본문이 5000자 이내인 것은 file-parser/extractText 가 보장한다.
+
+interface AttachmentMeta {
+  file_name?: string;
+  mime_type?: string;
+  size?: number;
+  extracted_text?: string;
+  parse_error?: string;
+}
+
+function formatAttachmentBody(att: AttachmentMeta): string {
+  if (att.extracted_text && att.extracted_text.trim().length > 0) {
+    return `\n#### 보고서 본문 (자동 추출, 최대 5000자)\n${att.extracted_text}\n`;
+  }
+  const reason = att.parse_error
+    ? ` (${att.parse_error})`
+    : ' (자동 추출 미수행 또는 미지원 형식)';
+  return `\n- 본문 추출 실패${reason}. 파일명·메타만 참고하세요.\n`;
+}
+
+function buildHrdAttachmentSection(interview: Record<string, unknown>): string {
+  const overview = interview.overview as
+    | { hrd_report_attachment?: AttachmentMeta | null }
+    | undefined;
+  const att = overview?.hrd_report_attachment;
+  if (!att) return '';
+
+  return `\n### Ⅱ-1. HRD이음 진단 보고서 (첨부 파일)
+- 파일명: ${att.file_name ?? '-'}
+- 형식: ${att.mime_type ?? '-'}
+- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}
+${formatAttachmentBody(att)}`;
+}
+
+function buildAnalysisNotesAttachmentSection(
+  interview: Record<string, unknown>,
+): string {
+  const an = interview.analysis_notes as
+    | { attachment_files?: AttachmentMeta[] }
+    | undefined;
+  const files = Array.isArray(an?.attachment_files) ? an.attachment_files : [];
+  if (files.length === 0) return '';
+
+  const blocks = files.map((f, idx) => {
+    return `\n#### 분석 노트 첨부 ${idx + 1}
+- 파일명: ${f.file_name ?? '-'}
+- 형식: ${f.mime_type ?? '-'}
+${formatAttachmentBody(f)}`;
+  });
+
+  return `\n### 분석 노트 첨부 파일 본문${blocks.join('')}`;
+}
+
 /**
  * 사용자 프롬프트 (입력 데이터 포함)
  */
@@ -152,11 +210,7 @@ ${isTestMode && !selfAssessment ? '(테스트 모드 - 자가진단 결과 없�
 
 ### 개요 (Ⅰ-1 · Ⅰ-3) — 아래 값은 LLM 재창작 없이 그대로 복사
 ${JSON.stringify(interview.overview ?? {}, null, 2)}
-${(() => {
-  const att = (interview.overview as { hrd_report_attachment?: { file_name?: string; mime_type?: string; size?: number } } | undefined)?.hrd_report_attachment;
-  if (!att) return '';
-  return `\n### Ⅱ-1. HRD이음 진단 보고서 (첨부 파일 메타)\n- 파일명: ${att.file_name ?? '-'}\n- 형식: ${att.mime_type ?? '-'}\n- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}\n- 본 보고서는 별도 첨부되어 있으며, AI 역량 수준(outcome_summary.ai_competency_level)은 인터뷰 입력값을 그대로 사용합니다. 첨부 본문 자체를 LLM이 직접 파싱하지는 않습니다.\n`;
-})()}
+${buildHrdAttachmentSection(interview)}
 ### 기업 요구분석 (Ⅱ-2)
 ${JSON.stringify(interview.company_requirements, null, 2)}
 
@@ -171,7 +225,7 @@ ${JSON.stringify(interview.competency_models ?? [], null, 2)}
 
 ### NCS 활용 — 컨설턴트 입력 (Ⅲ-1) — 인터뷰 설정 그대로 반영
 ${JSON.stringify(interview.ncs_usage ?? null, null, 2)}
-
+${buildAnalysisNotesAttachmentSection(interview)}
 ### 추가 메모
 ${interview.notes || '없음'}
 ${buildSttInsightsSection(interview)}`;
