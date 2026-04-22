@@ -2,7 +2,6 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { GuideNote } from '@/components/ui/guide-note';
@@ -10,14 +9,29 @@ import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTaskWorkflowItem,
   type AnalysisNotes,
+  type HrdReportAttachment,
   type TaskWorkflowItem,
 } from '@/lib/schemas/interview-roadmap';
+import { AttachmentFileList } from '@/components/interview/AttachmentFileList';
 
 interface StepTaskWorkflowAnalysisProps {
   items: TaskWorkflowItem[];
   onChange: (next: TaskWorkflowItem[]) => void;
   analysisNotes: AnalysisNotes;
   onAnalysisNotesChange: (next: AnalysisNotes) => void;
+  /**
+   * 분석 노트 첨부 업로드 콜백 — `uploadInterviewAttachment(projectId, formData)` 래퍼.
+   * Storage 업로드 + 본문 파싱(file-parser) 결과를 그대로 반환한다.
+   */
+  onUploadAttachment: (
+    file: File,
+  ) => Promise<{ success: true; data: HrdReportAttachment } | { success: false; error: string }>;
+  /**
+   * 분석 노트 첨부 삭제 콜백 — `removeInterviewAttachment(projectId, storagePath)` 래퍼.
+   */
+  onRemoveAttachment: (
+    storagePath: string,
+  ) => Promise<{ success: true } | { success: false; error: string }>;
 }
 
 const AI_NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
@@ -34,6 +48,8 @@ export default function StepTaskWorkflowAnalysis({
   onChange,
   analysisNotes,
   onAnalysisNotesChange,
+  onUploadAttachment,
+  onRemoveAttachment,
 }: StepTaskWorkflowAnalysisProps) {
   const updateItem = <K extends keyof TaskWorkflowItem>(
     index: number,
@@ -53,8 +69,9 @@ export default function StepTaskWorkflowAnalysis({
     onChange(items.filter((_, i) => i !== index));
   };
 
-  // Step A: ISSUE-14 로 attachment_urls(string[]) → attachment_files(HrdReportAttachment[]) 으로 교체.
-  // 파일 업로드 UI 본격 구현은 Step C-5 책임. 현재는 attachment_files 표시만 한다.
+  // ISSUE-14 Step C-5: attachment_files 를 AttachmentFileList 공용 컴포넌트로 정식화.
+  // 업로드는 uploadInterviewAttachment(Server Action)에서 Storage 업로드 + file-parser 본문 추출까지
+  // 한 번에 처리하고, 결과 메타(extracted_text 또는 parse_error)가 LLM 프롬프트에 자동 반영된다.
 
   return (
     <div className="space-y-6">
@@ -232,30 +249,22 @@ export default function StepTaskWorkflowAnalysis({
           aria-label="분석 내용"
         />
 
-        <div>
-          <div className="mb-2">
-            <Label className="block">첨부 파일</Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              공정 분석, 업로드 자료 등 참고 파일을 첨부하세요. (파일 업로드 UI 는 곧 제공됩니다 — Step C-5)
-            </p>
-          </div>
-          {analysisNotes.attachment_files.length === 0 ? (
-            <p className="text-xs text-muted-foreground">등록된 첨부 파일이 없습니다.</p>
-          ) : (
-            <ul className="space-y-1 text-xs text-foreground">
-              {analysisNotes.attachment_files.map((file, index) => (
-                <li key={`${file.storage_path}-${index}`} className="truncate">
-                  · {file.file_name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <AttachmentFileList
+          files={analysisNotes.attachment_files}
+          onChange={(files) =>
+            onAnalysisNotesChange({ ...analysisNotes, attachment_files: files })
+          }
+          onUpload={onUploadAttachment}
+          onRemove={onRemoveAttachment}
+          label="추가자료 업로드"
+          description="과업 분석에 참고할 자료를 첨부하면 본문이 자동 추출되어 로드맵 생성에 반영됩니다."
+        />
 
         <GuideNote
           items={[
             '과업(또는 워크플로우) 분석 과정 및 방법에 대한 내용 기술',
             '작성한 내용 외에 제시해야 할 파일이 있는 경우 첨부파일로 업로드',
+            '첨부 파일 본문은 자동 추출되어 LLM 로드맵·PBL 생성에 반영됩니다 (최대 5,000자)',
           ]}
         />
       </div>

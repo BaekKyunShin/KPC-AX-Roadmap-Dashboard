@@ -436,6 +436,12 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             onChange={setTaskWorkflowItems}
             analysisNotes={analysisNotes}
             onAnalysisNotesChange={setAnalysisNotes}
+            // 테스트 페이지에서는 실제 Storage 업로드 없이 안내만 노출 (ISSUE-14 Step C-5)
+            onUploadAttachment={async () => ({
+              success: false,
+              error: '테스트 페이지에서는 첨부 파일 업로드를 사용할 수 없습니다. 실제 프로젝트의 인터뷰 페이지에서 업로드하세요.',
+            })}
+            onRemoveAttachment={async () => ({ success: true })}
           />
         );
       case 5:

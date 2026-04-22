@@ -36,6 +36,8 @@ import {
   removeHrdReportAttachment,
   createHrdReportSignedUrl,
   extractSttInsights,
+  uploadInterviewAttachment,
+  removeInterviewAttachment,
 } from '../actions';
 import InterviewStepper from './InterviewStepper';
 import StepOverview from './roadmap/StepOverview';
@@ -340,6 +342,14 @@ export default function RoadmapInterviewClient({
             onChange={setTaskWorkflowItems}
             analysisNotes={analysisNotes}
             onAnalysisNotesChange={setAnalysisNotes}
+            onUploadAttachment={async (file) => {
+              const fd = new FormData();
+              fd.append('file', file);
+              return uploadInterviewAttachment(projectId, fd);
+            }}
+            onRemoveAttachment={(storagePath) =>
+              removeInterviewAttachment(projectId, storagePath)
+            }
           />
         );
       case 5:

@@ -25,11 +25,17 @@ const saveRoadmapInterview = vi.fn();
 const uploadHrdReportAttachment = vi.fn();
 const removeHrdReportAttachment = vi.fn();
 const createHrdReportSignedUrl = vi.fn();
+const extractSttInsights = vi.fn();
+const uploadInterviewAttachment = vi.fn();
+const removeInterviewAttachment = vi.fn();
 vi.mock('../actions', () => ({
   saveRoadmapInterview: (...args: unknown[]) => saveRoadmapInterview(...args),
   uploadHrdReportAttachment: (...args: unknown[]) => uploadHrdReportAttachment(...args),
   removeHrdReportAttachment: (...args: unknown[]) => removeHrdReportAttachment(...args),
   createHrdReportSignedUrl: (...args: unknown[]) => createHrdReportSignedUrl(...args),
+  extractSttInsights: (...args: unknown[]) => extractSttInsights(...args),
+  uploadInterviewAttachment: (...args: unknown[]) => uploadInterviewAttachment(...args),
+  removeInterviewAttachment: (...args: unknown[]) => removeInterviewAttachment(...args),
 }));
 
 // useInterviewAutoSave mock — 자동 저장 상태 다양하게 테스트

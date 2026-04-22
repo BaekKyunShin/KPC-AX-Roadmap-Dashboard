@@ -2,11 +2,36 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import StepTaskWorkflowAnalysis from './StepTaskWorkflowAnalysis';
-import { createEmptyTaskWorkflowItem, type TaskWorkflowItem } from '@/lib/schemas/interview-roadmap';
+import {
+  createEmptyTaskWorkflowItem,
+  type AnalysisNotes,
+  type HrdReportAttachment,
+  type TaskWorkflowItem,
+} from '@/lib/schemas/interview-roadmap';
 
 function makeItems(n = 1): TaskWorkflowItem[] {
   return Array.from({ length: n }, () => createEmptyTaskWorkflowItem());
 }
+
+// 모든 케이스에서 동일하게 사용할 첨부 콜백 stub.
+// Step C-5 도입으로 onUploadAttachment / onRemoveAttachment 가 필수 prop 이 되었지만,
+// 기존 시나리오들은 첨부 동작과 무관하므로 noop resolver 로 채운다.
+function noopUpload(): Promise<{
+  success: true;
+  data: HrdReportAttachment;
+}> {
+  return Promise.resolve({
+    success: true,
+    data: {
+      storage_path: 'noop',
+      file_name: 'noop',
+    },
+  });
+}
+function noopRemove(): Promise<{ success: true }> {
+  return Promise.resolve({ success: true });
+}
+const EMPTY_ANALYSIS_NOTES: AnalysisNotes = { text: '', attachment_files: [] };
 
 describe('StepTaskWorkflowAnalysis', () => {
   it('초기 렌더 시 제목 + 1개 행 노출', () => {
@@ -14,8 +39,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     expect(screen.getByRole('heading', { level: 2, name: /과업.*분석/ })).toBeInTheDocument();
@@ -29,8 +56,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
 
@@ -50,8 +79,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
 
@@ -69,8 +100,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     expect(screen.queryByRole('button', { name: /행 삭제/ })).not.toBeInTheDocument();
@@ -81,8 +114,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     const group = screen.getByRole('radiogroup', { name: /AI도입.*활용/ });
@@ -98,8 +133,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
 
@@ -118,8 +155,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={items}
         onChange={onChange}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
 
@@ -135,8 +174,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     expect(screen.getByLabelText(/과업\(Task\)/)).toBeInTheDocument();
@@ -148,8 +189,10 @@ describe('StepTaskWorkflowAnalysis', () => {
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
         onChange={vi.fn()}
-        analysisNotes={{ text: '', attachment_files: [] }}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
         onAnalysisNotesChange={onAnalysisNotesChange}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     await userEvent.type(screen.getByLabelText('분석 내용'), 'A');
@@ -158,9 +201,8 @@ describe('StepTaskWorkflowAnalysis', () => {
     );
   });
 
-  it('attachment_files 배열에 파일이 있으면 file_name 이 표시된다 (ISSUE-14)', () => {
-    // Step A: URL 입력 UI 제거 — 파일 업로드 정식 UI 는 Step C-5 책임.
-    // 현재는 attachment_files 표시만 검증.
+  it('attachment_files 배열에 파일이 있으면 file_name 이 표시된다 (ISSUE-14, Step C-5)', () => {
+    // Step C-5 정식화: AttachmentFileList 가 file_name 을 카드로 노출.
     render(
       <StepTaskWorkflowAnalysis
         items={makeItems(1)}
@@ -169,14 +211,35 @@ describe('StepTaskWorkflowAnalysis', () => {
           text: '',
           attachment_files: [
             {
-              storage_path: 'interview-attachments/p1/공정.pdf',
+              storage_path: 'p1/note-1.pdf',
               file_name: '공정.pdf',
+              size: 4096,
+              extracted_text: '본문 내용',
             },
           ],
         }}
         onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
       />,
     );
     expect(screen.getByText(/공정\.pdf/)).toBeInTheDocument();
+    // AttachmentFileList 가 size·추출 글자수도 함께 노출
+    expect(screen.getByText(/4\.0 KB/)).toBeInTheDocument();
+    expect(screen.getByText(/본문 5자 추출/)).toBeInTheDocument();
+  });
+
+  it('"추가자료 업로드" 라벨이 노출된다 (ISSUE-14 Step C-5)', () => {
+    render(
+      <StepTaskWorkflowAnalysis
+        items={makeItems(1)}
+        onChange={vi.fn()}
+        analysisNotes={EMPTY_ANALYSIS_NOTES}
+        onAnalysisNotesChange={vi.fn()}
+        onUploadAttachment={noopUpload}
+        onRemoveAttachment={noopRemove}
+      />,
+    );
+    expect(screen.getByText('추가자료 업로드')).toBeInTheDocument();
   });
 });
