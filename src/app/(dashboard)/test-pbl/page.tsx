@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import TestPBLClient from './TestPBLClient';
-import { PBL_INTERVIEW_SAMPLE } from '../../../../e2e/fixtures/pbl-interview-sample';
 
 export const metadata = {
   title: 'PBL 테스트 - KPC AI 로드맵',
@@ -22,11 +21,6 @@ export default async function TestPBLPage() {
     profile.status === 'ACTIVE';
   const canAccess = isApprovedConsultant || isOpsAdmin;
 
-  return (
-    <TestPBLClient
-      user={profile}
-      canAccess={canAccess}
-      sampleData={PBL_INTERVIEW_SAMPLE}
-    />
-  );
+  // ISSUE-02·03 Step E: 자동 prefill 제거 → 빈 폼 + "샘플 데이터 채우기" 버튼.
+  return <TestPBLClient user={profile} canAccess={canAccess} />;
 }

@@ -1,17 +1,17 @@
 'use client';
 
 /**
- * PBL 테스트 클라이언트 (OFA-11 재작성).
+ * PBL 테스트 클라이언트 (ISSUE-02·03 Step E 재작성).
  *
  * 산인공 양식 2번 기준 PBL 인터뷰 폼을 그대로 재사용해 실제 인터뷰 화면과 **완전 동일**하게
- * 구성한다. 샘플 fixture(`PBL_INTERVIEW_SAMPLE`)를 초기값으로 채우되 사용자가 모든 필드를
- * 편집 가능하다. 제출 시 `generateTestPBL` 액션이 테스트 프로젝트를 생성하고 LLM으로
- * PBL 보고서 초안을 만든다.
+ * 구성한다. 입력 폼은 빈 상태로 시작하며, 사용자는 PageHeader 우측의 "샘플 데이터 채우기"
+ * 버튼을 눌러 `PBL_INTERVIEW_SAMPLE` fixture 를 일괄 주입할 수 있다. 제출 시 `generateTestPBL`
+ * 액션이 테스트 프로젝트를 생성하고 LLM으로 PBL 보고서 초안을 만든다.
  */
 
 import { useState, Suspense, lazy } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Check, Loader2, Info, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Loader2, Info, CheckCircle2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -36,7 +36,7 @@ import {
 } from '@/lib/schemas/interview-pbl';
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { generateTestPBL, cancelTestPBLGeneration, type TestPBLResult } from './actions';
-import type { PBLInterviewSample } from '../../../../e2e/fixtures/pbl-interview-sample';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 const StepPBLCourseOverview = lazy(
   () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCourseOverview'),
@@ -77,7 +77,6 @@ interface UserInfo {
 interface TestPBLClientProps {
   user: UserInfo;
   canAccess: boolean;
-  sampleData: PBLInterviewSample;
 }
 
 function StepSkeleton() {
@@ -90,42 +89,155 @@ function StepSkeleton() {
   );
 }
 
-export default function TestPBLClient({ user, canAccess, sampleData }: TestPBLClientProps) {
+// ─── 빈 폼 초기값 헬퍼 (ISSUE-02·03 Step E) ─────────────────────────────────
+// PBL 스키마에는 createEmpty 헬퍼가 없어서 컴포넌트 안에서 직접 정의한다.
+function createEmptyCourseOverview(): PBLCourseOverview {
+  return {
+    company_name: '',
+    business_registration_no: '',
+    industry_code: '',
+    industry_main: '',
+    address: '',
+    training_address: '',
+    jurisdiction_office: '',
+    contact: { position: '', name: '', phone: '', email: '' },
+    course_name: '',
+    ncs_code: '',
+    training_hours: 0,
+    trainee_count: 0,
+    training_job: '',
+    ai_level: 'AI기초형',
+    training_goals: [],
+  };
+}
+
+function createEmptyCompanyStatus(): PBLCompanyStatus {
+  return { business_issues: '', organization: [] };
+}
+
+function createEmptyTrainingEnvironment(): PBLTrainingEnvironment {
+  return {
+    proper_training_hours: 0,
+    training_place: { types: [], location: '', special_notes: '' },
+    internal_instructor: { used: false, name: '', position: '' },
+    target_count: 0,
+    target_characteristics: { career: '', level: '' },
+    ai_infrastructure: { ai_tools: '제한적', network: '보통', pc_count: 0, etc_equipment: '' },
+    training_needs_analysis: '',
+    expectation: { as_is: '', to_be: '' },
+  };
+}
+
+function createEmptyHrdNecessity(): PBLHrdNecessity {
+  return {
+    training_history: [],
+    support_history: [],
+    recommendations: [],
+    course_development_necessity: '',
+  };
+}
+
+function createEmptyPerformanceActivities(): PBLPerformanceActivities {
+  return { performance_activities: [] };
+}
+
+function createEmptyProblemDefinition(): PBLProblemDefinition {
+  // sample fixture 와 동일하게 legacy current_issues/root_causes/gap_analysis 키 형태로 두면
+  // validateStep 의 fallback 분기와 자연스럽게 호환된다.
+  return {
+    problem_definition: { background: '', core_problem: '', scope: '', constraints: '' },
+    problem_priorities: [],
+  } as unknown as PBLProblemDefinition;
+}
+
+function createEmptyTargetTasks(): PBLTargetTasks {
+  return {
+    target_tasks: [],
+    selection_reason: '',
+    target_task_details: [],
+  };
+}
+
+function createEmptyAILevelDiagnosis(): PBLAILevelDiagnosis {
+  return {
+    current_ai_level: 'AI기초형',
+    expected_ai_level: 'AI탐구형',
+    improvement_reason: '',
+  };
+}
+
+export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TestPBLResult | null>(null);
 
-  // 샘플 fixture를 초기값으로 (편집 가능) — readonly fixture → mutable copy
+  // ISSUE-02·03 Step E: 빈 폼으로 시작. 샘플 채우기 버튼으로 일괄 주입.
   const [courseOverview, setCourseOverview] = useState<PBLCourseOverview>(
-    () => JSON.parse(JSON.stringify(sampleData.courseOverview)) as PBLCourseOverview,
+    () => createEmptyCourseOverview(),
   );
   const [companyStatus, setCompanyStatus] = useState<PBLCompanyStatus>(
-    () => JSON.parse(JSON.stringify(sampleData.companyStatus)) as PBLCompanyStatus,
+    () => createEmptyCompanyStatus(),
   );
   const [trainingEnvironment, setTrainingEnvironment] = useState<PBLTrainingEnvironment>(
-    () => JSON.parse(JSON.stringify(sampleData.trainingEnvironment)) as PBLTrainingEnvironment,
+    () => createEmptyTrainingEnvironment(),
   );
   const [hrdNecessity, setHrdNecessity] = useState<PBLHrdNecessity>(
-    () => JSON.parse(JSON.stringify(sampleData.hrdNecessity)) as PBLHrdNecessity,
+    () => createEmptyHrdNecessity(),
   );
   const [performanceActivities, setPerformanceActivities] = useState<PBLPerformanceActivities>(
-    () => ({
-      performance_activities: JSON.parse(
-        JSON.stringify(sampleData.performanceActivities.activities ?? []),
-      ) as PBLPerformanceActivities['performance_activities'],
-    }),
+    () => createEmptyPerformanceActivities(),
   );
   const [problemDefinition, setProblemDefinition] = useState<PBLProblemDefinition>(
-    () => JSON.parse(JSON.stringify(sampleData.problemDefinition)) as PBLProblemDefinition,
+    () => createEmptyProblemDefinition(),
   );
   const [targetTasks, setTargetTasks] = useState<PBLTargetTasks>(
-    () => JSON.parse(JSON.stringify(sampleData.targetTasks)) as PBLTargetTasks,
+    () => createEmptyTargetTasks(),
   );
   const [aiLevelDiagnosis, setAILevelDiagnosis] = useState<PBLAILevelDiagnosis>(
-    () => JSON.parse(JSON.stringify(sampleData.aiLevelDiagnosis)) as PBLAILevelDiagnosis,
+    () => createEmptyAILevelDiagnosis(),
   );
+
+  /**
+   * 샘플 fixture(`PBL_INTERVIEW_SAMPLE`) 값을 모든 state 에 일괄 주입.
+   * 사용자가 이미 입력한 값이 있으면 confirm 으로 덮어쓰기 여부 확인.
+   */
+  const fillSample = () => {
+    const hasInput =
+      courseOverview.course_name.trim() !== '' ||
+      courseOverview.company_name.trim() !== '' ||
+      companyStatus.business_issues.trim() !== '' ||
+      trainingEnvironment.training_needs_analysis.trim() !== '' ||
+      hrdNecessity.course_development_necessity.trim() !== '' ||
+      performanceActivities.performance_activities.length > 0 ||
+      targetTasks.target_task_details.length > 0 ||
+      aiLevelDiagnosis.improvement_reason.trim() !== '';
+    if (
+      hasInput &&
+      typeof window !== 'undefined' &&
+      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
+    ) {
+      return;
+    }
+    // readonly `as const` fixture → 깊은 복사 후 mutable 로 주입.
+    // sample 객체는 schema (current_issues / root_causes 등 legacy 키 포함) 와
+    // 100% 일치하지 않으므로 unknown 경유 캐스트로 mutable state 에 안전하게 매핑한다.
+    const sample = JSON.parse(JSON.stringify(PBL_INTERVIEW_SAMPLE)) as typeof PBL_INTERVIEW_SAMPLE;
+    setCourseOverview(sample.courseOverview as unknown as PBLCourseOverview);
+    setCompanyStatus(sample.companyStatus as unknown as PBLCompanyStatus);
+    setTrainingEnvironment(sample.trainingEnvironment as unknown as PBLTrainingEnvironment);
+    setHrdNecessity(sample.hrdNecessity as unknown as PBLHrdNecessity);
+    setPerformanceActivities({
+      performance_activities:
+        sample.performanceActivities.activities as unknown as PBLPerformanceActivities['performance_activities'],
+    });
+    setProblemDefinition(sample.problemDefinition as unknown as PBLProblemDefinition);
+    setTargetTasks(sample.targetTasks as unknown as PBLTargetTasks);
+    setAILevelDiagnosis(sample.aiLevelDiagnosis as unknown as PBLAILevelDiagnosis);
+    setCurrentStep(1);
+    setCompletedSteps([]);
+  };
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -348,8 +460,20 @@ export default function TestPBLClient({ user, canAccess, sampleData }: TestPBLCl
       <div className="mb-6">
         <PageHeader
           title="PBL 테스트"
-          description="산인공 양식 2번 기준 PBL 인터뷰 연습 — 샘플 데이터가 미리 채워져 있습니다."
+          description="산인공 양식 2번 기준 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
           backLink={{ href: '/consultant/projects', label: '담당 프로젝트로 돌아가기', useBack: true }}
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fillSample}
+              data-testid="test-pbl-fill-sample"
+            >
+              <Wand2 className="w-4 h-4 mr-1.5" />
+              샘플 데이터 채우기
+            </Button>
+          }
         />
       </div>
 
@@ -357,10 +481,9 @@ export default function TestPBLClient({ user, canAccess, sampleData }: TestPBLCl
         <Info className="h-4 w-4" />
         <AlertTitle>테스트 모드 안내</AlertTitle>
         <AlertDescription>
-          이 화면의 UI/UX는 실제 PBL 인터뷰 화면과 동일합니다. 샘플 데이터를 편집하거나 그대로 두고
-          <strong> &quot;PBL 보고서 생성&quot; </strong>을 누르면 LLM이 PBL 보고서 초안을 생성합니다.
+          이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. 테스트를 통해 인터뷰 진행 방법을 연습하세요.
           <strong className="block mt-2 text-amber-700">
-            결과는 is_test_mode=true 로 표시된 테스트 프로젝트에 저장되어 실제 프로젝트와 격리됩니다.
+            입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
           </strong>
         </AlertDescription>
       </Alert>
