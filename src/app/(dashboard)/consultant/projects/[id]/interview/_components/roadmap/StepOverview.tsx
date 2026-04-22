@@ -51,7 +51,7 @@ const TEXT_FIELDS: ReadonlyArray<{
     label: '선정 과업',
     hint: 'Ⅱ-4 훈련대상 과업 입력 시 자동 채움 (편집 가능, 양식 Ⅰ-3)',
     placeholder: '예) 1) 품질검사 1차 스크리닝 자동화  2) 월간 보고서 초안 생성  3) 현장 설비 이상 감지',
-    rows: 5,
+    rows: 6,
   },
 ];
 

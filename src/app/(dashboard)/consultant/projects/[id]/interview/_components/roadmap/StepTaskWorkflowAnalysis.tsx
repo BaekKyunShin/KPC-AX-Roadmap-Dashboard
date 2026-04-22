@@ -22,11 +22,11 @@ interface StepTaskWorkflowAnalysisProps {
 
 const AI_NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
 const AI_NECESSITY_LABELS: Record<number, string> = {
-  1: '불필요',
-  2: '선택',
-  3: '중립',
-  4: '권장',
-  5: '필수',
+  1: '매우 낮음',
+  2: '낮음',
+  3: '보통',
+  4: '높음',
+  5: '매우 높음',
 };
 
 export default function StepTaskWorkflowAnalysis({
@@ -120,7 +120,7 @@ export default function StepTaskWorkflowAnalysis({
               <FormField label="현행 방식 (As-Is)" htmlFor={`twf-asis-${item.id}`} required>
                 <Textarea
                   id={`twf-asis-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.as_is}
                   onChange={(e) => updateItem(index, 'as_is', e.target.value)}
                   placeholder="예) 검사원 2명이 라인에서 육안으로 외관 검사"
@@ -130,7 +130,7 @@ export default function StepTaskWorkflowAnalysis({
               <FormField label="문제점" htmlFor={`twf-problems-${item.id}`} required>
                 <Textarea
                   id={`twf-problems-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.problems}
                   onChange={(e) => updateItem(index, 'problems', e.target.value)}
                   placeholder="예) 검사원 피로도에 따라 품질 편차 발생, 재검사 필요"
@@ -147,7 +147,7 @@ export default function StepTaskWorkflowAnalysis({
               >
                 <Textarea
                   id={`twf-data-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.data_availability}
                   onChange={(e) => updateItem(index, 'data_availability', e.target.value)}
                   placeholder="예) 검사 이미지 2년치(DB 저장), 불량 판정 로그 1년치"
@@ -224,7 +224,7 @@ export default function StepTaskWorkflowAnalysis({
         </div>
         <Textarea
           id="twf-analysis-text"
-          rows={4}
+          rows={6}
           value={analysisNotes.text}
           onChange={(e) => onAnalysisNotesChange({ ...analysisNotes, text: e.target.value })}
           placeholder="예) 기업 내부전문가 3명과의 그룹 인터뷰로 공정 단계별 과업을 도출하고, 데이터 보유 여부에 따라 우선순위를 재정렬함."

@@ -192,7 +192,7 @@ export default function StepPBLPerformanceActivities({
                 >
                   <Textarea
                     id={`pa-content-${activity.id}`}
-                    rows={4}
+                    rows={6}
                     value={activity.content}
                     onChange={(e) =>
                       updateActivity(index, 'content', e.target.value)

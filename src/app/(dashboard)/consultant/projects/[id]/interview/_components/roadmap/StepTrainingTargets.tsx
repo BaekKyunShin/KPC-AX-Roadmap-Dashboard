@@ -108,7 +108,7 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
                   <FormField label="현행 (As-Is)" htmlFor={`tt-asis-${item.id}`} required>
                     <Textarea
                       id={`tt-asis-${item.id}`}
-                      rows={4}
+                      rows={6}
                       value={item.as_is}
                       onChange={(e) => updateItem(index, 'as_is', e.target.value)}
                       placeholder="예) 검사원 2명 육안 검사 / 평균 12초"
@@ -118,7 +118,7 @@ export default function StepTrainingTargets({ items, onChange }: StepTrainingTar
                   <FormField label="개선 (To-Be)" htmlFor={`tt-tobe-${item.id}`} required>
                     <Textarea
                       id={`tt-tobe-${item.id}`}
-                      rows={4}
+                      rows={6}
                       value={item.to_be}
                       onChange={(e) => updateItem(index, 'to_be', e.target.value)}
                       placeholder="예) 비전 AI 1차 스크리닝 + 검사원 최종 판정 / 평균 3초"

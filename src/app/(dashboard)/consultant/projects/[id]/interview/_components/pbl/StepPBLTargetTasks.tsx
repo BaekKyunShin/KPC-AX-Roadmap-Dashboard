@@ -21,11 +21,11 @@ interface StepPBLTargetTasksProps {
 
 const NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
 const NECESSITY_LABELS: Record<number, string> = {
-  1: '낮음',
-  2: '미흡',
+  1: '매우 낮음',
+  2: '낮음',
   3: '보통',
-  4: '권장',
-  5: '필수',
+  4: '높음',
+  5: '매우 높음',
 };
 
 export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTasksProps) {
@@ -300,7 +300,7 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   >
                     <Textarea
                       id={`ttd-asis-${detail.id}`}
-                      rows={4}
+                      rows={6}
                       value={detail.as_is}
                       onChange={(e) => updateDetail(index, { as_is: e.target.value })}
                       placeholder="예) 검사원이 육안으로 판정"
@@ -313,7 +313,7 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   >
                     <Textarea
                       id={`ttd-tobe-${detail.id}`}
-                      rows={4}
+                      rows={6}
                       value={detail.to_be}
                       onChange={(e) => updateDetail(index, { to_be: e.target.value })}
                       placeholder="예) AI 비전 모델이 자동 판정, 검사원은 리뷰만 수행"
@@ -326,7 +326,7 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   >
                     <Textarea
                       id={`ttd-knowledge-${detail.id}`}
-                      rows={4}
+                      rows={6}
                       value={detail.required_knowledge}
                       onChange={(e) =>
                         updateDetail(index, { required_knowledge: e.target.value })
@@ -341,7 +341,7 @@ export default function StepPBLTargetTasks({ value, onChange }: StepPBLTargetTas
                   >
                     <Textarea
                       id={`ttd-skill-${detail.id}`}
-                      rows={4}
+                      rows={6}
                       value={detail.required_skill}
                       onChange={(e) =>
                         updateDetail(index, { required_skill: e.target.value })
