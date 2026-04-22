@@ -60,13 +60,17 @@ export function formatDateTimeKR(input: DateInput): string {
     timeZone: TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).format(date);
   return `${datePart} ${timePart}`;
 }
 
 /**
- * KST 기준 24시간제 hh:mm 형식
+ * KST 기준 24시간제 hh:mm 형식.
+ *
+ * `hourCycle: 'h23'` 을 명시해 자정 경계를 "00:00" 으로 일관 반환한다.
+ * `hour12: false` 만 지정하면 ICU 버전별 ko-KR 기본값이 달라 macOS 는
+ * "00:00", Ubuntu Node 는 "24:00" 을 반환해 CI 실패를 유발한 전례가 있다.
  */
 export function formatTimeKR(input: DateInput): string {
   const date = toValidDate(input);
@@ -75,7 +79,7 @@ export function formatTimeKR(input: DateInput): string {
     timeZone: TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).format(date);
 }
 
