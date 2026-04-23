@@ -41,6 +41,8 @@ npm run test:e2e:report  # E2E 테스트 리포트 열기
 
 **작업 완료 검증:** 코드 수정 작업 완료 시 반드시 `npm run validate && npm run build` 실행 후 통과를 확인할 것
 
+**PR CI 통과 판정 규칙:** PR 의 CI 통과 여부는 `gh pr checks <PR>` 출력의 **모든 check** (Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel) 가 pass 일 때만 "✅ 통과" 로 결정한다. **Unit Test 만 보고 단정 금지** — E2E 가 별도 job 으로 가장 마지막에 실행되며, 진행 중이면 "⏳ 대기" 로 보고하고 결정 보류. 모니터링 cron/loop 의 prompt 에도 단편적 조건(예: "Unit Test pass 시 종료")을 쓰지 말고 모든 check 를 명시적으로 나열할 것. `gh pr checks` 의 exit code 0 ≠ 모든 check pass — 진행 중일 때도 비-0 코드 반환 가능하므로 출력 파싱이 정답.
+
 **HWPX 다운로드(로드맵·PBL) 로컬 테스트 규칙:**
 
 - `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`는 Python 런타임을 서빙하지 않고, 구버전 Vercel CLI의 `vercel dev`도 Python 함수 빌드에 실패할 수 있다.
