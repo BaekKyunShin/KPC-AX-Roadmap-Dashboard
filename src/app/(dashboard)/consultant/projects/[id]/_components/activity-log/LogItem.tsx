@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  MoreHorizontal,
   Pencil,
   Trash2,
   ChevronDown,
@@ -11,12 +10,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
@@ -186,33 +179,34 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
         )}
       </div>
 
-      {/* 더보기 메뉴 */}
+      {/* 수정·삭제 아이콘 버튼 */}
       {!isEditing && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-gray-600"
-              data-testid="more-actions-button"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsEditing(true)}>
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              수정
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash2 className="mr-2 h-3.5 w-3.5" />
-              삭제
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-gray-700"
+            onClick={() => setIsEditing(true)}
+            title="수정"
+            aria-label="기록 수정"
+            data-testid="edit-log-button"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-red-600"
+            onClick={handleDelete}
+            title="삭제"
+            aria-label="기록 삭제"
+            data-testid="delete-log-button"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
     </div>
   );

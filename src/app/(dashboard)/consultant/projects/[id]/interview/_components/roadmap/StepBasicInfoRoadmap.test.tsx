@@ -9,12 +9,14 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof StepBasicInfoR
   return {
     interviewDate: '2026-04-16',
     interviewRound: 1,
-    interviewTime: '10:00',
+    interviewStartTime: '10:00',
+    interviewEndTime: '12:00',
     interviewMethod: 'ONSITE' as const,
     participants,
     onInterviewDateChange: vi.fn(),
     onInterviewRoundChange: vi.fn(),
-    onInterviewTimeChange: vi.fn(),
+    onInterviewStartTimeChange: vi.fn(),
+    onInterviewEndTimeChange: vi.fn(),
     onInterviewMethodChange: vi.fn(),
     onParticipantsChange: vi.fn(),
     ...overrides,
@@ -22,13 +24,15 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof StepBasicInfoR
 }
 
 describe('StepBasicInfoRoadmap', () => {
-  it('제목 "Ⅰ-2. 주요 활동" + 수행 차수/방법/일자/시간 필드 렌더', () => {
+  it('제목 "Ⅰ-2. 주요 활동" + 수행 차수/방법/일자/시작·종료 시간 필드 렌더', () => {
     render(<StepBasicInfoRoadmap {...baseProps()} />);
     expect(screen.getByRole('heading', { name: /주요 활동/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 차수/)).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 방법/)).toBeInTheDocument();
     expect(screen.getByLabelText(/수행 일자/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/수행 시간/)).toBeInTheDocument();
+    // ISSUE-10 Step C-2: 단일 "수행 시간" → 시작/종료 두 input
+    expect(screen.getByLabelText(/수행 시간 \(시작\)/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/수행 시간 \(종료\)/)).toBeInTheDocument();
   });
 
   it('수행 방법 Select 트리거가 현재 값의 라벨을 표시', () => {
@@ -131,15 +135,26 @@ describe('StepBasicInfoRoadmap', () => {
       expect(onInterviewDateChange).toHaveBeenCalled();
     });
 
-    it('수행 시간 변경 시 onInterviewTimeChange 호출', async () => {
+    it('수행 시간 (시작) 변경 시 onInterviewStartTimeChange 호출', async () => {
       const user = userEvent.setup();
-      const onInterviewTimeChange = vi.fn();
-      const props = baseProps({ onInterviewTimeChange });
+      const onInterviewStartTimeChange = vi.fn();
+      const props = baseProps({ onInterviewStartTimeChange });
       render(<StepBasicInfoRoadmap {...props} />);
-      const timeInput = screen.getByLabelText(/수행 시간/);
-      await user.clear(timeInput);
-      await user.type(timeInput, '14:00');
-      expect(onInterviewTimeChange).toHaveBeenCalled();
+      const startInput = screen.getByLabelText(/수행 시간 \(시작\)/);
+      await user.clear(startInput);
+      await user.type(startInput, '14:00');
+      expect(onInterviewStartTimeChange).toHaveBeenCalled();
+    });
+
+    it('수행 시간 (종료) 변경 시 onInterviewEndTimeChange 호출', async () => {
+      const user = userEvent.setup();
+      const onInterviewEndTimeChange = vi.fn();
+      const props = baseProps({ onInterviewEndTimeChange });
+      render(<StepBasicInfoRoadmap {...props} />);
+      const endInput = screen.getByLabelText(/수행 시간 \(종료\)/);
+      await user.clear(endInput);
+      await user.type(endInput, '16:00');
+      expect(onInterviewEndTimeChange).toHaveBeenCalled();
     });
   });
 });

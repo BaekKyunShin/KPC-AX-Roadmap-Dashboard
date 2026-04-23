@@ -67,13 +67,17 @@ export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
   { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
 ];
 
-// HRD이음 진단 보고서 첨부 메타 (Storage 'interview-attachments' 버킷)
+// HRD이음 진단 보고서 / 분석노트 첨부 메타 (Storage 'interview-attachments' 버킷)
+// extracted_text: file-parser 모듈로 업로드 직후 동기 추출한 본문 (5000자 truncate)
+// parse_error  : 파싱 실패 시 사유 (텍스트 미추출 사유를 LLM 프롬프트에 노출)
 export const hrdReportAttachmentSchema = z.object({
   storage_path: z.string().min(1),
   file_name: z.string().min(1),
   mime_type: z.string().optional(),
   size: z.number().nonnegative().optional(),
   uploaded_at: z.string().optional(),
+  extracted_text: z.string().optional(),
+  parse_error: z.string().optional(),
 });
 export type HrdReportAttachment = z.infer<typeof hrdReportAttachmentSchema>;
 
@@ -115,10 +119,13 @@ export const trainingTargetSchema = z.object({
   to_be: z.string().min(1, '개선 목표를 입력하세요.'),
 });
 
-// 분석 메모 + 첨부파일 (선택)
+// 분석 메모 + 첨부 파일 (ISSUE-14: URL 배열 → 파일 객체 배열)
+// hrdReportAttachmentSchema 를 재사용해 Storage 'interview-attachments' 버킷에
+// 업로드된 파일 메타(storage_path/file_name/mime_type/size/uploaded_at)를 보관한다.
+// production 의 attachment_urls 사용 row 는 0건이라 단순 교체가 안전하다.
 export const analysisNotesSchema = z.object({
   text: z.string().default(''),
-  attachment_urls: z.array(z.string().url()).default([]),
+  attachment_files: z.array(hrdReportAttachmentSchema).default([]),
 });
 
 // Ⅲ-1. 역량 모델링 (ISSUE-04, 2026-04-21 담당자 확정)
@@ -162,16 +169,19 @@ export const roadmapParticipantSchema = z.object({
 });
 
 // 전체 로드맵 인터뷰 스키마 (수동 저장용 - 엄격)
+// ISSUE-10: interview_time(단일) 을 interview_start_time / interview_end_time 으로 분리.
+//           legacy production row 3건은 mapInterviewRowToRoadmapInterview 에서 fallback 처리.
 export const roadmapInterviewSchema = z.object({
   overview: overviewSchema,
   interview_date: z.string().min(1, '인터뷰 날짜를 입력하세요.'),
   interview_round: z.number().int().min(1, '인터뷰 차수는 1 이상이어야 합니다.'),
-  interview_time: z.string().min(1, '인터뷰 시간을 입력하세요.'),
+  interview_start_time: z.string().min(1, '시작 시간을 입력하세요.'),
+  interview_end_time: z.string().min(1, '종료 시간을 입력하세요.'),
   interview_method: interviewMethodEnum,
   participants: z.array(roadmapParticipantSchema).min(1, '최소 1명 이상의 참석자를 입력하세요.'),
   company_requirements: companyRequirementsSchema,
   task_workflow_items: z.array(taskWorkflowItemSchema).min(1, '최소 1개의 과업을 분석하세요.'),
-  analysis_notes: analysisNotesSchema.default({ text: '', attachment_urls: [] }),
+  analysis_notes: analysisNotesSchema.default({ text: '', attachment_files: [] }),
   training_targets: z.array(trainingTargetSchema).min(1, '최소 1개의 훈련대상 과업을 선정하세요.'),
   competency_models: z
     .array(competencyModelSchema)
@@ -194,7 +204,8 @@ export const roadmapInterviewAutoSaveSchema = z.object({
     .optional(),
   interview_date: z.string().optional(),
   interview_round: z.number().int().optional(),
-  interview_time: z.string().optional(),
+  interview_start_time: z.string().optional(),
+  interview_end_time: z.string().optional(),
   interview_method: interviewMethodEnum.optional(),
   participants: z.array(z.object({
     id: z.string(),
@@ -218,7 +229,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
   })).optional(),
   analysis_notes: z.object({
     text: z.string().default(''),
-    attachment_urls: z.array(z.string()).default([]),
+    attachment_files: z.array(hrdReportAttachmentSchema).default([]),
   }).optional(),
   training_targets: z.array(z.object({
     id: z.string(),
@@ -350,6 +361,16 @@ interface LegacyCompanyDetails {
   roadmap_interview_method?: InterviewMethod | string;
   roadmap_analysis_notes?: {
     text?: string;
+    // ISSUE-14: 신규 attachment_files 우선, legacy attachment_urls 는 무시
+    attachment_files?: Array<{
+      storage_path?: string;
+      file_name?: string;
+      mime_type?: string;
+      size?: number;
+      uploaded_at?: string;
+      extracted_text?: string;
+      parse_error?: string;
+    }>;
     attachment_urls?: string[];
   };
   // Ⅰ장 개요 (OFA-06.5 신규)
@@ -364,6 +385,8 @@ interface LegacyCompanyDetails {
       mime_type?: string;
       size?: number;
       uploaded_at?: string;
+      extracted_text?: string;
+      parse_error?: string;
     } | null;
   } | null;
   // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
@@ -379,6 +402,12 @@ interface LegacyCompanyDetails {
     uses_ncs?: boolean;
     ncs_usage_method?: string;
     competency_derivation_method?: string;
+  } | null;
+  // ISSUE-10 Step C-2: 시작/종료 시간 정식 저장 (JSONB).
+  //   `interview_time` 단일 컬럼은 시작 시간만 legacy 호환용으로 함께 저장.
+  roadmap_interview_time?: {
+    start?: string;
+    end?: string;
   } | null;
 }
 
@@ -403,6 +432,9 @@ interface LegacyImprovementGoal {
 interface LegacyInterviewRow {
   interview_date?: string | null;
   interview_round?: number | null;
+  // ISSUE-10: 신규 시작/종료 컬럼. 단일 interview_time 은 legacy production 3건 fallback 용으로 유지.
+  interview_start_time?: string | null;
+  interview_end_time?: string | null;
   interview_time?: string | null;
   participants?: unknown;
   company_details?: LegacyCompanyDetails | null;
@@ -430,7 +462,22 @@ export function mapInterviewRowToRoadmapInterview(
 
   if (row.interview_date) partial.interview_date = row.interview_date;
   if (typeof row.interview_round === 'number') partial.interview_round = row.interview_round;
-  if (row.interview_time) partial.interview_time = row.interview_time;
+
+  // ISSUE-10 Step C-2: 시간 필드 매핑 우선순위.
+  //   1) company_details.roadmap_interview_time JSONB { start, end } — 정식 저장 경로
+  //   2) interview_start_time / interview_end_time 컬럼 — 향후 마이그 대비 hook
+  //   3) legacy 단일 interview_time 컬럼 → start 로 fallback (production 3건 호환)
+  const savedTime = row.company_details?.roadmap_interview_time;
+  if (savedTime?.start || savedTime?.end) {
+    partial.interview_start_time = savedTime.start ?? '';
+    partial.interview_end_time = savedTime.end ?? '';
+  } else if (row.interview_start_time || row.interview_end_time) {
+    partial.interview_start_time = row.interview_start_time ?? '';
+    partial.interview_end_time = row.interview_end_time ?? '';
+  } else if (row.interview_time) {
+    partial.interview_start_time = row.interview_time;
+    partial.interview_end_time = '';
+  }
 
   // 수행 방법 복원 — 미보유 시 기본값 ONSITE
   const savedMethod = row.company_details?.roadmap_interview_method;
@@ -443,12 +490,29 @@ export function mapInterviewRowToRoadmapInterview(
     partial.participants = row.participants as RoadmapParticipant[];
   }
 
-  // 분석 노트 복원
+  // 분석 노트 복원 (ISSUE-14: attachment_urls → attachment_files)
+  // 신규 attachment_files 객체 배열을 우선 적용. legacy attachment_urls 는 production 0건이라
+  // 안전장치로 무시(빈 배열)한다. 파일 메타가 storage_path/file_name 둘 다 있어야 채택.
   const savedAn = row.company_details?.roadmap_analysis_notes;
   if (savedAn) {
+    const rawFiles = Array.isArray(savedAn.attachment_files) ? savedAn.attachment_files : [];
+    const attachmentFiles: HrdReportAttachment[] = rawFiles
+      .filter(
+        (f): f is { storage_path: string; file_name: string; mime_type?: string; size?: number; uploaded_at?: string; extracted_text?: string; parse_error?: string } =>
+          !!f && typeof f.storage_path === 'string' && typeof f.file_name === 'string',
+      )
+      .map((f) => ({
+        storage_path: f.storage_path,
+        file_name: f.file_name,
+        mime_type: f.mime_type,
+        size: f.size,
+        uploaded_at: f.uploaded_at,
+        extracted_text: f.extracted_text,
+        parse_error: f.parse_error,
+      }));
     partial.analysis_notes = {
       text: savedAn.text ?? '',
-      attachment_urls: Array.isArray(savedAn.attachment_urls) ? savedAn.attachment_urls : [],
+      attachment_files: attachmentFiles,
     };
   }
 
@@ -474,6 +538,8 @@ export function mapInterviewRowToRoadmapInterview(
               mime_type: att.mime_type,
               size: att.size,
               uploaded_at: att.uploaded_at,
+              extracted_text: att.extracted_text,
+              parse_error: att.parse_error,
             }
           : undefined,
     };

@@ -42,6 +42,10 @@ const nextConfig: NextConfig = {
     return [];
   },
   experimental: {
+    // 인터뷰 첨부 파일(최대 10MB) + 오버헤드 여유까지 12MB 허용 (Step B-2, ISSUE-14)
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
     optimizePackageImports: [
       'lucide-react',
       'recharts',

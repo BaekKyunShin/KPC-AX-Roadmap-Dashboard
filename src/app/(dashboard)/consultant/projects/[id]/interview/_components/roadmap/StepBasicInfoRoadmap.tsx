@@ -23,12 +23,15 @@ import {
 interface StepBasicInfoRoadmapProps {
   interviewDate: string;
   interviewRound: number;
-  interviewTime: string;
+  // ISSUE-10 Step C-2: 단일 시간 → 시작/종료 두 입력
+  interviewStartTime: string;
+  interviewEndTime: string;
   interviewMethod: InterviewMethod;
   participants: RoadmapParticipant[];
   onInterviewDateChange: (date: string) => void;
   onInterviewRoundChange: (round: number) => void;
-  onInterviewTimeChange: (time: string) => void;
+  onInterviewStartTimeChange: (time: string) => void;
+  onInterviewEndTimeChange: (time: string) => void;
   onInterviewMethodChange: (method: InterviewMethod) => void;
   onParticipantsChange: (participants: RoadmapParticipant[]) => void;
 }
@@ -38,12 +41,14 @@ const ROUND_OPTIONS = [1, 2, 3];
 export default function StepBasicInfoRoadmap({
   interviewDate,
   interviewRound,
-  interviewTime,
+  interviewStartTime,
+  interviewEndTime,
   interviewMethod,
   participants,
   onInterviewDateChange,
   onInterviewRoundChange,
-  onInterviewTimeChange,
+  onInterviewStartTimeChange,
+  onInterviewEndTimeChange,
   onInterviewMethodChange,
   onParticipantsChange,
 }: StepBasicInfoRoadmapProps) {
@@ -109,7 +114,7 @@ export default function StepBasicInfoRoadmap({
         </FormField>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
         <FormField label="수행 일자" htmlFor="basic-date" required>
           <Input
             id="basic-date"
@@ -119,12 +124,21 @@ export default function StepBasicInfoRoadmap({
             required
           />
         </FormField>
-        <FormField label="수행 시간" htmlFor="basic-time" required>
+        <FormField label="수행 시간 (시작)" htmlFor="basic-start-time" required>
           <Input
-            id="basic-time"
+            id="basic-start-time"
             type="time"
-            value={interviewTime}
-            onChange={(e) => onInterviewTimeChange(e.target.value)}
+            value={interviewStartTime}
+            onChange={(e) => onInterviewStartTimeChange(e.target.value)}
+            required
+          />
+        </FormField>
+        <FormField label="수행 시간 (종료)" htmlFor="basic-end-time" required>
+          <Input
+            id="basic-end-time"
+            type="time"
+            value={interviewEndTime}
+            onChange={(e) => onInterviewEndTimeChange(e.target.value)}
             required
           />
         </FormField>

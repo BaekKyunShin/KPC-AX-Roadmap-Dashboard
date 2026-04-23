@@ -13,18 +13,23 @@ import type {
   Overview,
   CompetencyModel,
   NcsUsage,
+  SttInsights,
 } from '@/lib/schemas/interview-roadmap';
 import {
   AI_COMPETENCY_LEVEL_LABEL,
   AI_COMPETENCY_LEVEL_SUBTITLE,
   INTERVIEW_METHOD_LABEL,
 } from '@/lib/schemas/interview-roadmap';
+import { formatTimeRange } from '@/lib/utils/time';
+import { StepSttUpload } from '@/components/interview/StepSttUpload';
 
 interface StepSummaryRoadmapProps {
   overview: Overview;
   interviewDate: string;
   interviewRound: number;
-  interviewTime: string;
+  // ISSUE-10 Step C-2: 시작/종료 두 필드
+  interviewStartTime: string;
+  interviewEndTime: string;
   interviewMethod: InterviewMethod;
   participants: RoadmapParticipant[];
   companyRequirements: CompanyRequirements;
@@ -36,7 +41,12 @@ interface StepSummaryRoadmapProps {
   notes: string;
   onEditStep: (stepId: number) => void;
   onNotesChange: (notes: string) => void;
+  // ISSUE-16 STT 업로드 복원
   sttInsights?: RoadmapInterview['stt_insights'];
+  onSttInsightsChange: (insights: RoadmapInterview['stt_insights']) => void;
+  onExtractSttInsights: (
+    sttText: string,
+  ) => Promise<{ success: true; data: SttInsights } | { success: false; error: string }>;
 }
 
 function SectionHeader({ title, stepId, onEdit }: { title: string; stepId: number; onEdit: (id: number) => void }) {
@@ -55,7 +65,8 @@ export default function StepSummaryRoadmap({
   overview,
   interviewDate,
   interviewRound,
-  interviewTime,
+  interviewStartTime,
+  interviewEndTime,
   interviewMethod,
   participants,
   companyRequirements,
@@ -68,7 +79,10 @@ export default function StepSummaryRoadmap({
   onEditStep,
   onNotesChange,
   sttInsights,
+  onSttInsightsChange,
+  onExtractSttInsights,
 }: StepSummaryRoadmapProps) {
+  const interviewTimeRange = formatTimeRange(interviewStartTime, interviewEndTime);
   return (
     <div className="space-y-6">
       <div>
@@ -134,7 +148,7 @@ export default function StepSummaryRoadmap({
           <div>
             <dt className="text-muted-foreground">수행 차수 / 일시</dt>
             <dd className="text-foreground">
-              {interviewRound}차 · {interviewDate || '-'} · {interviewTime || '-'}
+              {interviewRound}차 · {interviewDate || '-'} · {interviewTimeRange || '-'}
             </dd>
           </div>
           <div>
@@ -198,7 +212,7 @@ export default function StepSummaryRoadmap({
             ))}
           </ul>
         )}
-        {(analysisNotes.text || analysisNotes.attachment_urls.length > 0) && (
+        {(analysisNotes.text || analysisNotes.attachment_files.length > 0) && (
           <div className="mt-4 pt-3 border-t border-border/60 space-y-2 text-sm">
             <p className="text-muted-foreground">
               <span className="font-medium text-foreground">분석 내용:</span>{' '}
@@ -208,13 +222,13 @@ export default function StepSummaryRoadmap({
                 '-'
               )}
             </p>
-            {analysisNotes.attachment_urls.length > 0 && (
+            {analysisNotes.attachment_files.length > 0 && (
               <div>
-                <span className="font-medium text-foreground">참고자료: </span>
+                <span className="font-medium text-foreground">참고 파일: </span>
                 <ul className="list-disc ml-5 text-xs">
-                  {analysisNotes.attachment_urls.map((url, i) => (
-                    <li key={i} className="text-primary truncate">
-                      {url || '(빈 URL)'}
+                  {analysisNotes.attachment_files.map((file, i) => (
+                    <li key={`${file.storage_path}-${i}`} className="truncate">
+                      {file.file_name}
                     </li>
                   ))}
                 </ul>
@@ -309,14 +323,11 @@ export default function StepSummaryRoadmap({
         />
       </section>
 
-      {sttInsights && (
-        <section className="border border-border rounded-lg p-4 bg-muted/20">
-          <h3 className="text-sm font-semibold text-foreground">STT 인사이트 (기존 데이터 유지)</h3>
-          <p className="mt-2 text-xs text-muted-foreground">
-            이전 버전 인터뷰에서 추출된 STT 인사이트가 있습니다. 참고용으로 유지됩니다.
-          </p>
-        </section>
-      )}
+      <StepSttUpload
+        insights={sttInsights}
+        onChange={onSttInsightsChange}
+        onExtract={onExtractSttInsights}
+      />
     </div>
   );
 }

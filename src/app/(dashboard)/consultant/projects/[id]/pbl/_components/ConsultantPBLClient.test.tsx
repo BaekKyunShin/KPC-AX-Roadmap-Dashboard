@@ -346,7 +346,10 @@ describe('ConsultantPBLClient', () => {
 
     it('버전이 없으면 빈 상태 메시지가 표시된다', () => {
       render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
-      expect(screen.getByText(/아직 생성된 PBL 보고서가 없습니다/)).toBeInTheDocument();
+      // 신규 빈 상태 박스: "아직 생성된 PBL 보고서가 없습니다"
+      expect(
+        screen.getByText('아직 생성된 PBL 보고서가 없습니다'),
+      ).toBeInTheDocument();
     });
 
     it('버전이 없을 때 "PBL 보고서 생성" 버튼이 표시된다', () => {
@@ -354,9 +357,60 @@ describe('ConsultantPBLClient', () => {
       expect(screen.getByRole('button', { name: 'PBL 보고서 생성' })).toBeInTheDocument();
     });
 
-    it('RegenerateAccordion이 항상 렌더링된다', () => {
+    // ISSUE-18 (Step D-2): 빈 상태에서는 RegenerateAccordion 대신 큰 단독 버튼 노출
+    it('버전이 없을 때 RegenerateAccordion을 숨기고 빈 상태 큰 "AI PBL 보고서 생성" 버튼을 노출한다', () => {
       render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
+      expect(screen.queryByTestId('regenerate-accordion')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('pbl-version-selector')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /AI PBL 보고서 생성/ }),
+      ).toBeInTheDocument();
+    });
+
+    it('버전이 있을 때 RegenerateAccordion이 정상 노출된다 (회귀 가드)', () => {
+      render(
+        <ConsultantPBLClient
+          {...DEFAULT_PROPS}
+          initialVersions={[makePBLRow()]}
+          initialSelected={makePBLRow()}
+        />,
+      );
       expect(screen.getByTestId('regenerate-accordion')).toBeInTheDocument();
+    });
+
+    it('빈 상태 큰 버튼 클릭 시 generatePBLAction이 호출된다', async () => {
+      const user = userEvent.setup();
+      mockGeneratePBLAction.mockResolvedValue({ success: false, error: '오류' });
+
+      render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
+
+      await user.click(screen.getByTestId('empty-pbl-generate-btn'));
+
+      await waitFor(() => {
+        expect(mockGeneratePBLAction).toHaveBeenCalledWith('proj-1', undefined);
+      });
+    });
+
+    it('생성 중에는 빈 상태 버튼이 disabled되고 "생성 중…" 라벨이 표시된다', async () => {
+      const user = userEvent.setup();
+      let resolveGenerate: (value: unknown) => void;
+      mockGeneratePBLAction.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveGenerate = resolve;
+          }),
+      );
+
+      render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
+
+      await user.click(screen.getByTestId('empty-pbl-generate-btn'));
+
+      // 생성 중 라벨 + disabled 확인
+      const generatingBtn = await screen.findByTestId('empty-pbl-generate-btn');
+      expect(generatingBtn).toBeDisabled();
+      expect(generatingBtn).toHaveTextContent(/생성 중…/);
+
+      resolveGenerate!({ success: false });
     });
 
     it('버전이 있으면 PBLVersionSelector가 표시된다', () => {
@@ -545,11 +599,18 @@ describe('ConsultantPBLClient', () => {
       });
     });
 
-    it('RegenerateAccordion의 생성 버튼 클릭 시 generatePBLAction이 호출된다', async () => {
+    it('RegenerateAccordion의 생성 버튼 클릭 시 generatePBLAction이 호출된다 (버전 ≥ 1)', async () => {
+      // ISSUE-18 (Step D-2): RegenerateAccordion은 버전 ≥ 1 일 때만 노출되도록 변경
       const user = userEvent.setup();
       mockGeneratePBLAction.mockResolvedValue({ success: false, error: '오류' });
 
-      render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
+      render(
+        <ConsultantPBLClient
+          {...DEFAULT_PROPS}
+          initialVersions={[makePBLRow()]}
+          initialSelected={makePBLRow()}
+        />,
+      );
 
       await user.click(screen.getByTestId('regenerate-submit'));
 
@@ -1085,8 +1146,8 @@ describe('ConsultantPBLClient', () => {
     it('content가 없을 때 변경 핸들러가 조기 반환한다 (selected=null)', () => {
       // selected가 null이면 handleGoalChange 등이 early return해야 함
       render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
-      // 빈 상태에서 goal 변경 버튼이 없음 — 컴포넌트가 정상 렌더링됨
-      expect(screen.getByTestId('regenerate-accordion')).toBeInTheDocument();
+      // 빈 상태에서는 RegenerateAccordion 대신 큰 단독 버튼이 노출됨 (ISSUE-18)
+      expect(screen.getByTestId('empty-pbl-generate-btn')).toBeInTheDocument();
     });
   });
 
@@ -1181,8 +1242,8 @@ describe('ConsultantPBLClient', () => {
 
       render(<ConsultantPBLClient {...DEFAULT_PROPS} />);
 
-      // 생성 시작
-      await user.click(screen.getByTestId('regenerate-submit'));
+      // 생성 시작 (빈 상태 큰 버튼)
+      await user.click(screen.getByTestId('empty-pbl-generate-btn'));
 
       // 생성 중 UI에서 취소 버튼 클릭
       await waitFor(() => {

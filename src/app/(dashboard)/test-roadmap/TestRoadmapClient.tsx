@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Check, Loader2, Info, FlaskConical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Loader2, Info, FlaskConical, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -46,6 +46,7 @@ import StepTaskWorkflowAnalysis from '@/app/(dashboard)/consultant/projects/[id]
 import StepTrainingTargets from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTrainingTargets';
 import StepCompetencyModeling from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
 import StepSummaryRoadmap from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepSummaryRoadmap';
+import { formatTimeRange } from '@/lib/utils/time';
 import TestRoadmapResult from './_components/TestRoadmapResult';
 import {
   createTestRoadmap,
@@ -53,8 +54,9 @@ import {
   reviseTestRoadmap,
 } from './actions';
 import { isCancelledError } from '@/lib/services/llm';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import type { RoadmapResult, ValidationResult, TestRoadmapInput } from '@/lib/services/roadmap';
+import { ROADMAP_INTERVIEW_SAMPLE } from '@/lib/fixtures/roadmap-interview-sample';
 
 interface UserInfo {
   id: string;
@@ -86,7 +88,8 @@ function emptyCompanyRequirements(): CompanyRequirements {
 }
 
 function emptyAnalysisNotes(): AnalysisNotes {
-  return { text: '', attachment_urls: [] };
+  // ISSUE-14: attachment_urls(string[]) → attachment_files(HrdReportAttachment[])
+  return { text: '', attachment_files: [] };
 }
 
 interface TestResult {
@@ -109,7 +112,9 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     new Date().toISOString().split('T')[0],
   );
   const [interviewRound, setInterviewRound] = useState<number>(1);
-  const [interviewTime, setInterviewTime] = useState('');
+  // ISSUE-10 Step C-2: 단일 시간 → 시작/종료 두 입력
+  const [interviewStartTime, setInterviewStartTime] = useState('');
+  const [interviewEndTime, setInterviewEndTime] = useState('');
   const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>('ONSITE');
   const [participants, setParticipants] = useState<RoadmapParticipant[]>([
     createEmptyRoadmapParticipant(),
@@ -217,10 +222,12 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
 
   const goToStep = (step: number) => {
+    if (step === currentStep) return;
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
     setCurrentStep(step);
+    scrollToPageTop();
   };
   const goToNextStep = () => {
     if (currentStep < ROADMAP_TOTAL_STEPS) goToStep(currentStep + 1);
@@ -238,7 +245,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     overview: overview as TestRoadmapInput['overview'],
     interview_date: interviewDate,
     interview_round: interviewRound,
-    interview_time: interviewTime,
+    interview_time: formatTimeRange(interviewStartTime, interviewEndTime),
     interview_method: interviewMethod,
     participants: participants.map((p, i) => ({
       id: p.id || `test-p-${i}`,
@@ -346,6 +353,47 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     setCurrentStep(1);
   };
 
+  /**
+   * ISSUE-02·03 Step E: 샘플 fixture 값을 모든 인터뷰 state 에 일괄 주입.
+   * 사용자가 이미 입력한 값이 있으면 confirm 으로 덮어쓰기 여부 확인.
+   */
+  const fillSample = () => {
+    const hasInput =
+      overview.establishment_necessity.trim() !== '' ||
+      overview.selected_tasks_summary.trim() !== '' ||
+      companyRequirements.company_status.trim() !== '' ||
+      companyRequirements.main_problems.trim() !== '' ||
+      taskWorkflowItems.some((t) => t.task_name.trim() !== '' || t.job.trim() !== '') ||
+      trainingTargets.some((t) => t.task_name.trim() !== '') ||
+      competencyModels.some((c) => c.competency_name.trim() !== '') ||
+      notes.trim() !== '';
+    if (
+      hasInput &&
+      typeof window !== 'undefined' &&
+      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
+    ) {
+      return;
+    }
+    // readonly fixture → 깊은 복사 후 주입
+    const sample = JSON.parse(JSON.stringify(ROADMAP_INTERVIEW_SAMPLE)) as typeof ROADMAP_INTERVIEW_SAMPLE;
+    setOverview(sample.overview);
+    setInterviewDate(sample.interview_date);
+    setInterviewRound(sample.interview_round);
+    setInterviewStartTime(sample.interview_start_time);
+    setInterviewEndTime(sample.interview_end_time);
+    setInterviewMethod(sample.interview_method);
+    setParticipants(sample.participants);
+    setCompanyRequirements(sample.company_requirements);
+    setTaskWorkflowItems(sample.task_workflow_items);
+    setTrainingTargets(sample.training_targets);
+    setAnalysisNotes(sample.analysis_notes);
+    setCompetencyModels(sample.competency_models);
+    setNcsUsage(sample.ncs_usage);
+    setNotes(sample.notes ?? '');
+    setCurrentStep(1);
+    setCompletedSteps([]);
+  };
+
   // ─── 미승인 사용자 ───
   if (!canAccess) {
     const userRole = user.role === 'USER_PENDING' ? 'CONSULTANT' : 'OPS_ADMIN';
@@ -407,12 +455,14 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             onInterviewDateChange={setInterviewDate}
             onInterviewRoundChange={setInterviewRound}
-            onInterviewTimeChange={setInterviewTime}
+            onInterviewStartTimeChange={setInterviewStartTime}
+            onInterviewEndTimeChange={setInterviewEndTime}
             onInterviewMethodChange={setInterviewMethod}
             onParticipantsChange={setParticipants}
           />
@@ -428,6 +478,12 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             onChange={setTaskWorkflowItems}
             analysisNotes={analysisNotes}
             onAnalysisNotesChange={setAnalysisNotes}
+            // 테스트 페이지에서는 실제 Storage 업로드 없이 안내만 노출 (ISSUE-14 Step C-5)
+            onUploadAttachment={async () => ({
+              success: false,
+              error: '테스트 페이지에서는 첨부 파일 업로드를 사용할 수 없습니다. 실제 프로젝트의 인터뷰 페이지에서 업로드하세요.',
+            })}
+            onRemoveAttachment={async () => ({ success: true })}
           />
         );
       case 5:
@@ -447,7 +503,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             overview={overview}
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             companyRequirements={companyRequirements}
@@ -459,6 +516,13 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             notes={notes}
             onEditStep={goToStep}
             onNotesChange={setNotes}
+            // ISSUE-16 테스트 페이지 — STT 인사이트 컴포넌트 노출만 하고 LLM 호출은 막아둔다.
+            sttInsights={undefined}
+            onSttInsightsChange={() => {}}
+            onExtractSttInsights={async () => ({
+              success: false,
+              error: '테스트 페이지에서는 STT 추출이 비활성화되어 있습니다.',
+            })}
           />
         );
       default:
@@ -474,6 +538,18 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             title="로드맵 테스트"
             description="산인공 양식 1번 기준 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
             backLink={{ ...backLink, useBack: true }}
+            actions={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={fillSample}
+                data-testid="test-roadmap-fill-sample"
+              >
+                <Wand2 className="w-4 h-4 mr-1.5" />
+                샘플 데이터 채우기
+              </Button>
+            }
           />
         </div>
 

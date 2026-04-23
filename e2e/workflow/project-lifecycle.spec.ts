@@ -226,8 +226,9 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.locator('#basic-method').click();
     await expect(page.getByRole('option').first()).toBeVisible({ timeout: 5_000 });
     await page.getByRole('option').first().click();
-    // 수행 시간 (일자는 기본값)
-    await page.locator('#basic-time').fill('09:00');
+    // ISSUE-10 (Step C-2): 수행 시간이 시작/종료 두 input 으로 분리됨
+    await page.locator('#basic-start-time').fill('09:00');
+    await page.locator('#basic-end-time').fill('11:00');
     // 참석자 1명 입력
     await page.getByRole('textbox', { name: /참석자 1 성명/ }).fill('E2E 참석자');
     await page.getByRole('textbox', { name: /참석자 1 소속/ }).fill('팀장');
@@ -301,15 +302,12 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.goto(`/consultant/projects/${projectId!}/roadmap`);
     await page.waitForLoadState('networkidle');
 
-    // 버전이 없으면 RegenerateAccordion의 "새 버전 생성" 버튼이 노출됨.
-    // 클릭 → 패널 → "생성 시작"이 createRoadmap Server Action을 호출.
-    const accordionToggle = page.getByRole('button', { name: '새 버전 생성' });
-    await expect(accordionToggle).toBeVisible({ timeout: 10_000 });
-    await accordionToggle.click();
-
-    const submitButton = page.getByRole('button', { name: '생성 시작' });
-    await expect(submitButton).toBeVisible({ timeout: 5_000 });
-    await submitButton.click();
+    // ISSUE-18 (Step D-2): versions=0 일 때는 RegenerateAccordion 이 숨겨지고
+    // EmptyRoadmapState 안에 큰 "AI 로드맵 생성" 버튼이 단독 노출된다.
+    // 본 5단계는 인터뷰 직후 시점이므로 versions=0 → 빈 상태 큰 버튼 흐름.
+    const generateButton = page.getByRole('button', { name: 'AI 로드맵 생성' });
+    await expect(generateButton).toBeVisible({ timeout: 10_000 });
+    await generateButton.click();
 
     // LLM 생성 완료 대기 — "버전 N" 헤더가 표시되거나 에러 토스트가 뜨거나.
     // 로컬·CI 환경별로 LLM 응답 형식이 달라 실패할 수 있으므로, 실패 시 graceful skip.

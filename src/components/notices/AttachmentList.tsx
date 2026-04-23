@@ -47,12 +47,12 @@ export function AttachmentList({
         showErrorToast('다운로드 링크 생성 실패');
         return;
       }
-      // 다운로드 트리거
+      // 다운로드 트리거 — 서명 URL 의 Content-Disposition 헤더에 원본 파일명이 박혀
+      // 있으므로 브라우저가 강제 다운로드한다. target="_blank" 는 cross-origin 환경에서
+      // anchor 의 download 속성을 무시하게 만들기 때문에 제거한다.
       const link = document.createElement('a');
       link.href = url;
-      link.download = att.file_name;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
+      link.download = att.file_name; // 백업 (Content-Disposition 이 우선)
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

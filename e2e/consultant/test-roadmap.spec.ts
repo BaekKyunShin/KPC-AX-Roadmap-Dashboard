@@ -57,6 +57,27 @@ test.describe('로드맵 테스트 페이지 — 컨설턴트', () => {
     const contentArea = page.locator('.bg-card.shadow.rounded-lg');
     await expect(contentArea.first()).toBeVisible();
   });
+
+  test('샘플 채우기 버튼 클릭 → fixture 값이 폼에 주입됨', async ({ consultantPage: page }) => {
+    const hasMainForm = await page
+      .getByRole('heading', { name: '로드맵 테스트' })
+      .isVisible()
+      .catch(() => false);
+
+    if (!hasMainForm) {
+      test.skip(true, '미승인 컨설턴트 — 메인 폼 미렌더');
+      return;
+    }
+
+    // 빈 상태에서는 confirm 없이 즉시 채워짐
+    const fillSampleBtn = page.getByTestId('test-roadmap-fill-sample');
+    await expect(fillSampleBtn).toBeVisible();
+    await fillSampleBtn.click();
+
+    // Step 1 ("개요") 의 "수립 필요성" textarea 에 fixture 값(샘플정밀공업 …) 이 채워짐
+    const necessityTextarea = page.locator('textarea').first();
+    await expect(necessityTextarea).toHaveValue(/샘플정밀공업|자동차 부품/);
+  });
 });
 
 // ─── 로드맵 테스트 페이지 (운영관리자) ──────────────────────────────────────

@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
 // Types
@@ -176,7 +177,7 @@ function TemplateMobileCard({
         </div>
         <div className="text-gray-500">생성일</div>
         <div className="text-gray-900">
-          {new Date(template.created_at).toLocaleDateString('ko-KR')}
+          {formatDateKR(template.created_at)}
         </div>
       </div>
 
@@ -331,7 +332,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
                   )}
                 </TableCell>
                 <TableCell className="text-gray-500">
-                  {new Date(template.created_at).toLocaleDateString('ko-KR')}
+                  {formatDateKR(template.created_at)}
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end mr-4">

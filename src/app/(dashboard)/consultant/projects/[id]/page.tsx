@@ -7,7 +7,13 @@ import { PageHeader } from '@/components/ui/page-header';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { projectDetailHref, primaryActionLabel, inferTrack } from '@/lib/utils/project-track';
 import type { SelfAssessmentScores } from '@/lib/constants/score-color';
-import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
+import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
+import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
+import { TrackBadge } from '@/components/ui/TrackBadge';
+import { formatDateKR } from '@/lib/utils/date';
+import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
+import type { PBLInterview } from '@/lib/schemas/interview-pbl';
+import type { ProjectTrack } from '@/lib/constants/tracks';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
 import { CompanyInfoCard } from './_components/CompanyInfoCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
@@ -53,13 +59,18 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         interviews(
           id,
           interview_date,
+          interview_round,
+          interview_time,
+          participants,
           company_details,
           job_tasks,
           pain_points,
           constraints,
           improvement_goals,
           notes,
-          customer_requirements
+          customer_requirements,
+          stt_insights,
+          pbl_data
         )
       `)
       .eq('id', projectId)
@@ -101,7 +112,8 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
         description={`${projectData.industry} · ${companySizeLabel}`}
         backLink={{ href: '/consultant/projects', label: '프로젝트 목록', useBack: true }}
         actions={
-          <div className="flex space-x-3">
+          <div className="flex items-center gap-3">
+            <TrackBadge track={projectData.track as ProjectTrack} />
             {!interview ? (
               <Link
                 href={`/consultant/projects/${projectId}/interview`}
@@ -150,7 +162,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 <h2 className="text-lg font-semibold text-gray-900">자가진단 결과</h2>
                 {selfAssessment?.created_at && (
                   <span className="text-sm text-gray-500">
-                    {new Date(selfAssessment.created_at).toLocaleDateString('ko-KR')} 진단
+                    {formatDateKR(selfAssessment.created_at)} 진단
                   </span>
                 )}
               </div>
@@ -183,11 +195,21 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">인터뷰 기록</h2>
-                <span className="text-sm text-gray-500">
-                  {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
-                </span>
+                {interview.interview_date && (
+                  <span className="text-sm text-gray-500">
+                    {formatDateKR(interview.interview_date)} 인터뷰
+                  </span>
+                )}
               </div>
-              <InterviewSummary {...toInterviewSummaryProps(interview)} />
+              {projectData.track === 'PBL' ? (
+                <PblInterviewSummary
+                  interview={(interview.pbl_data ?? {}) as Partial<PBLInterview>}
+                />
+              ) : (
+                <RoadmapInterviewSummary
+                  interview={mapInterviewRowToRoadmapInterview(interview)}
+                />
+              )}
             </div>
           ) : (
             <div className="bg-white shadow rounded-lg p-6">

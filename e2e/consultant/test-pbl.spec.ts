@@ -1,9 +1,11 @@
 // e2e/consultant/test-pbl.spec.ts
-// OFA-11: /test-pbl 페이지 접근 + 샘플 요약 렌더 (LLM 호출 없음 — 버튼 클릭 X)
+// ISSUE-02·03 Step E: 자동 prefill 제거 → 빈 폼 + "샘플 데이터 채우기" 버튼.
 import { test, expect } from '../fixtures/auth.fixture';
 
 test.describe('PBL 테스트 페이지 — 컨설턴트', () => {
-  test('/test-pbl 접근 + 샘플 데이터 prefill 확인', async ({ consultantPage: page }) => {
+  test('/test-pbl 접근 + 빈 폼 시작 + 샘플 채우기 버튼으로 prefill', async ({
+    consultantPage: page,
+  }) => {
     await page.goto('/test-pbl');
     await page.waitForLoadState('networkidle');
 
@@ -12,13 +14,21 @@ test.describe('PBL 테스트 페이지 — 컨설턴트', () => {
       timeout: 15_000,
     });
 
-    // 테스트 모드 안내 alert
+    // 테스트 모드 안내 alert (ISSUE-02: is_test_mode 노출 제거)
     await expect(page.getByText('테스트 모드 안내')).toBeVisible();
+    await expect(page.getByText(/입력값은 DB에 저장되지 않으며/)).toBeVisible();
 
-    // PBL 인터뷰 폼 전체에 샘플 데이터가 미리 채워져 있음 (OFA Step 9 이후 구조)
-    // 훈련과정명 textbox value로 확인 (getByText는 input value를 찾지 못함)
+    // 초기엔 훈련과정명이 빈 값
     const courseNameInput = page.getByRole('textbox', { name: /훈련과정명/ });
     await expect(courseNameInput).toBeVisible();
+    await expect(courseNameInput).toHaveValue('');
+
+    // "샘플 데이터 채우기" 버튼 노출 + 클릭
+    const fillSampleBtn = page.getByTestId('test-pbl-fill-sample');
+    await expect(fillSampleBtn).toBeVisible();
+    await fillSampleBtn.click();
+
+    // 클릭 후 fixture 값이 폼에 채워짐
     await expect(courseNameInput).toHaveValue(/PBL 과정/);
 
     // 스테퍼가 렌더되는지 확인 (PBL 인터뷰 다단계 폼)

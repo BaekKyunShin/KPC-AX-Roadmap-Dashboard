@@ -2,38 +2,46 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { GuideNote } from '@/components/ui/guide-note';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   createEmptyTaskWorkflowItem,
   type AnalysisNotes,
+  type HrdReportAttachment,
   type TaskWorkflowItem,
 } from '@/lib/schemas/interview-roadmap';
+import { AttachmentFileList } from '@/components/interview/AttachmentFileList';
+import { AI_NECESSITY_LABELS, AI_NECESSITY_OPTIONS } from '@/lib/constants/interview';
 
 interface StepTaskWorkflowAnalysisProps {
   items: TaskWorkflowItem[];
   onChange: (next: TaskWorkflowItem[]) => void;
   analysisNotes: AnalysisNotes;
   onAnalysisNotesChange: (next: AnalysisNotes) => void;
+  /**
+   * 분석 노트 첨부 업로드 콜백 — `uploadInterviewAttachment(projectId, formData)` 래퍼.
+   * Storage 업로드 + 본문 파싱(file-parser) 결과를 그대로 반환한다.
+   */
+  onUploadAttachment: (
+    file: File,
+  ) => Promise<{ success: true; data: HrdReportAttachment } | { success: false; error: string }>;
+  /**
+   * 분석 노트 첨부 삭제 콜백 — `removeInterviewAttachment(projectId, storagePath)` 래퍼.
+   */
+  onRemoveAttachment: (
+    storagePath: string,
+  ) => Promise<{ success: true } | { success: false; error: string }>;
 }
-
-const AI_NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
-const AI_NECESSITY_LABELS: Record<number, string> = {
-  1: '불필요',
-  2: '선택',
-  3: '중립',
-  4: '권장',
-  5: '필수',
-};
 
 export default function StepTaskWorkflowAnalysis({
   items,
   onChange,
   analysisNotes,
   onAnalysisNotesChange,
+  onUploadAttachment,
+  onRemoveAttachment,
 }: StepTaskWorkflowAnalysisProps) {
   const updateItem = <K extends keyof TaskWorkflowItem>(
     index: number,
@@ -53,26 +61,9 @@ export default function StepTaskWorkflowAnalysis({
     onChange(items.filter((_, i) => i !== index));
   };
 
-  const addAttachmentUrl = () => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: [...analysisNotes.attachment_urls, ''],
-    });
-  };
-
-  const updateAttachmentUrl = (index: number, url: string) => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: analysisNotes.attachment_urls.map((u, i) => (i === index ? url : u)),
-    });
-  };
-
-  const removeAttachmentUrl = (index: number) => {
-    onAnalysisNotesChange({
-      ...analysisNotes,
-      attachment_urls: analysisNotes.attachment_urls.filter((_, i) => i !== index),
-    });
-  };
+  // ISSUE-14 Step C-5: attachment_files 를 AttachmentFileList 공용 컴포넌트로 정식화.
+  // 업로드는 uploadInterviewAttachment(Server Action)에서 Storage 업로드 + file-parser 본문 추출까지
+  // 한 번에 처리하고, 결과 메타(extracted_text 또는 parse_error)가 LLM 프롬프트에 자동 반영된다.
 
   return (
     <div className="space-y-6">
@@ -138,7 +129,7 @@ export default function StepTaskWorkflowAnalysis({
               <FormField label="현행 방식 (As-Is)" htmlFor={`twf-asis-${item.id}`} required>
                 <Textarea
                   id={`twf-asis-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.as_is}
                   onChange={(e) => updateItem(index, 'as_is', e.target.value)}
                   placeholder="예) 검사원 2명이 라인에서 육안으로 외관 검사"
@@ -148,7 +139,7 @@ export default function StepTaskWorkflowAnalysis({
               <FormField label="문제점" htmlFor={`twf-problems-${item.id}`} required>
                 <Textarea
                   id={`twf-problems-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.problems}
                   onChange={(e) => updateItem(index, 'problems', e.target.value)}
                   placeholder="예) 검사원 피로도에 따라 품질 편차 발생, 재검사 필요"
@@ -165,7 +156,7 @@ export default function StepTaskWorkflowAnalysis({
               >
                 <Textarea
                   id={`twf-data-${item.id}`}
-                  rows={4}
+                  rows={6}
                   value={item.data_availability}
                   onChange={(e) => updateItem(index, 'data_availability', e.target.value)}
                   placeholder="예) 검사 이미지 2년치(DB 저장), 불량 판정 로그 1년치"
@@ -242,7 +233,7 @@ export default function StepTaskWorkflowAnalysis({
         </div>
         <Textarea
           id="twf-analysis-text"
-          rows={4}
+          rows={6}
           value={analysisNotes.text}
           onChange={(e) => onAnalysisNotesChange({ ...analysisNotes, text: e.target.value })}
           placeholder="예) 기업 내부전문가 3명과의 그룹 인터뷰로 공정 단계별 과업을 도출하고, 데이터 보유 여부에 따라 우선순위를 재정렬함."
@@ -250,50 +241,22 @@ export default function StepTaskWorkflowAnalysis({
           aria-label="분석 내용"
         />
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <Label className="block">첨부파일 (URL)</Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                공정 분석, 업로드 자료 등 참고 URL을 첨부하세요. 파일 업로드는 로드맵 단계에서 제공됩니다.
-              </p>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={addAttachmentUrl}>
-              <Plus className="w-4 h-4 mr-1" />
-              URL 추가
-            </Button>
-          </div>
-          {analysisNotes.attachment_urls.length === 0 ? (
-            <p className="text-xs text-muted-foreground">등록된 참고자료가 없습니다.</p>
-          ) : (
-            <div className="space-y-2">
-              {analysisNotes.attachment_urls.map((url, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    type="url"
-                    value={url}
-                    onChange={(e) => updateAttachmentUrl(index, e.target.value)}
-                    placeholder="https://example.com/공정분석.pdf"
-                    aria-label={`참고자료 URL ${index + 1}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeAttachmentUrl(index)}
-                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label={`참고자료 ${index + 1} 삭제`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <AttachmentFileList
+          files={analysisNotes.attachment_files}
+          onChange={(files) =>
+            onAnalysisNotesChange({ ...analysisNotes, attachment_files: files })
+          }
+          onUpload={onUploadAttachment}
+          onRemove={onRemoveAttachment}
+          label="추가자료 업로드"
+          description="과업 분석에 참고할 자료를 첨부하면 본문이 자동 추출되어 로드맵 생성에 반영됩니다."
+        />
 
         <GuideNote
           items={[
             '과업(또는 워크플로우) 분석 과정 및 방법에 대한 내용 기술',
             '작성한 내용 외에 제시해야 할 파일이 있는 경우 첨부파일로 업로드',
+            '첨부 파일 본문은 자동 추출되어 LLM 로드맵·PBL 생성에 반영됩니다 (최대 5,000자)',
           ]}
         />
       </div>

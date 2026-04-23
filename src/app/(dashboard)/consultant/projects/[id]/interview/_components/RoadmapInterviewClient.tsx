@@ -35,6 +35,9 @@ import {
   uploadHrdReportAttachment,
   removeHrdReportAttachment,
   createHrdReportSignedUrl,
+  extractSttInsights,
+  uploadInterviewAttachment,
+  removeInterviewAttachment,
 } from '../actions';
 import InterviewStepper from './InterviewStepper';
 import StepOverview from './roadmap/StepOverview';
@@ -58,7 +61,7 @@ function emptyCompanyRequirements(): CompanyRequirements {
 }
 
 function emptyAnalysisNotes(): AnalysisNotes {
-  return { text: '', attachment_urls: [] };
+  return { text: '', attachment_files: [] };
 }
 
 export default function RoadmapInterviewClient({
@@ -78,7 +81,10 @@ export default function RoadmapInterviewClient({
     initialData.interview_date || new Date().toISOString().split('T')[0],
   );
   const [interviewRound, setInterviewRound] = useState<number>(initialData.interview_round ?? 1);
-  const [interviewTime, setInterviewTime] = useState(initialData.interview_time ?? '');
+  // ISSUE-10 Step C-2: 시작/종료 두 input 으로 분리. legacy 단일 값은
+  // mapInterviewRowToRoadmapInterview 가 interview_start_time 으로 fallback 한다.
+  const [interviewStartTime, setInterviewStartTime] = useState(initialData.interview_start_time ?? '');
+  const [interviewEndTime, setInterviewEndTime] = useState(initialData.interview_end_time ?? '');
   const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>(
     initialData.interview_method ?? 'ONSITE',
   );
@@ -112,14 +118,18 @@ export default function RoadmapInterviewClient({
     () => initialData.ncs_usage ?? createEmptyNcsUsage(),
   );
   const [notes, setNotes] = useState(initialData.notes ?? '');
-  const [sttInsights] = useState<RoadmapInterview['stt_insights']>(initialData.stt_insights);
+  // ISSUE-16 Step C-4: STT 업로드 복원 — setter 정식화. 인사이트는 폼 state 의 일부로 자동저장된다.
+  const [sttInsights, setSttInsights] = useState<RoadmapInterview['stt_insights']>(
+    initialData.stt_insights,
+  );
 
   const formData = useMemo(
     () => ({
       overview,
       interview_date: interviewDate,
       interview_round: interviewRound,
-      interview_time: interviewTime,
+      interview_start_time: interviewStartTime,
+      interview_end_time: interviewEndTime,
       interview_method: interviewMethod,
       participants,
       company_requirements: companyRequirements,
@@ -135,7 +145,8 @@ export default function RoadmapInterviewClient({
       overview,
       interviewDate,
       interviewRound,
-      interviewTime,
+      interviewStartTime,
+      interviewEndTime,
       interviewMethod,
       participants,
       companyRequirements,
@@ -182,7 +193,10 @@ export default function RoadmapInterviewClient({
       case 2:
         return (
           Boolean(interviewDate) &&
-          Boolean(interviewTime) &&
+          Boolean(interviewStartTime) &&
+          Boolean(interviewEndTime) &&
+          // 시작 < 종료 (HTML time 문자열은 lexicographic 비교가 정확)
+          interviewStartTime < interviewEndTime &&
           Boolean(interviewMethod) &&
           participants.length > 0 &&
           participants.every((p) => p.name.trim() !== '')
@@ -236,10 +250,12 @@ export default function RoadmapInterviewClient({
   const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
 
   const goToStep = (step: number) => {
+    if (step === currentStep) return;
     if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
     }
     setCurrentStep(step);
+    scrollToPageTop();
   };
 
   const goToNextStep = () => {
@@ -305,12 +321,14 @@ export default function RoadmapInterviewClient({
           <StepBasicInfoRoadmap
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             onInterviewDateChange={setInterviewDate}
             onInterviewRoundChange={setInterviewRound}
-            onInterviewTimeChange={setInterviewTime}
+            onInterviewStartTimeChange={setInterviewStartTime}
+            onInterviewEndTimeChange={setInterviewEndTime}
             onInterviewMethodChange={setInterviewMethod}
             onParticipantsChange={setParticipants}
           />
@@ -324,6 +342,14 @@ export default function RoadmapInterviewClient({
             onChange={setTaskWorkflowItems}
             analysisNotes={analysisNotes}
             onAnalysisNotesChange={setAnalysisNotes}
+            onUploadAttachment={async (file) => {
+              const fd = new FormData();
+              fd.append('file', file);
+              return uploadInterviewAttachment(projectId, fd);
+            }}
+            onRemoveAttachment={(storagePath) =>
+              removeInterviewAttachment(projectId, storagePath)
+            }
           />
         );
       case 5:
@@ -343,7 +369,8 @@ export default function RoadmapInterviewClient({
             overview={overview}
             interviewDate={interviewDate}
             interviewRound={interviewRound}
-            interviewTime={interviewTime}
+            interviewStartTime={interviewStartTime}
+            interviewEndTime={interviewEndTime}
             interviewMethod={interviewMethod}
             participants={participants}
             companyRequirements={companyRequirements}
@@ -356,6 +383,8 @@ export default function RoadmapInterviewClient({
             onEditStep={goToStep}
             onNotesChange={setNotes}
             sttInsights={sttInsights}
+            onSttInsightsChange={setSttInsights}
+            onExtractSttInsights={(text: string) => extractSttInsights(projectId, text)}
           />
         );
       default:

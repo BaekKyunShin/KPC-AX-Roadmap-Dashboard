@@ -25,11 +25,17 @@ const saveRoadmapInterview = vi.fn();
 const uploadHrdReportAttachment = vi.fn();
 const removeHrdReportAttachment = vi.fn();
 const createHrdReportSignedUrl = vi.fn();
+const extractSttInsights = vi.fn();
+const uploadInterviewAttachment = vi.fn();
+const removeInterviewAttachment = vi.fn();
 vi.mock('../actions', () => ({
   saveRoadmapInterview: (...args: unknown[]) => saveRoadmapInterview(...args),
   uploadHrdReportAttachment: (...args: unknown[]) => uploadHrdReportAttachment(...args),
   removeHrdReportAttachment: (...args: unknown[]) => removeHrdReportAttachment(...args),
   createHrdReportSignedUrl: (...args: unknown[]) => createHrdReportSignedUrl(...args),
+  extractSttInsights: (...args: unknown[]) => extractSttInsights(...args),
+  uploadInterviewAttachment: (...args: unknown[]) => uploadInterviewAttachment(...args),
+  removeInterviewAttachment: (...args: unknown[]) => removeInterviewAttachment(...args),
 }));
 
 // useInterviewAutoSave mock — 자동 저장 상태 다양하게 테스트
@@ -53,7 +59,8 @@ function makeValidInitialData() {
     },
     interview_date: '2026-01-01',
     interview_round: 1,
-    interview_time: '10:00',
+    interview_start_time: '10:00',
+    interview_end_time: '12:00',
     interview_method: 'ONSITE' as const,
     participants: [{ id: 'p1', name: '참석자', position: '팀장' }],
     company_requirements: {
@@ -73,7 +80,7 @@ function makeValidInitialData() {
         ai_necessity: 3,
       },
     ],
-    analysis_notes: { text: '', attachment_urls: [] },
+    analysis_notes: { text: '', attachment_files: [] },
     training_targets: [
       {
         id: 'tt1',
@@ -263,4 +270,14 @@ describe('RoadmapInterviewClient', () => {
     // Step 2로 이동
     expect(screen.queryByRole('heading', { name: /Ⅰ\. 개요/ })).not.toBeInTheDocument();
   }, 10000);
+
+  // ---------------------------------------------------------------------------
+  // 7. 스텝 전환 시 페이지 상단 자동 스크롤 (ISSUE-15)
+  // ---------------------------------------------------------------------------
+  it('"다음" 클릭 시 scrollToPageTop이 호출된다', async () => {
+    const { scrollToPageTop } = await import('@/lib/utils');
+    render(<RoadmapInterviewClient projectId="p1" initialData={{}} />);
+    await userEvent.click(screen.getByRole('button', { name: /^다음$/ }));
+    expect(scrollToPageTop).toHaveBeenCalled();
+  });
 });

@@ -786,7 +786,7 @@ describe('createAttachmentSignedUrl', () => {
     expect(result).toBe(signedUrl);
   });
 
-  it('기본 만료 시간 60초 적용', async () => {
+  it('기본 만료 시간 60초 적용 (fileName 미지정 시 옵션은 undefined)', async () => {
     const signedUrl = 'https://signed.example.com/path?token=abc';
     mock.storageMethods.createSignedUrl.mockResolvedValueOnce({
       data: { signedUrl },
@@ -795,10 +795,11 @@ describe('createAttachmentSignedUrl', () => {
 
     await createAttachmentSignedUrl('notice-1/uuid.pdf', mock.mockClient as never);
 
-    // createSignedUrl 호출 시 기본 만료 60초 전달
+    // createSignedUrl 호출 시 기본 만료 60초 + 옵션 undefined 전달
     expect(mock.storageMethods.createSignedUrl).toHaveBeenCalledWith(
       'notice-1/uuid.pdf',
       60,
+      undefined,
     );
   });
 
@@ -810,7 +811,32 @@ describe('createAttachmentSignedUrl', () => {
 
     await createAttachmentSignedUrl('path', mock.mockClient as never, 300);
 
-    expect(mock.storageMethods.createSignedUrl).toHaveBeenCalledWith('path', 300);
+    expect(mock.storageMethods.createSignedUrl).toHaveBeenCalledWith(
+      'path',
+      300,
+      undefined,
+    );
+  });
+
+  it('fileName 지정 시 download 옵션과 함께 호출 (한글 파일명 포함)', async () => {
+    mock.storageMethods.createSignedUrl.mockResolvedValueOnce({
+      data: { signedUrl: 'https://signed.url/' },
+      error: null,
+    });
+
+    await createAttachmentSignedUrl(
+      'notice-1/uuid-한글-doc.hwp',
+      mock.mockClient as never,
+      60,
+      'AI 컨설팅 보고서.hwp',
+    );
+
+    // download 옵션에 원본 파일명이 그대로 전달되어 Supabase 가 RFC 5987 인코딩을 수행
+    expect(mock.storageMethods.createSignedUrl).toHaveBeenCalledWith(
+      'notice-1/uuid-한글-doc.hwp',
+      60,
+      { download: 'AI 컨설팅 보고서.hwp' },
+    );
   });
 
   it('Storage 에러 시 null 반환', async () => {

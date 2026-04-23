@@ -326,6 +326,45 @@ describe('buildRoadmapHwpxPayload', () => {
     expect((first.participants as unknown[]).length).toBe(2);
   });
 
+  // ISSUE-10 Step C-2: 시간 포맷 정식화
+  it('performance_activities.date 는 company_details.roadmap_interview_time JSONB 의 시작~종료 포맷을 따른다 (Step C-2)', () => {
+    const iv = makeInterview({
+      interview_date: '2026-04-22',
+      interview_time: undefined, // 단일 legacy 컬럼이 없어도
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '인터뷰 수집 필요성',
+          ai_competency_level: 'INTERMEDIATE',
+        },
+        roadmap_company_requirements: {
+          company_status: '제조업 현황',
+          main_problems: '수동 비효율',
+          push_willingness: '경영진 의지',
+          expected_outcomes: '불량률 30% 감소',
+        },
+        roadmap_analysis_notes: { text: '분석 노트', attachment_urls: [] },
+        roadmap_interview_time: { start: '14:00', end: '16:00' },
+      },
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
+    expect(first.date).toBe('2026-04-22\n14:00~16:00');
+  });
+
+  it('performance_activities.date 는 JSONB 가 없으면 legacy interview_time 으로 fallback (Step C-2)', () => {
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: makeInterview(), // interview_time: '10:00~12:00'
+    });
+    const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
+    expect(first.date).toBe('2026-04-01\n10:00~12:00');
+  });
+
   it('interview가 null이면 모든 인터뷰 기반 필드는 빈 문자열/빈 배열', () => {
     const p = buildRoadmapHwpxPayload({
       roadmap: makeRoadmapVersion(),

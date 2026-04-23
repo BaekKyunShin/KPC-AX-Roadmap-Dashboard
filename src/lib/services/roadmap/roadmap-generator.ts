@@ -484,7 +484,17 @@ export interface TestRoadmapInput {
   ncs_usage?: NcsUsage;
 
   notes?: string;
-  analysis_notes?: { text: string; attachment_urls: string[] };
+  // ISSUE-14: 첨부 파일 URL 배열 → 파일 객체 배열로 교체. Step C-5 가 LLM 통합 정식 구현.
+  analysis_notes?: {
+    text: string;
+    attachment_files: Array<{
+      storage_path: string;
+      file_name: string;
+      mime_type?: string;
+      size?: number;
+      uploaded_at?: string;
+    }>;
+  };
 }
 
 /** 테스트용 프로젝트 데이터 구성 */
@@ -517,7 +527,7 @@ function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsigh
     training_targets: input.training_targets,
     competency_models: input.competency_models ?? [],
     ncs_usage: input.ncs_usage,
-    analysis_notes: input.analysis_notes ?? { text: '', attachment_urls: [] },
+    analysis_notes: input.analysis_notes ?? { text: '', attachment_files: [] },
     notes: input.notes || '',
     customer_requirements: input.customer_requirements || '',
     stt_insights: sttInsights || null,

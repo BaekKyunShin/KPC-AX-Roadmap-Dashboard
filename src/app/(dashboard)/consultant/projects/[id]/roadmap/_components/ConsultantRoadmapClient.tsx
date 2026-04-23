@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
@@ -220,6 +220,7 @@ export default function ConsultantRoadmapClient({
   };
 
   const canEdit = selectedVersion?.status === 'DRAFT';
+  const hasVersions = versions.length > 0;
 
   // 로드맵 생성 취소 (서버 LLM 호출도 중단)
   const handleCancelGeneration = async () => {
@@ -273,28 +274,32 @@ export default function ConsultantRoadmapClient({
           }
         />
 
-        {/* 버전 셀렉터 바 */}
-        <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
-          <VersionSelector
-            versions={versions}
-            selectedId={selectedVersion?.id}
-            onSelect={handleVersionSelect}
-          />
-          {selectedVersion?.status === 'FINAL' && (
-            <ShareToggle
-              roadmapVersionId={selectedVersion.id}
-              initialShared={selectedVersion.is_shared ?? false}
+        {/* 버전 셀렉터 바 (버전이 있을 때만) */}
+        {hasVersions && (
+          <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
+            <VersionSelector
+              versions={versions}
+              selectedId={selectedVersion?.id}
+              onSelect={handleVersionSelect}
             />
-          )}
-        </div>
+            {selectedVersion?.status === 'FINAL' && (
+              <ShareToggle
+                roadmapVersionId={selectedVersion.id}
+                initialShared={selectedVersion.is_shared ?? false}
+              />
+            )}
+          </div>
+        )}
 
-        {/* 수정 요청 아코디언 */}
-        <RegenerateAccordion
-          value={revisionPrompt}
-          onChange={setRevisionPrompt}
-          onSubmit={handleGenerate}
-          isLoading={isGenerating}
-        />
+        {/* 수정 요청 아코디언 (버전이 있을 때만 — 빈 상태에서는 큰 생성 버튼 단독 노출) */}
+        {hasVersions && (
+          <RegenerateAccordion
+            value={revisionPrompt}
+            onChange={setRevisionPrompt}
+            onSubmit={handleGenerate}
+            isLoading={isGenerating}
+          />
+        )}
 
         {selectedVersion ? (
           <div className="bg-card shadow rounded-lg pb-1">
@@ -389,7 +394,7 @@ export default function ConsultantRoadmapClient({
             </div>
           </div>
         ) : (
-          <EmptyRoadmapState />
+          <EmptyRoadmapState onGenerate={handleGenerate} isGenerating={isGenerating} />
         )}
       </div>
 
@@ -406,15 +411,38 @@ export default function ConsultantRoadmapClient({
   );
 }
 
-// 빈 상태 컴포넌트
-function EmptyRoadmapState() {
+// 빈 상태 컴포넌트 — 큰 "AI 로드맵 생성" 버튼 단독 노출
+function EmptyRoadmapState({
+  onGenerate,
+  isGenerating,
+}: {
+  onGenerate: () => void;
+  isGenerating: boolean;
+}) {
   return (
     <div className="bg-white shadow rounded-lg p-12 text-center">
       <FileText className="mx-auto h-12 w-12 text-gray-400" />
-      <h3 className="mt-2 text-sm font-medium text-gray-900">로드맵이 없습니다</h3>
-      <p className="mt-1 text-sm text-gray-500">
-        왼쪽의 &quot;로드맵 생성&quot; 버튼을 클릭하여 AI 로드맵을 생성하세요.
+      <h3 className="mt-4 text-base font-semibold text-gray-900">아직 생성된 로드맵이 없습니다</h3>
+      <p className="mt-2 text-sm text-gray-500">
+        인터뷰가 완료되면 AI가 산인공 양식 1번 기반으로 로드맵을 생성합니다.
       </p>
+      <Button
+        type="button"
+        size="lg"
+        className="mt-6"
+        onClick={onGenerate}
+        disabled={isGenerating}
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> 생성 중…
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-4 h-4 mr-2" /> AI 로드맵 생성
+          </>
+        )}
+      </Button>
     </div>
   );
 }

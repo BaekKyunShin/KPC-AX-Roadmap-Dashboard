@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Search, X, Download } from 'lucide-react';
+import { formatDateKR, formatDateTimeKR, formatTimeKR, formatNumberKR } from '@/lib/utils/date';
 import { showErrorToast } from '@/lib/utils/toast';
 
 const AUDIT_PAGE_SIZE = 20;
@@ -66,7 +67,7 @@ function AuditMobileCard({
       </div>
 
       <div className="text-xs text-gray-500">
-        {new Date(log.created_at).toLocaleString('ko-KR')}
+        {formatDateTimeKR(log.created_at)}
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -265,7 +266,7 @@ export default function AuditLogClient({
   // 로그 데이터 변환 (내보내기용)
   function transformLogsForExport(logsToExport: AuditLogEntry[]) {
     return logsToExport.map(log => ({
-      '시간': new Date(log.created_at).toLocaleString('ko-KR'),
+      '시간': formatDateTimeKR(log.created_at),
       '사용자': log.actor?.name || '-',
       '이메일': log.actor?.email || log.actor_user_id,
       '액션': getActionLabel(log.action),
@@ -448,7 +449,7 @@ export default function AuditLogClient({
         {/* 통계 및 액션 */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-gray-500">
-            총 <span className="font-medium text-gray-900">{total.toLocaleString()}</span>건
+            총 <span className="font-medium text-gray-900">{formatNumberKR(total)}</span>건
             {searchKeyword && filteredLogs.length !== logs.length && (
               <span className="ml-1">(검색 결과: {filteredLogs.length}건)</span>
             )}
@@ -469,7 +470,7 @@ export default function AuditLogClient({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
-              {exporting === 'all-excel' ? '내보내는 중...' : `전체 목록 다운로드 (${total.toLocaleString()}건)`}
+              {exporting === 'all-excel' ? '내보내는 중...' : `전체 목록 다운로드 (${formatNumberKR(total)}건)`}
             </button>
           </div>
         </div>
@@ -506,8 +507,8 @@ export default function AuditLogClient({
               {filteredLogs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="text-gray-500">
-                    <div>{new Date(log.created_at).toLocaleDateString('ko-KR')}</div>
-                    <div className="text-xs">{new Date(log.created_at).toLocaleTimeString('ko-KR')}</div>
+                    <div>{formatDateKR(log.created_at)}</div>
+                    <div className="text-xs">{formatTimeKR(log.created_at)}</div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{log.actor?.name || '-'}</div>

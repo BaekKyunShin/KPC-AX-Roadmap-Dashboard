@@ -15,7 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjectStatusBadge } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
-import { InterviewSummary, toInterviewSummaryProps } from '@/components/interview/InterviewSummary';
+import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
+import { PblInterviewSummary } from '@/components/interview/PblInterviewSummary';
+import { TrackBadge } from '@/components/ui/TrackBadge';
+import { formatDateKR } from '@/lib/utils/date';
+import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
+import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import { getLatestToken } from '../actions';
 import ProjectTimeline from '../_components/ProjectTimeline';
 
@@ -215,12 +220,24 @@ async function AssignmentSection({
   );
 }
 
-async function InterviewSection({ projectId }: { projectId: string }) {
+async function InterviewSection({
+  projectId,
+  track,
+}: {
+  projectId: string;
+  track: 'ROADMAP' | 'PBL';
+}) {
   const supabase = await createClient();
 
+  // ISSUE-17 Step D-1: Batch 1 에서 추가된 필드까지 모두 조회.
+  //   - interview_round, participants, stt_insights → ROADMAP/PBL 공통
+  //   - pbl_data JSONB → PBL 전용 (trainingEnvironment, hrdNecessity 등)
+  //   - company_details JSONB 안에 roadmap_* 키들이 들어 있어 그대로 noarrow 조회
   const { data: interview } = await supabase
     .from('interviews')
-    .select('id, interview_date, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements')
+    .select(
+      'id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights, pbl_data',
+    )
     .eq('project_id', projectId)
     .maybeSingle();
 
@@ -232,15 +249,25 @@ async function InterviewSection({ projectId }: { projectId: string }) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <ClipboardList className="h-4 w-4 text-blue-600" />
-            인터뷰 정보
+            인터뷰 기록
           </CardTitle>
-          <span className="text-sm text-gray-500">
-            {new Date(interview.interview_date).toLocaleDateString('ko-KR')} 인터뷰
-          </span>
+          {interview.interview_date && (
+            <span className="text-sm text-gray-500">
+              {formatDateKR(interview.interview_date)} 인터뷰
+            </span>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        <InterviewSummary {...toInterviewSummaryProps(interview)} />
+        {track === 'PBL' ? (
+          <PblInterviewSummary
+            interview={(interview.pbl_data ?? {}) as Partial<PBLInterview>}
+          />
+        ) : (
+          <RoadmapInterviewSummary
+            interview={mapInterviewRowToRoadmapInterview(interview)}
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -293,6 +320,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         title={projectData.company_name}
         description={`${projectData.industry} · ${companySizeLabel}`}
         backLink={{ href: '/ops/projects', label: '프로젝트 목록', useBack: true }}
+        actions={<TrackBadge track={projectData.track} />}
       />
 
       {/* 기업 정보 카드 - 컴팩트 2컬럼 레이아웃 */}
@@ -373,9 +401,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <AssignmentSection projectId={id} projectData={projectData} />
         </Suspense>
 
-        {/* 인터뷰 정보 (읽기 전용) */}
+        {/* 인터뷰 정보 (읽기 전용) — 트랙별 분기 (ISSUE-17) */}
         <Suspense fallback={<InterviewSkeleton />}>
-          <InterviewSection projectId={id} />
+          <InterviewSection projectId={id} track={projectData.track} />
         </Suspense>
 
         {/* 산출물 열람 (읽기 전용) — 트랙별 분기 (OFA-11) */}

@@ -117,7 +117,7 @@ export default function StepCompetencyModeling({
               >
                 <Textarea
                   id={`cm-def-${item.id}`}
-                  rows={3}
+                  rows={6}
                   value={item.competency_definition}
                   onChange={(e) =>
                     updateCompetency(index, 'competency_definition', e.target.value)
@@ -135,7 +135,7 @@ export default function StepCompetencyModeling({
                 >
                   <Textarea
                     id={`cm-k-${item.id}`}
-                    rows={4}
+                    rows={6}
                     value={item.knowledge}
                     onChange={(e) => updateCompetency(index, 'knowledge', e.target.value)}
                     placeholder="예) 이미지 분류 기초, QMS 지표 체계, 머신러닝 입문"
@@ -150,7 +150,7 @@ export default function StepCompetencyModeling({
                 >
                   <Textarea
                     id={`cm-s-${item.id}`}
-                    rows={4}
+                    rows={6}
                     value={item.skill}
                     onChange={(e) => updateCompetency(index, 'skill', e.target.value)}
                     placeholder="예) 이미지 레이블링, 시각화 도구, 지표 모니터링"
@@ -165,7 +165,7 @@ export default function StepCompetencyModeling({
                 >
                   <Textarea
                     id={`cm-a-${item.id}`}
-                    rows={4}
+                    rows={6}
                     value={item.attitude}
                     onChange={(e) => updateCompetency(index, 'attitude', e.target.value)}
                     placeholder="예) 데이터 기반 의사결정 선호, 지속 학습 의지, 협업 태도"
@@ -233,7 +233,7 @@ export default function StepCompetencyModeling({
           >
             <Textarea
               id="ncs-usage-method"
-              rows={4}
+              rows={6}
               value={ncsUsage.ncs_usage_method ?? ''}
               onChange={(e) =>
                 onNcsUsageChange({ uses_ncs: true, ncs_usage_method: e.target.value })
@@ -251,7 +251,7 @@ export default function StepCompetencyModeling({
           >
             <Textarea
               id="competency-derivation-method"
-              rows={4}
+              rows={6}
               value={ncsUsage.competency_derivation_method ?? ''}
               onChange={(e) =>
                 onNcsUsageChange({

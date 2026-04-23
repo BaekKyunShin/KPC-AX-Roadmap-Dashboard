@@ -196,18 +196,17 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     });
 
     test('활동 일지 수정 → 내용 변경 확인', async ({ consultantPage: page }) => {
-      // 수동 기록의 더보기(⋯) 메뉴 찾기
-      const moreButton = page
-        .locator('[data-testid="more-actions-button"]')
+      // 수동 기록의 수정 아이콘 버튼 찾기
+      const editButton = page
+        .locator('[data-testid="edit-log-button"]')
         .first();
 
-      const hasLog = await moreButton.isVisible().catch(() => false);
+      const hasLog = await editButton.isVisible().catch(() => false);
       // 수동 기록이 없으면 수정 테스트 불가
       test.skip(!hasLog, '테스트 데이터 없음: 수정할 활동 일지 기록이 없습니다');
 
-      // 더보기 → 수정
-      await moreButton.click();
-      await page.getByRole('menuitem', { name: '수정' }).click();
+      // 수정 아이콘 클릭
+      await editButton.click();
 
       // 편집 텍스트 영역이 표시되는지 확인
       const editTextarea = page.locator('textarea').first();
@@ -225,12 +224,12 @@ test.describe('컨설턴트 프로젝트 상세', () => {
     });
 
     test('활동 일지 삭제 → 목록에서 제거 확인', async ({ consultantPage: page }) => {
-      // 수동 기록의 더보기(⋯) 메뉴 찾기
-      const moreButton = page
-        .locator('[data-testid="more-actions-button"]')
+      // 수동 기록의 삭제 아이콘 버튼 찾기
+      const deleteButton = page
+        .locator('[data-testid="delete-log-button"]')
         .first();
 
-      const hasLog = await moreButton.isVisible().catch(() => false);
+      const hasLog = await deleteButton.isVisible().catch(() => false);
       // 수동 기록이 없으면 삭제 테스트 불가
       test.skip(!hasLog, '테스트 데이터 없음: 삭제할 활동 일지 기록이 없습니다');
 
@@ -241,10 +240,9 @@ test.describe('컨설턴트 프로젝트 상세', () => {
         .textContent()
         .catch(() => null);
 
-      // 더보기 → 삭제 (confirm 다이얼로그 자동 수락)
+      // 삭제 (confirm 다이얼로그 자동 수락)
       page.on('dialog', (dialog) => dialog.accept());
-      await moreButton.click();
-      await page.getByRole('menuitem', { name: '삭제' }).click();
+      await deleteButton.click();
 
       // 성공 토스트 확인
       await expect(
