@@ -164,4 +164,76 @@ describe('buildPBLUserPrompt', () => {
     expect(result).toContain('컨설턴트 프로필');
     expect(result).toContain('AI 교육');
   });
+
+  // ISSUE-14 PBL 확장: Ⅱ-3-가 HRD이음 첨부 본문을 프롬프트에 병합
+  describe('Ⅱ-3-가 HRD이음 보고서 첨부 통합 (ISSUE-14 PBL)', () => {
+    it('extracted_text 가 있으면 attachment_body 태그로 본문이 포함된다', () => {
+      const interview = {
+        ...fakeInterview,
+        hrdNecessity: {
+          ...fakeInterview.hrdNecessity,
+          hrd_report_attachment: {
+            storage_path: 'p/note-x.pdf',
+            file_name: 'HRD이음 결과 2026.pdf',
+            mime_type: 'application/pdf',
+            size: 512000,
+            extracted_text: '본 보고서는 스마트팩토리 도입 컨설팅 요약임.',
+          },
+        },
+      };
+      const result = buildPBLUserPrompt(interview, {}, null, '요약');
+      expect(result).toContain('Ⅱ-3-가. 기업HRD이음컨설팅 결과');
+      expect(result).toContain('HRD이음 결과 2026.pdf');
+      expect(result).toContain('<attachment_body');
+      expect(result).toContain(
+        '본 보고서는 스마트팩토리 도입 컨설팅 요약임.',
+      );
+      expect(result).toContain('</attachment_body>');
+    });
+
+    it('parse_error 만 있을 때 본문 추출 실패 안내가 포함된다', () => {
+      const interview = {
+        ...fakeInterview,
+        hrdNecessity: {
+          ...fakeInterview.hrdNecessity,
+          hrd_report_attachment: {
+            storage_path: 'p/note-broken.pdf',
+            file_name: 'broken.pdf',
+            mime_type: 'application/pdf',
+            parse_error: '손상된 PDF',
+          },
+        },
+      };
+      const result = buildPBLUserPrompt(interview, {}, null, '요약');
+      expect(result).toContain('broken.pdf');
+      expect(result).toContain('본문 추출 실패');
+      expect(result).toContain('손상된 PDF');
+    });
+
+    it('첨부가 없으면 Ⅱ-3-가 HRD이음 섹션이 렌더링되지 않는다', () => {
+      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
+      expect(result).not.toContain('Ⅱ-3-가. 기업HRD이음컨설팅 결과');
+      expect(result).not.toContain('<attachment_body');
+    });
+
+    it('첨부 본문 내 따옴표는 file 속성에서 escape 된다 (Prompt-injection 방어)', () => {
+      const interview = {
+        ...fakeInterview,
+        hrdNecessity: {
+          ...fakeInterview.hrdNecessity,
+          hrd_report_attachment: {
+            storage_path: 'p/note-x.pdf',
+            file_name: 'he"llo".pdf',
+            extracted_text: 'dummy',
+          },
+        },
+      };
+      const result = buildPBLUserPrompt(interview, {}, null, '요약');
+      // file="..." 값 안에는 " 대신 &quot; 만 존재해야 한다
+      const match = result.match(/<attachment_body file="([^"]*)"/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain('&quot;');
+      expect(match?.[1]).not.toContain('"');
+    });
+  });
 });

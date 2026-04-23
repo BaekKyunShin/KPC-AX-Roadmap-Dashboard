@@ -3,6 +3,27 @@ import {
   PBL_EVALUATION_SCALE_DESCRIPTION,
   PBL_TRAINING_GOAL_CATEGORIES,
 } from './pbl-types';
+import {
+  type AttachmentMeta,
+  formatAttachmentBody,
+} from '../attachment-prompt';
+
+// ISSUE-14 PBL 확장: Ⅱ-3-가 기업HRD이음컨설팅 결과 보고서 첨부를 프롬프트에 주입
+function buildPBLHrdAttachmentSection(
+  hrdNecessity: Record<string, unknown>,
+): string {
+  const att = hrdNecessity.hrd_report_attachment as
+    | AttachmentMeta
+    | null
+    | undefined;
+  if (!att) return '';
+
+  return `\n### Ⅱ-3-가. 기업HRD이음컨설팅 결과 (첨부 보고서)
+- 파일명: ${att.file_name ?? '-'}
+- 형식: ${att.mime_type ?? '-'}
+- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}
+${formatAttachmentBody(att)}`;
+}
 
 // ============================================================================
 // 프롬프트 빌더 — 산인공 PBL 양식 2번 Ⅳ·Ⅴ장 기반
@@ -241,7 +262,7 @@ ${diagnosisSummary}
 - 과정개발 필요성: ${hrdNecessity.course_development_necessity ?? '미입력'}
 - 훈련 이력: ${JSON.stringify(hrdNecessity.training_history ?? [], null, 2)}
 - 추천 사업: ${JSON.stringify(hrdNecessity.recommendations ?? [], null, 2)}
-
+${buildPBLHrdAttachmentSection(hrdNecessity)}
 ## Ⅲ-1. 훈련과제 도출 수행활동
 
 ${JSON.stringify(performanceActivities.performance_activities ?? [], null, 2)}
