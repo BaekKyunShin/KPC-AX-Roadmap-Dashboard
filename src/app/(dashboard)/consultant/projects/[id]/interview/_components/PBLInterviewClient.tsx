@@ -29,7 +29,13 @@ import {
   createEmptyTargetTaskDetail,
 } from '@/lib/schemas/interview-pbl';
 import type { SttInsights } from '@/lib/schemas/interview-roadmap';
-import { savePBLInterview, extractSttInsights } from '../actions';
+import {
+  savePBLInterview,
+  extractSttInsights,
+  uploadInterviewAttachment,
+  removeInterviewAttachment,
+  createHrdReportSignedUrl,
+} from '../actions';
 import InterviewStepper from './InterviewStepper';
 
 const StepPBLCourseOverview = lazy(() => import('./pbl/StepPBLCourseOverview'));
@@ -278,7 +284,24 @@ export default function PBLInterviewClient({
       case 3:
         return <StepPBLTrainingEnvironment value={trainingEnvironment} onChange={setTrainingEnvironment} />;
       case 4:
-        return <StepPBLHrdNecessity value={hrdNecessity} onChange={setHrdNecessity} />;
+        return (
+          <StepPBLHrdNecessity
+            value={hrdNecessity}
+            onChange={setHrdNecessity}
+            onUploadHrdReport={async (file) => {
+              const fd = new FormData();
+              fd.append('file', file);
+              return uploadInterviewAttachment(projectId, fd);
+            }}
+            onRemoveHrdReport={(storagePath) =>
+              removeInterviewAttachment(projectId, storagePath)
+            }
+            onDownloadHrdReport={async (storagePath) => {
+              const r = await createHrdReportSignedUrl(projectId, storagePath);
+              return r.success ? r.data : null;
+            }}
+          />
+        );
       case 5:
         return (
           <StepPBLPerformanceActivities

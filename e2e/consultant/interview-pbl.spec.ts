@@ -92,6 +92,41 @@ test.describe('컨설턴트 PBL 인터뷰 (산인공 9스텝)', () => {
     await expect(page.getByRole('heading', { name: /Ⅱ-3\. AI 과정개발의 필요성/ })).toBeVisible();
   });
 
+  // ISSUE-14 PBL 확장: Ⅱ-3-가. 기업HRD이음컨설팅 결과 PDF 단일 첨부 UI
+  test('Step 4 — Ⅱ-3-가 HRD이음 보고서 PDF 업로드 UI 렌더', async ({
+    consultantPage: page,
+  }) => {
+    test.skip(!isPblAvailable || !interviewUrl, 'PBL 인터뷰 URL 없음');
+    const getErrors = setupConsoleErrorCheck(page);
+
+    await page.goto(interviewUrl!);
+    await page.waitForLoadState('networkidle');
+
+    for (let i = 0; i < 3; i++) {
+      await page.getByRole('button', { name: /^다음$/ }).click();
+    }
+
+    // 섹션 제목 (전산 자동 표출)
+    await expect(
+      page.getByRole('heading', { name: /Ⅱ-3-가\. 기업HRD이음컨설팅 결과/ }),
+    ).toBeVisible();
+
+    // PDF 단일 첨부 안내 문구
+    await expect(page.getByText(/PDF \(최대 10MB\)/)).toBeVisible();
+
+    // 업로드 트리거 버튼 — 파일이 첨부되지 않은 초기 상태
+    await expect(page.getByRole('button', { name: /파일 선택/ })).toBeEnabled();
+
+    // 숨겨진 input 이 sr-only 로 존재하고 accept=PDF 로 제한
+    const fileInput = page.locator(
+      'input[type="file"][aria-label="HRD이음컨설팅 결과 보고서 첨부"]',
+    );
+    await expect(fileInput).toHaveCount(1);
+    await expect(fileInput).toHaveAttribute('accept', /pdf/);
+
+    expect(getErrors()).toEqual([]);
+  });
+
   test('Step 5 — Ⅲ-1 수행활동 (참석자 4역할)', async ({ consultantPage: page }) => {
     test.skip(!isPblAvailable || !interviewUrl, 'PBL 인터뷰 URL 없음');
 

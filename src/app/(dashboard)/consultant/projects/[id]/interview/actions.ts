@@ -408,11 +408,16 @@ const INTERVIEW_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const INTERVIEW_ATTACHMENT_BUCKET = 'interview-attachments';
 
 /**
- * 인터뷰 첨부 업로드 — 분석 노트(`analysis_notes.attachment_files[]`) 용.
+ * 인터뷰 첨부 업로드 — 로드맵/PBL 공통.
+ *
+ * 사용처:
+ *   - 로드맵 Ⅱ-1 HRD4U 진단 보고서 (`overview.hrd_report_attachment`)
+ *   - 로드맵 Ⅱ-3 분석 노트 (`analysis_notes.attachment_files[]`)
+ *   - PBL Ⅱ-3-가 HRD이음컨설팅 결과 (`hrdNecessity.hrd_report_attachment`) — ISSUE-14 PBL 확장
  *
  * 5단계 패턴:
  *   1) 인증·역할 (CONSULTANT_APPROVED)
- *   2) 컨설턴트 배정 검증 (요청한 projectId 의 assigned_consultant_id === user.id)
+ *   2) 컨설턴트 배정 검증 — track 무관 (assigned_consultant_id === user.id)
  *   3) 입력 검증 (file 존재·MIME 화이트리스트·size 가드)
  *   4) Storage 업로드 → 파싱 (file-parser 디스패처) → 메타 객체 생성
  *   5) ActionResult<HrdReportAttachment> 반환 (extracted_text or parse_error 포함)
@@ -428,7 +433,7 @@ export async function uploadInterviewAttachment(
     });
     if ('error' in auth) return { success: false, error: auth.error };
 
-    // (2) 배정 검증 (ROADMAP 트랙 한정 — PBL 미래 확장 대비 명시적 거부)
+    // (2) 배정 검증 (로드맵·PBL 양 트랙 공통 — 프로젝트 단위 배정만 확인)
     const accessCheck = await requireConsultantProjectAccess(
       auth.supabase,
       auth.user.id,
