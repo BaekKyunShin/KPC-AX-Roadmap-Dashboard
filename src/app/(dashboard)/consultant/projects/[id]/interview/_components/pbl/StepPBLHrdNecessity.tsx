@@ -1,26 +1,130 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/form-field';
 import { GuideNote } from '@/components/ui/guide-note';
-import { Plus, Trash2 } from 'lucide-react';
+import {
+  Download,
+  FileWarning,
+  Loader2,
+  Paperclip,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   createEmptyTrainingHistoryItem,
   createEmptySupportHistoryItem,
   createEmptyRecommendation,
   type PBLHrdNecessity,
 } from '@/lib/schemas/interview-pbl';
+import type { HrdReportAttachment } from '@/lib/schemas/interview-roadmap';
 
 interface StepPBLHrdNecessityProps {
   value: PBLHrdNecessity;
   onChange: (next: PBLHrdNecessity) => void;
+  /** Ⅱ-3-가 HRD이음컨설팅 결과 PDF 업로드 (Server Action prebound). 미전달 시 첨부 섹션 자체를 숨긴다. */
+  onUploadHrdReport?: (
+    file: File,
+  ) => Promise<
+    | { success: true; data: HrdReportAttachment }
+    | { success: false; error: string }
+  >;
+  /** 첨부 삭제 Server Action. onUploadHrdReport 와 쌍으로 주입. */
+  onRemoveHrdReport?: (
+    storagePath: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  /** 첨부 다운로드 signed URL 발급 (선택). */
+  onDownloadHrdReport?: (
+    storagePath: string,
+  ) => Promise<{ url: string } | null>;
 }
 
 const MAX_RECOMMENDATIONS = 3;
 
-export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNecessityProps) {
+function formatBytes(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = bytes;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`;
+}
+
+export default function StepPBLHrdNecessity({
+  value,
+  onChange,
+  onUploadHrdReport,
+  onRemoveHrdReport,
+  onDownloadHrdReport,
+}: StepPBLHrdNecessityProps) {
+  const hrdFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isHrdUploading, setIsHrdUploading] = useState(false);
+
+  const handleHrdFileSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !onUploadHrdReport) return;
+
+    // ISSUE-14 PBL 확장: PDF 단일 허용 (HWPX 제외 — LLM 파싱 필요)
+    if (file.type !== 'application/pdf') {
+      showErrorToast(
+        '지원하지 않는 형식',
+        'HRD이음 보고서는 PDF 파일만 업로드할 수 있습니다.',
+      );
+      return;
+    }
+
+    setIsHrdUploading(true);
+    try {
+      const result = await onUploadHrdReport(file);
+      if (result.success) {
+        onChange({ ...value, hrd_report_attachment: result.data });
+        showSuccessToast('업로드 완료', `${file.name} (${formatBytes(file.size)})`);
+      } else {
+        showErrorToast('업로드 실패', result.error);
+      }
+    } catch {
+      showErrorToast('업로드 실패', '서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsHrdUploading(false);
+    }
+  };
+
+  const handleHrdRemove = async () => {
+    const att = value.hrd_report_attachment;
+    if (!att || !onRemoveHrdReport) return;
+    if (!confirm(`"${att.file_name}" 첨부를 삭제하시겠습니까?`)) return;
+
+    const result = await onRemoveHrdReport(att.storage_path);
+    if (result.success) {
+      onChange({ ...value, hrd_report_attachment: undefined });
+      showSuccessToast('삭제 완료', '첨부 파일이 삭제되었습니다.');
+    } else {
+      showErrorToast('삭제 실패', result.error || '서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleHrdDownload = async () => {
+    const att = value.hrd_report_attachment;
+    if (!att || !onDownloadHrdReport) return;
+    const result = await onDownloadHrdReport(att.storage_path);
+    if (result?.url) {
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } else {
+      showErrorToast('다운로드 실패', '미리보기 URL을 가져오지 못했습니다.');
+    }
+  };
+
   // ---- 훈련 이력 (training_history) ----
   const updateTrainingHistory = (
     index: number,
@@ -106,6 +210,110 @@ export default function StepPBLHrdNecessity({ value, onChange }: StepPBLHrdNeces
           산인공 양식 Ⅱ-3 (양식 2번 6p). 훈련 실시·지원 이력, 추천훈련사업, AI훈련과정 개발 필요성을 입력하세요.
         </p>
       </div>
+
+      {/* Ⅱ-3-가. 기업HRD이음컨설팅 결과 PDF 업로드 (ISSUE-14 PBL 확장) */}
+      {onUploadHrdReport ? (
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              Ⅱ-3-가. 기업HRD이음컨설팅 결과 (전산 자동 표출 · 선택)
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 break-keep">
+              기업HRD이음컨설팅 보고서 PDF 를 업로드하면 본문이 자동 추출되어 PBL 커리큘럼 생성에 반영됩니다 (최대 5000자 · 10MB).
+            </p>
+          </div>
+
+          <Label className="sr-only" htmlFor="pbl-hrd-report-input">
+            HRD이음컨설팅 결과 보고서 첨부
+          </Label>
+
+          {value.hrd_report_attachment ? (
+            <div className="rounded-md border border-border bg-muted/20 p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {value.hrd_report_attachment.file_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {value.hrd_report_attachment.mime_type ?? 'PDF'}
+                    {value.hrd_report_attachment.size
+                      ? ` · ${formatBytes(value.hrd_report_attachment.size)}`
+                      : ''}
+                    {value.hrd_report_attachment.extracted_text
+                      ? ` · 본문 ${value.hrd_report_attachment.extracted_text.length}자 추출`
+                      : ''}
+                    {value.hrd_report_attachment.parse_error ? (
+                      <span className="text-amber-600 ml-1">
+                        <FileWarning className="inline w-3 h-3 mr-0.5" />
+                        본문 추출 실패
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {onDownloadHrdReport && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleHrdDownload}
+                  >
+                    <Download className="h-4 w-4" />
+                    다운로드
+                  </Button>
+                )}
+                {onRemoveHrdReport && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleHrdRemove}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    삭제
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                id="pbl-hrd-report-input"
+                ref={hrdFileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleHrdFileSelect}
+                className="sr-only"
+                aria-label="HRD이음컨설팅 결과 보고서 첨부"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => hrdFileInputRef.current?.click()}
+                disabled={isHrdUploading}
+              >
+                {isHrdUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    업로드 중…
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    파일 선택
+                  </>
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                PDF (최대 10MB)
+              </span>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {/* 훈련 실시 이력 */}
       <section className="space-y-3">

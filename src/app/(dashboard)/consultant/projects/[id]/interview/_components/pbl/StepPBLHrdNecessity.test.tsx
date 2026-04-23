@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import StepPBLHrdNecessity from './StepPBLHrdNecessity';
 import type { PBLHrdNecessity } from '@/lib/schemas/interview-pbl';
+import type { HrdReportAttachment } from '@/lib/schemas/interview-roadmap';
+
+// toast 모킹 — 에러/성공 알림을 검증 가능하도록 고정
+vi.mock('@/lib/utils/toast', () => ({
+  showErrorToast: vi.fn(),
+  showSuccessToast: vi.fn(),
+}));
+
+// confirm 은 jsdom 에 기본 구현이 있으나 삭제 플로우에서 강제 true 로 고정
+beforeEach(() => {
+  vi.stubGlobal('confirm', vi.fn(() => true));
+});
 
 function makeValue(partial: Partial<PBLHrdNecessity> = {}): PBLHrdNecessity {
   return {
@@ -11,6 +23,20 @@ function makeValue(partial: Partial<PBLHrdNecessity> = {}): PBLHrdNecessity {
     recommendations: [],
     course_development_necessity: '',
     ...partial,
+  };
+}
+
+function fixtureAttachment(
+  over: Partial<HrdReportAttachment> = {},
+): HrdReportAttachment {
+  return {
+    storage_path: '550e8400-e29b-41d4-a716-446655440092/note-hrd.pdf',
+    file_name: 'HRD이음 결과.pdf',
+    mime_type: 'application/pdf',
+    size: 1024 * 300,
+    uploaded_at: '2026-04-23T00:00:00.000Z',
+    extracted_text: '가공된 본문 200자',
+    ...over,
   };
 }
 
@@ -301,6 +327,172 @@ describe('StepPBLHrdNecessity', () => {
     it('추천 과정이 없으면 안내 메시지 표시', () => {
       render(<StepPBLHrdNecessity value={makeValue()} onChange={vi.fn()} />);
       expect(screen.getByText('등록된 추천 과정이 없습니다.')).toBeInTheDocument();
+    });
+  });
+
+  // =====================================================================
+  // ISSUE-14 (PBL 확장) — Ⅱ-3-가. 기업HRD이음컨설팅 결과 PDF 단일 첨부
+  // =====================================================================
+  describe('Ⅱ-3-가. 기업HRD이음컨설팅 결과 첨부 (ISSUE-14)', () => {
+    it('업로드 핸들러가 주입되면 파일 선택 버튼과 섹션 제목이 렌더링된다', () => {
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue()}
+          onChange={vi.fn()}
+          onUploadHrdReport={vi.fn()}
+        />
+      );
+      expect(screen.getByText(/기업HRD이음컨설팅 결과/)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /파일 선택/ })
+      ).toBeInTheDocument();
+    });
+
+    it('업로드 핸들러가 주입되지 않으면 섹션 자체가 숨겨진다', () => {
+      render(<StepPBLHrdNecessity value={makeValue()} onChange={vi.fn()} />);
+      expect(
+        screen.queryByText(/기업HRD이음컨설팅 결과 \(/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('PDF 파일 선택 시 onUploadHrdReport 가 호출되고 성공 메타가 onChange 에 반영된다', async () => {
+      const onChange = vi.fn();
+      const onUploadHrdReport = vi.fn().mockResolvedValue({
+        success: true,
+        data: fixtureAttachment(),
+      });
+      const user = userEvent.setup();
+
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue()}
+          onChange={onChange}
+          onUploadHrdReport={onUploadHrdReport}
+        />
+      );
+
+      const input = screen.getByLabelText(
+        /HRD이음컨설팅 결과 보고서 첨부/
+      ) as HTMLInputElement;
+      const file = new File(['dummy'], 'HRD이음 결과.pdf', {
+        type: 'application/pdf',
+      });
+      await user.upload(input, file);
+
+      expect(onUploadHrdReport).toHaveBeenCalledTimes(1);
+      const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      expect(last.hrd_report_attachment).toMatchObject({
+        storage_path: expect.stringContaining('note-'),
+        file_name: 'HRD이음 결과.pdf',
+        mime_type: 'application/pdf',
+      });
+    });
+
+    it('PDF 이외의 파일 선택 시 onUploadHrdReport 를 호출하지 않고 에러 토스트를 띄운다', async () => {
+      const { showErrorToast } = await import('@/lib/utils/toast');
+      const onChange = vi.fn();
+      const onUploadHrdReport = vi.fn();
+
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue()}
+          onChange={onChange}
+          onUploadHrdReport={onUploadHrdReport}
+        />
+      );
+
+      const input = screen.getByLabelText(
+        /HRD이음컨설팅 결과 보고서 첨부/
+      ) as HTMLInputElement;
+      const png = new File(['x'], 'capture.png', { type: 'image/png' });
+      // accept 속성 우회 — 사용자가 브라우저 dialog 필터를 돌파하거나 MIME 위조 시나리오 검증
+      fireEvent.change(input, { target: { files: [png] } });
+
+      expect(onUploadHrdReport).not.toHaveBeenCalled();
+      expect(showErrorToast).toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('Server Action 이 실패를 반환하면 onChange 로 저장하지 않는다', async () => {
+      const { showErrorToast } = await import('@/lib/utils/toast');
+      const onChange = vi.fn();
+      const onUploadHrdReport = vi
+        .fn()
+        .mockResolvedValue({ success: false, error: '서버 오류' });
+      const user = userEvent.setup();
+
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue()}
+          onChange={onChange}
+          onUploadHrdReport={onUploadHrdReport}
+        />
+      );
+
+      const input = screen.getByLabelText(
+        /HRD이음컨설팅 결과 보고서 첨부/
+      ) as HTMLInputElement;
+      const pdf = new File(['x'], 'r.pdf', { type: 'application/pdf' });
+      await user.upload(input, pdf);
+
+      expect(onUploadHrdReport).toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(showErrorToast).toHaveBeenCalled();
+    });
+
+    it('첨부가 이미 존재하면 파일명·추출 글자수·삭제 버튼을 표시한다', () => {
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue({ hrd_report_attachment: fixtureAttachment() })}
+          onChange={vi.fn()}
+          onUploadHrdReport={vi.fn()}
+          onRemoveHrdReport={vi.fn()}
+        />
+      );
+      expect(screen.getByText('HRD이음 결과.pdf')).toBeInTheDocument();
+      expect(screen.getByText(/본문 \d+자 추출/)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /삭제/ })
+      ).toBeInTheDocument();
+    });
+
+    it('extracted_text 없이 parse_error 만 있으면 파싱 실패 안내를 보여준다', () => {
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue({
+            hrd_report_attachment: fixtureAttachment({
+              extracted_text: undefined,
+              parse_error: '손상된 PDF',
+            }),
+          })}
+          onChange={vi.fn()}
+          onUploadHrdReport={vi.fn()}
+        />
+      );
+      expect(screen.getByText(/본문 추출 실패/)).toBeInTheDocument();
+    });
+
+    it('삭제 버튼 클릭 → onRemoveHrdReport 성공 시 onChange 로 hrd_report_attachment=undefined', async () => {
+      const onChange = vi.fn();
+      const onRemoveHrdReport = vi.fn().mockResolvedValue({ success: true });
+      const user = userEvent.setup();
+
+      render(
+        <StepPBLHrdNecessity
+          value={makeValue({ hrd_report_attachment: fixtureAttachment() })}
+          onChange={onChange}
+          onUploadHrdReport={vi.fn()}
+          onRemoveHrdReport={onRemoveHrdReport}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /삭제/ }));
+
+      expect(onRemoveHrdReport).toHaveBeenCalledWith(
+        '550e8400-e29b-41d4-a716-446655440092/note-hrd.pdf'
+      );
+      const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      expect(last.hrd_report_attachment).toBeUndefined();
     });
   });
 });
