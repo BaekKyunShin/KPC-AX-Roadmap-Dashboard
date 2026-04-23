@@ -110,13 +110,6 @@ function createValidPBLContent(): PBLContent {
         },
       },
     },
-    performance_analysis: {
-      training_goal_categories: ['불량률 감소'],
-      quantitative_metrics: ['훈련 후 불량발생률 15% 감소'],
-      qualitative_metrics: ['현장 문제 해결 역량 향상'],
-      internalization_plan: ['매뉴얼 제작'],
-      dissemination_plan: ['성과 발표회'],
-    },
   };
 }
 

@@ -2,7 +2,7 @@
  * xlsx-pbl-sheet-builder.ts 테스트
  *
  * 시트별 함수(buildPBLOverviewSheet, buildPBLOperationSheet,
- * buildPBLTrainingSheet, buildPBLEvaluationSheet, buildPBLPerformanceSheet)
+ * buildPBLTrainingSheet, buildPBLEvaluationSheet)
  * 및 generatePBLXLSX / downloadPBLXLSX 를 검증한다.
  *
  * SheetJS(xlsx-js-style)는 실제 모듈을 그대로 사용한다.
@@ -11,13 +11,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WorkSheet } from 'xlsx-js-style';
-import type { PBLOperationPlan, PBLPerformanceAnalysis, PBLContent } from '../../pbl/pbl-types';
+import type { PBLOperationPlan, PBLContent } from '../../pbl/pbl-types';
 import {
   buildPBLOverviewSheet,
   buildPBLOperationSheet,
   buildPBLTrainingSheet,
   buildPBLEvaluationSheet,
-  buildPBLPerformanceSheet,
   generatePBLXLSX,
   downloadPBLXLSX,
   type PBLOverviewSheetInput,
@@ -129,20 +128,6 @@ function makeOperationPlan(
         practical_application_survey: [4, 4, 5, 4],
       },
     },
-    ...overrides,
-  };
-}
-
-/** 최소 유효한 PBLPerformanceAnalysis 픽스처 */
-function makePerformanceAnalysis(
-  overrides: Partial<PBLPerformanceAnalysis> = {},
-): PBLPerformanceAnalysis {
-  return {
-    training_goal_categories: ['기술문제 해결', '공정 최적화'],
-    quantitative_metrics: ['불량률 10% 감소', 'OEE 5% 개선'],
-    qualitative_metrics: ['직원 만족도 향상'],
-    internalization_plan: ['사내 매뉴얼 작성', '분기별 복습'],
-    dissemination_plan: ['전사 공유 세션', '부서장 리뷰'],
     ...overrides,
   };
 }
@@ -689,101 +674,6 @@ describe('buildPBLEvaluationSheet', () => {
 });
 
 // =============================================================================
-// buildPBLPerformanceSheet (Ⅴ-1·Ⅴ-2)
-// =============================================================================
-
-describe('buildPBLPerformanceSheet', () => {
-  describe('기본 구조', () => {
-    it('WorkSheet 객체를 반환한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(ws).toBeTruthy();
-      expect(ws['!ref']).toBeDefined();
-    });
-
-    it('열 너비(PERFORMANCE_COL)가 !cols에 설정된다', () => {
-      // PERFORMANCE_COL = [18, 44, 20]
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(ws['!cols']).toHaveLength(3);
-      expect((ws['!cols'] as Array<{ wch: number }>)[0].wch).toBe(18);
-      expect((ws['!cols'] as Array<{ wch: number }>)[1].wch).toBe(44);
-    });
-  });
-
-  describe('Ⅴ-1. 성과분석 측정 지표', () => {
-    it('training_goal_categories가 쉼표 조인으로 렌더링된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '기술문제 해결, 공정 최적화')).toBe(true);
-    });
-
-    it('training_goal_categories가 빈 배열이면 "-"로 표시된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis({ training_goal_categories: [] }));
-      expect(findCellWithValue(ws, '-')).toBe(true);
-    });
-
-    it('정량 지표가 불릿 형식으로 렌더링된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '• 불량률 10% 감소\n• OEE 5% 개선')).toBe(true);
-    });
-
-    it('정성 지표가 불릿 형식으로 렌더링된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '• 직원 만족도 향상')).toBe(true);
-    });
-
-    it('정량/정성 지표가 빈 배열이면 "-"로 표시된다', () => {
-      const ws = buildPBLPerformanceSheet(
-        makePerformanceAnalysis({ quantitative_metrics: [], qualitative_metrics: [] }),
-      );
-      expect(findCellWithValue(ws, '-')).toBe(true);
-    });
-  });
-
-  describe('Ⅴ-2. 성과 확산 전략', () => {
-    it('내재화 방안이 불릿 형식으로 렌더링된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '• 사내 매뉴얼 작성\n• 분기별 복습')).toBe(true);
-    });
-
-    it('전사 확산 방안이 불릿 형식으로 렌더링된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '• 전사 공유 세션\n• 부서장 리뷰')).toBe(true);
-    });
-
-    it('내재화 방안이 빈 배열이면 "-"로 표시된다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis({ internalization_plan: [] }));
-      expect(findCellWithValue(ws, '-')).toBe(true);
-    });
-  });
-
-  describe('섹션 레이블', () => {
-    it('훈련 목표 분류 레이블이 존재한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '훈련 목표 분류')).toBe(true);
-    });
-
-    it('정량 지표 레이블이 존재한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '정량 지표')).toBe(true);
-    });
-
-    it('정성 지표 레이블이 존재한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '정성 지표')).toBe(true);
-    });
-
-    it('내재화 방안 레이블이 존재한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '내재화 방안')).toBe(true);
-    });
-
-    it('전사 확산 방안 레이블이 존재한다', () => {
-      const ws = buildPBLPerformanceSheet(makePerformanceAnalysis());
-      expect(findCellWithValue(ws, '전사 확산 방안')).toBe(true);
-    });
-  });
-});
-
-// =============================================================================
 // generatePBLXLSX
 // =============================================================================
 
@@ -793,7 +683,6 @@ describe('generatePBLXLSX', () => {
   ): PBLXLSXInput {
     const pblContent: PBLContent = {
       operation_plan: makeOperationPlan(),
-      performance_analysis: makePerformanceAnalysis(),
     };
     return {
       ...makeOverviewInput(),
@@ -841,16 +730,9 @@ describe('generatePBLXLSX', () => {
         },
       },
     });
-    const emptyPerformance = makePerformanceAnalysis({
-      training_goal_categories: [],
-      quantitative_metrics: [],
-      qualitative_metrics: [],
-      internalization_plan: [],
-      dissemination_plan: [],
-    });
     const result = await generatePBLXLSX(
       makePBLXLSXInput({
-        pblContent: { operation_plan: emptyPlan, performance_analysis: emptyPerformance },
+        pblContent: { operation_plan: emptyPlan },
       }),
     );
     expect(result).toBeInstanceOf(Uint8Array);
@@ -1106,12 +988,10 @@ describe('엣지 케이스 통합', () => {
 
   it('모든 시트 빌더가 동일 입력으로 독립적으로 호출 가능하다', () => {
     const op = makeOperationPlan();
-    const pa = makePerformanceAnalysis();
     expect(() => {
       buildPBLOperationSheet(op);
       buildPBLTrainingSheet(op);
       buildPBLEvaluationSheet(op);
-      buildPBLPerformanceSheet(pa);
     }).not.toThrow();
   });
 

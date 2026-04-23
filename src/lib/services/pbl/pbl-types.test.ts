@@ -12,7 +12,6 @@ import {
   PBL_PRACTICAL_APPLICATION_SURVEY_QUESTIONS,
   PBL_SATISFACTION_SURVEY_LENGTH,
   PBL_SATISFACTION_SURVEY_QUESTIONS,
-  PBL_TRAINING_GOAL_CATEGORIES,
 } from './pbl-types';
 
 describe('pbl-types constants', () => {
@@ -37,16 +36,6 @@ describe('pbl-types constants', () => {
 
   it('수행수준은 1~5', () => {
     expect(PBL_PERFORMANCE_LEVELS).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it('훈련목표 분류 5종 (기타 포함)', () => {
-    expect(PBL_TRAINING_GOAL_CATEGORIES).toEqual([
-      '기술문제 해결',
-      '공정 최적화',
-      '불량률 감소',
-      '기술 매뉴얼 개발',
-      '기타',
-    ]);
   });
 
   it('AI 도구 활용 계획 최소 단계는 3', () => {

@@ -126,7 +126,7 @@ function makeInterview(overrides: Partial<NonNullable<RoadmapHwpxPayloadInputs['
     interview_date: '2026-04-01',
     interview_round: 1,
     interview_time: '10:00~12:00',
-    interview_method: '대면',
+    interview_method: 'ONSITE',
     participants: [
       { id: '1', name: '홍길동', position: '컨설팅책임자(PM)' },
       { id: '2', name: '김영희', position: '기업 내부전문가' },
@@ -160,24 +160,26 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(p.data.internal_expert_name).toBe('김영희');
   });
 
-  it('Ⅰ-1 수립 필요성은 Step 6.5 setup_necessity 값 사용', () => {
+  it('Ⅰ-1 수립 필요성은 인터뷰 입력값을 그대로 사용 (LLM fallback 금지)', () => {
     const p = buildRoadmapHwpxPayload({
       roadmap: makeRoadmapVersion(),
       project: makeProject(),
       interview: makeInterview(),
     });
-    // LLM 결과 setup_necessity 우선 (인터뷰에서 복사된 값)
-    expect(p.data.establishment_necessity).toBe('AI 도입 필요성');
+    // 인터뷰 Step 1 StepOverview 에서 수집한 원본 값만 사용
+    expect(p.data.establishment_necessity).toBe('인터뷰 수집 필요성');
   });
 
-  it('Ⅰ-3 outcome_summary: ai_competency_level·selected_tasks·main_content 매핑', () => {
+  it('Ⅰ-3 인터뷰 입력 매핑: ai_competency_level·selected_tasks_text', () => {
     const p = buildRoadmapHwpxPayload({
       roadmap: makeRoadmapVersion(),
       project: makeProject(),
       interview: makeInterview(),
     });
+    // 인터뷰 Step 1 에서 수집한 원본 값 그대로 사용
     expect(p.data.ai_competency_level).toBe('INTERMEDIATE');
     expect(p.data.selected_tasks_text).toBe('품질검사');
+    // roadmap_summary 는 LLM 자동 생성 영역 (인터뷰 필드 아님)
     expect(p.data.roadmap_summary).toBe('요약 본문');
   });
 
@@ -474,9 +476,9 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(p.data.ai_competency_level).toBe('ADVANCED');
   });
 
-  it('interview_method 가 "비대면" 이면 performance_activities.method = "비대면(화상회의)"', () => {
+  it('interview_method enum "VIDEO" 이면 performance_activities.method = "비대면(화상회의)"', () => {
     const iv = makeInterview({
-      interview_method: '비대면',
+      interview_method: 'VIDEO',
     } as unknown as Parameters<typeof makeInterview>[0]);
     const p = buildRoadmapHwpxPayload({
       roadmap: makeRoadmapVersion(),
@@ -487,7 +489,7 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(first.method).toBe('비대면(화상회의)');
   });
 
-  it('interview_method 가 기타 문자열이면 그대로 사용', () => {
+  it('interview_method 가 enum 외 문자열이면 그대로 사용 (legacy fallback)', () => {
     const iv = makeInterview({
       interview_method: '하이브리드',
     } as unknown as Parameters<typeof makeInterview>[0]);

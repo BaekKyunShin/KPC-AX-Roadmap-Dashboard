@@ -120,13 +120,6 @@ function baseExportData(): PBLExportData {
           },
         },
       },
-      performance_analysis: {
-        training_goal_categories: ['기술문제 해결'],
-        quantitative_metrics: ['지표1'],
-        qualitative_metrics: ['지표2'],
-        internalization_plan: ['방안1'],
-        dissemination_plan: ['확산1'],
-      },
     },
   };
 }
@@ -156,16 +149,16 @@ describe('generatePBLPDF', () => {
     expect(mockDocInstance.setLineHeightFactor).toHaveBeenCalledWith(1.5);
   });
 
-  it('요구사항 섹션 없으면 addPage 를 최소 3회 호출한다 (Ⅳ·Ⅴ장 + 없으면 Ⅱ·Ⅲ장 생략)', async () => {
+  it('요구사항 섹션 없으면 addPage 를 최소 1회 호출한다 (Ⅳ장만)', async () => {
     const { generatePBLPDF } = await import('./pdf-pbl-generator');
     const data = baseExportData();
     delete (data as Partial<PBLExportData>).requirements;
     await generatePBLPDF(data);
-    // Ⅳ장 + Ⅴ장 → 최소 2회 addPage
-    expect(mockDocInstance.addPage.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Ⅳ장 → 최소 1회 addPage
+    expect(mockDocInstance.addPage.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('requirements 가 있으면 addPage 를 최소 3회 호출한다 (Ⅱ·Ⅲ장 포함)', async () => {
+  it('requirements 가 있으면 addPage 를 최소 2회 호출한다 (Ⅱ·Ⅲ장 포함)', async () => {
     const { generatePBLPDF } = await import('./pdf-pbl-generator');
     const data: PBLExportData = {
       ...baseExportData(),
@@ -176,7 +169,7 @@ describe('generatePBLPDF', () => {
       },
     };
     await generatePBLPDF(data);
-    expect(mockDocInstance.addPage.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mockDocInstance.addPage.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('getNumberOfPages() 반환값만큼 setPage() 를 호출한다 (푸터 루프)', async () => {

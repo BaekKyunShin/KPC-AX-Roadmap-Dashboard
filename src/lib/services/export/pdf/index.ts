@@ -17,13 +17,12 @@
 export { generatePDF } from './pdf-generator';
 export type { RoadmapExportData } from './pdf-generator';
 
-// PBL 내보내기 (산인공 양식 2번 Ⅳ·Ⅴ장)
+// PBL 내보내기 (산인공 양식 2번 Ⅳ장)
 export { generatePBLPDF } from './pdf-pbl-generator';
 export type { PBLExportData } from './pdf-pbl-generator';
 export { drawPBLOverviewPage } from './pdf-pbl-overview-renderer';
 export { drawPBLRequirementsSection } from './pdf-pbl-requirements-renderer';
 export { drawPBLOperationSection } from './pdf-pbl-operation-renderer';
-export { drawPBLPerformanceSection } from './pdf-pbl-performance-renderer';
 
 // 섹션 렌더러 (테스트에서 import됨)
 export { drawCoverPage } from './pdf-cover-renderer';

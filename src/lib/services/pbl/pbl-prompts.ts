@@ -1,8 +1,5 @@
 import type { ConsultantProfile } from '@/types/database';
-import {
-  PBL_EVALUATION_SCALE_DESCRIPTION,
-  PBL_TRAINING_GOAL_CATEGORIES,
-} from './pbl-types';
+import { PBL_EVALUATION_SCALE_DESCRIPTION } from './pbl-types';
 import {
   type AttachmentMeta,
   formatAttachmentBody,
@@ -26,17 +23,16 @@ ${formatAttachmentBody(att)}`;
 }
 
 // ============================================================================
-// 프롬프트 빌더 — 산인공 PBL 양식 2번 Ⅳ·Ⅴ장 기반
+// 프롬프트 빌더 — 산인공 PBL 양식 2번 Ⅳ장 기반
 // ============================================================================
 
 /**
  * 시스템 프롬프트
  */
 export function buildPBLSystemPrompt(): string {
-  const goalCategories = PBL_TRAINING_GOAL_CATEGORIES.join(' | ');
   const evaluationScale = PBL_EVALUATION_SCALE_DESCRIPTION;
 
-  return `당신은 산업인력공단 PBL(Problem-Based Learning) 과정개발 보고서 설계 전문가입니다. 기업 PBL 인터뷰 결과를 분석하여 산인공 공식 양식 2번 Ⅳ·Ⅴ장에 맞는 운영계획 및 성과분석을 작성합니다.
+  return `당신은 산업인력공단 PBL(Problem-Based Learning) 과정개발 보고서 설계 전문가입니다. 기업 PBL 인터뷰 결과를 분석하여 산인공 공식 양식 2번 Ⅳ장에 맞는 운영계획을 작성합니다.
 
 ## 섹션 설계 원칙
 
@@ -87,13 +83,6 @@ export function buildPBLSystemPrompt(): string {
   - external_expert_survey: 길이 **5** (외부전문가 만족도)
   - practical_application_survey: 길이 **4** (현업적용도)
 - 길이가 다르면 검증 오류가 발생한다.
-
-### Ⅴ-1. 성과분석 측정 지표 (performance_analysis)
-- training_goal_categories: 다음 5종 enum 중에서만 선택하라: ${goalCategories}
-- quantitative_metrics: 구체적 수치를 포함한 정량 지표를 작성하라 (예: "훈련 후 불량발생률 15% 감소", "업무처리 시간 20% 단축"). '00%', 'OO' 같은 placeholder를 사용하지 마라.
-- qualitative_metrics: 정성적 변화를 최소 1개 이상 작성하라.
-- internalization_plan: 사내 내재화 방안을 최소 1개 이상 작성하라.
-- dissemination_plan: 전사 확산 방안을 최소 1개 이상 작성하라.
 
 ## 공통 정책
 - 모든 도구는 무료 범위 내에서 활용 가능해야 한다.
@@ -181,13 +170,6 @@ export function buildPBLSystemPrompt(): string {
         "practical_application_survey": [null, null, null, null]
       }
     }
-  },
-  "performance_analysis": {
-    "training_goal_categories": ["기술문제 해결"],
-    "quantitative_metrics": ["훈련 후 불량발생률 15% 감소"],
-    "qualitative_metrics": ["AI 도구 활용 역량 향상"],
-    "internalization_plan": ["사내 AI 활용 가이드 문서화"],
-    "dissemination_plan": ["전 부서 대상 공유 세미나 개최"]
   }
 }`;
 }
@@ -313,12 +295,12 @@ ${JSON.stringify(performanceActivities.performance_activities ?? [], null, 2)}
 이전 PBL 보고서에 대해 다음과 같은 수정이 요청되었습니다:
 ${revisionPrompt}
 
-위 수정 요청을 반영하여 Ⅳ·Ⅴ장 전체를 재생성해주세요.`;
+위 수정 요청을 반영하여 Ⅳ장 전체를 재생성해주세요.`;
   }
 
   prompt += `
 
-위 정보를 바탕으로 산인공 PBL 양식 2번 Ⅳ·Ⅴ장에 맞는 운영계획 및 성과분석을 생성해주세요.
+위 정보를 바탕으로 산인공 PBL 양식 2번 Ⅳ장에 맞는 운영계획을 생성해주세요.
 반드시 JSON 형식으로만 응답하세요.`;
 
   return prompt;

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { PBL_TRAINING_GOAL_CATEGORIES } from './pbl-types';
 import { buildPBLSystemPrompt, buildPBLUserPrompt } from './pbl-prompts';
 
 describe('buildPBLSystemPrompt', () => {
@@ -34,13 +33,6 @@ describe('buildPBLSystemPrompt', () => {
   it("evaluation_result '예정' 고정이 명시된다", () => {
     const prompt = buildPBLSystemPrompt();
     expect(prompt).toContain('예정');
-  });
-
-  it('PBL_TRAINING_GOAL_CATEGORIES 5종이 모두 포함된다', () => {
-    const prompt = buildPBLSystemPrompt();
-    for (const category of PBL_TRAINING_GOAL_CATEGORIES) {
-      expect(prompt).toContain(category);
-    }
   });
 });
 

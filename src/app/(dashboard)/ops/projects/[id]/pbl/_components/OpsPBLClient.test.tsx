@@ -126,10 +126,18 @@ vi.mock('@/components/pbl/PBLEvaluationPlan', () => ({
   ),
 }));
 
-vi.mock('@/components/pbl/PBLPerformanceMetrics', () => ({
-  PBLPerformanceMetrics: ({ canEdit }: { canEdit: boolean }) => (
-    <div data-testid="pbl-performance-metrics" data-can-edit={String(canEdit)} />
+vi.mock('@/components/pbl/PBLOverview', () => ({
+  PBLOverview: ({ value }: { value: { companyName?: string } }) => (
+    <div data-testid="pbl-overview">{value?.companyName ?? ''}</div>
   ),
+}));
+
+vi.mock('@/components/pbl/PBLTrainingTargets', () => ({
+  PBLTrainingTargets: ({
+    trainingNeedsAnalysis,
+  }: {
+    trainingNeedsAnalysis: string;
+  }) => <div data-testid="pbl-training-targets">{trainingNeedsAnalysis}</div>,
 }));
 
 // =============================================================================
@@ -158,13 +166,6 @@ function makePBLRow(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
         training_plan: {} as PBLReportRow['pbl_content']['operation_plan']['training_plan'],
         evaluation_plan: {} as PBLReportRow['pbl_content']['operation_plan']['evaluation_plan'],
       },
-      performance_analysis: {
-        training_goal_categories: [],
-        quantitative_metrics: [],
-        qualitative_metrics: [],
-        internalization_plan: [],
-        dissemination_plan: [],
-      },
     },
     free_tool_validated: false,
     time_limit_validated: false,
@@ -181,6 +182,12 @@ function makePBLRow(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
 }
 
 const TEST_PROJECT_ID = 'proj-1';
+
+const DEFAULT_OPS_PROPS = {
+  projectId: TEST_PROJECT_ID,
+  interviewOverview: null,
+  interviewTargets: null,
+} as const;
 
 // =============================================================================
 // 테스트
@@ -199,7 +206,7 @@ describe('OpsPBLClient', () => {
     it('페이지 헤더가 렌더링된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[]}
           initialSelected={null}
         />,
@@ -210,7 +217,7 @@ describe('OpsPBLClient', () => {
     it('버전이 없으면 빈 상태 메시지가 표시된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[]}
           initialSelected={null}
         />,
@@ -223,7 +230,7 @@ describe('OpsPBLClient', () => {
     it('버전이 있으면 PBLVersionSelector가 표시된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -234,7 +241,7 @@ describe('OpsPBLClient', () => {
     it('selected가 있을 때 다운로드 버튼들이 표시된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -247,7 +254,7 @@ describe('OpsPBLClient', () => {
     it('selected가 없으면 다운로드 버튼이 표시되지 않는다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={null}
         />,
@@ -263,7 +270,7 @@ describe('OpsPBLClient', () => {
     it('selected와 content가 있으면 PBLOperationGoal이 canEdit=false로 렌더링된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -276,7 +283,7 @@ describe('OpsPBLClient', () => {
     it('모든 PBL 섹션 컴포넌트가 canEdit=false로 렌더링된다', () => {
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -284,7 +291,58 @@ describe('OpsPBLClient', () => {
       expect(screen.getByTestId('pbl-tool-usage-plan')).toHaveAttribute('data-can-edit', 'false');
       expect(screen.getByTestId('pbl-training-plan')).toHaveAttribute('data-can-edit', 'false');
       expect(screen.getByTestId('pbl-evaluation-plan')).toHaveAttribute('data-can-edit', 'false');
-      expect(screen.getByTestId('pbl-performance-metrics')).toHaveAttribute('data-can-edit', 'false');
+    });
+
+    it('interviewOverview가 주어지면 PBLOverview를 렌더링한다', () => {
+      render(
+        <OpsPBLClient
+          projectId={TEST_PROJECT_ID}
+          initialVersions={[makePBLRow()]}
+          initialSelected={makePBLRow()}
+          interviewOverview={{
+            companyName: 'Acme',
+            courseName: '과정',
+            trainingHours: 10,
+            traineeCount: 5,
+            trainingJob: '직무',
+            aiLevel: 'AI기초형',
+            trainingGoals: [],
+          }}
+          interviewTargets={null}
+        />,
+      );
+      expect(screen.getByTestId('pbl-overview')).toHaveTextContent('Acme');
+      expect(screen.queryByTestId('pbl-training-targets')).not.toBeInTheDocument();
+    });
+
+    it('interviewTargets가 주어지면 PBLTrainingTargets를 렌더링한다', () => {
+      render(
+        <OpsPBLClient
+          projectId={TEST_PROJECT_ID}
+          initialVersions={[makePBLRow()]}
+          initialSelected={makePBLRow()}
+          interviewOverview={null}
+          interviewTargets={{
+            trainingNeedsAnalysis: '분석 내용',
+            selectionReason: '사유',
+            details: [],
+          }}
+        />,
+      );
+      expect(screen.getByTestId('pbl-training-targets')).toHaveTextContent('분석 내용');
+      expect(screen.queryByTestId('pbl-overview')).not.toBeInTheDocument();
+    });
+
+    it('interviewOverview·interviewTargets가 null이면 두 컴포넌트가 모두 렌더링되지 않는다', () => {
+      render(
+        <OpsPBLClient
+          {...DEFAULT_OPS_PROPS}
+          initialVersions={[makePBLRow()]}
+          initialSelected={makePBLRow()}
+        />,
+      );
+      expect(screen.queryByTestId('pbl-overview')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('pbl-training-targets')).not.toBeInTheDocument();
     });
   });
 
@@ -299,7 +357,7 @@ describe('OpsPBLClient', () => {
 
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={rows}
           initialSelected={rows[0]}
         />,
@@ -319,7 +377,7 @@ describe('OpsPBLClient', () => {
 
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={rows}
           initialSelected={rows[0]}
         />,
@@ -341,7 +399,7 @@ describe('OpsPBLClient', () => {
       const user = userEvent.setup();
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -355,7 +413,7 @@ describe('OpsPBLClient', () => {
       const user = userEvent.setup();
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -370,7 +428,7 @@ describe('OpsPBLClient', () => {
       mockExportPBLAsHwpxAction.mockResolvedValue({ success: true });
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -384,7 +442,7 @@ describe('OpsPBLClient', () => {
       mockIsDownloading = 'PDF';
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,
@@ -396,7 +454,7 @@ describe('OpsPBLClient', () => {
       mockIsDownloading = 'XLSX';
       render(
         <OpsPBLClient
-          projectId={TEST_PROJECT_ID}
+          {...DEFAULT_OPS_PROPS}
           initialVersions={[makePBLRow()]}
           initialSelected={makePBLRow()}
         />,

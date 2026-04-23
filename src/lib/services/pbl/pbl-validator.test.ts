@@ -125,13 +125,6 @@ function createValidPBLContent(): PBLContent {
         },
       },
     },
-    performance_analysis: {
-      training_goal_categories: ['기술문제 해결', '불량률 감소'],
-      quantitative_metrics: ['훈련 이후 불량발생률 20% 감소'],
-      qualitative_metrics: ['복잡한 현장 문제에 대한 자율적 해결 능력 향상'],
-      internalization_plan: ['매뉴얼 제작', '지식 공유 세션'],
-      dissemination_plan: ['성과 발표회'],
-    },
   };
 }
 
@@ -234,34 +227,7 @@ describe('pbl-validator - 결과평가 설문 문항 수 고정', () => {
   });
 });
 
-describe('pbl-validator - Ⅴ장 성과분석', () => {
-  it('training_goal_categories enum만 허용', () => {
-    const content = createValidPBLContent();
-    // @ts-expect-error 의도적 enum 이탈
-    content.performance_analysis.training_goal_categories = ['존재하지않는분류'];
-    const result = validatePBLContent(content);
-    expect(result.isValid).toBe(false);
-  });
-
-  it('정량/정성/내재화/전사 확산 각 최소 1개', () => {
-    const content = createValidPBLContent();
-    content.performance_analysis.quantitative_metrics = [];
-    const result = validatePBLContent(content);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('정량'))).toBe(true);
-  });
-});
-
 describe('pbl-validator - 경고(warnings)', () => {
-  it('placeholder 수치(00%) 포함 시 warning', () => {
-    const content = createValidPBLContent();
-    content.performance_analysis.quantitative_metrics = ['훈련 이후 불량발생률 00% 감소'];
-    const result = validatePBLContent(content);
-    // errors 비어있고 warnings만 남아야 한다
-    expect(result.isValid).toBe(true);
-    expect(result.warnings.some((w) => w.includes('00%'))).toBe(true);
-  });
-
   it('시설·장비 연번 중복 시 warning', () => {
     const content = createValidPBLContent();
     content.operation_plan.training_plan.facilities = [

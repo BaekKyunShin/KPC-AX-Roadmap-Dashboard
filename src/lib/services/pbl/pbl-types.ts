@@ -1,5 +1,5 @@
 // ============================================================================
-// PBL 타입 정의 — 산인공 PBL 양식 2번 Ⅳ·Ⅴ장 1:1 매칭
+// PBL 타입 정의 — 산인공 PBL 양식 2번 Ⅳ장 1:1 매칭
 //   Ⅳ-1. 훈련 목표                   → PBLOperationPlan.training_goal
 //   Ⅳ-2. AI 도구 활용 계획           → PBLAIToolUsagePlanItem[] (최소 3단계)
 //   Ⅳ-3. 훈련 실시 계획              → PBLTrainingPlan
@@ -11,8 +11,6 @@
 //   Ⅳ-4. 평가 계획                   → PBLEvaluationPlan
 //     가. 과정평가                    → PBLCourseEvaluation (수행수준 1~5)
 //     나. 결과평가                    → PBLResultEvaluation (고정 설문)
-//   Ⅴ-1. 성과분석 측정 지표          → PBLPerformanceAnalysis
-//   Ⅴ-2. 성과 확산 전략              → internalization_plan + dissemination_plan
 // ============================================================================
 
 // ----------------------------------------------------------------------------
@@ -179,33 +177,11 @@ export interface PBLOperationPlan {
 }
 
 // ----------------------------------------------------------------------------
-// Ⅴ. 성과분석 및 확산 전략
-// ----------------------------------------------------------------------------
-
-export const PBL_TRAINING_GOAL_CATEGORIES = [
-  '기술문제 해결',
-  '공정 최적화',
-  '불량률 감소',
-  '기술 매뉴얼 개발',
-  '기타',
-] as const;
-export type PBLTrainingGoalCategory = (typeof PBL_TRAINING_GOAL_CATEGORIES)[number];
-
-export interface PBLPerformanceAnalysis {
-  training_goal_categories: PBLTrainingGoalCategory[];
-  quantitative_metrics: string[]; // 정량 지표
-  qualitative_metrics: string[]; // 정성 지표
-  internalization_plan: string[]; // 내재화 방안
-  dissemination_plan: string[]; // 전사 확산 방안
-}
-
-// ----------------------------------------------------------------------------
 // 최상위 결과물
 // ----------------------------------------------------------------------------
 
 export interface PBLContent {
   operation_plan: PBLOperationPlan;
-  performance_analysis: PBLPerformanceAnalysis;
 }
 
 // ----------------------------------------------------------------------------

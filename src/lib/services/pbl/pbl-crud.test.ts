@@ -83,13 +83,6 @@ function minimalValidPBLContent(): PBLContent {
         },
       },
     },
-    performance_analysis: {
-      training_goal_categories: ['불량률 감소'],
-      quantitative_metrics: ['불량률 15% 감소'],
-      qualitative_metrics: ['역량 향상'],
-      internalization_plan: ['매뉴얼 제작'],
-      dissemination_plan: ['발표회'],
-    },
   };
 }
 

@@ -1,19 +1,17 @@
 /**
- * PBL XLSX 시트 빌더 (산인공 PBL 양식 2번 Ⅳ·Ⅴ장)
+ * PBL XLSX 시트 빌더 (산인공 PBL 양식 2번 Ⅳ장)
  *
  * 시트 구성:
  *   1. 개요          — 표지 + 진단 요약 + Ⅰ장 요약(있으면)
  *   2. 운영계획      — Ⅳ-1 훈련 목표, Ⅳ-2 AI 도구 활용 계획
  *   3. 훈련 실시     — Ⅳ-3 교과목 프로파일 · 시설·장비 · 강사
  *   4. 평가 계획     — Ⅳ-4-가 과정평가 · 나 결과평가 (문항 수)
- *   5. 성과분석·확산 — Ⅴ-1·Ⅴ-2
  */
 
 import type * as XLSX from 'xlsx-js-style';
 import type {
   PBLContent,
   PBLOperationPlan,
-  PBLPerformanceAnalysis,
 } from '../../pbl/pbl-types';
 import { calcRowHeight, formatBulletLines } from './xlsx-formatter';
 import { STYLE, tableBodyCenterStyle, tableBodyStyle } from './xlsx-styles';
@@ -40,7 +38,6 @@ const OVERVIEW_COL = [14, 30, 30, 30];
 const OPERATION_COL = [12, 18, 22, 18, 22, 28];
 const TRAINING_COL = [20, 28, 12, 14, 14];
 const EVALUATION_COL = [18, 40, 14, 16];
-const PERFORMANCE_COL = [18, 44, 20];
 
 // ============================================================================
 // 공통: 간단한 테이블 빌더
@@ -370,34 +367,6 @@ export function buildPBLEvaluationSheet(op: PBLOperationPlan): XLSX.WorkSheet {
 }
 
 // ============================================================================
-// 시트 5: 성과분석·확산 전략 (Ⅴ-1·Ⅴ-2)
-// ============================================================================
-
-export function buildPBLPerformanceSheet(analysis: PBLPerformanceAnalysis): XLSX.WorkSheet {
-  const ctx = createCtx(PERFORMANCE_COL);
-
-  addSectionHeader(ctx, 'Ⅴ-1. 성과분석 측정 지표');
-  addBlankRow(ctx, 6);
-  addLabelValueRow(
-    ctx,
-    '훈련 목표 분류',
-    analysis.training_goal_categories.length > 0
-      ? analysis.training_goal_categories.join(', ')
-      : '-',
-  );
-  addLabelValueRow(ctx, '정량 지표', formatBulletLines(analysis.quantitative_metrics));
-  addLabelValueRow(ctx, '정성 지표', formatBulletLines(analysis.qualitative_metrics));
-  addBlankRow(ctx, 6);
-
-  addSectionHeader(ctx, 'Ⅴ-2. 성과 확산 전략');
-  addBlankRow(ctx, 6);
-  addLabelValueRow(ctx, '내재화 방안', formatBulletLines(analysis.internalization_plan));
-  addLabelValueRow(ctx, '전사 확산 방안', formatBulletLines(analysis.dissemination_plan));
-
-  return finalizeSheet(ctx);
-}
-
-// ============================================================================
 // generatePBLXLSX / downloadPBLXLSX
 // ============================================================================
 
@@ -424,11 +393,6 @@ export async function generatePBLXLSX(data: PBLXLSXInput): Promise<Uint8Array> {
     wb,
     buildPBLEvaluationSheet(data.pblContent.operation_plan),
     'Ⅳ-4 평가 계획',
-  );
-  XLSXmod.utils.book_append_sheet(
-    wb,
-    buildPBLPerformanceSheet(data.pblContent.performance_analysis),
-    'Ⅴ 성과분석·확산',
   );
 
   const wbout = XLSXmod.write(wb, { bookType: 'xlsx', type: 'array' });

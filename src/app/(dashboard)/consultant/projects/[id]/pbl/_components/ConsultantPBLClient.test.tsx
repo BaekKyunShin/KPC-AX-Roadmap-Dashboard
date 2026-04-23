@@ -239,32 +239,6 @@ vi.mock('@/components/pbl/PBLEvaluationPlan', () => ({
   ),
 }));
 
-vi.mock('@/components/pbl/PBLPerformanceMetrics', () => ({
-  PBLPerformanceMetrics: ({
-    canEdit,
-    onChange,
-  }: {
-    canEdit: boolean;
-    value: unknown;
-    onChange: (next: unknown) => void;
-  }) => (
-    <div data-testid="pbl-performance-metrics" data-can-edit={String(canEdit)}>
-      <button
-        data-testid="performance-change-btn"
-        onClick={() => onChange({
-          training_goal_categories: [],
-          quantitative_metrics: ['새 지표'],
-          qualitative_metrics: [],
-          internalization_plan: [],
-          dissemination_plan: [],
-        })}
-      >
-        성과 분석 변경
-      </button>
-    </div>
-  ),
-}));
-
 // =============================================================================
 // 대상 컴포넌트 임포트
 // =============================================================================
@@ -290,13 +264,6 @@ function makePBLRow(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
         ai_tool_usage_plan: [],
         training_plan: {} as PBLReportRow['pbl_content']['operation_plan']['training_plan'],
         evaluation_plan: {} as PBLReportRow['pbl_content']['operation_plan']['evaluation_plan'],
-      },
-      performance_analysis: {
-        training_goal_categories: [],
-        quantitative_metrics: [],
-        qualitative_metrics: [],
-        internalization_plan: [],
-        dissemination_plan: [],
       },
     },
     free_tool_validated: false,
@@ -1111,32 +1078,6 @@ describe('ConsultantPBLClient', () => {
               operation_plan: expect.objectContaining({
                 evaluation_plan: expect.any(Object),
               }),
-            }),
-          }),
-        );
-      });
-    });
-
-    it('성과 분석 변경 시 savePBLDraftAction이 호출된다', async () => {
-      const user = userEvent.setup();
-      mockSavePBLDraftAction.mockResolvedValue({ success: true });
-
-      render(
-        <ConsultantPBLClient
-          {...DEFAULT_PROPS}
-          initialVersions={[makePBLRow()]}
-          initialSelected={makePBLRow({ status: 'DRAFT' })}
-        />,
-      );
-
-      await user.click(screen.getByTestId('performance-change-btn'));
-
-      await waitFor(() => {
-        expect(mockSavePBLDraftAction).toHaveBeenCalledWith(
-          'pbl-1',
-          expect.objectContaining({
-            pbl_content: expect.objectContaining({
-              performance_analysis: expect.any(Object),
             }),
           }),
         );

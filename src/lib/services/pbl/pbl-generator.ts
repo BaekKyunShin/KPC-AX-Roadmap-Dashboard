@@ -65,13 +65,12 @@ export async function generatePBLContent(
         ? baseUserPrompt
         : `${baseUserPrompt}
 
-[재시도 ${attempt}/${MAX_VALIDATION_RETRIES}] 이전 응답이 산인공 양식 2번 Ⅳ·Ⅴ장 스키마를 만족하지 못했습니다. 다음을 반드시 준수하라:
+[재시도 ${attempt}/${MAX_VALIDATION_RETRIES}] 이전 응답이 산인공 양식 2번 Ⅳ장 스키마를 만족하지 못했습니다. 다음을 반드시 준수하라:
 - ai_tool_usage_plan 배열 길이 >= 3
 - training_contents 각 행: instructor_hours.external + instructor_hours.internal === training_hours
 - total_sum_hours === sum(training_contents.training_hours)
 - evaluation_result는 반드시 "예정"
-- satisfaction_survey 길이 5, achievement_survey 길이 3, external_expert_survey 길이 5, practical_application_survey 길이 4
-- training_goal_categories는 5개 enum 중에서만 선택`;
+- satisfaction_survey 길이 5, achievement_survey 길이 3, external_expert_survey 길이 5, practical_application_survey 길이 4`;
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
