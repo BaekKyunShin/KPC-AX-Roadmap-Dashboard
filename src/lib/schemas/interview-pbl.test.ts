@@ -210,6 +210,55 @@ describe('hrdNecessitySchema (Ⅱ-3)', () => {
       })
     ).not.toThrow();
   });
+
+  // ISSUE-14 (PBL 확장): Ⅱ-3-가 HRD이음 보고서 PDF 단일 첨부 — optional
+  it('hrd_report_attachment 는 optional (미첨부 허용)', () => {
+    expect(() =>
+      hrdNecessitySchema.parse({
+        training_history: [],
+        support_history: [],
+        recommendations: [],
+        course_development_necessity: '첨부 없음 케이스',
+      })
+    ).not.toThrow();
+  });
+
+  it('hrd_report_attachment 에 유효한 첨부 메타 허용', () => {
+    expect(() =>
+      hrdNecessitySchema.parse({
+        training_history: [],
+        support_history: [],
+        recommendations: [],
+        course_development_necessity: '첨부 있음 케이스',
+        hrd_report_attachment: {
+          storage_path: 'interview-attachments/project-1/report.pdf',
+          file_name: 'HRD이음컨설팅 결과.pdf',
+          mime_type: 'application/pdf',
+          size: 1024 * 500,
+          uploaded_at: '2026-04-23T00:00:00.000Z',
+          extracted_text: 'HRD이음컨설팅에서 제시된 진단 결과 요약',
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it('hrd_report_attachment 에 storage_path 누락 시 실패', () => {
+    expect(() =>
+      hrdNecessitySchema.parse({
+        training_history: [],
+        support_history: [],
+        recommendations: [],
+        course_development_necessity: '잘못된 첨부',
+        hrd_report_attachment: {
+          file_name: 'noop.pdf',
+        },
+      })
+    ).toThrow();
+  });
+
+  it('shape 에 hrd_report_attachment 키가 노출된다', () => {
+    expect(hrdNecessitySchema.shape).toHaveProperty('hrd_report_attachment');
+  });
 });
 
 describe('performanceActivitiesSchema (Ⅲ-1)', () => {

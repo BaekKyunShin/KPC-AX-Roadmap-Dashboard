@@ -1,6 +1,7 @@
 import { z } from 'zod';
 // ISSUE-16: PBL 인터뷰도 ROADMAP 과 동일한 6 카테고리 STT 인사이트 스키마를 공유한다.
-import { sttInsightsSchema } from './interview-roadmap';
+// ISSUE-14 (PBL 확장): Ⅱ-3-가 HRD이음 보고서 PDF 단일 첨부 — 로드맵 Ⅱ-1 HRD4U 첨부와 동일 스키마 재사용.
+import { hrdReportAttachmentSchema, sttInsightsSchema } from './interview-roadmap';
 
 // ============================================================================
 // 산인공 PBL 인터뷰 양식 (docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).pdf 3~11p)
@@ -203,6 +204,8 @@ export const hrdNecessitySchema = z.object({
   support_history: z.array(supportHistoryItemSchema).default([]),
   recommendations: z.array(recommendationSchema).default([]),
   course_development_necessity: z.string().min(1, '과정개발 필요성을 입력하세요.'),
+  // Ⅱ-3-가. 기업HRD이음컨설팅 결과 (전산 자동 표출) — PDF 단일 첨부 · 선택
+  hrd_report_attachment: hrdReportAttachmentSchema.optional(),
 });
 export type PBLHrdNecessity = z.infer<typeof hrdNecessitySchema>;
 
