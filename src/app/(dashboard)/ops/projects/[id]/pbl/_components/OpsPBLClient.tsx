@@ -8,25 +8,48 @@ import { usePBLDownload } from '@/hooks/usePBLDownload';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import { exportPBLAsHwpxAction } from '@/app/(dashboard)/consultant/projects/[id]/pbl/actions';
 import { PBLOperationGoal } from '@/components/pbl/PBLOperationGoal';
+import { PBLOverview } from '@/components/pbl/PBLOverview';
+import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
 import { PBLEvaluationPlan } from '@/components/pbl/PBLEvaluationPlan';
-import { PBLPerformanceMetrics } from '@/components/pbl/PBLPerformanceMetrics';
 import { showErrorToast } from '@/lib/utils/toast';
 import type { PBLReportRow } from '@/lib/services/pbl';
+import type { PBLTrainingTargetDetail } from '@/components/pbl/PBLTrainingTargets';
+import type { AILevel, TrainingGoal } from '@/lib/schemas/interview-pbl';
 import { fetchPBLForOps } from '../actions';
+
+interface PBLInterviewOverviewSummary {
+  companyName: string;
+  courseName: string;
+  trainingHours: number;
+  traineeCount: number;
+  trainingJob: string;
+  aiLevel: AILevel;
+  trainingGoals: TrainingGoal[];
+}
+
+interface PBLInterviewTargetSummary {
+  trainingNeedsAnalysis: string;
+  selectionReason: string;
+  details: PBLTrainingTargetDetail[];
+}
 
 interface OpsPBLClientProps {
   projectId: string;
   initialVersions: PBLReportRow[];
   initialSelected: PBLReportRow | null;
+  interviewOverview: PBLInterviewOverviewSummary | null;
+  interviewTargets: PBLInterviewTargetSummary | null;
 }
 
 export default function OpsPBLClient({
   projectId,
   initialVersions,
   initialSelected,
+  interviewOverview,
+  interviewTargets,
 }: OpsPBLClientProps) {
   const [versions] = useState<PBLReportRow[]>(initialVersions);
   const [selected, setSelected] = useState<PBLReportRow | null>(initialSelected);
@@ -121,6 +144,14 @@ export default function OpsPBLClient({
 
           {selected && content && (
             <div className="space-y-4">
+              {interviewOverview && <PBLOverview value={interviewOverview} />}
+              {interviewTargets && (
+                <PBLTrainingTargets
+                  trainingNeedsAnalysis={interviewTargets.trainingNeedsAnalysis}
+                  selectionReason={interviewTargets.selectionReason}
+                  details={interviewTargets.details}
+                />
+              )}
               <PBLOperationGoal
                 canEdit={false}
                 value={content.operation_plan.training_goal}
@@ -139,11 +170,6 @@ export default function OpsPBLClient({
               <PBLEvaluationPlan
                 canEdit={false}
                 value={content.operation_plan.evaluation_plan}
-                onChange={() => {}}
-              />
-              <PBLPerformanceMetrics
-                canEdit={false}
-                value={content.performance_analysis}
                 onChange={() => {}}
               />
             </div>

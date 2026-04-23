@@ -340,15 +340,26 @@ def _fill_table_performance_activities(tables, data, build_table_rows, idx: int 
         _set_cell_text(tbl, main_row, 2, act.get("content", ""))
         _set_cell_text(tbl, main_row, 3, act.get("method", ""))
         participants = act.get("participants", [])
-        pm = next(
+        # position 키워드(PM/책임자/내부) 매칭 시도 → 실패 시 입력 순서대로 할당
+        pm_matched = next(
             (p for p in participants if "PM" in (p.get("role") or "")
              or "책임자" in (p.get("role") or "")),
             None,
         )
-        internal = next(
+        internal_matched = next(
             (p for p in participants if "내부" in (p.get("role") or "")),
             None,
         )
+        # fallback: 매칭 실패 시 참석자 입력 순서대로 첫 번째=PM, 두 번째=내부전문가
+        pm = pm_matched or (participants[0] if participants else None)
+        internal = internal_matched or (
+            participants[1] if len(participants) > 1 and pm is not participants[1] else None
+        )
+        if pm_matched is None and pm is not None and internal_matched is not None:
+            # pm 은 순서 fallback 이고 internal 이 매칭 성공이라면 pm 재할당
+            # (internal 과 동일한 참석자를 PM 으로 쓰지 않도록)
+            if pm is internal:
+                pm = participants[0] if participants and participants[0] is not internal else None
         _set_cell_text(tbl, main_row, 4, (pm or {}).get("role") or "컨설팅책임자(PM)")
         _set_cell_text(tbl, main_row, 5, (pm or {}).get("name") or "")
         # sub_row 는 col 0~3이 병합 셀이므로 col 4(역할)/5(이름)에만 기록
@@ -632,8 +643,8 @@ def _generate_pbl(data: dict) -> bytes:
       32=Ⅳ-3-다 교과목 프로파일(15x10) / 34=Ⅳ-3-라 시설장비(3x5) /
       35=Ⅳ-3-마 훈련강사(3x5) / 36=Ⅳ-4-가 과정평가(16x9) /
       37=만족도·성취도(고정) / 38=외부·현업적용도(고정) /
-      39=Ⅴ-1 정량정성(3x2) / 40=Ⅴ-2 내재화·전사(3x2) /
       42=결과 표지 / 43~51=결과보고서(공란 유지).
+      (Ⅴ장 성과분석·확산전략 표 39, 40은 사용자 양식 요구사항에 따라 공란 유지)
     """
     from hwpx import HwpxDocument
     from _placeholders_pbl import (
@@ -736,8 +747,8 @@ def _generate_pbl(data: dict) -> bytes:
     _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx=34)
     _fill_pbl_training_instructors(tables, build_pbl_table_rows, data, idx=35)
     _fill_pbl_course_evaluation(tables, build_pbl_table_rows, data, idx=36)
-    _fill_pbl_performance_metrics(tables, data, idx=39)
-    _fill_pbl_dissemination(tables, data, idx=40)
+    # Ⅴ-1, Ⅴ-2 표(idx=39, 40)는 사용자 요구사항에 따라 공란 유지
+    # (이전 `_fill_pbl_performance_metrics` / `_fill_pbl_dissemination` 호출 제거됨)
 
     # --- 8) 저장 ---
     with tempfile.NamedTemporaryFile(delete=True, suffix=".hwpx") as tmp:

@@ -100,7 +100,7 @@ export interface PBLReportDetailView {
   companyName: string;
   createdByName: string;
   diagnosisSummary: string;
-  /** 전체 PBL 콘텐츠 (양식 2번 Ⅳ·Ⅴ장) */
+  /** 전체 PBL 콘텐츠 (양식 2번 Ⅳ장) */
   pblContent: unknown;
   likeCount: number;
   isLiked: boolean;

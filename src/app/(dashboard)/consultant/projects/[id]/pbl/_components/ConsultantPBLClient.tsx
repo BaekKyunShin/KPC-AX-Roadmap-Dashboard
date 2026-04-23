@@ -13,7 +13,6 @@ import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
 import { PBLEvaluationPlan } from '@/components/pbl/PBLEvaluationPlan';
-import { PBLPerformanceMetrics } from '@/components/pbl/PBLPerformanceMetrics';
 import { PBLVersionSelector } from '@/components/pbl/PBLVersionSelector';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import { isCancelledError } from '@/lib/services/llm';
@@ -21,7 +20,6 @@ import type {
   PBLAIToolUsagePlanItem,
   PBLContent,
   PBLEvaluationPlan as PBLEvaluationPlanType,
-  PBLPerformanceAnalysis,
   PBLReportRow,
   PBLTrainingPlan as PBLTrainingPlanType,
 } from '@/lib/services/pbl';
@@ -232,11 +230,6 @@ export default function ConsultantPBLClient({
     });
   };
 
-  const handlePerformanceChange = (nextPerformance: PBLPerformanceAnalysis) => {
-    if (!content) return;
-    runContentUpdate({ ...content, performance_analysis: nextPerformance });
-  };
-
   const hasAny = versions.length > 0;
   const headerActions = useMemo(() => {
     if (!selected) {
@@ -339,7 +332,7 @@ export default function ConsultantPBLClient({
     <div className="space-y-6">
       <PageHeader
         title={`${companyName} · PBL 보고서`}
-        description="산업인력공단 PBL 양식 2번 Ⅳ·Ⅴ장 기반. LLM 초안을 편집 후 최종 확정하세요."
+        description="산업인력공단 PBL 양식 2번 Ⅳ장 기반. LLM 초안을 편집 후 최종 확정하세요."
         backLink={{
           href: `/consultant/projects/${projectId}`,
           label: '프로젝트로 돌아가기',
@@ -393,7 +386,7 @@ export default function ConsultantPBLClient({
             아직 생성된 PBL 보고서가 없습니다
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            인터뷰가 완료되면 AI가 산인공 양식 2번 Ⅳ·Ⅴ장 기반으로 PBL 보고서를 생성합니다.
+            인터뷰가 완료되면 AI가 산인공 양식 2번 Ⅳ장 기반으로 PBL 보고서를 생성합니다.
           </p>
           <Button
             type="button"
@@ -445,11 +438,6 @@ export default function ConsultantPBLClient({
             canEdit={canEdit}
             value={content.operation_plan.evaluation_plan}
             onChange={handleEvaluationPlanChange}
-          />
-          <PBLPerformanceMetrics
-            canEdit={canEdit}
-            value={content.performance_analysis}
-            onChange={handlePerformanceChange}
           />
         </div>
       )}

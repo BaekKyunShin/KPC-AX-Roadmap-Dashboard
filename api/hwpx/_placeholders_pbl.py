@@ -153,17 +153,10 @@ def build_pbl_placeholder_map(data: dict) -> dict[str, str]:
     """data dict → `{{key}}` → 텍스트 dict.
 
     누락 필드는 빈 문자열로 안전 처리.
-    Ⅴ 성과분석 bullets는 배열 → 줄바꿈 텍스트로 정규화.
     """
     result: dict[str, str] = {}
     for key in _SIMPLE_KEYS:
         result[f"{{{{{key}}}}}"] = _str_or_empty(data.get(key))
-
-    # Ⅴ 성과분석 bullets
-    result["{{quantitative_metrics_text}}"] = _bulletize(data.get("quantitative_metrics"))
-    result["{{qualitative_metrics_text}}"] = _bulletize(data.get("qualitative_metrics"))
-    result["{{internalization_plan_text}}"] = _bulletize(data.get("internalization_plan"))
-    result["{{dissemination_plan_text}}"] = _bulletize(data.get("dissemination_plan"))
 
     return result
 

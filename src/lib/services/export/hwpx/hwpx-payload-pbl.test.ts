@@ -79,13 +79,6 @@ function makePBL(overrides?: Partial<PBLReportRow>): PBLReportRow {
         },
       },
     },
-    performance_analysis: {
-      training_goal_categories: ['기술문제 해결'],
-      quantitative_metrics: ['불량률 30% 감소'],
-      qualitative_metrics: ['문제해결 역량 향상'],
-      internalization_plan: ['매뉴얼 제작'],
-      dissemination_plan: ['성과 발표회 개최'],
-    },
   };
 
   return {
@@ -286,16 +279,6 @@ describe('buildPBLHwpxPayload', () => {
     expect(payload.data.course_evaluation_methods).toEqual(['포트폴리오']);
   });
 
-  it('Ⅴ. 성과분석 bullets 유지', () => {
-    const payload = buildPBLHwpxPayload({
-      pbl: makePBL(),
-      project: makeProject(),
-      interview: makeInterview(),
-    });
-    expect(payload.data.quantitative_metrics).toEqual(['불량률 30% 감소']);
-    expect(payload.data.internalization_plan).toEqual(['매뉴얼 제작']);
-  });
-
   it('interview null이면 빈 인터뷰 필드로 안전 처리', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL(),
@@ -307,7 +290,7 @@ describe('buildPBLHwpxPayload', () => {
     expect(payload.data.performance_activities).toEqual([]);
   });
 
-  it('pbl_content 없으면 운영계획·성과분석 필드 기본값', () => {
+  it('pbl_content 없으면 운영계획 필드 기본값', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL({ pbl_content: null as unknown as PBLContent }),
       project: makeProject(),
@@ -315,6 +298,5 @@ describe('buildPBLHwpxPayload', () => {
     });
     expect(payload.data.training_goal).toBe('');
     expect(payload.data.ai_tool_usage_plan).toEqual([]);
-    expect(payload.data.quantitative_metrics).toEqual([]);
   });
 });

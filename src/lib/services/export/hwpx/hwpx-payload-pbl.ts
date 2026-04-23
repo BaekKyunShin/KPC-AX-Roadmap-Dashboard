@@ -65,11 +65,10 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   const targets = pblInterview?.targetTasks;
   const aiLevel = pblInterview?.aiLevelDiagnosis;
 
-  // 운영계획·성과분석은 pbl_content (LLM 생성 산출물)
+  // 운영계획은 pbl_content (LLM 생성 산출물)
   const opPlan = pblContent?.operation_plan;
   const trainingPlan = opPlan?.training_plan;
   const evalPlan = opPlan?.evaluation_plan;
-  const performance = pblContent?.performance_analysis;
 
   // 보고서 날짜 (확정 시점 우선, 없으면 업데이트 시점)
   const rawDate = pbl.finalized_at || pbl.updated_at;
@@ -81,8 +80,10 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
       })
     : '';
 
+  // 원칙: 인터뷰 입력은 인터뷰 값 그대로, LLM fallback 금지
+  // (Ⅰ장 훈련과정 개요의 course_name 은 인터뷰 courseOverview 에서만 가져옴)
   const companyName = project.company_name ?? overview?.company_name ?? '';
-  const courseName = overview?.course_name ?? trainingPlan?.overview?.course_name ?? '';
+  const courseName = overview?.course_name ?? '';
 
   // 훈련 기간 포맷
   const period = trainingPlan?.overview?.training_period;
@@ -270,12 +271,6 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
         performance_level: c.performance_level,
       }),
     ),
-
-    // Ⅴ. 성과분석 및 확산 전략
-    quantitative_metrics: performance?.quantitative_metrics ?? [],
-    qualitative_metrics: performance?.qualitative_metrics ?? [],
-    internalization_plan: performance?.internalization_plan ?? [],
-    dissemination_plan: performance?.dissemination_plan ?? [],
   };
 
   return {

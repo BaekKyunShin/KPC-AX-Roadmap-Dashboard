@@ -14,6 +14,10 @@ import { buildTrainingStructureTable } from '@/lib/services/roadmap/roadmap-matr
 import { fromRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';
 import type { RoadmapResult } from '@/lib/services/roadmap/roadmap-types';
 import type { Interview, Project, RoadmapVersion } from '@/types/database';
+import {
+  INTERVIEW_METHOD_LABEL,
+  type InterviewMethod,
+} from '@/lib/schemas/interview-roadmap';
 import { bulletize, splitByUnit } from '@/lib/utils/list-format';
 import { formatTimeRange } from '@/lib/utils/time';
 
@@ -174,6 +178,12 @@ export function buildRoadmapHwpxPayload(
   const interviewTimeText = savedInterviewTime?.start || savedInterviewTime?.end
     ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
     : (typedInterview?.interview_time ?? '');
+  // 인터뷰 수행 방법 enum(ONSITE/VIDEO/WORKSHOP/OTHER) → 한글 라벨 변환
+  const methodLabel = typedInterview?.interview_method
+    ? (INTERVIEW_METHOD_LABEL[typedInterview.interview_method as InterviewMethod] ??
+        typedInterview.interview_method ??
+        '')
+    : '';
   const performanceActivities =
     typedInterview
       ? [
@@ -186,12 +196,7 @@ export function buildRoadmapHwpxPayload(
               .filter(Boolean)
               .join('\n'),
             content: notes?.text ?? '',
-            method:
-              typedInterview.interview_method === '대면'
-                ? '대면(인터뷰)'
-                : typedInterview.interview_method === '비대면'
-                ? '비대면(화상회의)'
-                : typedInterview.interview_method ?? '',
+            method: methodLabel,
             participants: participantsToPython(participants),
           },
         ]
@@ -262,15 +267,21 @@ export function buildRoadmapHwpxPayload(
       internal_expert_affiliation: project.company_name ?? '',
       internal_expert_name: internalExpert?.name ?? '',
 
-      // Ⅰ-1 수립 필요성
-      establishment_necessity: result.setup_necessity || overview?.establishment_necessity || '',
+      // Ⅰ-1 수립 필요성 — **인터뷰 입력 그대로** (LLM fallback 사용 금지)
+      establishment_necessity: overview?.establishment_necessity ?? '',
 
-      // Ⅰ-2 주요 활동
+      // Ⅰ-2 주요 활동 — 인터뷰 Step 2 기본정보·참석자로부터 자동 집계
       performance_activities: performanceActivities,
 
       // Ⅰ-3 수립 주요 결과
-      ai_competency_level: normalizeLevel(result.outcome_summary?.ai_competency_level ?? 'BEGINNER'),
-      selected_tasks_text: result.outcome_summary?.selected_tasks ?? overview?.selected_tasks_summary ?? '',
+      //   - 기업 AI 역량 수준·선정 과업 = **인터뷰 입력 그대로**
+      //   - 수립 주요내용 요약 = LLM 자동 생성 (StepOverview UI에 '자동 생성 예정'으로 안내된 영역)
+      ai_competency_level: normalizeLevel(
+        overview?.ai_competency_level
+          ? (overview.ai_competency_level as RoadmapResult['outcome_summary']['ai_competency_level'])
+          : (result.outcome_summary?.ai_competency_level ?? 'BEGINNER'),
+      ),
+      selected_tasks_text: overview?.selected_tasks_summary ?? '',
       roadmap_summary: result.outcome_summary?.main_content ?? overview?.roadmap_summary ?? '',
 
       // Ⅱ-1 HRD이음 보고서

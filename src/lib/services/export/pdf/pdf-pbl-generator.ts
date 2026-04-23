@@ -1,6 +1,6 @@
 /**
  * PBL PDF 내보내기 메인 오케스트레이터
- * 산인공 PBL 양식 2번 Ⅳ·Ⅴ장 기반
+ * 산인공 PBL 양식 2번 Ⅳ장 기반
  */
 
 import type { PBLContent } from '../../pbl/pbl-types';
@@ -13,7 +13,6 @@ import {
   type PBLRequirementsData,
 } from './pdf-pbl-requirements-renderer';
 import { drawPBLOperationSection } from './pdf-pbl-operation-renderer';
-import { drawPBLPerformanceSection } from './pdf-pbl-performance-renderer';
 
 export interface PBLExportData {
   companyName: string;
@@ -61,11 +60,6 @@ export async function generatePBLPDF(data: PBLExportData): Promise<Blob> {
   doc.addPage();
   ctx.y = LAYOUT.MARGIN + 5;
   drawPBLOperationSection(ctx, data.pblContent.operation_plan, autoTable, tableBase);
-
-  // Ⅴ장 성과분석
-  doc.addPage();
-  ctx.y = LAYOUT.MARGIN + 5;
-  drawPBLPerformanceSection(ctx, data.pblContent.performance_analysis);
 
   // 푸터
   const pageCount = doc.getNumberOfPages();

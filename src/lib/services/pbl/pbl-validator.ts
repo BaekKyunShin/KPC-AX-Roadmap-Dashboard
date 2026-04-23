@@ -7,11 +7,10 @@ import {
   PBL_MIN_TRAINING_CONTENT_ROWS,
   PBL_PRACTICAL_APPLICATION_SURVEY_LENGTH,
   PBL_SATISFACTION_SURVEY_LENGTH,
-  PBL_TRAINING_GOAL_CATEGORIES,
 } from './pbl-types';
 
 // ============================================================================
-// 산인공 PBL 양식 2번 Ⅳ·Ⅴ장 기반 Zod 출력 스키마
+// 산인공 PBL 양식 2번 Ⅳ장 기반 Zod 출력 스키마
 //  - ai_tool_usage_plan.length >= 3 (양식 예시)
 //  - subject_profile.training_contents.length >= 1
 //  - 각 training_content: external + internal === training_hours (양식 가이드 #9)
@@ -19,7 +18,6 @@ import {
 //  - course_evaluation.performance_level 1~5
 //  - course_evaluation.evaluation_methods enum
 //  - 결과평가 문항 수 고정: 5/3/5/4
-//  - training_goal_categories enum
 // ============================================================================
 
 // 공용 비어있지 않은 trim 문자열
@@ -235,28 +233,6 @@ const resultEvaluationSchema = z.object({
 });
 
 // ----------------------------------------------------------------------------
-// Ⅴ. 성과분석 및 확산 전략
-// ----------------------------------------------------------------------------
-
-const performanceAnalysisSchema = z.object({
-  training_goal_categories: z
-    .array(z.enum(PBL_TRAINING_GOAL_CATEGORIES))
-    .min(1, '훈련 목표 분류를 최소 1개 선택하세요.'),
-  quantitative_metrics: z
-    .array(trimmedText('정량 지표 bullet'))
-    .min(1, '정량 지표를 최소 1개 입력하세요.'),
-  qualitative_metrics: z
-    .array(trimmedText('정성 지표 bullet'))
-    .min(1, '정성 지표를 최소 1개 입력하세요.'),
-  internalization_plan: z
-    .array(trimmedText('내재화 방안 bullet'))
-    .min(1, '내재화 방안을 최소 1개 입력하세요.'),
-  dissemination_plan: z
-    .array(trimmedText('전사 확산 방안 bullet'))
-    .min(1, '전사 확산 방안을 최소 1개 입력하세요.'),
-});
-
-// ----------------------------------------------------------------------------
 // 최상위 스키마
 // ----------------------------------------------------------------------------
 
@@ -276,7 +252,6 @@ export const pblContentSchema = z.object({
       result_evaluation: resultEvaluationSchema,
     }),
   }),
-  performance_analysis: performanceAnalysisSchema,
 });
 
 /** LLM 출력 1차 Zod 파싱 (엄격) */
@@ -318,13 +293,6 @@ export function validatePBLContent(content: PBLContent): PBLValidationResult {
       warnings.push(`시설·장비 연번 중복: ${facility.seq}`);
     }
     seqSet.add(facility.seq);
-  }
-
-  // 4) 성과분석 정량 지표가 '00%' 등 placeholder일 때 경고
-  for (const metric of data.performance_analysis.quantitative_metrics) {
-    if (metric.includes('00%') || metric.includes('OO') || metric.trim() === '-') {
-      warnings.push(`정량 지표에 구체적 수치가 없습니다: "${metric}"`);
-    }
   }
 
   return { isValid: errors.length === 0, errors, warnings };

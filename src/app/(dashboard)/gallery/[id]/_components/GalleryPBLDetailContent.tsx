@@ -8,7 +8,6 @@ import { PBLTrainingTargets } from '@/components/pbl/PBLTrainingTargets';
 import { PBLToolUsagePlan } from '@/components/pbl/PBLToolUsagePlan';
 import { PBLTrainingPlan } from '@/components/pbl/PBLTrainingPlan';
 import { PBLEvaluationPlan } from '@/components/pbl/PBLEvaluationPlan';
-import { PBLPerformanceMetrics } from '@/components/pbl/PBLPerformanceMetrics';
 import { Copy } from 'lucide-react';
 import type { PBLReportDetailView } from '../../actions';
 import type {
@@ -16,13 +15,12 @@ import type {
   PBLAIToolUsagePlanItem,
   PBLTrainingPlan as PBLTrainingPlanT,
   PBLEvaluationPlan as PBLEvaluationPlanT,
-  PBLPerformanceAnalysis,
 } from '@/lib/services/pbl/pbl-types';
 import type { PBLTrainingTargetDetail } from '@/components/pbl/PBLTrainingTargets';
 import type { AILevel, TrainingGoal } from '@/lib/schemas/interview-pbl';
 
 // ============================================================================
-// PBL 갤러리 상세 (읽기 전용) — 양식 2번 Ⅰ~Ⅴ장 재사용
+// PBL 갤러리 상세 (읽기 전용) — 양식 2번 Ⅰ~Ⅳ장 재사용
 //   - 모든 PBL 컴포넌트 canEdit=false
 //   - onChange는 noop
 // ============================================================================
@@ -33,7 +31,6 @@ const TAB_KEYS = [
   { key: 'tools', label: 'Ⅳ-2 AI 도구 활용' },
   { key: 'training', label: 'Ⅳ-3 훈련 실시 계획' },
   { key: 'evaluation', label: 'Ⅳ-4 평가 계획' },
-  { key: 'performance', label: 'Ⅴ 성과분석·확산' },
 ] as const;
 
 type TabKey = (typeof TAB_KEYS)[number]['key'];
@@ -67,7 +64,6 @@ export function GalleryPBLDetailContent({ detail, isConsultant }: GalleryPBLDeta
   };
 
   const operationPlan = content.operation_plan;
-  const performanceAnalysis = content.performance_analysis;
 
   // Ⅰ장 개요: pbl_content.overview_summary가 있으면 우선, 없으면 operation_plan에서 합성
   const overviewSummary = content.overview_summary
@@ -172,13 +168,6 @@ export function GalleryPBLDetailContent({ detail, isConsultant }: GalleryPBLDeta
             <PBLEvaluationPlan
               canEdit={false}
               value={operationPlan.evaluation_plan as PBLEvaluationPlanT}
-              onChange={noop}
-            />
-          )}
-          {activeTab === 'performance' && performanceAnalysis && (
-            <PBLPerformanceMetrics
-              canEdit={false}
-              value={performanceAnalysis as PBLPerformanceAnalysis}
               onChange={noop}
             />
           )}
