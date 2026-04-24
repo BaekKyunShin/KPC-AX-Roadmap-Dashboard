@@ -350,9 +350,3 @@ describe('PBLResultClient — OPS role', () => {
   });
 });
 
-describe('ConsultantPBLClientV2 하위 호환 alias', () => {
-  it('ConsultantPBLClientV2 로 import 시에도 동일하게 동작', async () => {
-    const mod = await import('../ConsultantPBLClientV2');
-    expect(mod.ConsultantPBLClientV2).toBeDefined();
-  });
-});

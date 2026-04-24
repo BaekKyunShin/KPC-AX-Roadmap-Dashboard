@@ -341,9 +341,3 @@ describe('RoadmapResultClient — OPS role', () => {
   });
 });
 
-describe('ConsultantRoadmapClientV2 하위 호환 alias', () => {
-  it('ConsultantRoadmapClientV2 로 import 시에도 동일하게 동작', async () => {
-    const mod = await import('../ConsultantRoadmapClientV2');
-    expect(mod.ConsultantRoadmapClientV2).toBeDefined();
-  });
-});
