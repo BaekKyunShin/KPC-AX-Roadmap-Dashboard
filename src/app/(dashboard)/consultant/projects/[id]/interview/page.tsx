@@ -1,13 +1,74 @@
 import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
-import { fetchInterview, fetchPBLInterview } from './actions';
-import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
-import RoadmapInterviewClient from './_components/RoadmapInterviewClient';
+import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  fetchPBLInterview,
+  fetchRoadmapInterviewV2,
+} from './actions';
+import { RoadmapInterviewClientV2 } from './_components/roadmap-v2/RoadmapInterviewClientV2';
 import PBLInterviewClient from './_components/PBLInterviewClient';
 
-export default async function InterviewPage({ params }: { params: Promise<{ id: string }> }) {
+/**
+ * HRD 첨부 버킷 이름 (actions.ts 의 HRD_BUCKET 과 동기화).
+ * 서버 컴포넌트에서 DB 에 저장된 `storage_path` 를 1시간짜리 signed URL 로
+ * 변환해 Client 에 주입한다. extractedText 는 LLM 전용 내부 필드이므로
+ * Client 에는 절대 노출하지 않는다 (DB 영속은 유지).
+ */
+const HRD_BUCKET = 'interview-attachments';
+
+/**
+ * Client 에 전달하기 전에 `hrdReportPdf.url` 을 signed URL 로 교체한다.
+ *
+ * 현재 DB 에는 `storage_path` 가 `url` 자리에 담겨 저장되는 경로가 있으므로
+ * (StepHrdReportPdf 가 storage_path 를 url 자리에 둔 채 저장함), `url` 이
+ * `http` 로 시작하지 않으면 storage_path 로 간주하고 signed URL 을 생성한다.
+ */
+async function hydrateHrdReportSignedUrl(
+  initial: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const hrd = initial.hrdReportPdf as
+    | {
+        fileName: string;
+        url: string;
+        size?: number;
+        extractedText?: string;
+        parseError?: string;
+      }
+    | null
+    | undefined;
+
+  if (!hrd || !hrd.url) return initial;
+  if (hrd.url.startsWith('http')) return initial;
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.storage
+      .from(HRD_BUCKET)
+      .createSignedUrl(hrd.url, 3600);
+    if (error || !data) return initial;
+
+    return {
+      ...initial,
+      hrdReportPdf: {
+        ...hrd,
+        url: data.signedUrl,
+      },
+    };
+  } catch {
+    return initial;
+  }
+}
+
+export default async function InterviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ track?: string }>;
+}) {
   const { id } = await params;
+  const sp = (await searchParams) ?? {};
 
   const user = await getCachedUser();
   if (!user) redirect('/login');
@@ -27,14 +88,24 @@ export default async function InterviewPage({ params }: { params: Promise<{ id: 
 
   if (!project) notFound();
 
-  if (project.track === 'PBL') {
+  // PBL 트랙 — Task 2.4 가 별도 V2 이관 담당. 현재는 legacy PBL Client 유지.
+  // `?track=PBL` 쿼리가 있을 때도 동일 경로.
+  if (project.track === 'PBL' || sp.track === 'PBL') {
     const pblInterview = await fetchPBLInterview(project.id);
     const initialData = (pblInterview?.pbl_data ?? {}) as Record<string, unknown>;
     return <PBLInterviewClient projectId={project.id} initialData={initialData} />;
   }
 
-  const interviewRow = await fetchInterview(id);
-  const initialData = mapInterviewRowToRoadmapInterview(interviewRow);
+  // 로드맵 트랙 — V2 Client (camelCase 스키마 + 8 스텝 + 자동저장)
+  const raw = (await fetchRoadmapInterviewV2(project.id)) ?? {};
+  const hydrated = await hydrateHrdReportSignedUrl(
+    raw as Record<string, unknown>,
+  );
 
-  return <RoadmapInterviewClient projectId={project.id} initialData={initialData} />;
+  return (
+    <RoadmapInterviewClientV2
+      projectId={project.id}
+      initial={hydrated as Parameters<typeof RoadmapInterviewClientV2>[0]['initial']}
+    />
+  );
 }
