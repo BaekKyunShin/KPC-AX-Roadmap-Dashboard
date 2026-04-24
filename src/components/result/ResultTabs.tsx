@@ -40,8 +40,25 @@ interface ResultTabsProps {
  *    뒤로가기·새로고침·북마크 시 같은 탭 유지.
  * 2. sticky TabsList (top-16) — 스크롤 시에도 탭 바 유지.
  * 3. '전체 펼치기' 인쇄 토글 — 모든 탭 콘텐츠를 한 번에 펼쳐서 인쇄/PDF 저장.
+ *    (접힌 콘텐츠는 화면에만 보이고, window.print() 시 CSS @media print 로 전체 노출)
  *
  * Radix Tabs 기반 (shadcn/ui). 키보드 네비는 Radix 기본 (←/→ 화살표).
+ *
+ * ## 사용 제약 (중요)
+ *
+ * - **상위 Suspense boundary 필수:** 내부적으로 `useSearchParams()` 를 사용하므로,
+ *   프로덕션 빌드 시 해당 라우트 전체가 CSR bailout 되는 것을 막으려면
+ *   **상위 페이지·layout 에서 `<Suspense fallback={...}>` 로 감싸야 한다**.
+ *   PR #2 에서 RoadmapResultPage · PBLResultPage 래핑 시 이 규칙을 지킬 것.
+ *
+ * - **PageContainer 동등 래퍼 내부 전제:** sticky TabsList 는 상위 래퍼의
+ *   좌우 패딩을 negative margin (`-mx-4 sm:-mx-6 lg:-mx-8`) 으로 취소하여
+ *   전폭 배경을 그린다. 따라서 **`PageContainer` (또는 동일한 `px-4 sm:px-6 lg:px-8`
+ *   패딩 래퍼) 내부에서만 사용**해야 한다. 다른 래퍼에서 쓰면 좌우 overflow 발생.
+ *
+ * - **전체 펼치기 상태는 URL 에 반영되지 않음 (의도):** 공유·북마크·새로고침 시
+ *   기본 '탭별 보기' 로 복원된다. 단순 view-state 이므로 URL 오염을 회피.
+ *   PR #2 통합 후 UX 피드백에 따라 `?expand=1` 동기화 여부 재검토 가능.
  */
 export function ResultTabs({
   tabs,
