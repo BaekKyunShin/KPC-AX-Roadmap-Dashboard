@@ -125,6 +125,18 @@ function createValidPBLContent(): PBLContent {
         },
       },
     },
+    // Ⅴ. 성과분석 및 확산 전략 (Task 2.10 추가)
+    outcome_analysis: {
+      outcome_metrics: {
+        selected_goals: ['불량률 감소'],
+        quantitative: '훈련 후 불량발생률 15% 감소',
+        qualitative: '문제해결 역량 향상 및 협업 문화 개선',
+      },
+      diffusion_strategy: {
+        internalization: '업무 매뉴얼 제작 및 멘토-멘티 제도 운영',
+        company_wide_diffusion: '성과 발표회 개최 및 타 부서 확대 적용',
+      },
+    },
   };
 }
 
