@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils';
-import type { RoadmapVersionStatus } from '@/types/database';
+import type { VersionStatus } from '@/types/database';
 
 /**
  * VersionStatusBadge — 로드맵·PBL 공용 버전 상태 배지.
  *
- * 3가지 상태 (`RoadmapVersionStatus`) 를 일관된 시각·라벨로 표시한다.
+ * 3가지 상태 (`VersionStatus`) 를 일관된 시각·라벨로 표시한다.
  *
  * | status   | 라벨         | 색상                                                |
  * | -------- | ------------ | --------------------------------------------------- |
@@ -15,9 +15,12 @@ import type { RoadmapVersionStatus } from '@/types/database';
  * 기존 `RoadmapStatusBadge` · `PBLStatusBadge` 의 복제를 대체할 단일 컴포넌트.
  * 호출부 이전은 PR #2 Task 2.11 에서 수행한다.
  *
+ * 주의: 기존 `RoadmapStatusBadge` 의 `versionNumber >= 2 → "수정본"` 특수 UX 는
+ * 의도적으로 제외한다 — 본 컴포넌트는 DB 상태의 순수 시각화이며,
+ * "수정본" 라벨링 정책은 PR #2 Task 2.11 마이그레이션 시 재검토한다.
+ *
  * 접근성: 색상만으로 의미를 전달하지 않는다 — 라벨 텍스트가 상태를 명시.
  */
-export type VersionStatus = RoadmapVersionStatus;
 
 interface VersionStatusBadgeProps {
   status: VersionStatus;
