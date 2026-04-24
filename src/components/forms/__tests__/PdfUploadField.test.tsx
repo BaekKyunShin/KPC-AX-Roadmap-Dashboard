@@ -70,4 +70,19 @@ describe('PdfUploadField', () => {
     );
     expect(screen.getByLabelText('첨부 제거')).toBeDisabled();
   });
+
+  it('accept prop 이 .hwp 이면 input 의 accept 속성도 .hwp 로 전파된다', () => {
+    const { container } = render(
+      <PdfUploadField
+        file={null}
+        onFileSelect={() => {}}
+        onRemove={() => {}}
+        accept=".hwp"
+      />,
+    );
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    expect(input).toHaveAttribute('accept', '.hwp');
+  });
 });

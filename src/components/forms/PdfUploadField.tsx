@@ -51,7 +51,15 @@ export function PdfUploadField({
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const f = files[0];
-    if (accept !== '*' && !f.name.toLowerCase().endsWith('.pdf')) {
+    // accept 값을 확장자 배열로 파싱 (예: ".pdf,.hwp" → [".pdf", ".hwp"])
+    const acceptList = accept
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const isAllowed =
+      acceptList.includes('*') ||
+      acceptList.some((ext) => f.name.toLowerCase().endsWith(ext));
+    if (!isAllowed) {
       return;
     }
     onFileSelect(f);
