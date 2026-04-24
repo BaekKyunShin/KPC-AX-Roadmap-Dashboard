@@ -36,11 +36,11 @@ vi.mock('../../../actions', () => ({
 }));
 
 import {
-  RoadmapInterviewClientV2,
+  RoadmapInterviewClient,
   ROADMAP_V2_STEPS,
-} from '../RoadmapInterviewClientV2';
+} from '../RoadmapInterviewClient';
 
-describe('RoadmapInterviewClientV2', () => {
+describe('RoadmapInterviewClient', () => {
   beforeEach(() => {
     saveRoadmapInterviewV2.mockReset();
     submitRoadmapInterviewV2.mockReset();
@@ -49,7 +49,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('PageHeader 와 첫 스텝(Ⅰ-1) 본문을 렌더한다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     expect(
       screen.getByRole('heading', {
         name: /AI훈련로드맵 인터뷰/,
@@ -63,7 +63,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('8개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // 스테퍼는 데스크톱·모바일 모두 렌더되므로 같은 텍스트가 여러 번 등장할 수 있음
     expect(ROADMAP_V2_STEPS).toHaveLength(8);
     for (const s of ROADMAP_V2_STEPS) {
@@ -72,7 +72,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2) 으로 이동하고 실제 StepPerformanceActivities 가 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByLabelText('다음 스텝'));
     // Ⅰ-2 performance — FormSection 헤더에 "주요 활동" h2
     expect(
@@ -87,7 +87,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('Ⅲ-1 competencyModeling 스텝 진입 시 실제 StepCompetencyModeling 이 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('역량 모델링'));
     expect(
       screen.getByRole('heading', { name: '역량 모델링', level: 2 }),
@@ -102,7 +102,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('Ⅰ-2 performanceActivities 편집 시 저장 Action 호출에 performanceActivities patch 가 포함된다', async () => {
     saveRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('주요 활동'));
     fireEvent.change(screen.getByLabelText('1차 PM 성명'), {
       target: { value: '홍길동' },
@@ -118,7 +118,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('Ⅲ-1 역량 편집 시 저장 Action 호출에 competencies patch 가 포함된다', async () => {
     saveRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('역량 모델링'));
     fireEvent.change(screen.getByLabelText('역량명 1'), {
       target: { value: 'AI 리터러시' },
@@ -133,7 +133,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('Ⅱ-2 companyReq 스텝 진입 시 실제 StepCompanyRequirements 가 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 요구분석'));
     // StepCompanyRequirements 는 FormSection 헤더에 "Ⅱ-2" 표시
     expect(
@@ -146,7 +146,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('과업·워크플로우 분석'));
     expect(
       screen.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 }),
@@ -158,7 +158,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('Ⅱ-4 targetTask 스텝 진입 시 실제 StepTargetTask 가 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련대상 과업'));
     expect(
       screen.getByRole('heading', { name: '훈련대상 과업 선정', level: 2 }),
@@ -170,7 +170,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('Ⅱ-2 에서 textarea 편집 시 저장 Action 호출 시 companyRequirements patch 가 포함된다', async () => {
     saveRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 요구분석'));
     fireEvent.change(screen.getByLabelText('기업 현황'), {
       target: { value: '반도체 제조' },
@@ -189,7 +189,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('스테퍼의 스텝(Ⅰ-3 mainResult) 직접 클릭 시 해당 본문이 렌더된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // 데스크톱 스테퍼의 3번 버튼은 한글 절 제목 옆에 숫자 3 으로 렌더된다.
     // 가장 안전하게는 스테퍼의 절 제목 텍스트 (수립 주요 결과) 가 보이는 버튼을 클릭한다.
     // 다만 같은 텍스트가 본문에는 (현재 step Ⅰ-1 인 한) 없으므로 getByText 로 1건이다.
@@ -200,7 +200,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('initial 데이터의 establishmentNecessity 가 Ⅰ-1 textarea 에 반영된다', () => {
     render(
-      <RoadmapInterviewClientV2
+      <RoadmapInterviewClient
         projectId="p1"
         initial={{ establishmentNecessity: '초기 필요성' }}
       />,
@@ -210,7 +210,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('Ⅰ-1 textarea 에 입력하면 내부 상태가 갱신되고, 저장 클릭 시 Server Action 에 전달된다', async () => {
     saveRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="proj-9" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="proj-9" initial={{}} />);
 
     fireEvent.change(screen.getByLabelText('수립 필요성'), {
       target: { value: '신규 필요성' },
@@ -235,7 +235,7 @@ describe('RoadmapInterviewClientV2', () => {
       success: false,
       error: '권한이 없습니다',
     });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByLabelText('수동 저장'));
     await waitFor(() =>
       expect(screen.getByText('저장 실패')).toBeInTheDocument(),
@@ -297,7 +297,7 @@ describe('RoadmapInterviewClientV2', () => {
       ncsUsed: false,
       ncsDerivationMethod: '도출 방법',
     };
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={validInitial} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={validInitial} />);
     // 8회 다음 클릭으로 마지막 스텝까지 이동
     for (let i = 0; i < 7; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
@@ -316,7 +316,7 @@ describe('RoadmapInterviewClientV2', () => {
 
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     for (let i = 0; i < 7; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
@@ -328,7 +328,7 @@ describe('RoadmapInterviewClientV2', () => {
   });
 
   it('첫 스텝에서 "이전" 버튼은 비활성화된다', () => {
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     expect(screen.getByLabelText('이전 스텝')).toBeDisabled();
   });
 
@@ -336,7 +336,7 @@ describe('RoadmapInterviewClientV2', () => {
     vi.useFakeTimers();
     try {
       saveRoadmapInterviewV2.mockResolvedValue({ success: true });
-      render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+      render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
       await act(async () => {
         fireEvent.change(screen.getByLabelText('수립 필요성'), {
           target: { value: '자동저장 검증' },

@@ -33,11 +33,11 @@ vi.mock('../../../actions', () => ({
 }));
 
 import {
-  PBLInterviewClientV2,
+  PBLInterviewClient,
   PBL_V2_STEPS,
-} from '../PBLInterviewClientV2';
+} from '../PBLInterviewClient';
 
-describe('PBLInterviewClientV2', () => {
+describe('PBLInterviewClient', () => {
   beforeEach(() => {
     savePBLInterviewV2.mockReset();
     submitPBLInterviewV2.mockReset();
@@ -46,7 +46,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('PageHeader 와 첫 스텝(Ⅰ 훈련과정 개요) 본문을 렌더한다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(
       screen.getByRole('heading', {
         name: /AI PBL 인터뷰/,
@@ -59,7 +59,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(PBL_V2_STEPS).toHaveLength(9);
     for (const s of PBL_V2_STEPS) {
       expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
@@ -67,7 +67,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('Ⅱ-1-가 companyIssues 스텝 진입 시 해당 textarea 가 렌더된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 경영 이슈'));
     expect(
       screen.getByRole('heading', { name: '기업 경영 이슈', level: 2 }),
@@ -77,7 +77,7 @@ describe('PBLInterviewClientV2', () => {
 
   it('Ⅰ Overview 에서 기업명 입력 후 수동 저장 시 Server Action 에 companyName 이 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.change(screen.getByLabelText('기업명'), {
       target: { value: '한국생산성본부' },
     });
@@ -91,7 +91,7 @@ describe('PBLInterviewClientV2', () => {
 
   it('Ⅱ-1-가 companyIssues 편집 시 저장 payload 에 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 경영 이슈'));
     fireEvent.change(screen.getByLabelText('기업 경영 이슈'), {
       target: { value: '원가 압박' },
@@ -106,7 +106,7 @@ describe('PBLInterviewClientV2', () => {
 
   it('Ⅱ-3-나 courseNecessity 편집 시 저장 payload 에 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('AI훈련과정 개발 필요성'));
     fireEvent.change(screen.getByLabelText('AI훈련과정 개발 필요성'), {
       target: { value: '현장 AI 리터러시 확보 필요' },
@@ -120,13 +120,13 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('첫 스텝에서 "이전" 버튼은 비활성화된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(screen.getByLabelText('이전 스텝')).toBeDisabled();
   });
 
   it('initial.companyName 이 Overview input 에 반영된다', () => {
     render(
-      <PBLInterviewClientV2
+      <PBLInterviewClient
         projectId="p1"
         initial={{ companyName: '기존값' }}
       />,
@@ -138,7 +138,7 @@ describe('PBLInterviewClientV2', () => {
     vi.useFakeTimers();
     try {
       savePBLInterviewV2.mockResolvedValue({ success: true });
-      render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+      render(<PBLInterviewClient projectId="p1" initial={{}} />);
       await act(async () => {
         fireEvent.change(screen.getByLabelText('기업명'), {
           target: { value: '자동저장' },
@@ -165,7 +165,7 @@ describe('PBLInterviewClientV2', () => {
       success: false,
       error: '권한이 없습니다',
     });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByLabelText('수동 저장'));
     await waitFor(() =>
       expect(screen.getByText('저장 실패')).toBeInTheDocument(),
@@ -173,7 +173,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('Ⅱ-1-나 organization 스텝 진입 시 StepOrganization 이 렌더된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('조직 및 주요 업무'));
     expect(
       screen.getByRole('heading', { name: '조직 및 주요 업무', level: 2 }),
@@ -186,7 +186,7 @@ describe('PBLInterviewClientV2', () => {
 
   it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련환경 분석'));
     fireEvent.change(screen.getByLabelText('훈련환경 분석'), {
       target: { value: '사내 교육장 활용' },
@@ -201,7 +201,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('Ⅱ-3-가 hrdReport 스텝 진입 시 StepHrdReportPdf 가 렌더된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('HRD이음 PDF'));
     expect(
       screen.getByRole('heading', { name: /HRD이음컨설팅 결과 PDF 첨부/, level: 2 }),
@@ -209,7 +209,7 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 프리필', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('수행활동'));
     expect(
       screen.getByRole('heading', { name: '훈련과제 도출 수행활동', level: 2 }),
@@ -218,14 +218,14 @@ describe('PBLInterviewClientV2', () => {
   });
 
   it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('문제 도출·우선순위'));
     expect(screen.getByText('Ⅲ-2-가 문제 도출')).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-2-나 문제 우선순위 결정')).toBeInTheDocument();
   });
 
   it('Ⅲ-3·4 targetAndLevel 스텝 진입 시 세 블록이 렌더된다', () => {
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련대상·AI수준'));
     expect(
       screen.getByText('Ⅲ-3 훈련대상 업무 (가·나·다)'),
@@ -287,7 +287,7 @@ describe('PBLInterviewClientV2', () => {
       currentAiLevel: { level: 'BASIC' as const, note: '' },
       expectedAiLevel: { level: 'USER' as const, note: '' },
     };
-    render(<PBLInterviewClientV2 projectId="p1" initial={validInitial} />);
+    render(<PBLInterviewClient projectId="p1" initial={validInitial} />);
     for (let i = 0; i < PBL_V2_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
@@ -303,7 +303,7 @@ describe('PBLInterviewClientV2', () => {
 
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitPBLInterviewV2.mockResolvedValue({ success: true });
-    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
     for (let i = 0; i < PBL_V2_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }

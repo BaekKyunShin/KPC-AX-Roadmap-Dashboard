@@ -117,7 +117,7 @@ function emptyTraining(): {
 // Props
 // ============================================================================
 
-export interface RoadmapInterviewClientV2Props {
+export interface RoadmapInterviewClientProps {
   projectId: string;
   initial: Partial<RoadmapInterviewStrict>;
 }
@@ -126,10 +126,10 @@ export interface RoadmapInterviewClientV2Props {
 // 본 컴포넌트
 // ============================================================================
 
-export function RoadmapInterviewClientV2({
+export function RoadmapInterviewClient({
   projectId,
   initial,
-}: RoadmapInterviewClientV2Props) {
+}: RoadmapInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<RoadmapInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -246,7 +246,7 @@ export function RoadmapInterviewClientV2({
             showErrorToast(result.error);
           }
         } catch (error) {
-          console.error('[RoadmapInterviewClientV2] auto-save error:', error);
+          console.error('[RoadmapInterviewClient] auto-save error:', error);
           setSaveState('error');
           showErrorToast(
             error instanceof Error
@@ -303,7 +303,7 @@ export function RoadmapInterviewClientV2({
         }
       } catch (error) {
         setIsSubmitting(false);
-        console.error('[RoadmapInterviewClientV2] submit error:', error);
+        console.error('[RoadmapInterviewClient] submit error:', error);
         showErrorToast(
           error instanceof Error
             ? error.message

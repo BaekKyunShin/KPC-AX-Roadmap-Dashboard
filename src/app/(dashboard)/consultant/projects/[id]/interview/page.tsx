@@ -6,8 +6,8 @@ import {
   fetchPBLInterviewV2,
   fetchRoadmapInterviewV2,
 } from './actions';
-import { RoadmapInterviewClientV2 } from './_components/roadmap-v2/RoadmapInterviewClientV2';
-import { PBLInterviewClientV2 } from './_components/pbl-v2/PBLInterviewClientV2';
+import { RoadmapInterviewClient } from './_components/roadmap-v2/RoadmapInterviewClient';
+import { PBLInterviewClient } from './_components/pbl-v2/PBLInterviewClient';
 
 /**
  * HRD 첨부 버킷 이름 (actions.ts 의 HRD_BUCKET 과 동기화).
@@ -97,10 +97,10 @@ export default async function InterviewPage({
       rawPbl as Record<string, unknown>,
     );
     return (
-      <PBLInterviewClientV2
+      <PBLInterviewClient
         projectId={project.id}
         initial={
-          hydratedPbl as Parameters<typeof PBLInterviewClientV2>[0]['initial']
+          hydratedPbl as Parameters<typeof PBLInterviewClient>[0]['initial']
         }
       />
     );
@@ -113,9 +113,9 @@ export default async function InterviewPage({
   );
 
   return (
-    <RoadmapInterviewClientV2
+    <RoadmapInterviewClient
       projectId={project.id}
-      initial={hydrated as Parameters<typeof RoadmapInterviewClientV2>[0]['initial']}
+      initial={hydrated as Parameters<typeof RoadmapInterviewClient>[0]['initial']}
     />
   );
 }

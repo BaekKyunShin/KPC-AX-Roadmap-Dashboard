@@ -104,7 +104,7 @@ function emptyOrganization(): PBLOrganization {
 // Props
 // ============================================================================
 
-export interface PBLInterviewClientV2Props {
+export interface PBLInterviewClientProps {
   projectId: string;
   initial: Partial<PBLInterviewStrict>;
 }
@@ -113,10 +113,10 @@ export interface PBLInterviewClientV2Props {
 // 본 컴포넌트
 // ============================================================================
 
-export function PBLInterviewClientV2({
+export function PBLInterviewClient({
   projectId,
   initial,
-}: PBLInterviewClientV2Props) {
+}: PBLInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<PBLInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -228,7 +228,7 @@ export function PBLInterviewClientV2({
             showErrorToast(result.error);
           }
         } catch (error) {
-          console.error('[PBLInterviewClientV2] auto-save error:', error);
+          console.error('[PBLInterviewClient] auto-save error:', error);
           setSaveState('error');
           showErrorToast(
             error instanceof Error
@@ -273,7 +273,7 @@ export function PBLInterviewClientV2({
         }
       } catch (error) {
         setIsSubmitting(false);
-        console.error('[PBLInterviewClientV2] submit error:', error);
+        console.error('[PBLInterviewClient] submit error:', error);
         showErrorToast(
           error instanceof Error
             ? error.message
