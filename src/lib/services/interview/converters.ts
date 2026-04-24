@@ -12,10 +12,12 @@
  *   overview.aiLevel                    → company_details.roadmap_overview.ai_competency_level
  *   overview.selectedTask               → company_details.roadmap_overview.selected_tasks_summary
  *   requirements.hrdReportPdf           → company_details.roadmap_overview.hrd_report_attachment
- *     · fileName ↔ file_name
- *     · url      ↔ storage_path
- *     · size     ↔ size
- *     · mime_type / uploaded_at / extracted_text / parse_error 는 내부 전용 (camelCase 미노출)
+ *     · fileName       ↔ file_name
+ *     · url            ↔ storage_path
+ *     · size           ↔ size
+ *     · extractedText  ↔ extracted_text  (LLM 내부용, UI 노출 금지)
+ *     · parseError     ↔ parse_error     (LLM 내부용, UI 노출 금지)
+ *     · mime_type / uploaded_at 는 DB 전용 메타 (camelCase 미노출)
  *   requirements.companyRequirements.{status/problem/will/outcomes}
  *     ↔ company_details.roadmap_company_requirements.{company_status/main_problems/push_willingness/expected_outcomes}
  *   requirements.taskAnalysis[]         → interviews.job_tasks[] (legacy 필드명)
@@ -147,23 +149,35 @@ export interface RoadmapInterviewDbUpdate {
 // 로드맵 — camelCase → DB
 // ============================================================================
 
+// ----------------------------------------------------------------------------
+// HRD PDF / 분석노트 첨부 camelCase ↔ snake_case 왕복
+// ----------------------------------------------------------------------------
+// 내부 전용 필드(extractedText/parseError) 는 LLM 프롬프트(Task 2.9/2.10) 가
+// 읽어야 하므로 DB 의 extracted_text / parse_error 와 왕복 보존한다. UI 컴포넌트
+// 는 이 필드를 렌더링하지 않는다 (Client 이관 Task 2.3-a~d 담당자 주의).
 function hrdPdfToDb(pdf: RoadmapHrdReportPdf | null): DbHrdReportAttachment | null {
   if (!pdf) return null;
-  return {
+  const base: DbHrdReportAttachment = {
     file_name: pdf.fileName,
     storage_path: pdf.url,
     size: pdf.size,
   };
+  if (pdf.extractedText !== undefined) base.extracted_text = pdf.extractedText;
+  if (pdf.parseError !== undefined) base.parse_error = pdf.parseError;
+  return base;
 }
 
 function attachmentToDb(
   a: RoadmapTaskAnalysisAttachment | null | undefined,
 ): DbHrdReportAttachment | null {
   if (!a) return null;
-  return {
+  const base: DbHrdReportAttachment = {
     file_name: a.fileName,
     storage_path: a.url,
   };
+  if (a.extractedText !== undefined) base.extracted_text = a.extractedText;
+  if (a.parseError !== undefined) base.parse_error = a.parseError;
+  return base;
 }
 
 function performanceActivityToDb(a: RoadmapPerformanceActivity): DbPerformanceActivity {
@@ -390,11 +404,35 @@ function dbHrdToPdf(
 ): RoadmapHrdReportPdf | null {
   if (!att || typeof att !== 'object') return null;
   if (!att.file_name || !att.storage_path) return null;
-  return {
+  const result: RoadmapHrdReportPdf = {
     fileName: att.file_name,
     url: att.storage_path,
     size: typeof att.size === 'number' ? att.size : 0,
   };
+  if (att.extracted_text !== undefined) result.extractedText = att.extracted_text;
+  if (att.parse_error !== undefined) result.parseError = att.parse_error;
+  return result;
+}
+
+function dbToAttachment(
+  row:
+    | {
+        file_name?: string;
+        storage_path?: string;
+        extracted_text?: string;
+        parse_error?: string;
+      }
+    | null
+    | undefined,
+): RoadmapTaskAnalysisAttachment | undefined {
+  if (!row || !row.file_name || !row.storage_path) return undefined;
+  const result: RoadmapTaskAnalysisAttachment = {
+    fileName: row.file_name,
+    url: row.storage_path,
+  };
+  if (row.extracted_text !== undefined) result.extractedText = row.extracted_text;
+  if (row.parse_error !== undefined) result.parseError = row.parse_error;
+  return result;
 }
 
 /**
@@ -453,11 +491,7 @@ export function mapDbToRoadmapInterview(
     }));
 
   const attachmentFiles = Array.isArray(an.attachment_files) ? an.attachment_files : [];
-  const firstAttachment = attachmentFiles[0];
-  const taskAnalysisAttachment: RoadmapTaskAnalysisAttachment | undefined =
-    firstAttachment && firstAttachment.file_name && firstAttachment.storage_path
-      ? { fileName: firstAttachment.file_name, url: firstAttachment.storage_path }
-      : undefined;
+  const taskAnalysisAttachment = dbToAttachment(attachmentFiles[0]);
 
   const improvementFirst = (row.improvement_goals ?? [])[0];
   const targetTask: RoadmapTargetTask | undefined = improvementFirst

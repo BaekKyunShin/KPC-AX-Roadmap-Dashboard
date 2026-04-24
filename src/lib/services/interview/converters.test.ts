@@ -264,7 +264,7 @@ describe('mapDbToRoadmapInterview', () => {
     expect(restored.ncsDerivationMethod).toBe(original.ncsDerivationMethod);
   });
 
-  it('DB 에 extracted_text 가 저장되어 있어도 camelCase 출력에는 노출하지 않는다', () => {
+  it('DB extracted_text / parse_error 가 camelCase 의 extractedText / parseError 로 보존된다', () => {
     const row = {
       company_details: {
         roadmap_overview: {
@@ -285,15 +285,99 @@ describe('mapDbToRoadmapInterview', () => {
       },
     };
     const restored = mapDbToRoadmapInterview(row);
+    // UI 에 필요한 3필드 + LLM 내부 2필드(extractedText/parseError) 가 모두 전달된다.
     expect(restored.hrdReportPdf).toEqual({
       fileName: 'a.pdf',
       url: 'p/a.pdf',
       size: 100,
+      extractedText: '내부 전용 파싱 본문',
+      parseError: '',
     });
-    // extracted_text / parse_error 가 camelCase 스키마에 노출되지 않음
-    expect(restored.hrdReportPdf).not.toHaveProperty('extractedText');
-    expect(restored.hrdReportPdf).not.toHaveProperty('parseError');
+    // snake_case 원본 키는 camelCase 출력에 노출되지 않음
     expect(restored.hrdReportPdf).not.toHaveProperty('extracted_text');
+    expect(restored.hrdReportPdf).not.toHaveProperty('parse_error');
+  });
+
+  // Critical 수정 (Task 2.7-b 리뷰) — LLM 프롬프트가 읽을 PDF 본문이 save 시
+  // 버려지지 않도록 양방향 왕복에서 extractedText / parseError 가 보존되는지 검증.
+  it('hrdReportPdf.extractedText 를 save 할 때 DB 의 extracted_text 로 직렬화한다', () => {
+    const data = {
+      ...validRoadmapCamelCase(),
+      hrdReportPdf: {
+        fileName: 'hrd.pdf',
+        url: 'p/hrd.pdf',
+        size: 1024,
+        extractedText: 'PDF 본문: 역량 점수 분포 ...',
+        parseError: undefined,
+      },
+    };
+    const db = mapRoadmapInterviewToDb(data);
+    const att = db.company_details.roadmap_overview.hrd_report_attachment;
+    expect(att).not.toBeNull();
+    expect(att?.file_name).toBe('hrd.pdf');
+    expect(att?.storage_path).toBe('p/hrd.pdf');
+    expect(att?.size).toBe(1024);
+    expect(att?.extracted_text).toBe('PDF 본문: 역량 점수 분포 ...');
+    // parseError 가 undefined 이면 DB payload 에도 키 미포함
+    expect(att).not.toHaveProperty('parse_error');
+  });
+
+  it('hrdReportPdf round-trip: camelCase → DB → camelCase 에서 extractedText 보존', () => {
+    const pdf = {
+      fileName: 'hrd.pdf',
+      url: 'p/hrd.pdf',
+      size: 2048,
+      extractedText: '파싱된 본문 키워드',
+      parseError: '파싱 경고: 표 일부 누락',
+    };
+    const data = { ...validRoadmapCamelCase(), hrdReportPdf: pdf };
+    const db = mapRoadmapInterviewToDb(data);
+    const row = {
+      company_details: db.company_details,
+      job_tasks: db.job_tasks,
+      improvement_goals: db.improvement_goals,
+    };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.hrdReportPdf).toEqual(pdf);
+  });
+
+  it('taskAnalysisAttachment.extractedText 도 DB attachment_files[0] 로 직렬화된다', () => {
+    const data = {
+      ...validRoadmapCamelCase(),
+      taskAnalysisAttachment: {
+        fileName: 'note-attach.pdf',
+        url: 'p/note.pdf',
+        extractedText: '분석 노트 본문',
+        parseError: '',
+      },
+    };
+    const db = mapRoadmapInterviewToDb(data);
+    const files = db.company_details.roadmap_analysis_notes?.attachment_files ?? [];
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatchObject({
+      file_name: 'note-attach.pdf',
+      storage_path: 'p/note.pdf',
+      extracted_text: '분석 노트 본문',
+      parse_error: '',
+    });
+  });
+
+  it('taskAnalysisAttachment round-trip: camelCase → DB → camelCase 에서 extractedText 보존', () => {
+    const attachment = {
+      fileName: 'note.pdf',
+      url: 'p/note.pdf',
+      extractedText: '분석 노트 본문 키워드',
+      parseError: '',
+    };
+    const data = { ...validRoadmapCamelCase(), taskAnalysisAttachment: attachment };
+    const db = mapRoadmapInterviewToDb(data);
+    const row = {
+      company_details: db.company_details,
+      job_tasks: db.job_tasks,
+      improvement_goals: db.improvement_goals,
+    };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.taskAnalysisAttachment).toEqual(attachment);
   });
 
   it('빈 row → 빈 객체 (모든 필드 optional / 기본값)', () => {

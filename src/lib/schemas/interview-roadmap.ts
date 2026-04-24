@@ -699,10 +699,20 @@ export type RoadmapOverview = z.infer<typeof RoadmapOverviewSchema>;
 // -- Ⅱ-1 HRD이음 진단 보고서 PDF ---------------------------------------------
 // 파일 업로드 후 Storage (interview-attachments 버킷) 에서 반환된 메타를 보관.
 // 신규 명명 — fileName / url / size. (기존 hrdReportAttachmentSchema 와 구조 상이.)
+//
+// **내부 전용 필드 (UI 노출 금지)**
+//   - extractedText: upload Action 이 PDF 파싱하여 주입. Task 2.9/2.10 LLM 프롬프트가 읽는다.
+//   - parseError   : 업로드/파싱 실패 시 사유. LLM 프롬프트에 사유 표출.
+// 두 필드는 Server Action 경계(save/fetch)에서 DB 의 extracted_text / parse_error 와
+// 왕복 보존된다. Client 컴포넌트는 이 필드를 렌더링하지 않는다.
 export const RoadmapHrdReportPdfSchema = z.object({
   fileName: z.string().min(1),
   url: z.string().min(1),
   size: z.number().nonnegative(),
+  /** LLM 내부용 (UI 노출 금지). upload Action 이 PDF 파싱하여 주입. */
+  extractedText: z.string().optional(),
+  /** upload/파싱 실패 시 에러 메시지 (UI 노출 금지). */
+  parseError: z.string().optional(),
 });
 export type RoadmapHrdReportPdf = z.infer<typeof RoadmapHrdReportPdfSchema>;
 
@@ -731,9 +741,16 @@ export const RoadmapTaskAnalysisItemSchema = z.object({
 export type RoadmapTaskAnalysisItem = z.infer<typeof RoadmapTaskAnalysisItemSchema>;
 
 // -- Ⅱ-3 추가 첨부 (선택) ----------------------------------------------------
+// 분석 노트 추가 첨부도 Ⅱ-1 HRD PDF 와 동일한 내부 필드(extractedText/parseError)를
+// 공유한다. upload Action 이 파싱 결과를 주입하면 Server Action 이 DB 의
+// attachment_files[0].extracted_text / parse_error 와 왕복 보존한다.
 export const RoadmapTaskAnalysisAttachmentSchema = z.object({
   fileName: z.string().min(1),
   url: z.string().min(1),
+  /** LLM 내부용 (UI 노출 금지). upload Action 이 파싱하여 주입. */
+  extractedText: z.string().optional(),
+  /** upload/파싱 실패 시 에러 메시지 (UI 노출 금지). */
+  parseError: z.string().optional(),
 });
 export type RoadmapTaskAnalysisAttachment = z.infer<typeof RoadmapTaskAnalysisAttachmentSchema>;
 

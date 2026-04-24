@@ -648,10 +648,19 @@ export type PBLOrganization = z.infer<typeof PBLOrganizationSchema>;
 // Storage (interview-attachments 버킷) 에서 반환된 메타를 보관. 신규 명명
 // (fileName/url/size) — 기존 `hrdReportAttachmentSchema` 와 구조 상이하며
 // 로드맵 `RoadmapHrdReportPdfSchema` 와 동일 축을 공유한다.
+//
+// **내부 전용 필드 (UI 노출 금지)**
+//   - extractedText: upload Action 이 PDF 파싱하여 주입. LLM 프롬프트가 읽는다.
+//   - parseError   : upload/파싱 실패 사유. LLM 프롬프트에 사유 표출.
+// Server Action 경계(save/fetch)에서 DB 의 extracted_text / parse_error 와 왕복 보존.
 export const PBLHrdReportPdfSchema = z.object({
   fileName: z.string().min(1),
   url: z.string().min(1),
   size: z.number().nonnegative(),
+  /** LLM 내부용 (UI 노출 금지). upload Action 이 PDF 파싱하여 주입. */
+  extractedText: z.string().optional(),
+  /** upload/파싱 실패 시 에러 메시지 (UI 노출 금지). */
+  parseError: z.string().optional(),
 });
 export type PBLHrdReportPdf = z.infer<typeof PBLHrdReportPdfSchema>;
 

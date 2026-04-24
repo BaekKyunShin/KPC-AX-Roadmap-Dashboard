@@ -37,6 +37,7 @@ import { validateStatusTransition } from '@/lib/constants/status';
 import { after } from 'next/server';
 
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import type { ProjectStatus, ProjectTrack } from '@/types/database';
 
 // ============================================================================
 // 공통 헬퍼 함수
@@ -933,13 +934,49 @@ export async function deleteSttInsights(projectId: string): Promise<SimpleAction
 // fetchPBLInterview)은 Client 이관(Task 2.3-a~d, Task 2.4) 이 끝날 때까지 병존
 // 하며, Task 2.11 cleanup 에서 제거 예정.
 //
-// 5단계 패턴 엄수:
-//   1) 인증 (requireAuthWithRole)
-//   2) 역할 (CONSULTANT_APPROVED) + track 가드
+// 5단계 패턴 엄수 (check-server-action):
+//   1) 인증 (verifyProjectAccess — requireAuthWithRole 래퍼)
+//   2) 역할 (CONSULTANT_APPROVED) + 프로젝트 배정 (verifyProjectAccess 내부 requireConsultantProjectAccess)
+//      + track 가드 (별도 프로젝트 메타 조회)
 //   3) Zod (자동저장=partial / 제출=StrictSchema — superRefine 포함)
 //   4) 비즈니스 (converter → upsert → 상태 전이)
 //   5) ActionResult 반환
 // ============================================================================
+
+/**
+ * 인터뷰 Server Action 내부에서 필요한 프로젝트 메타(track/status/company_name/
+ * is_test_mode) 를 조회하는 보조 함수. `verifyProjectAccess` 가 역할 + 배정을
+ * 이미 검증했다는 전제하에 호출한다 (중복 검증 회피).
+ */
+async function fetchProjectMetaForInterview(
+  projectId: string,
+): Promise<
+  | {
+      id: string;
+      status: ProjectStatus;
+      track: ProjectTrack | null;
+      company_name: string | null;
+      is_test_mode: boolean | null;
+    }
+  | { error: string }
+> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, status, track, company_name, is_test_mode')
+    .eq('id', projectId)
+    .single();
+  if (error || !data) {
+    return { error: '프로젝트 정보를 불러올 수 없습니다.' };
+  }
+  return {
+    id: data.id,
+    status: data.status as ProjectStatus,
+    track: (data.track as ProjectTrack | null) ?? null,
+    company_name: data.company_name ?? null,
+    is_test_mode: data.is_test_mode ?? null,
+  };
+}
 
 /**
  * 로드맵 인터뷰 저장 — camelCase 신규 스키마 (Task 2.1).
@@ -954,21 +991,15 @@ export async function saveRoadmapInterviewV2(
   options?: { autoSave?: boolean },
 ): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
-      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
-    });
-    if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+    const { user } = access;
 
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
-      .eq('id', projectId)
-      .eq('assigned_consultant_id', user.id)
-      .single();
-
-    if (!projectData) {
-      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    // (2-추가) track/status/company_name/is_test_mode 조회
+    const projectData = await fetchProjectMetaForInterview(projectId);
+    if ('error' in projectData) {
+      return { success: false, error: projectData.error };
     }
     if (projectData.track !== 'ROADMAP') {
       return {
@@ -1095,24 +1126,21 @@ export async function fetchRoadmapInterviewV2(
   projectId: string,
 ): Promise<Partial<RoadmapInterviewStrict> | null> {
   try {
-    const auth = await requireAuth();
-    if ('error' in auth) return null;
-    const { user, supabase } = auth;
+    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용. 실패 시 null (UI 조회는 조용히 실패).
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return null;
 
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('assigned_consultant_id, track')
-      .eq('id', projectId)
-      .single();
-
-    if (!projectData || projectData.assigned_consultant_id !== user.id) {
-      return null;
-    }
+    // (2-추가) track 가드
+    const projectData = await fetchProjectMetaForInterview(projectId);
+    if ('error' in projectData) return null;
     if (projectData.track !== 'ROADMAP') return null;
 
+    // interview_date 는 DB 기본값(CURRENT_DATE) 으로만 기록되며 camelCase 스키마
+    // 에는 해당 필드가 없으므로(`performanceActivities[].date` 에 포함) select 제외.
+    const supabase = createAdminClient();
     const { data: interview } = await supabase
       .from('interviews')
-      .select('interview_date, company_details, job_tasks, improvement_goals')
+      .select('company_details, job_tasks, improvement_goals')
       .eq('project_id', projectId)
       .maybeSingle();
 
@@ -1135,21 +1163,15 @@ export async function savePBLInterviewV2(
   options?: { autoSave?: boolean },
 ): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
-      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
-    });
-    if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
+    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return { success: false, error: access.error };
+    const { user } = access;
 
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
-      .eq('id', projectId)
-      .eq('assigned_consultant_id', user.id)
-      .single();
-
-    if (!projectData) {
-      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    // (2-추가) track/status/company_name/is_test_mode 조회
+    const projectData = await fetchProjectMetaForInterview(projectId);
+    if ('error' in projectData) {
+      return { success: false, error: projectData.error };
     }
     if (projectData.track !== 'PBL') {
       return {
@@ -1267,21 +1289,16 @@ export async function fetchPBLInterviewV2(
   projectId: string,
 ): Promise<Partial<PBLInterviewStrict> | null> {
   try {
-    const auth = await requireAuth();
-    if ('error' in auth) return null;
-    const { user, supabase } = auth;
+    // (1)+(2) 역할 + 배정 검증 — 공통 헬퍼 재사용
+    const access = await verifyProjectAccess(projectId);
+    if ('error' in access) return null;
 
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('assigned_consultant_id, track')
-      .eq('id', projectId)
-      .single();
-
-    if (!projectData || projectData.assigned_consultant_id !== user.id) {
-      return null;
-    }
+    // (2-추가) track 가드
+    const projectData = await fetchProjectMetaForInterview(projectId);
+    if ('error' in projectData) return null;
     if (projectData.track !== 'PBL') return null;
 
+    const supabase = createAdminClient();
     const { data: interview } = await supabase
       .from('interviews')
       .select('pbl_data')
