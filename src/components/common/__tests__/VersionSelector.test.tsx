@@ -71,6 +71,21 @@ describe('VersionSelector', () => {
     expect(trigger.className).toMatch(/min-w-\[240px\]/);
   });
 
+  it('className props 가 기본 min-w-[240px] 와 합성된다 (cn)', () => {
+    render(
+      <VersionSelector
+        versions={[]}
+        selectedId={undefined}
+        onSelect={() => {}}
+        className="bg-red-100"
+      />,
+    );
+    const trigger = screen.getByRole('combobox');
+    // cn() 합성 → 기본 클래스와 호출부 클래스가 모두 유지
+    expect(trigger.className).toMatch(/min-w-\[240px\]/);
+    expect(trigger.className).toMatch(/bg-red-100/);
+  });
+
   it('T 가 VersionLike 확장 필드를 가져도 타입 체크를 통과한다', () => {
     // 이 테스트는 TypeScript 제네릭 제약을 검증 (컴파일 타임)
     type ExtendedVersion = VersionLike & { extra: string };

@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { VersionStatusBadge } from './VersionStatusBadge';
+import { cn } from '@/lib/utils';
 import { formatDateKR } from '@/lib/utils/date';
 import type { VersionStatus } from '@/types/database';
 
@@ -58,7 +59,7 @@ export function VersionSelector<T extends VersionLike>({
   const disabled = versions.length === 0;
   return (
     <Select value={selectedId} onValueChange={onSelect} disabled={disabled}>
-      <SelectTrigger className={className ?? 'min-w-[240px]'}>
+      <SelectTrigger className={cn('min-w-[240px]', className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
