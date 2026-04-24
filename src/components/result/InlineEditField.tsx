@@ -205,7 +205,7 @@ export function InlineEditField({
       </span>
       {viewIndicator ??
         (!readOnly && (
-          <Pencil className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          <Pencil className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
         ))}
     </div>
   );

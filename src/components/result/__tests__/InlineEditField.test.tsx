@@ -55,7 +55,7 @@ describe('InlineEditField', () => {
     await user.clear(input);
     await user.type(input, 'new');
     await user.click(screen.getByRole('button', { name: '저장' }));
-    // 실패 시 edit 모드 유지, localValue 롤백
+    // 실패 시 edit 모드 유지, editBuffer 롤백
     await waitFor(() => {
       expect(input).toHaveValue('old');
     });
