@@ -4,7 +4,7 @@ import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 
 /**
  * Ⅱ-2 기업 훈련환경 분석 — [인터뷰 입력]
@@ -19,7 +19,7 @@ export function StepTrainingEnv({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<string>) {
+}: PBLStepProps<string>) {
   return (
     <FormSection
       number="Ⅱ-2"

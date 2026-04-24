@@ -8,10 +8,10 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { showErrorToast } from '@/lib/utils';
 
 import { uploadInterviewAttachment } from '../../actions';
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type { RoadmapHrdReportPdf } from '@/lib/schemas/interview-roadmap';
 
-interface StepHrdReportPdfProps extends RoadmapV2StepProps<RoadmapHrdReportPdf | null> {
+interface StepHrdReportPdfProps extends RoadmapStepProps<RoadmapHrdReportPdf | null> {
   /** 업로드 대상 프로젝트 ID. uploadInterviewAttachment Server Action 호출에 사용. */
   projectId: string;
 }

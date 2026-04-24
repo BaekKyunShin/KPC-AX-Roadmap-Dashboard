@@ -5,7 +5,7 @@ import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { FormCheckbox } from '@/components/forms/FormCheckbox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /**
@@ -35,7 +35,7 @@ export function StepMainResult({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<StepMainResultValue>) {
+}: RoadmapStepProps<StepMainResultValue>) {
   return (
     <FormSection
       number="Ⅰ-3"

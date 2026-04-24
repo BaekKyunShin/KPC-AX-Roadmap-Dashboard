@@ -4,7 +4,7 @@ import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type { RoadmapTargetTask } from '@/lib/schemas/interview-roadmap';
 
 /**
@@ -26,7 +26,7 @@ export function StepTargetTask({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<TargetTask>) {
+}: RoadmapStepProps<TargetTask>) {
   const v: TargetTask =
     value ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
 

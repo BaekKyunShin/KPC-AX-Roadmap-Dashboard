@@ -4,7 +4,7 @@ import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type { PBLOverview } from '@/lib/schemas/interview-pbl';
 
 /**
@@ -21,7 +21,7 @@ export function StepOverview({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<PBLOverview>) {
+}: PBLStepProps<PBLOverview>) {
   function update(patch: Partial<PBLOverview>) {
     onChange({ ...value, ...patch });
   }

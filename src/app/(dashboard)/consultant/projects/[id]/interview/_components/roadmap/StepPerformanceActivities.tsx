@@ -7,7 +7,7 @@ import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type { RoadmapPerformanceActivity } from '@/lib/schemas/interview-roadmap';
 import {
   INTERVIEW_METHOD_OPTIONS,
@@ -50,7 +50,7 @@ export function StepPerformanceActivities({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<RoadmapPerformanceActivity[]>) {
+}: RoadmapStepProps<RoadmapPerformanceActivity[]>) {
   const rows: RoadmapPerformanceActivity[] =
     value && value.length > 0 ? value : defaultRows();
 

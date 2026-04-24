@@ -47,10 +47,7 @@ import {
   type RoadmapTargetTask,
 } from '@/lib/schemas/interview-roadmap';
 import { RoadmapResultClient } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient';
-import type {
-  RoadmapResultEditPayload,
-  ResultInterviewSnapshot,
-} from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/types';
+import type { ResultInterviewSnapshot } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/types';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import { ROADMAP_INTERVIEW_SAMPLE } from '@/lib/fixtures/roadmap-interview-sample';
 

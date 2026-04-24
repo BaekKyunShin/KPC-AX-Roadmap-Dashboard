@@ -7,7 +7,7 @@ import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type { PBLActivityItem } from '@/lib/schemas/interview-pbl';
 
 /**
@@ -36,7 +36,7 @@ export function StepActivities({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<PBLActivityItem[]>) {
+}: PBLStepProps<PBLActivityItem[]>) {
   const rows: PBLActivityItem[] =
     value && value.length > 0 ? value : defaultRows();
 

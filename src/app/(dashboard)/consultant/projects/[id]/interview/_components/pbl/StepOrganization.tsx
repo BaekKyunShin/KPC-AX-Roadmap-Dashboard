@@ -8,7 +8,7 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 import { OrganizationTree } from '@/components/charts/OrganizationTree';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type {
   PBLOrganization,
   PBLMainWorkItem,
@@ -30,7 +30,7 @@ export function StepOrganization({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<PBLOrganization>) {
+}: PBLStepProps<PBLOrganization>) {
   const orgTree = value.orgTree ?? [];
   const mainWork: PBLMainWorkItem[] =
     value.mainWork && value.mainWork.length > 0

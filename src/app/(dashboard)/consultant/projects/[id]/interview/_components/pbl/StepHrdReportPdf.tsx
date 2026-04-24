@@ -8,11 +8,11 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { showErrorToast } from '@/lib/utils';
 
 import { uploadInterviewAttachment } from '../../actions';
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type { PBLHrdReportPdf } from '@/lib/schemas/interview-pbl';
 
 interface StepHrdReportPdfProps
-  extends PBLV2StepProps<PBLHrdReportPdf | null> {
+  extends PBLStepProps<PBLHrdReportPdf | null> {
   projectId: string;
 }
 

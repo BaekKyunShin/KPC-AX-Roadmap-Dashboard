@@ -37,7 +37,7 @@ vi.mock('../../../actions', () => ({
 
 import {
   RoadmapInterviewClient,
-  ROADMAP_V2_STEPS,
+  ROADMAP_STEPS,
 } from '../RoadmapInterviewClient';
 
 describe('RoadmapInterviewClient', () => {
@@ -65,8 +65,8 @@ describe('RoadmapInterviewClient', () => {
   it('8개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // 스테퍼는 데스크톱·모바일 모두 렌더되므로 같은 텍스트가 여러 번 등장할 수 있음
-    expect(ROADMAP_V2_STEPS).toHaveLength(8);
-    for (const s of ROADMAP_V2_STEPS) {
+    expect(ROADMAP_STEPS).toHaveLength(8);
+    for (const s of ROADMAP_STEPS) {
       expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
     }
   });

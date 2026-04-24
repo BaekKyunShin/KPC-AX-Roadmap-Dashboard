@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { showErrorToast } from '@/lib/utils';
 
 import { uploadInterviewAttachment } from '../../actions';
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type {
   RoadmapInterviewStrict,
   RoadmapTaskAnalysisItem,
@@ -35,7 +35,7 @@ export interface StepTaskAnalysisValue {
   taskAnalysisAttachment?: RoadmapInterviewStrict['taskAnalysisAttachment'];
 }
 
-interface StepTaskAnalysisProps extends RoadmapV2StepProps<StepTaskAnalysisValue> {
+interface StepTaskAnalysisProps extends RoadmapStepProps<StepTaskAnalysisValue> {
   /** 업로드 대상 프로젝트 ID — 분석 노트 PDF 첨부 시 uploadInterviewAttachment 호출에 사용 */
   projectId: string;
 }

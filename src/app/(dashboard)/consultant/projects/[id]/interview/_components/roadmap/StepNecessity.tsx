@@ -4,7 +4,7 @@ import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 
 /**
  * Ⅰ-1 수립 필요성 — [인터뷰 입력]
@@ -16,7 +16,7 @@ export function StepNecessity({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<string>) {
+}: RoadmapStepProps<string>) {
   return (
     <FormSection
       number="Ⅰ-1"

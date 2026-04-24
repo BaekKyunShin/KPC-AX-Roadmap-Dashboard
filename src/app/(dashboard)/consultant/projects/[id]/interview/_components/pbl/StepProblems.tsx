@@ -7,7 +7,7 @@ import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type {
   PBLProblemItem,
   PBLPriority,
@@ -39,7 +39,7 @@ export function StepProblems({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<StepProblemsValue>) {
+}: PBLStepProps<StepProblemsValue>) {
   const problems: PBLProblemItem[] =
     value.problems && value.problems.length > 0
       ? value.problems

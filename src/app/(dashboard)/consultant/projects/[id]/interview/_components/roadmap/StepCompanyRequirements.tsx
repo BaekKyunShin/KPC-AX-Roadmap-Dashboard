@@ -4,7 +4,7 @@ import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type { RoadmapCompanyRequirements } from '@/lib/schemas/interview-roadmap';
 
 /**
@@ -64,7 +64,7 @@ export function StepCompanyRequirements({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<CompanyReq>) {
+}: RoadmapStepProps<CompanyReq>) {
   const v: CompanyReq = value ?? { status: '', problem: '', will: '', outcomes: '' };
 
   return (

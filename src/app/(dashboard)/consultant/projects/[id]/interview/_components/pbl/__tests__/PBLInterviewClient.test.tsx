@@ -34,7 +34,7 @@ vi.mock('../../../actions', () => ({
 
 import {
   PBLInterviewClient,
-  PBL_V2_STEPS,
+  PBL_STEPS,
 } from '../PBLInterviewClient';
 
 describe('PBLInterviewClient', () => {
@@ -60,8 +60,8 @@ describe('PBLInterviewClient', () => {
 
   it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(PBL_V2_STEPS).toHaveLength(9);
-    for (const s of PBL_V2_STEPS) {
+    expect(PBL_STEPS).toHaveLength(9);
+    for (const s of PBL_STEPS) {
       expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
     }
   });
@@ -288,7 +288,7 @@ describe('PBLInterviewClient', () => {
       expectedAiLevel: { level: 'USER' as const, note: '' },
     };
     render(<PBLInterviewClient projectId="p1" initial={validInitial} />);
-    for (let i = 0; i < PBL_V2_STEPS.length - 1; i += 1) {
+    for (let i = 0; i < PBL_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
     const submitBtn = screen.getByRole('button', { name: '최종 제출' });
@@ -304,7 +304,7 @@ describe('PBLInterviewClient', () => {
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitPBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    for (let i = 0; i < PBL_V2_STEPS.length - 1; i += 1) {
+    for (let i = 0; i < PBL_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
     fireEvent.click(screen.getByRole('button', { name: '최종 제출' }));

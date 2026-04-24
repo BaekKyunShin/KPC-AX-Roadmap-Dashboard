@@ -8,7 +8,7 @@ import { FormCheckbox } from '@/components/forms/FormCheckbox';
 import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 
-import type { RoadmapV2StepProps } from './types';
+import type { RoadmapStepProps } from './types';
 import type {
   RoadmapCompetency,
   RoadmapInterviewStrict,
@@ -60,7 +60,7 @@ export function StepCompetencyModeling({
   value,
   onChange,
   readOnly = false,
-}: RoadmapV2StepProps<StepCompetencyModelingValue>) {
+}: RoadmapStepProps<StepCompetencyModelingValue>) {
   const rows: RoadmapCompetency[] =
     value.competencies && value.competencies.length > 0
       ? value.competencies

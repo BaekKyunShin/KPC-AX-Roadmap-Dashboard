@@ -47,7 +47,7 @@ import {
 // shortName / name 을 사용한다. shortName 은 양식 번호, name 은 절 제목.
 // ============================================================================
 
-export type RoadmapV2StepId =
+export type RoadmapStepId =
   | 'necessity'
   | 'performance'
   | 'mainResult'
@@ -60,7 +60,7 @@ export type RoadmapV2StepId =
 interface StepDef {
   /** 1-based 인덱스 (InterviewStepper 가 number 키를 요구한다) */
   id: number;
-  stepId: RoadmapV2StepId;
+  stepId: RoadmapStepId;
   /** 양식 번호 (모바일 진행 바 title) */
   shortName: string;
   /** 절 제목 (데스크톱 텍스트, 모바일 현재 단계 표기) */
@@ -69,7 +69,7 @@ interface StepDef {
   required: boolean;
 }
 
-export const ROADMAP_V2_STEPS: ReadonlyArray<StepDef> = [
+export const ROADMAP_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'necessity', shortName: 'Ⅰ-1', name: '수립 필요성', required: true },
   { id: 2, stepId: 'performance', shortName: 'Ⅰ-2', name: '주요 활동', required: true },
   { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과', required: true },
@@ -139,10 +139,10 @@ export function RoadmapInterviewClient({
   >('idle');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const currentStepDef = ROADMAP_V2_STEPS[currentStep - 1];
+  const currentStepDef = ROADMAP_STEPS[currentStep - 1];
   const currentStepId = currentStepDef.stepId;
   const isFirstStep = currentStep === 1;
-  const isLastStep = currentStep === ROADMAP_V2_STEPS.length;
+  const isLastStep = currentStep === ROADMAP_STEPS.length;
 
   // ---- 슬라이스 업데이트 헬퍼 -------------------------------------------------
   // V2 스키마는 Ⅰ(overview) · Ⅱ(requirements) · Ⅲ-1(training) 3개 슬라이스가 평탄화되어
@@ -428,7 +428,7 @@ export function RoadmapInterviewClient({
       />
 
       <InterviewStepper
-        steps={ROADMAP_V2_STEPS.map((s) => ({
+        steps={ROADMAP_STEPS.map((s) => ({
           id: s.id,
           name: s.name,
           shortName: s.shortName,

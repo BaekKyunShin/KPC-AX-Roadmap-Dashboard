@@ -45,7 +45,7 @@ import {
 // / name. required 는 strict 제출 시 빈 값 금지 여부.
 // ============================================================================
 
-export type PBLV2StepId =
+export type PBLStepId =
   | 'overview'
   | 'companyIssues'
   | 'organization'
@@ -58,13 +58,13 @@ export type PBLV2StepId =
 
 interface StepDef {
   id: number;
-  stepId: PBLV2StepId;
+  stepId: PBLStepId;
   shortName: string;
   name: string;
   required: boolean;
 }
 
-export const PBL_V2_STEPS: ReadonlyArray<StepDef> = [
+export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
   { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무', required: true },
@@ -126,10 +126,10 @@ export function PBLInterviewClient({
   >('idle');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const currentStepDef = PBL_V2_STEPS[currentStep - 1];
+  const currentStepDef = PBL_STEPS[currentStep - 1];
   const currentStepId = currentStepDef.stepId;
   const isFirstStep = currentStep === 1;
-  const isLastStep = currentStep === PBL_V2_STEPS.length;
+  const isLastStep = currentStep === PBL_STEPS.length;
 
   // ---- 슬라이스 업데이트 헬퍼 ---------------------------------------------
   // V2 스키마는 Ⅰ(overview 필드들) + Ⅱ(analysis 필드들) + Ⅲ(tasks 필드들) 이
@@ -411,7 +411,7 @@ export function PBLInterviewClient({
       />
 
       <InterviewStepper
-        steps={PBL_V2_STEPS.map((s) => ({
+        steps={PBL_STEPS.map((s) => ({
           id: s.id,
           name: s.name,
           shortName: s.shortName,

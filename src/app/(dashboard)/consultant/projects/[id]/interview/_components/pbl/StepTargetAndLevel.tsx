@@ -8,7 +8,7 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 import { AiLevel4Check } from '@/components/charts/AiLevel4Check';
 
-import type { PBLV2StepProps } from './types';
+import type { PBLStepProps } from './types';
 import type {
   PBLTarget,
   PBLTargetDetail,
@@ -46,7 +46,7 @@ export function StepTargetAndLevel({
   value,
   onChange,
   readOnly = false,
-}: PBLV2StepProps<StepTargetAndLevelValue>) {
+}: PBLStepProps<StepTargetAndLevelValue>) {
   const target: PBLTarget = value.target ?? emptyTarget();
   const details: PBLTargetDetail[] =
     target.details && target.details.length > 0
