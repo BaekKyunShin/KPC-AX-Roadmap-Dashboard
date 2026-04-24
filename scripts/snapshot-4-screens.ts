@@ -54,8 +54,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const OUTPUT_DIR = path.join(process.cwd(), 'docs', 'screenshots', '2026-04-24');
 const AUTH_DIR = path.join(process.cwd(), '.auth');
 const CONSULTANT_AUTH_FILE = path.join(AUTH_DIR, 'consultant.json');
-const LOGIN_TIMEOUT_MS = 15_000;
-const PAGE_LOAD_TIMEOUT_MS = 20_000;
+const LOGIN_TIMEOUT_MS = 30_000;
+const PAGE_LOAD_TIMEOUT_MS = 90_000;
 
 // ─── 뷰포트 3종 ───────────────────────────────────────────────────────────────
 interface Viewport {
