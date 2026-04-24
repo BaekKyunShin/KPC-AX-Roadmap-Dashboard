@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // utils mock — toast 함수만 stub
 vi.mock('@/lib/utils', async (importOriginal) => {
@@ -10,6 +10,20 @@ vi.mock('@/lib/utils', async (importOriginal) => {
     showSuccessToast: vi.fn(),
   };
 });
+
+// next/navigation 의 useRouter 는 App Router 를 마운트하지 않는 테스트 환경에서
+// invariant 예외를 발생시키므로 mock 해야 한다.
+const routerPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: routerPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
 
 // Server Action mocks
 const saveRoadmapInterviewV2 = vi.fn();
@@ -31,6 +45,7 @@ describe('RoadmapInterviewClientV2', () => {
     saveRoadmapInterviewV2.mockReset();
     submitRoadmapInterviewV2.mockReset();
     uploadInterviewAttachment.mockReset();
+    routerPush.mockReset();
   });
 
   it('PageHeader 와 첫 스텝(Ⅰ-1) 본문을 렌더한다', () => {
@@ -227,9 +242,62 @@ describe('RoadmapInterviewClientV2', () => {
     );
   });
 
-  it('마지막 스텝에서 "최종 제출" 버튼이 노출되고 클릭 시 submit Action 이 호출된다', async () => {
+  it('마지막 스텝에서 "최종 제출" 버튼이 노출되고 strict 검증 통과 시 submit + 리다이렉트한다', async () => {
     submitRoadmapInterviewV2.mockResolvedValue({ success: true });
-    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    // Strict 검증을 통과할 최소 데이터셋 — 모든 필수 필드 채움, NCS 미활용
+    const validInitial = {
+      establishmentNecessity: '필요성',
+      performanceActivities: [
+        {
+          round: 1,
+          date: '26.04.01',
+          timeRange: '10:00~12:00',
+          content: '인터뷰',
+          method: 'ONSITE',
+          pmName: 'PM',
+          expertName: 'Expert',
+        },
+      ],
+      aiLevel: 'BEGINNER' as const,
+      selectedTask: '선정 과업',
+      hrdReportPdf: null,
+      companyRequirements: {
+        status: '현황',
+        problem: '문제',
+        will: '의지',
+        outcomes: '성과',
+      },
+      taskAnalysis: [
+        {
+          domain: '직무',
+          task: '과업',
+          asIs: 'AS-IS',
+          problem: '문제점',
+          dataTiming: '데이터',
+          aiScore: 3,
+        },
+      ],
+      taskAnalysisNote: '분석 노트',
+      taskAnalysisAttachment: null,
+      targetTask: {
+        name: '훈련 과업',
+        reason: '선정 사유',
+        expectedAsIs: 'AS-IS',
+        expectedToBe: 'TO-BE',
+      },
+      competencies: [
+        {
+          name: '역량',
+          definition: '정의',
+          knowledge: '지식',
+          skill: '기술',
+          attitude: '태도',
+        },
+      ],
+      ncsUsed: false,
+      ncsDerivationMethod: '도출 방법',
+    };
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={validInitial} />);
     // 8회 다음 클릭으로 마지막 스텝까지 이동
     for (let i = 0; i < 7; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
@@ -241,10 +309,53 @@ describe('RoadmapInterviewClientV2', () => {
       expect(submitRoadmapInterviewV2).toHaveBeenCalledTimes(1),
     );
     expect(submitRoadmapInterviewV2).toHaveBeenCalledWith('p1', expect.any(Object));
+    await waitFor(() =>
+      expect(routerPush).toHaveBeenCalledWith('/consultant/projects/p1/roadmap'),
+    );
+  });
+
+  it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
+    submitRoadmapInterviewV2.mockResolvedValue({ success: true });
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    for (let i = 0; i < 7; i += 1) {
+      fireEvent.click(screen.getByLabelText('다음 스텝'));
+    }
+    fireEvent.click(screen.getByRole('button', { name: '최종 제출' }));
+    // 비동기 제출 경로로 진입하지 않으므로 호출이 발생하지 않아야 한다.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(submitRoadmapInterviewV2).not.toHaveBeenCalled();
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   it('첫 스텝에서 "이전" 버튼은 비활성화된다', () => {
     render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
     expect(screen.getByLabelText('이전 스텝')).toBeDisabled();
+  });
+
+  it('data 가 변경되면 500ms 후 자동저장 Action 이 호출된다 (debounce)', async () => {
+    vi.useFakeTimers();
+    try {
+      saveRoadmapInterviewV2.mockResolvedValue({ success: true });
+      render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('수립 필요성'), {
+          target: { value: '자동저장 검증' },
+        });
+      });
+      // 500ms 전에는 아직 호출되지 않는다
+      expect(saveRoadmapInterviewV2).not.toHaveBeenCalled();
+      await act(async () => {
+        vi.advanceTimersByTime(500);
+        await vi.runAllTimersAsync();
+      });
+      expect(saveRoadmapInterviewV2).toHaveBeenCalledTimes(1);
+      expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+        'p1',
+        expect.objectContaining({ establishmentNecessity: '자동저장 검증' }),
+        { autoSave: true },
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

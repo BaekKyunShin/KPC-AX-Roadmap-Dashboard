@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,15 +12,16 @@ import {
   saveRoadmapInterviewV2,
   submitRoadmapInterviewV2,
 } from '../../actions';
-import type {
-  RoadmapInterviewStrict,
-  RoadmapHrdReportPdf,
-  RoadmapPerformanceActivity,
-  RoadmapCompanyRequirements,
-  RoadmapTaskAnalysisItem,
-  RoadmapTaskAnalysisAttachment,
-  RoadmapTargetTask,
-  RoadmapCompetency,
+import {
+  RoadmapInterviewStrictSchema,
+  type RoadmapInterviewStrict,
+  type RoadmapHrdReportPdf,
+  type RoadmapPerformanceActivity,
+  type RoadmapCompanyRequirements,
+  type RoadmapTaskAnalysisItem,
+  type RoadmapTaskAnalysisAttachment,
+  type RoadmapTargetTask,
+  type RoadmapCompetency,
 } from '@/lib/schemas/interview-roadmap';
 
 import InterviewStepper from '../InterviewStepper';
@@ -128,10 +130,14 @@ export function RoadmapInterviewClientV2({
   projectId,
   initial,
 }: RoadmapInterviewClientV2Props) {
+  const router = useRouter();
   const [data, setData] = useState<Partial<RoadmapInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isPending, startTransition] = useTransition();
-  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saveState, setSaveState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const currentStepDef = ROADMAP_V2_STEPS[currentStep - 1];
   const currentStepId = currentStepDef.stepId;
@@ -190,10 +196,14 @@ export function RoadmapInterviewClientV2({
 
   // ---- 저장 / 제출 ----------------------------------------------------------
 
+  // 수동 저장: StickyFormNav 의 "수동 저장" 버튼에 바인딩. 기존 테스트 호환을 위해
+  // 성공 시 saveState='saved' + showSuccessToast 도 함께 호출한다.
   const handleSave = useCallback(() => {
-    setSaveState('idle');
+    setSaveState('saving');
     startTransition(async () => {
-      const result = await saveRoadmapInterviewV2(projectId, data, { autoSave: true });
+      const result = await saveRoadmapInterviewV2(projectId, data, {
+        autoSave: true,
+      });
       if (result.success) {
         setSaveState('saved');
         showSuccessToast('자동 저장되었습니다.');
@@ -204,20 +214,104 @@ export function RoadmapInterviewClientV2({
     });
   }, [data, projectId]);
 
+  // 디바운스 자동 저장 (500ms)
+  //   - `data` 직렬화 기준 변경 감지 → 500ms 대기 → saveRoadmapInterviewV2 호출
+  //   - initial 렌더 시에는 발화하지 않도록 initial 직렬화를 기준 값으로 세팅
+  //   - 직전 타이머는 재요청 시 자동 클리어
+  //   - 성공 시 saveState='saved' → 3초 후 'idle' fade
+  const lastSerializedRef = useRef<string>(JSON.stringify(initial));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSerializedRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setSaveState('saving');
+      void (async () => {
+        try {
+          const result = await saveRoadmapInterviewV2(projectId, data, {
+            autoSave: true,
+          });
+          if (result.success) {
+            lastSerializedRef.current = serialized;
+            setSaveState('saved');
+            if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+            fadeTimerRef.current = setTimeout(() => {
+              setSaveState('idle');
+            }, 3000);
+          } else {
+            setSaveState('error');
+            showErrorToast(result.error);
+          }
+        } catch (error) {
+          console.error('[RoadmapInterviewClientV2] auto-save error:', error);
+          setSaveState('error');
+          showErrorToast(
+            error instanceof Error
+              ? error.message
+              : '자동 저장 중 오류가 발생했습니다.',
+          );
+        }
+      })();
+    }, 500);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [data, projectId]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    };
+  }, []);
+
   const handleSubmit = useCallback(() => {
+    // 1) 빈 역량 행 drop — StepCompetencyModeling 에서 기본 4행 프리필되는데,
+    //    사용자가 채우지 않은 행은 strict 검증에서 name.min(1) 실패를 유발한다.
+    //    제출 직전에만 필터링해 실제 제출 payload 에서 제외한다 (편집 중 상태는 유지).
+    const cleanedData: Partial<RoadmapInterviewStrict> = {
+      ...data,
+      ...(data.competencies
+        ? {
+            competencies: data.competencies.filter(
+              (c) => c.name.trim() !== '',
+            ),
+          }
+        : {}),
+    };
+
+    // 2) Strict 검증 (safeParse) — NCS XOR + 필수 필드 검증
+    const parsed = RoadmapInterviewStrictSchema.safeParse(cleanedData);
+    if (!parsed.success) {
+      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
     startTransition(async () => {
-      const result = await submitRoadmapInterviewV2(
-        projectId,
-        data as RoadmapInterviewStrict,
-      );
-      if (result.success) {
-        showSuccessToast('인터뷰가 제출되었습니다.');
-        // 리다이렉트는 Task 2.3-d (자동저장·제출 통합) 에서 처리
-      } else {
-        showErrorToast(result.error);
+      try {
+        const result = await submitRoadmapInterviewV2(projectId, parsed.data);
+        if (result.success) {
+          showSuccessToast('인터뷰가 제출되었습니다.');
+          router.push(`/consultant/projects/${projectId}/roadmap`);
+        } else {
+          setIsSubmitting(false);
+          showErrorToast(result.error);
+        }
+      } catch (error) {
+        setIsSubmitting(false);
+        console.error('[RoadmapInterviewClientV2] submit error:', error);
+        showErrorToast(
+          error instanceof Error
+            ? error.message
+            : '인터뷰 제출 중 오류가 발생했습니다.',
+        );
       }
     });
-  }, [data, projectId]);
+  }, [data, projectId, router]);
 
   // ---- Step 본문 렌더 -------------------------------------------------------
 
@@ -354,15 +448,21 @@ export function RoadmapInterviewClientV2({
         isLastStep={isLastStep}
         isSaving={isPending}
         saveIndicator={
-          saveState === 'saved'
-            ? '자동 저장됨'
-            : saveState === 'error'
-              ? '저장 실패'
-              : undefined
+          saveState === 'saving'
+            ? '저장 중…'
+            : saveState === 'saved'
+              ? '자동 저장됨'
+              : saveState === 'error'
+                ? '저장 실패'
+                : undefined
         }
         submit={
           isLastStep
-            ? { label: '최종 제출', onSubmit: handleSubmit, disabled: isPending }
+            ? {
+                label: '최종 제출',
+                onSubmit: handleSubmit,
+                disabled: isPending || isSubmitting,
+              }
             : undefined
         }
       />
