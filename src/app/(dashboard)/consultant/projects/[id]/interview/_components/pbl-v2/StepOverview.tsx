@@ -114,7 +114,7 @@ export function StepOverview({
           <ul className="list-disc space-y-1 pl-4">
             <li>기업명·훈련과정명은 신청서와 일치하도록 입력합니다.</li>
             <li>NCS 분류 코드는 알고 있을 때만 입력 (선택). 없어도 저장 가능합니다.</li>
-            <li>훈련시간은 총 교육 시간 (시간 단위). 훈련기간은 "YYYY.MM.DD ~ YYYY.MM.DD" 서술체 허용.</li>
+            <li>훈련시간은 총 교육 시간 (시간 단위). 훈련기간은 &ldquo;YYYY.MM.DD ~ YYYY.MM.DD&rdquo; 서술체 허용.</li>
             <li>사업 쟁점은 이어지는 Ⅱ-1-가 기업 경영 이슈의 간결 요약본으로 사용됩니다.</li>
           </ul>
         }

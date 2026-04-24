@@ -36,7 +36,7 @@ export function StepCompanyIssues({
           <ul className="list-disc space-y-1 pl-4">
             <li>경영진 또는 담당자(내부전문가) 인터뷰로 확인한 사업 환경·시장 변화·전략 과제를 정리합니다.</li>
             <li>3~5줄의 bullet 또는 문단 서술 모두 허용합니다.</li>
-            <li>Ⅱ-3-나 "AI훈련과정 개발 필요성" 과 중복되지 않게 경영 전반의 이슈에 초점을 맞춥니다.</li>
+            <li>Ⅱ-3-나 &ldquo;AI훈련과정 개발 필요성&rdquo; 과 중복되지 않게 경영 전반의 이슈에 초점을 맞춥니다.</li>
           </ul>
         }
       />

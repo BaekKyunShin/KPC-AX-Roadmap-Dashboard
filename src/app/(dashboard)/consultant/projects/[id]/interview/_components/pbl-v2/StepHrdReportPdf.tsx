@@ -106,7 +106,7 @@ export function StepHrdReportPdf({
             <li>업로드 즉시 본문 텍스트가 자동 추출되어 LLM 프롬프트에 함께 전달됩니다.</li>
             <li>최대 10MB · PDF 외 형식은 허용되지 않습니다.</li>
             <li>
-              PDF 를 첨부하지 않으려면 Ⅱ-3-나 "AI훈련과정 개발 필요성" 을 반드시
+              PDF 를 첨부하지 않으려면 Ⅱ-3-나 &ldquo;AI훈련과정 개발 필요성&rdquo; 을 반드시
               작성해야 합니다 (최종 제출 검증).
             </li>
           </ul>

@@ -3,11 +3,11 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  fetchPBLInterview,
+  fetchPBLInterviewV2,
   fetchRoadmapInterviewV2,
 } from './actions';
 import { RoadmapInterviewClientV2 } from './_components/roadmap-v2/RoadmapInterviewClientV2';
-import PBLInterviewClient from './_components/PBLInterviewClient';
+import { PBLInterviewClientV2 } from './_components/pbl-v2/PBLInterviewClientV2';
 
 /**
  * HRD 첨부 버킷 이름 (actions.ts 의 HRD_BUCKET 과 동기화).
@@ -88,12 +88,22 @@ export default async function InterviewPage({
 
   if (!project) notFound();
 
-  // PBL 트랙 — Task 2.4 가 별도 V2 이관 담당. 현재는 legacy PBL Client 유지.
-  // `?track=PBL` 쿼리가 있을 때도 동일 경로.
+  // PBL 트랙 — Task 2.4: V2 Client (camelCase 스키마 + 9 스텝 + 자동저장)
+  // `?track=PBL` 쿼리가 있을 때도 동일 경로. `fetchPBLInterviewV2` 가 DB pbl_data
+  // 를 camelCase Partial 로 반환 → signed URL hydration 후 Client 에 주입.
   if (project.track === 'PBL' || sp.track === 'PBL') {
-    const pblInterview = await fetchPBLInterview(project.id);
-    const initialData = (pblInterview?.pbl_data ?? {}) as Record<string, unknown>;
-    return <PBLInterviewClient projectId={project.id} initialData={initialData} />;
+    const rawPbl = (await fetchPBLInterviewV2(project.id)) ?? {};
+    const hydratedPbl = await hydrateHrdReportSignedUrl(
+      rawPbl as Record<string, unknown>,
+    );
+    return (
+      <PBLInterviewClientV2
+        projectId={project.id}
+        initial={
+          hydratedPbl as Parameters<typeof PBLInterviewClientV2>[0]['initial']
+        }
+      />
+    );
   }
 
   // 로드맵 트랙 — V2 Client (camelCase 스키마 + 8 스텝 + 자동저장)
