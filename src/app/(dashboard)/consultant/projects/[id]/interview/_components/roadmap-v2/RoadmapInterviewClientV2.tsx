@@ -26,6 +26,12 @@ import InterviewStepper from '../InterviewStepper';
 import { StepNecessity } from './StepNecessity';
 import { StepMainResult, type StepMainResultValue } from './StepMainResult';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
+import { StepCompanyRequirements } from './StepCompanyRequirements';
+import {
+  StepTaskAnalysis,
+  type StepTaskAnalysisValue,
+} from './StepTaskAnalysis';
+import { StepTargetTask } from './StepTargetTask';
 
 // ============================================================================
 // 8 스텝 정의 (PR #2 Task 2.3 — 양식 1:1 정합)
@@ -232,18 +238,51 @@ export function RoadmapInterviewClientV2({
             onChange={(next) => updateRequirements({ hrdReportPdf: next })}
           />
         );
-      // Task 2.3-b / 2.3-c 가 채울 placeholder Step
-      case 'performance':
       case 'companyReq':
-      case 'taskAnalysis':
+        return (
+          <StepCompanyRequirements
+            value={data.companyRequirements ?? emptyCompanyRequirements()}
+            onChange={(next) =>
+              updateRequirements({ companyRequirements: next })
+            }
+          />
+        );
+      case 'taskAnalysis': {
+        const taskAnalysisValue: StepTaskAnalysisValue = {
+          taskAnalysis: data.taskAnalysis ?? [],
+          taskAnalysisNote: data.taskAnalysisNote ?? '',
+          taskAnalysisAttachment: data.taskAnalysisAttachment ?? null,
+        };
+        return (
+          <StepTaskAnalysis
+            projectId={projectId}
+            value={taskAnalysisValue}
+            onChange={(next) =>
+              updateRequirements({
+                taskAnalysis: next.taskAnalysis,
+                taskAnalysisNote: next.taskAnalysisNote,
+                taskAnalysisAttachment: next.taskAnalysisAttachment,
+              })
+            }
+          />
+        );
+      }
       case 'targetTask':
+        return (
+          <StepTargetTask
+            value={data.targetTask ?? emptyTargetTask()}
+            onChange={(next) => updateRequirements({ targetTask: next })}
+          />
+        );
+      // Task 2.3-c 가 채울 placeholder Step
+      case 'performance':
       case 'competencyModeling':
         return (
           <div
             role="status"
             className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground"
           >
-            이 스텝은 Task 2.3-b / 2.3-c 에서 구현됩니다.
+            이 스텝은 Task 2.3-c 에서 구현됩니다.
           </div>
         );
       default:

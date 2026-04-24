@@ -59,10 +59,66 @@ describe('RoadmapInterviewClientV2', () => {
   it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2 placeholder) 으로 이동한다', () => {
     render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByLabelText('다음 스텝'));
-    // Ⅰ-2 는 placeholder
+    // Ⅰ-2 performance 는 아직 Task 2.3-c placeholder
     expect(
-      screen.getByText(/Task 2.3-b \/ 2.3-c 에서 구현됩니다/),
+      screen.getByText(/Task 2.3-c 에서 구현됩니다/),
     ).toBeInTheDocument();
+  });
+
+  it('Ⅱ-2 companyReq 스텝 진입 시 실제 StepCompanyRequirements 가 렌더된다', () => {
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('기업 요구분석'));
+    // StepCompanyRequirements 는 FormSection 헤더에 "Ⅱ-2" 표시
+    expect(
+      screen.getByRole('heading', { name: '기업 요구분석', level: 2 }),
+    ).toBeInTheDocument();
+    // placeholder 문구는 사라져야 함
+    expect(screen.queryByText(/Task 2.3-c 에서 구현됩니다/)).toBeNull();
+    // 4개 행머리글(구분 열)
+    expect(screen.getByRole('rowheader', { name: '기업 현황' })).toBeInTheDocument();
+  });
+
+  it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    expect(
+      screen.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 }),
+    ).toBeInTheDocument();
+    // 기본 5행 렌더 확인 (빈 taskAnalysis 배열 → defaultRows)
+    expect(screen.getByLabelText('직무 5')).toBeInTheDocument();
+    // 분석내용 textarea 존재
+    expect(screen.getByLabelText('분석내용')).toBeInTheDocument();
+  });
+
+  it('Ⅱ-4 targetTask 스텝 진입 시 실제 StepTargetTask 가 렌더된다', () => {
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('훈련대상 과업'));
+    expect(
+      screen.getByRole('heading', { name: '훈련대상 과업 선정', level: 2 }),
+    ).toBeInTheDocument();
+    // 기대 효과 rowSpan=2
+    const 기대효과 = screen.getByText('기대 효과');
+    expect(기대효과.getAttribute('rowspan')).toBe('2');
+  });
+
+  it('Ⅱ-2 에서 textarea 편집 시 저장 Action 호출 시 companyRequirements patch 가 포함된다', async () => {
+    saveRoadmapInterviewV2.mockResolvedValue({ success: true });
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('기업 요구분석'));
+    fireEvent.change(screen.getByLabelText('기업 현황'), {
+      target: { value: '반도체 제조' },
+    });
+    fireEvent.click(screen.getByLabelText('수동 저장'));
+    await waitFor(() =>
+      expect(saveRoadmapInterviewV2).toHaveBeenCalledTimes(1),
+    );
+    expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        companyRequirements: expect.objectContaining({ status: '반도체 제조' }),
+      }),
+      { autoSave: true },
+    );
   });
 
   it('스테퍼의 스텝(Ⅰ-3 mainResult) 직접 클릭 시 해당 본문이 렌더된다', () => {
