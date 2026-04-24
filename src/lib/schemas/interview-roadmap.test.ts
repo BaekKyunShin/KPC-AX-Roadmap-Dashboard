@@ -1262,6 +1262,34 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
     expect(RoadmapRequirementsSchema.safeParse(makeWithScore(5)).success).toBe(true);
   });
 
+  it('taskAnalysis[].aiScore 는 제약별 특화 에러 메시지를 반환 (Important 3)', () => {
+    const makeWithScore = (score: unknown) => ({
+      ...validRequirements,
+      taskAnalysis: [{ ...validRequirements.taskAnalysis[0], aiScore: score }],
+    });
+    // 소수 → "정수여야" 메시지
+    const decimalRes = RoadmapRequirementsSchema.safeParse(makeWithScore(3.5));
+    expect(decimalRes.success).toBe(false);
+    if (!decimalRes.success) {
+      const messages = decimalRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('정수');
+    }
+    // 0 → "1 이상" 메시지
+    const lowRes = RoadmapRequirementsSchema.safeParse(makeWithScore(0));
+    expect(lowRes.success).toBe(false);
+    if (!lowRes.success) {
+      const messages = lowRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('1 이상');
+    }
+    // 6 → "5 이하" 메시지
+    const highRes = RoadmapRequirementsSchema.safeParse(makeWithScore(6));
+    expect(highRes.success).toBe(false);
+    if (!highRes.success) {
+      const messages = highRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('5 이하');
+    }
+  });
+
   it('companyRequirements 4필드(status/problem/will/outcomes)는 모두 필수', () => {
     for (const key of ['status', 'problem', 'will', 'outcomes'] as const) {
       const invalid = {
@@ -1330,36 +1358,25 @@ describe('RoadmapTrainingInterviewSchema (Ⅲ-1 역량 모델링 [인터뷰→�
     expect(RoadmapTrainingInterviewSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('ncsUsed=true 일 때 ncsMethodology 필수', () => {
+  // NCS XOR 검증은 통합본 RoadmapInterviewStrictSchema 로 단일화되었으므로
+  // (Task 2.1 code review Important 1), 본 스키마 단독에서는 XOR 을 검증하지
+  // 않는다. XOR 검증 케이스는 "RoadmapInterviewSchema (strict / loose 이중 검증)"
+  // describe 블록의 StrictSchema 테스트에서 수행한다.
+  it('RoadmapTrainingInterviewSchema 는 NCS XOR 을 직접 검증하지 않는다 (ZodObject 유지)', () => {
+    // ncsUsed=true 인데 ncsMethodology 가 없어도 본 스키마 단독으로는 통과.
+    // 통합본(RoadmapInterviewStrictSchema) 에서만 XOR 검증.
     expect(
       RoadmapTrainingInterviewSchema.safeParse({
         competencies: [baseCompetency],
         ncsUsed: true,
       }).success,
-    ).toBe(false);
-    expect(
-      RoadmapTrainingInterviewSchema.safeParse({
-        competencies: [baseCompetency],
-        ncsUsed: true,
-        ncsMethodology: '',
-      }).success,
-    ).toBe(false);
-  });
-
-  it('ncsUsed=false 일 때 ncsDerivationMethod 필수', () => {
+    ).toBe(true);
     expect(
       RoadmapTrainingInterviewSchema.safeParse({
         competencies: [baseCompetency],
         ncsUsed: false,
       }).success,
-    ).toBe(false);
-    expect(
-      RoadmapTrainingInterviewSchema.safeParse({
-        competencies: [baseCompetency],
-        ncsUsed: false,
-        ncsDerivationMethod: '',
-      }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('competencies[] 항목 5필드 모두 필수', () => {

@@ -723,10 +723,10 @@ export const RoadmapTaskAnalysisItemSchema = z.object({
   problem: z.string().min(1, '문제점을 입력하세요.'),
   dataTiming: z.string().min(1, '데이터 발생 시점/보유 현황을 입력하세요.'),
   aiScore: z
-    .number()
-    .int('AI 도입·활용 필요도는 1~5 정수입니다.')
-    .min(1, 'AI 도입·활용 필요도는 1~5 정수입니다.')
-    .max(5, 'AI 도입·활용 필요도는 1~5 정수입니다.'),
+    .number({ message: 'AI 도입·활용 필요도는 숫자여야 합니다.' })
+    .int({ message: 'AI 도입·활용 필요도는 정수여야 합니다 (소수 불가).' })
+    .min(1, { message: 'AI 도입·활용 필요도는 1 이상이어야 합니다.' })
+    .max(5, { message: 'AI 도입·활용 필요도는 5 이하여야 합니다.' }),
 });
 export type RoadmapTaskAnalysisItem = z.infer<typeof RoadmapTaskAnalysisItemSchema>;
 
@@ -769,42 +769,11 @@ export const RoadmapCompetencySchema = z.object({
 });
 export type RoadmapCompetency = z.infer<typeof RoadmapCompetencySchema>;
 
-// -- Ⅲ-1 역량 모델링 전체 (NCS XOR refine 포함) -----------------------------
-// ncsUsed=true  → ncsMethodology        필수 (NCS 활용 방법 박스)
-// ncsUsed=false → ncsDerivationMethod   필수 (역량별 도출 방법 박스)
-export const RoadmapTrainingInterviewSchema = z
-  .object({
-    competencies: z
-      .array(RoadmapCompetencySchema)
-      .min(1, '최소 1개 이상의 역량을 입력하세요.'),
-    ncsUsed: z.boolean(),
-    ncsMethodology: z.string().optional(),
-    ncsDerivationMethod: z.string().optional(),
-  })
-  .refine(
-    (d) =>
-      d.ncsUsed
-        ? (d.ncsMethodology?.trim() ?? '') !== ''
-        : (d.ncsDerivationMethod?.trim() ?? '') !== '',
-    {
-      message: 'NCS 활용 여부에 맞는 내용을 입력하세요.',
-      path: ['ncsMethodology'],
-    },
-  );
-export type RoadmapTrainingInterview = z.infer<typeof RoadmapTrainingInterviewSchema>;
-
-// -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ-1 ------------------------------------------------
-// RoadmapInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해
-// 최종 제출 / 자동 저장 양쪽에서 재사용할 수 있게 한다.
-// - Strict (최종 제출):  `RoadmapInterviewSchema.parse/safeParse`  → .superRefine
-//   으로 NCS XOR 검증이 수행된다.
-// - Loose  (자동 저장):  `RoadmapInterviewSchema.partial()`        → refine 이
-//   적용되지 않으므로 빈 객체 {} 를 포함한 부분 입력이 모두 통과한다.
-//
-// zod v3 에서 `.refine()` 결과는 ZodEffects 로 감싸지며 `.partial()`·`.merge()` 를
-// 제공하지 않는다. 이 때문에 검증 로직은 `.superRefine()` 로 본체 object 내부에
-// 부착해 ZodObject 형태를 유지한다.
-const RoadmapTrainingInterviewBase = z.object({
+// -- Ⅲ-1 역량 모델링 전체 (ZodObject) ---------------------------------------
+// NCS XOR 검증은 통합본 `RoadmapInterviewStrictSchema` 의 `.superRefine()` 에
+// 단일화되어 있다. 본 스키마는 ZodObject 형태를 유지해 `.partial()`·`.merge()`
+// 파생이 가능하도록 하고, refine 은 부착하지 않는다.
+export const RoadmapTrainingInterviewSchema = z.object({
   competencies: z
     .array(RoadmapCompetencySchema)
     .min(1, '최소 1개 이상의 역량을 입력하세요.'),
@@ -812,11 +781,21 @@ const RoadmapTrainingInterviewBase = z.object({
   ncsMethodology: z.string().optional(),
   ncsDerivationMethod: z.string().optional(),
 });
+export type RoadmapTrainingInterview = z.infer<typeof RoadmapTrainingInterviewSchema>;
 
-// 본체 통합 스키마 (ZodObject) — 필수 필드 검증은 각 내부 스키마가 수행한다.
-// `.partial()` 로 loose 스키마를 파생할 수 있는 ZodObject 형태를 보장한다.
+// -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ-1 ------------------------------------------------
+// RoadmapInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해
+// 최종 제출 / 자동 저장 양쪽에서 재사용할 수 있게 한다.
+// - Strict (최종 제출):  `RoadmapInterviewStrictSchema.safeParse`  → superRefine
+//   으로 NCS XOR 검증이 수행된다.
+// - Loose  (자동 저장):  `RoadmapInterviewSchema.partial()`        → refine 이
+//   부착되지 않으므로 빈 객체 {} 를 포함한 부분 입력이 모두 통과한다.
+//
+// zod v3 에서 `.refine()`·`.superRefine()` 결과는 ZodEffects 로 감싸져
+// `.partial()`·`.merge()` 를 제공하지 않는다. 따라서 XOR 검증은 본 ZodObject
+// 위에 별도 export 로 부착하고, 본체는 ZodObject 를 유지한다.
 export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequirementsSchema).merge(
-  RoadmapTrainingInterviewBase,
+  RoadmapTrainingInterviewSchema,
 );
 export type RoadmapInterviewStrict = z.infer<typeof RoadmapInterviewSchema>;
 
