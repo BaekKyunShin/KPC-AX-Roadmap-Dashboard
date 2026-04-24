@@ -388,7 +388,7 @@ DownloadButtonGroup HWPX 클릭
 ```css
 @theme inline {
   --page-max-w: 64rem;              /* max-w-5xl — 4개 화면 공통 */
-  --page-pad-x: 1rem;               /* sm: 1.5rem / lg: 2rem */
+  --container-pad-x: 1rem;          /* sm: 1.5rem / lg: 2rem */
   --section-gap: 2rem;              /* space-y-8 */
   --card-pad: 1.5rem;               /* p-6 */
   --sticky-top: 4rem;               /* top-16 — 상단 nav 아래 */
@@ -735,7 +735,7 @@ cp "docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).h
   export function VersionSelector<T>({ versions, selectedId, onSelect, getLabel, getStatus, getId }: {
     versions: T[];
     selectedId?: string;
-    onSelect: (v: T) => void;
+    onSelect: (versionId: string) => void;
     getLabel: (v: T) => string;
     getStatus: (v: T) => { status: VersionStatus; versionNumber: number };
     getId: (v: T) => string;

@@ -29,6 +29,15 @@ interface StickyFormNavProps {
   className?: string;
 }
 
+/**
+ * StickyFormNav — 인터뷰 스테퍼 하단 고정 네비게이션 바.
+ *
+ * 좌측 '이전', 우측 '다음'/'제출' + '저장' 버튼 + 저장 상태 인디케이터 구성.
+ * 스테퍼의 스텝 이동 및 수동 저장을 한 곳에 묶어 제공한다.
+ *
+ * 제약: PageContainer (또는 동일한 px-4 sm:px-6 lg:px-8 패딩 래퍼) 내부에서만 사용할 것.
+ * negative margin (-mx-4 sm:-mx-6 lg:-mx-8) 로 좌우 패딩을 취소하여 전폭 배경을 그린다.
+ */
 export function StickyFormNav({
   onPrev,
   onNext,
