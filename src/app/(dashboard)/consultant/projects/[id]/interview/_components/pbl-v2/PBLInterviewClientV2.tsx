@@ -16,12 +16,16 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
+  type PBLOrganization,
 } from '@/lib/schemas/interview-pbl';
 
 import InterviewStepper from '../InterviewStepper';
 import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';
 import { StepCourseNecessity } from './StepCourseNecessity';
+import { StepOrganization } from './StepOrganization';
+import { StepTrainingEnv } from './StepTrainingEnv';
+import { StepHrdReportPdf } from './StepHrdReportPdf';
 
 // ============================================================================
 // 9 스텝 정의 (PR #2 Task 2.4 — 양식 2:1 정합)
@@ -75,6 +79,13 @@ function emptyOverview(): PBLOverview {
     trainingForm: '',
     trainingPeriod: '',
     businessIssues: '',
+  };
+}
+
+function emptyOrganization(): PBLOrganization {
+  return {
+    orgTree: [],
+    mainWork: [],
   };
 }
 
@@ -286,8 +297,27 @@ export function PBLInterviewClientV2({
           />
         );
       case 'organization':
+        return (
+          <StepOrganization
+            value={data.organization ?? emptyOrganization()}
+            onChange={(next) => updateAnalysis({ organization: next })}
+          />
+        );
       case 'trainingEnv':
+        return (
+          <StepTrainingEnv
+            value={data.trainingEnv ?? ''}
+            onChange={(next) => updateAnalysis({ trainingEnv: next })}
+          />
+        );
       case 'hrdReport':
+        return (
+          <StepHrdReportPdf
+            projectId={projectId}
+            value={data.hrdReportPdf ?? null}
+            onChange={(next) => updateAnalysis({ hrdReportPdf: next })}
+          />
+        );
       case 'activities':
       case 'problems':
       case 'targetAndLevel':
@@ -297,7 +327,7 @@ export function PBLInterviewClientV2({
               {currentStepDef.shortName} {currentStepDef.name}
             </h2>
             <p className="mt-2">
-              이 스텝은 Task 2.4-b/c 에서 구현됩니다.
+              이 스텝은 Task 2.4-c 에서 구현됩니다.
             </p>
           </section>
         );
@@ -358,4 +388,5 @@ export function PBLInterviewClientV2({
 
 export const __testing = {
   emptyOverview,
+  emptyOrganization,
 };

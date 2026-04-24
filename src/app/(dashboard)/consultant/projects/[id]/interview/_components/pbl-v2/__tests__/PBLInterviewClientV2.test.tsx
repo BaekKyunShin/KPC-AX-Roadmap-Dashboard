@@ -172,6 +172,42 @@ describe('PBLInterviewClientV2', () => {
     );
   });
 
+  it('Ⅱ-1-나 organization 스텝 진입 시 StepOrganization 이 렌더된다', () => {
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('조직 및 주요 업무'));
+    expect(
+      screen.getByRole('heading', { name: '조직 및 주요 업무', level: 2 }),
+    ).toBeInTheDocument();
+    // OrganizationTree 의 루트 노드 추가 버튼
+    expect(
+      screen.getByRole('button', { name: '루트 노드 추가' }),
+    ).toBeInTheDocument();
+  });
+
+  it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다', async () => {
+    savePBLInterviewV2.mockResolvedValue({ success: true });
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('훈련환경 분석'));
+    fireEvent.change(screen.getByLabelText('훈련환경 분석'), {
+      target: { value: '사내 교육장 활용' },
+    });
+    fireEvent.click(screen.getByLabelText('수동 저장'));
+    await waitFor(() =>
+      expect(savePBLInterviewV2).toHaveBeenCalledTimes(1),
+    );
+    expect(savePBLInterviewV2.mock.calls[0][1].trainingEnv).toBe(
+      '사내 교육장 활용',
+    );
+  });
+
+  it('Ⅱ-3-가 hrdReport 스텝 진입 시 StepHrdReportPdf 가 렌더된다', () => {
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('HRD이음 PDF'));
+    expect(
+      screen.getByRole('heading', { name: /HRD이음컨설팅 결과 PDF 첨부/, level: 2 }),
+    ).toBeInTheDocument();
+  });
+
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitPBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
