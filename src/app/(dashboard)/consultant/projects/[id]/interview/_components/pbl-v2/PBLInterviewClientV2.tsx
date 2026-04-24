@@ -17,6 +17,11 @@ import {
   type PBLInterviewStrict,
   type PBLOverview,
   type PBLOrganization,
+  type PBLActivityItem,
+  type PBLProblemItem,
+  type PBLPriority,
+  type PBLTarget,
+  type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
 
 import InterviewStepper from '../InterviewStepper';
@@ -26,6 +31,12 @@ import { StepCourseNecessity } from './StepCourseNecessity';
 import { StepOrganization } from './StepOrganization';
 import { StepTrainingEnv } from './StepTrainingEnv';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
+import { StepActivities } from './StepActivities';
+import { StepProblems, type StepProblemsValue } from './StepProblems';
+import {
+  StepTargetAndLevel,
+  type StepTargetAndLevelValue,
+} from './StepTargetAndLevel';
 
 // ============================================================================
 // 9 스텝 정의 (PR #2 Task 2.4 — 양식 2:1 정합)
@@ -151,6 +162,20 @@ export function PBLInterviewClientV2({
       trainingEnv?: string;
       hrdReportPdf?: PBLInterviewStrict['hrdReportPdf'];
       courseNecessity?: string;
+    }) => {
+      setData((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
+  const updateTasks = useCallback(
+    (patch: {
+      activities?: PBLActivityItem[];
+      problems?: PBLProblemItem[];
+      priority?: PBLPriority;
+      target?: PBLTarget;
+      currentAiLevel?: PBLAiLevelAssessment;
+      expectedAiLevel?: PBLAiLevelAssessment;
     }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
@@ -319,18 +344,60 @@ export function PBLInterviewClientV2({
           />
         );
       case 'activities':
-      case 'problems':
-      case 'targetAndLevel':
         return (
-          <section className="rounded-md border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
-            <h2 className="text-lg font-semibold text-foreground">
-              {currentStepDef.shortName} {currentStepDef.name}
-            </h2>
-            <p className="mt-2">
-              이 스텝은 Task 2.4-c 에서 구현됩니다.
-            </p>
-          </section>
+          <StepActivities
+            value={data.activities ?? []}
+            onChange={(next) => updateTasks({ activities: next })}
+          />
         );
+      case 'problems': {
+        const problemsValue: StepProblemsValue = {
+          problems: data.problems ?? [],
+          priority: data.priority ?? { items: [], method: '' },
+        };
+        return (
+          <StepProblems
+            value={problemsValue}
+            onChange={(next) =>
+              updateTasks({
+                problems: next.problems,
+                priority: next.priority,
+              })
+            }
+          />
+        );
+      }
+      case 'targetAndLevel': {
+        const targetValue: StepTargetAndLevelValue = {
+          target: data.target ?? {
+            name: '',
+            code: '',
+            scope: '',
+            necessity: '',
+            details: [],
+          },
+          currentAiLevel: data.currentAiLevel ?? {
+            level: 'BASIC',
+            note: '',
+          },
+          expectedAiLevel: data.expectedAiLevel ?? {
+            level: 'USER',
+            note: '',
+          },
+        };
+        return (
+          <StepTargetAndLevel
+            value={targetValue}
+            onChange={(next) =>
+              updateTasks({
+                target: next.target,
+                currentAiLevel: next.currentAiLevel,
+                expectedAiLevel: next.expectedAiLevel,
+              })
+            }
+          />
+        );
+      }
       default:
         return null;
     }

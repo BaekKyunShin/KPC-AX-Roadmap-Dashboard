@@ -208,6 +208,99 @@ describe('PBLInterviewClientV2', () => {
     ).toBeInTheDocument();
   });
 
+  it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 프리필', () => {
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('수행활동'));
+    expect(
+      screen.getByRole('heading', { name: '훈련과제 도출 수행활동', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('3행 수행 일자')).toBeInTheDocument();
+  });
+
+  it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('문제 도출·우선순위'));
+    expect(screen.getByText('Ⅲ-2-가 문제 도출')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-2-나 문제 우선순위 결정')).toBeInTheDocument();
+  });
+
+  it('Ⅲ-3·4 targetAndLevel 스텝 진입 시 세 블록이 렌더된다', () => {
+    render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('훈련대상·AI수준'));
+    expect(
+      screen.getByText('Ⅲ-3 훈련대상 업무 (가·나·다)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-4-가 현재 AI역량 수준')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-4-나 예상 AI역량 수준')).toBeInTheDocument();
+  });
+
+  it('마지막 스텝에서 strict 통과 시 submit Action 호출 + /pbl 리다이렉트', async () => {
+    submitPBLInterviewV2.mockResolvedValue({ success: true });
+    const validInitial = {
+      companyName: '테스트기업',
+      courseName: '테스트과정',
+      trainingHours: 40,
+      trainingTarget: '실무자 15명',
+      trainingForm: '집체',
+      trainingPeriod: '2026.06.01 ~ 2026.07.01',
+      businessIssues: '원가 압박',
+      companyIssues: '원가 압박 상세',
+      organization: {
+        orgTree: [{ id: 'n1', name: '경영지원', children: [] }],
+        mainWork: [
+          {
+            dept: '경영지원',
+            role: '인사',
+            description: '인사 업무 담당',
+          },
+        ],
+      },
+      trainingEnv: '사내 교육장 활용',
+      hrdReportPdf: null,
+      courseNecessity: 'AI 리터러시 확보 필요',
+      activities: [
+        {
+          round: 1,
+          date: '26.04.01',
+          content: '인터뷰',
+          method: '대면',
+          participants: 'PM 홍길동',
+        },
+      ],
+      problems: [
+        {
+          title: '데이터 품질',
+          description: '수작업 정제 부담',
+          impact: '월 200시간',
+        },
+      ],
+      priority: {
+        items: [{ problem: '데이터 품질', score: 5, rank: 1 }],
+        method: '5점 척도 평균',
+      },
+      target: {
+        name: '품질 전처리',
+        scope: '품질관리팀 15명',
+        necessity: '월 200시간 → 60시간 단축 기대',
+        details: [{ title: 'AS-IS', description: '수작업' }],
+      },
+      currentAiLevel: { level: 'BASIC' as const, note: '' },
+      expectedAiLevel: { level: 'USER' as const, note: '' },
+    };
+    render(<PBLInterviewClientV2 projectId="p1" initial={validInitial} />);
+    for (let i = 0; i < PBL_V2_STEPS.length - 1; i += 1) {
+      fireEvent.click(screen.getByLabelText('다음 스텝'));
+    }
+    const submitBtn = screen.getByRole('button', { name: '최종 제출' });
+    fireEvent.click(submitBtn);
+    await waitFor(() =>
+      expect(submitPBLInterviewV2).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() =>
+      expect(routerPush).toHaveBeenCalledWith('/consultant/projects/p1/pbl'),
+    );
+  });
+
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitPBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClientV2 projectId="p1" initial={{}} />);
