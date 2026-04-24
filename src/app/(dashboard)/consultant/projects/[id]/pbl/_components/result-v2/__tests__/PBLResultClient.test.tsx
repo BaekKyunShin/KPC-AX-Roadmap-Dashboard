@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { ConsultantPBLClientV2 } from '../ConsultantPBLClientV2';
+import { PBLResultClient } from '../PBLResultClient';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { ResultPBLInterviewSnapshot } from '../types';
@@ -108,14 +108,15 @@ function makeVersion(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
   };
 }
 
-describe('ConsultantPBLClientV2', () => {
+describe('PBLResultClient — CONSULTANT role', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('PageHeader + VersionSelector + DownloadButtonGroup 을 상단에 렌더', () => {
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -136,7 +137,8 @@ describe('ConsultantPBLClientV2', () => {
 
   it('5탭 (Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획 / Ⅴ 성과분석) 을 ResultTabs 에 전달', () => {
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -162,7 +164,8 @@ describe('ConsultantPBLClientV2', () => {
 
   it('선택 버전 없으면 EmptyState 렌더 (탭 영역 대신)', () => {
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[]}
         selectedVersion={null}
@@ -182,7 +185,8 @@ describe('ConsultantPBLClientV2', () => {
   it('DRAFT 상태에서 RegenerateAccordion 을 통해 onGenerate 호출', () => {
     const onGenerate = vi.fn().mockResolvedValue(undefined);
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion({ status: 'DRAFT' })]}
         selectedVersion={makeVersion({ status: 'DRAFT' })}
@@ -200,7 +204,8 @@ describe('ConsultantPBLClientV2', () => {
 
   it('isGenerating=true 시 RoadmapLoadingOverlay 표시', () => {
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -220,7 +225,8 @@ describe('ConsultantPBLClientV2', () => {
 
   it('VersionStatusBadge 가 선택 버전 상태 + 번호를 표시 (DRAFT v3)', () => {
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion({ status: 'DRAFT', version_number: 3 })]}
         selectedVersion={makeVersion({ status: 'DRAFT', version_number: 3 })}
@@ -237,7 +243,8 @@ describe('ConsultantPBLClientV2', () => {
 
   it('제외 라벨 ("결과물 표지" / "결과보고서" / "수행일지" / "고정 양식·결과 화면 제외" / "Ⅳ-4-나" / "결과평가") 를 렌더하지 않음', () => {
     const { container } = render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -260,7 +267,8 @@ describe('ConsultantPBLClientV2', () => {
   it('PDF 다운로드 클릭 시 onDownload("PDF") 호출', async () => {
     const onDownload = vi.fn().mockResolvedValue(undefined);
     render(
-      <ConsultantPBLClientV2
+      <PBLResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -275,5 +283,76 @@ describe('ConsultantPBLClientV2', () => {
       fireEvent.click(screen.getByLabelText('PDF 다운로드'));
     });
     await waitFor(() => expect(onDownload).toHaveBeenCalledWith('PDF'));
+  });
+});
+
+describe('PBLResultClient — OPS role', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role="OPS" 일 때 RegenerateAccordion 이 렌더되지 않는다', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    // "새 버전 생성" 아코디언 트리거 버튼이 존재하지 않아야 함
+    expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
+  });
+
+  it('role="OPS" 일 때 DRAFT 상태에서도 InlineEditField 가 편집 가능 상태가 아니다 (readOnly)', () => {
+    const { container } = render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    // InlineEditField 의 편집 아이콘(연필 버튼) 이 Ops 에는 전혀 없어야 함
+    const editButtons = container.querySelectorAll('button[aria-label*="편집"]');
+    expect(editButtons.length).toBe(0);
+  });
+
+  it('role="OPS" 일 때 isGenerating=true 여도 LoadingOverlay 가 렌더되지 않는다', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        isGenerating
+        companyName="테스트기업"
+      />,
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'AI 로드맵 생성 중' }),
+    ).toBeNull();
+  });
+});
+
+describe('ConsultantPBLClientV2 하위 호환 alias', () => {
+  it('ConsultantPBLClientV2 로 import 시에도 동일하게 동작', async () => {
+    const mod = await import('../ConsultantPBLClientV2');
+    expect(mod.ConsultantPBLClientV2).toBeDefined();
   });
 });

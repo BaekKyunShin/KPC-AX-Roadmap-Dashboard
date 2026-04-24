@@ -14,7 +14,16 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { ConsultantRoadmapClientV2 } from '../ConsultantRoadmapClientV2';
+// ShareToggle — Server Action 의존 모킹 (OPS FINAL 상태에서만 렌더되는 경로 검증용)
+vi.mock('@/components/gallery/ShareToggle', () => ({
+  ShareToggle: ({ roadmapVersionId }: { roadmapVersionId: string }) => (
+    <div data-testid="share-toggle" data-version-id={roadmapVersionId}>
+      ShareToggle Mock
+    </div>
+  ),
+}));
+
+import { RoadmapResultClient } from '../RoadmapResultClient';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import type { ResultInterviewSnapshot } from '../types';
 
@@ -70,14 +79,15 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
   };
 }
 
-describe('ConsultantRoadmapClientV2', () => {
+describe('RoadmapResultClient — CONSULTANT role', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('PageHeader + VersionSelector + DownloadButtonGroup 을 상단에 렌더', () => {
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -98,7 +108,8 @@ describe('ConsultantRoadmapClientV2', () => {
 
   it('3탭 (Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련체계) 을 ResultTabs 에 전달', () => {
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -109,21 +120,15 @@ describe('ConsultantRoadmapClientV2', () => {
         onDownload={vi.fn()}
       />,
     );
-    // 탭 버튼 (ResultTabs TabsTrigger)
-    expect(
-      screen.getByRole('tab', { name: 'Ⅰ. 개요' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('tab', { name: 'Ⅱ. 요구분석' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('tab', { name: 'Ⅲ. 훈련체계' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ⅱ. 요구분석' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ⅲ. 훈련체계' })).toBeInTheDocument();
   });
 
   it('선택 버전 없으면 EmptyState 렌더 (탭 영역 대신)', () => {
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[]}
         selectedVersion={null}
@@ -137,14 +142,14 @@ describe('ConsultantRoadmapClientV2', () => {
     expect(
       screen.getByText(/아직 생성된 로드맵이 없습니다/),
     ).toBeInTheDocument();
-    // 탭은 렌더되지 않음
     expect(screen.queryByRole('tab', { name: 'Ⅰ. 개요' })).toBeNull();
   });
 
   it('DRAFT 상태에서 RegenerateAccordion 을 통해 onGenerate 호출', () => {
     const onGenerate = vi.fn().mockResolvedValue(undefined);
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion({ status: 'DRAFT' })]}
         selectedVersion={makeVersion({ status: 'DRAFT' })}
@@ -155,7 +160,6 @@ describe('ConsultantRoadmapClientV2', () => {
         onDownload={vi.fn()}
       />,
     );
-    // 아코디언 열기
     fireEvent.click(screen.getByRole('button', { name: /새 버전 생성/ }));
     fireEvent.click(screen.getByRole('button', { name: '생성 시작' }));
     expect(onGenerate).toHaveBeenCalled();
@@ -163,7 +167,8 @@ describe('ConsultantRoadmapClientV2', () => {
 
   it('isGenerating=true 시 RoadmapLoadingOverlay 표시', () => {
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -181,9 +186,10 @@ describe('ConsultantRoadmapClientV2', () => {
     ).toBeInTheDocument();
   });
 
-  it('VersionStatusBadge 가 선택 버전 상태 + 번호를 표시 (DRAFT v1)', () => {
+  it('VersionStatusBadge 가 선택 버전 상태 + 번호를 표시 (DRAFT v3)', () => {
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion({ status: 'DRAFT', version_number: 3 })]}
         selectedVersion={makeVersion({
@@ -197,14 +203,14 @@ describe('ConsultantRoadmapClientV2', () => {
         onDownload={vi.fn()}
       />,
     );
-    // 'v3' 텍스트가 포함된 badge 가 존재해야 함
     const badgeCandidates = screen.getAllByText(/v3/);
     expect(badgeCandidates.length).toBeGreaterThan(0);
   });
 
   it('제외 라벨 3종 (결과물 표지 / 고정 참고자료 / 고정 양식·결과 화면 제외) 미렌더', () => {
     const { container } = render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -224,7 +230,8 @@ describe('ConsultantRoadmapClientV2', () => {
   it('PDF 다운로드 클릭 시 onDownload("PDF") 호출', async () => {
     const onDownload = vi.fn().mockResolvedValue(undefined);
     render(
-      <ConsultantRoadmapClientV2
+      <RoadmapResultClient
+        role="CONSULTANT"
         projectId="p1"
         versions={[makeVersion()]}
         selectedVersion={makeVersion()}
@@ -239,5 +246,104 @@ describe('ConsultantRoadmapClientV2', () => {
       fireEvent.click(screen.getByLabelText('PDF 다운로드'));
     });
     await waitFor(() => expect(onDownload).toHaveBeenCalledWith('PDF'));
+  });
+});
+
+describe('RoadmapResultClient — OPS role', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role="OPS" 일 때 RegenerateAccordion 이 렌더되지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    // "새 버전 생성" 아코디언 트리거 버튼이 존재하지 않아야 함
+    expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
+  });
+
+  it('role="OPS" 일 때 DRAFT 상태에서도 InlineEditField 가 편집 가능 상태가 아니다 (readOnly)', () => {
+    const { container } = render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    // InlineEditField 의 편집 아이콘(연필 버튼) 이 Ops 에는 전혀 없어야 함
+    const editButtons = container.querySelectorAll('button[aria-label*="편집"]');
+    expect(editButtons.length).toBe(0);
+  });
+
+  it('role="OPS" + FINAL 상태에서만 ShareToggle 노출, DRAFT 에는 미노출', () => {
+    const { rerender } = render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
+
+    rerender(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('share-toggle')).toBeInTheDocument();
+  });
+
+  it('role="CONSULTANT" 에는 ShareToggle 이 노출되지 않는다 (Ops 전용)', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('share-toggle')).toBeNull();
+  });
+});
+
+describe('ConsultantRoadmapClientV2 하위 호환 alias', () => {
+  it('ConsultantRoadmapClientV2 로 import 시에도 동일하게 동작', async () => {
+    const mod = await import('../ConsultantRoadmapClientV2');
+    expect(mod.ConsultantRoadmapClientV2).toBeDefined();
   });
 });
