@@ -3,10 +3,13 @@
  *
  * - buildSystemPrompt(): 신규 4섹션 키워드·제약·JSON 키 포함, 구형 키 미포함
  * - buildUserPrompt(): 신규 인터뷰 필드 포함, 구형 필드 미포함, 분기 동작
+ * - fixture (sample-llm-response.json) → roadmapContentSchema.safeParse 성공 (Task 2.9)
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
+import { roadmapContentSchema } from '@/lib/schemas/roadmap';
+import sampleResponse from './__fixtures__/sample-llm-response.json';
 import type { ConsultantProfile } from '@/types/database';
 
 // STT formatter 모킹 — 프롬프트 빌더 자체 로직만 테스트
@@ -629,5 +632,147 @@ describe('buildUserPrompt', () => {
     expect(prompt).toContain('머신비전, 결함 탐지');
     expect(prompt).toContain('워크숍사진.png');
     expect(prompt).toContain('본문 추출 실패');
+  });
+});
+
+// ============================================================================
+// Task 2.9 — fixture (sample-llm-response.json) → roadmapContentSchema 파싱 검증
+// ============================================================================
+
+describe('Task 2.9: fixture sample-llm-response.json → roadmapContentSchema', () => {
+  it('fixture 전체가 스키마를 통과한다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    if (!result.success) {
+      console.error('fixture parse error:', JSON.stringify(result.error.errors, null, 2));
+    }
+    expect(result.success).toBe(true);
+  });
+
+  it('fixture.training_structure 는 역량당 BEGINNER·INTERMEDIATE·ADVANCED 3수준 모두 포함한다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const competencyNames = result.data.competencies.map((c) => c.name);
+    const levels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+
+    for (const name of competencyNames) {
+      for (const level of levels) {
+        const found = result.data.training_structure.some(
+          (item) => item.competency_name === name && item.level === level,
+        );
+        expect(found, `역량 "${name}" 의 ${level} 수준이 training_structure 에 없습니다`).toBe(true);
+      }
+    }
+  });
+
+  it('fixture.course_specs 는 3개 이상이다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.course_specs.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('fixture.course_specs[*].course_name 은 annual_plan.items[*].course_name 에 모두 포함된다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const planCourseNames = new Set(result.data.annual_plan.items.map((i) => i.course_name));
+    for (const spec of result.data.course_specs) {
+      expect(
+        planCourseNames.has(spec.course_name),
+        `course_spec "${spec.course_name}" 이 annual_plan.items 에 없습니다`,
+      ).toBe(true);
+    }
+  });
+
+  it('fixture.annual_plan.items[*].hours 는 모두 양수다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    for (const item of result.data.annual_plan.items) {
+      expect(item.hours).toBeGreaterThan(0);
+    }
+  });
+
+  it('fixture.course_specs[*].subjects[*].hours 는 모두 양수다', () => {
+    const result = roadmapContentSchema.safeParse(sampleResponse);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    for (const spec of result.data.course_specs) {
+      for (const sub of spec.subjects) {
+        expect(sub.hours).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('training_structure 누락 → 실패', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { training_structure, ...rest } = sampleResponse as Record<string, unknown>;
+    expect(roadmapContentSchema.safeParse(rest).success).toBe(false);
+  });
+
+  it('course_specs 개수 2개(< 3) → 실패', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.slice(0, 2),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('training_structure_method 빈 문자열 → 실패', () => {
+    expect(
+      roadmapContentSchema.safeParse({ ...sampleResponse, training_structure_method: '' }).success,
+    ).toBe(false);
+  });
+
+  it('course_specs[*].subjects 빈 배열 → 실패 (min(1))', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.map((spec, idx) =>
+          idx === 0 ? { ...spec, subjects: [] } : spec,
+        ),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('training_structure_method 에 특수문자 포함 → 통과', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        training_structure_method:
+          '역량 기준 3수준 체계(초급·중급·고급)로 수립.\n단계별 선수요건: BEGINNER → INTERMEDIATE → ADVANCED.',
+      }).success,
+    ).toBe(true);
+  });
+});
+
+// ============================================================================
+// Task 2.9 — buildSystemPrompt few-shot 예시 포함 여부
+// ============================================================================
+
+describe('Task 2.9: buildSystemPrompt few-shot 예시 포함 여부', () => {
+  const prompt = buildSystemPrompt();
+
+  it('Ⅲ-2 few-shot 예시가 포함된다', () => {
+    expect(prompt).toContain('few-shot 예시');
+    expect(prompt).toContain('AI 데이터 분석');
+  });
+
+  it('Ⅲ-3 few-shot 예시가 포함된다', () => {
+    expect(prompt).toContain('AI 데이터 수집·정제 입문');
+    expect(prompt).toContain('노코드 AI 비전검사 실무');
+  });
+
+  it('Ⅲ-4 few-shot 예시가 포함된다', () => {
+    expect(prompt).toContain('Label Studio');
+    expect(prompt).toContain('Teachable Machine');
+  });
+
+  it('출력 JSON 스키마가 포함된다', () => {
+    expect(prompt).toContain('출력 JSON 스키마');
   });
 });
