@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
  * - edit 모드: input/textarea + 저장/취소 버튼. Enter=저장(input only), Esc=취소,
  *   Ctrl/⌘+Enter=저장(multiline).
  * - 저장 성공: `saved` 인디케이터(3초 후 idle) + view 모드 복귀.
- * - 저장 실패: `error` 인디케이터 + localValue 를 원본 value 로 롤백, edit 모드 유지.
+ * - 저장 실패: `error` 인디케이터 + editBuffer 를 원본 value 로 롤백, edit 모드 유지.
  *
  * 낙관적 업데이트는 호출부가 책임진다. 이 컴포넌트는 `onSave` Promise 결과만 반영.
  */
@@ -42,14 +42,11 @@ export function InlineEditField({
   multiline = false,
 }: InlineEditFieldProps) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [localValue, setLocalValue] = useState(value);
+  // edit 모드 진입 시의 편집 버퍼. view 모드에서는 외부 value 를 직접 표시하므로
+  // 별도 동기화 effect 불필요(React 'you might not need an effect' 원칙).
+  const [editBuffer, setEditBuffer] = useState(value);
   const [savingState, setSavingState] = useState<SavingState>('idle');
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 외부 value 가 변하면 view 모드에서만 localValue 동기화
-  useEffect(() => {
-    if (mode === 'view') setLocalValue(value);
-  }, [value, mode]);
 
   // saved 상태 3초 후 idle 복귀
   useEffect(() => {
@@ -63,32 +60,32 @@ export function InlineEditField({
 
   const startEdit = useCallback(() => {
     if (readOnly) return;
-    setLocalValue(value);
+    setEditBuffer(value);
     setMode('edit');
     setSavingState('idle');
   }, [readOnly, value]);
 
   const cancelEdit = useCallback(() => {
-    setLocalValue(value);
+    setEditBuffer(value);
     setMode('view');
     setSavingState('idle');
   }, [value]);
 
   const saveEdit = useCallback(async () => {
-    if (localValue === value) {
+    if (editBuffer === value) {
       setMode('view');
       return;
     }
     setSavingState('saving');
     try {
-      await onSave(localValue);
+      await onSave(editBuffer);
       setSavingState('saved');
       setMode('view');
     } catch {
       setSavingState('error');
-      setLocalValue(value); // 롤백
+      setEditBuffer(value); // 롤백
     }
-  }, [localValue, onSave, value]);
+  }, [editBuffer, onSave, value]);
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -124,8 +121,8 @@ export function InlineEditField({
       <div className={cn('flex items-start gap-2', className)}>
         {multiline ? (
           <textarea
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            value={editBuffer}
+            onChange={(e) => setEditBuffer(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={savingState === 'saving'}
             placeholder={placeholder}
@@ -134,8 +131,8 @@ export function InlineEditField({
           />
         ) : (
           <input
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            value={editBuffer}
+            onChange={(e) => setEditBuffer(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={savingState === 'saving'}
             placeholder={placeholder}
