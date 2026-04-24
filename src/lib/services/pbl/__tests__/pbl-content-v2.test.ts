@@ -21,9 +21,6 @@ import sampleFixture from '../__fixtures__/sample-llm-response.json';
 describe('pblContentSchema — fixture safeParse', () => {
   it('sample-llm-response.json 이 스키마를 통과한다', () => {
     const result = pblContentSchema.safeParse(sampleFixture);
-    if (!result.success) {
-      console.error('검증 실패:', result.error.issues);
-    }
     expect(result.success).toBe(true);
   });
 

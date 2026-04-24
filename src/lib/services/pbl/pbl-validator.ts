@@ -328,10 +328,5 @@ export function validatePBLContent(content: PBLContent): PBLValidationResult {
     seqSet.add(facility.seq);
   }
 
-  // 4) Ⅴ장 성과분석 — selected_goals가 훈련 목표 카테고리 내에 있는지 경고
-  if (data.outcome_analysis.outcome_metrics.selected_goals.length === 0) {
-    warnings.push('Ⅴ-1: 훈련 목표 카테고리(selected_goals)를 최소 1개 이상 선택하세요.');
-  }
-
   return { isValid: errors.length === 0, errors, warnings };
 }
