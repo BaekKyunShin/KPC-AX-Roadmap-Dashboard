@@ -5,8 +5,11 @@ import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from
 import {
   roadmapInterviewSchema,
   roadmapInterviewAutoSaveSchema,
+  RoadmapInterviewSchema,
+  RoadmapInterviewStrictSchema,
   type RoadmapInterviewInput,
   type RoadmapInterviewAutoSaveInput,
+  type RoadmapInterviewStrict,
   type SttInsights,
   type HrdReportAttachment,
 } from '@/lib/schemas/interview-roadmap';
@@ -14,9 +17,18 @@ import { extractTextFromAttachment } from '@/lib/services/file-parser';
 import {
   pblInterviewSchema,
   pblInterviewAutoSaveSchema,
+  PBLInterviewSchema,
+  PBLInterviewStrictSchema,
   type PBLInterviewInput,
   type PBLInterviewAutoSaveInput,
+  type PBLInterviewStrict,
 } from '@/lib/schemas/interview-pbl';
+import {
+  mapRoadmapInterviewToDb,
+  mapDbToRoadmapInterview,
+  mapPBLInterviewToDb,
+  mapDbToPBLInterview,
+} from '@/lib/services/interview/converters';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
@@ -907,5 +919,378 @@ export async function deleteSttInsights(projectId: string): Promise<SimpleAction
   } catch (error) {
     console.error('[deleteSttInsights Error]', error);
     return { success: false, error: 'STT 인사이트 삭제 중 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// PR #2 Task 2.7-b — 신규 camelCase Zod 스키마 수용 Server Action
+// ----------------------------------------------------------------------------
+// Task 2.1 (로드맵) · Task 2.2 (PBL) 에서 양식 1:1 정합 camelCase 스키마가 새로
+// 추가됨. 본 Action 들은 신규 스키마를 직접 수용하고, DB 경계에서
+// `src/lib/services/interview/converters.ts` 를 거쳐 snake_case JSONB 로 저장/복원한다.
+//
+// 기존 snake_case Action 들(saveRoadmapInterview/savePBLInterview/fetchInterview/
+// fetchPBLInterview)은 Client 이관(Task 2.3-a~d, Task 2.4) 이 끝날 때까지 병존
+// 하며, Task 2.11 cleanup 에서 제거 예정.
+//
+// 5단계 패턴 엄수:
+//   1) 인증 (requireAuthWithRole)
+//   2) 역할 (CONSULTANT_APPROVED) + track 가드
+//   3) Zod (자동저장=partial / 제출=StrictSchema — superRefine 포함)
+//   4) 비즈니스 (converter → upsert → 상태 전이)
+//   5) ActionResult 반환
+// ============================================================================
+
+/**
+ * 로드맵 인터뷰 저장 — camelCase 신규 스키마 (Task 2.1).
+ *
+ * options.autoSave=true  → `RoadmapInterviewSchema.partial()` 로 느슨한 검증
+ *                          (ZodObject 이므로 `.partial()` 가 제공됨)
+ * options.autoSave=false → `RoadmapInterviewStrictSchema` 로 NCS XOR 포함 엄격 검증
+ */
+export async function saveRoadmapInterviewV2(
+  projectId: string,
+  data: unknown,
+  options?: { autoSave?: boolean },
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.track !== 'ROADMAP') {
+      return {
+        success: false,
+        error: 'PBL 트랙 프로젝트는 PBL 인터뷰 화면을 사용해야 합니다.',
+      };
+    }
+
+    const schema = options?.autoSave
+      ? RoadmapInterviewSchema.partial()
+      : RoadmapInterviewStrictSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+    const validated = validation.data as Partial<RoadmapInterviewStrict>;
+
+    const adminSupabase = createAdminClient();
+
+    const { data: existing, error: fetchError } = await adminSupabase
+      .from('interviews')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[saveRoadmapInterviewV2] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+    }
+
+    const dbPayload = mapRoadmapInterviewToDb(validated);
+    // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록한다.
+    const row = {
+      project_id: projectId,
+      interviewer_id: user.id,
+      ...dbPayload,
+    };
+
+    let auditAction: 'INTERVIEW_CREATE' | 'INTERVIEW_UPDATE';
+
+    if (existing) {
+      const { error: updateError } = await adminSupabase
+        .from('interviews')
+        .update(row)
+        .eq('id', existing.id);
+      if (updateError) {
+        console.error('[saveRoadmapInterviewV2] Update:', updateError.message);
+        return { success: false, error: '인터뷰 수정에 실패했습니다.' };
+      }
+      auditAction = 'INTERVIEW_UPDATE';
+    } else {
+      const { error: insertError } = await adminSupabase.from('interviews').insert(row);
+      if (insertError) {
+        console.error('[saveRoadmapInterviewV2] Insert:', insertError.message);
+        return { success: false, error: '인터뷰 저장에 실패했습니다.' };
+      }
+      auditAction = 'INTERVIEW_CREATE';
+    }
+
+    let statusTransitioned = false;
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      statusTransitioned = true;
+    }
+
+    after(async () => {
+      if (statusTransitioned && !projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: '인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
+
+      await createAuditLog({
+        actorUserId: user.id,
+        action: auditAction,
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          track: 'ROADMAP',
+          schema_version: 'v2_camelCase',
+          auto_save: Boolean(options?.autoSave),
+        },
+      });
+
+      if (!options?.autoSave) {
+        const logContent =
+          auditAction === 'INTERVIEW_CREATE'
+            ? '인터뷰가 저장되었습니다.'
+            : '인터뷰가 수정되었습니다.';
+        await insertSystemActivityLog(projectId, user.id, logContent);
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[saveRoadmapInterviewV2 Error]', error);
+    return { success: false, error: '인터뷰 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+/**
+ * 로드맵 인터뷰 제출 — camelCase 스키마 + strict 검증 (NCS XOR 포함).
+ * `saveRoadmapInterviewV2(projectId, data, { autoSave: false })` 의 얇은 wrapper.
+ */
+export async function submitRoadmapInterviewV2(
+  projectId: string,
+  data: unknown,
+): Promise<SimpleActionResult> {
+  return saveRoadmapInterviewV2(projectId, data, { autoSave: false });
+}
+
+/**
+ * 로드맵 인터뷰 조회 — DB snake_case row → camelCase Partial 반환.
+ *
+ * 컨설턴트 배정 프로젝트만 조회 가능. 조회 실패/미존재 시 null.
+ */
+export async function fetchRoadmapInterviewV2(
+  projectId: string,
+): Promise<Partial<RoadmapInterviewStrict> | null> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('assigned_consultant_id, track')
+      .eq('id', projectId)
+      .single();
+
+    if (!projectData || projectData.assigned_consultant_id !== user.id) {
+      return null;
+    }
+    if (projectData.track !== 'ROADMAP') return null;
+
+    const { data: interview } = await supabase
+      .from('interviews')
+      .select('interview_date, company_details, job_tasks, improvement_goals')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (!interview) return {};
+    return mapDbToRoadmapInterview(interview);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PBL 인터뷰 저장 — camelCase 신규 스키마 (Task 2.2).
+ *
+ * DB 는 기존과 동일하게 `interviews.pbl_data` JSONB 에 통째로 저장하되,
+ * 신규 camelCase 구조를 그대로 보존한다 (기존 snake_case pbl_data 와 키 충돌 없음).
+ */
+export async function savePBLInterviewV2(
+  projectId: string,
+  data: unknown,
+  options?: { autoSave?: boolean },
+): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
+      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
+      .eq('id', projectId)
+      .eq('assigned_consultant_id', user.id)
+      .single();
+
+    if (!projectData) {
+      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
+    }
+    if (projectData.track !== 'PBL') {
+      return {
+        success: false,
+        error: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.',
+      };
+    }
+
+    const schema = options?.autoSave
+      ? PBLInterviewSchema.partial()
+      : PBLInterviewStrictSchema;
+    const validation = schema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+    const validated = validation.data as Partial<PBLInterviewStrict>;
+
+    const adminSupabase = createAdminClient();
+
+    const { data: existing, error: fetchError } = await adminSupabase
+      .from('interviews')
+      .select('id')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[savePBLInterviewV2] Fetch:', fetchError.message);
+      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
+    }
+
+    const dbPayload = mapPBLInterviewToDb(validated);
+
+    if (existing) {
+      const { error: updateError } = await adminSupabase
+        .from('interviews')
+        .update(dbPayload)
+        .eq('id', existing.id);
+      if (updateError) {
+        console.error('[savePBLInterviewV2] Update:', updateError.message);
+        return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
+      }
+    } else {
+      const { error: insertError } = await adminSupabase.from('interviews').insert({
+        project_id: projectId,
+        interviewer_id: user.id,
+        ...dbPayload,
+      });
+      if (insertError) {
+        console.error('[savePBLInterviewV2] Insert:', insertError.message);
+        return { success: false, error: 'PBL 인터뷰 저장에 실패했습니다.' };
+      }
+    }
+
+    let statusTransitioned = false;
+    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
+      await adminSupabase
+        .from('projects')
+        .update({ status: 'INTERVIEWED' })
+        .eq('id', projectId);
+      statusTransitioned = true;
+    }
+
+    after(async () => {
+      if (statusTransitioned && !projectData.is_test_mode) {
+        await createNotificationForAdmins({
+          type: 'interview_complete',
+          title: 'PBL 인터뷰 완료',
+          message: `${projectData.company_name || '(알 수 없는 기업)'} PBL 프로젝트 인터뷰가 완료되었습니다.`,
+          link: `/ops/projects/${projectId}`,
+        });
+      }
+
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'PBL_INTERVIEW_SAVED',
+        targetType: 'interview',
+        targetId: projectId,
+        meta: {
+          track: 'PBL',
+          schema_version: 'v2_camelCase',
+          auto_save: Boolean(options?.autoSave),
+        },
+      });
+
+      if (!options?.autoSave) {
+        await insertSystemActivityLog(
+          projectId,
+          user.id,
+          'PBL 인터뷰가 저장되었습니다.',
+        );
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[savePBLInterviewV2 Error]', error);
+    return { success: false, error: 'PBL 인터뷰 저장 중 오류가 발생했습니다.' };
+  }
+}
+
+/**
+ * PBL 인터뷰 제출 — camelCase + strict 검증 (hrdReportPdf=null 일 때 courseNecessity 필수).
+ */
+export async function submitPBLInterviewV2(
+  projectId: string,
+  data: unknown,
+): Promise<SimpleActionResult> {
+  return savePBLInterviewV2(projectId, data, { autoSave: false });
+}
+
+/**
+ * PBL 인터뷰 조회 — DB pbl_data JSONB → camelCase Partial 반환.
+ */
+export async function fetchPBLInterviewV2(
+  projectId: string,
+): Promise<Partial<PBLInterviewStrict> | null> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return null;
+    const { user, supabase } = auth;
+
+    const { data: projectData } = await supabase
+      .from('projects')
+      .select('assigned_consultant_id, track')
+      .eq('id', projectId)
+      .single();
+
+    if (!projectData || projectData.assigned_consultant_id !== user.id) {
+      return null;
+    }
+    if (projectData.track !== 'PBL') return null;
+
+    const { data: interview } = await supabase
+      .from('interviews')
+      .select('pbl_data')
+      .eq('project_id', projectId)
+      .maybeSingle();
+
+    if (!interview) return {};
+    return mapDbToPBLInterview(interview as { pbl_data: Record<string, unknown> | null });
+  } catch {
+    return null;
   }
 }
