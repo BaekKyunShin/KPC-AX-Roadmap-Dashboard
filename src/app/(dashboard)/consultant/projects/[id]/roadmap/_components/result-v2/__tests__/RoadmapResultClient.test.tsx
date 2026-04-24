@@ -339,5 +339,140 @@ describe('RoadmapResultClient — OPS role', () => {
     );
     expect(screen.queryByTestId('share-toggle')).toBeNull();
   });
+
+  it('role="OPS" 에는 "최종 확정" 버튼이 렌더되지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
+  });
+});
+
+describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('role="CONSULTANT" + versions=[] 일 때 EmptyState 에 "AI 로드맵 생성" 버튼 노출', async () => {
+    const onGenerate = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={onGenerate}
+        onDownload={vi.fn()}
+      />,
+    );
+    const btn = screen.getByTestId('empty-state-generate-roadmap');
+    expect(btn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    await waitFor(() => expect(onGenerate).toHaveBeenCalledTimes(1));
+  });
+
+  it('role="CONSULTANT" + DRAFT 선택 버전 일 때 "최종 확정" 버튼 클릭 → onFinalize 호출', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+    const btn = screen.getByTestId('finalize-roadmap-button');
+    expect(btn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    await waitFor(() => expect(onFinalize).toHaveBeenCalledTimes(1));
+    confirmSpy.mockRestore();
+  });
+
+  it('confirm 취소 시 onFinalize 호출되지 않음', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onFinalize = vi.fn();
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+    expect(onFinalize).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('selected-version-heading 이 선택 버전 번호를 h2 로 노출', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ version_number: 3 })]}
+        selectedVersion={makeVersion({ version_number: 3 })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    const heading = screen.getByTestId('selected-version-heading');
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveTextContent(/버전\s*3/);
+  });
+
+  it('FINAL 상태에서는 "최종 확정" 버튼이 렌더되지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
+  });
 });
 

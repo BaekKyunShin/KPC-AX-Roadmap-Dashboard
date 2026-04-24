@@ -38,6 +38,9 @@ const exportRoadmapHwpxV2Mock = vi.fn((_versionId: string) =>
 const cancelRoadmapGenerationMock = vi.fn(() =>
   Promise.resolve({ success: true as const }),
 );
+const confirmFinalRoadmapV2Mock = vi.fn((_versionId: string) =>
+  Promise.resolve({ success: true as const }),
+);
 
 vi.mock('../actions', () => ({
   fetchRoadmapPageDataV2: (projectId: string, versionId?: string) =>
@@ -48,6 +51,7 @@ vi.mock('../actions', () => ({
     editRoadmapV2Mock(roadmapId, patch),
   exportRoadmapHwpxV2: (versionId: string) => exportRoadmapHwpxV2Mock(versionId),
   cancelRoadmapGeneration: () => cancelRoadmapGenerationMock(),
+  confirmFinalRoadmapV2: (versionId: string) => confirmFinalRoadmapV2Mock(versionId),
 }));
 
 // Toast 모킹 (side effect 만 stub)
@@ -100,6 +104,7 @@ vi.mock('./result-v2/RoadmapResultClient', () => ({
     onGenerate: (prompt?: string) => void;
     onDownload: (type: 'PDF' | 'XLSX' | 'HWPX') => void;
     onCancelGenerate?: () => void;
+    onFinalize?: () => void;
   }) => (
     <div
       data-testid="roadmap-result-client"
@@ -116,6 +121,7 @@ vi.mock('./result-v2/RoadmapResultClient', () => ({
       <button onClick={() => props.onDownload('XLSX')}>download-xlsx</button>
       <button onClick={() => props.onDownload('HWPX')}>download-hwpx</button>
       <button onClick={() => props.onCancelGenerate?.()}>cancel</button>
+      <button onClick={() => props.onFinalize?.()}>finalize</button>
     </div>
   ),
 }));
@@ -316,5 +322,46 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
     );
     fireEvent.click(screen.getByText('generate'));
     await waitFor(() => expect(createRoadmapV2Mock).toHaveBeenCalled());
+  });
+
+  it('finalize 클릭 시 confirmFinalRoadmapV2 호출 + 성공 시 refresh', async () => {
+    render(
+      <RoadmapResultPageClient
+        projectId="p-c"
+        companyName="X"
+        initialVersions={[makeVersion()]}
+        initialSelected={makeVersion()}
+        initialInterview={{}}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText('finalize'));
+    });
+    await waitFor(() => expect(confirmFinalRoadmapV2Mock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalled(),
+    );
+  });
+
+  it('finalize 실패 시 refresh 를 호출하지 않는다', async () => {
+    confirmFinalRoadmapV2Mock.mockResolvedValueOnce({
+      success: false,
+      error: '확정 실패',
+    } as unknown as { success: true });
+    render(
+      <RoadmapResultPageClient
+        projectId="p-c"
+        companyName="X"
+        initialVersions={[makeVersion()]}
+        initialSelected={makeVersion()}
+        initialInterview={{}}
+      />,
+    );
+    fetchRoadmapPageDataV2Mock.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByText('finalize'));
+    });
+    await waitFor(() => expect(confirmFinalRoadmapV2Mock).toHaveBeenCalled());
+    expect(fetchRoadmapPageDataV2Mock).not.toHaveBeenCalled();
   });
 });
