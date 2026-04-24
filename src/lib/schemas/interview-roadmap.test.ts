@@ -16,6 +16,12 @@ import {
   createEmptyCompetencyModel,
   createEmptyNcsUsage,
   mapInterviewRowToRoadmapInterview,
+  // PR #2 Task 2.1 — 양식 1:1 정합 신규 스키마 (camelCase)
+  RoadmapOverviewSchema,
+  RoadmapRequirementsSchema,
+  RoadmapTrainingInterviewSchema,
+  RoadmapInterviewSchema,
+  RoadmapInterviewStrictSchema,
 } from './interview-roadmap';
 
 const baseOverview = {
@@ -1109,5 +1115,376 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.competency_models).toBeUndefined();
     expect(result.ncs_usage).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// PR #2 Task 2.1 — 양식 1:1 정합 신규 스키마 (camelCase)
+// ----------------------------------------------------------------------------
+// 기준 문서: docs/references/2026-04-23-current-fields-inventory.md (양식 1, Ⅰ·Ⅱ·Ⅲ-1)
+// - RoadmapOverviewSchema            — Ⅰ 개요 ([인터뷰] + [인터뷰→결과])
+// - RoadmapRequirementsSchema        — Ⅱ 요구분석 ([인터뷰] + [PDF 첨부])
+// - RoadmapTrainingInterviewSchema   — Ⅲ-1 역량 모델링 [인터뷰→결과]
+// - RoadmapInterviewSchema           — 위 3개 merge (strict), `.partial()` 호출로 loose 생성
+// ============================================================================
+
+describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
+  const validOverview = {
+    establishmentNecessity: 'AI 훈련 로드맵 수립 필요성 (5줄 내외).',
+    performanceActivities: [
+      {
+        round: 1,
+        date: '2026-04-16',
+        timeRange: '10:00~12:00',
+        content: '훈련대상 과업 도출',
+        method: 'ONSITE',
+        pmName: '홍길동',
+        expertName: '김내부',
+      },
+    ],
+    aiLevel: 'INTERMEDIATE',
+    selectedTask: '품질검사 자동화',
+  };
+
+  it('유효한 Ⅰ 개요 구조는 통과', () => {
+    expect(RoadmapOverviewSchema.safeParse(validOverview).success).toBe(true);
+  });
+
+  it('aiLevel enum 은 BEGINNER/INTERMEDIATE/ADVANCED 만 허용', () => {
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'BEGINNER' }).success,
+    ).toBe(true);
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'ADVANCED' }).success,
+    ).toBe(true);
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'EXPERT' }).success,
+    ).toBe(false);
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: '' }).success,
+    ).toBe(false);
+  });
+
+  it('establishmentNecessity 와 selectedTask 는 필수 (빈 문자열 거부)', () => {
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, establishmentNecessity: '' }).success,
+    ).toBe(false);
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, selectedTask: '' }).success,
+    ).toBe(false);
+  });
+
+  it('performanceActivities 는 최대 3차까지 허용 (Ⅰ-2 양식 3행 병합)', () => {
+    const threeRounds = [1, 2, 3].map((r) => ({
+      round: r,
+      date: '2026-04-16',
+      timeRange: '10:00~12:00',
+      content: `${r}차 수행`,
+      method: 'ONSITE',
+      pmName: 'PM',
+      expertName: '전문가',
+    }));
+    expect(
+      RoadmapOverviewSchema.safeParse({
+        ...validOverview,
+        performanceActivities: threeRounds,
+      }).success,
+    ).toBe(true);
+
+    const fourRounds = [...threeRounds, { ...threeRounds[0], round: 4 }];
+    expect(
+      RoadmapOverviewSchema.safeParse({
+        ...validOverview,
+        performanceActivities: fourRounds,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('performanceActivities 는 빈 배열도 허용 (자동저장 중간 상태는 loose 쪽에서 처리)', () => {
+    // strict 본체에서는 빈 배열 허용 (다른 스텝만 먼저 작성하는 경우)
+    expect(
+      RoadmapOverviewSchema.safeParse({ ...validOverview, performanceActivities: [] }).success,
+    ).toBe(true);
+  });
+});
+
+describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () => {
+  const validRequirements = {
+    hrdReportPdf: {
+      fileName: 'HRD이음_진단보고서.pdf',
+      url: 'interview-attachments/project-1/hrd.pdf',
+      size: 204800,
+    },
+    companyRequirements: {
+      status: '제조업, AI 미도입',
+      problem: '생산성 저하 및 품질 편차',
+      will: '경영진 적극 지원',
+      outcomes: '생산성 15% 개선',
+    },
+    taskAnalysis: [
+      {
+        domain: '생산',
+        task: '품질검사',
+        asIs: '육안 검사',
+        problem: '개인 역량 의존',
+        dataTiming: '검사 이미지 2년치 보유',
+        aiScore: 5,
+      },
+    ],
+    taskAnalysisNote: '그룹 인터뷰로 과업 분석.',
+    targetTask: {
+      name: '품질검사 자동화',
+      reason: 'AI 필요도 5점, 데이터 충분',
+      expectedAsIs: '육안 1인 × 200건/일',
+      expectedToBe: 'AI 1차 스크리닝 → 인력 재배치',
+    },
+  };
+
+  it('유효한 Ⅱ 요구분석 구조는 통과', () => {
+    expect(RoadmapRequirementsSchema.safeParse(validRequirements).success).toBe(true);
+  });
+
+  it('hrdReportPdf 는 null 허용 (미첨부 상태, Ⅱ-1)', () => {
+    expect(
+      RoadmapRequirementsSchema.safeParse({ ...validRequirements, hrdReportPdf: null }).success,
+    ).toBe(true);
+  });
+
+  it('taskAnalysis[].aiScore 는 1-5 정수만 허용 (0, 6, 3.5 거부)', () => {
+    const makeWithScore = (score: number) => ({
+      ...validRequirements,
+      taskAnalysis: [{ ...validRequirements.taskAnalysis[0], aiScore: score }],
+    });
+    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(0)).success).toBe(false);
+    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(6)).success).toBe(false);
+    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(3.5)).success).toBe(false);
+    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(1)).success).toBe(true);
+    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(5)).success).toBe(true);
+  });
+
+  it('companyRequirements 4필드(status/problem/will/outcomes)는 모두 필수', () => {
+    for (const key of ['status', 'problem', 'will', 'outcomes'] as const) {
+      const invalid = {
+        ...validRequirements,
+        companyRequirements: { ...validRequirements.companyRequirements, [key]: '' },
+      };
+      expect(RoadmapRequirementsSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  it('targetTask 4필드(name/reason/expectedAsIs/expectedToBe)는 모두 필수', () => {
+    for (const key of ['name', 'reason', 'expectedAsIs', 'expectedToBe'] as const) {
+      const invalid = {
+        ...validRequirements,
+        targetTask: { ...validRequirements.targetTask, [key]: '' },
+      };
+      expect(RoadmapRequirementsSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  it('taskAnalysisAttachment 는 optional (Ⅱ-3 추가 첨부)', () => {
+    // 없어도 통과
+    expect(RoadmapRequirementsSchema.safeParse(validRequirements).success).toBe(true);
+    // null 도 허용
+    expect(
+      RoadmapRequirementsSchema.safeParse({ ...validRequirements, taskAnalysisAttachment: null })
+        .success,
+    ).toBe(true);
+    // 유효 객체도 허용
+    expect(
+      RoadmapRequirementsSchema.safeParse({
+        ...validRequirements,
+        taskAnalysisAttachment: {
+          fileName: '공정도.pdf',
+          url: 'interview-attachments/project-1/process.pdf',
+        },
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('RoadmapTrainingInterviewSchema (Ⅲ-1 역량 모델링 [인터뷰→결과])', () => {
+  const baseCompetency = {
+    name: '데이터 해석 역량',
+    definition: '수집된 데이터를 바탕으로 품질 이슈를 식별하고 의사결정한다.',
+    knowledge: '기초 통계, 엑셀 함수, QMS 지표',
+    skill: '피벗 테이블, 시각화, 지표 분석',
+    attitude: '데이터 기반 의사결정 선호',
+  };
+
+  it('유효한 Ⅲ-1 구조는 통과 (NCS 미활용 경로)', () => {
+    const valid = {
+      competencies: [baseCompetency],
+      ncsUsed: false,
+      ncsDerivationMethod: '현장 인터뷰 + 업계 벤치마킹으로 도출.',
+    };
+    expect(RoadmapTrainingInterviewSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('유효한 Ⅲ-1 구조는 통과 (NCS 활용 경로)', () => {
+    const valid = {
+      competencies: [baseCompetency],
+      ncsUsed: true,
+      ncsMethodology: 'NCS 20.02.01 빅데이터분석 능력단위 차용 후 기업 특성 반영.',
+    };
+    expect(RoadmapTrainingInterviewSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('ncsUsed=true 일 때 ncsMethodology 필수', () => {
+    expect(
+      RoadmapTrainingInterviewSchema.safeParse({
+        competencies: [baseCompetency],
+        ncsUsed: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      RoadmapTrainingInterviewSchema.safeParse({
+        competencies: [baseCompetency],
+        ncsUsed: true,
+        ncsMethodology: '',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('ncsUsed=false 일 때 ncsDerivationMethod 필수', () => {
+    expect(
+      RoadmapTrainingInterviewSchema.safeParse({
+        competencies: [baseCompetency],
+        ncsUsed: false,
+      }).success,
+    ).toBe(false);
+    expect(
+      RoadmapTrainingInterviewSchema.safeParse({
+        competencies: [baseCompetency],
+        ncsUsed: false,
+        ncsDerivationMethod: '',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('competencies[] 항목 5필드 모두 필수', () => {
+    for (const key of ['name', 'definition', 'knowledge', 'skill', 'attitude'] as const) {
+      const invalid = {
+        competencies: [{ ...baseCompetency, [key]: '' }],
+        ncsUsed: false,
+        ncsDerivationMethod: '도출 방법',
+      };
+      expect(RoadmapTrainingInterviewSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+});
+
+describe('RoadmapInterviewSchema (strict / loose 이중 검증)', () => {
+  const fullValid = {
+    // Ⅰ 개요
+    establishmentNecessity: '수립 필요성 서술 (5줄 내외).',
+    performanceActivities: [
+      {
+        round: 1,
+        date: '2026-04-16',
+        timeRange: '10:00~12:00',
+        content: '훈련대상 과업 도출',
+        method: 'ONSITE',
+        pmName: 'PM',
+        expertName: '내부전문가',
+      },
+    ],
+    aiLevel: 'INTERMEDIATE',
+    selectedTask: '품질검사 자동화',
+    // Ⅱ 요구분석
+    hrdReportPdf: {
+      fileName: 'HRD.pdf',
+      url: 'interview-attachments/p1/hrd.pdf',
+      size: 1024,
+    },
+    companyRequirements: {
+      status: '제조업',
+      problem: '품질 편차',
+      will: '적극 지원',
+      outcomes: '15% 개선',
+    },
+    taskAnalysis: [
+      {
+        domain: '생산',
+        task: '품질검사',
+        asIs: '육안',
+        problem: '편차',
+        dataTiming: '2년치',
+        aiScore: 4,
+      },
+    ],
+    taskAnalysisNote: '현장 분석.',
+    targetTask: {
+      name: '품질검사 자동화',
+      reason: 'AI 필요도 5점',
+      expectedAsIs: '육안',
+      expectedToBe: 'AI 1차 스크리닝',
+    },
+    // Ⅲ-1
+    competencies: [
+      {
+        name: '데이터 해석',
+        definition: '품질 이슈 식별 및 의사결정',
+        knowledge: '통계, QMS',
+        skill: '피벗, 시각화',
+        attitude: '데이터 기반 의사결정',
+      },
+    ],
+    ncsUsed: false,
+    ncsDerivationMethod: '현장 인터뷰.',
+  };
+
+  it('strict: 전체 유효 구조는 통과', () => {
+    expect(RoadmapInterviewSchema.safeParse(fullValid).success).toBe(true);
+  });
+
+  it('strict: 빈 객체 {} 는 실패 (최종 제출 시 필수 필드 검증)', () => {
+    expect(RoadmapInterviewSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('loose (`.partial()`): 빈 객체 {} 는 통과 (자동 저장용)', () => {
+    const loose = RoadmapInterviewSchema.partial();
+    expect(loose.safeParse({}).success).toBe(true);
+  });
+
+  it('loose: 일부 필드만 있어도 통과', () => {
+    const loose = RoadmapInterviewSchema.partial();
+    expect(
+      loose.safeParse({
+        establishmentNecessity: '일부만',
+        aiLevel: 'BEGINNER',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('strict: 필수 필드 누락 시 에러 경로(path) 반환', () => {
+    const { establishmentNecessity: _, ...withoutNecessity } = fullValid;
+    const result = RoadmapInterviewSchema.safeParse(withoutNecessity);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('establishmentNecessity');
+    }
+  });
+
+  it('RoadmapInterviewStrictSchema: NCS XOR refine 동작 (ncsUsed=true 인데 ncsMethodology 없음)', () => {
+    // 최종 제출 경계에서는 RoadmapInterviewStrictSchema 를 사용해 XOR 검증까지 수행.
+    const invalid = {
+      ...fullValid,
+      ncsUsed: true,
+      ncsMethodology: undefined,
+      ncsDerivationMethod: undefined,
+    };
+    expect(RoadmapInterviewStrictSchema.safeParse(invalid).success).toBe(false);
+    // 반대 케이스: ncsUsed=false + ncsDerivationMethod 누락도 실패
+    const invalid2 = {
+      ...fullValid,
+      ncsUsed: false,
+      ncsMethodology: undefined,
+      ncsDerivationMethod: undefined,
+    };
+    expect(RoadmapInterviewStrictSchema.safeParse(invalid2).success).toBe(false);
+    // 정상 케이스는 통과
+    expect(RoadmapInterviewStrictSchema.safeParse(fullValid).success).toBe(true);
   });
 });

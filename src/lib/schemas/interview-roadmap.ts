@@ -1,3 +1,45 @@
+/**
+ * 산인공 AI훈련로드맵 컨설팅 보고서 (양식 1) 인터뷰 Zod 스키마.
+ *
+ * 기준 문서: docs/references/2026-04-23-current-fields-inventory.md
+ *
+ * ============================================================================
+ * 섹션 ↔ 필드 매핑 (camelCase 신규 스키마 대상: [인터뷰 입력] / [인터뷰→결과] /
+ * [PDF 첨부] 만). Ⅲ-2 훈련체계도 · Ⅲ-3 연간 훈련계획 · Ⅲ-4 훈련과정 상세는
+ * [결과·LLM 생성] 이므로 본 스키마 대상이 아니며, Task 2.5 의 결과 페이지
+ * 스키마에서 다룬다.
+ *
+ * | 양식 섹션 | 라벨 | Zod 필드 |
+ * |---|---|---|
+ * | Ⅰ-1 수립 필요성        | [인터뷰]        | RoadmapOverview.establishmentNecessity |
+ * | Ⅰ-2 주요 활동          | [인터뷰]        | RoadmapOverview.performanceActivities[] |
+ * | Ⅰ-3 AI 역량 수준       | [인터뷰→결과]   | RoadmapOverview.aiLevel (enum) |
+ * | Ⅰ-3 선정 과업          | [인터뷰→결과]   | RoadmapOverview.selectedTask |
+ * | Ⅱ-1 HRD이음 PDF        | [PDF 첨부]      | RoadmapRequirements.hrdReportPdf |
+ * | Ⅱ-2 기업 요구분석      | [인터뷰]        | RoadmapRequirements.companyRequirements.{status,problem,will,outcomes} |
+ * | Ⅱ-3 과업 분석표        | [인터뷰]        | RoadmapRequirements.taskAnalysis[] |
+ * | Ⅱ-3 분석내용           | [인터뷰]        | RoadmapRequirements.taskAnalysisNote |
+ * | Ⅱ-3 추가 첨부 (선택)   | [인터뷰]        | RoadmapRequirements.taskAnalysisAttachment? |
+ * | Ⅱ-4 훈련대상 과업 선정 | [인터뷰]        | RoadmapRequirements.targetTask.{name,reason,expectedAsIs,expectedToBe} |
+ * | Ⅲ-1 역량 모델링 표     | [인터뷰→결과]   | RoadmapTrainingInterview.competencies[] |
+ * | Ⅲ-1 NCS 박스           | [인터뷰→결과]   | RoadmapTrainingInterview.ncsUsed + ncsMethodology?/ncsDerivationMethod? |
+ *
+ * ============================================================================
+ * 이중 검증 구조:
+ * - Strict (최종 제출): `RoadmapInterviewSchema` — 필수 필드 전부 요구.
+ * - Loose  (자동 저장): `RoadmapInterviewSchema.partial()` — 모든 최상위 필드
+ *   optional. 중간 저장된 JSON을 그대로 수용한다.
+ *
+ * ============================================================================
+ * 마이그레이션 메모:
+ * 기존 snake_case 스키마들(`roadmapInterviewSchema`, `overviewSchema`,
+ * `companyRequirementsSchema` 등)은 본 파일 하단에 **병존** 상태로 남겨둔다.
+ * Task 2.3 (Client 재구현) / Task 2.7 (Server Actions 갱신) 에서 호출부를
+ * camelCase 로 이관한 뒤 snake_case 를 제거한다. 본 커밋에서 한꺼번에 교체하면
+ * 33개 호출처(인터뷰 Client / 결과 Client / HWPX payload / LLM 서비스)가
+ * 동시에 깨지므로 분리 이관 원칙을 따른다.
+ */
+
 import { z } from 'zod';
 
 // ============================================================================
@@ -618,3 +660,185 @@ export function mapInterviewRowToRoadmapInterview(
 
   return partial;
 }
+
+// ============================================================================
+// PR #2 Task 2.1 — 양식 1:1 정합 신규 스키마 (camelCase)
+// ----------------------------------------------------------------------------
+// 기준 문서 양식 1 Ⅰ·Ⅱ·Ⅲ-1 을 1:1 로 정합하는 신규 스키마. 파일 상단 주석의
+// 섹션 ↔ 필드 매핑표 참고. 기존 snake_case 스키마와 병존 (Task 2.3/2.7 이관 시 제거).
+// ============================================================================
+
+// -- Ⅰ-2 주요 활동 행 ---------------------------------------------------------
+// 양식은 1차/2차/3차 × (수행일시·수행내용·수행방법·PM·내부전문가) 2행×6열 병합.
+// 각 차수는 UI상 1 row 로 표현되며, 본 스키마는 1 row = 1 객체로 저장한다.
+export const RoadmapPerformanceActivitySchema = z.object({
+  round: z.number().int().min(1, '차수는 1 이상이어야 합니다.'),
+  date: z.string(), // 'YYYY-MM-DD' 또는 양식 표기 '26.00.00'
+  timeRange: z.string(), // 'HH:mm~HH:mm'
+  content: z.string(),
+  method: z.string(), // ONSITE | VIDEO | WORKSHOP | OTHER (기존 interviewMethodEnum 와 호환)
+  pmName: z.string(),
+  expertName: z.string(),
+});
+export type RoadmapPerformanceActivity = z.infer<typeof RoadmapPerformanceActivitySchema>;
+
+// -- Ⅰ 개요 -------------------------------------------------------------------
+// aiLevel 은 기존 AI_COMPETENCY_LEVEL 과 동일 enum (BEGINNER|INTERMEDIATE|ADVANCED).
+// 양식 Ⅰ-3 의 "AI훈련로드맵 수립 주요내용 요약" 은 결과 페이지에서 LLM 자동 생성
+// 되므로 본 인터뷰 스키마에서는 다루지 않는다.
+export const RoadmapOverviewSchema = z.object({
+  establishmentNecessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
+  performanceActivities: z
+    .array(RoadmapPerformanceActivitySchema)
+    .max(3, '주요 활동은 최대 3차까지 입력할 수 있습니다.'),
+  aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+  selectedTask: z.string().min(1, '선정 과업을 입력하세요.'),
+});
+export type RoadmapOverview = z.infer<typeof RoadmapOverviewSchema>;
+
+// -- Ⅱ-1 HRD이음 진단 보고서 PDF ---------------------------------------------
+// 파일 업로드 후 Storage (interview-attachments 버킷) 에서 반환된 메타를 보관.
+// 신규 명명 — fileName / url / size. (기존 hrdReportAttachmentSchema 와 구조 상이.)
+export const RoadmapHrdReportPdfSchema = z.object({
+  fileName: z.string().min(1),
+  url: z.string().min(1),
+  size: z.number().nonnegative(),
+});
+export type RoadmapHrdReportPdf = z.infer<typeof RoadmapHrdReportPdfSchema>;
+
+// -- Ⅱ-2 기업 요구분석 --------------------------------------------------------
+export const RoadmapCompanyRequirementsSchema = z.object({
+  status: z.string().min(1, '기업 현황을 입력하세요.'),
+  problem: z.string().min(1, '주요 문제를 입력하세요.'),
+  will: z.string().min(1, '추진 의지를 입력하세요.'),
+  outcomes: z.string().min(1, '기대 성과를 입력하세요.'),
+});
+export type RoadmapCompanyRequirements = z.infer<typeof RoadmapCompanyRequirementsSchema>;
+
+// -- Ⅱ-3 과업·워크플로우 분석표 ----------------------------------------------
+export const RoadmapTaskAnalysisItemSchema = z.object({
+  domain: z.string().min(1, '직무를 입력하세요.'),
+  task: z.string().min(1, '과업을 입력하세요.'),
+  asIs: z.string().min(1, '현행 방식(As-Is)을 입력하세요.'),
+  problem: z.string().min(1, '문제점을 입력하세요.'),
+  dataTiming: z.string().min(1, '데이터 발생 시점/보유 현황을 입력하세요.'),
+  aiScore: z
+    .number()
+    .int('AI 도입·활용 필요도는 1~5 정수입니다.')
+    .min(1, 'AI 도입·활용 필요도는 1~5 정수입니다.')
+    .max(5, 'AI 도입·활용 필요도는 1~5 정수입니다.'),
+});
+export type RoadmapTaskAnalysisItem = z.infer<typeof RoadmapTaskAnalysisItemSchema>;
+
+// -- Ⅱ-3 추가 첨부 (선택) ----------------------------------------------------
+export const RoadmapTaskAnalysisAttachmentSchema = z.object({
+  fileName: z.string().min(1),
+  url: z.string().min(1),
+});
+export type RoadmapTaskAnalysisAttachment = z.infer<typeof RoadmapTaskAnalysisAttachmentSchema>;
+
+// -- Ⅱ-4 훈련대상 과업 선정 --------------------------------------------------
+export const RoadmapTargetTaskSchema = z.object({
+  name: z.string().min(1, '훈련대상 과업명을 입력하세요.'),
+  reason: z.string().min(1, '선정 사유를 입력하세요.'),
+  expectedAsIs: z.string().min(1, '기대효과 — 현행(As-Is)을 입력하세요.'),
+  expectedToBe: z.string().min(1, '기대효과 — 개선(To-Be)을 입력하세요.'),
+});
+export type RoadmapTargetTask = z.infer<typeof RoadmapTargetTaskSchema>;
+
+// -- Ⅱ 요구분석 -------------------------------------------------------------
+export const RoadmapRequirementsSchema = z.object({
+  hrdReportPdf: RoadmapHrdReportPdfSchema.nullable(),
+  companyRequirements: RoadmapCompanyRequirementsSchema,
+  taskAnalysis: z
+    .array(RoadmapTaskAnalysisItemSchema)
+    .min(1, '최소 1개 이상의 과업을 분석하세요.'),
+  taskAnalysisNote: z.string().min(1, '분석내용을 입력하세요.'),
+  taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.nullable().optional(),
+  targetTask: RoadmapTargetTaskSchema,
+});
+export type RoadmapRequirements = z.infer<typeof RoadmapRequirementsSchema>;
+
+// -- Ⅲ-1 역량 모델링 표 -----------------------------------------------------
+export const RoadmapCompetencySchema = z.object({
+  name: z.string().min(1, '역량명을 입력하세요.'),
+  definition: z.string().min(1, '역량 정의(수행준거)를 입력하세요.'),
+  knowledge: z.string().min(1, '필요 지식을 입력하세요.'),
+  skill: z.string().min(1, '필요 기술을 입력하세요.'),
+  attitude: z.string().min(1, '필요 태도를 입력하세요.'),
+});
+export type RoadmapCompetency = z.infer<typeof RoadmapCompetencySchema>;
+
+// -- Ⅲ-1 역량 모델링 전체 (NCS XOR refine 포함) -----------------------------
+// ncsUsed=true  → ncsMethodology        필수 (NCS 활용 방법 박스)
+// ncsUsed=false → ncsDerivationMethod   필수 (역량별 도출 방법 박스)
+export const RoadmapTrainingInterviewSchema = z
+  .object({
+    competencies: z
+      .array(RoadmapCompetencySchema)
+      .min(1, '최소 1개 이상의 역량을 입력하세요.'),
+    ncsUsed: z.boolean(),
+    ncsMethodology: z.string().optional(),
+    ncsDerivationMethod: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      d.ncsUsed
+        ? (d.ncsMethodology?.trim() ?? '') !== ''
+        : (d.ncsDerivationMethod?.trim() ?? '') !== '',
+    {
+      message: 'NCS 활용 여부에 맞는 내용을 입력하세요.',
+      path: ['ncsMethodology'],
+    },
+  );
+export type RoadmapTrainingInterview = z.infer<typeof RoadmapTrainingInterviewSchema>;
+
+// -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ-1 ------------------------------------------------
+// RoadmapInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해
+// 최종 제출 / 자동 저장 양쪽에서 재사용할 수 있게 한다.
+// - Strict (최종 제출):  `RoadmapInterviewSchema.parse/safeParse`  → .superRefine
+//   으로 NCS XOR 검증이 수행된다.
+// - Loose  (자동 저장):  `RoadmapInterviewSchema.partial()`        → refine 이
+//   적용되지 않으므로 빈 객체 {} 를 포함한 부분 입력이 모두 통과한다.
+//
+// zod v3 에서 `.refine()` 결과는 ZodEffects 로 감싸지며 `.partial()`·`.merge()` 를
+// 제공하지 않는다. 이 때문에 검증 로직은 `.superRefine()` 로 본체 object 내부에
+// 부착해 ZodObject 형태를 유지한다.
+const RoadmapTrainingInterviewBase = z.object({
+  competencies: z
+    .array(RoadmapCompetencySchema)
+    .min(1, '최소 1개 이상의 역량을 입력하세요.'),
+  ncsUsed: z.boolean(),
+  ncsMethodology: z.string().optional(),
+  ncsDerivationMethod: z.string().optional(),
+});
+
+// 본체 통합 스키마 (ZodObject) — 필수 필드 검증은 각 내부 스키마가 수행한다.
+// `.partial()` 로 loose 스키마를 파생할 수 있는 ZodObject 형태를 보장한다.
+export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequirementsSchema).merge(
+  RoadmapTrainingInterviewBase,
+);
+export type RoadmapInterviewStrict = z.infer<typeof RoadmapInterviewSchema>;
+
+// NCS XOR 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
+// ncsUsed=true  → ncsMethodology 필수
+// ncsUsed=false → ncsDerivationMethod 필수
+export const RoadmapInterviewStrictSchema = RoadmapInterviewSchema.superRefine((d, ctx) => {
+  if (d.ncsUsed) {
+    if ((d.ncsMethodology?.trim() ?? '') === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'NCS 활용 방법을 입력하세요.',
+        path: ['ncsMethodology'],
+      });
+    }
+  } else {
+    if ((d.ncsDerivationMethod?.trim() ?? '') === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '역량별 도출 방법을 입력하세요.',
+        path: ['ncsDerivationMethod'],
+      });
+    }
+  }
+});
