@@ -963,16 +963,15 @@ export async function fetchPBLPageDataV2(
     // (4) 비즈니스
     const versions = await listVersions(projectId);
 
+    // 선택 버전 결정: versionId > 최신(version_number DESC).
+    // listVersions 는 version_number DESC 정렬이므로 versions[0] 가 최신.
+    // 컨설턴트가 작업 중인 DRAFT 를 우선 표출하는 V1 정책을 유지한다.
     let selectedVersion: PBLReportRow | null = null;
     if (versionId) {
       selectedVersion = versions.find((v) => v.id === versionId) ?? null;
     }
     if (!selectedVersion) {
-      selectedVersion =
-        versions.find((v) => v.status === 'FINAL') ??
-        versions.find((v) => v.status === 'DRAFT') ??
-        versions[0] ??
-        null;
+      selectedVersion = versions[0] ?? null;
     }
 
     // 인터뷰 snapshot — 컨설턴트는 `fetchPBLInterviewV2` (track 가드 포함),

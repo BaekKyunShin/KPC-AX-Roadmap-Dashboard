@@ -704,17 +704,16 @@ export async function fetchRoadmapPageDataV2(
     // 가능하므로 구조적 호환을 위해 단언.
     const versions = rawVersions.map(toRoadmapVersionUI) as unknown as RoadmapVersionUI[];
 
-    // 선택 버전 결정: versionId > FINAL > 최신 DRAFT > null
+    // 선택 버전 결정: versionId > 최신(version_number DESC)
+    // fetchRoadmapVersionsService 는 version_number DESC 정렬로 반환하므로
+    // versions[0] 이 최신 버전. 컨설턴트가 작업 중인 DRAFT 를 우선 표출하는
+    // 기존 V1 정책을 유지한다 (DRAFT 가 FINAL 보다 최신이면 DRAFT 선택).
     let selectedVersion: RoadmapVersionUI | null = null;
     if (versionId) {
       selectedVersion = versions.find((v) => v.id === versionId) ?? null;
     }
     if (!selectedVersion) {
-      selectedVersion =
-        versions.find((v) => v.status === 'FINAL') ??
-        versions.find((v) => v.status === 'DRAFT') ??
-        versions[0] ??
-        null;
+      selectedVersion = versions[0] ?? null;
     }
 
     // 인터뷰 snapshot — fetchRoadmapInterviewV2 재사용 + HRD signed URL 주입.

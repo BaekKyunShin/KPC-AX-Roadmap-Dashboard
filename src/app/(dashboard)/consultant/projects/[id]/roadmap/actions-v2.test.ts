@@ -373,7 +373,7 @@ describe('fetchRoadmapPageDataV2', () => {
     expect(r.success).toBe(false);
   });
 
-  it('CONSULTANT_APPROVED + 배정 프로젝트 + FINAL 우선 선택 + HRD signed URL 주입', async () => {
+  it('CONSULTANT_APPROVED + 배정 프로젝트 + 최신 버전(version_number DESC) 선택 + HRD signed URL 주입', async () => {
     const { fetchRoadmapVersions } = await import('@/lib/services/roadmap');
     await mockCachedAuth();
 
@@ -458,8 +458,8 @@ describe('fetchRoadmapPageDataV2', () => {
     expect(r.success).toBe(true);
     if (!r.success) return;
     expect(r.data.versions).toHaveLength(2);
-    // FINAL 우선 선택
-    expect(r.data.selectedVersion?.id).toBe('v-final');
+    // 최신(version_number DESC) 기준 첫 번째 = v-draft (version_number=2)
+    expect(r.data.selectedVersion?.id).toBe('v-draft');
     // HRD signed URL 주입 확인
     expect(r.data.interview.hrdReportPdf?.url).toBe('https://signed.example/hrd.pdf');
     expect(createSignedUrl).toHaveBeenCalledWith('proj/hrd.pdf', 3600);

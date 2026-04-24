@@ -419,7 +419,7 @@ describe('fetchPBLPageDataV2', () => {
     expect(r.success).toBe(false);
   });
 
-  it('CONSULTANT_APPROVED + 배정 + FINAL 선택 + snapshot 재구조화', async () => {
+  it('CONSULTANT_APPROVED + 배정 + 최신 버전(version_number DESC) 선택 + snapshot 재구조화', async () => {
     const { listVersions } = await import('@/lib/services/pbl/pbl-crud');
     await mockCachedAuth();
 
@@ -471,7 +471,8 @@ describe('fetchPBLPageDataV2', () => {
     if (!r.success) return;
 
     expect(r.data.versions).toHaveLength(2);
-    expect(r.data.selectedVersion?.id).toBe('v-final');
+    // 최신(version_number DESC) 기준 첫 번째 = v-draft (version_number=2)
+    expect(r.data.selectedVersion?.id).toBe('v-draft');
 
     // snapshot 재구조화 검증 — overview / analysis 네임스페이스로 재정렬
     expect(r.data.interview.overview?.companyName).toBe('ACME');
