@@ -43,6 +43,12 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* 4개 화면 (로드맵/PBL × 인터뷰/결과) 공통 UI 레이어 디자인 토큰 */
+  --page-max-w: 64rem;      /* PageContainer 공통 max-width (max-w-5xl) */
+  --section-gap: 2rem;      /* 섹션 간격 (space-y-8) */
+  --card-pad: 1.5rem;       /* 섹션 카드 padding (p-6) */
+  --sticky-top: 4rem;       /* 결과 페이지 탭 sticky top (top-16) */
+  --container-pad-x: 1rem;  /* 컨테이너 좌우 padding (sm:1.5rem / lg:2rem 까지 확장 가능) */
   --animate-aurora: aurora 60s linear infinite;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;

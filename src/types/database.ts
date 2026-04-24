@@ -30,6 +30,9 @@ export type PblReportStatus = 'DRAFT' | 'FINAL' | 'ARCHIVED';
 // 로드맵 버전 상태
 export type RoadmapVersionStatus = 'DRAFT' | 'FINAL' | 'ARCHIVED';
 
+/** 버전 상태 공용 별칭 — 로드맵·PBL 공통 사용. */
+export type VersionStatus = RoadmapVersionStatus;
+
 // 교육 레벨
 export type EducationLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'LEADER';
 

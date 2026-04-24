@@ -51,6 +51,11 @@ yarn-error.log*
 
 # vercel
 .vercel
+.vercel.pre-transfer-*
+
+# account migration backups (local only, never commit)
+.secrets-backup-*.txt
+backup-*.sql
 
 # typescript
 *.tsbuildinfo

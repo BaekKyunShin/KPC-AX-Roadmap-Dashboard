@@ -632,7 +632,7 @@ def _fill_table_journal(tables, data, build_table_rows, idx: int = 38):
 def _generate_pbl(data: dict) -> bytes:
     """PBL HWPX 생성 — 과정개발보고서 + 결과보고서(공란 유지).
 
-    shallow 표 인덱스 매핑 (docs/references/hwpx-structure-pbl.md 참조):
+    shallow 표 인덱스 매핑:
       0=표지 / 1=Ⅰ 개요(15x5) / 3=Ⅱ-1-가 이슈 / 5=Ⅱ-1-나 조직도 /
       7=Ⅱ-2 훈련환경(12x7) / 9=Ⅱ-3-가 HRD이음(8x8) / 10=추천훈련사업(4x4) /
       11=Ⅱ-3-나 필요성 / 13=Ⅲ-1 수행활동(13x6) / 15=Ⅲ-2-가 문제정의(5x2) /
