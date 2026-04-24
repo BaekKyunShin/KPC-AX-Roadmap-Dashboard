@@ -234,3 +234,45 @@ describe('인증 + 라우트 접근', () => {
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 });
+
+// =============================================================================
+// cookies 어댑터 콜백 (getAll / setAll) — Supabase SSR 내부 경로 cover
+// =============================================================================
+
+describe('cookies 어댑터 (getAll / setAll) 직접 호출', () => {
+  it('createServerClient 에 전달된 cookies.getAll/setAll 을 실행해 양쪽 경로 cover', async () => {
+    setupUser(null);
+    const request = createMockRequest({
+      pathname: '/login',
+    });
+    // createServerClient 호출 시 전달된 config 를 가로챔
+    const { createServerClient } = await import('@supabase/ssr');
+    const createServerClientMock = vi.mocked(createServerClient);
+
+    await updateSession(request as never);
+
+    // updateSession 내부가 createServerClient 를 1회 호출
+    expect(createServerClientMock).toHaveBeenCalled();
+    const lastCall = createServerClientMock.mock.calls.at(-1)!;
+    const config = lastCall[2] as {
+      cookies: {
+        getAll: () => { name: string; value: string }[];
+        setAll: (
+          cookies: { name: string; value: string; options?: Record<string, unknown> }[],
+        ) => void;
+      };
+    };
+
+    // getAll 콜백 직접 실행 → request.cookies.getAll 위임 경로 cover
+    const cookies = config.cookies.getAll();
+    expect(Array.isArray(cookies)).toBe(true);
+    expect(request.cookies.getAll).toHaveBeenCalled();
+
+    // setAll 콜백 직접 실행 → request/response 양쪽 set 경로 cover
+    config.cookies.setAll([
+      { name: 'a', value: '1', options: { maxAge: 60 } },
+      { name: 'b', value: '2' },
+    ]);
+    expect(request.cookies.set).toHaveBeenCalledTimes(2);
+  });
+});
