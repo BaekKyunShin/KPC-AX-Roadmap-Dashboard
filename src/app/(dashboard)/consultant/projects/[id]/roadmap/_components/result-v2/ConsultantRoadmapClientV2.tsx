@@ -61,8 +61,7 @@ export interface ConsultantRoadmapClientV2Props {
   companyName?: string;
 }
 
-const TAB_VALUES = ['overview', 'requirements', 'training'] as const;
-type TabValue = (typeof TAB_VALUES)[number];
+type TabValue = 'overview' | 'requirements' | 'training';
 
 export function ConsultantRoadmapClientV2({
   projectId: _projectId,
