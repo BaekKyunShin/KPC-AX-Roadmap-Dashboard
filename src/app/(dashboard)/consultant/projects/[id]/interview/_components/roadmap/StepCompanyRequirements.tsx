@@ -1,100 +1,144 @@
 'use client';
 
-import { Textarea } from '@/components/ui/textarea';
-import { FormField } from '@/components/ui/form-field';
-import { GuideNote } from '@/components/ui/guide-note';
-import type { CompanyRequirements } from '@/lib/schemas/interview-roadmap';
+import { FormSection } from '@/components/forms/FormSection';
+import { LargeTextBox } from '@/components/forms/LargeTextBox';
+import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 
-interface StepCompanyRequirementsProps {
-  value: CompanyRequirements;
-  onChange: (next: CompanyRequirements) => void;
-  errors?: Partial<Record<keyof CompanyRequirements, string>>;
+import type { RoadmapV2StepProps } from './types';
+import type { RoadmapCompanyRequirements } from '@/lib/schemas/interview-roadmap';
+
+/**
+ * Ⅱ-2 기업 요구분석 — [인터뷰 입력]
+ *
+ * 양식 기준: 4행 × 3열 표 (구분 | 확인 내용 | 비고/작성 예시).
+ *  - 기업 현황
+ *  - 주요 문제
+ *  - 추진 의지
+ *  - 기대 성과
+ *
+ * 데이터 슬라이스: `RoadmapRequirements.companyRequirements.{status, problem, will, outcomes}`.
+ */
+
+type CompanyReq = RoadmapCompanyRequirements;
+
+interface RowDef {
+  key: keyof CompanyReq;
+  label: string;
+  placeholder: string;
+  example: string;
+  ariaLabel: string;
 }
 
-const FIELDS: ReadonlyArray<{
-  key: keyof CompanyRequirements;
-  label: string;
-  hint: string;
-  placeholder: string;
-}> = [
+const ROWS: ReadonlyArray<RowDef> = [
   {
-    key: 'company_status',
+    key: 'status',
     label: '기업 현황',
-    hint: '업종, 생산품, AI 도입·활용 현황, 훈련 이력 등',
-    placeholder: '예) 자동차 부품 제조업. 연 매출 200억. 생산 공정 1개 라인.\nAI 도입 없음. 2024년 디지털 전환 교육 12시간 이수.',
+    placeholder: '기업 현황을 서술하세요...',
+    example: '업종, 생산품, AI 도입·활용 현황, 훈련 이력 등',
+    ariaLabel: '기업 현황',
   },
   {
-    key: 'main_problems',
+    key: 'problem',
     label: '주요 문제',
-    hint: '현행 공정 프로세스, 설비 관리 등의 문제점 파악',
-    placeholder: '예) 월간 보고서 수작업에 2일 소요. 검사 인력별 품질 편차 발생.',
+    placeholder: '주요 문제를 서술하세요...',
+    example: '현행 공정 프로세스, 설비 관리 등의 문제점 파악',
+    ariaLabel: '주요 문제',
   },
   {
-    key: 'push_willingness',
+    key: 'will',
     label: '추진 의지',
-    hint: 'AI 도입·활용 및 훈련 실시 의지 파악',
-    placeholder: '예) 대표 직접 챔피언. 2026 상반기 내 도입 목표. 교육 예산 500만원.',
+    placeholder: '추진 의지를 서술하세요...',
+    example: 'AI 도입·활용 및 훈련 실시 의지 파악',
+    ariaLabel: '추진 의지',
   },
   {
-    key: 'expected_outcomes',
+    key: 'outcomes',
     label: '기대 성과',
-    hint: 'AI 도입·활용 훈련으로 인한 개선 목표 등',
-    placeholder: '예) 월간 보고서 작성 시간 50% 단축. 불량 탐지율 15%p 향상.',
+    placeholder: '기대 성과를 서술하세요...',
+    example: 'AI 도입·활용 훈련으로 인한 개선 목표 등',
+    ariaLabel: '기대 성과',
   },
 ];
 
-export default function StepCompanyRequirements({
+export function StepCompanyRequirements({
   value,
   onChange,
-  errors,
-}: StepCompanyRequirementsProps) {
-  const handleChange = (key: keyof CompanyRequirements, next: string) => {
-    onChange({ ...value, [key]: next });
-  };
+  readOnly = false,
+}: RoadmapV2StepProps<CompanyReq>) {
+  const v: CompanyReq = value ?? { status: '', problem: '', will: '', outcomes: '' };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Ⅱ-2. 기업 요구분석</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          기업 현황, 주요 문제, 추진 의지, 기대 성과를 정리하세요.
-        </p>
+    <FormSection
+      number="Ⅱ-2"
+      title="기업 요구분석"
+      label="[인터뷰 입력]"
+      description="기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출합니다."
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border border-border text-sm">
+          <caption className="sr-only">기업 요구분석 표</caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                className="w-[120px] border border-border bg-muted px-3 py-2 text-center font-semibold"
+              >
+                구분
+              </th>
+              <th
+                scope="col"
+                className="border border-border bg-muted px-3 py-2 text-center font-semibold"
+              >
+                확인 내용
+              </th>
+              <th
+                scope="col"
+                className="w-[240px] border border-border bg-muted px-3 py-2 text-center font-semibold"
+              >
+                비고 (작성 예시)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map((row) => (
+              <tr key={row.key}>
+                <th
+                  scope="row"
+                  className="border border-border bg-muted/30 px-3 py-2 text-center align-top font-medium"
+                >
+                  {row.label}
+                </th>
+                <td className="border border-border p-2 align-top">
+                  <LargeTextBox
+                    value={v[row.key] ?? ''}
+                    onChange={(e) =>
+                      onChange({ ...v, [row.key]: e.target.value })
+                    }
+                    placeholder={row.placeholder}
+                    disabled={readOnly}
+                    aria-label={row.ariaLabel}
+                    minHeightClassName="min-h-[96px]"
+                  />
+                </td>
+                <td className="border border-border bg-muted/10 px-3 py-2 align-top text-xs text-muted-foreground">
+                  {row.example}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      <div className="space-y-5">
-        {FIELDS.map(({ key, label, hint, placeholder }) => {
-          const errorMsg = errors?.[key];
-          const fieldId = `cr-${key}`;
-          return (
-            <FormField
-              key={key}
-              label={label}
-              htmlFor={fieldId}
-              required
-              hint={hint}
-              error={errorMsg}
-            >
-              <Textarea
-                id={fieldId}
-                rows={5}
-                value={value[key]}
-                onChange={(e) => handleChange(key, e.target.value)}
-                placeholder={placeholder}
-                aria-invalid={Boolean(errorMsg) || undefined}
-                className="break-keep"
-              />
-            </FormField>
-          );
-        })}
-      </div>
-
-      <GuideNote
-        items={[
-          '기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출',
-          '요구분석에서 우선적으로 AI도입·활용이 필요한 과업(또는 워크플로우)은 필수적으로 파악해야 함. 본 내용은 훈련대상 과업 선정의 논리적 근거가 됨',
-          '추가로 필요한 내용은 별첨의 내부환경 부분에 제시',
-        ]}
+      <ExampleAccordion
+        guide={
+          <ul className="list-disc space-y-1 pl-4">
+            <li>
+              요구분석에서 우선적으로 AI 도입·활용이 필요한 과업(또는 워크플로우)을 필수로 파악합니다.
+            </li>
+            <li>훈련대상 과업 선정의 논리적 근거가 됩니다.</li>
+            <li>추가 내용은 별첨의 내부환경 부분에 제시할 수 있습니다.</li>
+          </ul>
+        }
       />
-    </div>
+    </FormSection>
   );
 }

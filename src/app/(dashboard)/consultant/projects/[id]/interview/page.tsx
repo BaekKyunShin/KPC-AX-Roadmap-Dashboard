@@ -6,8 +6,8 @@ import {
   fetchPBLInterviewV2,
   fetchRoadmapInterviewV2,
 } from './actions';
-import { RoadmapInterviewClient } from './_components/roadmap-v2/RoadmapInterviewClient';
-import { PBLInterviewClient } from './_components/pbl-v2/PBLInterviewClient';
+import { RoadmapInterviewClient } from './_components/roadmap/RoadmapInterviewClient';
+import { PBLInterviewClient } from './_components/pbl/PBLInterviewClient';
 
 /**
  * HRD 첨부 버킷 이름 (actions.ts 의 HRD_BUCKET 과 동기화).

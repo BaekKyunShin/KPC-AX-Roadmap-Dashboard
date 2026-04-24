@@ -1,70 +1,176 @@
 'use client';
 
 /**
- * PBL 테스트 클라이언트 (ISSUE-02·03 Step E 재작성).
+ * PBL 테스트 클라이언트 (Task 2.11-e V2 포팅).
  *
- * 산인공 양식 2번 기준 PBL 인터뷰 폼을 그대로 재사용해 실제 인터뷰 화면과 **완전 동일**하게
- * 구성한다. 입력 폼은 빈 상태로 시작하며, 사용자는 PageHeader 우측의 "샘플 데이터 채우기"
- * 버튼을 눌러 `PBL_INTERVIEW_SAMPLE` fixture 를 일괄 주입할 수 있다. 제출 시 `generateTestPBL`
- * 액션이 테스트 프로젝트를 생성하고 LLM으로 PBL 보고서 초안을 만든다.
+ * 산인공 양식 2번 V2 Step 컴포넌트를 그대로 재사용해 실제 인터뷰 화면(V2)과 **동일**하게
+ * 구성한다. DB 저장 없음. 제출 시 `generateTestPBL` 액션이 LLM 결과(PBLContent)만
+ * in-memory 로 반환하며, 결과 렌더에는 완성된 `PBLResultClient` (role="CONSULTANT") 를
+ * 재사용한다 — 테스트 모드에서 onEdit/onGenerate 는 NOOP.
  */
 
-import { useState, Suspense, lazy } from 'react';
-import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Check, Loader2, Info, CheckCircle2, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { Info, FlaskConical, Wand2 } from 'lucide-react';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
-import { showErrorToast, scrollToPageTop } from '@/lib/utils';
-import {
-  PBL_INTERVIEW_STEPS,
-  PBL_REQUIRED_STEP_IDS,
-  PBL_TOTAL_STEPS,
-} from '@/lib/constants/interview-steps-pbl';
-import {
-  type PBLCourseOverview,
-  type PBLCompanyStatus,
-  type PBLTrainingEnvironment,
-  type PBLHrdNecessity,
-  type PBLPerformanceActivities,
-  type PBLProblemDefinition,
-  type PBLTargetTasks,
-  type PBLAILevelDiagnosis,
-  type PBLInterviewInput,
-} from '@/lib/schemas/interview-pbl';
+import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
+import { showErrorToast } from '@/lib/utils';
+
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
-import { generateTestPBL, cancelTestPBLGeneration, type TestPBLResult } from './actions';
+import { StepOverview } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOverview';
+import { StepCompanyIssues } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues';
+import { StepOrganization } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization';
+import { StepTrainingEnv } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv';
+import { StepCourseNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity';
+import { StepActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities';
+import {
+  StepProblems,
+  type StepProblemsValue,
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems';
+import {
+  StepTargetAndLevel,
+  type StepTargetAndLevelValue,
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTargetAndLevel';
+
+import {
+  PBLInterviewStrictSchema,
+  type PBLInterviewStrict,
+  type PBLOverview,
+  type PBLOrganization,
+} from '@/lib/schemas/interview-pbl';
+import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
+import type {
+  PBLResultEditPayload,
+  ResultPBLInterviewSnapshot,
+} from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/types';
+import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
-const StepPBLCourseOverview = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCourseOverview'),
-);
-const StepPBLCompanyStatus = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCompanyStatus'),
-);
-const StepPBLTrainingEnvironment = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTrainingEnvironment'),
-);
-const StepPBLHrdNecessity = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity'),
-);
-const StepPBLPerformanceActivities = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLPerformanceActivities'),
-);
-const StepPBLProblemDefinition = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLProblemDefinition'),
-);
-const StepPBLTargetTasks = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTargetTasks'),
-);
-const StepPBLAILevel = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLAILevel'),
-);
-const StepPBLSummary = lazy(
-  () => import('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLSummary'),
-);
+import { generateTestPBL, cancelTestPBLGeneration } from './actions';
+
+// ─── 테스트 모드 스텝 정의 (HRD PDF 업로드는 테스트 불가 → 제외, 8 스텝) ──────
+
+type StepId =
+  | 'overview'
+  | 'companyIssues'
+  | 'organization'
+  | 'trainingEnv'
+  | 'courseNecessity'
+  | 'activities'
+  | 'problems'
+  | 'targetAndLevel';
+
+const STEPS: ReadonlyArray<{
+  id: number;
+  stepId: StepId;
+  shortName: string;
+  name: string;
+}> = [
+  { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
+  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
+  { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무' },
+  { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석' },
+  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성' },
+  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
+  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위' },
+  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
+];
+
+function emptyOverview(): PBLOverview {
+  return {
+    companyName: '',
+    courseName: '',
+    ncsCode: '',
+    trainingHours: 0,
+    trainingTarget: '',
+    trainingForm: '',
+    trainingPeriod: '',
+    businessIssues: '',
+  };
+}
+
+function emptyOrganization(): PBLOrganization {
+  return { orgTree: [], mainWork: [] };
+}
+
+function emptyInitial(): Partial<PBLInterviewStrict> {
+  return {
+    ...emptyOverview(),
+    companyIssues: '',
+    organization: emptyOrganization(),
+    trainingEnv: '',
+    hrdReportPdf: null,
+    courseNecessity: '',
+    activities: [],
+    problems: [],
+    priority: { items: [], method: '' },
+    target: { name: '', code: '', scope: '', necessity: '', details: [] },
+    currentAiLevel: { level: 'BASIC', note: '' },
+    expectedAiLevel: { level: 'USER', note: '' },
+  };
+}
+
+// ─── PBLContent → PBLReportRow 어댑터 (in-memory 렌더용) ─────────────────────
+
+function toPBLReportRow(content: PBLContent): PBLReportRow {
+  return {
+    id: 'test-version',
+    project_id: 'test-mode',
+    version_number: 1,
+    status: 'DRAFT',
+    consultant_profile_snapshot: {},
+    diagnosis_summary: '',
+    pbl_content: content,
+    free_tool_validated: true,
+    time_limit_validated: true,
+    revision_prompt: null,
+    is_shared: false,
+    like_count: 0,
+    created_by: 'test-mode',
+    finalized_by: null,
+    finalized_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function toInterviewSnapshot(
+  interview: PBLInterviewStrict,
+): ResultPBLInterviewSnapshot {
+  return {
+    overview: {
+      companyName: interview.companyName,
+      courseName: interview.courseName,
+      ncsCode: interview.ncsCode ?? '',
+      trainingHours: interview.trainingHours,
+      trainingTarget: interview.trainingTarget,
+      trainingForm: interview.trainingForm,
+      trainingPeriod: interview.trainingPeriod,
+      businessIssues: interview.businessIssues,
+    },
+    analysis: {
+      companyIssues: interview.companyIssues,
+      organization: interview.organization,
+      trainingEnv: interview.trainingEnv,
+      hrdReportPdf: interview.hrdReportPdf,
+      courseNecessity: interview.courseNecessity,
+    },
+    activities: interview.activities,
+    problems: interview.problems,
+    priority: interview.priority,
+    target: interview.target,
+    currentAiLevel: interview.currentAiLevel,
+    expectedAiLevel: interview.expectedAiLevel,
+  };
+}
+
+// ─── Props ─────────────────────────────────────────────────────────────────
 
 interface UserInfo {
   id: string;
@@ -79,140 +185,41 @@ interface TestPBLClientProps {
   canAccess: boolean;
 }
 
-function StepSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-6 w-48" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-24 w-full" />
-    </div>
-  );
-}
-
-// ─── 빈 폼 초기값 헬퍼 (ISSUE-02·03 Step E) ─────────────────────────────────
-// PBL 스키마에는 createEmpty 헬퍼가 없어서 컴포넌트 안에서 직접 정의한다.
-function createEmptyCourseOverview(): PBLCourseOverview {
-  return {
-    company_name: '',
-    business_registration_no: '',
-    industry_code: '',
-    industry_main: '',
-    address: '',
-    training_address: '',
-    jurisdiction_office: '',
-    contact: { position: '', name: '', phone: '', email: '' },
-    course_name: '',
-    ncs_code: '',
-    training_hours: 0,
-    trainee_count: 0,
-    training_job: '',
-    ai_level: 'AI기초형',
-    training_goals: [],
-  };
-}
-
-function createEmptyCompanyStatus(): PBLCompanyStatus {
-  return { business_issues: '', organization: [] };
-}
-
-function createEmptyTrainingEnvironment(): PBLTrainingEnvironment {
-  return {
-    proper_training_hours: 0,
-    training_place: { types: [], location: '', special_notes: '' },
-    internal_instructor: { used: false, name: '', position: '' },
-    target_count: 0,
-    target_characteristics: { career: '', level: '' },
-    ai_infrastructure: { ai_tools: '제한적', network: '보통', pc_count: 0, etc_equipment: '' },
-    training_needs_analysis: '',
-    expectation: { as_is: '', to_be: '' },
-  };
-}
-
-function createEmptyHrdNecessity(): PBLHrdNecessity {
-  return {
-    training_history: [],
-    support_history: [],
-    recommendations: [],
-    course_development_necessity: '',
-  };
-}
-
-function createEmptyPerformanceActivities(): PBLPerformanceActivities {
-  return { performance_activities: [] };
-}
-
-function createEmptyProblemDefinition(): PBLProblemDefinition {
-  // sample fixture 와 동일하게 legacy current_issues/root_causes/gap_analysis 키 형태로 두면
-  // validateStep 의 fallback 분기와 자연스럽게 호환된다.
-  return {
-    problem_definition: { background: '', core_problem: '', scope: '', constraints: '' },
-    problem_priorities: [],
-  } as unknown as PBLProblemDefinition;
-}
-
-function createEmptyTargetTasks(): PBLTargetTasks {
-  return {
-    target_tasks: [],
-    selection_reason: '',
-    target_task_details: [],
-  };
-}
-
-function createEmptyAILevelDiagnosis(): PBLAILevelDiagnosis {
-  return {
-    current_ai_level: 'AI기초형',
-    expected_ai_level: 'AI탐구형',
-    improvement_reason: '',
-  };
+interface TestResultState {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
 }
 
 export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [data, setData] = useState<Partial<PBLInterviewStrict>>(() => emptyInitial());
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
+  const [companyName, setCompanyName] = useState('테스트 기업');
+  const [industry, setIndustry] = useState('제조/생산');
+  const [companySize, setCompanySize] = useState('small');
+
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [testResult, setTestResult] = useState<TestResultState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<TestPBLResult | null>(null);
 
-  // ISSUE-02·03 Step E: 빈 폼으로 시작. 샘플 채우기 버튼으로 일괄 주입.
-  const [courseOverview, setCourseOverview] = useState<PBLCourseOverview>(
-    () => createEmptyCourseOverview(),
-  );
-  const [companyStatus, setCompanyStatus] = useState<PBLCompanyStatus>(
-    () => createEmptyCompanyStatus(),
-  );
-  const [trainingEnvironment, setTrainingEnvironment] = useState<PBLTrainingEnvironment>(
-    () => createEmptyTrainingEnvironment(),
-  );
-  const [hrdNecessity, setHrdNecessity] = useState<PBLHrdNecessity>(
-    () => createEmptyHrdNecessity(),
-  );
-  const [performanceActivities, setPerformanceActivities] = useState<PBLPerformanceActivities>(
-    () => createEmptyPerformanceActivities(),
-  );
-  const [problemDefinition, setProblemDefinition] = useState<PBLProblemDefinition>(
-    () => createEmptyProblemDefinition(),
-  );
-  const [targetTasks, setTargetTasks] = useState<PBLTargetTasks>(
-    () => createEmptyTargetTasks(),
-  );
-  const [aiLevelDiagnosis, setAILevelDiagnosis] = useState<PBLAILevelDiagnosis>(
-    () => createEmptyAILevelDiagnosis(),
-  );
+  const currentStepDef = STEPS[currentStep - 1];
+  const isFirstStep = currentStep === 1;
+  const isLastStep = currentStep === STEPS.length;
 
-  /**
-   * 샘플 fixture(`PBL_INTERVIEW_SAMPLE`) 값을 모든 state 에 일괄 주입.
-   * 사용자가 이미 입력한 값이 있으면 confirm 으로 덮어쓰기 여부 확인.
-   */
+  const update = (patch: Partial<PBLInterviewStrict>) =>
+    setData((prev) => ({ ...prev, ...patch }));
+
+  const updateOverview = (patch: Partial<PBLOverview>) => update(patch);
+
+  // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
   const fillSample = () => {
     const hasInput =
-      courseOverview.course_name.trim() !== '' ||
-      courseOverview.company_name.trim() !== '' ||
-      companyStatus.business_issues.trim() !== '' ||
-      trainingEnvironment.training_needs_analysis.trim() !== '' ||
-      hrdNecessity.course_development_necessity.trim() !== '' ||
-      performanceActivities.performance_activities.length > 0 ||
-      targetTasks.target_task_details.length > 0 ||
-      aiLevelDiagnosis.improvement_reason.trim() !== '';
+      (data.courseName ?? '').trim() !== '' ||
+      (data.companyName ?? '').trim() !== '' ||
+      (data.companyIssues ?? '').trim() !== '' ||
+      (data.activities ?? []).length > 0 ||
+      (data.problems ?? []).length > 0;
     if (
       hasInput &&
       typeof window !== 'undefined' &&
@@ -220,146 +227,61 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
     ) {
       return;
     }
-    // readonly `as const` fixture → 깊은 복사 후 mutable 로 주입.
-    // sample 객체는 schema (current_issues / root_causes 등 legacy 키 포함) 와
-    // 100% 일치하지 않으므로 unknown 경유 캐스트로 mutable state 에 안전하게 매핑한다.
-    const sample = JSON.parse(JSON.stringify(PBL_INTERVIEW_SAMPLE)) as typeof PBL_INTERVIEW_SAMPLE;
-    setCourseOverview(sample.courseOverview as unknown as PBLCourseOverview);
-    setCompanyStatus(sample.companyStatus as unknown as PBLCompanyStatus);
-    setTrainingEnvironment(sample.trainingEnvironment as unknown as PBLTrainingEnvironment);
-    setHrdNecessity(sample.hrdNecessity as unknown as PBLHrdNecessity);
-    setPerformanceActivities({
-      performance_activities:
-        sample.performanceActivities.activities as unknown as PBLPerformanceActivities['performance_activities'],
-    });
-    setProblemDefinition(sample.problemDefinition as unknown as PBLProblemDefinition);
-    setTargetTasks(sample.targetTasks as unknown as PBLTargetTasks);
-    setAILevelDiagnosis(sample.aiLevelDiagnosis as unknown as PBLAILevelDiagnosis);
+    const sample = JSON.parse(
+      JSON.stringify(PBL_INTERVIEW_SAMPLE),
+    ) as PBLInterviewStrict;
+    setData(sample);
     setCurrentStep(1);
-    setCompletedSteps([]);
-  };
-
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return (
-          (courseOverview.course_name ?? '').trim() !== '' &&
-          (courseOverview.training_hours ?? 0) > 0 &&
-          (courseOverview.trainee_count ?? 0) > 0 &&
-          (courseOverview.training_job ?? '').trim() !== '' &&
-          (courseOverview.training_goals ?? []).length > 0
-        );
-      case 2:
-        return (
-          (companyStatus.business_issues ?? '').trim() !== '' &&
-          (companyStatus.organization ?? []).length > 0
-        );
-      case 3:
-        return (
-          (trainingEnvironment.proper_training_hours ?? 0) > 0 &&
-          (trainingEnvironment.target_count ?? 0) > 0 &&
-          (trainingEnvironment.training_needs_analysis ?? '').trim() !== '' &&
-          (trainingEnvironment.expectation?.as_is ?? '').trim() !== '' &&
-          (trainingEnvironment.expectation?.to_be ?? '').trim() !== ''
-        );
-      case 4:
-        // PBLHrdNecessity 스키마는 `course_development_necessity` OR `development_need`를 가질 수 있음
-        return (
-          ((hrdNecessity as unknown as { course_development_necessity?: string })
-            .course_development_necessity ??
-            (hrdNecessity as unknown as { development_need?: string }).development_need ??
-            '').trim() !== ''
-        );
-      case 5:
-        return performanceActivities.performance_activities.length > 0;
-      case 6:
-        return (
-          ((problemDefinition as unknown as { problem_definition?: { background?: string } })
-            .problem_definition?.background ??
-            (problemDefinition as unknown as { current_issues?: string }).current_issues ??
-            '').trim() !== ''
-        );
-      case 7:
-        return (
-          (targetTasks.target_task_details ?? []).length > 0 &&
-          (targetTasks.target_task_details ?? []).every(
-            (d) =>
-              d.task_name?.trim() !== '' &&
-              d.as_is?.trim() !== '' &&
-              d.to_be?.trim() !== '',
-          )
-        );
-      case 8:
-        return (aiLevelDiagnosis.improvement_reason ?? '').trim() !== '';
-      case 9:
-        return PBL_REQUIRED_STEP_IDS.every((s) => validateStep(s));
-      default:
-        return false;
-    }
-  };
-
-  const incompleteRequiredSteps = PBL_REQUIRED_STEP_IDS.filter((s) => !validateStep(s));
-  const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
-
-  const goToStep = (step: number) => {
-    if (step === currentStep) return;
-    if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
-      setCompletedSteps([...completedSteps, currentStep]);
-    }
-    setCurrentStep(step);
-    scrollToPageTop();
-  };
-  const goToNextStep = () => {
-    if (currentStep < PBL_TOTAL_STEPS) goToStep(currentStep + 1);
-  };
-  const goToPrevStep = () => {
-    if (currentStep > 1) goToStep(currentStep - 1);
   };
 
   const handleSubmit = async () => {
-    if (!isAllRequiredStepsValid) {
-      showErrorToast(
-        '입력 확인 필요',
-        `${incompleteRequiredSteps.length}개 필수 단계를 완료해주세요.`,
-      );
-      if (incompleteRequiredSteps[0]) setCurrentStep(incompleteRequiredSteps[0]);
+    const parsed = PBLInterviewStrictSchema.safeParse(data);
+    if (!parsed.success) {
+      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
       return;
     }
+
     setError(null);
     setIsGenerating(true);
+    setIsComplete(false);
     try {
-      const input: PBLInterviewInput = {
-        courseOverview,
-        companyStatus,
-        trainingEnvironment,
-        hrdNecessity,
-        performanceActivities,
-        problemDefinition,
-        targetTasks,
-        aiLevelDiagnosis,
-      };
-      const res = await generateTestPBL(input);
+      const res = await generateTestPBL({
+        interview: parsed.data,
+        companyName,
+        industry,
+        companySize,
+      });
       if (res.success) {
-        setResult(res.data);
+        setIsComplete(true);
+        setTimeout(() => {
+          setTestResult({
+            content: res.data.content,
+            interview: res.data.interview,
+          });
+          setIsGenerating(false);
+          setIsComplete(false);
+        }, COMPLETION_DELAY_MS);
       } else {
         setError(res.error);
         showErrorToast('PBL 생성 실패', res.error);
+        setIsGenerating(false);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'PBL 생성 중 오류가 발생했습니다.';
       setError(message);
       showErrorToast('PBL 생성 실패', message);
-    } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancelGeneration = async () => {
+    setIsGenerating(false);
+    setIsComplete(false);
     await cancelTestPBLGeneration();
   };
 
   const handleReset = () => {
-    setResult(null);
+    setTestResult(null);
     setError(null);
     setCurrentStep(1);
   };
@@ -378,90 +300,166 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
     );
   }
 
-  if (result) {
+  // ── 결과 화면 (PBLResultClient 재사용) ───────────────────────────────────
+  if (testResult) {
+    const version = toPBLReportRow(testResult.content);
+    const snapshot = toInterviewSnapshot(testResult.interview);
+
     return (
-      <div className="max-w-4xl mx-auto py-6 space-y-6">
-        <PageHeader title="PBL 테스트" />
-        <Alert className="border-emerald-200 bg-emerald-50">
-          <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-          <AlertTitle className="text-emerald-800">PBL 보고서 초안 생성 완료</AlertTitle>
-          <AlertDescription className="text-emerald-700 space-y-3">
-            <p>테스트 프로젝트에 PBL DRAFT 버전이 저장되었습니다.</p>
-            <div className="flex gap-2 flex-wrap">
-              <Link
-                href={`/consultant/projects/${result.projectId}/pbl`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700"
-              >
-                생성된 PBL 보고서 보기
-              </Link>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                다시 테스트
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
+      <div className="max-w-5xl mx-auto py-6 space-y-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex items-center justify-between">
+          <Alert className="flex-1">
+            <FlaskConical className="h-4 w-4 text-amber-600" />
+            <AlertTitle>테스트 결과 — DB 저장되지 않음</AlertTitle>
+            <AlertDescription>
+              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 PBL 보고서를 생성하려면
+              담당 프로젝트의 인터뷰 화면을 이용하세요.
+            </AlertDescription>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="ml-4"
+          >
+            처음으로
+          </Button>
+        </div>
+
+        <PBLResultClient
+          role="CONSULTANT"
+          projectId="test-mode"
+          versions={[version]}
+          selectedVersion={version}
+          interview={snapshot}
+          onSelectVersion={() => undefined}
+          /* 테스트 모드 — 인라인 편집·재생성은 NOOP. */
+          onEdit={async (_patch: PBLResultEditPayload) => undefined}
+          onGenerate={async () => {
+            showErrorToast('테스트 모드에서는 재생성이 비활성화되어 있습니다.');
+          }}
+          onDownload={async () => {
+            showErrorToast('테스트 모드에서는 다운로드가 비활성화되어 있습니다.');
+          }}
+          companyName={companyName}
+        />
       </div>
     );
   }
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return <StepPBLCourseOverview value={courseOverview} onChange={setCourseOverview} />;
-      case 2:
-        return <StepPBLCompanyStatus value={companyStatus} onChange={setCompanyStatus} />;
-      case 3:
+  // ── 인터뷰 폼 (V2 Step 컴포넌트 재사용) ─────────────────────────────────
+  function renderStep() {
+    switch (currentStepDef.stepId) {
+      case 'overview': {
+        const value: PBLOverview = {
+          companyName: data.companyName ?? '',
+          courseName: data.courseName ?? '',
+          ncsCode: data.ncsCode ?? '',
+          trainingHours: data.trainingHours ?? 0,
+          trainingTarget: data.trainingTarget ?? '',
+          trainingForm: data.trainingForm ?? '',
+          trainingPeriod: data.trainingPeriod ?? '',
+          businessIssues: data.businessIssues ?? '',
+        };
+        return <StepOverview value={value} onChange={(next) => updateOverview(next)} />;
+      }
+      case 'companyIssues':
         return (
-          <StepPBLTrainingEnvironment value={trainingEnvironment} onChange={setTrainingEnvironment} />
-        );
-      case 4:
-        return <StepPBLHrdNecessity value={hrdNecessity} onChange={setHrdNecessity} />;
-      case 5:
-        return (
-          <StepPBLPerformanceActivities
-            value={performanceActivities}
-            onChange={setPerformanceActivities}
+          <StepCompanyIssues
+            value={data.companyIssues ?? ''}
+            onChange={(next) => update({ companyIssues: next })}
           />
         );
-      case 6:
-        return <StepPBLProblemDefinition value={problemDefinition} onChange={setProblemDefinition} />;
-      case 7:
-        return <StepPBLTargetTasks value={targetTasks} onChange={setTargetTasks} />;
-      case 8:
-        return <StepPBLAILevel value={aiLevelDiagnosis} onChange={setAILevelDiagnosis} />;
-      case 9:
+      case 'organization':
         return (
-          <StepPBLSummary
-            courseOverview={courseOverview}
-            companyStatus={companyStatus}
-            trainingEnvironment={trainingEnvironment}
-            hrdNecessity={hrdNecessity}
-            performanceActivities={performanceActivities}
-            problemDefinition={problemDefinition}
-            targetTasks={targetTasks}
-            aiLevelDiagnosis={aiLevelDiagnosis}
-            onEditStep={goToStep}
-            // ISSUE-16 테스트 페이지 — STT 인사이트 컴포넌트 노출만 하고 LLM 호출은 막아둔다.
-            sttInsights={undefined}
-            onSttInsightsChange={() => {}}
-            onExtractSttInsights={async () => ({
-              success: false,
-              error: '테스트 페이지에서는 STT 추출이 비활성화되어 있습니다.',
-            })}
+          <StepOrganization
+            value={data.organization ?? emptyOrganization()}
+            onChange={(next) => update({ organization: next })}
           />
         );
+      case 'trainingEnv':
+        return (
+          <StepTrainingEnv
+            value={data.trainingEnv ?? ''}
+            onChange={(next) => update({ trainingEnv: next })}
+          />
+        );
+      case 'courseNecessity':
+        return (
+          <StepCourseNecessity
+            value={data.courseNecessity ?? ''}
+            onChange={(next) => update({ courseNecessity: next })}
+          />
+        );
+      case 'activities':
+        return (
+          <StepActivities
+            value={data.activities ?? []}
+            onChange={(next) => update({ activities: next })}
+          />
+        );
+      case 'problems': {
+        const value: StepProblemsValue = {
+          problems: data.problems ?? [],
+          priority: data.priority ?? { items: [], method: '' },
+        };
+        return (
+          <StepProblems
+            value={value}
+            onChange={(next) =>
+              update({ problems: next.problems, priority: next.priority })
+            }
+          />
+        );
+      }
+      case 'targetAndLevel': {
+        const value: StepTargetAndLevelValue = {
+          target: data.target ?? {
+            name: '',
+            code: '',
+            scope: '',
+            necessity: '',
+            details: [],
+          },
+          currentAiLevel: data.currentAiLevel ?? { level: 'BASIC', note: '' },
+          expectedAiLevel: data.expectedAiLevel ?? { level: 'USER', note: '' },
+        };
+        return (
+          <StepTargetAndLevel
+            value={value}
+            onChange={(next) =>
+              update({
+                target: next.target,
+                currentAiLevel: next.currentAiLevel,
+                expectedAiLevel: next.expectedAiLevel,
+              })
+            }
+          />
+        );
+      }
       default:
         return null;
     }
-  };
+  }
 
   return (
-    <div className="max-w-4xl mx-auto pb-24 py-6">
-      <div className="mb-6">
+    <>
+      <PageContainer>
         <PageHeader
           title="PBL 테스트"
-          description="산인공 양식 2번 기준 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
-          backLink={{ href: '/consultant/projects', label: '담당 프로젝트로 돌아가기', useBack: true }}
+          description="산인공 양식 2번 V2 기반 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
+          backLink={{
+            href: '/consultant/projects',
+            label: '담당 프로젝트로 돌아가기',
+            useBack: true,
+          }}
           actions={
             <Button
               type="button"
@@ -475,95 +473,102 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             </Button>
           }
         />
-      </div>
 
-      <Alert className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertTitle>테스트 모드 안내</AlertTitle>
-        <AlertDescription>
-          이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. 테스트를 통해 인터뷰 진행 방법을 연습하세요.
-          <strong className="block mt-2 text-amber-700">
-            입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
-          </strong>
-        </AlertDescription>
-      </Alert>
-
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>테스트 모드 안내</AlertTitle>
+          <AlertDescription>
+            이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. Ⅱ-3-가 HRD이음 PDF 첨부는
+            테스트 모드에서 지원되지 않습니다.
+            <strong className="block mt-2 text-amber-700">
+              입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
+            </strong>
+          </AlertDescription>
         </Alert>
-      )}
 
-      <div className="bg-card shadow rounded-lg p-4 mb-6">
-        <InterviewStepper
-          steps={[...PBL_INTERVIEW_STEPS]}
-          currentStep={currentStep}
-          onStepClick={goToStep}
-          completedSteps={completedSteps}
-          validateStep={validateStep}
-        />
-      </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      <div className="bg-card shadow rounded-lg p-4 sm:p-6 mb-6 min-h-[400px]">
-        <Suspense fallback={<StepSkeleton />}>{renderStepContent()}</Suspense>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border px-3 pb-3 pt-4 sm:p-4 md:relative md:z-auto md:border-0 md:p-0 md:bg-transparent">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={goToPrevStep}
-            disabled={currentStep === 1}
+        <div className="bg-muted/30 border border-border rounded-lg p-4 flex items-center gap-3 flex-wrap text-sm">
+          <FlaskConical className="h-4 w-4 text-amber-600" />
+          <strong className="text-foreground">테스트 대상 기업</strong>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className="px-2 py-1 border rounded text-sm"
+            aria-label="기업명"
+          />
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="px-2 py-1 border rounded text-sm"
+            aria-label="업종"
           >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            이전
-          </Button>
-
-          <div className="flex items-center gap-3">
-            {currentStep < PBL_TOTAL_STEPS ? (
-              <Button type="button" size="sm" onClick={goToNextStep}>
-                다음
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              <div className="flex items-center gap-3">
-                {!isAllRequiredStepsValid && (
-                  <span className="text-xs sm:text-sm text-amber-600">
-                    {incompleteRequiredSteps.length}개 필수 단계 미완료
-                  </span>
-                )}
-                {isGenerating ? (
-                  <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
-                    취소
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={isGenerating || !isAllRequiredStepsValid}
-                  data-testid="test-pbl-generate-button"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      생성 중…
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-1" />
-                      PBL 보고서 생성
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+            <option>제조/생산</option>
+            <option>IT/소프트웨어</option>
+            <option>유통/물류</option>
+            <option>금융/보험</option>
+            <option>의료/헬스케어</option>
+            <option>건설/플랜트</option>
+            <option>서비스업</option>
+            <option>교육</option>
+          </select>
+          <select
+            value={companySize}
+            onChange={(e) => setCompanySize(e.target.value)}
+            className="px-2 py-1 border rounded text-sm"
+            aria-label="규모"
+          >
+            <option value="micro">소상공인</option>
+            <option value="small">소기업</option>
+            <option value="medium">중기업</option>
+            <option value="large">중견/대기업</option>
+          </select>
         </div>
-      </div>
-    </div>
+
+        <InterviewStepper
+          steps={STEPS.map((s) => ({
+            id: s.id,
+            name: s.name,
+            shortName: s.shortName,
+          }))}
+          currentStep={currentStep}
+          onStepClick={(idx) => setCurrentStep(idx)}
+          completedSteps={[]}
+        />
+
+        <div className="min-h-[400px]">{renderStep()}</div>
+
+        <StickyFormNav
+          onPrev={!isFirstStep ? () => setCurrentStep((s) => s - 1) : undefined}
+          onNext={!isLastStep ? () => setCurrentStep((s) => s + 1) : undefined}
+          onSave={() => undefined}
+          isFirstStep={isFirstStep}
+          isLastStep={isLastStep}
+          submit={
+            isLastStep
+              ? {
+                  label: isGenerating ? '생성 중…' : 'PBL 보고서 생성',
+                  onSubmit: handleSubmit,
+                  disabled: isGenerating,
+                }
+              : undefined
+          }
+        />
+      </PageContainer>
+
+      {isGenerating && (
+        <RoadmapLoadingOverlay
+          isTestMode={true}
+          profileHref="/consultant/profile"
+          onCancel={handleCancelGeneration}
+          isCompleted={isComplete}
+        />
+      )}
+    </>
   );
 }
