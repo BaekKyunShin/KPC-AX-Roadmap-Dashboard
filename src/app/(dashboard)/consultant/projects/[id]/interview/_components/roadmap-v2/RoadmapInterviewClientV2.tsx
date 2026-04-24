@@ -1,0 +1,304 @@
+'use client';
+
+import { useCallback, useState, useTransition } from 'react';
+
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/ui/page-header';
+import { StickyFormNav } from '@/components/forms/StickyFormNav';
+import { showErrorToast, showSuccessToast } from '@/lib/utils';
+
+import {
+  saveRoadmapInterviewV2,
+  submitRoadmapInterviewV2,
+} from '../../actions';
+import type {
+  RoadmapInterviewStrict,
+  RoadmapHrdReportPdf,
+  RoadmapPerformanceActivity,
+  RoadmapCompanyRequirements,
+  RoadmapTaskAnalysisItem,
+  RoadmapTaskAnalysisAttachment,
+  RoadmapTargetTask,
+  RoadmapCompetency,
+} from '@/lib/schemas/interview-roadmap';
+
+import InterviewStepper from '../InterviewStepper';
+import { StepNecessity } from './StepNecessity';
+import { StepMainResult, type StepMainResultValue } from './StepMainResult';
+import { StepHrdReportPdf } from './StepHrdReportPdf';
+
+// ============================================================================
+// 8 스텝 정의 (PR #2 Task 2.3 — 양식 1:1 정합)
+// ----------------------------------------------------------------------------
+// id 는 양식 섹션 의미를 그대로 노출 (snake_case 단일 단어). UI 상의 표시 텍스트는
+// shortName / name 을 사용한다. shortName 은 양식 번호, name 은 절 제목.
+// ============================================================================
+
+export type RoadmapV2StepId =
+  | 'necessity'
+  | 'performance'
+  | 'mainResult'
+  | 'hrdReport'
+  | 'companyReq'
+  | 'taskAnalysis'
+  | 'targetTask'
+  | 'competencyModeling';
+
+interface StepDef {
+  /** 1-based 인덱스 (InterviewStepper 가 number 키를 요구한다) */
+  id: number;
+  stepId: RoadmapV2StepId;
+  /** 양식 번호 (모바일 진행 바 title) */
+  shortName: string;
+  /** 절 제목 (데스크톱 텍스트, 모바일 현재 단계 표기) */
+  name: string;
+  /** Strict 검증에 필수인 스텝인지 (Task 2.3-d 의 검증 로직 참조용) */
+  required: boolean;
+}
+
+export const ROADMAP_V2_STEPS: ReadonlyArray<StepDef> = [
+  { id: 1, stepId: 'necessity', shortName: 'Ⅰ-1', name: '수립 필요성', required: true },
+  { id: 2, stepId: 'performance', shortName: 'Ⅰ-2', name: '주요 활동', required: true },
+  { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과', required: true },
+  { id: 4, stepId: 'hrdReport', shortName: 'Ⅱ-1', name: 'HRD이음 PDF', required: false },
+  { id: 5, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석', required: true },
+  { id: 6, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석', required: true },
+  { id: 7, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업', required: true },
+  { id: 8, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링', required: true },
+];
+
+// ============================================================================
+// 빈 슬라이스 헬퍼 — Step 진입 시 undefined 인 슬라이스를 합리적 기본값으로 채운다.
+// ============================================================================
+
+function emptyOverviewBase(): {
+  performanceActivities: RoadmapPerformanceActivity[];
+  aiLevel: RoadmapInterviewStrict['aiLevel'];
+  selectedTask: string;
+  establishmentNecessity: string;
+} {
+  return {
+    establishmentNecessity: '',
+    performanceActivities: [],
+    aiLevel: 'BEGINNER',
+    selectedTask: '',
+  };
+}
+
+function emptyCompanyRequirements(): RoadmapCompanyRequirements {
+  return { status: '', problem: '', will: '', outcomes: '' };
+}
+
+function emptyTargetTask(): RoadmapTargetTask {
+  return { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
+}
+
+function emptyTraining(): {
+  competencies: RoadmapCompetency[];
+  ncsUsed: boolean;
+} {
+  return { competencies: [], ncsUsed: false };
+}
+
+// ============================================================================
+// Props
+// ============================================================================
+
+export interface RoadmapInterviewClientV2Props {
+  projectId: string;
+  initial: Partial<RoadmapInterviewStrict>;
+}
+
+// ============================================================================
+// 본 컴포넌트
+// ============================================================================
+
+export function RoadmapInterviewClientV2({
+  projectId,
+  initial,
+}: RoadmapInterviewClientV2Props) {
+  const [data, setData] = useState<Partial<RoadmapInterviewStrict>>(initial);
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isPending, startTransition] = useTransition();
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+
+  const currentStepDef = ROADMAP_V2_STEPS[currentStep - 1];
+  const currentStepId = currentStepDef.stepId;
+  const isFirstStep = currentStep === 1;
+  const isLastStep = currentStep === ROADMAP_V2_STEPS.length;
+
+  // ---- 슬라이스 업데이트 헬퍼 -------------------------------------------------
+  // V2 스키마는 Ⅰ(overview) · Ⅱ(requirements) · Ⅲ-1(training) 3개 슬라이스가 평탄화되어
+  // RoadmapInterviewStrict 단일 객체에 합쳐져 있다. 각 Step 은 자신의 영역만 갱신한다.
+
+  const updateOverview = useCallback(
+    (patch: Partial<{
+      establishmentNecessity: string;
+      performanceActivities: RoadmapPerformanceActivity[];
+      aiLevel: RoadmapInterviewStrict['aiLevel'];
+      selectedTask: string;
+    }>) => {
+      setData((prev) => {
+        const base = {
+          establishmentNecessity: prev.establishmentNecessity ?? '',
+          performanceActivities: prev.performanceActivities ?? [],
+          aiLevel: prev.aiLevel ?? 'BEGINNER',
+          selectedTask: prev.selectedTask ?? '',
+        };
+        return { ...prev, ...base, ...patch };
+      });
+    },
+    [],
+  );
+
+  const updateRequirements = useCallback(
+    (patch: Partial<{
+      hrdReportPdf: RoadmapHrdReportPdf | null;
+      companyRequirements: RoadmapCompanyRequirements;
+      taskAnalysis: RoadmapTaskAnalysisItem[];
+      taskAnalysisNote: string;
+      taskAnalysisAttachment: RoadmapTaskAnalysisAttachment | null | undefined;
+      targetTask: RoadmapTargetTask;
+    }>) => {
+      setData((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
+  // ---- 저장 / 제출 ----------------------------------------------------------
+
+  const handleSave = useCallback(() => {
+    setSaveState('idle');
+    startTransition(async () => {
+      const result = await saveRoadmapInterviewV2(projectId, data, { autoSave: true });
+      if (result.success) {
+        setSaveState('saved');
+        showSuccessToast('자동 저장되었습니다.');
+      } else {
+        setSaveState('error');
+        showErrorToast(result.error);
+      }
+    });
+  }, [data, projectId]);
+
+  const handleSubmit = useCallback(() => {
+    startTransition(async () => {
+      const result = await submitRoadmapInterviewV2(
+        projectId,
+        data as RoadmapInterviewStrict,
+      );
+      if (result.success) {
+        showSuccessToast('인터뷰가 제출되었습니다.');
+        // 리다이렉트는 Task 2.3-d (자동저장·제출 통합) 에서 처리
+      } else {
+        showErrorToast(result.error);
+      }
+    });
+  }, [data, projectId]);
+
+  // ---- Step 본문 렌더 -------------------------------------------------------
+
+  function renderStep() {
+    switch (currentStepId) {
+      case 'necessity':
+        return (
+          <StepNecessity
+            value={data.establishmentNecessity ?? ''}
+            onChange={(next) => updateOverview({ establishmentNecessity: next })}
+          />
+        );
+      case 'mainResult': {
+        const mainResultValue: StepMainResultValue = {
+          aiLevel: data.aiLevel ?? 'BEGINNER',
+          selectedTask: data.selectedTask ?? '',
+        };
+        return (
+          <StepMainResult
+            value={mainResultValue}
+            onChange={(next) =>
+              updateOverview({
+                aiLevel: next.aiLevel,
+                selectedTask: next.selectedTask,
+              })
+            }
+          />
+        );
+      }
+      case 'hrdReport':
+        return (
+          <StepHrdReportPdf
+            projectId={projectId}
+            value={data.hrdReportPdf ?? null}
+            onChange={(next) => updateRequirements({ hrdReportPdf: next })}
+          />
+        );
+      // Task 2.3-b / 2.3-c 가 채울 placeholder Step
+      case 'performance':
+      case 'companyReq':
+      case 'taskAnalysis':
+      case 'targetTask':
+      case 'competencyModeling':
+        return (
+          <div
+            role="status"
+            className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground"
+          >
+            이 스텝은 Task 2.3-b / 2.3-c 에서 구현됩니다.
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="AI훈련로드맵 인터뷰 (양식 1:1 정합)"
+        description="산인공 양식 Ⅰ·Ⅱ·Ⅲ-1 절을 8개 스텝으로 입력합니다."
+      />
+
+      <InterviewStepper
+        steps={ROADMAP_V2_STEPS.map((s) => ({
+          id: s.id,
+          name: s.name,
+          shortName: s.shortName,
+        }))}
+        currentStep={currentStep}
+        onStepClick={(idx) => setCurrentStep(idx)}
+        completedSteps={[]}
+      />
+
+      <div className="min-h-[400px]">{renderStep()}</div>
+
+      <StickyFormNav
+        onPrev={!isFirstStep ? () => setCurrentStep((s) => s - 1) : undefined}
+        onNext={!isLastStep ? () => setCurrentStep((s) => s + 1) : undefined}
+        onSave={handleSave}
+        isFirstStep={isFirstStep}
+        isLastStep={isLastStep}
+        isSaving={isPending}
+        saveIndicator={
+          saveState === 'saved'
+            ? '자동 저장됨'
+            : saveState === 'error'
+              ? '저장 실패'
+              : undefined
+        }
+        submit={
+          isLastStep
+            ? { label: '최종 제출', onSubmit: handleSubmit, disabled: isPending }
+            : undefined
+        }
+      />
+    </PageContainer>
+  );
+}
+
+// 빈 슬라이스 헬퍼는 Task 2.3-b/c 에서 재사용한다 (외부 노출).
+export const __testing = {
+  emptyOverviewBase,
+  emptyCompanyRequirements,
+  emptyTargetTask,
+  emptyTraining,
+};
