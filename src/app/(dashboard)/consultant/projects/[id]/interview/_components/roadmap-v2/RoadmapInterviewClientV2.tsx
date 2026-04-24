@@ -32,6 +32,11 @@ import {
   type StepTaskAnalysisValue,
 } from './StepTaskAnalysis';
 import { StepTargetTask } from './StepTargetTask';
+import { StepPerformanceActivities } from './StepPerformanceActivities';
+import {
+  StepCompetencyModeling,
+  type StepCompetencyModelingValue,
+} from './StepCompetencyModeling';
 
 // ============================================================================
 // 8 스텝 정의 (PR #2 Task 2.3 — 양식 1:1 정합)
@@ -171,6 +176,18 @@ export function RoadmapInterviewClientV2({
     [],
   );
 
+  const updateTraining = useCallback(
+    (patch: Partial<{
+      competencies: RoadmapCompetency[];
+      ncsUsed: boolean;
+      ncsMethodology: string | undefined;
+      ncsDerivationMethod: string | undefined;
+    }>) => {
+      setData((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
   // ---- 저장 / 제출 ----------------------------------------------------------
 
   const handleSave = useCallback(() => {
@@ -274,17 +291,36 @@ export function RoadmapInterviewClientV2({
             onChange={(next) => updateRequirements({ targetTask: next })}
           />
         );
-      // Task 2.3-c 가 채울 placeholder Step
       case 'performance':
-      case 'competencyModeling':
         return (
-          <div
-            role="status"
-            className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center text-sm text-muted-foreground"
-          >
-            이 스텝은 Task 2.3-c 에서 구현됩니다.
-          </div>
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) =>
+              updateOverview({ performanceActivities: next })
+            }
+          />
         );
+      case 'competencyModeling': {
+        const trainingValue: StepCompetencyModelingValue = {
+          competencies: data.competencies ?? [],
+          ncsUsed: data.ncsUsed ?? false,
+          ncsMethodology: data.ncsMethodology,
+          ncsDerivationMethod: data.ncsDerivationMethod,
+        };
+        return (
+          <StepCompetencyModeling
+            value={trainingValue}
+            onChange={(next) =>
+              updateTraining({
+                competencies: next.competencies,
+                ncsUsed: next.ncsUsed,
+                ncsMethodology: next.ncsMethodology,
+                ncsDerivationMethod: next.ncsDerivationMethod,
+              })
+            }
+          />
+        );
+      }
       default:
         return null;
     }

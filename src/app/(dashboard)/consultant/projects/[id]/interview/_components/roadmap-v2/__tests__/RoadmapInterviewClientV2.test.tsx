@@ -56,13 +56,65 @@ describe('RoadmapInterviewClientV2', () => {
     }
   });
 
-  it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2 placeholder) 으로 이동한다', () => {
+  it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2) 으로 이동하고 실제 StepPerformanceActivities 가 렌더된다', () => {
     render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByLabelText('다음 스텝'));
-    // Ⅰ-2 performance 는 아직 Task 2.3-c placeholder
+    // Ⅰ-2 performance — FormSection 헤더에 "주요 활동" h2
     expect(
-      screen.getByText(/Task 2.3-c 에서 구현됩니다/),
+      screen.getByRole('heading', { name: '주요 활동', level: 2 }),
     ).toBeInTheDocument();
+    // 기본 3차수 프리필 확인
+    expect(screen.getByText('1차')).toBeInTheDocument();
+    expect(screen.getByText('2차')).toBeInTheDocument();
+    expect(screen.getByText('3차')).toBeInTheDocument();
+    // placeholder 문구는 사라져야 함
+    expect(screen.queryByText(/Task 2.3-c 에서 구현됩니다/)).toBeNull();
+  });
+
+  it('Ⅲ-1 competencyModeling 스텝 진입 시 실제 StepCompetencyModeling 이 렌더된다', () => {
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('역량 모델링'));
+    expect(
+      screen.getByRole('heading', { name: '역량 모델링', level: 2 }),
+    ).toBeInTheDocument();
+    // 기본 4행 확인
+    expect(screen.getByLabelText('역량명 4')).toBeInTheDocument();
+    // 기본 ncsUsed=false → 역량별 도출 방법 박스
+    expect(screen.getByLabelText('역량별 도출 방법')).toBeInTheDocument();
+    // placeholder 문구는 사라져야 함
+    expect(screen.queryByText(/Task 2.3-c 에서 구현됩니다/)).toBeNull();
+  });
+
+  it('Ⅰ-2 performanceActivities 편집 시 저장 Action 호출에 performanceActivities patch 가 포함된다', async () => {
+    saveRoadmapInterviewV2.mockResolvedValue({ success: true });
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('주요 활동'));
+    fireEvent.change(screen.getByLabelText('1차 PM 성명'), {
+      target: { value: '홍길동' },
+    });
+    fireEvent.click(screen.getByLabelText('수동 저장'));
+    await waitFor(() =>
+      expect(saveRoadmapInterviewV2).toHaveBeenCalledTimes(1),
+    );
+    const call = saveRoadmapInterviewV2.mock.calls[0][1];
+    expect(call.performanceActivities).toBeDefined();
+    expect(call.performanceActivities[0].pmName).toBe('홍길동');
+  });
+
+  it('Ⅲ-1 역량 편집 시 저장 Action 호출에 competencies patch 가 포함된다', async () => {
+    saveRoadmapInterviewV2.mockResolvedValue({ success: true });
+    render(<RoadmapInterviewClientV2 projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('역량 모델링'));
+    fireEvent.change(screen.getByLabelText('역량명 1'), {
+      target: { value: 'AI 리터러시' },
+    });
+    fireEvent.click(screen.getByLabelText('수동 저장'));
+    await waitFor(() =>
+      expect(saveRoadmapInterviewV2).toHaveBeenCalledTimes(1),
+    );
+    const call = saveRoadmapInterviewV2.mock.calls[0][1];
+    expect(call.competencies).toBeDefined();
+    expect(call.competencies[0].name).toBe('AI 리터러시');
   });
 
   it('Ⅱ-2 companyReq 스텝 진입 시 실제 StepCompanyRequirements 가 렌더된다', () => {
