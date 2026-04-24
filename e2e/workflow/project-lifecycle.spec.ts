@@ -175,9 +175,10 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   });
 
   // ─── 4단계: 인터뷰 입력 (ASSIGNED → INTERVIEWED) ──────────────────────────
-  // OFA-06.5 이후 로드맵 인터뷰가 산인공 양식 6스텝으로 전면 재설계됨.
-  // 6-스텝 전체 진행은 기본 30초 timeout을 넘으므로 120초로 연장.
-  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 6-스텝)', async ({ consultantPage: page }) => {
+  // V2 재설계 이후 로드맵 인터뷰는 산인공 양식 8스텝 (Ⅰ-1~3, Ⅱ-1~4, Ⅲ-1).
+  // Ⅱ-1 HRD이음 PDF 는 optional 이라 업로드 없이 "다음" 으로 건너뛴다.
+  // 전체 진행은 기본 30초 timeout을 넘으므로 120초로 연장.
+  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 8-스텝 V2)', async ({ consultantPage: page }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
     test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 인터뷰 입력 불가');
     test.setTimeout(120_000);
@@ -200,93 +201,108 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, { timeout: 10_000 });
     await page.waitForLoadState('networkidle');
 
-    // Batch 1 (ISSUE-04) 이후 로드맵 트랙 인터뷰는 산인공 양식 기반 7스텝:
-    // 1) 개요 2) 기본 정보·참석자 3) 기업 요구분석 4) 과업·워크플로우 분석
-    // 5) 훈련대상 과업 선정 6) 역량 모델링(Ⅲ-1 신규) 7) 확인·제출
+    const nextButton = () => page.getByRole('button', { name: /^다음/ });
 
-    // ── 스텝 1: 개요 (수립 필요성·선정 과업 + AI 역량 수준 radio) ──
-    //   Batch 1 이후 "수립 주요내용" 입력란은 제거되고 LLM 자동생성 배지로 교체됨
-    await expect(page.getByRole('heading', { name: /개요/ }).first()).toBeVisible({ timeout: 10_000 });
-    await page.getByLabel(/수립 필요성/).fill('E2E 테스트 수립 필요성 — AI 도입 필요');
-    await page.getByLabel(/선정 과업/).fill('E2E 테스트 과업 — 품질검사');
-    // 수립 주요내용은 로드맵 생성 시 LLM 이 자동 생성 — "자동 생성 안내" 배지 노출 확인
+    // ── 스텝 1: Ⅰ-1 수립 필요성 (LargeTextBox 단일 필드) ──
     await expect(
-      page.getByRole('note', { name: /수립 주요내용 자동 생성/ }),
-    ).toBeVisible();
-    // AI 역량 수준은 기본값(초급) 체크됨
-    await page.getByRole('button', { name: '다음' }).click();
+      page.getByRole('heading', { name: /수립 필요성/ }).first(),
+    ).toBeVisible({ timeout: 10_000 });
+    await page
+      .getByLabel(/^수립 필요성$/)
+      .first()
+      .fill('E2E 테스트 수립 필요성 — AI 도입 필요');
+    await nextButton().click();
 
-    // ── 스텝 2: 기본 정보 · 참석자 (heading은 "Ⅰ-2. 주요 활동" — stepper label과 다름) ──
-    await expect(page.getByRole('heading', { name: /주요 활동/ }).first()).toBeVisible({ timeout: 5_000 });
-    // 수행 차수 Select — 옵션 가시성 대기 후 선택
-    await page.locator('#basic-round').click();
-    await expect(page.getByRole('option').first()).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('option').first().click();
-    // 수행 방법 Select — 옵션 가시성 대기 후 선택
-    await page.locator('#basic-method').click();
-    await expect(page.getByRole('option').first()).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('option').first().click();
-    // ISSUE-10 (Step C-2): 수행 시간이 시작/종료 두 input 으로 분리됨
-    await page.locator('#basic-start-time').fill('09:00');
-    await page.locator('#basic-end-time').fill('11:00');
-    // 참석자 1명 입력
-    await page.getByRole('textbox', { name: /참석자 1 성명/ }).fill('E2E 참석자');
-    await page.getByRole('textbox', { name: /참석자 1 소속/ }).fill('팀장');
-    await page.getByRole('button', { name: '다음' }).click();
+    // ── 스텝 2: Ⅰ-2 주요 활동 — 기본 3차수 프리필. 최소 1차수 내용만 채워 다음으로 진행 ──
+    await expect(
+      page.getByRole('heading', { name: /주요 활동/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    // 차수별 표: 각 행에 "1차 수행 일시·내용 + PM 성명·내부전문가 성명" 필드가 노출된다.
+    // 최소 1차수만 내용을 채워도 Strict 검증이 통과하므로 1차 필수 필드만 입력한다.
+    await page.getByLabel('1차 수행 일시').fill('26.04.24\n09:00~11:00');
+    await page.getByLabel('1차 수행 내용').fill('E2E 1차 인터뷰 기초 요구 수집');
+    await page.getByLabel('1차 PM 성명').fill('E2E PM');
+    await page.getByLabel('1차 내부전문가 성명').fill('E2E 전문가');
+    await nextButton().click();
 
-    // ── 스텝 3: 기업 요구분석 (기업 현황·주요 문제·추진 의지·기대 성과) ──
-    await expect(page.getByRole('heading', { name: /기업 요구분석/ }).first()).toBeVisible({ timeout: 5_000 });
+    // ── 스텝 3: Ⅰ-3 수립 주요 결과 (AI 역량 수준 기본값 + 선정 과업) ──
+    await expect(
+      page.getByRole('heading', { name: /수립 주요 결과/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel('선정 과업').fill('E2E 테스트 과업 — 품질검사');
+    await nextButton().click();
+
+    // ── 스텝 4: Ⅱ-1 HRD이음 PDF (optional, 업로드 생략 후 넘어감) ──
+    await expect(
+      page.getByRole('heading', { name: /HRD이음/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    await nextButton().click();
+
+    // ── 스텝 5: Ⅱ-2 기업 요구분석 (기업 현황·주요 문제·추진 의지·기대 성과) ──
+    await expect(
+      page.getByRole('heading', { name: /기업 요구분석/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
     await page.getByLabel('기업 현황').fill('E2E 기업 현황: 제조업 중소기업');
     await page.getByLabel('주요 문제').fill('E2E 주요 문제: 수기 보고 과다');
     await page.getByLabel('추진 의지').fill('E2E 추진 의지: 대표 챔피언');
     await page.getByLabel('기대 성과').fill('E2E 기대 성과: 시간 단축 50%');
-    await page.getByRole('button', { name: '다음' }).click();
+    await nextButton().click();
 
-    // ── 스텝 4: 과업·워크플로우 분석 (직무·과업·As-Is·문제점·데이터 시점 + AI도입 필요도) ──
-    await expect(page.getByRole('heading', { name: /과업.*분석/ }).first()).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel(/^직무\*?$/).first().fill('생산');
-    await page.getByLabel(/^과업\(Task\)\*?$/).first().fill('외관 검사');
-    await page.getByLabel(/현행 방식.*As-Is/).first().fill('검사원 2명이 수작업 검사');
-    await page.getByLabel(/^문제점\*?$/).first().fill('품질 편차 발생');
-    // 데이터 발생 시점 — 필수 필드이며 기본값이 없어 누락 시 유효성 검증 차단
-    await page.getByLabel(/데이터 발생 시점/).first().fill('검사 이미지 DB, 불량 판정 로그');
-    // AI도입·활용 필요도 radio 중 3점 선택 — label 기반 클릭이 wrapping generic의
-    // pointer 인터셉트를 우회해 더 안정적 (radio 자체는 label 속에 있음).
+    // ── 스텝 6: Ⅱ-3 과업·워크플로우 분석 (동적 행, 최소 1행 채움) ──
+    await expect(
+      page.getByRole('heading', { name: /과업.*워크플로우 분석/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    // 기본 첫 행이 프리필되지 않을 수 있어 "행 추가" 를 눌러 1행 확보
+    const addRowBtn = page.getByRole('button', { name: '행 추가' });
+    if (await addRowBtn.isVisible().catch(() => false)) {
+      const firstJobField = page.getByLabel('직무 1');
+      if (!(await firstJobField.isVisible().catch(() => false))) {
+        await addRowBtn.click();
+      }
+    }
+    await page.getByLabel('직무 1').fill('생산');
+    await page.getByLabel('과업 1').fill('외관 검사');
+    await page.getByLabel('현행 방식 1').fill('검사원 2명이 수작업 검사');
+    await page.getByLabel('문제점 1').fill('품질 편차 발생');
+    await page.getByLabel('데이터 발생 시점 1').fill('검사 이미지 DB, 불량 판정 로그');
+    await nextButton().click();
+
+    // ── 스텝 7: Ⅱ-4 훈련대상 과업 선정 ──
+    await expect(
+      page.getByRole('heading', { name: /훈련대상 과업/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel('훈련대상 과업').fill('외관 검사 자동화');
+    await page.getByLabel('선정 사유').fill('AI 도입 ROI 높음');
+    await page.getByLabel('기대 효과 현행').fill('수작업 검사');
     await page
-      .getByRole('radiogroup', { name: 'AI도입·활용 필요도' })
-      .first()
-      .getByRole('radio', { name: /^3/ })
-      .click({ force: true });
-    await page.getByRole('button', { name: '다음' }).click();
+      .getByLabel('기대 효과 개선')
+      .fill('AI 비전 검사 + 작업자 최종 확인');
+    await nextButton().click();
 
-    // ── 스텝 5: 훈련대상 과업 선정 ──
-    await expect(page.getByRole('heading', { name: /훈련대상|훈련 대상/ }).first()).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel(/훈련대상 과업/).first().fill('외관 검사 자동화');
-    await page.getByLabel(/선정사유/).first().fill('AI 도입 ROI 높음');
-    await page.getByLabel(/현행.*As-Is/).first().fill('수작업 검사');
-    await page.getByLabel(/개선.*To-Be/).first().fill('AI 비전 검사 + 작업자 최종 확인');
-    await page.getByRole('button', { name: '다음' }).click();
+    // ── 스텝 8: Ⅲ-1 역량 모델링 (4행 프리필, 첫 행만 채움) + NCS 미활용 → 도출 방법 ──
+    await expect(
+      page.getByRole('heading', { name: /역량 모델링/ }).first(),
+    ).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel('역량명 1').fill('외관 검사 데이터 해석 역량');
+    await page
+      .getByLabel('역량 정의 1')
+      .fill('검사 이미지에서 불량 패턴을 식별·분류할 수 있다');
+    await page.getByLabel('지식 1').fill('이미지 분류 기초, QMS 지표 체계');
+    await page.getByLabel('기술 1').fill('이미지 레이블링, 시각화 도구');
+    await page.getByLabel('태도 1').fill('데이터 기반 의사결정 선호');
+    // NCS 미활용 기본 → "역량별 도출 방법" textarea 필수
+    await page
+      .getByLabel('역량별 도출 방법')
+      .fill('3개 현장 인터뷰 + 업계 벤치마킹');
 
-    // ── 스텝 6: 역량 모델링 (Batch 1 Ⅲ-1 신규) ──
-    await expect(page.getByRole('heading', { name: /역량 모델링/ }).first()).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel(/역량명/).first().fill('외관 검사 데이터 해석 역량');
-    await page.getByLabel(/역량 정의/).first().fill('검사 이미지에서 불량 패턴을 식별·분류할 수 있다');
-    await page.getByLabel(/필요 지식/).first().fill('이미지 분류 기초, QMS 지표 체계');
-    await page.getByLabel(/필요 기술/).first().fill('이미지 레이블링, 시각화 도구');
-    await page.getByLabel(/필요 태도/).first().fill('데이터 기반 의사결정 선호');
-    // NCS 활용 여부 — 기본값 false (아니오) → 도출 방법 필수
-    await page.getByLabel(/역량 도출 방법/).fill('3개 현장 인터뷰 + 업계 벤치마킹');
-    await page.getByRole('button', { name: '다음' }).click();
+    // V2 StickyFormNav — 마지막 스텝에서 "최종 제출" 버튼이 노출된다.
+    const submitButton = page.getByRole('button', { name: /최종 제출/ });
+    await expect(submitButton).toBeVisible({ timeout: 5_000 });
+    await expect(submitButton).toBeEnabled({ timeout: 10_000 });
+    await submitButton.click();
 
-    // ── 스텝 7: 확인·제출 ──
-    await expect(page.getByRole('heading', { name: /확인.*제출/ }).first()).toBeVisible({ timeout: 5_000 });
-    const saveButton = page.getByRole('button', { name: /^저장$/ });
-    await expect(saveButton).toBeVisible({ timeout: 5_000 });
-    await expect(saveButton).toBeEnabled({ timeout: 10_000 });
-    await saveButton.click();
-
-    // 성공 토스트 확인
-    await expectToast(page, '인터뷰가 성공적으로 저장되었습니다');
+    // 성공 토스트 (V2 는 "인터뷰가 제출되었습니다")
+    await expectToast(page, '인터뷰가 제출되었습니다');
   });
 
   // ─── 5단계: 로드맵 생성 (INTERVIEWED → ROADMAP_DRAFTED) ───────────────────

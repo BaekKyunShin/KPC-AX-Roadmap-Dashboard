@@ -13,6 +13,7 @@ import { useState } from 'react';
 
 import {
   cancelRoadmapGeneration,
+  confirmFinalRoadmapV2,
   createRoadmapV2,
   editRoadmapV2,
   exportRoadmapHwpxV2,
@@ -112,6 +113,19 @@ export default function RoadmapResultPageClient({
     await refreshPageData(selectedVersion.id);
   }
 
+  async function handleFinalize(versionId: string) {
+    const result = await confirmFinalRoadmapV2(versionId);
+    if (!result.success) {
+      showErrorToast(
+        '최종 확정 실패',
+        result.error || '로드맵 최종 확정에 실패했습니다.',
+      );
+      return;
+    }
+    showSuccessToast('로드맵이 최종 확정되었습니다.');
+    await refreshPageData(versionId);
+  }
+
   async function handleDownload(type: DownloadType) {
     if (!selectedVersion) return;
     if (type === 'PDF') {
@@ -137,6 +151,7 @@ export default function RoadmapResultPageClient({
       onSelectVersion={handleSelectVersion}
       onEdit={handleEdit}
       onGenerate={handleGenerate}
+      onFinalize={handleFinalize}
       onDownload={handleDownload}
       isGenerating={isGenerating}
       isGenerationComplete={isGenerationComplete}
