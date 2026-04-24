@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { LargeTextBox } from './LargeTextBox';
+import { LargeTextBox } from '../LargeTextBox';
 
 describe('LargeTextBox', () => {
   it('value prop 을 textarea 에 반영한다', () => {

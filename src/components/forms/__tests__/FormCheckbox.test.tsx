@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { FormCheckbox } from './FormCheckbox';
+import { FormCheckbox } from '../FormCheckbox';
 
 type TestValue = 'A' | 'B' | 'C';
 

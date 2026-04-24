@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ExampleAccordion } from './ExampleAccordion';
+import { ExampleAccordion } from '../ExampleAccordion';
 
 describe('ExampleAccordion', () => {
   it('example prop 이 있으면 예시 trigger 를 표시한다', () => {

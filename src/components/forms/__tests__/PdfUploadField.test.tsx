@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { PdfUploadField } from './PdfUploadField';
+import { PdfUploadField } from '../PdfUploadField';
 
 describe('PdfUploadField', () => {
   it('file 이 null 이면 업로드 안내 영역을 표시한다', () => {

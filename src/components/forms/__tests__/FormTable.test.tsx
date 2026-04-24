@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FormTable } from './FormTable';
+import { FormTable } from '../FormTable';
 
 describe('FormTable', () => {
   it('headerRows 가 없으면 thead 가 렌더되지 않는다', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FormSection } from './FormSection';
+import { FormSection } from '../FormSection';
 
 describe('FormSection', () => {
   it('number 와 title 을 렌더한다', () => {
