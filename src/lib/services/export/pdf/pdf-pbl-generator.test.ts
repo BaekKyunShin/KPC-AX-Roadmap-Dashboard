@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PBLExportData } from './pdf-pbl-generator';
+import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 
 // ── jspdf / jspdf-autotable dynamic import mock ───────────────────────────
 // generatePBLPDF 내부에서 `await import('jspdf')` / `await import('jspdf-autotable')` 를
@@ -120,6 +121,7 @@ function baseExportData(): PBLExportData {
           },
         },
       },
+      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
   };
 }

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 import { TabPBLOps } from '../TabPBLOps';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 
 function makeEmptyVersion(): PBLReportRow {
   return {
@@ -52,6 +53,7 @@ function makeEmptyVersion(): PBLReportRow {
           },
         },
       },
+      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
     free_tool_validated: true,
     time_limit_validated: true,

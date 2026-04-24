@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { buildPBLHwpxPayload } from './hwpx-payload-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
+import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { Interview, Project } from '@/types/database';
 
 function makeProject(): Project {
@@ -79,6 +80,7 @@ function makePBL(overrides?: Partial<PBLReportRow>): PBLReportRow {
         },
       },
     },
+    outcome_analysis: createEmptyOutcomeAnalysis(),
   };
 
   return {

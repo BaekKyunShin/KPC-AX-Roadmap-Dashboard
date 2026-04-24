@@ -146,6 +146,7 @@ vi.mock('@/components/pbl/PBLTrainingTargets', () => ({
 
 import OpsPBLClient from './OpsPBLClient';
 import type { PBLReportRow } from '@/lib/services/pbl';
+import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 
 // =============================================================================
 // 헬퍼
@@ -166,6 +167,7 @@ function makePBLRow(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
         training_plan: {} as PBLReportRow['pbl_content']['operation_plan']['training_plan'],
         evaluation_plan: {} as PBLReportRow['pbl_content']['operation_plan']['evaluation_plan'],
       },
+      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
     free_tool_validated: false,
     time_limit_validated: false,

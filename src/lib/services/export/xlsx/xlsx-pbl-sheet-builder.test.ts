@@ -12,6 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WorkSheet } from 'xlsx-js-style';
 import type { PBLOperationPlan, PBLContent } from '../../pbl/pbl-types';
+import { createEmptyOutcomeAnalysis } from '../../pbl/__fixtures__/empty-outcome-analysis';
 import {
   buildPBLOverviewSheet,
   buildPBLOperationSheet,
@@ -683,6 +684,7 @@ describe('generatePBLXLSX', () => {
   ): PBLXLSXInput {
     const pblContent: PBLContent = {
       operation_plan: makeOperationPlan(),
+      outcome_analysis: createEmptyOutcomeAnalysis(),
     };
     return {
       ...makeOverviewInput(),
@@ -732,7 +734,7 @@ describe('generatePBLXLSX', () => {
     });
     const result = await generatePBLXLSX(
       makePBLXLSXInput({
-        pblContent: { operation_plan: emptyPlan },
+        pblContent: { operation_plan: emptyPlan, outcome_analysis: createEmptyOutcomeAnalysis() },
       }),
     );
     expect(result).toBeInstanceOf(Uint8Array);

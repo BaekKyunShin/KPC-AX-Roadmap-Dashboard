@@ -16,6 +16,7 @@ vi.mock('next/navigation', () => ({
 
 import { ConsultantPBLClientV2 } from '../ConsultantPBLClientV2';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { ResultPBLInterviewSnapshot } from '../types';
 
 const baseInterview: Partial<ResultPBLInterviewSnapshot> = {
@@ -91,6 +92,7 @@ function makeVersion(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
           },
         },
       },
+      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
     free_tool_validated: true,
     time_limit_validated: true,
