@@ -269,11 +269,44 @@ export function RoadmapInterviewClient({
   }, []);
 
   const handleSubmit = useCallback(() => {
-    // 1) 빈 역량 행 drop — StepCompetencyModeling 에서 기본 4행 프리필되는데,
-    //    사용자가 채우지 않은 행은 strict 검증에서 name.min(1) 실패를 유발한다.
-    //    제출 직전에만 필터링해 실제 제출 payload 에서 제외한다 (편집 중 상태는 유지).
+    // 제출 직전 cleanup — 편집 중 빈 행/슬롯을 strict 검증에 영향 없도록 정리한다.
+    //   ① competencies: 기본 4행 프리필되므로 비어 있는 행 제거 (name.min(1) 실패 방지)
+    //   ② performanceActivities: 차수별 기본 3행 프리필 — 1·2·3 차 모두 빈 string 으로
+    //      들어가도 round.min(1) 외 string 필드들은 통과(스키마가 min(1) 강제하지 않음).
+    //      그래도 의미 없는 행을 DB 로 보내는 건 부적절하므로 모든 텍스트 필드가 비어
+    //      있는 행은 drop 한다.
+    //   ③ taskAnalysis: 사용자가 빈 행을 남겨두면 row-level 필드가 empty 로 fail 한다.
+    //      모든 텍스트 필드가 비어 있는 행은 drop 한다 (aiScore 기본값 3 만 남는 경우).
+    //   ④ hrdReportPdf: optional Step 이라 미입력 시 키 자체가 객체에 없을 수 있다.
+    //      스키마는 `.nullable()` 만 허용 → undefined 면 "Required" 토스트 발생.
+    //      초기에 키가 없으면 null 로 명시 주입해 검증을 통과시킨다.
     const cleanedData: Partial<RoadmapInterviewStrict> = {
       ...data,
+      hrdReportPdf: data.hrdReportPdf ?? null,
+      ...(data.performanceActivities
+        ? {
+            performanceActivities: data.performanceActivities.filter(
+              (a) =>
+                (a.date?.trim() ?? '') !== '' ||
+                (a.timeRange?.trim() ?? '') !== '' ||
+                (a.content?.trim() ?? '') !== '' ||
+                (a.pmName?.trim() ?? '') !== '' ||
+                (a.expertName?.trim() ?? '') !== '',
+            ),
+          }
+        : {}),
+      ...(data.taskAnalysis
+        ? {
+            taskAnalysis: data.taskAnalysis.filter(
+              (t) =>
+                (t.domain?.trim() ?? '') !== '' ||
+                (t.task?.trim() ?? '') !== '' ||
+                (t.asIs?.trim() ?? '') !== '' ||
+                (t.problem?.trim() ?? '') !== '' ||
+                (t.dataTiming?.trim() ?? '') !== '',
+            ),
+          }
+        : {}),
       ...(data.competencies
         ? {
             competencies: data.competencies.filter(
