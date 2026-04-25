@@ -24,6 +24,13 @@ import {
   createEmptyTrainingHistoryItem,
   createEmptySupportHistoryItem,
   createEmptyRecommendation,
+  // PR #2 Task 2.2 — 양식 1:1 정합 신규 스키마 (camelCase)
+  PBL_AI_LEVEL_ENUM,
+  PBLOverviewSchema,
+  PBLAnalysisSchema,
+  PBLTasksSchema,
+  PBLInterviewSchema,
+  PBLInterviewStrictSchema,
 } from './interview-pbl';
 
 describe('interview-pbl enum constants (양식 한글 그대로)', () => {
@@ -433,5 +440,468 @@ describe('빈 항목 생성 헬퍼', () => {
     expect(createEmptyTrainingHistoryItem().duration_days).toBe(0);
     expect(createEmptySupportHistoryItem().annual_limit).toBe(0);
     expect(createEmptyRecommendation().rank).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
+// PR #2 Task 2.2 — 양식 1:1 정합 신규 스키마 (camelCase)
+// ----------------------------------------------------------------------------
+// 기준 문서: docs/references/2026-04-23-current-fields-inventory.md (양식 2, Ⅰ·Ⅱ·Ⅲ)
+// - PBLOverviewSchema    — Ⅰ 훈련과정 개요 ([인터뷰])
+// - PBLAnalysisSchema    — Ⅱ 훈련 요구 분석 ([인터뷰] + [PDF 첨부])
+// - PBLTasksSchema       — Ⅲ AI기반 훈련과제 도출 ([인터뷰])
+// - PBLInterviewSchema   — 위 3개 merge (strict), `.partial()` 호출로 loose 생성
+// - PBLInterviewStrictSchema — superRefine 조건부 검증 포함
+// ============================================================================
+
+describe('PBL_AI_LEVEL_ENUM', () => {
+  it('4등급(BASIC|EXPLORER|USER|LEADER) 만 허용', () => {
+    expect(PBL_AI_LEVEL_ENUM.safeParse('BASIC').success).toBe(true);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('EXPLORER').success).toBe(true);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('USER').success).toBe(true);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('LEADER').success).toBe(true);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('EXPERT').success).toBe(false);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('').success).toBe(false);
+    expect(PBL_AI_LEVEL_ENUM.safeParse('AI기초형').success).toBe(false);
+  });
+});
+
+describe('PBLOverviewSchema (Ⅰ 훈련과정 개요)', () => {
+  const validOverview = {
+    companyName: '㈜테스트',
+    courseName: 'AI 기반 품질관리 과정',
+    ncsCode: '200107 인공지능',
+    trainingHours: 40,
+    trainingTarget: '품질관리 담당 5명',
+    trainingForm: '체계적 현장훈련(S-OJT)',
+    trainingPeriod: '2026.05.01 ~ 2026.06.30',
+    businessIssues: 'AI 기반 품질 자동화가 필요한 이슈 요약.',
+  };
+
+  it('유효한 Ⅰ 훈련과정 개요 구조는 통과', () => {
+    expect(PBLOverviewSchema.safeParse(validOverview).success).toBe(true);
+  });
+
+  it('ncsCode 는 선택 — 생략해도 통과', () => {
+    const { ncsCode: _, ...withoutNcs } = validOverview;
+    expect(PBLOverviewSchema.safeParse(withoutNcs).success).toBe(true);
+  });
+
+  it('trainingHours 는 양의 정수만 허용 (0·음수·소수 거부)', () => {
+    expect(
+      PBLOverviewSchema.safeParse({ ...validOverview, trainingHours: 0 }).success,
+    ).toBe(false);
+    expect(
+      PBLOverviewSchema.safeParse({ ...validOverview, trainingHours: -1 }).success,
+    ).toBe(false);
+    expect(
+      PBLOverviewSchema.safeParse({ ...validOverview, trainingHours: 1 }).success,
+    ).toBe(true);
+  });
+
+  it('trainingHours 는 제약별 특화 에러 메시지 반환', () => {
+    // 소수 → "정수여야" 메시지
+    const decimalRes = PBLOverviewSchema.safeParse({ ...validOverview, trainingHours: 3.5 });
+    expect(decimalRes.success).toBe(false);
+    if (!decimalRes.success) {
+      const messages = decimalRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('정수');
+    }
+    // 0 → "1 이상" (positive) 메시지
+    const zeroRes = PBLOverviewSchema.safeParse({ ...validOverview, trainingHours: 0 });
+    expect(zeroRes.success).toBe(false);
+    if (!zeroRes.success) {
+      const messages = zeroRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('1 이상');
+    }
+    // 문자열 → "숫자여야" 메시지
+    const strRes = PBLOverviewSchema.safeParse({
+      ...validOverview,
+      trainingHours: 'forty' as unknown as number,
+    });
+    expect(strRes.success).toBe(false);
+    if (!strRes.success) {
+      const messages = strRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('숫자');
+    }
+  });
+
+  it('companyName·courseName·trainingTarget·trainingForm·trainingPeriod·businessIssues 는 필수', () => {
+    for (const key of [
+      'companyName',
+      'courseName',
+      'trainingTarget',
+      'trainingForm',
+      'trainingPeriod',
+      'businessIssues',
+    ] as const) {
+      const invalid = { ...validOverview, [key]: '' };
+      expect(PBLOverviewSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+});
+
+describe('PBLAnalysisSchema (Ⅱ 훈련 요구 분석)', () => {
+  const validAnalysis = {
+    companyIssues: '- 불량률 증가\n- 납기 지연',
+    organization: {
+      orgTree: [
+        {
+          id: 'n1',
+          name: '생산본부',
+          children: [
+            { id: 'n2', name: '생산팀', children: [] },
+            { id: 'n3', name: '품질팀', children: [] },
+          ],
+        },
+      ],
+      mainWork: [
+        { dept: '생산팀', role: '공정관리', description: '라인 공정 운영' },
+        { dept: '품질팀', role: '검사', description: '완제품 품질 검사' },
+      ],
+    },
+    trainingEnv:
+      '훈련여건 24h, 사내 교육장 보유, 사내 강사 없음. 대상 15명 경력 5년 이상.',
+    hrdReportPdf: {
+      fileName: 'HRD이음_진단보고서.pdf',
+      url: 'interview-attachments/project-1/hrd.pdf',
+      size: 204800,
+    },
+    courseNecessity: 'AI 기반 자동 판정으로 품질 편차 개선 필요.',
+  };
+
+  it('유효한 Ⅱ 요구분석 구조는 통과', () => {
+    expect(PBLAnalysisSchema.safeParse(validAnalysis).success).toBe(true);
+  });
+
+  it('hrdReportPdf 는 null 허용 (미첨부, Ⅱ-3-가)', () => {
+    expect(
+      PBLAnalysisSchema.safeParse({ ...validAnalysis, hrdReportPdf: null }).success,
+    ).toBe(true);
+  });
+
+  it('organization.orgTree 중첩(재귀) 구조 파싱', () => {
+    const deepTree = {
+      ...validAnalysis,
+      organization: {
+        orgTree: [
+          {
+            id: 'root',
+            name: '회사',
+            children: [
+              {
+                id: 'l1',
+                name: '본부',
+                children: [
+                  {
+                    id: 'l2',
+                    name: '팀',
+                    children: [{ id: 'l3', name: '파트', children: [] }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        mainWork: validAnalysis.organization.mainWork,
+      },
+    };
+    expect(PBLAnalysisSchema.safeParse(deepTree).success).toBe(true);
+  });
+
+  it('organization.orgTree 노드 name 은 필수', () => {
+    const invalid = {
+      ...validAnalysis,
+      organization: {
+        orgTree: [{ id: 'n1', name: '', children: [] }],
+        mainWork: validAnalysis.organization.mainWork,
+      },
+    };
+    expect(PBLAnalysisSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('mainWork 는 빈 배열도 허용 (아직 미작성 단계)', () => {
+    const withEmptyWork = {
+      ...validAnalysis,
+      organization: { ...validAnalysis.organization, mainWork: [] },
+    };
+    expect(PBLAnalysisSchema.safeParse(withEmptyWork).success).toBe(true);
+  });
+
+  it('companyIssues·trainingEnv·courseNecessity 는 필수 (빈 문자열 거부)', () => {
+    for (const key of ['companyIssues', 'trainingEnv', 'courseNecessity'] as const) {
+      const invalid = { ...validAnalysis, [key]: '' };
+      expect(PBLAnalysisSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+});
+
+describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
+  const validTasks = {
+    activities: [
+      {
+        round: 1,
+        date: '2026-03-15',
+        content: '현장 인터뷰 및 문제 도출',
+        method: '대면 워크숍',
+        participants: 'PM·외부전문가·내부전문가·주치의',
+      },
+    ],
+    problems: [
+      {
+        title: '불량률 증가',
+        description: '라인별 편차 및 육안 검사 의존.',
+        impact: '납기 지연 및 고객 클레임 증가',
+      },
+    ],
+    priority: {
+      items: [
+        { problem: '불량률 증가', score: 5, rank: 1 },
+        { problem: '데이터 단절', score: 4, rank: 2 },
+      ],
+      method: 'AHP + 전문가 협의로 결정',
+    },
+    target: {
+      name: '품질검사 자동화',
+      code: 'QC-AI-01',
+      scope: '생산팀 완제품 검사',
+      necessity: 'AI 자동 판정으로 대체 가능',
+      details: [
+        {
+          title: 'AS-IS/TO-BE 분석',
+          description: '수작업 육안 검사 → AI 비전 1차 스크리닝',
+        },
+      ],
+    },
+    currentAiLevel: {
+      level: 'BASIC',
+      note: '현재 AI 도구 활용은 일부 파일럿 수준.',
+    },
+    expectedAiLevel: {
+      level: 'USER',
+      note: '훈련 이후 부서 단위 자동화 정착 예상.',
+    },
+  };
+
+  it('유효한 Ⅲ 구조는 통과', () => {
+    expect(PBLTasksSchema.safeParse(validTasks).success).toBe(true);
+  });
+
+  it('currentAiLevel.level 은 4종(BASIC|EXPLORER|USER|LEADER) 만 허용', () => {
+    const levels = ['BASIC', 'EXPLORER', 'USER', 'LEADER'] as const;
+    for (const level of levels) {
+      const valid = { ...validTasks, currentAiLevel: { level, note: '' } };
+      expect(PBLTasksSchema.safeParse(valid).success).toBe(true);
+    }
+    const invalid = {
+      ...validTasks,
+      currentAiLevel: { level: 'EXPERT', note: '' },
+    };
+    expect(PBLTasksSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('expectedAiLevel.level 동일 enum 적용', () => {
+    const invalid = {
+      ...validTasks,
+      expectedAiLevel: { level: 'GOD', note: '' },
+    };
+    expect(PBLTasksSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('priority.items[].rank 는 양의 정수만 (0·소수 거부)', () => {
+    const makeWithRank = (rank: number) => ({
+      ...validTasks,
+      priority: {
+        ...validTasks.priority,
+        items: [{ problem: 'X', score: 3, rank }],
+      },
+    });
+    expect(PBLTasksSchema.safeParse(makeWithRank(0)).success).toBe(false);
+    expect(PBLTasksSchema.safeParse(makeWithRank(1.5)).success).toBe(false);
+    expect(PBLTasksSchema.safeParse(makeWithRank(1)).success).toBe(true);
+    expect(PBLTasksSchema.safeParse(makeWithRank(2)).success).toBe(true);
+  });
+
+  it('priority.items[].score 는 1-5 정수만 (0·6·3.5 거부)', () => {
+    const makeWithScore = (score: number) => ({
+      ...validTasks,
+      priority: {
+        ...validTasks.priority,
+        items: [{ problem: 'X', score, rank: 1 }],
+      },
+    });
+    expect(PBLTasksSchema.safeParse(makeWithScore(0)).success).toBe(false);
+    expect(PBLTasksSchema.safeParse(makeWithScore(6)).success).toBe(false);
+    expect(PBLTasksSchema.safeParse(makeWithScore(3.5)).success).toBe(false);
+    expect(PBLTasksSchema.safeParse(makeWithScore(1)).success).toBe(true);
+    expect(PBLTasksSchema.safeParse(makeWithScore(5)).success).toBe(true);
+  });
+
+  it('priority.items[].score 는 제약별 특화 에러 메시지 반환', () => {
+    const makeWithScore = (score: unknown) => ({
+      ...validTasks,
+      priority: {
+        ...validTasks.priority,
+        items: [{ problem: 'X', score, rank: 1 }],
+      },
+    });
+    // 소수 → "정수여야" 메시지
+    const decimalRes = PBLTasksSchema.safeParse(makeWithScore(3.5));
+    expect(decimalRes.success).toBe(false);
+    if (!decimalRes.success) {
+      const messages = decimalRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('정수');
+    }
+    // 0 → "1 이상"
+    const lowRes = PBLTasksSchema.safeParse(makeWithScore(0));
+    expect(lowRes.success).toBe(false);
+    if (!lowRes.success) {
+      const messages = lowRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('1 이상');
+    }
+    // 6 → "5 이하"
+    const highRes = PBLTasksSchema.safeParse(makeWithScore(6));
+    expect(highRes.success).toBe(false);
+    if (!highRes.success) {
+      const messages = highRes.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('5 이하');
+    }
+  });
+
+  it('activities[].round 는 양의 정수', () => {
+    const invalid = {
+      ...validTasks,
+      activities: [{ ...validTasks.activities[0], round: 0 }],
+    };
+    expect(PBLTasksSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('target 5필드(name/code/scope/necessity/details) 구조 검증', () => {
+    for (const key of ['name', 'scope', 'necessity'] as const) {
+      const invalid = { ...validTasks, target: { ...validTasks.target, [key]: '' } };
+      expect(PBLTasksSchema.safeParse(invalid).success).toBe(false);
+    }
+    // code 는 선택 (NCS 연동 자동 채움·내용 수정 불가)
+    const { code: _, ...targetNoCode } = validTasks.target;
+    expect(
+      PBLTasksSchema.safeParse({ ...validTasks, target: targetNoCode }).success,
+    ).toBe(true);
+  });
+
+  it('problems[] 최소 1개 필요', () => {
+    expect(
+      PBLTasksSchema.safeParse({ ...validTasks, problems: [] }).success,
+    ).toBe(false);
+  });
+});
+
+describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
+  const fullValid = {
+    // Ⅰ 훈련과정 개요
+    companyName: '㈜테스트',
+    courseName: 'AI 기반 품질관리 과정',
+    ncsCode: '200107 인공지능',
+    trainingHours: 40,
+    trainingTarget: '품질관리 담당 5명',
+    trainingForm: '체계적 현장훈련(S-OJT)',
+    trainingPeriod: '2026.05.01 ~ 2026.06.30',
+    businessIssues: '품질 편차 및 납기 지연.',
+    // Ⅱ 요구분석
+    companyIssues: '경영 이슈 bullet',
+    organization: {
+      orgTree: [{ id: 'r', name: '회사', children: [] }],
+      mainWork: [{ dept: '생산팀', role: '공정관리', description: '라인' }],
+    },
+    trainingEnv: '훈련환경 요약',
+    hrdReportPdf: {
+      fileName: 'HRD.pdf',
+      url: 'interview-attachments/p1/hrd.pdf',
+      size: 1024,
+    },
+    courseNecessity: 'AI 과정개발 필요성 bullet',
+    // Ⅲ 훈련과제
+    activities: [
+      {
+        round: 1,
+        date: '2026-03-15',
+        content: '인터뷰',
+        method: '대면',
+        participants: 'PM · 전문가 · 주치의',
+      },
+    ],
+    problems: [{ title: '문제', description: '설명', impact: '영향' }],
+    priority: {
+      items: [{ problem: '문제', score: 5, rank: 1 }],
+      method: '협의',
+    },
+    target: {
+      name: '품질검사 자동화',
+      code: 'QC-01',
+      scope: '생산팀',
+      necessity: 'AI 자동 판정',
+      details: [{ title: 'AS-IS/TO-BE', description: '수작업 → AI' }],
+    },
+    currentAiLevel: { level: 'BASIC' as const, note: '현재' },
+    expectedAiLevel: { level: 'USER' as const, note: '향후' },
+  };
+
+  it('strict: 전체 유효 구조는 통과', () => {
+    expect(PBLInterviewSchema.safeParse(fullValid).success).toBe(true);
+  });
+
+  it('strict: 빈 객체 {} 는 실패 (최종 제출 시 필수 필드 검증)', () => {
+    expect(PBLInterviewSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('loose (`.partial()`): 빈 객체 {} 는 통과 (자동 저장용)', () => {
+    const loose = PBLInterviewSchema.partial();
+    expect(loose.safeParse({}).success).toBe(true);
+  });
+
+  it('loose: 일부 필드만 있어도 통과', () => {
+    const loose = PBLInterviewSchema.partial();
+    expect(
+      loose.safeParse({
+        companyName: '㈜테스트',
+        courseName: '일부만',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('strict: 필수 필드 누락 시 에러 경로(path) 반환', () => {
+    const { companyName: _, ...withoutCompany } = fullValid;
+    const result = PBLInterviewSchema.safeParse(withoutCompany);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('companyName');
+    }
+  });
+
+  it('PBLInterviewStrictSchema: hrdReportPdf null 이면 courseNecessity 필수 검증 (Ⅱ-3 XOR)', () => {
+    // Ⅱ-3-가 PDF 가 없으면 Ⅱ-3-나 courseNecessity 가 반드시 채워져야 함.
+    // courseNecessity 는 이미 min(1) 이므로 strict 본체가 막지만,
+    // superRefine 으로 "PDF 가 null 인데 courseNecessity 가 공백" 케이스에도 대비한 메시지를 제공.
+    const invalidNoPdfNoNecessity = {
+      ...fullValid,
+      hrdReportPdf: null,
+      courseNecessity: '   ', // 공백만
+    };
+    expect(PBLInterviewStrictSchema.safeParse(invalidNoPdfNoNecessity).success).toBe(false);
+
+    // PDF 있으면 courseNecessity 가 공백이어도 strict 는 기존 min(1) 에 의해 실패 → 경로 확인만
+    // 정상 케이스는 통과
+    expect(PBLInterviewStrictSchema.safeParse(fullValid).success).toBe(true);
+  });
+
+  it('PBLInterviewStrictSchema: currentAiLevel 이 기대보다 높은 엉뚱한 케이스는 통과 (enum 만 막음)', () => {
+    // 현재 LEADER · 기대 BASIC 같은 역전 케이스도 enum 측면에서는 통과해야 함
+    // (UI/데이터 해석은 결과 화면 책임)
+    const reverse = {
+      ...fullValid,
+      currentAiLevel: { level: 'LEADER' as const, note: '' },
+      expectedAiLevel: { level: 'BASIC' as const, note: '' },
+    };
+    expect(PBLInterviewStrictSchema.safeParse(reverse).success).toBe(true);
   });
 });

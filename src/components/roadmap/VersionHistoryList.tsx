@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle } from 'lucide-react';
-import { RoadmapStatusBadge } from '@/components/roadmap/RoadmapStatusBadge';
+import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
 import { formatDateKR } from '@/lib/utils/date';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
@@ -43,7 +43,11 @@ export function VersionHistoryList({
                 버전 {v.version_number}
                 {v.status === 'FINAL' && <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />}
               </span>
-              <RoadmapStatusBadge status={v.status} versionNumber={v.version_number} />
+              <VersionStatusBadge
+                status={v.status}
+                versionNumber={v.version_number}
+                variant="legacy"
+              />
             </div>
             <div className="text-xs text-gray-500 mt-1">
               {formatDateKR(v.created_at)}

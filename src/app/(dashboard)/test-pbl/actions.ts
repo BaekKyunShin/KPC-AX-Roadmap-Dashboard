@@ -7,9 +7,12 @@ import { createAuditLog } from '@/lib/services/audit';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-generator';
-import { createDraftVersion } from '@/lib/services/pbl/pbl-crud';
-import { pblInterviewSchema } from '@/lib/schemas/interview-pbl';
-import type { PBLInterviewInput } from '@/lib/schemas/interview-pbl';
+import type { PBLContent } from '@/lib/services/pbl/pbl-types';
+import {
+  PBLInterviewStrictSchema,
+  type PBLInterviewStrict,
+  PBL_AI_LEVEL_LABEL,
+} from '@/lib/schemas/interview-pbl';
 import type { ConsultantProfile } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
@@ -19,81 +22,174 @@ function abortKey(userId: string) {
   return `test-pbl:${userId}`;
 }
 
-export interface TestPBLResult {
-  pblId: string;
-  projectId: string;
+// =============================================================================
+// 테스트 Action 입력 (V2 camelCase 인터뷰 + 테스트 전용 기업 메타)
+// =============================================================================
+
+export interface TestPBLActionInput {
+  /** V2 양식 2 인터뷰 (Strict 통과 필요) */
+  interview: PBLInterviewStrict;
+  /** 테스트 대상 기업 메타 (프로젝트 레코드 없이 LLM 프롬프트에만 사용) */
+  companyName: string;
+  industry: string;
+  companySize: string;
 }
 
+export interface TestPBLResult {
+  /** LLM 이 생성한 Ⅳ·Ⅴ 콘텐츠 (in-memory — DB 저장 없음) */
+  content: PBLContent;
+  /** 결과 렌더에 필요한 원본 인터뷰(camelCase V2). */
+  interview: PBLInterviewStrict;
+}
+
+// =============================================================================
+// 헬퍼 — V2 인터뷰 → V1 prompt-expected shape (pbl-prompts.ts 와 정합)
+// =============================================================================
+
+function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
+  return {
+    courseOverview: {
+      company_name: v2.companyName,
+      course_name: v2.courseName,
+      ncs_code: v2.ncsCode ?? '',
+      training_hours: v2.trainingHours,
+      trainee_count: 0,
+      training_job: v2.trainingTarget,
+      ai_level: PBL_AI_LEVEL_LABEL[v2.currentAiLevel.level],
+      training_goals: [],
+      industry_main: '',
+    },
+    companyStatus: {
+      business_issues: v2.businessIssues,
+      organization: v2.organization.orgTree.map((node, i) => ({
+        id: `org-${i}`,
+        department_name: node.name,
+        tasks: node.children.map((c) => c.name),
+      })),
+    },
+    trainingEnvironment: {
+      proper_training_hours: v2.trainingHours,
+      training_place: {},
+      internal_instructor: {},
+      target_count: 0,
+      target_characteristics: {},
+      ai_infrastructure: {},
+      training_needs_analysis: v2.trainingEnv,
+      expectation: { as_is: '', to_be: '' },
+    },
+    hrdNecessity: {
+      course_development_necessity: v2.courseNecessity,
+      training_history: [],
+      recommendations: [],
+      hrd_report_attachment: v2.hrdReportPdf
+        ? {
+            storage_path: v2.hrdReportPdf.url,
+            file_name: v2.hrdReportPdf.fileName,
+            extracted_text: v2.hrdReportPdf.extractedText,
+            parse_error: v2.hrdReportPdf.parseError,
+          }
+        : undefined,
+    },
+    performanceActivities: {
+      performance_activities: v2.activities.map((a, i) => ({
+        id: `act-${i}`,
+        round: a.round,
+        date: a.date,
+        content: a.content,
+        method: a.method,
+        operation_mode: '대면',
+        participants: { pm: a.participants, external_expert: '', internal_expert: '', jurisdiction_manager: '' },
+      })),
+    },
+    problemDefinition: {
+      problem_definition: {
+        background: v2.problems.map((p) => p.description).join('\n'),
+        core_problem: v2.problems[0]?.title ?? '',
+        scope: v2.target.scope,
+        constraints: '',
+      },
+      problem_priorities: v2.priority.items.map((it, i) => ({
+        id: `pri-${i}`,
+        problem_name: it.problem,
+        priority: it.score,
+        selected: it.rank === 1,
+      })),
+    },
+    targetTasks: {
+      target_tasks: [
+        {
+          id: 'target-1',
+          task_name: v2.target.name,
+          necessity: 5,
+          selected: true,
+        },
+      ],
+      selection_reason: v2.target.necessity,
+      target_task_details: [
+        {
+          id: 'target-detail-1',
+          task_name: v2.target.name,
+          as_is: v2.target.details.find((d) => d.title === 'As-Is')?.description ?? '',
+          to_be: v2.target.details.find((d) => d.title === 'To-Be')?.description ?? '',
+          required_knowledge:
+            v2.target.details.find((d) => d.title === '요구 지식')?.description ?? '',
+          required_skill:
+            v2.target.details.find((d) => d.title === '요구 기술')?.description ?? '',
+        },
+      ],
+    },
+    aiLevelDiagnosis: {
+      current_ai_level: PBL_AI_LEVEL_LABEL[v2.currentAiLevel.level],
+      expected_ai_level: PBL_AI_LEVEL_LABEL[v2.expectedAiLevel.level],
+      improvement_reason: v2.expectedAiLevel.note,
+    },
+  };
+}
+
+function parseInterview(input: TestPBLActionInput):
+  | { ok: true; data: PBLInterviewStrict }
+  | { ok: false; error: string } {
+  if (!input.companyName || input.companyName.trim().length < 2) {
+    return { ok: false, error: '회사명을 2자 이상 입력하세요.' };
+  }
+  if (!input.industry) return { ok: false, error: '업종을 선택하세요.' };
+  if (!input.companySize) return { ok: false, error: '기업 규모를 선택하세요.' };
+
+  const parsed = PBLInterviewStrictSchema.safeParse(input.interview);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: `PBL 인터뷰 검증 실패: ${parsed.error.errors[0]?.message ?? '알 수 없는 오류'}`,
+    };
+  }
+  return { ok: true, data: parsed.data };
+}
+
+// =============================================================================
+// Server Action — generateTestPBL (V2 인터뷰 수용, DB 저장 없음)
+// =============================================================================
+
 /**
- * /test-pbl 에서 호출되는 PBL 생성 액션 (OFA-11 재작성).
- *
- * 기존: 고정 fixture(PBL_INTERVIEW_SAMPLE)만 수용 → 폼 편집 불가
- * 신규: 사용자가 폼에서 편집한 `PBLInterviewInput` 전체를 수용
+ * /test-pbl 에서 호출되는 PBL 생성 액션 (Task 2.11-e 재작성).
  *
  * 흐름:
- *  1. 인터뷰 스키마 엄격 검증
- *  2. 테스트 프로젝트(is_test_mode=true, track=PBL) 생성
- *  3. 인터뷰 JSONB 저장
- *  4. generatePBLContent 호출 → PBLContent 초안 생성
- *  5. createDraftVersion으로 pbl_reports에 DRAFT 저장
- *  6. 프로젝트 상태를 PBL_DRAFTED로 전이
+ *  1. V2 Strict 인터뷰 검증
+ *  2. V2 → V1 prompt shape 어댑팅 (pbl-prompts.ts 가 기대하는 shape 과 정합)
+ *  3. generatePBLContent 호출 → PBLContent (Ⅳ·Ⅴ) LLM 생성
+ *  4. in-memory 결과 반환 — DB 저장 없음, 페이지 이탈 시 휘발.
  */
 export async function generateTestPBL(
-  interviewData: PBLInterviewInput,
+  input: TestPBLActionInput,
 ): Promise<ActionResult<TestPBLResult>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
 
-  // 엄격 검증
-  const parsed = pblInterviewSchema.safeParse(interviewData);
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: `PBL 인터뷰 데이터 검증 실패: ${parsed.error.errors[0]?.message ?? '알 수 없는 오류'}`,
-    };
-  }
+  const parsed = parseInterview(input);
+  if (!parsed.ok) return { success: false, error: parsed.error };
   const validatedInput = parsed.data;
 
   const { user } = auth;
   const adminSupabase = createAdminClient();
-
-  const courseOverview = validatedInput.courseOverview;
-
-  // 프로젝트 생성 — 테스트 모드, PBL 트랙
-  const { data: project, error: projectError } = await adminSupabase
-    .from('projects')
-    .insert({
-      company_name: `[테스트] ${courseOverview.company_name || '샘플기업'}`,
-      industry: courseOverview.industry_main || '제조업',
-      company_size: 'medium',
-      contact_name: courseOverview.contact?.name || '담당자',
-      contact_email: courseOverview.contact?.email || `test-${Date.now()}@example.com`,
-      contact_phone: courseOverview.contact?.phone || '',
-      status: 'INTERVIEWED',
-      track: 'PBL',
-      is_test_mode: true,
-      assigned_consultant_id: user.id,
-      created_by: user.id,
-    })
-    .select('id, company_name, status, track, is_test_mode')
-    .single();
-
-  if (projectError || !project) {
-    console.error('[generateTestPBL] 프로젝트 생성 실패', projectError);
-    return { success: false, error: '테스트 프로젝트 생성에 실패했습니다.' };
-  }
-
-  // 인터뷰 데이터 저장 (pbl_data JSONB)
-  const { error: interviewError } = await adminSupabase.from('interviews').insert({
-    project_id: project.id,
-    interview_date: new Date().toISOString().slice(0, 10),
-    pbl_data: validatedInput,
-    conducted_by: user.id,
-  });
-  if (interviewError) {
-    console.error('[generateTestPBL] 인터뷰 저장 실패', interviewError);
-    return { success: false, error: '테스트 인터뷰 저장에 실패했습니다.' };
-  }
 
   let consultantProfile: ConsultantProfile | null = null;
   const { data: profile } = await adminSupabase
@@ -104,9 +200,9 @@ export async function generateTestPBL(
   if (profile) consultantProfile = profile as ConsultantProfile;
 
   const diagnosisSummary = [
-    `[테스트] ${courseOverview.company_name || '샘플기업'} 대상`,
-    courseOverview.training_job ? `${courseOverview.training_job} 직무의` : '',
-    `AI 기반 PBL 과정(${courseOverview.course_name ?? '과정명 미지정'})`,
+    `[테스트] ${input.companyName || '샘플기업'} 대상`,
+    validatedInput.trainingTarget ? `${validatedInput.trainingTarget} 직무의` : '',
+    `AI 기반 PBL 과정(${validatedInput.courseName})`,
   ]
     .filter(Boolean)
     .join(' ');
@@ -115,30 +211,31 @@ export async function generateTestPBL(
 
   try {
     const { content } = await generatePBLContent({
-      interview: validatedInput as unknown as Record<string, unknown>,
-      project: project as unknown as Record<string, unknown>,
+      interview: toLegacyPromptShape(validatedInput),
+      project: {
+        company_name: input.companyName,
+        industry: input.industry,
+        company_size: input.companySize,
+        sub_industries: [],
+        customer_comment: '',
+      },
       consultantProfile,
       diagnosisSummary,
       signal: abortController.signal,
     });
 
-    const draft = await createDraftVersion(project.id, content, user.id, diagnosisSummary, null);
-
-    await adminSupabase
-      .from('projects')
-      .update({ status: 'PBL_DRAFTED' })
-      .eq('id', project.id);
-
     after(async () => {
       await createAuditLog({
         actorUserId: user.id,
         action: 'TEST_PROJECT_CREATE',
-        targetType: 'project',
-        targetId: project.id,
+        targetType: 'pbl',
+        targetId: 'test-mode',
         meta: {
+          company_name: input.companyName,
+          industry: input.industry,
           is_test_mode: true,
+          no_db_save: true,
           track: 'PBL',
-          pbl_report_id: draft.id,
           source: '/test-pbl',
         },
       });
@@ -146,7 +243,7 @@ export async function generateTestPBL(
 
     return {
       success: true,
-      data: { pblId: draft.id, projectId: project.id },
+      data: { content, interview: validatedInput },
     };
   } catch (error) {
     console.error('[generateTestPBL Error]', error);

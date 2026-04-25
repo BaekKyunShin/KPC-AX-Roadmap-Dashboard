@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
-import type { RoadmapVersionUI } from '@/types/roadmap-ui';
-import { fetchRoadmapVersionsForOps } from './actions';
-import OpsRoadmapClient from './_components/OpsRoadmapClient';
+import { fetchRoadmapPageDataV2 } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/actions';
+import OpsRoadmapResultPageClient from './_components/OpsRoadmapResultPageClient';
 
 export default async function OpsRoadmapViewPage({
   params,
@@ -18,12 +17,17 @@ export default async function OpsRoadmapViewPage({
   }
 
   const { id } = await params;
-  const versions = await fetchRoadmapVersionsForOps(id);
+  const pageDataResult = await fetchRoadmapPageDataV2(id);
+  const pageData = pageDataResult.success
+    ? pageDataResult.data
+    : { versions: [], selectedVersion: null, interview: {} };
 
   return (
-    <OpsRoadmapClient
+    <OpsRoadmapResultPageClient
       projectId={id}
-      initialVersions={versions as RoadmapVersionUI[]}
+      initialVersions={pageData.versions}
+      initialSelected={pageData.selectedVersion}
+      initialInterview={pageData.interview}
     />
   );
 }

@@ -1,62 +1,163 @@
 'use client';
 
 /**
- * 로드맵 테스트 클라이언트 (OFA-11 재작성).
+ * 로드맵 테스트 클라이언트 (Task 2.11-e V2 포팅).
  *
- * 산인공 양식 1번 기준 인터뷰 폼을 그대로 재사용해 실제 인터뷰 화면과 **완전 동일**하게
- * 구성한다. DB 저장은 하지 않고, 최종 "생성" 버튼 클릭 시 `createTestRoadmap` 액션을
- * 호출해 LLM 결과만 받아온다.
+ * 산인공 양식 1번 V2 Step 컴포넌트를 그대로 재사용해 실제 인터뷰 화면(V2)과 **동일**하게
+ * 구성한다. DB 저장은 하지 않으며, "생성" 버튼 클릭 시 `createTestRoadmap` 액션이
+ * LLM 결과만 in-memory 로 반환한다. 결과 렌더에는 완성된 `RoadmapResultClient`
+ * (role="CONSULTANT") 를 재사용한다 — 테스트 모드에서 onEdit/onGenerate 는 NOOP.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Check, Loader2, Info, FlaskConical, Wand2 } from 'lucide-react';
+import { Info, FlaskConical, Wand2 } from 'lucide-react';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
+import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
-import {
-  ROADMAP_INTERVIEW_STEPS,
-  ROADMAP_REQUIRED_STEP_IDS,
-  ROADMAP_TOTAL_STEPS,
-} from '@/lib/constants/interview-steps-roadmap';
-import {
-  createEmptyOverview,
-  createEmptyRoadmapParticipant,
-  createEmptyTaskWorkflowItem,
-  createEmptyTrainingTarget,
-  type Overview,
-  type RoadmapParticipant,
-  type CompanyRequirements,
-  type TaskWorkflowItem,
-  type TrainingTarget,
-  type AnalysisNotes,
-  type InterviewMethod,
-  type CompetencyModel,
-  type NcsUsage,
-  createEmptyCompetencyModel,
-  createEmptyNcsUsage,
-} from '@/lib/schemas/interview-roadmap';
+import { showErrorToast, showSuccessToast } from '@/lib/utils';
+
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
-import StepOverview from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepOverview';
-import StepBasicInfoRoadmap from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepBasicInfoRoadmap';
-import StepCompanyRequirements from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements';
-import StepTaskWorkflowAnalysis from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskWorkflowAnalysis';
-import StepTrainingTargets from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTrainingTargets';
-import StepCompetencyModeling from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
-import StepSummaryRoadmap from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepSummaryRoadmap';
-import { formatTimeRange } from '@/lib/utils/time';
-import TestRoadmapResult from './_components/TestRoadmapResult';
+import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity';
 import {
-  createTestRoadmap,
-  cancelTestRoadmapGeneration,
-  reviseTestRoadmap,
-} from './actions';
-import { isCancelledError } from '@/lib/services/llm';
-import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
-import type { RoadmapResult, ValidationResult, TestRoadmapInput } from '@/lib/services/roadmap';
+  StepMainResult,
+  type StepMainResultValue,
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult';
+import { StepCompanyRequirements } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements';
+import {
+  StepTaskAnalysis,
+  type StepTaskAnalysisValue,
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis';
+import { StepTargetTask } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask';
+import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities';
+import {
+  StepCompetencyModeling,
+  type StepCompetencyModelingValue,
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling';
+
+import {
+  RoadmapInterviewStrictSchema,
+  type RoadmapInterviewStrict,
+  type RoadmapCompanyRequirements,
+  type RoadmapTargetTask,
+} from '@/lib/schemas/interview-roadmap';
+import { RoadmapResultClient } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient';
+import type { ResultInterviewSnapshot } from '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/types';
+import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import { ROADMAP_INTERVIEW_SAMPLE } from '@/lib/fixtures/roadmap-interview-sample';
+
+import { createTestRoadmap, cancelTestRoadmapGeneration, reviseTestRoadmap } from './actions';
+import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
+import { isCancelledError } from '@/lib/services/llm';
+
+// ─── 8 스텝 정의 (V2 인터뷰 Client 와 동일 구성) ─────────────────────────────
+
+type StepId =
+  | 'necessity'
+  | 'performance'
+  | 'mainResult'
+  | 'hrdReport'
+  | 'companyReq'
+  | 'taskAnalysis'
+  | 'targetTask'
+  | 'competencyModeling';
+
+// 테스트 모드는 HRD PDF 업로드 불가 → Ⅱ-1 스텝 자체를 제외 (총 7스텝)
+const STEPS: ReadonlyArray<{
+  id: number;
+  stepId: Exclude<StepId, 'hrdReport'>;
+  shortName: string;
+  name: string;
+}> = [
+  { id: 1, stepId: 'necessity', shortName: 'Ⅰ-1', name: '수립 필요성' },
+  { id: 2, stepId: 'performance', shortName: 'Ⅰ-2', name: '주요 활동' },
+  { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과' },
+  { id: 4, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석' },
+  { id: 5, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석' },
+  { id: 6, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업' },
+  { id: 7, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링' },
+];
+
+const ADMIN_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
+function isAdminRole(role: string): boolean {
+  return ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]);
+}
+
+function getBackLink(isOpsAdmin: boolean) {
+  return isOpsAdmin
+    ? { href: '/ops/projects', label: '프로젝트 관리로 돌아가기' }
+    : { href: '/consultant/projects', label: '담당 프로젝트로 돌아가기' };
+}
+
+function emptyCompanyRequirements(): RoadmapCompanyRequirements {
+  return { status: '', problem: '', will: '', outcomes: '' };
+}
+
+function emptyTargetTask(): RoadmapTargetTask {
+  return { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
+}
+
+function emptyInitial(): Partial<RoadmapInterviewStrict> {
+  return {
+    establishmentNecessity: '',
+    performanceActivities: [],
+    aiLevel: 'BEGINNER',
+    selectedTask: '',
+    hrdReportPdf: null,
+    companyRequirements: emptyCompanyRequirements(),
+    taskAnalysis: [],
+    taskAnalysisNote: '',
+    taskAnalysisAttachment: null,
+    targetTask: emptyTargetTask(),
+    competencies: [],
+    ncsUsed: false,
+  };
+}
+
+// ─── RoadmapResult → RoadmapVersionUI 어댑터 (in-memory 렌더용) ───────────────
+
+function toRoadmapVersionUI(result: RoadmapResult): RoadmapVersionUI {
+  return {
+    id: 'test-version',
+    version_number: 1,
+    status: 'DRAFT',
+    diagnosis_summary: result.diagnosis_summary,
+    setup_necessity: result.setup_necessity ?? '',
+    outcome_summary: result.outcome_summary,
+    competencies: result.competencies,
+    ncs_used: result.ncs_used ?? false,
+    ncs_methodology: result.ncs_methodology ?? '',
+    ncs_derivation_method: result.ncs_derivation_method ?? '',
+    training_structure: result.training_structure,
+    training_structure_method: result.training_structure_method ?? '',
+    annual_plan: result.annual_plan,
+    course_specs: result.course_specs,
+    revision_prompt: null,
+    is_shared: false,
+    created_at: new Date().toISOString(),
+    finalized_at: null,
+  };
+}
+
+// ─── 인터뷰(camelCase) → 결과 페이지 snapshot ────────────────────────────────
+
+function toInterviewSnapshot(
+  interview: RoadmapInterviewStrict,
+): ResultInterviewSnapshot {
+  return {
+    establishmentNecessity: interview.establishmentNecessity,
+    performanceActivities: interview.performanceActivities,
+    aiLevel: interview.aiLevel,
+    selectedTask: interview.selectedTask,
+  } as ResultInterviewSnapshot;
+}
+
+// ─── Props ─────────────────────────────────────────────────────────────────
 
 interface UserInfo {
   id: string;
@@ -72,220 +173,89 @@ interface TestRoadmapClientProps {
   hasProfile: boolean;
 }
 
-const ADMIN_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
-function isAdminRole(role: string): boolean {
-  return ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]);
-}
-
-function getBackLink(isOpsAdmin: boolean) {
-  return isOpsAdmin
-    ? { href: '/ops/projects', label: '프로젝트 관리로 돌아가기' }
-    : { href: '/consultant/projects', label: '담당 프로젝트로 돌아가기' };
-}
-
-function emptyCompanyRequirements(): CompanyRequirements {
-  return { company_status: '', main_problems: '', push_willingness: '', expected_outcomes: '' };
-}
-
-function emptyAnalysisNotes(): AnalysisNotes {
-  // ISSUE-14: attachment_urls(string[]) → attachment_files(HrdReportAttachment[])
-  return { text: '', attachment_files: [] };
-}
-
-interface TestResult {
+interface TestResultState {
   result: RoadmapResult;
   validation: ValidationResult;
-  companyName: string;
-  industry: string;
 }
 
 export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestRoadmapClientProps) {
   const isOpsAdmin = isAdminRole(user.role);
   const backLink = getBackLink(isOpsAdmin);
 
-  // ─── 인터뷰 상태 (production RoadmapInterviewClient와 동일 구조) ───
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  // ── 인터뷰 상태 (V2 스키마) ──────────────────────────────────────────────
+  const [data, setData] = useState<Partial<RoadmapInterviewStrict>>(() => emptyInitial());
+  const [currentStep, setCurrentStep] = useState<number>(1);
 
-  const [overview, setOverview] = useState<Overview>(() => createEmptyOverview());
-  const [interviewDate, setInterviewDate] = useState(
-    new Date().toISOString().split('T')[0],
-  );
-  const [interviewRound, setInterviewRound] = useState<number>(1);
-  // ISSUE-10 Step C-2: 단일 시간 → 시작/종료 두 입력
-  const [interviewStartTime, setInterviewStartTime] = useState('');
-  const [interviewEndTime, setInterviewEndTime] = useState('');
-  const [interviewMethod, setInterviewMethod] = useState<InterviewMethod>('ONSITE');
-  const [participants, setParticipants] = useState<RoadmapParticipant[]>([
-    createEmptyRoadmapParticipant(),
-  ]);
-  const [companyRequirements, setCompanyRequirements] = useState<CompanyRequirements>(
-    emptyCompanyRequirements(),
-  );
-  const [taskWorkflowItems, setTaskWorkflowItems] = useState<TaskWorkflowItem[]>([
-    createEmptyTaskWorkflowItem(),
-  ]);
-  const [trainingTargets, setTrainingTargets] = useState<TrainingTarget[]>([
-    createEmptyTrainingTarget(),
-  ]);
-  const [analysisNotes, setAnalysisNotes] = useState<AnalysisNotes>(emptyAnalysisNotes());
-  const [competencyModels, setCompetencyModels] = useState<CompetencyModel[]>([
-    createEmptyCompetencyModel(),
-  ]);
-  const [ncsUsage, setNcsUsage] = useState<NcsUsage>(createEmptyNcsUsage());
-  const [notes, setNotes] = useState('');
-
-  // 테스트 전용: 기업 기본정보 (프로젝트 DB 없이 수동 입력)
+  // ── 테스트 전용: 기업 기본정보 ─────────────────────────────────────────────
   const [companyName, setCompanyName] = useState('테스트 기업');
   const [industry, setIndustry] = useState('제조/생산');
   const [companySize, setCompanySize] = useState('small');
 
-  // Ⅰ-3 선정 과업 자동 prefill — Ⅱ-4 훈련대상 입력 시 요약란이 비어 있으면 채움 (ISSUE-04).
-  useEffect(() => {
-    const summary = overview.selected_tasks_summary.trim();
-    const taskNames = trainingTargets
-      .map((t) => t.task_name.trim())
-      .filter(Boolean);
-    if (summary === '' && taskNames.length > 0) {
-      setOverview((prev) => ({
-        ...prev,
-        selected_tasks_summary: taskNames.join(', '),
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trainingTargets.map((t) => t.task_name).join('')]);
-
-  // ─── 생성 상태 ───
+  // ── 생성 상태 ────────────────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testResult, setTestResult] = useState<TestResultState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRevising, setIsRevising] = useState(false);
   const [isRevisionComplete, setIsRevisionComplete] = useState(false);
 
-  // ─── 검증 ───
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        // roadmap_summary 는 LLM 자동 생성 예정(ISSUE-04)이라 Step 1 검증 대상 아님
-        return (
-          overview.establishment_necessity.trim() !== '' &&
-          overview.selected_tasks_summary.trim() !== ''
-        );
-      case 2:
-        return (
-          Boolean(interviewDate) &&
-          participants.length > 0 &&
-          participants.every((p) => p.name.trim() !== '')
-        );
-      case 3:
-        return (
-          companyRequirements.company_status.trim() !== '' &&
-          companyRequirements.main_problems.trim() !== '' &&
-          companyRequirements.push_willingness.trim() !== '' &&
-          companyRequirements.expected_outcomes.trim() !== ''
-        );
-      case 4:
-        return (
-          taskWorkflowItems.length > 0 &&
-          taskWorkflowItems.every((t) => t.job && t.task_name && t.as_is)
-        );
-      case 5:
-        return (
-          trainingTargets.length > 0 &&
-          trainingTargets.every((t) => t.task_name && t.selection_reason && t.as_is && t.to_be)
-        );
-      case 6: {
-        const competenciesValid =
-          competencyModels.length > 0 &&
-          competencyModels.every(
-            (c) =>
-              c.competency_name.trim() !== '' &&
-              c.competency_definition.trim() !== '' &&
-              c.knowledge.trim() !== '' &&
-              c.skill.trim() !== '' &&
-              c.attitude.trim() !== '',
-          );
-        const ncsValid = ncsUsage.uses_ncs
-          ? (ncsUsage.ncs_usage_method ?? '').trim() !== ''
-          : (ncsUsage.competency_derivation_method ?? '').trim() !== '';
-        return competenciesValid && ncsValid;
-      }
-      case 7:
-        return ROADMAP_REQUIRED_STEP_IDS.every((s) => validateStep(s));
-      default:
-        return false;
-    }
-  };
+  const currentStepDef = STEPS[currentStep - 1];
+  const isFirstStep = currentStep === 1;
+  const isLastStep = currentStep === STEPS.length;
 
-  const incompleteRequiredSteps = ROADMAP_REQUIRED_STEP_IDS.filter((s) => !validateStep(s));
-  const isAllRequiredStepsValid = incompleteRequiredSteps.length === 0;
+  // ── 슬라이스 업데이트 ─────────────────────────────────────────────────────
+  const update = <K extends keyof RoadmapInterviewStrict>(
+    patch: Partial<Pick<RoadmapInterviewStrict, K>>,
+  ) => setData((prev) => ({ ...prev, ...patch }));
 
-  const goToStep = (step: number) => {
-    if (step === currentStep) return;
-    if (validateStep(currentStep) && !completedSteps.includes(currentStep)) {
-      setCompletedSteps([...completedSteps, currentStep]);
-    }
-    setCurrentStep(step);
-    scrollToPageTop();
-  };
-  const goToNextStep = () => {
-    if (currentStep < ROADMAP_TOTAL_STEPS) goToStep(currentStep + 1);
-  };
-  const goToPrevStep = () => {
-    if (currentStep > 1) goToStep(currentStep - 1);
-  };
-
-  // ─── generateTestRoadmap 입력 빌더 ───
-  const buildInputData = (): TestRoadmapInput => ({
-    company_name: companyName,
-    industry,
-    company_size: companySize,
-    customer_requirements: '',
-    overview: overview as TestRoadmapInput['overview'],
-    interview_date: interviewDate,
-    interview_round: interviewRound,
-    interview_time: formatTimeRange(interviewStartTime, interviewEndTime),
-    interview_method: interviewMethod,
-    participants: participants.map((p, i) => ({
-      id: p.id || `test-p-${i}`,
-      name: p.name,
-      position: p.position,
-    })),
-    company_requirements: companyRequirements,
-    task_workflow_items: taskWorkflowItems,
-    training_targets: trainingTargets,
-    analysis_notes: analysisNotes,
-    // 인터뷰 단계의 Ⅲ-1 역량 모델링 + NCS 활용을 테스트 입력에 포함 (Step C 에서 프롬프트에 반영)
-    competency_models: competencyModels,
-    ncs_usage: ncsUsage,
-    notes,
-  } as TestRoadmapInput);
-
-  const handleSubmit = async () => {
-    if (!isAllRequiredStepsValid) {
-      showErrorToast(
-        '입력 확인 필요',
-        `${incompleteRequiredSteps.length}개 필수 단계를 완료해주세요.`,
-      );
-      if (incompleteRequiredSteps[0]) setCurrentStep(incompleteRequiredSteps[0]);
+  // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
+  const fillSample = () => {
+    const hasInput =
+      (data.establishmentNecessity ?? '').trim() !== '' ||
+      (data.selectedTask ?? '').trim() !== '' ||
+      (data.companyRequirements?.status ?? '').trim() !== '' ||
+      (data.taskAnalysis ?? []).length > 0 ||
+      (data.competencies ?? []).length > 0;
+    if (
+      hasInput &&
+      typeof window !== 'undefined' &&
+      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
+    ) {
       return;
     }
+    const sample = JSON.parse(
+      JSON.stringify(ROADMAP_INTERVIEW_SAMPLE),
+    ) as RoadmapInterviewStrict;
+    setData(sample);
+    setCurrentStep(1);
+  };
+
+  // ── 생성 / 수정 / 리셋 ───────────────────────────────────────────────────
+  const buildActionInput = (validated: RoadmapInterviewStrict) => ({
+    interview: validated,
+    companyName,
+    industry,
+    companySize,
+  });
+
+  const handleSubmit = async () => {
+    const parsed = RoadmapInterviewStrictSchema.safeParse(data);
+    if (!parsed.success) {
+      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      return;
+    }
+
     setError(null);
     setIsGenerating(true);
     setIsComplete(false);
     try {
-      const result = await createTestRoadmap(
-        buildInputData() as unknown as Parameters<typeof createTestRoadmap>[0],
-      );
+      const result = await createTestRoadmap(buildActionInput(parsed.data));
       if (result.success) {
         setIsComplete(true);
         setTimeout(() => {
           setTestResult({
             result: result.data.result,
             validation: result.data.validation,
-            companyName,
-            industry,
           });
           setIsGenerating(false);
           setIsComplete(false);
@@ -311,15 +281,20 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     await cancelTestRoadmapGeneration();
   };
 
-  const handleRevisionRequest = async (revisionPrompt: string) => {
+  const handleRegenerate = async (revisionPrompt?: string) => {
     if (!testResult) return;
+    const parsed = RoadmapInterviewStrictSchema.safeParse(data);
+    if (!parsed.success) {
+      showErrorToast(parsed.error.errors[0]?.message ?? '수정에 필요한 인터뷰 검증 실패.');
+      return;
+    }
     setIsRevising(true);
     setIsRevisionComplete(false);
     try {
       const result = await reviseTestRoadmap(
-        buildInputData() as unknown as Parameters<typeof reviseTestRoadmap>[0],
+        buildActionInput(parsed.data),
         testResult.result,
-        revisionPrompt,
+        revisionPrompt ?? '',
       );
       if (result.success) {
         setIsRevisionComplete(true);
@@ -327,8 +302,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           setTestResult({
             result: result.data.result,
             validation: result.data.validation,
-            companyName,
-            industry,
           });
           setIsRevising(false);
           setIsRevisionComplete(false);
@@ -353,48 +326,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     setCurrentStep(1);
   };
 
-  /**
-   * ISSUE-02·03 Step E: 샘플 fixture 값을 모든 인터뷰 state 에 일괄 주입.
-   * 사용자가 이미 입력한 값이 있으면 confirm 으로 덮어쓰기 여부 확인.
-   */
-  const fillSample = () => {
-    const hasInput =
-      overview.establishment_necessity.trim() !== '' ||
-      overview.selected_tasks_summary.trim() !== '' ||
-      companyRequirements.company_status.trim() !== '' ||
-      companyRequirements.main_problems.trim() !== '' ||
-      taskWorkflowItems.some((t) => t.task_name.trim() !== '' || t.job.trim() !== '') ||
-      trainingTargets.some((t) => t.task_name.trim() !== '') ||
-      competencyModels.some((c) => c.competency_name.trim() !== '') ||
-      notes.trim() !== '';
-    if (
-      hasInput &&
-      typeof window !== 'undefined' &&
-      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
-    ) {
-      return;
-    }
-    // readonly fixture → 깊은 복사 후 주입
-    const sample = JSON.parse(JSON.stringify(ROADMAP_INTERVIEW_SAMPLE)) as typeof ROADMAP_INTERVIEW_SAMPLE;
-    setOverview(sample.overview);
-    setInterviewDate(sample.interview_date);
-    setInterviewRound(sample.interview_round);
-    setInterviewStartTime(sample.interview_start_time);
-    setInterviewEndTime(sample.interview_end_time);
-    setInterviewMethod(sample.interview_method);
-    setParticipants(sample.participants);
-    setCompanyRequirements(sample.company_requirements);
-    setTaskWorkflowItems(sample.task_workflow_items);
-    setTrainingTargets(sample.training_targets);
-    setAnalysisNotes(sample.analysis_notes);
-    setCompetencyModels(sample.competency_models);
-    setNcsUsage(sample.ncs_usage);
-    setNotes(sample.notes ?? '');
-    setCurrentStep(1);
-    setCompletedSteps([]);
-  };
-
-  // ─── 미승인 사용자 ───
+  // ── 미승인 사용자 차단 ────────────────────────────────────────────────────
   if (!canAccess) {
     const userRole = user.role === 'USER_PENDING' ? 'CONSULTANT' : 'OPS_ADMIN';
     return (
@@ -409,155 +341,186 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     );
   }
 
-  // ─── 결과 화면 ───
+  // ── 결과 화면 (RoadmapResultClient 재사용) ──────────────────────────────
   if (testResult) {
+    const version = toRoadmapVersionUI(testResult.result);
+    const parsedInterview = RoadmapInterviewStrictSchema.safeParse(data);
+    const snapshot = parsedInterview.success
+      ? toInterviewSnapshot(parsedInterview.data)
+      : undefined;
+
     return (
-      <>
-        <div className="max-w-5xl mx-auto py-6">
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <TestRoadmapResult
-            result={testResult.result}
-            validation={testResult.validation}
-            companyName={testResult.companyName}
-            industry={testResult.industry}
-            onReset={handleReset}
-            onRevisionRequest={handleRevisionRequest}
-            isRevising={isRevising}
-          />
-        </div>
-        {isRevising && (
-          <RoadmapLoadingOverlay
-            isTestMode={true}
-            profileHref="/consultant/profile"
-            onCancel={async () => {
-              setIsRevising(false);
-              setIsRevisionComplete(false);
-              await cancelTestRoadmapGeneration();
-            }}
-            isCompleted={isRevisionComplete}
-          />
+      <div className="max-w-5xl mx-auto py-6 space-y-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-      </>
+
+        <div className="flex items-center justify-between">
+          <Alert className="flex-1">
+            <FlaskConical className="h-4 w-4 text-amber-600" />
+            <AlertTitle>테스트 결과 — DB 저장되지 않음</AlertTitle>
+            <AlertDescription>
+              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 로드맵을 생성하려면
+              담당 프로젝트의 인터뷰 화면을 이용하세요.
+            </AlertDescription>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="ml-4"
+          >
+            처음으로
+          </Button>
+        </div>
+
+        <RoadmapResultClient
+          role="CONSULTANT"
+          projectId="test-mode"
+          versions={[version]}
+          selectedVersion={version}
+          interview={snapshot}
+          onSelectVersion={() => undefined}
+          /* 테스트 모드 — 인라인 편집은 NOOP (in-memory 저장 없음). */
+          onEdit={async () => undefined}
+          onGenerate={handleRegenerate}
+          onDownload={async () => {
+            showErrorToast('테스트 모드에서는 다운로드가 비활성화되어 있습니다.');
+          }}
+          isGenerating={isRevising}
+          isGenerationComplete={isRevisionComplete}
+          onCancelGenerate={async () => {
+            setIsRevising(false);
+            setIsRevisionComplete(false);
+            await cancelTestRoadmapGeneration();
+          }}
+          companyName={companyName}
+        />
+      </div>
     );
   }
 
-  // ─── 인터뷰 폼 ───
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return <StepOverview value={overview} onChange={setOverview} />;
-      case 2:
+  // ── 인터뷰 폼 (V2 Step 컴포넌트 재사용) ─────────────────────────────────
+  function renderStep() {
+    switch (currentStepDef.stepId) {
+      case 'necessity':
         return (
-          <StepBasicInfoRoadmap
-            interviewDate={interviewDate}
-            interviewRound={interviewRound}
-            interviewStartTime={interviewStartTime}
-            interviewEndTime={interviewEndTime}
-            interviewMethod={interviewMethod}
-            participants={participants}
-            onInterviewDateChange={setInterviewDate}
-            onInterviewRoundChange={setInterviewRound}
-            onInterviewStartTimeChange={setInterviewStartTime}
-            onInterviewEndTimeChange={setInterviewEndTime}
-            onInterviewMethodChange={setInterviewMethod}
-            onParticipantsChange={setParticipants}
+          <StepNecessity
+            value={data.establishmentNecessity ?? ''}
+            onChange={(next) => update({ establishmentNecessity: next })}
           />
         );
-      case 3:
+      case 'performance':
         return (
-          <StepCompanyRequirements value={companyRequirements} onChange={setCompanyRequirements} />
-        );
-      case 4:
-        return (
-          <StepTaskWorkflowAnalysis
-            items={taskWorkflowItems}
-            onChange={setTaskWorkflowItems}
-            analysisNotes={analysisNotes}
-            onAnalysisNotesChange={setAnalysisNotes}
-            // 테스트 페이지에서는 실제 Storage 업로드 없이 안내만 노출 (ISSUE-14 Step C-5)
-            onUploadAttachment={async () => ({
-              success: false,
-              error: '테스트 페이지에서는 첨부 파일 업로드를 사용할 수 없습니다. 실제 프로젝트의 인터뷰 페이지에서 업로드하세요.',
-            })}
-            onRemoveAttachment={async () => ({ success: true })}
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) => update({ performanceActivities: next })}
           />
         );
-      case 5:
-        return <StepTrainingTargets items={trainingTargets} onChange={setTrainingTargets} />;
-      case 6:
+      case 'mainResult': {
+        const value: StepMainResultValue = {
+          aiLevel: data.aiLevel ?? 'BEGINNER',
+          selectedTask: data.selectedTask ?? '',
+        };
+        return (
+          <StepMainResult
+            value={value}
+            onChange={(next) =>
+              update({ aiLevel: next.aiLevel, selectedTask: next.selectedTask })
+            }
+          />
+        );
+      }
+      case 'companyReq':
+        return (
+          <StepCompanyRequirements
+            value={data.companyRequirements ?? emptyCompanyRequirements()}
+            onChange={(next) => update({ companyRequirements: next })}
+          />
+        );
+      case 'taskAnalysis': {
+        const value: StepTaskAnalysisValue = {
+          taskAnalysis: data.taskAnalysis ?? [],
+          taskAnalysisNote: data.taskAnalysisNote ?? '',
+          taskAnalysisAttachment: data.taskAnalysisAttachment ?? null,
+        };
+        return (
+          <StepTaskAnalysis
+            projectId="test-mode"
+            value={value}
+            onChange={(next) =>
+              update({
+                taskAnalysis: next.taskAnalysis,
+                taskAnalysisNote: next.taskAnalysisNote,
+                taskAnalysisAttachment: next.taskAnalysisAttachment,
+              })
+            }
+          />
+        );
+      }
+      case 'targetTask':
+        return (
+          <StepTargetTask
+            value={data.targetTask ?? emptyTargetTask()}
+            onChange={(next) => update({ targetTask: next })}
+          />
+        );
+      case 'competencyModeling': {
+        const value: StepCompetencyModelingValue = {
+          competencies: data.competencies ?? [],
+          ncsUsed: data.ncsUsed ?? false,
+          ncsMethodology: data.ncsMethodology,
+          ncsDerivationMethod: data.ncsDerivationMethod,
+        };
         return (
           <StepCompetencyModeling
-            competencies={competencyModels}
-            ncsUsage={ncsUsage}
-            onCompetenciesChange={setCompetencyModels}
-            onNcsUsageChange={setNcsUsage}
+            value={value}
+            onChange={(next) =>
+              update({
+                competencies: next.competencies,
+                ncsUsed: next.ncsUsed,
+                ncsMethodology: next.ncsMethodology,
+                ncsDerivationMethod: next.ncsDerivationMethod,
+              })
+            }
           />
         );
-      case 7:
-        return (
-          <StepSummaryRoadmap
-            overview={overview}
-            interviewDate={interviewDate}
-            interviewRound={interviewRound}
-            interviewStartTime={interviewStartTime}
-            interviewEndTime={interviewEndTime}
-            interviewMethod={interviewMethod}
-            participants={participants}
-            companyRequirements={companyRequirements}
-            taskWorkflowItems={taskWorkflowItems}
-            analysisNotes={analysisNotes}
-            trainingTargets={trainingTargets}
-            competencyModels={competencyModels}
-            ncsUsage={ncsUsage}
-            notes={notes}
-            onEditStep={goToStep}
-            onNotesChange={setNotes}
-            // ISSUE-16 테스트 페이지 — STT 인사이트 컴포넌트 노출만 하고 LLM 호출은 막아둔다.
-            sttInsights={undefined}
-            onSttInsightsChange={() => {}}
-            onExtractSttInsights={async () => ({
-              success: false,
-              error: '테스트 페이지에서는 STT 추출이 비활성화되어 있습니다.',
-            })}
-          />
-        );
+      }
       default:
         return null;
     }
-  };
+  }
 
   return (
     <>
-      <div className="max-w-4xl mx-auto pb-24 py-6">
-        <div className="mb-6">
-          <PageHeader
-            title="로드맵 테스트"
-            description="산인공 양식 1번 기준 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
-            backLink={{ ...backLink, useBack: true }}
-            actions={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={fillSample}
-                data-testid="test-roadmap-fill-sample"
-              >
-                <Wand2 className="w-4 h-4 mr-1.5" />
-                샘플 데이터 채우기
-              </Button>
-            }
-          />
-        </div>
+      <PageContainer>
+        <PageHeader
+          title="로드맵 테스트"
+          description="산인공 양식 1번 V2 기반 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
+          backLink={{ ...backLink, useBack: true }}
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fillSample}
+              data-testid="test-roadmap-fill-sample"
+            >
+              <Wand2 className="w-4 h-4 mr-1.5" />
+              샘플 데이터 채우기
+            </Button>
+          }
+        />
 
-        <Alert className="mb-6">
+        <Alert>
           <Info className="h-4 w-4" />
           <AlertTitle>테스트 모드 안내</AlertTitle>
           <AlertDescription>
-            이 화면의 UI/UX는 실제 현장 인터뷰(로드맵)와 동일합니다. 테스트를 통해 인터뷰 진행 방법을 연습하세요.
+            이 화면의 UI/UX는 실제 현장 인터뷰(로드맵)와 동일합니다. Ⅱ-1 HRD이음 PDF 첨부는
+            테스트 모드에서 지원되지 않습니다.
             <strong className="block mt-2 text-amber-700">
               입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
             </strong>
@@ -565,13 +528,13 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
         </Alert>
 
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {!hasProfile && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive">
             <AlertTitle>컨설턴트 프로필 미등록</AlertTitle>
             <AlertDescription>
               컨설턴트 프로필 정보가 로드맵 생성에 활용됩니다. 먼저 프로필을 등록해주세요.
@@ -582,7 +545,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           </Alert>
         )}
 
-        <div className="mb-6 bg-muted/30 border border-border rounded-lg p-4 flex items-center gap-3 flex-wrap text-sm">
+        <div className="bg-muted/30 border border-border rounded-lg p-4 flex items-center gap-3 flex-wrap text-sm">
           <FlaskConical className="h-4 w-4 text-amber-600" />
           <strong className="text-foreground">테스트 대상 기업</strong>
           <input
@@ -620,71 +583,37 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           </select>
         </div>
 
-        <div className="bg-card shadow rounded-lg p-4 mb-6">
-          <InterviewStepper
-            steps={[...ROADMAP_INTERVIEW_STEPS]}
-            currentStep={currentStep}
-            onStepClick={goToStep}
-            completedSteps={completedSteps}
-            validateStep={validateStep}
-          />
-        </div>
+        <InterviewStepper
+          steps={STEPS.map((s) => ({
+            id: s.id,
+            name: s.name,
+            shortName: s.shortName,
+          }))}
+          currentStep={currentStep}
+          onStepClick={(idx) => setCurrentStep(idx)}
+          completedSteps={[]}
+        />
 
-        <div className="bg-card shadow rounded-lg p-4 sm:p-6 mb-6 min-h-[400px]">
-          {renderStepContent()}
-        </div>
+        <div className="min-h-[400px]">{renderStep()}</div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border px-3 pb-3 pt-4 sm:p-4 md:relative md:z-auto md:border-0 md:p-0 md:bg-transparent">
-          <div className="max-w-4xl mx-auto flex justify-between items-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={goToPrevStep}
-              disabled={currentStep === 1}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              이전
-            </Button>
-
-            <div className="flex items-center gap-3">
-              {currentStep < ROADMAP_TOTAL_STEPS ? (
-                <Button type="button" size="sm" onClick={goToNextStep}>
-                  다음
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              ) : (
-                <div className="flex items-center gap-3">
-                  {!isAllRequiredStepsValid && (
-                    <span className="text-xs sm:text-sm text-amber-600">
-                      {incompleteRequiredSteps.length}개 필수 단계 미완료
-                    </span>
-                  )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleSubmit}
-                    disabled={isGenerating || !isAllRequiredStepsValid}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        생성 중…
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-1" />
-                        로드맵 생성
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+        <StickyFormNav
+          onPrev={!isFirstStep ? () => setCurrentStep((s) => s - 1) : undefined}
+          onNext={!isLastStep ? () => setCurrentStep((s) => s + 1) : undefined}
+          // 테스트 모드 — 저장 없음. 버튼은 노출되나 NOOP.
+          onSave={() => undefined}
+          isFirstStep={isFirstStep}
+          isLastStep={isLastStep}
+          submit={
+            isLastStep
+              ? {
+                  label: isGenerating ? '생성 중…' : '로드맵 생성',
+                  onSubmit: handleSubmit,
+                  disabled: isGenerating,
+                }
+              : undefined
+          }
+        />
+      </PageContainer>
 
       {isGenerating && (
         <RoadmapLoadingOverlay

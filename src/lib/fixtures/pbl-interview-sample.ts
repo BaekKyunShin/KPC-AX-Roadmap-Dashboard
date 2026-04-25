@@ -1,175 +1,212 @@
 /**
- * /test-pbl 페이지용 샘플 PBL 인터뷰 데이터.
+ * /test-pbl 페이지용 샘플 PBL 인터뷰 데이터 (V2 · 양식 2:1 정합 camelCase).
  *
- * 산인공 PBL 양식(양식 2번) 3~11p 인터뷰 전 필드를 채운 fixture.
- * `src/lib/schemas/interview-pbl.ts` 의 `pblInterviewSchema`를 준수.
- *
- * Server Action에서 이 fixture를 로드해 LLM에 전달 → PBLContent 초안 생성.
- * E2E 테스트에서도 동일 데이터를 폼 자동 채우기에 활용 가능.
+ * `src/lib/schemas/interview-pbl.ts` 의 `PBLInterviewStrictSchema` 를 준수.
+ * Ⅰ·Ⅱ·Ⅲ 전 섹션을 채운 제조업 사례 — LLM 이 PBL 보고서 초안을 양질로 생성할 수
+ * 있는 수준으로 모든 필드를 현실적 문장으로 작성한다.
  */
 
-export const PBL_INTERVIEW_SAMPLE = {
-  courseOverview: {
-    company_name: '샘플정밀공업(주)',
-    business_registration_no: '123-45-67890',
-    industry_code: 'C29',
-    industry_main: '기타 기계 및 장비 제조업',
-    address: '경기도 시흥시 공단로 123',
-    training_address: '본사 3층 교육장',
-    jurisdiction_office: '경기지방고용노동청',
-    contact: {
-      position: '인재개발팀장',
-      name: '홍길동',
-      phone: '010-1234-5678',
-      email: 'hr@example.com',
+import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
+
+export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
+  // ── Ⅰ 훈련과정 개요 ───────────────────────────────────────────────────────
+  companyName: '샘플정밀공업(주)',
+  courseName: 'AI 활용 불량 예측 PBL 과정',
+  ncsCode: '200107',
+  trainingHours: 40,
+  trainingTarget: '품질검사원 및 공정 개선 담당자 12명 (3~10년차 주임~과장)',
+  trainingForm: '집체 40시간 (대면 실습 위주 · 일부 비대면 과제 수행)',
+  trainingPeriod: '2026년 6월 ~ 2026년 7월 (주 2회 × 5주)',
+  businessIssues:
+    '최근 3년간 수출 물량 증가로 생산량은 늘었으나, 핵심 공정에서 불량률이 2.4% 로 상승. 육안검사에 의존해 품질 편차가 크고 원인 추적이 어려움. AI 기반 예측·분석을 도입해 품질을 정상화하고 현장 데이터 분석 역량을 내재화하려 함.',
+
+  // ── Ⅱ-1-가 기업 경영 이슈 ─────────────────────────────────────────────────
+  companyIssues:
+    '① 완제품 외관·치수 검사가 육안에 의존해 불량률 2.4% 로 상승. ② 품질 데이터는 엑셀·수기에 분산되어 근본 원인 추적이 어려움. ③ 고객사(현대모비스·LS오토모티브) 품질 요구 강화로 AI 기반 품질 관리·예측 도입이 긴급 과제. ④ 현장 실무자는 AI 개념은 들어봤으나 실제 데이터에 적용한 경험이 부족.',
+
+  // ── Ⅱ-1-나 조직 및 주요 업무 ──────────────────────────────────────────────
+  organization: {
+    orgTree: [
+      {
+        id: 'org-root',
+        name: '샘플정밀공업(주)',
+        children: [
+          {
+            id: 'org-quality',
+            name: '품질관리부',
+            children: [
+              { id: 'org-incoming', name: '수입검사팀', children: [] },
+              { id: 'org-inprocess', name: '공정검사팀', children: [] },
+              { id: 'org-outgoing', name: '출하검사팀', children: [] },
+            ],
+          },
+          {
+            id: 'org-prodtech',
+            name: '생산기술부',
+            children: [
+              { id: 'org-process', name: '공정개선팀', children: [] },
+              { id: 'org-maint', name: '설비보전팀', children: [] },
+            ],
+          },
+          {
+            id: 'org-support',
+            name: '경영지원팀',
+            children: [{ id: 'org-hrd', name: '인재개발 담당', children: [] }],
+          },
+        ],
+      },
+    ],
+    mainWork: [
+      {
+        dept: '품질관리부',
+        role: '공정검사 담당',
+        description:
+          '생산 라인에서 완제품 외관·치수 검사를 수행하고 불량 유형별 체크시트·엑셀에 기록. 월간 품질 보고서 작성.',
+      },
+      {
+        dept: '품질관리부',
+        role: '품질 데이터 분석 담당',
+        description:
+          '불량 데이터 집계 및 원인 분석, 고객사 반품 건 대응 리포트 작성. 현재 엑셀·수작업 중심.',
+      },
+      {
+        dept: '생산기술부',
+        role: '공정개선 엔지니어',
+        description:
+          '불량률 개선 과제 기획, 현장 설비 파라미터 조정, SPC(통계적 공정관리) 데이터 해석 및 개선 적용.',
+      },
+      {
+        dept: '생산기술부',
+        role: '설비보전 담당',
+        description:
+          'CNC 38 대의 예방 보전 및 고장 대응. PLC 로그 모니터링(임계치 알람 수준).',
+      },
+      {
+        dept: '경영지원팀',
+        role: '인재개발 담당',
+        description:
+          '전사 훈련 계획 수립, 훈련비 집행, 외부 공개과정 연계, 훈련 수료 현황 관리.',
+      },
+    ],
+  },
+
+  // ── Ⅱ-2 훈련환경 분석 ────────────────────────────────────────────────────
+  trainingEnv:
+    '훈련장소는 본사 3층 교육장(고정 PC 10대, 대형 디스플레이)과 생산 현장 품질검사 라인을 함께 사용. 대면 80% · 비대면 과제 20% 구성. 교육장에는 네트워크·빔프로젝터 양호, ChatGPT/Claude 접근 가능하나 사내 보안 규정상 고객사 데이터 반입은 익명화 후 사용. 검사용 카메라 2대, 측정기기는 부서 공유. 사내 강사는 품질관리 파트장(김품질)으로 현장 사례 연계 가능. 대상 인원 12명은 3~10년차 주임~과장으로 AI 도구는 들어봤으나 실 데이터 적용 경험 부족 → 기초 데이터 리터러시 + AI 도구 활용 실습 비중을 크게 설계.',
+
+  // ── Ⅱ-3-가 HRD이음 PDF (테스트 모드에서는 첨부 없음) ──────────────────────
+  hrdReportPdf: null,
+
+  // ── Ⅱ-3-나 AI훈련과정 개발 필요성 ─────────────────────────────────────────
+  courseNecessity:
+    '기존 공개과정은 AI 일반론 중심이라 자사 품질 데이터·공정·용어에 직접 적용하기 어려움. 본 PBL 과정은 ① 자사 최근 6개월 불량 이미지 12만 장을 실습 데이터로 사용, ② 품질검사·공정개선·설비보전 3개 직무가 공통으로 겪는 불량 원인 추적 문제를 중심 과제로 설계, ③ ChatGPT/Claude/Notebook 도구로 데이터 분석·보고 자동화 루틴을 조직 내부에 내재화하는 것을 목표로 한다. 훈련 종료 후에도 수강생이 즉시 현장에 적용할 수 있도록 실제 업무 산출물(월간 품질 보고서 템플릿·불량 분석 Notebook) 을 결과물로 작성한다.',
+
+  // ── Ⅲ-1 수행활동 ─────────────────────────────────────────────────────────
+  activities: [
+    {
+      round: 1,
+      date: '2026-04-20',
+      content: 'HRD 분석 및 훈련 목표 합의 · 양식 2 Ⅱ-1·2 입력 검토',
+      method: '대면 워크숍',
+      participants: 'PM 김컨설턴트, 내부HRD 홍길동, 품질파트장 김품질',
     },
-    course_name: 'AI 활용 불량 예측 PBL 과정',
-    ncs_code: '14010101',
-    training_hours: 40,
-    trainee_count: 12,
-    training_job: '품질검사원',
-    ai_level: 'AI탐구형' as const,
-    training_goals: ['불량률 감소', '공정 최적화'] as Array<
-      '기술문제 해결' | '공정 최적화' | '불량률 감소' | '기술 매뉴얼 개발' | '기타'
-    >,
-  },
-  companyStatus: {
-    business_issues:
-      '최근 3년간 수출 물량 증가로 생산량은 늘었으나, 핵심 공정에서 불량률이 2.4%로 상승. 육안검사에 의존해 품질 편차가 크고 원인 추적이 어려움. AI 기반 예측·분석을 도입해 품질을 정상화하고 현장 데이터 분석 역량을 내재화하려 함.',
-    organization: [
-      {
-        id: 'org-1',
-        department_name: '품질관리부',
-        tasks: ['입고 검사', '공정 검사', '출하 검사', '품질 데이터 분석'],
-      },
-      {
-        id: 'org-2',
-        department_name: '생산기술부',
-        tasks: ['공정 개선', '설비 유지보수', '표준 관리'],
-      },
-      {
-        id: 'org-3',
-        department_name: '경영지원팀',
-        tasks: ['인재 개발', '예산 관리'],
-      },
-    ],
-  },
-  trainingEnvironment: {
-    proper_training_hours: 40,
-    training_place: {
-      types: ['사내'] as Array<'사내' | '사외'>,
-      location: '본사 3층 교육장',
-      special_notes: '실습 구역은 생산 현장(품질검사 라인)에서 진행',
+    {
+      round: 2,
+      date: '2026-04-27',
+      content: '훈련과정 설계 · 데이터 샘플(불량 이미지 12만 장) 준비 · 실습 환경 점검',
+      method: '비대면 회의 + 문서 공유',
+      participants: 'PM 김컨설턴트, 외부전문가 박AI전문가, 내부HRD 홍길동',
     },
-    internal_instructor: { used: true, name: '김품질', position: '품질관리 파트장' },
-    target_count: 12,
-    target_characteristics: { career: '3~10년차', level: '주임~과장' },
-    ai_infrastructure: {
-      ai_tools: '제한적' as const,
-      network: '양호' as const,
-      pc_count: 10,
-      etc_equipment: '검사용 카메라 2대, 측정기기 공유',
+    {
+      round: 3,
+      date: '2026-05-10',
+      content: '훈련 실시(1차) · 중간 점검 · 과제 피드백',
+      method: '대면 실습',
+      participants: 'PM 김컨설턴트, 외부전문가 박AI전문가, 내부강사 김품질',
     },
-    training_needs_analysis:
-      '현장 실무자들은 AI 개념을 들어봤으나 실제 활용 경험이 부족. 품질 데이터 분석과 시각화, 불량 원인 탐지에 AI 도구(ChatGPT/Claude/Notebook) 적용법을 체계적으로 학습해야 함.',
-    expectation: {
-      as_is: '육안 검사·경험 기반 판정으로 편차 발생, 불량률 2.4%',
-      to_be: '데이터 기반 불량 예측·근본원인 분석으로 불량률 1.5% 이하',
+  ],
+
+  // ── Ⅲ-2-가 문제 도출 ─────────────────────────────────────────────────────
+  problems: [
+    {
+      title: '품질 데이터가 엑셀·수기로 분산',
+      description:
+        '부서별·라인별 체크시트 포맷이 상이해 통합 분석이 어려움. 불량 유형 코드 체계는 있으나 담당자마다 해석 차이.',
+      impact:
+        '불량 원인 추적 리드타임 평균 3영업일. 고객사 반품 대응 지연으로 월 500만 원 추가 손실.',
     },
-  },
-  hrdNecessity: {
-    training_history: [
-      {
-        id: 'hist-1',
-        seq: 1,
-        program: '사내 품질교육',
-        course_name: '기초 품질관리',
-        duration: '2024-08 (16H)',
-        result: '수료',
-      },
-      {
-        id: 'hist-2',
-        seq: 2,
-        program: '직업능력개발',
-        course_name: 'AI 이해와 활용 입문',
-        duration: '2025-03 (8H)',
-        result: '수료',
-      },
-    ],
-    custom_course_reason:
-      '기존 공개과정은 AI 일반론 중심이라 자사 품질 데이터와 공정에 직접 적용하기 어려움. 현장 과업·데이터·용어에 맞춘 맞춤 훈련이 필요.',
-    development_need:
-      'AI 도구 활용 역량을 실제 품질 데이터에 적용해 불량 원인 탐지·개선 루틴을 조직 내에 내재화해야 함.',
-  },
-  performanceActivities: {
-    activities: [
-      {
-        id: 'act-1',
-        round: 1,
-        date: '2026-04-20',
-        content: 'HRD 분석 및 훈련 목표 합의',
-        method: '대면 워크숍',
-        operation_mode: '대면' as const,
-        participants: { pm: '김컨설턴트', external_expert: '-', internal_hrd: '홍길동' },
-      },
-      {
-        id: 'act-2',
-        round: 2,
-        date: '2026-04-27',
-        content: '훈련과정 설계 및 샘플 데이터 준비',
-        method: '비대면 회의 + 문서 공유',
-        operation_mode: '비대면' as const,
-        participants: { pm: '김컨설턴트', external_expert: '박AI전문가', internal_hrd: '홍길동' },
-      },
-      {
-        id: 'act-3',
-        round: 3,
-        date: '2026-05-10',
-        content: '훈련 실시(1차) 및 중간 점검',
-        method: '대면 훈련',
-        operation_mode: '대면' as const,
-        participants: { pm: '김컨설턴트', external_expert: '박AI전문가', internal_hrd: '김품질' },
-      },
+    {
+      title: 'AI 도구 활용 경험 부족',
+      description:
+        '현장 실무자가 ChatGPT·Notebook 을 업무에 직접 적용해 본 경험이 없음. 데이터 분석·시각화 기초가 약함.',
+      impact:
+        '외부 컨설팅 결과를 조직이 소화·확산하지 못함. AI 도입 시도가 파일럿 수준에서 멈춤.',
+    },
+    {
+      title: '부서 간 데이터 공유 규칙 미정',
+      description:
+        '생산·품질·공정개선 부서가 각자 저장소를 운영. 공통 분석을 위한 표준 스키마·익명화 절차가 없음.',
+      impact:
+        '동일 불량 원인을 반복 분석. 예측 모델 학습 데이터셋 구성에 2주 이상 소요.',
+    },
+  ],
+
+  // ── Ⅲ-2-나 문제 우선순위 ─────────────────────────────────────────────────
+  priority: {
+    method:
+      'AHP + 경영진 협의. 영향(불량률·재무 손실)·긴급성(고객사 요구) 각 가중치 0.6 / 0.4 로 계산 후 경영진이 최종 확정.',
+    items: [
+      { problem: '품질 데이터가 엑셀·수기로 분산', score: 5, rank: 1 },
+      { problem: 'AI 도구 활용 경험 부족', score: 4, rank: 2 },
+      { problem: '부서 간 데이터 공유 규칙 미정', score: 3, rank: 3 },
     ],
   },
-  problemDefinition: {
-    current_issues:
-      '품질 데이터가 수기 기록과 엑셀에 분산. 불량 발생 시 원인 분석이 경험에 의존해 시간이 오래 걸리고 재발이 잦음.',
-    root_causes: [
-      '데이터 수집·저장 체계 부재',
-      '통계·AI 도구 활용 경험 부족',
-      '부서 간 데이터 공유 규칙 미정',
-    ],
-    gap_analysis: 'As-Is: 수작업 집계·경험 판정 / To-Be: AI 기반 이상 탐지·근본원인 추적',
-  },
-  targetTasks: {
-    selection_reason:
-      '품질검사·공정 개선은 불량률과 직결되고 데이터 축적이 가장 잘 되어 있어 AI 적용 효과를 가장 빠르게 검증 가능.',
-    target_task_details: [
+
+  // ── Ⅲ-3 훈련대상 업무 ────────────────────────────────────────────────────
+  target: {
+    name: '공정 불량 원인 분석 및 품질 보고서 작성',
+    code: '200107-03',
+    scope:
+      '품질관리부(8명) + 생산기술부(4명) 총 12명. 완제품 외관 검사·공정 개선·월간 품질 보고서 작성 업무를 담당하는 주임~과장.',
+    necessity:
+      '불량 원인 분석·보고서 작성은 품질 이슈 해결의 병목. AI 도구로 데이터 정제·시각화·초안 자동화가 가능해 개선 효과가 가장 크고 12명 전원이 공통으로 수행하므로 훈련 후 현업 적용 전환율이 높음.',
+    details: [
       {
-        id: 'task-1',
-        task_name: '공정 불량 원인 분석',
-        as_is: '엑셀·수기 집계 후 회의에서 경험적으로 판정.',
-        to_be: 'AI 도구로 불량 데이터 패턴을 탐지하고 근본원인을 시각화.',
-        required_knowledge: '통계적 공정관리(SPC) 개념, 불량 분류 체계',
-        required_skill: 'ChatGPT/Notebook으로 데이터 정제·분석, 시각화 리포팅',
+        title: 'As-Is',
+        description:
+          '엑셀·수기 집계 후 회의에서 경험적으로 판정. 보고서는 부서별 포맷 상이, 작성 평균 2 영업일.',
       },
       {
-        id: 'task-2',
-        task_name: '품질 보고서 작성',
-        as_is: '월간 품질 보고서를 수작업으로 작성, 부서별 포맷 상이.',
-        to_be: 'AI 보조로 표준 템플릿에 맞춰 자동 초안 생성 후 담당자가 검토·확정.',
-        required_knowledge: '보고서 표준 구조, 공정 지표 정의',
-        required_skill: '프롬프트 설계, 문서 템플릿 자동화',
+        title: 'To-Be',
+        description:
+          'ChatGPT + Notebook 으로 불량 데이터 패턴 탐지, 시각화 리포트 자동 생성. 표준 템플릿 기반 AI 초안 후 담당자 검토·확정. 작성 리드타임 0.5 영업일로 단축.',
+      },
+      {
+        title: '요구 지식',
+        description:
+          '통계적 공정관리(SPC) 개념, 불량 분류 체계, 보고서 표준 구조, 공정 지표 정의.',
+      },
+      {
+        title: '요구 기술',
+        description:
+          'ChatGPT/Claude/Notebook 으로 데이터 정제·분석·시각화, 프롬프트 설계, 문서 템플릿 자동화.',
       },
     ],
   },
-  aiLevelDiagnosis: {
-    current_ai_level: 'AI탐구형' as const,
-    expected_ai_level: 'AI활용형' as const,
-    improvement_reason:
-      '본 과정 이후 품질검사·공정 개선 업무에 AI 도구를 상시 활용하고, 확보한 분석 결과를 내부 보고·개선 루틴에 정착시키기 위함.',
+
+  // ── Ⅲ-4-가 현재 AI 역량 수준 ─────────────────────────────────────────────
+  currentAiLevel: {
+    level: 'EXPLORER',
+    note:
+      'AI 탐구형 — 일부 구성원이 ChatGPT 를 개인적으로 사용 중이나 업무에 체계적으로 적용하지 못함. 데이터 리터러시는 기초 수준이라 통계·시각화에서 추가 보강 필요.',
   },
-} as const;
+
+  // ── Ⅲ-4-나 예상 AI 역량 수준 (수강 이후) ──────────────────────────────────
+  expectedAiLevel: {
+    level: 'USER',
+    note:
+      'AI 활용형 — 본 과정 이후 품질검사·공정 개선 업무에 AI 도구를 상시 활용하고, 확보한 분석 결과를 내부 보고·개선 루틴에 정착. 사내 AI 챔피언 3명을 양성해 전 부서 확산 기반 확보.',
+  },
+};
 
 export type PBLInterviewSample = typeof PBL_INTERVIEW_SAMPLE;

@@ -1,12 +1,10 @@
 /**
- * TestPBLClient — ISSUE-02·03 Step E 단위 테스트.
+ * TestPBLClient 단위 테스트 (Task 2.11-e V2 포팅).
  *
  * 검증:
  * 1. "샘플 데이터 채우기" 버튼이 visible
- * 2. 빈 상태에서 클릭 → fixture 값(과정명 등) 이 폼에 주입됨
+ * 2. 빈 상태에서 클릭 → fixture (camelCase) 값이 폼에 주입됨
  * 3. 입력값이 있을 때 클릭 → confirm 호출, 취소 시 state 미변경
- *
- * lazy 로 로드되는 Step 컴포넌트는 부하가 크므로 mock 한다 (input 1개만 포함).
  */
 
 import { render, screen, waitFor, act } from '@testing-library/react';
@@ -14,7 +12,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@/test/helpers/mock-next-link';
 
-// next/navigation — BackButton 의 useRouter 호출 위해 mock
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -33,52 +30,50 @@ vi.mock('next/navigation', () => ({
 
 import TestPBLClient from './TestPBLClient';
 
-// ─── Step 컴포넌트 mock — 실제 폼 대신 value 를 노출하는 div 만 렌더 ─────────
-// readOnly + value 의 input 은 React 의 controlled 경고 + 일부 환경에서 value
-// 업데이트가 누락되므로 div.textContent 로 비교 가능한 형태로 노출한다.
+// ─── V2 Step 컴포넌트 경로로 모킹 ─────────────────────────────────────────
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCourseOverview',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOverview',
   () => ({
-    default: ({ value }: { value: { course_name: string } }) => (
-      <div data-testid="course-name-display">{value.course_name}</div>
+    StepOverview: ({ value }: { value: { courseName: string } }) => (
+      <div data-testid="course-name-display">{value.courseName}</div>
     ),
   }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLCompanyStatus',
-  () => ({ default: () => <div>StepCompanyStatus</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues',
+  () => ({ StepCompanyIssues: () => <div>StepCompanyIssues</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTrainingEnvironment',
-  () => ({ default: () => <div>StepTrainingEnvironment</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization',
+  () => ({ StepOrganization: () => <div>StepOrganization</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLHrdNecessity',
-  () => ({ default: () => <div>StepHrdNecessity</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv',
+  () => ({ StepTrainingEnv: () => <div>StepTrainingEnv</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLPerformanceActivities',
-  () => ({ default: () => <div>StepPerformanceActivities</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity',
+  () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLProblemDefinition',
-  () => ({ default: () => <div>StepProblemDefinition</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities',
+  () => ({ StepActivities: () => <div>StepActivities</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLTargetTasks',
-  () => ({ default: () => <div>StepTargetTasks</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems',
+  () => ({ StepProblems: () => <div>StepProblems</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLAILevel',
-  () => ({ default: () => <div>StepAILevel</div> }),
-);
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPBLSummary',
-  () => ({ default: () => <div>StepSummary</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTargetAndLevel',
+  () => ({ StepTargetAndLevel: () => <div>StepTargetAndLevel</div> }),
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper',
   () => ({ default: () => <nav aria-label="Progress">stepper</nav> }),
+);
+vi.mock(
+  '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient',
+  () => ({ PBLResultClient: () => <div>PBLResultClient</div> }),
 );
 
 const baseUser = {
@@ -89,7 +84,7 @@ const baseUser = {
   status: 'ACTIVE',
 };
 
-describe('TestPBLClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)', () => {
+describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -107,7 +102,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)', (
     expect(display).toHaveTextContent('');
   });
 
-  it('빈 상태에서 버튼 클릭 시 confirm 없이 즉시 fixture 값이 주입된다', async () => {
+  it('빈 상태에서 버튼 클릭 시 confirm 없이 fixture 값이 주입된다', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<TestPBLClient user={baseUser} canAccess={true} />);
     const btn = await screen.findByTestId('test-pbl-fill-sample');
@@ -119,14 +114,14 @@ describe('TestPBLClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)', (
     await waitFor(() => {
       expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
     });
-    expect(confirmSpy).not.toHaveBeenCalled(); // 빈 상태에서는 confirm 미호출
+    expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
 
   it('이미 입력값이 있을 때 confirm 취소하면 state 가 유지된다', async () => {
-    // 1차: fixture 로 채움
     render(<TestPBLClient user={baseUser} canAccess={true} />);
     const btn = await screen.findByTestId('test-pbl-fill-sample');
+
     await act(async () => {
       await userEvent.click(btn);
     });
@@ -134,7 +129,6 @@ describe('TestPBLClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)', (
       expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
     });
 
-    // 2차: 다시 클릭 — confirm=false → 변경 없음
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await act(async () => {
       await userEvent.click(btn);

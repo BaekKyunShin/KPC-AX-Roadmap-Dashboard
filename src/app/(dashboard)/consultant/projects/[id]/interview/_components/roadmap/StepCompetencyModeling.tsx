@@ -1,279 +1,326 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { FormField } from '@/components/ui/form-field';
-import { GuideNote } from '@/components/ui/guide-note';
 import { Plus, Trash2 } from 'lucide-react';
-import {
-  createEmptyCompetencyModel,
-  type CompetencyModel,
-  type NcsUsage,
+
+import { FormSection } from '@/components/forms/FormSection';
+import { LargeTextBox } from '@/components/forms/LargeTextBox';
+import { FormCheckbox } from '@/components/forms/FormCheckbox';
+import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
+import { Button } from '@/components/ui/button';
+
+import type { RoadmapStepProps } from './types';
+import type {
+  RoadmapCompetency,
+  RoadmapInterviewStrict,
 } from '@/lib/schemas/interview-roadmap';
 
-interface StepCompetencyModelingProps {
-  competencies: CompetencyModel[];
-  ncsUsage: NcsUsage;
-  onCompetenciesChange: (next: CompetencyModel[]) => void;
-  onNcsUsageChange: (next: NcsUsage) => void;
+/**
+ * Ⅲ-1 역량 모델링 — [인터뷰 입력 → 결과 페이지]
+ *
+ * 양식 기준 블록:
+ *  1) 역량 모델링 표: 역량명 · 역량 정의(수행준거) · 지식 · 기술 · 태도 (동적 행)
+ *  2) NCS XOR 박스:
+ *     - ncsUsed=true  → NCS 활용 방법 (자유 서술)
+ *     - ncsUsed=false → 역량별 도출 방법 (자유 서술)
+ *
+ * LLM 은 이 요약 텍스트를 받아 학습 설계용 배열 (knowledge[]·skills[]·attitudes[])
+ * 로 결과 페이지에서 확장한다.
+ */
+
+export interface StepCompetencyModelingValue {
+  competencies: RoadmapInterviewStrict['competencies'];
+  ncsUsed: RoadmapInterviewStrict['ncsUsed'];
+  ncsMethodology?: RoadmapInterviewStrict['ncsMethodology'];
+  ncsDerivationMethod?: RoadmapInterviewStrict['ncsDerivationMethod'];
 }
 
-export default function StepCompetencyModeling({
-  competencies,
-  ncsUsage,
-  onCompetenciesChange,
-  onNcsUsageChange,
-}: StepCompetencyModelingProps) {
-  const updateCompetency = <K extends keyof CompetencyModel>(
-    index: number,
-    key: K,
-    value: CompetencyModel[K],
-  ) => {
-    const next = competencies.map((item, i) =>
-      i === index ? { ...item, [key]: value } : item,
-    );
-    onCompetenciesChange(next);
+/** 빈 역량 행 */
+function emptyCompetency(): RoadmapCompetency {
+  return {
+    name: '',
+    definition: '',
+    knowledge: '',
+    skill: '',
+    attitude: '',
   };
+}
 
-  const addCompetency = () => {
-    onCompetenciesChange([...competencies, createEmptyCompetencyModel()]);
-  };
+/** 양식 기본 4행 (L362~L366) */
+function defaultRows(): RoadmapCompetency[] {
+  return Array.from({ length: 4 }, () => emptyCompetency());
+}
 
-  const removeCompetency = (index: number) => {
-    if (competencies.length <= 1) return;
-    onCompetenciesChange(competencies.filter((_, i) => i !== index));
-  };
+type NcsToggle = 'YES' | 'NO';
+const NCS_OPTIONS: ReadonlyArray<{ value: NcsToggle; label: string }> = [
+  { value: 'YES', label: 'NCS 활용' },
+  { value: 'NO', label: 'NCS 미활용' },
+];
 
-  const handleUsesNcsChange = (next: boolean) => {
-    if (next) {
-      onNcsUsageChange({ uses_ncs: true, ncs_usage_method: ncsUsage.ncs_usage_method ?? '' });
+export function StepCompetencyModeling({
+  value,
+  onChange,
+  readOnly = false,
+}: RoadmapStepProps<StepCompetencyModelingValue>) {
+  const rows: RoadmapCompetency[] =
+    value.competencies && value.competencies.length > 0
+      ? value.competencies
+      : defaultRows();
+
+  function emit(patch: Partial<StepCompetencyModelingValue>) {
+    onChange({
+      competencies: rows,
+      ncsUsed: value.ncsUsed,
+      ncsMethodology: value.ncsMethodology,
+      ncsDerivationMethod: value.ncsDerivationMethod,
+      ...patch,
+    });
+  }
+
+  function updateRow(idx: number, patch: Partial<RoadmapCompetency>) {
+    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    emit({ competencies: next });
+  }
+
+  function addRow() {
+    emit({ competencies: [...rows, emptyCompetency()] });
+  }
+
+  function removeRow(idx: number) {
+    if (rows.length <= 1) return;
+    emit({ competencies: rows.filter((_, i) => i !== idx) });
+  }
+
+  function toggleNcs(next: NcsToggle) {
+    if (next === 'YES') {
+      // NCS 활용으로 전환 — 미활용 측 값은 초기화 (XOR 보존)
+      emit({
+        ncsUsed: true,
+        ncsDerivationMethod: undefined,
+      });
     } else {
-      onNcsUsageChange({
-        uses_ncs: false,
-        competency_derivation_method: ncsUsage.competency_derivation_method ?? '',
+      emit({
+        ncsUsed: false,
+        ncsMethodology: undefined,
       });
     }
-  };
+  }
+
+  const ncsToggleValue: NcsToggle = value.ncsUsed ? 'YES' : 'NO';
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Ⅲ-1. 역량 모델링
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            훈련대상 과업 수행에 필요한 역량을 도출하고, 각 역량별 지식(K)·기술(S)·태도(A)와
-            역량 정의(수행준거)를 작성하세요. NCS 능력단위를 참고했다면 아래 NCS 활용 블록에
-            어떻게 참고·수정했는지 기술합니다.
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={addCompetency}>
-          <Plus className="w-4 h-4 mr-1" />
+    <FormSection
+      number="Ⅲ-1"
+      title="역량 모델링"
+      label="[인터뷰 입력 → 결과 페이지]"
+      description="선정된 과업에 AI 도입·활용을 위해 요구되는 역량을 정의하고, 지식·기술·태도를 작성합니다."
+    >
+      {/* 역량 모델링 표 --------------------------------------------------- */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border border-border text-sm">
+          <caption className="sr-only">역량 모델링 표</caption>
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                rowSpan={2}
+                className="w-[140px] border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                역량명
+              </th>
+              <th
+                scope="col"
+                rowSpan={2}
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                역량 정의 (수행준거)
+              </th>
+              <th
+                scope="col"
+                colSpan={3}
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                필요 지식·기술·태도
+              </th>
+              <th
+                scope="col"
+                rowSpan={2}
+                className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                <span className="sr-only">삭제</span>
+              </th>
+            </tr>
+            <tr>
+              <th
+                scope="col"
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                지식
+                <span className="block text-xs font-normal text-muted-foreground">
+                  (학술·업무지식)
+                </span>
+              </th>
+              <th
+                scope="col"
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                기술
+                <span className="block text-xs font-normal text-muted-foreground">
+                  (기능)
+                </span>
+              </th>
+              <th
+                scope="col"
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                태도
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={idx}>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={row.name}
+                    onChange={(e) => updateRow(idx, { name: e.target.value })}
+                    placeholder="역량명"
+                    disabled={readOnly}
+                    aria-label={`역량명 ${idx + 1}`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={row.definition}
+                    onChange={(e) =>
+                      updateRow(idx, { definition: e.target.value })
+                    }
+                    placeholder="역량 정의 (수행준거)"
+                    disabled={readOnly}
+                    aria-label={`역량 정의 ${idx + 1}`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={row.knowledge}
+                    onChange={(e) =>
+                      updateRow(idx, { knowledge: e.target.value })
+                    }
+                    placeholder="필요 지식"
+                    disabled={readOnly}
+                    aria-label={`지식 ${idx + 1}`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={row.skill}
+                    onChange={(e) => updateRow(idx, { skill: e.target.value })}
+                    placeholder="필요 기술"
+                    disabled={readOnly}
+                    aria-label={`기술 ${idx + 1}`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={row.attitude}
+                    onChange={(e) =>
+                      updateRow(idx, { attitude: e.target.value })
+                    }
+                    placeholder="필요 태도"
+                    disabled={readOnly}
+                    aria-label={`태도 ${idx + 1}`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </td>
+                <td className="border border-border p-1 text-center align-top">
+                  <button
+                    type="button"
+                    onClick={() => removeRow(idx)}
+                    disabled={readOnly || rows.length <= 1}
+                    aria-label={`역량 삭제 ${idx + 1}`}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addRow}
+          disabled={readOnly}
+          aria-label="역량 추가"
+        >
+          <Plus className="mr-1 size-4" />
           역량 추가
         </Button>
       </div>
 
-      <div className="space-y-4">
-        {competencies.map((item, index) => (
-          <div key={item.id} className="border border-border rounded-lg p-4 bg-muted/30">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-foreground flex items-center">
-                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center mr-2">
-                  {index + 1}
-                </span>
-                역량 {index + 1}
-              </h3>
-              {competencies.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`행 삭제: 역량 ${index + 1}`}
-                  onClick={() => removeCompetency(index)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  삭제
-                </Button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <FormField label="역량명" htmlFor={`cm-name-${item.id}`} required>
-                <Input
-                  id={`cm-name-${item.id}`}
-                  value={item.competency_name}
-                  onChange={(e) => updateCompetency(index, 'competency_name', e.target.value)}
-                  placeholder="예) 품질 검사 데이터 해석 역량"
-                />
-              </FormField>
-              <FormField
-                label="역량 정의(수행준거)"
-                htmlFor={`cm-def-${item.id}`}
-                required
-                hint="해당 역량이 실제 업무에서 어떻게 발휘되어야 하는지 1~2문장으로 기술"
-              >
-                <Textarea
-                  id={`cm-def-${item.id}`}
-                  rows={6}
-                  value={item.competency_definition}
-                  onChange={(e) =>
-                    updateCompetency(index, 'competency_definition', e.target.value)
-                  }
-                  placeholder="예) 검사 이미지 데이터에서 불량 패턴을 식별하고, 공정 담당자에게 즉시 전달·대응할 수 있다."
-                  className="break-keep"
-                />
-              </FormField>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  label="필요 지식 (K)"
-                  htmlFor={`cm-k-${item.id}`}
-                  required
-                  hint="학술·업무지식 (분야, 용어, 체계)"
-                >
-                  <Textarea
-                    id={`cm-k-${item.id}`}
-                    rows={6}
-                    value={item.knowledge}
-                    onChange={(e) => updateCompetency(index, 'knowledge', e.target.value)}
-                    placeholder="예) 이미지 분류 기초, QMS 지표 체계, 머신러닝 입문"
-                    className="break-keep"
-                  />
-                </FormField>
-                <FormField
-                  label="필요 기술 (S)"
-                  htmlFor={`cm-s-${item.id}`}
-                  required
-                  hint="실제 수행 기능(툴·기법)"
-                >
-                  <Textarea
-                    id={`cm-s-${item.id}`}
-                    rows={6}
-                    value={item.skill}
-                    onChange={(e) => updateCompetency(index, 'skill', e.target.value)}
-                    placeholder="예) 이미지 레이블링, 시각화 도구, 지표 모니터링"
-                    className="break-keep"
-                  />
-                </FormField>
-                <FormField
-                  label="필요 태도 (A)"
-                  htmlFor={`cm-a-${item.id}`}
-                  required
-                  hint="업무 수행 시 필요한 태도·가치관"
-                >
-                  <Textarea
-                    id={`cm-a-${item.id}`}
-                    rows={6}
-                    value={item.attitude}
-                    onChange={(e) => updateCompetency(index, 'attitude', e.target.value)}
-                    placeholder="예) 데이터 기반 의사결정 선호, 지속 학습 의지, 협업 태도"
-                    className="break-keep"
-                  />
-                </FormField>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* NCS XOR 박스 ----------------------------------------------------- */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">NCS 활용 여부 (택1)</h3>
+        <FormCheckbox<NcsToggle>
+          mode="single"
+          options={[...NCS_OPTIONS]}
+          value={ncsToggleValue}
+          onChange={(next) => toggleNcs(next as NcsToggle)}
+          readOnly={readOnly}
+        />
       </div>
 
-      <fieldset className="rounded-md border border-border/70 p-4 bg-background/60">
-        <legend className="px-1 text-sm font-medium text-foreground">
-          NCS 능력단위 활용 여부 <span className="text-destructive">*</span>
-        </legend>
-        <p className="text-xs text-muted-foreground mb-3">
-          역량 도출 시 국가직무능력표준(NCS) 능력단위를 참고했는지 선택하세요.
-        </p>
-        <div
-          role="radiogroup"
-          aria-label="NCS 능력단위 활용 여부"
-          className="flex flex-col sm:flex-row gap-3 mb-4"
-        >
-          <label className="flex items-start gap-2 border border-border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50 flex-1">
-            <input
-              type="radio"
-              name="ncs-uses"
-              value="true"
-              checked={ncsUsage.uses_ncs === true}
-              onChange={() => handleUsesNcsChange(true)}
-              className="mt-1"
-            />
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">예, NCS 능력단위를 참고했습니다</span>
-              <span className="text-xs text-muted-foreground">
-                NCS 세분류·능력단위를 어떻게 참고·수정했는지 기술
-              </span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2 border border-border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50 flex-1">
-            <input
-              type="radio"
-              name="ncs-uses"
-              value="false"
-              checked={ncsUsage.uses_ncs === false}
-              onChange={() => handleUsesNcsChange(false)}
-              className="mt-1"
-            />
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">아니오, NCS 없이 자체 도출했습니다</span>
-              <span className="text-xs text-muted-foreground">
-                인터뷰·벤치마킹·전문가 자문 등 도출 방법 기술
-              </span>
-            </span>
-          </label>
+      {value.ncsUsed ? (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">NCS 활용 방법</h3>
+          <LargeTextBox
+            value={value.ncsMethodology ?? ''}
+            onChange={(e) => emit({ ncsMethodology: e.target.value })}
+            placeholder="NCS 능력단위를 어떻게 참고·수정했는지 서술하세요..."
+            disabled={readOnly}
+            aria-label="NCS 활용 방법"
+          />
         </div>
+      ) : (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">역량별 도출 방법</h3>
+          <LargeTextBox
+            value={value.ncsDerivationMethod ?? ''}
+            onChange={(e) => emit({ ncsDerivationMethod: e.target.value })}
+            placeholder="NCS 없이 역량을 어떻게 도출했는지 서술하세요..."
+            disabled={readOnly}
+            aria-label="역량별 도출 방법"
+          />
+        </div>
+      )}
 
-        {ncsUsage.uses_ncs ? (
-          <FormField
-            label="NCS 활용 방법"
-            htmlFor="ncs-usage-method"
-            required
-            hint="예) NCS 20.02.01 빅데이터분석 세분류 능력단위 '데이터 수집·전처리'를 차용, 기업 도메인에 맞춰 용어 일부 수정"
-          >
-            <Textarea
-              id="ncs-usage-method"
-              rows={6}
-              value={ncsUsage.ncs_usage_method ?? ''}
-              onChange={(e) =>
-                onNcsUsageChange({ uses_ncs: true, ncs_usage_method: e.target.value })
-              }
-              placeholder="NCS 세분류·능력단위명과 함께 어떻게 참고·수정했는지 기술"
-              className="break-keep"
-            />
-          </FormField>
-        ) : (
-          <FormField
-            label="역량 도출 방법"
-            htmlFor="competency-derivation-method"
-            required
-            hint="예) 3개 기업 현장 인터뷰 + 업계 벤치마킹(A사·B사 사례)을 통해 공통 역량을 추출"
-          >
-            <Textarea
-              id="competency-derivation-method"
-              rows={6}
-              value={ncsUsage.competency_derivation_method ?? ''}
-              onChange={(e) =>
-                onNcsUsageChange({
-                  uses_ncs: false,
-                  competency_derivation_method: e.target.value,
-                })
-              }
-              placeholder="NCS를 사용하지 않고 어떻게 역량을 도출했는지 방법 기술"
-              className="break-keep"
-            />
-          </FormField>
-        )}
-      </fieldset>
-
-      <GuideNote
-        items={[
-          '훈련대상 과업 수행에 필요한 역량을 도출하고, 역량 정의(수행준거) + 필요 지식(K)·기술(S)·태도(A) 를 작성합니다.',
-          '지식(K)은 해당 역량에 필요한 학술·업무지식(분야, 용어, 체계 등)을 기술합니다.',
-          '기술(S)은 실제 수행 기능(활용 툴, 기법 등)을, 태도(A)는 업무 수행 시 요구되는 가치관·태도를 기술합니다.',
-          'NCS 능력단위를 참고했다면 활용 방법을, 참고하지 않았다면 자체 도출 방법(인터뷰·벤치마킹 등)을 기술합니다.',
-        ]}
+      <ExampleAccordion
+        guide={
+          <ul className="list-disc space-y-1 pl-4">
+            <li>
+              선정된 과업에 AI 도입·활용을 위해 요구되는 역량을 구분하여 정의하고,
+              해당 역량을 위해 필요한 지식·기술·태도를 파악합니다.
+            </li>
+            <li>
+              국가직무능력표준(NCS) 에 해당 자료가 있는 경우 참고하여 활용하되,
+              대상 과업의 특성에 부합하는지 검토한 방법과 기업 특성에 맞게 수정한
+              내용을 기술합니다.
+            </li>
+            <li>
+              NCS 가 없는 경우 역량 분류·지식·기술·태도 도출에 검토한 내용을
+              기술합니다.
+            </li>
+          </ul>
+        }
       />
-    </div>
+    </FormSection>
   );
 }

@@ -1,0 +1,182 @@
+{
+  "diagnosis_summary": "제조업 중견기업으로 AI 도입 초기 단계이며, 품질검사 자동화 과업을 중심으로 단계별 AI 역량 강화가 필요한 상황입니다.",
+  "setup_necessity": "현재 품질검사 업무는 전량 수작업으로 진행되어 불량률 감지에 많은 시간이 소요되고 있습니다. AI 비전 검사 도입을 통해 불량 감지율을 향상시키고 생산성을 높이기 위해 AI 훈련 로드맵 수립이 필요합니다.",
+  "outcome_summary": {
+    "ai_competency_level": "BEGINNER",
+    "selected_tasks": "AI 비전 검사 시스템 도입을 위한 데이터 수집·전처리 및 모델 운영 역량을 핵심 훈련 과업으로 선정하였습니다.",
+    "main_content": "초급·중급·고급 3단계 AI 역량 체계를 수립하여 데이터 분석, AI 모델 활용, AI 솔루션 운영 총 3개 과정을 설계하였습니다. 훈련 기간은 연간 48시간 내외로 구성되며, 집체·혼합 형태로 운영됩니다."
+  },
+  "competencies": [
+    {
+      "name": "AI 데이터 분석",
+      "definition": "업무 데이터를 수집·가공·분석하여 AI 모델 학습에 활용할 수 있는 역량",
+      "knowledge": ["통계 기초 (기술통계, 분포)", "데이터 품질 기준", "CSV·Excel 데이터 구조"],
+      "skills": ["Excel 피벗 테이블 활용 (무료: 기본 제공)", "Google Sheets 데이터 정제 (무료: 전체)", "데이터 라벨링 도구 조작"],
+      "attitudes": ["데이터 정확성에 대한 꼼꼼한 태도", "반복 작업에서의 일관성 유지"]
+    },
+    {
+      "name": "AI 모델 활용",
+      "definition": "노코드 AI 플랫폼을 통해 이미지 분류·불량 감지 모델을 학습·배포·운영하는 역량",
+      "knowledge": ["머신러닝 기본 개념", "이미지 분류 원리", "모델 성능 지표 (정확도, 재현율)"],
+      "skills": ["Teachable Machine 모델 학습 (무료: 전체)", "CLOVA AI API 연동 (무료: 월 1000건)", "모델 예측 결과 해석"],
+      "attitudes": ["결과 검증에 대한 비판적 사고", "지속적인 모델 개선 의지"]
+    }
+  ],
+  "ncs_used": false,
+  "ncs_methodology": "",
+  "ncs_derivation_method": "현장 인터뷰 및 과업 분석(Ⅱ-3)을 통해 품질검사 업무에서 AI 도입·활용에 필요한 핵심 지식·기술·태도를 도출하였습니다.",
+  "training_structure": [
+    {
+      "competency_name": "AI 데이터 분석",
+      "level": "BEGINNER",
+      "content": "데이터 수집 방법, Excel·Sheets 기초 정제, 데이터 품질 기준 이해",
+      "target_audience": "품질검사 실무자 (전원)",
+      "method": "집체",
+      "goal": "업무 데이터를 스스로 수집·정제하여 AI 학습 데이터셋을 구성할 수 있다"
+    },
+    {
+      "competency_name": "AI 데이터 분석",
+      "level": "INTERMEDIATE",
+      "content": "통계 기초 분석, 데이터 시각화, 라벨링 가이드라인 작성",
+      "target_audience": "품질팀 중간관리자",
+      "method": "혼합",
+      "goal": "데이터 분포 분석 및 라벨링 품질 검증 기준을 수립할 수 있다"
+    },
+    {
+      "competency_name": "AI 데이터 분석",
+      "level": "ADVANCED",
+      "content": "대용량 데이터 파이프라인 설계, 자동 라벨링 도구 운영",
+      "target_audience": "AI 담당 파트장",
+      "method": "혼합",
+      "goal": "지속적 데이터 수집·관리 체계를 자립적으로 운영할 수 있다"
+    },
+    {
+      "competency_name": "AI 모델 활용",
+      "level": "BEGINNER",
+      "content": "Teachable Machine 기초 실습, 이미지 분류 모델 학습·내보내기",
+      "target_audience": "품질검사 실무자 (선발)",
+      "method": "집체",
+      "goal": "노코드 도구로 이미지 분류 모델을 스스로 학습·테스트할 수 있다"
+    },
+    {
+      "competency_name": "AI 모델 활용",
+      "level": "INTERMEDIATE",
+      "content": "CLOVA AI API 연동, 모델 성능 평가 및 임계값 조정",
+      "target_audience": "품질팀 AI 리더",
+      "method": "혼합",
+      "goal": "실 생산라인에 AI 비전 검사 API를 연동하여 시범 운영할 수 있다"
+    },
+    {
+      "competency_name": "AI 모델 활용",
+      "level": "ADVANCED",
+      "content": "모델 재학습 주기 설계, 성능 저하 모니터링, 운영 매뉴얼 작성",
+      "target_audience": "AI 담당 파트장",
+      "method": "현장",
+      "goal": "AI 모델 운영 체계를 자립적으로 구축하고 지속 개선할 수 있다"
+    }
+  ],
+  "training_structure_method": "Ⅲ-1 역량 모델링에서 도출된 'AI 데이터 분석'과 'AI 모델 활용' 두 역량을 기준으로 BEGINNER·INTERMEDIATE·ADVANCED 3수준 훈련체계를 수립하였습니다. 각 수준은 선수요건(이전 수준 이수)을 전제로 설계되며, 실무 현장 적용 가능성을 최우선으로 고려하였습니다. 훈련 방법은 이론 중심은 집체, 현장 적용 단계는 혼합·현장 훈련으로 구분하였습니다.",
+  "annual_plan": {
+    "items": [
+      {
+        "competency_name": "AI 데이터 분석",
+        "course_name": "AI 데이터 수집·정제 입문",
+        "format": "집체",
+        "hours": 16,
+        "notes": "1분기 (3월) 실시"
+      },
+      {
+        "competency_name": "AI 모델 활용",
+        "course_name": "노코드 AI 비전검사 실무",
+        "format": "집체",
+        "hours": 24,
+        "notes": "2분기 (6월) 실시"
+      },
+      {
+        "competency_name": "AI 모델 활용",
+        "course_name": "AI 비전검사 현장 적용 심화",
+        "format": "혼합",
+        "hours": 16,
+        "notes": "4분기 (11월) 실시, 1·2 과정 이수자 대상"
+      }
+    ],
+    "usage_plan": "1분기에 데이터 수집·정제 입문 과정을 통해 전 실무자의 기초 역량을 확보합니다. 2분기 노코드 AI 비전검사 과정에서 선발 인원이 모델 학습·배포를 실습하며, 4분기 심화 과정에서 생산라인 시범 적용 결과를 분석합니다. 훈련 결과는 매 분기 사내 발표회에서 공유하고, K-Digital Training 등 정부 지원 훈련사업을 적극 활용하여 교육 비용을 절감합니다."
+  },
+  "course_specs": [
+    {
+      "course_name": "AI 데이터 수집·정제 입문",
+      "format": "집체",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "goal": "업무 현장에서 AI 학습용 데이터를 직접 수집·정제하여 데이터셋을 구성할 수 있다",
+      "main_content": "데이터 수집 방법론, Excel·Google Sheets 활용 데이터 정제, AI 학습 데이터 품질 기준, 라벨링 실습",
+      "target_audience": "품질검사 실무자 전원 (선수 조건 없음)",
+      "subjects": [
+        {
+          "name": "AI 데이터 이해",
+          "details": "AI 학습 데이터 개념, 구조화·비구조화 데이터 구분, 품질 기준 수립",
+          "hours": 4
+        },
+        {
+          "name": "Excel 데이터 정제 실습",
+          "details": "결측값 처리, 중복 제거, 피벗 테이블 활용 집계 (무료: Excel/Sheets 기본 제공)",
+          "hours": 6
+        },
+        {
+          "name": "이미지 라벨링 실습",
+          "details": "Label Studio 설치 및 운영 (무료: Community Edition), 불량·정상 이미지 라벨링 가이드라인 작성",
+          "hours": 6
+        }
+      ]
+    },
+    {
+      "course_name": "노코드 AI 비전검사 실무",
+      "format": "집체",
+      "recommended_program": "K-Digital Training",
+      "goal": "Teachable Machine 및 CLOVA AI API를 활용하여 불량 감지 모델을 학습·배포하고 생산라인에 시범 적용할 수 있다",
+      "main_content": "Teachable Machine 이미지 분류 모델 학습, 모델 성능 평가, CLOVA AI Vision API 연동, 현장 시범 운영",
+      "target_audience": "품질검사 실무자 중 AI 리더 선발 (사전 이수: AI 데이터 수집·정제 입문)",
+      "subjects": [
+        {
+          "name": "Teachable Machine 기초",
+          "details": "인터페이스 탐색, 이미지 업로드 및 클래스 분류, 모델 학습·내보내기 (무료: 전체)",
+          "hours": 8
+        },
+        {
+          "name": "모델 성능 평가",
+          "details": "정확도·재현율·F1 점수 해석, 혼동행렬(Confusion Matrix) 분석, 임계값 조정 실습",
+          "hours": 6
+        },
+        {
+          "name": "CLOVA AI API 연동 실습",
+          "details": "CLOVA Vision OCR·Image Recognition API 호출 (무료: 월 1000건), 검사 결과 Excel 리포팅 자동화",
+          "hours": 10
+        }
+      ]
+    },
+    {
+      "course_name": "AI 비전검사 현장 적용 심화",
+      "format": "혼합",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "goal": "AI 비전검사 시스템의 재학습 주기를 설계하고 운영 매뉴얼을 수립하여 자립적 운영 체계를 구축할 수 있다",
+      "main_content": "모델 성능 저하 모니터링, 재학습 데이터 수집 자동화, 운영 매뉴얼 작성, 현장 발표회",
+      "target_audience": "1·2 과정 이수자 (AI 담당 파트장 포함)",
+      "subjects": [
+        {
+          "name": "모델 재학습 설계",
+          "details": "성능 저하 탐지 기준 수립, Weights & Biases 무료 티어 모니터링 (무료: 개인 프로젝트), 재학습 트리거 조건 설정",
+          "hours": 6
+        },
+        {
+          "name": "운영 매뉴얼 작성 실습",
+          "details": "Notion 기반 운영 절차서 작성 (무료: 무제한 페이지), 이슈 대응 시나리오 정의, 담당자 역할 분배",
+          "hours": 4
+        },
+        {
+          "name": "현장 적용 발표 및 회고",
+          "details": "분기별 AI 적용 성과 지표(불량 감지율 변화) 분석, 팀 발표 및 개선 토론",
+          "hours": 6
+        }
+      ]
+    }
+  ]
+}

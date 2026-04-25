@@ -14,6 +14,7 @@ import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import type { PBLContent } from './pbl-types';
 import { PBL_EVALUATION_SCALE_DESCRIPTION } from './pbl-types';
+import { createEmptyOutcomeAnalysis } from './__fixtures__/empty-outcome-analysis';
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(),
@@ -83,6 +84,7 @@ function minimalValidPBLContent(): PBLContent {
         },
       },
     },
+    outcome_analysis: createEmptyOutcomeAnalysis(),
   };
 }
 

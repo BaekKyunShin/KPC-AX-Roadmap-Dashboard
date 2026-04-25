@@ -13,6 +13,10 @@ import { createAuditLog } from '@/lib/services/audit';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import {
+  RoadmapInterviewStrictSchema,
+  type RoadmapInterviewStrict,
+} from '@/lib/schemas/interview-roadmap';
 
 // =============================================================================
 // 상수
@@ -20,13 +24,25 @@ import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
-/** abort 레지스트리 키 생성 */
 function abortKey(userId: string) {
   return `test-roadmap:${userId}`;
 }
 
 // =============================================================================
-// 헬퍼 함수
+// 테스트 Action 입력 (V2 camelCase 인터뷰 + 테스트 전용 기업 메타)
+// =============================================================================
+
+export interface TestRoadmapActionInput {
+  /** V2 양식 1 인터뷰 (Strict 통과 필요) */
+  interview: RoadmapInterviewStrict;
+  /** 테스트 대상 기업 메타 (프로젝트 레코드 없이 LLM 프롬프트에만 사용) */
+  companyName: string;
+  industry: string;
+  companySize: string;
+}
+
+// =============================================================================
+// 헬퍼 — V2 인터뷰 → TestRoadmapInput (서비스 계층 snake_case) 어댑터
 // =============================================================================
 
 async function fetchConsultantProfile(
@@ -42,61 +58,142 @@ async function fetchConsultantProfile(
 }
 
 /**
- * 입력 검증 (OFA-11: 산인공 양식 1번 신규 스키마 직접 사용 — legacy 변환 제거)
+ * V2 Strict 인터뷰(camelCase) 를 LLM 서비스의 `TestRoadmapInput` (snake_case) 로 변환.
+ *
+ * 서비스 계층(`generateTestRoadmap`) 은 아직 기존 프롬프트 빌더(snake_case interview)
+ * 를 사용한다. V2 인터뷰와 1:1 필드 매핑이 가능하므로 어댑터 한 번으로 재사용한다.
  */
-function validateInput(input: TestRoadmapInput): string | null {
-  if (!input.company_name || input.company_name.trim().length < 2) {
-    return '회사명을 2자 이상 입력하세요.';
+function toLegacyTestInput(
+  interview: RoadmapInterviewStrict,
+  meta: { companyName: string; industry: string; companySize: string },
+): TestRoadmapInput {
+  // Ⅰ-2 첫 차수에서 날짜/시간/방법 추출 (legacy 헤더 매핑용)
+  const first = interview.performanceActivities[0];
+  const method =
+    first && ['ONSITE', 'VIDEO', 'WORKSHOP', 'OTHER'].includes(first.method)
+      ? (first.method as 'ONSITE' | 'VIDEO' | 'WORKSHOP' | 'OTHER')
+      : 'ONSITE';
+
+  return {
+    company_name: meta.companyName,
+    industry: meta.industry,
+    company_size: meta.companySize,
+    customer_requirements: '',
+    overview: {
+      establishment_necessity: interview.establishmentNecessity,
+      ai_competency_level: interview.aiLevel,
+      selected_tasks_summary: interview.selectedTask,
+      roadmap_summary: '',
+    },
+    interview_date: first?.date ?? new Date().toISOString().slice(0, 10),
+    interview_round: first?.round ?? 1,
+    interview_time: first?.timeRange ?? '',
+    interview_method: method,
+    participants: [
+      {
+        id: 'test-pm',
+        name: first?.pmName ?? 'PM',
+        position: 'PM',
+      },
+      ...(first?.expertName
+        ? [{ id: 'test-expert', name: first.expertName, position: '전문가' }]
+        : []),
+    ],
+    company_requirements: {
+      company_status: interview.companyRequirements.status,
+      main_problems: interview.companyRequirements.problem,
+      push_willingness: interview.companyRequirements.will,
+      expected_outcomes: interview.companyRequirements.outcomes,
+    },
+    task_workflow_items: interview.taskAnalysis.map((t, i) => ({
+      id: `test-t-${i}`,
+      job: t.domain,
+      task_name: t.task,
+      as_is: t.asIs,
+      problems: t.problem,
+      data_availability: t.dataTiming,
+      ai_necessity: t.aiScore,
+    })),
+    training_targets: [
+      {
+        id: 'test-tt-1',
+        task_name: interview.targetTask.name,
+        selection_reason: interview.targetTask.reason,
+        as_is: interview.targetTask.expectedAsIs,
+        to_be: interview.targetTask.expectedToBe,
+      },
+    ],
+    analysis_notes: {
+      text: interview.taskAnalysisNote,
+      attachment_files: [],
+    },
+    competency_models: interview.competencies.map((c, i) => ({
+      id: `test-c-${i}`,
+      competency_name: c.name,
+      competency_definition: c.definition,
+      knowledge: c.knowledge,
+      skill: c.skill,
+      attitude: c.attitude,
+    })),
+    ncs_usage: interview.ncsUsed
+      ? {
+          uses_ncs: true,
+          ncs_usage_method: interview.ncsMethodology ?? '',
+        }
+      : {
+          uses_ncs: false,
+          competency_derivation_method: interview.ncsDerivationMethod ?? '',
+        },
+    notes: '',
+  };
+}
+
+function parseInterview(input: TestRoadmapActionInput):
+  | { ok: true; data: RoadmapInterviewStrict }
+  | { ok: false; error: string } {
+  if (!input.companyName || input.companyName.trim().length < 2) {
+    return { ok: false, error: '회사명을 2자 이상 입력하세요.' };
   }
-  if (!input.industry) return '업종을 선택하세요.';
-  if (!input.company_size) return '기업 규모를 선택하세요.';
-  if (!input.interview_date) return '인터뷰 날짜를 입력하세요.';
-  if (!input.participants?.length) return '최소 1명 이상의 참석자를 입력하세요.';
-  if (input.participants.some((p) => !p.name || p.name.trim() === '')) {
-    return '참석자 이름을 입력하세요.';
+  if (!input.industry) return { ok: false, error: '업종을 선택하세요.' };
+  if (!input.companySize) return { ok: false, error: '기업 규모를 선택하세요.' };
+
+  const parsed = RoadmapInterviewStrictSchema.safeParse(input.interview);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error:
+        parsed.error.errors[0]?.message ??
+        '인터뷰 입력 검증에 실패했습니다. 필수 항목을 확인하세요.',
+    };
   }
-  if (
-    !input.company_requirements?.company_status ||
-    !input.company_requirements.main_problems ||
-    !input.company_requirements.push_willingness ||
-    !input.company_requirements.expected_outcomes
-  ) {
-    return '기업 요구분석 4필드를 모두 입력하세요.';
-  }
-  if (!input.task_workflow_items?.length) {
-    return '최소 1개 이상의 과업·워크플로우 항목을 입력하세요.';
-  }
-  if (!input.training_targets?.length) {
-    return '최소 1개 이상의 훈련대상 과업을 입력하세요.';
-  }
-  return null;
+  return { ok: true, data: parsed.data };
 }
 
 // =============================================================================
-// Server Action — createTestRoadmap
+// Server Action — createTestRoadmap (V2 인터뷰 수용, DB 저장 없음)
 // =============================================================================
 
-/**
- * 로드맵 테스트 생성 (DB 저장 없이 LLM 결과만 반환)
- *
- * OFA-11 재작성: TestRoadmapInput(산인공 양식 1번 신규 스키마) 직접 수용.
- * 이전에는 legacy `TestInputData` → `convertToRoadmapInput` 변환이 있었으나 제거됨.
- */
 export async function createTestRoadmap(
-  input: TestRoadmapInput,
+  input: TestRoadmapActionInput,
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
 
-  const validationError = validateInput(input);
-  if (validationError) return { success: false, error: validationError };
+  const parsed = parseInterview(input);
+  if (!parsed.ok) return { success: false, error: parsed.error };
+
+  const legacyInput = toLegacyTestInput(parsed.data, {
+    companyName: input.companyName,
+    industry: input.industry,
+    companySize: input.companySize,
+  });
 
   const abortController = registerAbort(abortKey(auth.user.id));
 
   try {
     const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
     const roadmapResult = await generateTestRoadmap(
-      input,
+      legacyInput,
       auth.user.id,
       consultantProfile,
       undefined,
@@ -110,7 +207,7 @@ export async function createTestRoadmap(
         targetType: 'roadmap',
         targetId: 'test-mode',
         meta: {
-          company_name: input.company_name,
+          company_name: input.companyName,
           industry: input.industry,
           is_test_mode: true,
           no_db_save: true,
@@ -134,11 +231,11 @@ export async function createTestRoadmap(
 }
 
 // =============================================================================
-// Server Action — reviseTestRoadmap
+// Server Action — reviseTestRoadmap (V2 인터뷰 수용, DB 저장 없음)
 // =============================================================================
 
 export async function reviseTestRoadmap(
-  input: TestRoadmapInput,
+  input: TestRoadmapActionInput,
   previousResult: RoadmapResult,
   revisionPrompt: string,
 ): Promise<ActionResult<{ result: RoadmapResult; validation: ValidationResult }>> {
@@ -149,12 +246,21 @@ export async function reviseTestRoadmap(
     return { success: false, error: '수정 요청 내용을 입력해주세요.' };
   }
 
+  const parsed = parseInterview(input);
+  if (!parsed.ok) return { success: false, error: parsed.error };
+
+  const legacyInput = toLegacyTestInput(parsed.data, {
+    companyName: input.companyName,
+    industry: input.industry,
+    companySize: input.companySize,
+  });
+
   const abortController = registerAbort(abortKey(auth.user.id));
 
   try {
     const consultantProfile = await fetchConsultantProfile(auth.supabase, auth.user.id);
     const roadmapResult = await reviseTestRoadmapService(
-      input,
+      legacyInput,
       previousResult,
       revisionPrompt,
       auth.user.id,
@@ -169,7 +275,7 @@ export async function reviseTestRoadmap(
         targetType: 'roadmap',
         targetId: 'test-mode',
         meta: {
-          company_name: input.company_name,
+          company_name: input.companyName,
           industry: input.industry,
           is_test_mode: true,
           no_db_save: true,

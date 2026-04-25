@@ -7,6 +7,7 @@ import {
   PBL_MIN_TRAINING_CONTENT_ROWS,
   PBL_PRACTICAL_APPLICATION_SURVEY_LENGTH,
   PBL_SATISFACTION_SURVEY_LENGTH,
+  TRAINING_GOAL_CATEGORIES,
 } from './pbl-types';
 
 // ============================================================================
@@ -232,6 +233,37 @@ const resultEvaluationSchema = z.object({
   evaluation_date: z.string().optional(),
 });
 
+// ============================================================================
+// Ⅴ. 성과분석 및 확산 전략 스키마
+// ============================================================================
+
+// Ⅴ-1. 성과분석 측정 지표
+// z.enum은 readonly tuple을 직접 받을 수 없으므로 spread 사용
+const trainingGoalCategoryEnum = z.enum([...TRAINING_GOAL_CATEGORIES] as [
+  (typeof TRAINING_GOAL_CATEGORIES)[number],
+  ...(typeof TRAINING_GOAL_CATEGORIES)[number][],
+]);
+
+const outcomeMetricsSchema = z.object({
+  selected_goals: z
+    .array(trainingGoalCategoryEnum)
+    .min(1, '훈련 목표 카테고리를 최소 1개 선택하세요.'),
+  quantitative: trimmedText('정량 지표'),
+  qualitative: trimmedText('정성 지표'),
+});
+
+// Ⅴ-2. 성과 확산 전략
+const diffusionStrategySchema = z.object({
+  internalization: trimmedText('내재화 방안'),
+  company_wide_diffusion: trimmedText('전사 확산 방안'),
+});
+
+// Ⅴ. 통합
+const outcomeAnalysisSchema = z.object({
+  outcome_metrics: outcomeMetricsSchema,
+  diffusion_strategy: diffusionStrategySchema,
+});
+
 // ----------------------------------------------------------------------------
 // 최상위 스키마
 // ----------------------------------------------------------------------------
@@ -252,6 +284,7 @@ export const pblContentSchema = z.object({
       result_evaluation: resultEvaluationSchema,
     }),
   }),
+  outcome_analysis: outcomeAnalysisSchema,
 });
 
 /** LLM 출력 1차 Zod 파싱 (엄격) */

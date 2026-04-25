@@ -52,10 +52,12 @@ test.describe('로드맵 테스트 페이지 — 컨설턴트', () => {
     // 뒤로가기 버튼 (backLink.useBack: true → BackButton = <button>)
     await expect(page.getByRole('button', { name: /담당 프로젝트로 돌아가기/ })).toBeVisible();
 
-    // 스테퍼가 표시됨 (인터뷰 스텝)
-    // 스텝 컨텐츠 영역이 존재 (Tailwind 토큰화 이후 bg-card로 변경됨)
-    const contentArea = page.locator('.bg-card.shadow.rounded-lg');
-    await expect(contentArea.first()).toBeVisible();
+    // V2 스테퍼 (InterviewStepper) + 첫 스텝(Ⅰ-1 수립 필요성) 섹션 헤딩이 렌더된다.
+    // Tailwind 토큰화 이후 ".bg-card.shadow.rounded-lg" wrapper 는 사라졌으므로
+    // 새 구조의 안정된 셀렉터(스텝 헤딩 + 테스트 모드 안내)를 사용한다.
+    await expect(
+      page.getByRole('heading', { name: /수립 필요성/ }).first(),
+    ).toBeVisible();
   });
 
   test('샘플 채우기 버튼 클릭 → fixture 값이 폼에 주입됨', async ({ consultantPage: page }) => {

@@ -176,12 +176,63 @@ export interface PBLOperationPlan {
   evaluation_plan: PBLEvaluationPlan;
 }
 
+// ============================================================================
+// Ⅴ. 성과분석 및 확산 전략 — LLM 생성 대상
+//   Ⅴ-1. 성과분석 측정 지표         → PBLOutcomeMetrics
+//   Ⅴ-2. 성과 확산 전략              → PBLDiffusionStrategy
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Ⅴ-1. 성과분석 측정 지표
+// ----------------------------------------------------------------------------
+
+/** 훈련 목표 카테고리 체크박스 (양식 원문 5종) */
+export const TRAINING_GOAL_CATEGORIES = [
+  '기술문제 해결',
+  '공정 최적화',
+  '불량률 감소',
+  '기술 매뉴얼 개발',
+  '기타',
+] as const;
+export type TrainingGoalCategory = (typeof TRAINING_GOAL_CATEGORIES)[number];
+
+export interface PBLOutcomeMetrics {
+  /** 선택된 훈련 목표 카테고리 (Ⅰ장과 연동, 최소 1개) */
+  selected_goals: TrainingGoalCategory[];
+  /** 정량 지표 — 수치·비율 기반 측정 (예: "훈련 후 불량발생률 10% 감소") */
+  quantitative: string;
+  /** 정성 지표 — 역량·문화·협업 관련 측정 */
+  qualitative: string;
+}
+
+// ----------------------------------------------------------------------------
+// Ⅴ-2. 성과 확산 전략
+// ----------------------------------------------------------------------------
+
+export interface PBLDiffusionStrategy {
+  /** 내재화 방안 — 매뉴얼·멘토링·재훈련 등 구체 방안 (1문단 이상 또는 bullet 형태) */
+  internalization: string;
+  /** 전사 확산 방안 — 성과 발표·타 부서 적용·경영진 보고 등 */
+  company_wide_diffusion: string;
+}
+
+// ----------------------------------------------------------------------------
+// Ⅴ. 성과분석 및 확산 전략 통합
+// ----------------------------------------------------------------------------
+
+export interface PBLOutcomeAnalysis {
+  outcome_metrics: PBLOutcomeMetrics;
+  diffusion_strategy: PBLDiffusionStrategy;
+}
+
 // ----------------------------------------------------------------------------
 // 최상위 결과물
 // ----------------------------------------------------------------------------
 
 export interface PBLContent {
   operation_plan: PBLOperationPlan;
+  /** Ⅴ장 성과분석 및 확산 전략 (LLM 생성) */
+  outcome_analysis: PBLOutcomeAnalysis;
 }
 
 // ----------------------------------------------------------------------------

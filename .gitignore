@@ -67,6 +67,9 @@ next-env.d.ts
 # Playwright MCP 검증 시 생성되는 스크린샷
 pbl-*.png
 roadmap-*.png
+# 단, docs/screenshots/ 하위는 UI 통일성 검증 증거물로 추적
+!docs/screenshots/**/pbl-*.png
+!docs/screenshots/**/roadmap-*.png
 
 # Python (HWPX 관련 로컬 도구)
 .venv/

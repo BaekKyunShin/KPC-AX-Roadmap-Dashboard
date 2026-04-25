@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { after } from 'next/server';
-import { requireAuth, requireAuthWithRole, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
+import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import {
   generateRoadmap,
@@ -23,6 +23,11 @@ import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-r
 import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schemas/roadmap';
 import { buildRoadmapHwpxPayload, generateRoadmapHwpx } from '@/lib/services/export/hwpx';
 import { createAuditLog } from '@/lib/services/audit';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { fetchRoadmapInterviewV2 } from '../interview/actions';
+import type { RoadmapVersionUI } from '@/types/roadmap-ui';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
+import type { RoadmapResultEditPayload, ResultInterviewSnapshot } from './_components/result-v2/types';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /** abort 레지스트리 키 생성 */
@@ -497,5 +502,257 @@ export async function exportRoadmapAsHwpxAction(
   } catch (error) {
     console.error('[exportRoadmapAsHwpxAction Error]', error);
     return { success: false, error: 'HWPX 내보내기에 실패했습니다.' };
+  }
+}
+
+// ============================================================================
+// Task 2.8 — 로드맵 결과 V2 Server Action (5종)
+// ----------------------------------------------------------------------------
+// V2 Client 가 props 외주 패턴 (onSelectVersion / onEdit / onGenerate /
+// onDownload) 으로 상위에 위임하므로, 상위 page.tsx 가 호출할 V2 래퍼 Action.
+// Legacy Action 은 삭제 금지 (Task 2.11 cleanup 예정).
+//
+// 설계 원칙:
+//   - 5단계 패턴 (세션 → 역할 → 배정 → 비즈니스 → ActionResult)
+//   - Legacy Action 재사용 (createRoadmap / confirmFinalRoadmap /
+//     editRoadmapManually / exportRoadmapAsHwpxAction)
+//   - camelCase payload 수용 후 Legacy snake_case 시그니처로 변환
+//   - fetchRoadmapPageDataV2 는 page.tsx 초기 데이터 일괄 조회 (버전 목록 +
+//     선택 버전 + 인터뷰 snapshot + HRD PDF signed URL 주입)
+// ============================================================================
+
+/** HRD 첨부 버킷 (interview/page.tsx 의 HRD_BUCKET 과 동일). */
+const HRD_BUCKET_V2 = 'interview-attachments';
+
+/**
+ * HRD PDF storage_path 를 1시간 signed URL 로 교체한다.
+ *
+ * 인터뷰 V2 에서 `hrdReportPdf.url` 에는 storage_path 가 저장되어 있으므로
+ * (StepHrdReportPdf 의 저장 경로), URL 이 http 로 시작하지 않으면
+ * `createSignedUrl` 로 변환해 Client 가 iframe 렌더에 바로 쓸 수 있게 한다.
+ */
+async function hydrateRoadmapHrdSignedUrl(
+  interview: Partial<RoadmapInterviewStrict>,
+): Promise<Partial<RoadmapInterviewStrict>> {
+  const hrd = interview.hrdReportPdf;
+  if (!hrd || !hrd.url) return interview;
+  if (hrd.url.startsWith('http')) return interview;
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.storage
+      .from(HRD_BUCKET_V2)
+      .createSignedUrl(hrd.url, 3600);
+    if (error || !data) return interview;
+    return {
+      ...interview,
+      hrdReportPdf: { ...hrd, url: data.signedUrl },
+    };
+  } catch {
+    return interview;
+  }
+}
+
+/**
+ * camelCase `RoadmapResultEditPayload` 중에서 Legacy `editRoadmapManually` 가
+ * 수용하는 Roadmap 소유 필드만 추려낸다.
+ *
+ * 본 함수는 payload 의 Roadmap 슬라이스만 Legacy 시그니처로 매핑하며,
+ * `company_requirements` / `task_analysis_note` / `target_task` 등
+ * interview 원본 편집 필드는 제외한다 (Task 2.11 이월).
+ *
+ * Note: `main_content` (Ⅰ-3 LLM 요약) 는 현행 Legacy 스키마에 별도 키가 없고
+ *   `outcome_summary.performance_summary` 로 저장되지 않는 자유서술이라,
+ *   Task 2.11 에서 Legacy 스키마 확장과 함께 지원. 현 Task 에서는 무시.
+ */
+function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
+  setup_necessity?: string;
+  competencies?: RoadmapCompetency[];
+  ncs_used?: boolean;
+  ncs_methodology?: string;
+  ncs_derivation_method?: string;
+  training_structure_method?: string;
+  course_specs?: RoadmapCourseSpec[];
+} {
+  const out: {
+    setup_necessity?: string;
+    competencies?: RoadmapCompetency[];
+    ncs_used?: boolean;
+    ncs_methodology?: string;
+    ncs_derivation_method?: string;
+    training_structure_method?: string;
+    course_specs?: RoadmapCourseSpec[];
+  } = {};
+  if (patch.setup_necessity !== undefined) out.setup_necessity = patch.setup_necessity;
+  if (patch.competencies !== undefined) out.competencies = patch.competencies;
+  if (patch.ncs_used !== undefined) out.ncs_used = patch.ncs_used;
+  if (patch.ncs_methodology !== undefined) out.ncs_methodology = patch.ncs_methodology;
+  if (patch.ncs_derivation_method !== undefined) {
+    out.ncs_derivation_method = patch.ncs_derivation_method;
+  }
+  if (patch.training_structure_method !== undefined) {
+    out.training_structure_method = patch.training_structure_method;
+  }
+  if (patch.course_specs !== undefined) out.course_specs = patch.course_specs;
+  return out;
+}
+
+/**
+ * 로드맵 결과 페이지 V2 — 새 버전 생성 (LLM 호출).
+ *
+ * 5단계 패턴 유지: Legacy `createRoadmap` 을 그대로 위임. 상위 page.tsx 가
+ * LoadingOverlay cancel 을 위해 `cancelRoadmapGeneration` 과 함께 사용한다.
+ */
+export async function createRoadmapV2(
+  projectId: string,
+  revisionPrompt?: string,
+): Promise<ActionResult<Record<string, unknown>>> {
+  return createRoadmap(projectId, revisionPrompt);
+}
+
+/**
+ * 로드맵 결과 페이지 V2 — DRAFT 를 FINAL 로 확정.
+ *
+ * 5단계 패턴 유지: Legacy `confirmFinalRoadmap` 위임.
+ */
+export async function confirmFinalRoadmapV2(
+  versionId: string,
+): Promise<SimpleActionResult> {
+  return confirmFinalRoadmap(versionId);
+}
+
+/**
+ * 로드맵 결과 페이지 V2 — 인라인 편집 patch 반영.
+ *
+ * V2 Client 의 `RoadmapResultEditPayload` (camelCase + Ⅰ·Ⅱ·Ⅲ 혼재) 를 받아
+ * Roadmap 소유 필드만 Legacy `editRoadmapManually` 로 위임한다. Interview 원본
+ * 편집 (company_requirements / task_analysis_note / target_task / main_content)
+ * 은 Task 2.11 에서 Legacy 스키마 확장 + interview V2 save 병합 이후 지원.
+ *
+ * 현 Task 범위: Ⅰ-1 수립 필요성 / Ⅲ-1 역량 + NCS / Ⅲ-2 훈련체계도 수립 방법 /
+ *              Ⅲ-4 훈련과정 명세서
+ */
+export async function editRoadmapV2(
+  versionId: string,
+  patch: RoadmapResultEditPayload,
+): Promise<ActionResult<Record<string, unknown>>> {
+  const roadmapFields = extractRoadmapFieldsFromPayload(patch);
+  if (Object.keys(roadmapFields).length === 0) {
+    // 현 Task 에서 지원하지 않는 필드만 포함된 경우 — 무시하고 성공 처리.
+    // Task 2.11 에서 interview 원본 편집 경로 추가 예정.
+    return { success: true, data: {} };
+  }
+  return editRoadmapManually(versionId, roadmapFields);
+}
+
+/**
+ * 로드맵 결과 페이지 V2 — HWPX 다운로드.
+ *
+ * 5단계 패턴 유지: Legacy `exportRoadmapAsHwpxAction` 위임.
+ */
+export async function exportRoadmapHwpxV2(
+  versionId: string,
+): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
+  return exportRoadmapAsHwpxAction(versionId);
+}
+
+/**
+ * 로드맵 결과 페이지 V2 — 초기 데이터 일괄 조회.
+ *
+ * page.tsx 서버 컴포넌트에서 호출. 상위가 `versions` / `selectedVersion` /
+ * `interview` 를 V2 Client 의 props 로 주입한다.
+ *
+ * - `versions`: 최신순. 빈 배열이면 "아직 생성된 로드맵이 없습니다".
+ * - `selectedVersion`: versionId 지정 시 해당 버전, 아니면 FINAL → 없으면
+ *   가장 최신 DRAFT → 없으면 첫 번째.
+ * - `interview`: `fetchRoadmapInterviewV2` 재사용 + HRD PDF signed URL 주입.
+ */
+export interface RoadmapPageDataV2 {
+  versions: RoadmapVersionUI[];
+  selectedVersion: RoadmapVersionUI | null;
+  interview: Partial<ResultInterviewSnapshot>;
+}
+
+export async function fetchRoadmapPageDataV2(
+  projectId: string,
+  versionId?: string,
+): Promise<ActionResult<RoadmapPageDataV2>> {
+  try {
+    // (1)+(2) 세션 + 역할 — 컨설턴트 + 운영·시스템관리자 (결과 열람 권한)
+    const auth = await requireAuthWithRole(
+      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
+      { roleError: '로드맵 결과를 조회할 권한이 없습니다.' },
+    );
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, role, supabase } = auth;
+
+    // (3) 프로젝트 배정 검증 — 컨설턴트만. OPS/시스템관리자는 전체 열람.
+    if (role === 'CONSULTANT_APPROVED') {
+      const access = await requireConsultantProjectAccess(
+        supabase,
+        user.id,
+        projectId,
+        '해당 프로젝트에 대한 접근 권한이 없습니다.',
+      );
+      if (access !== true) return { success: false, error: access.error };
+    }
+
+    // (4) 비즈니스 — 버전 목록
+    const rawVersions = await fetchRoadmapVersionsService(projectId);
+    // toRoadmapVersionUI 는 legacy raw row → UI 형태로 변환하되 `status` 를
+    // 넓은 `string` 타입으로 반환. 런타임 값은 RoadmapVersionStatus 열거값만
+    // 가능하므로 구조적 호환을 위해 단언.
+    const versions = rawVersions.map(toRoadmapVersionUI) as unknown as RoadmapVersionUI[];
+
+    // 선택 버전 결정: versionId > 최신(version_number DESC)
+    // fetchRoadmapVersionsService 는 version_number DESC 정렬로 반환하므로
+    // versions[0] 이 최신 버전. 컨설턴트가 작업 중인 DRAFT 를 우선 표출하는
+    // 기존 V1 정책을 유지한다 (DRAFT 가 FINAL 보다 최신이면 DRAFT 선택).
+    let selectedVersion: RoadmapVersionUI | null = null;
+    if (versionId) {
+      selectedVersion = versions.find((v) => v.id === versionId) ?? null;
+    }
+    if (!selectedVersion) {
+      selectedVersion = versions[0] ?? null;
+    }
+
+    // 인터뷰 snapshot — fetchRoadmapInterviewV2 재사용 + HRD signed URL 주입.
+    // fetchRoadmapInterviewV2 는 내부에서 역할/배정/트랙 을 재확인한다.
+    // OPS_ADMIN / SYSTEM_ADMIN 은 해당 Action 이 null 을 반환하므로, admin
+    // 경로는 interviews 를 직접 읽어 보강한다.
+    let interviewSnapshot: Partial<ResultInterviewSnapshot> = {};
+    if (role === 'CONSULTANT_APPROVED') {
+      const interview = await fetchRoadmapInterviewV2(projectId);
+      if (interview) {
+        const hydrated = await hydrateRoadmapHrdSignedUrl(interview);
+        interviewSnapshot = hydrated as Partial<ResultInterviewSnapshot>;
+      }
+    } else {
+      // 관리자 경로 — 직접 interviews 테이블을 읽고 converter 로 변환
+      const { mapDbToRoadmapInterview } = await import('@/lib/services/interview/converters');
+      const admin = createAdminClient();
+      const { data: row } = await admin
+        .from('interviews')
+        .select('company_details, job_tasks, improvement_goals')
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (row) {
+        const interview = mapDbToRoadmapInterview(row);
+        const hydrated = await hydrateRoadmapHrdSignedUrl(interview);
+        interviewSnapshot = hydrated as Partial<ResultInterviewSnapshot>;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        versions,
+        selectedVersion,
+        interview: interviewSnapshot,
+      },
+    };
+  } catch (error) {
+    console.error('[fetchRoadmapPageDataV2 Error]', error);
+    return { success: false, error: '로드맵 결과 데이터 조회에 실패했습니다.' };
   }
 }

@@ -33,7 +33,8 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "test:e2e:setup": "supabase db reset && echo 'DB ready'"
+    "test:e2e:setup": "supabase db reset && echo 'DB ready'",
+    "snapshot:4-screens": "tsx scripts/snapshot-4-screens.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",

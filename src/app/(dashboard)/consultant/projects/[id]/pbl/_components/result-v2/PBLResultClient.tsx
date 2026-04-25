@@ -1,0 +1,225 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+
+import { PageContainer } from '@/components/layout/PageContainer';
+import { PageHeader } from '@/components/ui/page-header';
+import { VersionSelector } from '@/components/common/VersionSelector';
+import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
+import {
+  DownloadButtonGroup,
+  type DownloadType,
+} from '@/components/result/DownloadButtonGroup';
+import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
+import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
+import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
+import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+
+import { TabPBLOverview } from './TabPBLOverview';
+import { TabPBLAnalysis } from './TabPBLAnalysis';
+import { TabPBLTasks } from './TabPBLTasks';
+import { TabPBLOps } from './TabPBLOps';
+import { TabPBLOutcomes } from './TabPBLOutcomes';
+import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './types';
+
+/**
+ * Task 2.11-a — PBL 결과 화면 role-aware 통합 Client.
+ *
+ * Consultant V2 (편집·재생성·확정) 와 Ops 읽기 전용을 하나의 Client 로 통합.
+ * role prop 단일 분기 + capabilities 테이블로 가시성 제어 (boolean prop 증식 회피).
+ *
+ * 탭 구성(5): Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획 / Ⅴ 성과분석.
+ * OPS role: 편집·재생성 차단. ShareToggle 은 PBL 도메인에 노출 않음 (OpsPBLClient 기존 동작과 일치).
+ */
+
+export type PBLResultClientRole = 'CONSULTANT' | 'OPS';
+
+interface RoleCapabilities {
+  canEdit: boolean;
+  showRegenerate: boolean;
+}
+
+const ROLE_CAPABILITIES: Record<PBLResultClientRole, RoleCapabilities> = {
+  CONSULTANT: {
+    canEdit: true,
+    showRegenerate: true,
+  },
+  OPS: {
+    canEdit: false,
+    showRegenerate: false,
+  },
+};
+
+export interface PBLResultClientProps {
+  /** 뷰어 역할 — 편집·재생성 가시성 제어. */
+  role: PBLResultClientRole;
+  projectId: string;
+  /** 버전 목록 (desc 정렬 권장). 비어 있으면 빈 상태 UI 표출. */
+  versions: PBLReportRow[];
+  /** 현재 선택 버전. null 이면 "아직 생성된 PBL 보고서가 없습니다" 상태. */
+  selectedVersion: PBLReportRow | null;
+  /** 인터뷰 입력값 snapshot (Ⅰ·Ⅱ·Ⅲ 의 읽기 전용 원본). */
+  interview?: Partial<ResultPBLInterviewSnapshot>;
+  /** 버전 변경 시 호출. 상위가 fetch → state 업데이트 책임. */
+  onSelectVersion: (versionId: string) => void | Promise<void>;
+  /** 섹션 편집 patch. OPS role 에서는 호출되지 않음(optional 로 허용). */
+  onEdit?: (patch: PBLResultEditPayload) => Promise<void>;
+  /** 새 버전 생성. OPS role 에서는 호출되지 않음. */
+  onGenerate?: (revisionPrompt?: string) => Promise<void>;
+  /** 다운로드 (PDF/XLSX/HWPX). */
+  onDownload: (type: DownloadType) => Promise<void>;
+  isGenerating?: boolean;
+  isGenerationComplete?: boolean;
+  onCancelGenerate?: () => void;
+  companyName?: string;
+}
+
+type TabValue = 'overview' | 'analysis' | 'tasks' | 'ops' | 'outcomes';
+
+const NOOP_EDIT: (patch: PBLResultEditPayload) => Promise<void> = async () => {};
+const NOOP_GENERATE: (revisionPrompt?: string) => Promise<void> = async () => {};
+
+export function PBLResultClient({
+  role,
+  projectId: _projectId,
+  versions,
+  selectedVersion,
+  interview,
+  onSelectVersion,
+  onEdit,
+  onGenerate,
+  onDownload,
+  isGenerating = false,
+  isGenerationComplete = false,
+  onCancelGenerate,
+  companyName = '',
+}: PBLResultClientProps) {
+  const [downloadLoading, setDownloadLoading] = useState<DownloadType | null>(null);
+  const [revisionPrompt, setRevisionPrompt] = useState('');
+
+  const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
+
+  const isDraft = selectedVersion?.status === 'DRAFT';
+  const hasVersions = versions.length > 0;
+  // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
+  const tabReadOnly = !isDraft || !capabilities.canEdit;
+
+  async function handleDownload(type: DownloadType) {
+    setDownloadLoading(type);
+    try {
+      await onDownload(type);
+    } finally {
+      setDownloadLoading(null);
+    }
+  }
+
+  async function handleRegenerate() {
+    await (onGenerate ?? NOOP_GENERATE)(revisionPrompt || undefined);
+    setRevisionPrompt('');
+  }
+
+  const commonTabProps = {
+    version: selectedVersion,
+    interview,
+    readOnly: tabReadOnly,
+    onEdit: onEdit ?? NOOP_EDIT,
+  } as const;
+
+  const tabs: ResultTabItem[] = [
+    {
+      value: 'overview' satisfies TabValue,
+      label: 'Ⅰ. 개요',
+      content: <TabPBLOverview {...commonTabProps} />,
+    },
+    {
+      value: 'analysis' satisfies TabValue,
+      label: 'Ⅱ. 요구분석',
+      content: <TabPBLAnalysis {...commonTabProps} />,
+    },
+    {
+      value: 'tasks' satisfies TabValue,
+      label: 'Ⅲ. 훈련과제 도출',
+      content: <TabPBLTasks {...commonTabProps} />,
+    },
+    {
+      value: 'ops' satisfies TabValue,
+      label: 'Ⅳ. 운영계획',
+      content: <TabPBLOps {...commonTabProps} />,
+    },
+    {
+      value: 'outcomes' satisfies TabValue,
+      label: 'Ⅴ. 성과분석',
+      content: <TabPBLOutcomes {...commonTabProps} />,
+    },
+  ];
+
+  return (
+    <>
+      <PageContainer>
+        <PageHeader
+          title="AI PBL 과정개발 결과"
+          description="산인공 공식 양식 2번 기반 5섹션 구조 (개요 / 요구분석 / 훈련과제 도출 / 운영계획 / 성과분석)"
+        />
+
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <VersionSelector<PBLReportRow>
+              versions={versions}
+              selectedId={selectedVersion?.id}
+              onSelect={(id) => void onSelectVersion(id)}
+              placeholder={hasVersions ? '버전 선택' : '생성된 버전 없음'}
+            />
+            {selectedVersion && (
+              <VersionStatusBadge
+                status={selectedVersion.status}
+                versionNumber={selectedVersion.version_number}
+              />
+            )}
+          </div>
+          <DownloadButtonGroup
+            onDownload={handleDownload}
+            loading={downloadLoading}
+            disabled={!selectedVersion}
+          />
+        </div>
+
+        {capabilities.showRegenerate && (
+          <RegenerateAccordion
+            value={revisionPrompt}
+            onChange={setRevisionPrompt}
+            onSubmit={handleRegenerate}
+            isLoading={isGenerating}
+          />
+        )}
+
+        {selectedVersion ? (
+          <ResultTabs tabs={tabs} defaultValue="overview" />
+        ) : (
+          <EmptyState />
+        )}
+      </PageContainer>
+
+      {isGenerating && capabilities.showRegenerate && (
+        <RoadmapLoadingOverlay
+          isTestMode={false}
+          companyName={companyName}
+          profileHref="/consultant/profile"
+          onCancel={onCancelGenerate}
+          isCompleted={isGenerationComplete}
+        />
+      )}
+    </>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="rounded-lg border bg-card p-12 text-center">
+      <h3 className="text-base font-semibold">아직 생성된 PBL 보고서가 없습니다</h3>
+      <p className="mt-2 text-sm text-muted-foreground">
+        인터뷰가 완료되면 상단 &quot;새 버전 생성&quot; 을 눌러 AI PBL 보고서를
+        생성하세요.
+      </p>
+    </div>
+  );
+}

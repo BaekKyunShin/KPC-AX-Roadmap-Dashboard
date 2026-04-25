@@ -1,12 +1,12 @@
 /**
- * TestRoadmapClient — ISSUE-02·03 Step E 단위 테스트.
+ * TestRoadmapClient 단위 테스트 (Task 2.11-e V2 포팅).
  *
  * 검증:
  * 1. "샘플 데이터 채우기" 버튼이 visible
- * 2. 빈 상태에서 클릭 → fixture 값(수립 필요성 등) 이 폼에 주입됨
+ * 2. 빈 상태에서 클릭 → fixture (camelCase) 값이 폼에 주입됨
  * 3. 입력값이 있을 때 클릭 → confirm 호출, 취소 시 state 미변경
  *
- * Step 컴포넌트는 mock 으로 단순화 (실제 인터뷰 폼 UI 는 production 컴포넌트 테스트에서 검증).
+ * Step 컴포넌트는 mock 으로 단순화 (실제 폼 UI 는 production 테스트에서 검증).
  */
 
 import { render, screen, waitFor, act } from '@testing-library/react';
@@ -32,37 +32,38 @@ vi.mock('next/navigation', () => ({
 
 import TestRoadmapClient from './TestRoadmapClient';
 
+// V2 Step 컴포넌트 경로로 모킹 (Task 2.11-e rename 이후 경로)
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepOverview',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity',
   () => ({
-    default: ({ value }: { value: { establishment_necessity: string } }) => (
-      <div data-testid="establishment-display">{value.establishment_necessity}</div>
+    StepNecessity: ({ value }: { value: string }) => (
+      <div data-testid="establishment-display">{value}</div>
     ),
   }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepBasicInfoRoadmap',
-  () => ({ default: () => <div>StepBasicInfoRoadmap</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult',
+  () => ({ StepMainResult: () => <div>StepMainResult</div> }),
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements',
-  () => ({ default: () => <div>StepCompanyRequirements</div> }),
+  () => ({ StepCompanyRequirements: () => <div>StepCompanyRequirements</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskWorkflowAnalysis',
-  () => ({ default: () => <div>StepTaskWorkflowAnalysis</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis',
+  () => ({ StepTaskAnalysis: () => <div>StepTaskAnalysis</div> }),
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTrainingTargets',
-  () => ({ default: () => <div>StepTrainingTargets</div> }),
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask',
+  () => ({ StepTargetTask: () => <div>StepTargetTask</div> }),
+);
+vi.mock(
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities',
+  () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> }),
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling',
-  () => ({ default: () => <div>StepCompetencyModeling</div> }),
-);
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepSummaryRoadmap',
-  () => ({ default: () => <div>StepSummaryRoadmap</div> }),
+  () => ({ StepCompetencyModeling: () => <div>StepCompetencyModeling</div> }),
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper',
@@ -72,9 +73,10 @@ vi.mock('@/components/roadmap/RoadmapLoadingOverlay', () => ({
   default: () => null,
   COMPLETION_DELAY_MS: 0,
 }));
-vi.mock('./_components/TestRoadmapResult', () => ({
-  default: () => <div>TestRoadmapResult</div>,
-}));
+vi.mock(
+  '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient',
+  () => ({ RoadmapResultClient: () => <div>RoadmapResultClient</div> }),
+);
 
 const baseUser = {
   id: 'u1',
@@ -84,7 +86,7 @@ const baseUser = {
   status: 'ACTIVE',
 };
 
-describe('TestRoadmapClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)', () => {
+describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -112,7 +114,9 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('establishment-display')).toHaveTextContent(/샘플정밀공업|자동차 부품/);
+      expect(screen.getByTestId('establishment-display')).toHaveTextContent(
+        /샘플정밀공업|자동차 부품/,
+      );
     });
     expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
@@ -122,15 +126,15 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)
     render(<TestRoadmapClient user={baseUser} canAccess={true} hasProfile={true} />);
     const btn = await screen.findByTestId('test-roadmap-fill-sample');
 
-    // 1차: fixture 로 채움
     await act(async () => {
       await userEvent.click(btn);
     });
     await waitFor(() => {
-      expect(screen.getByTestId('establishment-display')).toHaveTextContent(/샘플정밀공업|자동차 부품/);
+      expect(screen.getByTestId('establishment-display')).toHaveTextContent(
+        /샘플정밀공업|자동차 부품/,
+      );
     });
 
-    // 2차: confirm=false → state 유지
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     await act(async () => {
       await userEvent.click(btn);
@@ -138,7 +142,9 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (ISSUE-02·03 Step E)
     expect(confirmSpy).toHaveBeenCalledWith(
       expect.stringContaining('기존 입력값이 모두 덮어써집니다'),
     );
-    expect(screen.getByTestId('establishment-display')).toHaveTextContent(/샘플정밀공업|자동차 부품/);
+    expect(screen.getByTestId('establishment-display')).toHaveTextContent(
+      /샘플정밀공업|자동차 부품/,
+    );
     confirmSpy.mockRestore();
   });
 });

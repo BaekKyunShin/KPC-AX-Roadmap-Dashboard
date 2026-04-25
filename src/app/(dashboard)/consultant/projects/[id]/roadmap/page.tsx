@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
-import type { RoadmapVersionUI } from '@/types/roadmap-ui';
-import { fetchRoadmapVersions, fetchProjectInfo } from './actions';
-import ConsultantRoadmapClient from './_components/ConsultantRoadmapClient';
+import { fetchProjectInfo, fetchRoadmapPageDataV2 } from './actions';
+import RoadmapResultPageClient from './_components/RoadmapResultPageClient';
 
 export default async function RoadmapPage({
   params,
@@ -18,8 +17,8 @@ export default async function RoadmapPage({
   }
 
   const { id } = await params;
-  const [versions, projectInfoResult] = await Promise.all([
-    fetchRoadmapVersions(id),
+  const [pageDataResult, projectInfoResult] = await Promise.all([
+    fetchRoadmapPageDataV2(id),
     fetchProjectInfo(id),
   ]);
 
@@ -32,11 +31,17 @@ export default async function RoadmapPage({
     ? projectInfoResult.data.companyName
     : '';
 
+  const pageData = pageDataResult.success
+    ? pageDataResult.data
+    : { versions: [], selectedVersion: null, interview: {} };
+
   return (
-    <ConsultantRoadmapClient
+    <RoadmapResultPageClient
       projectId={id}
-      initialVersions={versions as RoadmapVersionUI[]}
       companyName={companyName}
+      initialVersions={pageData.versions}
+      initialSelected={pageData.selectedVersion}
+      initialInterview={pageData.interview}
     />
   );
 }
