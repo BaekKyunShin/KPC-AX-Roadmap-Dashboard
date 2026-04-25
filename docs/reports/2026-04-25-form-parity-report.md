@@ -57,7 +57,64 @@
 
 ## Phase B. 구조 재분석 + 매핑 SSOT 작성
 
-(작업 후 채움)
+### B.1 분석 스크립트
+- `scripts/dump_hwpx_structure.py` 신설 — python-hwpx `get_table_map()` 기반 표·셀·paragraph 인벤토리를 마크다운으로 출력
+- 기존 `.claude/skills/hwpx-docgen/scripts/analyze_template.py` 는 보존 (스킬 자산)
+
+### B.2/B.3 분석 결과
+- 양식 1 (로드맵): **49 개 표** + 132 단락 → `docs/references/hwpx-structure-roadmap.md`
+- 양식 2 (PBL): **67 개 표** (조직도 nested 셀 포함) + 더 많은 단락 → `docs/references/hwpx-structure-pbl.md`
+
+**핵심 표 인덱스 (로드맵):**
+- 표 5 (7×6): Ⅰ-2 주요 활동 — 차수별 수행일지 (참석자 병합)
+- 표 7 (3×4): Ⅰ-3 주요 결과 — AI 역량 체크박스 + 과업 + LLM 요약
+- 표 14 (5×3): Ⅱ-2 기업 요구분석
+- 표 16 (6×6): Ⅱ-3 과업·워크플로우 분석표
+- 표 20 (4×3): Ⅱ-4 훈련대상 과업 선정 (블록)
+- 표 23 (6×5): Ⅲ-1 역량 모델링
+- 표 24/25 (1×2 each): Ⅲ-1 NCS XOR 박스
+- 표 27 (5×6): Ⅲ-2 훈련체계도
+- 표 31 (4×5): Ⅲ-3 훈련과정 목록
+- 표 35/36/37 (각 11×4): Ⅲ-4 훈련과정 명세서 3 블록
+
+**핵심 표 인덱스 (PBL):**
+- 표 4 (15×5): Ⅰ. 훈련과정 개요
+- 표 8-16: Ⅱ-1-나 조직도 (트리 형태 nested cells)
+- 표 18 (12×7): Ⅱ-2 기업 훈련환경 분석
+- 표 20/21: Ⅱ-3-가 HRD이음 컨설팅 결과 (자동 표출)
+- 표 24 (13×6): Ⅲ-1 훈련과제 도출 수행활동 (차수별, 참석자 병합)
+- 표 28 (6×7): Ⅲ-2-나 문제 우선순위 결정 (척도 5점)
+- 표 30 (6×7): Ⅲ-3-가 훈련대상 업무 선정
+- 표 35 (5×3): Ⅲ-4-가 현재 AI역량 수준
+- 표 36 (2×3): Ⅲ-4-나 향후 AI역량 향상도
+- 표 39 (6×6): Ⅳ-2 AI도구 활용 계획
+- 표 42 (6×6): Ⅳ-3-나 학습그룹 구성
+- 표 43 (15×10): Ⅳ-3-다 훈련 교과목 프로파일 (대형 표)
+
+### B.4 SSOT JSON 작성
+`docs/references/hwpx-placeholders.json` (단일 매핑 원천) 생성.
+
+스키마:
+- `version`, `generated_at`, `source` (계획서·inventory·structure 문서 링크)
+- `strategy_taxonomy`: 7 종 (single, cell_fill, repeat_rows, checkbox_toggle, conditional_box, pdf_attach, static)
+- `roadmap[]`, `pbl[]`: 각 entry = { id, section, label, strategy, py_key, ts_key, data_source, location, placeholders | placeholder_template }
+
+### B.5 47 섹션 누락 0건 cross-check
+`scripts/verify-mapping-completeness.mjs` 신설 — SSOT JSON 의 ID·placeholder 유효성 + 로드맵/PBL 라벨 카운트 검증.
+
+```
+$ node scripts/verify-mapping-completeness.mjs
+[roadmap] 37 entries
+[pbl] 43 entries
+[cross-check] roadmap meaningful=23, pbl meaningful=29, total=52
+[summary] placeholders unique: 88
+PASS: SSOT JSON 누락 0건 + 유효성 검증 통과
+```
+
+✅ **DoD #5 충족 준비**: roadmap 23 + pbl 29 = 52 meaningful entries (≥ §6 기준 52). 88 개 unique placeholder 확보.
+
+### B.6 §6 [TBD] 갱신
+상위 계획서 `docs/plans/2026-04-24-interview-result-screens-redesign.md` §6.1 / §6.2 의 "표 인덱스 / 셀 좌표" 컬럼은 **본 SSOT JSON 의 `location.table_index` 가 정본** 으로 치환된다. 별도 표 갱신 불필요 (참조 일원화).
 
 ---
 
