@@ -1032,9 +1032,13 @@ export async function saveRoadmapInterviewV2(
 
     const dbPayload = mapRoadmapInterviewToDb(validated);
     // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록한다.
+    // interviews 테이블의 interview_date 는 NOT NULL 제약이 있어 INSERT 시
+    // 반드시 값을 제공해야 한다 (DB 기본값이 없는 환경 호환). camelCase V2
+    // 스키마엔 필드가 없으므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 주입한다.
     const row = {
       project_id: projectId,
       interviewer_id: user.id,
+      interview_date: new Date().toISOString().slice(0, 10),
       ...dbPayload,
     };
 
@@ -1214,9 +1218,12 @@ export async function savePBLInterviewV2(
         return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
       }
     } else {
+      // interview_date NOT NULL 제약 호환 — camelCase V2 스키마엔 필드가 없으므로
+      // 오늘 날짜(YYYY-MM-DD) 기본값 주입. Roadmap V2 Action 과 동일 패턴.
       const { error: insertError } = await adminSupabase.from('interviews').insert({
         project_id: projectId,
         interviewer_id: user.id,
+        interview_date: new Date().toISOString().slice(0, 10),
         ...dbPayload,
       });
       if (insertError) {

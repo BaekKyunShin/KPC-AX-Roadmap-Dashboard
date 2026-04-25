@@ -265,6 +265,20 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.getByLabel('현행 방식 1').fill('검사원 2명이 수작업 검사');
     await page.getByLabel('문제점 1').fill('품질 편차 발생');
     await page.getByLabel('데이터 발생 시점 1').fill('검사 이미지 DB, 불량 판정 로그');
+    // 분석내용 (taskAnalysisNote) 필수 — Strict 검증 통과 목적
+    const analysisNoteField = page.getByLabel(/분석.*내용|과업.*분석.*메모/).first();
+    if (await analysisNoteField.isVisible().catch(() => false)) {
+      await analysisNoteField.fill('E2E 과업 분석 — 외관 검사 자동화 우선');
+    }
+    // 프리필된 빈 행 제거 (있으면) — Strict 검증에서 빈 행이 fail 하는 것을 방지
+    const deleteButtons = page.getByRole('button', { name: /과업 삭제 [2-9]|행 삭제 [2-9]/ });
+    const deleteCount = await deleteButtons.count();
+    for (let i = deleteCount - 1; i >= 0; i--) {
+      const btn = deleteButtons.nth(i);
+      if (await btn.isVisible().catch(() => false)) {
+        await btn.click();
+      }
+    }
     await nextButton().click();
 
     // ── 스텝 7: Ⅱ-4 훈련대상 과업 선정 ──
@@ -290,6 +304,16 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.getByLabel('지식 1').fill('이미지 분류 기초, QMS 지표 체계');
     await page.getByLabel('기술 1').fill('이미지 레이블링, 시각화 도구');
     await page.getByLabel('태도 1').fill('데이터 기반 의사결정 선호');
+    // 프리필된 빈 역량 행(2~N) 제거 — Strict 검증은 배열 모든 요소를 요구하므로
+    // 빈 행이 남아 있으면 fail. index 역순으로 삭제해 index 변경 안전.
+    const competencyDeleteButtons = page.getByRole('button', { name: /역량 삭제 [2-9]/ });
+    const competencyDeleteCount = await competencyDeleteButtons.count();
+    for (let i = competencyDeleteCount - 1; i >= 0; i--) {
+      const btn = competencyDeleteButtons.nth(i);
+      if (await btn.isVisible().catch(() => false)) {
+        await btn.click();
+      }
+    }
     // NCS 미활용 기본 → "역량별 도출 방법" textarea 필수
     await page
       .getByLabel('역량별 도출 방법')
