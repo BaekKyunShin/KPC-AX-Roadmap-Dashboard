@@ -325,10 +325,10 @@ npm run dev:with-hwpx
 | 7 | 한글 오피스 실물 검증 | ⏳ → ✅ (예정) | §5 — 사용자 측 8 fixture 검증 후 스크린샷 첨부. 자동 검증 (12/12) 으로 출력 정합성 사전 입증 |
 | 8 | 자동 저장 · 최종 제출 · DRAFT→FINAL→ARCHIVED 회귀 | ✅ | `interview-auto-save.spec.ts` (자동 저장) + `roadmap-transitions.spec.ts` (DRAFT→FINAL→ARCHIVED + VersionSelector) + `regenerate-roadmap.spec.ts` (재생성) — 모두 PASS |
 | 9 | `npm run validate && npm run build` 통과 | ✅ | `npm run validate` exit 0 — Test Files 339 passed / Tests 5625 passed. `npm run build` exit 0 — Compiled successfully in 4.6s |
-| 10 | PR CI 전체 pass | ⏳ → ✅ (예정) | PR 생성 후 `gh pr checks` Lint·Typecheck·Unit·Build·E2E·Vercel 전수 pass 확인 (Step 7) |
-| 11 | `superpowers:verification-before-completion` 호출 | ✅ | 본 리포트 §7 의 모든 ✅ 증거가 fresh 검증으로 수집됨 — pytest 12/12 (4분 27초), validate 339/5625, build 4.6s, mapping 94 unique |
+| 10 | PR CI 전체 pass | ✅ | PR #30 — Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel · Vercel Preview Comments **6/6 pass** (run 24959140162) |
+| 11 | `superpowers:verification-before-completion` 호출 | ✅ | 본 리포트 §7 의 모든 ✅ 증거가 fresh 검증으로 수집됨 — pytest 12/12 (4분 27초), validate 339/5625, build 4.6s, mapping 94 unique, PR CI 6/6 pass |
 
-**합계:** 10/11 ✅ + 1 ⏳ (DoD #10 PR CI / DoD #7 사용자 검증 단계 완료 후 최종 11/11 ✅)
+**합계:** 10/11 ✅ + 1 ⏳ (DoD #7 한컴오피스 실물 검증 — 사용자 측 환경에서 8 fixture 검증 후 §5.4 표 갱신 시 11/11 ✅)
 
 ---
 
@@ -348,13 +348,13 @@ npm run dev:with-hwpx
 | DoD #4 InlineEditField 높이 | `grep min-h src/components/result/InlineEditField.tsx` | ✅ `multiline && 'min-h-[160px] resize-y'` (Step 1 commit 059ef5f) |
 | E2E spec 인식·파싱 | `npx playwright test --list interview-auto-save.spec.ts regenerate-roadmap.spec.ts` | ✅ 6 tests (2 spec × 3 브라우저) |
 
-### 8.2 PR / Soak / 머지 (예정)
+### 8.2 PR / Soak / 머지
 
-- **PR 생성:** Step 7 에서 `chore/pr4-form-parity-verification` → main
-- **PR CI 모니터링:** Lint·Typecheck·Unit Test·Build·**E2E Test**·Vercel 6 개 check 전수 pass 확인 (CLAUDE.md 규칙 — Unit 만 보고 종결 금지)
-- **사용자 한컴오피스 실물 검증 (DoD #7):** 8 fixture 다운로드 → 사용자 측 환경에서 검증 → 스크린샷 첨부 → §5.4 표 갱신
+- **PR 생성:** ✅ PR #30 — `chore/pr4-form-parity-verification` → main (https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/30)
+- **PR CI 모니터링:** ✅ Lint·Typecheck·Unit Test·Build·**E2E Test**·Vercel 6 개 check 전수 pass (run 24959140162)
+- **사용자 한컴오피스 실물 검증 (DoD #7):** ⏳ 8 fixture 다운로드 → 사용자 측 환경에서 검증 → `docs/screenshots/2026-04-24/hwpx-hancom/` 가이드 참조 → §5.4 표 갱신
 - **Preview soak:** 머지 후 24 시간 Vercel Functions 로그 모니터링 (계획서 §10.3)
-- **시리즈 종결:** 본 PR 머지 + DoD #7 / #10 ✅ 시점 → 4 화면 양식 1:1 정합 재설계 시리즈 (PR #1~#4) 통과 선언
+- **시리즈 종결:** 본 PR 머지 + DoD #7 ✅ 시점 → 4 화면 양식 1:1 정합 재설계 시리즈 (PR #1~#4) 통과 선언
 
 ### 8.3 별도 follow-up (PR #4 범위 밖)
 
