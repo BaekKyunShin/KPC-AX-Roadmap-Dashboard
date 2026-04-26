@@ -559,4 +559,61 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(p.data.report_date).toContain('2026');
     expect(p.data.report_date).toContain('04');
   });
+
+  // ---------------------------------------------------------------
+  // Phase D-4: SSOT v2 동기화 assertion (DoD #6 재정의)
+  // ---------------------------------------------------------------
+  // SSOT JSON v2 (`docs/references/hwpx-placeholders.json`) 의 모든 single-strategy
+  // py_key (cell_fill / single / pdf_attach / cond_box / static-with-meta) 가
+  // buildRoadmapHwpxPayload 출력 dict 의 키로 존재하는지 검증한다.
+  // 누락된 키는 Python 측 `_placeholders_roadmap.build_placeholder_map` 에서 빈
+  // 문자열 fallback 처리되지만, payload TS ↔ SSOT 동기화는 명시적으로 보장.
+  it('SSOT v2 의 모든 단일 py_key 가 출력 dict 에 존재', () => {
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    // SSOT v2 의 single/cell_fill/pdf_attach/cond_box/static-with-meta py_key 목록
+    // (`docs/references/hwpx-placeholders.json` 의 roadmap 섹션 참조)
+    const ssotV2PyKeys = [
+      // R-01 cover (cell_fill)
+      'company_name',
+      'report_date',
+      'pm_affiliation',
+      'pm_name',
+      'internal_expert_affiliation',
+      'internal_expert_name',
+      // R-03 establishment_necessity (single)
+      'establishment_necessity',
+      // R-05 outcome (cell_fill + checkbox_toggle)
+      'ai_competency_level',
+      'selected_tasks_text',
+      'roadmap_summary',
+      // R-08 hrd_report_attachment (pdf_attach)
+      'hrd_report_attachment',
+      // R-09 company_requirements (cell_fill)
+      'company_status',
+      'main_problems',
+      'push_willingness',
+      'expected_outcomes',
+      // R-11 analysis_notes (single)
+      'analysis_notes_text',
+      // R-12 training_target (cell_fill)
+      'training_target',
+      // R-15 ncs_box (cond_box)
+      'ncs_used',
+      'ncs_methodology',
+      'ncs_derivation_method',
+      // R-18 training_structure_method (single)
+      'training_structure_method',
+      // R-20 annual_plan_usage (single)
+      'annual_plan_usage',
+      // R-22 appendix_meta (cell_fill — employment_insurance_no 는 별도)
+      'employment_insurance_no',
+    ];
+    const dataKeys = new Set(Object.keys(p.data));
+    const missing = ssotV2PyKeys.filter((k) => !dataKeys.has(k));
+    expect(missing).toEqual([]);
+  });
 });
