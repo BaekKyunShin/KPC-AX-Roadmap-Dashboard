@@ -114,7 +114,7 @@ export function InlineEditField({
   if (mode === 'edit') {
     const commonInputClass = cn(
       'flex-1 rounded border border-input bg-background px-2 py-1 text-sm',
-      multiline && 'min-h-[120px] resize-y',
+      multiline && 'min-h-[160px] resize-y',
     );
 
     return (

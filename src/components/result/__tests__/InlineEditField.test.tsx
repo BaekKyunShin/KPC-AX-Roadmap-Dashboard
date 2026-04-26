@@ -62,4 +62,15 @@ describe('InlineEditField', () => {
     // 에러 인디케이터는 view/edit 공통 영역에서 표현되므로, "저장 실패" 텍스트 존재 확인
     expect(await screen.findByText(/저장 실패/)).toBeInTheDocument();
   });
+
+  // DoD #4: 박스 입력란 6~7줄 (한글 ≈ 160-190px)
+  it('multiline=true 시 textarea 가 min-h-[160px] 을 가진다 (DoD #4)', async () => {
+    const user = userEvent.setup();
+    render(<InlineEditField value="hi" onSave={vi.fn()} multiline />);
+    await user.click(screen.getByText('hi'));
+    const textarea = screen.getByRole('textbox');
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect(textarea.className).toContain('min-h-[160px]');
+    expect(textarea.className).toContain('resize-y');
+  });
 });
