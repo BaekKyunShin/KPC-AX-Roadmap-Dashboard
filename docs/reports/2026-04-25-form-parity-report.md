@@ -105,22 +105,87 @@
 ```
 $ node scripts/verify-mapping-completeness.mjs
 [roadmap] 37 entries
-[pbl] 43 entries
+[pbl] 42 entries
 [cross-check] roadmap meaningful=23, pbl meaningful=29, total=52
-[summary] placeholders unique: 88
+[summary] placeholders unique: 94
 PASS: SSOT JSON 누락 0건 + 유효성 검증 통과
 ```
 
-✅ **DoD #5 충족 준비**: roadmap 23 + pbl 29 = 52 meaningful entries (≥ §6 기준 52). 88 개 unique placeholder 확보.
+✅ **DoD #5 충족 준비**: roadmap 23 + pbl 29 = 52 meaningful entries (≥ §6 기준 52). 94 개 unique placeholder 확보.
+
+### B.7 SSOT JSON v2 정정 (2026-04-26 보강)
+초기 v1 SSOT 의 `table_index` 가 `python-hwpx` 의 `doc.get_table_map()` 인덱스 (nested 표 포함, 로드맵 49 / PBL 68) 기준으로 작성됐다. 그러나 `generate.py` 의 `_collect_tables()` 는 **shallow traversal** (top-level paragraph 의 표만, 로드맵 44 / PBL 52) 기준이다.
+
+검증으로 사용자 정본 (`templates/hwpx/{roadmap,pbl}.hwpx`) 의 shallow 인덱스를 직접 추출한 결과, **`generate.py` 의 기존 `_fill_*()` 함수의 `idx: int = N` default 값이 모두 정확**함을 확인했다. 즉 이전 단계에서 단정한 "표 인덱스 시프트" 는 SSOT 자체의 카운팅 방식 차이였고, generate.py 는 변경할 필요가 없다.
+
+| 영역 | 변경 전 (v1, get_table_map) | 변경 후 (v2, shallow) |
+|---|---|---|
+| Roadmap R-08 hrd_report | 12 | **11** |
+| Roadmap R-09~R-12 | 14, 16, 18, 20 | **13, 15, 17, 19** |
+| Roadmap R-14 competencies | 23 | **22** |
+| Roadmap R-15 NCS | [24, 25] | **[23, 24]** |
+| Roadmap R-17~R-20 | 27, 29, 31, 33 | **26, 28, 30, 32** |
+| Roadmap R-21 명세서 3블록 | [35, 36, 37] | **[34, 35, 36]** |
+| Roadmap R-22 별첨 | 39 | **38** |
+| PBL P-02 overview | 4 | **1** |
+| PBL P-03 issues | 6 | **3** |
+| PBL P-04 organization | tables 8-16, paragraph 37 | **5** (단일 6x3, 양식 수정으로 단순화) |
+| PBL P-05 training_env | 18 | **7** |
+| PBL P-06 hrd | [20, 21] | **[9, 10]** |
+| PBL P-07 necessity | 22 | **11** |
+| PBL P-08 activities | 24 | **13** |
+| PBL P-09 problems | 26 | **15** |
+| PBL P-10 priorities | 28 | **17** |
+| PBL P-11 target | 30 | **19** |
+| PBL P-12 target_necessity | 31 | **20** |
+| PBL P-13 target_details | 33 | **22** |
+| PBL P-14 current_ai_level | 35 | **24** |
+| PBL P-15 expected_ai_level | 36 (4-등급 체크박스 placeholder) | **25** (양식은 2x3 현행/향후/사유 — placeholder 구조도 정정) |
+| PBL P-16 training_goal | 38 | **27** |
+| PBL P-17 ai_tools | 39 | **28** |
+| PBL P-18 course_overview | 41 | **30** |
+| PBL P-19 learning_group | 42 | **31** |
+| PBL P-20 subjects | 43 | **32** |
+| PBL P-21~P-23 | 45, 46, 47 | **34, 35, 36** |
+| PBL P-24~P-29 결과보고서 | 49~61 | **37~51** (-12 차등) |
+
+추가 정정 (양식 구조 ↔ 데이터 모델 정합):
+1. **P-15** placeholder 구조: 4 등급 체크박스 → "현행 라벨 / 향후 라벨 / 사유" (양식 2x3 표 구조 일치)
+2. **P-04** organization: tables 8-16 nested → 단일 표 5 (양식 수정으로 단순화). data_source 도 `{ orgTree, mainWork[] }` flatten 으로 명시
+3. **P-09** problems: V2 problems[] (title/description/impact) → 양식 5x2 의 row 1~4 col 1 에 description 매핑
+4. **P-10** priorities: V2 priority.items[] (problem/score/rank) → score 1~5 체크박스 + selected (rank=1) 매핑
+5. **P-11** target: V2 single object (name/code/scope/necessity/details[]) → 양식 6x7 의 row 1 에 name + necessity_score 매핑
+6. **P-13** target_details: V2 details[] (title/description) → 양식 4x5 의 row 2~3 에 title+description 매핑
+7. **P-18** course_overview: 단일 placeholder → 2 셀 (course_name + training_period)
+8. **P-20** subject_profile: 단일 ops_subjects → 7 cell_fill placeholder + 내부 training_contents repeat
+9. **P-23** course_eval: 3 cell → 6 cell (course_name/target/date/criteria/result/overall_comment)
+
+✅ **DoD #5 재검증 통과**: SSOT v2 → roadmap 23 + pbl 29 = 52 meaningful entries, 94 unique placeholders
 
 ### B.6 §6 [TBD] 갱신
 상위 계획서 `docs/plans/2026-04-24-interview-result-screens-redesign.md` §6.1 / §6.2 의 "표 인덱스 / 셀 좌표" 컬럼은 **본 SSOT JSON 의 `location.table_index` 가 정본** 으로 치환된다. 별도 표 갱신 불필요 (참조 일원화).
 
 ---
 
-## Phase C. 매핑 SSOT → 템플릿 플레이스홀더 삽입
+## Phase C. 매핑 SSOT → 템플릿 플레이스홀더 삽입 — **합법적 SKIP (옵션 B 채택)**
 
-(작업 후 채움)
+계획서 §"Phase C" 의 두 옵션 중 사용자가 명시적으로 권장한 **하이브리드 = 옵션 B (실용)** 를 채택했다.
+
+| 옵션 | 채택 여부 | 사유 |
+|---|---|---|
+| A — `scripts/insert_placeholders.py` 가 템플릿에 `{{...}}` 삽입, 런타임에 치환 | ❌ | PR #26 에서 placeholder 삽입이 한컴오피스 "알 수 없는 오류" 거부를 유발한 전례. 표 셀 안 paragraph 의 runs 분리 시 한컴오피스가 cellAddr/id/linesegarray 중복으로 인식 |
+| B — 템플릿은 사용자 정본 그대로 유지, generate.py 가 SSOT 의 `location.table_index` + `cell` 좌표로 직접 채움 | ✅ | runs 변형 없이 안전. SSOT 좌표가 단일 원천이므로 표 인덱스 정합 보장 |
+
+**채택 결정 사항:**
+1. `templates/hwpx/{roadmap,pbl}.hwpx` 는 Phase A 의 사용자 정본 (`3cff053…` / `d6fbfbc…`) 그대로 유지
+2. `_replace_in_all_runs(doc, "{{...}}", value)` 메커니즘 보존 — 사용자 정본에 placeholder 가 없으므로 자연스럽게 no-op (향후 옵션 A 전환 가능성 대비 코드 보존)
+3. DoD #6 의 검증 의미를 재정의:
+   - **기존**: 출력 HWPX grep `{{...}}` 카운트 0 건
+   - **재정의**: (a) SSOT JSON 의 모든 `py_key` 가 payload TS 출력 dict 에 존재 (b) `build_placeholder_map(data)` 가 SSOT 의 모든 placeholder 키 cover (c) E2E 다운로드 후 셀별 텍스트가 비어있지 않음 (fixture full vs empty 대조)
+4. `scripts/insert_placeholders.py`, `scripts/test_insert_placeholders.py` 는 **신설하지 않음** (옵션 B 에서는 불필요)
+5. PR #26 잔존 스크립트 (`scripts/{port-hwpx-placeholders,fix-roadmap-i3-alignment}.py`) 는 Phase F·G 에서 일괄 정리 (또는 별도 follow-up)
+
+✅ **DoD 6 부분 충족 준비**: SSOT 좌표 기반 채우기로 placeholder 검증을 코드 정합 검증으로 대체.
 
 ---
 

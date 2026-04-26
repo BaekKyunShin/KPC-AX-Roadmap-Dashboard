@@ -1,13 +1,15 @@
 {
   "$schema": "./hwpx-placeholders.schema.json",
-  "version": 1,
-  "generated_at": "2026-04-25",
+  "version": 2,
+  "generated_at": "2026-04-26",
   "source": {
-    "plan": "docs/plans/2026-04-24-interview-result-screens-redesign.md §6",
+    "plan": "docs/plans/2026-04-25-pr3-hwpx-template-rebuild.md §5·§6",
     "inventory": "docs/references/2026-04-23-current-fields-inventory.md",
     "structure_roadmap": "docs/references/hwpx-structure-roadmap.md",
     "structure_pbl": "docs/references/hwpx-structure-pbl.md"
   },
+  "indexing": "shallow_traversal",
+  "indexing_notes": "table_index 는 generate.py 의 _collect_tables() 와 동일한 shallow traversal (top-level paragraph 의 표만, nested 표 제외) 기준이다. python-hwpx 의 doc.get_table_map() 의 table_index 는 nested 표 포함이므로 본 SSOT 와 다르다. 본 SSOT 의 인덱스가 정본이며 generate.py 와 직접 정합된다.",
   "strategy_taxonomy": {
     "single": "본문 단락에 단일 텍스트 치환",
     "cell_fill": "표 셀 N 개에 정해진 키:값 매핑으로 채움",
@@ -20,13 +22,13 @@
   "roadmap": [
     {
       "id": "R-01",
-      "section": "[서식] 표지",
+      "section": "[서식] 표지 PM/내부전문가 표",
       "label": "cover",
       "strategy": "cell_fill",
       "py_key": "cover",
       "ts_key": "cover",
-      "data_source": "projects 메타 + RoadmapInterview 표지 입력",
-      "location": { "table_index": 1, "rows": "PM/내부전문가 서명 표 셀" },
+      "data_source": "projects 메타 + RoadmapVersion + 인터뷰 참석자 (PM/내부전문가)",
+      "location": { "table_index": 1, "rows": "PM/내부전문가 서명 표 셀 (3x3)" },
       "placeholders": [
         "{{roadmap_cover_company_name}}",
         "{{roadmap_cover_report_date}}",
@@ -50,7 +52,7 @@
       "strategy": "single",
       "py_key": "establishment_necessity",
       "ts_key": "establishmentNecessity",
-      "data_source": "RoadmapInterview.overview.establishmentNecessity",
+      "data_source": "RoadmapInterview.overview.establishment_necessity",
       "location": { "table_index": 3, "cell": [0, 0] },
       "placeholders": ["{{roadmap_overview_establishment_necessity}}"]
     },
@@ -67,22 +69,22 @@
       "strategy": "repeat_rows",
       "py_key": "performance_activities",
       "ts_key": "performanceActivities",
-      "data_source": "RoadmapInterview.overview.performanceActivities[]",
+      "data_source": "RoadmapInterview.interview_round + interview_date + interview_method + participants[] (인터뷰 Step 2)",
       "location": {
         "table_index": 5,
-        "data_row_start": 2,
+        "data_row_start": 1,
         "rows_per_item": 2,
         "max_items": 3,
         "merged_first_col": true
       },
       "row_columns": [
         { "col": 0, "field": "round", "format": "{n}차", "merged_rowspan": 2 },
-        { "col": 1, "field": "date_time", "merged_rowspan": 2 },
+        { "col": 1, "field": "date", "merged_rowspan": 2 },
         { "col": 2, "field": "content", "merged_rowspan": 2 },
         { "col": 3, "field": "method", "merged_rowspan": 2 },
-        { "col": 4, "field": "pm_label", "static": "컨설팅책임자(PM)", "row_offset": 0 },
+        { "col": 4, "field": "pm_role", "static": "컨설팅책임자(PM)", "row_offset": 0 },
         { "col": 5, "field": "pm_name", "row_offset": 0 },
-        { "col": 4, "field": "expert_label", "static": "기업 내부전문가", "row_offset": 1 },
+        { "col": 4, "field": "expert_role", "static": "기업 내부전문가", "row_offset": 1 },
         { "col": 5, "field": "expert_name", "row_offset": 1 }
       ],
       "placeholder_template": "{{roadmap_overview_performance_{i}_{field}}}"
@@ -99,8 +101,8 @@
       "label": "interview-input + llm",
       "strategy": "cell_fill + checkbox_toggle",
       "py_key": "outcome",
-      "ts_key": "overview",
-      "data_source": "RoadmapInterview.overview.aiLevel · selectedTask + RoadmapVersion.diagnosis_summary",
+      "ts_key": "outcome",
+      "data_source": "RoadmapInterview.overview.ai_competency_level · selected_tasks_summary + RoadmapVersion.diagnosis_summary (요약)",
       "location": { "table_index": 7 },
       "placeholders": [
         "{{roadmap_overview_ai_level_beginner_check}}",
@@ -131,13 +133,13 @@
     },
     {
       "id": "R-08",
-      "section": "Ⅱ-1 기업 AI 역량 수준 진단",
+      "section": "Ⅱ-1 기업 AI 역량 수준 진단 (HRD이음 보고서)",
       "label": "pdf-attach",
       "strategy": "pdf_attach",
       "py_key": "hrd_report_attachment",
       "ts_key": "hrdReportPdf",
-      "data_source": "RoadmapInterview.requirements.hrdReportPdf",
-      "location": { "table_index": 12, "cell": [0, 0] },
+      "data_source": "RoadmapInterview.overview.hrd_report_attachment",
+      "location": { "table_index": 11, "cell": [0, 0] },
       "placeholders": ["{{roadmap_requirements_hrd_report_attachment}}"],
       "fallback": "별도 작성 불요 (HRD이음 보고서 미첨부)"
     },
@@ -154,12 +156,12 @@
       "strategy": "cell_fill",
       "py_key": "company_requirements",
       "ts_key": "companyRequirements",
-      "data_source": "RoadmapInterview.requirements.companyRequirements",
-      "location": { "table_index": 14 },
+      "data_source": "RoadmapInterview.company_requirements",
+      "location": { "table_index": 13 },
       "placeholders": [
         "{{roadmap_requirements_company_status}}",
-        "{{roadmap_requirements_main_problem}}",
-        "{{roadmap_requirements_driving_will}}",
+        "{{roadmap_requirements_main_problems}}",
+        "{{roadmap_requirements_push_willingness}}",
         "{{roadmap_requirements_expected_outcomes}}"
       ]
     },
@@ -174,17 +176,17 @@
       "section": "Ⅱ-3 □ 과업·워크플로우 분석표",
       "label": "interview-input",
       "strategy": "repeat_rows",
-      "py_key": "task_analysis",
-      "ts_key": "taskAnalysis",
-      "data_source": "RoadmapInterview.requirements.taskAnalysis[]",
-      "location": { "table_index": 16, "data_row_start": 1, "max_items": 5 },
+      "py_key": "task_workflow_items",
+      "ts_key": "taskWorkflowItems",
+      "data_source": "RoadmapInterview.task_workflow_items[]",
+      "location": { "table_index": 15, "data_row_start": 1, "max_items": 5 },
       "row_columns": [
-        { "col": 0, "field": "domain" },
+        { "col": 0, "field": "job" },
         { "col": 1, "field": "task" },
         { "col": 2, "field": "as_is" },
         { "col": 3, "field": "problem" },
-        { "col": 4, "field": "data_timing" },
-        { "col": 5, "field": "ai_score" }
+        { "col": 4, "field": "data_availability" },
+        { "col": 5, "field": "ai_necessity_score" }
       ],
       "placeholder_template": "{{roadmap_requirements_task_analysis_{i}_{field}}}"
     },
@@ -199,10 +201,10 @@
       "section": "Ⅱ-3 □ 분석내용 + 추가 첨부",
       "label": "interview-input",
       "strategy": "single + pdf_attach",
-      "py_key": "task_analysis_note",
-      "ts_key": "taskAnalysisNote",
-      "data_source": "RoadmapInterview.requirements.taskAnalysisNote + taskAnalysisAttachment",
-      "location": { "table_index": 18, "cell": [0, 1] },
+      "py_key": "analysis_notes_text",
+      "ts_key": "analysisNotes",
+      "data_source": "RoadmapInterview.analysis_notes.text + attachment_files[]",
+      "location": { "table_index": 17, "cell": [0, 1] },
       "placeholders": [
         "{{roadmap_requirements_task_analysis_note}}",
         "{{roadmap_requirements_task_analysis_attachment}}"
@@ -220,10 +222,10 @@
       "section": "Ⅱ-4 훈련대상 과업 선정",
       "label": "interview-input",
       "strategy": "cell_fill",
-      "py_key": "target_task",
-      "ts_key": "targetTask",
-      "data_source": "RoadmapInterview.requirements.targetTask",
-      "location": { "table_index": 20 },
+      "py_key": "training_target",
+      "ts_key": "trainingTargets",
+      "data_source": "RoadmapInterview.training_targets[0] (첫 항목)",
+      "location": { "table_index": 19 },
       "placeholders": [
         "{{roadmap_requirements_target_task_name}}",
         "{{roadmap_requirements_target_task_selection_reason}}",
@@ -249,12 +251,12 @@
       "label": "interview-input + llm",
       "strategy": "repeat_rows",
       "py_key": "competencies",
-      "ts_key": "competencies",
-      "data_source": "RoadmapInterview.training.competencies[] (초안) + LLM 확장",
-      "location": { "table_index": 23, "data_row_start": 2, "max_items": 4 },
+      "ts_key": "competencyModels",
+      "data_source": "RoadmapInterview.competency_models[] (초안) + LLM 확장 RoadmapVersion.competencies[]",
+      "location": { "table_index": 22, "data_row_start": 2, "max_items": 4 },
       "row_columns": [
         { "col": 0, "field": "name" },
-        { "col": 1, "field": "definition" },
+        { "col": 1, "field": "definition_performance_criteria" },
         { "col": 2, "field": "knowledge" },
         { "col": 3, "field": "skill" },
         { "col": 4, "field": "attitude" }
@@ -267,9 +269,9 @@
       "label": "interview-input",
       "strategy": "conditional_box",
       "py_key": "ncs_box",
-      "ts_key": "ncsBox",
-      "data_source": "RoadmapInterview.training.ncsUsed + ncsMethodology + ncsDerivationMethod",
-      "location": { "table_index": [24, 25] },
+      "ts_key": "ncsUsage",
+      "data_source": "RoadmapInterview.ncs_usage (uses_ncs + ncs_usage_method | competency_derivation_method)",
+      "location": { "table_index": [23, 24] },
       "placeholders": [
         "{{roadmap_training_ncs_methodology}}",
         "{{roadmap_training_ncs_derivation_method}}"
@@ -293,17 +295,17 @@
       "section": "Ⅲ-2 □ 훈련체계도",
       "label": "llm",
       "strategy": "repeat_rows",
-      "py_key": "training_structure",
-      "ts_key": "trainingStructure",
-      "data_source": "RoadmapVersion.training_structure[]",
-      "location": { "table_index": 27, "data_row_start": 1, "max_items": 4 },
+      "py_key": "training_structure_rows",
+      "ts_key": "trainingStructureRows",
+      "data_source": "RoadmapVersion.training_structure[] (buildTrainingStructureTable 적용)",
+      "location": { "table_index": 26, "data_row_start": 1, "max_items": 4 },
       "row_columns": [
         { "col": 0, "field": "competency_name" },
-        { "col": 1, "field": "level" },
-        { "col": 2, "field": "content" },
-        { "col": 3, "field": "target" },
-        { "col": 4, "field": "method" },
-        { "col": 5, "field": "goal" }
+        { "col": 1, "field": "training_level" },
+        { "col": 2, "field": "training_content" },
+        { "col": 3, "field": "training_target" },
+        { "col": 4, "field": "training_method" },
+        { "col": 5, "field": "training_goal" }
       ],
       "placeholder_template": "{{roadmap_training_structure_{i}_{field}}}"
     },
@@ -321,7 +323,7 @@
       "py_key": "training_structure_method",
       "ts_key": "trainingStructureMethod",
       "data_source": "RoadmapVersion.training_structure_method",
-      "location": { "table_index": 29, "cell": [0, 1] },
+      "location": { "table_index": 28, "cell": [0, 1] },
       "placeholders": ["{{roadmap_training_structure_method}}"]
     },
     {
@@ -338,13 +340,13 @@
       "py_key": "annual_plan_items",
       "ts_key": "annualPlanItems",
       "data_source": "RoadmapVersion.annual_plan.items[]",
-      "location": { "table_index": 31, "data_row_start": 1, "max_items": 3 },
+      "location": { "table_index": 30, "data_row_start": 1, "max_items": 3 },
       "row_columns": [
         { "col": 0, "field": "competency_name" },
         { "col": 1, "field": "course_name" },
-        { "col": 2, "field": "training_form" },
-        { "col": 3, "field": "hours" },
-        { "col": 4, "field": "note" }
+        { "col": 2, "field": "training_type" },
+        { "col": 3, "field": "training_hours" },
+        { "col": 4, "field": "remarks" }
       ],
       "placeholder_template": "{{roadmap_training_plan_{i}_{field}}}"
     },
@@ -362,7 +364,7 @@
       "py_key": "annual_plan_usage",
       "ts_key": "annualPlanUsage",
       "data_source": "RoadmapVersion.annual_plan.usage_plan",
-      "location": { "table_index": 33, "cell": [0, 1] },
+      "location": { "table_index": 32, "cell": [0, 1] },
       "placeholders": ["{{roadmap_training_plan_utilization}}"]
     },
     {
@@ -379,15 +381,15 @@
       "py_key": "course_specs",
       "ts_key": "courseSpecs",
       "data_source": "RoadmapVersion.course_specs[]",
-      "location": { "table_index": [35, 36, 37], "max_items": 3 },
+      "location": { "table_index": [34, 35, 36], "max_items": 3 },
       "block_columns": [
         { "field": "course_name", "cell": [0, 1] },
-        { "field": "form", "cell": [1, 1] },
+        { "field": "training_type", "cell": [1, 1] },
         { "field": "recommended_program", "cell": [2, 1] },
-        { "field": "goal", "cell": [3, 1] },
+        { "field": "training_goal", "cell": [3, 1] },
         { "field": "main_content", "cell": [4, 1] },
-        { "field": "target", "cell": [5, 1] },
-        { "field": "subjects", "subjects_repeat": { "data_row_start": 7, "max_subjects": 3, "columns": [{ "col": 0, "field": "subject" }, { "col": 1, "field": "content" }, { "col": 2, "field": "hours" }] } }
+        { "field": "training_target", "cell": [5, 1] },
+        { "field": "subjects", "subjects_repeat": { "data_row_start": 7, "max_subjects": 4, "columns": [{ "col": 1, "field": "subject_name" }, { "col": 2, "field": "details" }, { "col": 3, "field": "hours" }] } }
       ],
       "placeholder_template": "{{roadmap_training_spec_{j}_{field}}} / {{roadmap_training_spec_{j}_subject_{k}_{field}}}"
     },
@@ -404,8 +406,8 @@
       "strategy": "cell_fill",
       "py_key": "appendix_meta",
       "ts_key": "appendixMeta",
-      "data_source": "projects 메타 (기업명·사업장관리번호)",
-      "location": { "table_index": 39 },
+      "data_source": "projects 메타 (기업명·고용보험사업장관리번호) + 1차 인터뷰 자동 채움",
+      "location": { "table_index": 38 },
       "placeholders": [
         "{{roadmap_appendix_company_name}}",
         "{{roadmap_appendix_insurance_no}}"
@@ -427,7 +429,7 @@
       "py_key": "cover",
       "ts_key": "cover",
       "data_source": "projects 메타 + PBLInterview 표지",
-      "location": { "paragraph_index": 0, "tables": [56, 57] },
+      "location": { "table_index": 0, "notes": "표지는 shallow [0] (서식 라벨) + 표지 paragraph 내 nested 표 다수. generate.py 는 본문 텍스트 패턴 치환으로 처리." },
       "placeholders": [
         "{{pbl_cover_subtitle}}",
         "{{pbl_cover_course_name}}",
@@ -451,8 +453,8 @@
       "strategy": "cell_fill",
       "py_key": "overview",
       "ts_key": "overview",
-      "data_source": "PBLInterview.overview",
-      "location": { "table_index": 4 },
+      "data_source": "PBLInterview Ⅰ장 (companyName, courseName, ncsCode, trainingHours, trainingTarget, trainingForm, trainingPeriod, businessIssues) + Project 메타 (business_registration_no, address, contact 등)",
+      "location": { "table_index": 1 },
       "placeholders": [
         "{{pbl_overview_company_name}}",
         "{{pbl_overview_business_no}}",
@@ -487,8 +489,8 @@
       "strategy": "single",
       "py_key": "company_issues",
       "ts_key": "companyIssues",
-      "data_source": "PBLInterview.analysis.companyIssues",
-      "location": { "table_index": 6, "cell": [0, 0] },
+      "data_source": "PBLInterview.companyIssues",
+      "location": { "table_index": 3, "cell": [0, 0] },
       "placeholders": ["{{pbl_analysis_company_issues}}"]
     },
     {
@@ -501,13 +503,16 @@
       "id": "P-04",
       "section": "Ⅱ-1-나 조직 및 주요 업무",
       "label": "interview-input",
-      "strategy": "single",
-      "py_key": "organization_text",
-      "ts_key": "organizationText",
-      "data_source": "PBLInterview.analysis.organization (orgTree + mainWork[] flatten)",
-      "location": { "paragraph_index": 37 },
-      "placeholders": ["{{pbl_analysis_organization_text}}"],
-      "notes": "조직도는 트리 구조 → 다중 라인 텍스트로 flatten. 표 8-16 의 nested 구조는 양식 원문 자리표시자."
+      "strategy": "repeat_rows",
+      "py_key": "organization",
+      "ts_key": "organization",
+      "data_source": "PBLInterview.organization (orgTree 트리 + mainWork[] 행)",
+      "location": { "table_index": 5, "data_row_start": 0, "max_items": 5, "notes": "양식 수정으로 단일 6x3 표로 단순화됨. orgTree 는 부서명 컬럼에 flatten, mainWork 는 별도 행으로 추가." },
+      "row_columns": [
+        { "col": 1, "field": "department_name" },
+        { "col": 2, "field": "tasks" }
+      ],
+      "placeholder_template": "{{pbl_analysis_organization_{i}_{field}}}"
     },
     {
       "id": "P-04-static",
@@ -522,8 +527,8 @@
       "strategy": "cell_fill",
       "py_key": "training_env",
       "ts_key": "trainingEnv",
-      "data_source": "PBLInterview.analysis.trainingEnv",
-      "location": { "table_index": 18 },
+      "data_source": "PBLInterview.trainingEnv (자유서술) + 신청서 메타 (proper_training_hours, training_place, internal_instructor, target_count, target_career, target_level, ai_infrastructure 등)",
+      "location": { "table_index": 7 },
       "placeholders": [
         "{{pbl_analysis_training_env_internal_status}}",
         "{{pbl_analysis_training_env_external_status}}",
@@ -546,8 +551,8 @@
       "strategy": "pdf_attach",
       "py_key": "hrd_report_attachment",
       "ts_key": "hrdReportPdf",
-      "data_source": "PBLInterview.analysis.hrdReportPdf",
-      "location": { "table_index": [20, 21] },
+      "data_source": "PBLInterview.hrdReportPdf",
+      "location": { "table_index": [9, 10] },
       "placeholders": ["{{pbl_analysis_hrd_report_attachment}}"],
       "fallback": "별도 작성 불요 (HRD이음 보고서 미첨부)"
     },
@@ -558,8 +563,8 @@
       "strategy": "single",
       "py_key": "course_necessity",
       "ts_key": "courseNecessity",
-      "data_source": "PBLInterview.analysis.courseNecessity",
-      "location": { "table_index": 22, "cell": [0, 0] },
+      "data_source": "PBLInterview.courseNecessity",
+      "location": { "table_index": 11, "cell": [0, 0] },
       "placeholders": ["{{pbl_analysis_course_necessity}}"]
     },
     {
@@ -575,17 +580,15 @@
       "strategy": "repeat_rows",
       "py_key": "task_activities",
       "ts_key": "tasksActivities",
-      "data_source": "PBLInterview.tasks.activities[]",
-      "location": { "table_index": 24, "data_row_start": 2, "rows_per_item": 2, "max_items": 6, "merged_first_col": true },
+      "data_source": "PBLInterview.activities[]",
+      "location": { "table_index": 13, "data_row_start": 1, "rows_per_round": 4, "max_items": 3, "merged_first_col": true, "notes": "양식 13x6 — 차수당 4행 (PM/외부전문가/기업내부전문가/능력개발전담주치의)" },
       "row_columns": [
-        { "col": 0, "field": "round", "format": "{n}차", "merged_rowspan": 2 },
-        { "col": 1, "field": "date", "merged_rowspan": 2 },
-        { "col": 2, "field": "content", "merged_rowspan": 2 },
-        { "col": 3, "field": "method", "merged_rowspan": 2 },
-        { "col": 4, "field": "pm_label", "static": "컨설팅책임자(PM)", "row_offset": 0 },
-        { "col": 5, "field": "pm_name", "row_offset": 0 },
-        { "col": 4, "field": "expert_label", "static": "기업 내부전문가", "row_offset": 1 },
-        { "col": 5, "field": "expert_name", "row_offset": 1 }
+        { "col": 0, "field": "round", "format": "{n}차" },
+        { "col": 1, "field": "date" },
+        { "col": 2, "field": "content" },
+        { "col": 3, "field": "method" },
+        { "col": 4, "field": "participants_role_label" },
+        { "col": 5, "field": "participants_name" }
       ],
       "placeholder_template": "{{pbl_tasks_activity_{i}_{field}}}"
     },
@@ -597,13 +600,13 @@
     },
     {
       "id": "P-09",
-      "section": "Ⅲ-2-가 문제 도출",
+      "section": "Ⅲ-2-가 문제 도출 (정의서)",
       "label": "interview-input",
       "strategy": "repeat_rows",
       "py_key": "problems",
       "ts_key": "tasksProblems",
-      "data_source": "PBLInterview.tasks.problems[]",
-      "location": { "table_index": 26, "data_row_start": 1, "max_items": 4 },
+      "data_source": "PBLInterview.problems[] (V2: title/description/impact)",
+      "location": { "table_index": 15, "data_row_start": 1, "max_items": 4, "notes": "양식 5x2 (구분/내용) — 4 항목 = 4행 데이터 (배경/핵심/범위/제약 포지션). V2 problems[] 는 자유 항목 4개 → 5x2 표의 row 1~4 col 1 에 description 채움. col 0 은 title (문제명) 고정." },
       "row_columns": [
         { "col": 0, "field": "title" },
         { "col": 1, "field": "description" }
@@ -623,16 +626,16 @@
       "strategy": "repeat_rows",
       "py_key": "priorities",
       "ts_key": "tasksPriorities",
-      "data_source": "PBLInterview.tasks.priority.items[]",
-      "location": { "table_index": 28, "data_row_start": 1, "max_items": 5 },
+      "data_source": "PBLInterview.priority.items[] (V2: problem/score(1-5)/rank)",
+      "location": { "table_index": 17, "data_row_start": 1, "max_items": 5, "notes": "양식 6x7 — col 0 문제명, col 1~5 우선순위 점수 1~5 (선택 시 √), col 6 선정여부 (rank=1 일 때 ☑)" },
       "row_columns": [
         { "col": 0, "field": "problem" },
-        { "col": 1, "field": "score_1" },
-        { "col": 2, "field": "score_2" },
-        { "col": 3, "field": "score_3" },
-        { "col": 4, "field": "score_4" },
-        { "col": 5, "field": "score_5" },
-        { "col": 6, "field": "selected" }
+        { "col": 1, "field": "score_1_check" },
+        { "col": 2, "field": "score_2_check" },
+        { "col": 3, "field": "score_3_check" },
+        { "col": 4, "field": "score_4_check" },
+        { "col": 5, "field": "score_5_check" },
+        { "col": 6, "field": "selected_check" }
       ],
       "placeholder_template": "{{pbl_tasks_priority_{i}_{field}}}"
     },
@@ -646,19 +649,19 @@
       "id": "P-11",
       "section": "Ⅲ-3-가 훈련대상 업무 선정",
       "label": "interview-input",
-      "strategy": "repeat_rows",
-      "py_key": "target_tasks",
+      "strategy": "cell_fill + repeat_rows",
+      "py_key": "target",
       "ts_key": "tasksTarget",
-      "data_source": "PBLInterview.tasks.target",
-      "location": { "table_index": 30, "data_row_start": 1, "max_items": 5 },
+      "data_source": "PBLInterview.target (V2: name/code/scope/necessity/details[])",
+      "location": { "table_index": 19, "data_row_start": 1, "max_items": 5, "notes": "양식 6x7 — 첫 행에 target 한 항목 (name 등). V2 단일 target 객체이므로 row 1 col 0 = name, col 6 = ☑." },
       "row_columns": [
         { "col": 0, "field": "name" },
-        { "col": 1, "field": "score_1" },
-        { "col": 2, "field": "score_2" },
-        { "col": 3, "field": "score_3" },
-        { "col": 4, "field": "score_4" },
-        { "col": 5, "field": "score_5" },
-        { "col": 6, "field": "selected" }
+        { "col": 1, "field": "necessity_score_1" },
+        { "col": 2, "field": "necessity_score_2" },
+        { "col": 3, "field": "necessity_score_3" },
+        { "col": 4, "field": "necessity_score_4" },
+        { "col": 5, "field": "necessity_score_5" },
+        { "col": 6, "field": "selected_check" }
       ],
       "placeholder_template": "{{pbl_tasks_target_{i}_{field}}}"
     },
@@ -669,8 +672,8 @@
       "strategy": "single",
       "py_key": "target_necessity",
       "ts_key": "targetNecessity",
-      "data_source": "PBLInterview.tasks.target.necessity",
-      "location": { "table_index": 31, "cell": [0, 0] },
+      "data_source": "PBLInterview.target.necessity",
+      "location": { "table_index": 20, "cell": [0, 0] },
       "placeholders": ["{{pbl_tasks_target_necessity}}"]
     },
     {
@@ -686,14 +689,11 @@
       "strategy": "repeat_rows",
       "py_key": "target_details",
       "ts_key": "targetDetails",
-      "data_source": "PBLInterview.tasks.target.details[]",
-      "location": { "table_index": 33, "data_row_start": 1, "max_items": 3 },
+      "data_source": "PBLInterview.target.details[] (V2: title/description)",
+      "location": { "table_index": 22, "data_row_start": 2, "max_items": 2, "notes": "양식 4x5 — row 0~1 헤더, row 2~3 데이터. V2 details 는 title+description 만, V1 의 as_is/to_be/required_knowledge/required_skill 컬럼은 description 단일 셀에 통합." },
       "row_columns": [
         { "col": 0, "field": "title" },
-        { "col": 1, "field": "description" },
-        { "col": 2, "field": "knowledge" },
-        { "col": 3, "field": "skill" },
-        { "col": 4, "field": "to_be" }
+        { "col": 1, "field": "description" }
       ],
       "placeholder_template": "{{pbl_tasks_target_detail_{i}_{field}}}"
     },
@@ -707,33 +707,30 @@
       "id": "P-14",
       "section": "Ⅲ-4-가 현재 AI역량 수준",
       "label": "interview-input",
-      "strategy": "checkbox_toggle + single",
+      "strategy": "checkbox_toggle + cell_fill",
       "py_key": "current_ai_level",
       "ts_key": "currentAiLevel",
-      "data_source": "PBLInterview.tasks.currentAiLevel",
-      "location": { "table_index": 35 },
+      "data_source": "PBLInterview.currentAiLevel { level (BASIC/EXPLORER/USER/LEADER), note }",
+      "location": { "table_index": 24, "notes": "양식 5x3 — row 0 헤더, row 1~4 = AI기초형/AI탐구형/AI활용형/AI선도형. col 0 = 체크박스(☑/□), col 1 = 라벨+등급, col 2 = 설명." },
       "placeholders": [
         "{{pbl_tasks_current_ai_level_basic_check}}",
         "{{pbl_tasks_current_ai_level_explorer_check}}",
         "{{pbl_tasks_current_ai_level_user_check}}",
-        "{{pbl_tasks_current_ai_level_leader_check}}",
-        "{{pbl_tasks_current_ai_level_note}}"
+        "{{pbl_tasks_current_ai_level_leader_check}}"
       ]
     },
     {
       "id": "P-15",
       "section": "Ⅲ-4-나 향후 AI역량 수준 향상도 (예상)",
       "label": "interview-input",
-      "strategy": "checkbox_toggle + single",
+      "strategy": "cell_fill",
       "py_key": "expected_ai_level",
       "ts_key": "expectedAiLevel",
-      "data_source": "PBLInterview.tasks.expectedAiLevel",
-      "location": { "table_index": 36 },
+      "data_source": "PBLInterview.currentAiLevel + expectedAiLevel { level, note }",
+      "location": { "table_index": 25, "notes": "양식 2x3 — row 0 헤더(현행/향후/사유), row 1 데이터 셀. 4 등급 체크박스 아님." },
       "placeholders": [
-        "{{pbl_tasks_expected_ai_level_basic_check}}",
-        "{{pbl_tasks_expected_ai_level_explorer_check}}",
-        "{{pbl_tasks_expected_ai_level_user_check}}",
-        "{{pbl_tasks_expected_ai_level_leader_check}}",
+        "{{pbl_tasks_expected_ai_level_current_label}}",
+        "{{pbl_tasks_expected_ai_level_expected_label}}",
         "{{pbl_tasks_expected_ai_level_note}}"
       ]
     },
@@ -750,8 +747,8 @@
       "strategy": "single",
       "py_key": "ops_training_goal",
       "ts_key": "opsTrainingGoal",
-      "data_source": "PBLReportRow.ops.training_goal",
-      "location": { "table_index": 38, "cell": [0, 0] },
+      "data_source": "PBLContent.operation_plan.training_goal",
+      "location": { "table_index": 27, "cell": [0, 0] },
       "placeholders": ["{{pbl_ops_training_goal}}"]
     },
     {
@@ -761,15 +758,15 @@
       "strategy": "repeat_rows",
       "py_key": "ops_ai_tools",
       "ts_key": "opsAiTools",
-      "data_source": "PBLReportRow.ops.ai_tools[]",
-      "location": { "table_index": 39, "data_row_start": 1, "max_items": 5 },
+      "data_source": "PBLContent.operation_plan.ai_tool_usage_plan[]",
+      "location": { "table_index": 28, "data_row_start": 1, "max_items": 5 },
       "row_columns": [
         { "col": 0, "field": "stage" },
-        { "col": 1, "field": "activity" },
-        { "col": 2, "field": "ai_tool" },
-        { "col": 3, "field": "data" },
+        { "col": 1, "field": "main_activity" },
+        { "col": 2, "field": "ai_tools" },
+        { "col": 3, "field": "utilized_data" },
         { "col": 4, "field": "purpose" },
-        { "col": 5, "field": "method" }
+        { "col": 5, "field": "specific_method" }
       ],
       "placeholder_template": "{{pbl_ops_tool_{i}_{field}}}"
     },
@@ -783,12 +780,15 @@
       "id": "P-18",
       "section": "Ⅳ-3-가 훈련과정 개요",
       "label": "llm",
-      "strategy": "single",
+      "strategy": "cell_fill",
       "py_key": "ops_course_overview",
       "ts_key": "opsCourseOverview",
-      "data_source": "PBLReportRow.ops.course_overview",
-      "location": { "table_index": 41, "cell": [0, 1] },
-      "placeholders": ["{{pbl_ops_course_overview}}"]
+      "data_source": "PBLContent.operation_plan.training_plan.overview",
+      "location": { "table_index": 30, "notes": "양식 2x2 — row 0 col 1 = 과정명, row 1 col 1 = 훈련기간" },
+      "placeholders": [
+        "{{pbl_ops_course_name}}",
+        "{{pbl_ops_training_period}}"
+      ]
     },
     {
       "id": "P-19",
@@ -797,13 +797,13 @@
       "strategy": "repeat_rows",
       "py_key": "ops_learning_group",
       "ts_key": "opsLearningGroup",
-      "data_source": "PBLReportRow.ops.learning_group[]",
-      "location": { "table_index": 42, "data_row_start": 2, "max_items": 4 },
+      "data_source": "PBLContent.operation_plan.training_plan.learning_group { instructors[], trainees[] }",
+      "location": { "table_index": 31, "data_row_start": 1, "max_items": 5 },
       "row_columns": [
         { "col": 0, "field": "category" },
-        { "col": 1, "field": "subcategory" },
+        { "col": 1, "field": "type" },
         { "col": 2, "field": "role" },
-        { "col": 3, "field": "department" },
+        { "col": 3, "field": "affiliation" },
         { "col": 4, "field": "position" },
         { "col": 5, "field": "name" }
       ],
@@ -813,20 +813,20 @@
       "id": "P-20",
       "section": "Ⅳ-3-다 훈련 교과목 프로파일",
       "label": "llm",
-      "strategy": "repeat_rows",
-      "py_key": "ops_subjects",
-      "ts_key": "opsSubjects",
-      "data_source": "PBLReportRow.ops.subjects[]",
-      "location": { "table_index": 43, "data_row_start": 1, "max_items": 5 },
-      "row_columns": [
-        { "col": 0, "field": "name" },
-        { "col": 1, "field": "hours" },
-        { "col": 2, "field": "goal" },
-        { "col": 3, "field": "content" },
-        { "col": 4, "field": "method" },
-        { "col": 5, "field": "assessment" }
-      ],
-      "placeholder_template": "{{pbl_ops_subject_{i}_{field}}}"
+      "strategy": "cell_fill + repeat_rows",
+      "py_key": "ops_subject_profile",
+      "ts_key": "opsSubjectProfile",
+      "data_source": "PBLContent.operation_plan.training_plan.subject_profile",
+      "location": { "table_index": 32, "notes": "양식 15x10 (대형 표) — 상단 고정 (과정명/총훈련시간/훈련목표/AI도구/분석방법) + 중간 training_contents 반복 행 (data_row_start=5, max_rows=3) + 하단 고정 (총합/평가)" },
+      "placeholders": [
+        "{{pbl_ops_subject_course_name}}",
+        "{{pbl_ops_subject_total_hours}}",
+        "{{pbl_ops_subject_training_goals}}",
+        "{{pbl_ops_subject_ai_tools}}",
+        "{{pbl_ops_subject_utilized_data}}",
+        "{{pbl_ops_subject_analysis_method}}",
+        "{{pbl_ops_subject_total_sum_hours}}"
+      ]
     },
     {
       "id": "P-20-static",
@@ -841,10 +841,10 @@
       "strategy": "repeat_rows",
       "py_key": "ops_facilities",
       "ts_key": "opsFacilities",
-      "data_source": "PBLReportRow.ops.facilities[]",
-      "location": { "table_index": 45, "data_row_start": 1, "max_items": 2 },
+      "data_source": "PBLContent.operation_plan.training_plan.facilities[]",
+      "location": { "table_index": 34, "data_row_start": 1, "max_items": 2 },
       "row_columns": [
-        { "col": 0, "field": "no" },
+        { "col": 0, "field": "seq" },
         { "col": 1, "field": "category" },
         { "col": 2, "field": "name" },
         { "col": 3, "field": "spec" },
@@ -859,14 +859,14 @@
       "strategy": "repeat_rows",
       "py_key": "ops_instructors",
       "ts_key": "opsInstructors",
-      "data_source": "PBLReportRow.ops.instructors[]",
-      "location": { "table_index": 46, "data_row_start": 1, "max_items": 2 },
+      "data_source": "PBLContent.operation_plan.training_plan.training_instructors[]",
+      "location": { "table_index": 35, "data_row_start": 1, "max_items": 2 },
       "row_columns": [
         { "col": 0, "field": "name" },
         { "col": 1, "field": "internal_external" },
-        { "col": 2, "field": "career" },
-        { "col": 3, "field": "task" },
-        { "col": 4, "field": "details" }
+        { "col": 2, "field": "career_years" },
+        { "col": 3, "field": "work_name" },
+        { "col": 4, "field": "detailed_training_content" }
       ],
       "placeholder_template": "{{pbl_ops_instructor_{i}_{field}}}"
     },
@@ -874,74 +874,60 @@
       "id": "P-23",
       "section": "Ⅳ-4-가 과정평가 계획",
       "label": "llm",
-      "strategy": "cell_fill",
-      "py_key": "ops_eval_process",
-      "ts_key": "opsEvalProcess",
-      "data_source": "PBLReportRow.ops.eval_process",
-      "location": { "table_index": 47 },
+      "strategy": "cell_fill + repeat_rows",
+      "py_key": "ops_course_eval",
+      "ts_key": "opsCourseEval",
+      "data_source": "PBLContent.operation_plan.evaluation_plan.course_evaluation",
+      "location": { "table_index": 36, "notes": "양식 16x9 — 상단 5행 (과정명/평가대상/일자·기준/결과/총평) + 평가방법 체크박스 + 수행 체크리스트 (data_row_start=4, max_rows=7)" },
       "placeholders": [
-        "{{pbl_ops_eval_process_method}}",
-        "{{pbl_ops_eval_process_criteria}}",
-        "{{pbl_ops_eval_process_timing}}"
+        "{{pbl_ops_eval_course_name}}",
+        "{{pbl_ops_eval_target}}",
+        "{{pbl_ops_eval_date}}",
+        "{{pbl_ops_eval_criteria}}",
+        "{{pbl_ops_eval_result}}",
+        "{{pbl_ops_eval_overall_comment}}"
       ]
     },
     {
       "id": "P-24",
-      "section": "Ⅳ-4-나 결과평가 계획",
+      "section": "Ⅳ-4-나 결과평가 계획 (양식 원문)",
       "label": "static",
       "strategy": "static",
-      "location": { "table_index": [49, 50] },
-      "notes": "양식 원문 (만족도·성취도·현업적용도 조사) — UI 미노출, HWPX 에는 고정 원문"
+      "location": { "table_index": [37, 38] },
+      "notes": "양식 12x9 만족도/성취도, 13x9 현업적용도 — UI 미노출, HWPX 에는 고정 원문"
     },
     {
       "id": "P-25",
-      "section": "Ⅴ-1 성과분석 측정 지표",
-      "label": "llm",
-      "strategy": "repeat_rows",
-      "py_key": "outcomes_metrics",
-      "ts_key": "outcomesMetrics",
-      "data_source": "PBLReportRow.outcomes.metrics[]",
-      "location": { "table_index": [51, 52], "data_row_start": 1, "max_items": 2 },
-      "row_columns": [
-        { "col": 0, "field": "category" },
-        { "col": 1, "field": "indicator" }
-      ],
-      "placeholder_template": "{{pbl_outcomes_metric_{i}_{field}}}"
+      "section": "Ⅴ-1 성과분석 측정 지표 (양식 원문)",
+      "label": "static",
+      "strategy": "static",
+      "location": { "table_index": [39, 40] },
+      "notes": "양식 3x2 정량/정성 지표 — UI 미노출, HWPX 에는 고정 원문"
     },
     {
       "id": "P-26",
-      "section": "Ⅴ-2 성과 확산 전략",
-      "label": "llm",
-      "strategy": "single",
-      "py_key": "outcomes_diffusion",
-      "ts_key": "outcomesDiffusion",
-      "data_source": "PBLReportRow.outcomes.diffusion_strategy",
-      "location": { "paragraph_index": 167 },
-      "placeholders": ["{{pbl_outcomes_diffusion_strategy}}"]
-    },
-    {
-      "id": "P-26-static",
-      "section": "Ⅴ-2 작성 가이드",
+      "section": "Ⅴ-2 성과 확산 전략 (양식 원문)",
       "label": "static",
-      "strategy": "static"
+      "strategy": "static",
+      "notes": "양식 본문 단락 — UI 미노출, HWPX 에는 고정 원문"
     },
     {
       "id": "P-27",
       "section": "[결과보고서] 전체 (고정)",
       "label": "static",
       "strategy": "static",
-      "location": { "table_index": [54, 55, 58, 59, 60, 61] },
-      "notes": "양식 원문 — UI 미노출"
+      "location": { "table_index": [42, 43, 44, 45, 46, 47, 48, 49, 50, 51] },
+      "notes": "결과보고서 표지·학습활동·과정평가·성취도 표 — UI 미노출, HWPX 에는 고정 원문"
     },
     {
       "id": "P-28",
-      "section": "[결과보고서] 표지",
+      "section": "[결과보고서] 표지 메타",
       "label": "static-with-meta",
       "strategy": "cell_fill",
       "py_key": "result_cover",
       "ts_key": "resultCover",
-      "data_source": "projects 메타 (기업명)",
-      "location": { "table_index": 56 },
+      "data_source": "projects 메타 (기업명) — 결과보고서 표지에 자동 채움",
+      "location": { "table_index": 42 },
       "placeholders": ["{{pbl_result_cover_company_name}}"]
     },
     {
@@ -949,7 +935,7 @@
       "section": "[결과보고서] 1. 학습활동 수행일지",
       "label": "static",
       "strategy": "static",
-      "location": { "table_index": 58 }
+      "location": { "table_index": 43 }
     }
   ]
 }
