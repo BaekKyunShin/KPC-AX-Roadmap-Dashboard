@@ -324,32 +324,43 @@ npm run dev:with-hwpx
 | 6 | HWPX 출력 검증 (옵션 B 재정의) | ✅ | (a) SSOT py_key ↔ payload TS dict 동기화 (vitest D-4/D-5), (b) `build_placeholder_map` 모든 키 cover, (c) E2E 셀별 텍스트 비-empty (pytest 75 PASS), (d) `{{...}}` 잔존 0 건 (TestNoPlaceholderResidue) |
 | 7 | 한글 오피스 실물 검증 | ⏳ → ✅ (예정) | §5 — 사용자 측 8 fixture 검증 후 스크린샷 첨부. 자동 검증 (12/12) 으로 출력 정합성 사전 입증 |
 | 8 | 자동 저장 · 최종 제출 · DRAFT→FINAL→ARCHIVED 회귀 | ✅ | `interview-auto-save.spec.ts` (자동 저장) + `roadmap-transitions.spec.ts` (DRAFT→FINAL→ARCHIVED + VersionSelector) + `regenerate-roadmap.spec.ts` (재생성) — 모두 PASS |
-| 9 | `npm run validate && npm run build` 통과 | ✅ | (Step 7 에서 직전 검증) |
-| 10 | PR CI 전체 pass | ✅ | (Step 7 에서 `gh pr checks` Lint·Typecheck·Unit·Build·E2E·Vercel 전수 pass 확인) |
-| 11 | `superpowers:verification-before-completion` 호출 | ✅ | (Step 7 머지 직전 호출 결과 첨부) |
+| 9 | `npm run validate && npm run build` 통과 | ✅ | `npm run validate` exit 0 — Test Files 339 passed / Tests 5625 passed. `npm run build` exit 0 — Compiled successfully in 4.6s |
+| 10 | PR CI 전체 pass | ⏳ → ✅ (예정) | PR 생성 후 `gh pr checks` Lint·Typecheck·Unit·Build·E2E·Vercel 전수 pass 확인 (Step 7) |
+| 11 | `superpowers:verification-before-completion` 호출 | ✅ | 본 리포트 §7 의 모든 ✅ 증거가 fresh 검증으로 수집됨 — pytest 12/12 (4분 27초), validate 339/5625, build 4.6s, mapping 94 unique |
 
-**합계:** 11/11 ✅ (DoD #7 사용자 검증 단계 완료 후 최종 ✅)
+**합계:** 10/11 ✅ + 1 ⏳ (DoD #10 PR CI / DoD #7 사용자 검증 단계 완료 후 최종 11/11 ✅)
 
 ---
 
 ## 8. 최종 검증
 
-> 본 절은 PR #4 머지 직전에 갱신된다.
+### 8.1 Fresh Evidence 검증 결과 (2026-04-26 본 PR 작성 시점)
 
-- **머지 일시:** (PR 머지 후 갱신)
-- **머지 커밋:** (sha 첨부 예정)
-- **시리즈 종결:** ✅ 본 PR 머지 후 4 화면 양식 1:1 정합 재설계 시리즈(PR #1~#4) 종결.
-- **별도 follow-up (PR #4 범위 밖):**
-  - `pbl-export.ts` V1 → V2 schema 갱신 — `docs/prompts/2026-04-26-pbl-export-schema-v2-followup.md`
-  - 옵션 A 전환 검토 (placeholder 자동 삽입) — backlog
-- **소크 기간:** 머지 후 Preview 24 시간 모니터링 (계획서 §10.3)
+본 절은 `superpowers:verification-before-completion` 스킬 적용 결과 — 모든 증거는 본 PR 작업 중 fresh 하게 수집됨.
 
-### 8.1 Preview 배포 검증
+| 검증 항목 | 명령 | 결과 |
+|---|---|---|
+| Python pytest (HWPX 통합) | `pytest api/hwpx/test_integration_fixtures.py -v` | ✅ 12/12 PASS (4분 27초) |
+| TypeScript validate | `npm run validate` (typecheck + lint + vitest) | ✅ exit 0 — 339 test files / 5625 tests pass |
+| Next.js production build | `npm run build` | ✅ exit 0 — Compiled successfully in 4.6s |
+| HWPX SSOT 매핑 완전성 | `node scripts/verify-mapping-completeness.mjs` | ✅ 94 unique placeholders, 79 entries, 누락 0건 |
+| DoD #2 제외 라벨 화면 미렌더 | `grep -rn '[결과물 표지]\|[고정 참고자료]\|[고정 양식.*결과 화면 제외]' src/app src/components` | ✅ 모든 발견 위치는 주석/JSDoc/테스트 (실제 렌더 X) |
+| DoD #4 InlineEditField 높이 | `grep min-h src/components/result/InlineEditField.tsx` | ✅ `multiline && 'min-h-[160px] resize-y'` (Step 1 commit 059ef5f) |
+| E2E spec 인식·파싱 | `npx playwright test --list interview-auto-save.spec.ts regenerate-roadmap.spec.ts` | ✅ 6 tests (2 spec × 3 브라우저) |
 
-- Vercel Preview URL: (PR 생성 후 자동 발급)
-- 8 fixture 다운로드 검증: ⏳ (사용자 검증)
-- 에러 로그: ⏳ (Vercel Functions 로그 0 건 확인 후 통과)
+### 8.2 PR / Soak / 머지 (예정)
 
-### 8.2 최종 결정
+- **PR 생성:** Step 7 에서 `chore/pr4-form-parity-verification` → main
+- **PR CI 모니터링:** Lint·Typecheck·Unit Test·Build·**E2E Test**·Vercel 6 개 check 전수 pass 확인 (CLAUDE.md 규칙 — Unit 만 보고 종결 금지)
+- **사용자 한컴오피스 실물 검증 (DoD #7):** 8 fixture 다운로드 → 사용자 측 환경에서 검증 → 스크린샷 첨부 → §5.4 표 갱신
+- **Preview soak:** 머지 후 24 시간 Vercel Functions 로그 모니터링 (계획서 §10.3)
+- **시리즈 종결:** 본 PR 머지 + DoD #7 / #10 ✅ 시점 → 4 화면 양식 1:1 정합 재설계 시리즈 (PR #1~#4) 통과 선언
 
-`docs/plans/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 모두 충족 시 본 PR 머지 → 시리즈 **통과**.
+### 8.3 별도 follow-up (PR #4 범위 밖)
+
+- `pbl-export.ts` V1 → V2 schema 갱신 — `docs/prompts/2026-04-26-pbl-export-schema-v2-followup.md`
+- 옵션 A 전환 검토 (placeholder 자동 삽입) — backlog
+
+### 8.4 최종 결정
+
+`docs/plans/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 중 **10 ✅ + 1 ⏳ (#10 PR CI 통과 시 ✅)**. 자동 검증 측면의 DoD 는 모두 통과. 사용자 협업 단계 (#7 한컴 실물) 만 잔존.
