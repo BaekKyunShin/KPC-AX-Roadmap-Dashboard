@@ -17,6 +17,11 @@
 | 양식 2 PDF (PBL) | `docs/references/2.AI PBL 과정개발보고서 및 결과보고서(양식).pdf` (20p) |
 | 인벤토리 (47 섹션) | `docs/references/2026-04-23-current-fields-inventory.md` (1717 줄) |
 | HWPX 매핑 SSOT | `docs/references/hwpx-placeholders.json` v2 (94 unique placeholders, 52 meaningful entries) |
+
+> **카운팅 정의:**
+> - **47 섹션** = 원본 prompt / 인벤토리의 4 단계 헤더 (Ⅰ·Ⅱ·Ⅲ → 1·2·3 → 가·나·다 → □) 단위 카운트 (계획서 §12 DoD #3 기준)
+> - **52 의미 섹션** = SSOT entries 중 `static`/`static-with-meta` 카운트 보조 entries 를 제외한 cover/interview-input/pdf-attach/llm/conditional 등 **데이터 의존 cover** 가 있는 entries (로드맵 23 + PBL 29)
+> - **79 entries** = SSOT JSON `roadmap[]` 37 + `pbl[]` 42 — 위 의미 섹션 + `static`/`static-with-meta` 모두 포함한 cross-check 단위
 | HWPX 구조 분석 | `docs/references/hwpx-structure-{roadmap,pbl}.md` |
 | V2 UI 스크린샷 (12 장) | `docs/screenshots/2026-04-24/{roadmap,pbl}-{interview,result}-{desktop-1280,tablet-768,mobile-375}.png` |
 | PR #3 진행 보고서 | `docs/reports/2026-04-25-form-parity-report.md` (Phase A~G) |
@@ -296,7 +301,7 @@ npm run dev:with-hwpx
 |---|---|---|
 | `e2e/consultant/interview-roadmap.spec.ts` | 로드맵 V2 인터뷰 8 스텝 골든 플로우 | ✅ |
 | `e2e/consultant/roadmap-transitions.spec.ts` | DRAFT→FINAL→ARCHIVED 전이 + VersionSelector 다중 노출 | ✅ |
-| `e2e/consultant/interview-auto-save.spec.ts` (신규) | 인터뷰 자동 저장 + 새로고침 후 값 보존 | ✅ |
+| `e2e/consultant/interview-auto-save.spec.ts` (신규) | Ⅰ-1 입력 + 3 초 비동기 처리 동안 console error 0 건 sanity (영속화·인디케이터는 vitest 단위 테스트 cover) | ✅ |
 | `e2e/consultant/regenerate-roadmap.spec.ts` (신규) | 재생성 아코디언 펼침/입력/취소 워크플로우 | ✅ |
 | `e2e/consultant/export-integrity.spec.ts` | PDF/XLSX 다운로드 매직 바이트 | ✅ |
 
@@ -328,7 +333,7 @@ npm run dev:with-hwpx
 | 10 | PR CI 전체 pass | ✅ | PR #30 — Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel · Vercel Preview Comments **6/6 pass** (run 24959140162) |
 | 11 | `superpowers:verification-before-completion` 호출 | ✅ | 본 리포트 §7 의 모든 ✅ 증거가 fresh 검증으로 수집됨 — pytest 12/12 (4분 27초), validate 339/5625, build 4.6s, mapping 94 unique, PR CI 6/6 pass |
 
-**합계:** 10/11 ✅ + 1 ⏳ (DoD #7 한컴오피스 실물 검증 — 사용자 측 환경에서 8 fixture 검증 후 §5.4 표 갱신 시 11/11 ✅)
+**합계:** 10/11 ✅ + 1 ⏳ (DoD #7 한컴오피스 실물 검증만 사용자 협업 단계로 잔존 — `docs/screenshots/2026-04-24/hwpx-hancom/README.md` 가이드 참조하여 사용자 측 8 fixture 검증 후 §5.4 표 갱신 시 11/11 ✅)
 
 ---
 
@@ -363,4 +368,4 @@ npm run dev:with-hwpx
 
 ### 8.4 최종 결정
 
-`docs/plans/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 중 **10 ✅ + 1 ⏳ (#10 PR CI 통과 시 ✅)**. 자동 검증 측면의 DoD 는 모두 통과. 사용자 협업 단계 (#7 한컴 실물) 만 잔존.
+`docs/plans/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 중 **10 ✅ + 1 ⏳ (#7 한컴오피스 실물 검증만 사용자 협업 단계로 잔존)**. 자동 검증 측면의 DoD 는 모두 통과 — pytest 75/75, validate 339/5625, build 4.6s, mapping 누락 0, PR #30 CI 6/6 pass.

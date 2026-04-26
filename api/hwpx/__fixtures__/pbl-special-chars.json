@@ -31,26 +31,26 @@
     {"round": 3, "date": "26.04.24", "content": "초안 검토 \"review\"", "method": "비대면", "participants": "PM 홍길동"}
   ],
   "problems": [
-    {"title": "검사 정확도 8% 미달 & \"불량 누락\"", "description": "수동 검사 → 92% 정확도 (target: 96%)", "impact": "월 1500만원 'loss'"},
-    {"title": "리드타임 <4시간>", "description": "수기 보고서 'manual'", "impact": "출하 \"지연\""},
+    {"title": "검사 정확도 8% 미달 & <불량> \"누락\"", "description": "수동 검사 → 92% 정확도 (target: 96%) — emoji 🔥 포함", "impact": "월 1500만원 'loss' & '<<클레임>>'"},
+    {"title": "리드타임 <4시간> & 'delay'", "description": "수기 보고서 \"manual\"", "impact": "출하 \"지연\" & emoji ⚠️"},
     {"title": "QA 인력 의존도 高 & 'risk'", "description": "숙련 의존 — 신규 OJT 6개월", "impact": "신규 채용 비용"},
-    {"title": "데이터 'silos'", "description": "센서 로그 보존만", "impact": "기회비용"}
+    {"title": "데이터 'silos'", "description": "센서 로그 보존만", "impact": "기회비용 — XSS 페이로드 <script>alert('x')</script> 환원 검증"}
   ],
   "priorities": [
-    {"problem": "검사 정확도 8% 미달", "score": 5, "rank": 1},
-    {"problem": "리드타임 <4시간>", "score": 4, "rank": 2},
+    {"problem": "검사 정확도 8% 미달 & <불량> \"누락\"", "score": 5, "rank": 1},
+    {"problem": "리드타임 <4시간> & 'delay'", "score": 4, "rank": 2},
     {"problem": "QA 인력 의존도", "score": 3, "rank": 3},
     {"problem": "데이터 'silos'", "score": 2, "rank": 4}
   ],
   "priority_method": "AHP & \"경영진 협의\"",
   "target": {
-    "name": "AI <비전> 자동검사",
+    "name": "AI <비전> 자동검사 & 'auto-QA'",
     "code": "0204020107",
-    "scope": "QA 인력 'team' 5명",
-    "necessity": "정확도 96% 이상 & 리드타임 50% 단축",
+    "scope": "QA 인력 'team' 5명 + emoji 👥",
+    "necessity": "정확도 96% 이상 & 리드타임 50% 단축 — \"core KPI\"",
     "details": [
-      {"title": "데이터 <수집>·전처리", "description": "센서 데이터 + 영상 라벨링 ('PLC' auto)"},
-      {"title": "모델 운영 & \"평가\"", "description": "객체 검출 모델 운영 + 정확도 KPI"}
+      {"title": "데이터 <수집>·전처리 & 'pipeline'", "description": "센서 데이터 + 영상 라벨링 ('PLC' auto + AutoLabel)"},
+      {"title": "모델 운영 & \"평가\"", "description": "객체 검출 모델 운영 + 정확도 KPI <검증> & emoji ✅"}
     ]
   },
   "target_necessity": "정확도 96% 이상 & 리드타임 50% 단축",
