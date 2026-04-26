@@ -15,7 +15,7 @@ KPC AI 훈련 로드맵 대시보드(B2B 내부 도구)는 4개 화면(로드맵
 
 - ✅ PR #1 (sha 76f4eda): Foundation — 공통 UI 레이어 + Tailwind 토큰
 - ✅ PR #2 (sha c44fbde): 4개 화면 V2 양식 1:1 재설계
-- ✅ PR #3 (sha __직접 확인__): HWPX 템플릿 재구축 + 치환 로직 — 머지된 sha 를 git log 로 확인
+- ✅ PR #3 (sha 15a489a, 2026-04-26 머지): HWPX 템플릿 재구축 + 치환 로직 (V2 인터뷰 정합)
 - 🚧 **PR #4 (이 작업)**: PDF 1:1 대조 리포트 + 한글 오피스 실물 검증 + 누락 회귀
   테스트 + 최종 DoD 종결
 
@@ -44,11 +44,34 @@ KPC AI 훈련 로드맵 대시보드(B2B 내부 도구)는 4개 화면(로드맵
 
 ```bash
 git log --oneline -5
+# 15a489a feat(hwpx): V2 양식 1:1 정합 HWPX 템플릿·치환 로직 재구축 (#3) (#29)
 # c44fbde feat(interview-result): 로드맵·PBL 4개 화면 V2 양식 1:1 재설계 (#28)
-# (PR #3 머지 sha 가 그 위에 있어야 함)
-
-# 만약 PR #3 가 아직 머지 전이면 이 PR 작업 보류. PR #3 부터 완료할 것.
+# 76f4eda feat(ui): PR #1 Foundation — 공통 UI 레이어 + Tailwind 토큰 (#27)
 ```
+
+## PR #3 머지 후 반영된 산출물 (2026-04-26)
+
+- **SSOT v2**: `docs/references/hwpx-placeholders.json` (94 placeholders, 52 meaningful entries, shallow traversal 기준)
+- **진행 보고서**: `docs/reports/2026-04-25-form-parity-report.md` (Phase A~G 모두 채움)
+- **fixture**: `api/hwpx/__fixtures__/{roadmap,pbl}-{full,empty}.json` (4 종)
+- **통합 테스트**: `api/hwpx/test_integration_fixtures.py` (8 PASS)
+- **payload TS**: `src/lib/services/export/hwpx/hwpx-payload-{roadmap,pbl}.ts` (V2 우선 + V1 fallback)
+- **generate.py**: `api/hwpx/generate.py` (PBL V2 적응 — _fill_pbl_problems / _fill_pbl_problem_priorities (priorities key) / _fill_pbl_target_tasks (target_single key) / _fill_pbl_target_task_details (target_details_v2 key) / _fill_pbl_ai_level_improvement (영문 enum + note) / _fill_pbl_performance_activities (V2 activities key))
+
+## PR #3 후 follow-up 후보 (PR #4 와 별개로 검토)
+
+본 PR #4 진행 전 또는 머지 후 별도 PR 로 처리할 수 있는 잔여 항목:
+
+1. **`src/lib/actions/pbl-export.ts` 의 V1 → V2 schema 갱신** —
+   현재 `pblInterviewAutoSaveSchema` (V1) 로 검증 중. PR #28 V2 정본 후 V1 검증으로는
+   V2 데이터가 invalid 처리될 가능성. `PBLInterviewSchema.partial()` 또는 `PBLInterviewStrictSchema`
+   로 갱신 검토. legacy 데이터 호환 fallback 필요 시 schema union.
+2. **옵션 A 전환 검토** — placeholder 자동 삽입 (`scripts/insert_placeholders.py`)
+   가 한컴오피스에서 안전한지 재검증. 셀 단일 paragraph 의 runs[0].text 위치에만
+   삽입하면 cellAddr/id/linesegarray 중복 회피 가능. 안전성 확인 시 SSOT 의 좌표
+   기반 채움 함수 일부 deprecation.
+3. **본 PR 의 한글 오피스 실물 검증 미완** — Step 2 (DoD #7) 가 본 PR #4 의 핵심.
+   사용자 측 실물 검증 후 스크린샷 첨부.
 
 ## 작업 범위 (계획서 §8·§9·§12)
 
