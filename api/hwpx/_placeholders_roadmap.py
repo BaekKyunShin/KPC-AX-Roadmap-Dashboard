@@ -47,6 +47,51 @@ _TRAINING_TARGET_KEYS = (
     ("to_be", "training_target_to_be"),
 )
 
+# SSOT v2 (`docs/references/hwpx-placeholders.json`) 의 placeholder 명명 규칙 →
+# 기존 V1 짧은 키와 1:1 매핑. 옵션 B 채택으로 generate.py 는 V1 키를 그대로 사용
+# (사용자 정본 템플릿에 placeholder 미삽입이라 no-op) 하지만 build_placeholder_map
+# 출력 dict에 V2 긴 키도 함께 포함시켜 SSOT 동기화를 자동 검증할 수 있게 한다.
+# placeholder_template (`{{roadmap_overview_performance_{i}_{field}}}` 같은
+# 반복 표 키) 는 build_table_rows 영역이므로 본 alias 에는 포함하지 않는다.
+_V1_TO_V2_ALIAS: tuple[tuple[str, str], ...] = (
+    # R-01 표지
+    ("company_name", "roadmap_cover_company_name"),
+    ("report_date", "roadmap_cover_report_date"),
+    ("pm_affiliation", "roadmap_cover_pm_affiliation"),
+    ("pm_name", "roadmap_cover_pm_name"),
+    ("internal_expert_affiliation", "roadmap_cover_internal_expert_affiliation"),
+    ("internal_expert_name", "roadmap_cover_internal_expert_name"),
+    # R-03 Ⅰ-1 수립 필요성
+    ("establishment_necessity", "roadmap_overview_establishment_necessity"),
+    # R-05 Ⅰ-3 결과
+    ("level_beginner_check", "roadmap_overview_ai_level_beginner_check"),
+    ("level_intermediate_check", "roadmap_overview_ai_level_intermediate_check"),
+    ("level_advanced_check", "roadmap_overview_ai_level_advanced_check"),
+    ("selected_tasks_text", "roadmap_overview_selected_task"),
+    ("roadmap_summary", "roadmap_overview_main_summary"),
+    # R-08 Ⅱ-1 HRD이음
+    ("hrd_report_attachment", "roadmap_requirements_hrd_report_attachment"),
+    # R-09 Ⅱ-2 요구분석
+    ("company_status", "roadmap_requirements_company_status"),
+    ("main_problems", "roadmap_requirements_main_problems"),
+    ("push_willingness", "roadmap_requirements_push_willingness"),
+    ("expected_outcomes", "roadmap_requirements_expected_outcomes"),
+    # R-11 Ⅱ-3 분석내용
+    ("analysis_notes_text", "roadmap_requirements_task_analysis_note"),
+    # R-12 Ⅱ-4 훈련대상 과업
+    ("training_target_name", "roadmap_requirements_target_task_name"),
+    ("training_target_selection_reason", "roadmap_requirements_target_task_selection_reason"),
+    ("training_target_as_is", "roadmap_requirements_target_task_expected_as_is"),
+    ("training_target_to_be", "roadmap_requirements_target_task_expected_to_be"),
+    # R-15 Ⅲ-1 NCS 박스
+    ("ncs_methodology", "roadmap_training_ncs_methodology"),
+    ("ncs_derivation_method", "roadmap_training_ncs_derivation_method"),
+    # R-18 Ⅲ-2 훈련체계 수립 방법
+    ("training_structure_method", "roadmap_training_structure_method"),
+    # R-20 Ⅲ-3 활용방안
+    ("annual_plan_usage", "roadmap_training_plan_utilization"),
+)
+
 
 def _str_or_empty(v: Any) -> str:
     if v is None:
@@ -96,6 +141,19 @@ def build_placeholder_map(data: dict) -> dict[str, str]:
     tt = data.get("training_target") or {}
     for src, dst in _TRAINING_TARGET_KEYS:
         result[f"{{{{{dst}}}}}"] = _str_or_empty(tt.get(src))
+
+    # SSOT v2 긴 키 alias 출력 (V1 짧은 키와 같은 값 복제)
+    for v1_key, v2_key in _V1_TO_V2_ALIAS:
+        result[f"{{{{{v2_key}}}}}"] = result.get(f"{{{{{v1_key}}}}}", "")
+
+    # SSOT v2 신규 키 (V1 에 대응 없음)
+    # R-11 첨부 파일 fallback (현재는 파일명만 가지므로 빈 문자열로 fallback)
+    result["{{roadmap_requirements_task_analysis_attachment}}"] = ""
+    # R-22 별첨 수행일지 메타
+    result["{{roadmap_appendix_company_name}}"] = _str_or_empty(data.get("company_name"))
+    result["{{roadmap_appendix_insurance_no}}"] = _str_or_empty(
+        data.get("employment_insurance_no")
+    )
 
     return result
 

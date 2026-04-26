@@ -559,4 +559,186 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(p.data.report_date).toContain('2026');
     expect(p.data.report_date).toContain('04');
   });
+
+  // ---------------------------------------------------------------
+  // 분기 커버리지 보강 — overview 누락 시 result fallback (실제 trigger 가능 branch)
+  // ---------------------------------------------------------------
+  it('overview.ai_competency_level 빈 문자열 → result.outcome_summary 사용', () => {
+    const iv = makeInterview();
+    (iv as unknown as { company_details: { roadmap_overview: Record<string, string> } }).company_details.roadmap_overview.ai_competency_level = '';
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.ai_competency_level).toBe('INTERMEDIATE');
+  });
+
+  it('jobTask 모든 필드 undefined → 모두 빈 문자열 fallback', () => {
+    const iv = makeInterview({
+      job_tasks: [{ id: '1' }],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const items = p.data.task_workflow_items as Array<Record<string, string | number>>;
+    expect(items[0].job).toBe('');
+    expect(items[0].task).toBe('');
+    expect(items[0].as_is).toBe('');
+    expect(items[0].problem).toBe('');
+    expect(items[0].data_availability).toBe('');
+    expect(items[0].ai_necessity_score).toBe('');
+  });
+
+  it('improvement_goals 첫 항목의 모든 필드 undefined → 빈 문자열 fallback', () => {
+    const iv = makeInterview({
+      improvement_goals: [{ id: '1' }],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const tt = p.data.training_target as Record<string, string>;
+    expect(tt.task_name).toBe('');
+    expect(tt.selection_reason).toBe('');
+    expect(tt.as_is).toBe('');
+    expect(tt.to_be).toBe('');
+  });
+
+  it('participants 의 name/position 빈 문자열 → || fallback', () => {
+    const iv = makeInterview({
+      participants: [{ id: '1', name: '', position: 'PM' }],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.pm_name).toBe('');
+  });
+
+  it('interview_round / interview_date 가 nullish → fallback', () => {
+    const iv = makeInterview({
+      interview_round: undefined,
+      interview_date: undefined,
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const acts = p.data.performance_activities as Array<{ round: number; date: string }>;
+    expect(acts[0].round).toBe(1); // fallback
+  });
+
+  it('consultant_profile_snapshot 누락 → pm_affiliation 빈 문자열', () => {
+    const roadmap = makeRoadmapVersion({
+      consultant_profile_snapshot: null,
+    } as unknown as Parameters<typeof makeRoadmapVersion>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    expect(p.data.pm_affiliation).toBe('');
+  });
+
+  it('finalized_at + updated_at 둘 다 falsy → report_date 빈 문자열', () => {
+    const roadmap = makeRoadmapVersion({
+      finalized_at: undefined,
+      updated_at: '',
+    } as unknown as Parameters<typeof makeRoadmapVersion>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    expect(p.data.report_date).toBe('');
+  });
+
+  it('outcome_summary.main_content 빈 문자열 → overview.roadmap_summary fallback (`||`)', () => {
+    const iv = makeInterview();
+    (iv as unknown as { company_details: { roadmap_overview: Record<string, string> } }).company_details.roadmap_overview.roadmap_summary = '인터뷰 측 요약';
+    const roadmap = makeRoadmapVersion({
+      pbl_course: {
+        competencies: [],
+        annual_plan: { items: [], usage_plan: '' },
+        setup_necessity: '',
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER' as const,
+          selected_tasks: '',
+          main_content: '',  // 빈 문자열 → || fallback
+        },
+        training_structure_method: '',
+        ncs: { used: false, methodology: '', derivation_method: '' },
+        hrd_report_attachment_url: '',
+      } as unknown as RoadmapHwpxPayloadInputs['roadmap']['pbl_course'],
+    });
+    const p = buildRoadmapHwpxPayload({
+      roadmap,
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(p.data.roadmap_summary).toBe('인터뷰 측 요약');
+  });
+
+  // ---------------------------------------------------------------
+  // Phase D-4: SSOT v2 동기화 assertion (DoD #6 재정의)
+  // ---------------------------------------------------------------
+  // SSOT JSON v2 (`docs/references/hwpx-placeholders.json`) 의 모든 single-strategy
+  // py_key (cell_fill / single / pdf_attach / cond_box / static-with-meta) 가
+  // buildRoadmapHwpxPayload 출력 dict 의 키로 존재하는지 검증한다.
+  // 누락된 키는 Python 측 `_placeholders_roadmap.build_placeholder_map` 에서 빈
+  // 문자열 fallback 처리되지만, payload TS ↔ SSOT 동기화는 명시적으로 보장.
+  it('SSOT v2 의 모든 단일 py_key 가 출력 dict 에 존재', () => {
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    // SSOT v2 의 single/cell_fill/pdf_attach/cond_box/static-with-meta py_key 목록
+    // (`docs/references/hwpx-placeholders.json` 의 roadmap 섹션 참조)
+    const ssotV2PyKeys = [
+      // R-01 cover (cell_fill)
+      'company_name',
+      'report_date',
+      'pm_affiliation',
+      'pm_name',
+      'internal_expert_affiliation',
+      'internal_expert_name',
+      // R-03 establishment_necessity (single)
+      'establishment_necessity',
+      // R-05 outcome (cell_fill + checkbox_toggle)
+      'ai_competency_level',
+      'selected_tasks_text',
+      'roadmap_summary',
+      // R-08 hrd_report_attachment (pdf_attach)
+      'hrd_report_attachment',
+      // R-09 company_requirements (cell_fill)
+      'company_status',
+      'main_problems',
+      'push_willingness',
+      'expected_outcomes',
+      // R-11 analysis_notes (single)
+      'analysis_notes_text',
+      // R-12 training_target (cell_fill)
+      'training_target',
+      // R-15 ncs_box (cond_box)
+      'ncs_used',
+      'ncs_methodology',
+      'ncs_derivation_method',
+      // R-18 training_structure_method (single)
+      'training_structure_method',
+      // R-20 annual_plan_usage (single)
+      'annual_plan_usage',
+      // R-22 appendix_meta (cell_fill — employment_insurance_no 는 별도)
+      'employment_insurance_no',
+    ];
+    const dataKeys = new Set(Object.keys(p.data));
+    const missing = ssotV2PyKeys.filter((k) => !dataKeys.has(k));
+    expect(missing).toEqual([]);
+  });
 });
