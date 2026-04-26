@@ -227,3 +227,121 @@ class TestNoPlaceholderResidue:
             assert "}}" not in text
         finally:
             os.unlink(tmp_path)
+
+
+# ---------------------------------------------------------------
+# max-length / special-chars 회귀 (DoD #6 — 4 조합 보강)
+# ---------------------------------------------------------------
+
+
+def _extract_all_text(out: bytes) -> str:
+    """HWPX bytes → 본문·표 셀 텍스트를 한 문자열로 합쳐 반환."""
+    from hwpx import HwpxDocument
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
+        tmp.write(out)
+        tmp_path = tmp.name
+    try:
+        doc = HwpxDocument.open(tmp_path)
+        chunks: list[str] = []
+        for para in doc.paragraphs:
+            for run in para.runs:
+                if run.text:
+                    chunks.append(run.text)
+            for tbl in para.tables:
+                for ri in range(tbl.row_count):
+                    for ci in range(tbl.column_count):
+                        cell = tbl.cell(ri, ci)
+                        for cp in cell.paragraphs:
+                            for r in cp.runs:
+                                if r.text:
+                                    chunks.append(r.text)
+        return "\n".join(chunks)
+    finally:
+        os.unlink(tmp_path)
+
+
+@pytest.mark.skipif(
+    not (os.path.exists(ROADMAP_TEMPLATE) and os.path.exists(PBL_TEMPLATE)),
+    reason="템플릿 미존재",
+)
+class TestRegressionMaxLengthAndSpecialChars:
+    def test_roadmap_max_length_generates_and_preserves_repeated_rows(self):
+        """긴 한국어 단락 + 수행일지 반복 행 + 명세서가 출력에 보존된다.
+
+        검증 전략:
+          - 긴 단일 단락은 셀 폭에 의해 시각적 줄바꿈이 발생하므로 시작 키워드 검증
+          - performance_activities 는 Ⅰ-2 표 합의 (R-04 ⚠️) 에 따라 max 3 행
+          - course_specs 는 양식 max 3 블록 — 2 번째 강의 보존
+        """
+        from generate import _generate_roadmap
+
+        data = _load_fixture("roadmap-max-length.json")
+        out = _generate_roadmap(data)
+        assert _is_zip_bytes(out)
+        assert len(out) > 100_000
+        text = _extract_all_text(out)
+        # 긴 단락의 시작부 키워드 — establishment_necessity 첫 문장
+        assert "수동 품질 검사 공정" in text, "establishment_necessity 시작부 누락"
+        # 수행일지 — 양식 합의 max 3 차수 보존
+        assert "1차 인터뷰" in text, "performance_activities[0] 누락"
+        assert "3차 검토" in text, "performance_activities[2] 누락"
+        # 명세서 2 건 — 두 번째 강의 (심화 과정) 보존
+        assert "심화 과정" in text, "course_specs[1] 누락"
+
+    def test_roadmap_special_chars_escapes_xml_unsafe_payload(self):
+        """<>&\"' 특수문자가 raw 로 노출되지 않고 정상 텍스트로 환원된다.
+
+        python-hwpx 가 XML 파싱 후 텍스트로 환원하므로 텍스트 단계에서는 원래 형태로 보임.
+        검증 핵심: ZIP 매직 + 회사명 페이로드 환원 + XML 이스케이프 깨짐 0 건.
+        """
+        from generate import _generate_roadmap
+
+        data = _load_fixture("roadmap-special-chars.json")
+        out = _generate_roadmap(data)
+        assert _is_zip_bytes(out)
+        text = _extract_all_text(out)
+        # 특수문자 환원 검증 — 회사명 원문 그대로
+        assert "㈜<특수>&\"문자'테스트\\회사" in text, (
+            "특수문자 회사명이 환원되지 않음 — 이스케이프/언이스케이프 정합성 깨짐"
+        )
+        # XML 이스케이프 누수 확인 — "&amp;amp;" 가 raw 텍스트로 보이면 이중 이스케이프
+        assert "&amp;amp;" not in text, "이중 이스케이프 발생 (XML 파싱 깨짐)"
+        # 이모지 환원
+        assert "😀" in text, "emoji 누락"
+
+    def test_pbl_max_length_generates_valid_hwpx(self):
+        """V2 PBL max-length fixture 가 정상 ZIP 으로 생성되고 핵심 데이터가 보존된다."""
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-max-length.json")
+        out = _generate_pbl(data)
+        assert _is_zip_bytes(out)
+        assert len(out) > 50_000
+        text = _extract_all_text(out)
+        # 회사명 max-length 보존
+        assert "주식회사 매우매우긴회사명" in text, "company_name max-length 누락"
+        # V2 problems 첫 항목 — title 부분 시작 키워드 (HWPX 셀 폭에 의한 줄바꿈 회피)
+        assert "검사 정확도 8% 미달" in text, "V2 problems[0].title 누락"
+        # ai_tool_usage_plan 1단계 stage 라벨 보존
+        assert "1단계" in text, "ai_tool_usage_plan stage 누락"
+
+    def test_pbl_special_chars_escapes_v2_payload(self):
+        """V2 problems / target / activities 의 특수문자가 안전하게 환원된다."""
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-special-chars.json")
+        out = _generate_pbl(data)
+        assert _is_zip_bytes(out)
+        text = _extract_all_text(out)
+        # 회사명 특수문자 환원 (cover 영역)
+        assert "㈜<특수>&\"문자'테스트\\회사" in text, "company_name 특수문자 누락"
+        # 산업코드 / 주업종 특수문자 환원
+        assert "전자 <부품>" in text, "industry_main 특수문자 누락"
+        # 담당자 emoji 환원
+        assert "😀" in text, "contact_name emoji 누락"
+        # 이중 이스케이프 누수 0건
+        assert "&amp;amp;" not in text, "이중 이스케이프 발생"
+        # 잔존 placeholder 0건
+        assert "{{" not in text and "}}" not in text

@@ -1,0 +1,81 @@
+{
+  "company_name": "㈜<특수>&\"문자'테스트\\회사",
+  "course_name": "AI <PBL> & \"비전\" 자동검사 'master' 과정",
+  "report_date": "2026.04.30.",
+  "business_registration_no": "123-45-67890",
+  "industry_code": "C26",
+  "industry_main": "전자 <부품> & 컴퓨터 \"제조\"",
+  "address": "서울 <강남구> & 테헤란로 \"100\"",
+  "training_address": "본사 3층 <교육장>",
+  "jurisdiction_office": "서울 \"지부\"",
+  "contact_position": "교육담당 <부장>",
+  "contact_name": "김담당 😀 & 이부장",
+  "contact_phone": "010-1234-5678",
+  "contact_email": "edu@example.com",
+  "ncs_code": "200107 \"AI\"",
+  "training_hours": 40,
+  "training_target_label": "QA 인력 'team' 5명",
+  "training_form": "사내 <집체>",
+  "training_period": "2026.04.01 ~ 2026.05.31",
+  "business_issues": "수작업 검사 비효율 & 신규 OJT 비용 증가 — \"core problem\"",
+  "company_issues": "Ⅱ-1-가 — <매출> 정체 & 품질 비용 증가\n다음 줄 이모지 🔥\n특수문자 종합: <>&\"'\\",
+  "course_necessity": "Ⅱ-3-나 — 자동화로 인력 'redeploy' 필요",
+  "hrd_report_attachment": "https://x.example/hrd?type=pbl&id=42&name=test",
+  "organization": [
+    {"department_name": "생산<팀>", "tasks": ["제품 'production'", "품질 \"검사\""]},
+    {"department_name": "QA & 분석팀", "tasks": ["보고서 작성", "이상 \"분석\""]}
+  ],
+  "activities": [
+    {"round": 1, "date": "26.04.10", "content": "킥오프 <회의>", "method": "대면", "participants": "PM 홍길동 😀, 외부전문가 김전문 & Co., 내부 'expert' 박관리"},
+    {"round": 2, "date": "26.04.17", "content": "<문제> 정의 워크숍", "method": "대면", "participants": "PM 홍길동, 내부 expert 박관리"},
+    {"round": 3, "date": "26.04.24", "content": "초안 검토 \"review\"", "method": "비대면", "participants": "PM 홍길동"}
+  ],
+  "problems": [
+    {"title": "검사 정확도 8% 미달 & <불량> \"누락\"", "description": "수동 검사 → 92% 정확도 (target: 96%) — emoji 🔥 포함", "impact": "월 1500만원 'loss' & '<<클레임>>'"},
+    {"title": "리드타임 <4시간> & 'delay'", "description": "수기 보고서 \"manual\"", "impact": "출하 \"지연\" & emoji ⚠️"},
+    {"title": "QA 인력 의존도 高 & 'risk'", "description": "숙련 의존 — 신규 OJT 6개월", "impact": "신규 채용 비용"},
+    {"title": "데이터 'silos'", "description": "센서 로그 보존만", "impact": "기회비용 — XSS 페이로드 <script>alert('x')</script> 환원 검증"}
+  ],
+  "priorities": [
+    {"problem": "검사 정확도 8% 미달 & <불량> \"누락\"", "score": 5, "rank": 1},
+    {"problem": "리드타임 <4시간> & 'delay'", "score": 4, "rank": 2},
+    {"problem": "QA 인력 의존도", "score": 3, "rank": 3},
+    {"problem": "데이터 'silos'", "score": 2, "rank": 4}
+  ],
+  "priority_method": "AHP & \"경영진 협의\"",
+  "target": {
+    "name": "AI <비전> 자동검사 & 'auto-QA'",
+    "code": "0204020107",
+    "scope": "QA 인력 'team' 5명 + emoji 👥",
+    "necessity": "정확도 96% 이상 & 리드타임 50% 단축 — \"core KPI\"",
+    "details": [
+      {"title": "데이터 <수집>·전처리 & 'pipeline'", "description": "센서 데이터 + 영상 라벨링 ('PLC' auto + AutoLabel)"},
+      {"title": "모델 운영 & \"평가\"", "description": "객체 검출 모델 운영 + 정확도 KPI <검증> & emoji ✅"}
+    ]
+  },
+  "target_necessity": "정확도 96% 이상 & 리드타임 50% 단축",
+  "current_ai_level": "EXPLORER",
+  "current_ai_level_note": "ChatGPT <일부> 사용, 비전 모델 'no exp'",
+  "expected_ai_level": "USER",
+  "expected_ai_level_note": "6개월 내 객체 검출 자동화 운영 \"target\"",
+  "training_goal": "AI 활용형 도달 & 비전 검사 자동화 운영",
+  "ai_tool_usage_plan": [
+    {"stage": "1단계", "main_activity": "데이터 <수집>", "ai_tools": ["LabelImg & AutoLabel"], "utilized_data": "검사 'image'", "purpose": "라벨링", "specific_method": "수동 라벨 → AutoLabel \"auto\""},
+    {"stage": "2단계", "main_activity": "모델 학습", "ai_tools": ["YOLO"], "utilized_data": "라벨 'data'", "purpose": "객체 검출", "specific_method": "Transfer learning"}
+  ],
+  "training_plan_course_name": "AI <PBL> 비전 자동검사",
+  "subject_profile_course_name": "AI <PBL> 비전 자동검사",
+  "total_training_hours": "40",
+  "subject_training_goals": "기술문제 해결\n공정 최적화 & 'optimization'",
+  "subject_ai_tools": "YOLO\nLabelImg & AutoLabel",
+  "subject_utilized_data": "센서·영상 데이터 ('PLC' + image)",
+  "subject_analysis_method": "객체 검출 + <분류> 모델",
+  "subject_total_sum_hours": "40",
+  "course_eval_course_name": "AI <PBL> 비전 자동검사",
+  "course_eval_target": "QA 인력 5명",
+  "course_eval_date": "2026.05.31",
+  "course_eval_criteria": "수행수준 3 이상 60% PASS",
+  "course_eval_result": "예정",
+  "course_eval_overall_comment": "<XSS> & \"alert('test')\" 페이로드는 이스케이프되어야 한다",
+  "course_evaluation_methods": ["포트폴리오"]
+}

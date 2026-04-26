@@ -1,0 +1,53 @@
+{
+  "company_name": "㈜<특수>&\"문자'테스트\\회사",
+  "report_date": "2026.04.30.",
+  "pm_affiliation": "PM<팀> & 컨설팅 \"본부\"",
+  "pm_name": "홍길동 😀 김철수",
+  "internal_expert_affiliation": "㈜<특수>&\"문자'테스트\\회사",
+  "internal_expert_name": "이영희 🔥 박민수",
+  "establishment_necessity": "특수문자 검증: <태그> & 앰퍼샌드 + \"이중따옴표\" + '단일따옴표' + 백슬래시(\\\\) + 줄바꿈(\\n) 처리 검증.\n\n다음 줄 이모지 테스트: 😀🔥🚀💡\n\nXML 파서가 안전하게 이스케이프해야 하며 <script>alert('xss')</script> 같은 페이로드도 raw 로 출력되면 안 된다.",
+  "ai_competency_level": "INTERMEDIATE",
+  "selected_tasks_text": "1) <품질> 검사 & \"자동화\"\n2) 데이터 'pipeline' 구축\n3) HTML 엔티티 — &amp; &lt; &gt; 처리",
+  "roadmap_summary": "특수문자 종합: <>&\"'\\ 줄바꿈\n탭(\t)\t공백 연속    + 이모지 ✅⚠️❌",
+  "performance_activities": [
+    {"round": 1, "date": "26.04.10 14:00~17:00", "content": "1차 인터뷰 — <기업> & \"현황\"", "method": "대면(인터뷰)", "participants": [{"role": "PM<책임>", "name": "홍길동 😀"}, {"role": "내부 'expert'", "name": "김영희 & Co."}]},
+    {"round": 2, "date": "26.04.17 10:00~12:00", "content": "2차 워크숍 — <과업> 분석", "method": "비대면(화상)", "participants": [{"role": "PM", "name": "홍길동"}, {"role": "expert", "name": "김영희"}]},
+    {"round": 3, "date": "26.04.24 14:00~16:00", "content": "3차 검토", "method": "대면", "participants": [{"role": "PM", "name": "홍길동"}, {"role": "expert", "name": "김영희"}]}
+  ],
+  "hrd_report_attachment": "https://x.example/hrd?type=report&id=42&name=test",
+  "company_status": "전자부품 제조업 <C26>, 직원 50명. \"중소기업\" 분류.",
+  "main_problems": "수동 검사 비효율 & OJT 비용 증가 + 데이터 'silos'",
+  "push_willingness": "경영진 강한 의지 — \"분기별 5억\" 예산 확보",
+  "expected_outcomes": "불량률 30% 감소 & 검사 인력 'redeploy' 2명",
+  "task_workflow_items": [
+    {"job": "생산<팀>", "task": "품질 검사", "as_is": "수동 측정 & 수기 기록", "problem": "오탐 8% — \"불량 누락\"", "data_availability": "센서 데이터 보유 ('PLC')", "ai_necessity_score": 5},
+    {"job": "QA & 분석", "task": "보고서 작성", "as_is": "수기 작성", "problem": "리드타임 길음 \"4시간\"", "data_availability": "이력 보유", "ai_necessity_score": 3}
+  ],
+  "analysis_notes_text": "ROI <1순위>는 품질 검사. 'data quality'가 최대 강점.",
+  "training_target": {
+    "task_name": "AI 비전 자동화 <품질> 검사",
+    "selection_reason": "ROI 1순위 & \"즉시 효과\" 기대",
+    "as_is": "수동 측정 + 수기 보고서 ('manual')",
+    "to_be": "AI <자동화> & 자동 보고서 \"end-to-end\""
+  },
+  "competencies": [
+    {"name": "AI <비전> 활용", "definition_performance_criteria": "객체 검출 모델 운영 & \"검증\"", "knowledge": "CV 기초 'fundamentals'", "skill": "추론 도구 + Python", "attitude": "지속 학습 \"mindset\""},
+    {"name": "데이터 분석", "definition_performance_criteria": "기초 통계 & 시각화", "knowledge": "통계 'basics'", "skill": "pandas + scikit-learn", "attitude": "검증 자세"}
+  ],
+  "ncs_used": true,
+  "ncs_methodology": "NCS 200107 'AI' 능력단위 참조 후 <기업> 특성 맞춤화. 인용부호 \"\" 처리 검증.",
+  "ncs_derivation_method": "",
+  "training_structure_rows": [
+    {"competency_name": "AI <비전> 활용", "training_level": "중급", "training_content": "비전 모델 활용 & 라벨링", "training_target": "QA 인력 'team'", "training_method": "사내 집체 + \"외부\"", "training_goal": "자동화 운영"}
+  ],
+  "training_structure_method": "역량 매트릭스 <기반>",
+  "annual_plan_items": [
+    {"competency_name": "AI <비전> 활용", "course_name": "AI 비전 \"실무\"", "training_type": "사내 집체", "training_hours": "16", "remarks": "2분기 — 'kickoff'"}
+  ],
+  "annual_plan_usage": "분기별 KPI 평가 & \"리뷰\" 후 다음 단계 확장",
+  "course_specs": [
+    {"course_name": "AI 비전 \"실무\"", "training_type": "사내 집체", "recommended_program": "사업주훈련", "training_goal": "비전 모델 운영 & '검증'", "main_content": "객체 검출 + <분류> 모델", "training_target": "QA 인력 5명", "subjects": [{"subject_name": "CV 기초", "details": "<영상> 처리 & 색공간", "hours": "4"}]}
+  ],
+  "employment_insurance_no": "12345-67890-SPECIAL/&",
+  "journal_attachments": ""
+}

@@ -1,0 +1,63 @@
+{
+  "company_name": "주식회사 매우매우긴회사명을가진산업자동화전문기업한국지사글로벌협력본부",
+  "report_date": "2026.04.30.",
+  "pm_affiliation": "한국생산성본부 인재개발원 AI 컨설팅 사업단 디지털혁신팀 1과",
+  "pm_name": "홍길동성춘향이몽룡변학도김흥부이놀부심청이박씨부인",
+  "internal_expert_affiliation": "주식회사 매우매우긴회사명을가진산업자동화전문기업한국지사글로벌협력본부",
+  "internal_expert_name": "김영희박철수이순신세종대왕허준유관순안중근윤동주",
+  "establishment_necessity": "현재 본 기업은 수동 품질 검사 공정에서 8% 이상의 불량률이 지속적으로 관찰되고 있으며 이에 따라 분기별 평균 1억 5천만원의 추가 비용이 발생하고 있다. 또한 신규 입사 인력의 OJT 기간이 평균 6개월에 달하면서 인당 약 3천만원의 교육 비용이 누적되고 있어 인적 자원 운영 측면에서도 비효율이 누적되고 있다. 데이터 측면에서는 PLC 센서 로그가 시간당 약 12만 건씩 축적되고 있으나 분석·활용 인프라가 부재해 사실상 사장된 상태이며 이는 본 기업의 디지털 전환 로드맵 수립이 시급한 핵심 근거가 된다. 이에 본 컨설팅 사업을 통해 AI 비전 자동 검사 시스템 도입과 데이터 분석 역량 내재화를 동시에 추진해 분기 내 불량률 5% 이하 달성과 검사 인력 30% 재배치를 동시에 달성하는 것이 본 로드맵 수립의 직접적 필요성이다. 더 나아가 본 컨설팅의 결과물은 단순한 1회성 도입이 아니라 향후 3년간 사내 AI 역량 단계적 확산의 마스터 플랜으로 활용되어 전사 AI 활용형 인력 비중을 현재 12%에서 50% 이상으로 끌어올리는 데 기여할 것으로 전망된다. 부수적으로 본 로드맵의 추진 과정에서 도출되는 노하우와 데이터 자산은 향후 신규 사업장 확장 시 빠른 표준화·복제 확산의 토대가 되며 이는 중장기 글로벌 진출 전략 측면에서도 핵심 자산으로 평가된다.",
+  "ai_competency_level": "INTERMEDIATE",
+  "selected_tasks_text": "1) 품질 검사 공정 자동화 — 객체 검출·이상 분류 모델 통합 운영\n2) 생산 빅데이터 분석 — 시계열 이상 탐지 + KPI 대시보드 자동화\n3) 원자재 입고 자동 분류 — 바코드/RFID 통합 + 영상 인식 보조\n4) 검사 보고서 자동 생성 — LLM 기반 자연어 요약 + 결재 라우팅 자동화\n5) 신규 입사자 온보딩 자동화 — 사내 RAG 챗봇 + 학습 진척도 자동 추적\n6) 설비 예지 보전 — 진동·온도 센서 시계열 모델 + 알람 자동 디스패치",
+  "roadmap_summary": "본 컨설팅 결과로 수립된 로드맵은 2026년 4분기를 기준 시점으로 하여 사내 집체교육과 외부 위탁 연수를 병행하면서 AI 활용 역량을 중급 수준까지 단계적으로 확보하는 것을 중심 축으로 한다. 분기별로 KPI를 정량 검토하고 매 분기 종료 시점에 임원 보고를 통해 다음 분기 우선순위를 재조정하며 동시에 신규 발생 이슈에 대해서는 분기 중간 점검 회의에서 즉시 대응 방안을 마련한다. 더불어 본 로드맵에서 도출된 6개 핵심 과업의 추진 일정은 상호 의존성을 반영해 2026년 4분기부터 2028년 2분기까지 약 21개월에 걸쳐 단계적으로 실행되며 그 과정에서 사내 AI 추진위원회가 매월 1회 정기 회의로 추진 현황을 모니터링한다.",
+  "performance_activities": [
+    {"round": 1, "date": "26.04.10 14:00~17:00", "content": "1차 인터뷰 — 기업 현황 청취 및 디지털 전환 추진 전사 의지 정도 파악", "method": "대면(인터뷰)", "participants": [{"role": "컨설팅책임자(PM)", "name": "홍길동성춘향이몽룡"}, {"role": "기업 내부전문가", "name": "김영희박철수이순신"}]},
+    {"round": 2, "date": "26.04.17 10:00~12:00", "content": "2차 워크숍 — 과업 분석 및 우선순위 도출", "method": "비대면(화상회의)", "participants": [{"role": "컨설팅책임자(PM)", "name": "홍길동성춘향이몽룡"}, {"role": "기업 내부전문가", "name": "김영희박철수이순신"}]},
+    {"round": 3, "date": "26.04.24 14:00~16:00", "content": "3차 검토 — 로드맵 초안 검수 및 KPI 목표치 합의", "method": "대면(인터뷰)", "participants": [{"role": "컨설팅책임자(PM)", "name": "홍길동성춘향이몽룡"}, {"role": "기업 내부전문가", "name": "김영희박철수이순신"}]},
+    {"round": 4, "date": "26.05.01 10:00~12:00", "content": "4차 최종 보고 — 임원 대상 결과 발표 및 추진 의사결정 확정", "method": "대면(인터뷰)", "participants": [{"role": "컨설팅책임자(PM)", "name": "홍길동성춘향이몽룡"}, {"role": "기업 내부전문가", "name": "김영희박철수이순신"}]}
+  ],
+  "hrd_report_attachment": "https://x.example/매우매우긴파일경로/2026-04-30/hrd-report-기업HRD이음컨설팅보고서-주식회사매우매우긴회사명-final-v3.pdf",
+  "company_status": "전자부품 제조업 (KSIC C26 영역) 직원 50명 규모, 본사 1개소·생산공장 1개소 운영. 주력 제품은 자동차용 센서 모듈이며 연 매출 약 120억원 규모.",
+  "main_problems": "수동 검사로 인한 품질 비효율 + 신규 인력 OJT 비용 누적 + 센서 데이터 미활용 + 디지털 전환 마스터 플랜 부재 + 경영진과 현장 간 추진 체감도 격차",
+  "push_willingness": "경영진은 강한 추진 의지를 보유하고 있으며 분기별 5억원 규모의 디지털 전환 예산을 확보한 상태이다. 또한 사내 AI 추진위원회를 별도 신설하여 임원급 위원장 1명·실무위원 5명으로 구성해 운영 중이다.",
+  "expected_outcomes": "불량률 30% 감소 + 검사 인력 2명 재배치 + 분기 매출 5% 증가 + 신규 OJT 기간 50% 단축 + 사내 AI 활용형 인력 비중 50% 도달",
+  "task_workflow_items": [
+    {"job": "생산팀 품질관리과", "task": "최종 품질 검사", "as_is": "전수 수동 측정", "problem": "오탐률 8% + 검사자 피로 누적", "data_availability": "PLC·비전 센서 데이터 시간당 12만건 보유", "ai_necessity_score": 5},
+    {"job": "생산팀 자재관리과", "task": "원자재 입고 분류", "as_is": "바코드 수동 스캔 + 육안 분류", "problem": "혼류 발생 월 평균 12회", "data_availability": "바코드·RFID 데이터 보유", "ai_necessity_score": 4},
+    {"job": "QA팀 보고서과", "task": "검사 결과 보고서 작성", "as_is": "수기 작성 후 결재 라우팅 수동 처리", "problem": "리드타임 평균 4시간", "data_availability": "검사 이력 5년치 보유", "ai_necessity_score": 3},
+    {"job": "설비기술팀", "task": "예지 보전 점검", "as_is": "월 1회 정기 점검 + 사후 대응", "problem": "돌발 정지 분기 평균 3건", "data_availability": "진동·온도 센서 데이터 보유", "ai_necessity_score": 4}
+  ],
+  "analysis_notes_text": "총 4개 직무·과업을 분석한 결과 품질 검사 공정이 ROI 측면에서 1순위로 도출되었다. 데이터 가용성과 즉시 효과 측면에서 가장 우수하며 도입 시 분기 단위로 정량 효과 측정이 가능한 점이 핵심 근거이다. 2순위는 예지 보전이며 3순위는 원자재 입고 분류, 4순위는 검사 결과 보고서 작성으로 도출되었다.",
+  "training_target": {
+    "task_name": "AI 비전 기반 품질 검사 자동화",
+    "selection_reason": "불량률 영향이 직접적이고 ROI 정량 측정이 가능하며 데이터 가용성이 매우 높음 + 경영진 추진 의지 1순위",
+    "as_is": "검사자가 1개당 약 12초 소요 수동 측정, 결과를 수기로 일지에 기록 + 결재 라우팅 수동",
+    "to_be": "AI 비전 모델이 1개당 0.5초 내 자동 검사, 결과를 자동 보고서로 생성 + 결재 시스템 통합 자동 라우팅"
+  },
+  "competencies": [
+    {"name": "AI 비전 활용 역량", "definition_performance_criteria": "객체 검출 모델을 운영하고 결과 정확도를 검증할 수 있다 (수행기준 3 이상)", "knowledge": "Computer Vision 기초 + YOLO 아키텍처 + 데이터 라벨링 원칙", "skill": "추론 도구 운영 + 라벨링 자동화 + 모델 미세조정", "attitude": "지속 학습 자세 + 데이터 윤리 준수"},
+    {"name": "데이터 분석 역량", "definition_performance_criteria": "기초 통계와 시계열 패턴을 식별·해석할 수 있다", "knowledge": "통계학 기본 + 시계열 분해 + 이상 탐지 알고리즘", "skill": "Python pandas + scikit-learn + 시각화 도구", "attitude": "데이터 검증 자세 + 추론 결과 회의적 검토"},
+    {"name": "AI 도입 추진 역량", "definition_performance_criteria": "AI 프로젝트 일정·자원·리스크를 관리할 수 있다", "knowledge": "PMBOK 기본 + 애자일 + AI 거버넌스", "skill": "Jira·Confluence 운영 + 회의 퍼실리테이션", "attitude": "변화 수용성 + 협업 자세"}
+  ],
+  "ncs_used": true,
+  "ncs_methodology": "NCS 능력단위 200107 인공지능 영역의 4개 능력단위요소를 참조한 후 본 기업의 직무 특성과 KSIC C26 산업 특성에 맞춰 맞춤화하였다. 특히 능력단위요소별 수행기준을 기업 현장 KPI와 1:1로 매핑해 도출하였다.",
+  "ncs_derivation_method": "",
+  "training_structure_rows": [
+    {"competency_name": "AI 비전 활용 역량", "training_level": "중급", "training_content": "객체 검출 모델 활용 실습 + 라벨링 자동화", "training_target": "QA 인력 5명·생산기술 인력 3명", "training_method": "사내 집체 + 외부 위탁 병행", "training_goal": "검사 자동화 운영 가능"},
+    {"competency_name": "데이터 분석 역량", "training_level": "초급", "training_content": "Python pandas 기초 + 시계열 분해 + 시각화", "training_target": "QA 인력 5명·기획 인력 2명", "training_method": "사내 집체", "training_goal": "기초 분석 보고서 자체 생산"},
+    {"competency_name": "AI 도입 추진 역량", "training_level": "고급", "training_content": "AI 프로젝트 관리·거버넌스 + 애자일 실습", "training_target": "임원 1명·팀장 3명", "training_method": "외부 위탁", "training_goal": "전사 AI 추진위원회 운영"}
+  ],
+  "training_structure_method": "역량 매트릭스(역량 × 직무 × 수준) 기반 단계별 설계. 직무별 필요 역량을 도출한 후 수준별 학습 모듈을 매핑하는 방식이며 분기별 KPI 검증 게이트를 포함한다.",
+  "annual_plan_items": [
+    {"competency_name": "AI 비전 활용 역량", "course_name": "AI 비전 실무 기본 과정", "training_type": "사내 집체", "training_hours": "16", "remarks": "2026 2분기 실시 예정 (분반 2회)"},
+    {"competency_name": "AI 비전 활용 역량", "course_name": "AI 비전 실무 심화 과정", "training_type": "외부 위탁", "training_hours": "32", "remarks": "2026 3분기 실시 예정 (선발 5명)"},
+    {"competency_name": "데이터 분석 역량", "course_name": "Python 데이터 분석 입문", "training_type": "사내 집체", "training_hours": "24", "remarks": "2026 2분기 실시 예정"},
+    {"competency_name": "AI 도입 추진 역량", "course_name": "AI 프로젝트 관리 + 거버넌스", "training_type": "외부 위탁", "training_hours": "16", "remarks": "2026 1분기 우선 실시"}
+  ],
+  "annual_plan_usage": "분기별 KPI 평가를 통해 학습 효과 정량 측정 후 다음 단계 확장 결정. 매 분기 종료 시점에 임원 보고를 통해 추진 현황을 공유하고 다음 분기 우선순위를 재조정한다. 또한 학습 후 6개월 시점의 현업 적용도를 별도로 추적해 추가 보완 학습 필요 여부를 결정한다.",
+  "course_specs": [
+    {"course_name": "AI 비전 실무 기본 과정", "training_type": "사내 집체", "recommended_program": "사업주훈련", "training_goal": "비전 모델 운영 역량 기본 확보", "main_content": "객체 검출 + 분류 모델 실습 + 라벨링 자동화 + 추론 도구 운영", "training_target": "QA 인력 5명·생산기술 인력 3명", "subjects": [{"subject_name": "Computer Vision 기초", "details": "1단원: 영상 처리 기본 + 색공간 이해", "hours": "4"}, {"subject_name": "객체 검출 실습", "details": "2단원: YOLO 아키텍처 실습 + 미세조정", "hours": "8"}, {"subject_name": "라벨링 자동화", "details": "3단원: AutoLabel 활용 + 검수 워크플로우", "hours": "4"}]},
+    {"course_name": "AI 비전 실무 심화 과정", "training_type": "외부 위탁", "recommended_program": "재직자훈련", "training_goal": "비전 모델 미세조정·운영 능력", "main_content": "Transfer Learning + 모델 압축 + 엣지 배포", "training_target": "선발 5명", "subjects": [{"subject_name": "Transfer Learning", "details": "사전학습 모델 미세조정", "hours": "16"}, {"subject_name": "엣지 배포", "details": "TensorRT/ONNX 변환 + 양자화", "hours": "16"}]}
+  ],
+  "employment_insurance_no": "12345-67890-12345-MAX",
+  "journal_attachments": ""
+}
