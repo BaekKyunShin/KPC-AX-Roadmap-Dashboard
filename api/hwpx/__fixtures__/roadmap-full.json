@@ -1,0 +1,92 @@
+{
+  "company_name": "㈜AI산업자동화",
+  "report_date": "2026.04.30.",
+  "pm_affiliation": "한국생산성본부",
+  "pm_name": "홍길동",
+  "internal_expert_affiliation": "㈜AI산업자동화",
+  "internal_expert_name": "김영희",
+  "establishment_necessity": "수동 검사로 인한 불량률 8% 초과, 데이터 기반 자동화 필요. 로드맵 수립으로 분기 내 5% 이하 목표.",
+  "ai_competency_level": "INTERMEDIATE",
+  "selected_tasks_text": "1) 품질 검사 자동화\n2) 생산 데이터 분석",
+  "roadmap_summary": "2026년 4분기 사내 집체 + 외부 연수로 AI 활용 역량 중급 도달. 분기별 KPI 검토.",
+  "performance_activities": [
+    {
+      "round": 1,
+      "date": "26.04.10 14:00~17:00",
+      "content": "1차 인터뷰 — 기업 현황 청취",
+      "method": "대면(인터뷰)",
+      "participants": [
+        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
+        {"role": "기업 내부전문가", "name": "김영희"}
+      ]
+    },
+    {
+      "round": 2,
+      "date": "26.04.17 10:00~12:00",
+      "content": "2차 워크숍 — 과업 분석",
+      "method": "비대면(화상회의)",
+      "participants": [
+        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
+        {"role": "기업 내부전문가", "name": "김영희"}
+      ]
+    },
+    {
+      "round": 3,
+      "date": "26.04.24 14:00~16:00",
+      "content": "3차 검토 — 로드맵 초안 검수",
+      "method": "대면(인터뷰)",
+      "participants": [
+        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
+        {"role": "기업 내부전문가", "name": "김영희"}
+      ]
+    }
+  ],
+  "hrd_report_attachment": "https://x.example/hrd-report.pdf",
+  "company_status": "전자부품 제조업, 직원 50명 규모.",
+  "main_problems": "수동 검사 비효율 + 신규 인력 OJT 비용 증가",
+  "push_willingness": "경영진 강한 추진 의지, 분기 예산 확보",
+  "expected_outcomes": "불량률 30% 감소, 검사 인력 2명 재배치",
+  "task_workflow_items": [
+    {"job": "생산", "task": "품질 검사", "as_is": "수동 측정", "problem": "오탐 8%", "data_availability": "센서 데이터 보유", "ai_necessity_score": 5},
+    {"job": "생산", "task": "원자재 입고", "as_is": "수동 분류", "problem": "혼류 발생", "data_availability": "바코드 데이터", "ai_necessity_score": 4},
+    {"job": "QA", "task": "검사 보고서 작성", "as_is": "수기 작성", "problem": "리드타임 길음", "data_availability": "검사 이력 보유", "ai_necessity_score": 3}
+  ],
+  "analysis_notes_text": "과업 3종 분석 결과 품질 검사가 ROI 1순위.",
+  "training_target": {
+    "task_name": "품질 검사 자동화",
+    "selection_reason": "불량률 영향 직접적 + 데이터 가용성 높음",
+    "as_is": "수동 측정 + 수기 보고서",
+    "to_be": "AI 비전 자동 검사 + 자동 보고서 생성"
+  },
+  "competencies": [
+    {"name": "AI 비전 활용", "definition_performance_criteria": "객체 검출 모델 운영", "knowledge": "CV 기초", "skill": "추론 도구", "attitude": "지속 학습"},
+    {"name": "데이터 분석", "definition_performance_criteria": "기초 통계", "knowledge": "통계학", "skill": "Python pandas", "attitude": "데이터 검증"}
+  ],
+  "ncs_used": true,
+  "ncs_methodology": "NCS 능력단위 200107 인공지능 참조 후 기업 특성 맞춤화",
+  "ncs_derivation_method": "",
+  "training_structure_rows": [
+    {"competency_name": "AI 비전 활용", "training_level": "중급", "training_content": "비전 모델 활용", "training_target": "QA 인력", "training_method": "사내 집체", "training_goal": "검사 자동화"}
+  ],
+  "training_structure_method": "역량 매트릭스 기반 단계별 설계",
+  "annual_plan_items": [
+    {"competency_name": "AI 비전 활용", "course_name": "AI 비전 실무", "training_type": "사내 집체", "training_hours": "16", "remarks": "2분기 실시"}
+  ],
+  "annual_plan_usage": "분기별 KPI 평가, 리뷰 후 다음 단계 확장.",
+  "course_specs": [
+    {
+      "course_name": "AI 비전 실무",
+      "training_type": "사내 집체",
+      "recommended_program": "사업주훈련",
+      "training_goal": "비전 모델 운영 역량 확보",
+      "main_content": "객체 검출 + 분류 모델 실습",
+      "training_target": "QA 인력 5명",
+      "subjects": [
+        {"subject_name": "CV 기초", "details": "1단원: 영상 처리 기본", "hours": "4"},
+        {"subject_name": "객체 검출", "details": "2단원: YOLO 실습", "hours": "8"}
+      ]
+    }
+  ],
+  "employment_insurance_no": "12345-67890",
+  "journal_attachments": ""
+}
