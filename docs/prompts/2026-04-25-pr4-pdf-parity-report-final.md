@@ -58,20 +58,15 @@ git log --oneline -5
 - **payload TS**: `src/lib/services/export/hwpx/hwpx-payload-{roadmap,pbl}.ts` (V2 우선 + V1 fallback)
 - **generate.py**: `api/hwpx/generate.py` (PBL V2 적응 — _fill_pbl_problems / _fill_pbl_problem_priorities (priorities key) / _fill_pbl_target_tasks (target_single key) / _fill_pbl_target_task_details (target_details_v2 key) / _fill_pbl_ai_level_improvement (영문 enum + note) / _fill_pbl_performance_activities (V2 activities key))
 
-## PR #3 후 follow-up 후보 (PR #4 와 별개로 검토)
+## 별도 follow-up (PR #4 범위 밖)
 
-본 PR #4 진행 전 또는 머지 후 별도 PR 로 처리할 수 있는 잔여 항목:
+PR #3 머지 후 발견된 잔여 항목 중 본 PR #4 범위 밖인 건 별도 PR 로 처리:
 
-1. **`src/lib/actions/pbl-export.ts` 의 V1 → V2 schema 갱신** —
-   현재 `pblInterviewAutoSaveSchema` (V1) 로 검증 중. PR #28 V2 정본 후 V1 검증으로는
-   V2 데이터가 invalid 처리될 가능성. `PBLInterviewSchema.partial()` 또는 `PBLInterviewStrictSchema`
-   로 갱신 검토. legacy 데이터 호환 fallback 필요 시 schema union.
-2. **옵션 A 전환 검토** — placeholder 자동 삽입 (`scripts/insert_placeholders.py`)
-   가 한컴오피스에서 안전한지 재검증. 셀 단일 paragraph 의 runs[0].text 위치에만
-   삽입하면 cellAddr/id/linesegarray 중복 회피 가능. 안전성 확인 시 SSOT 의 좌표
-   기반 채움 함수 일부 deprecation.
-3. **본 PR 의 한글 오피스 실물 검증 미완** — Step 2 (DoD #7) 가 본 PR #4 의 핵심.
-   사용자 측 실물 검증 후 스크린샷 첨부.
+- **`pbl-export.ts` V1→V2 schema 갱신** —
+  별도 prompt: `docs/prompts/2026-04-26-pbl-export-schema-v2-followup.md`
+  PR #28 V2 정본 후 export action 이 V1 schema 로 검증 중인 잠재적 issue.
+- **옵션 A 전환 검토 (placeholder 자동 삽입)** —
+  backlog (옵션 B 가 잘 작동 중. 후순위).
 
 ## 작업 범위 (계획서 §8·§9·§12)
 
