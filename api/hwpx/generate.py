@@ -648,6 +648,7 @@ def _generate_pbl(data: dict) -> bytes:
     """
     from hwpx import HwpxDocument
     from _placeholders_pbl import (
+        AI_LEVEL_ENUM_TO_LABEL,
         AI_LEVEL_GRADE,
         AI_LEVEL_LABELS,
         COURSE_EVALUATION_METHODS,
@@ -675,7 +676,10 @@ def _generate_pbl(data: dict) -> bytes:
         _replace_in_all_runs(doc, key, str(value or ""))
 
     # --- 2) AI역량 4등급 체크박스 (T1, T24는 별도) ---
-    current_level = data.get("ai_current_level") or ""  # "AI탐구형" 등
+    # V2: data.get("current_ai_level") 은 영문 enum (BASIC/EXPLORER/USER/LEADER).
+    # 한글 라벨 ("AI기초형" 등) 로 변환 후 본문 체크박스 패턴에 사용.
+    current_level_enum = (data.get("current_ai_level") or "").upper()
+    current_level = AI_LEVEL_ENUM_TO_LABEL.get(current_level_enum, "")
     # T1 본문 체크박스 패턴 — 전역 reset 후 선택 등급만 ☑
     for label in AI_LEVEL_LABELS:
         # "□ AI기초형" 또는 "☑ AI기초형" → "□ AI기초형" reset
@@ -722,23 +726,40 @@ def _generate_pbl(data: dict) -> bytes:
         if label in COURSE_EVALUATION_METHODS:
             _replace_in_all_runs(doc, f"□ {label}", f"☑ {label}")
 
-    # --- 7) 표 셀 반복 데이터 ---
+    # --- 7) 표 셀 반복 데이터 (V2 매핑) ---
+    # V2 인터뷰 정본 (PR #28) 기준. V1 키는 fallback 으로만 사용.
     tables = _collect_tables(doc)
     _fill_pbl_overview(tables, data, idx=1)                           # Ⅰ
-    _fill_simple_box(tables, 3, data.get("business_issues"))          # Ⅱ-1-가
+    # Ⅱ-1-가 (idx=3): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
+    _fill_simple_box(tables, 3, data.get("company_issues") or data.get("business_issues"))
     _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)
     _fill_pbl_training_env(tables, data, idx=7)                       # Ⅱ-2
-    _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx=9)
-    _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx=10)
-    _fill_simple_box(tables, 11, data.get("course_development_necessity"))
+    # Ⅱ-3-가 HRD이음 (idx=9, 10): V2 에서는 PDF 첨부로 대체. 표는 양식 그대로 유지
+    # (한글 오피스에서 사용자가 직접 PDF 첨부 또는 placeholder 안내 fallback 으로 전환).
+    # V1 호환: training_history/support_history/recommendations 데이터가 있으면 채움.
+    if data.get("training_history") or data.get("support_history"):
+        _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx=9)
+    if data.get("recommendations"):
+        _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx=10)
+    # Ⅱ-3-나 (idx=11): V2 P-07 = course_necessity. V1 호환 fallback.
+    _fill_simple_box(
+        tables,
+        11,
+        data.get("course_necessity") or data.get("course_development_necessity"),
+    )
     _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx=13)
-    _fill_pbl_problem_definition(tables, data, idx=15)
-    _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx=17)
-    _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx=19)
-    _fill_pbl_simple_content(tables, 20, data.get("target_tasks_selection_reason"))
-    _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx=22)
+    _fill_pbl_problems(tables, build_pbl_table_rows, data, idx=15)    # Ⅲ-2-가 V2
+    _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx=17)  # V2 priorities key
+    _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx=19)  # V2 target_single key
+    # Ⅲ-3-나 (idx=20): V2 P-12 = target_necessity (target.necessity 자유서술).
+    _fill_pbl_simple_content(
+        tables,
+        20,
+        data.get("target_necessity") or data.get("target_tasks_selection_reason"),
+    )
+    _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx=22)  # V2 details
     _fill_pbl_ai_level_current(tables, current_level, AI_LEVEL_LABELS, AI_LEVEL_GRADE, idx=24)
-    _fill_pbl_ai_level_improvement(tables, data, AI_LEVEL_GRADE, idx=25)
+    _fill_pbl_ai_level_improvement(tables, data, AI_LEVEL_ENUM_TO_LABEL, AI_LEVEL_GRADE, idx=25)
     _fill_pbl_simple_content(tables, 27, data.get("training_goal"))
     _fill_pbl_ai_tool_usage(tables, build_pbl_table_rows, data, idx=28)
     _fill_pbl_course_overview(tables, data, idx=30)
@@ -1022,15 +1043,24 @@ def _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx: int = 10)
 
 
 def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: int = 13):
-    """Ⅲ-1 수행활동 — 13×6.
+    """Ⅲ-1 수행활동 — 13×6 (V2 activities[] 또는 V1 performance_activities[]).
 
     row 0 헤더 / 이후 차수당 4행 (PM / 외부전문가 / 내부전문가 / 능력개발전담주치의).
     최대 3차 = 12 데이터 행. 초과 truncate.
+
+    V2 activities[] = [{round, date, content, method, participants (string)}]
+      → participants 가 단일 string 이므로 첫 행 (PM) col 5 에 표시,
+        2~4행은 라벨만 유지 (이름 빈칸).
+    V1 performance_activities[] = participants 가 dict (pm/external_expert/...).
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "performance_activities")
+    # V2 activities key 우선
+    rows = build_pbl_table_rows(data, "activities")
+    is_v2 = bool(rows)
+    if not is_v2:
+        rows = build_pbl_table_rows(data, "performance_activities")
     header_rows = 1
     rows_per_round = 4
     max_rounds = (tbl.row_count - header_rows) // rows_per_round  # = 3
@@ -1051,29 +1081,54 @@ def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: in
         base = header_rows + ri * rows_per_round
         _set_cell_text(tbl, base, 0, row.get("round", ""))
         _set_cell_text(tbl, base, 1, row.get("date", ""))
-        # 수행 내용 (col 2 = 병합 4행 영역) — 첫 행에만 기입
         _set_cell_text(tbl, base, 2, row.get("content", ""))
-        # 수행 방법 (col 3 = 병합 4행 영역)
         method_text = row.get("method", "")
-        if row.get("operation_mode"):
+        if not is_v2 and row.get("operation_mode"):
             method_text = f"{method_text} ({row['operation_mode']})".strip()
         _set_cell_text(tbl, base, 3, method_text)
-        participants = row.get("participants", {})
-        for role_i, (role_label, role_key) in enumerate(roles):
-            r = base + role_i
-            if r < tbl.row_count:
-                _set_cell_text(tbl, r, 4, role_label)
-                _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
+
+        if is_v2:
+            # V2: participants 가 단일 string. 4 역할 라벨 모두 채우되,
+            # 이름은 첫 행 (PM) 에만 string 그대로 표시.
+            participants_str = row.get("participants", "")
+            for role_i, (role_label, _role_key) in enumerate(roles):
+                r = base + role_i
+                if r < tbl.row_count:
+                    _set_cell_text(tbl, r, 4, role_label)
+                    _set_cell_text(tbl, r, 5, participants_str if role_i == 0 else "")
+        else:
+            participants = row.get("participants") or {}
+            if not isinstance(participants, dict):
+                participants = {}
+            for role_i, (role_label, role_key) in enumerate(roles):
+                r = base + role_i
+                if r < tbl.row_count:
+                    _set_cell_text(tbl, r, 4, role_label)
+                    _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
 
 
-def _fill_pbl_problem_definition(tables, data, idx: int = 15):
-    """Ⅲ-2-가 문제 정의서 — 5×2.
+def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
+    """Ⅲ-2-가 문제 정의 — 5×2 (V2: problems[] 4 항목).
 
-    row 0 헤더(구분/내용) / row 1 문제 배경 / row 2 핵심 / row 3 범위 / row 4 제약.
+    양식 5x2 (구분/내용) — row 0 헤더, row 1~4 데이터 (max_items=4).
+    V2 problems[] = [{title, description, impact}]
+      → col 0 = title, col 1 = description.
+
+    V1 호환: data.get("problems") 가 비어 있으면 V1 problem_background/core/
+    scope/constraints 4 cell_fill 로 fallback.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
+    problems = build_pbl_table_rows(data, "problems")
+    if problems:
+        max_rows = min(4, tbl.row_count - 1)
+        for i, row in enumerate(problems[:max_rows]):
+            target_row = 1 + i
+            _set_cell_text(tbl, target_row, 0, row.get("title", ""))
+            _set_cell_text(tbl, target_row, 1, row.get("description", ""))
+        return
+    # V1 fallback
     mapping = [
         (1, 1, data.get("problem_background")),
         (2, 1, data.get("problem_core")),
@@ -1084,16 +1139,35 @@ def _fill_pbl_problem_definition(tables, data, idx: int = 15):
         _set_cell_text(tbl, r, c, text or "")
 
 
+# 하위 호환 alias (기존 호출자 보호)
+_fill_pbl_problem_definition = _fill_pbl_problems
+
+
 def _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx: int = 17):
-    """Ⅲ-2-나 문제 우선순위 — 6×7.
+    """Ⅲ-2-나 문제 우선순위 — 6×7 (V2 priority.items[]).
 
     row 0 헤더 / row 1~5 데이터.
-    col 0 = 문제명 / col 1~5 = 1~5 (우선순위 선택은 √ 심볼) / col 6 = 선정여부 ☑
+    col 0 = 문제명 / col 1~5 = score 1~5 (선택 시 √) / col 6 = 선정여부 (rank=1 ☑).
+
+    V2 priority.items[] = [{problem, score(1-5), rank}] (rank=1 → selected).
+    V1 호환: priorities 가 비어 있으면 problem_priorities (V1 형식) fallback.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "problem_priorities")
+    rows = build_pbl_table_rows(data, "priorities")
+    if not rows:
+        # V1 호환 (problem_name/priority/selected)
+        v1_rows = build_pbl_table_rows(data, "problem_priorities")
+        rows = [
+            {
+                "problem": r.get("problem_name", ""),
+                "score": r.get("priority", 0),
+                "rank": 1 if r.get("selected") else 0,
+                "selected": r.get("selected", False),
+            }
+            for r in v1_rows
+        ]
     max_rows = min(5, tbl.row_count - 1)
 
     for r in range(1, tbl.row_count):
@@ -1102,22 +1176,42 @@ def _fill_pbl_problem_priorities(tables, build_pbl_table_rows, data, idx: int = 
 
     for i, row in enumerate(rows[:max_rows]):
         target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("problem_name", ""))
-        # 우선순위 1~5: 선택된 칼럼에 √ 표시
-        priority = int(row.get("priority") or 0)
-        if 1 <= priority <= 5:
-            _set_cell_text(tbl, target_row, priority, "√")
-        # 선정여부
+        _set_cell_text(tbl, target_row, 0, row.get("problem", ""))
+        # 점수 1~5: 선택된 칼럼에 √ 표시
+        try:
+            score = int(row.get("score") or 0)
+        except (TypeError, ValueError):
+            score = 0
+        if 1 <= score <= 5:
+            _set_cell_text(tbl, target_row, score, "√")
+        # rank=1 → selected ☑
         if row.get("selected"):
             _set_cell_text(tbl, target_row, 6, "☑")
 
 
 def _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx: int = 19):
-    """Ⅲ-3-가 훈련대상 업무 선정 — 6×7."""
+    """Ⅲ-3-가 훈련대상 업무 선정 — 6×7 (V2 단일 target).
+
+    양식 6x7 — row 0 헤더, row 1 = target 한 항목 (V2 단일 객체).
+    col 0 = name, col 1~5 = 점수 (V2 schema 는 자유서술이므로 비움), col 6 = ☑.
+
+    V1 호환: target_tasks (배열) 도 처리.
+    """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "target_tasks")
+    rows = build_pbl_table_rows(data, "target_single")
+    if not rows:
+        # V1 호환 — target_tasks (배열) 사용
+        v1_rows = build_pbl_table_rows(data, "target_tasks")
+        rows = [
+            {
+                "name": r.get("task_name", ""),
+                "necessity_score": r.get("necessity", 0),
+                "selected": r.get("selected", False),
+            }
+            for r in v1_rows
+        ]
     max_rows = min(5, tbl.row_count - 1)
 
     for r in range(1, tbl.row_count):
@@ -1126,25 +1220,35 @@ def _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx: int = 19):
 
     for i, row in enumerate(rows[:max_rows]):
         target_row = 1 + i
-        _set_cell_text(tbl, target_row, 0, row.get("task_name", ""))
-        necessity = int(row.get("necessity") or 0)
-        if 1 <= necessity <= 5:
-            _set_cell_text(tbl, target_row, necessity, "√")
-        if row.get("selected"):
+        _set_cell_text(tbl, target_row, 0, row.get("name", ""))
+        # V1 호환: necessity_score 가 1~5 정수인 경우만 √ 처리
+        try:
+            score = int(row.get("necessity_score") or 0)
+        except (TypeError, ValueError):
+            score = 0
+        if 1 <= score <= 5:
+            _set_cell_text(tbl, target_row, score, "√")
+        # V2 target_single 은 single 항목이므로 항상 ☑
+        if row.get("selected", True):
             _set_cell_text(tbl, target_row, 6, "☑")
 
 
 def _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx: int = 22):
-    """Ⅲ-3-다 훈련대상 업무 세부내용 — 4×5.
+    """Ⅲ-3-다 훈련대상 업무 세부내용 — 4×5 (V2 details[] title/description).
 
-    row 0 헤더(업무명/세부내용/요구지식/기술)
-    row 1 헤더2 (AS-IS / TO-BE)
-    row 2~3 = 데이터 2행.
+    양식 4x5 — row 0~1 헤더, row 2~3 데이터 (max_items=2).
+    V2 details[] = [{title, description}] (V1 의 as_is/to_be/required_* 통합).
+      → col 0 = title, col 1~4 = description (단일 텍스트로 통합).
+
+    V1 호환: target_task_details (V1 형식) 가 있으면 그대로 사용.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    rows = build_pbl_table_rows(data, "target_task_details")
+    rows = build_pbl_table_rows(data, "target_details_v2")
+    use_v2 = bool(rows)
+    if not use_v2:
+        rows = build_pbl_table_rows(data, "target_task_details")
     max_rows = min(2, tbl.row_count - 2)
 
     for r in range(2, tbl.row_count):
@@ -1153,14 +1257,15 @@ def _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx: int =
 
     for i, row in enumerate(rows[:max_rows]):
         target_row = 2 + i
-        _set_cell_text(tbl, target_row, 0, row.get("task_name", ""))
-        # 세부내용: as_is / to_be 모두 한 셀에 병합 (col 1, 2가 2열 차지)
-        as_is = row.get("as_is") or ""
-        to_be = row.get("to_be") or ""
-        _set_cell_text(tbl, target_row, 1, as_is)
-        _set_cell_text(tbl, target_row, 2, to_be)
-        _set_cell_text(tbl, target_row, 3, row.get("required_knowledge", ""))
-        _set_cell_text(tbl, target_row, 4, row.get("required_skill", ""))
+        if use_v2:
+            _set_cell_text(tbl, target_row, 0, row.get("title", ""))
+            _set_cell_text(tbl, target_row, 1, row.get("description", ""))
+        else:
+            _set_cell_text(tbl, target_row, 0, row.get("task_name", ""))
+            _set_cell_text(tbl, target_row, 1, row.get("as_is") or "")
+            _set_cell_text(tbl, target_row, 2, row.get("to_be") or "")
+            _set_cell_text(tbl, target_row, 3, row.get("required_knowledge", ""))
+            _set_cell_text(tbl, target_row, 4, row.get("required_skill", ""))
 
 
 def _fill_pbl_ai_level_current(tables, current_level, labels, grade_map, idx: int = 24):
@@ -1190,27 +1295,40 @@ def _fill_pbl_ai_level_current(tables, current_level, labels, grade_map, idx: in
         _set_cell_text(tbl, r, 2, descriptions.get(label, ""))
 
 
-def _fill_pbl_ai_level_improvement(tables, data, grade_map, idx: int = 25):
-    """Ⅲ-4-나 훈련 이후 AI역량 수준 향상도 — 2×3.
+def _fill_pbl_ai_level_improvement(tables, data, enum_to_label, grade_map, idx: int = 25):
+    """Ⅲ-4-나 훈련 이후 AI역량 수준 향상도 — 2×3 (V2 enum + note).
 
-    row 0 헤더(현행/향후/사유) / row 1 = 데이터.
+    row 0 헤더(현행/향후/사유) / row 1 = 데이터 (cell_fill, 4 등급 체크박스 아님).
+
+    V2: data.get("current_ai_level") / data.get("expected_ai_level") 는 영문 enum
+    (BASIC/EXPLORER/USER/LEADER). 한글 라벨 + 등급으로 변환.
+    V2: data.get("expected_ai_level_note") = 사유.
+    V1 호환: ai_current_level/ai_expected_level (한글) + ai_improvement_reason.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    current = data.get("ai_current_level") or ""
-    expected = data.get("ai_expected_level") or ""
-    reason = data.get("ai_improvement_reason") or ""
 
-    def _fmt(level):
-        if not level:
+    # V2 enum 우선
+    current_enum = (data.get("current_ai_level") or "").upper()
+    expected_enum = (data.get("expected_ai_level") or "").upper()
+    current_label = enum_to_label.get(current_enum) or data.get("ai_current_level") or ""
+    expected_label = enum_to_label.get(expected_enum) or data.get("ai_expected_level") or ""
+    reason = (
+        data.get("expected_ai_level_note")
+        or data.get("ai_improvement_reason")
+        or ""
+    )
+
+    def _fmt(label: str) -> str:
+        if not label:
             return ""
-        grade = grade_map.get(level, "")
-        return f"{level}({grade})" if grade else level
+        grade = grade_map.get(label, "")
+        return f"{label}({grade})" if grade else label
 
     if tbl.row_count >= 2:
-        _set_cell_text(tbl, 1, 0, _fmt(current))
-        _set_cell_text(tbl, 1, 1, _fmt(expected))
+        _set_cell_text(tbl, 1, 0, _fmt(current_label))
+        _set_cell_text(tbl, 1, 1, _fmt(expected_label))
         _set_cell_text(tbl, 1, 2, reason)
 
 

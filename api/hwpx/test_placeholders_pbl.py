@@ -577,3 +577,22 @@ class TestSSOTv2PblTableRows:
         assert len(rows) == 2
         assert rows[0]["department_name"] == "생산팀"
         assert "품질 검사" in rows[0]["tasks"]
+
+    def test_organization_v2_raw_dict_flatten(self):
+        # V2 raw {orgTree, mainWork} 형태도 처리: dept 별 grouping, role+description 통합.
+        data = {
+            "organization": {
+                "orgTree": [],
+                "mainWork": [
+                    {"dept": "생산팀", "role": "팀장", "description": "공정 관리"},
+                    {"dept": "생산팀", "role": "팀원", "description": "품질 검사"},
+                    {"dept": "영업팀", "role": "팀장", "description": "고객 응대"},
+                ],
+            }
+        }
+        rows = build_pbl_table_rows(data, "organization")
+        assert len(rows) == 2
+        assert rows[0]["department_name"] == "생산팀"
+        assert "팀장 · 공정 관리" in rows[0]["tasks"]
+        assert "팀원 · 품질 검사" in rows[0]["tasks"]
+        assert rows[1]["department_name"] == "영업팀"

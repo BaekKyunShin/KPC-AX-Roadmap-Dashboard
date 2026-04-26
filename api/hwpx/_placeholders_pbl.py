@@ -292,16 +292,48 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
     알 수 없는 key는 빈 리스트 반환.
     """
     if key == "organization":
-        items = data.get("organization") or []
-        return [
-            {
-                "department_name": _str_or_empty(i.get("department_name")),
-                "tasks": "\n".join(
-                    _str_or_empty(t) for t in (i.get("tasks") or []) if _str_or_empty(t)
-                ),
-            }
-            for i in items
-        ]
+        # 두 가지 입력 형태 지원:
+        #  (a) V1/D-5 flatten — [{department_name, tasks[]}]: 그대로 사용
+        #  (b) V2 raw — {orgTree[], mainWork[]}: orgTree 의 부서명을 단순화하고
+        #      mainWork[] 의 dept/role 별로 description 행을 풀어쓴다.
+        org = data.get("organization")
+        if isinstance(org, list):
+            return [
+                {
+                    "department_name": _str_or_empty(i.get("department_name")),
+                    "tasks": "\n".join(
+                        _str_or_empty(t)
+                        for t in (i.get("tasks") or [])
+                        if _str_or_empty(t)
+                    ),
+                }
+                for i in org
+            ]
+        if isinstance(org, dict):
+            # V2 raw — flatten 처리
+            grouped: dict[str, list[str]] = {}
+            order: list[str] = []
+            for item in org.get("mainWork") or []:
+                if not isinstance(item, dict):
+                    continue
+                dept = _str_or_empty(item.get("dept"))
+                role = _str_or_empty(item.get("role"))
+                desc = _str_or_empty(item.get("description"))
+                key_dept = dept or "(미지정)"
+                if key_dept not in grouped:
+                    grouped[key_dept] = []
+                    order.append(key_dept)
+                line = " · ".join([s for s in (role, desc) if s])
+                if line:
+                    grouped[key_dept].append(line)
+            return [
+                {
+                    "department_name": dept,
+                    "tasks": "\n".join(grouped[dept]),
+                }
+                for dept in order
+            ]
+        return []
 
     if key == "performance_activities":
         items = data.get("performance_activities") or []
