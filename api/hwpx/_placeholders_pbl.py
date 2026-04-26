@@ -24,6 +24,23 @@ AI_LEVEL_GRADE: dict[str, str] = {
     "AI선도형": "고급",
 }
 
+# V2 PBLAILevel ENUM (BASIC/EXPLORER/USER/LEADER) → 한글 라벨 매핑.
+# `interview-pbl.ts` 의 `PBL_AI_LEVEL_LABEL` 과 1:1 정합.
+AI_LEVEL_ENUM_TO_LABEL: dict[str, str] = {
+    "BASIC": "AI기초형",
+    "EXPLORER": "AI탐구형",
+    "USER": "AI활용형",
+    "LEADER": "AI선도형",
+}
+
+# 4 등급 영문 키 → SSOT v2 placeholder 영문 키 매핑 (체크박스 4 셀)
+AI_LEVEL_ENUM_TO_CHECK_KEY: dict[str, str] = {
+    "BASIC": "basic",
+    "EXPLORER": "explorer",
+    "USER": "user",
+    "LEADER": "leader",
+}
+
 AI_LEVEL_DESCRIPTIONS: dict[str, str] = {
     "AI기초형": (
         "AI 및 디지털 기술 도입에 대한 인식은 있으나, 실제 활용은 "
@@ -96,6 +113,13 @@ _SIMPLE_KEYS = (
     "expectation_as_is",
     "expectation_to_be",
     "course_development_necessity",
+    # V2 신규
+    "company_issues",  # Ⅱ-1-가 자유서술
+    "course_necessity",  # Ⅱ-3-나 자유서술 (V1 course_development_necessity 와 동일 의미)
+    "hrd_report_attachment",  # Ⅱ-3-가 PDF 첨부 안내 (URL/파일명 또는 fallback)
+    "training_target_label",  # Ⅰ trainingTarget (직무·인원 자유서술)
+    "training_form",  # Ⅰ trainingForm
+    "training_period",  # Ⅰ trainingPeriod (자유서술 — Ⅳ-3-가 와 다른 위치)
     # Ⅲ. AI기반 훈련과제 도출
     "problem_background",
     "problem_core",
@@ -105,6 +129,8 @@ _SIMPLE_KEYS = (
     "current_ai_level_label",  # AI탐구형(초급) 형식 — 향상도 표 현행/향후
     "expected_ai_level_label",
     "ai_improvement_reason",
+    "target_necessity",  # V2 P-12: 훈련대상 업무 AI기반 문제해결 필요성
+    "expected_ai_level_note",  # V2 P-15: 향상도 사유
     # Ⅳ. AI 기반 운영계획 수립
     "training_goal",
     "training_plan_course_name",
@@ -149,14 +175,107 @@ def _bulletize(items: Any) -> str:
 # ---------------------------------------------------------------
 
 
+# SSOT v2 (`docs/references/hwpx-placeholders.json`) 의 PBL 단일 placeholder ↔
+# V1 짧은 키 1:1 매핑. build_pbl_placeholder_map 끝부분에서 V2 긴 키 alias 출력.
+# repeat_rows (P-04/P-08/P-09/P-10/P-13/P-17/P-19/P-21/P-22) 는 build_pbl_table_rows
+# 영역이므로 본 alias 에는 포함되지 않는다.
+_V1_TO_V2_ALIAS: tuple[tuple[str, str], ...] = (
+    # P-01 표지 — V1 키와 동일한 값을 SSOT v2 긴 키로 alias.
+    # subtitle/external_expert_*/doctor_*/confirmation_stamp 는 D-5 가 별도 출력.
+    ("company_name", "pbl_cover_company_name"),
+    ("course_name", "pbl_cover_course_name"),
+    ("report_date", "pbl_cover_report_date"),
+    # P-02 Ⅰ. 훈련과정 개요 (cell_fill 18 키)
+    ("company_name", "pbl_overview_company_name"),
+    ("business_registration_no", "pbl_overview_business_no"),
+    ("industry_main", "pbl_overview_industry"),
+    ("industry_code", "pbl_overview_industry_code"),
+    ("address", "pbl_overview_address"),
+    ("training_address", "pbl_overview_training_address"),
+    ("jurisdiction_office", "pbl_overview_branch"),
+    ("contact_position", "pbl_overview_contact_position"),
+    ("contact_name", "pbl_overview_contact_name"),
+    ("contact_phone", "pbl_overview_contact_phone"),
+    ("contact_email", "pbl_overview_contact_email"),
+    ("course_name", "pbl_overview_course_name"),
+    ("ncs_code", "pbl_overview_ncs_code"),
+    ("training_hours", "pbl_overview_training_hours"),
+    ("training_target_label", "pbl_overview_training_target"),
+    ("training_form", "pbl_overview_training_form"),
+    ("training_period", "pbl_overview_training_period"),
+    ("business_issues", "pbl_overview_business_issues"),
+    # P-03/P-07 Ⅱ-1-가/Ⅱ-3-나 (single)
+    ("company_issues", "pbl_analysis_company_issues"),
+    ("course_necessity", "pbl_analysis_course_necessity"),
+    # P-06 Ⅱ-3-가 HRD이음 PDF (pdf_attach)
+    ("hrd_report_attachment", "pbl_analysis_hrd_report_attachment"),
+    # P-12 Ⅲ-3-나 AI기반 문제해결 필요성 (single)
+    ("target_necessity", "pbl_tasks_target_necessity"),
+    # P-16 Ⅳ-1 훈련 목표 (single)
+    ("training_goal", "pbl_ops_training_goal"),
+    # P-18 Ⅳ-3-가 훈련과정 개요 (cell_fill)
+    ("training_plan_course_name", "pbl_ops_course_name"),
+    ("training_period", "pbl_ops_training_period"),
+    # P-20 Ⅳ-3-다 훈련 교과목 프로파일 상단 (cell_fill)
+    ("subject_profile_course_name", "pbl_ops_subject_course_name"),
+    ("total_training_hours", "pbl_ops_subject_total_hours"),
+    ("subject_training_goals", "pbl_ops_subject_training_goals"),
+    ("subject_ai_tools", "pbl_ops_subject_ai_tools"),
+    ("subject_utilized_data", "pbl_ops_subject_utilized_data"),
+    ("subject_analysis_method", "pbl_ops_subject_analysis_method"),
+    ("subject_total_sum_hours", "pbl_ops_subject_total_sum_hours"),
+    # P-23 Ⅳ-4-가 과정평가 계획 상단 (cell_fill)
+    ("course_eval_course_name", "pbl_ops_eval_course_name"),
+    ("course_eval_target", "pbl_ops_eval_target"),
+    ("course_eval_date", "pbl_ops_eval_date"),
+    ("course_eval_criteria", "pbl_ops_eval_criteria"),
+    ("course_eval_result", "pbl_ops_eval_result"),
+    ("course_eval_overall_comment", "pbl_ops_eval_overall_comment"),
+    # P-28 [결과보고서] 표지 메타
+    ("company_name", "pbl_result_cover_company_name"),
+)
+
+
 def build_pbl_placeholder_map(data: dict) -> dict[str, str]:
     """data dict → `{{key}}` → 텍스트 dict.
 
     누락 필드는 빈 문자열로 안전 처리.
+    SSOT v2 의 `{{pbl_*}}` 긴 키도 함께 출력 (V1 짧은 키와 1:1 alias).
     """
     result: dict[str, str] = {}
     for key in _SIMPLE_KEYS:
         result[f"{{{{{key}}}}}"] = _str_or_empty(data.get(key))
+
+    # V2 P-14 현재 AI역량 수준 4등급 체크박스 (BASIC/EXPLORER/USER/LEADER)
+    current_level_enum = (data.get("current_ai_level") or "").upper()
+    for enum_val, check_key in AI_LEVEL_ENUM_TO_CHECK_KEY.items():
+        result[f"{{{{pbl_tasks_current_ai_level_{check_key}_check}}}}"] = (
+            "☑" if current_level_enum == enum_val else "☐"
+        )
+
+    # V2 P-15 향후 AI역량 수준 향상도 (현행/향후/사유) — cell_fill, 4 등급 체크박스 아님
+    expected_level_enum = (data.get("expected_ai_level") or "").upper()
+
+    def _label_with_grade(enum_val: str) -> str:
+        label = AI_LEVEL_ENUM_TO_LABEL.get(enum_val, "")
+        if not label:
+            return ""
+        grade = AI_LEVEL_GRADE.get(label, "")
+        return f"{label}({grade})" if grade else label
+
+    result["{{pbl_tasks_expected_ai_level_current_label}}"] = _label_with_grade(
+        current_level_enum
+    )
+    result["{{pbl_tasks_expected_ai_level_expected_label}}"] = _label_with_grade(
+        expected_level_enum
+    )
+    result["{{pbl_tasks_expected_ai_level_note}}"] = _str_or_empty(
+        data.get("expected_ai_level_note")
+    )
+
+    # SSOT v2 긴 키 alias 출력 (V1 짧은 키와 같은 값 복제)
+    for v1_key, v2_key in _V1_TO_V2_ALIAS:
+        result[f"{{{{{v2_key}}}}}"] = result.get(f"{{{{{v1_key}}}}}", "")
 
     return result
 
@@ -381,5 +500,89 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
             }
             for i in items
         ]
+
+    # ----------------------- V2 신규 데이터 구조 -----------------------
+
+    if key == "problems":
+        # V2 P-09: problems[] {title, description, impact} (max 4)
+        items = data.get("problems") or []
+        return [
+            {
+                "title": _str_or_empty(i.get("title")),
+                "description": _str_or_empty(i.get("description")),
+                "impact": _str_or_empty(i.get("impact")),
+            }
+            for i in items
+        ]
+
+    if key == "priorities":
+        # V2 P-10: priority.items[] {problem, score(1-5), rank}.
+        # rank == 1 → selected (☑), 그 외는 미선정 (☐).
+        items = data.get("priorities") or []
+        rows: list[dict] = []
+        for i in items:
+            try:
+                score = int(i.get("score") or 0)
+            except (TypeError, ValueError):
+                score = 0
+            try:
+                rank = int(i.get("rank") or 0)
+            except (TypeError, ValueError):
+                rank = 0
+            rows.append(
+                {
+                    "problem": _str_or_empty(i.get("problem")),
+                    "score": score,
+                    "rank": rank,
+                    "selected": rank == 1,
+                }
+            )
+        return rows
+
+    if key == "target_single":
+        # V2 P-11: 단일 target {name, code?, scope, necessity, details[]} → row 1 한 항목
+        target = data.get("target") or {}
+        if not target:
+            return []
+        return [
+            {
+                "name": _str_or_empty(target.get("name")),
+                "code": _str_or_empty(target.get("code")),
+                "scope": _str_or_empty(target.get("scope")),
+                "necessity": _str_or_empty(target.get("necessity")),
+            }
+        ]
+
+    if key == "target_details_v2":
+        # V2 P-13: details[] {title, description} (V1 의 as_is/to_be/required_* 제거)
+        target = data.get("target") or {}
+        items = target.get("details") if target else None
+        if items is None:
+            items = data.get("target_details") or []
+        return [
+            {
+                "title": _str_or_empty(i.get("title")),
+                "description": _str_or_empty(i.get("description")),
+            }
+            for i in items
+        ]
+
+    if key == "activities":
+        # V2 P-08: activities[] {round, date, content, method, participants (string)}
+        items = data.get("activities") or []
+        rows = []
+        for i in items:
+            raw_round = i.get("round")
+            round_label = f"{raw_round}차" if raw_round is not None else ""
+            rows.append(
+                {
+                    "round": round_label,
+                    "date": _str_or_empty(i.get("date")),
+                    "content": _str_or_empty(i.get("content")),
+                    "method": _str_or_empty(i.get("method")),
+                    "participants": _str_or_empty(i.get("participants")),
+                }
+            )
+        return rows
 
     return []

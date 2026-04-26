@@ -308,3 +308,184 @@ def test_course_specs_extraction():
     assert specs[0]["course_name"] == "AI 리터러시"
     assert len(specs[0]["subjects"]) == 1
     assert specs[0]["subjects"][0]["subject_name"] == "AI 개론"
+
+
+# ---------------------------------------------------------------
+# 7. SSOT v2 — `{{roadmap_*}}` 긴 키 동시 출력
+# ---------------------------------------------------------------
+# Phase D-1: V1 짧은 키 (`{{company_name}}` 등) 는 generate.py 의 _replace_in_all_runs
+# 경로에서 그대로 사용되며, 사용자 정본 템플릿에는 placeholder가 없으므로 no-op.
+# 그러나 SSOT (`docs/references/hwpx-placeholders.json` v2) 와의 동기화 검증을 위해
+# build_placeholder_map 출력 dict에 SSOT 의 긴 키들도 함께 포함시켜야 한다.
+# (옵션 A 전환 대비 + DoD #6 재정의 — payload TS ↔ SSOT py_key 동기화 자동 검증)
+
+
+class TestSSOTv2Keys:
+    def test_cover_v2_keys(self):
+        data = {
+            "company_name": "㈜테스트",
+            "report_date": "2026.04.26",
+            "pm_affiliation": "KPC",
+            "pm_name": "홍길동",
+            "internal_expert_affiliation": "㈜테스트",
+            "internal_expert_name": "김영희",
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_cover_company_name}}"] == "㈜테스트"
+        assert r["{{roadmap_cover_report_date}}"] == "2026.04.26"
+        assert r["{{roadmap_cover_pm_affiliation}}"] == "KPC"
+        assert r["{{roadmap_cover_pm_name}}"] == "홍길동"
+        assert r["{{roadmap_cover_internal_expert_affiliation}}"] == "㈜테스트"
+        assert r["{{roadmap_cover_internal_expert_name}}"] == "김영희"
+        # V1 키도 보존
+        assert r["{{company_name}}"] == "㈜테스트"
+
+    def test_overview_v2_keys(self):
+        data = {
+            "establishment_necessity": "AI 도입 필요",
+            "ai_competency_level": "INTERMEDIATE",
+            "selected_tasks_text": "품질검사",
+            "roadmap_summary": "요약",
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_overview_establishment_necessity}}"] == "AI 도입 필요"
+        assert r["{{roadmap_overview_ai_level_beginner_check}}"] == "☐"
+        assert r["{{roadmap_overview_ai_level_intermediate_check}}"] == "☑"
+        assert r["{{roadmap_overview_ai_level_advanced_check}}"] == "☐"
+        assert r["{{roadmap_overview_selected_task}}"] == "품질검사"
+        assert r["{{roadmap_overview_main_summary}}"] == "요약"
+
+    def test_requirements_v2_keys(self):
+        data = {
+            "hrd_report_attachment": "https://x/y.pdf",
+            "company_status": "제조업",
+            "main_problems": "수동 검사",
+            "push_willingness": "강한 의지",
+            "expected_outcomes": "30% 감소",
+            "analysis_notes_text": "노트",
+            "training_target": {
+                "task_name": "품질검사",
+                "selection_reason": "불량 높음",
+                "as_is": "수동",
+                "to_be": "자동",
+            },
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_requirements_hrd_report_attachment}}"] == "https://x/y.pdf"
+        assert r["{{roadmap_requirements_company_status}}"] == "제조업"
+        assert r["{{roadmap_requirements_main_problems}}"] == "수동 검사"
+        assert r["{{roadmap_requirements_push_willingness}}"] == "강한 의지"
+        assert r["{{roadmap_requirements_expected_outcomes}}"] == "30% 감소"
+        assert r["{{roadmap_requirements_task_analysis_note}}"] == "노트"
+        # 첨부 파일은 fallback 빈 문자열 (R-11 fallback_attachment="")
+        assert r["{{roadmap_requirements_task_analysis_attachment}}"] == ""
+        assert r["{{roadmap_requirements_target_task_name}}"] == "품질검사"
+        assert r["{{roadmap_requirements_target_task_selection_reason}}"] == "불량 높음"
+        assert r["{{roadmap_requirements_target_task_expected_as_is}}"] == "수동"
+        assert r["{{roadmap_requirements_target_task_expected_to_be}}"] == "자동"
+
+    def test_training_v2_keys_ncs_used(self):
+        data = {
+            "ncs_used": True,
+            "ncs_methodology": "NCS 활용",
+            "training_structure_method": "체계 수립",
+            "annual_plan_usage": "연간 활용",
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_training_ncs_methodology}}"] == "NCS 활용"
+        assert (
+            r["{{roadmap_training_ncs_derivation_method}}"] == NCS_DERIVATION_FALLBACK
+        )
+        assert r["{{roadmap_training_structure_method}}"] == "체계 수립"
+        assert r["{{roadmap_training_plan_utilization}}"] == "연간 활용"
+
+    def test_training_v2_keys_ncs_unused(self):
+        data = {
+            "ncs_used": False,
+            "ncs_derivation_method": "자체 분석",
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_training_ncs_methodology}}"] == NCS_METHODOLOGY_FALLBACK
+        assert r["{{roadmap_training_ncs_derivation_method}}"] == "자체 분석"
+
+    def test_appendix_v2_keys(self):
+        data = {
+            "company_name": "㈜테스트",
+            "employment_insurance_no": "12345-67890",
+        }
+        r = build_placeholder_map(data)
+        assert r["{{roadmap_appendix_company_name}}"] == "㈜테스트"
+        assert r["{{roadmap_appendix_insurance_no}}"] == "12345-67890"
+
+    def test_v2_keys_missing_inputs_default_empty(self):
+        r = build_placeholder_map({})
+        # 필수 SSOT 키가 모두 출력되며 빈 문자열로 fallback
+        for key in (
+            "{{roadmap_cover_company_name}}",
+            "{{roadmap_cover_pm_name}}",
+            "{{roadmap_overview_establishment_necessity}}",
+            "{{roadmap_overview_selected_task}}",
+            "{{roadmap_requirements_company_status}}",
+            "{{roadmap_requirements_target_task_name}}",
+            "{{roadmap_training_structure_method}}",
+            "{{roadmap_training_plan_utilization}}",
+            "{{roadmap_appendix_company_name}}",
+            "{{roadmap_appendix_insurance_no}}",
+            "{{roadmap_requirements_task_analysis_attachment}}",
+        ):
+            assert key in r, f"missing SSOT v2 key: {key}"
+            assert r[key] == "" or r[key] in (
+                "☐",
+                NCS_METHODOLOGY_FALLBACK,
+                NCS_DERIVATION_FALLBACK,
+                HRD_REPORT_EMPTY_FALLBACK,
+            )
+
+    def test_v2_keys_count_matches_ssot(self):
+        """SSOT v2 의 모든 single-strategy py_key 가 출력 dict 에 존재."""
+        r = build_placeholder_map({})
+        # SSOT v2 의 모든 단순 키 (cell_fill / single / checkbox / cond_box / pdf_attach)
+        ssot_v2_keys = {
+            # R-01 cover
+            "{{roadmap_cover_company_name}}",
+            "{{roadmap_cover_report_date}}",
+            "{{roadmap_cover_pm_affiliation}}",
+            "{{roadmap_cover_pm_name}}",
+            "{{roadmap_cover_internal_expert_affiliation}}",
+            "{{roadmap_cover_internal_expert_name}}",
+            # R-03 overview
+            "{{roadmap_overview_establishment_necessity}}",
+            # R-05 outcome
+            "{{roadmap_overview_ai_level_beginner_check}}",
+            "{{roadmap_overview_ai_level_intermediate_check}}",
+            "{{roadmap_overview_ai_level_advanced_check}}",
+            "{{roadmap_overview_selected_task}}",
+            "{{roadmap_overview_main_summary}}",
+            # R-08 hrd
+            "{{roadmap_requirements_hrd_report_attachment}}",
+            # R-09 company_requirements
+            "{{roadmap_requirements_company_status}}",
+            "{{roadmap_requirements_main_problems}}",
+            "{{roadmap_requirements_push_willingness}}",
+            "{{roadmap_requirements_expected_outcomes}}",
+            # R-11 analysis_notes
+            "{{roadmap_requirements_task_analysis_note}}",
+            "{{roadmap_requirements_task_analysis_attachment}}",
+            # R-12 training_target
+            "{{roadmap_requirements_target_task_name}}",
+            "{{roadmap_requirements_target_task_selection_reason}}",
+            "{{roadmap_requirements_target_task_expected_as_is}}",
+            "{{roadmap_requirements_target_task_expected_to_be}}",
+            # R-15 ncs_box
+            "{{roadmap_training_ncs_methodology}}",
+            "{{roadmap_training_ncs_derivation_method}}",
+            # R-18 training_structure_method
+            "{{roadmap_training_structure_method}}",
+            # R-20 annual_plan_usage
+            "{{roadmap_training_plan_utilization}}",
+            # R-22 appendix_meta
+            "{{roadmap_appendix_company_name}}",
+            "{{roadmap_appendix_insurance_no}}",
+        }
+        missing = ssot_v2_keys - set(r.keys())
+        assert not missing, f"SSOT v2 keys missing: {missing}"
