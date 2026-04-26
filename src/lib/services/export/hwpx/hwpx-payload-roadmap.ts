@@ -136,9 +136,10 @@ export function buildRoadmapHwpxPayload(
   const internalExpert = pickByPosition(participants, ['내부전문가']);
 
   // 4) 훈련체계도 매트릭스 → 단순 6열 표
+  // result.competencies / training_structure 도 storage mapper 가 array 보장
   const structureRows = buildTrainingStructureTable(
-    result.competencies ?? [],
-    result.training_structure ?? [],
+    result.competencies,
+    result.training_structure,
   ).map((r) => ({
     competency_name: r.competency_name,
     training_level: r.level_label,
@@ -203,16 +204,18 @@ export function buildRoadmapHwpxPayload(
       : [];
 
   // 8) 단순 역량 필드 포맷 (배열 → 줄바꿈 텍스트)
-  const competencies = (result.competencies ?? []).map((c) => ({
+  // result.competencies / annual_plan 은 storage mapper 가 항상 array/object 로
+  // normalize 하므로 ?? fallback 은 dead branch.
+  const competencies = result.competencies.map((c) => ({
     name: c.name,
-    definition_performance_criteria: c.definition ?? '',
+    definition_performance_criteria: c.definition,
     knowledge: bulletize(c.knowledge),
     skill: bulletize(c.skills),
     attitude: bulletize(c.attitudes),
   }));
 
   // 9) 연간 훈련계획 items
-  const annualPlanItems = (result.annual_plan?.items ?? []).map((i) => ({
+  const annualPlanItems = result.annual_plan.items.map((i) => ({
     competency_name: i.competency_name,
     course_name: i.course_name,
     training_type: i.format,
@@ -220,15 +223,15 @@ export function buildRoadmapHwpxPayload(
     remarks: i.notes,
   }));
 
-  // 10) 훈련과정 명세서
-  const courseSpecs = (result.course_specs ?? []).map((s) => ({
+  // 10) 훈련과정 명세서 (course_specs/subjects 도 storage mapper 가 항상 array)
+  const courseSpecs = result.course_specs.map((s) => ({
     course_name: s.course_name,
     training_type: s.format,
     recommended_program: s.recommended_program,
     training_goal: s.goal,
     main_content: s.main_content,
     training_target: s.target_audience,
-    subjects: (s.subjects ?? []).map((subj) => ({
+    subjects: s.subjects.map((subj) => ({
       subject_name: subj.name,
       details: splitByUnit(subj.details),
       hours: String(subj.hours),
@@ -259,12 +262,12 @@ export function buildRoadmapHwpxPayload(
     track: 'ROADMAP' as const,
     fileName: buildFileName(project.company_name, roadmap.version_number),
     data: {
-      // 표지
-      company_name: project.company_name ?? '',
+      // 표지 (Project.company_name 은 타입상 필수 string — ?? 는 dead branch)
+      company_name: project.company_name,
       report_date: reportDateText,
       pm_affiliation: roadmap.consultant_profile_snapshot?.affiliation ?? '',
       pm_name: pm?.name ?? '',
-      internal_expert_affiliation: project.company_name ?? '',
+      internal_expert_affiliation: project.company_name,
       internal_expert_name: internalExpert?.name ?? '',
 
       // Ⅰ-1 수립 필요성 — **인터뷰 입력 그대로** (LLM fallback 사용 금지)
@@ -276,13 +279,17 @@ export function buildRoadmapHwpxPayload(
       // Ⅰ-3 수립 주요 결과
       //   - 기업 AI 역량 수준·선정 과업 = **인터뷰 입력 그대로**
       //   - 수립 주요내용 요약 = LLM 자동 생성 (StepOverview UI에 '자동 생성 예정'으로 안내된 영역)
+      // result.outcome_summary 는 fromRoadmapVersionColumns 가 항상 normalized
+      // 객체로 반환하므로 ?. fallback 불필요 (dead branch).
       ai_competency_level: normalizeLevel(
         overview?.ai_competency_level
           ? (overview.ai_competency_level as RoadmapResult['outcome_summary']['ai_competency_level'])
-          : (result.outcome_summary?.ai_competency_level ?? 'BEGINNER'),
+          : result.outcome_summary.ai_competency_level,
       ),
       selected_tasks_text: overview?.selected_tasks_summary ?? '',
-      roadmap_summary: result.outcome_summary?.main_content ?? overview?.roadmap_summary ?? '',
+      // main_content 빈 문자열 → overview.roadmap_summary fallback (`||`),
+      // 그 다음 빈 문자열 fallback 도 dead (둘 다 string).
+      roadmap_summary: result.outcome_summary.main_content || overview?.roadmap_summary || '',
 
       // Ⅱ-1 HRD이음 보고서
       hrd_report_attachment: finalHrdUrl,
@@ -301,18 +308,20 @@ export function buildRoadmapHwpxPayload(
       training_target: trainingTarget,
 
       // Ⅲ-1 역량 모델링
+      // RoadmapResult 타입상 ncs_*, training_structure_method, annual_plan 모두
+      // 필수 필드 (storage mapper 가 default 적용). ?? fallback 은 dead branch.
       competencies,
-      ncs_used: result.ncs_used ?? false,
-      ncs_methodology: result.ncs_methodology ?? '',
-      ncs_derivation_method: result.ncs_derivation_method ?? '',
+      ncs_used: result.ncs_used,
+      ncs_methodology: result.ncs_methodology,
+      ncs_derivation_method: result.ncs_derivation_method,
 
       // Ⅲ-2 훈련체계도 (6열 단순 표)
       training_structure_rows: structureRows,
-      training_structure_method: result.training_structure_method ?? '',
+      training_structure_method: result.training_structure_method,
 
       // Ⅲ-3 연간 훈련계획
       annual_plan_items: annualPlanItems,
-      annual_plan_usage: result.annual_plan?.usage_plan ?? '',
+      annual_plan_usage: result.annual_plan.usage_plan,
 
       // Ⅲ-4 훈련과정 명세서
       course_specs: courseSpecs,

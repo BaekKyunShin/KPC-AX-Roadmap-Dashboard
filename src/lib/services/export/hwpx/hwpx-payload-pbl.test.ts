@@ -55,8 +55,18 @@ function makePBL(overrides?: Partial<PBLReportRow>): PBLReportRow {
           ],
           total_sum_hours: 40,
         },
-        facilities: [],
-        training_instructors: [],
+        facilities: [
+          { seq: 1, category: '시설', name: '교육장 A', spec: '30석', location: '본사 3층' },
+        ],
+        training_instructors: [
+          {
+            name: '홍전문',
+            internal_external: '외부',
+            career_years: 10,
+            work_name: 'AI 컨설팅',
+            detailed_training_content: ['ML 기초'],
+          },
+        ],
       },
       evaluation_plan: {
         course_evaluation: {
@@ -444,6 +454,185 @@ describe('buildPBLHwpxPayload', () => {
     });
     expect(payload.data.training_goal).toBe('AI 역량 확보');
     expect(payload.data.training_period).toBe('2026.04.01 ~ 2026.05.31');
+  });
+
+  // ---------------------------------------------------------------
+  // 분기 커버리지 보강 — V1 history/recommendations + facilities/instructors
+  // ---------------------------------------------------------------
+
+  it('V1 인터뷰 + history/recommendations 데이터 가 채워지면 .map 콜백 cover', () => {
+    const iv = makeInterview();
+    // V1 fixture 의 hrdNecessity 에 데이터 채움 (line 401-418 cover)
+    ((iv as unknown as { pbl_data: Record<string, unknown> }).pbl_data).hrdNecessity = {
+      training_history: [
+        { seq: 1, program: '직무개발', course_name: 'Python 기초', method: '집체', duration_days: 3 },
+      ],
+      support_history: [
+        { year: '2025', annual_limit: 1000, supported: 500, ratio: '50%' },
+      ],
+      recommendations: [
+        { id: 'r1', rank: 1, program: 'S-OJT', proposal: '체계적 현장훈련' },
+      ],
+      course_development_necessity: '필요성',
+    };
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const th = payload.data.training_history as Array<{ seq: number; program: string }>;
+    expect(th).toHaveLength(1);
+    expect(th[0].seq).toBe(1);
+    expect(th[0].program).toBe('직무개발');
+    const sh = payload.data.support_history as Array<{ year: string }>;
+    expect(sh[0].year).toBe('2025');
+    const recs = payload.data.recommendations as Array<{ rank: number; program: string }>;
+    expect(recs[0].program).toBe('S-OJT');
+  });
+
+  it('PBLContent 의 facilities/training_instructors 데이터 가 채워지면 .map 콜백 cover', () => {
+    // line 508-521 (facilities + training_instructors) cover
+    const pblContent: PBLContent = {
+      operation_plan: {
+        training_goal: 'AI 역량 확보',
+        ai_tool_usage_plan: [],
+        training_plan: {
+          overview: { course_name: 'AI 과정', training_period: { start: '2026.04.01', end: '2026.05.31' } },
+          learning_group: { instructors: [], trainees: [] },
+          subject_profile: {
+            course_name: 'AI 과정',
+            total_hours: 40,
+            training_goals: [],
+            ai_tools: [],
+            utilized_data: '',
+            analysis_method: '',
+            training_contents: [],
+            total_sum_hours: 40,
+          },
+          facilities: [
+            { seq: 1, category: '시설', name: '교육장 A', spec: '30석', location: '본사 3층' },
+            { seq: 2, category: '장비', name: 'GPU 서버', spec: 'A100', location: '서버실' },
+          ],
+          training_instructors: [
+            {
+              name: '홍전문',
+              internal_external: '외부',
+              career_years: 10,
+              work_name: 'AI 컨설팅',
+              detailed_training_content: ['ML 기초', 'MLOps 개요'],
+            },
+          ],
+        },
+        evaluation_plan: {
+          course_evaluation: {
+            course_name: 'AI 과정',
+            evaluation_methods: [],
+            evaluation_target: '',
+            evaluation_date: '',
+            evaluation_criteria: '',
+            evaluation_result: '예정',
+            performance_checklist: [],
+            overall_comment: '',
+            evaluation_scale: '',
+          },
+          result_evaluation: {
+            satisfaction_survey: [null, null, null, null, null],
+            achievement_survey: [null, null, null],
+            external_expert_survey: [null, null, null, null, null],
+            practical_application_survey: [null, null, null, null],
+          },
+        },
+      },
+      outcome_analysis: createEmptyOutcomeAnalysis(),
+    };
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL({ pbl_content: pblContent }),
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    const facilities = payload.data.facilities as Array<{ seq: number; name: string }>;
+    expect(facilities).toHaveLength(2);
+    expect(facilities[0].name).toBe('교육장 A');
+    expect(facilities[1].seq).toBe(2);
+    const instructors = payload.data.training_instructors as Array<{
+      name: string;
+      detailed_training_content: string[];
+    }>;
+    expect(instructors).toHaveLength(1);
+    expect(instructors[0].name).toBe('홍전문');
+    expect(instructors[0].detailed_training_content).toEqual(['ML 기초', 'MLOps 개요']);
+  });
+
+  it('V2 인터뷰 + null hrdReportPdf → 빈 문자열 fallback', () => {
+    // hrdReportPdf null branch cover (V2)
+    const iv = makeV2Interview();
+    ((iv as unknown as { pbl_data: Record<string, unknown> }).pbl_data).hrdReportPdf = null;
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(payload.data.hrd_report_attachment).toBe('');
+  });
+
+  it('finalized_at + updated_at 둘 다 falsy → report_date 빈 문자열', () => {
+    const pbl = makePBL({
+      finalized_at: null,
+      updated_at: null as unknown as string,
+    });
+    const payload = buildPBLHwpxPayload({
+      pbl,
+      project: makeProject(),
+      interview: makeInterview(),
+    });
+    expect(payload.data.report_date).toBe('');
+  });
+
+  it('V2 인터뷰 companyName 이 빈 문자열 → project.company_name 사용', () => {
+    const iv = makeV2Interview();
+    ((iv as unknown as { pbl_data: Record<string, unknown> }).pbl_data).companyName = '';
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(payload.data.company_name).toBe('㈜테스트');
+  });
+
+  it('aiLevelEnumToLabel — EXPLORER/LEADER 케이스 cover', () => {
+    const iv = makeV2Interview();
+    ((iv as unknown as { pbl_data: Record<string, unknown> }).pbl_data).currentAiLevel = {
+      level: 'EXPLORER',
+      note: '탐구 단계',
+    };
+    ((iv as unknown as { pbl_data: Record<string, unknown> }).pbl_data).expectedAiLevel = {
+      level: 'LEADER',
+      note: 'AX 전환 도달',
+    };
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL(),
+      project: makeProject(),
+      interview: iv,
+    });
+    expect(payload.data.current_ai_level_label).toBe('AI탐구형');
+    expect(payload.data.expected_ai_level_label).toBe('AI선도형');
+  });
+
+  it('classifyInterview — pbl_data 가 알 수 없는 형태 → empty branch', () => {
+    // V1/V2 어느 쪽 키도 없는 raw 객체 → empty 분기 (classifyInterview 의 마지막 return)
+    const iv = {
+      id: 'iv-x',
+      project_id: 'proj-1',
+      pbl_data: { unknownKey: 'foo' },
+    } as unknown as Interview;
+    const payload = buildPBLHwpxPayload({
+      pbl: makePBL(),
+      project: makeProject(),
+      interview: iv,
+    });
+    // empty branch → buildDataEmpty 호출. company_name 은 project 값 사용.
+    expect(payload.data.company_name).toBe('㈜테스트');
+    expect(payload.data.activities).toEqual([]);
   });
 
   // ---------------------------------------------------------------

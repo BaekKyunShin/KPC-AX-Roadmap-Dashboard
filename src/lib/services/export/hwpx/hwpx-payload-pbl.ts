@@ -283,8 +283,9 @@ function buildDataFromV2(
   };
 }
 
-/** V2 PBLAILevel (BASIC/EXPLORER/USER/LEADER) → 한글 AILevel 라벨 변환. */
-function aiLevelEnumToLabel(level: PBLAILevel): AILevel | '' {
+/** V2 PBLAILevel (BASIC/EXPLORER/USER/LEADER) → 한글 AILevel 라벨 변환.
+ *  enum 으로 막혀있어 모든 case 가 cover. default 는 dead branch 로 제거. */
+function aiLevelEnumToLabel(level: PBLAILevel): AILevel {
   switch (level) {
     case 'BASIC':
       return 'AI기초형';
@@ -294,8 +295,6 @@ function aiLevelEnumToLabel(level: PBLAILevel): AILevel | '' {
       return 'AI활용형';
     case 'LEADER':
       return 'AI선도형';
-    default:
-      return '';
   }
 }
 
@@ -585,7 +584,7 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
       })
     : '';
 
-  const companyName = project.company_name ?? '';
+  const companyName = project.company_name;  // Project.company_name 은 필수 string
 
   let data: Record<string, unknown>;
   if (branch.kind === 'v2') {
