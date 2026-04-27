@@ -264,7 +264,12 @@ describe('PBLInterviewClient', () => {
           date: '26.04.01',
           content: '인터뷰',
           method: '대면',
-          participants: 'PM 홍길동',
+          participants: {
+            pm: '홍길동',
+            external_expert: '',
+            internal_expert: '',
+            jurisdiction_manager: '',
+          },
         },
       ],
       problems: [

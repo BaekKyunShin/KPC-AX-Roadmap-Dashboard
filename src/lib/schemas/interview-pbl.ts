@@ -681,8 +681,24 @@ export const PBLAnalysisSchema = z.object({
 export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 
 // -- Ⅲ-1 수행활동 행 ---------------------------------------------------------
-// 양식 Ⅲ-1 의 표는 "차수 × 4행(참석자) 병합" 구조. 본 스키마는 1 차수 = 1 객체로
-// 저장하며, 참석자 4역할은 `participants` 필드에 자유서술로 합친다.
+// 양식 Ⅲ-1 의 표는 "차수 × 4행(참석자) 병합" 구조 — col 4 가 4 역할 라벨
+// (컨설팅책임자(PM)·외부전문가·내부전문가·능력개발전담주치의), col 5 가
+// 각 역할의 성명. 따라서 참석자는 4 역할별 성명 4 필드 object 로 저장한다.
+//
+// PR #5 Phase F-4 (사용자 한컴 재검증 후 회귀 보고): 이전에는 participants 가
+// 단일 string 이라 4 행 모두 첫 행(PM) 에 몰려 출력 — 양식과 정합 X. 본
+// schema 변경으로 4 역할 분리 입력 가능하게 한다.
+//
+// 기존 DB JSONB 데이터 호환: z.preprocess 로 string 입력 시 PM 필드에 채워
+// object 로 정규화. 마이그레이션 SQL 불요.
+export const PBLActivityParticipantsSchema = z.object({
+  pm: z.string().default(''),
+  external_expert: z.string().default(''),
+  internal_expert: z.string().default(''),
+  jurisdiction_manager: z.string().default(''),
+});
+export type PBLActivityParticipants = z.infer<typeof PBLActivityParticipantsSchema>;
+
 export const PBLActivityItemSchema = z.object({
   round: z
     .number({ message: '차수는 숫자여야 합니다.' })
@@ -691,7 +707,31 @@ export const PBLActivityItemSchema = z.object({
   date: z.string().min(1, '수행 일자를 입력하세요.'),
   content: z.string().min(1, '수행 내용을 입력하세요.'),
   method: z.string().min(1, '수행 방법을 입력하세요.'),
-  participants: z.string().min(1, '참석자(성명)를 입력하세요.'),
+  participants: z.preprocess(
+    (val) => {
+      // 기존 string 형 데이터 호환 (PR #5 Phase F-4 마이그레이션):
+      //   "PM 홍길동, 외부 김전문, 내부 박관리" 같은 자유서술 → PM 필드에 통째로 채움.
+      // null / undefined → 빈 object.
+      if (typeof val === 'string') {
+        return {
+          pm: val,
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        };
+      }
+      if (val == null) {
+        return {
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        };
+      }
+      return val;
+    },
+    PBLActivityParticipantsSchema,
+  ),
 });
 export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
 

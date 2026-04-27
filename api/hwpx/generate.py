@@ -751,7 +751,10 @@ def _generate_pbl(data: dict) -> bytes:
     _fill_pbl_simple_content(
         tables, 3, data.get("company_issues") or data.get("business_issues")
     )
-    _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)
+    # Ⅱ-1-나 조직 및 주요 업무 (idx=5): 사용자 요청 (PR #5 Phase F-2) 에 따라
+    # 자동 채우기를 비활성화한다. 양식 원본 (조직도 + ☑/☐ 박스 + 부서명 sample
+    # 텍스트) 을 한컴오피스에서 컨설턴트가 직접 수정하는 영역으로 사용.
+    # _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)  # disabled
     _fill_pbl_training_env(tables, data, idx=7)                       # Ⅱ-2
     # Ⅱ-3-가 HRD이음 (idx=9, 10): V2 에서는 PDF 첨부로 대체. 표는 양식 그대로 유지
     # (한글 오피스에서 사용자가 직접 PDF 첨부 또는 placeholder 안내 fallback 으로 전환).
@@ -1209,24 +1212,18 @@ def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: in
             method_text = f"{method_text} ({row['operation_mode']})".strip()
         _set_cell_text(tbl, base, 3, method_text)
 
-        if is_v2:
-            # V2: participants 가 단일 string. 4 역할 라벨 모두 채우되,
-            # 이름은 첫 행 (PM) 에만 string 그대로 표시.
-            participants_str = row.get("participants", "")
-            for role_i, (role_label, _role_key) in enumerate(roles):
-                r = base + role_i
-                if r < tbl.row_count:
-                    _set_cell_text(tbl, r, 4, role_label)
-                    _set_cell_text(tbl, r, 5, participants_str if role_i == 0 else "")
-        else:
-            participants = row.get("participants") or {}
-            if not isinstance(participants, dict):
-                participants = {}
-            for role_i, (role_label, role_key) in enumerate(roles):
-                r = base + role_i
-                if r < tbl.row_count:
-                    _set_cell_text(tbl, r, 4, role_label)
-                    _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
+        # V1·V2 통합 처리 (PR #5 Phase F-4): participants 는 dict
+        # {pm, external_expert, internal_expert, jurisdiction_manager} —
+        # _placeholders_pbl 의 build_pbl_table_rows 가 string·dict 모두
+        # 동일 dict 형태로 정규화한다. 4 역할 라벨 + 각 역할 성명을 4 행에 분배.
+        participants = row.get("participants") or {}
+        if not isinstance(participants, dict):
+            participants = {}
+        for role_i, (role_label, role_key) in enumerate(roles):
+            r = base + role_i
+            if r < tbl.row_count:
+                _set_cell_text(tbl, r, 4, role_label)
+                _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
 
 
 def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
@@ -1587,11 +1584,64 @@ def _fill_pbl_subject_profile(tables, build_pbl_table_rows, data, selected_metho
         except Exception:
             pass
 
-    # === row 10 전체시간 합 (col 6·7 병합) ===
-    total_sum = data.get("subject_total_sum_hours")
-    if total_sum is not None and str(total_sum) != "":
+    # === row 10 전체시간 합 (col 6·7 병합) — training_contents 자동 합산 ===
+    # PR #5 Phase F-5 (사용자 한컴 재검증 후): subject_total_sum_hours 입력값과
+    # training_contents 합이 안 맞는 회귀 (예: 사용자 입력 40 vs 4+8=12) 가 보고됨.
+    # 데이터 일관성 보장을 위해 training_contents[].training_hours 합산을 우선
+    # 사용. 합산 실패 (모든 항목이 숫자 아님) 시에만 fixture 값 fallback.
+    auto_total = 0
+    has_numeric = False
+    for c in contents:
+        raw = c.get("training_hours")
+        if raw is None or str(raw).strip() == "":
+            continue
         try:
-            _set_cell_text(tbl, 10, 6, str(total_sum))
+            auto_total += int(float(str(raw)))
+            has_numeric = True
+        except (TypeError, ValueError):
+            continue
+
+    if has_numeric:
+        total_value = str(auto_total)
+    else:
+        total_value = str(data.get("subject_total_sum_hours") or "")
+
+    if total_value:
+        try:
+            _set_cell_text(tbl, 10, 6, total_value)
+        except Exception:
+            pass
+
+    # === row 10 외부·내부 강사 시간 자동 합산 (col 8 외부, col 9 내부) ===
+    auto_ext, auto_int = 0, 0
+    has_ext, has_int = False, False
+    for c in contents:
+        for raw_key, accumulator, has_flag_name in (
+            ("external_hours", "auto_ext", "has_ext"),
+            ("internal_hours", "auto_int", "has_int"),
+        ):
+            raw = c.get(raw_key)
+            if raw is None or str(raw).strip() == "":
+                continue
+            try:
+                val = int(float(str(raw)))
+                if raw_key == "external_hours":
+                    auto_ext += val
+                    has_ext = True
+                else:
+                    auto_int += val
+                    has_int = True
+            except (TypeError, ValueError):
+                continue
+
+    if has_ext:
+        try:
+            _set_cell_text(tbl, 10, 8, str(auto_ext))
+        except Exception:
+            pass
+    if has_int:
+        try:
+            _set_cell_text(tbl, 10, 9, str(auto_int))
         except Exception:
             pass
 

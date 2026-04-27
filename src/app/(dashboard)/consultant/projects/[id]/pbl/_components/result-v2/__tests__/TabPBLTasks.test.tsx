@@ -11,14 +11,24 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       date: '2026.04.10',
       content: '경영진 인터뷰',
       method: '대면',
-      participants: '김PM, 박차장',
+      participants: {
+        pm: '김PM',
+        external_expert: '',
+        internal_expert: '박차장',
+        jurisdiction_manager: '',
+      },
     },
     {
       round: 2,
       date: '2026.04.17',
       content: '현장 워크숍',
       method: '대면+실습',
-      participants: '생산팀 전체',
+      participants: {
+        pm: '김PM',
+        external_expert: '박전문가',
+        internal_expert: '생산팀 전체',
+        jurisdiction_manager: '이주치',
+      },
     },
   ],
   problems: [

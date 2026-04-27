@@ -42,6 +42,23 @@
   "training_form": "사내 <집체>",
   "training_period": "2026.04.01 ~ 2026.05.31",
   "business_issues": "수작업 검사 비효율 & 신규 OJT 비용 증가 — \"core problem\"",
+  "proper_training_hours": 40,
+  "training_place_types": ["사내"],
+  "training_place_location": "본사 <3층> 교육장 & 'studio'",
+  "training_place_special_notes": "특이사항: <none> & \"OK\"",
+  "internal_instructor_used": true,
+  "internal_instructor_name": "박관리 'expert'",
+  "internal_instructor_position": "선임 \"researcher\"",
+  "target_count": 10,
+  "target_career": "평균 <5년> & 'mixed'",
+  "target_level": "중급 'middle' & <Python 기초>",
+  "ai_tools_status": "가능 'OK'",
+  "network_status": "양호 \"good\"",
+  "pc_count": 10,
+  "etc_equipment": "Webcam <4K> & 'GPU'",
+  "training_needs_analysis": "수동 'manual' & <auto> 자동화 — emoji 🔥 + XSS 페이로드 <script>alert('x')</script>",
+  "expectation_as_is": "수동 '92%' & <오류>",
+  "expectation_to_be": "AI 자동 '96%' & <개선>",
   "company_issues": "Ⅱ-1-가 — <매출> 정체 & 품질 비용 증가\n다음 줄 이모지 🔥\n특수문자 종합: <>&\"'\\",
   "course_necessity": "Ⅱ-3-나 — 자동화로 인력 'redeploy' 필요",
   "hrd_report_attachment": "https://x.example/hrd?type=pbl&id=42&name=test",
@@ -50,9 +67,33 @@
     {"department_name": "QA & 분석팀", "tasks": ["보고서 작성", "이상 \"분석\""]}
   ],
   "activities": [
-    {"round": 1, "date": "26.04.10", "content": "킥오프 <회의>", "method": "대면", "participants": "PM 홍길동 😀, 외부전문가 김전문 & Co., 내부 'expert' 박관리"},
-    {"round": 2, "date": "26.04.17", "content": "<문제> 정의 워크숍", "method": "대면", "participants": "PM 홍길동, 내부 expert 박관리"},
-    {"round": 3, "date": "26.04.24", "content": "초안 검토 \"review\"", "method": "비대면", "participants": "PM 홍길동"}
+    {
+      "round": 1, "date": "26.04.10", "content": "킥오프 <회의>", "method": "대면",
+      "participants": {
+        "pm": "홍길동 😀 'PM'",
+        "external_expert": "김전문 & Co.",
+        "internal_expert": "박관리 'expert'",
+        "jurisdiction_manager": "이주치 \"<주치>\""
+      }
+    },
+    {
+      "round": 2, "date": "26.04.17", "content": "<문제> 정의 워크숍", "method": "대면",
+      "participants": {
+        "pm": "홍길동",
+        "external_expert": "",
+        "internal_expert": "박관리",
+        "jurisdiction_manager": ""
+      }
+    },
+    {
+      "round": 3, "date": "26.04.24", "content": "초안 검토 \"review\"", "method": "비대면",
+      "participants": {
+        "pm": "홍길동",
+        "external_expert": "",
+        "internal_expert": "",
+        "jurisdiction_manager": ""
+      }
+    }
   ],
   "problems": [
     {"title": "검사 정확도 8% 미달 & <불량> \"누락\"", "description": "수동 검사 → 92% 정확도 (target: 96%) — emoji 🔥 포함", "impact": "월 1500만원 'loss' & '<<클레임>>'"},

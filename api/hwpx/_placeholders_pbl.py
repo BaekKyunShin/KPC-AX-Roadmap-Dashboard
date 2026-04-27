@@ -616,19 +616,42 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         ]
 
     if key == "activities":
-        # V2 P-08: activities[] {round, date, content, method, participants (string)}
+        # V2 P-08 (PR #5 Phase F-4): activities[] {round, date, content, method,
+        #   participants: {pm, external_expert, internal_expert, jurisdiction_manager}}
+        # 기존 string 형 데이터 호환 — string 이면 PM 에 통째로 채움.
         items = data.get("activities") or []
         rows = []
         for i in items:
             raw_round = i.get("round")
             round_label = f"{raw_round}차" if raw_round is not None else ""
+            participants = i.get("participants") or {}
+            if isinstance(participants, str):
+                participants = {
+                    "pm": participants,
+                    "external_expert": "",
+                    "internal_expert": "",
+                    "jurisdiction_manager": "",
+                }
+            elif not isinstance(participants, dict):
+                participants = {}
             rows.append(
                 {
                     "round": round_label,
                     "date": _str_or_empty(i.get("date")),
                     "content": _str_or_empty(i.get("content")),
                     "method": _str_or_empty(i.get("method")),
-                    "participants": _str_or_empty(i.get("participants")),
+                    "participants": {
+                        "pm": _str_or_empty(participants.get("pm")),
+                        "external_expert": _str_or_empty(
+                            participants.get("external_expert")
+                        ),
+                        "internal_expert": _str_or_empty(
+                            participants.get("internal_expert")
+                        ),
+                        "jurisdiction_manager": _str_or_empty(
+                            participants.get("jurisdiction_manager")
+                        ),
+                    },
                 }
             )
         return rows

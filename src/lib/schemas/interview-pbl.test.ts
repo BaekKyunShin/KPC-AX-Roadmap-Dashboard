@@ -644,7 +644,12 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
         date: '2026-03-15',
         content: '현장 인터뷰 및 문제 도출',
         method: '대면 워크숍',
-        participants: 'PM·외부전문가·내부전문가·주치의',
+        participants: {
+          pm: 'PM 홍길동',
+          external_expert: '외부전문가 김전문',
+          internal_expert: '내부전문가 박관리',
+          jurisdiction_manager: '능력개발전담주치의 이주치',
+        },
       },
     ],
     problems: [
@@ -863,7 +868,12 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
         date: '2026-03-15',
         content: '인터뷰',
         method: '대면',
-        participants: 'PM · 전문가 · 주치의',
+        participants: {
+          pm: 'PM 홍길동',
+          external_expert: '전문가 김전문',
+          internal_expert: '내부 박관리',
+          jurisdiction_manager: '주치의 이주치',
+        },
       },
     ],
     problems: [{ title: '문제', description: '설명', impact: '영향' }],

@@ -66,7 +66,22 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                   {
                     content: (
                       <span className="whitespace-pre-wrap text-sm">
-                        {a.participants || '-'}
+                        {(() => {
+                          // PR #5 Phase F-4: participants 는 4 person dict.
+                          // 빈 역할은 제외하고 "PM 홍길동 / 외부 김전문" 형태로 표시.
+                          const p = a.participants;
+                          if (!p) return '-';
+                          if (typeof p === 'string') return p || '-';
+                          const parts: string[] = [];
+                          if (p.pm) parts.push(`PM ${p.pm}`);
+                          if (p.external_expert)
+                            parts.push(`외부 ${p.external_expert}`);
+                          if (p.internal_expert)
+                            parts.push(`내부 ${p.internal_expert}`);
+                          if (p.jurisdiction_manager)
+                            parts.push(`주치의 ${p.jurisdiction_manager}`);
+                          return parts.length > 0 ? parts.join(' · ') : '-';
+                        })()}
                       </span>
                     ),
                     align: 'left',

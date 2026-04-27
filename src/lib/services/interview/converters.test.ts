@@ -466,7 +466,12 @@ function validPBLCamelCase(): PBLInterviewStrict {
         date: '2026-05-15',
         content: '1차 수행활동',
         method: '대면',
-        participants: '홍길동, 김철수',
+        participants: {
+          pm: '홍길동',
+          external_expert: '',
+          internal_expert: '김철수',
+          jurisdiction_manager: '',
+        },
       },
     ],
     problems: [
