@@ -149,6 +149,17 @@ def _generate_roadmap(data: dict) -> bytes:
 
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
 
+    # --- 0) 표지 본문 텍스트 직접 치환 (정본 placeholder 미존재 대응) ---
+    # 신규 정본 (84d1e67) 표지 paragraph 3 = "AI훈련로드맵 컨설팅 보고서(기업명)",
+    # paragraph 8 = "202x. 00. 00." 의 raw 텍스트를 회사명·일자로 직접 치환한다.
+    # _replace_in_all_runs 는 표 셀 nested 까지 모두 순회하므로 표지 외 영역도 안전.
+    company_name = data.get("company_name") or ""
+    report_date = data.get("report_date") or ""
+    if company_name:
+        _replace_in_all_runs(doc, "(기업명)", f"({company_name})")
+    if report_date:
+        _replace_in_all_runs(doc, "202x. 00. 00.", report_date)
+
     # --- 1) 본문 + 표 셀 내부 플레이스홀더 치환 ---
     # replace_text_in_runs는 표 셀 내부를 탐색하지 않으므로 zip_replace_all.py의
     # 공식 패턴(모든 표 셀의 paragraphs→runs 순회)을 함께 사용한다.

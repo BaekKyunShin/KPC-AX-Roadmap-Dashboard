@@ -96,6 +96,27 @@ class TestRoadmapFixtures:
         finally:
             os.unlink(tmp_path)
 
+    def test_roadmap_cover_replaces_company_name_and_date(self):
+        """R-01: 표지 본문 패턴 `(기업명)`·`202x. 00. 00.` 가 회사명·일자로 치환된다.
+
+        신규 정본 (84d1e67) 의 표지 paragraph 3 = `AI훈련로드맵 컨설팅 보고서(기업명)`,
+        paragraph 8 = `202x. 00. 00.` — 정본에 placeholder 없으므로 본문 텍스트 패턴
+        직접 치환이 필요하다.
+        """
+        from generate import _generate_roadmap
+
+        data = _load_fixture("roadmap-full.json")
+        out = _generate_roadmap(data)
+        text = _extract_all_text(out)
+        assert "(기업명)" not in text, (
+            "표지 placeholder `(기업명)` 가 raw 노출 — 회사명 본문 치환 누락"
+        )
+        assert "202x. 00. 00." not in text, (
+            "표지 일자 placeholder `202x. 00. 00.` 가 raw 노출 — 일자 본문 치환 누락"
+        )
+        assert "㈜AI산업자동화" in text
+        assert "2026.04.30." in text, "일자 fixture 값 미노출"
+
 
 @pytest.mark.skipif(
     not os.path.exists(PBL_TEMPLATE),
