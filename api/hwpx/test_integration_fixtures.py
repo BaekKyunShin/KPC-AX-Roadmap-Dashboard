@@ -195,6 +195,29 @@ class TestPblFixtures:
         assert doc.get("affiliation") and doc["affiliation"] in text, "주치의 소속 미노출"
         assert doc.get("name") and doc["name"] in text, "주치의 성명 미노출"
 
+    def test_pbl_overview_renders_trainee_job_and_goal_checkboxes(self):
+        """P-02 PR #5: Ⅰ. 훈련과정 개요 (idx 1) 의 훈련생·훈련직무·훈련목표 모두 출력.
+
+        - row 11 col 1 = training_target_label (예: "QA 인력 5명")
+        - row 12 col 1 = training_job (예: "AI 비전 기반 QA 검사 자동화")
+        - row 14 (훈련 목표) col 1~4 = training_goals 배열 → 체크박스 ☑ 토글
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        # 훈련생
+        assert data["training_target_label"] in text, "training_target_label 누락"
+        # 훈련 직무
+        assert data["training_job"] in text, "training_job 누락"
+        # 훈련 목표 체크박스 — selected goals 가 ☑ 로 토글됐는지
+        for goal in data["training_goals"]:
+            # ☑ 또는 ☐ 가 라벨 앞에 붙음 — selected 는 ☑
+            assert f"☑ {goal}" in text or f"☑{goal}" in text, (
+                f"training_goal '{goal}' 체크박스 ☑ 미토글"
+            )
+
     def test_pbl_full_contains_v2_data_in_text(self):
         """full fixture 의 V2 신규 데이터가 출력에 등장."""
         from hwpx import HwpxDocument

@@ -29,6 +29,8 @@
   "training_target_label": "QA 인력 5명",
   "training_form": "사내 집체",
   "training_period": "2026.04.01 ~ 2026.05.31",
+  "training_job": "AI 비전 기반 QA 검사 자동화",
+  "training_goals": ["기술문제 해결", "공정 최적화"],
   "business_issues": "수작업 검사 비효율 + 신규 OJT 비용 증가",
   "company_issues": "Ⅱ-1-가 경영 이슈 본문 — 매출 정체 및 품질 비용 증가 (V2 정본)",
   "course_necessity": "Ⅱ-3-나 AI훈련과정 개발 필요성 본문 — 자동화로 인력 재배치 필요",

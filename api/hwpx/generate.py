@@ -924,6 +924,12 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
             if address_value
             else f"훈련실시: {training_address}"
         )
+    # row 11 훈련생 — V2 우선 (training_target_label), V1 fallback (trainee_count → "N 명")
+    trainee_text = (
+        data.get("training_target_label")
+        or _format_trainees(data.get("trainee_count"))
+        or ""
+    )
     mapping = [
         (0, 1, data.get("company_name")),
         (0, 4, data.get("business_registration_no")),
@@ -937,7 +943,7 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
         (8, 1, data.get("course_name")),
         (9, 1, data.get("ncs_code")),
         (10, 1, _format_hours(data.get("training_hours"))),
-        (11, 1, _format_trainees(data.get("trainee_count"))),
+        (11, 1, trainee_text),
         (12, 1, data.get("training_job")),
     ]
     for r, c, text in mapping:
