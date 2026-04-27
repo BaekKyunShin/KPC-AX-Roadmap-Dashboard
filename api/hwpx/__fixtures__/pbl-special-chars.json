@@ -115,8 +115,20 @@
     "necessity": "정확도 96% 이상 & 리드타임 50% 단축 — \"core KPI\"",
     "necessity_score": 4,
     "details": [
-      {"title": "데이터 <수집>·전처리 & 'pipeline'", "description": "센서 데이터 + 영상 라벨링 ('PLC' auto + AutoLabel)"},
-      {"title": "모델 운영 & \"평가\"", "description": "객체 검출 모델 운영 + 정확도 KPI <검증> & emoji ✅"}
+      {
+        "title": "데이터 <수집>·전처리 & 'pipeline'",
+        "as_is": "수동 측정 + Excel <집계> & 'reporter' 작성 (편차 발생) ✗",
+        "to_be": "센서 데이터 + 영상 라벨링 ('PLC' auto + AutoLabel) — 자동화 ✅",
+        "required_knowledge": "센서 데이터 구조 & 라벨링 \"가이드\" + SPC <표준>",
+        "required_skill": "Python pandas + 'AutoLabel' CLI & shell 스크립트 ⚙️"
+      },
+      {
+        "title": "모델 운영 & \"평가\"",
+        "as_is": "정확도 KPI 수기 <검증> + 보고서 'manual' 작성 ⏳",
+        "to_be": "객체 검출 모델 운영 + 정확도 KPI <검증> & emoji ✅",
+        "required_knowledge": "객체 검출 모델 평가 \"지표\" (mAP·Recall) & A/B 테스트",
+        "required_skill": "PyTorch 'serving' + FastAPI & Prometheus 모니터링 📊"
+      }
     ]
   },
   "target_necessity": "정확도 96% 이상 & 리드타임 50% 단축",
