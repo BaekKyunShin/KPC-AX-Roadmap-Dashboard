@@ -153,6 +153,31 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_renders_company_issues_in_section_2_1_a(self):
+        """P-03 PR #5: Ⅱ-1-가 기업 경영 이슈 (idx 3, 1×1) 셀에 fixture 의
+        company_issues 텍스트가 정확히 출력된다.
+
+        기존 _fill_simple_box(idx, 0, 1, ...) 는 1×1 표에서 col 1 미존재로
+        silent skip 되었다. _fill_pbl_simple_content 로 (0,0) 좌표 사용.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        assert data["company_issues"] in text, "Ⅱ-1-가 company_issues 미출력"
+
+    def test_pbl_renders_course_necessity_in_section_2_3_b(self):
+        """P-07 PR #5: Ⅱ-3-나 AI훈련과정 개발 필요성 (idx 11, 1×1) 셀에
+        course_necessity 가 정확히 출력된다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        assert data["course_necessity"] in text, "Ⅱ-3-나 course_necessity 미출력"
+
     def test_pbl_hrd_url_not_leaked_to_body(self):
         """P-06 PR #5: PBL 정본은 placeholder 가 없고 양식 원본 표 (idx 9·10) 가
         그대로 유지되므로 fixture 의 hrd_report_attachment URL 이 본문에 raw 노출 0건.

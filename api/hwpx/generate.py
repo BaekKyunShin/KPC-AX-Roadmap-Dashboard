@@ -746,8 +746,11 @@ def _generate_pbl(data: dict) -> bytes:
     # V2 인터뷰 정본 (PR #28) 기준. V1 키는 fallback 으로만 사용.
     tables = _collect_tables(doc)
     _fill_pbl_overview(tables, data, idx=1)                           # Ⅰ
-    # Ⅱ-1-가 (idx=3): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
-    _fill_simple_box(tables, 3, data.get("company_issues") or data.get("business_issues"))
+    # Ⅱ-1-가 (idx=3, 1×1): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
+    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
+    _fill_pbl_simple_content(
+        tables, 3, data.get("company_issues") or data.get("business_issues")
+    )
     _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)
     _fill_pbl_training_env(tables, data, idx=7)                       # Ⅱ-2
     # Ⅱ-3-가 HRD이음 (idx=9, 10): V2 에서는 PDF 첨부로 대체. 표는 양식 그대로 유지
@@ -757,8 +760,9 @@ def _generate_pbl(data: dict) -> bytes:
         _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx=9)
     if data.get("recommendations"):
         _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx=10)
-    # Ⅱ-3-나 (idx=11): V2 P-07 = course_necessity. V1 호환 fallback.
-    _fill_simple_box(
+    # Ⅱ-3-나 (idx=11, 1×1): V2 P-07 = course_necessity. V1 호환 fallback.
+    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
+    _fill_pbl_simple_content(
         tables,
         11,
         data.get("course_necessity") or data.get("course_development_necessity"),
