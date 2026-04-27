@@ -418,6 +418,98 @@ describe('preparePBLExportData', () => {
     }
   });
 
+  it('V2 인터뷰 (currentAiLevel/trainingEnv/target 미입력) → aiLevel 빈값 + requirements undefined', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    mock.addResult({ data: PBL_ROW_BASE, error: null });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    // V2 키만 존재 (companyName) — currentAiLevel/trainingEnv/target 모두 누락
+    adminMock.addResult({
+      data: { pbl_data: { companyName: '미입력 기업', courseName: 'X' } },
+      error: null,
+    });
+
+    const result = await preparePBLExportData(PBL_ID);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.interviewOverview?.aiLevel).toBe('');
+      expect(result.data.requirements).toBeUndefined();
+    }
+  });
+
+  it('pbl_data 가 빈 객체 → V2/V1 키 모두 부재 → interviewOverview/requirements undefined', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    mock.addResult({ data: PBL_ROW_BASE, error: null });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    adminMock.addResult({ data: { pbl_data: {} }, error: null });
+
+    const result = await preparePBLExportData(PBL_ID);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.interviewOverview).toBeUndefined();
+      expect(result.data.requirements).toBeUndefined();
+    }
+  });
+
+  it('V1 인터뷰 부분 입력 (ai_level/training_goals 누락 + trainingEnvironment 없음 + diagnosis_summary null) → fallback 커버', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    mock.addResult({
+      data: { ...PBL_ROW_BASE, diagnosis_summary: null },
+      error: null,
+    });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    // V1 키 + ai_level/training_goals 미입력 + trainingEnvironment 없음 (targetTasks 만 존재)
+    adminMock.addResult({
+      data: {
+        pbl_data: {
+          courseOverview: {
+            course_name: '부분 V1 과정',
+            training_hours: 8,
+            trainee_count: 5,
+            training_job: '제조',
+            // ai_level / training_goals 의도적 누락
+          },
+          targetTasks: {
+            selection_reason: '부분 V1 사유',
+            target_task_details: [],
+          },
+        },
+      },
+      error: null,
+    });
+
+    const result = await preparePBLExportData(PBL_ID);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.diagnosisSummary).toBe('');
+      expect(result.data.interviewOverview?.aiLevel).toBe('');
+      expect(result.data.interviewOverview?.trainingGoals).toEqual([]);
+      expect(result.data.requirements?.trainingNeedsAnalysis).toBeUndefined();
+      expect(result.data.requirements?.selectionReason).toBe('부분 V1 사유');
+    }
+  });
+
+  it('V1 인터뷰지만 courseOverview 누락 → interviewOverview undefined', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    mock.addResult({ data: PBL_ROW_BASE, error: null });
+    mock.addResult({ data: { role: 'CONSULTANT_APPROVED' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+    // V1 키 (companyStatus) 만 존재 — courseOverview/trainingEnvironment/targetTasks 모두 누락
+    adminMock.addResult({
+      data: { pbl_data: { companyStatus: { business_issues: 'X' } } },
+      error: null,
+    });
+
+    const result = await preparePBLExportData(PBL_ID);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.interviewOverview).toBeUndefined();
+      expect(result.data.requirements).toBeUndefined();
+    }
+  });
+
   it('예외 발생 → catch error 반환', async () => {
     vi.mocked(createClient).mockRejectedValueOnce(new Error('connection error'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
