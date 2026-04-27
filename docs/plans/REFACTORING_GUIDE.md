@@ -23,7 +23,7 @@ claude
 ### 2단계: 아래 프롬프트 붙여넣기
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
 진행 추적표에서 다음 미완료 항목 1개만 진행해. /using-superpowers
 
 규칙:
@@ -51,7 +51,7 @@ docs/plans/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
 ### 기본 — 다음 1개 진행 (가장 자주 사용)
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
 진행 추적표에서 다음 미완료 항목 1개만 찾아서 진행해.
 
 규칙:
@@ -65,7 +65,7 @@ docs/plans/2026-02-12-system-refactoring-plan.md 계획서를 읽고,
 ### 특정 세션 지정 (순서를 건너뛰고 싶을 때)
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서의
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서의
 Session 2-4 1개만 진행해.
 
 규칙:
@@ -85,19 +85,19 @@ Session 2-4 1개만 진행해.
 ### 진행 상황 확인만
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서의 진행 추적표를 보여줘.
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서의 진행 추적표를 보여줘.
 ```
 
 ### 계획 수정
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서의 Session X-Y를 다음과 같이 수정해줘: [변경 내용]
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서의 Session X-Y를 다음과 같이 수정해줘: [변경 내용]
 ```
 
 ### 선택적 세션 건너뛰기
 
 ```
-docs/plans/2026-02-12-system-refactoring-plan.md 계획서의 Session X-Y는 건너뛰고 추적표에 건너뜀으로 표시해줘.
+docs/plans/archive/2026-02-12-system-refactoring-plan.md 계획서의 Session X-Y는 건너뛰고 추적표에 건너뜀으로 표시해줘.
 ```
 
 ---

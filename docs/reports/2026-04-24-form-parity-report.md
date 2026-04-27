@@ -2,7 +2,7 @@
 
 > **작성일:** 2026-04-26
 > **PR:** `#4` — `chore/pr4-form-parity-verification`
-> **상위 계획서:** `docs/plans/2026-04-24-interview-result-screens-redesign.md` §7 PR #4 / §8 PDF 검증 / §9 HWPX 물리 검증 / §12 DoD 11 개
+> **상위 계획서:** `docs/plans/archive/2026-04-24-interview-result-screens-redesign.md` §7 PR #4 / §8 PDF 검증 / §9 HWPX 물리 검증 / §12 DoD 11 개
 > **단일 매핑 원천 (SSOT):** `docs/references/hwpx-placeholders.json` v2 (94 placeholders, 79 entries — roadmap 37 + pbl 42)
 
 본 리포트는 **AI 훈련 로드맵 대시보드** 의 4 화면(로드맵·PBL × 인터뷰·결과) 양식 1:1 정합 재설계 시리즈(PR #1·#2·#3·#4)의 **최종 검증 산출물** 이다. 산인공 공식 양식 PDF, V2 UI 스크린샷, HWPX 출력의 3 종을 대조하여 모든 섹션의 정합 상태를 ✅/⚠️/❌ 로 기록한다.
@@ -363,9 +363,9 @@ npm run dev:with-hwpx
 
 ### 8.3 별도 follow-up (PR #4 범위 밖)
 
-- `pbl-export.ts` V1 → V2 schema 갱신 — `docs/prompts/2026-04-26-pbl-export-schema-v2-followup.md`
+- `pbl-export.ts` V1 → V2 schema 갱신 — `docs/prompts/archive/2026-04-26-pbl-export-schema-v2-followup.md`
 - 옵션 A 전환 검토 (placeholder 자동 삽입) — backlog
 
 ### 8.4 최종 결정
 
-`docs/plans/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 중 **10 ✅ + 1 ⏳ (#7 한컴오피스 실물 검증만 사용자 협업 단계로 잔존)**. 자동 검증 측면의 DoD 는 모두 통과 — pytest 75/75, validate 339/5625, build 4.6s, mapping 누락 0, PR #30 CI 6/6 pass.
+`docs/plans/archive/2026-04-24-interview-result-screens-redesign.md` §12 DoD 11 개 중 **10 ✅ + 1 ⏳ (#7 한컴오피스 실물 검증만 사용자 협업 단계로 잔존)**. 자동 검증 측면의 DoD 는 모두 통과 — pytest 75/75, validate 339/5625, build 4.6s, mapping 누락 0, PR #30 CI 6/6 pass.

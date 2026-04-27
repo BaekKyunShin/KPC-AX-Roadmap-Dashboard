@@ -3,8 +3,8 @@
 > **작성일:** 2026-04-27
 > **PR:** `#5` — `chore/pr5-hwpx-form-fixes` (PR #4 follow-up)
 > **상위:** PR #4 (eefad0d, 2026-04-26 머지) — 4 화면 양식 1:1 정합 재설계 시리즈
-> **계획서:** `docs/plans/2026-04-27-hwpx-form-fixes.md`
-> **prompt:** `docs/prompts/2026-04-27-hwpx-form-fixes-followup.md`
+> **계획서:** `docs/plans/archive/2026-04-27-hwpx-form-fixes.md`
+> **prompt:** `docs/prompts/archive/2026-04-27-hwpx-form-fixes-followup.md`
 
 본 리포트는 PR #4 머지 후 사용자의 한컴오피스 실물 검증 (DoD #7) 에서 발견된 회귀 11 종 + 자간 압축 회귀를 보강한 follow-up PR 의 종결 보고서이다.
 

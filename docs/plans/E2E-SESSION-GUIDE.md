@@ -1,6 +1,6 @@
 # Playwright E2E 테스트 — 세션별 실행 가이드 (v2)
 
-> 이 파일은 `docs/plans/2026-02-13-e2e-test-implementation-plan.md`을 세션별로 실행할 때 사용하는 프롬프트 및 진행 가이드입니다.
+> 이 파일은 `docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md`을 세션별로 실행할 때 사용하는 프롬프트 및 진행 가이드입니다.
 >
 > **v2 변경 사항:** 컨텍스트 압축으로 인한 누락 방지를 위해 세션을 더 작게 분할. 보완 세션(3~5) 추가. 각 프롬프트에 TEST_PLAN.md 원본 항목을 구체적으로 명시.
 
@@ -238,7 +238,7 @@ KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입�
 Session 0~2 완료, 보완 세션(3~5) 완료.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 3-1)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 3-1)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 2.9)
 - 기존 패턴 참고: e2e/ops/projects.spec.ts (같은 ops 디렉터리)
 
@@ -301,7 +301,7 @@ npx playwright test e2e/ops/users.spec.ts --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 3-2, 3-3)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 3-2, 3-3)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 2.10~2.14)
 - 기존 패턴 참고: e2e/ops/projects.spec.ts
 
@@ -370,7 +370,7 @@ npx playwright test e2e/ops/templates.spec.ts e2e/ops/audit-quota.spec.ts --head
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 4-1, 4-2)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 4-1, 4-2)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 3.0~3.4)
 - OPS 네비게이션 참고: e2e/ops/navigation.spec.ts (컨설턴트는 구조가 다름)
 
@@ -439,7 +439,7 @@ npx playwright test e2e/consultant/navigation.spec.ts e2e/consultant/home.spec.t
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 4-3, 5-4)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 4-3, 5-4)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 3.5, 3.15)
 
 ## 이번 작업
@@ -489,7 +489,7 @@ npx playwright test e2e/consultant/profile.spec.ts e2e/consultant/access-control
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 5-1)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 5-1)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 3.6~3.7)
 
 ## 이번 작업
@@ -542,7 +542,7 @@ npx playwright test e2e/consultant/projects.spec.ts --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 5-2)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 5-2)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 3.8)
 
 ## 이번 작업
@@ -590,7 +590,7 @@ npx playwright test e2e/consultant/interview.spec.ts --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 5-3)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 5-3)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 3.9)
 
 ## 이번 작업
@@ -635,7 +635,7 @@ npx playwright test e2e/consultant/roadmap.spec.ts --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 6-1)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 6-1)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 2.17~2.18, 3.12~3.13)
 
 ## 이번 작업
@@ -683,7 +683,7 @@ npx playwright test e2e/shared/gallery.spec.ts --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 6-2, 6-3)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 6-2, 6-3)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 2.15~2.16, 3.10~3.11)
 
 ## 이번 작업
@@ -732,7 +732,7 @@ npx playwright test e2e/shared --headed
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업 중입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 6-4, 7-2)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 6-4, 7-2)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 2.19, 3.14, 4.2)
 
 ## 이번 작업
@@ -785,7 +785,7 @@ npx playwright test e2e/shared/test-roadmap.spec.ts e2e/cross/edge-cases.spec.ts
 KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업입니다. 마지막 세션입니다.
 
 참고 문서:
-- 구현 계획: docs/plans/2026-02-13-e2e-test-implementation-plan.md (Task 7-1, 7-3, 7-4)
+- 구현 계획: docs/plans/archive/2026-02-13-e2e-test-implementation-plan.md (Task 7-1, 7-3, 7-4)
 - 원본 테스트 항목: docs/testing/TEST_PLAN.md (Phase 4.1, 4.3~4.4)
 
 ## 이번 작업
@@ -806,7 +806,7 @@ KPC AI 로드맵 대시보드의 Playwright E2E 테스트 전환 작업입니다
 
 - npx playwright test 전체 실행 → 모든 spec 통과 확인
 - 실패 시 수정
-- docs/plans/2026-02-13-e2e-test-design.md 진행 추적표를 모두 "완료"로 업데이트
+- docs/plans/archive/2026-02-13-e2e-test-design.md 진행 추적표를 모두 "완료"로 업데이트
 - 최종 커밋
 ```
 

@@ -2,8 +2,8 @@
 
 > **작성일:** 2026-04-25
 > **PR:** `feat/pr3-hwpx-template-rebuild`
-> **계획서:** `docs/plans/2026-04-25-pr3-hwpx-template-rebuild.md` (계획 사본)
-> **상위 계획서:** `docs/plans/2026-04-24-interview-result-screens-redesign.md` §5·§6
+> **계획서:** `docs/plans/archive/2026-04-25-pr3-hwpx-template-rebuild.md` (계획 사본)
+> **상위 계획서:** `docs/plans/archive/2026-04-24-interview-result-screens-redesign.md` §5·§6
 > **단일 매핑 원천 (SSOT):** `docs/references/hwpx-placeholders.json` (Phase B 산출 예정)
 
 본 보고서는 PR #3 의 9 단계 작업 결과를 누적 기록한다. 각 Phase 가 완료될 때마다 해당 섹션이 채워진다.
@@ -163,7 +163,7 @@ PASS: SSOT JSON 누락 0건 + 유효성 검증 통과
 ✅ **DoD #5 재검증 통과**: SSOT v2 → roadmap 23 + pbl 29 = 52 meaningful entries, 94 unique placeholders
 
 ### B.6 §6 [TBD] 갱신
-상위 계획서 `docs/plans/2026-04-24-interview-result-screens-redesign.md` §6.1 / §6.2 의 "표 인덱스 / 셀 좌표" 컬럼은 **본 SSOT JSON 의 `location.table_index` 가 정본** 으로 치환된다. 별도 표 갱신 불필요 (참조 일원화).
+상위 계획서 `docs/plans/archive/2026-04-24-interview-result-screens-redesign.md` §6.1 / §6.2 의 "표 인덱스 / 셀 좌표" 컬럼은 **본 SSOT JSON 의 `location.table_index` 가 정본** 으로 치환된다. 별도 표 갱신 불필요 (참조 일원화).
 
 ---
 
