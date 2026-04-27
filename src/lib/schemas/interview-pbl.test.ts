@@ -830,6 +830,73 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
     }
   });
 
+  it('activities[].participants string 입력 시 PM 필드에 자동 채움 (PR #5 Phase F-4 호환)', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      activities: [
+        {
+          ...validTasks.activities[0],
+          // 기존 V2 데이터 형 (string) — preprocess 가 PM 으로 자동 변환
+          participants: 'PM 홍길동, 외부 김전문',
+        } as unknown as (typeof validTasks)['activities'][0],
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.activities[0].participants).toEqual({
+        pm: 'PM 홍길동, 외부 김전문',
+        external_expert: '',
+        internal_expert: '',
+        jurisdiction_manager: '',
+      });
+    }
+  });
+
+  it('activities[].participants null/undefined 입력 시 빈 object 로 정규화', () => {
+    for (const nullish of [null, undefined]) {
+      const result = PBLTasksSchema.safeParse({
+        ...validTasks,
+        activities: [
+          {
+            ...validTasks.activities[0],
+            participants: nullish,
+          } as unknown as (typeof validTasks)['activities'][0],
+        ],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.activities[0].participants).toEqual({
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        });
+      }
+    }
+  });
+
+  it('activities[].participants object 입력 시 그대로 통과', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      activities: [
+        {
+          ...validTasks.activities[0],
+          participants: {
+            pm: '홍길동',
+            external_expert: '김전문',
+            internal_expert: '박관리',
+            jurisdiction_manager: '이주치',
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.activities[0].participants.pm).toBe('홍길동');
+      expect(result.data.activities[0].participants.jurisdiction_manager).toBe('이주치');
+    }
+  });
+
   it('problems[] 최소 1개 필요', () => {
     expect(
       PBLTasksSchema.safeParse({ ...validTasks, problems: [] }).success,

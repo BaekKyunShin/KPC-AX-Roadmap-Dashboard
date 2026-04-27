@@ -99,6 +99,86 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
     expect(screen.getByText('현장 워크숍')).toBeInTheDocument();
   });
 
+  it('Ⅲ-1 수행활동 participants 4 person dict 가 "PM 김PM · 내부 박차장" 형식으로 렌더된다 (PR #5 Phase F-4)', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // 1차수: pm + internal_expert 만 채워짐 → "PM 김PM · 내부 박차장" (1·2차수 모두 PM 김PM 이라 multiple)
+    expect(screen.getAllByText(/PM 김PM/).length).toBeGreaterThanOrEqual(2);
+    // 1차수 specific — "내부 박차장" 은 1차수만 (2차수는 "내부 생산팀 전체")
+    expect(screen.getByText(/내부 박차장/)).toBeInTheDocument();
+    // 2차수: 4 person 모두 채워짐 — 외부·주치의는 2차수 only
+    expect(screen.getByText(/외부 박전문가/)).toBeInTheDocument();
+    expect(screen.getByText(/주치의 이주치/)).toBeInTheDocument();
+  });
+
+  it('Ⅲ-1 수행활동 participants 가 string 인 legacy 데이터도 fallback 으로 렌더된다', () => {
+    const legacyInterview = {
+      ...interview,
+      activities: [
+        {
+          round: 1,
+          date: '2026.03.01',
+          content: 'legacy 인터뷰',
+          method: '대면',
+          // 기존 V2 string 형 데이터 (preprocess 마이그레이션 전)
+          participants: 'PM 홍길동, 외부 김전문' as unknown as {
+            pm: string;
+            external_expert: string;
+            internal_expert: string;
+            jurisdiction_manager: string;
+          },
+        },
+      ],
+    };
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={legacyInterview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // string fallback 로직: 그대로 출력
+    expect(screen.getByText('PM 홍길동, 외부 김전문')).toBeInTheDocument();
+  });
+
+  it('Ⅲ-1 수행활동 participants 가 모두 빈 dict 일 때 "-" 로 fallback', () => {
+    const emptyInterview = {
+      ...interview,
+      activities: [
+        {
+          round: 1,
+          date: '2026.03.01',
+          content: '데이터 없음 케이스',
+          method: '대면',
+          participants: {
+            pm: '',
+            external_expert: '',
+            internal_expert: '',
+            jurisdiction_manager: '',
+          },
+        },
+      ],
+    };
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={emptyInterview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // 빈 dict → "-" fallback
+    const dashes = screen.getAllByText('-');
+    expect(dashes.length).toBeGreaterThan(0);
+  });
+
   it('AiLevel4Check 현재/예상 2 인스턴스가 각각 readOnly 로 렌더', () => {
     render(
       <TabPBLTasks
