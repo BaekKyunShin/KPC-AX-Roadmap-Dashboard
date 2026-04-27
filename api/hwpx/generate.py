@@ -393,12 +393,14 @@ def _fill_table_outcome(tables, data, idx: int = 7):
 
 
 def _fill_table_hrd_report(tables, data, idx: int = 11):
+    """Ⅱ-1 HRD이음 보고서 — 1×1 셀.
+
+    URL 형 attachment 는 raw 노출 회피 fallback (별첨 PDF 페이지 참조 안내) 로 치환.
+    """
     if idx >= len(tables):
         return
-    from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
-    attachment = (data.get("hrd_report_attachment") or "").strip()
-    text = attachment if attachment else HRD_REPORT_EMPTY_FALLBACK
-    _set_cell_text(tables[idx], 0, 0, text)
+    from _placeholders_roadmap import _hrd_attachment_text
+    _set_cell_text(tables[idx], 0, 0, _hrd_attachment_text(data.get("hrd_report_attachment")))
 
 
 def _fill_table_company_requirements(tables, data, idx: int = 13):

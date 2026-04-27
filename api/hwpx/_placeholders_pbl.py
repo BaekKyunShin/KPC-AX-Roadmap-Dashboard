@@ -241,10 +241,20 @@ def build_pbl_placeholder_map(data: dict) -> dict[str, str]:
 
     누락 필드는 빈 문자열로 안전 처리.
     SSOT v2 의 `{{pbl_*}}` 긴 키도 함께 출력 (V1 짧은 키와 1:1 alias).
+    HRD이음 보고서 attachment 가 URL 형이면 안내문구로 치환 (raw URL 회피).
     """
+    from _placeholders_roadmap import _hrd_attachment_text
+
     result: dict[str, str] = {}
     for key in _SIMPLE_KEYS:
         result[f"{{{{{key}}}}}"] = _str_or_empty(data.get(key))
+
+    # HRD이음 보고서 — _SIMPLE_KEYS 의 raw 출력을 URL/empty fallback 으로 덮어쓰기.
+    # _V1_TO_V2_ALIAS 는 result.get("{{hrd_report_attachment}}") 를 참조하므로
+    # alias 출력 시점 이전에 fallback 이 적용되도록 본 위치에서 처리한다.
+    result["{{hrd_report_attachment}}"] = _hrd_attachment_text(
+        data.get("hrd_report_attachment")
+    )
 
     # V2 P-14 현재 AI역량 수준 4등급 체크박스 (BASIC/EXPLORER/USER/LEADER)
     current_level_enum = (data.get("current_ai_level") or "").upper()

@@ -375,6 +375,8 @@ class TestSSOTv2PblKeys:
         assert m["{{pbl_overview_business_issues}}"] == "수작업 비효율"
 
     def test_analysis_v2_keys(self):
+        from _placeholders_roadmap import HRD_REPORT_URL_FALLBACK
+
         data = {
             "company_issues": "경영 이슈 본문",
             "course_necessity": "AI 도입 필요성 본문",
@@ -383,7 +385,24 @@ class TestSSOTv2PblKeys:
         m = build_pbl_placeholder_map(data)
         assert m["{{pbl_analysis_company_issues}}"] == "경영 이슈 본문"
         assert m["{{pbl_analysis_course_necessity}}"] == "AI 도입 필요성 본문"
-        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "https://x/y.pdf"
+        # PR #5: URL 형은 fallback 안내문구로 치환
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+        # raw 출력 단일 키도 동일하게 fallback
+        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+
+    def test_pbl_hrd_report_filename_kept_as_is(self):
+        """파일명·자유텍스트 형 attachment 는 raw 그대로 출력."""
+        m = build_pbl_placeholder_map({"hrd_report_attachment": "hrd-pbl.pdf"})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "hrd-pbl.pdf"
+        assert m["{{hrd_report_attachment}}"] == "hrd-pbl.pdf"
+
+    def test_pbl_hrd_report_empty_uses_empty_fallback(self):
+        """빈 attachment 는 미첨부 안내 fallback."""
+        from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
+
+        m = build_pbl_placeholder_map({})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
+        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
 
     def test_current_ai_level_basic_check(self):
         data = {"current_ai_level": "BASIC"}

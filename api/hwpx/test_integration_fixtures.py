@@ -96,6 +96,20 @@ class TestRoadmapFixtures:
         finally:
             os.unlink(tmp_path)
 
+    def test_roadmap_hrd_url_replaced_with_attach_notice(self):
+        """R-08 PR #5: hrd_report_attachment URL 이 본문에 raw 노출되지 않고
+        별첨 PDF 안내문구로 치환된다.
+        """
+        from generate import _generate_roadmap
+
+        data = _load_fixture("roadmap-full.json")
+        # fixture 는 https://x.example/hrd-report.pdf 를 사용 — URL fallback 검증
+        out = _generate_roadmap(data)
+        text = _extract_all_text(out)
+        assert data["hrd_report_attachment"].startswith("http"), "fixture 가 URL 형이 아님"
+        assert "https://x.example" not in text, "HRD URL 이 본문에 raw 노출됨"
+        assert "별첨 페이지 참조" in text, "URL fallback 안내문구 누락"
+
     def test_roadmap_cover_replaces_company_name_and_date(self):
         """R-01: 표지 본문 패턴 `(기업명)`·`202x. 00. 00.` 가 회사명·일자로 치환된다.
 
@@ -138,6 +152,22 @@ class TestPblFixtures:
         out = _generate_pbl(data)
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
+
+    def test_pbl_hrd_url_not_leaked_to_body(self):
+        """P-06 PR #5: PBL 정본은 placeholder 가 없고 양식 원본 표 (idx 9·10) 가
+        그대로 유지되므로 fixture 의 hrd_report_attachment URL 이 본문에 raw 노출 0건.
+
+        (URL fallback 안내문구는 placeholder 치환 경로가 없어 본문에 등장하지 않으나,
+        unit 단계의 build_pbl_placeholder_map 결과는 fallback 으로 치환됨 —
+        test_pbl_hrd_report_filename_kept_as_is 등에서 unit 검증.)
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        assert data["hrd_report_attachment"].startswith("http"), "fixture 가 URL 형이 아님"
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        assert "https://x.example" not in text, "PBL HRD URL 이 본문에 raw 노출됨"
 
     def test_pbl_cover_renders_pm_external_internal_doctor(self):
         """P-01: PBL 표지 nested 8×5 에 PM/외부전문가/내부전문가/주치의 소속·성명 노출.
