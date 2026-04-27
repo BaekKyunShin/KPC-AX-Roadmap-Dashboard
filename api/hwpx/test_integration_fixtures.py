@@ -153,6 +153,37 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_subject_profile_top_seven_cells_filled(self):
+        """P-20 PR #5: Ⅳ-3-다 훈련 교과목 프로파일 (idx 32, 15×10) 의 상단
+        7 cell (course_name·total_hours·training_goals·ai_tools·utilized_data
+        ·analysis_method) 이 모두 채워진다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        # 상단 7 cell 의 fixture value 검증 — 모두 출력에 등장해야
+        for key in (
+            "subject_profile_course_name",
+            "total_training_hours",
+            "subject_utilized_data",
+            "subject_analysis_method",
+            "subject_total_sum_hours",
+        ):
+            value = data.get(key)
+            assert value, f"fixture {key} 누락"
+            assert str(value) in text, (
+                f"P-20 상단 cell {key}={value!r} 가 출력에 미노출"
+            )
+        # subject_training_goals / subject_ai_tools 는 줄바꿈 포함 — 첫 라인 검증
+        for key in ("subject_training_goals", "subject_ai_tools"):
+            value = data.get(key) or ""
+            first = value.split("\n")[0].strip()
+            assert first and first in text, (
+                f"P-20 상단 cell {key} 첫 라인 '{first}' 미노출"
+            )
+
     def test_pbl_target_details_v2_renders_title_and_description(self):
         """P-13 PR #5: V2 details[].title 은 col 0, description 은 col 1 에
         채워지고 col 2~4 (양식 원본 요구지식/기술 헤더 영역) 는 명시적으로

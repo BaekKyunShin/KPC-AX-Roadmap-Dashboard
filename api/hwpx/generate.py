@@ -1517,41 +1517,83 @@ def _fill_pbl_learning_group(tables, build_pbl_table_rows, data, idx: int = 31):
 
 
 def _fill_pbl_subject_profile(tables, build_pbl_table_rows, data, selected_methods, idx: int = 32):
-    """Ⅳ-3-다 훈련 교과목 프로파일 — 15×10 (복합).
+    """Ⅳ-3-다 훈련 교과목 프로파일 — 15×10 (대형 복합 표).
 
-    row 0~1 헤더 / row 2~4 상단 고정(과정명·총훈련시간·훈련목표·AI도구·분석방법)
-    row 5~8 훈련내용 3~4행 반복
-    row 9 전체시간
-    row 10~14 평가방법 (고정 양식 유지)
+    신규 정본 (8952576) 의 정확한 좌표 (병합 셀의 대표 col 만 채움):
+      row 0 = 헤더 "훈련 교과목 프로파일" (col 0~9 병합)
+      row 1 col 1 = 과정명           (col 1·2·3·4 병합, span=(1,4))
+      row 1 col 6 = 총 훈련시간(h)   (col 6·7·8·9 병합, span=(1,4))
+      row 2 col 1 = 훈련목표         (col 1~9 병합, span=(1,9))
+      row 3 col 1 = 활용 AI도구      (col 1·2·3·4 병합, span=(1,4))
+      row 3 col 7 = 활용 데이터       (col 7·8·9 병합, span=(1,3))
+      row 4 col 1 = 분석방법         (col 1~9 병합, span=(1,9))
+      row 5~6 = 훈련내용 헤더 (업무명·세부내용·훈련시간·강사 투입시간)
+      row 7~9 = 훈련내용 데이터 (max 3 행)
+        col 0   = "훈련내용" (rowspan=6 병합 라벨)
+        col 1   = 업무(단원)명         (col 1·2 병합)
+        col 3   = 세부 내용             (col 3·4·5 병합)
+        col 6   = 훈련시간(H)          (col 6·7 병합)
+        col 8   = 강사 투입시간(외부)
+        col 9   = 강사 투입시간(내부)
+      row 10 col 6 = 전체시간 (col 6·7 합)
+
+    이전 코드는 data_start=5 로 잘못 위치 (헤더 row) 에 데이터를 채우고 있었다.
+    PR #5 사용자 한컴 검증에서 "거의 다 누락" 으로 보고됨 — 정확한 좌표로 보강.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    # 플레이스홀더 치환으로 상단은 처리됐으므로 여기서는 주로 training_contents 반복 행 처리.
+
+    # === 상단 7 cell_fill 매핑 (병합 셀의 대표 col 만) ===
+    upper_mapping = [
+        (1, 1, data.get("subject_profile_course_name")),
+        (1, 6, data.get("total_training_hours")),
+        (2, 1, data.get("subject_training_goals")),
+        (3, 1, data.get("subject_ai_tools")),
+        (3, 7, data.get("subject_utilized_data")),
+        (4, 1, data.get("subject_analysis_method")),
+    ]
+    for r, c, text in upper_mapping:
+        try:
+            _set_cell_text(tbl, r, c, text or "")
+        except Exception:
+            pass
+
+    # === training_contents 반복 행 (row 7~9, max 3) ===
     contents = build_pbl_table_rows(data, "training_contents")
-    # 데이터 행 위치는 원본 구조 기준 row 5~8로 가정, 최대 3행.
-    data_start = 5
+    data_start = 7
     max_rows = 3
+    # 데이터 영역 reset (양식 sample 텍스트 제거 — col 0 "훈련내용" 라벨은 병합이라 보존)
     for offset in range(max_rows):
         r = data_start + offset
         if r >= tbl.row_count:
             break
-        if offset < len(contents):
-            row = contents[offset]
+        for c in (1, 3, 6, 8, 9):
             try:
-                _set_cell_text(tbl, r, 0, row.get("unit_name", ""))
-                _set_cell_text(tbl, r, 1, row.get("detail", ""))
-                _set_cell_text(tbl, r, 2, row.get("training_hours", ""))
-                _set_cell_text(tbl, r, 3, row.get("external_hours", ""))
-                _set_cell_text(tbl, r, 4, row.get("internal_hours", ""))
+                _set_cell_text(tbl, r, c, "")
             except Exception:
                 pass
-        else:
-            for c in range(min(5, tbl.column_count)):
-                try:
-                    _set_cell_text(tbl, r, c, "")
-                except Exception:
-                    pass
+
+    for offset, row in enumerate(contents[:max_rows]):
+        r = data_start + offset
+        if r >= tbl.row_count:
+            break
+        try:
+            _set_cell_text(tbl, r, 1, row.get("unit_name", ""))
+            _set_cell_text(tbl, r, 3, row.get("detail", ""))
+            _set_cell_text(tbl, r, 6, row.get("training_hours", ""))
+            _set_cell_text(tbl, r, 8, row.get("external_hours", ""))
+            _set_cell_text(tbl, r, 9, row.get("internal_hours", ""))
+        except Exception:
+            pass
+
+    # === row 10 전체시간 합 (col 6·7 병합) ===
+    total_sum = data.get("subject_total_sum_hours")
+    if total_sum is not None and str(total_sum) != "":
+        try:
+            _set_cell_text(tbl, 10, 6, str(total_sum))
+        except Exception:
+            pass
 
 
 def _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx: int = 34):
