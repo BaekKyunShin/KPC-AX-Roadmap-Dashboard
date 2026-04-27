@@ -415,14 +415,12 @@ class TestPblFixtures:
                 f"P-20 상단 cell {key} 첫 라인 '{first}' 미노출"
             )
 
-    def test_pbl_target_details_v2_renders_title_and_description(self):
-        """P-13 PR #5: V2 details[].title 은 col 0, description 은 col 1 에
-        채워지고 col 2~4 (양식 원본 요구지식/기술 헤더 영역) 는 명시적으로
-        비워져야 한다.
+    def test_pbl_target_details_v2_renders_5_columns(self):
+        """P-13 PR #7: V2 details[] 5 필드 (title/as_is/to_be/required_knowledge/
+        required_skill) 가 양식 idx=22 표 4×5 의 col 0~4 모두 채워진다.
 
-        V2 schema 는 V1 의 as_is/to_be/required_knowledge/required_skill 4 필드를
-        description 단일에 통합했으므로 col 2~4 는 빈 상태가 정상. 양식 PDF 의
-        col 3·4 헤더 (요구지식·기술) 는 표지 정합용 원본 텍스트.
+        PR #5 의 단일 description 통합 회귀 보강 — 양식 PDF Ⅲ-3-다 표 5 컬럼
+        (업무명 / AS-IS / TO-BE / 요구지식 / 기술) 과 1:1 정합.
         """
         from hwpx import HwpxDocument
         from generate import _generate_pbl
@@ -452,18 +450,15 @@ class TestPblFixtures:
                 cell = target.cell(r, c)
                 return "".join(rn.text or "" for p in cell.paragraphs for rn in p.runs)
 
+            cols = ("title", "as_is", "to_be", "required_knowledge", "required_skill")
             for i in range(min(2, len(details))):
                 row = 2 + i
-                assert _cell_text(row, 0) == details[i]["title"], (
-                    f"row {row} col 0 (title) 매핑 실패"
-                )
-                assert _cell_text(row, 1) == details[i]["description"], (
-                    f"row {row} col 1 (description) 매핑 실패"
-                )
-                # col 2~4: V2 schema 단일 description 통합 → 명시적 빈
-                for c in (2, 3, 4):
-                    assert _cell_text(row, c) == "", (
-                        f"row {row} col {c} 가 명시적으로 비워지지 않음 — V2 schema 에서는 빈 상태가 정상"
+                for c, key in enumerate(cols):
+                    expected = details[i].get(key, "")
+                    actual = _cell_text(row, c)
+                    assert actual == expected, (
+                        f"row {row} col {c} ({key}) 매핑 실패: "
+                        f"expected={expected!r} actual={actual!r}"
                     )
 
     def test_pbl_target_necessity_score_renders_in_priority_column(self):

@@ -602,18 +602,31 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         ]
 
     if key == "target_details_v2":
-        # V2 P-13: details[] {title, description} (V1 의 as_is/to_be/required_* 제거)
+        # V2 PR #7: details[] 5 필드 (title/as_is/to_be/required_knowledge/required_skill).
+        # 양식 PDF Ⅲ-3-다 표 4×5 의 col 0~4 1:1 정합.
+        # V1 호환: description 만 있는 기존 row 는 as_is 로 자동 이전.
         target = data.get("target") or {}
-        items = target.get("details") if target else None
+        items = target.get("details") if isinstance(target, dict) else None
         if items is None:
             items = data.get("target_details") or []
-        return [
-            {
-                "title": _str_or_empty(i.get("title")),
-                "description": _str_or_empty(i.get("description")),
-            }
-            for i in items
-        ]
+        rows = []
+        for i in items:
+            if not isinstance(i, dict):
+                continue
+            # V1 → V2 마이그레이션: description 값을 as_is 로 이전 (as_is 미정의 시).
+            as_is = i.get("as_is")
+            if as_is is None and i.get("description") is not None:
+                as_is = i.get("description")
+            rows.append(
+                {
+                    "title": _str_or_empty(i.get("title")),
+                    "as_is": _str_or_empty(as_is),
+                    "to_be": _str_or_empty(i.get("to_be")),
+                    "required_knowledge": _str_or_empty(i.get("required_knowledge")),
+                    "required_skill": _str_or_empty(i.get("required_skill")),
+                }
+            )
+        return rows
 
     if key == "activities":
         # V2 P-08 (PR #5 Phase F-4): activities[] {round, date, content, method,

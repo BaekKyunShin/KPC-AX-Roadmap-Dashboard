@@ -188,23 +188,14 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
     necessity_score: 5,
     details: [
       {
-        title: 'As-Is',
-        description:
+        title: '품질 이슈 분석·보고서 자동화',
+        as_is:
           '엑셀·수기 집계 후 회의에서 경험적으로 판정. 보고서는 부서별 포맷 상이, 작성 평균 2 영업일.',
-      },
-      {
-        title: 'To-Be',
-        description:
+        to_be:
           'ChatGPT + Notebook 으로 불량 데이터 패턴 탐지, 시각화 리포트 자동 생성. 표준 템플릿 기반 AI 초안 후 담당자 검토·확정. 작성 리드타임 0.5 영업일로 단축.',
-      },
-      {
-        title: '요구 지식',
-        description:
+        required_knowledge:
           '통계적 공정관리(SPC) 개념, 불량 분류 체계, 보고서 표준 구조, 공정 지표 정의.',
-      },
-      {
-        title: '요구 기술',
-        description:
+        required_skill:
           'ChatGPT/Claude/Notebook 으로 데이터 정제·분석·시각화, 프롬프트 설계, 문서 템플릿 자동화.',
       },
     ],

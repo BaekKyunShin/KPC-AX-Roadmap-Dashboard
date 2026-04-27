@@ -129,12 +129,11 @@ function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
         {
           id: 'target-detail-1',
           task_name: v2.target.name,
-          as_is: v2.target.details.find((d) => d.title === 'As-Is')?.description ?? '',
-          to_be: v2.target.details.find((d) => d.title === 'To-Be')?.description ?? '',
-          required_knowledge:
-            v2.target.details.find((d) => d.title === '요구 지식')?.description ?? '',
-          required_skill:
-            v2.target.details.find((d) => d.title === '요구 기술')?.description ?? '',
+          // V2 PR #7: details[] 5 필드 schema → 첫 번째 row 의 4 필드 그대로 사용
+          as_is: v2.target.details[0]?.as_is ?? '',
+          to_be: v2.target.details[0]?.to_be ?? '',
+          required_knowledge: v2.target.details[0]?.required_knowledge ?? '',
+          required_skill: v2.target.details[0]?.required_skill ?? '',
         },
       ],
     },

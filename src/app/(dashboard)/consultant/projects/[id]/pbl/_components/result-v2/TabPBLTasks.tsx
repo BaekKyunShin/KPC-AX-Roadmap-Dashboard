@@ -277,10 +277,10 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
         />
       </SectionCard>
 
-      {/* Ⅲ-3-다 세부내용 */}
+      {/* Ⅲ-3-다 세부내용 (V2 PR #7: 양식 4×5 의 5 컬럼 1:1 정합) */}
       <SectionCard
         title="Ⅲ-3-다. 훈련대상 업무 세부내용"
-        description="제목·설명 동적 행 (인터뷰 입력, 읽기 전용)"
+        description="업무명 / AS-IS / TO-BE / 요구지식 / 기술 5 컬럼 (인터뷰 입력, 읽기 전용)"
       >
         {target?.details && target.details.length > 0 ? (
           <div className="overflow-x-auto">
@@ -289,8 +289,11 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
               headerRows={[
                 {
                   cells: [
-                    { content: '제목', header: true, className: 'w-[200px]' },
-                    { content: '설명', header: true },
+                    { content: '업무명', header: true, className: 'w-[160px]' },
+                    { content: '현재 업무방식 (AS-IS)', header: true },
+                    { content: 'AI활용방식 (TO-BE)', header: true },
+                    { content: '요구지식', header: true },
+                    { content: '기술', header: true },
                   ],
                 },
               ]}
@@ -300,7 +303,31 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                   {
                     content: (
                       <span className="whitespace-pre-wrap text-sm">
-                        {d.description || '-'}
+                        {d.as_is || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {d.to_be || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {d.required_knowledge || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {d.required_skill || '-'}
                       </span>
                     ),
                     align: 'left',

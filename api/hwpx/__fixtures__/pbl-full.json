@@ -106,8 +106,20 @@
     "necessity": "정확도 96% 이상 + 리드타임 50% 단축",
     "necessity_score": 5,
     "details": [
-      {"title": "데이터 수집·전처리", "description": "센서 데이터 + 영상 라벨링 (PLC 자동 수집)"},
-      {"title": "모델 운영·평가", "description": "객체 검출 모델 운영 + 정확도 KPI 검증"}
+      {
+        "title": "데이터 수집·전처리",
+        "as_is": "센서 데이터 + 영상 라벨링 수기 검수 (작업자별 편차 발생)",
+        "to_be": "PLC 자동 수집 + AutoLabel 도구 자동 라벨링 + 학습 데이터셋 생성 자동화",
+        "required_knowledge": "센서 데이터 구조·라벨링 가이드라인",
+        "required_skill": "Python pandas + AutoLabel CLI 운영"
+      },
+      {
+        "title": "모델 운영·평가",
+        "as_is": "정확도 KPI 수기 검증 + 결과 보고서 수동 작성",
+        "to_be": "객체 검출 모델 운영 + 정확도 KPI 자동 검증 + 자동 보고서 생성",
+        "required_knowledge": "객체 검출 모델 평가 지표 (mAP·Recall)",
+        "required_skill": "PyTorch 모델 서빙 + 자동 보고서 생성 스크립트"
+      }
     ]
   },
   "target_necessity": "정확도 96% 이상 + 리드타임 50% 단축",

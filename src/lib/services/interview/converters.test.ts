@@ -491,7 +491,15 @@ function validPBLCamelCase(): PBLInterviewStrict {
       scope: '생산팀 15명',
       necessity: '검사 편차 해결',
       necessity_score: 5,
-      details: [{ title: 'AS-IS', description: '육안 검사' }],
+      details: [
+        {
+          title: '품질 검사 자동화',
+          as_is: '육안 검사',
+          to_be: 'AI 비전 자동 검사',
+          required_knowledge: '결함 유형 카탈로그',
+          required_skill: 'CV 모델 운영',
+        },
+      ],
     },
     currentAiLevel: { level: 'BASIC', note: '일부 임직원 ChatGPT 활용' },
     expectedAiLevel: { level: 'USER', note: '부서 단위 AI 도구 활용' },

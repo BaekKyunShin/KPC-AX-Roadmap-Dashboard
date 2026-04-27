@@ -689,11 +689,14 @@
       "strategy": "repeat_rows",
       "py_key": "target_details",
       "ts_key": "targetDetails",
-      "data_source": "PBLInterview.target.details[] (V2: title/description)",
-      "location": { "table_index": 22, "data_row_start": 2, "max_items": 2, "notes": "양식 4x5 — row 0~1 헤더, row 2~3 데이터. V2 details 는 title+description 만, V1 의 as_is/to_be/required_knowledge/required_skill 컬럼은 description 단일 셀에 통합." },
+      "data_source": "PBLInterview.target.details[] (V2 PR #7: title/as_is/to_be/required_knowledge/required_skill 5 필드)",
+      "location": { "table_index": 22, "data_row_start": 2, "max_items": 2, "notes": "양식 4x5 — row 0~1 헤더, row 2~3 데이터. PR #7 V2 5 컬럼 1:1 정합 (PR #5 의 description 단일 통합 회귀 보강). col 0 = 업무명, col 1 = AS-IS, col 2 = TO-BE, col 3 = 요구지식, col 4 = 기술." },
       "row_columns": [
         { "col": 0, "field": "title" },
-        { "col": 1, "field": "description" }
+        { "col": 1, "field": "as_is" },
+        { "col": 2, "field": "to_be" },
+        { "col": 3, "field": "required_knowledge" },
+        { "col": 4, "field": "required_skill" }
       ],
       "placeholder_template": "{{pbl_tasks_target_detail_{i}_{field}}}"
     },
