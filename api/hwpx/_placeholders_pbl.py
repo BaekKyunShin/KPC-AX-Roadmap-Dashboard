@@ -241,10 +241,20 @@ def build_pbl_placeholder_map(data: dict) -> dict[str, str]:
 
     누락 필드는 빈 문자열로 안전 처리.
     SSOT v2 의 `{{pbl_*}}` 긴 키도 함께 출력 (V1 짧은 키와 1:1 alias).
+    HRD이음 보고서 attachment 가 URL 형이면 안내문구로 치환 (raw URL 회피).
     """
+    from _placeholders_roadmap import _hrd_attachment_text
+
     result: dict[str, str] = {}
     for key in _SIMPLE_KEYS:
         result[f"{{{{{key}}}}}"] = _str_or_empty(data.get(key))
+
+    # HRD이음 보고서 — _SIMPLE_KEYS 의 raw 출력을 URL/empty fallback 으로 덮어쓰기.
+    # _V1_TO_V2_ALIAS 는 result.get("{{hrd_report_attachment}}") 를 참조하므로
+    # alias 출력 시점 이전에 fallback 이 적용되도록 본 위치에서 처리한다.
+    result["{{hrd_report_attachment}}"] = _hrd_attachment_text(
+        data.get("hrd_report_attachment")
+    )
 
     # V2 P-14 현재 AI역량 수준 4등급 체크박스 (BASIC/EXPLORER/USER/LEADER)
     current_level_enum = (data.get("current_ai_level") or "").upper()
@@ -572,16 +582,22 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         return rows
 
     if key == "target_single":
-        # V2 P-11: 단일 target {name, code?, scope, necessity, details[]} → row 1 한 항목
+        # V2 P-11: 단일 target {name, code?, scope, necessity, necessity_score?, details[]}
+        # → row 1 한 항목. necessity_score (1~5) 는 양식 col 1~5 점수 체크칸.
         target = data.get("target") or {}
         if not target:
             return []
+        try:
+            score = int(target.get("necessity_score") or 0)
+        except (TypeError, ValueError):
+            score = 0
         return [
             {
                 "name": _str_or_empty(target.get("name")),
                 "code": _str_or_empty(target.get("code")),
                 "scope": _str_or_empty(target.get("scope")),
                 "necessity": _str_or_empty(target.get("necessity")),
+                "necessity_score": score,
             }
         ]
 
@@ -600,19 +616,42 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         ]
 
     if key == "activities":
-        # V2 P-08: activities[] {round, date, content, method, participants (string)}
+        # V2 P-08 (PR #5 Phase F-4): activities[] {round, date, content, method,
+        #   participants: {pm, external_expert, internal_expert, jurisdiction_manager}}
+        # 기존 string 형 데이터 호환 — string 이면 PM 에 통째로 채움.
         items = data.get("activities") or []
         rows = []
         for i in items:
             raw_round = i.get("round")
             round_label = f"{raw_round}차" if raw_round is not None else ""
+            participants = i.get("participants") or {}
+            if isinstance(participants, str):
+                participants = {
+                    "pm": participants,
+                    "external_expert": "",
+                    "internal_expert": "",
+                    "jurisdiction_manager": "",
+                }
+            elif not isinstance(participants, dict):
+                participants = {}
             rows.append(
                 {
                     "round": round_label,
                     "date": _str_or_empty(i.get("date")),
                     "content": _str_or_empty(i.get("content")),
                     "method": _str_or_empty(i.get("method")),
-                    "participants": _str_or_empty(i.get("participants")),
+                    "participants": {
+                        "pm": _str_or_empty(participants.get("pm")),
+                        "external_expert": _str_or_empty(
+                            participants.get("external_expert")
+                        ),
+                        "internal_expert": _str_or_empty(
+                            participants.get("internal_expert")
+                        ),
+                        "jurisdiction_manager": _str_or_empty(
+                            participants.get("jurisdiction_manager")
+                        ),
+                    },
                 }
             )
         return rows

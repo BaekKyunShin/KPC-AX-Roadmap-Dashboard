@@ -39,14 +39,24 @@ describe('StepActivities', () => {
         date: '26.04.01',
         content: '',
         method: '',
-        participants: '',
+        participants: {
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        },
       },
       {
         round: 2,
         date: '26.04.15',
         content: '',
         method: '',
-        participants: '',
+        participants: {
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        },
       },
     ];
     render(<StepActivities value={initial} onChange={onChange} />);
@@ -56,13 +66,21 @@ describe('StepActivities', () => {
     expect(next[2].round).toBe(3);
   });
 
-  it('참석자 input 에 4역할 안내 placeholder 가 포함된다', () => {
-    render(<StepActivities value={[]} onChange={vi.fn()} />);
-    // 1행 참석자 LargeTextBox
-    const participants = screen.getByLabelText('1행 참석자') as HTMLTextAreaElement;
-    expect(participants.placeholder).toMatch(/PM/);
-    expect(participants.placeholder).toMatch(/외부전문가/);
-    expect(participants.placeholder).toMatch(/내부전문가/);
-    expect(participants.placeholder).toMatch(/주치의/);
+  it('참석자 4역할 (PM/외부/내부/주치의) input 이 차수마다 별도 렌더된다 (PR #5 Phase F-4)', () => {
+    const onChange = vi.fn();
+    render(<StepActivities value={[]} onChange={onChange} />);
+    // 1행 4역할 input
+    expect(screen.getByLabelText('1행 PM 성명')).toBeInTheDocument();
+    expect(screen.getByLabelText('1행 외부전문가 성명')).toBeInTheDocument();
+    expect(screen.getByLabelText('1행 내부전문가 성명')).toBeInTheDocument();
+    expect(screen.getByLabelText('1행 주치의 성명')).toBeInTheDocument();
+
+    // 입력 시 onChange 의 participants object 에 반영
+    fireEvent.change(screen.getByLabelText('1행 PM 성명'), {
+      target: { value: '홍길동' },
+    });
+    const next = onChange.mock.calls[0][0] as PBLActivityItem[];
+    expect(next[0].participants.pm).toBe('홍길동');
+    expect(next[0].participants.external_expert).toBe('');
   });
 });

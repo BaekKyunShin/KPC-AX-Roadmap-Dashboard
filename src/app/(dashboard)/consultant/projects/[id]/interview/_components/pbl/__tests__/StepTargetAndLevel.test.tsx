@@ -13,6 +13,7 @@ function baseValue(): StepTargetAndLevelValue {
       code: '',
       scope: '',
       necessity: '',
+      necessity_score: 3,
       details: [],
     },
     currentAiLevel: { level: 'BASIC', note: '' },
@@ -69,6 +70,35 @@ describe('StepTargetAndLevel', () => {
     expect(next.expectedAiLevel.level).toBe('LEADER');
     // 현재 AI역량은 유지
     expect(next.currentAiLevel.level).toBe('BASIC');
+  });
+
+  it('AI훈련과정 개발 필요성 점수 input 이 1~5 범위로 렌더되고 변경 시 onChange 에 반영된다 (PR #5)', () => {
+    const onChange = vi.fn();
+    render(<StepTargetAndLevel value={baseValue()} onChange={onChange} />);
+    const scoreInput = screen.getByLabelText(
+      '훈련대상 업무 AI훈련과정 개발 필요성 점수',
+    ) as HTMLInputElement;
+    expect(scoreInput).not.toBeNull();
+    expect(scoreInput.type).toBe('number');
+    expect(scoreInput.min).toBe('1');
+    expect(scoreInput.max).toBe('5');
+    expect(Number(scoreInput.value)).toBe(3); // baseValue default
+
+    fireEvent.change(scoreInput, { target: { value: '5' } });
+    const next = onChange.mock.calls[0][0] as StepTargetAndLevelValue;
+    expect(next.target.necessity_score).toBe(5);
+  });
+
+  it('점수 input 이 1~5 외 값 입력 시 기존 값으로 reject 한다', () => {
+    const onChange = vi.fn();
+    render(<StepTargetAndLevel value={baseValue()} onChange={onChange} />);
+    const scoreInput = screen.getByLabelText(
+      '훈련대상 업무 AI훈련과정 개발 필요성 점수',
+    ) as HTMLInputElement;
+    fireEvent.change(scoreInput, { target: { value: '7' } });
+    const next = onChange.mock.calls[0][0] as StepTargetAndLevelValue;
+    // 7 입력 → 1~5 범위 외 → 기존 값 (3) 유지
+    expect(next.target.necessity_score).toBe(3);
   });
 
   it('세부내용 행 추가 클릭 시 details 배열이 확장된다', () => {

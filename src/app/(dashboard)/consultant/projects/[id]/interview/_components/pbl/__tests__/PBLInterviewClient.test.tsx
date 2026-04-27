@@ -264,7 +264,12 @@ describe('PBLInterviewClient', () => {
           date: '26.04.01',
           content: '인터뷰',
           method: '대면',
-          participants: 'PM 홍길동',
+          participants: {
+            pm: '홍길동',
+            external_expert: '',
+            internal_expert: '',
+            jurisdiction_manager: '',
+          },
         },
       ],
       problems: [
@@ -282,6 +287,7 @@ describe('PBLInterviewClient', () => {
         name: '품질 전처리',
         scope: '품질관리팀 15명',
         necessity: '월 200시간 → 60시간 단축 기대',
+        necessity_score: 5,
         details: [{ title: 'AS-IS', description: '수작업' }],
       },
       currentAiLevel: { level: 'BASIC' as const, note: '' },

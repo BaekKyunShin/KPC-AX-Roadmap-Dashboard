@@ -186,7 +186,18 @@ function validPBLV2(): PBLInterviewStrict {
     hrdReportPdf: { fileName: 'pbl.pdf', url: 'p/pbl.pdf', size: 2048 },
     courseNecessity: 'AI 도입 필요',
     activities: [
-      { round: 1, date: '2026-05-15', content: '1차', method: '대면', participants: '홍길동' },
+      {
+        round: 1,
+        date: '2026-05-15',
+        content: '1차',
+        method: '대면',
+        participants: {
+          pm: '홍길동',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        },
+      },
     ],
     problems: [
       { title: '품질 편차', description: '검사자별 편차', impact: '클레임 증가' },
@@ -196,6 +207,7 @@ function validPBLV2(): PBLInterviewStrict {
       name: '품질검사 자동화',
       scope: '생산팀 15명',
       necessity: '검사 편차 해결',
+      necessity_score: 4,
       details: [{ title: 'AS-IS', description: '육안 검사' }],
     },
     currentAiLevel: { level: 'BASIC', note: 'ChatGPT 일부 활용' },

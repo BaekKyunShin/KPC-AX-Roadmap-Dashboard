@@ -12,6 +12,7 @@ from _placeholders_roadmap import (
     NCS_METHODOLOGY_FALLBACK,
     NCS_DERIVATION_FALLBACK,
     HRD_REPORT_EMPTY_FALLBACK,
+    HRD_REPORT_URL_FALLBACK,
 )
 
 
@@ -45,7 +46,8 @@ def test_build_placeholder_map_basic_fields():
     assert result["{{report_date}}"] == "2026. 04. 17."
     assert result["{{pm_name}}"] == "홍길동"
     assert result["{{establishment_necessity}}"] == "AI 도입 필요성 설명 5줄."
-    assert result["{{hrd_report_attachment}}"] == "https://example.com/hrd.pdf"
+    # PR #5: URL 형 attachment 는 raw 노출 회피 fallback 으로 치환
+    assert result["{{hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
 
 
 def test_build_placeholder_map_missing_fields_are_empty_strings():
@@ -58,6 +60,28 @@ def test_build_placeholder_map_missing_fields_are_empty_strings():
     assert result["{{analysis_notes_text}}"] == ""
     # HRD 보고서가 비어 있으면 fallback 메시지
     assert result["{{hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
+
+
+def test_hrd_report_url_replaced_with_attach_notice():
+    """R-08 PR #5: http(s):// URL 은 별첨 PDF 안내문구로 치환되어 raw 노출 회피."""
+    for url in (
+        "https://x.example/hrd-report.pdf",
+        "http://internal/hrd.pdf",
+        "https://kpc.or.kr/files/abc.pdf?token=xyz",
+    ):
+        result = build_placeholder_map({"hrd_report_attachment": url})
+        assert result["{{hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+        # SSOT v2 alias 도 동일 fallback
+        assert (
+            result["{{roadmap_requirements_hrd_report_attachment}}"]
+            == HRD_REPORT_URL_FALLBACK
+        )
+
+
+def test_hrd_report_filename_kept_as_is():
+    """파일명·자유텍스트 형 attachment 는 raw 그대로 출력 (URL 만 fallback)."""
+    result = build_placeholder_map({"hrd_report_attachment": "hrd-report-2026.pdf"})
+    assert result["{{hrd_report_attachment}}"] == "hrd-report-2026.pdf"
 
 
 # ---------------------------------------------------------------
@@ -371,7 +395,11 @@ class TestSSOTv2Keys:
             },
         }
         r = build_placeholder_map(data)
-        assert r["{{roadmap_requirements_hrd_report_attachment}}"] == "https://x/y.pdf"
+        # PR #5: URL 형은 fallback 안내문구로 치환
+        assert (
+            r["{{roadmap_requirements_hrd_report_attachment}}"]
+            == HRD_REPORT_URL_FALLBACK
+        )
         assert r["{{roadmap_requirements_company_status}}"] == "제조업"
         assert r["{{roadmap_requirements_main_problems}}"] == "수동 검사"
         assert r["{{roadmap_requirements_push_willingness}}"] == "강한 의지"

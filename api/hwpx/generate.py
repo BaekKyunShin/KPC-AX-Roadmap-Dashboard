@@ -149,6 +149,21 @@ def _generate_roadmap(data: dict) -> bytes:
 
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
 
+    # --- 0) 표지 본문 텍스트 직접 치환 (정본 placeholder 미존재 대응) ---
+    # 신규 정본 (84d1e67) 표지 paragraph 3 = "AI훈련로드맵 컨설팅 보고서(기업명)",
+    # paragraph 8 = "202x. 00. 00." 의 raw 텍스트를 회사명·일자로 직접 치환한다.
+    # _replace_in_all_runs 는 표 셀 nested 까지 모두 순회하므로 표지 외 영역도 안전.
+    company_name = data.get("company_name") or ""
+    report_date = data.get("report_date") or ""
+    if company_name:
+        _replace_in_all_runs(doc, "(기업명)", f"({company_name})")
+    if report_date:
+        # 표지 paragraph 8 일자 placeholder 본문 치환.
+        # 사용자 정본 변천: PR #4 "202x. 00. 00." → PR #5 Phase F "2026. 00. 00."
+        # 두 패턴 모두 처리 (정본 재수정 호환).
+        _replace_in_all_runs(doc, "202x. 00. 00.", report_date)
+        _replace_in_all_runs(doc, "2026. 00. 00.", report_date)
+
     # --- 1) 본문 + 표 셀 내부 플레이스홀더 치환 ---
     # replace_text_in_runs는 표 셀 내부를 탐색하지 않으므로 zip_replace_all.py의
     # 공식 패턴(모든 표 셀의 paragraphs→runs 순회)을 함께 사용한다.
@@ -382,12 +397,14 @@ def _fill_table_outcome(tables, data, idx: int = 7):
 
 
 def _fill_table_hrd_report(tables, data, idx: int = 11):
+    """Ⅱ-1 HRD이음 보고서 — 1×1 셀.
+
+    URL 형 attachment 는 raw 노출 회피 fallback (별첨 PDF 페이지 참조 안내) 로 치환.
+    """
     if idx >= len(tables):
         return
-    from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
-    attachment = (data.get("hrd_report_attachment") or "").strip()
-    text = attachment if attachment else HRD_REPORT_EMPTY_FALLBACK
-    _set_cell_text(tables[idx], 0, 0, text)
+    from _placeholders_roadmap import _hrd_attachment_text
+    _set_cell_text(tables[idx], 0, 0, _hrd_attachment_text(data.get("hrd_report_attachment")))
 
 
 def _fill_table_company_requirements(tables, data, idx: int = 13):
@@ -670,6 +687,9 @@ def _generate_pbl(data: dict) -> bytes:
     if report_date:
         _replace_in_all_runs(doc, "202 .   .  ", report_date)
 
+    # --- 0.5) 표지 nested 8×5 표 (PM/외부/내부/주치의 소속·성명) ---
+    _fill_pbl_cover_nested(doc, data)
+
     # --- 1) 본문·표 내부 {{key}} 플레이스홀더 일괄 치환 ---
     placeholders = build_pbl_placeholder_map(data)
     for key, value in placeholders.items():
@@ -730,9 +750,15 @@ def _generate_pbl(data: dict) -> bytes:
     # V2 인터뷰 정본 (PR #28) 기준. V1 키는 fallback 으로만 사용.
     tables = _collect_tables(doc)
     _fill_pbl_overview(tables, data, idx=1)                           # Ⅰ
-    # Ⅱ-1-가 (idx=3): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
-    _fill_simple_box(tables, 3, data.get("company_issues") or data.get("business_issues"))
-    _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)
+    # Ⅱ-1-가 (idx=3, 1×1): V2 P-03 = company_issues. V1 호환 위해 business_issues 도 fallback.
+    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
+    _fill_pbl_simple_content(
+        tables, 3, data.get("company_issues") or data.get("business_issues")
+    )
+    # Ⅱ-1-나 조직 및 주요 업무 (idx=5): 사용자 요청 (PR #5 Phase F-2) 에 따라
+    # 자동 채우기를 비활성화한다. 양식 원본 (조직도 + ☑/☐ 박스 + 부서명 sample
+    # 텍스트) 을 한컴오피스에서 컨설턴트가 직접 수정하는 영역으로 사용.
+    # _fill_pbl_organization(tables, build_pbl_table_rows, data, idx=5)  # disabled
     _fill_pbl_training_env(tables, data, idx=7)                       # Ⅱ-2
     # Ⅱ-3-가 HRD이음 (idx=9, 10): V2 에서는 PDF 첨부로 대체. 표는 양식 그대로 유지
     # (한글 오피스에서 사용자가 직접 PDF 첨부 또는 placeholder 안내 fallback 으로 전환).
@@ -741,8 +767,9 @@ def _generate_pbl(data: dict) -> bytes:
         _fill_pbl_hrd_history(tables, build_pbl_table_rows, data, idx=9)
     if data.get("recommendations"):
         _fill_pbl_recommendations(tables, build_pbl_table_rows, data, idx=10)
-    # Ⅱ-3-나 (idx=11): V2 P-07 = course_necessity. V1 호환 fallback.
-    _fill_simple_box(
+    # Ⅱ-3-나 (idx=11, 1×1): V2 P-07 = course_necessity. V1 호환 fallback.
+    # 1×1 표라 _fill_simple_box (col 1) 가 silent skip → _fill_pbl_simple_content (col 0) 사용.
+    _fill_pbl_simple_content(
         tables,
         11,
         data.get("course_necessity") or data.get("course_development_necessity"),
@@ -784,12 +811,108 @@ def _generate_pbl(data: dict) -> bytes:
 
 
 def _fill_pbl_simple_content(tables, idx: int, text):
-    """1×1 단일 셀 박스 (예: 훈련 목표, 사유, 필요성)."""
+    """1×1 단일 셀 박스 (예: 훈련 목표, 사유, 필요성).
+
+    1 줄 입력에 양식 paragraph 가 여러 개 있는 셀의 경우, 사용되지 않는
+    빈 paragraph 의 `paraPrIDRef` 가 머리기호 스타일 (예: 76 번) 이면
+    한컴오피스에서 빈 줄에도 머리기호 (∙·□ 등) 가 자동 표시되어 사용자
+    검증에서 "1 항목에 머리기호 2 개" 회귀로 보고됐다 (P-12).
+
+    해결: 텍스트가 모두 비어있는 paragraph 의 paraPrIDRef 를 기본 단락
+    스타일 ("0", PBL 정본에서 65 회 사용 — 가장 일반적 ID) 로 reset 하여
+    자동 머리기호를 회피한다.
+    """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    if tbl.row_count >= 1 and tbl.column_count >= 1:
-        _set_cell_text(tbl, 0, 0, text or "")
+    if tbl.row_count < 1 or tbl.column_count < 1:
+        return
+    _set_cell_text(tbl, 0, 0, text or "")
+    # 빈 paragraph 의 머리기호 회피 — paraPrIDRef "0" (기본 단락) 으로 reset
+    try:
+        cell = tbl.cell(0, 0)
+    except Exception:
+        return
+    for p in cell.paragraphs:
+        if all(not (r.text or "") for r in p.runs):
+            try:
+                p.para_pr_id_ref = "0"
+            except Exception:
+                pass
+
+
+def _fill_pbl_cover_nested(doc, data):
+    """PBL 표지 nested 8×5 표 (PM/외부전문가/내부전문가/주치의) 채움.
+
+    paragraph 0 의 outer 2×2 표의 cell(1,0) 과 cell(1,1) 안에 각각 nested 8×5
+    표 (구분/소속/성명/-/기업체확인) 가 있다 (좌·우 표지 양면). 동일 cover
+    데이터를 양쪽에 채운다.
+
+    nested 8×5 row 매핑 (실제 OXML 구조 — col 1·2 수직 병합):
+      row 0 = 헤더
+      row 1 = 컨설팅책임자(PM)                     [단일]
+      row 2~3 = 외부전문가(직무,HRD)               [col 1·2 수직 병합 — 1 슬롯]
+      row 4~5 = 기업 내부전문가                    [col 1·2 수직 병합 — 1 슬롯]
+      row 6~7 = 능력개발전담주치의                 [col 1·2 수직 병합 — 1 슬롯]
+    각 row 의 col 1 = 소속, col 2 = 성명.
+
+    NOTE: 양식 row 2~3 등은 col 0 만 분리되어 있고 col 1·2 가 수직 병합되어 있어
+    데이터는 row 2 (대표 row) 에만 1 회 채운다. row 3 에 별도 데이터를 채우면
+    같은 병합 cell 이 덮어쓰여진다.
+
+    cover 객체 (data["cover"]):
+      {pm: {affiliation, name},
+       external_experts: [{affiliation, name}],   # 양식상 1 슬롯
+       internal_experts: [{affiliation, name}],   # 1 슬롯
+       doctors: [{affiliation, name}]}            # 1 슬롯
+    """
+    cover = data.get("cover") or {}
+    pm = cover.get("pm") or {}
+    externals = cover.get("external_experts") or []
+    internals = cover.get("internal_experts") or []
+    doctors = cover.get("doctors") or []
+
+    role_rows = [
+        (1, pm),
+        (2, externals[0] if len(externals) > 0 else {}),
+        (4, internals[0] if len(internals) > 0 else {}),
+        (6, doctors[0] if len(doctors) > 0 else {}),
+    ]
+
+    if not doc.paragraphs:
+        return
+    para0 = doc.paragraphs[0]
+    if not para0.tables:
+        return
+    outer = para0.tables[0]
+    if outer.row_count < 2:
+        return
+
+    # outer 2×2 의 cell(1,0) 와 cell(1,1) 각각에 nested 8×5 (좌·우 표지)
+    for outer_col in range(min(2, outer.column_count)):
+        try:
+            outer_cell = outer.cell(1, outer_col)
+        except Exception:
+            continue
+        for inner_para in outer_cell.paragraphs:
+            for nested in inner_para.tables:
+                if nested.row_count == 8 and nested.column_count == 5:
+                    for row_idx, person in role_rows:
+                        if row_idx >= nested.row_count:
+                            break
+                        try:
+                            _set_cell_text(
+                                nested, row_idx, 1,
+                                str(person.get("affiliation") or "") if person else "",
+                            )
+                            _set_cell_text(
+                                nested, row_idx, 2,
+                                str(person.get("name") or "") if person else "",
+                            )
+                        except Exception:
+                            # 셀 좌표 이상 시 silent skip — 한컴오피스가 OXML 구조
+                            # 이상으로 거부하지 않도록 fail-soft.
+                            pass
 
 
 def _fill_pbl_overview(tables, data, idx: int = 1):
@@ -834,6 +957,12 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
             if address_value
             else f"훈련실시: {training_address}"
         )
+    # row 11 훈련생 — V2 우선 (training_target_label), V1 fallback (trainee_count → "N 명")
+    trainee_text = (
+        data.get("training_target_label")
+        or _format_trainees(data.get("trainee_count"))
+        or ""
+    )
     mapping = [
         (0, 1, data.get("company_name")),
         (0, 4, data.get("business_registration_no")),
@@ -847,7 +976,7 @@ def _fill_pbl_overview(tables, data, idx: int = 1):
         (8, 1, data.get("course_name")),
         (9, 1, data.get("ncs_code")),
         (10, 1, _format_hours(data.get("training_hours"))),
-        (11, 1, _format_trainees(data.get("trainee_count"))),
+        (11, 1, trainee_text),
         (12, 1, data.get("training_job")),
     ]
     for r, c, text in mapping:
@@ -1087,24 +1216,18 @@ def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: in
             method_text = f"{method_text} ({row['operation_mode']})".strip()
         _set_cell_text(tbl, base, 3, method_text)
 
-        if is_v2:
-            # V2: participants 가 단일 string. 4 역할 라벨 모두 채우되,
-            # 이름은 첫 행 (PM) 에만 string 그대로 표시.
-            participants_str = row.get("participants", "")
-            for role_i, (role_label, _role_key) in enumerate(roles):
-                r = base + role_i
-                if r < tbl.row_count:
-                    _set_cell_text(tbl, r, 4, role_label)
-                    _set_cell_text(tbl, r, 5, participants_str if role_i == 0 else "")
-        else:
-            participants = row.get("participants") or {}
-            if not isinstance(participants, dict):
-                participants = {}
-            for role_i, (role_label, role_key) in enumerate(roles):
-                r = base + role_i
-                if r < tbl.row_count:
-                    _set_cell_text(tbl, r, 4, role_label)
-                    _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
+        # V1·V2 통합 처리 (PR #5 Phase F-4): participants 는 dict
+        # {pm, external_expert, internal_expert, jurisdiction_manager} —
+        # _placeholders_pbl 의 build_pbl_table_rows 가 string·dict 모두
+        # 동일 dict 형태로 정규화한다. 4 역할 라벨 + 각 역할 성명을 4 행에 분배.
+        participants = row.get("participants") or {}
+        if not isinstance(participants, dict):
+            participants = {}
+        for role_i, (role_label, role_key) in enumerate(roles):
+            r = base + role_i
+            if r < tbl.row_count:
+                _set_cell_text(tbl, r, 4, role_label)
+                _set_cell_text(tbl, r, 5, participants.get(role_key, ""))
 
 
 def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
@@ -1395,41 +1518,136 @@ def _fill_pbl_learning_group(tables, build_pbl_table_rows, data, idx: int = 31):
 
 
 def _fill_pbl_subject_profile(tables, build_pbl_table_rows, data, selected_methods, idx: int = 32):
-    """Ⅳ-3-다 훈련 교과목 프로파일 — 15×10 (복합).
+    """Ⅳ-3-다 훈련 교과목 프로파일 — 15×10 (대형 복합 표).
 
-    row 0~1 헤더 / row 2~4 상단 고정(과정명·총훈련시간·훈련목표·AI도구·분석방법)
-    row 5~8 훈련내용 3~4행 반복
-    row 9 전체시간
-    row 10~14 평가방법 (고정 양식 유지)
+    신규 정본 (8952576) 의 정확한 좌표 (병합 셀의 대표 col 만 채움):
+      row 0 = 헤더 "훈련 교과목 프로파일" (col 0~9 병합)
+      row 1 col 1 = 과정명           (col 1·2·3·4 병합, span=(1,4))
+      row 1 col 6 = 총 훈련시간(h)   (col 6·7·8·9 병합, span=(1,4))
+      row 2 col 1 = 훈련목표         (col 1~9 병합, span=(1,9))
+      row 3 col 1 = 활용 AI도구      (col 1·2·3·4 병합, span=(1,4))
+      row 3 col 7 = 활용 데이터       (col 7·8·9 병합, span=(1,3))
+      row 4 col 1 = 분석방법         (col 1~9 병합, span=(1,9))
+      row 5~6 = 훈련내용 헤더 (업무명·세부내용·훈련시간·강사 투입시간)
+      row 7~9 = 훈련내용 데이터 (max 3 행)
+        col 0   = "훈련내용" (rowspan=6 병합 라벨)
+        col 1   = 업무(단원)명         (col 1·2 병합)
+        col 3   = 세부 내용             (col 3·4·5 병합)
+        col 6   = 훈련시간(H)          (col 6·7 병합)
+        col 8   = 강사 투입시간(외부)
+        col 9   = 강사 투입시간(내부)
+      row 10 col 6 = 전체시간 (col 6·7 합)
+
+    이전 코드는 data_start=5 로 잘못 위치 (헤더 row) 에 데이터를 채우고 있었다.
+    PR #5 사용자 한컴 검증에서 "거의 다 누락" 으로 보고됨 — 정확한 좌표로 보강.
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    # 플레이스홀더 치환으로 상단은 처리됐으므로 여기서는 주로 training_contents 반복 행 처리.
+
+    # === 상단 7 cell_fill 매핑 (병합 셀의 대표 col 만) ===
+    upper_mapping = [
+        (1, 1, data.get("subject_profile_course_name")),
+        (1, 6, data.get("total_training_hours")),
+        (2, 1, data.get("subject_training_goals")),
+        (3, 1, data.get("subject_ai_tools")),
+        (3, 7, data.get("subject_utilized_data")),
+        (4, 1, data.get("subject_analysis_method")),
+    ]
+    for r, c, text in upper_mapping:
+        try:
+            _set_cell_text(tbl, r, c, text or "")
+        except Exception:
+            pass
+
+    # === training_contents 반복 행 (row 7~9, max 3) ===
     contents = build_pbl_table_rows(data, "training_contents")
-    # 데이터 행 위치는 원본 구조 기준 row 5~8로 가정, 최대 3행.
-    data_start = 5
+    data_start = 7
     max_rows = 3
+    # 데이터 영역 reset (양식 sample 텍스트 제거 — col 0 "훈련내용" 라벨은 병합이라 보존)
     for offset in range(max_rows):
         r = data_start + offset
         if r >= tbl.row_count:
             break
-        if offset < len(contents):
-            row = contents[offset]
+        for c in (1, 3, 6, 8, 9):
             try:
-                _set_cell_text(tbl, r, 0, row.get("unit_name", ""))
-                _set_cell_text(tbl, r, 1, row.get("detail", ""))
-                _set_cell_text(tbl, r, 2, row.get("training_hours", ""))
-                _set_cell_text(tbl, r, 3, row.get("external_hours", ""))
-                _set_cell_text(tbl, r, 4, row.get("internal_hours", ""))
+                _set_cell_text(tbl, r, c, "")
             except Exception:
                 pass
-        else:
-            for c in range(min(5, tbl.column_count)):
-                try:
-                    _set_cell_text(tbl, r, c, "")
-                except Exception:
-                    pass
+
+    for offset, row in enumerate(contents[:max_rows]):
+        r = data_start + offset
+        if r >= tbl.row_count:
+            break
+        try:
+            _set_cell_text(tbl, r, 1, row.get("unit_name", ""))
+            _set_cell_text(tbl, r, 3, row.get("detail", ""))
+            _set_cell_text(tbl, r, 6, row.get("training_hours", ""))
+            _set_cell_text(tbl, r, 8, row.get("external_hours", ""))
+            _set_cell_text(tbl, r, 9, row.get("internal_hours", ""))
+        except Exception:
+            pass
+
+    # === row 10 전체시간 합 (col 6·7 병합) — training_contents 자동 합산 ===
+    # PR #5 Phase F-5 (사용자 한컴 재검증 후): subject_total_sum_hours 입력값과
+    # training_contents 합이 안 맞는 회귀 (예: 사용자 입력 40 vs 4+8=12) 가 보고됨.
+    # 데이터 일관성 보장을 위해 training_contents[].training_hours 합산을 우선
+    # 사용. 합산 실패 (모든 항목이 숫자 아님) 시에만 fixture 값 fallback.
+    auto_total = 0
+    has_numeric = False
+    for c in contents:
+        raw = c.get("training_hours")
+        if raw is None or str(raw).strip() == "":
+            continue
+        try:
+            auto_total += int(float(str(raw)))
+            has_numeric = True
+        except (TypeError, ValueError):
+            continue
+
+    if has_numeric:
+        total_value = str(auto_total)
+    else:
+        total_value = str(data.get("subject_total_sum_hours") or "")
+
+    if total_value:
+        try:
+            _set_cell_text(tbl, 10, 6, total_value)
+        except Exception:
+            pass
+
+    # === row 10 외부·내부 강사 시간 자동 합산 (col 8 외부, col 9 내부) ===
+    auto_ext, auto_int = 0, 0
+    has_ext, has_int = False, False
+    for c in contents:
+        for raw_key, accumulator, has_flag_name in (
+            ("external_hours", "auto_ext", "has_ext"),
+            ("internal_hours", "auto_int", "has_int"),
+        ):
+            raw = c.get(raw_key)
+            if raw is None or str(raw).strip() == "":
+                continue
+            try:
+                val = int(float(str(raw)))
+                if raw_key == "external_hours":
+                    auto_ext += val
+                    has_ext = True
+                else:
+                    auto_int += val
+                    has_int = True
+            except (TypeError, ValueError):
+                continue
+
+    if has_ext:
+        try:
+            _set_cell_text(tbl, 10, 8, str(auto_ext))
+        except Exception:
+            pass
+    if has_int:
+        try:
+            _set_cell_text(tbl, 10, 9, str(auto_int))
+        except Exception:
+            pass
 
 
 def _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx: int = 34):

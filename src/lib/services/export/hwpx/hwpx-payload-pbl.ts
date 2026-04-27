@@ -560,7 +560,7 @@ function buildDataEmpty(
     activities: [],
     problems: [],
     priority: { items: [], method: '' },
-    target: { name: '', code: '', scope: '', necessity: '', details: [] },
+    target: { name: '', code: '', scope: '', necessity: '', necessity_score: 3, details: [] },
     currentAiLevel: undefined,
     expectedAiLevel: undefined,
   } as unknown as PBLInterviewStrict;

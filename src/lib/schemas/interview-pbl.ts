@@ -681,8 +681,24 @@ export const PBLAnalysisSchema = z.object({
 export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 
 // -- Ⅲ-1 수행활동 행 ---------------------------------------------------------
-// 양식 Ⅲ-1 의 표는 "차수 × 4행(참석자) 병합" 구조. 본 스키마는 1 차수 = 1 객체로
-// 저장하며, 참석자 4역할은 `participants` 필드에 자유서술로 합친다.
+// 양식 Ⅲ-1 의 표는 "차수 × 4행(참석자) 병합" 구조 — col 4 가 4 역할 라벨
+// (컨설팅책임자(PM)·외부전문가·내부전문가·능력개발전담주치의), col 5 가
+// 각 역할의 성명. 따라서 참석자는 4 역할별 성명 4 필드 object 로 저장한다.
+//
+// PR #5 Phase F-4 (사용자 한컴 재검증 후 회귀 보고): 이전에는 participants 가
+// 단일 string 이라 4 행 모두 첫 행(PM) 에 몰려 출력 — 양식과 정합 X. 본
+// schema 변경으로 4 역할 분리 입력 가능하게 한다.
+//
+// 기존 DB JSONB 데이터 호환: z.preprocess 로 string 입력 시 PM 필드에 채워
+// object 로 정규화. 마이그레이션 SQL 불요.
+export const PBLActivityParticipantsSchema = z.object({
+  pm: z.string().default(''),
+  external_expert: z.string().default(''),
+  internal_expert: z.string().default(''),
+  jurisdiction_manager: z.string().default(''),
+});
+export type PBLActivityParticipants = z.infer<typeof PBLActivityParticipantsSchema>;
+
 export const PBLActivityItemSchema = z.object({
   round: z
     .number({ message: '차수는 숫자여야 합니다.' })
@@ -691,7 +707,31 @@ export const PBLActivityItemSchema = z.object({
   date: z.string().min(1, '수행 일자를 입력하세요.'),
   content: z.string().min(1, '수행 내용을 입력하세요.'),
   method: z.string().min(1, '수행 방법을 입력하세요.'),
-  participants: z.string().min(1, '참석자(성명)를 입력하세요.'),
+  participants: z.preprocess(
+    (val) => {
+      // 기존 string 형 데이터 호환 (PR #5 Phase F-4 마이그레이션):
+      //   "PM 홍길동, 외부 김전문, 내부 박관리" 같은 자유서술 → PM 필드에 통째로 채움.
+      // null / undefined → 빈 object.
+      if (typeof val === 'string') {
+        return {
+          pm: val,
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        };
+      }
+      if (val == null) {
+        return {
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        };
+      }
+      return val;
+    },
+    PBLActivityParticipantsSchema,
+  ),
 });
 export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
 
@@ -739,11 +779,16 @@ export type PBLTargetDetail = z.infer<typeof PBLTargetDetailSchema>;
 // -- Ⅲ-3 가·나·다 훈련대상 업무 통합 ----------------------------------------
 // 양식 Ⅲ-3 가(선정), 나(선정 사유), 다(세부내용) 를 단일 객체로 통합.
 // `code` 는 NCS 분류 자동 채움 경로 대비 optional.
+// `necessity_score` (1~5): 양식 Ⅲ-3-가 6×7 표의 col 1~5 점수 체크칸.
+//   - 사용자 한컴 검증 (PR #5) 에서 점수 칸 누락이 회귀로 보고됨.
+//   - 기존 데이터 호환성을 위해 default(3) — 기존 DB JSONB row 도 strict
+//     parse 가 자동으로 점수를 채움.
 export const PBLTargetSchema = z.object({
   name: z.string().min(1, '훈련대상 업무명을 입력하세요.'),
   code: z.string().optional(),
   scope: z.string().min(1, '업무 범위(부서·인원 등)를 입력하세요.'),
   necessity: z.string().min(1, 'AI기반 문제해결 필요성(선정 사유)을 입력하세요.'),
+  necessity_score: z.number().int().min(1).max(5).default(3),
   details: z.array(PBLTargetDetailSchema),
 });
 export type PBLTarget = z.infer<typeof PBLTargetSchema>;

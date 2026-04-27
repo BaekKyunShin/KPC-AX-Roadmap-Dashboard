@@ -2,6 +2,18 @@
   "company_name": "㈜AI산업자동화",
   "course_name": "AI 비전 자동검사 PBL 과정",
   "report_date": "2026.04.30.",
+  "cover": {
+    "pm": {"affiliation": "한국생산성본부", "name": "홍길동"},
+    "external_experts": [
+      {"affiliation": "AI연구소", "name": "김전문"}
+    ],
+    "internal_experts": [
+      {"affiliation": "㈜AI산업자동화", "name": "박관리"}
+    ],
+    "doctors": [
+      {"affiliation": "능력개발센터", "name": "이주치"}
+    ]
+  },
   "business_registration_no": "123-45-67890",
   "industry_code": "C26",
   "industry_main": "전자부품 제조",
@@ -17,7 +29,26 @@
   "training_target_label": "QA 인력 5명",
   "training_form": "사내 집체",
   "training_period": "2026.04.01 ~ 2026.05.31",
+  "training_job": "AI 비전 기반 QA 검사 자동화",
+  "training_goals": ["기술문제 해결", "공정 최적화"],
   "business_issues": "수작업 검사 비효율 + 신규 OJT 비용 증가",
+  "proper_training_hours": 40,
+  "training_place_types": ["사내"],
+  "training_place_location": "본사 3층 교육장",
+  "training_place_special_notes": "",
+  "internal_instructor_used": true,
+  "internal_instructor_name": "박관리",
+  "internal_instructor_position": "선임연구원",
+  "target_count": 10,
+  "target_career": "평균 5년 (QA·생산기술·기획)",
+  "target_level": "중급 (Python 기초·엑셀 데이터 분석 보유)",
+  "ai_tools_status": "가능",
+  "network_status": "양호",
+  "pc_count": 10,
+  "etc_equipment": "Webcam · GPU 워크스테이션",
+  "training_needs_analysis": "수동 검사 자동화 + 데이터 분석 역량 내재화 필요",
+  "expectation_as_is": "수동 검사 92% 정확도, 보고서 작성 평균 4시간",
+  "expectation_to_be": "AI 자동검사 96%+, 보고서 자동 생성 1시간",
   "company_issues": "Ⅱ-1-가 경영 이슈 본문 — 매출 정체 및 품질 비용 증가 (V2 정본)",
   "course_necessity": "Ⅱ-3-나 AI훈련과정 개발 필요성 본문 — 자동화로 인력 재배치 필요",
   "hrd_report_attachment": "https://x.example/hrd-pbl.pdf",
@@ -27,9 +58,33 @@
     {"department_name": "영업팀", "tasks": ["고객 응대"]}
   ],
   "activities": [
-    {"round": 1, "date": "26.04.10", "content": "킥오프 회의", "method": "대면", "participants": "PM 홍길동, 외부전문가 김전문, 내부전문가 박관리"},
-    {"round": 2, "date": "26.04.17", "content": "문제 정의 워크숍", "method": "대면", "participants": "PM 홍길동, 내부전문가 박관리"},
-    {"round": 3, "date": "26.04.24", "content": "초안 검토", "method": "비대면", "participants": "PM 홍길동"}
+    {
+      "round": 1, "date": "26.04.10", "content": "킥오프 회의", "method": "대면",
+      "participants": {
+        "pm": "홍길동",
+        "external_expert": "김전문",
+        "internal_expert": "박관리",
+        "jurisdiction_manager": "이주치"
+      }
+    },
+    {
+      "round": 2, "date": "26.04.17", "content": "문제 정의 워크숍", "method": "대면",
+      "participants": {
+        "pm": "홍길동",
+        "external_expert": "",
+        "internal_expert": "박관리",
+        "jurisdiction_manager": ""
+      }
+    },
+    {
+      "round": 3, "date": "26.04.24", "content": "초안 검토", "method": "비대면",
+      "participants": {
+        "pm": "홍길동",
+        "external_expert": "",
+        "internal_expert": "",
+        "jurisdiction_manager": ""
+      }
+    }
   ],
   "problems": [
     {"title": "검사 정확도 8% 미달", "description": "수동 검사 → 평균 92% 정확도", "impact": "월 1500만원 손실"},
@@ -49,6 +104,7 @@
     "code": "0204020107",
     "scope": "QA 인력 5명",
     "necessity": "정확도 96% 이상 + 리드타임 50% 단축",
+    "necessity_score": 5,
     "details": [
       {"title": "데이터 수집·전처리", "description": "센서 데이터 + 영상 라벨링 (PLC 자동 수집)"},
       {"title": "모델 운영·평가", "description": "객체 검출 모델 운영 + 정확도 KPI 검증"}
@@ -78,5 +134,83 @@
   "course_eval_criteria": "수행수준 3 이상 60% PASS",
   "course_eval_result": "예정",
   "course_eval_overall_comment": "",
-  "course_evaluation_methods": ["포트폴리오"]
+  "course_evaluation_methods": ["포트폴리오"],
+  "learning_group": {
+    "instructors": [
+      {
+        "type": "외부",
+        "role": "팀장",
+        "affiliation": "AI연구소",
+        "position": "수석연구원",
+        "name": "김전문"
+      },
+      {
+        "type": "내부",
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "선임연구원",
+        "name": "박관리"
+      }
+    ],
+    "trainees": [
+      {
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "사원",
+        "name": "이검사"
+      },
+      {
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "사원",
+        "name": "박품질"
+      }
+    ]
+  },
+  "training_contents": [
+    {
+      "unit_name": "CV 기초",
+      "detail": "1단원: 영상 처리 기본",
+      "training_hours": "4",
+      "instructor_hours": {"external": "4", "internal": "0"}
+    },
+    {
+      "unit_name": "객체 검출",
+      "detail": "2단원: YOLO 실습",
+      "training_hours": "8",
+      "instructor_hours": {"external": "6", "internal": "2"}
+    }
+  ],
+  "facilities": [
+    {
+      "seq": "1",
+      "category": "AI 인프라",
+      "name": "고사양 PC",
+      "spec": "RTX 4090 × 5",
+      "location": "본사 3층 교육장"
+    },
+    {
+      "seq": "2",
+      "category": "AI 도구",
+      "name": "YOLO 라이선스",
+      "spec": "Enterprise",
+      "location": "클라우드"
+    }
+  ],
+  "training_instructors": [
+    {
+      "name": "김전문",
+      "internal_external": "외부",
+      "career_years": "10",
+      "work_name": "비전 모델 강의",
+      "detailed_training_content": ["객체 검출 실습", "Transfer learning 실습"]
+    },
+    {
+      "name": "박관리",
+      "internal_external": "내부",
+      "career_years": "5",
+      "work_name": "OJT 멘토링",
+      "detailed_training_content": ["현장 적용 가이드"]
+    }
+  ]
 }

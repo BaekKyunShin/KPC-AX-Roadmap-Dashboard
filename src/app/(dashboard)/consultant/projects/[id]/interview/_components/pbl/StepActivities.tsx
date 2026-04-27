@@ -23,7 +23,12 @@ function emptyActivity(round: number): PBLActivityItem {
     date: '',
     content: '',
     method: '',
-    participants: '',
+    participants: {
+      pm: '',
+      external_expert: '',
+      internal_expert: '',
+      jurisdiction_manager: '',
+    },
   };
 }
 
@@ -141,16 +146,69 @@ export function StepActivities({
                   />
                 </td>
                 <td className="border border-border p-1 align-top">
-                  <LargeTextBox
-                    value={row.participants}
-                    onChange={(e) =>
-                      updateRow(idx, { participants: e.target.value })
-                    }
-                    placeholder="PM·외부전문가·기업내부전문가·능력개발전담주치의 성명"
-                    disabled={readOnly}
-                    aria-label={`${idx + 1}행 참석자`}
-                    minHeightClassName="min-h-[60px]"
-                  />
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      value={row.participants.pm}
+                      onChange={(e) =>
+                        updateRow(idx, {
+                          participants: { ...row.participants, pm: e.target.value },
+                        })
+                      }
+                      placeholder="컨설팅책임자(PM) 성명"
+                      disabled={readOnly}
+                      aria-label={`${idx + 1}행 PM 성명`}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <input
+                      type="text"
+                      value={row.participants.external_expert}
+                      onChange={(e) =>
+                        updateRow(idx, {
+                          participants: {
+                            ...row.participants,
+                            external_expert: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="외부전문가(직무·HRD) 성명"
+                      disabled={readOnly}
+                      aria-label={`${idx + 1}행 외부전문가 성명`}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <input
+                      type="text"
+                      value={row.participants.internal_expert}
+                      onChange={(e) =>
+                        updateRow(idx, {
+                          participants: {
+                            ...row.participants,
+                            internal_expert: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="기업내부전문가 성명"
+                      disabled={readOnly}
+                      aria-label={`${idx + 1}행 내부전문가 성명`}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <input
+                      type="text"
+                      value={row.participants.jurisdiction_manager}
+                      onChange={(e) =>
+                        updateRow(idx, {
+                          participants: {
+                            ...row.participants,
+                            jurisdiction_manager: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="능력개발전담주치의 성명"
+                      disabled={readOnly}
+                      aria-label={`${idx + 1}행 주치의 성명`}
+                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
                 </td>
                 <td className="border border-border p-1 text-center align-top">
                   <button

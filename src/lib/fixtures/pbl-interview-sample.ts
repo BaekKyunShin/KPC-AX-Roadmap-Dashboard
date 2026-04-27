@@ -108,21 +108,36 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
       date: '2026-04-20',
       content: 'HRD 분석 및 훈련 목표 합의 · 양식 2 Ⅱ-1·2 입력 검토',
       method: '대면 워크숍',
-      participants: 'PM 김컨설턴트, 내부HRD 홍길동, 품질파트장 김품질',
+      participants: {
+        pm: '김컨설턴트',
+        external_expert: '',
+        internal_expert: '홍길동',
+        jurisdiction_manager: '',
+      },
     },
     {
       round: 2,
       date: '2026-04-27',
       content: '훈련과정 설계 · 데이터 샘플(불량 이미지 12만 장) 준비 · 실습 환경 점검',
       method: '비대면 회의 + 문서 공유',
-      participants: 'PM 김컨설턴트, 외부전문가 박AI전문가, 내부HRD 홍길동',
+      participants: {
+        pm: '김컨설턴트',
+        external_expert: '박AI전문가',
+        internal_expert: '홍길동',
+        jurisdiction_manager: '',
+      },
     },
     {
       round: 3,
       date: '2026-05-10',
       content: '훈련 실시(1차) · 중간 점검 · 과제 피드백',
       method: '대면 실습',
-      participants: 'PM 김컨설턴트, 외부전문가 박AI전문가, 내부강사 김품질',
+      participants: {
+        pm: '김컨설턴트',
+        external_expert: '박AI전문가',
+        internal_expert: '김품질',
+        jurisdiction_manager: '이주치',
+      },
     },
   ],
 
@@ -170,6 +185,7 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
       '품질관리부(8명) + 생산기술부(4명) 총 12명. 완제품 외관 검사·공정 개선·월간 품질 보고서 작성 업무를 담당하는 주임~과장.',
     necessity:
       '불량 원인 분석·보고서 작성은 품질 이슈 해결의 병목. AI 도구로 데이터 정제·시각화·초안 자동화가 가능해 개선 효과가 가장 크고 12명 전원이 공통으로 수행하므로 훈련 후 현업 적용 전환율이 높음.',
+    necessity_score: 5,
     details: [
       {
         title: 'As-Is',

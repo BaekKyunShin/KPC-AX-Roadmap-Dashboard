@@ -18,6 +18,27 @@ NCS_DERIVATION_FALLBACK = "해당 없음 (NCS 활용 선택)"
 # HRD이음 보고서 미첨부 fallback
 HRD_REPORT_EMPTY_FALLBACK = "별도 작성 불요 (HRD이음 보고서 미첨부)"
 
+# HRD이음 보고서 URL 형 fallback — 본문에 raw URL 노출 회피.
+# attachment 가 http(s):// 로 시작하면 PDF 첨부 안내 문구로 치환한다.
+# 사용자 한컴 검증 (PR #5) 에서 https://x.example/hrd-report.pdf 같은 URL 이
+# 본문에 그대로 출력되어 회귀로 보고됨.
+HRD_REPORT_URL_FALLBACK = "(첨부 PDF: 별첨 페이지 참조)"
+
+
+def _hrd_attachment_text(value: object) -> str:
+    """HRD이음 보고서 attachment 값을 출력용 텍스트로 정규화.
+
+    - 빈 값 → HRD_REPORT_EMPTY_FALLBACK
+    - http(s):// URL → HRD_REPORT_URL_FALLBACK (raw URL 노출 회피)
+    - 그 외 (파일명·자유텍스트) → 그대로 출력
+    """
+    s = ("" if value is None else str(value)).strip()
+    if not s:
+        return HRD_REPORT_EMPTY_FALLBACK
+    if s.startswith("http://") or s.startswith("https://"):
+        return HRD_REPORT_URL_FALLBACK
+    return s
+
 
 # 단순 플레이스홀더 — 입력 key와 플레이스홀더 key가 1:1 대응
 _SIMPLE_KEYS = (
@@ -112,9 +133,10 @@ def build_placeholder_map(data: dict) -> dict[str, str]:
     for key in _SIMPLE_KEYS:
         result[f"{{{{{key}}}}}"] = _str_or_empty(data.get(key))
 
-    # HRD 보고서 fallback
-    hrd = _str_or_empty(data.get("hrd_report_attachment")).strip()
-    result["{{hrd_report_attachment}}"] = hrd if hrd else HRD_REPORT_EMPTY_FALLBACK
+    # HRD 보고서 fallback (빈/URL/파일명 3 분기)
+    result["{{hrd_report_attachment}}"] = _hrd_attachment_text(
+        data.get("hrd_report_attachment")
+    )
 
     # AI 역량 수준 체크박스
     level = (data.get("ai_competency_level") or "").upper()

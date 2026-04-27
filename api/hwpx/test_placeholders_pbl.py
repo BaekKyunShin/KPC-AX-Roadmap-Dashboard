@@ -375,6 +375,8 @@ class TestSSOTv2PblKeys:
         assert m["{{pbl_overview_business_issues}}"] == "수작업 비효율"
 
     def test_analysis_v2_keys(self):
+        from _placeholders_roadmap import HRD_REPORT_URL_FALLBACK
+
         data = {
             "company_issues": "경영 이슈 본문",
             "course_necessity": "AI 도입 필요성 본문",
@@ -383,7 +385,24 @@ class TestSSOTv2PblKeys:
         m = build_pbl_placeholder_map(data)
         assert m["{{pbl_analysis_company_issues}}"] == "경영 이슈 본문"
         assert m["{{pbl_analysis_course_necessity}}"] == "AI 도입 필요성 본문"
-        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "https://x/y.pdf"
+        # PR #5: URL 형은 fallback 안내문구로 치환
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+        # raw 출력 단일 키도 동일하게 fallback
+        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+
+    def test_pbl_hrd_report_filename_kept_as_is(self):
+        """파일명·자유텍스트 형 attachment 는 raw 그대로 출력."""
+        m = build_pbl_placeholder_map({"hrd_report_attachment": "hrd-pbl.pdf"})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "hrd-pbl.pdf"
+        assert m["{{hrd_report_attachment}}"] == "hrd-pbl.pdf"
+
+    def test_pbl_hrd_report_empty_uses_empty_fallback(self):
+        """빈 attachment 는 미첨부 안내 fallback."""
+        from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
+
+        m = build_pbl_placeholder_map({})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
+        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
 
     def test_current_ai_level_basic_check(self):
         data = {"current_ai_level": "BASIC"}
@@ -539,7 +558,8 @@ class TestSSOTv2PblTableRows:
         assert rows[1]["title"] == "분석"
 
     def test_activities_v2(self):
-        # V2 participants 가 단일 string (V1 은 dict)
+        # V2 participants 는 4 person dict (PR #5 Phase F-4 schema 변경).
+        # build_pbl_table_rows 가 dict / string / null 입력을 모두 정규화한다.
         data = {
             "activities": [
                 {
@@ -547,13 +567,19 @@ class TestSSOTv2PblTableRows:
                     "date": "26.04.10",
                     "content": "킥오프",
                     "method": "대면",
-                    "participants": "PM 홍길동, 외부전문가 김전문",
+                    "participants": {
+                        "pm": "홍길동",
+                        "external_expert": "김전문",
+                        "internal_expert": "박관리",
+                        "jurisdiction_manager": "이주치",
+                    },
                 },
                 {
                     "round": 2,
                     "date": "26.04.17",
                     "content": "문제 정의",
                     "method": "대면",
+                    # 기존 string 데이터 호환 — PM 에 통째로 채움
                     "participants": "PM 홍길동",
                 },
             ]
@@ -561,8 +587,38 @@ class TestSSOTv2PblTableRows:
         rows = build_pbl_table_rows(data, "activities")
         assert len(rows) == 2
         assert rows[0]["round"] == "1차"
-        assert rows[0]["participants"] == "PM 홍길동, 외부전문가 김전문"
+        # dict 입력 — 4 person 모두 정상 노출
+        assert rows[0]["participants"]["pm"] == "홍길동"
+        assert rows[0]["participants"]["external_expert"] == "김전문"
+        assert rows[0]["participants"]["internal_expert"] == "박관리"
+        assert rows[0]["participants"]["jurisdiction_manager"] == "이주치"
+        # string 입력 → PM 으로 정규화
         assert rows[1]["round"] == "2차"
+        assert rows[1]["participants"]["pm"] == "PM 홍길동"
+        assert rows[1]["participants"]["external_expert"] == ""
+        assert rows[1]["participants"]["internal_expert"] == ""
+        assert rows[1]["participants"]["jurisdiction_manager"] == ""
+
+    def test_activities_v2_null_participants_normalized(self):
+        # PR #5 Phase F-4: participants 가 null/missing 인 경우 빈 dict 로 정규화.
+        data = {
+            "activities": [
+                {
+                    "round": 1,
+                    "date": "26.04.10",
+                    "content": "킥오프",
+                    "method": "대면",
+                    "participants": None,
+                }
+            ]
+        }
+        rows = build_pbl_table_rows(data, "activities")
+        assert rows[0]["participants"] == {
+            "pm": "",
+            "external_expert": "",
+            "internal_expert": "",
+            "jurisdiction_manager": "",
+        }
 
     def test_organization_v2_with_main_work(self):
         # V2 organization 은 V1 의 organization 행 구조와 호환되는 형태로 D-5 가 출력

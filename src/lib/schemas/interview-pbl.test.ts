@@ -644,7 +644,12 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
         date: '2026-03-15',
         content: '현장 인터뷰 및 문제 도출',
         method: '대면 워크숍',
-        participants: 'PM·외부전문가·내부전문가·주치의',
+        participants: {
+          pm: 'PM 홍길동',
+          external_expert: '외부전문가 김전문',
+          internal_expert: '내부전문가 박관리',
+          jurisdiction_manager: '능력개발전담주치의 이주치',
+        },
       },
     ],
     problems: [
@@ -788,6 +793,110 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
     ).toBe(true);
   });
 
+  it('target.necessity_score 는 default(3) 으로 자동 채워진다 (PR #5)', () => {
+    // necessity_score 없는 입력
+    const { necessity_score: _ns, ...targetNoScore } = validTasks.target as {
+      necessity_score?: number;
+      [k: string]: unknown;
+    };
+    const result = PBLTasksSchema.safeParse({ ...validTasks, target: targetNoScore });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.target.necessity_score).toBe(3);
+    }
+  });
+
+  it('target.necessity_score 가 1~5 범위 외이면 실패', () => {
+    for (const invalid of [0, 6, -1, 1.5]) {
+      expect(
+        PBLTasksSchema.safeParse({
+          ...validTasks,
+          target: { ...validTasks.target, necessity_score: invalid },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('target.necessity_score 가 1~5 정수이면 통과 + 값 보존', () => {
+    for (const valid of [1, 2, 3, 4, 5]) {
+      const result = PBLTasksSchema.safeParse({
+        ...validTasks,
+        target: { ...validTasks.target, necessity_score: valid },
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.target.necessity_score).toBe(valid);
+      }
+    }
+  });
+
+  it('activities[].participants string 입력 시 PM 필드에 자동 채움 (PR #5 Phase F-4 호환)', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      activities: [
+        {
+          ...validTasks.activities[0],
+          // 기존 V2 데이터 형 (string) — preprocess 가 PM 으로 자동 변환
+          participants: 'PM 홍길동, 외부 김전문',
+        } as unknown as (typeof validTasks)['activities'][0],
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.activities[0].participants).toEqual({
+        pm: 'PM 홍길동, 외부 김전문',
+        external_expert: '',
+        internal_expert: '',
+        jurisdiction_manager: '',
+      });
+    }
+  });
+
+  it('activities[].participants null/undefined 입력 시 빈 object 로 정규화', () => {
+    for (const nullish of [null, undefined]) {
+      const result = PBLTasksSchema.safeParse({
+        ...validTasks,
+        activities: [
+          {
+            ...validTasks.activities[0],
+            participants: nullish,
+          } as unknown as (typeof validTasks)['activities'][0],
+        ],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.activities[0].participants).toEqual({
+          pm: '',
+          external_expert: '',
+          internal_expert: '',
+          jurisdiction_manager: '',
+        });
+      }
+    }
+  });
+
+  it('activities[].participants object 입력 시 그대로 통과', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      activities: [
+        {
+          ...validTasks.activities[0],
+          participants: {
+            pm: '홍길동',
+            external_expert: '김전문',
+            internal_expert: '박관리',
+            jurisdiction_manager: '이주치',
+          },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.activities[0].participants.pm).toBe('홍길동');
+      expect(result.data.activities[0].participants.jurisdiction_manager).toBe('이주치');
+    }
+  });
+
   it('problems[] 최소 1개 필요', () => {
     expect(
       PBLTasksSchema.safeParse({ ...validTasks, problems: [] }).success,
@@ -826,7 +935,12 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
         date: '2026-03-15',
         content: '인터뷰',
         method: '대면',
-        participants: 'PM · 전문가 · 주치의',
+        participants: {
+          pm: 'PM 홍길동',
+          external_expert: '전문가 김전문',
+          internal_expert: '내부 박관리',
+          jurisdiction_manager: '주치의 이주치',
+        },
       },
     ],
     problems: [{ title: '문제', description: '설명', impact: '영향' }],
