@@ -544,18 +544,49 @@ class TestSSOTv2PblTableRows:
         assert rows[0]["necessity"] == "수동 측정 비효율 개선"
 
     def test_target_details_v2(self):
-        # V2 details[] (title/description 만)
+        # V2 PR #7: details[] 5 필드 (title/as_is/to_be/required_knowledge/required_skill)
         data = {
             "target_details": [
-                {"title": "데이터 수집", "description": "PLC 자동 수집"},
-                {"title": "분석", "description": "ML 모델 적용"},
+                {
+                    "title": "데이터 수집",
+                    "as_is": "수동 측정",
+                    "to_be": "PLC 자동 수집",
+                    "required_knowledge": "센서 데이터 구조",
+                    "required_skill": "Python pandas",
+                },
+                {
+                    "title": "분석",
+                    "as_is": "Excel 수기 집계",
+                    "to_be": "ML 모델 자동 분류",
+                    "required_knowledge": "통계·ML 기초",
+                    "required_skill": "scikit-learn 실습",
+                },
             ]
         }
         rows = build_pbl_table_rows(data, "target_details_v2")
         assert len(rows) == 2
         assert rows[0]["title"] == "데이터 수집"
-        assert rows[0]["description"] == "PLC 자동 수집"
+        assert rows[0]["as_is"] == "수동 측정"
+        assert rows[0]["to_be"] == "PLC 자동 수집"
+        assert rows[0]["required_knowledge"] == "센서 데이터 구조"
+        assert rows[0]["required_skill"] == "Python pandas"
         assert rows[1]["title"] == "분석"
+        assert rows[1]["as_is"] == "Excel 수기 집계"
+
+    def test_target_details_v2_v1_fallback(self):
+        # V1 호환: description 만 있는 기존 row → as_is 로 자동 이전, 나머지 빈 문자열
+        data = {
+            "target_details": [
+                {"title": "데이터 수집", "description": "PLC 자동 수집"},
+            ]
+        }
+        rows = build_pbl_table_rows(data, "target_details_v2")
+        assert len(rows) == 1
+        assert rows[0]["title"] == "데이터 수집"
+        assert rows[0]["as_is"] == "PLC 자동 수집"  # description → as_is fallback
+        assert rows[0]["to_be"] == ""
+        assert rows[0]["required_knowledge"] == ""
+        assert rows[0]["required_skill"] == ""
 
     def test_activities_v2(self):
         # V2 participants 는 4 person dict (PR #5 Phase F-4 schema 변경).

@@ -1357,13 +1357,18 @@ def _fill_pbl_target_tasks(tables, build_pbl_table_rows, data, idx: int = 19):
 
 
 def _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx: int = 22):
-    """Ⅲ-3-다 훈련대상 업무 세부내용 — 4×5 (V2 details[] title/description).
+    """Ⅲ-3-다 훈련대상 업무 세부내용 — 4×5 (V2 PR #7: 5 컬럼 1:1 정합).
 
     양식 4x5 — row 0~1 헤더, row 2~3 데이터 (max_items=2).
-    V2 details[] = [{title, description}] (V1 의 as_is/to_be/required_* 통합).
-      → col 0 = title, col 1~4 = description (단일 텍스트로 통합).
+    V2 details[] 5 필드: {title, as_is, to_be, required_knowledge, required_skill}.
+      → col 0 = title (업무명)
+      → col 1 = as_is (현재 업무방식)
+      → col 2 = to_be (AI활용방식)
+      → col 3 = required_knowledge (요구지식)
+      → col 4 = required_skill (기술)
 
     V1 호환: target_task_details (V1 형식) 가 있으면 그대로 사용.
+    PR #5 의 단일 description 통합 회귀를 보강.
     """
     if idx >= len(tables):
         return
@@ -1382,7 +1387,10 @@ def _fill_pbl_target_task_details(tables, build_pbl_table_rows, data, idx: int =
         target_row = 2 + i
         if use_v2:
             _set_cell_text(tbl, target_row, 0, row.get("title", ""))
-            _set_cell_text(tbl, target_row, 1, row.get("description", ""))
+            _set_cell_text(tbl, target_row, 1, row.get("as_is", ""))
+            _set_cell_text(tbl, target_row, 2, row.get("to_be", ""))
+            _set_cell_text(tbl, target_row, 3, row.get("required_knowledge", ""))
+            _set_cell_text(tbl, target_row, 4, row.get("required_skill", ""))
         else:
             _set_cell_text(tbl, target_row, 0, row.get("task_name", ""))
             _set_cell_text(tbl, target_row, 1, row.get("as_is") or "")
