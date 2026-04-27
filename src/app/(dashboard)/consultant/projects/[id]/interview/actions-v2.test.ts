@@ -196,6 +196,7 @@ function validPBLV2(): PBLInterviewStrict {
       name: '품질검사 자동화',
       scope: '생산팀 15명',
       necessity: '검사 편차 해결',
+      necessity_score: 4,
       details: [{ title: 'AS-IS', description: '육안 검사' }],
     },
     currentAiLevel: { level: 'BASIC', note: 'ChatGPT 일부 활용' },

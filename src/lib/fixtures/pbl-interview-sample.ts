@@ -170,6 +170,7 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
       '품질관리부(8명) + 생산기술부(4명) 총 12명. 완제품 외관 검사·공정 개선·월간 품질 보고서 작성 업무를 담당하는 주임~과장.',
     necessity:
       '불량 원인 분석·보고서 작성은 품질 이슈 해결의 병목. AI 도구로 데이터 정제·시각화·초안 자동화가 가능해 개선 효과가 가장 크고 12명 전원이 공통으로 수행하므로 훈련 후 현업 적용 전환율이 높음.',
+    necessity_score: 5,
     details: [
       {
         title: 'As-Is',

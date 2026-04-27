@@ -37,6 +37,7 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
     code: '1503020107',
     scope: '품질관리팀 10명',
     necessity: '검사 누락 즉시 탐지 필요',
+    necessity_score: 5,
     details: [
       { title: '카메라 기반 이상 감지', description: '실시간 탐지 모델' },
     ],

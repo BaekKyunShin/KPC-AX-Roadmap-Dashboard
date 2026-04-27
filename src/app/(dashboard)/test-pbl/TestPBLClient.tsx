@@ -110,7 +110,7 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
     activities: [],
     problems: [],
     priority: { items: [], method: '' },
-    target: { name: '', code: '', scope: '', necessity: '', details: [] },
+    target: { name: '', code: '', scope: '', necessity: '', necessity_score: 3, details: [] },
     currentAiLevel: { level: 'BASIC', note: '' },
     expectedAiLevel: { level: 'USER', note: '' },
   };
@@ -426,6 +426,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             code: '',
             scope: '',
             necessity: '',
+            necessity_score: 3,
             details: [],
           },
           currentAiLevel: data.currentAiLevel ?? { level: 'BASIC', note: '' },

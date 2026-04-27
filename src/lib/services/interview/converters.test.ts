@@ -485,6 +485,7 @@ function validPBLCamelCase(): PBLInterviewStrict {
       code: '200107',
       scope: '생산팀 15명',
       necessity: '검사 편차 해결',
+      necessity_score: 5,
       details: [{ title: 'AS-IS', description: '육안 검사' }],
     },
     currentAiLevel: { level: 'BASIC', note: '일부 임직원 ChatGPT 활용' },
