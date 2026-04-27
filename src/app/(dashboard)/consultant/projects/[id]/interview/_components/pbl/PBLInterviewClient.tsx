@@ -374,6 +374,7 @@ export function PBLInterviewClient({
             code: '',
             scope: '',
             necessity: '',
+            necessity_score: 3,
             details: [],
           },
           currentAiLevel: data.currentAiLevel ?? {

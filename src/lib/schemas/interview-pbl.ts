@@ -739,11 +739,16 @@ export type PBLTargetDetail = z.infer<typeof PBLTargetDetailSchema>;
 // -- Ⅲ-3 가·나·다 훈련대상 업무 통합 ----------------------------------------
 // 양식 Ⅲ-3 가(선정), 나(선정 사유), 다(세부내용) 를 단일 객체로 통합.
 // `code` 는 NCS 분류 자동 채움 경로 대비 optional.
+// `necessity_score` (1~5): 양식 Ⅲ-3-가 6×7 표의 col 1~5 점수 체크칸.
+//   - 사용자 한컴 검증 (PR #5) 에서 점수 칸 누락이 회귀로 보고됨.
+//   - 기존 데이터 호환성을 위해 default(3) — 기존 DB JSONB row 도 strict
+//     parse 가 자동으로 점수를 채움.
 export const PBLTargetSchema = z.object({
   name: z.string().min(1, '훈련대상 업무명을 입력하세요.'),
   code: z.string().optional(),
   scope: z.string().min(1, '업무 범위(부서·인원 등)를 입력하세요.'),
   necessity: z.string().min(1, 'AI기반 문제해결 필요성(선정 사유)을 입력하세요.'),
+  necessity_score: z.number().int().min(1).max(5).default(3),
   details: z.array(PBLTargetDetailSchema),
 });
 export type PBLTarget = z.infer<typeof PBLTargetSchema>;

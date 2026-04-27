@@ -153,6 +153,46 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_target_necessity_score_renders_in_priority_column(self):
+        """P-11 PR #5: V2 target.necessity_score (1~5) 가 양식 idx 19 의
+        col 1~5 점수 체크칸에 √ 표시 + col 6 = ☑ 선정.
+        """
+        from hwpx import HwpxDocument
+        from generate import _generate_pbl
+        import tempfile
+
+        data = _load_fixture("pbl-full.json")
+        score = data["target"]["necessity_score"]
+        assert 1 <= score <= 5, "fixture necessity_score 가 1~5 범위 아님"
+        out = _generate_pbl(data)
+        with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=True) as tmp:
+            tmp.write(out)
+            tmp.flush()
+            doc = HwpxDocument.open(tmp.name)
+            idx = 0
+            target = None
+            for para in doc.paragraphs:
+                for tbl in para.tables:
+                    if idx == 19:
+                        target = tbl
+                        break
+                    idx += 1
+                if target:
+                    break
+            assert target is not None, "idx 19 표 미존재"
+            # row 1 col `score` = √
+            cell = target.cell(1, score)
+            score_text = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+            assert "√" in score_text, (
+                f"necessity_score={score} 위치 (1,{score}) 에 √ 미표시 — text={score_text!r}"
+            )
+            # row 1 col 6 = ☑
+            selected_cell = target.cell(1, 6)
+            selected_text = "".join(
+                r.text or "" for p in selected_cell.paragraphs for r in p.runs
+            )
+            assert "☑" in selected_text, "선정 ☑ 미표시"
+
     def test_pbl_target_necessity_no_orphan_bullet(self):
         """P-12 PR #5: Ⅲ-3-나 AI기반 문제해결 필요성 (idx 20, 1×1) 의 1 줄 입력에
         머리기호가 1 개만 표시되어야 한다. 빈 paragraph 의 paraPrIDRef 를 기본

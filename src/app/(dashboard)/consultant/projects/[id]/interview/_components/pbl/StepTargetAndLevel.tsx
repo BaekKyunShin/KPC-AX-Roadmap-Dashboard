@@ -34,6 +34,7 @@ function emptyTarget(): PBLTarget {
     code: '',
     scope: '',
     necessity: '',
+    necessity_score: 3,
     details: [emptyTargetDetail()],
   };
 }
@@ -171,6 +172,37 @@ export function StepTargetAndLevel({
             aria-label="훈련대상 업무 선정 사유"
             minHeightClassName="min-h-[80px]"
           />
+        </div>
+
+        <div className="space-y-1">
+          <label
+            htmlFor="pbl-target-necessity-score"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            AI훈련과정 개발 필요성 점수 (1: 낮음 ~ 5: 높음)
+          </label>
+          <input
+            id="pbl-target-necessity-score"
+            type="number"
+            min={1}
+            max={5}
+            value={target.necessity_score ?? 3}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              updateTarget({
+                necessity_score:
+                  Number.isFinite(n) && n >= 1 && n <= 5
+                    ? Math.trunc(n)
+                    : (target.necessity_score ?? 3),
+              });
+            }}
+            disabled={readOnly}
+            aria-label="훈련대상 업무 AI훈련과정 개발 필요성 점수"
+            className="w-24 rounded-md border border-input bg-background px-3 py-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            양식 Ⅲ-3-가 의 AI훈련과정 개발 필요성 1~5 점수 칸에 √ 로 표시됩니다.
+          </p>
         </div>
 
         <div className="space-y-2">

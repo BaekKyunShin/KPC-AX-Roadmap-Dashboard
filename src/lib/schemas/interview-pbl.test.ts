@@ -788,6 +788,43 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
     ).toBe(true);
   });
 
+  it('target.necessity_score 는 default(3) 으로 자동 채워진다 (PR #5)', () => {
+    // necessity_score 없는 입력
+    const { necessity_score: _ns, ...targetNoScore } = validTasks.target as {
+      necessity_score?: number;
+      [k: string]: unknown;
+    };
+    const result = PBLTasksSchema.safeParse({ ...validTasks, target: targetNoScore });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.target.necessity_score).toBe(3);
+    }
+  });
+
+  it('target.necessity_score 가 1~5 범위 외이면 실패', () => {
+    for (const invalid of [0, 6, -1, 1.5]) {
+      expect(
+        PBLTasksSchema.safeParse({
+          ...validTasks,
+          target: { ...validTasks.target, necessity_score: invalid },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('target.necessity_score 가 1~5 정수이면 통과 + 값 보존', () => {
+    for (const valid of [1, 2, 3, 4, 5]) {
+      const result = PBLTasksSchema.safeParse({
+        ...validTasks,
+        target: { ...validTasks.target, necessity_score: valid },
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.target.necessity_score).toBe(valid);
+      }
+    }
+  });
+
   it('problems[] 최소 1개 필요', () => {
     expect(
       PBLTasksSchema.safeParse({ ...validTasks, problems: [] }).success,

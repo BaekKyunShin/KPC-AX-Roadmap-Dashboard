@@ -582,16 +582,22 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         return rows
 
     if key == "target_single":
-        # V2 P-11: 단일 target {name, code?, scope, necessity, details[]} → row 1 한 항목
+        # V2 P-11: 단일 target {name, code?, scope, necessity, necessity_score?, details[]}
+        # → row 1 한 항목. necessity_score (1~5) 는 양식 col 1~5 점수 체크칸.
         target = data.get("target") or {}
         if not target:
             return []
+        try:
+            score = int(target.get("necessity_score") or 0)
+        except (TypeError, ValueError):
+            score = 0
         return [
             {
                 "name": _str_or_empty(target.get("name")),
                 "code": _str_or_empty(target.get("code")),
                 "scope": _str_or_empty(target.get("scope")),
                 "necessity": _str_or_empty(target.get("necessity")),
+                "necessity_score": score,
             }
         ]
 

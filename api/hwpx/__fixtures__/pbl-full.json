@@ -63,6 +63,7 @@
     "code": "0204020107",
     "scope": "QA 인력 5명",
     "necessity": "정확도 96% 이상 + 리드타임 50% 단축",
+    "necessity_score": 5,
     "details": [
       {"title": "데이터 수집·전처리", "description": "센서 데이터 + 영상 라벨링 (PLC 자동 수집)"},
       {"title": "모델 운영·평가", "description": "객체 검출 모델 운영 + 정확도 KPI 검증"}
