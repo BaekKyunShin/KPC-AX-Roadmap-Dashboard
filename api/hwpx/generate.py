@@ -158,7 +158,11 @@ def _generate_roadmap(data: dict) -> bytes:
     if company_name:
         _replace_in_all_runs(doc, "(기업명)", f"({company_name})")
     if report_date:
+        # 표지 paragraph 8 일자 placeholder 본문 치환.
+        # 사용자 정본 변천: PR #4 "202x. 00. 00." → PR #5 Phase F "2026. 00. 00."
+        # 두 패턴 모두 처리 (정본 재수정 호환).
         _replace_in_all_runs(doc, "202x. 00. 00.", report_date)
+        _replace_in_all_runs(doc, "2026. 00. 00.", report_date)
 
     # --- 1) 본문 + 표 셀 내부 플레이스홀더 치환 ---
     # replace_text_in_runs는 표 셀 내부를 탐색하지 않으므로 zip_replace_all.py의

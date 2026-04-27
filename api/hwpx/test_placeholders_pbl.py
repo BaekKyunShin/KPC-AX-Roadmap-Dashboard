@@ -558,7 +558,8 @@ class TestSSOTv2PblTableRows:
         assert rows[1]["title"] == "분석"
 
     def test_activities_v2(self):
-        # V2 participants 가 단일 string (V1 은 dict)
+        # V2 participants 는 4 person dict (PR #5 Phase F-4 schema 변경).
+        # build_pbl_table_rows 가 dict / string / null 입력을 모두 정규화한다.
         data = {
             "activities": [
                 {
@@ -566,13 +567,19 @@ class TestSSOTv2PblTableRows:
                     "date": "26.04.10",
                     "content": "킥오프",
                     "method": "대면",
-                    "participants": "PM 홍길동, 외부전문가 김전문",
+                    "participants": {
+                        "pm": "홍길동",
+                        "external_expert": "김전문",
+                        "internal_expert": "박관리",
+                        "jurisdiction_manager": "이주치",
+                    },
                 },
                 {
                     "round": 2,
                     "date": "26.04.17",
                     "content": "문제 정의",
                     "method": "대면",
+                    # 기존 string 데이터 호환 — PM 에 통째로 채움
                     "participants": "PM 홍길동",
                 },
             ]
@@ -580,8 +587,38 @@ class TestSSOTv2PblTableRows:
         rows = build_pbl_table_rows(data, "activities")
         assert len(rows) == 2
         assert rows[0]["round"] == "1차"
-        assert rows[0]["participants"] == "PM 홍길동, 외부전문가 김전문"
+        # dict 입력 — 4 person 모두 정상 노출
+        assert rows[0]["participants"]["pm"] == "홍길동"
+        assert rows[0]["participants"]["external_expert"] == "김전문"
+        assert rows[0]["participants"]["internal_expert"] == "박관리"
+        assert rows[0]["participants"]["jurisdiction_manager"] == "이주치"
+        # string 입력 → PM 으로 정규화
         assert rows[1]["round"] == "2차"
+        assert rows[1]["participants"]["pm"] == "PM 홍길동"
+        assert rows[1]["participants"]["external_expert"] == ""
+        assert rows[1]["participants"]["internal_expert"] == ""
+        assert rows[1]["participants"]["jurisdiction_manager"] == ""
+
+    def test_activities_v2_null_participants_normalized(self):
+        # PR #5 Phase F-4: participants 가 null/missing 인 경우 빈 dict 로 정규화.
+        data = {
+            "activities": [
+                {
+                    "round": 1,
+                    "date": "26.04.10",
+                    "content": "킥오프",
+                    "method": "대면",
+                    "participants": None,
+                }
+            ]
+        }
+        rows = build_pbl_table_rows(data, "activities")
+        assert rows[0]["participants"] == {
+            "pm": "",
+            "external_expert": "",
+            "internal_expert": "",
+            "jurisdiction_manager": "",
+        }
 
     def test_organization_v2_with_main_work(self):
         # V2 organization 은 V1 의 organization 행 구조와 호환되는 형태로 D-5 가 출력
