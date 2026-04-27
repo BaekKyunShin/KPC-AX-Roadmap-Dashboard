@@ -681,6 +681,9 @@ def _generate_pbl(data: dict) -> bytes:
     if report_date:
         _replace_in_all_runs(doc, "202 .   .  ", report_date)
 
+    # --- 0.5) 표지 nested 8×5 표 (PM/외부/내부/주치의 소속·성명) ---
+    _fill_pbl_cover_nested(doc, data)
+
     # --- 1) 본문·표 내부 {{key}} 플레이스홀더 일괄 치환 ---
     placeholders = build_pbl_placeholder_map(data)
     for key, value in placeholders.items():
@@ -801,6 +804,80 @@ def _fill_pbl_simple_content(tables, idx: int, text):
     tbl = tables[idx]
     if tbl.row_count >= 1 and tbl.column_count >= 1:
         _set_cell_text(tbl, 0, 0, text or "")
+
+
+def _fill_pbl_cover_nested(doc, data):
+    """PBL 표지 nested 8×5 표 (PM/외부전문가/내부전문가/주치의) 채움.
+
+    paragraph 0 의 outer 2×2 표의 cell(1,0) 과 cell(1,1) 안에 각각 nested 8×5
+    표 (구분/소속/성명/-/기업체확인) 가 있다 (좌·우 표지 양면). 동일 cover
+    데이터를 양쪽에 채운다.
+
+    nested 8×5 row 매핑 (실제 OXML 구조 — col 1·2 수직 병합):
+      row 0 = 헤더
+      row 1 = 컨설팅책임자(PM)                     [단일]
+      row 2~3 = 외부전문가(직무,HRD)               [col 1·2 수직 병합 — 1 슬롯]
+      row 4~5 = 기업 내부전문가                    [col 1·2 수직 병합 — 1 슬롯]
+      row 6~7 = 능력개발전담주치의                 [col 1·2 수직 병합 — 1 슬롯]
+    각 row 의 col 1 = 소속, col 2 = 성명.
+
+    NOTE: 양식 row 2~3 등은 col 0 만 분리되어 있고 col 1·2 가 수직 병합되어 있어
+    데이터는 row 2 (대표 row) 에만 1 회 채운다. row 3 에 별도 데이터를 채우면
+    같은 병합 cell 이 덮어쓰여진다.
+
+    cover 객체 (data["cover"]):
+      {pm: {affiliation, name},
+       external_experts: [{affiliation, name}],   # 양식상 1 슬롯
+       internal_experts: [{affiliation, name}],   # 1 슬롯
+       doctors: [{affiliation, name}]}            # 1 슬롯
+    """
+    cover = data.get("cover") or {}
+    pm = cover.get("pm") or {}
+    externals = cover.get("external_experts") or []
+    internals = cover.get("internal_experts") or []
+    doctors = cover.get("doctors") or []
+
+    role_rows = [
+        (1, pm),
+        (2, externals[0] if len(externals) > 0 else {}),
+        (4, internals[0] if len(internals) > 0 else {}),
+        (6, doctors[0] if len(doctors) > 0 else {}),
+    ]
+
+    if not doc.paragraphs:
+        return
+    para0 = doc.paragraphs[0]
+    if not para0.tables:
+        return
+    outer = para0.tables[0]
+    if outer.row_count < 2:
+        return
+
+    # outer 2×2 의 cell(1,0) 와 cell(1,1) 각각에 nested 8×5 (좌·우 표지)
+    for outer_col in range(min(2, outer.column_count)):
+        try:
+            outer_cell = outer.cell(1, outer_col)
+        except Exception:
+            continue
+        for inner_para in outer_cell.paragraphs:
+            for nested in inner_para.tables:
+                if nested.row_count == 8 and nested.column_count == 5:
+                    for row_idx, person in role_rows:
+                        if row_idx >= nested.row_count:
+                            break
+                        try:
+                            _set_cell_text(
+                                nested, row_idx, 1,
+                                str(person.get("affiliation") or "") if person else "",
+                            )
+                            _set_cell_text(
+                                nested, row_idx, 2,
+                                str(person.get("name") or "") if person else "",
+                            )
+                        except Exception:
+                            # 셀 좌표 이상 시 silent skip — 한컴오피스가 OXML 구조
+                            # 이상으로 거부하지 않도록 fail-soft.
+                            pass
 
 
 def _fill_pbl_overview(tables, data, idx: int = 1):

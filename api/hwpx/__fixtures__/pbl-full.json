@@ -2,6 +2,18 @@
   "company_name": "㈜AI산업자동화",
   "course_name": "AI 비전 자동검사 PBL 과정",
   "report_date": "2026.04.30.",
+  "cover": {
+    "pm": {"affiliation": "한국생산성본부", "name": "홍길동"},
+    "external_experts": [
+      {"affiliation": "AI연구소", "name": "김전문"}
+    ],
+    "internal_experts": [
+      {"affiliation": "㈜AI산업자동화", "name": "박관리"}
+    ],
+    "doctors": [
+      {"affiliation": "능력개발센터", "name": "이주치"}
+    ]
+  },
   "business_registration_no": "123-45-67890",
   "industry_code": "C26",
   "industry_main": "전자부품 제조",

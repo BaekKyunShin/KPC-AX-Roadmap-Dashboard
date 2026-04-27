@@ -139,6 +139,32 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_cover_renders_pm_external_internal_doctor(self):
+        """P-01: PBL 표지 nested 8×5 에 PM/외부전문가/내부전문가/주치의 소속·성명 노출.
+
+        신규 정본 paragraph 0 의 shallow_table[0] (2x2) 의 cell(1,0) 과 cell(1,1) 안에
+        nested 8x5 표 (구분/소속/성명/-/기업체확인) 가 두 번 들어 있다.
+        cover 객체의 PM(1) + external(2) + internal(2) + doctor(2) 가 row 1~7 에 채워진다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        cover = data.get("cover") or {}
+        pm = (cover.get("pm") or {})
+        ext = ((cover.get("external_experts") or [{}])[0])
+        intl = ((cover.get("internal_experts") or [{}])[0])
+        doc = ((cover.get("doctors") or [{}])[0])
+        assert pm.get("affiliation") and pm["affiliation"] in text, "PM 소속 미노출"
+        assert pm.get("name") and pm["name"] in text, "PM 성명 미노출"
+        assert ext.get("affiliation") and ext["affiliation"] in text, "외부전문가 소속 미노출"
+        assert ext.get("name") and ext["name"] in text, "외부전문가 성명 미노출"
+        assert intl.get("affiliation") and intl["affiliation"] in text, "내부전문가 소속 미노출"
+        assert intl.get("name") and intl["name"] in text, "내부전문가 성명 미노출"
+        assert doc.get("affiliation") and doc["affiliation"] in text, "주치의 소속 미노출"
+        assert doc.get("name") and doc["name"] in text, "주치의 성명 미노출"
+
     def test_pbl_full_contains_v2_data_in_text(self):
         """full fixture 의 V2 신규 데이터가 출력에 등장."""
         from hwpx import HwpxDocument
@@ -256,7 +282,12 @@ class TestNoPlaceholderResidue:
 
 
 def _extract_all_text(out: bytes) -> str:
-    """HWPX bytes → 본문·표 셀 텍스트를 한 문자열로 합쳐 반환."""
+    """HWPX bytes → 본문·표 셀 (nested 표 포함) 텍스트를 한 문자열로 합쳐 반환.
+
+    표지 nested 8×5 표 (PM/외부전문가/내부전문가/주치의) 같은 nested 구조도
+    재귀로 순회하여 텍스트에 포함시킨다. PBL 표지 cell 내부 nested 표를
+    검증할 수 있도록 PR #5 에서 보강.
+    """
     from hwpx import HwpxDocument
     import tempfile
 
@@ -266,18 +297,28 @@ def _extract_all_text(out: bytes) -> str:
     try:
         doc = HwpxDocument.open(tmp_path)
         chunks: list[str] = []
+
+        def _walk_table(tbl):
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    for cp in cell.paragraphs:
+                        for r in cp.runs:
+                            if r.text:
+                                chunks.append(r.text)
+                        # nested 표 재귀
+                        for ntbl in cp.tables:
+                            _walk_table(ntbl)
+
         for para in doc.paragraphs:
             for run in para.runs:
                 if run.text:
                     chunks.append(run.text)
             for tbl in para.tables:
-                for ri in range(tbl.row_count):
-                    for ci in range(tbl.column_count):
-                        cell = tbl.cell(ri, ci)
-                        for cp in cell.paragraphs:
-                            for r in cp.runs:
-                                if r.text:
-                                    chunks.append(r.text)
+                _walk_table(tbl)
         return "\n".join(chunks)
     finally:
         os.unlink(tmp_path)
