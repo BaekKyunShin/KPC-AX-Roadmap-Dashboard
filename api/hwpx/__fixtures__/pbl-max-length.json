@@ -2,6 +2,30 @@
   "company_name": "주식회사 매우매우긴회사명을가진산업자동화전문기업한국지사글로벌협력본부",
   "course_name": "AI+문제해결형 PBL — 비전 자동검사 + 시계열 예지 보전 + 데이터 분석 통합 마스터 과정 (2026 상반기 개설)",
   "report_date": "2026.04.30.",
+  "cover": {
+    "pm": {
+      "affiliation": "한국생산성본부 디지털혁신컨설팅 본부",
+      "name": "홍길동 컨설팅책임자"
+    },
+    "external_experts": [
+      {
+        "affiliation": "AI연구소 컴퓨터비전 전공",
+        "name": "김전문 외부전문가"
+      }
+    ],
+    "internal_experts": [
+      {
+        "affiliation": "주식회사 매우매우긴회사명 QA팀 보고서과 디지털혁신",
+        "name": "박관리 내부전문가"
+      }
+    ],
+    "doctors": [
+      {
+        "affiliation": "능력개발센터 권역사업본부 컨설팅 담당",
+        "name": "이주치 능력개발전담주치의"
+      }
+    ]
+  },
   "business_registration_no": "123-45-67890",
   "industry_code": "C26",
   "industry_main": "전자부품·컴퓨터·영상·음향·통신장비 제조업 — 자동차용 센서 모듈 분야 특화",
@@ -51,6 +75,7 @@
     "code": "0204020107",
     "scope": "QA 인력 5명 + 생산기술 인력 3명 (총 8명)",
     "necessity": "정확도 96% 이상 + 리드타임 50% 단축 + 검사 인력 30% 재배치를 동시에 달성하여 분기별 1.5억원의 품질 비용을 5천만원 수준으로 감축하는 것이 본 훈련대상 업무의 직접적 필요성이다.",
+    "necessity_score": 5,
     "details": [
       {"title": "데이터 수집·전처리 모듈", "description": "센서 데이터 + 영상 라벨링을 PLC 자동 수집 → AutoLabel 도구로 전처리 → 학습 데이터셋 생성까지의 end-to-end 자동화 파이프라인 구축"},
       {"title": "모델 운영·평가 모듈", "description": "객체 검출 모델 운영 + 정확도 KPI 검증 + 결과 자동 보고서 생성 + 결재 시스템 통합 라우팅까지 통합 운영"}
@@ -82,5 +107,94 @@
   "course_eval_criteria": "수행수준 3 이상 60% PASS + 현업 적용 PoC 1개 이상 완성 + 학습자 만족도 4.0 이상",
   "course_eval_result": "예정 — 분기 종료 시점에 정량 평가 실시",
   "course_eval_overall_comment": "본 평가는 학습 직후 평가 + 6개월 후 현업 적용도 추적 평가의 2단계 구조로 운영된다.",
-  "course_evaluation_methods": ["포트폴리오", "수행평가", "지필고사"]
+  "course_evaluation_methods": ["포트폴리오", "수행평가", "지필고사"],
+  "learning_group": {
+    "instructors": [
+      {
+        "type": "외부",
+        "role": "팀장",
+        "affiliation": "AI연구소 디지털전환컨설팅 본부",
+        "position": "수석연구원 — 컴퓨터비전 전공",
+        "name": "김전문성춘향이몽룡변학도김흥부"
+      },
+      {
+        "type": "외부",
+        "role": "팀원",
+        "affiliation": "AI연구소 데이터분석 본부",
+        "position": "책임연구원 — 시계열 분석",
+        "name": "이전문장보고이순신김유신"
+      },
+      {
+        "type": "내부",
+        "role": "팀장",
+        "affiliation": "QA팀 보고서과 디지털혁신",
+        "position": "선임연구원 — 도메인 전문가",
+        "name": "박관리홍길동임꺽정장길산"
+      }
+    ],
+    "trainees": [
+      {"role": "팀원", "affiliation": "QA팀", "position": "사원", "name": "이검사"},
+      {"role": "팀원", "affiliation": "QA팀", "position": "사원", "name": "박품질"},
+      {"role": "팀장", "affiliation": "생산기술팀", "position": "선임", "name": "최기술"}
+    ]
+  },
+  "training_contents": [
+    {
+      "unit_name": "CV 기초 — 영상 처리·라벨링·데이터 증강 통합",
+      "detail": "1단원: 영상 처리 기본 + 라벨링 도구 실습 + 데이터 증강 기법 + 학습 데이터셋 구축",
+      "training_hours": "16",
+      "instructor_hours": {"external": "12", "internal": "4"}
+    },
+    {
+      "unit_name": "객체 검출 — YOLO 실습·Transfer learning·MLflow 운영",
+      "detail": "2단원: YOLOv8 실습 + Transfer learning + MLflow 모델 레지스트리 + Cross-validation 검증",
+      "training_hours": "24",
+      "instructor_hours": {"external": "18", "internal": "6"}
+    },
+    {
+      "unit_name": "엣지 배포·통합 — ONNX·TensorRT·Docker",
+      "detail": "3단원: ONNX 변환 + 양자화 + TensorRT 컴파일 + Docker 컨테이너 배포 + ERP 연동",
+      "training_hours": "20",
+      "instructor_hours": {"external": "16", "internal": "4"}
+    }
+  ],
+  "facilities": [
+    {
+      "seq": "1",
+      "category": "AI 인프라 — GPU",
+      "name": "고사양 PC + RTX 4090 클러스터",
+      "spec": "RTX 4090 × 10대 + 256GB RAM + 1TB NVMe + 10Gbps 백본",
+      "location": "본사 3층 디지털혁신 교육장 + 분사 2층 실습공간"
+    },
+    {
+      "seq": "2",
+      "category": "AI 도구 라이선스",
+      "name": "YOLOv8 Enterprise + Roboflow Pro + MLflow + Grafana",
+      "spec": "Enterprise 라이선스 + 클라우드 기반 협업 환경",
+      "location": "클라우드 (AWS Seoul Region)"
+    }
+  ],
+  "training_instructors": [
+    {
+      "name": "김전문성춘향이몽룡변학도김흥부",
+      "internal_external": "외부",
+      "career_years": "15",
+      "work_name": "비전 모델 강의 + Transfer learning 실습 강의",
+      "detailed_training_content": [
+        "객체 검출 실습 — YOLOv8 기반 16시간",
+        "Transfer learning 실습 — 사전학습 미세조정 8시간",
+        "Cross-validation 검증 워크숍 4시간"
+      ]
+    },
+    {
+      "name": "박관리홍길동임꺽정장길산",
+      "internal_external": "내부",
+      "career_years": "8",
+      "work_name": "OJT 멘토링 + 현장 적용 가이드",
+      "detailed_training_content": [
+        "현장 적용 가이드 12시간",
+        "사내 데이터 분석 멘토링 8시간"
+      ]
+    }
+  ]
 }

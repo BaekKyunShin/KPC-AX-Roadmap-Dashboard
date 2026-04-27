@@ -153,6 +153,66 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_facilities_renders_each_row(self):
+        """P-21 PR #5: Ⅳ-3-라 시설·장비 (idx 34, 3×5) 의 모든 행이
+        fixture facilities[] 데이터로 채워진다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        facilities = data["facilities"]
+        assert len(facilities) >= 1
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        for f in facilities[:2]:
+            assert f["name"] in text, f"facility name '{f['name']}' 미노출"
+            assert f["spec"] in text, f"facility spec '{f['spec']}' 미노출"
+
+    def test_pbl_training_instructors_renders_each_row(self):
+        """P-22 PR #5: Ⅳ-3-마 훈련강사 (idx 35, 3×5) 의 모든 행이
+        fixture training_instructors[] 데이터로 채워진다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        instructors = data["training_instructors"]
+        assert len(instructors) >= 1
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        for ins in instructors[:2]:
+            assert ins["name"] in text, f"instructor name '{ins['name']}' 미노출"
+            assert ins["work_name"] in text, (
+                f"instructor work_name '{ins['work_name']}' 미노출"
+            )
+
+    def test_pbl_learning_group_renders_instructors_and_trainees(self):
+        """P-19 PR #5: Ⅳ-3-나 학습그룹 (idx 31, 6×6) 의 instructor+trainee 행
+        이 fixture learning_group{instructors,trainees} 로 채워진다.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        group = data["learning_group"]
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        for ins in group["instructors"]:
+            assert ins["name"] in text, f"instructor name '{ins['name']}' 미노출"
+        for tr in group["trainees"]:
+            assert tr["name"] in text, f"trainee name '{tr['name']}' 미노출"
+
+    def test_pbl_subject_profile_training_contents_renders(self):
+        """P-20 PR #5: training_contents[] 가 row 7~9 에 채워진다."""
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        contents = data["training_contents"]
+        assert len(contents) >= 1
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+        for c in contents[:3]:
+            assert c["unit_name"] in text, f"unit_name '{c['unit_name']}' 미노출"
+            assert c["detail"] in text, f"detail '{c['detail']}' 미노출"
+
     def test_pbl_subject_profile_top_seven_cells_filled(self):
         """P-20 PR #5: Ⅳ-3-다 훈련 교과목 프로파일 (idx 32, 15×10) 의 상단
         7 cell (course_name·total_hours·training_goals·ai_tools·utilized_data

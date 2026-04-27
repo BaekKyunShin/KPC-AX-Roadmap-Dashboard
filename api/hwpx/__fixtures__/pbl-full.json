@@ -93,5 +93,83 @@
   "course_eval_criteria": "수행수준 3 이상 60% PASS",
   "course_eval_result": "예정",
   "course_eval_overall_comment": "",
-  "course_evaluation_methods": ["포트폴리오"]
+  "course_evaluation_methods": ["포트폴리오"],
+  "learning_group": {
+    "instructors": [
+      {
+        "type": "외부",
+        "role": "팀장",
+        "affiliation": "AI연구소",
+        "position": "수석연구원",
+        "name": "김전문"
+      },
+      {
+        "type": "내부",
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "선임연구원",
+        "name": "박관리"
+      }
+    ],
+    "trainees": [
+      {
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "사원",
+        "name": "이검사"
+      },
+      {
+        "role": "팀원",
+        "affiliation": "QA팀",
+        "position": "사원",
+        "name": "박품질"
+      }
+    ]
+  },
+  "training_contents": [
+    {
+      "unit_name": "CV 기초",
+      "detail": "1단원: 영상 처리 기본",
+      "training_hours": "4",
+      "instructor_hours": {"external": "4", "internal": "0"}
+    },
+    {
+      "unit_name": "객체 검출",
+      "detail": "2단원: YOLO 실습",
+      "training_hours": "8",
+      "instructor_hours": {"external": "6", "internal": "2"}
+    }
+  ],
+  "facilities": [
+    {
+      "seq": "1",
+      "category": "AI 인프라",
+      "name": "고사양 PC",
+      "spec": "RTX 4090 × 5",
+      "location": "본사 3층 교육장"
+    },
+    {
+      "seq": "2",
+      "category": "AI 도구",
+      "name": "YOLO 라이선스",
+      "spec": "Enterprise",
+      "location": "클라우드"
+    }
+  ],
+  "training_instructors": [
+    {
+      "name": "김전문",
+      "internal_external": "외부",
+      "career_years": "10",
+      "work_name": "비전 모델 강의",
+      "detailed_training_content": ["객체 검출 실습", "Transfer learning 실습"]
+    },
+    {
+      "name": "박관리",
+      "internal_external": "내부",
+      "career_years": "5",
+      "work_name": "OJT 멘토링",
+      "detailed_training_content": ["현장 적용 가이드"]
+    }
+  ]
 }
