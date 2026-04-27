@@ -29,6 +29,7 @@ import {
   PBLOverviewSchema,
   PBLAnalysisSchema,
   PBLTasksSchema,
+  PBLTargetDetailSchema,
   PBLInterviewSchema,
   PBLInterviewStrictSchema,
 } from './interview-pbl';
@@ -674,7 +675,10 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
       details: [
         {
           title: 'AS-IS/TO-BE 분석',
-          description: '수작업 육안 검사 → AI 비전 1차 스크리닝',
+          as_is: '수작업 육안 검사',
+          to_be: 'AI 비전 1차 스크리닝',
+          required_knowledge: '품질 검사 기준 + 결함 유형 카탈로그',
+          required_skill: 'CNN 모델 운영 + 결과 라벨링 도구 활용',
         },
       ],
     },
@@ -953,7 +957,15 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
       code: 'QC-01',
       scope: '생산팀',
       necessity: 'AI 자동 판정',
-      details: [{ title: 'AS-IS/TO-BE', description: '수작업 → AI' }],
+      details: [
+        {
+          title: 'AS-IS/TO-BE',
+          as_is: '수작업',
+          to_be: 'AI 자동 판정',
+          required_knowledge: '품질 검사 기준',
+          required_skill: 'CNN 모델 운영',
+        },
+      ],
     },
     currentAiLevel: { level: 'BASIC' as const, note: '현재' },
     expectedAiLevel: { level: 'USER' as const, note: '향후' },
@@ -1017,5 +1029,85 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
       expectedAiLevel: { level: 'BASIC' as const, note: '' },
     };
     expect(PBLInterviewStrictSchema.safeParse(reverse).success).toBe(true);
+  });
+});
+
+describe('PBLTargetDetailSchema (PR #7 — Ⅲ-3-다 양식 4×5 의 5 컬럼 1:1 정합)', () => {
+  // 양식 PDF Ⅲ-3-다 표 5 컬럼: 업무명 | AS-IS | TO-BE | 요구지식 | 기술
+  // PR #5 의 단일 description 통합으로 col 2~4 가 빈 셀이 되던 회귀 보강.
+
+  it('5 필드 모두 입력 시 strict parse 통과', () => {
+    const valid = {
+      title: '데이터 수집·전처리',
+      as_is: '센서 데이터 수동 측정 + 엑셀 집계',
+      to_be: 'PLC 자동 수집 + AutoLabel 자동 라벨링',
+      required_knowledge: '센서 데이터 구조·라벨링 가이드라인',
+      required_skill: 'Python pandas + AutoLabel CLI 운영',
+    };
+    expect(PBLTargetDetailSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('as_is 누락 시 strict parse 실패', () => {
+    const invalid = {
+      title: '데이터 수집',
+      to_be: 'PLC 자동 수집',
+      required_knowledge: '센서 데이터 구조',
+      required_skill: 'Python pandas',
+    };
+    const result = PBLTargetDetailSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('as_is');
+    }
+  });
+
+  it('required_knowledge / required_skill 빈 문자열은 strict parse 실패', () => {
+    const invalid = {
+      title: '데이터 수집',
+      as_is: '수동',
+      to_be: '자동',
+      required_knowledge: '',
+      required_skill: '',
+    };
+    expect(PBLTargetDetailSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('V1 호환: description 만 있는 기존 row 는 as_is 로 자동 마이그레이션', () => {
+    const legacy = {
+      title: '데이터 수집',
+      description: '센서 데이터 + 영상 라벨링 (PLC 자동 수집)',
+    };
+    // preprocess 가 description → as_is 로 이전. 누락 3 필드는 빈 문자열로
+    // 채워져 strict parse 는 실패 (컨설턴트 재입력 필요) — 마이그레이션 동작만 검증.
+    // loose parse 검증을 위해 별도 z.preprocess 로 결과를 확인.
+    // 여기서는 strict parse 결과의 path 가 to_be/required_knowledge/required_skill
+    // 에 한정되고 description 의 값이 손실되지 않았음을 검증.
+    const result = PBLTargetDetailSchema.safeParse(legacy);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('to_be');
+      expect(paths).toContain('required_knowledge');
+      expect(paths).toContain('required_skill');
+      // as_is 는 description 으로부터 채워졌으므로 path 에 포함되면 안 됨
+      expect(paths).not.toContain('as_is');
+    }
+  });
+
+  it('V1 호환: 전체 5 필드 + description 동시 존재 시 as_is 우선 (description 무시)', () => {
+    const both = {
+      title: '데이터 수집',
+      description: '구버전 description',
+      as_is: '신버전 AS-IS',
+      to_be: 'TO-BE',
+      required_knowledge: '지식',
+      required_skill: '기술',
+    };
+    const result = PBLTargetDetailSchema.safeParse(both);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.as_is).toBe('신버전 AS-IS');
+    }
   });
 });

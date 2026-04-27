@@ -372,7 +372,15 @@ describe('buildPBLHwpxPayload', () => {
           code: '0204020107',
           scope: '생산팀 5명',
           necessity: '수동 측정 비효율 개선',
-          details: [{ title: '데이터 수집', description: 'PLC 자동 수집' }],
+          details: [
+            {
+              title: '데이터 수집',
+              as_is: '수동 측정',
+              to_be: 'PLC 자동 수집',
+              required_knowledge: '센서 데이터 구조',
+              required_skill: 'Python pandas',
+            },
+          ],
         },
         currentAiLevel: { level: 'BASIC', note: '기초 도입 단계' },
         expectedAiLevel: { level: 'USER', note: '6개월 내 활용형 진입' },

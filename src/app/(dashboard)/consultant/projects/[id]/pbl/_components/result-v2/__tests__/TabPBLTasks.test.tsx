@@ -49,7 +49,13 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
     necessity: '검사 누락 즉시 탐지 필요',
     necessity_score: 5,
     details: [
-      { title: '카메라 기반 이상 감지', description: '실시간 탐지 모델' },
+      {
+        title: '카메라 기반 이상 감지',
+        as_is: '검사자별 육안 검사 (편차 발생)',
+        to_be: '실시간 탐지 모델로 자동 알림',
+        required_knowledge: '결함 유형 카탈로그 + 검사 기준',
+        required_skill: 'CV 모델 운영 + 라벨링 도구',
+      },
     ],
   },
   currentAiLevel: { level: 'BASIC', note: '도입 전 단계' },

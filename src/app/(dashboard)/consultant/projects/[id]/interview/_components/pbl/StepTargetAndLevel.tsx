@@ -40,7 +40,13 @@ function emptyTarget(): PBLTarget {
 }
 
 function emptyTargetDetail(): PBLTargetDetail {
-  return { title: '', description: '' };
+  return {
+    title: '',
+    as_is: '',
+    to_be: '',
+    required_knowledge: '',
+    required_skill: '',
+  };
 }
 
 export function StepTargetAndLevel({
@@ -207,67 +213,112 @@ export function StepTargetAndLevel({
 
         <div className="space-y-2">
           <h4 className="text-xs font-medium text-muted-foreground">
-            Ⅲ-3-다 세부내용 (AS-IS / TO-BE · 요구지식 · 요구기술 등)
+            Ⅲ-3-다 세부내용 (양식 4×5 표 — 업무명 / AS-IS / TO-BE / 요구지식 / 기술)
           </h4>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-border text-sm">
-              <caption className="sr-only">훈련대상 업무 세부내용 표</caption>
-              <thead>
-                <tr>
-                  <th className="w-[180px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                    제목
-                  </th>
-                  <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                    설명
-                  </th>
-                  <th className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                    <span className="sr-only">삭제</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {details.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="border border-border p-1 align-top">
-                      <input
-                        type="text"
-                        value={row.title}
-                        onChange={(e) =>
-                          updateDetail(idx, { title: e.target.value })
-                        }
-                        placeholder="예: AS-IS · TO-BE · 요구지식"
-                        disabled={readOnly}
-                        aria-label={`세부내용 ${idx + 1} 제목`}
-                        className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </td>
-                    <td className="border border-border p-1 align-top">
-                      <LargeTextBox
-                        value={row.description}
-                        onChange={(e) =>
-                          updateDetail(idx, { description: e.target.value })
-                        }
-                        placeholder="세부내용 서술"
-                        disabled={readOnly}
-                        aria-label={`세부내용 ${idx + 1} 설명`}
-                        minHeightClassName="min-h-[60px]"
-                      />
-                    </td>
-                    <td className="border border-border p-1 text-center align-top">
-                      <button
-                        type="button"
-                        onClick={() => removeDetail(idx)}
-                        disabled={readOnly || details.length <= 1}
-                        aria-label={`세부내용 ${idx + 1} 삭제`}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {details.map((row, idx) => (
+              <div
+                key={idx}
+                className="space-y-2 rounded-md border border-border bg-card p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    세부내용 {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeDetail(idx)}
+                    disabled={readOnly || details.length <= 1}
+                    aria-label={`세부내용 ${idx + 1} 삭제`}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    업무명
+                  </label>
+                  <input
+                    type="text"
+                    value={row.title}
+                    onChange={(e) =>
+                      updateDetail(idx, { title: e.target.value })
+                    }
+                    placeholder="예: 데이터 수집·전처리"
+                    disabled={readOnly}
+                    aria-label={`세부내용 ${idx + 1} 업무명`}
+                    className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    현재 업무방식 (AS-IS)
+                  </label>
+                  <LargeTextBox
+                    value={row.as_is}
+                    onChange={(e) =>
+                      updateDetail(idx, { as_is: e.target.value })
+                    }
+                    placeholder="예: 수동 측정 + 엑셀 집계 (작성 평균 2 영업일)"
+                    disabled={readOnly}
+                    aria-label={`세부내용 ${idx + 1} AS-IS`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    AI활용방식 (TO-BE)
+                  </label>
+                  <LargeTextBox
+                    value={row.to_be}
+                    onChange={(e) =>
+                      updateDetail(idx, { to_be: e.target.value })
+                    }
+                    placeholder="예: PLC 자동 수집 + AutoLabel 자동 라벨링 (리드타임 0.5 영업일)"
+                    disabled={readOnly}
+                    aria-label={`세부내용 ${idx + 1} TO-BE`}
+                    minHeightClassName="min-h-[60px]"
+                  />
+                </div>
+
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      요구지식
+                    </label>
+                    <LargeTextBox
+                      value={row.required_knowledge}
+                      onChange={(e) =>
+                        updateDetail(idx, { required_knowledge: e.target.value })
+                      }
+                      placeholder="예: 센서 데이터 구조·라벨링 가이드"
+                      disabled={readOnly}
+                      aria-label={`세부내용 ${idx + 1} 요구지식`}
+                      minHeightClassName="min-h-[50px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      기술
+                    </label>
+                    <LargeTextBox
+                      value={row.required_skill}
+                      onChange={(e) =>
+                        updateDetail(idx, { required_skill: e.target.value })
+                      }
+                      placeholder="예: Python pandas + AutoLabel CLI 운영"
+                      disabled={readOnly}
+                      aria-label={`세부내용 ${idx + 1} 기술`}
+                      minHeightClassName="min-h-[50px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <Button

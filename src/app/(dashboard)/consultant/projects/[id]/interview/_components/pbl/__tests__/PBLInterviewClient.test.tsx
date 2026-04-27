@@ -288,7 +288,15 @@ describe('PBLInterviewClient', () => {
         scope: '품질관리팀 15명',
         necessity: '월 200시간 → 60시간 단축 기대',
         necessity_score: 5,
-        details: [{ title: 'AS-IS', description: '수작업' }],
+        details: [
+          {
+            title: '품질 전처리',
+            as_is: '수작업',
+            to_be: 'AI 자동 전처리',
+            required_knowledge: '데이터 품질 기준',
+            required_skill: 'Python pandas',
+          },
+        ],
       },
       currentAiLevel: { level: 'BASIC' as const, note: '' },
       expectedAiLevel: { level: 'USER' as const, note: '' },

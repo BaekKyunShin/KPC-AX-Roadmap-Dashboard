@@ -769,11 +769,28 @@ export const PBLPrioritySchema = z.object({
 });
 export type PBLPriority = z.infer<typeof PBLPrioritySchema>;
 
-// -- Ⅲ-3 다. 훈련대상 업무 세부내용 (AS-IS/TO-BE/지식/기술 요약 행) -----------
-export const PBLTargetDetailSchema = z.object({
-  title: z.string().min(1, '세부내용 제목을 입력하세요.'),
-  description: z.string().min(1, '세부내용 설명을 입력하세요.'),
+// -- Ⅲ-3 다. 훈련대상 업무 세부내용 (PR #7: 양식 4×5 의 5 컬럼 1:1 정합) ---
+// 양식 PDF Ⅲ-3-다 표 5 컬럼: 업무명 | AS-IS | TO-BE | 요구지식 | 기술
+// V1 호환: 기존 DB JSONB row 의 description 값은 preprocess 로 as_is 로 자동
+// 이전 (사용자 재입력 불필요). 누락 3 필드는 strict 시점에 .min(1) 으로 강제.
+const PBLTargetDetailObject = z.object({
+  title: z.string().min(1, '업무명을 입력하세요.'),
+  as_is: z.string().min(1, '현재 업무방식 (AS-IS) 을 입력하세요.'),
+  to_be: z.string().min(1, 'AI활용방식 (TO-BE) 을 입력하세요.'),
+  required_knowledge: z.string().min(1, '요구지식을 입력하세요.'),
+  required_skill: z.string().min(1, '기술을 입력하세요.'),
 });
+export const PBLTargetDetailSchema = z.preprocess((raw) => {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const r = raw as Record<string, unknown>;
+    // V1 → V2 마이그레이션: description 값을 as_is 로 이전 (as_is 미정의 시).
+    if (typeof r.description === 'string' && r.as_is === undefined) {
+      const { description: _description, ...rest } = r;
+      return { ...rest, as_is: r.description };
+    }
+  }
+  return raw;
+}, PBLTargetDetailObject);
 export type PBLTargetDetail = z.infer<typeof PBLTargetDetailSchema>;
 
 // -- Ⅲ-3 가·나·다 훈련대상 업무 통합 ----------------------------------------
