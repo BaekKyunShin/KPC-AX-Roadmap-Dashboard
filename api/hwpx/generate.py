@@ -804,12 +804,34 @@ def _generate_pbl(data: dict) -> bytes:
 
 
 def _fill_pbl_simple_content(tables, idx: int, text):
-    """1×1 단일 셀 박스 (예: 훈련 목표, 사유, 필요성)."""
+    """1×1 단일 셀 박스 (예: 훈련 목표, 사유, 필요성).
+
+    1 줄 입력에 양식 paragraph 가 여러 개 있는 셀의 경우, 사용되지 않는
+    빈 paragraph 의 `paraPrIDRef` 가 머리기호 스타일 (예: 76 번) 이면
+    한컴오피스에서 빈 줄에도 머리기호 (∙·□ 등) 가 자동 표시되어 사용자
+    검증에서 "1 항목에 머리기호 2 개" 회귀로 보고됐다 (P-12).
+
+    해결: 텍스트가 모두 비어있는 paragraph 의 paraPrIDRef 를 기본 단락
+    스타일 ("0", PBL 정본에서 65 회 사용 — 가장 일반적 ID) 로 reset 하여
+    자동 머리기호를 회피한다.
+    """
     if idx >= len(tables):
         return
     tbl = tables[idx]
-    if tbl.row_count >= 1 and tbl.column_count >= 1:
-        _set_cell_text(tbl, 0, 0, text or "")
+    if tbl.row_count < 1 or tbl.column_count < 1:
+        return
+    _set_cell_text(tbl, 0, 0, text or "")
+    # 빈 paragraph 의 머리기호 회피 — paraPrIDRef "0" (기본 단락) 으로 reset
+    try:
+        cell = tbl.cell(0, 0)
+    except Exception:
+        return
+    for p in cell.paragraphs:
+        if all(not (r.text or "") for r in p.runs):
+            try:
+                p.para_pr_id_ref = "0"
+            except Exception:
+                pass
 
 
 def _fill_pbl_cover_nested(doc, data):

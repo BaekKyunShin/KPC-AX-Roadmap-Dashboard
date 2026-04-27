@@ -153,6 +153,48 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_target_necessity_no_orphan_bullet(self):
+        """P-12 PR #5: Ⅲ-3-나 AI기반 문제해결 필요성 (idx 20, 1×1) 의 1 줄 입력에
+        머리기호가 1 개만 표시되어야 한다. 빈 paragraph 의 paraPrIDRef 를 기본
+        단락 (0) 으로 reset 하여 자동 머리기호 회피.
+        """
+        from hwpx import HwpxDocument
+        from generate import _generate_pbl
+        import tempfile
+
+        data = _load_fixture("pbl-full.json")
+        out = _generate_pbl(data)
+        with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=True) as tmp:
+            tmp.write(out)
+            tmp.flush()
+            doc = HwpxDocument.open(tmp.name)
+            # idx 20 의 cell(0,0) paragraph 검사
+            idx = 0
+            target = None
+            for para in doc.paragraphs:
+                for tbl in para.tables:
+                    if idx == 20:
+                        target = tbl
+                        break
+                    idx += 1
+                if target:
+                    break
+            assert target is not None, "idx 20 표 미존재"
+            cell = target.cell(0, 0)
+            # 텍스트가 있는 paragraph 와 빈 paragraph 의 paraPrIDRef 검사.
+            # 빈 paragraph 는 paraPrIDRef='0' (기본 단락 — 머리기호 없음) 이어야.
+            empty_paras_with_bullet_style = []
+            for pi, p in enumerate(cell.paragraphs):
+                final_text = "".join(r.text or "" for r in p.runs)
+                if not final_text:
+                    pidref = p.para_pr_id_ref or "None"
+                    if pidref != "0":
+                        empty_paras_with_bullet_style.append((pi, pidref))
+            assert not empty_paras_with_bullet_style, (
+                f"빈 paragraph 의 paraPrIDRef 가 기본 단락(0) 으로 reset 되지 않음: "
+                f"{empty_paras_with_bullet_style}"
+            )
+
     def test_pbl_renders_company_issues_in_section_2_1_a(self):
         """P-03 PR #5: Ⅱ-1-가 기업 경영 이슈 (idx 3, 1×1) 셀에 fixture 의
         company_issues 텍스트가 정확히 출력된다.
