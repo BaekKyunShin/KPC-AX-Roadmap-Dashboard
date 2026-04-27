@@ -48,7 +48,7 @@ Vercel Python Functions(Fluid Compute)를 `api/hwpx/` 경로에 둔다. Next.js 
 
 ## Plan drift note (2026-04-15)
 
-본 PoC(Step 3) 수행 중 원 계획서(`docs/plans/2026-04-14-official-form-alignment.md`)의 두 항목이 outdated임을 확인하고 교정했다. 교정된 값은 본 ADR이 정본이다.
+본 PoC(Step 3) 수행 중 원 계획서(`docs/plans/archive/2026-04-14-official-form-alignment.md`)의 두 항목이 outdated임을 확인하고 교정했다. 교정된 값은 본 ADR이 정본이다.
 
 | 항목 | 계획서 초판 | PoC 확정값 | 근거 |
 |---|---|---|---|
