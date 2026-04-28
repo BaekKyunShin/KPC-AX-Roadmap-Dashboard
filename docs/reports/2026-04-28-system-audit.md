@@ -10,7 +10,7 @@
 | 2026-04-28 | 1차 전수 조사 | — | OPEN: #001~#010 (10건) |
 | 2026-04-29 | 결함 수정 (세션 #A) | PR #36 | RESOLVED: #001, #002, #003, #005, #006, #007, #008, #009, #010 / 보류: #004 |
 | 2026-04-29 | 이월 검증 (세션 #B) | PR #38 | OPEN 추가: #011 (P2), #012 (P1), #013 (P1) — silent fail 패턴 3건 |
-| 2026-04-29 | #004 본격 해결 (세션 #C) | (PR 작업 중) | RESOLVED: #004 |
+| 2026-04-29 | #004 본격 해결 (세션 #C) | PR #39 | RESOLVED: #004 |
 <!-- 새 항목은 위 행 위쪽이 아닌 아래쪽에 추가 (시간 순 누적) -->
 
 ## 결함 상태 라벨
@@ -154,7 +154,7 @@
 
 **DB 검증:** `audit-c-20260428@test.com`이 Step 2 미완료 상태에서도 즉시 `USER_PENDING`/`role=USER_PENDING`으로 등록됨을 확인.
 
-- **해결 정보**: PR #(번호) · 2026-04-29 · 검증자: Vitest 단위 테스트 11건 + Playwright E2E 1건
+- **해결 정보**: PR #39 · 2026-04-29 · 검증자: Vitest 단위 테스트 11건 + Playwright E2E 1건
 - **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 옵션 C(atomic registration) 적용. Step 2 까지 완료해야 `auth.users` + `public.users` + `consultant_profiles` 가 한 번에 생성되도록 회원가입 흐름을 재구성. 신규 액션 `checkEmailAvailability` 가 Step 1 → Step 2 전환 시 이메일 중복만 사전 확인(DB 쓰기 없음)하고, 신규 액션 `registerConsultantWithProfile` 이 Step 2 제출 시 4단계(Auth user → users → consultant_profiles → 자동 로그인) 를 atomic 으로 처리하며 어느 단계든 실패 시 Auth user 삭제(CASCADE) 로 롤백. Step 1 입력값은 React state(`step1Data`) 에만 보관 + Step 2 진입 후 `beforeunload` 경고로 손실 방지. **DB 스키마 변경 없음**(마커 컬럼·cleanup cron 같은 보조 장치 불필요 — 좀비 사용자가 구조적으로 발생할 수 없음). UX 동일(2단계 스테퍼 유지). OPS_ADMIN 흐름은 Step 2 가 없으므로 기존 `registerUser` 호출 유지. 보류 사유에서 검토했던 옵션 A(profile_completed marker) 와 옵션 B(단일 페이지 통합) 대비 데이터 정합성·UX·작업량 모두 우위.
 
 ---
