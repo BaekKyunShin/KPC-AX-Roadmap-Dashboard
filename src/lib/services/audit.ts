@@ -1,6 +1,5 @@
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction, UserRole } from '@/types/database';
 
 /** 감사로그 기본 페이지 크기 */
@@ -67,8 +66,13 @@ export async function createAuditLog({
 
 /**
  * 감사로그 조회 (OPS_ADMIN 이상)
- * - SYSTEM_ADMIN: 전체 로그 조회 가능
- * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
+ *
+ * RLS 정책(`audit_logs SELECT: OPS_ADMIN 이상`) 의도에 맞춰
+ * OPS_ADMIN·SYSTEM_ADMIN 모두 actor 화이트리스트 없이 전체 로그를 조회한다.
+ * (이전 버전에서 OPS_ADMIN 가시 범위를 컨설턴트 actor 로그로만 좁혀
+ *  본인이 수행한 PROJECT_CREATE 등이 모두 차단되는 결함 #001 이 있었음)
+ *
+ * `currentUserRole` 파라미터는 호출부 하위 호환을 위해 유지하지만 더 이상 사용하지 않는다.
  */
 export async function fetchAuditLogs(options: {
   page?: number;
@@ -81,38 +85,13 @@ export async function fetchAuditLogs(options: {
   currentUserRole?: UserRole;
 }) {
   const supabase = createAdminClient();
-  const { page = 1, limit = AUDIT_LOG_DEFAULT_PAGE_SIZE, action, targetType, actorUserId, startDate, endDate, currentUserRole } = options;
-
-  // OPS_ADMIN인 경우, 컨설턴트 사용자 ID 목록 조회
-  let consultantUserIds: string[] | null = null;
-  if (currentUserRole === 'OPS_ADMIN') {
-    const { data: consultants } = await supabase
-      .from('users')
-      .select('id')
-      .in('role', [...CONSULTANT_ROLES]);
-    consultantUserIds = consultants?.map(c => c.id) || [];
-  }
+  const { page = 1, limit = AUDIT_LOG_DEFAULT_PAGE_SIZE, action, targetType, actorUserId, startDate, endDate } = options;
 
   let query = supabase
     .from('audit_logs')
     .select('*, actor:users!actor_user_id(id, name, email)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
-
-  // OPS_ADMIN은 컨설턴트가 수행한 로그만 조회
-  if (consultantUserIds !== null) {
-    if (consultantUserIds.length === 0) {
-      // 컨설턴트가 없으면 빈 결과 반환
-      return {
-        logs: [],
-        total: 0,
-        page,
-        limit,
-        totalPages: 0,
-      };
-    }
-    query = query.in('actor_user_id', consultantUserIds);
-  }
 
   if (action) {
     query = query.eq('action', action);

@@ -205,6 +205,9 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
+  // #010 — 승인 대기 사용자(USER_PENDING / OPS_ADMIN_PENDING) 에게는 메시지·알림
+  // 아이콘이 사용 불가능하거나 의미 없음. 헤더 우측 아이콘 노출을 승인된 사용자로 제한.
+  const isApprovedUser = isConsultant || isOpsAdmin;
   const commandPalette = useCommandPalette();
   const { recentVisits } = useRecentVisits();
 
@@ -249,7 +252,13 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    // #009 — fullPage 캡처 도구(html2canvas, puppeteer fullPage 등) 가 sticky 헤더를
+    // 페이지 중간에 중복으로 그리는 현상을 회피. data-html2canvas-ignore 속성은
+    // 일반 브라우저에서는 무시되어 사용자 가시 동작에 영향 없음.
+    <nav
+      data-html2canvas-ignore
+      className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -334,11 +343,15 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Search className="h-4 w-4" />
             </Button>
 
-            {/* Message Icon */}
-            <MessageIcon initialUnreadCount={unreadMessageCount} />
+            {/* Message Icon — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <MessageIcon initialUnreadCount={unreadMessageCount} />
+            )}
 
-            {/* Notification Bell */}
-            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            {/* Notification Bell — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            )}
 
             {/* User Dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -424,8 +437,13 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             >
               <Search className="h-4 w-4" />
             </Button>
-            <MessageIcon initialUnreadCount={unreadMessageCount} />
-            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            {/* Message + Notification — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <>
+                <MessageIcon initialUnreadCount={unreadMessageCount} />
+                <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"

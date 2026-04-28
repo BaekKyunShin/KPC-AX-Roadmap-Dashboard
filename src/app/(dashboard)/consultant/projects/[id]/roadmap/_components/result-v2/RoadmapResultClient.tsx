@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
@@ -15,7 +16,7 @@ import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import { ShareToggle } from '@/components/gallery/ShareToggle';
 import { Button } from '@/components/ui/button';
-import { Plus, CheckCircle2 } from 'lucide-react';
+import { Plus, CheckCircle2, FileText } from 'lucide-react';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 import { TabOverview } from './TabOverview';
@@ -87,7 +88,7 @@ const NOOP_GENERATE: (revisionPrompt?: string) => Promise<void> = async () => {}
 
 export function RoadmapResultClient({
   role,
-  projectId: _projectId,
+  projectId,
   versions,
   selectedVersion,
   interview,
@@ -109,6 +110,10 @@ export function RoadmapResultClient({
   const isDraft = selectedVersion?.status === 'DRAFT';
   const isFinal = selectedVersion?.status === 'FINAL';
   const hasVersions = versions.length > 0;
+  // #002 — 인터뷰 snapshot 이 비어있으면 EmptyState 에서 생성 버튼을 사전 차단.
+  // ROADMAP_ELIGIBLE_STATUSES 가 'INTERVIEWED' 이상을 통과시키지만, 실제 interviews
+  // 행이 없는 케이스가 존재하므로 클라이언트에서 한 번 더 가드.
+  const hasInterview = !!interview && Object.keys(interview).length > 0;
   // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
   const tabReadOnly = !isDraft || !capabilities.canEdit;
 
@@ -252,6 +257,8 @@ export function RoadmapResultClient({
             canGenerate={capabilities.showRegenerate}
             onGenerate={handleEmptyStateGenerate}
             isGenerating={isGenerating}
+            hasInterview={hasInterview}
+            projectId={projectId}
           />
         )}
       </PageContainer>
@@ -274,9 +281,56 @@ interface EmptyStateProps {
   canGenerate: boolean;
   onGenerate: () => void | Promise<void>;
   isGenerating: boolean;
+  /** #002 가드 — 인터뷰 부재 시 안내 + 인터뷰 페이지 CTA. */
+  hasInterview: boolean;
+  /** 인터뷰 페이지 링크 생성용. */
+  projectId: string;
 }
 
-function EmptyState({ canGenerate, onGenerate, isGenerating }: EmptyStateProps) {
+function EmptyState({
+  canGenerate,
+  onGenerate,
+  isGenerating,
+  hasInterview,
+  projectId,
+}: EmptyStateProps) {
+  // CONSULTANT 이고 인터뷰 부재 — 안내 + CTA 우선 노출 (생성 버튼 disabled)
+  if (canGenerate && !hasInterview) {
+    return (
+      <div className="rounded-lg border bg-card p-12 text-center">
+        <FileText
+          className="mx-auto h-12 w-12 text-amber-500"
+          aria-hidden="true"
+        />
+        <h3 className="mt-4 text-base font-semibold">
+          현장 인터뷰를 먼저 완료해주세요
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          AI 로드맵 생성에는 현장 인터뷰 데이터가 필요합니다.
+        </p>
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Link
+            href={`/consultant/projects/${projectId}/interview`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+          >
+            <FileText className="size-4" aria-hidden="true" />
+            인터뷰 입력하러 가기
+          </Link>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            disabled
+            data-testid="empty-state-generate-roadmap"
+          >
+            <Plus className="mr-1.5 size-4" aria-hidden="true" />
+            AI 로드맵 생성
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border bg-card p-12 text-center">
       <h3 className="text-base font-semibold">아직 생성된 로드맵이 없습니다</h3>
@@ -289,7 +343,7 @@ function EmptyState({ canGenerate, onGenerate, isGenerating }: EmptyStateProps) 
             type="button"
             size="lg"
             onClick={() => void onGenerate()}
-            disabled={isGenerating}
+            disabled={isGenerating || !hasInterview}
             data-testid="empty-state-generate-roadmap"
           >
             <Plus className="mr-1.5 size-4" aria-hidden="true" />

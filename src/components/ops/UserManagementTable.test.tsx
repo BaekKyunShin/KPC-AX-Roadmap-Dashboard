@@ -186,4 +186,68 @@ describe('UserManagementTable', () => {
     // Assert: 이제 "정지" 버튼 (ACTIVE 상태의 승인된 컨설턴트)
     expect(getTable().getByText('정지')).toBeInTheDocument();
   });
+
+  // #003 회귀 — 본인이 목록에 표시되며, 본인 행은 액션 버튼 대신 "본인" 뱃지를 노출.
+  describe('#003 — 본인 행 표시 + 액션 가드', () => {
+    it('currentUserId 와 일치하는 행은 액션 버튼 대신 "본인" 뱃지가 노출된다', () => {
+      const me = makeUser({
+        id: 'me-1',
+        role: 'OPS_ADMIN',
+        status: 'ACTIVE',
+        name: '나운영',
+      });
+      const other = makeUser({
+        id: 'other-1',
+        role: 'CONSULTANT_APPROVED',
+        status: 'ACTIVE',
+        name: '다른컨설턴트',
+      });
+      render(<UserManagementTable users={[me, other]} currentUserId="me-1" />);
+
+      const table = getTable();
+      // 본인 행에 "본인" 뱃지
+      expect(table.getByTestId('self-row-marker')).toBeInTheDocument();
+      // 본인 액션 버튼이 노출되지 않아야 함 (정지·승인·활성화 모두)
+      // — getAllByText('정지') 는 다른 사용자에게서 1번 등장 가능, 본인 행에 0건이 핵심.
+      const meRow = table.getByText('나운영').closest('tr');
+      expect(meRow).not.toBeNull();
+      expect(within(meRow as HTMLElement).queryByText('정지')).toBeNull();
+      expect(within(meRow as HTMLElement).queryByText('승인')).toBeNull();
+      expect(within(meRow as HTMLElement).queryByText('활성화')).toBeNull();
+    });
+
+    it('currentUserId 미지정 시 기존 동작 유지 (모든 사용자에 액션 버튼 표시)', () => {
+      render(
+        <UserManagementTable users={[makeUser({ role: 'CONSULTANT_APPROVED' })]} />,
+      );
+      // 정지 버튼이 정상 노출 (currentUserId 없음 → self 가드 미적용)
+      expect(getTable().getByText('정지')).toBeInTheDocument();
+      expect(screen.queryByTestId('self-row-marker')).toBeNull();
+    });
+
+    it('본인이 SYSTEM_ADMIN 일 때도 액션 버튼이 숨겨진다', () => {
+      const sysadmin = makeUser({
+        id: 'sys-1',
+        role: 'SYSTEM_ADMIN',
+        name: '시스템관리자',
+      });
+      render(<UserManagementTable users={[sysadmin]} currentUserId="sys-1" />);
+      const table = getTable();
+      expect(table.getByTestId('self-row-marker')).toBeInTheDocument();
+      expect(table.queryByText('정지')).toBeNull();
+    });
+  });
+
+  // #006 회귀 — 데스크톱 셀의 긴 이메일이 단어 단위로 줄바꿈되어 임의 위치에서
+  // 끊어지지 않도록 break-all 클래스 적용.
+  it('#006: 데스크톱 이메일 셀에 break-all 클래스가 적용된다', () => {
+    render(
+      <UserManagementTable
+        users={[makeUser({ email: 'audit-c-20260428@test.com' })]}
+      />,
+    );
+    const desktopEmail = getTable().getByTestId('user-email-desktop');
+    expect(desktopEmail).toHaveClass('break-all');
+    expect(desktopEmail).toHaveTextContent('audit-c-20260428@test.com');
+  });
 });

@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import { CircleAlert, Clock } from 'lucide-react';
 
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -62,9 +61,21 @@ export default async function PublicAssessmentPage({ params }: PageProps) {
     .eq('token', token)
     .single();
 
-  // 존재하지 않는 토큰 → 404
+  // #005 — 존재하지 않는 토큰: 일반 404 대신 도메인 안내 페이지 노출
+  // (이전: notFound() 호출 → 일반 "페이지를 찾을 수 없습니다" 표시로 사용자가
+  // 자기 링크가 잘못된 건지 시스템 오류인지 알 수 없었음)
   if (!tokenData) {
-    notFound();
+    return (
+      <StatusMessage
+        icon={
+          <IconCircle bgColor="bg-amber-100">
+            <CircleAlert className="w-8 h-8 text-amber-600" />
+          </IconCircle>
+        }
+        title="유효하지 않은 자가진단 링크"
+        message="자가진단 링크가 잘못되었거나 만료된 것으로 보입니다. 담당 컨설턴트에게 새 링크를 요청해 주세요."
+      />
+    );
   }
 
   const projectId = tokenData.project_id;

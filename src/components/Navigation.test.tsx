@@ -652,4 +652,50 @@ describe('Navigation', () => {
       expect(userMgmtLink).toHaveAttribute('data-prefetch', 'true');
     });
   });
+
+  // ─── #009 — fullPage 캡처 시 sticky 헤더 중복 회피 ──────────────────────
+  describe('#009 — data-html2canvas-ignore', () => {
+    it('nav 요소에 data-html2canvas-ignore 속성이 있다', () => {
+      const { container } = renderNavigation();
+      const nav = container.querySelector('nav');
+      expect(nav).not.toBeNull();
+      expect(nav).toHaveAttribute('data-html2canvas-ignore');
+    });
+  });
+
+  // ─── #010 — USER_PENDING 헤더 아이콘 가드 ──────────────────────────────
+  describe('#010 — 승인 대기 사용자 헤더 아이콘 가드', () => {
+    it('USER_PENDING 사용자에게 메시지·알림 아이콘이 노출되지 않는다', () => {
+      renderNavigation({
+        user: createUser({ role: 'USER_PENDING' }),
+      });
+      expect(screen.queryByTestId('message-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('notification-bell')).not.toBeInTheDocument();
+    });
+
+    it('OPS_ADMIN_PENDING 사용자에게도 메시지·알림 아이콘이 노출되지 않는다', () => {
+      renderNavigation({
+        user: createUser({ role: 'OPS_ADMIN_PENDING' }),
+      });
+      expect(screen.queryByTestId('message-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('notification-bell')).not.toBeInTheDocument();
+    });
+
+    it('CONSULTANT_APPROVED 사용자에게는 메시지·알림 아이콘이 정상 노출된다', () => {
+      renderNavigation({
+        user: createUser({ role: 'CONSULTANT_APPROVED' }),
+      });
+      // 데스크톱·모바일 두 영역에 모두 렌더되므로 getAllBy 사용
+      expect(screen.getAllByTestId('message-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('notification-bell').length).toBeGreaterThan(0);
+    });
+
+    it('OPS_ADMIN 사용자에게도 메시지·알림 아이콘이 정상 노출된다', () => {
+      renderNavigation({
+        user: createUser({ role: 'OPS_ADMIN' }),
+      });
+      expect(screen.getAllByTestId('message-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('notification-bell').length).toBeGreaterThan(0);
+    });
+  });
 });

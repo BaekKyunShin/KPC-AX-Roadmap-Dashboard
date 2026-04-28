@@ -64,7 +64,8 @@ describe('fetchAuditLogs', () => {
     });
   });
 
-  it('정상 — fetchAuditLogsService에 currentUserRole 전달', async () => {
+  // #001 — currentUserRole 전달 분기 제거 후, fetchAuditLogsService 는 필터만 전달받는다.
+  it('정상 — fetchAuditLogsService에 필터를 그대로 전달 (currentUserRole 미전달)', async () => {
     const mockAuth = {
       user: { id: 'u1', email: 'a@b.com' },
       supabase: {},
@@ -82,15 +83,12 @@ describe('fetchAuditLogs', () => {
 
     await fetchAuditLogs({ action: 'USER_APPROVE' });
 
-    expect(fetchAuditLogsService).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentUserRole: 'SYSTEM_ADMIN',
-        action: 'USER_APPROVE',
-      }),
-    );
+    expect(fetchAuditLogsService).toHaveBeenCalledWith({
+      action: 'USER_APPROVE',
+    });
   });
 
-  it('OPS_ADMIN 역할 — 날짜 범위 필터 전달', async () => {
+  it('OPS_ADMIN 역할 — 날짜 범위 필터 전달 (currentUserRole 미전달)', async () => {
     const mockAuth = {
       user: { id: 'u1', email: 'a@b.com' },
       supabase: {},
@@ -112,17 +110,14 @@ describe('fetchAuditLogs', () => {
       targetType: 'project',
     });
 
-    expect(fetchAuditLogsService).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentUserRole: 'OPS_ADMIN',
-        startDate: '2026-01-01',
-        endDate: '2026-01-31',
-        targetType: 'project',
-      }),
-    );
+    expect(fetchAuditLogsService).toHaveBeenCalledWith({
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+      targetType: 'project',
+    });
   });
 
-  it('필터 없이 기본 호출 — fetchAuditLogsService가 currentUserRole 포함', async () => {
+  it('필터 없이 기본 호출 — fetchAuditLogsService 가 정상 호출됨', async () => {
     const mockAuth = {
       user: { id: 'u1', email: 'a@b.com' },
       supabase: {},
@@ -245,7 +240,8 @@ describe('fetchAllAuditLogs', () => {
     expect(fetchAuditLogsService).toHaveBeenCalledTimes(10);
   });
 
-  it('OPS_ADMIN 역할 — fetchAllAuditLogs에서 currentUserRole 전달', async () => {
+  // #001 — fetchAllAuditLogs 도 currentUserRole 미전달, 필터만 그대로 전달.
+  it('OPS_ADMIN 역할 — fetchAllAuditLogs 가 필터를 그대로 전달 (currentUserRole 미전달)', async () => {
     const mockAuth = {
       user: { id: 'u1', email: 'a@b.com' },
       supabase: {},
@@ -273,10 +269,14 @@ describe('fetchAllAuditLogs', () => {
 
     expect(fetchAuditLogsService).toHaveBeenCalledWith(
       expect.objectContaining({
-        currentUserRole: 'OPS_ADMIN',
         action: 'PROJECT_CREATE',
+        page: 1,
+        limit: 1000,
       }),
     );
+    // currentUserRole 키가 들어가지 않음
+    const firstCallArgs = vi.mocked(fetchAuditLogsService).mock.calls[0][0];
+    expect(firstCallArgs).not.toHaveProperty('currentUserRole');
     expect(result.logs).toHaveLength(5);
     expect(result.total).toBe(5);
   });
@@ -363,7 +363,8 @@ describe('fetchUsers', () => {
     expect(mock.chainable.in).not.toHaveBeenCalled();
   });
 
-  it('OPS_ADMIN → CONSULTANT_ROLES로 in() 필터', async () => {
+  // #001 — fetchUsers 도 OPS_ADMIN 가시 범위를 컨설턴트로 좁히지 않고 전체 사용자 조회.
+  it('#001: OPS_ADMIN 도 전체 사용자 조회 (컨설턴트 화이트리스트 없음)', async () => {
     const mock = createMockSupabase();
     const mockAuth = {
       user: { id: 'u1' },
@@ -373,17 +374,18 @@ describe('fetchUsers', () => {
     };
     vi.mocked(requireAuthWithRole).mockResolvedValue(mockAuth as never);
     mock.addResult({
-      data: [{ id: 'u2', name: '컨설턴트', email: 'c@b.com' }],
+      data: [
+        { id: 'u-self', name: '본인 OPS_ADMIN', email: 'me@b.com' },
+        { id: 'u-c', name: '컨설턴트', email: 'c@b.com' },
+      ],
       error: null,
     });
 
     const result = await fetchUsers();
 
-    expect(result).toHaveLength(1);
-    expect(mock.chainable.in).toHaveBeenCalledWith(
-      'role',
-      expect.arrayContaining(['USER_PENDING', 'CONSULTANT_APPROVED']),
-    );
+    expect(result).toHaveLength(2);
+    // 컨설턴트 화이트리스트 in('role', ...) 호출 없어야 함
+    expect(mock.chainable.in).not.toHaveBeenCalled();
   });
 });
 

@@ -8,6 +8,7 @@
 | 날짜 | 작업 | PR | 결함 변동 |
 |------|------|----|-----------|
 | 2026-04-28 | 1차 전수 조사 | — | OPEN: #001~#010 (10건) |
+| 2026-04-29 | 결함 수정 (세션 #A) | PR #36 | RESOLVED: #001, #002, #003, #005, #006, #007, #008, #009, #010 / 보류: #004 |
 <!-- 새 항목은 위 행 위쪽이 아닌 아래쪽에 추가 (시간 순 누적) -->
 
 ## 결함 상태 라벨
@@ -41,22 +42,22 @@
 
 | # | 등급 | 상태 | 영역 | 메뉴 경로 | 한 줄 요약 |
 |---|------|------|------|----------|-----------|
-| 1 | **P1** | 🔴 OPEN | 기능 | 운영관리 > 감사로그 | 감사로그 페이지가 항상 "로그 없음" — DB는 정상 기록 중 |
-| 2 | **P1** | 🔴 OPEN | 기능/UX | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 로드맵 | 인터뷰 미완료 상태에서 "AI 로드맵 생성" 클릭 시 silent fail (피드백 0건) |
-| 3 | P2 | 🔴 OPEN | 기능 | 운영관리 > 사용자 관리 | 운영관리자/시스템관리자 본인이 목록에 표시되지 않음 |
+| 1 | **P1** | 🟢 RESOLVED | 기능 | 운영관리 > 감사로그 | 감사로그 페이지가 항상 "로그 없음" — DB는 정상 기록 중 |
+| 2 | **P1** | 🟢 RESOLVED | 기능/UX | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 로드맵 | 인터뷰 미완료 상태에서 "AI 로드맵 생성" 클릭 시 silent fail (피드백 0건) |
+| 3 | P2 | 🟢 RESOLVED | 기능 | 운영관리 > 사용자 관리 | 운영관리자/시스템관리자 본인이 목록에 표시되지 않음 |
 | 4 | P2 | 🔴 OPEN | 데이터 | (모든 사용자) /register | Step 1만 완료해도 USER_PENDING 사용자 즉시 등록, Step 2 이탈자 잔재 |
-| 5 | P2 | 🔴 OPEN | UX | 자가진단 링크 | 무효/만료 토큰 접근 시 도메인 안내 없이 일반 404 페이지 |
-| 6 | P3 | 🔴 OPEN | UI | 운영관리 > 사용자 관리 | 이메일이 셀에서 어색한 위치에서 줄바꿈 |
-| 7 | P3 | 🔴 OPEN | UX | 운영관리 > 감사로그 | 0건 상태에서도 "전체 목록 다운로드 (0건)" 버튼 활성 |
-| 8 | P3 | 🔴 OPEN | UX | 랜딩 페이지 (#demo) | 데모 캐러셀이 약 90초 주기 자동 회전, 일시정지 컨트롤 부재 |
-| 9 | P3 | 🔴 OPEN | UI | 모든 인증 페이지 | fullPage 캡처 시 sticky 헤더가 페이지 중간에 한 번 더 그려짐 (SEO/OG에 영향) |
-| 10 | P3 | 🔴 OPEN | UX | 승인 대기 대시보드 | USER_PENDING 사용자에게 사용 불가능한 메시지·알림 아이콘 노출 |
+| 5 | P2 | 🟢 RESOLVED | UX | 자가진단 링크 | 무효/만료 토큰 접근 시 도메인 안내 없이 일반 404 페이지 |
+| 6 | P3 | 🟢 RESOLVED | UI | 운영관리 > 사용자 관리 | 이메일이 셀에서 어색한 위치에서 줄바꿈 |
+| 7 | P3 | 🟢 RESOLVED | UX | 운영관리 > 감사로그 | 0건 상태에서도 "전체 목록 다운로드 (0건)" 버튼 활성 |
+| 8 | P3 | 🟢 RESOLVED | UX | 랜딩 페이지 (#demo) | 데모 캐러셀이 약 90초 주기 자동 회전, 일시정지 컨트롤 부재 |
+| 9 | P3 | 🟢 RESOLVED | UI | 모든 인증 페이지 | fullPage 캡처 시 sticky 헤더가 페이지 중간에 한 번 더 그려짐 (SEO/OG에 영향) |
+| 10 | P3 | 🟢 RESOLVED | UX | 승인 대기 대시보드 | USER_PENDING 사용자에게 사용 불가능한 메시지·알림 아이콘 노출 |
 
 ---
 
 ## P1 — 핵심 기능 사용 불가/사용성 차단
 
-### #001 [P1] [🔴 OPEN] 운영관리 > 감사로그가 항상 "로그 없음" 표시
+### #001 [P1] [🟢 RESOLVED] 운영관리 > 감사로그가 항상 "로그 없음" 표시
 
 **메뉴 경로:** 로그인 (운영관리자) → 운영관리 > 감사로그
 
@@ -72,9 +73,12 @@
 
 **스크린샷:** [G7-07-ops-audit.png](./screenshots/2026-04-28/G7-07-ops-audit.png)
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트 + 수동 확인
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 근본 원인: `src/lib/services/audit.ts` 의 `fetchAuditLogs` 가 OPS_ADMIN 일 때만 `actor_user_id` 를 컨설턴트 화이트리스트로 좁히고 있어 OPS_ADMIN 본인이 actor 인 PROJECT_CREATE 등이 모두 차단되었음. RLS 정책(`audit_logs SELECT: OPS_ADMIN 이상 — 모든 로그 조회`) 의도와 충돌하던 코드 분기를 제거. 같은 결함이 export 다운로드(`fetchAllAuditLogs`)·actor 필터(`fetchUsers`)에도 있어 함께 정리.
+
 ---
 
-### #002 [P1] [🔴 OPEN] "AI 로드맵 생성" 버튼 클릭 시 아무 피드백 없이 무반응
+### #002 [P1] [🟢 RESOLVED] "AI 로드맵 생성" 버튼 클릭 시 아무 피드백 없이 무반응
 
 **메뉴 경로:** 로그인 (컨설턴트) → 워크스페이스 > 담당 프로젝트 > [시드기업B] > 로드맵 (또는 우측 상단 "로드맵" 버튼)
 
@@ -100,11 +104,14 @@
 - [G4-01-roadmap-generating.png](./screenshots/2026-04-28/G4-01-roadmap-generating.png) (클릭 직전)
 - [G4-02-roadmap-after-click.png](./screenshots/2026-04-28/G4-02-roadmap-after-click.png) (클릭 후 8초, 동일 화면)
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트 (3건 추가)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 근본 원인: `RoadmapResultClient` EmptyState 가 인터뷰 부재 여부를 가드하지 않아 사용자가 클릭 자체를 할 수 있었음. Server Action 이 `Error('인터뷰 데이터가 없습니다.')` throw 후 catch → 토스트로 변환했으나 75ms 응답이라 시각적으로 놓치기 쉬움. 클라이언트에서 `interview` snapshot 키 존재 여부로 사전 가드 추가: 인터뷰 부재 시 EmptyState 가 "현장 인터뷰를 먼저 완료해주세요" 안내 + `/consultant/projects/[id]/interview` CTA 링크 + 생성 버튼 disabled 로 변환. 본 버튼에도 `disabled={isGenerating || !hasInterview}` 이중 가드.
+
 ---
 
 ## P2 — 주요 흐름 일부 차단/오해 유발
 
-### #003 [P2] [🔴 OPEN] 사용자 관리에 운영관리자·시스템관리자 본인이 표시되지 않음
+### #003 [P2] [🟢 RESOLVED] 사용자 관리에 운영관리자·시스템관리자 본인이 표시되지 않음
 
 **메뉴 경로:** 로그인 (운영관리자) → 운영관리 > 사용자 관리
 
@@ -119,6 +126,9 @@
 **영향:** 운영관리자가 자기 정보 확인이나 시스템관리자 관리(예: 권한 정지)가 불가능. 메뉴명과 실제 기능 불일치.
 
 **스크린샷:** [G7-04-ops-users.png](./screenshots/2026-04-28/G7-04-ops-users.png)
+
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트 (3건 추가)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 근본 원인: `/ops/users/page.tsx` 가 `OPS_ADMIN_MANAGEABLE_ROLES = CONSULTANT_ROLES` 로만 필터링하여 본인을 결과에 포함시키지 않음. `page.tsx` 에서 본인 행을 별도 조회해 목록 맨 앞에 합치고 (중복 제거) `UserManagementTable` 에 `currentUserId` prop 을 추가해 본인 행에서는 액션 버튼 대신 "본인" 뱃지 노출 (자기 권한 변경 사고 방지). 페이지 설명도 "운영관리자·시스템관리자 본인 정보와 컨설턴트 승인/정지 상태를 관리합니다."로 갱신.
 
 ---
 
@@ -139,9 +149,11 @@
 
 **DB 검증:** `audit-c-20260428@test.com`이 Step 2 미완료 상태에서도 즉시 `USER_PENDING`/`role=USER_PENDING`으로 등록됨을 확인.
 
+- **보류 사유 (세션 #A — 2026-04-29)**: 회원가입 트랜잭션 분리는 Supabase Auth 의 `signUp()` 이 Step 1 시점에 인증 사용자를 만들어야 하는 구조적 제약 때문에 본격적인 리팩터링이 필요함. 본 세션은 1차 조사 결함 표면 정리(9건) 에 집중하므로 별도 세션에서 다음 패키지로 본격 해결 권장: ① `users.profile_completed` boolean 컬럼 마이그레이션 + ② 운영관리자 화면 기본 필터에서 `false` 제외 + ③ 야간 cron 으로 `created_at > 1d AND consultant_profiles is null` 사용자 cleanup. 또는 Step 2 까지 클라이언트 state 에 보관 후 한 번에 `signUp` + `users INSERT` + `consultant_profiles INSERT` 하는 단일 트랜잭션 패턴 검토.
+
 ---
 
-### #005 [P2] [🔴 OPEN] 자가진단 무효/만료 토큰 → 일반 404 (도메인 안내 없음)
+### #005 [P2] [🟢 RESOLVED] 자가진단 무효/만료 토큰 → 일반 404 (도메인 안내 없음)
 
 **메뉴 경로:** 자가진단 링크 (`/assessment/[token]`)
 
@@ -156,11 +168,14 @@
 
 **스크린샷:** [G1-08-assessment-invalid.png](./screenshots/2026-04-28/G1-08-assessment-invalid.png)
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Phase 4 E2E (`tests/e2e/assessment-invalid-token.spec.ts`)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 근본 원인: `assessment/[token]/page.tsx` 가 토큰 미존재 시 `notFound()` 호출 → 일반 404 페이지로 폴백. 이미 만료/사용 케이스는 `StatusMessage` 도메인 안내 컴포넌트가 있었음. 무효 토큰 분기도 같은 컴포넌트로 "유효하지 않은 자가진단 링크 — 자가진단 링크가 잘못되었거나 만료된 것으로 보입니다. 담당 컨설턴트에게 새 링크를 요청해 주세요." 안내 노출. `notFound` import 도 제거.
+
 ---
 
 ## P3 — 사소한 시각·문구·UX
 
-### #006 [P3] [🔴 OPEN] 사용자 관리 — 이메일 셀에서 어색한 줄바꿈
+### #006 [P3] [🟢 RESOLVED] 사용자 관리 — 이메일 셀에서 어색한 줄바꿈
 
 **메뉴 경로:** 운영관리 > 사용자 관리
 
@@ -170,9 +185,12 @@
 
 **스크린샷:** [G7-04-ops-users.png](./screenshots/2026-04-28/G7-04-ops-users.png)
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest (`break-all` 클래스 적용 검증)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — `UserManagementTable` 데스크톱 셀 (모바일 카드는 이미 적용됨) 의 `text-gray-500` 에 `break-all` 추가. data-testid="user-email-desktop" 부여로 회귀 테스트 셀렉터 안정성 확보.
+
 ---
 
-### #007 [P3] [🔴 OPEN] 감사로그 0건 상태에서 "전체 목록 다운로드 (0건)" 버튼 활성
+### #007 [P3] [🟢 RESOLVED] 감사로그 0건 상태에서 "전체 목록 다운로드 (0건)" 버튼 활성
 
 **메뉴 경로:** 운영관리 > 감사로그
 
@@ -182,9 +200,12 @@
 
 **스크린샷:** [G7-07-ops-audit.png](./screenshots/2026-04-28/G7-07-ops-audit.png)
 
+- **해결 정보**: 코드 검증 결과 `AuditLogClient.tsx:469` 에 이미 `disabled={total === 0 || exporting !== null || loading}` 적용되어 있음. 1차 조사자가 시각적으로 disabled 인지 못한 것으로 추정 (`disabled:opacity-50` 만 적용되어 흐림). 회귀 방지 단위 테스트 1건 추가.
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED
+
 ---
 
-### #008 [P3] [🔴 OPEN] 랜딩 페이지 데모 캐러셀이 자동으로 빠르게 넘어감
+### #008 [P3] [🟢 RESOLVED] 랜딩 페이지 데모 캐러셀이 자동으로 빠르게 넘어감
 
 **메뉴 경로:** 랜딩 페이지(`/`) → 하단 "제품 데모" 섹션
 
@@ -194,9 +215,12 @@
 - 사용자가 캐러셀 영역에 마우스를 올리면 자동 전환 일시정지
 - "자동 전환 끄기" 토글 또는 명시적 일시정지 버튼
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트 (3건 추가)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — DemoSection 의 SlideCounter 옆 (top-4 right-20) 에 명시적 일시정지/재생 토글 버튼 추가. `aria-label` 이 isPaused 상태에 따라 "자동 전환 일시정지" / "자동 전환 재생" 으로 토글되어 스크린 리더에도 명확. 기존 호버 일시정지(`onMouseEnter/Leave`) 는 유지.
+
 ---
 
-### #009 [P3] [🔴 OPEN] fullPage 캡처 시 sticky 헤더가 페이지 중간에 한 번 더 그려짐
+### #009 [P3] [🟢 RESOLVED] fullPage 캡처 시 sticky 헤더가 페이지 중간에 한 번 더 그려짐
 
 **메뉴 경로:** 운영관리 > 프로젝트 관리 > [프로젝트 상세] 등 sticky 헤더가 있는 모든 페이지
 
@@ -206,9 +230,12 @@
 
 **스크린샷:** [G7-03-ops-project-detail.png](./screenshots/2026-04-28/G7-03-ops-project-detail.png) (헤더가 중간에 두 번째로 등장)
 
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — Navigation 의 `<nav>` 요소에 `data-html2canvas-ignore` 속성 추가. html2canvas/Playwright fullPage 등 캡처 도구가 sticky 헤더를 페이지 중간에 중복으로 그리는 현상을 회피. 일반 브라우저 동작에는 영향 없음 (속성은 무시됨). 검증은 best-effort 수준 — 단위 테스트로 속성 존재만 확인.
+
 ---
 
-### #010 [P3] [🔴 OPEN] 승인 대기 사용자 헤더에 사용 불가능한 메시지·알림 아이콘 노출
+### #010 [P3] [🟢 RESOLVED] 승인 대기 사용자 헤더에 사용 불가능한 메시지·알림 아이콘 노출
 
 **메뉴 경로:** 신규 회원가입 직후 → /dashboard
 
@@ -217,6 +244,9 @@
 **개선 방향:** 승인 전 사용자에게는 해당 아이콘을 숨기거나 비활성 + 툴팁("승인 후 사용 가능") 표시.
 
 **스크린샷:** [G2-02-pending-dashboard.png](./screenshots/2026-04-28/G2-02-pending-dashboard.png) (헤더 우측 아이콘들 확인)
+
+- **해결 정보**: PR #36 · 2026-04-29 · 검증자: Vitest 회귀 테스트 (4건 추가)
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — Navigation 에 `isApprovedUser = isConsultant || isOpsAdmin` 가드 추가. USER_PENDING / OPS_ADMIN_PENDING 일 때 데스크톱·모바일 두 영역의 `<MessageIcon>` / `<NotificationBell>` 모두 미렌더. 승인된 사용자(컨설턴트·운영관리자·시스템관리자) 에게는 기존대로 노출. 검색 아이콘은 별도 결함이 아니므로 그대로 유지.
 
 ---
 

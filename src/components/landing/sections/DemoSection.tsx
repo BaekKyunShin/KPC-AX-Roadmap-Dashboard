@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Pause, Play } from 'lucide-react';
 import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
 import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
 import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
@@ -138,6 +139,38 @@ function SlideCounter({ current, total }: { current: number; total: number }) {
       <span className="px-3 py-1.5 bg-gray-900/70 backdrop-blur text-white text-xs font-medium rounded-full">
         {current} / {total}
       </span>
+    </div>
+  );
+}
+
+/**
+ * #008 — 명시적 자동 전환 일시정지·재생 토글.
+ *
+ * 호버 시 일시정지는 이미 동작하지만(`onMouseEnter/Leave`), 사용자가 표·문구가
+ * 긴 슬라이드를 끝까지 읽도록 명시적 컨트롤 추가.
+ */
+function PlayPauseToggle({
+  isPaused,
+  onToggle,
+}: {
+  isPaused: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="absolute top-4 right-20 z-10">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900/70 backdrop-blur text-white hover:bg-gray-900/90 transition-colors"
+        aria-label={isPaused ? '자동 전환 재생' : '자동 전환 일시정지'}
+        data-cursor-hover
+      >
+        {isPaused ? (
+          <Play className="w-3.5 h-3.5" aria-hidden="true" />
+        ) : (
+          <Pause className="w-3.5 h-3.5" aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }
@@ -423,6 +456,10 @@ export default function DemoSection() {
               ))}
 
               <SlideCounter current={currentIndex + 1} total={DEMO_SLIDES.length} />
+              <PlayPauseToggle
+                isPaused={isPaused}
+                onToggle={() => setIsPaused((prev) => !prev)}
+              />
 
               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
             </div>

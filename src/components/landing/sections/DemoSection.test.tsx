@@ -242,7 +242,37 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 5. 마우스 호버 시 자동재생 일시정지
+  // 5. 명시적 일시정지 토글 버튼 (#008)
+  // --------------------------------------------------------------------------
+  describe('#008 — 일시정지 토글 버튼', () => {
+    it('초기에는 "자동 전환 일시정지" 라벨의 버튼이 노출된다', () => {
+      render(<DemoSection />);
+      expect(
+        screen.getByRole('button', { name: '자동 전환 일시정지' }),
+      ).toBeInTheDocument();
+    });
+
+    it('일시정지 버튼 클릭 시 라벨이 "자동 전환 재생"으로 변경된다', () => {
+      render(<DemoSection />);
+      const pauseBtn = screen.getByRole('button', { name: '자동 전환 일시정지' });
+      fireEvent.click(pauseBtn);
+      expect(
+        screen.getByRole('button', { name: '자동 전환 재생' }),
+      ).toBeInTheDocument();
+    });
+
+    it('일시정지 → 재생 토글 시 다시 "자동 전환 일시정지" 라벨로 돌아온다', () => {
+      render(<DemoSection />);
+      fireEvent.click(screen.getByRole('button', { name: '자동 전환 일시정지' }));
+      fireEvent.click(screen.getByRole('button', { name: '자동 전환 재생' }));
+      expect(
+        screen.getByRole('button', { name: '자동 전환 일시정지' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 5b. 마우스 호버 시 자동재생 일시정지
   // --------------------------------------------------------------------------
   describe('마우스 호버 일시정지', () => {
     it('mockup 컨테이너에 마우스 진입 시 자동재생이 일시정지된다', async () => {

@@ -249,6 +249,22 @@ describe('AuditLogClient', () => {
       const downloadBtn = screen.getByText('현재 페이지 다운로드').closest('button');
       expect(downloadBtn).toBeDisabled();
     });
+
+    // #007 회귀 방지 — 전체 목록 다운로드 버튼은 total=0 일 때 disabled 되어야 한다.
+    it('#007: 로그가 없으면 "전체 목록 다운로드 (0건)" 버튼이 비활성화된다', () => {
+      render(
+        <AuditLogClient
+          {...defaultProps}
+          initialLogs={[]}
+          initialTotal={0}
+          initialTotalPages={0}
+        />,
+      );
+      const allDownloadBtn = screen
+        .getByText(/전체 목록 다운로드/)
+        .closest('button');
+      expect(allDownloadBtn).toBeDisabled();
+    });
   });
 
   // --------------------------------------------------------------------------

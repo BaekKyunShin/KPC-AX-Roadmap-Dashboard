@@ -1,7 +1,6 @@
 'use server';
 
 import { fetchAuditLogs as fetchAuditLogsService } from '@/lib/services/audit';
-import { CONSULTANT_ROLES } from '@/lib/constants/status';
 import type { AuditAction } from '@/types/database';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 
@@ -39,18 +38,15 @@ export interface AuditLogEntry {
 }
 
 /**
- * 감사로그 조회
- * - SYSTEM_ADMIN: 전체 로그 조회 가능
- * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
+ * 감사로그 조회 — OPS_ADMIN+ 모두 전체 로그 조회
+ *
+ * RLS 정책(`audit_logs SELECT: OPS_ADMIN 이상`) 의도와 일치.
  */
 export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { logs: [], total: 0, page: 1, limit: 50, totalPages: 0 };
 
-  return await fetchAuditLogsService({
-    ...filters,
-    currentUserRole: auth.role,
-  });
+  return await fetchAuditLogsService(filters);
 }
 
 /**
@@ -118,16 +114,13 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
 }
 
 /**
- * 전체 로그 내보내기용 조회 (최대 10000건)
- * - SYSTEM_ADMIN: 전체 로그 조회 가능
- * - OPS_ADMIN: 컨설턴트가 수행한 로그만 조회 가능
+ * 전체 로그 내보내기용 조회 (최대 10000건) — OPS_ADMIN+ 모두 전체 로그 조회
  */
 export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 'limit'> = {}) {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return { logs: [] as AuditLogEntry[] };
 
   try {
-    // 청크 단위로 분할 조회 (메모리 부하 분산)
     const allLogs: AuditLogEntry[] = [];
     let page = 1;
     let total = 0;
@@ -137,7 +130,6 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
         ...filters,
         page,
         limit: AUDIT_LOG_CHUNK_SIZE,
-        currentUserRole: auth.role,
       });
 
       if (page === 1) {
@@ -150,7 +142,6 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
       page++;
     }
 
-    // Server Action 직렬화 안전성 확보 (Date 인스턴스 등 제거)
     return { logs: JSON.parse(JSON.stringify(allLogs)) as AuditLogEntry[], total };
   } catch (error) {
     console.error('[fetchAllAuditLogs]', error);
@@ -159,25 +150,18 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
 }
 
 /**
- * 사용자 목록 조회 (필터용)
- * - SYSTEM_ADMIN: 전체 사용자 조회 가능
- * - OPS_ADMIN: 컨설턴트만 조회 가능
+ * 감사로그 actor 필터용 사용자 목록 조회 — OPS_ADMIN+ 모두 전체 사용자 조회
+ *
+ * 감사로그가 모든 actor 의 활동을 보여주므로 actor 드롭다운도 동일 범위.
  */
 export async function fetchUsers(): Promise<{ id: string; name: string; email: string }[]> {
   const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
   if ('error' in auth) return [];
 
-  // SYSTEM_ADMIN은 전체 사용자, OPS_ADMIN은 컨설턴트만
-  let query = auth.supabase
+  const { data: users } = await auth.supabase
     .from('users')
     .select('id, name, email')
     .order('name');
-
-  if (auth.role === 'OPS_ADMIN') {
-    query = query.in('role', [...CONSULTANT_ROLES]);
-  }
-
-  const { data: users } = await query;
 
   return users || [];
 }
