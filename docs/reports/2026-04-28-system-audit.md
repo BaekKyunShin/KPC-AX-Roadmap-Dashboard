@@ -149,6 +149,8 @@
 
 **DB 검증:** `audit-c-20260428@test.com`이 Step 2 미완료 상태에서도 즉시 `USER_PENDING`/`role=USER_PENDING`으로 등록됨을 확인.
 
+- **보류 사유 (세션 #A — 2026-04-29)**: 회원가입 트랜잭션 분리는 Supabase Auth 의 `signUp()` 이 Step 1 시점에 인증 사용자를 만들어야 하는 구조적 제약 때문에 본격적인 리팩터링이 필요함. 본 세션은 1차 조사 결함 표면 정리(9건) 에 집중하므로 별도 세션에서 다음 패키지로 본격 해결 권장: ① `users.profile_completed` boolean 컬럼 마이그레이션 + ② 운영관리자 화면 기본 필터에서 `false` 제외 + ③ 야간 cron 으로 `created_at > 1d AND consultant_profiles is null` 사용자 cleanup. 또는 Step 2 까지 클라이언트 state 에 보관 후 한 번에 `signUp` + `users INSERT` + `consultant_profiles INSERT` 하는 단일 트랜잭션 패턴 검토.
+
 ---
 
 ### #005 [P2] [🟢 RESOLVED] 자가진단 무효/만료 토큰 → 일반 404 (도메인 안내 없음)
