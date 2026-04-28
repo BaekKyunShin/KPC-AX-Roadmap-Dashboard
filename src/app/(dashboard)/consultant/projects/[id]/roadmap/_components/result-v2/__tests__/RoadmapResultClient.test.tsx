@@ -476,3 +476,77 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
   });
 });
 
+// #002 회귀 방지 — 인터뷰 미완료 상태에서 "AI 로드맵 생성" 버튼이 silent fail 하던 결함.
+// EmptyState 가 인터뷰 부재 여부를 가드하지 않아 클릭 시 Server Action 만 throw 하고
+// 사용자는 어떤 피드백도 받지 못하는 결함을 EmptyState 단계에서 사전 차단.
+describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('interview 가 빈 객체이고 versions=[] 일 때 안내 문구 + 인터뷰 페이지 CTA 노출', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="proj-empty-interview"
+        versions={[]}
+        selectedVersion={null}
+        interview={{}}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/현장 인터뷰를 먼저 완료해주세요/),
+    ).toBeInTheDocument();
+    const cta = screen.getByRole('link', { name: /인터뷰 입력하러 가기/ });
+    expect(cta).toBeInTheDocument();
+    expect(cta).toHaveAttribute(
+      'href',
+      '/consultant/projects/proj-empty-interview/interview',
+    );
+  });
+
+  it('interview 가 빈 객체일 때 "AI 로드맵 생성" 버튼이 disabled', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={{}}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
+  });
+
+  it('interview 가 채워져 있을 때 안내 문구·CTA 미노출 + 버튼 활성', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText(/현장 인터뷰를 먼저 완료해주세요/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /인터뷰 입력하러 가기/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-generate-roadmap')).toBeEnabled();
+  });
+});
+
