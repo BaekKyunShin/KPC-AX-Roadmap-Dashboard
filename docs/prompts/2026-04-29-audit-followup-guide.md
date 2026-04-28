@@ -18,38 +18,15 @@
 - 각 세션이 별도 브랜치에서 작업 → main은 PR 머지 시점에만 갱신 → 작업 중 회귀를 방지
 - AUDIT 잔재 데이터는 작업 종료 시 `npx supabase db reset`으로 일괄 정리
 
-## 1단계 — 사용자 사전 준비 (둘 다 시작하기 전)
+## 1단계 — 사용자 사전 준비 (최소화)
 
-### A. main 동기화 + 브랜치 생성
+사용자가 직접 할 일은 **딱 두 가지**:
 
-```bash
-cd /Users/baekkyunshin/Desktop/AI-roadmap-dashboard
-git checkout main
-git pull --ff-only origin main
+1. 1차 조사 리포트·스크린샷·이 가이드/프롬프트가 main에 커밋되어 있는지 확인
+   - 이미 1084205 커밋(`docs(reports): 1차 시스템 전수 조사 리포트 + 후속 작업 가이드 추가`)에 포함됨 — push만 안 됐다면 `git push origin main` 1회 (선택)
+2. 새 Claude Code 세션을 띄우고 **plan mode 진입** → 해당 세션 프롬프트(`session-A-…` 또는 `session-B-…`)의 "본문 프롬프트" 섹션을 그대로 복사·전달
 
-# 세션 #A용 브랜치만 먼저 생성. #B는 #A 머지 후 main에서 다시 분기.
-git checkout -b fix/audit-defects-2026-04-29
-```
-
-### B. 1차 조사 리포트·스크린샷 커밋
-
-리포트와 스크린샷은 1차 조사 산출물이므로 **세션 #A 시작 전에** main에 커밋해 둔다 (또는 fix 브랜치 첫 커밋으로 포함). 그래야 #A가 그 파일을 읽고 갱신할 수 있다.
-
-```bash
-git add docs/reports/2026-04-28-system-audit.md \
-        docs/reports/screenshots/2026-04-28/ \
-        docs/prompts/2026-04-29-*.md
-git commit -m "docs(reports): 1차 전수 조사 리포트 + 후속 작업 가이드/프롬프트 추가"
-git push -u origin fix/audit-defects-2026-04-29
-```
-
-### C. 새 Claude Code 세션 띄우기 — 세션 #A
-
-1. 같은 디렉토리에서 새 터미널 열기 → `claude` 실행
-2. **plan mode 진입** (대화 초입에 `/plan` 또는 plan mode 토글)
-3. `docs/prompts/2026-04-29-session-A-fix-audit-defects.md`의 **본문 프롬프트 섹션**을 그대로 복사 → 첫 메시지로 전달
-
-세션 #A는 본 가이드의 "세션 #A 흐름"을 따라간다.
+**브랜치 생성·체크아웃은 클로드가 알아서 한다.** 사용자는 main 그대로 두고 새 세션을 띄우기만 하면 된다.
 
 ## 2단계 — 세션 #A 흐름 (결함 수정)
 
@@ -70,18 +47,11 @@ git push -u origin fix/audit-defects-2026-04-29
 
 ### 세션 #A 머지
 
-사용자가 PR을 검토하고 main에 머지. 머지 후:
-
-```bash
-cd /Users/baekkyunshin/Desktop/AI-roadmap-dashboard
-git checkout main
-git pull --ff-only origin main
-git checkout -b chore/verify-deferred-2026-04-29
-```
+사용자가 PR을 검토하고 main에 머지. **사용자는 더 할 일이 없다** — main 동기화·새 브랜치 생성은 세션 #B의 클로드가 직접 처리한다.
 
 ## 3단계 — 세션 #B 흐름 (이월 검증)
 
-새 터미널에서 다시 `claude` 실행 → plan mode → `docs/prompts/2026-04-29-session-B-deferred-verification.md`의 본문 프롬프트 복사·전달.
+새 터미널에서 `claude` 실행 → plan mode 진입 → `docs/prompts/2026-04-29-session-B-deferred-verification.md`의 "본문 프롬프트" 섹션을 그대로 복사·전달. 클로드가 main 동기화 → 머지 확인 → 신규 브랜치 분기까지 자동 수행한 뒤 검증 작업 시작.
 
 | 순서 | 단계 | 주요 산출물 |
 |------|------|----------|
@@ -179,11 +149,10 @@ A. 한 PR에 여러 결함 묶음 권장 (커밋만 결함당 분리). 리뷰 �
 세션 시작 전 확인:
 
 - [ ] Docker Desktop 실행 중
-- [ ] main 최신 동기화 (`git pull --ff-only`)
-- [ ] 1차 조사 리포트가 main에 커밋됨
-- [ ] 새 브랜치 생성 후 그 브랜치로 체크아웃
+- [ ] 1차 조사 리포트가 main에 커밋됨 (이미 완료된 1084205 커밋)
 - [ ] 새 Claude Code 세션을 띄우고 plan mode 진입
 - [ ] 해당 세션 프롬프트 파일을 그대로 복사·전달
+- (브랜치 생성·체크아웃·환경 셋업은 클로드가 자동 수행)
 
 세션 종료 후 확인:
 

@@ -4,9 +4,9 @@
 
 ## 사전 조건
 
-- 이미 본 가이드(`2026-04-29-audit-followup-guide.md`)를 읽었음
-- `fix/audit-defects-2026-04-29` 브랜치로 체크아웃됨
-- main에 1차 조사 리포트가 커밋되어 있음
+- 사용자는 main 브랜치 그대로 새 세션을 띄웠음
+- main에 1차 조사 리포트(1084205 커밋)가 이미 포함되어 있음
+- **브랜치 생성·체크아웃은 본 세션의 클로드가 직접 수행한다** (아래 "Phase 0" 참조)
 
 ## 본문 프롬프트 (이하 그대로 복사)
 
@@ -76,18 +76,29 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 발견된 결�
 - **운영 Supabase 절대 건드리지 말 것**. 작업은 로컬 인스턴스(`http://127.0.0.1:54321`)에서만.
 - **데이터 격리** — 새로 생성하는 모든 엔티티에 `[AUDIT-20260429]` 프리픽스 부여.
 
+## Phase 0 — 브랜치 분기 (Plan 작성 전 자동 수행)
+
+새 세션 시작 시 클로드가 다음을 차례로 수행:
+
+1. 작업 디렉토리 확인: `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard`
+2. 현재 브랜치 확인: `git branch --show-current` → `main`이어야 함. 다른 브랜치라면 사용자에게 보고 후 진행 여부 확인.
+3. 작업 트리 깨끗한지 확인: `git status --short`. uncommitted 변경이 있다면 사용자에게 보고 후 진행 방법 확인 (stash · 커밋 · 무시).
+4. main 최신 동기화: `git fetch origin && git status -uno`로 origin/main 대비 ahead/behind 확인. behind라면 `git pull --ff-only origin main`. ahead라면 (1차 리포트 커밋이 push 안 된 상태) 그대로 진행.
+5. 1차 조사 리포트 존재 확인: `docs/reports/2026-04-28-system-audit.md`가 main에 포함됐는지 `git log --oneline | head -5`. 1084205 커밋(또는 동일 내용)이 있어야 함.
+6. 새 브랜치 생성·체크아웃: `git checkout -b fix/audit-defects-2026-04-29`. 동명 브랜치가 이미 존재하면 사용자에게 보고 후 결정(이어서 작업 vs 다른 이름).
+
+위 6단계가 모두 정상이면 Phase 1로 진행.
+
 ## 환경 셋업
 
-작업 시작 전 1회 실행:
+Phase 0 직후, Plan 단계 진입 전에 1회 실행:
 
 1. Docker Desktop 실행 여부 사용자에게 확인 (메모리 규칙: feedback_docker_announce)
 2. `npx supabase start`
 3. `npx supabase db reset` (시드 재주입 — son/kpc/sysadmin 모두 비번 `test1234!`)
 4. `cp .env.local .env.local.audit-bak && cp .env.test .env.local` (로컬 URL로 분기, 작업 끝나면 원복)
-5. `npm run dev` (포트 3000)
-6. `son@test.com` / `test1234!`로 로그인 동작 확인
-7. 작업 디렉토리: `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard` 그대로
-8. 현재 브랜치: `fix/audit-defects-2026-04-29` (사용자가 사전에 생성)
+5. `npm run dev` (포트 3000, 백그라운드)
+6. `son@test.com` / `test1234!`로 로그인 동작 확인 (API 테스트 또는 Playwright)
 
 ## 산출물 (반드시 생성)
 
@@ -109,7 +120,7 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 발견된 결�
 
 ## 진행 단계
 
-### Phase 1 — Plan 작성
+### Phase 1 — Plan 작성 (Phase 0 + 환경 셋업 직후)
 
 - 결함 10건 각각에 대해:
   - 원인 가설 (1차 단서 기반)
@@ -120,7 +131,7 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 발견된 결�
 - 각 결함을 1순위/2순위/3순위로 분류 (P 등급 + 의존성 고려)
 - 사용자 승인 (`ExitPlanMode`)
 
-### Phase 2 — 환경 셋업 + Phase 3~5 결함 해결
+### Phase 2 — 결함 해결
 
 - P1 → P2 → P3 순서. 각 결함마다 TDD 사이클.
 - 각 결함 완료 시 리포트 갱신 (✓ 누적).
@@ -134,7 +145,9 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 발견된 결�
 ### Phase 7 — PR 생성
 
 - 작업 종료 시 `.env.local` 원복 + AUDIT 데이터 정리(`supabase db reset`)
-- PR description에 해결한 결함 번호와 검증 방법 정리
+- 브랜치 push: `git push -u origin fix/audit-defects-2026-04-29`
+- `gh pr create`로 PR 생성. 제목 `fix: 1차 시스템 조사 결함 N건 해결`. 본문에 해결한 결함 번호·검증 방법·CI 통과 여부 정리
+- PR URL을 사용자에게 보고
 
 ## 작업 종료 시 보고
 

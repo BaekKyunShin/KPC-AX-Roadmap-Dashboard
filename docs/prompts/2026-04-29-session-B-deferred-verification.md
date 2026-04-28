@@ -4,10 +4,9 @@
 
 ## 사전 조건
 
-- **세션 #A 머지 완료** — 머지 전 시작 금지 (silent fail 결함 #002 수정이 LLM 호출 검증의 전제)
-- main 최신 동기화됨
-- `chore/verify-deferred-2026-04-29` 브랜치로 체크아웃됨
-- 본 가이드(`2026-04-29-audit-followup-guide.md`)를 읽었음
+- **세션 #A의 PR이 main에 머지 완료** — 머지 전 시작 금지 (silent fail 결함 #002 수정이 LLM 호출 검증의 전제)
+- 사용자는 main 브랜치 그대로 새 세션을 띄웠음
+- **main 동기화·머지 검증·브랜치 생성은 본 세션의 클로드가 직접 수행한다** (아래 "Phase 0" 참조)
 
 ## 본문 프롬프트 (이하 그대로 복사)
 
@@ -53,22 +52,37 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 시간 부족�
 - **LLM 응답 50초+ 대기해도 강제 중단 금지** (스피너·진행 표시가 정상 동작하는지가 검증 대상)
 - **회귀 발견 시 즉시 사용자에게 알림**. 1차에서 RESOLVED된 결함이 다시 발생하면 🔁 REGRESSION 라벨로 표시.
 
+## Phase 0 — 머지 검증 + 브랜치 분기 (Plan 작성 전 자동 수행)
+
+새 세션 시작 시 클로드가 다음을 차례로 수행:
+
+1. 작업 디렉토리 확인: `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard`
+2. 현재 브랜치 확인: `git branch --show-current` → `main`이어야 함. 다른 브랜치라면 사용자에게 보고 후 진행 여부 확인.
+3. 작업 트리 깨끗한지 확인: `git status --short`. uncommitted 변경이 있다면 사용자에게 보고.
+4. main 최신 동기화: `git fetch origin && git pull --ff-only origin main`
+5. **세션 #A 머지 검증**:
+   - `git log origin/main --oneline | head -10`로 최근 커밋 확인
+   - 1차 조사 결함 수정 PR이 머지되었는지 확인 (커밋 메시지에 `fix:` + "결함" 또는 "audit" 키워드)
+   - 리포트 갱신 확인: `docs/reports/2026-04-28-system-audit.md`에 `🟢 RESOLVED` 라벨이 들어가 있는지 grep
+   - 머지 흔적이 없으면 사용자에게 보고하고 **세션 종료**. (이월 검증은 #A 머지 후에만 의미 있음)
+6. 새 브랜치 생성·체크아웃: `git checkout -b chore/verify-deferred-2026-04-29`. 동명 브랜치가 이미 존재하면 사용자에게 보고 후 결정.
+
+위 단계가 모두 정상이면 환경 셋업 → Plan 작성으로 진행.
+
 ## 환경 셋업
 
-1차 세션과 동일:
+Phase 0 직후 1회 실행:
 
 1. Docker Desktop 실행 여부 사용자에게 확인
 2. `npx supabase start && npx supabase db reset`
 3. `cp .env.local .env.local.audit-bak && cp .env.test .env.local`
-4. HWPX 브리지: `npm run dev:hwpx:setup` (최초 1회) → `npm run dev:hwpx` (터미널 A)
-5. dev 서버: `npm run dev:with-hwpx` (터미널 B, 포트 3000)
+4. HWPX 브리지: `npm run dev:hwpx:setup` (최초 1회) → `npm run dev:hwpx` (백그라운드)
+5. dev 서버: `npm run dev:with-hwpx` (백그라운드, 포트 3000)
 6. son/kpc/sysadmin 모두 비번 `test1234!`로 로그인 가능 확인
-7. 작업 디렉토리: `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard`
-8. 현재 브랜치: `chore/verify-deferred-2026-04-29` (사용자가 사전에 생성)
 
 ## 진행 단계
 
-### Phase 1 — Plan 작성
+### Phase 1 — Plan 작성 (Phase 0 + 환경 셋업 직후)
 
 - 검증 범위·데이터 시드 방법(인터뷰 폼 직접 입력 vs SQL INSERT)·LLM 대기 정책·새 결함 추가 형식 결정
 - 사용자 승인 (`ExitPlanMode`)
@@ -77,7 +91,13 @@ KPC AI 훈련 로드맵 대시보드의 1차 전수 조사에서 시간 부족�
 
 각 그룹마다 캡처 + 결함 발견 시 누적 메모.
 
-### 마지막 Phase — 리포트 갱신
+### 마지막 Phase — 리포트 갱신 + PR 생성
+
+- 위 산출물 갱신 후 브랜치 push: `git push -u origin chore/verify-deferred-2026-04-29`
+- `gh pr create`로 PR 생성. 제목 `docs(reports): 1차 조사 이월 항목 검증 + 신규 결함 N건 추가`
+- PR URL을 사용자에게 보고
+
+### 리포트 갱신 (마지막 Phase 세부)
 
 - 부록 A 체크리스트 ⬜ → ✓ 갱신
 - 새 결함 #011~ 추가 (🔴 OPEN 라벨)
