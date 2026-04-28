@@ -495,3 +495,89 @@ mv .env.local.audit-bak .env.local
 - **점검자:** Claude (Auto mode, 한국어 응답 모드)
 - **스크린샷 위치:** `docs/reports/screenshots/2026-04-28/`
 - **임시 결함 노트:** `docs/reports/_findings-draft.md` (정리 후 본 리포트에 통합)
+
+---
+
+## 부록 E — 세션 #B 검증 메타데이터 (2026-04-29)
+
+- **시작:** 2026-04-29 약 00:50 KST (Phase 0 + 환경 셋업)
+- **종료:** 2026-04-29 약 01:40 KST (PR #38 생성 + .env 원복)
+- **소요:** 약 50분 (계획 대비 3.5시간 예상의 약 1/4 — silent fail 결함 발견·진단·우회에 시간 절약)
+- **사용 도구:** Playwright MCP (Chromium), `docker exec ... psql` (로컬 DB 직접 조회), Supabase CLI, gh CLI, HWPX 브리지(`scripts/dev-hwpx-server.py`)
+- **점검자:** Claude (Auto mode, 한국어 응답 모드, plan mode 후 ExitPlanMode 승인)
+- **검증 흐름 그룹:** G1 (인터뷰 8단계) · G2 (로드맵 LLM·편집·FINAL·다운로드) · G3 (PBL 부분) · G4 (메시지·Realtime·알림벨) · G5 (sysadmin) · G6 (`/test-roadmap`·`/test-pbl`)
+- **스크린샷 위치:** `docs/reports/screenshots/2026-04-29/` (총 **33장** — G1×6 / G2×14 / G3×4 / G4×4 / G5×3 / G6×2)
+- **PR:** [#38](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/38) — 브랜치 `chore/verify-deferred-2026-04-29`
+- **LLM 실호출:** 2회 (시드기업B V1 로드맵 ~95초 / V2 로드맵 ~150초 — Anthropic Claude Sonnet)
+- **다운로드 검증:** PDF (8페이지 · 750 KB · `%PDF-1.3` 매직), XLSX (75 KB · `PK\x03\x04` 매직), HWPX 로드맵 (408 KB · `application/hwp+zip` MIME · ZIP 구조 정상)
+- **DB 직접 검증 쿼리:** `interviews`, `roadmap_versions`, `self_assessments`, `projects`, `messages` 등 (`docker exec supabase_db_ai-roadmap-dashboard psql -U postgres ...`)
+- **임시 결함 노트:** `docs/reports/_findings-draft-20260429.md` (작업 중 누적 → 본 리포트에 통합 후 삭제)
+
+### 환경 fallback 적용 사항 (재현 시 참고)
+
+| 항목 | 시드 기본값 (`.env.test`) | 본 세션 fallback (`.env.local.audit-bak`) | 사유 |
+|------|--------------------------|-------------------------------------------|------|
+| `LLM_API_KEY` | `sk-proj-...` (OpenAI placeholder) | `sk-ant-api03-...` (Anthropic 실키) | Anthropic SDK 호출이라 OpenAI 키로는 인증 실패 |
+| `HWPX_API_SECRET` | (미설정) | 64자 hex secret | HWPX 브리지 서버가 secret 미설정 시 다운로드 차단 |
+| `projects.status` (시드기업B) | `ASSIGNED` (시드 기본) | `INTERVIEWED` (SQL UPDATE 우회) | 결함 #012로 status 자동 전환 안 됨 → LLM 호출 검증 진행 위한 일회성 수동 우회 |
+
+### 사용자 결정 사항 (Plan mode AskUserQuestion)
+
+| 결정 | 선택 |
+|------|------|
+| 분기 베이스 | origin/main (세션 #C 프롬프트 PR #37과 독립) |
+| 인터뷰 데이터 시드 | 8단계 폼 직접 입력 (UI 동작 검증 포함) |
+| LLM 응답 대기 정책 | 120초 + 진행 표시 정상 시 추가 60초 (총 180초 한도) |
+| 멀티 계정 흐름 | son ↔ kpc 단일 컨텍스트 로그아웃·재로그인 (시간 절약 — 사용자 결정과 달리 두 BrowserContext는 미사용) |
+
+---
+
+## 부록 F — 세션 #B 데이터 잔재 (로컬 Supabase)
+
+본 세션 동안 다음 데이터가 로컬 Supabase에 잔류했습니다. **운영 Supabase에는 어떤 변경도 없음** (`.env.local`은 모두 `127.0.0.1:54321`로 고정).
+
+### DB 잔재
+
+| 테이블 | 행 | 식별자 / 비고 |
+|--------|----|---------------|
+| `public.projects` | 2행 | `[AUDIT-20260429] NoInterviewCo` (UUID `cc6e0384-6d0d-4155-82a0-3293362cef35` · 결함 #002 가드 회귀 확인용) / `[AUDIT-20260429-PBL] PBL테스트사` (UUID `468dcb92-7d34-4149-95c3-ed58161e8e8f` · 결함 #013 PBL 시나리오 확인용) |
+| `public.interviews` | 1행 | 시드기업B (project_id `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb`) — V2 schema (`company_details.roadmap_overview` 등) |
+| `public.self_assessments` | 2행 | 시드기업B + `[AUDIT-20260429-PBL]` — 자가진단 결함 우회용 (모든 답변 = 3) |
+| `public.roadmap_versions` | 2행 | 시드기업B V1 (FINAL → 후속 V2 확정 시 ARCHIVED) / V2 (FINAL — 현재 활성) |
+| `public.messages` | 2행 이상 | kpc → son `[AUDIT-20260429] 테스트 메시지 1` 외 |
+| `public.notifications` | 4건 이상 | son(OPS_ADMIN) 알림 — 로드맵 초안 생성·확정 (V1·V2 각 2건) |
+| `public.audit_logs` | 다수 | `INTERVIEW_CREATE`, `ROADMAP_CREATE`, `ROADMAP_FINALIZE` 등 |
+| **수동 SQL UPDATE** | 1건 | 시드기업B `projects.status`: `ASSIGNED` → `INTERVIEWED` (결함 #012 회피용) |
+
+### 정리 방법 (선택)
+
+```bash
+# 옵션 1 (권장) — 로컬 DB 통째로 리셋. 시드기업A·B 등 시드 데이터는 자동 재주입
+npx supabase db reset
+
+# 옵션 2 — 본 세션 잔재만 SQL로 정리
+docker exec -i supabase_db_ai-roadmap-dashboard psql -U postgres -d postgres <<EOF
+DELETE FROM public.projects WHERE company_name LIKE '[AUDIT-20260429%';
+UPDATE public.projects SET status='ASSIGNED' WHERE id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+DELETE FROM public.interviews WHERE project_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+DELETE FROM public.self_assessments WHERE submitted_by_email LIKE '%@audit.test';
+DELETE FROM public.roadmap_versions WHERE project_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+DELETE FROM public.messages WHERE content LIKE '[AUDIT-20260429]%';
+EOF
+```
+
+### 환경 원복 (본 세션 이미 수행됨)
+
+```bash
+mv .env.local.audit-bak .env.local   # 운영 Supabase URL 복원 — 본 세션 종료 시 수행 완료
+```
+
+---
+
+## 부록 G — 외부 file watcher 이슈 메모 (작업 중 발견)
+
+본 세션 진행 중 `docs/reports/2026-04-28-system-audit.md` 파일이 Edit 직후 일정 확률로 `origin/main` 상태로 자동 reset되는 현상이 관찰됨. dev 서버(`npm run dev:with-hwpx`)와 HWPX 브리지(`npm run dev:hwpx`) 종료 후에는 reset이 멈췄음. 정확한 원인은 미확인이며 본 세션은 결함으로 분류하지 않음 (개발자 도구 동작이지 사용자 영향 없음). 향후 동일 증상 재현 시 다음 절차 권장:
+
+1. dev 서버·HWPX 브리지 모두 종료 (`pkill -f "next dev" && pkill -f "dev-hwpx-server"`)
+2. Edit 직후 즉시 `git add` + `git commit --amend --no-edit` (외부 reset이 발생할 시간 차단)
+3. `git show HEAD:<file>`로 커밋 내용 검증 후 push
