@@ -97,6 +97,19 @@ test.describe('쿼터 초과 시 LLM 차단', () => {
     test.skip(!!error || !project, `시드 프로젝트 생성 실패: ${error?.message}`);
     projectId = project!.id as string;
 
+    // 인터뷰 행 시드 — #002 가드 (RoadmapResultClient EmptyState 가 hasInterview=false 일 때
+    // 생성 버튼을 disabled 처리) 통과를 위해 최소 인터뷰 행 INSERT.
+    // 쿼터 체크는 인터뷰 검증보다 먼저 일어나므로 인터뷰 내용은 비어 있어도 무방.
+    const { error: interviewError } = await supabase.from('interviews').insert({
+      project_id: projectId,
+      interviewer_id: consultantId!,
+      interview_date: new Date().toISOString().slice(0, 10),
+    });
+    test.skip(
+      !!interviewError,
+      `시드 인터뷰 생성 실패: ${interviewError?.message}`,
+    );
+
     const getErrors = setupConsoleErrorCheck(page);
 
     await page.goto(`/consultant/projects/${projectId}/roadmap`);
