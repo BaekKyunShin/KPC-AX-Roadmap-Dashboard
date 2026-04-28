@@ -33,6 +33,11 @@ interface UserWithProfile extends User {
 
 interface UserManagementTableProps {
   users: UserWithProfile[];
+  /**
+   * 현재 로그인한 사용자 ID. 본인 행에서는 액션 버튼을 숨기고 "본인" 뱃지로
+   * 자기 권한 변경 사고를 방지한다 (#003 가드).
+   */
+  currentUserId?: string;
 }
 
 type ActionType = 'approve' | 'suspend' | 'reactivate';
@@ -144,7 +149,7 @@ function UserMobileCard({
   );
 }
 
-export default function UserManagementTable({ users }: UserManagementTableProps) {
+export default function UserManagementTable({ users, currentUserId }: UserManagementTableProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -235,6 +240,14 @@ export default function UserManagementTable({ users }: UserManagementTableProps)
 
   const renderUserActions = (user: UserWithProfile) => {
     const { id, role, status } = user;
+    // #003 — 본인 행에는 액션 버튼을 숨기고 "본인" 뱃지로 대체. 자기 권한 변경 사고 방지.
+    if (currentUserId && id === currentUserId) {
+      return (
+        <span className="text-xs text-gray-500" data-testid="self-row-marker">
+          본인
+        </span>
+      );
+    }
     const isPendingRole = role === 'USER_PENDING' || role === 'OPS_ADMIN_PENDING';
     const isApprovedAndActive =
       (role === 'CONSULTANT_APPROVED' || role === 'OPS_ADMIN') && status === 'ACTIVE';

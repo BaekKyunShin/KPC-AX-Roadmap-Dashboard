@@ -16,7 +16,7 @@ import {
 const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
 /** 페이지 설명 (로딩 상태와 일관성 유지를 위해 통일) */
-const PAGE_DESCRIPTION = '컨설턴트 승인/정지 및 상태를 관리합니다.';
+const PAGE_DESCRIPTION = '운영관리자·시스템관리자 본인 정보와 컨설턴트 승인/정지 상태를 관리합니다.';
 
 // =============================================================================
 // Page Component
@@ -70,15 +70,31 @@ export default async function UsersPage() {
   );
 
   // 사용자 데이터에 프로필 병합
-  const users = usersData?.map((user) => ({
-    ...user,
-    consultant_profile: profileMap.get(user.id) || null,
+  const managedUsers = (usersData ?? []).map((u) => ({
+    ...u,
+    consultant_profile: profileMap.get(u.id) || null,
   }));
+
+  // #003 — 본인(OPS_ADMIN/SYSTEM_ADMIN) 행을 목록 맨 앞에 명시적으로 추가.
+  // SYSTEM_ADMIN 이 OPS_ADMIN 본인을 보는 경우는 targetRoles 에 이미 포함될 수 있으므로
+  // 중복 제거.
+  const { data: selfUserRow } = await adminSupabase
+    .from('users')
+    .select('id, email, name, role, status, phone, created_at, updated_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const users = selfUserRow
+    ? [
+        { ...selfUserRow, consultant_profile: profileMap.get(selfUserRow.id) || null },
+        ...managedUsers.filter((u) => u.id !== selfUserRow.id),
+      ]
+    : managedUsers;
 
   return (
     <div className="space-y-6">
       <PageHeader title="사용자 관리" description={PAGE_DESCRIPTION} />
-      <UserManagementTable users={users || []} />
+      <UserManagementTable users={users} currentUserId={user.id} />
     </div>
   );
 }
