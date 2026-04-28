@@ -185,8 +185,10 @@ export default function RegisterPage() {
       }
       if (!emailCheck.data?.available) {
         const msg = '이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.';
+        setServerError(msg);
         setStep1Errors({ email: msg });
         showErrorToast('회원가입 실패', msg);
+        scrollToPageTop();
         setIsLoading(false);
         return;
       }
