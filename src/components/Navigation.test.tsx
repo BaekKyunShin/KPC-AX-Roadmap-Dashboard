@@ -652,4 +652,14 @@ describe('Navigation', () => {
       expect(userMgmtLink).toHaveAttribute('data-prefetch', 'true');
     });
   });
+
+  // ─── #009 — fullPage 캡처 시 sticky 헤더 중복 회피 ──────────────────────
+  describe('#009 — data-html2canvas-ignore', () => {
+    it('nav 요소에 data-html2canvas-ignore 속성이 있다', () => {
+      const { container } = renderNavigation();
+      const nav = container.querySelector('nav');
+      expect(nav).not.toBeNull();
+      expect(nav).toHaveAttribute('data-html2canvas-ignore');
+    });
+  });
 });
