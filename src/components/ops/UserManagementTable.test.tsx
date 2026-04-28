@@ -237,4 +237,17 @@ describe('UserManagementTable', () => {
       expect(table.queryByText('정지')).toBeNull();
     });
   });
+
+  // #006 회귀 — 데스크톱 셀의 긴 이메일이 단어 단위로 줄바꿈되어 임의 위치에서
+  // 끊어지지 않도록 break-all 클래스 적용.
+  it('#006: 데스크톱 이메일 셀에 break-all 클래스가 적용된다', () => {
+    render(
+      <UserManagementTable
+        users={[makeUser({ email: 'audit-c-20260428@test.com' })]}
+      />,
+    );
+    const desktopEmail = getTable().getByTestId('user-email-desktop');
+    expect(desktopEmail).toHaveClass('break-all');
+    expect(desktopEmail).toHaveTextContent('audit-c-20260428@test.com');
+  });
 });

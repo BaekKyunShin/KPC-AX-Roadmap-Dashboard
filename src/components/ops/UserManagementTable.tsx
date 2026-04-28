@@ -324,7 +324,13 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
                 <TableCell className="pl-4 md:pl-20 pr-6 text-left">
                   <div>
                     <div className="font-medium text-gray-900">{user.name}</div>
-                    <div className="text-gray-500">{user.email}</div>
+                    {/* #006 — 긴 이메일이 셀 너비에 맞춰 단어 단위로 줄바꿈되도록 break-all 적용 */}
+                    <div
+                      className="text-gray-500 break-all"
+                      data-testid="user-email-desktop"
+                    >
+                      {user.email}
+                    </div>
                     {user.phone && <div className="text-gray-500">{user.phone}</div>}
                   </div>
                 </TableCell>
