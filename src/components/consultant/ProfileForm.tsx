@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
+import type { SimpleActionResult } from '@/lib/types/action-result';
 import { showErrorToast, showSuccessToast, scrollToElement, scrollToFirstError } from '@/lib/utils';
 import { consultantProfileSchema } from '@/lib/schemas/user';
 import { FieldError } from '@/components/ui/field-error';
@@ -39,6 +40,13 @@ interface ProfileFormProps {
   showRegistrationAlert?: boolean;
   /** Card 컴포넌트에 적용할 추가 클래스 */
   cardClassName?: string;
+  /**
+   * 제출 액션 오버라이드 (#004 옵션 C).
+   * 기본값은 saveConsultantProfile (대시보드에서 처음 프로필 등록 시).
+   * 회원가입 모드에서는 부모(register/page.tsx) 가 step1 state 와 묶은
+   * atomic action 을 주입하여 Step2 시점에 한 번에 가입 처리.
+   */
+  submitAction?: (formData: FormData) => Promise<SimpleActionResult>;
 }
 
 export default function ProfileForm({
@@ -49,6 +57,7 @@ export default function ProfileForm({
   variant = 'default',
   showRegistrationAlert = false,
   cardClassName,
+  submitAction,
 }: ProfileFormProps) {
   const router = useRouter();
   const formContainerRef = useRef<HTMLDivElement>(null);
@@ -149,7 +158,7 @@ export default function ProfileForm({
     try {
       const result = profile
         ? await updateConsultantProfile(formData)
-        : await saveConsultantProfile(formData);
+        : await (submitAction ?? saveConsultantProfile)(formData);
 
       if (result.success) {
         setFormStatus('completed');
