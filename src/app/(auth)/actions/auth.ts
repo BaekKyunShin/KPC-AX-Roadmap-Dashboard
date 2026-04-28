@@ -1,8 +1,9 @@
 'use server';
 
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { registerSchema, loginSchema } from '@/lib/schemas/user';
+import { registerSchema, loginSchema, consultantProfileSchema } from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
@@ -10,10 +11,57 @@ import { getDefaultRouteForRole } from '@/lib/utils/role-routes';
 import type { ActionResult } from '@/lib/types/action-result';
 
 /**
- * 회원가입 처리
+ * 이메일 중복 사전 확인 (#004 옵션 C)
+ * 회원가입 Step 1 → Step 2 전환 시 호출. DB 쓰기 없음.
+ * public.users 에서 동일 이메일 존재 여부만 조회한다.
+ */
+const emailOnlySchema = z.object({
+  email: z.string().email('올바른 이메일 형식이 아닙니다.'),
+});
+
+export async function checkEmailAvailability(
+  email: string,
+): Promise<ActionResult<{ available: boolean }>> {
+  const validation = emailOnlySchema.safeParse({ email });
+  if (!validation.success) {
+    return { success: false, error: validation.error.errors[0].message };
+  }
+
+  let adminSupabase;
+  try {
+    adminSupabase = createAdminClient();
+  } catch {
+    return {
+      success: false,
+      error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
+    };
+  }
+
+  const { data, error } = await adminSupabase
+    .from('users')
+    .select('id')
+    .eq('email', validation.data.email)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[checkEmailAvailability Error]', error);
+    return {
+      success: false,
+      error: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    };
+  }
+
+  return { success: true, data: { available: data === null } };
+}
+
+/**
+ * 회원가입 처리 (운영관리자 흐름 + 컨설턴트 fallback)
+ * #004 옵션 C 적용 후: 컨설턴트 흐름은 registerConsultantWithProfile 로 분리.
+ * 본 함수는 OPS_ADMIN 가입 (Step 2 없음, Step 1 만 atomic 처리) 에 주로 사용.
+ *
  * 1. Supabase Auth로 사용자 생성
  * 2. users 테이블에 프로필 생성 (역할에 따라 USER_PENDING 또는 OPS_ADMIN_PENDING)
- * 3. 컨설턴트인 경우 consultant_profiles 테이블에 프로필 생성
+ * 3. consultant_profiles 는 별도 액션 (saveConsultantProfile / registerConsultantWithProfile) 으로 처리
  */
 export async function registerUser(formData: FormData): Promise<ActionResult<{ userId: string; registerType: string; needsLogin?: boolean }>> {
   const supabase = await createClient();
@@ -223,4 +271,171 @@ export async function fetchCurrentUser() {
     .single();
 
   return profile;
+}
+
+// =============================================================================
+// 컨설턴트 회원가입 atomic 처리 (#004 옵션 C)
+// =============================================================================
+
+function parseConsultantProfileFromFormData(formData: FormData) {
+  const safeJson = (key: string): string[] => {
+    const raw = formData.get(key) as string | null;
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  return {
+    expertise_domains: safeJson('expertise_domains'),
+    available_industries: safeJson('available_industries'),
+    sub_industries: safeJson('sub_industries'),
+    teaching_levels: safeJson('teaching_levels'),
+    coaching_methods: safeJson('coaching_methods'),
+    skill_tags: safeJson('skill_tags'),
+    years_of_experience: parseInt((formData.get('years_of_experience') as string) || '0', 10),
+    affiliation: ((formData.get('affiliation') as string) || '').trim(),
+    representative_experience: (formData.get('representative_experience') as string) || '',
+    portfolio: (formData.get('portfolio') as string) || '',
+    strengths_constraints: (formData.get('strengths_constraints') as string) || '',
+  };
+}
+
+/**
+ * 컨설턴트 회원가입 atomic 처리 (#004 옵션 C)
+ *
+ * Step 2 까지 완료한 시점에 다음을 한 번에 수행:
+ *   1) Step1 + Step2 Zod 검증
+ *   2) auth.users 생성
+ *   3) public.users 생성 (role=USER_PENDING)
+ *   4) consultant_profiles 생성
+ *   5) 자동 로그인
+ *
+ * 어느 단계에서든 실패하면 Auth user 삭제 → ON DELETE CASCADE 로
+ * users / consultant_profiles 도 자동 정리. 좀비 사용자 발생 차단.
+ */
+export async function registerConsultantWithProfile(
+  step1FormData: FormData,
+  profileFormData: FormData,
+): Promise<ActionResult<{ userId: string; needsLogin?: boolean }>> {
+  // 1. Step1 검증 (registerType 은 CONSULTANT 로 고정 — 본 함수는 컨설턴트 전용)
+  const step1Raw = {
+    email: step1FormData.get('email') as string,
+    password: step1FormData.get('password') as string,
+    confirmPassword: step1FormData.get('confirmPassword') as string,
+    name: step1FormData.get('name') as string,
+    phone: (step1FormData.get('phone') as string) || '',
+    registerType: 'CONSULTANT' as const,
+    agreeToTerms: step1FormData.get('agreeToTerms') === 'true',
+  };
+  const step1Validation = registerSchema.safeParse(step1Raw);
+  if (!step1Validation.success) {
+    return { success: false, error: step1Validation.error.errors[0].message };
+  }
+
+  // 2. Step2 검증
+  const profileRaw = parseConsultantProfileFromFormData(profileFormData);
+  const profileValidation = consultantProfileSchema.safeParse(profileRaw);
+  if (!profileValidation.success) {
+    return { success: false, error: profileValidation.error.errors[0].message };
+  }
+
+  const { email, password, name, phone } = step1Validation.data;
+
+  // 3. Admin 클라이언트
+  let adminSupabase;
+  try {
+    adminSupabase = createAdminClient();
+  } catch {
+    return {
+      success: false,
+      error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
+    };
+  }
+
+  // 4. Auth user 생성
+  const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (authError) {
+    if (
+      authError.message?.includes('already been registered') ||
+      authError.message?.includes('already exists')
+    ) {
+      return {
+        success: false,
+        error: '이미 등록된 이메일입니다. 1단계부터 다시 시도해주세요.',
+      };
+    }
+    return { success: false, error: translateAuthError(authError.message) };
+  }
+  if (!authData.user) {
+    return {
+      success: false,
+      error: '사용자 생성에 실패했습니다. 다시 시도해주세요.',
+    };
+  }
+
+  const userId = authData.user.id;
+
+  // 5. users INSERT — 실패 시 Auth user 삭제
+  const { error: userInsertError } = await adminSupabase.from('users').insert({
+    id: userId,
+    email,
+    name,
+    phone: phone || null,
+    role: 'USER_PENDING',
+    status: 'ACTIVE',
+  });
+  if (userInsertError) {
+    console.error('[registerConsultantWithProfile] users INSERT 실패:', userInsertError);
+    await adminSupabase.auth.admin.deleteUser(userId);
+    if (userInsertError.code === PG_UNIQUE_VIOLATION) {
+      return {
+        success: false,
+        error: '이미 등록된 이메일입니다. 1단계부터 다시 시도해주세요.',
+      };
+    }
+    return {
+      success: false,
+      error: '회원 정보 저장에 실패했습니다. 다시 시도해주세요.',
+    };
+  }
+
+  // 6. consultant_profiles INSERT — 실패 시 Auth user 삭제 (users 는 CASCADE 정리)
+  const { error: profileInsertError } = await adminSupabase
+    .from('consultant_profiles')
+    .insert({
+      user_id: userId,
+      ...profileValidation.data,
+      sub_industries: profileValidation.data.sub_industries || [],
+    });
+  if (profileInsertError) {
+    console.error(
+      '[registerConsultantWithProfile] consultant_profiles INSERT 실패:',
+      profileInsertError,
+    );
+    await adminSupabase.auth.admin.deleteUser(userId);
+    return {
+      success: false,
+      error: '프로필 저장에 실패했습니다. 다시 시도해주세요.',
+    };
+  }
+
+  // 7. 자동 로그인 — 실패해도 가입은 성공
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signInError) {
+    return { success: true, data: { userId, needsLogin: true } };
+  }
+
+  return { success: true, data: { userId } };
 }

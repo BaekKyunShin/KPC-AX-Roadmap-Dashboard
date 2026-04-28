@@ -1,5 +1,12 @@
 // 인증 (로그인/회원가입/로그아웃)
-export { registerUser, loginUser, logoutUser, fetchCurrentUser } from './auth';
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  fetchCurrentUser,
+  checkEmailAvailability,
+  registerConsultantWithProfile,
+} from './auth';
 export { translateAuthError } from './auth-utils';
 // 컨설턴트 프로필
 export { saveConsultantProfile, fetchConsultantProfile, updateConsultantProfile } from './profile';

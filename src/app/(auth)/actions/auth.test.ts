@@ -59,6 +59,9 @@ const mockAdminCreateUser = vi.fn();
 const mockAdminDeleteUser = vi.fn();
 const mockAdminInsertChain = {
   insert: vi.fn(),
+  select: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  maybeSingle: vi.fn(),
 };
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -83,7 +86,14 @@ vi.mock('next/navigation', () => ({
 
 // ─── Import (mock 설정 후) ────────────────────────────────────────────────
 
-import { registerUser, loginUser, logoutUser, fetchCurrentUser } from './auth';
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+  fetchCurrentUser,
+  checkEmailAvailability,
+  registerConsultantWithProfile,
+} from './auth';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
 
 // ─── 테스트 상수 ──────────────────────────────────────────────────────────
@@ -115,6 +125,12 @@ function createLoginFormData(overrides: Record<string, string> = {}): FormData {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.clearAllMocks();
+  // mockReturnThis chain 은 vi.clearAllMocks 후 풀리므로 재설정
+  mockAdminInsertChain.select.mockReturnThis();
+  mockAdminInsertChain.eq.mockReturnThis();
+  mockFromChain.select.mockReturnThis();
+  mockFromChain.eq.mockReturnThis();
 });
 
 afterEach(() => {
@@ -519,5 +535,206 @@ describe('fetchCurrentUser', () => {
     const result = await fetchCurrentUser();
 
     expect(result).toEqual(profile);
+  });
+});
+
+// ─── checkEmailAvailability ───────────────────────────────────────────────
+// #004 옵션 C: 회원가입 Step1 → Step2 전환 시점에 이메일 중복만 사전 확인
+// (DB 쓰기 없음. public.users 조회만)
+
+describe('checkEmailAvailability', () => {
+  it('이메일 형식 오류 시 검증 에러 반환', async () => {
+    const result = await checkEmailAvailability('not-an-email');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('이메일');
+    }
+  });
+
+  it('이미 등록된 이메일 → available=false', async () => {
+    mockAdminInsertChain.maybeSingle.mockResolvedValueOnce({
+      data: { id: 'existing-user-id' },
+      error: null,
+    });
+
+    const result = await checkEmailAvailability('existing@example.com');
+
+    expect(result).toEqual({
+      success: true,
+      data: { available: false },
+    });
+  });
+
+  it('미등록 이메일 → available=true', async () => {
+    mockAdminInsertChain.maybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: null,
+    });
+
+    const result = await checkEmailAvailability('new@example.com');
+
+    expect(result).toEqual({
+      success: true,
+      data: { available: true },
+    });
+  });
+
+  it('DB 에러 → 서버 오류', async () => {
+    mockAdminInsertChain.maybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'XX000', message: 'connection error' },
+    });
+
+    const result = await checkEmailAvailability('any@example.com');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('서버');
+    }
+  });
+});
+
+// ─── registerConsultantWithProfile ────────────────────────────────────────
+// #004 옵션 C: Step2 까지 완료해야 비로소 가입.
+// auth.users + public.users + consultant_profiles 를 한 번에(atomic) 처리.
+// 어느 단계에서든 실패 시 Auth user 삭제 → CASCADE 로 종속 행 정리.
+
+describe('registerConsultantWithProfile', () => {
+  function createStep1Form(overrides: Record<string, string> = {}): FormData {
+    return createRegisterFormData({ registerType: 'CONSULTANT', ...overrides });
+  }
+
+  function createProfileForm(overrides: Record<string, string> = {}): FormData {
+    const fd = new FormData();
+    fd.set('expertise_domains', JSON.stringify(['LLM', 'PROMPT']));
+    fd.set('available_industries', JSON.stringify(['MANUFACTURING']));
+    fd.set('sub_industries', JSON.stringify([]));
+    fd.set('teaching_levels', JSON.stringify(['BEGINNER']));
+    fd.set('coaching_methods', JSON.stringify(['LECTURE']));
+    fd.set('skill_tags', JSON.stringify(['Python']));
+    fd.set('years_of_experience', '5');
+    fd.set('affiliation', 'KPC');
+    fd.set(
+      'representative_experience',
+      '대표 경력 — 다양한 산업군에서 LLM 기반 AI 교육 및 컨설팅 프로젝트를 5년 이상 수행하였습니다.',
+    );
+    fd.set(
+      'portfolio',
+      '포트폴리오 — 제조업·금융업 대상 AI 도입 워크숍 다수 진행, 사내 PBL 프로그램 설계 및 운영 경험 보유.',
+    );
+    fd.set(
+      'strengths_constraints',
+      '강점은 현장 친화적 커뮤니케이션과 빠른 프로토타이핑 역량이며, 제약은 영어권 자료 번역에 시간이 더 소요된다는 점입니다.',
+    );
+    Object.entries(overrides).forEach(([k, v]) => fd.set(k, v));
+    return fd;
+  }
+
+  it('전체 성공 경로: createUser → users INSERT → consultant_profiles INSERT → signIn', async () => {
+    mockAdminCreateUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockAdminInsertChain.insert
+      .mockResolvedValueOnce({ error: null }) // users
+      .mockResolvedValueOnce({ error: null }); // consultant_profiles
+    mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+
+    const result = await registerConsultantWithProfile(
+      createStep1Form(),
+      createProfileForm(),
+    );
+
+    expect(result).toEqual({
+      success: true,
+      data: { userId: TEST_USER_ID },
+    });
+    expect(mockAdminCreateUser).toHaveBeenCalledTimes(1);
+    expect(mockAdminInsertChain.insert).toHaveBeenCalledTimes(2);
+    expect(mockAdminDeleteUser).not.toHaveBeenCalled();
+  });
+
+  it('Step1 Zod 실패 → DB 호출 없음', async () => {
+    const fd = createStep1Form({ email: 'invalid' });
+
+    const result = await registerConsultantWithProfile(fd, createProfileForm());
+
+    expect(result.success).toBe(false);
+    expect(mockAdminCreateUser).not.toHaveBeenCalled();
+    expect(mockAdminInsertChain.insert).not.toHaveBeenCalled();
+  });
+
+  it('Step2 Zod 실패 → DB 호출 없음', async () => {
+    const profileFd = createProfileForm();
+    profileFd.set('expertise_domains', JSON.stringify([])); // 필수 빈 배열
+
+    const result = await registerConsultantWithProfile(createStep1Form(), profileFd);
+
+    expect(result.success).toBe(false);
+    expect(mockAdminCreateUser).not.toHaveBeenCalled();
+  });
+
+  it('createUser 실패 (이미 등록된 이메일) → "1단계부터 다시" 안내', async () => {
+    mockAdminCreateUser.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'A user with this email address has already been registered' },
+    });
+
+    const result = await registerConsultantWithProfile(createStep1Form(), createProfileForm());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('1단계부터');
+    }
+    expect(mockAdminInsertChain.insert).not.toHaveBeenCalled();
+  });
+
+  it('users INSERT 실패 → Auth user 롤백', async () => {
+    mockAdminCreateUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockAdminInsertChain.insert.mockResolvedValueOnce({
+      error: { code: PG_UNIQUE_VIOLATION, message: 'duplicate' },
+    });
+
+    const result = await registerConsultantWithProfile(createStep1Form(), createProfileForm());
+
+    expect(result.success).toBe(false);
+    expect(mockAdminDeleteUser).toHaveBeenCalledWith(TEST_USER_ID);
+  });
+
+  it('consultant_profiles INSERT 실패 → Auth user 롤백 (CASCADE 로 users 도 정리)', async () => {
+    mockAdminCreateUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockAdminInsertChain.insert
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: { code: 'XX000', message: 'profile fail' } });
+
+    const result = await registerConsultantWithProfile(createStep1Form(), createProfileForm());
+
+    expect(result.success).toBe(false);
+    expect(mockAdminDeleteUser).toHaveBeenCalledWith(TEST_USER_ID);
+  });
+
+  it('자동 로그인 실패 → success=true + needsLogin=true', async () => {
+    mockAdminCreateUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID } },
+      error: null,
+    });
+    mockAdminInsertChain.insert
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: null });
+    mockSignInWithPassword.mockResolvedValueOnce({ error: { message: 'fail' } });
+
+    const result = await registerConsultantWithProfile(createStep1Form(), createProfileForm());
+
+    expect(result).toEqual({
+      success: true,
+      data: { userId: TEST_USER_ID, needsLogin: true },
+    });
   });
 });
