@@ -91,41 +91,53 @@ test.describe('공개 자가진단 페이지 (/assessment/[token])', () => {
     }
   });
 
-  test('유효하지 않은 토큰 → 404 페이지', async ({ page }) => {
+  // #005 (2026-04-29): 무효 토큰은 일반 404 가 아니라 도메인 안내 페이지로 노출.
+  // assessment/[token]/page.tsx 가 notFound() 대신 StatusMessage("유효하지 않은 자가진단 링크")
+  // 컴포넌트를 렌더하므로 응답은 200 + 도메인 안내 문구 검증.
+  test('유효하지 않은 토큰 → 도메인 안내 페이지', async ({ page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 
-    // 유효하지 않은 토큰으로 접근
     const response = await page.goto('/assessment/invalid-token');
 
-    // 404 응답 또는 에러 페이지 표시
-    // Next.js notFound()는 404 상태코드를 반환
-    expect(response?.status()).toBe(404);
+    // notFound() 제거 후 도메인 안내 페이지로 200 응답
+    expect(response?.status()).toBe(200);
+    await expect(
+      page.getByRole('heading', { name: /유효하지 않은 자가진단 링크/ }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/담당 컨설턴트에게 새 링크를 요청/),
+    ).toBeVisible();
 
     expect(getErrors()).toEqual([]);
   });
 
-  test('존재하지 않는 UUID 토큰 → 404 페이지', async ({ page }) => {
-    // UUID 형식이지만 존재하지 않는 토큰
+  test('존재하지 않는 UUID 토큰 → 도메인 안내 페이지', async ({ page }) => {
     const response = await page.goto('/assessment/00000000-0000-0000-0000-000000000000');
 
-    // 404 응답
-    expect(response?.status()).toBe(404);
+    expect(response?.status()).toBe(200);
+    await expect(
+      page.getByRole('heading', { name: /유효하지 않은 자가진단 링크/ }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
-  test('404 페이지 기본 요소 렌더링 확인', async ({ page }) => {
+  test('도메인 안내 페이지 기본 요소 렌더링 확인', async ({ page }) => {
     await page.goto('/assessment/invalid-token');
 
-    // 404 에러 페이지에 적절한 안내가 표시되는지 확인
-    // Next.js 기본 404 또는 커스텀 not-found 페이지
-    // "404" 텍스트 또는 "찾을 수 없" 등의 안내 메시지가 있는지 확인
-    const has404 = await page.getByText('404').isVisible().catch(() => false);
-    const hasNotFound = await page
-      .getByText(/찾을 수 없|존재하지 않|not found/i)
+    // 도메인 안내 페이지에 제목 + 본문 메시지가 모두 노출되는지 확인.
+    // 일반 404 ("404" 또는 "찾을 수 없") 가 아니라 자가진단 도메인 안내가 표시되어야 함.
+    await expect(
+      page.getByRole('heading', { name: /유효하지 않은 자가진단 링크/ }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/자가진단 링크가 잘못되었거나 만료/),
+    ).toBeVisible();
+
+    const generic404Visible = await page
+      .getByText(/^404$|페이지를 찾을 수 없습니다/)
       .first()
       .isVisible()
       .catch(() => false);
-
-    expect(has404 || hasNotFound).toBe(true);
+    expect(generic404Visible).toBe(false);
   });
 
   test('유효 토큰 → 자가진단 폼 표시', async ({ page }) => {
