@@ -9,6 +9,7 @@
 |------|------|----|-----------|
 | 2026-04-28 | 1차 전수 조사 | — | OPEN: #001~#010 (10건) |
 | 2026-04-29 | 결함 수정 (세션 #A) | PR #36 | RESOLVED: #001, #002, #003, #005, #006, #007, #008, #009, #010 / 보류: #004 |
+| 2026-04-29 | 이월 검증 (세션 #B) | (PR 작업 중) | OPEN 추가: #011 (P2), #012 (P1), #013 (P1) — silent fail 패턴 3건 |
 <!-- 새 항목은 위 행 위쪽이 아닌 아래쪽에 추가 (시간 순 누적) -->
 
 ## 결함 상태 라벨
@@ -35,7 +36,7 @@
 | **로그인 계정** | `son@test.com`(OPS_ADMIN) · `kpc@test.com`(CONSULTANT_APPROVED) · 신규 가입 `audit-c-20260428@test.com`(USER_PENDING→CONSULTANT_APPROVED) — 모두 비번 `test1234!` (신규는 `Test1234!`) |
 | **점검 라우트** | 약 18개 (랜딩·데모·로그인·회원가입·자가진단·승인 대기 대시보드·운영관리 7개·컨설턴트 5개·메시지·갤러리 등) |
 | **점검 액션** | 12건 — 회원가입·승인·프로젝트 생성·자가진단 토큰 무효 케이스·로드맵 생성 클릭·로그아웃 등 |
-| **발견 결함 합계** | **10건** (P1 2 / P2 3 / P3 5) |
+| **발견 결함 합계** | **13건** (P1 4 / P2 4 / P3 5) — 세션 #B(2026-04-29) 에서 silent fail 3건 추가 |
 | **다음 세션 권장** | LLM 실호출(로드맵·PBL·인터뷰 가이드·STT) + HWPX 다운로드 + 메시지 Realtime + 전체 sysadmin 권한 차이는 인터뷰 데이터 입력이 선행되어야 해 시간 부족으로 다음 세션으로 이월 |
 
 ### 결함 한눈에 보기
@@ -52,6 +53,9 @@
 | 8 | P3 | 🟢 RESOLVED | UX | 랜딩 페이지 (#demo) | 데모 캐러셀이 약 90초 주기 자동 회전, 일시정지 컨트롤 부재 |
 | 9 | P3 | 🟢 RESOLVED | UI | 모든 인증 페이지 | fullPage 캡처 시 sticky 헤더가 페이지 중간에 한 번 더 그려짐 (SEO/OG에 영향) |
 | 10 | P3 | 🟢 RESOLVED | UX | 승인 대기 대시보드 | USER_PENDING 사용자에게 사용 불가능한 메시지·알림 아이콘 노출 |
+| 11 | P2 | 🔴 OPEN | UX | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 인터뷰 | 자동저장 상태 라벨이 영구 "저장 실패"로 고착 — DB는 정상 저장 |
+| 12 | **P1** | 🔴 OPEN | 기능 | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 인터뷰 > Step 8 | "최종 제출" 클릭 시 silent fail — DB·status 전환 0, 토스트 0, 페이지 stay |
+| 13 | **P1** | 🔴 OPEN | 기능 | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 로드맵·PBL | 생성 Server Action 검증 실패 시 클라이언트 silent fail (토스트 부재) |
 
 ---
 
@@ -250,6 +254,113 @@
 
 ---
 
+## 세션 #B 신규 결함 (silent fail 3건 — 2026-04-29)
+
+> 1차 조사(2026-04-28)에서 이월된 인터뷰·로드맵·PBL LLM 흐름 검증 중 발견. 모두 **사용자 클릭 → 시스템 응답 0** 패턴 (1차 결함 #002 와 같은 계열).
+
+### #011 [P2] [🔴 OPEN] 인터뷰 자동저장 상태 라벨이 영구 "저장 실패"로 고착
+
+**메뉴 경로:** 컨설턴트 > 담당 프로젝트 > [프로젝트] > 인터뷰
+
+**재현:** kpc 로그인 → 시드기업B 인터뷰 → Step 1 입력 → 다음 → 하단 "저장 실패 / 저장" 라벨 관찰
+
+**기대:** 자동저장 성공 시 "저장됨 / N초 전 저장" 정상 표기
+
+**실제:** 페이지 진입부터 8단계 끝까지 라벨 영구 "저장 실패". POST 응답 모두 200 OK, DB에는 V2 schema 데이터 정상 저장 (`company_details.roadmap_overview` 등). UI 라벨만 영구 고착.
+
+**영향:** 컨설턴트가 입력 미저장으로 오해 → 반복 입력 또는 작업 중단
+
+**근본 원인 추정:** 자동저장 partial schema 검증 일부 분기에서 `success: false` 반환하지만 별도 path에서 DB INSERT/UPDATE 정상 실행. 또는 클라이언트 자동저장 hook이 ActionResult 응답 검증 잘못 해석.
+
+**스크린샷:** ./screenshots/2026-04-29/G1-02-step1-filled.png, G1-04-step2-saved.png
+
+---
+
+### #012 [P1] [🔴 OPEN] 인터뷰 "최종 제출" silent fail — DB·status 전환 없음
+
+**메뉴 경로:** 컨설턴트 > 담당 프로젝트 > [프로젝트] > 인터뷰 > Step 8 > "최종 제출"
+
+**재현:** Step 1~8 모두 입력 후 "최종 제출" 클릭
+
+**기대:** 인터뷰 최종 확정 → 결과 페이지 + status `INTERVIEWED` + 토스트. 또는 검증 실패 시 명확한 에러 토스트.
+
+**실제:** 화면 변화 0, 토스트 0, DB `interviews.updated_at` 갱신 X, `projects.status` `ASSIGNED` 그대로, 콘솔 에러 0, 추가 POST 흔적 없음
+
+**영향:** 컨설턴트가 인터뷰 완료라 오해하지만 후속 워크플로우(로드맵 생성)는 status 가드(`ROADMAP_ELIGIBLE_STATUSES`)에 막힘 → 결함 #013과 결합 시 dead-end
+
+**근본 원인 추정:** Step 8 strict schema 검증(`RoadmapInterviewStrictSchema`) 실패 시 클라이언트 에러 토스트 변환 못 함. 또는 "최종 제출" 버튼이 실제 submit handler에 wired 안 됨.
+
+**스크린샷:** ./screenshots/2026-04-29/G1-09-step8-filled.png, G1-10-after-submit.png
+
+---
+
+### #013 [P1] [🔴 OPEN] 로드맵·PBL 생성 Server Action 실패 시 클라이언트 silent fail
+
+**메뉴 경로:**
+- ① 컨설턴트 > 담당 프로젝트 > [프로젝트] > 로드맵 > "AI 로드맵 생성"
+- ② 컨설턴트 > 담당 프로젝트 > [프로젝트] > PBL > "새 버전 생성"
+
+**재현 A (로드맵):** status `ASSIGNED`이거나 자가진단 결과 없는 프로젝트에서 "AI 로드맵 생성" 클릭
+
+**재현 B (PBL):** PBL 트랙에서 인터뷰 9단계 미완료 → "새 버전 생성" → "생성 시작" 클릭
+
+**기대:** server action `success: false` 반환 → Sonner 토스트 표시. 또는 클라이언트 사전 검증으로 버튼 비활성화
+
+**실제 (양 시나리오):** POST 200 OK + 60~95ms (LLM 호출 시작도 안 됨), 화면 변화 0, 토스트 0, 버튼 다시 활성화 → 무한 재시도
+
+**서버 로그 (시나리오 A):**
+```
+[createRoadmap Error] Error: 자가진단 결과가 없습니다.
+    at generateRoadmap (src/lib/services/roadmap/roadmap-generator.ts:285:11)
+POST /consultant/projects/[id]/roadmap 200 in 241ms
+```
+
+**영향:** 결함 #002 silent fail의 또 다른 케이스. 결함 #012로 인터뷰 status 전환 안 되는 환경에서 무한 클릭
+
+**근본 원인 추정:** `createRoadmap`/`createPblReport` Server Action 사전 검증 실패 응답을 클라이언트가 토스트로 변환 못 함. 결함 #002 fix(인터뷰 부재 가드)가 status·자가진단 검증까지는 커버 X.
+
+**스크린샷:** ./screenshots/2026-04-29/G2-03-roadmap-loading.png, G3-04-pbl-loading-or-error.png
+
+**비고:** 본 세션은 검증을 위해 시드기업B status를 `UPDATE projects SET status='INTERVIEWED'`로 fallback.
+
+---
+
+## 세션 #B 검증 산출물 요약
+
+> 1차 부록 A 6항목 모두 검증 (1건 부분 + 추가 이월). 양호 항목 우세.
+
+### ✅ 검증 완료
+
+- **로드맵 LLM** — 시드기업B V1 LLM 호출 성공 (응답 ~95초, progress 다이얼로그 정상 — 1단계 요구사항 분석 → 2단계 교육과정 설계 → 3단계 로드맵 구성)
+- **로드맵 결과 페이지** — V1 DRAFT 표시, I.개요/II.요구분석/III.훈련체계 탭, 인터뷰 입력값 정확히 주입
+- **로드맵 다운로드 3종** — PDF (8페이지, 750KB, %PDF-1.3), XLSX (75KB, PK ZIP), HWPX (408KB, hwp+zip MIME)
+- **두 번째 DRAFT** — V2 LLM 호출 후 DB에 V2 DRAFT 추가 (V1=FINAL, V2=DRAFT 공존)
+- **FINAL 확정 + ARCHIVED** — V2 확정 시 V1 자동 ARCHIVED (DB 검증)
+- **결함 #002 가드 회귀 확인** — 인터뷰 없는 신규 프로젝트에서 버튼 disabled + 안내 정상
+- **결함 #003 가드** — sysadmin 페이지에 본인 행 + "본인" 라벨 + 액션 버튼 미노출 정상
+- **메시지 1:1 + Realtime** — kpc → son 즉시 수신, 메시지 뱃지 1, 알림 뱃지 4
+- **알림벨 + 라우팅** — 드롭다운 4건, 탭 분류(전체/인터뷰/초안/확정) 정상
+- **`/test-roadmap`, `/test-pbl`** — 둘 다 정상, "DB 비저장" 안내 명시, 본 인터뷰 대비 단계 1개 적음 (HRD이음 PDF 단계 제외)
+
+### 🆕 신규 결함 — silent fail 3건
+
+| # | 등급 | 영역 | 한 줄 요약 |
+|---|------|------|-----------|
+| #011 | P2 | UX | 인터뷰 자동저장 라벨이 영구 "저장 실패"로 고착 (DB는 정상 저장) |
+| #012 | **P1** | 기능 | 인터뷰 "최종 제출" silent fail |
+| #013 | **P1** | 기능 | 로드맵·PBL 생성 Server Action 실패 시 토스트 부재 |
+
+### ⚠️ 부분 검증 + 추가 이월
+
+- PBL 인터뷰 9단계는 Step 1만 입력. PBL LLM 호출은 결함 #013 확인까지만. **PBL HWPX 다운로드 보류** — 세션 #C+에서 PBL 9단계 완전 입력 후 LLM + HWPX 검증 권장.
+
+### 환경 메모
+
+- 시드 `.env.test` LLM_API_KEY가 OpenAI placeholder(`sk-proj-...`) — Anthropic SDK 호출 실패. 본 세션은 운영 백업에서 Anthropic 키와 HWPX_API_SECRET을 fallback. 운영 .env.test 보강 여부는 별도 결정.
+- 본 세션 진행 중 시드기업B status를 `INTERVIEWED`로 직접 UPDATE — 결함 #012 회피용.
+
+---
+
 ## UX 종합 코멘트
 
 ### 잘된 점
@@ -322,12 +433,15 @@
 - [x] 컨설턴트 홈 / 프로젝트 목록
 
 ### 다음 세션 이월
-- [ ] 인터뷰 8단계 입력 → 로드맵 LLM 실호출
-- [ ] 로드맵 PDF/Excel/HWPX 실제 다운로드
-- [ ] PBL 트랙 프로젝트 별도 생성 → PBL 생성·다운로드
-- [ ] 메시지 1:1 대화 + Realtime 검증
-- [ ] sysadmin 로그인 → OPS_ADMIN과의 권한 차이
-- [ ] `/test-roadmap`, `/test-pbl` 테스트 트랙
+- [x] 인터뷰 8단계 입력 → 로드맵 LLM 실호출 — **세션 #B 검증 완료**
+- [x] 로드맵 PDF/Excel/HWPX 실제 다운로드 — PDF 8페이지·750KB / XLSX 75KB / HWPX 408KB 모두 정상
+- [~] PBL 트랙 프로젝트 별도 생성 → PBL 생성·다운로드 — **부분 검증**, HWPX 추가 이월
+- [x] 메시지 1:1 대화 + Realtime 검증 — kpc → son 즉시 수신, 메시지·알림 뱃지 정상
+- [x] sysadmin 로그인 → OPS_ADMIN과의 권한 차이 — 메뉴 동일 + 본인 가드 정상
+- [x] `/test-roadmap`, `/test-pbl` 테스트 트랙 — 둘 다 정상, "DB 비저장" 안내 명시
+
+### 세션 #B 추가 이월 (세션 #C+)
+- [ ] PBL 인터뷰 9단계 완전 입력 → PBL LLM 생성 → PBL HWPX 다운로드
 
 ---
 
