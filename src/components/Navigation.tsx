@@ -205,6 +205,9 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const isSystemAdmin = user.role === 'SYSTEM_ADMIN';
   const isOpsAdmin = user.role === 'OPS_ADMIN' || isSystemAdmin;
   const isConsultant = user.role === 'CONSULTANT_APPROVED';
+  // #010 — 승인 대기 사용자(USER_PENDING / OPS_ADMIN_PENDING) 에게는 메시지·알림
+  // 아이콘이 사용 불가능하거나 의미 없음. 헤더 우측 아이콘 노출을 승인된 사용자로 제한.
+  const isApprovedUser = isConsultant || isOpsAdmin;
   const commandPalette = useCommandPalette();
   const { recentVisits } = useRecentVisits();
 
@@ -340,11 +343,15 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Search className="h-4 w-4" />
             </Button>
 
-            {/* Message Icon */}
-            <MessageIcon initialUnreadCount={unreadMessageCount} />
+            {/* Message Icon — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <MessageIcon initialUnreadCount={unreadMessageCount} />
+            )}
 
-            {/* Notification Bell */}
-            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            {/* Notification Bell — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            )}
 
             {/* User Dropdown */}
             <div className="relative" ref={userMenuRef}>
@@ -430,8 +437,13 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             >
               <Search className="h-4 w-4" />
             </Button>
-            <MessageIcon initialUnreadCount={unreadMessageCount} />
-            <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            {/* Message + Notification — 승인된 사용자만 (#010) */}
+            {isApprovedUser && (
+              <>
+                <MessageIcon initialUnreadCount={unreadMessageCount} />
+                <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"
