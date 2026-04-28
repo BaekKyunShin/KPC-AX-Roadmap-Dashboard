@@ -280,49 +280,40 @@ describe('fetchAuditLogs', () => {
     expect(mock.chainable.lte).toHaveBeenCalledWith('created_at', '2025-12-31');
   });
 
-  it('SYSTEM_ADMIN은 전체 로그를 조회한다 (컨설턴트 필터 없음)', async () => {
+  it('SYSTEM_ADMIN은 전체 로그를 조회한다 (actor_user_id 필터 없음)', async () => {
     mock.addResult({ data: [], error: null, count: 0 });
 
     await fetchAuditLogs({ currentUserRole: 'SYSTEM_ADMIN' });
 
-    // 컨설턴트 조회를 위한 별도 from('users') 호출 없음
-    // from은 audit_logs 한 번만 호출됨
     expect(mock.chainable.in).not.toHaveBeenCalledWith(
       'actor_user_id',
       expect.anything(),
     );
   });
 
-  it('OPS_ADMIN은 컨설턴트가 수행한 로그만 조회한다', async () => {
-    // R1: 컨설턴트 목록 조회 (from('users'))
-    mock.addResult({ data: [{ id: 'consultant-1' }, { id: 'consultant-2' }], error: null });
-    // R2: 감사로그 조회 (from('audit_logs'))
-    mock.addResult({ data: [], error: null, count: 0 });
-
-    await fetchAuditLogs({ currentUserRole: 'OPS_ADMIN' });
-
-    // 컨설턴트 역할 필터
-    expect(mock.chainable.in).toHaveBeenCalledWith('role', ['USER_PENDING', 'CONSULTANT_APPROVED']);
-    // 감사로그를 컨설턴트 ID로 필터링
-    expect(mock.chainable.in).toHaveBeenCalledWith(
-      'actor_user_id',
-      ['consultant-1', 'consultant-2'],
-    );
-  });
-
-  it('OPS_ADMIN이고 컨설턴트가 없으면 빈 결과 반환', async () => {
-    mock.addResult({ data: [], error: null }); // 컨설턴트 0명
+  // #001 회귀 방지 — 기존에는 OPS_ADMIN 가시 범위를 컨설턴트 actor 로그로만 좁혔으나,
+  // RLS 정책(`audit_logs SELECT: OPS_ADMIN 이상`) 의도와 충돌하고 OPS_ADMIN 본인이
+  // 수행한 PROJECT_CREATE 등이 모두 0건으로 표시되는 결함이 있었음.
+  it('#001: OPS_ADMIN도 SYSTEM_ADMIN처럼 전체 로그를 조회한다 (actor 화이트리스트 없음)', async () => {
+    const logs = [
+      { id: 'log-self', action: 'PROJECT_CREATE', actor_user_id: 'ops-admin-1' },
+      { id: 'log-other', action: 'INTERVIEW_SAVE', actor_user_id: 'consultant-1' },
+    ];
+    mock.addResult({ data: logs, error: null, count: 2 });
 
     const result = await fetchAuditLogs({ currentUserRole: 'OPS_ADMIN' });
 
-    expect(result).toEqual({
-      logs: [],
-      total: 0,
-      page: 1,
-      limit: 50,
-      totalPages: 0,
-    });
-    // audit_logs 쿼리는 실행되지 않음
+    // 컨설턴트 화이트리스트 쿼리가 발생하지 않음 (단일 from 호출)
+    expect(mock.mockClient.from).toHaveBeenCalledTimes(1);
+    expect(mock.mockClient.from).toHaveBeenCalledWith('audit_logs');
+    // actor_user_id 에 화이트리스트 필터가 들어가지 않음
+    expect(mock.chainable.in).not.toHaveBeenCalledWith(
+      'actor_user_id',
+      expect.anything(),
+    );
+    // 본인 actor 로그가 결과에 포함됨
+    expect(result.total).toBe(2);
+    expect(result.logs).toEqual(logs);
   });
 
   it('Supabase 에러 시 빈 결과를 반환한다', async () => {
