@@ -42,7 +42,7 @@ const annualPlanItemSchema = z.object({
   course_name: z.string().min(1),
   format: z.string(),
   hours: z.number().positive(),
-  notes: z.string(),
+  notes: z.string().max(80, '비고는 80자 이내로 작성하세요.'),
 });
 
 const annualPlanSchema = z.object({
@@ -53,7 +53,21 @@ const annualPlanSchema = z.object({
 // Ⅲ-4. 훈련과정 명세서
 const courseSubjectSchema = z.object({
   name: z.string().min(1),
-  details: z.string(),
+  details: z
+    .string()
+    .refine(
+      (s) => {
+        const items = s
+          .split('\n')
+          .map((p) => p.trim())
+          .filter(Boolean);
+        return items.length >= 1 && items.length <= 5;
+      },
+      {
+        message:
+          '교과목 세부 내용은 줄바꿈으로 구분된 1~5개 항목이어야 합니다 (권장 2~5개).',
+      },
+    ),
   hours: z.number().positive(),
 });
 

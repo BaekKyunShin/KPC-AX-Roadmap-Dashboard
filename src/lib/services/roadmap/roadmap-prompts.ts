@@ -51,14 +51,15 @@ export function buildSystemPrompt(): string {
 ### Ⅲ-3. 연간 훈련계획 (annual_plan)
 - items[*].competency_name은 competencies[*].name 집합 내 값만 사용하라.
 - hours는 양의 정수(과정당 1~50 사이), format은 집체/원격/혼합/현장 중 하나.
+- notes는 특이사항만 기재하라. 수강 대상 제한·사업 연계·동시 운영 일정처럼 다른 필드에 없는 정보만 해당한다. 과정명·대상·시기 정보는 이미 다른 칸에 있으므로 중복 금지. 특이사항이 없으면 빈 문자열("")로 두라 — null 사용 금지. 최대 80자, 한 문장 이내.
 - usage_plan은 훈련 시기·순서·정부 지원사업 활용 방안을 3~5문장으로 기술하라.
 
-**Ⅲ-3 few-shot 예시**
+**Ⅲ-3 few-shot 예시** (첫 항목: 특이사항 없음, 둘째 항목: 수강 자격 제한 있음)
 \`\`\`json
 {
   "items": [
-    { "competency_name": "AI 데이터 분석", "course_name": "AI 데이터 수집·정제 입문", "format": "집체", "hours": 16, "notes": "1분기 (3월) 실시" },
-    { "competency_name": "AI 모델 활용", "course_name": "노코드 AI 비전검사 실무", "format": "집체", "hours": 24, "notes": "2분기 (6월) 실시" }
+    { "competency_name": "AI 데이터 분석", "course_name": "AI 데이터 수집·정제 입문", "format": "집체", "hours": 16, "notes": "" },
+    { "competency_name": "AI 모델 활용", "course_name": "노코드 AI 비전검사 실무", "format": "집체", "hours": 24, "notes": "1·2 과정 이수자 대상" }
   ],
   "usage_plan": "1분기에 데이터 수집·정제 입문 과정으로 전 실무자 기초 역량을 확보하고, 2분기 노코드 AI 비전검사 과정에서 선발 인원이 모델 학습·배포를 실습합니다. K-Digital Training 등 정부 지원 훈련사업을 적극 활용하여 교육 비용을 절감합니다."
 }
@@ -66,11 +67,12 @@ export function buildSystemPrompt(): string {
 
 ### Ⅲ-4. 훈련과정 명세서 (course_specs)
 - **최소 3개** 생성하라. course_name은 annual_plan.items[*].course_name 중 하나와 정확히 일치해야 한다.
-- subjects: 최소 1개, hours > 0 (양의 정수), details는 "단원명, 과제명" 형식으로 기술하라.
+- subjects: 최소 1개, hours > 0 (양의 정수).
+- subjects[*].details: 2~5개 구체 활동을 줄바꿈(\\n)으로 구분하여 기술하라. 각 항목은 단원·과제·실습 단위의 활동 1건을 명사구로 쓴다. 여러 활동을 쉼표로 연결한 1줄 형식은 사용하지 마라. 머리기호(•, -)를 붙이지 마라. 항목이 1개뿐인 단순 과목은 줄바꿈 없이 단일 문자열로 쓴다.
 - recommended_program: K-Digital Training / 사업주 직업능력개발훈련 / 국가기간전략산업직종훈련 등 실제 사업명.
 - 도구명은 "(무료: 범위)" 형식으로 명시하라. 예: "Teachable Machine (무료: 전체)", "CLOVA API (무료: 월 1000건)".
 
-**Ⅲ-4 few-shot 예시 (1개 과정)**
+**Ⅲ-4 few-shot 예시 (1개 과정 — details 는 줄바꿈 분리 다항목, 마지막 과목은 5개 항목 상한 케이스)**
 \`\`\`json
 {
   "course_name": "AI 데이터 수집·정제 입문",
@@ -80,9 +82,9 @@ export function buildSystemPrompt(): string {
   "main_content": "데이터 수집 방법론, Excel·Google Sheets 활용 데이터 정제, AI 학습 데이터 품질 기준, 라벨링 실습",
   "target_audience": "품질검사 실무자 전원 (선수 조건 없음)",
   "subjects": [
-    { "name": "AI 데이터 이해", "details": "AI 학습 데이터 개념, 구조화·비구조화 데이터 구분, 품질 기준 수립", "hours": 4 },
-    { "name": "Excel 데이터 정제 실습", "details": "결측값 처리, 중복 제거, 피벗 테이블 집계 (무료: Excel/Sheets 기본 제공)", "hours": 6 },
-    { "name": "이미지 라벨링 실습", "details": "Label Studio 설치 및 운영 (무료: Community Edition), 불량·정상 이미지 라벨링 가이드라인 작성", "hours": 6 }
+    { "name": "AI 데이터 이해", "details": "AI 학습 데이터 개념과 머신러닝 학습 흐름\\n구조화·비구조화 데이터 구분 실습\\n데이터 품질 기준 수립 워크숍", "hours": 4 },
+    { "name": "Excel 데이터 정제 실습", "details": "결측값 처리 및 이상값 검출 (무료: Excel/Sheets 기본 제공)\\n중복 제거·표준화 매크로 적용\\n피벗 테이블 활용 집계 리포팅", "hours": 6 },
+    { "name": "이미지 라벨링 실습", "details": "Label Studio 설치 및 프로젝트 생성 (무료: Community Edition)\\n불량·정상 이미지 라벨링 가이드라인 작성\\n팀별 라벨링 결과 교차 검증\\n경계 케이스 토론 및 라벨링 규칙 보완\\n최종 데이터셋 검증 보고", "hours": 6 }
   ]
 }
 \`\`\`
@@ -137,7 +139,7 @@ export function buildSystemPrompt(): string {
         "course_name": "string (훈련과정명)",
         "format": "string (집체 | 원격 | 혼합 | 현장)",
         "hours": "integer > 0 (최대 50)",
-        "notes": "string (비고, 없으면 빈 문자열)"
+        "notes": "string (특이사항만. 없으면 빈 문자열. 최대 80자)"
       }
     ],
     "usage_plan": "string (3~5문장)"
@@ -153,7 +155,7 @@ export function buildSystemPrompt(): string {
       "subjects": [
         {
           "name": "string (교과목명)",
-          "details": "string (세부 내용, 단원명/과제명 형식)",
+          "details": "string (2~5개 항목. 줄바꿈\\n으로 구분)",
           "hours": "integer > 0"
         }
       ]
