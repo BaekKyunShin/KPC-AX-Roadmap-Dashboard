@@ -742,6 +742,58 @@ describe('buildRoadmapHwpxPayload', () => {
     expect(tt.to_be).toBe('V2 To-Be');
   });
 
+  it('V2 perfActs 가 빈 배열이면 V1 단일 컬럼 fallback 으로 1차 행 자동 집계 (#22 분기 커버)', () => {
+    const iv = makeInterview({
+      // V2 perfActs 키는 있지만 빈 배열 — V1 fallback 분기 트리거
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '필요성',
+          ai_competency_level: 'INTERMEDIATE',
+          performance_activities: [],
+        },
+        roadmap_company_requirements: {
+          company_status: '현황',
+          main_problems: '문제',
+          push_willingness: '의지',
+          expected_outcomes: '성과',
+        },
+        roadmap_analysis_notes: { text: '분석', attachment_urls: [] },
+      },
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const acts = p.data.performance_activities as Array<Record<string, unknown>>;
+    // V1 fallback — 단일 컬럼 기반 1차 행 1건
+    expect(acts.length).toBe(1);
+    expect(acts[0].round).toBe(1);
+  });
+
+  it('Ⅱ-4 V1 키 (task_name·selection_reason·as_is·to_be) 만 있는 legacy 데이터도 정상 매핑 (#21 V1 fallback)', () => {
+    const iv = makeInterview({
+      improvement_goals: [
+        {
+          id: '1',
+          // V1 only — V2 키 없음
+          task_name: 'V1 훈련대상',
+          selection_reason: 'V1 사유',
+          as_is: 'V1 As-Is',
+          to_be: 'V1 To-Be',
+        },
+      ],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const tt = p.data.training_target as Record<string, string>;
+    expect(tt.task_name).toBe('V1 훈련대상');
+    expect(tt.selection_reason).toBe('V1 사유');
+  });
+
   it('performance_activities 가 V2 company_details.roadmap_overview.performance_activities[] 에서 자동 집계된다 (#22)', () => {
     const iv = makeInterview({
       // V2 단일 컬럼은 모두 비움 — V2 데이터는 JSONB 배열로만 저장
