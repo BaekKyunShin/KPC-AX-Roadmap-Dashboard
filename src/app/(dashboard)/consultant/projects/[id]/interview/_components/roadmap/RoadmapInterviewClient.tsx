@@ -325,7 +325,18 @@ export function RoadmapInterviewClient({
     // 2) Strict 검증 (safeParse) — NCS XOR + 필수 필드 검증
     const parsed = RoadmapInterviewStrictSchema.safeParse(cleanedData);
     if (!parsed.success) {
-      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      // #012 fix — 모든 zod 에러 메시지를 join 해 사용자가 비어있는 필드를 한 번에
+      // 파악할 수 있게 한다 (기존: errors[0] 하나만 표시 → 사용자가 어디 부족한지 모름).
+      const messages = parsed.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
+      showErrorToast(
+        '제출 검증 실패',
+        messages.length > 0
+          ? messages.join('\n')
+          : '필수 입력 항목을 확인해주세요.',
+      );
       return;
     }
 
@@ -333,17 +344,23 @@ export function RoadmapInterviewClient({
     startTransition(async () => {
       try {
         const result = await submitRoadmapInterviewV2(projectId, parsed.data);
-        if (result.success) {
-          showSuccessToast('인터뷰가 제출되었습니다.');
+        // #012 fix — handleSimpleActionResult 가 result.error falsy 시 fallback 토스트 보장
+        const ok = await handleSimpleActionResult(result, {
+          successMessage: { title: '인터뷰가 제출되었습니다.' },
+          errorTitle: '인터뷰 제출 실패',
+          errorFallback:
+            '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        });
+        if (ok) {
           router.push(`/consultant/projects/${projectId}/roadmap`);
         } else {
           setIsSubmitting(false);
-          showErrorToast(result.error);
         }
       } catch (error) {
         setIsSubmitting(false);
         console.error('[RoadmapInterviewClient] submit error:', error);
         showErrorToast(
+          '인터뷰 제출 실패',
           error instanceof Error
             ? error.message
             : '인터뷰 제출 중 오류가 발생했습니다.',
