@@ -1,7 +1,10 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import '@/test/helpers/mock-next-link';
-import RoadmapLoadingOverlay from './RoadmapLoadingOverlay';
+import RoadmapLoadingOverlay, {
+  STEP_DURATIONS_MS,
+  TOTAL_DURATION_MS,
+} from './RoadmapLoadingOverlay';
 
 // ============================================================================
 // 헬퍼
@@ -38,6 +41,17 @@ describe('RoadmapLoadingOverlay', () => {
   // --------------------------------------------------------------------------
   // 기본 렌더링
   // --------------------------------------------------------------------------
+
+  // R2 공통-C — 99% 정체 체감 개선을 위해 마지막 단계 +15초
+  describe('단계 시간 설정 (공통-C)', () => {
+    it('STEP_DURATIONS_MS 는 [36000, 51000, 58000] 으로 마지막 단계가 +15초 증가됨', () => {
+      expect(STEP_DURATIONS_MS).toEqual([36000, 51000, 58000]);
+    });
+
+    it('TOTAL_DURATION_MS 는 145000 (기존 130000 + 15000)', () => {
+      expect(TOTAL_DURATION_MS).toBe(145000);
+    });
+  });
 
   describe('기본 렌더링', () => {
     it('오버레이 고정 레이어가 렌더링된다', () => {

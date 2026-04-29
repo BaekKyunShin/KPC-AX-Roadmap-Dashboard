@@ -153,6 +153,75 @@ describe('TabOverview (Ⅰ. 개요)', () => {
     ).toBeInTheDocument();
   });
 
+  // R2 #14 — Ⅰ-3 양식 정합 표 형태 (3행) 회귀 차단
+  it('Ⅰ-3 수립 주요 결과가 3행 표(table)로 렌더된다', () => {
+    const { container } = render(
+      <TabOverview
+        version={null}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // Ⅰ-3 SectionCard 안의 caption "수립 주요 결과" 가 sr-only 로 존재
+    const captions = container.querySelectorAll('caption');
+    const i3Caption = Array.from(captions).find(
+      (c) => c.textContent === '수립 주요 결과',
+    );
+    expect(i3Caption).toBeDefined();
+    // 같은 table 의 행 라벨 (헤더 셀) 3종 모두 노출
+    expect(screen.getByText('기업 AI 역량 수준')).toBeInTheDocument();
+    expect(screen.getByText('선정 과업')).toBeInTheDocument();
+    expect(
+      screen.getByText('AI훈련로드맵 수립 주요내용 (요약)'),
+    ).toBeInTheDocument();
+  });
+
+  // R2 #14 — main_content 셀의 InlineEditField 편집 기능 보존
+  it('Ⅰ-3 표의 요약 셀에서 main_content InlineEditField 편집이 readOnly=false 시 가능', async () => {
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TabOverview
+        version={
+          {
+            id: 'v1',
+            outcome_summary: {
+              ai_competency_level: 'INTERMEDIATE',
+              selected_tasks: '품질 검사 워크플로우',
+              main_content: '기존 요약',
+            },
+          } as never
+        }
+        interview={interview}
+        readOnly={false}
+        onEdit={onEdit}
+      />,
+    );
+    const summary = screen.getByText('기존 요약');
+    const trigger = summary.closest('[role="button"]');
+    expect(trigger).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(trigger as HTMLElement);
+    });
+    const textareas = screen.getAllByRole('textbox');
+    const summaryTextarea = textareas.find(
+      (t) => (t as HTMLTextAreaElement).value === '기존 요약',
+    );
+    expect(summaryTextarea).toBeDefined();
+    await act(async () => {
+      fireEvent.change(summaryTextarea as HTMLElement, {
+        target: { value: '수정된 요약' },
+      });
+      fireEvent.keyDown(summaryTextarea as HTMLElement, {
+        key: 'Enter',
+        ctrlKey: true,
+      });
+    });
+    await waitFor(() =>
+      expect(onEdit).toHaveBeenCalledWith({ main_content: '수정된 요약' }),
+    );
+  });
+
   it('Ⅰ-1 편집 후 onEdit 가 setup_necessity patch 로 호출된다', async () => {
     const onEdit = vi.fn().mockResolvedValue(undefined);
     render(

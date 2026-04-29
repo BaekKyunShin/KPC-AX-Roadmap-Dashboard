@@ -35,7 +35,7 @@ export function FormSection({
     <section className={cn('space-y-4', className)}>
       <header className="space-y-1">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="font-mono text-sm text-muted-foreground">
+          <span className="text-xl font-semibold text-muted-foreground">
             {number}
           </span>
           <h2 className="text-xl font-semibold">{title}</h2>

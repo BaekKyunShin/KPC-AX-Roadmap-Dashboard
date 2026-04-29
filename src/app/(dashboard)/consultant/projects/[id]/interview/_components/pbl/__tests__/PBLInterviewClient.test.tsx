@@ -58,6 +58,17 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
+  // R2 PBL-자체-07 (#1 PBL 동등) — 부제 "(양식 2:1 정합)" 사용자 화면 미노출 회귀 차단
+  it('PageHeader 제목에 내부 라벨 "(양식 2:1 정합)" 이 표시되지 않는다', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    const heading = screen.getByRole('heading', {
+      name: /AI PBL 인터뷰/,
+      level: 1,
+    });
+    expect(heading.textContent).not.toContain('양식 2:1 정합');
+    expect(heading.textContent?.trim()).toBe('AI PBL 인터뷰');
+  });
+
   it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(PBL_STEPS).toHaveLength(9);

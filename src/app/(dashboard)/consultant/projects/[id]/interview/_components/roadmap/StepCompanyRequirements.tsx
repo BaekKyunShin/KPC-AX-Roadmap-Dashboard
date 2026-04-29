@@ -117,7 +117,7 @@ export function StepCompanyRequirements({
                     placeholder={row.placeholder}
                     disabled={readOnly}
                     aria-label={row.ariaLabel}
-                    minHeightClassName="min-h-[96px]"
+                    minHeightClassName="min-h-[163px]"
                   />
                 </td>
                 <td className="border border-border bg-muted/10 px-3 py-2 align-top text-xs text-muted-foreground">

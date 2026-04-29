@@ -428,7 +428,7 @@ export function PBLInterviewClient({
   return (
     <PageContainer>
       <PageHeader
-        title="AI PBL 인터뷰 (양식 2:1 정합)"
+        title="AI PBL 인터뷰"
         description="산인공 양식 2 Ⅰ·Ⅱ·Ⅲ 장을 9개 스텝으로 입력합니다."
       />
 

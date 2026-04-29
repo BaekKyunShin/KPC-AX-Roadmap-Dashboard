@@ -479,7 +479,7 @@ export function RoadmapInterviewClient({
   return (
     <PageContainer>
       <PageHeader
-        title="AI훈련로드맵 인터뷰 (양식 1:1 정합)"
+        title="AI훈련로드맵 인터뷰"
         description="산인공 양식 Ⅰ·Ⅱ·Ⅲ-1 절을 8개 스텝으로 입력합니다."
       />
 
