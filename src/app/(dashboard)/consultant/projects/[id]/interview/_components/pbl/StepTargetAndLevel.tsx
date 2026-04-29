@@ -357,8 +357,19 @@ export function StepTargetAndLevel({
       </div>
 
       <ExampleAccordion
+        example={
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">(양식 작성 예시)</p>
+            <p>
+              훈련대상 업무는 영상 데이터 수집, 영상 데이터 분석임. 기업 경영 이슈인 &ldquo;사업 다각화를 위한 신규 서비스 런칭 필요&rdquo; 과 연계하여 AI 기반 영상 분석 역량 확보가 시급함.
+            </p>
+          </div>
+        }
         guide={
           <ul className="list-disc space-y-1 pl-4">
+            <li>
+              (양식 안내) 문제 우선순위에서 도출된 결과를 분석하여 AI를 통해 가장 큰 변화가 예상되는 핵심업무(Task) 단위로 훈련대상 업무를 선정
+            </li>
             <li>Ⅲ-3-가 업무명은 NCS 능력단위 수준으로 구체화해 입력합니다.</li>
             <li>Ⅲ-3-나 선정 사유는 문제 도출 (Ⅲ-2) 결과와 정합되도록 기술합니다.</li>
             <li>Ⅲ-3-다 세부내용은 AS-IS / TO-BE · 요구지식 · 요구기술 최소 4행 권장.</li>

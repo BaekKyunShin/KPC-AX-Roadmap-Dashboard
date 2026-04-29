@@ -267,9 +267,9 @@ export function TabRequirements({
         )}
       </SectionCard>
 
-      {/* Ⅱ-4 훈련대상 과업 선정 */}
+      {/* Ⅱ-4 훈련대상 과업(Task)·워크플로우 선정 */}
       <SectionCard
-        title="Ⅱ-4. 훈련대상 과업 선정"
+        title="Ⅱ-4. 훈련대상 과업(Task)·워크플로우 선정"
         description="선정 과업명 · 사유 · 기대효과 (현행 → 개선)"
       >
         <FormTable

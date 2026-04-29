@@ -156,6 +156,76 @@ describe('RoadmapInterviewClient', () => {
     expect(screen.getByRole('rowheader', { name: '기업 현황' })).toBeInTheDocument();
   });
 
+  // R3 #5 — 작성 안내 영역(ExampleAccordion guide)에 양식 √ 첫 문장 노출
+  // description (서술형: "도출합니다.") 외 별도로 √ 안내 톤(명사절: "도출") 도 ExampleAccordion guide 에 노출되어야 한다
+  it('Ⅱ-2 작성 안내 영역에 양식 √ 안내 "기업의 내부전문가와 면담을 통해 ... 구조적으로 도출" 이 노출된다 (#5)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('기업 요구분석'));
+    // ExampleAccordion 의 "작성 안내" 섹션을 펼친 후 검증 (Radix Accordion closed 상태는 text query 에서 누락됨)
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    const matches = screen.getAllByText(
+      /기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출/,
+    );
+    // description 1건 + ExampleAccordion guide 1건 = 최소 2건
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // R3 #10 — Ⅱ-3 첨부 항목명 정정 (분석 노트 추가 첨부 → 추가 내부 자료)
+  it('Ⅱ-3 첨부 항목명이 "추가 내부 자료" 로 표시된다 (#10)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    expect(screen.getByText('추가 내부 자료')).toBeInTheDocument();
+    expect(screen.queryByText('분석 노트 추가 첨부')).not.toBeInTheDocument();
+  });
+
+  // R3 #12 — Ⅱ-4 항목명 양식 정확 명칭으로
+  it('Ⅱ-4 항목명이 "훈련대상 과업(Task)·워크플로우 선정" 으로 표시된다 (#12)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('훈련대상 과업'));
+    expect(
+      screen.getByRole('heading', {
+        name: '훈련대상 과업(Task)·워크플로우 선정',
+        level: 2,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅰ-2 양식 √ "별도 작성 불요" 안내 노출
+  it('Ⅰ-2 작성 안내 영역에 양식 √ "별도 작성 불요" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('주요 활동'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/별도 작성 불요/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅰ-3 양식 √ "1장 이내로 요약하여 작성" 안내 노출
+  it('Ⅰ-3 작성 안내 영역에 양식 √ "1장 이내로 요약하여 작성" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('수립 주요 결과'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/1장 이내로 요약하여 작성/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅱ-1 양식 √ "별도 작성 불요" + 등급 매핑 (초급 AI기초형 / 중급 AI탐구형) 노출
+  it('Ⅱ-1 작성 안내 영역에 양식 √ "별도 작성 불요" + 등급 매핑 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('HRD이음 PDF'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/별도 작성 불요/)).toBeInTheDocument();
+    expect(screen.getByText(/초급.*AI기초형/)).toBeInTheDocument();
+    expect(screen.getByText(/중급.*AI탐구형/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅱ-3 양식 √ "기업 내부전문가와의 인터뷰" + 양식 ◆ "공정 분석" 예시 노출
+  it('Ⅱ-3 작성 안내 영역에 양식 √ "AI 도입·활용이 필요하다고 판단되는 과업 분석" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(
+      screen.getByText(/AI 도입·활용이 필요하다고 판단되는 과업 분석/),
+    ).toBeInTheDocument();
+  });
+
   it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('과업·워크플로우 분석'));
@@ -172,7 +242,10 @@ describe('RoadmapInterviewClient', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련대상 과업'));
     expect(
-      screen.getByRole('heading', { name: '훈련대상 과업 선정', level: 2 }),
+      screen.getByRole('heading', {
+        name: '훈련대상 과업(Task)·워크플로우 선정',
+        level: 2,
+      }),
     ).toBeInTheDocument();
     // 기대 효과 rowSpan=2
     const 기대효과 = screen.getByText('기대 효과');

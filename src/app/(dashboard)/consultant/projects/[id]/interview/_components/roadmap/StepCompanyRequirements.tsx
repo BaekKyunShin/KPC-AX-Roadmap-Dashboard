@@ -132,6 +132,9 @@ export function StepCompanyRequirements({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
+              기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출
+            </li>
+            <li>
               요구분석에서 우선적으로 AI 도입·활용이 필요한 과업(또는 워크플로우)을 필수로 파악합니다.
             </li>
             <li>훈련대상 과업 선정의 논리적 근거가 됩니다.</li>

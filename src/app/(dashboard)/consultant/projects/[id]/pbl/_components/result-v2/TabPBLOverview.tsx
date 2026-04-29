@@ -38,7 +38,7 @@ export function TabPBLOverview({
     <div className="space-y-6">
       <SectionCard
         title="Ⅰ. 훈련과정 개요"
-        description="기업명 · 훈련과정명 · NCS · 시간 · 대상 · 형태 · 기간 · 경영 이슈 (인터뷰 입력값)"
+        description="기업명 · 훈련과정명 · NCS · 시간 · 대상 · 형태 · 기간 · 경영 이슈 (인터뷰 입력값) — 신청서 자동표출 항목(사업장관리번호·업종·주소·관할 지부·담당자)은 HWPX 다운로드 시 자동 채워집니다"
       >
         <FormTable
           caption="훈련과정 개요"

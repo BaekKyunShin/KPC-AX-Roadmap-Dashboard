@@ -37,7 +37,7 @@ export function StepTargetTask({
   return (
     <FormSection
       number="Ⅱ-4"
-      title="훈련대상 과업 선정"
+      title="훈련대상 과업(Task)·워크플로우 선정"
       label="[인터뷰 입력]"
       description="Ⅱ-3 분석표에서 식별한 과업 중 AI훈련로드맵 수립 대상 과업을 선정하고, 선정 사유와 기대 효과를 기술합니다."
     >

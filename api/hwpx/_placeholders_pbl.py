@@ -546,16 +546,29 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
     # ----------------------- V2 신규 데이터 구조 -----------------------
 
     if key == "problems":
-        # V2 P-09: problems[] {title, description, impact} (max 4)
+        # V2 P-09: problems[] {title, description, impact} (max 4).
+        # 양식 표는 5x2 (구분/내용) 2열 고정이라 impact 별도 셀이 없음.
+        # → description 셀에 impact 를 결합 출력해 정보 손실을 막는다 (#20 PBL).
         items = data.get("problems") or []
-        return [
-            {
-                "title": _str_or_empty(i.get("title")),
-                "description": _str_or_empty(i.get("description")),
-                "impact": _str_or_empty(i.get("impact")),
-            }
-            for i in items
-        ]
+        rows: list[dict] = []
+        for i in items:
+            description = _str_or_empty(i.get("description"))
+            impact = _str_or_empty(i.get("impact"))
+            if impact:
+                description = (
+                    f"{description}\n[영향] {impact}".strip()
+                    if description
+                    else f"[영향] {impact}"
+                )
+            rows.append(
+                {
+                    "title": _str_or_empty(i.get("title")),
+                    "description": description,
+                    # impact 도 행 dict 에 보존 — 향후 별도 placeholder 매핑 시 사용
+                    "impact": _str_or_empty(i.get("impact")),
+                }
+            )
+        return rows
 
     if key == "priorities":
         # V2 P-10: priority.items[] {problem, score(1-5), rank}.

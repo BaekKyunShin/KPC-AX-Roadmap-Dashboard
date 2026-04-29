@@ -45,6 +45,35 @@ describe('TabOverview (Ⅰ. 개요)', () => {
     expect(screen.getByText(/Ⅰ-3\. 수립 주요 결과/)).toBeInTheDocument();
   });
 
+  // R3 #23 — Ⅰ-3 description 에 LLM 자동 생성 + 직접 수정 가능 안내 노출
+  it('Ⅰ-3 SectionCard description 에 "LLM 자동 생성" + "직접 수정 가능" 안내가 노출된다 (#23)', () => {
+    render(
+      <TabOverview
+        version={null}
+        interview={interview}
+        readOnly={false}
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/LLM 자동 생성/)).toBeInTheDocument();
+    expect(screen.getByText(/직접 수정 가능/)).toBeInTheDocument();
+  });
+
+  // PR #42 회귀 테스트 보강 — Ⅰ-3 카드는 FormTable 3행 (역량 수준 / 선정 과업 / 요약)
+  it('Ⅰ-3 카드는 FormTable 3행 (역량 수준 · 선정 과업 · 요약) 형태로 표시된다 (#14, PR #42 회귀)', () => {
+    render(
+      <TabOverview
+        version={null}
+        interview={interview}
+        readOnly={false}
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('기업 AI 역량 수준')).toBeInTheDocument();
+    expect(screen.getByText('선정 과업')).toBeInTheDocument();
+    expect(screen.getByText(/AI훈련로드맵 수립 주요내용/)).toBeInTheDocument();
+  });
+
   it('Ⅰ-1 수립 필요성 값을 표시', () => {
     render(
       <TabOverview

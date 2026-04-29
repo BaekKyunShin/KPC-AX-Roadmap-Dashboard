@@ -69,6 +69,9 @@ export function StepMainResult({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
+              뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약하여 작성
+            </li>
+            <li>
               AI 역량 수준은 기업의 현재 AI 활용 정도에 맞춰 1개를 선택합니다 (초급 /
               중급 / 고급).
             </li>

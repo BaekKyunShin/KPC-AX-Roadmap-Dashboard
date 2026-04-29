@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import { Sparkles } from 'lucide-react';
 
 import { SectionCard } from '@/components/result/SectionCard';
@@ -8,6 +10,7 @@ import { FormTable } from '@/components/forms/FormTable';
 import type { RoadmapCompetency as LLMCompetency } from '@/lib/services/roadmap';
 import { TRAINING_LEVEL_LABEL } from '@/lib/services/roadmap/roadmap-types';
 import type { RoadmapCompetency as InterviewCompetency } from '@/lib/schemas/interview-roadmap';
+import { splitByUnit } from '@/lib/utils/list-format';
 
 import type { TabCommonProps } from './types';
 
@@ -330,21 +333,34 @@ export function TabTraining({
                     <p className="mb-2 text-xs font-medium text-muted-foreground">
                       교과목
                     </p>
-                    <ul className="list-disc space-y-1 pl-5 text-sm">
-                      {spec.subjects.map((sub, sIdx) => (
-                        <li key={sIdx}>
-                          <span className="font-medium">{sub.name}</span>
-                          {sub.details && (
-                            <span className="text-muted-foreground"> — {sub.details}</span>
-                          )}
-                          {typeof sub.hours === 'number' && (
-                            <span className="ml-1 text-xs text-muted-foreground">
-                              ({sub.hours}시간)
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                    <FormTable
+                      caption={`${spec.course_name} 교과목`}
+                      headerRows={[
+                        {
+                          cells: [
+                            { content: '교과목명', header: true, className: 'w-[180px]' },
+                            { content: '세부 내용', header: true },
+                            { content: '훈련시간', header: true, className: 'w-[100px]' },
+                          ],
+                        },
+                      ]}
+                      bodyRows={spec.subjects.map((sub) => ({
+                        cells: [
+                          { content: sub.name, align: 'left' },
+                          {
+                            content: renderSubjectDetails(sub.details),
+                            align: 'left',
+                          },
+                          {
+                            content:
+                              typeof sub.hours === 'number'
+                                ? `${sub.hours}시간`
+                                : '-',
+                            align: 'center',
+                          },
+                        ],
+                      }))}
+                    />
                   </div>
                 )}
               </div>
@@ -362,6 +378,27 @@ export function TabTraining({
 function renderList(value: string[]): string {
   if (!value || value.length === 0) return '-';
   return value.join(', ');
+}
+
+/**
+ * Ⅲ-4 교과목 details 를 단원/줄바꿈 경계로 분리해 머리기호 ul 로 렌더.
+ * 분리 결과가 1건이면 단순 텍스트로 표시한다.
+ */
+function renderSubjectDetails(details: string | null | undefined): ReactNode {
+  if (!details) return '-';
+  const normalized = splitByUnit(details);
+  const parts = normalized
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return parts[0] ?? '-';
+  return (
+    <ul className="list-disc space-y-1 pl-4 text-sm">
+      {parts.map((p, i) => (
+        <li key={i}>{p}</li>
+      ))}
+    </ul>
+  );
 }
 
 /** Ⅲ-2/Ⅲ-3/Ⅲ-4 LLM 결과가 없을 때 재생성 안내 (Task 2.9 이전 단계). */

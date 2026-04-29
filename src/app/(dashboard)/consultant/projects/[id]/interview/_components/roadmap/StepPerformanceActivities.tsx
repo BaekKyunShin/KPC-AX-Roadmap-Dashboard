@@ -184,8 +184,19 @@ export function StepPerformanceActivities({
       </div>
 
       <ExampleAccordion
+        example={
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">(양식 예시) 차수별 prefill</p>
+            <p>1차 — 수행일시 26.00.00, 수행 방법 대면(인터뷰)</p>
+            <p>2차 — 수행일시 26.00.00, 수행 방법 비대면(화상회의)</p>
+            <p>3차 — 수행일시 26.00.00, 수행 방법 대면(워크숍)</p>
+          </div>
+        }
         guide={
           <ul className="list-disc space-y-1 pl-4">
+            <li>
+              (양식 안내) 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정 — 별도 작성 불요
+            </li>
             <li>
               컨설팅 수행 차수별(최대 3차)로 수행 일시·내용·방법과 참석자
               (컨설팅책임자 PM · 기업 내부전문가) 성명을 입력합니다.

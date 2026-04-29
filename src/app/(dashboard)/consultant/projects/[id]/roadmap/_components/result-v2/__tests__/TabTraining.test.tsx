@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { TabTraining } from '../TabTraining';
 import type { ResultInterviewSnapshot } from '../types';
@@ -208,6 +208,215 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
     // Ⅲ-4 훈련과정 명세서 (과목 세부)
     expect(screen.getByText(/Python 기초/)).toBeInTheDocument();
     expect(screen.getByText(/선형회귀/)).toBeInTheDocument();
+  });
+
+  // R3 #18 — Ⅲ-4 교과목이 표 형태(FormTable 3열 — 교과목명 / 세부 내용 / 훈련시간)
+  it('Ⅲ-4 교과목 영역이 FormTable 3열 (교과목명 · 세부 내용 · 훈련시간) 로 표시된다 (#18)', () => {
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // Ⅲ-4 교과목 표 — 교과목명 / 세부 내용 헤더 (Ⅲ-3 표에는 이 헤더 없음)
+    expect(
+      screen.getByRole('columnheader', { name: '교과목명' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: '세부 내용' }),
+    ).toBeInTheDocument();
+    // '훈련시간' 헤더는 Ⅲ-3·Ⅲ-4 양쪽에 등장 — 최소 1건 이상
+    const hourHeaders = screen.getAllByRole('columnheader', {
+      name: '훈련시간',
+    });
+    expect(hourHeaders.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // R3 #17 — 단일 항목 / null 분기 — `renderSubjectDetails` 의 fallback 경로 커버
+  it('Ⅲ-4 교과목 details 가 단일 항목이면 평문, null 이면 "-" 표시 (#17 분기)', () => {
+    const versionWithEdgeDetails: RoadmapVersionUI = {
+      ...filledVersion,
+      course_specs: [
+        {
+          ...filledVersion.course_specs[0],
+          subjects: [
+            { name: '기초', details: '단일 내용', hours: 4 },
+            // details 가 null/undefined 인 케이스
+            { name: '실습', details: '', hours: 8 },
+          ],
+        },
+      ],
+    };
+    render(
+      <TabTraining
+        version={versionWithEdgeDetails}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // 단일 항목 — ul/li 머리기호 없이 평문
+    expect(screen.getByText('단일 내용')).toBeInTheDocument();
+    // 빈 details 는 '-' 로 표시
+    const dashCells = screen.getAllByText('-');
+    expect(dashCells.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // R3 #17 — Ⅲ-4 교과목 details 가 줄바꿈/단원 경계로 머리기호 분리되어 표시
+  it('Ⅲ-4 교과목 details 가 머리기호로 분리되어 표시된다 (#17)', () => {
+    const versionWithMultiLineDetails: RoadmapVersionUI = {
+      ...filledVersion,
+      course_specs: [
+        {
+          ...filledVersion.course_specs[0],
+          subjects: [
+            {
+              name: '데이터 전처리',
+              details: '결측치 처리\n정규화\n샘플링',
+              hours: 8,
+            },
+          ],
+        },
+      ],
+    };
+    render(
+      <TabTraining
+        version={versionWithMultiLineDetails}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // \n 분리 후 ul > li 3개 머리기호
+    const items = screen.getAllByRole('listitem');
+    const itemsText = items.map((li) => li.textContent ?? '');
+    expect(itemsText).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('결측치 처리'),
+        expect.stringContaining('정규화'),
+        expect.stringContaining('샘플링'),
+      ]),
+    );
+  });
+
+  // R3 분기 보강 — Ⅲ-1 NCS 활용 시 onEdit 호출 분기 (TabTraining.tsx:167-168)
+  it('Ⅲ-1 NCS 활용 InlineEditField 편집 후 저장 시 ncs_used: true patch 가 호출된다 (분기 커버)', async () => {
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TabTraining
+        version={emptyVersion}
+        interview={{
+          ...interview,
+          ncsUsed: true,
+          ncsMethodology: '기존 방법',
+        }}
+        readOnly={false}
+        onEdit={onEdit}
+      />,
+    );
+    // view mode div 클릭 (role='button') 으로 편집 진입 → 텍스트 변경 → 저장 클릭
+    fireEvent.click(screen.getByText('기존 방법'));
+    const textarea = screen.getByDisplayValue('기존 방법');
+    fireEvent.change(textarea, { target: { value: '변경된 방법' } });
+    fireEvent.click(screen.getByLabelText('저장'));
+    await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ ncs_used: true, ncs_methodology: '변경된 방법' }),
+    );
+  });
+
+  // R3 분기 보강 — version.competencies fallback (인터뷰 비었을 때 LLM 데이터 사용, TabTraining.tsx:36-44)
+  it('인터뷰 competencies 가 비어 있으면 version.competencies LLM fallback 으로 표시 (분기 커버)', () => {
+    const versionWithCompetencies: RoadmapVersionUI = {
+      ...filledVersion,
+      competencies: [
+        {
+          name: 'LLM 역량',
+          definition: 'LLM 정의',
+          knowledge: ['지식1'],
+          skills: ['스킬1'],
+          attitudes: ['태도1'],
+        },
+      ],
+    };
+    render(
+      <TabTraining
+        version={versionWithCompetencies}
+        interview={{ competencies: [], ncsUsed: false, ncsDerivationMethod: '도출' }}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('LLM 역량')).toBeInTheDocument();
+    expect(screen.getByText('LLM 정의')).toBeInTheDocument();
+  });
+
+  // R3 분기 보강 — Ⅲ-2 훈련체계도 수립 방법 InlineEditField onSave 분기 (TabTraining.tsx:247-248)
+  it('Ⅲ-2 훈련체계도 수립 방법 편집 후 저장 시 training_structure_method patch 가 호출된다 (분기 커버)', async () => {
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly={false}
+        onEdit={onEdit}
+      />,
+    );
+    fireEvent.click(screen.getByText('역량×3수준 매트릭스 기반'));
+    const textarea = screen.getByDisplayValue('역량×3수준 매트릭스 기반');
+    fireEvent.change(textarea, { target: { value: '신규 매트릭스' } });
+    fireEvent.click(screen.getByLabelText('저장'));
+    await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ training_structure_method: '신규 매트릭스' }),
+    );
+  });
+
+  // R3 분기 보강 — Ⅲ-1 NCS 미활용 시 onEdit 호출 분기 (TabTraining.tsx:181-182)
+  it('Ⅲ-1 NCS 미활용 InlineEditField 편집 후 저장 시 ncs_used: false patch 가 호출된다 (분기 커버)', async () => {
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <TabTraining
+        version={emptyVersion}
+        interview={{
+          ...interview,
+          ncsUsed: false,
+          ncsMethodology: undefined,
+          ncsDerivationMethod: '기존 도출',
+        }}
+        readOnly={false}
+        onEdit={onEdit}
+      />,
+    );
+    fireEvent.click(screen.getByText('기존 도출'));
+    const textarea = screen.getByDisplayValue('기존 도출');
+    fireEvent.change(textarea, { target: { value: '신규 도출 방법' } });
+    fireEvent.click(screen.getByLabelText('저장'));
+    await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ncs_used: false,
+        ncs_derivation_method: '신규 도출 방법',
+      }),
+    );
+  });
+
+  // PR #42 회귀 테스트 보강 — Ⅲ-2 수준 컬럼 한글 라벨 + 영문 미노출
+  it('Ⅲ-2 수준 컬럼이 한글 라벨(초급/중급/고급)로 표시되고 영문 enum 은 미노출 (#15, PR #42 회귀)', () => {
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('중급')).toBeInTheDocument();
+    expect(screen.queryByText('INTERMEDIATE')).not.toBeInTheDocument();
+    expect(screen.queryByText('BEGINNER')).not.toBeInTheDocument();
+    expect(screen.queryByText('ADVANCED')).not.toBeInTheDocument();
   });
 
   it('제외 라벨 3종 (표지 / 고정 참고자료 / 양식·결과 화면 제외) 와 NCS·수행일지 참고자료를 렌더하지 않음', () => {

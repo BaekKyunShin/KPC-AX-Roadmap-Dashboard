@@ -112,9 +112,10 @@ test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝)', () =
     for (let i = 0; i < 4; i += 1) {
       await page.getByRole('button', { name: '다음 스텝' }).click();
     }
+    // R3 #10(PBL) — 양식 정확 명칭으로 정정
     await expect(
       page.getByRole('heading', {
-        name: /HRD이음컨설팅 결과 PDF 첨부/,
+        name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
         level: 2,
       }),
     ).toBeVisible();

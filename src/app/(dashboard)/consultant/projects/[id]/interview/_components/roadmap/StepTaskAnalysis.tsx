@@ -300,7 +300,7 @@ export function StepTaskAnalysis({
       {/* 선택 첨부 --------------------------------------------------------- */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">
-          분석 노트 추가 첨부
+          추가 내부 자료
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             (선택 · PDF)
           </span>
@@ -330,8 +330,22 @@ export function StepTaskAnalysis({
       </div>
 
       <ExampleAccordion
+        example={
+          <p className="text-xs text-muted-foreground">
+            (추가 업로드 자료 예시) 공정 분석
+          </p>
+        }
         guide={
           <ul className="list-disc space-y-1 pl-4">
+            <li>
+              기업 내부전문가와의 인터뷰를 통해 AI 도입·활용이 필요하다고 판단되는 과업 분석 (전체 과업을 모두 분석할 필요 없음 — 핵심 과업 중심)
+            </li>
+            <li>
+              현행 수행방식(As-Is)과 문제점을 파악하고, AI 도입·활용이 가능한 데이터 발생(또는 보유) 여부 등을 감안하여 AI도입·활용 필요도를 1점(낮음)~5점(높음) 척도로 점수 부여
+            </li>
+            <li>
+              분석 노트 영역에는 과업·워크플로우 분석 과정 및 방법에 대한 내용을 기술합니다.
+            </li>
             <li>
               직무별 주요 과업을 5개 내외로 식별하고, 각 과업의 현행 수행방식(As-Is)·문제점·관련 데이터 발생 시점/보유 현황을 구체적으로 기술합니다.
             </li>

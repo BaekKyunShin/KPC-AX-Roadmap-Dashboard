@@ -494,6 +494,7 @@ class TestSSOTv2PblTableRows:
     """V2 신규 데이터 구조 (problems/priorities/target/details V2 + activities V2)."""
 
     def test_problems_v2(self):
+        # R3 #20(PBL): impact 가 description 셀에 결합 출력되어야 한다 (양식 5x2 한계 회피)
         data = {
             "problems": [
                 {"title": "문제1", "description": "설명1", "impact": "영향1"},
@@ -505,8 +506,26 @@ class TestSSOTv2PblTableRows:
         rows = build_pbl_table_rows(data, "problems")
         assert len(rows) == 4
         assert rows[0]["title"] == "문제1"
-        assert rows[0]["description"] == "설명1"
+        assert rows[0]["description"].startswith("설명1")
+        assert "[영향] 영향1" in rows[0]["description"]
         assert rows[3]["title"] == "문제4"
+        assert "[영향] 영향4" in rows[3]["description"]
+
+    def test_problems_v2_impact_only(self):
+        # impact 만 있고 description 없으면 description 셀에 [영향] 만 출력
+        data = {
+            "problems": [{"title": "문제1", "description": "", "impact": "영향만"}]
+        }
+        rows = build_pbl_table_rows(data, "problems")
+        assert rows[0]["description"] == "[영향] 영향만"
+
+    def test_problems_v2_no_impact(self):
+        # impact 없으면 description 만 출력 (regression — 기존 동작 유지)
+        data = {
+            "problems": [{"title": "문제1", "description": "설명만", "impact": ""}]
+        }
+        rows = build_pbl_table_rows(data, "problems")
+        assert rows[0]["description"] == "설명만"
 
     def test_priorities_v2(self):
         # V2 priority.items[] (problem/score/rank). rank=1 → selected

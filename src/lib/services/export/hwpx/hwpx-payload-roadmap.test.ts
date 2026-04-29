@@ -686,6 +686,164 @@ describe('buildRoadmapHwpxPayload', () => {
   });
 
   // ---------------------------------------------------------------
+  // R3 #20·#21·#22 — V2 DB 키 (roadmap_job·task_description·roadmap_problems·...)
+  // 매핑 검증. mapRoadmapInterviewToDb 가 V2 인터뷰 → DB 행으로 저장하는 실제
+  // 키 형태 (snake_case + roadmap_ prefix). V1 fixture 와 V2 DB 형태 둘 다 PASS.
+  // ---------------------------------------------------------------
+  it('Ⅱ-3 task_workflow_items 가 V2 DB 키 (roadmap_job·task_description·roadmap_problems·roadmap_data_availability·roadmap_ai_necessity) 에서 채워진다 (#20·#22)', () => {
+    const iv = makeInterview({
+      job_tasks: [
+        {
+          id: '1',
+          roadmap_job: 'V2 직무',
+          task_name: 'V2 과업',
+          task_description: 'V2 As-Is',
+          roadmap_problems: 'V2 문제',
+          roadmap_data_availability: 'V2 데이터',
+          roadmap_ai_necessity: 4,
+        },
+      ],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const item = (p.data.task_workflow_items as unknown[])[0] as Record<string, unknown>;
+    expect(item.job).toBe('V2 직무');
+    expect(item.task).toBe('V2 과업');
+    expect(item.as_is).toBe('V2 As-Is');
+    expect(item.problem).toBe('V2 문제');
+    expect(item.data_availability).toBe('V2 데이터');
+    expect(item.ai_necessity_score).toBe(4);
+  });
+
+  it('Ⅱ-4 training_target 이 V2 DB 키 (kpi·goal_description·roadmap_as_is·roadmap_to_be) 에서 채워진다 (#21·#22)', () => {
+    const iv = makeInterview({
+      improvement_goals: [
+        {
+          id: '1',
+          kpi: 'V2 훈련대상',
+          goal_description: 'V2 선정사유',
+          roadmap_as_is: 'V2 As-Is',
+          roadmap_to_be: 'V2 To-Be',
+        },
+      ],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const tt = p.data.training_target as Record<string, string>;
+    expect(tt.task_name).toBe('V2 훈련대상');
+    expect(tt.selection_reason).toBe('V2 선정사유');
+    expect(tt.as_is).toBe('V2 As-Is');
+    expect(tt.to_be).toBe('V2 To-Be');
+  });
+
+  it('V2 perfActs 가 빈 배열이면 V1 단일 컬럼 fallback 으로 1차 행 자동 집계 (#22 분기 커버)', () => {
+    const iv = makeInterview({
+      // V2 perfActs 키는 있지만 빈 배열 — V1 fallback 분기 트리거
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '필요성',
+          ai_competency_level: 'INTERMEDIATE',
+          performance_activities: [],
+        },
+        roadmap_company_requirements: {
+          company_status: '현황',
+          main_problems: '문제',
+          push_willingness: '의지',
+          expected_outcomes: '성과',
+        },
+        roadmap_analysis_notes: { text: '분석', attachment_urls: [] },
+      },
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const acts = p.data.performance_activities as Array<Record<string, unknown>>;
+    // V1 fallback — 단일 컬럼 기반 1차 행 1건
+    expect(acts.length).toBe(1);
+    expect(acts[0].round).toBe(1);
+  });
+
+  it('Ⅱ-4 V1 키 (task_name·selection_reason·as_is·to_be) 만 있는 legacy 데이터도 정상 매핑 (#21 V1 fallback)', () => {
+    const iv = makeInterview({
+      improvement_goals: [
+        {
+          id: '1',
+          // V1 only — V2 키 없음
+          task_name: 'V1 훈련대상',
+          selection_reason: 'V1 사유',
+          as_is: 'V1 As-Is',
+          to_be: 'V1 To-Be',
+        },
+      ],
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const tt = p.data.training_target as Record<string, string>;
+    expect(tt.task_name).toBe('V1 훈련대상');
+    expect(tt.selection_reason).toBe('V1 사유');
+  });
+
+  it('performance_activities 가 V2 company_details.roadmap_overview.performance_activities[] 에서 자동 집계된다 (#22)', () => {
+    const iv = makeInterview({
+      // V2 단일 컬럼은 모두 비움 — V2 데이터는 JSONB 배열로만 저장
+      interview_date: undefined,
+      interview_time: undefined,
+      interview_method: undefined,
+      participants: undefined,
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '필요성',
+          ai_competency_level: 'INTERMEDIATE',
+          performance_activities: [
+            {
+              round: 1,
+              date: '2026-04-29',
+              time_range: '10:00~12:00',
+              content: 'V2 인터뷰 1차',
+              method: 'ONSITE',
+              pm_name: 'V2 PM',
+              expert_name: 'V2 내부전문가',
+            },
+            {
+              round: 2,
+              date: '2026-05-06',
+              time_range: '14:00~16:00',
+              content: 'V2 워크숍',
+              method: 'WORKSHOP',
+              pm_name: 'V2 PM',
+              expert_name: 'V2 내부전문가',
+            },
+          ],
+        },
+      },
+    } as unknown as Parameters<typeof makeInterview>[0]);
+    const p = buildRoadmapHwpxPayload({
+      roadmap: makeRoadmapVersion(),
+      project: makeProject(),
+      interview: iv,
+    });
+    const acts = p.data.performance_activities as Array<Record<string, unknown>>;
+    expect(acts.length).toBe(2);
+    expect(acts[0].round).toBe(1);
+    expect(acts[0].date).toContain('2026-04-29');
+    expect(acts[0].content).toBe('V2 인터뷰 1차');
+    expect(acts[0].method).toBe('대면');
+    expect(acts[1].round).toBe(2);
+    expect(acts[1].method).toBe('워크숍');
+  });
+
+  // ---------------------------------------------------------------
   // Phase D-4: SSOT v2 동기화 assertion (DoD #6 재정의)
   // ---------------------------------------------------------------
   // SSOT JSON v2 (`docs/references/hwpx-placeholders.json`) 의 모든 single-strategy
