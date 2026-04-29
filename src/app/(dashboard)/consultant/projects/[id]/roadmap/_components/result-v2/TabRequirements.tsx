@@ -83,92 +83,63 @@ export function TabRequirements({
       >
         <FormTable
           caption="기업 요구분석 4항목"
-          bodyRows={[
+          headerRows={[
             {
               cells: [
-                { content: '기업 현황', header: true, className: 'w-[160px]' },
-                {
-                  content: (
-                    <InlineEditField
-                      value={cr?.status ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({
-                          company_requirements: { ...cr, status: next },
-                        });
-                      }}
-                      readOnly={readOnly}
-                      multiline
-                      placeholder="기업 현황이 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '주요 문제', header: true },
-                {
-                  content: (
-                    <InlineEditField
-                      value={cr?.problem ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({
-                          company_requirements: { ...cr, problem: next },
-                        });
-                      }}
-                      readOnly={readOnly}
-                      multiline
-                      placeholder="주요 문제가 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '추진 의지', header: true },
-                {
-                  content: (
-                    <InlineEditField
-                      value={cr?.will ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({
-                          company_requirements: { ...cr, will: next },
-                        });
-                      }}
-                      readOnly={readOnly}
-                      multiline
-                      placeholder="추진 의지가 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '기대 성과', header: true },
-                {
-                  content: (
-                    <InlineEditField
-                      value={cr?.outcomes ?? ''}
-                      onSave={async (next) => {
-                        await onEdit({
-                          company_requirements: { ...cr, outcomes: next },
-                        });
-                      }}
-                      readOnly={readOnly}
-                      multiline
-                      placeholder="기대 성과가 입력되지 않았습니다."
-                    />
-                  ),
-                  align: 'left',
-                },
+                { content: '구분', header: true, className: 'w-[120px]' },
+                { content: '확인 내용', header: true },
+                { content: '비고', header: true, className: 'w-[240px]' },
               ],
             },
           ]}
+          bodyRows={(['status', 'problem', 'will', 'outcomes'] as const).map((key) => {
+            const labelByKey = {
+              status: '기업 현황',
+              problem: '주요 문제',
+              will: '추진 의지',
+              outcomes: '기대 성과',
+            } as const;
+            return {
+              cells: [
+                { content: labelByKey[key], header: true },
+                {
+                  content: (
+                    <InlineEditField
+                      value={cr?.[key] ?? ''}
+                      onSave={async (next) => {
+                        await onEdit({
+                          company_requirements: { ...cr, [key]: next },
+                        });
+                      }}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder={`${labelByKey[key]}이(가) 입력되지 않았습니다.`}
+                    />
+                  ),
+                  align: 'left',
+                },
+                {
+                  content: (
+                    <InlineEditField
+                      value={cr?.remarks?.[key] ?? ''}
+                      onSave={async (next) => {
+                        await onEdit({
+                          company_requirements: {
+                            ...cr,
+                            remarks: { ...(cr?.remarks ?? {}), [key]: next },
+                          },
+                        });
+                      }}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="비고 없음"
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            };
+          })}
         />
       </SectionCard>
 

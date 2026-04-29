@@ -242,10 +242,20 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(
       page.getByRole('heading', { name: /기업 요구분석/ }).first(),
     ).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel('기업 현황').fill('E2E 기업 현황: 제조업 중소기업');
-    await page.getByLabel('주요 문제').fill('E2E 주요 문제: 수기 보고 과다');
-    await page.getByLabel('추진 의지').fill('E2E 추진 의지: 대표 챔피언');
-    await page.getByLabel('기대 성과').fill('E2E 기대 성과: 시간 단축 50%');
+    // exact: true — '기업 현황' / '주요 문제' / ... 비고 칼럼 (PR #45) 추가로
+    // 같은 라벨이 substring 매칭되어 strict mode 위반이 되므로 정확 매치 필요.
+    await page
+      .getByLabel('기업 현황', { exact: true })
+      .fill('E2E 기업 현황: 제조업 중소기업');
+    await page
+      .getByLabel('주요 문제', { exact: true })
+      .fill('E2E 주요 문제: 수기 보고 과다');
+    await page
+      .getByLabel('추진 의지', { exact: true })
+      .fill('E2E 추진 의지: 대표 챔피언');
+    await page
+      .getByLabel('기대 성과', { exact: true })
+      .fill('E2E 기대 성과: 시간 단축 50%');
     await nextButton().click();
 
     // ── 스텝 6: Ⅱ-3 과업·워크플로우 분석 (동적 행, 최소 1행 채움) ──

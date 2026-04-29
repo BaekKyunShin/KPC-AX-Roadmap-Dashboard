@@ -40,6 +40,8 @@
 - **증상**: `Ⅰ-2 주요 활동`의 `+ 차수 추가` 버튼을 눌러도 동작하지 않음
 - **기대**: 버튼 클릭 시 차수가 추가되도록 수정
 
+> [해결됨][PR #45] 2026-04-29 — 근본 원인은 `StepPerformanceActivities.tsx` 의 `MAX_ROUNDS=3` 이 `defaultRows()` 의 1·2·3차 prefill 길이와 같아 마운트 직후 영구 disabled 였던 것. `MAX_ROUNDS 3→5` 로 확장 + `DEFAULT_ROUNDS=3` 별도 상수로 분리해 prefill 은 양식 √ 안내 (1·2·3차) 보존. Zod `RoadmapOverviewSchema.performanceActivities .max(3)→.max(5)`. 행 삭제 기능은 기존 `removeRound` + `RoundRows.disableRemove` 그대로 활용. 회귀 테스트 3건 (4차 추가·5차 disabled·4차 활성).
+
 ### #5 — Ⅱ-2 작성 안내 문구 누락
 
 - **페이지**: AI훈련로드맵 인터뷰 입력 페이지
@@ -53,6 +55,8 @@
 - **페이지**: AI훈련로드맵 인터뷰 입력 페이지
 - **증상**: `Ⅱ-2 기업 요구분석`의 비고 칸에 입력이 되지 않음
 - **기대**: 비고도 작성되도록 수정
+
+> [해결됨][PR #45] 2026-04-29 — 근본 원인은 `StepCompanyRequirements.tsx` 의 비고 셀이 정적 텍스트 (`<td>{row.example}</td>`) 로 렌더되어 입력 필드 자체가 없던 것. 비고 셀을 `LargeTextBox` 4 개로 교체하고 양식 √ 작성 예시는 `ExampleAccordion.example` 영역으로 이전. `RoadmapCompanyRequirementsSchema` 에 옵셔널 `remarks: { status?, problem?, will?, outcomes? }` 추가, `companyRequirementsToDb` + 역변환에 매핑 보강 (JSONB 임의 키 — DB 컬럼 추가 불요). 결과 페이지 `TabRequirements` 에 비고 컬럼 표시. HWPX payload 에도 `*_remarks` 4 키 추가 (양식 템플릿에 placeholder 없으면 안전 무시). 회귀 테스트 5건 (입력·반영·readOnly·스키마 보존·round-trip). PBL grep 결과 동일 패턴 없음.
 
 ### #7 — Ⅱ-2 텍스트 폼 높이 부족
 
@@ -109,6 +113,8 @@
 - **페이지**: AI훈련로드맵 결과 페이지
 - **증상**: `Ⅰ. 개요`, `Ⅱ. 요구분석`, `Ⅲ. 훈련체계` 탭 클릭 시 전환 딜레이 발생
 - **기대**: 탭이 즉시 전환되도록 개선
+
+> [해결됨][PR #45] 2026-04-29 — 원인 3 가지: ① `RoadmapResultClient`·`PBLResultClient` 의 `tabs` 배열·`commonTabProps` 가 매 렌더 새 객체로 생성되어 자식 Tab 컴포넌트들의 reconciliation 비용 발생, ② `ResultTabs` 의 `handleValueChange` 가 `URLSearchParams` 파싱 + `router.replace` 를 동기 호출해 메인 스레드 블록, ③ activeValue 가 `useSearchParams` 파생이라 라우터 상태가 갱신될 때까지 새 탭이 활성화되지 않음. 처리: `commonTabProps`·`tabs` `useMemo` 적용 (`react-best-practices: rerender-memo`). `ResultTabs` 에 local `activeValue` 도입 + `useTransition` 으로 `router.replace` 분리 (`react-best-practices: rerender-transitions`) → 클릭 즉시 새 탭 표시, URL 동기화는 background. `useEffect` 로 외부 URL 변경 (뒤로가기·북마크) sync. 공유 컴포넌트라 PBL 결과 페이지에도 자동 적용. 회귀 테스트 1건 (local state 즉시 반응 — `useSearchParams` 갱신 대기 없이 새 탭 콘텐츠 표시).
 
 ### #14 — Ⅰ-3 디스플레이 정돈 필요
 

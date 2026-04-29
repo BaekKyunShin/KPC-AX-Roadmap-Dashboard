@@ -95,11 +95,20 @@ interface DbRoadmapOverview {
   hrd_report_attachment: DbHrdReportAttachment | null;
 }
 
+interface DbRoadmapCompanyRequirementsRemarks {
+  status?: string;
+  problem?: string;
+  will?: string;
+  outcomes?: string;
+}
+
 interface DbRoadmapCompanyRequirements {
   company_status: string;
   main_problems: string;
   push_willingness: string;
   expected_outcomes: string;
+  /** 행별 비고 (#6 fix). JSONB 임의 키 — DB 컬럼 추가 불필요. */
+  remarks?: DbRoadmapCompanyRequirementsRemarks;
 }
 
 interface DbRoadmapAnalysisNotes {
@@ -223,12 +232,21 @@ function taskAnalysisItemToDb(t: RoadmapTaskAnalysisItem): {
 function companyRequirementsToDb(
   cr: RoadmapCompanyRequirements,
 ): DbRoadmapCompanyRequirements {
-  return {
+  const result: DbRoadmapCompanyRequirements = {
     company_status: cr.status,
     main_problems: cr.problem,
     push_willingness: cr.will,
     expected_outcomes: cr.outcomes,
   };
+  if (cr.remarks) {
+    const remarks: DbRoadmapCompanyRequirementsRemarks = {};
+    if (cr.remarks.status !== undefined) remarks.status = cr.remarks.status;
+    if (cr.remarks.problem !== undefined) remarks.problem = cr.remarks.problem;
+    if (cr.remarks.will !== undefined) remarks.will = cr.remarks.will;
+    if (cr.remarks.outcomes !== undefined) remarks.outcomes = cr.remarks.outcomes;
+    if (Object.keys(remarks).length > 0) result.remarks = remarks;
+  }
+  return result;
 }
 
 function targetTaskToDb(t: RoadmapTargetTask): {
@@ -337,6 +355,12 @@ interface DbRoadmapInterviewRow {
       main_problems?: string;
       push_willingness?: string;
       expected_outcomes?: string;
+      remarks?: {
+        status?: string;
+        problem?: string;
+        will?: string;
+        outcomes?: string;
+      };
     } | null;
     roadmap_analysis_notes?: {
       text?: string;
@@ -526,6 +550,7 @@ export function mapDbToRoadmapInterview(
       problem: cr.main_problems ?? '',
       will: cr.push_willingness ?? '',
       outcomes: cr.expected_outcomes ?? '',
+      ...(cr.remarks ? { remarks: { ...cr.remarks } } : {}),
     },
     taskAnalysis,
     taskAnalysisNote: an.text ?? '',

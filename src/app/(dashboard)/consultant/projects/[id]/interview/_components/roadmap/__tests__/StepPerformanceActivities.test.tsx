@@ -80,9 +80,31 @@ describe('StepPerformanceActivities', () => {
     expect(call[1].round).toBe(2);
   });
 
-  it('3차까지 찼으면 "차수 추가" 버튼이 비활성화된다 (스키마 max(3))', () => {
-    render(<StepPerformanceActivities value={[]} onChange={() => {}} />);
-    // 기본 프리필 = 3차수
+  it('기본 프리필 3차수 상태에서도 "차수 추가" 클릭 시 4차가 추가된다 (#4 RED — MAX_ROUNDS=5)', () => {
+    const onChange = vi.fn();
+    render(<StepPerformanceActivities value={[]} onChange={onChange} />);
+    // value=[] → defaultRows() 가 1·2·3차 prefill 한 채 표시. 사용자가 "+ 차수 추가"
+    // 클릭 시 4차가 append 되어 onChange 가 호출돼야 한다 (양식 prefill 보존 + 5차 한계).
+    fireEvent.click(screen.getByLabelText('차수 추가'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const call = onChange.mock.calls[0][0] as RoadmapPerformanceActivity[];
+    expect(call).toHaveLength(4);
+    expect(call[3].round).toBe(4);
+  });
+
+  it('4차 상태에서는 "차수 추가" 버튼이 여전히 활성화된다 (5차 한계)', () => {
+    const fourRounds = [1, 2, 3, 4].map((r) => emptyActivity({ round: r }));
+    render(
+      <StepPerformanceActivities value={fourRounds} onChange={() => {}} />,
+    );
+    expect(screen.getByLabelText('차수 추가')).not.toBeDisabled();
+  });
+
+  it('5차까지 찼으면 "차수 추가" 버튼이 비활성화된다 (스키마 max(5))', () => {
+    const fiveRounds = [1, 2, 3, 4, 5].map((r) => emptyActivity({ round: r }));
+    render(
+      <StepPerformanceActivities value={fiveRounds} onChange={() => {}} />,
+    );
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
   });
 

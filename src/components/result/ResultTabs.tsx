@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Tabs,
@@ -73,16 +73,34 @@ export function ResultTabs({
 
   // 현재 탭 값: URL 파라미터 우선, 없거나 유효하지 않으면 fallback
   const validValues = tabs.map((t) => t.value);
-  const activeValue =
+  const resolvedFromUrl =
     urlTab && validValues.includes(urlTab) ? urlTab : fallback;
+
+  // #13 fix — local state 로 활성 탭 관리. 클릭 즉시 새 탭이 표시되고, URL
+  // 동기화는 startTransition 으로 분리해 메인 스레드 블록을 회피한다.
+  // 외부 URL 변화 (뒤로가기·북마크) 와의 sync 는 effect 로 처리.
+  const [activeValue, setActiveValue] = useState(resolvedFromUrl);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (resolvedFromUrl && resolvedFromUrl !== activeValue) {
+      setActiveValue(resolvedFromUrl);
+    }
+    // activeValue 는 의도적으로 deps 에서 제외 — local state 변경 자체가 트리거가
+    // 되어 불필요한 re-sync 가 발생하는 것을 막는다 (url → local 단방향 sync).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedFromUrl]);
 
   const [expandAll, setExpandAll] = useState(false);
 
   const handleValueChange = useCallback(
     (newValue: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      params.set(searchParamName, newValue);
-      router.replace(`?${params.toString()}`, { scroll: false });
+      setActiveValue(newValue);
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.set(searchParamName, newValue);
+        router.replace(`?${params.toString()}`, { scroll: false });
+      });
     },
     [router, searchParams, searchParamName],
   );
