@@ -93,4 +93,20 @@ describe('TabPBLOverview (Ⅰ. 훈련과정 개요)', () => {
       screen.getByText(/기업명이 입력되지 않았습니다/),
     ).toBeInTheDocument();
   });
+
+  // R3 PBL-자체-01 임시 처리 — 결과 페이지 description 에 신청서 자동표출 안내 노출
+  // (사업장관리번호·업종·업종코드·주소·훈련실시주소·관할 지부·담당자 정보 데이터 바인딩은 R7+ 별도 PR 위임)
+  it('Ⅰ. 훈련과정 개요 description 에 신청서 자동표출 안내가 노출된다 (PBL-자체-01)', () => {
+    render(
+      <TabPBLOverview
+        version={null}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/신청서 자동표출.*HWPX 다운로드 시 자동/),
+    ).toBeInTheDocument();
+  });
 });
