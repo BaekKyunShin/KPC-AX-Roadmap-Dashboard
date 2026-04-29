@@ -156,8 +156,12 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝)'
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
     await page.getByText('훈련대상 과업').first().click();
+    // R3 #12 — 양식 정확 명칭으로 정정
     await expect(
-      page.getByRole('heading', { name: '훈련대상 과업 선정', level: 2 }),
+      page.getByRole('heading', {
+        name: '훈련대상 과업(Task)·워크플로우 선정',
+        level: 2,
+      }),
     ).toBeVisible();
   });
 
