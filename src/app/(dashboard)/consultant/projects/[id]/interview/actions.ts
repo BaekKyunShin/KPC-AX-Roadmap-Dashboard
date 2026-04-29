@@ -5,7 +5,6 @@ import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from
 import {
   roadmapInterviewSchema,
   roadmapInterviewAutoSaveSchema,
-  RoadmapInterviewSchema,
   RoadmapInterviewStrictSchema,
   RoadmapInterviewAutoSaveSchema,
   type RoadmapInterviewInput,
@@ -18,7 +17,6 @@ import { extractTextFromAttachment } from '@/lib/services/file-parser';
 import {
   pblInterviewSchema,
   pblInterviewAutoSaveSchema,
-  PBLInterviewSchema,
   PBLInterviewStrictSchema,
   PBLInterviewAutoSaveSchema,
   type PBLInterviewInput,
