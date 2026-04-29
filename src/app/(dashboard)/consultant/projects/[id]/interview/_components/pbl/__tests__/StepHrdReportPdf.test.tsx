@@ -27,8 +27,12 @@ describe('StepHrdReportPdf (PBL V2)', () => {
     render(
       <StepHrdReportPdf projectId="p1" value={null} onChange={vi.fn()} />,
     );
+    // R3 #10(PBL) — 양식 정확 명칭으로 정정됨
     expect(
-      screen.getByRole('heading', { name: /HRD이음컨설팅 결과 PDF 첨부/, level: 2 }),
+      screen.getByRole('heading', {
+        name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
+        level: 2,
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText('Ⅱ-3-가')).toBeInTheDocument();
   });

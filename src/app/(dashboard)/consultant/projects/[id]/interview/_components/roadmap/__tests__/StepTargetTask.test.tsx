@@ -18,7 +18,10 @@ describe('StepTargetTask', () => {
   it('섹션 번호 / 제목 / 라벨을 표시한다', () => {
     render(<StepTargetTask value={makeValue()} onChange={() => {}} />);
     expect(screen.getByText('Ⅱ-4')).toBeInTheDocument();
-    expect(screen.getByText('훈련대상 과업 선정')).toBeInTheDocument();
+    // R3 #12 — 양식 정확 명칭으로 정정
+    expect(
+      screen.getByText('훈련대상 과업(Task)·워크플로우 선정'),
+    ).toBeInTheDocument();
     expect(screen.getByText('[인터뷰 입력]')).toBeInTheDocument();
   });
 
