@@ -83,21 +83,21 @@
         "course_name": "AI 데이터 수집·정제 입문",
         "format": "집체",
         "hours": 16,
-        "notes": "1분기 (3월) 실시"
+        "notes": ""
       },
       {
         "competency_name": "AI 모델 활용",
         "course_name": "노코드 AI 비전검사 실무",
         "format": "집체",
         "hours": 24,
-        "notes": "2분기 (6월) 실시"
+        "notes": ""
       },
       {
         "competency_name": "AI 모델 활용",
         "course_name": "AI 비전검사 현장 적용 심화",
         "format": "혼합",
         "hours": 16,
-        "notes": "4분기 (11월) 실시, 1·2 과정 이수자 대상"
+        "notes": "1·2 과정 이수자 대상"
       }
     ],
     "usage_plan": "1분기에 데이터 수집·정제 입문 과정을 통해 전 실무자의 기초 역량을 확보합니다. 2분기 노코드 AI 비전검사 과정에서 선발 인원이 모델 학습·배포를 실습하며, 4분기 심화 과정에서 생산라인 시범 적용 결과를 분석합니다. 훈련 결과는 매 분기 사내 발표회에서 공유하고, K-Digital Training 등 정부 지원 훈련사업을 적극 활용하여 교육 비용을 절감합니다."
@@ -113,17 +113,17 @@
       "subjects": [
         {
           "name": "AI 데이터 이해",
-          "details": "AI 학습 데이터 개념, 구조화·비구조화 데이터 구분, 품질 기준 수립",
+          "details": "AI 학습 데이터 개념과 머신러닝 학습 흐름\n구조화·비구조화 데이터 구분 실습\n데이터 품질 기준 수립 워크숍",
           "hours": 4
         },
         {
           "name": "Excel 데이터 정제 실습",
-          "details": "결측값 처리, 중복 제거, 피벗 테이블 활용 집계 (무료: Excel/Sheets 기본 제공)",
+          "details": "결측값 처리 및 이상값 검출 (무료: Excel/Sheets 기본 제공)\n중복 제거·표준화 매크로 적용\n피벗 테이블 활용 집계 리포팅",
           "hours": 6
         },
         {
           "name": "이미지 라벨링 실습",
-          "details": "Label Studio 설치 및 운영 (무료: Community Edition), 불량·정상 이미지 라벨링 가이드라인 작성",
+          "details": "Label Studio 설치 및 프로젝트 생성 (무료: Community Edition)\n불량·정상 이미지 라벨링 가이드라인 작성\n팀별 라벨링 결과 교차 검증",
           "hours": 6
         }
       ]
@@ -138,17 +138,17 @@
       "subjects": [
         {
           "name": "Teachable Machine 기초",
-          "details": "인터페이스 탐색, 이미지 업로드 및 클래스 분류, 모델 학습·내보내기 (무료: 전체)",
+          "details": "Teachable Machine 인터페이스 탐색 (무료: 전체)\n이미지 업로드 및 클래스 분류 실습\n학습 모델 내보내기·재학습 워크플로",
           "hours": 8
         },
         {
           "name": "모델 성능 평가",
-          "details": "정확도·재현율·F1 점수 해석, 혼동행렬(Confusion Matrix) 분석, 임계값 조정 실습",
+          "details": "정확도·재현율·F1 점수 해석\n혼동행렬(Confusion Matrix) 분석 실습\n임계값 조정·Precision-Recall 트레이드오프 토론",
           "hours": 6
         },
         {
           "name": "CLOVA AI API 연동 실습",
-          "details": "CLOVA Vision OCR·Image Recognition API 호출 (무료: 월 1000건), 검사 결과 Excel 리포팅 자동화",
+          "details": "CLOVA Vision OCR API 호출 (무료: 월 1000건)\nImage Recognition API 결과 해석 실습\n검사 결과 Excel 리포팅 자동화",
           "hours": 10
         }
       ]
@@ -163,17 +163,17 @@
       "subjects": [
         {
           "name": "모델 재학습 설계",
-          "details": "성능 저하 탐지 기준 수립, Weights & Biases 무료 티어 모니터링 (무료: 개인 프로젝트), 재학습 트리거 조건 설정",
+          "details": "성능 저하 탐지 기준 수립\nWeights & Biases 무료 티어 모니터링 (무료: 개인 프로젝트)\n재학습 트리거 조건 설정 워크숍",
           "hours": 6
         },
         {
           "name": "운영 매뉴얼 작성 실습",
-          "details": "Notion 기반 운영 절차서 작성 (무료: 무제한 페이지), 이슈 대응 시나리오 정의, 담당자 역할 분배",
+          "details": "Notion 기반 운영 절차서 작성 (무료: 무제한 페이지)\n이슈 대응 시나리오 정의\n담당자 역할 분배 RACI 작성",
           "hours": 4
         },
         {
           "name": "현장 적용 발표 및 회고",
-          "details": "분기별 AI 적용 성과 지표(불량 감지율 변화) 분석, 팀 발표 및 개선 토론",
+          "details": "분기별 AI 적용 성과 지표(불량 감지율 변화) 분석\n팀 발표 및 동료 피드백\n차기 분기 개선 과제 도출",
           "hours": 6
         }
       ]

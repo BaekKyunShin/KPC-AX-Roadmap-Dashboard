@@ -199,6 +199,26 @@ describe('buildSystemPrompt', () => {
   it('구형 키(PBLCourse)가 포함되지 않는다', () => {
     expect(prompt).not.toContain('PBLCourse');
   });
+
+  // R5 PR4 — Ⅲ-3 비고 정책 (#16)
+  it('Ⅲ-3 비고 정책 — 특이사항만 기재 + 빈 문자열 허용 지시가 포함된다', () => {
+    expect(prompt).toContain('특이사항만');
+    expect(prompt).toContain('빈 문자열');
+  });
+
+  it('Ⅲ-3 비고 길이 제약(80자) 가이드가 명시되어 있다', () => {
+    expect(prompt).toContain('80자');
+  });
+
+  // R5 PR4 — Ⅲ-4 교과목 details 다항목 정책 (#17)
+  it('Ⅲ-4 details 다항목 정책 — 2~5개 항목 + 줄바꿈 분리 지시가 포함된다', () => {
+    expect(prompt).toContain('2~5개');
+    expect(prompt).toContain('줄바꿈');
+  });
+
+  it('Ⅲ-4 details — 머리기호 자동 부착 지시(부착 금지)가 포함된다', () => {
+    expect(prompt).toContain('머리기호');
+  });
 });
 
 // ============================================================================
@@ -747,6 +767,109 @@ describe('Task 2.9: fixture sample-llm-response.json → roadmapContentSchema', 
           '역량 기준 3수준 체계(초급·중급·고급)로 수립.\n단계별 선수요건: BEGINNER → INTERMEDIATE → ADVANCED.',
       }).success,
     ).toBe(true);
+  });
+
+  // R5 PR4 — annual_plan.items[*].notes 길이 제약 (#16)
+  it('annual_plan.items[*].notes 80자 초과 → 실패', () => {
+    const long = 'ㄱ'.repeat(81);
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        annual_plan: {
+          ...sampleResponse.annual_plan,
+          items: sampleResponse.annual_plan.items.map((it, idx) =>
+            idx === 0 ? { ...it, notes: long } : it,
+          ),
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('annual_plan.items[*].notes 빈 문자열 → 통과', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        annual_plan: {
+          ...sampleResponse.annual_plan,
+          items: sampleResponse.annual_plan.items.map((it) => ({ ...it, notes: '' })),
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  // R5 PR4 — course_specs[*].subjects[*].details 다항목 검증 (#17)
+  it('course_specs[*].subjects[*].details 6개 항목(줄바꿈 5개) → 실패', () => {
+    const tooMany = ['항목1', '항목2', '항목3', '항목4', '항목5', '항목6'].join('\n');
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.map((spec, idx) =>
+          idx === 0
+            ? {
+                ...spec,
+                subjects: spec.subjects.map((sub, sIdx) =>
+                  sIdx === 0 ? { ...sub, details: tooMany } : sub,
+                ),
+              }
+            : spec,
+        ),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('course_specs[*].subjects[*].details 1개 항목(줄바꿈 없음) → 통과 (legacy fallback)', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.map((spec, idx) =>
+          idx === 0
+            ? {
+                ...spec,
+                subjects: spec.subjects.map((sub, sIdx) =>
+                  sIdx === 0 ? { ...sub, details: '단일 단원 설명' } : sub,
+                ),
+              }
+            : spec,
+        ),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('course_specs[*].subjects[*].details 3개 항목 → 통과', () => {
+    const three = ['항목A', '항목B', '항목C'].join('\n');
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.map((spec, idx) =>
+          idx === 0
+            ? {
+                ...spec,
+                subjects: spec.subjects.map((sub, sIdx) =>
+                  sIdx === 0 ? { ...sub, details: three } : sub,
+                ),
+              }
+            : spec,
+        ),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('course_specs[*].subjects[*].details 공백·줄바꿈만 (filter 후 0건) → 실패', () => {
+    expect(
+      roadmapContentSchema.safeParse({
+        ...sampleResponse,
+        course_specs: sampleResponse.course_specs.map((spec, idx) =>
+          idx === 0
+            ? {
+                ...spec,
+                subjects: spec.subjects.map((sub, sIdx) =>
+                  sIdx === 0 ? { ...sub, details: '\n  \n' } : sub,
+                ),
+              }
+            : spec,
+        ),
+      }).success,
+    ).toBe(false);
   });
 });
 
