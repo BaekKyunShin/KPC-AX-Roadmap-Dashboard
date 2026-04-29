@@ -100,15 +100,41 @@ test.describe('쿼터 초과 시 LLM 차단', () => {
     // 인터뷰 행 시드 — #002 가드 (RoadmapResultClient EmptyState 가 hasInterview=false 일 때
     // 생성 버튼을 disabled 처리) 통과를 위해 최소 인터뷰 행 INSERT.
     // 쿼터 체크는 인터뷰 검증보다 먼저 일어나므로 인터뷰 내용은 비어 있어도 무방.
+    // company_details 가 jsonb NOT NULL 이므로 빈 객체라도 명시 — fetchRoadmapInterviewV2
+    // 의 hasInterview = Object.keys(snapshot).length > 0 가 통과되도록.
     const { error: interviewError } = await supabase.from('interviews').insert({
       project_id: projectId,
       interviewer_id: consultantId!,
       interview_date: new Date().toISOString().slice(0, 10),
+      company_details: {
+        roadmap_overview: { establishment_necessity: 'E2E 시드' },
+      },
     });
     test.skip(
       !!interviewError,
       `시드 인터뷰 생성 실패: ${interviewError?.message}`,
     );
+
+    // #013 fix 가드 통과 — RoadmapResultClient EmptyState 의 새 가드
+    // (canGenerateRoadmap = hasInterview && selfAssessmentExists && isStatusEligible)
+    // 가 self_assessments row 부재 시 버튼을 disabled 처리. 쿼터 차단 시나리오는
+    // 자가진단까지 마친 정상 상태에서 server 측 quota check 만 fail 하는 흐름이므로
+    // 자가진단 row 도 시드한다.
+    const { data: template } = await supabase
+      .from('self_assessment_templates')
+      .select('id, version')
+      .order('version', { ascending: false })
+      .limit(1)
+      .single();
+    if (template) {
+      const { error: saError } = await supabase.from('self_assessments').insert({
+        project_id: projectId,
+        template_id: template.id,
+        template_version: template.version,
+        created_by: consultantId!,
+      });
+      test.skip(!!saError, `시드 자가진단 생성 실패: ${saError?.message}`);
+    }
 
     const getErrors = setupConsoleErrorCheck(page);
 

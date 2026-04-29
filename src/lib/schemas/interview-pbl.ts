@@ -850,6 +850,17 @@ export const PBLInterviewSchema = PBLOverviewSchema.merge(PBLAnalysisSchema).mer
 );
 export type PBLInterviewStrict = z.infer<typeof PBLInterviewSchema>;
 
+// V2 PBL autoSave 전용 (#011 fix — PBL 측 동일 패턴).
+//
+// PBL 은 ROADMAP 보다 nested 가 깊고 schema 도 더 복잡 (PBLOrganizationSchema,
+// PBLActivityItemSchema 의 다단 nested 등). ROADMAP 처럼 explicit deep-loose
+// 재정의는 비용 큼. PBLInterviewSchema.partial() 의 shallow 한계로 인한 silent
+// fail 을 단순 `passthrough` 로 차단한다 (자동저장 입력은 모두 통과 + 클라이언트
+// type 신뢰 + converters.ts 의 mapPBLInterviewToDb 가 모든 필드에 fallback 기본값
+// 주입). 최종 제출은 PBLInterviewStrictSchema 가 책임.
+export const PBLInterviewAutoSaveSchema = z.object({}).passthrough();
+export type PBLInterviewAutoSave = z.infer<typeof PBLInterviewAutoSaveSchema>;
+
 // 조건부 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
 // Ⅱ-3 양식 작성 안내 상 "HRD이음 보고서 PDF 또는 AI훈련과정 개발 필요성 중
 // 하나는 반드시 제공" 되어야 한다 → hrdReportPdf=null 일 때 courseNecessity

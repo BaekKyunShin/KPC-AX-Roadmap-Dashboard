@@ -148,6 +148,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     const root = screen.getByTestId('pbl-result-client');
@@ -164,6 +166,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('select'));
@@ -180,6 +184,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('generate'));
@@ -203,6 +209,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('generate'));
@@ -218,6 +226,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));
@@ -240,6 +250,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));
@@ -255,6 +267,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('download-pdf'));
@@ -275,6 +289,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('cancel'));
@@ -289,6 +305,8 @@ describe('PBLResultPageClient (CONSULTANT)', () => {
         initialVersions={[]}
         initialSelected={null}
         initialInterview={{}}
+        initialHasInterview={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));

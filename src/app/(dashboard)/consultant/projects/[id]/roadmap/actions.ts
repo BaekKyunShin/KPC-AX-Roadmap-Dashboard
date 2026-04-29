@@ -671,6 +671,12 @@ export interface RoadmapPageDataV2 {
   versions: RoadmapVersionUI[];
   selectedVersion: RoadmapVersionUI | null;
   interview: Partial<ResultInterviewSnapshot>;
+  /**
+   * #013 fix — EmptyState 가드 강화용. server-side 에서 자가진단 row 존재 여부와
+   * 프로젝트 status 를 함께 fetch 해 클라이언트 가드에 prop drill 한다.
+   */
+  selfAssessmentExists: boolean;
+  projectStatus: string;
 }
 
 export async function fetchRoadmapPageDataV2(
@@ -743,12 +749,30 @@ export async function fetchRoadmapPageDataV2(
       }
     }
 
+    // #013 fix — 자가진단 존재 여부 + 프로젝트 status 를 클라이언트 EmptyState
+    // 가드에 prop drill. 사전 차단으로 server-side 검증 fail 후 silent fail 방지.
+    const admin = createAdminClient();
+    const [{ data: selfAssessmentRow }, { data: projectRow }] = await Promise.all([
+      admin
+        .from('self_assessments')
+        .select('id')
+        .eq('project_id', projectId)
+        .maybeSingle(),
+      admin
+        .from('projects')
+        .select('status')
+        .eq('id', projectId)
+        .maybeSingle(),
+    ]);
+
     return {
       success: true,
       data: {
         versions,
         selectedVersion,
         interview: interviewSnapshot,
+        selfAssessmentExists: Boolean(selfAssessmentRow?.id),
+        projectStatus: projectRow?.status ?? '',
       },
     };
   } catch (error) {

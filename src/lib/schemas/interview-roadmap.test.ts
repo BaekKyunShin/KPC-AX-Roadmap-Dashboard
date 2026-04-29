@@ -22,6 +22,7 @@ import {
   RoadmapTrainingInterviewSchema,
   RoadmapInterviewSchema,
   RoadmapInterviewStrictSchema,
+  RoadmapInterviewAutoSaveSchema,
 } from './interview-roadmap';
 
 const baseOverview = {
@@ -1503,5 +1504,80 @@ describe('RoadmapInterviewSchema (strict / loose 이중 검증)', () => {
     expect(RoadmapInterviewStrictSchema.safeParse(invalid2).success).toBe(false);
     // 정상 케이스는 통과
     expect(RoadmapInterviewStrictSchema.safeParse(fullValid).success).toBe(true);
+  });
+});
+
+// V2 camelCase autoSave 전용 (#011 root cause fix). RoadmapInterviewSchema.partial()
+// 은 shallow 라 nested 객체/배열의 inner schema 가 그대로 strict — UI 의 prefilled
+// 빈 행/슬롯 (companyRequirements 의 빈 4필드, taskAnalysis: [], competencies: [],
+// targetTask 의 빈 4필드, 빈 배열 etc.) 이 검증에서 fail 하면서 자동저장이 매번 silent
+// 로 success:false 반환. 새 AutoSaveSchema 는 모든 nested 도 partial + array 의
+// .min(1) 제거 + 빈 배열 허용.
+describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
+  it('빈 객체 {} 통과', () => {
+    expect(RoadmapInterviewAutoSaveSchema.safeParse({}).success).toBe(true);
+  });
+
+  it('일부 스칼라만 입력해도 통과', () => {
+    expect(
+      RoadmapInterviewAutoSaveSchema.safeParse({
+        establishmentNecessity: '일부 입력',
+        aiLevel: 'BEGINNER',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('UI prefilled 빈 행/슬롯 포함 state 도 통과 (silent fail 차단)', () => {
+    // 사용자가 Step 1 만 입력했지만 클라이언트 state 에는 모든 키가 prefilled.
+    // 빈 행/슬롯·빈 배열이 들어와도 자동저장은 통과해야 한다.
+    const prefilledState = {
+      establishmentNecessity: '#011 진단 — Step 1 입력만',
+      performanceActivities: [],
+      // aiLevel, selectedTask 미입력
+      hrdReportPdf: null,
+      companyRequirements: { status: '', problem: '', will: '', outcomes: '' },
+      taskAnalysis: [],
+      taskAnalysisNote: '',
+      taskAnalysisAttachment: null,
+      targetTask: { name: '', reason: '', expectedAsIs: '', expectedToBe: '' },
+      competencies: [],
+      ncsUsed: false,
+      ncsMethodology: undefined,
+      ncsDerivationMethod: undefined,
+    };
+    expect(RoadmapInterviewAutoSaveSchema.safeParse(prefilledState).success).toBe(true);
+  });
+
+  it('부분 입력된 nested 객체도 통과 (companyRequirements 의 일부 필드만 채움)', () => {
+    expect(
+      RoadmapInterviewAutoSaveSchema.safeParse({
+        companyRequirements: { status: '제조업' }, // problem/will/outcomes 미입력
+      }).success,
+    ).toBe(true);
+  });
+
+  it('빈 배열의 element 도 element schema 의 partial 적용 (taskAnalysis 의 빈 행)', () => {
+    // 사용자가 빈 행을 추가했지만 아직 입력 안 한 상태도 통과해야 한다.
+    expect(
+      RoadmapInterviewAutoSaveSchema.safeParse({
+        taskAnalysis: [{ domain: '', task: '', asIs: '', problem: '', dataTiming: '' }],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('잘못된 type (예: aiLevel 에 잘못된 enum) 은 여전히 fail', () => {
+    // type-safety 는 유지: 잘못된 enum 등은 통과시키지 않는다.
+    expect(
+      RoadmapInterviewAutoSaveSchema.safeParse({
+        aiLevel: 'WRONG_LEVEL',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('RoadmapInterviewSchema 의 모든 top-level 키를 알고 있다', () => {
+    // SSOT 보장: 통합 schema 에 새 키가 추가되면 AutoSaveSchema 도 같이 갱신.
+    const fullKeys = Object.keys(RoadmapInterviewSchema.shape).sort();
+    const autoSaveKeys = Object.keys(RoadmapInterviewAutoSaveSchema.shape).sort();
+    expect(autoSaveKeys).toEqual(fullKeys);
   });
 });

@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { showErrorToast } from '@/lib/utils';
+import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 
 import {
   savePBLInterviewV2,
@@ -190,13 +191,13 @@ export function PBLInterviewClient({
       const result = await savePBLInterviewV2(projectId, data, {
         autoSave: true,
       });
-      if (result.success) {
-        setSaveState('saved');
-        showSuccessToast('자동 저장되었습니다.');
-      } else {
-        setSaveState('error');
-        showErrorToast(result.error);
-      }
+      // #011 fix — handleSimpleActionResult 가 result.error falsy 시 fallback 토스트 보장
+      const ok = await handleSimpleActionResult(result, {
+        successMessage: { title: '자동 저장되었습니다.' },
+        errorTitle: '저장 실패',
+        errorFallback: '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      });
+      setSaveState(ok ? 'saved' : 'error');
     });
   }, [data, projectId]);
 
@@ -216,7 +217,13 @@ export function PBLInterviewClient({
           const result = await savePBLInterviewV2(projectId, data, {
             autoSave: true,
           });
-          if (result.success) {
+          // #011 fix — handleSimpleActionResult 가 result.error falsy 시
+          // errorFallback 으로 토스트 보장. 자동저장 성공 토스트는 미표시.
+          const ok = await handleSimpleActionResult(result, {
+            errorTitle: '자동 저장 실패',
+            errorFallback: '자동 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          });
+          if (ok) {
             lastSerializedRef.current = serialized;
             setSaveState('saved');
             if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
@@ -225,7 +232,6 @@ export function PBLInterviewClient({
             }, 3000);
           } else {
             setSaveState('error');
-            showErrorToast(result.error);
           }
         } catch (error) {
           console.error('[PBLInterviewClient] auto-save error:', error);
@@ -254,8 +260,17 @@ export function PBLInterviewClient({
     // Strict 검증 — hrdReportPdf=null 일 때 courseNecessity 비공백 조건 포함
     const parsed = PBLInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
+      // #012 fix — 모든 zod 에러 메시지를 join 해 사용자가 비어있는 필드를 한 번에
+      // 파악할 수 있게 한다 (기존: errors[0] 하나만 표시 → 사용자가 어디 부족한지 모름).
+      const messages = parsed.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
       showErrorToast(
-        parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.',
+        '제출 검증 실패',
+        messages.length > 0
+          ? messages.join('\n')
+          : '필수 입력 항목을 확인해주세요.',
       );
       return;
     }
@@ -264,17 +279,23 @@ export function PBLInterviewClient({
     startTransition(async () => {
       try {
         const result = await submitPBLInterviewV2(projectId, parsed.data);
-        if (result.success) {
-          showSuccessToast('인터뷰가 제출되었습니다.');
+        // #012 fix — handleSimpleActionResult 가 result.error falsy 시 fallback 토스트 보장
+        const ok = await handleSimpleActionResult(result, {
+          successMessage: { title: '인터뷰가 제출되었습니다.' },
+          errorTitle: '인터뷰 제출 실패',
+          errorFallback:
+            '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        });
+        if (ok) {
           router.push(`/consultant/projects/${projectId}/pbl`);
         } else {
           setIsSubmitting(false);
-          showErrorToast(result.error);
         }
       } catch (error) {
         setIsSubmitting(false);
         console.error('[PBLInterviewClient] submit error:', error);
         showErrorToast(
+          '인터뷰 제출 실패',
           error instanceof Error
             ? error.message
             : '인터뷰 제출 중 오류가 발생했습니다.',

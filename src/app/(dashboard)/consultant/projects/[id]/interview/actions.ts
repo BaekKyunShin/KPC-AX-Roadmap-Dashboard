@@ -5,8 +5,8 @@ import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess } from
 import {
   roadmapInterviewSchema,
   roadmapInterviewAutoSaveSchema,
-  RoadmapInterviewSchema,
   RoadmapInterviewStrictSchema,
+  RoadmapInterviewAutoSaveSchema,
   type RoadmapInterviewInput,
   type RoadmapInterviewAutoSaveInput,
   type RoadmapInterviewStrict,
@@ -17,8 +17,8 @@ import { extractTextFromAttachment } from '@/lib/services/file-parser';
 import {
   pblInterviewSchema,
   pblInterviewAutoSaveSchema,
-  PBLInterviewSchema,
   PBLInterviewStrictSchema,
+  PBLInterviewAutoSaveSchema,
   type PBLInterviewInput,
   type PBLInterviewAutoSaveInput,
   type PBLInterviewStrict,
@@ -981,8 +981,9 @@ async function fetchProjectMetaForInterview(
 /**
  * 로드맵 인터뷰 저장 — camelCase 신규 스키마 (Task 2.1).
  *
- * options.autoSave=true  → `RoadmapInterviewSchema.partial()` 로 느슨한 검증
- *                          (ZodObject 이므로 `.partial()` 가 제공됨)
+ * options.autoSave=true  → `RoadmapInterviewAutoSaveSchema` 로 deep-loose 검증
+ *                          (#011 fix — `.partial()` 의 shallow 한계로 인한
+ *                           silent fail 차단; nested string 까지 모두 optional).
  * options.autoSave=false → `RoadmapInterviewStrictSchema` 로 NCS XOR 포함 엄격 검증
  */
 export async function saveRoadmapInterviewV2(
@@ -1009,7 +1010,7 @@ export async function saveRoadmapInterviewV2(
     }
 
     const schema = options?.autoSave
-      ? RoadmapInterviewSchema.partial()
+      ? RoadmapInterviewAutoSaveSchema
       : RoadmapInterviewStrictSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
@@ -1185,7 +1186,7 @@ export async function savePBLInterviewV2(
     }
 
     const schema = options?.autoSave
-      ? PBLInterviewSchema.partial()
+      ? PBLInterviewAutoSaveSchema
       : PBLInterviewStrictSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {

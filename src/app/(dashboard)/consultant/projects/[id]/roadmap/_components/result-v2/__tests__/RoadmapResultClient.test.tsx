@@ -372,6 +372,8 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         versions={[]}
         selectedVersion={null}
         interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="INTERVIEWED"
         onSelectVersion={vi.fn()}
         onEdit={vi.fn()}
         onGenerate={onGenerate}
@@ -534,6 +536,8 @@ describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
         versions={[]}
         selectedVersion={null}
         interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="INTERVIEWED"
         onSelectVersion={vi.fn()}
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
@@ -547,6 +551,56 @@ describe('RoadmapResultClient — 인터뷰 미완료 가드 (#002)', () => {
       screen.queryByRole('link', { name: /인터뷰 입력하러 가기/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeEnabled();
+  });
+});
+
+// #013 회귀 방지 — 인터뷰는 있으나 자가진단/status 가 안 맞을 때 silent fail 하던 결함.
+// EmptyState 가드를 status·자가진단까지 확장해 클릭 자체를 사전 차단 + 안내 문구 명시.
+describe('RoadmapResultClient — 자가진단/status 가드 (#013)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('인터뷰는 있으나 자가진단 부재 시 "자가진단 결과가 없습니다" 안내 + 버튼 disabled', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        selfAssessmentExists={false}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/자가진단 결과가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
+  });
+
+  it('status 가 ROADMAP_ELIGIBLE_STATUSES (INTERVIEWED 이상) 미만일 때 안내 + 버튼 disabled', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="ASSIGNED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/프로젝트가 인터뷰 완료 상태가 아닙니다/),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
   });
 });
 

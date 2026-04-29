@@ -191,6 +191,8 @@ describe('PBLResultClient — CONSULTANT role', () => {
         versions={[makeVersion({ status: 'DRAFT' })]}
         selectedVersion={makeVersion({ status: 'DRAFT' })}
         interview={baseInterview}
+        hasInterview={true}
+        projectStatus="INTERVIEWED"
         onSelectVersion={vi.fn()}
         onEdit={vi.fn()}
         onGenerate={onGenerate}
@@ -200,6 +202,27 @@ describe('PBLResultClient — CONSULTANT role', () => {
     fireEvent.click(screen.getByRole('button', { name: /새 버전 생성/ }));
     fireEvent.click(screen.getByRole('button', { name: '생성 시작' }));
     expect(onGenerate).toHaveBeenCalled();
+  });
+
+  // #013 회귀 방지 — 인터뷰/status 가드. RegenerateAccordion disabled.
+  it('hasInterview=false 일 때 RegenerateAccordion 가 disabled', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        hasInterview={false}
+        projectStatus="ASSIGNED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    const accordionTrigger = screen.getByRole('button', { name: /새 버전 생성/ });
+    expect(accordionTrigger).toBeDisabled();
   });
 
   it('isGenerating=true 시 RoadmapLoadingOverlay 표시', () => {

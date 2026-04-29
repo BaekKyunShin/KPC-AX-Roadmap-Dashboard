@@ -33,7 +33,13 @@ export default async function RoadmapPage({
 
   const pageData = pageDataResult.success
     ? pageDataResult.data
-    : { versions: [], selectedVersion: null, interview: {} };
+    : {
+        versions: [],
+        selectedVersion: null,
+        interview: {},
+        selfAssessmentExists: false,
+        projectStatus: '',
+      };
 
   return (
     <RoadmapResultPageClient
@@ -42,6 +48,8 @@ export default async function RoadmapPage({
       initialVersions={pageData.versions}
       initialSelected={pageData.selectedVersion}
       initialInterview={pageData.interview}
+      initialSelfAssessmentExists={pageData.selfAssessmentExists}
+      initialProjectStatus={pageData.projectStatus}
     />
   );
 }

@@ -466,6 +466,10 @@ describe('fetchPBLPageDataV2', () => {
       from: vi.fn(() => ({ createSignedUrl })),
     } as never;
 
+    // #013 fix — interviews + projects 추가 fetch
+    adminMock.addResult({ data: { id: 'iv-1' }, error: null });
+    adminMock.addResult({ data: { status: 'PBL_DRAFTED' }, error: null });
+
     const r = await fetchPBLPageDataV2(PROJECT_ID);
     expect(r.success).toBe(true);
     if (!r.success) return;
@@ -508,6 +512,10 @@ describe('fetchPBLPageDataV2', () => {
     });
     adminMock.addResult({ data: null, error: null });
 
+    // #013 fix — interviews + projects 추가 fetch
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: { status: 'PBL_DRAFTED' }, error: null });
+
     const r = await fetchPBLPageDataV2(PROJECT_ID, 'v-b');
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.selectedVersion?.id).toBe('v-b');
@@ -532,6 +540,10 @@ describe('fetchPBLPageDataV2', () => {
     });
     adminMock.addResult({ data: null, error: null });
 
+    // #013 fix — interviews + projects 추가 fetch
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: { status: 'INTERVIEWED' }, error: null });
+
     const r = await fetchPBLPageDataV2(PROJECT_ID);
     expect(r.success).toBe(true);
     if (r.success) {
@@ -555,6 +567,10 @@ describe('fetchPBLPageDataV2', () => {
       },
       error: null,
     });
+
+    // #013 fix — interviews + projects 추가 fetch
+    adminMock.addResult({ data: { id: 'iv-2' }, error: null });
+    adminMock.addResult({ data: { status: 'PBL_DRAFTED' }, error: null });
 
     const r = await fetchPBLPageDataV2(PROJECT_ID);
     expect(r.success).toBe(true);
