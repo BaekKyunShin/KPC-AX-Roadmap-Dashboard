@@ -190,6 +190,42 @@ describe('RoadmapInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
+  // R3 공통-A — Ⅰ-2 양식 √ "별도 작성 불요" 안내 노출
+  it('Ⅰ-2 작성 안내 영역에 양식 √ "별도 작성 불요" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('주요 활동'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/별도 작성 불요/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅰ-3 양식 √ "1장 이내로 요약하여 작성" 안내 노출
+  it('Ⅰ-3 작성 안내 영역에 양식 √ "1장 이내로 요약하여 작성" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('수립 주요 결과'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/1장 이내로 요약하여 작성/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅱ-1 양식 √ "별도 작성 불요" + 등급 매핑 (초급 AI기초형 / 중급 AI탐구형) 노출
+  it('Ⅱ-1 작성 안내 영역에 양식 √ "별도 작성 불요" + 등급 매핑 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('HRD이음 PDF'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/별도 작성 불요/)).toBeInTheDocument();
+    expect(screen.getByText(/초급.*AI기초형/)).toBeInTheDocument();
+    expect(screen.getByText(/중급.*AI탐구형/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A — Ⅱ-3 양식 √ "기업 내부전문가와의 인터뷰" + 양식 ◆ "공정 분석" 예시 노출
+  it('Ⅱ-3 작성 안내 영역에 양식 √ "AI 도입·활용이 필요하다고 판단되는 과업 분석" 안내가 노출된다 (공통-A)', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(
+      screen.getByText(/AI 도입·활용이 필요하다고 판단되는 과업 분석/),
+    ).toBeInTheDocument();
+  });
+
   it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('과업·워크플로우 분석'));
