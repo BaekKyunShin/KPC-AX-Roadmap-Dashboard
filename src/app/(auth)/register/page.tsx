@@ -30,7 +30,11 @@ import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
 import { FooterCredit } from '@/components/ui/FooterCredit';
 import ProfileForm from '@/components/consultant/ProfileForm';
-import { registerUser } from '../actions';
+import {
+  registerUser,
+  checkEmailAvailability,
+  registerConsultantWithProfile,
+} from '../actions';
 
 type RegisterType = 'CONSULTANT' | 'OPS_ADMIN';
 
@@ -42,6 +46,17 @@ type Step1Errors = {
   password?: string;
   confirmPassword?: string;
   agreeToTerms?: string;
+};
+
+// Step1 입력값 (#004 옵션 C)
+// Step2 까지 완료한 시점에 한 번에 atomic 가입 처리하기 위해
+// React state 에 보관한다. DB 에는 아무것도 저장하지 않음.
+type Step1Data = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  name: string;
+  phone: string;
 };
 
 export default function RegisterPage() {
@@ -59,6 +74,9 @@ export default function RegisterPage() {
 
   // 필드별 에러 상태
   const [step1Errors, setStep1Errors] = useState<Step1Errors>({});
+
+  // Step1 입력 보관 (#004 옵션 C — Step2 atomic 제출 시 사용)
+  const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
 
   // 페이지 로드 시 기존 세션 로그아웃
   useEffect(() => {
@@ -81,6 +99,17 @@ export default function RegisterPage() {
 
     clearSession();
   }, []);
+
+  // Step2 진입 후 페이지 이탈 경고 (#004 옵션 C — Step1 입력 손실 방지)
+  useEffect(() => {
+    if (step !== 2) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [step]);
 
   // Step 1: 기본 정보 제출
   async function handleStep1Submit(e: React.FormEvent<HTMLFormElement>) {
@@ -120,33 +149,57 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const submitFormData = new FormData();
-      submitFormData.set('email', data.email);
-      submitFormData.set('password', data.password);
-      submitFormData.set('confirmPassword', data.confirmPassword);
-      submitFormData.set('name', data.name);
-      submitFormData.set('phone', data.phone);
-      submitFormData.set('registerType', data.registerType);
-      submitFormData.set('agreeToTerms', 'true');
-
-      const serverResult = await registerUser(submitFormData);
-
-      // 회원가입 실패 시 에러 표시 후 종료
-      if (!serverResult.success) {
-        setServerError(serverResult.error);
-        setIsLoading(false);
-        showErrorToast('회원가입 실패', serverResult.error);
-        scrollToPageTop();
-        return;
-      }
-
-      // 운영관리자는 바로 대시보드로 이동 (로딩 상태 유지)
+      // 운영관리자는 Step2 가 없으므로 기존 atomic 가입 흐름 그대로 호출
       if (registerType === 'OPS_ADMIN') {
+        const submitFormData = new FormData();
+        submitFormData.set('email', data.email);
+        submitFormData.set('password', data.password);
+        submitFormData.set('confirmPassword', data.confirmPassword);
+        submitFormData.set('name', data.name);
+        submitFormData.set('phone', data.phone);
+        submitFormData.set('registerType', 'OPS_ADMIN');
+        submitFormData.set('agreeToTerms', 'true');
+
+        const serverResult = await registerUser(submitFormData);
+        if (!serverResult.success) {
+          setServerError(serverResult.error);
+          setIsLoading(false);
+          showErrorToast('회원가입 실패', serverResult.error);
+          scrollToPageTop();
+          return;
+        }
         router.push('/dashboard');
         return;
       }
 
-      // 컨설턴트는 2단계(프로필 입력)로 진행
+      // 컨설턴트 흐름 (#004 옵션 C)
+      // Step1 시점에 DB 쓰기 없이 이메일 중복만 사전 확인 → 통과 시 state 보관 후 Step2.
+      // Step2 까지 완료해야 atomic 으로 실제 가입.
+      const emailCheck = await checkEmailAvailability(data.email);
+      if (!emailCheck.success) {
+        setServerError(emailCheck.error);
+        showErrorToast('회원가입 실패', emailCheck.error);
+        scrollToPageTop();
+        setIsLoading(false);
+        return;
+      }
+      if (!emailCheck.data?.available) {
+        const msg = '이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.';
+        setServerError(msg);
+        setStep1Errors({ email: msg });
+        showErrorToast('회원가입 실패', msg);
+        scrollToPageTop();
+        setIsLoading(false);
+        return;
+      }
+
+      setStep1Data({
+        email: data.email,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+        name: data.name,
+        phone: data.phone,
+      });
       setStep(2);
       setIsLoading(false);
     } catch {
@@ -155,6 +208,32 @@ export default function RegisterPage() {
       scrollToPageTop();
       setIsLoading(false);
     }
+  }
+
+  // Step 2: 컨설턴트 프로필 제출 → atomic 가입 처리 (#004 옵션 C)
+  // ProfileForm 의 submitAction prop 으로 주입된다.
+  async function handleStep2Submit(profileFormData: FormData) {
+    if (!step1Data) {
+      return {
+        success: false as const,
+        error: '1단계 정보가 누락되었습니다. 처음부터 다시 시도해주세요.',
+      };
+    }
+
+    const step1Fd = new FormData();
+    step1Fd.set('email', step1Data.email);
+    step1Fd.set('password', step1Data.password);
+    step1Fd.set('confirmPassword', step1Data.confirmPassword);
+    step1Fd.set('name', step1Data.name);
+    step1Fd.set('phone', step1Data.phone);
+    step1Fd.set('registerType', 'CONSULTANT');
+    step1Fd.set('agreeToTerms', 'true');
+
+    const result = await registerConsultantWithProfile(step1Fd, profileFormData);
+    if (!result.success) {
+      return { success: false as const, error: result.error };
+    }
+    return { success: true as const };
   }
 
   // 초기화 중 로딩 표시 (실제 폼 레이아웃과 일치하는 skeleton)
@@ -305,6 +384,7 @@ export default function RegisterPage() {
             backUrl="/register"
             successRedirectUrl="/dashboard"
             cardClassName="shadow-xl border-0 bg-white/80 backdrop-blur-sm"
+            submitAction={handleStep2Submit}
           />
         )}
 

@@ -9,7 +9,8 @@
 |------|------|----|-----------|
 | 2026-04-28 | 1차 전수 조사 | — | OPEN: #001~#010 (10건) |
 | 2026-04-29 | 결함 수정 (세션 #A) | PR #36 | RESOLVED: #001, #002, #003, #005, #006, #007, #008, #009, #010 / 보류: #004 |
-| 2026-04-29 | 이월 검증 (세션 #B) | (PR 작업 중) | OPEN 추가: #011 (P2), #012 (P1), #013 (P1) — silent fail 패턴 3건 |
+| 2026-04-29 | 이월 검증 (세션 #B) | PR #38 | OPEN 추가: #011 (P2), #012 (P1), #013 (P1) — silent fail 패턴 3건 |
+| 2026-04-29 | #004 본격 해결 (세션 #C) | PR #39 | RESOLVED: #004 |
 <!-- 새 항목은 위 행 위쪽이 아닌 아래쪽에 추가 (시간 순 누적) -->
 
 ## 결함 상태 라벨
@@ -46,7 +47,7 @@
 | 1 | **P1** | 🟢 RESOLVED | 기능 | 운영관리 > 감사로그 | 감사로그 페이지가 항상 "로그 없음" — DB는 정상 기록 중 |
 | 2 | **P1** | 🟢 RESOLVED | 기능/UX | 컨설턴트 > 담당 프로젝트 > [프로젝트] > 로드맵 | 인터뷰 미완료 상태에서 "AI 로드맵 생성" 클릭 시 silent fail (피드백 0건) |
 | 3 | P2 | 🟢 RESOLVED | 기능 | 운영관리 > 사용자 관리 | 운영관리자/시스템관리자 본인이 목록에 표시되지 않음 |
-| 4 | P2 | 🔴 OPEN | 데이터 | (모든 사용자) /register | Step 1만 완료해도 USER_PENDING 사용자 즉시 등록, Step 2 이탈자 잔재 |
+| 4 | P2 | 🟢 RESOLVED | 데이터 | (모든 사용자) /register | Step 1만 완료해도 USER_PENDING 사용자 즉시 등록, Step 2 이탈자 잔재 |
 | 5 | P2 | 🟢 RESOLVED | UX | 자가진단 링크 | 무효/만료 토큰 접근 시 도메인 안내 없이 일반 404 페이지 |
 | 6 | P3 | 🟢 RESOLVED | UI | 운영관리 > 사용자 관리 | 이메일이 셀에서 어색한 위치에서 줄바꿈 |
 | 7 | P3 | 🟢 RESOLVED | UX | 운영관리 > 감사로그 | 0건 상태에서도 "전체 목록 다운로드 (0건)" 버튼 활성 |
@@ -136,7 +137,7 @@
 
 ---
 
-### #004 [P2] [🔴 OPEN] 회원가입 Step 2 이탈 시 미완성 USER_PENDING 사용자 잔재
+### #004 [P2] [🟢 RESOLVED] 회원가입 Step 2 이탈 시 미완성 USER_PENDING 사용자 잔재
 
 **메뉴 경로:** 회원가입 (`/register`)
 
@@ -153,7 +154,8 @@
 
 **DB 검증:** `audit-c-20260428@test.com`이 Step 2 미완료 상태에서도 즉시 `USER_PENDING`/`role=USER_PENDING`으로 등록됨을 확인.
 
-- **보류 사유 (세션 #A — 2026-04-29)**: 회원가입 트랜잭션 분리는 Supabase Auth 의 `signUp()` 이 Step 1 시점에 인증 사용자를 만들어야 하는 구조적 제약 때문에 본격적인 리팩터링이 필요함. 본 세션은 1차 조사 결함 표면 정리(9건) 에 집중하므로 별도 세션에서 다음 패키지로 본격 해결 권장: ① `users.profile_completed` boolean 컬럼 마이그레이션 + ② 운영관리자 화면 기본 필터에서 `false` 제외 + ③ 야간 cron 으로 `created_at > 1d AND consultant_profiles is null` 사용자 cleanup. 또는 Step 2 까지 클라이언트 state 에 보관 후 한 번에 `signUp` + `users INSERT` + `consultant_profiles INSERT` 하는 단일 트랜잭션 패턴 검토.
+- **해결 정보**: PR #39 · 2026-04-29 · 검증자: Vitest 단위 테스트 11건 + Playwright E2E 1건
+- **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — 옵션 C(atomic registration) 적용. Step 2 까지 완료해야 `auth.users` + `public.users` + `consultant_profiles` 가 한 번에 생성되도록 회원가입 흐름을 재구성. 신규 액션 `checkEmailAvailability` 가 Step 1 → Step 2 전환 시 이메일 중복만 사전 확인(DB 쓰기 없음)하고, 신규 액션 `registerConsultantWithProfile` 이 Step 2 제출 시 4단계(Auth user → users → consultant_profiles → 자동 로그인) 를 atomic 으로 처리하며 어느 단계든 실패 시 Auth user 삭제(CASCADE) 로 롤백. Step 1 입력값은 React state(`step1Data`) 에만 보관 + Step 2 진입 후 `beforeunload` 경고로 손실 방지. **DB 스키마 변경 없음**(마커 컬럼·cleanup cron 같은 보조 장치 불필요 — 좀비 사용자가 구조적으로 발생할 수 없음). UX 동일(2단계 스테퍼 유지). OPS_ADMIN 흐름은 Step 2 가 없으므로 기존 `registerUser` 호출 유지. 보류 사유에서 검토했던 옵션 A(profile_completed marker) 와 옵션 B(단일 페이지 통합) 대비 데이터 정합성·UX·작업량 모두 우위.
 
 ---
 
