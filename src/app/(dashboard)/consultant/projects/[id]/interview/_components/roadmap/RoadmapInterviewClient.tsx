@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 
 import {
   saveRoadmapInterviewV2,
@@ -196,21 +197,20 @@ export function RoadmapInterviewClient({
 
   // ---- 저장 / 제출 ----------------------------------------------------------
 
-  // 수동 저장: StickyFormNav 의 "수동 저장" 버튼에 바인딩. 기존 테스트 호환을 위해
-  // 성공 시 saveState='saved' + showSuccessToast 도 함께 호출한다.
+  // 수동 저장: StickyFormNav 의 "수동 저장" 버튼에 바인딩. handleSimpleActionResult
+  // 로 result.error 가 falsy 해도 fallback 토스트 보장 (#011 fix — silent fail 차단).
   const handleSave = useCallback(() => {
     setSaveState('saving');
     startTransition(async () => {
       const result = await saveRoadmapInterviewV2(projectId, data, {
         autoSave: true,
       });
-      if (result.success) {
-        setSaveState('saved');
-        showSuccessToast('자동 저장되었습니다.');
-      } else {
-        setSaveState('error');
-        showErrorToast(result.error);
-      }
+      const ok = await handleSimpleActionResult(result, {
+        successMessage: { title: '자동 저장되었습니다.' },
+        errorTitle: '저장 실패',
+        errorFallback: '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      });
+      setSaveState(ok ? 'saved' : 'error');
     });
   }, [data, projectId]);
 
@@ -234,7 +234,14 @@ export function RoadmapInterviewClient({
           const result = await saveRoadmapInterviewV2(projectId, data, {
             autoSave: true,
           });
-          if (result.success) {
+          // #011 fix — handleSimpleActionResult 가 result.error falsy 시
+          // errorFallback 으로 토스트 보장 (silent fail 구조적 차단).
+          // 자동저장이라 성공 토스트는 미표시 (기존 UX 유지).
+          const ok = await handleSimpleActionResult(result, {
+            errorTitle: '자동 저장 실패',
+            errorFallback: '자동 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          });
+          if (ok) {
             lastSerializedRef.current = serialized;
             setSaveState('saved');
             if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
@@ -243,7 +250,6 @@ export function RoadmapInterviewClient({
             }, 3000);
           } else {
             setSaveState('error');
-            showErrorToast(result.error);
           }
         } catch (error) {
           console.error('[RoadmapInterviewClient] auto-save error:', error);

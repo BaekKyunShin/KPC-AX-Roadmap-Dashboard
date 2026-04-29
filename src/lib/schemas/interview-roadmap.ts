@@ -816,6 +816,84 @@ export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequire
 );
 export type RoadmapInterviewStrict = z.infer<typeof RoadmapInterviewSchema>;
 
+// V2 camelCase autoSave 전용 (#011 fix).
+//
+// `RoadmapInterviewSchema.partial()` 은 shallow 라 nested 객체/배열의 inner schema
+// 가 그대로 strict 로 남는다. zod 의 `.partial()` 은 필드를 optional 로 만들 뿐
+// 값이 존재하면 여전히 `.min(1)` 등 inner 제약이 적용된다. UI 가 mount 시
+// prefilled 로 넣는 빈 행/슬롯 (companyRequirements 의 빈 4 필드, taskAnalysis 의
+// 빈 행, competencies 의 빈 행, targetTask 의 빈 4 필드, 빈 배열) 이 자동저장
+// partial 검증에서 fail → `{ success: false, error: ... }` 반환 → 클라이언트
+// 라벨 "저장 실패" 영구 고착의 silent fail.
+//
+// 본 schema 는 nested string 까지 모두 `.optional()` 로 재정의 (빈 string 도
+// 통과) + 모든 배열의 `.min(1)` 제거 + 빈 배열 허용 + element 의 빈 필드도 통과.
+// 최종 제출은 `RoadmapInterviewStrictSchema` 가 책임. mapping 함수
+// (`mapRoadmapInterviewToDb` in converters.ts) 는 모든 필드에 fallback 기본값
+// 주입을 이미 처리한다. `aiScore` 등 enum/range 는 값이 들어왔을 때만 검증되어
+// type-safety 는 유지.
+const RoadmapPerformanceActivityAutoSaveSchema = z.object({
+  round: z.number().int().min(1).optional(),
+  date: z.string().optional(),
+  timeRange: z.string().optional(),
+  content: z.string().optional(),
+  method: z.string().optional(),
+  pmName: z.string().optional(),
+  expertName: z.string().optional(),
+});
+
+const RoadmapCompanyRequirementsAutoSaveSchema = z.object({
+  status: z.string().optional(),
+  problem: z.string().optional(),
+  will: z.string().optional(),
+  outcomes: z.string().optional(),
+});
+
+const RoadmapTaskAnalysisItemAutoSaveSchema = z.object({
+  domain: z.string().optional(),
+  task: z.string().optional(),
+  asIs: z.string().optional(),
+  problem: z.string().optional(),
+  dataTiming: z.string().optional(),
+  aiScore: z.number().int().min(1).max(5).optional(),
+});
+
+const RoadmapTargetTaskAutoSaveSchema = z.object({
+  name: z.string().optional(),
+  reason: z.string().optional(),
+  expectedAsIs: z.string().optional(),
+  expectedToBe: z.string().optional(),
+});
+
+const RoadmapCompetencyAutoSaveSchema = z.object({
+  name: z.string().optional(),
+  definition: z.string().optional(),
+  knowledge: z.string().optional(),
+  skill: z.string().optional(),
+  attitude: z.string().optional(),
+});
+
+export const RoadmapInterviewAutoSaveSchema = z.object({
+  // Ⅰ 개요
+  establishmentNecessity: z.string().optional(),
+  performanceActivities: z.array(RoadmapPerformanceActivityAutoSaveSchema).optional(),
+  aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  selectedTask: z.string().optional(),
+  // Ⅱ 요구분석
+  hrdReportPdf: RoadmapHrdReportPdfSchema.partial().nullable().optional(),
+  companyRequirements: RoadmapCompanyRequirementsAutoSaveSchema.optional(),
+  taskAnalysis: z.array(RoadmapTaskAnalysisItemAutoSaveSchema).optional(),
+  taskAnalysisNote: z.string().optional(),
+  taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.partial().nullable().optional(),
+  targetTask: RoadmapTargetTaskAutoSaveSchema.optional(),
+  // Ⅲ-1 훈련체계
+  competencies: z.array(RoadmapCompetencyAutoSaveSchema).optional(),
+  ncsUsed: z.boolean().optional(),
+  ncsMethodology: z.string().optional(),
+  ncsDerivationMethod: z.string().optional(),
+});
+export type RoadmapInterviewAutoSave = z.infer<typeof RoadmapInterviewAutoSaveSchema>;
+
 // NCS XOR 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
 // ncsUsed=true  → ncsMethodology 필수
 // ncsUsed=false → ncsDerivationMethod 필수

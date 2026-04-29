@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 
 import {
   savePBLInterviewV2,
@@ -190,13 +191,13 @@ export function PBLInterviewClient({
       const result = await savePBLInterviewV2(projectId, data, {
         autoSave: true,
       });
-      if (result.success) {
-        setSaveState('saved');
-        showSuccessToast('자동 저장되었습니다.');
-      } else {
-        setSaveState('error');
-        showErrorToast(result.error);
-      }
+      // #011 fix — handleSimpleActionResult 가 result.error falsy 시 fallback 토스트 보장
+      const ok = await handleSimpleActionResult(result, {
+        successMessage: { title: '자동 저장되었습니다.' },
+        errorTitle: '저장 실패',
+        errorFallback: '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      });
+      setSaveState(ok ? 'saved' : 'error');
     });
   }, [data, projectId]);
 
@@ -216,7 +217,13 @@ export function PBLInterviewClient({
           const result = await savePBLInterviewV2(projectId, data, {
             autoSave: true,
           });
-          if (result.success) {
+          // #011 fix — handleSimpleActionResult 가 result.error falsy 시
+          // errorFallback 으로 토스트 보장. 자동저장 성공 토스트는 미표시.
+          const ok = await handleSimpleActionResult(result, {
+            errorTitle: '자동 저장 실패',
+            errorFallback: '자동 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          });
+          if (ok) {
             lastSerializedRef.current = serialized;
             setSaveState('saved');
             if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
@@ -225,7 +232,6 @@ export function PBLInterviewClient({
             }, 3000);
           } else {
             setSaveState('error');
-            showErrorToast(result.error);
           }
         } catch (error) {
           console.error('[PBLInterviewClient] auto-save error:', error);
