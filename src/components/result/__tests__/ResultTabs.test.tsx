@@ -56,6 +56,17 @@ describe('ResultTabs', () => {
     );
   });
 
+  it('탭 클릭 시 새 탭 콘텐츠가 즉시 표시된다 (useSearchParams 갱신 대기 없이) — #13', async () => {
+    // mockSearchParamsValue 는 변경하지 않는다. 즉 router.replace 가 호출돼도
+    // useSearchParams 는 빈 값 그대로. local state 기반이 아니라면 새 탭이
+    // 활성화되지 않는다. local state 기반(#13 fix) 이라면 즉시 새 탭 콘텐츠 표시.
+    const user = userEvent.setup();
+    render(<ResultTabs tabs={TABS} />);
+    expect(screen.getByText('개요 콘텐츠')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /훈련체계/ }));
+    expect(screen.getByText('훈련체계 콘텐츠')).toBeInTheDocument();
+  });
+
   it('URL 에 유효하지 않은 tab 값이 있으면 fallback (첫 탭) 이 활성화된다', () => {
     mockSearchParamsValue = 'tab=invalid';
     render(<ResultTabs tabs={TABS} />);

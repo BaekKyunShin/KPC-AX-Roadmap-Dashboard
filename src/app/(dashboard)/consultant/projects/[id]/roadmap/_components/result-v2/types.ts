@@ -38,6 +38,13 @@ export interface RoadmapResultEditPayload {
     problem?: string;
     will?: string;
     outcomes?: string;
+    /** 행별 비고 (#6 fix). 4 키 모두 옵셔널. */
+    remarks?: {
+      status?: string;
+      problem?: string;
+      will?: string;
+      outcomes?: string;
+    };
   };
   // Ⅱ-3 분석 메모 텍스트
   task_analysis_note?: string;
@@ -110,6 +117,13 @@ export interface ResultInterviewSnapshot {
     problem: string;
     will: string;
     outcomes: string;
+    /** 행별 비고 (#6 fix). */
+    remarks?: {
+      status?: string;
+      problem?: string;
+      will?: string;
+      outcomes?: string;
+    };
   };
   taskAnalysis: Array<{
     domain: string;

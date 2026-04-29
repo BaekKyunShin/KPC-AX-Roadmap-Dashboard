@@ -169,30 +169,38 @@ export function RoadmapResultClient({
     await (onGenerate ?? NOOP_GENERATE)();
   }
 
-  const commonTabProps = {
-    version: selectedVersion,
-    interview,
-    readOnly: tabReadOnly,
-    onEdit: onEdit ?? NOOP_EDIT,
-  } as const;
+  // #13 fix — 매 렌더 새 객체/배열 생성 차단. commonTabProps 가 stable 하면
+  // tabs 도 stable 하고, 자식 Tab* 컴포넌트들의 React reconciliation 비용이 줄어든다.
+  const commonTabProps = useMemo(
+    () => ({
+      version: selectedVersion,
+      interview,
+      readOnly: tabReadOnly,
+      onEdit: onEdit ?? NOOP_EDIT,
+    }),
+    [selectedVersion, interview, tabReadOnly, onEdit],
+  );
 
-  const tabs: ResultTabItem[] = [
-    {
-      value: 'overview' satisfies TabValue,
-      label: 'Ⅰ. 개요',
-      content: <TabOverview {...commonTabProps} />,
-    },
-    {
-      value: 'requirements' satisfies TabValue,
-      label: 'Ⅱ. 요구분석',
-      content: <TabRequirements {...commonTabProps} />,
-    },
-    {
-      value: 'training' satisfies TabValue,
-      label: 'Ⅲ. 훈련체계',
-      content: <TabTraining {...commonTabProps} />,
-    },
-  ];
+  const tabs: ResultTabItem[] = useMemo(
+    () => [
+      {
+        value: 'overview' satisfies TabValue,
+        label: 'Ⅰ. 개요',
+        content: <TabOverview {...commonTabProps} />,
+      },
+      {
+        value: 'requirements' satisfies TabValue,
+        label: 'Ⅱ. 요구분석',
+        content: <TabRequirements {...commonTabProps} />,
+      },
+      {
+        value: 'training' satisfies TabValue,
+        label: 'Ⅲ. 훈련체계',
+        content: <TabTraining {...commonTabProps} />,
+      },
+    ],
+    [commonTabProps],
+  );
 
   return (
     <>

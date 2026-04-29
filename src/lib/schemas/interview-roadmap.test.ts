@@ -1175,8 +1175,8 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
     ).toBe(false);
   });
 
-  it('performanceActivities 는 최대 3차까지 허용 (Ⅰ-2 양식 3행 병합)', () => {
-    const threeRounds = [1, 2, 3].map((r) => ({
+  it('performanceActivities 는 최대 5차까지 허용 (Ⅰ-2 양식 3행 prefill, 5차 한계)', () => {
+    const fiveRounds = [1, 2, 3, 4, 5].map((r) => ({
       round: r,
       date: '2026-04-16',
       timeRange: '10:00~12:00',
@@ -1188,15 +1188,15 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
     expect(
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
-        performanceActivities: threeRounds,
+        performanceActivities: fiveRounds,
       }).success,
     ).toBe(true);
 
-    const fourRounds = [...threeRounds, { ...threeRounds[0], round: 4 }];
+    const sixRounds = [...fiveRounds, { ...fiveRounds[0], round: 6 }];
     expect(
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
-        performanceActivities: fourRounds,
+        performanceActivities: sixRounds,
       }).success,
     ).toBe(false);
   });
@@ -1243,6 +1243,35 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
 
   it('유효한 Ⅱ 요구분석 구조는 통과', () => {
     expect(RoadmapRequirementsSchema.safeParse(validRequirements).success).toBe(true);
+  });
+
+  it('companyRequirements.remarks 는 옵셔널이며 parse 후 보존된다 (#6)', () => {
+    // remarks 누락 OK
+    expect(
+      RoadmapRequirementsSchema.safeParse(validRequirements).success,
+    ).toBe(true);
+    // remarks 4 키 채우면 parse 결과에 그대로 보존
+    const result = RoadmapRequirementsSchema.safeParse({
+      ...validRequirements,
+      companyRequirements: {
+        ...validRequirements.companyRequirements,
+        remarks: {
+          status: '특이사항-A',
+          problem: '특이사항-B',
+          will: '특이사항-C',
+          outcomes: '특이사항-D',
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.companyRequirements.remarks).toEqual({
+        status: '특이사항-A',
+        problem: '특이사항-B',
+        will: '특이사항-C',
+        outcomes: '특이사항-D',
+      });
+    }
   });
 
   it('hrdReportPdf 는 null 허용 (미첨부 상태, Ⅱ-1)', () => {

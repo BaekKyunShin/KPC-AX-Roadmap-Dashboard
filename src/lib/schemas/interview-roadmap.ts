@@ -690,7 +690,7 @@ export const RoadmapOverviewSchema = z.object({
   establishmentNecessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
   performanceActivities: z
     .array(RoadmapPerformanceActivitySchema)
-    .max(3, '주요 활동은 최대 3차까지 입력할 수 있습니다.'),
+    .max(5, '주요 활동은 최대 5차까지 입력할 수 있습니다.'),
   aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
   selectedTask: z.string().min(1, '선정 과업을 입력하세요.'),
 });
@@ -717,11 +717,23 @@ export const RoadmapHrdReportPdfSchema = z.object({
 export type RoadmapHrdReportPdf = z.infer<typeof RoadmapHrdReportPdfSchema>;
 
 // -- Ⅱ-2 기업 요구분석 --------------------------------------------------------
+// 양식 비고 칼럼 = 행별 사용자 입력란 (#6 fix). 4개 행마다 옵셔널 비고를 보관한다.
+export const RoadmapCompanyRequirementsRemarksSchema = z.object({
+  status: z.string().optional(),
+  problem: z.string().optional(),
+  will: z.string().optional(),
+  outcomes: z.string().optional(),
+});
+export type RoadmapCompanyRequirementsRemarks = z.infer<
+  typeof RoadmapCompanyRequirementsRemarksSchema
+>;
+
 export const RoadmapCompanyRequirementsSchema = z.object({
   status: z.string().min(1, '기업 현황을 입력하세요.'),
   problem: z.string().min(1, '주요 문제를 입력하세요.'),
   will: z.string().min(1, '추진 의지를 입력하세요.'),
   outcomes: z.string().min(1, '기대 성과를 입력하세요.'),
+  remarks: RoadmapCompanyRequirementsRemarksSchema.optional(),
 });
 export type RoadmapCompanyRequirements = z.infer<typeof RoadmapCompanyRequirementsSchema>;
 

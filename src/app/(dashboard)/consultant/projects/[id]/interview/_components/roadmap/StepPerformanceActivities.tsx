@@ -20,13 +20,18 @@ import {
  * 양식 기준 rowspan 표 구조:
  *  - 각 차수 1개 = 2 <tr> 행 (PM 성명 1 행 + 내부전문가 성명 1 행)
  *  - 차수·일시·내용·방법 4개 셀은 rowSpan=2 로 병합
- *  - 기본 3차수 프리필 (양식 L85 기준). 스키마 max(3) 로 상한 제한.
+ *  - 기본 3차수 프리필 (양식 L85 기준). 스키마 max(5) 로 상한 제한.
  *
  * 데이터 슬라이스: `RoadmapOverview.performanceActivities[]`.
  */
 
-/** 양식 상 최대 차수 (Zod: RoadmapOverviewSchema.performanceActivities.max(3)) */
-const MAX_ROUNDS = 3;
+// 인터뷰 차수 상한. 양식 prefill 은 1·2·3차이지만 현장 인터뷰가 4·5차로 이어지는
+// 케이스를 허용하기 위해 5 로 확장 (Zod RoadmapOverviewSchema.performanceActivities.max(5)).
+const MAX_ROUNDS = 5;
+
+// 양식 √ 안내에 맞춘 초기 prefill 차수. MAX_ROUNDS 와 분리해야
+// '+ 차수 추가' 클릭이 즉시 disabled 되지 않는다 (#4 fix).
+const DEFAULT_ROUNDS = 3;
 
 /** 빈 차수 객체 */
 function emptyActivity(round: number): RoadmapPerformanceActivity {
@@ -43,7 +48,7 @@ function emptyActivity(round: number): RoadmapPerformanceActivity {
 
 /** 양식 기본 프리필 = 3차수 (1·2·3차) */
 function defaultRows(): RoadmapPerformanceActivity[] {
-  return Array.from({ length: MAX_ROUNDS }, (_, i) => emptyActivity(i + 1));
+  return Array.from({ length: DEFAULT_ROUNDS }, (_, i) => emptyActivity(i + 1));
 }
 
 export function StepPerformanceActivities({

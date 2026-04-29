@@ -68,6 +68,12 @@ interface InterviewLike {
       main_problems?: string;
       push_willingness?: string;
       expected_outcomes?: string;
+      remarks?: {
+        status?: string;
+        problem?: string;
+        will?: string;
+        outcomes?: string;
+      };
     };
     roadmap_analysis_notes?: {
       text?: string;
@@ -374,6 +380,12 @@ export function buildRoadmapHwpxPayload(
       main_problems: cr?.main_problems ?? '',
       push_willingness: cr?.push_willingness ?? '',
       expected_outcomes: cr?.expected_outcomes ?? '',
+      // 비고 4 행 (#6 fix). 양식 템플릿에 placeholder 가 정의된 경우만
+      // 출력에 반영되며, 미정의 시 안전하게 무시된다.
+      company_status_remarks: cr?.remarks?.status ?? '',
+      main_problems_remarks: cr?.remarks?.problem ?? '',
+      push_willingness_remarks: cr?.remarks?.will ?? '',
+      expected_outcomes_remarks: cr?.remarks?.outcomes ?? '',
 
       // Ⅱ-3 과업·워크플로우
       task_workflow_items: taskWorkflowItems,

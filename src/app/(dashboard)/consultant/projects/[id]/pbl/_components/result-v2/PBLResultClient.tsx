@@ -133,40 +133,47 @@ export function PBLResultClient({
     setRevisionPrompt('');
   }
 
-  const commonTabProps = {
-    version: selectedVersion,
-    interview,
-    readOnly: tabReadOnly,
-    onEdit: onEdit ?? NOOP_EDIT,
-  } as const;
+  // #13 fix — 매 렌더 새 객체/배열 생성 차단 (RoadmapResultClient 와 동일 패턴).
+  const commonTabProps = useMemo(
+    () => ({
+      version: selectedVersion,
+      interview,
+      readOnly: tabReadOnly,
+      onEdit: onEdit ?? NOOP_EDIT,
+    }),
+    [selectedVersion, interview, tabReadOnly, onEdit],
+  );
 
-  const tabs: ResultTabItem[] = [
-    {
-      value: 'overview' satisfies TabValue,
-      label: 'Ⅰ. 개요',
-      content: <TabPBLOverview {...commonTabProps} />,
-    },
-    {
-      value: 'analysis' satisfies TabValue,
-      label: 'Ⅱ. 요구분석',
-      content: <TabPBLAnalysis {...commonTabProps} />,
-    },
-    {
-      value: 'tasks' satisfies TabValue,
-      label: 'Ⅲ. 훈련과제 도출',
-      content: <TabPBLTasks {...commonTabProps} />,
-    },
-    {
-      value: 'ops' satisfies TabValue,
-      label: 'Ⅳ. 운영계획',
-      content: <TabPBLOps {...commonTabProps} />,
-    },
-    {
-      value: 'outcomes' satisfies TabValue,
-      label: 'Ⅴ. 성과분석',
-      content: <TabPBLOutcomes {...commonTabProps} />,
-    },
-  ];
+  const tabs: ResultTabItem[] = useMemo(
+    () => [
+      {
+        value: 'overview' satisfies TabValue,
+        label: 'Ⅰ. 개요',
+        content: <TabPBLOverview {...commonTabProps} />,
+      },
+      {
+        value: 'analysis' satisfies TabValue,
+        label: 'Ⅱ. 요구분석',
+        content: <TabPBLAnalysis {...commonTabProps} />,
+      },
+      {
+        value: 'tasks' satisfies TabValue,
+        label: 'Ⅲ. 훈련과제 도출',
+        content: <TabPBLTasks {...commonTabProps} />,
+      },
+      {
+        value: 'ops' satisfies TabValue,
+        label: 'Ⅳ. 운영계획',
+        content: <TabPBLOps {...commonTabProps} />,
+      },
+      {
+        value: 'outcomes' satisfies TabValue,
+        label: 'Ⅴ. 성과분석',
+        content: <TabPBLOutcomes {...commonTabProps} />,
+      },
+    ],
+    [commonTabProps],
+  );
 
   return (
     <>

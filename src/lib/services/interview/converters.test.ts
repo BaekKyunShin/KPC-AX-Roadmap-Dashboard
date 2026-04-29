@@ -126,12 +126,44 @@ describe('mapRoadmapInterviewToDb', () => {
 
   it('companyRequirements.{status,problem,will,outcomes} 를 snake_case 로 변환한다', () => {
     const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
-    expect(db.company_details.roadmap_company_requirements).toEqual({
+    expect(db.company_details.roadmap_company_requirements).toMatchObject({
       company_status: '제조업 중소기업',
       main_problems: '수작업 품질 검사 편차',
       push_willingness: '경영진 강한 추진 의지',
       expected_outcomes: '품질 불량률 15% 개선',
     });
+  });
+
+  it('companyRequirements.remarks 4 키를 JSONB remarks 로 보존한다 (#6)', () => {
+    const camel = validRoadmapCamelCase();
+    camel.companyRequirements = {
+      ...camel.companyRequirements,
+      remarks: {
+        status: '특이-A',
+        problem: '특이-B',
+        will: '특이-C',
+        outcomes: '특이-D',
+      },
+    };
+    const db = mapRoadmapInterviewToDb(camel);
+    expect(db.company_details.roadmap_company_requirements.remarks).toEqual({
+      status: '특이-A',
+      problem: '특이-B',
+      will: '특이-C',
+      outcomes: '특이-D',
+    });
+  });
+
+  it('companyRequirements.remarks 누락 시에도 매퍼는 정상 동작한다', () => {
+    const camel = validRoadmapCamelCase();
+    delete camel.companyRequirements.remarks;
+    const db = mapRoadmapInterviewToDb(camel);
+    expect(db.company_details.roadmap_company_requirements).toMatchObject({
+      company_status: '제조업 중소기업',
+    });
+    // remarks 미정의 — undefined 또는 빈 객체 둘 다 허용 (JSONB 직렬화 시 무해)
+    const remarks = db.company_details.roadmap_company_requirements.remarks;
+    expect(remarks === undefined || Object.keys(remarks).length === 0).toBe(true);
   });
 
   it('taskAnalysis[] 를 job_tasks[] 로 변환 (legacy 필드명 매핑)', () => {
@@ -262,6 +294,27 @@ describe('mapDbToRoadmapInterview', () => {
     expect(restored.competencies).toEqual(original.competencies);
     expect(restored.ncsUsed).toBe(original.ncsUsed);
     expect(restored.ncsDerivationMethod).toBe(original.ncsDerivationMethod);
+  });
+
+  it('companyRequirements.remarks 4 키가 round-trip 에서 보존된다 (#6)', () => {
+    const original = validRoadmapCamelCase();
+    original.companyRequirements = {
+      ...original.companyRequirements,
+      remarks: { status: 'a', problem: 'b', will: 'c', outcomes: 'd' },
+    };
+    const db = mapRoadmapInterviewToDb(original);
+    const row = {
+      company_details: db.company_details,
+      job_tasks: db.job_tasks,
+      improvement_goals: db.improvement_goals,
+    };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.companyRequirements?.remarks).toEqual({
+      status: 'a',
+      problem: 'b',
+      will: 'c',
+      outcomes: 'd',
+    });
   });
 
   it('DB extracted_text / parse_error 가 camelCase 의 extractedText / parseError 로 보존된다', () => {

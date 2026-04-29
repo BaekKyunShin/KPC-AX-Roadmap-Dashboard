@@ -98,4 +98,55 @@ describe('StepCompanyRequirements', () => {
     expect(screen.getByLabelText('추진 의지')).toBeDisabled();
     expect(screen.getByLabelText('기대 성과')).toBeDisabled();
   });
+
+  it('비고 입력란 4개를 렌더하고 입력 시 onChange.remarks 가 갱신된다 (#6 RED)', () => {
+    const onChange = vi.fn();
+    render(
+      <StepCompanyRequirements value={makeValue()} onChange={onChange} />,
+    );
+    // 양식 비고 칼럼 = 사용자 입력란. 행마다 1개씩 총 4개.
+    const statusRemarks = screen.getByLabelText('기업 현황 비고');
+    expect(statusRemarks).toHaveValue('');
+    fireEvent.change(statusRemarks, { target: { value: '특이사항-A' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remarks: expect.objectContaining({ status: '특이사항-A' }),
+      }),
+    );
+
+    expect(screen.getByLabelText('주요 문제 비고')).toBeInTheDocument();
+    expect(screen.getByLabelText('추진 의지 비고')).toBeInTheDocument();
+    expect(screen.getByLabelText('기대 성과 비고')).toBeInTheDocument();
+  });
+
+  it('value.remarks 가 주어지면 비고 textarea 에 반영된다', () => {
+    render(
+      <StepCompanyRequirements
+        value={makeValue({
+          remarks: {
+            status: 'r-status',
+            problem: 'r-problem',
+            will: 'r-will',
+            outcomes: 'r-outcomes',
+          },
+        })}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText('기업 현황 비고')).toHaveValue('r-status');
+    expect(screen.getByLabelText('주요 문제 비고')).toHaveValue('r-problem');
+    expect(screen.getByLabelText('추진 의지 비고')).toHaveValue('r-will');
+    expect(screen.getByLabelText('기대 성과 비고')).toHaveValue('r-outcomes');
+  });
+
+  it('readOnly 이면 비고 textarea 4개도 비활성화된다', () => {
+    render(
+      <StepCompanyRequirements value={makeValue()} onChange={() => {}} readOnly />,
+    );
+    expect(screen.getByLabelText('기업 현황 비고')).toBeDisabled();
+    expect(screen.getByLabelText('주요 문제 비고')).toBeDisabled();
+    expect(screen.getByLabelText('추진 의지 비고')).toBeDisabled();
+    expect(screen.getByLabelText('기대 성과 비고')).toBeDisabled();
+  });
 });
