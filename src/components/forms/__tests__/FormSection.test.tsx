@@ -47,4 +47,17 @@ describe('FormSection', () => {
     // 기본 클래스도 유지
     expect(section).toHaveClass('space-y-4');
   });
+
+  // R2 #2 — 로마자/숫자 폰트 본문과 통일 회귀 차단
+  it('number span 에 font-mono 클래스가 없고 본문(text-xl font-semibold)과 동일 폰트로 렌더된다', () => {
+    render(
+      <FormSection number="Ⅰ-1" title="기업 개요">
+        <p>내용</p>
+      </FormSection>,
+    );
+    const numberEl = screen.getByText('Ⅰ-1');
+    expect(numberEl).not.toHaveClass('font-mono');
+    expect(numberEl).toHaveClass('text-xl');
+    expect(numberEl).toHaveClass('font-semibold');
+  });
 });

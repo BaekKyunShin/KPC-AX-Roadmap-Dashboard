@@ -193,7 +193,7 @@ export function StepTaskAnalysis({
                     placeholder="직무"
                     disabled={readOnly}
                     aria-label={`직무 ${idx + 1}`}
-                    minHeightClassName="min-h-[60px]"
+                    minHeightClassName="min-h-[150px]"
                   />
                 </td>
                 <td className="border border-border p-1 align-top">
@@ -203,7 +203,7 @@ export function StepTaskAnalysis({
                     placeholder="과업"
                     disabled={readOnly}
                     aria-label={`과업 ${idx + 1}`}
-                    minHeightClassName="min-h-[60px]"
+                    minHeightClassName="min-h-[150px]"
                   />
                 </td>
                 <td className="border border-border p-1 align-top">
@@ -213,7 +213,7 @@ export function StepTaskAnalysis({
                     placeholder="현행 수행방식"
                     disabled={readOnly}
                     aria-label={`현행 방식 ${idx + 1}`}
-                    minHeightClassName="min-h-[60px]"
+                    minHeightClassName="min-h-[150px]"
                   />
                 </td>
                 <td className="border border-border p-1 align-top">
@@ -223,7 +223,7 @@ export function StepTaskAnalysis({
                     placeholder="문제점"
                     disabled={readOnly}
                     aria-label={`문제점 ${idx + 1}`}
-                    minHeightClassName="min-h-[60px]"
+                    minHeightClassName="min-h-[150px]"
                   />
                 </td>
                 <td className="border border-border p-1 align-top">
@@ -235,7 +235,7 @@ export function StepTaskAnalysis({
                     placeholder="데이터 발생 시점/보유 현황"
                     disabled={readOnly}
                     aria-label={`데이터 발생 시점 ${idx + 1}`}
-                    minHeightClassName="min-h-[60px]"
+                    minHeightClassName="min-h-[150px]"
                   />
                 </td>
                 <td className="border border-border p-1 align-top">

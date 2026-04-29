@@ -196,6 +196,9 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
     expect(
       screen.getByText('역량×3수준 매트릭스 기반'),
     ).toBeInTheDocument();
+    // R2 #15 — 훈련수준 영문 → 한글 (INTERMEDIATE → 중급)
+    expect(screen.getByText('중급')).toBeInTheDocument();
+    expect(screen.queryByText('INTERMEDIATE')).not.toBeInTheDocument();
     // Ⅲ-3 연간 훈련계획
     expect(screen.getByText('ML 기초 과정')).toBeInTheDocument();
     expect(screen.getByText('40시간')).toBeInTheDocument();

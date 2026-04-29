@@ -1,4 +1,4 @@
-import { describe, it, expectTypeOf } from 'vitest';
+import { describe, it, expect, expectTypeOf } from 'vitest';
 import type {
   TrainingLevel,
   RoadmapCompetency,
@@ -12,6 +12,7 @@ import type {
   RoadmapResult,
   ValidationResult,
 } from './roadmap-types';
+import { TRAINING_LEVEL_LABEL } from './roadmap-types';
 
 describe('roadmap-types 신규 구조', () => {
   it('TrainingLevel은 BEGINNER | INTERMEDIATE | ADVANCED 유니온이다', () => {
@@ -102,6 +103,13 @@ describe('roadmap-types 신규 구조', () => {
 
   it('RoadmapResult는 LLMRoadmapResult와 동일한 구조이다', () => {
     expectTypeOf<RoadmapResult>().toEqualTypeOf<LLMRoadmapResult>();
+  });
+
+  // R2 #15 — 훈련수준 영문 → 한글 매핑
+  it('TRAINING_LEVEL_LABEL은 BEGINNER/INTERMEDIATE/ADVANCED 를 한글 초급/중급/고급 으로 매핑한다', () => {
+    expect(TRAINING_LEVEL_LABEL.BEGINNER).toBe('초급');
+    expect(TRAINING_LEVEL_LABEL.INTERMEDIATE).toBe('중급');
+    expect(TRAINING_LEVEL_LABEL.ADVANCED).toBe('고급');
   });
 
   it('ValidationResult는 isValid, errors, warnings를 보유한다', () => {

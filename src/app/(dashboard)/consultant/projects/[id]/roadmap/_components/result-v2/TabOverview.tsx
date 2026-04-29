@@ -108,49 +108,79 @@ export function TabOverview({
         )}
       </SectionCard>
 
-      {/* Ⅰ-3 수립 주요 결과 */}
+      {/* Ⅰ-3 수립 주요 결과 — 양식 정합 (3행 표) */}
       <SectionCard
         title="Ⅰ-3. 수립 주요 결과"
-        description="기업 AI 역량 수준 · 선정 과업 · AI훈련로드맵 수립 주요내용 요약"
+        description="뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약"
       >
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-sm font-medium text-muted-foreground">
-              기업 AI 역량 수준
-            </dt>
-            <dd className="mt-1 text-sm">
-              <span className="inline-flex items-center gap-2 rounded bg-muted px-2 py-1">
-                <span className="font-semibold">
-                  {AI_COMPETENCY_LEVEL_LABEL[aiLevel]}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  ({AI_COMPETENCY_LEVEL_SUBTITLE[aiLevel]})
-                </span>
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-muted-foreground">
-              선정 과업
-            </dt>
-            <dd className="mt-1 whitespace-pre-wrap text-sm">
-              {selectedTask || '-'}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-2">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">
-            AI훈련로드맵 수립 주요내용 요약
-          </p>
-          <InlineEditField
-            value={mainContent}
-            onSave={async (next) => {
-              await onEdit({ main_content: next });
-            }}
-            readOnly={readOnly}
-            multiline
-            placeholder="수립 주요내용 요약 (LLM 생성)"
+        <div className="overflow-x-auto">
+          <FormTable
+            caption="수립 주요 결과"
+            bodyRows={[
+              {
+                cells: [
+                  {
+                    content: '기업 AI 역량 수준',
+                    header: true,
+                    align: 'left',
+                    className: 'w-[200px]',
+                  },
+                  {
+                    content: (
+                      <span className="inline-flex items-center gap-2 rounded bg-muted px-2 py-1 text-sm">
+                        <span className="font-semibold">
+                          {AI_COMPETENCY_LEVEL_LABEL[aiLevel]}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          ({AI_COMPETENCY_LEVEL_SUBTITLE[aiLevel]})
+                        </span>
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                ],
+              },
+              {
+                cells: [
+                  {
+                    content: '선정 과업',
+                    header: true,
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {selectedTask || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                ],
+              },
+              {
+                cells: [
+                  {
+                    content: 'AI훈련로드맵 수립 주요내용 (요약)',
+                    header: true,
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <InlineEditField
+                        value={mainContent}
+                        onSave={async (next) => {
+                          await onEdit({ main_content: next });
+                        }}
+                        readOnly={readOnly}
+                        multiline
+                        placeholder="수립 주요내용 요약 (LLM 생성)"
+                      />
+                    ),
+                    align: 'left',
+                  },
+                ],
+              },
+            ]}
           />
         </div>
       </SectionCard>

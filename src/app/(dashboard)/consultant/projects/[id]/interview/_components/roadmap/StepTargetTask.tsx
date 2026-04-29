@@ -59,7 +59,7 @@ export function StepTargetTask({
                   placeholder="훈련대상 과업명"
                   disabled={readOnly}
                   aria-label="훈련대상 과업"
-                  minHeightClassName="min-h-[60px]"
+                  minHeightClassName="min-h-[120px]"
                 />
               </td>
             </tr>
@@ -77,7 +77,7 @@ export function StepTargetTask({
                   placeholder="Ⅱ-3 과업 분석을 기반으로 한 선정 사유"
                   disabled={readOnly}
                   aria-label="선정 사유"
-                  minHeightClassName="min-h-[100px]"
+                  minHeightClassName="min-h-[200px]"
                 />
               </td>
             </tr>
@@ -102,7 +102,7 @@ export function StepTargetTask({
                   placeholder="현행 수행방식 (As-Is)"
                   disabled={readOnly}
                   aria-label="기대 효과 현행"
-                  minHeightClassName="min-h-[80px]"
+                  minHeightClassName="min-h-[160px]"
                 />
               </td>
             </tr>
@@ -120,7 +120,7 @@ export function StepTargetTask({
                   placeholder="AI 도입·활용 훈련 후 개선 (To-Be)"
                   disabled={readOnly}
                   aria-label="기대 효과 개선"
-                  minHeightClassName="min-h-[80px]"
+                  minHeightClassName="min-h-[160px]"
                 />
               </td>
             </tr>

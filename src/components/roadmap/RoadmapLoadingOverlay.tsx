@@ -46,12 +46,14 @@ const STEPS: readonly Step[] = [
  * 각 단계별 소요 시간 (밀리초)
  * - 요구사항 분석: 36초
  * - 교육과정 설계: 51초
- * - 로드맵 구성: 43초
- * - 총 130초
+ * - 로드맵 구성: 58초
+ * - 총 145초
+ *
+ * 99% 정체 체감 개선을 위해 마지막 단계에 +15초 부여 (검수 결과 공통-C, 2026-04-29).
  */
-const STEP_DURATIONS_MS = [36000, 51000, 43000] as const;
+export const STEP_DURATIONS_MS = [36000, 51000, 58000] as const;
 
-const TOTAL_DURATION_MS = STEP_DURATIONS_MS.reduce<number>((a, b) => a + b, 0);
+export const TOTAL_DURATION_MS = STEP_DURATIONS_MS.reduce<number>((a, b) => a + b, 0);
 
 /** 팁 관련 타이밍 설정 (밀리초) */
 const TIP_CONFIG = {

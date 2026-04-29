@@ -6,6 +6,7 @@ import { SectionCard } from '@/components/result/SectionCard';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { FormTable } from '@/components/forms/FormTable';
 import type { RoadmapCompetency as LLMCompetency } from '@/lib/services/roadmap';
+import { TRAINING_LEVEL_LABEL } from '@/lib/services/roadmap/roadmap-types';
 import type { RoadmapCompetency as InterviewCompetency } from '@/lib/schemas/interview-roadmap';
 
 import type { TabCommonProps } from './types';
@@ -211,7 +212,7 @@ export function TabTraining({
                 bodyRows={trainingStructure.map((t) => ({
                   cells: [
                     { content: t.competency_name, align: 'left' },
-                    { content: t.level, align: 'center' },
+                    { content: TRAINING_LEVEL_LABEL[t.level] ?? t.level, align: 'center' },
                     {
                       content: (
                         <span className="whitespace-pre-wrap text-sm">

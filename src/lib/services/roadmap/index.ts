@@ -17,6 +17,9 @@ export type {
   ValidationResult,
 } from './roadmap-types';
 
+// 상수
+export { TRAINING_LEVEL_LABEL } from './roadmap-types';
+
 // 검증
 export { validateRoadmap } from './roadmap-validator';
 

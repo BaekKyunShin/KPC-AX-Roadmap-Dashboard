@@ -250,7 +250,7 @@ function RoundRows({
             placeholder={'예) 26.00.00\n00:00~00:00'}
             disabled={readOnly}
             aria-label={`${label} 수행 일시`}
-            minHeightClassName="min-h-[70px]"
+            minHeightClassName="min-h-[120px]"
           />
         </td>
         <td rowSpan={2} className="border border-border p-1 align-top">
@@ -260,7 +260,7 @@ function RoundRows({
             placeholder="수행 내용"
             disabled={readOnly}
             aria-label={`${label} 수행 내용`}
-            minHeightClassName="min-h-[70px]"
+            minHeightClassName="min-h-[120px]"
           />
         </td>
         <td rowSpan={2} className="border border-border p-1 align-top">

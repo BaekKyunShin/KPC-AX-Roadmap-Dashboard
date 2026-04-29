@@ -11,6 +11,13 @@
 // 훈련 수준
 export type TrainingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 
+// 훈련 수준 한글 라벨 (Ⅲ-2 훈련체계도 등 결과 표시용)
+export const TRAINING_LEVEL_LABEL: Record<TrainingLevel, string> = {
+  BEGINNER: '초급',
+  INTERMEDIATE: '중급',
+  ADVANCED: '고급',
+};
+
 // ----------------------------------------------------------------------------
 // Ⅰ-3. 수립 주요 결과
 // ----------------------------------------------------------------------------
