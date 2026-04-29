@@ -46,7 +46,7 @@
 - **증상**: `Ⅱ-2 기업 요구분석` 작성 안내에 `기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출` 문구가 빠져 있음
 - **기대**: 양식상의 작성 안내 중 빠진 부분 없도록 보강. **이는 본 항목뿐 아니라 로드맵·PBL 인터뷰 내 모든 항목에 해당하므로 함께 검토 필요**
 
-> [해결됨][PR #TBD] 2026-04-29 — `StepCompanyRequirements.tsx` ExampleAccordion guide 의 `<ul>` 첫 항목으로 양식 √ 첫 문장 (명사절 톤) 노출. 회귀 테스트 추가.
+> [해결됨][PR #43] 2026-04-29 — `StepCompanyRequirements.tsx` ExampleAccordion guide 의 `<ul>` 첫 항목으로 양식 √ 첫 문장 (명사절 톤) 노출. 회귀 테스트 추가.
 
 ### #6 — Ⅱ-2 비고 작성 불가
 
@@ -82,7 +82,7 @@
 - **증상**: `Ⅱ-3 과업·워크플로우 분석`의 `분석 노트 추가 첨부` 항목명이 양식과 다름
 - **기대**: 명칭을 `추가 내부 자료`로 수정. **이 외에도 양식과 제목이 다른 부분이 있다면 검토 필요. 단 수정 전 사용자의 승인을 반드시 받을 것.**
 
-> [해결됨][PR #TBD] 2026-04-29 — `StepTaskAnalysis.tsx` 의 `<h3>분석 노트 추가 첨부</h3>` → `<h3>추가 내부 자료</h3>`. PBL 측 Ⅱ-3-가 항목명도 `기업HRD이음컨설팅 결과 (PDF 첨부)` 로 함께 정정 (#10 PBL).
+> [해결됨][PR #43] 2026-04-29 — `StepTaskAnalysis.tsx` 의 `<h3>분석 노트 추가 첨부</h3>` → `<h3>추가 내부 자료</h3>`. PBL 측 Ⅱ-3-가 항목명도 `기업HRD이음컨설팅 결과 (PDF 첨부)` 로 함께 정정 (#10 PBL).
 
 ### #11 — Ⅱ-4 표 내 텍스트 폼 높이 부족
 
@@ -98,7 +98,7 @@
 - **증상**: 항목명이 `Ⅱ-4 훈련대상 과업 선정`으로 잘못 표기되어 있음
 - **기대**: `Ⅱ-4 훈련대상 과업(Task)·워크플로우 선정`으로 수정
 
-> [해결됨][PR #TBD] 2026-04-29 — `StepTargetTask.tsx` FormSection title + `TabRequirements.tsx` SectionCard title 일괄 정정. PBL Step 9 단축명 `Ⅲ-3·4` → `Ⅲ-3·Ⅲ-4` 도 함께 (#12 PBL · PBL-자체-06).
+> [해결됨][PR #43] 2026-04-29 — `StepTargetTask.tsx` FormSection title + `TabRequirements.tsx` SectionCard title 일괄 정정. PBL Step 9 단축명 `Ⅲ-3·4` → `Ⅲ-3·Ⅲ-4` 도 함께 (#12 PBL · PBL-자체-06).
 
 ---
 
@@ -146,7 +146,7 @@
 - **증상**: `Ⅲ-4 훈련과정 명세서` 내 교과목이 줄글로 되어 있어 시각적으로 보기 좋지 않음
 - **기대**: 교과목을 **표 형태**로 표시
 
-> [해결됨][PR #TBD] 2026-04-29 — `TabTraining.tsx` Ⅲ-4 교과목 `<ul>` → `FormTable` 3열 (교과목명 / 세부 내용 / 훈련시간). #17 의 결과 페이지 측 (details 머리기호 분리) 도 `splitByUnit` + `<ul><li>` 로 함께 처리. LLM 프롬프트 측 `subjects[].details` 다항목 출력은 R5 PR4 위임 (R5 prompt 메모 갱신).
+> [해결됨][PR #43] 2026-04-29 — `TabTraining.tsx` Ⅲ-4 교과목 `<ul>` → `FormTable` 3열 (교과목명 / 세부 내용 / 훈련시간). #17 의 결과 페이지 측 (details 머리기호 분리) 도 `splitByUnit` + `<ul><li>` 로 함께 처리. LLM 프롬프트 측 `subjects[].details` 다항목 출력은 R5 PR4 위임 (R5 prompt 메모 갱신).
 
 ### #19 — 결과 직접 수정 불가
 
@@ -164,7 +164,7 @@
 - **증상**: `3. 과업(Task)·워크플로우 분석`의 □ 과업·워크플로우 분석표에 직무·현행방식·문제점·데이터 발생 시점·AI 도입활용 필요도 항목이 모두 공란 (플레이스홀더 매핑 결함 추정)
 - **기대**: 모든 항목이 채워지도록 수정
 
-> [해결됨][PR #TBD] 2026-04-29 — 진짜 원인은 `hwpx-payload-roadmap.ts` 의 `InterviewLike` 가 V1 키 (`job`/`as_is`/`problems`) 만 가정하고 V2 마이그레이션 후 production DB 키 (`roadmap_job`/`task_description`/`roadmap_problems`/`roadmap_data_availability`/`roadmap_ai_necessity`) 를 인식 못해 모든 셀이 undefined → 빈 문자열로 출력되던 것. V2 키 우선 + V1 fallback 으로 매핑 통일. 단위 테스트 추가. PBL 측 P-09 problems 의 `impact` 필드도 `description` 셀에 결합 출력해 양식 5x2 한계 내에서 정보 손실 방지 (#20 PBL).
+> [해결됨][PR #43] 2026-04-29 — 진짜 원인은 `hwpx-payload-roadmap.ts` 의 `InterviewLike` 가 V1 키 (`job`/`as_is`/`problems`) 만 가정하고 V2 마이그레이션 후 production DB 키 (`roadmap_job`/`task_description`/`roadmap_problems`/`roadmap_data_availability`/`roadmap_ai_necessity`) 를 인식 못해 모든 셀이 undefined → 빈 문자열로 출력되던 것. V2 키 우선 + V1 fallback 으로 매핑 통일. 단위 테스트 추가. PBL 측 P-09 problems 의 `impact` 필드도 `description` 셀에 결합 출력해 양식 5x2 한계 내에서 정보 손실 방지 (#20 PBL).
 
 ### #21 — 4. 훈련대상 과업·워크플로우 선정 누락
 
@@ -172,7 +172,7 @@
 - **증상**: `4. 훈련대상 과업(Task)·워크플로우 선정` 내용이 모두 빠져 있음
 - **기대**: 모든 항목이 채워지도록 수정
 
-> [해결됨][PR #TBD] 2026-04-29 — `hwpx-payload-roadmap.ts` 의 `improvement_goals[0]` V1 키 (`task_name`/`selection_reason`/`as_is`/`to_be`) 우선 → V2 마이그 후 실제 DB 키 (`kpi`/`goal_description`/`roadmap_as_is`/`roadmap_to_be`) 우선으로 정정. V1 fallback 유지. 단위 테스트 추가. PBL 측 P-13 max_items=2 는 양식 4x5 행 수 한계라 확대 불가 — 별도 PR 도 필요 없음 (양식 자체 제약).
+> [해결됨][PR #43] 2026-04-29 — `hwpx-payload-roadmap.ts` 의 `improvement_goals[0]` V1 키 (`task_name`/`selection_reason`/`as_is`/`to_be`) 우선 → V2 마이그 후 실제 DB 키 (`kpi`/`goal_description`/`roadmap_as_is`/`roadmap_to_be`) 우선으로 정정. V1 fallback 유지. 단위 테스트 추가. PBL 측 P-13 max_items=2 는 양식 4x5 행 수 한계라 확대 불가 — 별도 PR 도 필요 없음 (양식 자체 제약).
 
 ---
 
@@ -183,7 +183,7 @@
 - **증상**: 로드맵 인터뷰 및 PBL 인터뷰 항목당 하단 작성 안내가 양식과 다른 내용이 기입된 경우가 많음
 - **기대**: 양식의 작성 안내는 그대로 포함. 양식에 `작성예시`가 있는 경우, 작성 예시도 작성 안내에 함께 표시
 
-> [해결됨][PR #TBD] 2026-04-29 — 로드맵 4개 Step (Ⅰ-2 Performance / Ⅰ-3 MainResult / Ⅱ-1 HrdReportPdf / Ⅱ-3 TaskAnalysis) 의 ExampleAccordion guide 영역에 양식 √ 안내 원문 보강 (별도 작성 불요·1장 이내 요약·등급 매핑·핵심 과업 분석). Ⅰ-2 / Ⅱ-3 은 `<ExampleAccordion example>` 별도 영역에 양식 ◆ 작성 예시 (1·2·3차 prefill / 공정 분석) 노출. PBL 측 Ⅱ-1-가 (StepCompanyIssues) + Ⅲ-3·Ⅲ-4 (StepTargetAndLevel) 도 양식 √ 안내·◆ 작성 예시 보강. 양식 √ 안내 노출 회귀 테스트 5건 (로드맵 4 + PBL 1). 나머지 PBL Step 6개 (StepOverview / StepOrganization / StepTrainingEnv / StepCourseNecessity / StepActivities / StepProblems) 의 양식 √ 안내 원문 추가 보강은 본 PR 영향 범위 작은 변경이라 후속 round 에서 차분 추가 가능 (현 R3 결과: 핵심 결함 영역 정합성 회복).
+> [해결됨][PR #43] 2026-04-29 — 로드맵 4개 Step (Ⅰ-2 Performance / Ⅰ-3 MainResult / Ⅱ-1 HrdReportPdf / Ⅱ-3 TaskAnalysis) 의 ExampleAccordion guide 영역에 양식 √ 안내 원문 보강 (별도 작성 불요·1장 이내 요약·등급 매핑·핵심 과업 분석). Ⅰ-2 / Ⅱ-3 은 `<ExampleAccordion example>` 별도 영역에 양식 ◆ 작성 예시 (1·2·3차 prefill / 공정 분석) 노출. PBL 측 Ⅱ-1-가 (StepCompanyIssues) + Ⅲ-3·Ⅲ-4 (StepTargetAndLevel) 도 양식 √ 안내·◆ 작성 예시 보강. 양식 √ 안내 노출 회귀 테스트 5건 (로드맵 4 + PBL 1). 나머지 PBL Step 6개 (StepOverview / StepOrganization / StepTrainingEnv / StepCourseNecessity / StepActivities / StepProblems) 의 양식 √ 안내 원문 추가 보강은 본 PR 영향 범위 작은 변경이라 후속 round 에서 차분 추가 가능 (현 R3 결과: 핵심 결함 영역 정합성 회복).
 
 ### 공통-B — 인터뷰 제출 후 검토 페이지 부재
 
@@ -232,7 +232,7 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **기대**: `InterviewLike` 타입을 V2 스키마(`RoadmapInterviewStrict`) 에 맞게 갱신하고, 페이로드 빌더의 모든 매핑 키를 V2 키로 통일. #20·#21 의 근본 원인이므로 함께 처리 권장.
 - **발견 라운드**: R0
 
-> [해결됨][PR #TBD] 2026-04-29 — 정확한 V2 마이그 후 DB 키는 `RoadmapInterviewStrict` 가 아니라 `mapRoadmapInterviewToDb` 가 출력하는 snake_case + roadmap_ prefix 형태 (`roadmap_job` / `task_description` / `roadmap_problems` / `kpi` / `goal_description` 등). `InterviewLike` 에 V2 DB 키 + V1 legacy 키 union 추가. `task_workflow_items`·`training_target`·`performance_activities` 매핑 모두 V2 우선 + V1 fallback 으로 통일. Ⅰ-2 주요 활동은 `company_details.roadmap_overview.performance_activities[]` 차수별 배열 우선 (PM·전문가 행별 분리), V1 단일 컬럼 (`interview_date`/`interview_round`/`interview_method`/`participants`) fallback. #20·#21 근본 원인 해결.
+> [해결됨][PR #43] 2026-04-29 — 정확한 V2 마이그 후 DB 키는 `RoadmapInterviewStrict` 가 아니라 `mapRoadmapInterviewToDb` 가 출력하는 snake_case + roadmap_ prefix 형태 (`roadmap_job` / `task_description` / `roadmap_problems` / `kpi` / `goal_description` 등). `InterviewLike` 에 V2 DB 키 + V1 legacy 키 union 추가. `task_workflow_items`·`training_target`·`performance_activities` 매핑 모두 V2 우선 + V1 fallback 으로 통일. Ⅰ-2 주요 활동은 `company_details.roadmap_overview.performance_activities[]` 차수별 배열 우선 (PM·전문가 행별 분리), V1 단일 컬럼 (`interview_date`/`interview_round`/`interview_method`/`participants`) fallback. #20·#21 근본 원인 해결.
 
 ### #23 — Ⅰ-3 LLM 요약과 사용자 작성 의도 분리
 
@@ -241,7 +241,7 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **기대**: 의도(LLM 자동) 가 맞다면 SectionCard description 에 데이터 출처(LLM 자동 생성 — 직접 수정 가능) 명시. 사용자 직접 작성 의도라면 인터뷰 페이지 Ⅰ-3 에 본 입력칸 추가.
 - **발견 라운드**: R0
 
-> [해결됨][PR #TBD] 2026-04-29 — 사용자 결정에 따라 (a) LLM 자동 생성 + description 명시 채택. `TabOverview.tsx` Ⅰ-3 SectionCard description 에 `'LLM 자동 생성, 직접 수정 가능'` 추가. 인터뷰 스키마 변경 없음. 회귀 테스트 추가.
+> [해결됨][PR #43] 2026-04-29 — 사용자 결정에 따라 (a) LLM 자동 생성 + description 명시 채택. `TabOverview.tsx` Ⅰ-3 SectionCard description 에 `'LLM 자동 생성, 직접 수정 가능'` 추가. 인터뷰 스키마 변경 없음. 회귀 테스트 추가.
 
 ---
 
@@ -254,7 +254,7 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **기대**: 양식 15×5 표 ↔ HWPX 18키 ↔ 결과 페이지 정합. 신청서 자동표출 영역도 결과 페이지에 (읽기 전용) 표출하여 사용자가 HWPX 출력 전 확인 가능
 - **발견 라운드**: R0
 
-> 메모(2026-04-29, R3 PR2로부터): 본격 데이터 바인딩은 `PBLResultClient` prop chain 변경 + server 측 project 메타 fetch + `TabPBLCommonProps` 확장이 필요해 R3 양식 정합성 정정 PR 범위 초과. **R7+ 별도 PR 권고.** R3 에서는 임시로 `TabPBLOverview` SectionCard description 에 "신청서 자동표출 항목(사업장관리번호·업종·주소·관할 지부·담당자)은 HWPX 다운로드 시 자동 채워집니다" 안내만 추가 [PR #TBD].
+> 메모(2026-04-29, R3 PR2로부터): 본격 데이터 바인딩은 `PBLResultClient` prop chain 변경 + server 측 project 메타 fetch + `TabPBLCommonProps` 확장이 필요해 R3 양식 정합성 정정 PR 범위 초과. **R7+ 별도 PR 권고.** R3 에서는 임시로 `TabPBLOverview` SectionCard description 에 "신청서 자동표출 항목(사업장관리번호·업종·주소·관할 지부·담당자)은 HWPX 다운로드 시 자동 채워집니다" 안내만 추가 [PR #43].
 
 ### PBL-자체-02 — Ⅱ-2 훈련환경 분석 양식 12×7 표 → 자유서술 1개 박스 단순화
 
@@ -281,7 +281,7 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **기대**: 양식 4 정형 행 라벨 보존 매핑 또는 입력 폼을 정형 4 항목으로 보강. impact 필드 HWPX 매핑 추가
 - **발견 라운드**: R0
 
-> 메모(2026-04-29, R3 PR2로부터): impact 매핑은 R3 에서 **`description` 셀에 결합 출력** 으로 임시 처리 (양식 5×2 한계 내). 정형 4 항목 (배경/핵심/범위/제약) 라벨 보존 매핑은 `PBLProblemItem` 스키마 변경 필요. **R7+ 별도 PR 권고.** [PR #TBD]
+> 메모(2026-04-29, R3 PR2로부터): impact 매핑은 R3 에서 **`description` 셀에 결합 출력** 으로 임시 처리 (양식 5×2 한계 내). 정형 4 항목 (배경/핵심/범위/제약) 라벨 보존 매핑은 `PBLProblemItem` 스키마 변경 필요. **R7+ 별도 PR 권고.** [PR #43]
 
 ### PBL-자체-05 — Ⅴ. 성과분석 결과 페이지 영구 placeholder 상태
 
@@ -299,7 +299,7 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **기대**: Step 분리 또는 단축명 재설계 (예: Ⅲ-3 단일 표기 + Ⅲ-4 별도 Step 분리)
 - **발견 라운드**: R0
 
-> [해결됨][PR #TBD] 2026-04-29 — 단축명 재설계 채택 (Step 분리는 모델 변경이라 R3 외). `'Ⅲ-3·4'` → `'Ⅲ-3·Ⅲ-4'`. #12(PBL) 과 통합 처리.
+> [해결됨][PR #43] 2026-04-29 — 단축명 재설계 채택 (Step 분리는 모델 변경이라 R3 외). `'Ⅲ-3·4'` → `'Ⅲ-3·Ⅲ-4'`. #12(PBL) 과 통합 처리.
 
 ### PBL-자체-07 — Step 부제 "AI PBL 인터뷰 (양식 2:1 정합)" 사용자 노출 (#1 패턴 PBL 적용)
 
