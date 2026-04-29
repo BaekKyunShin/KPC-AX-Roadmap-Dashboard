@@ -300,7 +300,7 @@ export function StepTaskAnalysis({
       {/* 선택 첨부 --------------------------------------------------------- */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">
-          분석 노트 추가 첨부
+          추가 내부 자료
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             (선택 · PDF)
           </span>
