@@ -30,6 +30,20 @@ export interface RoadmapHwpxPayloadInputs {
   interview: Interview | null;
 }
 
+/**
+ * InterviewLike — V2 인터뷰 (mapRoadmapInterviewToDb 출력) + V1 legacy fallback.
+ *
+ * V2 마이그레이션 후 production 데이터:
+ *   - job_tasks[] 키: roadmap_job · task_name · task_description · roadmap_problems
+ *                     · roadmap_data_availability · roadmap_ai_necessity
+ *   - improvement_goals[] 키: kpi · goal_description · roadmap_as_is · roadmap_to_be
+ *   - performance_activities → company_details.roadmap_overview.performance_activities[]
+ *
+ * 단일 컬럼 (interview_date·interview_round·interview_method·interview_time·participants)
+ * 은 V1 legacy. V2 에서는 performance_activities[].pm_name / expert_name 사용.
+ *
+ * V2 우선 매핑 + V1 fallback (`?? V1`) 으로 안전하게 호환.
+ */
 interface InterviewLike {
   company_details?: {
     roadmap_overview?: {
@@ -38,6 +52,16 @@ interface InterviewLike {
       selected_tasks_summary?: string;
       roadmap_summary?: string;
       hrd_report_attachment?: { storage_path?: string; file_name?: string };
+      // V2: 차수별 수행 활동 배열 (mapRoadmapInterviewToDb 가 저장하는 정식 경로)
+      performance_activities?: Array<{
+        round?: number;
+        date?: string;
+        time_range?: string;
+        content?: string;
+        method?: string;
+        pm_name?: string;
+        expert_name?: string;
+      }>;
     };
     roadmap_company_requirements?: {
       company_status?: string;
@@ -57,8 +81,15 @@ interface InterviewLike {
   };
   job_tasks?: Array<{
     id?: string;
-    job?: string;
+    // V2 DB 키 (mapRoadmapInterviewToDb 출력)
+    roadmap_job?: string;
     task_name?: string;
+    task_description?: string;
+    roadmap_problems?: string;
+    roadmap_data_availability?: string;
+    roadmap_ai_necessity?: number | string;
+    // V1 legacy 키 (fallback)
+    job?: string;
     as_is?: string;
     problems?: string;
     data_availability?: string;
@@ -66,11 +97,18 @@ interface InterviewLike {
   }>;
   improvement_goals?: Array<{
     id?: string;
+    // V2 DB 키
+    kpi?: string;
+    goal_description?: string;
+    roadmap_as_is?: string;
+    roadmap_to_be?: string;
+    // V1 legacy 키 (fallback)
     task_name?: string;
     selection_reason?: string;
     as_is?: string;
     to_be?: string;
   }>;
+  // V1 legacy 단일 컬럼 (V2 에서는 performance_activities[] 로 대체됨)
   interview_date?: string;
   interview_round?: number;
   interview_time?: string;
@@ -149,14 +187,16 @@ export function buildRoadmapHwpxPayload(
     training_goal: r.goal,
   }));
 
-  // 5) 훈련대상 과업 (Ⅱ-4) - 첫 항목
+  // 5) 훈련대상 과업 (Ⅱ-4) - 첫 항목 — V2 DB 키(kpi·goal_description·roadmap_as_is·
+  // roadmap_to_be) 우선, V1 legacy(task_name·selection_reason·as_is·to_be) fallback. (#21·#22)
   const firstTarget = improvementGoals[0];
   const trainingTarget = firstTarget
     ? {
-        task_name: firstTarget.task_name ?? '',
-        selection_reason: firstTarget.selection_reason ?? '',
-        as_is: firstTarget.as_is ?? '',
-        to_be: firstTarget.to_be ?? '',
+        task_name: firstTarget.kpi ?? firstTarget.task_name ?? '',
+        selection_reason:
+          firstTarget.goal_description ?? firstTarget.selection_reason ?? '',
+        as_is: firstTarget.roadmap_as_is ?? firstTarget.as_is ?? '',
+        to_be: firstTarget.roadmap_to_be ?? firstTarget.to_be ?? '',
       }
     : { task_name: '', selection_reason: '', as_is: '', to_be: '' };
 
@@ -171,37 +211,69 @@ export function buildRoadmapHwpxPayload(
       .hrd_report_attachment_url ?? '';
   const finalHrdUrl = hrdAttachmentUrl || hrdFromLegacy;
 
-  // 7) 수행일지 차수 — interview 1차 자동 집계 (Step 12에서 차수별 확장)
-  // ISSUE-10 Step C-2: 시간 표시 우선순위
-  //   1) company_details.roadmap_interview_time JSONB { start, end } 정식 경로
-  //   2) interview_time 단일 컬럼 (legacy production 3건 호환)
-  const savedInterviewTime = typedInterview?.company_details?.roadmap_interview_time;
-  const interviewTimeText = savedInterviewTime?.start || savedInterviewTime?.end
-    ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
-    : (typedInterview?.interview_time ?? '');
-  // 인터뷰 수행 방법 enum(ONSITE/VIDEO/WORKSHOP/OTHER) → 한글 라벨 변환
-  const methodLabel = typedInterview?.interview_method
-    ? (INTERVIEW_METHOD_LABEL[typedInterview.interview_method as InterviewMethod] ??
-        typedInterview.interview_method ??
-        '')
-    : '';
-  const performanceActivities =
-    typedInterview
-      ? [
-          {
-            round: typedInterview.interview_round ?? 1,
-            date: [
-              typedInterview.interview_date ?? '',
-              interviewTimeText,
-            ]
-              .filter(Boolean)
-              .join('\n'),
-            content: notes?.text ?? '',
-            method: methodLabel,
-            participants: participantsToPython(participants),
-          },
-        ]
-      : [];
+  // 7) 수행일지 차수 — V2 우선 (company_details.roadmap_overview.performance_activities[]),
+  // 없으면 V1 legacy 단일 컬럼(interview_date · interview_round · interview_method · participants)
+  // 으로 1차 단일 항목 자동 집계. (#22)
+  const v2PerfActs =
+    typedInterview?.company_details?.roadmap_overview?.performance_activities;
+
+  const performanceActivities = (() => {
+    if (v2PerfActs && v2PerfActs.length > 0) {
+      // V2 — 차수별 다중 행. PM/내부전문가는 행마다 분리.
+      return v2PerfActs.map((a) => {
+        const dateLine = a.date ?? '';
+        const timeLine = a.time_range ?? '';
+        const methodKey = a.method ?? '';
+        const methodLabelV2 =
+          INTERVIEW_METHOD_LABEL[methodKey as InterviewMethod] ??
+          methodKey ??
+          '';
+        const rowParticipants: Array<{ role: string; name: string; hrd4u_id: string }> = [];
+        if (a.pm_name) {
+          rowParticipants.push({ role: 'PM', name: a.pm_name, hrd4u_id: '' });
+        }
+        if (a.expert_name) {
+          rowParticipants.push({
+            role: '기업 내부전문가',
+            name: a.expert_name,
+            hrd4u_id: '',
+          });
+        }
+        return {
+          round: a.round ?? 1,
+          date: [dateLine, timeLine].filter(Boolean).join('\n'),
+          content: a.content ?? '',
+          method: methodLabelV2,
+          participants: rowParticipants,
+        };
+      });
+    }
+    if (!typedInterview) return [];
+    // V1 legacy fallback — 단일 컬럼 기반 1차 행
+    // ISSUE-10 Step C-2: 시간 표시 우선순위
+    //   1) company_details.roadmap_interview_time JSONB { start, end } 정식 경로
+    //   2) interview_time 단일 컬럼 (legacy production 3건 호환)
+    const savedInterviewTime = typedInterview?.company_details?.roadmap_interview_time;
+    const interviewTimeText = savedInterviewTime?.start || savedInterviewTime?.end
+      ? formatTimeRange(savedInterviewTime.start, savedInterviewTime.end)
+      : (typedInterview?.interview_time ?? '');
+    const methodLabel = typedInterview.interview_method
+      ? (INTERVIEW_METHOD_LABEL[typedInterview.interview_method as InterviewMethod] ??
+          typedInterview.interview_method ??
+          '')
+      : '';
+    return [
+      {
+        round: typedInterview.interview_round ?? 1,
+        date: [typedInterview.interview_date ?? '', interviewTimeText]
+          .filter(Boolean)
+          .join('\n'),
+        content: notes?.text ?? '',
+        method: methodLabel,
+        participants: participantsToPython(participants),
+      },
+    ];
+  })();
 
   // 8) 단순 역량 필드 포맷 (배열 → 줄바꿈 텍스트)
   // result.competencies / annual_plan 은 storage mapper 가 항상 array/object 로
@@ -238,14 +310,17 @@ export function buildRoadmapHwpxPayload(
     })),
   }));
 
-  // 11) task_workflow items
+  // 11) task_workflow items — V2 DB 키(roadmap_job·task_description·roadmap_problems·
+  // roadmap_data_availability·roadmap_ai_necessity) 우선, V1 legacy 키 fallback. (#20·#22)
   const taskWorkflowItems = jobTasks.map((t) => ({
-    job: t.job ?? '',
+    job: t.roadmap_job ?? t.job ?? '',
     task: t.task_name ?? '',
-    as_is: t.as_is ?? '',
-    problem: t.problems ?? '',
-    data_availability: t.data_availability ?? '',
-    ai_necessity_score: t.ai_necessity ?? '',
+    as_is: t.task_description ?? t.as_is ?? '',
+    problem: t.roadmap_problems ?? t.problems ?? '',
+    data_availability:
+      t.roadmap_data_availability ?? t.data_availability ?? '',
+    ai_necessity_score:
+      t.roadmap_ai_necessity ?? t.ai_necessity ?? '',
   }));
 
   // 12) 보고서 날짜 (최종화 시점 우선, 없으면 updated_at)
