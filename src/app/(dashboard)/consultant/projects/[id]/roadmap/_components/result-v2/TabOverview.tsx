@@ -111,7 +111,7 @@ export function TabOverview({
       {/* Ⅰ-3 수립 주요 결과 — 양식 정합 (3행 표) */}
       <SectionCard
         title="Ⅰ-3. 수립 주요 결과"
-        description="뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약"
+        description="뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약 — LLM 자동 생성, 직접 수정 가능"
       >
         <div className="overflow-x-auto">
           <FormTable

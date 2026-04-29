@@ -60,7 +60,10 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
     expect(screen.getByText(/Ⅱ-1\. HRD이음 진단 보고서/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-2\. 기업 요구분석/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-3\. 과업·워크플로우 분석/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-4\. 훈련대상 과업 선정/)).toBeInTheDocument();
+    // R3 #12 — 양식 정확 명칭 "훈련대상 과업(Task)·워크플로우 선정"
+    expect(
+      screen.getByText(/Ⅱ-4\. 훈련대상 과업\(Task\)·워크플로우 선정/),
+    ).toBeInTheDocument();
   });
 
   it('Ⅱ-1 HRD PDF 파일명 + iframe + 열기 링크 표시', () => {

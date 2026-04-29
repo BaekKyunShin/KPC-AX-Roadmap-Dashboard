@@ -210,6 +210,83 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
     expect(screen.getByText(/선형회귀/)).toBeInTheDocument();
   });
 
+  // R3 #18 — Ⅲ-4 교과목이 표 형태(FormTable 3열 — 교과목명 / 세부 내용 / 훈련시간)
+  it('Ⅲ-4 교과목 영역이 FormTable 3열 (교과목명 · 세부 내용 · 훈련시간) 로 표시된다 (#18)', () => {
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // Ⅲ-4 교과목 표 — 교과목명 / 세부 내용 헤더 (Ⅲ-3 표에는 이 헤더 없음)
+    expect(
+      screen.getByRole('columnheader', { name: '교과목명' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: '세부 내용' }),
+    ).toBeInTheDocument();
+    // '훈련시간' 헤더는 Ⅲ-3·Ⅲ-4 양쪽에 등장 — 최소 1건 이상
+    const hourHeaders = screen.getAllByRole('columnheader', {
+      name: '훈련시간',
+    });
+    expect(hourHeaders.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // R3 #17 — Ⅲ-4 교과목 details 가 줄바꿈/단원 경계로 머리기호 분리되어 표시
+  it('Ⅲ-4 교과목 details 가 머리기호로 분리되어 표시된다 (#17)', () => {
+    const versionWithMultiLineDetails: RoadmapVersionUI = {
+      ...filledVersion,
+      course_specs: [
+        {
+          ...filledVersion.course_specs[0],
+          subjects: [
+            {
+              name: '데이터 전처리',
+              details: '결측치 처리\n정규화\n샘플링',
+              hours: 8,
+            },
+          ],
+        },
+      ],
+    };
+    render(
+      <TabTraining
+        version={versionWithMultiLineDetails}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // \n 분리 후 ul > li 3개 머리기호
+    const items = screen.getAllByRole('listitem');
+    const itemsText = items.map((li) => li.textContent ?? '');
+    expect(itemsText).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('결측치 처리'),
+        expect.stringContaining('정규화'),
+        expect.stringContaining('샘플링'),
+      ]),
+    );
+  });
+
+  // PR #42 회귀 테스트 보강 — Ⅲ-2 수준 컬럼 한글 라벨 + 영문 미노출
+  it('Ⅲ-2 수준 컬럼이 한글 라벨(초급/중급/고급)로 표시되고 영문 enum 은 미노출 (#15, PR #42 회귀)', () => {
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('중급')).toBeInTheDocument();
+    expect(screen.queryByText('INTERMEDIATE')).not.toBeInTheDocument();
+    expect(screen.queryByText('BEGINNER')).not.toBeInTheDocument();
+    expect(screen.queryByText('ADVANCED')).not.toBeInTheDocument();
+  });
+
   it('제외 라벨 3종 (표지 / 고정 참고자료 / 양식·결과 화면 제외) 와 NCS·수행일지 참고자료를 렌더하지 않음', () => {
     const { container } = render(
       <TabTraining
