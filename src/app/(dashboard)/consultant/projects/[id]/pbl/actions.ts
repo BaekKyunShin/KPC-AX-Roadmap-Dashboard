@@ -934,6 +934,12 @@ export interface PBLPageDataV2 {
   versions: PBLReportRow[];
   selectedVersion: PBLReportRow | null;
   interview: Partial<ResultPBLInterviewSnapshot>;
+  /**
+   * #013 fix — EmptyState 가드 강화용. 인터뷰 row 존재 여부 + 프로젝트 status
+   * 를 server-side 에서 함께 조회해 클라이언트 사전 차단.
+   */
+  hasInterview: boolean;
+  projectStatus: string;
 }
 
 export async function fetchPBLPageDataV2(
@@ -998,12 +1004,30 @@ export async function fetchPBLPageDataV2(
     const hydrated = await hydratePBLHrdSignedUrl(rawInterview);
     const snapshot = toPBLInterviewSnapshot(hydrated);
 
+    // #013 fix — 인터뷰 row 존재 여부 + 프로젝트 status (PBL_ELIGIBLE_STATUSES
+    // 가드용) 를 server-side 에서 추가 조회해 클라이언트 EmptyState 가드에 prop drill.
+    const admin = createAdminClient();
+    const [{ data: interviewRow }, { data: projectRow }] = await Promise.all([
+      admin
+        .from('interviews')
+        .select('id')
+        .eq('project_id', projectId)
+        .maybeSingle(),
+      admin
+        .from('projects')
+        .select('status')
+        .eq('id', projectId)
+        .maybeSingle(),
+    ]);
+
     return {
       success: true,
       data: {
         versions,
         selectedVersion,
         interview: snapshot,
+        hasInterview: Boolean(interviewRow?.id),
+        projectStatus: projectRow?.status ?? '',
       },
     };
   } catch (error) {

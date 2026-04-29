@@ -22,6 +22,7 @@ import { usePBLDownload } from '@/hooks/usePBLDownload';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
+import { handleActionResult, handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import { isCancelledError } from '@/lib/services/llm';
 import type { PBLReportRow } from '@/lib/services/pbl';
 
@@ -37,6 +38,9 @@ export interface PBLResultPageClientProps {
   initialVersions: PBLReportRow[];
   initialSelected: PBLReportRow | null;
   initialInterview: Partial<ResultPBLInterviewSnapshot>;
+  /** #013 fix — EmptyState 가드 강화용. */
+  initialHasInterview: boolean;
+  initialProjectStatus: string;
 }
 
 export default function PBLResultPageClient({
@@ -45,6 +49,8 @@ export default function PBLResultPageClient({
   initialVersions,
   initialSelected,
   initialInterview,
+  initialHasInterview,
+  initialProjectStatus,
 }: PBLResultPageClientProps) {
   const [versions, setVersions] = useState<PBLReportRow[]>(initialVersions);
   const [selectedVersion, setSelectedVersion] = useState<PBLReportRow | null>(
@@ -52,6 +58,8 @@ export default function PBLResultPageClient({
   );
   const [interview, setInterview] =
     useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
+  const [hasInterview, setHasInterview] = useState<boolean>(initialHasInterview);
+  const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
@@ -67,6 +75,8 @@ export default function PBLResultPageClient({
       setVersions(result.data.versions);
       setSelectedVersion(result.data.selectedVersion);
       setInterview(result.data.interview);
+      setHasInterview(result.data.hasInterview);
+      setProjectStatus(result.data.projectStatus);
     }
   }
 
@@ -77,12 +87,17 @@ export default function PBLResultPageClient({
   async function handleGenerate(revisionPrompt?: string) {
     setIsGenerating(true);
     const result = await createPBLV2(projectId, revisionPrompt);
-    if (result.success) {
-      showSuccessToast('PBL 보고서 생성', '초안이 생성되었습니다.');
-      await refreshPageData(result.data.pblId);
-    } else if (!isCancelledError(result.error)) {
-      showErrorToast('PBL 보고서 생성 실패', result.error);
-    }
+    // #013 fix — handleActionResult 가 result.error falsy 여도 errorFallback 으로
+    // 토스트 보장 + isCancelledError true 시 silent.
+    await handleActionResult(result, {
+      successMessage: { title: 'PBL 보고서 생성', description: '초안이 생성되었습니다.' },
+      errorTitle: 'PBL 보고서 생성 실패',
+      errorFallback: 'PBL 보고서 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      isSilent: isCancelledError,
+      onSuccess: async (data) => {
+        await refreshPageData(data.pblId);
+      },
+    });
     setIsGenerating(false);
   }
 
@@ -94,11 +109,13 @@ export default function PBLResultPageClient({
   async function handleEdit(patch: PBLResultEditPayload) {
     if (!selectedVersion) return;
     const result = await editPBLV2(selectedVersion.id, patch);
-    if (!result.success) {
-      showErrorToast('저장 실패', result.error ?? '변경 사항을 저장하지 못했습니다.');
-      return;
+    const ok = await handleSimpleActionResult(result, {
+      errorTitle: '저장 실패',
+      errorFallback: '변경 사항을 저장하지 못했습니다.',
+    });
+    if (ok) {
+      await refreshPageData(selectedVersion.id);
     }
-    await refreshPageData(selectedVersion.id);
   }
 
   async function handleDownload(type: DownloadType) {
@@ -122,6 +139,8 @@ export default function PBLResultPageClient({
       versions={versions}
       selectedVersion={selectedVersion}
       interview={interview}
+      hasInterview={hasInterview}
+      projectStatus={projectStatus}
       onSelectVersion={handleSelectVersion}
       onEdit={handleEdit}
       onGenerate={handleGenerate}

@@ -453,6 +453,10 @@ describe('fetchRoadmapPageDataV2', () => {
       from: vi.fn(() => ({ createSignedUrl })),
     } as never;
 
+    // #013 fix — self_assessments + projects 추가 fetch
+    adminMock.addResult({ data: { id: 'sa-1' }, error: null });
+    adminMock.addResult({ data: { status: 'INTERVIEWED' }, error: null });
+
     const r = await fetchRoadmapPageDataV2(PROJECT_ID);
 
     expect(r.success).toBe(true);
@@ -489,6 +493,10 @@ describe('fetchRoadmapPageDataV2', () => {
     });
     adminMock.addResult({ data: null, error: null });
 
+    // #013 fix — self_assessments + projects 추가 fetch
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: { status: 'ROADMAP_DRAFTED' }, error: null });
+
     const r = await fetchRoadmapPageDataV2(PROJECT_ID, 'v-b');
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.selectedVersion?.id).toBe('v-b');
@@ -513,6 +521,10 @@ describe('fetchRoadmapPageDataV2', () => {
       error: null,
     });
     adminMock.addResult({ data: null, error: null });
+
+    // #013 fix — self_assessments + projects 추가 fetch
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: { status: 'INTERVIEWED' }, error: null });
 
     const r = await fetchRoadmapPageDataV2(PROJECT_ID);
     expect(r.success).toBe(true);
@@ -539,6 +551,10 @@ describe('fetchRoadmapPageDataV2', () => {
       },
       error: null,
     });
+
+    // #013 fix — self_assessments + projects 추가 fetch
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: { status: 'INTERVIEWED' }, error: null });
 
     const r = await fetchRoadmapPageDataV2(PROJECT_ID);
     expect(r.success).toBe(true);

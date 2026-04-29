@@ -326,6 +326,14 @@ export function getLLMUserFriendlyError(error: unknown): string {
   if (message.includes('API 호출 실패')) {
     return 'AI 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요.';
   }
+  // #013 fix — 도메인 메시지 매칭. generic fallback 으로 가지 않고 사용자에게
+  // 다음에 무엇을 해야 할지 안내한다 (자가진단/인터뷰 부재 등 사전 조건 미충족).
+  if (message.includes('자가진단')) {
+    return '자가진단 결과가 없습니다. 자가진단을 먼저 완료해주세요.';
+  }
+  if (message.includes('인터뷰')) {
+    return '인터뷰 데이터가 부족합니다. 인터뷰 입력을 먼저 완료해주세요.';
+  }
 
   return '오류가 발생했습니다. 다시 시도해 주세요.';
 }

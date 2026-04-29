@@ -14,6 +14,8 @@ import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import { PBL_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import type { ProjectStatus } from '@/types/database';
 
 import { TabPBLOverview } from './TabPBLOverview';
 import { TabPBLAnalysis } from './TabPBLAnalysis';
@@ -60,6 +62,10 @@ export interface PBLResultClientProps {
   selectedVersion: PBLReportRow | null;
   /** 인터뷰 입력값 snapshot (Ⅰ·Ⅱ·Ⅲ 의 읽기 전용 원본). */
   interview?: Partial<ResultPBLInterviewSnapshot>;
+  /** #013 fix — interviews row 존재 여부. EmptyState/RegenerateAccordion 가드용. */
+  hasInterview?: boolean;
+  /** #013 fix — 프로젝트 status. PBL_ELIGIBLE_STATUSES 가드용. */
+  projectStatus?: string;
   /** 버전 변경 시 호출. 상위가 fetch → state 업데이트 책임. */
   onSelectVersion: (versionId: string) => void | Promise<void>;
   /** 섹션 편집 patch. OPS role 에서는 호출되지 않음(optional 로 허용). */
@@ -85,6 +91,8 @@ export function PBLResultClient({
   versions,
   selectedVersion,
   interview,
+  hasInterview = false,
+  projectStatus = '',
   onSelectVersion,
   onEdit,
   onGenerate,
@@ -101,6 +109,13 @@ export function PBLResultClient({
 
   const isDraft = selectedVersion?.status === 'DRAFT';
   const hasVersions = versions.length > 0;
+  // #013 fix — 인터뷰 row + 프로젝트 status 사전 가드. server-side 검증 fail 후
+  // generic 토스트 ("오류가 발생했습니다.") 대신 클릭 자체를 차단해 사용자가 다음
+  // 단계를 명확히 알 수 있게 한다.
+  const isStatusEligible =
+    !!projectStatus &&
+    (PBL_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
+  const canGeneratePbl = hasInterview && isStatusEligible;
   // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
   const tabReadOnly = !isDraft || !capabilities.canEdit;
 
@@ -189,13 +204,17 @@ export function PBLResultClient({
             onChange={setRevisionPrompt}
             onSubmit={handleRegenerate}
             isLoading={isGenerating}
+            disabled={!canGeneratePbl}
           />
         )}
 
         {selectedVersion ? (
           <ResultTabs tabs={tabs} defaultValue="overview" />
         ) : (
-          <EmptyState />
+          <EmptyState
+            hasInterview={hasInterview}
+            isStatusEligible={isStatusEligible}
+          />
         )}
       </PageContainer>
 
@@ -212,14 +231,23 @@ export function PBLResultClient({
   );
 }
 
-function EmptyState() {
+interface EmptyStateProps {
+  hasInterview: boolean;
+  isStatusEligible: boolean;
+}
+
+function EmptyState({ hasInterview, isStatusEligible }: EmptyStateProps) {
+  // #013 fix — 인터뷰/status 부재 케이스를 안내 문구로 명확히 구분
+  const guideMessage = !hasInterview
+    ? '인터뷰가 완료되지 않았습니다. 인터뷰 입력을 먼저 완료해주세요.'
+    : !isStatusEligible
+      ? '프로젝트가 인터뷰 완료 상태가 아닙니다. 인터뷰 입력의 "최종 제출" 을 완료해주세요.'
+      : '인터뷰가 완료되었습니다. 상단 "새 버전 생성" 을 눌러 AI PBL 보고서를 생성하세요.';
+
   return (
     <div className="rounded-lg border bg-card p-12 text-center">
       <h3 className="text-base font-semibold">아직 생성된 PBL 보고서가 없습니다</h3>
-      <p className="mt-2 text-sm text-muted-foreground">
-        인터뷰가 완료되면 상단 &quot;새 버전 생성&quot; 을 눌러 AI PBL 보고서를
-        생성하세요.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">{guideMessage}</p>
     </div>
   );
 }

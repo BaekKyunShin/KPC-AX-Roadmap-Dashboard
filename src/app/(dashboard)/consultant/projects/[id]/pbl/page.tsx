@@ -34,7 +34,13 @@ export default async function PBLPage({
 
   const pageData = pageDataResult.success
     ? pageDataResult.data
-    : { versions: [], selectedVersion: null, interview: {} };
+    : {
+        versions: [],
+        selectedVersion: null,
+        interview: {},
+        hasInterview: false,
+        projectStatus: '',
+      };
 
   return (
     <PBLResultPageClient
@@ -43,6 +49,8 @@ export default async function PBLPage({
       initialVersions={pageData.versions}
       initialSelected={pageData.selectedVersion}
       initialInterview={pageData.interview}
+      initialHasInterview={pageData.hasInterview}
+      initialProjectStatus={pageData.projectStatus}
     />
   );
 }

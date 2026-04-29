@@ -24,6 +24,7 @@ import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 import { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
+import { handleActionResult, handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import { isCancelledError } from '@/lib/services/llm';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
@@ -39,6 +40,9 @@ export interface RoadmapResultPageClientProps {
   initialVersions: RoadmapVersionUI[];
   initialSelected: RoadmapVersionUI | null;
   initialInterview: Partial<ResultInterviewSnapshot>;
+  /** #013 fix — EmptyState 가드 강화용. */
+  initialSelfAssessmentExists: boolean;
+  initialProjectStatus: string;
 }
 
 export default function RoadmapResultPageClient({
@@ -47,6 +51,8 @@ export default function RoadmapResultPageClient({
   initialVersions,
   initialSelected,
   initialInterview,
+  initialSelfAssessmentExists,
+  initialProjectStatus,
 }: RoadmapResultPageClientProps) {
   const [versions, setVersions] = useState<RoadmapVersionUI[]>(initialVersions);
   const [selectedVersion, setSelectedVersion] = useState<RoadmapVersionUI | null>(
@@ -54,6 +60,10 @@ export default function RoadmapResultPageClient({
   );
   const [interview, setInterview] =
     useState<Partial<ResultInterviewSnapshot>>(initialInterview);
+  const [selfAssessmentExists, setSelfAssessmentExists] = useState<boolean>(
+    initialSelfAssessmentExists,
+  );
+  const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
 
@@ -70,6 +80,8 @@ export default function RoadmapResultPageClient({
       setVersions(result.data.versions);
       setSelectedVersion(result.data.selectedVersion);
       setInterview(result.data.interview);
+      setSelfAssessmentExists(result.data.selfAssessmentExists);
+      setProjectStatus(result.data.projectStatus);
     }
   }
 
@@ -81,8 +93,15 @@ export default function RoadmapResultPageClient({
     setIsGenerating(true);
     setIsGenerationComplete(false);
     const result = await createRoadmapV2(projectId, revisionPrompt);
-    if (result.success) {
-      showSuccessToast('로드맵 생성 완료', '로드맵이 생성되었습니다.');
+    // #013 fix — handleActionResult 가 result.error falsy 여도 errorFallback 으로
+    // 토스트 보장 + isCancelledError true 시 silent.
+    const ok = await handleActionResult(result, {
+      successMessage: { title: '로드맵 생성 완료', description: '로드맵이 생성되었습니다.' },
+      errorTitle: '로드맵 생성 실패',
+      errorFallback: '로드맵 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      isSilent: isCancelledError,
+    });
+    if (ok) {
       await refreshPageData();
       setIsGenerationComplete(true);
       setTimeout(() => {
@@ -90,9 +109,6 @@ export default function RoadmapResultPageClient({
         setIsGenerationComplete(false);
       }, COMPLETION_DELAY_MS);
       return;
-    }
-    if (!isCancelledError(result.error)) {
-      showErrorToast('로드맵 생성 실패', result.error);
     }
     setIsGenerating(false);
   }
@@ -106,24 +122,25 @@ export default function RoadmapResultPageClient({
   async function handleEdit(patch: RoadmapResultEditPayload) {
     if (!selectedVersion) return;
     const result = await editRoadmapV2(selectedVersion.id, patch);
-    if (!result.success) {
-      showErrorToast('저장 실패', result.error || '변경사항 저장에 실패했습니다.');
-      return;
+    const ok = await handleActionResult(result, {
+      errorTitle: '저장 실패',
+      errorFallback: '변경사항 저장에 실패했습니다.',
+    });
+    if (ok) {
+      await refreshPageData(selectedVersion.id);
     }
-    await refreshPageData(selectedVersion.id);
   }
 
   async function handleFinalize(versionId: string) {
     const result = await confirmFinalRoadmapV2(versionId);
-    if (!result.success) {
-      showErrorToast(
-        '최종 확정 실패',
-        result.error || '로드맵 최종 확정에 실패했습니다.',
-      );
-      return;
+    const ok = await handleSimpleActionResult(result, {
+      successMessage: { title: '로드맵이 최종 확정되었습니다.' },
+      errorTitle: '최종 확정 실패',
+      errorFallback: '로드맵 최종 확정에 실패했습니다.',
+    });
+    if (ok) {
+      await refreshPageData(versionId);
     }
-    showSuccessToast('로드맵이 최종 확정되었습니다.');
-    await refreshPageData(versionId);
   }
 
   async function handleDownload(type: DownloadType) {
@@ -148,6 +165,8 @@ export default function RoadmapResultPageClient({
       versions={versions}
       selectedVersion={selectedVersion}
       interview={interview}
+      selfAssessmentExists={selfAssessmentExists}
+      projectStatus={projectStatus}
       onSelectVersion={handleSelectVersion}
       onEdit={handleEdit}
       onGenerate={handleGenerate}

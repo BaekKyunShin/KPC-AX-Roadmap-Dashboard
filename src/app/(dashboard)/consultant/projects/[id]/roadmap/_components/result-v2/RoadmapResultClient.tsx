@@ -18,6 +18,8 @@ import { ShareToggle } from '@/components/gallery/ShareToggle';
 import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle2, FileText } from 'lucide-react';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
+import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import type { ProjectStatus } from '@/types/database';
 
 import { TabOverview } from './TabOverview';
 import { TabRequirements } from './TabRequirements';
@@ -62,6 +64,17 @@ export interface RoadmapResultClientProps {
   selectedVersion: RoadmapVersionUI | null;
   /** 인터뷰 입력값 snapshot (Ⅰ·Ⅱ·Ⅲ-1 의 읽기 전용 원본). */
   interview?: Partial<ResultInterviewSnapshot>;
+  /**
+   * #013 fix — EmptyState 가드 강화용. 자가진단 row 가 존재해야 LLM 호출 시
+   * roadmap-generator.ts:285 의 `자가진단 결과가 없습니다.` throw 회피.
+   * server-side 에서 조회 후 prop drill.
+   */
+  selfAssessmentExists?: boolean;
+  /**
+   * #013 fix — 프로젝트 status. ROADMAP_ELIGIBLE_STATUSES (INTERVIEWED 이상)
+   * 가 아니면 EmptyState 의 "AI 로드맵 생성" 버튼을 차단해 사전 검증.
+   */
+  projectStatus?: string;
   /** 버전 변경 시 호출. 상위가 fetch → state 업데이트 책임. */
   onSelectVersion: (versionId: string) => void | Promise<void>;
   /** 섹션 편집 patch. OPS role 에서는 호출되지 않음(optional 로 허용). */
@@ -92,6 +105,8 @@ export function RoadmapResultClient({
   versions,
   selectedVersion,
   interview,
+  selfAssessmentExists = false,
+  projectStatus = '',
   onSelectVersion,
   onEdit,
   onGenerate,
@@ -114,6 +129,13 @@ export function RoadmapResultClient({
   // ROADMAP_ELIGIBLE_STATUSES 가 'INTERVIEWED' 이상을 통과시키지만, 실제 interviews
   // 행이 없는 케이스가 존재하므로 클라이언트에서 한 번 더 가드.
   const hasInterview = !!interview && Object.keys(interview).length > 0;
+  // #013 fix — status·자가진단 사전 가드. server-side 검증 fail 후 silent fail
+  // 의 generic 토스트 (`오류가 발생했습니다.`) 대신 클릭 자체를 차단해 사용자가
+  // 다음 단계를 명확히 알 수 있게 한다.
+  const isStatusEligible =
+    !!projectStatus &&
+    (ROADMAP_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
+  const canGenerateRoadmap = hasInterview && selfAssessmentExists && isStatusEligible;
   // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
   const tabReadOnly = !isDraft || !capabilities.canEdit;
 
@@ -258,6 +280,9 @@ export function RoadmapResultClient({
             onGenerate={handleEmptyStateGenerate}
             isGenerating={isGenerating}
             hasInterview={hasInterview}
+            selfAssessmentExists={selfAssessmentExists}
+            isStatusEligible={isStatusEligible}
+            canGenerateRoadmap={canGenerateRoadmap}
             projectId={projectId}
           />
         )}
@@ -283,6 +308,12 @@ interface EmptyStateProps {
   isGenerating: boolean;
   /** #002 가드 — 인터뷰 부재 시 안내 + 인터뷰 페이지 CTA. */
   hasInterview: boolean;
+  /** #013 가드 — 자가진단 row 존재 여부. */
+  selfAssessmentExists: boolean;
+  /** #013 가드 — 프로젝트 status 가 ROADMAP_ELIGIBLE_STATUSES 에 속하는지. */
+  isStatusEligible: boolean;
+  /** #013 가드 — 위 3 조건 종합 (true 일 때만 클릭 enabled). */
+  canGenerateRoadmap: boolean;
   /** 인터뷰 페이지 링크 생성용. */
   projectId: string;
 }
@@ -292,6 +323,9 @@ function EmptyState({
   onGenerate,
   isGenerating,
   hasInterview,
+  selfAssessmentExists,
+  isStatusEligible,
+  canGenerateRoadmap,
   projectId,
 }: EmptyStateProps) {
   // CONSULTANT 이고 인터뷰 부재 — 안내 + CTA 우선 노출 (생성 버튼 disabled)
@@ -331,19 +365,24 @@ function EmptyState({
     );
   }
 
+  // #013 fix — 인터뷰는 있으나 자가진단/status 가 안 맞는 경우 명확한 안내.
+  const guideMessage = !selfAssessmentExists
+    ? '자가진단 결과가 없습니다. 자가진단을 먼저 완료해주세요.'
+    : !isStatusEligible
+      ? '프로젝트가 인터뷰 완료 상태가 아닙니다. 인터뷰 입력의 "최종 제출" 을 완료해주세요.'
+      : '인터뷰가 완료된 후 아래 버튼을 눌러 AI 훈련 로드맵을 생성하세요.';
+
   return (
     <div className="rounded-lg border bg-card p-12 text-center">
       <h3 className="text-base font-semibold">아직 생성된 로드맵이 없습니다</h3>
-      <p className="mt-2 text-sm text-muted-foreground">
-        인터뷰가 완료된 후 아래 버튼을 눌러 AI 훈련 로드맵을 생성하세요.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">{guideMessage}</p>
       {canGenerate && (
         <div className="mt-6">
           <Button
             type="button"
             size="lg"
             onClick={() => void onGenerate()}
-            disabled={isGenerating || !hasInterview}
+            disabled={isGenerating || !canGenerateRoadmap}
             data-testid="empty-state-generate-roadmap"
           >
             <Plus className="mr-1.5 size-4" aria-hidden="true" />

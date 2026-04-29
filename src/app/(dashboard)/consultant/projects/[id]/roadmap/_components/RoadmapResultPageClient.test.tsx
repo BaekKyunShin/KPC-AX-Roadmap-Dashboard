@@ -172,6 +172,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     const root = screen.getByTestId('roadmap-result-client');
@@ -188,6 +190,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('select'));
@@ -205,6 +209,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     await act(async () => {
@@ -227,6 +233,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));
@@ -249,6 +257,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));
@@ -264,6 +274,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('download-pdf'));
@@ -284,6 +296,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('cancel'));
@@ -298,6 +312,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[]}
         initialSelected={null}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('edit'));
@@ -318,6 +334,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fireEvent.click(screen.getByText('generate'));
@@ -332,6 +350,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     await act(async () => {
@@ -355,6 +375,8 @@ describe('RoadmapResultPageClient (CONSULTANT)', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
+        initialSelfAssessmentExists={true}
+        initialProjectStatus="INTERVIEWED"
       />,
     );
     fetchRoadmapPageDataV2Mock.mockClear();
