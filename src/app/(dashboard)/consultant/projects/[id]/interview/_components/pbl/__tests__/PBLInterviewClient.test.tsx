@@ -77,6 +77,49 @@ describe('PBLInterviewClient', () => {
     }
   });
 
+  // R3 #12(PBL) / PBL-자체-06 — Step 9 단축명을 양식 정확 표기로 재설계
+  it('PBL Step 9 단축명이 "Ⅲ-3·Ⅲ-4" 로 표시된다 (#12 PBL · PBL-자체-06)', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    // shortName 은 step indicator 의 양식 번호로 노출
+    const step9Def = PBL_STEPS[8];
+    expect(step9Def.shortName).toBe('Ⅲ-3·Ⅲ-4');
+    expect(step9Def.shortName).not.toBe('Ⅲ-3·4');
+  });
+
+  // R3 #10(PBL) — Ⅱ-3-가 항목명 양식 정확 표기
+  it('PBL Ⅱ-3-가 항목명이 "기업HRD이음컨설팅 결과 (PDF 첨부)" 로 표시된다 (#10 PBL)', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    // 신규 step name = FormSection title — 두 곳 모두 '기업HRD이음컨설팅 결과 (PDF 첨부)'
+    const matches = screen.getAllByText(/기업HRD이음컨설팅 결과 \(PDF 첨부\)/);
+    // step indicator(데스크톱·모바일) + step name 노출 + 컴포넌트 진입 후 FormSection title
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(matches[0]);
+    expect(
+      screen.getByRole('heading', {
+        name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
+        level: 2,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  // R3 #5(PBL) — Ⅱ-1-가 양식 √ "기업담당자와의 인터뷰" 노출
+  it('PBL Ⅱ-1-가 작성 안내 영역에 양식 √ "기업담당자와의 인터뷰" 안내가 노출된다 (#5 PBL)', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('기업 경영 이슈'));
+    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    expect(screen.getByText(/기업담당자와의 인터뷰/)).toBeInTheDocument();
+  });
+
+  // R3 공통-A(PBL) — Ⅲ-3·Ⅲ-4 양식 ◆ "(작성 예시) 훈련대상 업무는 영상 데이터 수집" 노출
+  it('PBL Step 9 작성 예시 영역에 양식 ◆ "(작성 예시) 훈련대상 업무는 영상 데이터 수집" 이 노출된다 (공통-A PBL)', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('훈련대상·AI수준'));
+    fireEvent.click(screen.getByRole('button', { name: '(예시) 양식 원문' }));
+    expect(
+      screen.getByText(/훈련대상 업무는 영상 데이터 수집/),
+    ).toBeInTheDocument();
+  });
+
   it('Ⅱ-1-가 companyIssues 스텝 진입 시 해당 textarea 가 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 경영 이슈'));
@@ -213,9 +256,14 @@ describe('PBLInterviewClient', () => {
 
   it('Ⅱ-3-가 hrdReport 스텝 진입 시 StepHrdReportPdf 가 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('HRD이음 PDF'));
+    // R3 #10(PBL) — step name 양식 정확 표기로 갱신됨
+    const matches = screen.getAllByText(/기업HRD이음컨설팅 결과 \(PDF 첨부\)/);
+    fireEvent.click(matches[0]);
     expect(
-      screen.getByRole('heading', { name: /HRD이음컨설팅 결과 PDF 첨부/, level: 2 }),
+      screen.getByRole('heading', {
+        name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
+        level: 2,
+      }),
     ).toBeInTheDocument();
   });
 

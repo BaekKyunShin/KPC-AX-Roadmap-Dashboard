@@ -70,11 +70,11 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
   { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무', required: true },
   { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
-  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: 'HRD이음 PDF', required: false },
+  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', required: false },
   { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', required: true },
   { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', required: true },
-  { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준', required: true },
+  { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
 ];
 
 // ============================================================================

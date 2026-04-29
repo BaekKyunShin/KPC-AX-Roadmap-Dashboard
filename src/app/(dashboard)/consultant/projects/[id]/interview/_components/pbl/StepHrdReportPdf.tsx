@@ -75,7 +75,7 @@ export function StepHrdReportPdf({
   return (
     <FormSection
       number="Ⅱ-3-가"
-      title="HRD이음컨설팅 결과 PDF 첨부"
+      title="기업HRD이음컨설팅 결과 (PDF 첨부)"
       label="[PDF 첨부]"
       description="HRD이음 컨설팅 결과 보고서(PDF) 를 업로드하면 본문이 자동 추출되어 LLM 분석에 활용됩니다. (선택 첨부)"
     >
