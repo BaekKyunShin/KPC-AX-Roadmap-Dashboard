@@ -11,7 +11,7 @@
 | 2026-04-29 | 결함 수정 (세션 #A) | PR #36 | RESOLVED: #001, #002, #003, #005, #006, #007, #008, #009, #010 / 보류: #004 |
 | 2026-04-29 | 이월 검증 (세션 #B) | PR #38 | OPEN 추가: #011 (P2), #012 (P1), #013 (P1) — silent fail 패턴 3건 |
 | 2026-04-29 | #004 본격 해결 (세션 #C) | PR #39 | RESOLVED: #004 |
-| 2026-04-29 | silent fail 3건 본격 해결 (세션 #D) | PR #TODO | RESOLVED: #011, #012, #013 |
+| 2026-04-29 | silent fail 3건 본격 해결 (세션 #D) | PR #40 | RESOLVED: #011, #012, #013 |
 <!-- 새 항목은 위 행 위쪽이 아닌 아래쪽에 추가 (시간 순 누적) -->
 
 ## 결함 상태 라벨
@@ -278,7 +278,7 @@
 **스크린샷:** ./screenshots/2026-04-29/G1-02-step1-filled.png, G1-04-step2-saved.png
 
 - **확정 원인 (세션 #D)**: `RoadmapInterviewSchema.partial()` 가 zod 의 shallow partial — top-level 만 optional 이고 nested 객체/배열의 inner schema (`companyRequirements.status.min(1)`, `taskAnalysis.min(1)`, `competencies.min(1)` 등) 는 strict 그대로 유지. UI 가 mount 시 prefilled 로 넣는 빈 행/슬롯 + 빈 배열이 자동저장 partial 검증에서 fail → `{ success: false, error: '...' }` 매번 반환 → 라벨 'error' 영구 고착. **DB INSERT 도 발생하지 않음** (보고서 추정의 "DB 저장 성공" 은 부정확). PBL 도 동일 패턴.
-- **해결 정보**: 세션 #D · 2026-04-29 · 검증자: Vitest 단위 테스트 7건 (`RoadmapInterviewAutoSaveSchema`) + RTL 36건 + Playwright 로컬 재현(시드기업B 인터뷰 Step 1 입력 → 라벨 정상 fade + DB 의 interviews 에 establishment_necessity 정상 INSERT)
+- **해결 정보**: PR #40 · 2026-04-29 · 검증자: Vitest 단위 테스트 7건 (`RoadmapInterviewAutoSaveSchema`) + RTL 36건 + Playwright 로컬 재현(시드기업B 인터뷰 Step 1 입력 → 라벨 정상 fade + DB 의 interviews 에 establishment_necessity 정상 INSERT)
 - **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — `RoadmapInterviewAutoSaveSchema` 신규 export (nested string 까지 모두 optional + 배열 min 제거 + element 의 빈 필드도 통과). `PBLInterviewAutoSaveSchema` 도 `z.object({}).passthrough()` 로 단순 차단. `saveRoadmapInterviewV2`/`savePBLInterviewV2` 의 autoSave 분기에서 새 schema 사용. 클라이언트 hook 에 `handleSimpleActionResult` 헬퍼 적용 (`result.error` falsy 시 `errorFallback` 으로 토스트 보장).
 
 ---
@@ -300,7 +300,7 @@
 **스크린샷:** ./screenshots/2026-04-29/G1-09-step8-filled.png, G1-10-after-submit.png
 
 - **확정 원인 (세션 #D)**: `handleSubmit` 자체는 정상 wired (StickyFormNav 의 submit.onSubmit) 이고 strict schema 검증·`submitRoadmapInterviewV2` 호출도 정상. 그러나 `parsed.error.errors[0]?.message` 한 개만 토스트로 표시하고 `submitRoadmapInterviewV2` 응답의 `result.error` 가 falsy 일 때 silent 가능. 사용자가 여러 누락 필드를 한 번에 파악 못함.
-- **해결 정보**: 세션 #D · 2026-04-29 · 검증자: RTL 36건 + Playwright 회귀 (시드기업B 인터뷰 정상 입력 흐름)
+- **해결 정보**: PR #40 · 2026-04-29 · 검증자: RTL 36건 + Playwright 회귀 (시드기업B 인터뷰 정상 입력 흐름)
 - **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — `handleSubmit` 의 zod 에러 모두 join (최대 5개 + fallback "필수 입력 항목을 확인해주세요") + `submitRoadmapInterviewV2`/`submitPBLInterviewV2` 응답 처리에 `handleSimpleActionResult` 헬퍼 적용 (errorFallback 으로 토스트 보장). PBL 도 동일.
 
 ---
@@ -335,7 +335,7 @@ POST /consultant/projects/[id]/roadmap 200 in 241ms
 **비고:** 본 세션은 검증을 위해 시드기업B status를 `UPDATE projects SET status='INTERVIEWED'`로 fallback.
 
 - **확정 원인 (세션 #D)**: `RoadmapResultClient` EmptyState 가드가 `hasInterview` 만 체크 (status·자가진단 미커버). `PBLResultClient` 는 가드 자체 없음. server action 의 사전 검증 분기는 정상 `{ success: false, error }` 반환하지만 클라이언트의 `getLLMUserFriendlyError` 가 throw 메시지를 generic fallback ("오류가 발생했습니다.") 으로 변환해 사용자가 도움 못 받음.
-- **해결 정보**: 세션 #D · 2026-04-29 · 검증자: 단위 테스트 5694건 (action mock + EmptyState 회귀 6건 추가) + Playwright 로컬 재현 (시드기업B status=ASSIGNED + 자가진단 부재 → "자가진단 결과가 없습니다." 안내 + 버튼 disabled)
+- **해결 정보**: PR #40 · 2026-04-29 · 검증자: 단위 테스트 5694건 (action mock + EmptyState 회귀 6건 추가) + Playwright 로컬 재현 (시드기업B status=ASSIGNED + 자가진단 부재 → "자가진단 결과가 없습니다." 안내 + 버튼 disabled)
 - **상태 변경**: 🔴 OPEN → 🟢 RESOLVED — `fetchRoadmapPageDataV2`/`fetchPBLPageDataV2` 응답에 `selfAssessmentExists`+`projectStatus` (PBL: `hasInterview`+`projectStatus`) 추가 → 클라이언트로 prop drill. `RoadmapResultClient`/`PBLResultClient` EmptyState 의 가드를 `hasInterview && selfAssessmentExists && isStatusEligible` 종합으로 강화 + 부족한 사전조건별 안내 메시지. `RoadmapResultPageClient`/`PBLResultPageClient` 의 `handleGenerate`/`handleEdit`/`handleFinalize` 에 `handleActionResult`/`handleSimpleActionResult` 헬퍼 적용 (errorFallback 보장). `getLLMUserFriendlyError` 에 '자가진단'·'인터뷰' 도메인 매칭 추가.
 
 ---
