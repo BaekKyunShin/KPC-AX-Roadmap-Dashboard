@@ -124,6 +124,8 @@
 
 > [해결됨][PR #42] 2026-04-29 — `TabOverview.tsx` Ⅰ-3 카드 `<dl>` 그리드 → `FormTable` 3행 (역량 수준 / 선정 과업 / 요약). main_content `InlineEditField` 편집 기능 보존. SectionCard description 도 양식 √ 안내문 ("뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장 이내로 요약") 으로 갱신
 
+> [해결됨][PR R9] 2026-05-01 — #14(PBL) 적용. `TabPBLOps.tsx` 의 Ⅳ-3-가/나/다/라/마 5 SectionCard 가 줄글·카운트만 표시하던 것 → 양식 정합 `FormTable` 5 표 (P-18~P-22 1:1) 로 변환. Ⅳ-3-가 mini 2x2 표 (과정명·훈련기간), Ⅳ-3-나 6 컬럼 병합 표 (instructors+trainees, 구분 라벨 "훈련 강사"/"훈련생" 은 Python `_placeholders_pbl.py:471/482` 와 동일), Ⅳ-3-다 메타 mini-table + training_contents 5 컬럼 표 분리, Ⅳ-3-라 5 컬럼 시설·장비 표, Ⅳ-3-마 5 컬럼 강사 표 (`detailed_training_content[]` `bulletize` 줄바꿈). 셀 fallback `'-'` 일관 적용. 회귀 테스트 15 건 (5 표 렌더 + 부분 결손 + 빈 contents + 카운트 줄글 negative + caption a11y).
+
 ### #15 — Ⅲ-2 수준 영문 표기
 
 - **페이지**: AI훈련로드맵 결과 페이지
@@ -150,6 +152,8 @@
 
 > [해결됨][PR #46] 2026-04-29 — `roadmap-prompts.ts` Ⅲ-4 정책 강화 — `subjects[*].details: 2~5개 구체 활동을 줄바꿈(\n)으로 구분. 명사구·머리기호 부착 금지·1줄 형식 금지. 항목 1개뿐인 단순 과목은 단일 문자열 허용`. few-shot 마지막 과목을 5개 항목 상한 경계값으로 강화. JSON 스키마 부분도 `"string (2~5개 항목. 줄바꿈\n으로 구분)"` 로 정합. Zod `courseSubjectSchema.details` refine 추가 — split 후 1~5 항목 (1 허용으로 legacy DB fallback, 6+ 차단으로 줄글 방지). DRAFT `editableCourseSubjectSchema` 미변경 → 사용자 편집 중 빈 details/임시 1줄 보존. 결과 페이지 렌더(`splitByUnit` + `<ul>`)·HWPX 매퍼는 R3 PR #43 에서 선처리되어 변경 불요. 회귀 테스트 4건 (6항목 실패·1·3항목 통과·공백 실패).
 
+> [해결됨][PR R9] 2026-05-01 — #17(PBL) 적용. `TabPBLOps.tsx` Ⅳ-3-다 의 `training_contents[].detail` 셀에 `splitByUnit` + `whitespace-pre-wrap` 적용 (TabTraining Ⅲ-4 동일 패턴). 메타 표의 `training_goals[]`·`ai_tools[]` 도 `bulletize` 머리기호 줄바꿈으로 분리. Ⅳ-3-마 `detailed_training_content[]` 도 `bulletize` 적용 (강사별 세부 훈련 내용 명확화).
+
 ### #18 — Ⅲ-4 교과목 줄글 표시
 
 - **페이지**: AI훈련로드맵 결과 페이지
@@ -157,6 +161,8 @@
 - **기대**: 교과목을 **표 형태**로 표시
 
 > [해결됨][PR #43] 2026-04-29 — `TabTraining.tsx` Ⅲ-4 교과목 `<ul>` → `FormTable` 3열 (교과목명 / 세부 내용 / 훈련시간). #17 의 결과 페이지 측 (details 머리기호 분리) 도 `splitByUnit` + `<ul><li>` 로 함께 처리. LLM 프롬프트 측 `subjects[].details` 다항목 출력은 R5 PR4 위임 (R5 prompt 메모 갱신).
+
+> [해결됨][PR R9] 2026-05-01 — #18(PBL) 적용. `TabPBLOps.tsx` Ⅳ-3-나/다/라/마 4 SectionCard 가 카운트("총 N건/N명") 또는 단일 줄 표시만 하던 것 → `FormTable` 표 형태로 일괄 변환. Ⅳ-3-다 의 양식 15x10 거대 표는 메타 mini-table + training_contents 표로 분리. Ⅳ-3-나 는 instructors+trainees 를 한 표에 병합 (구분 컬럼 합성). 카운트 줄글 회귀 negative assertion (`expect(text).not.toMatch(/총 \d+ 건|명/)`) 추가하여 회귀 가드.
 
 ### #19 — 결과 직접 수정 불가
 
