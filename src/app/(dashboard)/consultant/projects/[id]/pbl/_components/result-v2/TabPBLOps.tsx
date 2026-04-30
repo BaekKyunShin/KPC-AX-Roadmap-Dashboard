@@ -2,7 +2,14 @@
 
 import { Sparkles } from 'lucide-react';
 
+import { FormTable, type FormTableRow } from '@/components/forms/FormTable';
 import { SectionCard } from '@/components/result/SectionCard';
+import { bulletize, splitByUnit } from '@/lib/utils/list-format';
+import type {
+  PBLInstructor,
+  PBLSubjectProfile,
+  PBLTrainee,
+} from '@/lib/services/pbl/pbl-types';
 
 import type { TabPBLCommonProps } from './types';
 
@@ -79,81 +86,237 @@ export function TabPBLOps({ version }: TabPBLCommonProps) {
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-가 훈련과정 개요 */}
+      {/* Ⅳ-3-가 훈련과정 개요 (P-18 양식 2x2 mini-table) */}
       <SectionCard
         title="Ⅳ-3-가. 훈련과정 개요"
         description="과정명 · 훈련기간 (LLM 생성)"
       >
         {hasCourseOverview ? (
-          <p className="text-sm">
-            {ops?.training_plan.overview.course_name}{' '}
-            <span className="text-xs text-muted-foreground">
-              ({ops?.training_plan.overview.training_period?.start} ~{' '}
-              {ops?.training_plan.overview.training_period?.end})
-            </span>
-          </p>
+          <FormTable
+            caption="훈련과정 개요"
+            bodyRows={[
+              {
+                cells: [
+                  { content: '과정명', header: true, className: 'w-[160px]' },
+                  {
+                    content: ops?.training_plan.overview.course_name || '-',
+                    align: 'left',
+                  },
+                ],
+              },
+              {
+                cells: [
+                  { content: '훈련기간', header: true },
+                  {
+                    content: formatTrainingPeriod(
+                      ops?.training_plan.overview.training_period,
+                    ),
+                    align: 'left',
+                  },
+                ],
+              },
+            ]}
+          />
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-가 훈련과정 개요" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-나 학습그룹 구성 */}
+      {/* Ⅳ-3-나 학습그룹 구성 (P-19 양식 6 컬럼 — instructors + trainees 병합) */}
       <SectionCard
         title="Ⅳ-3-나. 학습그룹 구성"
         description="강사(외부/내부) + 훈련생 명단 (LLM 생성)"
       >
         {hasLearningGroup ? (
-          <div className="space-y-2 text-sm">
-            <p className="text-xs text-muted-foreground">
-              강사 {ops?.training_plan.learning_group.instructors.length ?? 0} 명 ·
-              훈련생 {ops?.training_plan.learning_group.trainees.length ?? 0} 명
-            </p>
-          </div>
+          <FormTable
+            caption="학습그룹 구성"
+            headerRows={[
+              {
+                cells: [
+                  { content: '구분', header: true, className: 'w-[100px]' },
+                  { content: '유형', header: true, className: 'w-[80px]' },
+                  { content: '역할', header: true, className: 'w-[80px]' },
+                  { content: '소속', header: true },
+                  { content: '직위', header: true, className: 'w-[140px]' },
+                  { content: '성명', header: true, className: 'w-[120px]' },
+                ],
+              },
+            ]}
+            bodyRows={buildLearningGroupRows(
+              ops?.training_plan.learning_group.instructors ?? [],
+              ops?.training_plan.learning_group.trainees ?? [],
+            )}
+          />
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-나 학습그룹 구성" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-다 훈련 교과목 프로파일 */}
+      {/* Ⅳ-3-다 훈련 교과목 프로파일 (P-20 양식 15x10 — 메타 표 + training_contents 표 분리) */}
       <SectionCard
         title="Ⅳ-3-다. 훈련 교과목 프로파일"
         description="과정명 · 전체 훈련시간 · 훈련목표 · AI 도구 · 교과목 (LLM 생성)"
       >
         {hasSubjectProfile ? (
-          <p className="text-sm">
-            {ops?.training_plan.subject_profile.course_name}{' '}
-            <span className="text-xs text-muted-foreground">
-              (총 {ops?.training_plan.subject_profile.total_hours ?? 0}시간)
-            </span>
-          </p>
+          <div className="space-y-4">
+            <SubjectProfileMetaTable
+              profile={ops!.training_plan.subject_profile}
+            />
+            {(ops?.training_plan.subject_profile.training_contents.length ??
+              0) > 0 ? (
+              <FormTable
+                caption="훈련 교과목 (단원별)"
+                headerRows={[
+                  {
+                    cells: [
+                      {
+                        content: '업무(단원)명',
+                        header: true,
+                        className: 'w-[200px]',
+                      },
+                      { content: '세부 내용', header: true },
+                      {
+                        content: '훈련시간(H)',
+                        header: true,
+                        className: 'w-[100px]',
+                      },
+                      {
+                        content: '외부 강사 (H)',
+                        header: true,
+                        className: 'w-[100px]',
+                      },
+                      {
+                        content: '내부 강사 (H)',
+                        header: true,
+                        className: 'w-[100px]',
+                      },
+                    ],
+                  },
+                ]}
+                bodyRows={(
+                  ops?.training_plan.subject_profile.training_contents ?? []
+                ).map((c) => ({
+                  cells: [
+                    { content: c.unit_name || '-', align: 'left' },
+                    {
+                      content: (
+                        <span className="whitespace-pre-wrap text-sm">
+                          {splitByUnit(c.detail) || '-'}
+                        </span>
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content:
+                        c.training_hours != null
+                          ? String(c.training_hours)
+                          : '-',
+                      align: 'center',
+                    },
+                    {
+                      content:
+                        c.instructor_hours?.external != null
+                          ? String(c.instructor_hours.external)
+                          : '-',
+                      align: 'center',
+                    },
+                    {
+                      content:
+                        c.instructor_hours?.internal != null
+                          ? String(c.instructor_hours.internal)
+                          : '-',
+                      align: 'center',
+                    },
+                  ],
+                }))}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                교과목 행이 아직 입력되지 않았습니다.
+              </p>
+            )}
+          </div>
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-다 훈련 교과목 프로파일" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-라 시설·장비 */}
+      {/* Ⅳ-3-라 시설·장비 (P-21 양식 5 컬럼) */}
       <SectionCard
         title="Ⅳ-3-라. 시설·장비"
         description="시설 · 장비 목록 (LLM 생성)"
       >
         {hasFacilities ? (
-          <p className="text-sm text-muted-foreground">
-            총 {ops?.training_plan.facilities.length ?? 0} 건
-          </p>
+          <FormTable
+            caption="시설·장비 목록"
+            headerRows={[
+              {
+                cells: [
+                  { content: 'No', header: true, className: 'w-[60px]' },
+                  { content: '구분', header: true, className: 'w-[100px]' },
+                  { content: '명칭', header: true, className: 'w-[200px]' },
+                  { content: '규격', header: true },
+                  { content: '위치', header: true, className: 'w-[180px]' },
+                ],
+              },
+            ]}
+            bodyRows={(ops?.training_plan.facilities ?? []).map((f) => ({
+              cells: [
+                { content: String(f.seq ?? '-'), align: 'center' },
+                { content: f.category || '-', align: 'center' },
+                { content: f.name || '-', align: 'left' },
+                { content: f.spec || '-', align: 'left' },
+                { content: f.location || '-', align: 'left' },
+              ],
+            }))}
+          />
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-라 시설·장비" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-마 훈련강사 */}
+      {/* Ⅳ-3-마 훈련강사 (P-22 양식 5 컬럼) */}
       <SectionCard
         title="Ⅳ-3-마. 훈련강사"
         description="강사별 경력 · 담당 교과 (LLM 생성)"
       >
         {hasTrainingInstructors ? (
-          <p className="text-sm text-muted-foreground">
-            총 {ops?.training_plan.training_instructors.length ?? 0} 명
-          </p>
+          <FormTable
+            caption="훈련강사 명단"
+            headerRows={[
+              {
+                cells: [
+                  { content: '성명', header: true, className: 'w-[120px]' },
+                  { content: '구분', header: true, className: 'w-[100px]' },
+                  { content: '경력(년)', header: true, className: 'w-[100px]' },
+                  { content: '담당 업무', header: true, className: 'w-[200px]' },
+                  { content: '세부 훈련 내용', header: true },
+                ],
+              },
+            ]}
+            bodyRows={(ops?.training_plan.training_instructors ?? []).map(
+              (i) => ({
+                cells: [
+                  { content: i.name || '-', align: 'left' },
+                  { content: i.internal_external || '-', align: 'center' },
+                  {
+                    content:
+                      i.career_years != null ? `${i.career_years}년` : '-',
+                    align: 'center',
+                  },
+                  { content: i.work_name || '-', align: 'left' },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {bulletize(i.detailed_training_content) || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                ],
+              }),
+            )}
+          />
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-마 훈련강사" />
         )}
@@ -182,6 +345,128 @@ export function TabPBLOps({ version }: TabPBLCommonProps) {
       */}
     </div>
   );
+}
+
+/** P-20 메타 mini-table — 양식 15x10 의 상단 5 행 + 하단 합계 행 1 행. */
+function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
+  return (
+    <FormTable
+      caption="훈련 교과목 프로파일 — 메타"
+      bodyRows={[
+        {
+          cells: [
+            { content: '과정명', header: true, className: 'w-[160px]' },
+            { content: profile.course_name || '-', align: 'left' },
+          ],
+        },
+        {
+          cells: [
+            { content: '전체 훈련시간', header: true },
+            {
+              content:
+                profile.total_hours != null
+                  ? `${profile.total_hours} 시간`
+                  : '-',
+              align: 'left',
+            },
+          ],
+        },
+        {
+          cells: [
+            { content: '훈련 목표', header: true },
+            {
+              content: (
+                <span className="whitespace-pre-wrap text-sm">
+                  {bulletize(profile.training_goals) || '-'}
+                </span>
+              ),
+              align: 'left',
+            },
+          ],
+        },
+        {
+          cells: [
+            { content: '활용 AI 도구', header: true },
+            {
+              content: (
+                <span className="whitespace-pre-wrap text-sm">
+                  {bulletize(profile.ai_tools) || '-'}
+                </span>
+              ),
+              align: 'left',
+            },
+          ],
+        },
+        {
+          cells: [
+            { content: '활용 데이터', header: true },
+            { content: profile.utilized_data || '-', align: 'left' },
+          ],
+        },
+        {
+          cells: [
+            { content: '분석 방법', header: true },
+            { content: profile.analysis_method || '-', align: 'left' },
+          ],
+        },
+        {
+          cells: [
+            { content: '합계 (자동 산출)', header: true },
+            {
+              content:
+                profile.total_sum_hours != null
+                  ? `${profile.total_sum_hours} 시간`
+                  : '-',
+              align: 'left',
+            },
+          ],
+        },
+      ]}
+    />
+  );
+}
+
+/**
+ * P-19 학습그룹 표 행 합성. 양식 6 컬럼 (구분/유형/역할/소속/직위/성명) 정합.
+ *
+ * 구분 라벨은 Python `_placeholders_pbl.py:471/482` 와 정확히 동일한 문자열을
+ * 사용한다 (instructors → "훈련 강사" 공백 포함, trainees → "훈련생").
+ * trainees 의 유형 컬럼은 Python 측 default `"내부"` 와 동일.
+ */
+function buildLearningGroupRows(
+  instructors: PBLInstructor[],
+  trainees: PBLTrainee[],
+): FormTableRow[] {
+  const instructorRows: FormTableRow[] = instructors.map((i) => ({
+    cells: [
+      { content: '훈련 강사', align: 'center' },
+      { content: i.type || '-', align: 'center' },
+      { content: i.role || '-', align: 'center' },
+      { content: i.affiliation || '-', align: 'left' },
+      { content: i.position || '-', align: 'left' },
+      { content: i.name || '-', align: 'left' },
+    ],
+  }));
+  const traineeRows: FormTableRow[] = trainees.map((t) => ({
+    cells: [
+      { content: '훈련생', align: 'center' },
+      { content: '내부', align: 'center' },
+      { content: t.role || '-', align: 'center' },
+      { content: t.affiliation || '-', align: 'left' },
+      { content: t.position || '-', align: 'left' },
+      { content: t.name || '-', align: 'left' },
+    ],
+  }));
+  return [...instructorRows, ...traineeRows];
+}
+
+/** P-18 훈련기간 셀 — 양 끝값이 모두 있어야 범위 텍스트, 아니면 '-'. */
+function formatTrainingPeriod(
+  period: { start?: string; end?: string } | undefined,
+): string {
+  const start = period?.start?.trim();
+  const end = period?.end?.trim();
+  return start && end ? `${start} ~ ${end}` : '-';
 }
 
 /** Ⅳ-* LLM 결과가 없을 때 재생성 안내. */
