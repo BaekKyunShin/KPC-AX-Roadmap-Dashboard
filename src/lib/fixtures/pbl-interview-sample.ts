@@ -90,9 +90,23 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
     ],
   },
 
-  // ── Ⅱ-2 훈련환경 분석 ────────────────────────────────────────────────────
-  trainingEnv:
-    '훈련장소는 본사 3층 교육장(고정 PC 10대, 대형 디스플레이)과 생산 현장 품질검사 라인을 함께 사용. 대면 80% · 비대면 과제 20% 구성. 교육장에는 네트워크·빔프로젝터 양호, ChatGPT/Claude 접근 가능하나 사내 보안 규정상 고객사 데이터 반입은 익명화 후 사용. 검사용 카메라 2대, 측정기기는 부서 공유. 사내 강사는 품질관리 파트장(김품질)으로 현장 사례 연계 가능. 대상 인원 12명은 3~10년차 주임~과장으로 AI 도구는 들어봤으나 실 데이터 적용 경험 부족 → 기초 데이터 리터러시 + AI 도구 활용 실습 비중을 크게 설계.',
+  // ── Ⅱ-2 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 표 6 영역) ─────────────
+  trainingEnv: {
+    properTrainingHours: '회차당 4시간 × 10주 (총 40시간) / 평일 야간 집중 가능',
+    internalPlace: '본사 3층 교육장 (PC 10대, 대형 디스플레이) · 생산 현장 품질검사 라인 동시 활용',
+    externalPlace: '필요 시 외부 AI 교육센터 (고객사 데이터 익명화 실습 시)',
+    internalInstructors: [
+      {
+        position: '품질관리 파트장',
+        name: '김품질',
+        career: '품질 관리 12년 / 검사 표준화 PoC 3건',
+        personalTraits: '현장 사례 연계 우수, 데이터 분석 친화',
+      },
+    ],
+    externalInstructors: [],
+    aiInfrastructure:
+      '사내 PC 10대 (i7/16GB), 네트워크 양호, ChatGPT/Claude 접근 가능 · 검사용 카메라 2대 · 측정기기 부서 공유 · 사내 보안 규정상 고객사 데이터 익명화 필수',
+  },
 
   // ── Ⅱ-3-가 HRD이음 PDF (테스트 모드에서는 첨부 없음) ──────────────────────
   hrdReportPdf: null,
@@ -101,70 +115,34 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   courseNecessity:
     '기존 공개과정은 AI 일반론 중심이라 자사 품질 데이터·공정·용어에 직접 적용하기 어려움. 본 PBL 과정은 ① 자사 최근 6개월 불량 이미지 12만 장을 실습 데이터로 사용, ② 품질검사·공정개선·설비보전 3개 직무가 공통으로 겪는 불량 원인 추적 문제를 중심 과제로 설계, ③ ChatGPT/Claude/Notebook 도구로 데이터 분석·보고 자동화 루틴을 조직 내부에 내재화하는 것을 목표로 한다. 훈련 종료 후에도 수강생이 즉시 현장에 적용할 수 있도록 실제 업무 산출물(월간 품질 보고서 템플릿·불량 분석 Notebook) 을 결과물로 작성한다.',
 
-  // ── Ⅲ-1 수행활동 ─────────────────────────────────────────────────────────
+  // ── Ⅲ-1 수행활동 (R8 PBL-자체-03 — 평면 4행 배열 / 차수당 4 역할) ────────
   activities: [
-    {
-      round: 1,
-      date: '2026-04-20',
-      content: 'HRD 분석 및 훈련 목표 합의 · 양식 2 Ⅱ-1·2 입력 검토',
-      method: '대면 워크숍',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '',
-        internal_expert: '홍길동',
-        jurisdiction_manager: '',
-      },
-    },
-    {
-      round: 2,
-      date: '2026-04-27',
-      content: '훈련과정 설계 · 데이터 샘플(불량 이미지 12만 장) 준비 · 실습 환경 점검',
-      method: '비대면 회의 + 문서 공유',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '박AI전문가',
-        internal_expert: '홍길동',
-        jurisdiction_manager: '',
-      },
-    },
-    {
-      round: 3,
-      date: '2026-05-10',
-      content: '훈련 실시(1차) · 중간 점검 · 과제 피드백',
-      method: '대면 실습',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '박AI전문가',
-        internal_expert: '김품질',
-        jurisdiction_manager: '이주치',
-      },
-    },
+    // 1차 — 4 역할 행
+    { round: 1, role: 'PM' as const, personName: '김컨설턴트', date: '2026-04-20', content: 'HRD 분석 및 훈련 목표 합의 진행', method: '대면 워크숍' },
+    { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
+    { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '홍길동', date: '2026-04-20', content: '사내 현황 공유 및 양식 2 Ⅱ-1·2 입력 검토', method: '대면 워크숍' },
+    { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
+    // 2차
+    { round: 2, role: 'PM' as const, personName: '김컨설턴트', date: '2026-04-27', content: '훈련과정 설계 총괄', method: '비대면 회의 + 문서 공유' },
+    { round: 2, role: 'EXTERNAL_EXPERT' as const, personName: '박AI전문가', date: '2026-04-27', content: '데이터 샘플(불량 이미지 12만 장) 준비 및 실습 환경 점검', method: '비대면 회의' },
+    { round: 2, role: 'INTERNAL_EXPERT' as const, personName: '홍길동', date: '2026-04-27', content: '사내 데이터 접근 권한 확인', method: '비대면 회의' },
+    { round: 2, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
+    // 3차
+    { round: 3, role: 'PM' as const, personName: '김컨설턴트', date: '2026-05-10', content: '훈련 실시(1차) 진행 총괄 · 중간 점검', method: '대면 실습' },
+    { round: 3, role: 'EXTERNAL_EXPERT' as const, personName: '박AI전문가', date: '2026-05-10', content: '데이터 분석 실습 멘토링 · 과제 피드백', method: '대면 실습' },
+    { round: 3, role: 'INTERNAL_EXPERT' as const, personName: '김품질', date: '2026-05-10', content: '현장 사례 연계 · 검사 표준화 PoC 시연', method: '대면 실습' },
+    { round: 3, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '2026-05-10', content: 'HRD이음 결과 활용 점검 · 능력개발 관점 컨설팅', method: '서면 검토' },
   ],
 
-  // ── Ⅲ-2-가 문제 도출 ─────────────────────────────────────────────────────
-  problems: [
-    {
-      title: '품질 데이터가 엑셀·수기로 분산',
-      description:
-        '부서별·라인별 체크시트 포맷이 상이해 통합 분석이 어려움. 불량 유형 코드 체계는 있으나 담당자마다 해석 차이.',
-      impact:
-        '불량 원인 추적 리드타임 평균 3영업일. 고객사 반품 대응 지연으로 월 500만 원 추가 손실.',
-    },
-    {
-      title: 'AI 도구 활용 경험 부족',
-      description:
-        '현장 실무자가 ChatGPT·Notebook 을 업무에 직접 적용해 본 경험이 없음. 데이터 분석·시각화 기초가 약함.',
-      impact:
-        '외부 컨설팅 결과를 조직이 소화·확산하지 못함. AI 도입 시도가 파일럿 수준에서 멈춤.',
-    },
-    {
-      title: '부서 간 데이터 공유 규칙 미정',
-      description:
-        '생산·품질·공정개선 부서가 각자 저장소를 운영. 공통 분석을 위한 표준 스키마·익명화 절차가 없음.',
-      impact:
-        '동일 불량 원인을 반복 분석. 예측 모델 학습 데이터셋 구성에 2주 이상 소요.',
-    },
-  ],
+  // ── Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트) ──────────
+  problemDefinitionSheet: {
+    background:
+      '부서별·라인별 체크시트 포맷이 상이해 품질 데이터 통합 분석이 어렵고, AI 도입 시도가 파일럿 수준에서 멈춤. 부서 간 데이터 공유 규칙 미정.',
+    core: '품질 데이터의 표준화·통합·AI 활용 역량 부족으로 불량 원인 추적 리드타임이 길고 반복 분석이 발생.',
+    scope: '생산·품질·공정개선 부서의 체크시트 표준화, 데이터 통합 저장소 구축, AI 도구 활용 역량 확보.',
+    constraints:
+      '예산·일정상 ERP 전면 교체 불가. 현장 실무자의 AI 도구 활용 경험 부족. 부서 간 데이터 공유 규칙 미정.',
+  },
 
   // ── Ⅲ-2-나 문제 우선순위 ─────────────────────────────────────────────────
   priority: {

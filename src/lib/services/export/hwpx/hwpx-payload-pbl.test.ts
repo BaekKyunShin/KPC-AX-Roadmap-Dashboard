@@ -6,7 +6,7 @@ import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { Interview, Project } from '@/types/database';
 
-function makeProject(): Project {
+function makeProject(overrides?: Partial<Project>): Project {
   return {
     id: 'proj-1',
     company_name: '㈜테스트',
@@ -16,8 +16,19 @@ function makeProject(): Project {
     status: 'INTERVIEWED',
     track: 'PBL',
     is_test_mode: false,
+    contact_name: '담당자',
+    contact_email: 'contact@test.com',
+    contact_phone: '02-1234-5678',
+    company_address: '서울시 강남구',
+    // PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071)
+    business_reg_no: '999-99-99999',
+    industry_code: 'C26',
+    training_address: '서울시 강남구 테헤란로 100',
+    jurisdiction_branch: '한국산업인력공단 서울지역본부',
+    contact_position: '인사팀 과장',
     created_at: '2026-04-01',
     updated_at: '2026-04-15',
+    ...overrides,
   } as unknown as Project;
 }
 
@@ -237,6 +248,189 @@ describe('buildPBLHwpxPayload', () => {
     expect(payload.data.training_goals).toEqual(['기술문제 해결', '공정 최적화']);
   });
 
+  // PBL-자체-01 (R8) — Project 5컬럼 (마이그 071) + 기존 4필드 → P-02 18키 매핑
+  describe('PBL-자체-01: 신청서 자동표출 7필드 → P-02 18키 (R8)', () => {
+    it('project 5필드 (마이그 071) 가 P-02 매핑된다', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeInterview(),
+      });
+      expect(payload.data.business_registration_no).toBe('999-99-99999');
+      expect(payload.data.industry_code).toBe('C26');
+      expect(payload.data.industry_main).toBe('제조업');
+      expect(payload.data.training_address).toBe('서울시 강남구 테헤란로 100');
+      expect(payload.data.jurisdiction_office).toBe('한국산업인력공단 서울지역본부');
+      expect(payload.data.contact_position).toBe('인사팀 과장');
+    });
+
+    it('project 의 기존 4필드 (이름·이메일·연락처·주소) 도 P-02 매핑된다', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeInterview(),
+      });
+      expect(payload.data.contact_name).toBe('담당자');
+      expect(payload.data.contact_email).toBe('contact@test.com');
+      expect(payload.data.contact_phone).toBe('02-1234-5678');
+      expect(payload.data.address).toBe('서울시 강남구');
+    });
+
+    it('project 5필드가 NULL 이어도 빈 문자열로 안전 처리된다', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject({
+          business_reg_no: undefined,
+          industry_code: undefined,
+          training_address: undefined,
+          jurisdiction_branch: undefined,
+          contact_position: undefined,
+        }),
+        interview: makeInterview(),
+      });
+      expect(payload.data.business_registration_no).toBe('');
+      expect(payload.data.industry_code).toBe('');
+      expect(payload.data.training_address).toBe('');
+      expect(payload.data.jurisdiction_office).toBe('');
+      expect(payload.data.contact_position).toBe('');
+    });
+
+    it('인터뷰 V1 의 courseOverview 와 충돌 시 project 가 우선 (양식 의도: 신청서 자동표출 = 수정 불가)', () => {
+      // V1 인터뷰는 courseOverview 안에 business_registration_no='123-45-67890' 보유.
+      // project 의 신규 컬럼은 '999-99-99999' — project override 가 인터뷰값을 덮어써야 함.
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeInterview(),
+      });
+      // project 의 999-99-99999 가 최종 출력 (인터뷰 123-45-67890 무시)
+      expect(payload.data.business_registration_no).toBe('999-99-99999');
+    });
+  });
+
+  // R8 PBL-자체-02 — buildTrainingEnvP05 6 셀 매핑 분기 cover
+  describe('PBL-자체-02: P-05 6 셀 매핑 (R8)', () => {
+    function makeV2WithTrainingEnv(env: unknown): Interview {
+      const v2 = (makeV2Interview() as unknown as { pbl_data: Record<string, unknown> })
+        .pbl_data;
+      return {
+        ...makeV2Interview(),
+        pbl_data: { ...v2, trainingEnv: env },
+      } as unknown as Interview;
+    }
+
+    it('trainingEnv 누락 시 6 셀 모두 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv(undefined),
+      });
+      expect(payload.data.training_env_internal_status).toBe('');
+      expect(payload.data.training_env_external_status).toBe('');
+      expect(payload.data.training_env_internal_capability).toBe('');
+      expect(payload.data.training_env_external_capability).toBe('');
+      expect(payload.data.training_env_internal_facility).toBe('');
+      expect(payload.data.training_env_external_facility).toBe('');
+    });
+
+    it('trainingEnv 6 영역 모두 채움 시 6 셀 매핑', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '회차당 4시간',
+          internalPlace: '본사 교육장',
+          externalPlace: '외부 AI센터',
+          internalInstructors: [
+            { position: '팀장', name: '김품질', career: '12년', personalTraits: '데이터 친화' },
+          ],
+          externalInstructors: [
+            { position: '교수', name: '박AI', career: '20년', personalTraits: 'NLP 전문' },
+          ],
+          aiInfrastructure: 'PC 30대',
+        }),
+      });
+      expect(payload.data.training_env_internal_status).toContain('훈련시간');
+      expect(payload.data.training_env_internal_status).toContain('본사 교육장');
+      expect(payload.data.training_env_external_status).toBe('외부 AI센터');
+      expect(payload.data.training_env_internal_capability).toContain('팀장');
+      expect(payload.data.training_env_internal_capability).toContain('김품질');
+      expect(payload.data.training_env_external_capability).toContain('박AI');
+      expect(payload.data.training_env_internal_facility).toBe('PC 30대');
+      expect(payload.data.training_env_external_facility).toBe('');
+    });
+
+    it('trainingEnv 빈 객체 (모든 필드 default) 시 6 셀 모두 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: '',
+        }),
+      });
+      expect(payload.data.training_env_internal_status).toBe('');
+      expect(payload.data.training_env_external_status).toBe('');
+      expect(payload.data.training_env_internal_capability).toBe('');
+      expect(payload.data.training_env_external_capability).toBe('');
+      expect(payload.data.training_env_internal_facility).toBe('');
+    });
+  });
+
+  // R8 PBL-자체-05 — outcome_analysis 4 키 매핑 분기 cover
+  describe('PBL-자체-05: Ⅴ. outcome_analysis 4 키 매핑 (R8)', () => {
+    it('outcome_analysis 부재 시 4 키 모두 빈 문자열', () => {
+      const pblNoOutcome = makePBL({
+        pbl_content: {
+          ...((makePBL().pbl_content as unknown) as Record<string, unknown>),
+          outcome_analysis: undefined,
+        } as unknown as PBLContent,
+      });
+      const payload = buildPBLHwpxPayload({
+        pbl: pblNoOutcome,
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.quantitative_metrics).toBe('');
+      expect(payload.data.qualitative_metrics).toBe('');
+      expect(payload.data.internalization_plan).toBe('');
+      expect(payload.data.dissemination_plan).toBe('');
+    });
+
+    it('outcome_analysis 채움 시 4 키 매핑', () => {
+      const baseContent = (makePBL().pbl_content as unknown) as Record<string, unknown>;
+      const pblWithOutcome = makePBL({
+        pbl_content: {
+          ...baseContent,
+          outcome_analysis: {
+            outcome_metrics: {
+              selected_goals: ['기술문제 해결'],
+              quantitative: '불량률 10% 감소',
+              qualitative: '협업 만족도 향상',
+            },
+            diffusion_strategy: {
+              internalization: '매뉴얼 정비 + 멘토링',
+              company_wide_diffusion: '경영진 보고 + 타 부서 적용',
+            },
+          },
+        } as unknown as PBLContent,
+      });
+      const payload = buildPBLHwpxPayload({
+        pbl: pblWithOutcome,
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.quantitative_metrics).toBe('불량률 10% 감소');
+      expect(payload.data.qualitative_metrics).toBe('협업 만족도 향상');
+      expect(payload.data.internalization_plan).toBe('매뉴얼 정비 + 멘토링');
+      expect(payload.data.dissemination_plan).toBe('경영진 보고 + 타 부서 적용');
+    });
+  });
+
   it('Ⅱ. 훈련환경 — 사내/사외 배열과 사내강사', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL(),
@@ -339,27 +533,35 @@ describe('buildPBLHwpxPayload', () => {
             { dept: '영업팀', role: '팀장', description: '고객 응대' },
           ],
         },
-        trainingEnv: '사내 강의실 + 외부 클라우드',
+        // R8 PBL-자체-02 — 정형 객체
+        trainingEnv: {
+          properTrainingHours: '40h',
+          internalPlace: '사내 강의실',
+          externalPlace: '외부 클라우드',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: '',
+        },
         hrdReportPdf: {
           fileName: 'hrd.pdf',
           url: 'https://x/hrd.pdf',
           size: 1024,
         },
         courseNecessity: 'AI 도입 필요성 본문',
-        // PBLTasks
+        // PBLTasks (R8 PBL-자체-03 — 평면 4행 배열)
         activities: [
-          {
-            round: 1,
-            date: '26/04/10',
-            content: '킥오프',
-            method: '대면',
-            participants: 'PM 홍길동, 외부전문가 김전문',
-          },
+          { round: 1, role: 'PM', personName: '홍길동', date: '26/04/10', content: '킥오프', method: '대면' },
+          { round: 1, role: 'EXTERNAL_EXPERT', personName: '김전문', date: '26/04/10', content: '전문가 자문', method: '대면' },
+          { round: 1, role: 'INTERNAL_EXPERT', personName: '박관리', date: '26/04/10', content: '내부 공유', method: '대면' },
+          { round: 1, role: 'JURISDICTION_MANAGER', personName: '이주치', date: '26/04/10', content: 'HRD 점검', method: '서면' },
         ],
-        problems: [
-          { title: '문제1', description: '설명1', impact: '영향1' },
-          { title: '문제2', description: '설명2', impact: '영향2' },
-        ],
+        // R8 PBL-자체-04 — 4 정형 항목 단일 세트
+        problemDefinitionSheet: {
+          background: '문제 발생 배경',
+          core: '핵심 문제',
+          scope: '문제 범위',
+          constraints: '제약 조건',
+        },
         priority: {
           items: [
             { problem: '문제1', score: 5, rank: 1 },
@@ -425,12 +627,26 @@ describe('buildPBLHwpxPayload', () => {
     });
     const activities = payload.data.activities as Array<{
       round: number;
-      participants: string;
+      role: string;
+      person_name: string;
     }>;
-    expect(activities).toHaveLength(1);
-    expect(activities[0].participants).toBe('PM 홍길동, 외부전문가 김전문');
-    const problems = payload.data.problems as Array<{ title: string }>;
-    expect(problems).toHaveLength(2);
+    // R8 PBL-자체-03 — 평면 4행 배열 (1차 × 4 역할)
+    expect(activities).toHaveLength(4);
+    expect(activities[0].role).toBe('PM');
+    expect(activities[0].person_name).toBe('홍길동');
+    expect(activities[1].role).toBe('EXTERNAL_EXPERT');
+    expect(activities[1].person_name).toBe('김전문');
+    // R8 PBL-자체-04 — problems 배열 폐기, problem_definition_sheet 단일 객체
+    const problemSheet = payload.data.problem_definition_sheet as {
+      background: string;
+      core: string;
+      scope: string;
+      constraints: string;
+    };
+    expect(problemSheet.core).toBe('핵심 문제');
+    expect(problemSheet.background).toBe('문제 발생 배경');
+    expect(problemSheet.scope).toBe('문제 범위');
+    expect(problemSheet.constraints).toBe('제약 조건');
     const priorities = payload.data.priorities as Array<{ rank: number; score: number }>;
     expect(priorities[0].rank).toBe(1);
     expect(priorities[0].score).toBe(5);

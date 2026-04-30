@@ -182,26 +182,29 @@ function validPBLV2(): PBLInterviewStrict {
       orgTree: [{ id: 'root', name: '대표이사', children: [] }],
       mainWork: [{ dept: '생산', role: '품질검사', description: '출하 전 품질검사' }],
     },
-    trainingEnv: '사내 교육장 보유',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '사내 교육장 보유',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '',
+    },
     hrdReportPdf: { fileName: 'pbl.pdf', url: 'p/pbl.pdf', size: 2048 },
     courseNecessity: 'AI 도입 필요',
     activities: [
-      {
-        round: 1,
-        date: '2026-05-15',
-        content: '1차',
-        method: '대면',
-        participants: {
-          pm: '홍길동',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        },
-      },
+      // R8 PBL-자체-03 — 평면 4행 배열
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-15', content: '1차', method: '대면' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
     ],
-    problems: [
-      { title: '품질 편차', description: '검사자별 편차', impact: '클레임 증가' },
-    ],
+    problemDefinitionSheet: {
+      background: '검사자별 편차로 클레임 증가.',
+      core: '품질 편차 — 육안 검사 의존',
+      scope: '생산·품질 부서',
+      constraints: '예산·일정 한계',
+    },
     priority: { items: [{ problem: '품질 편차', score: 5, rank: 1 }], method: 'AHP' },
     target: {
       name: '품질검사 자동화',

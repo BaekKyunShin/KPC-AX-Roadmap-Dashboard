@@ -135,19 +135,26 @@ function validPBLInterview() {
     businessIssues: '품질 편차',
     companyIssues: '품질 편차 심각',
     organization: { orgTree: [], mainWork: [] },
-    trainingEnv: '현장 실습실 보유',
+    // R8 PBL-자체-02 — 정형 객체
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '현장 실습실 보유',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '',
+    },
     hrdReportPdf: null,
     courseNecessity: 'AI 역량 내재화 필요',
+    // R8 PBL-자체-03 — 평면 4행 배열
     activities: [
-      {
-        round: 1,
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-        participants: '홍길동',
-      },
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
     ],
-    problems: [{ title: '문제1', description: '설명', impact: '임팩트' }],
+    // R8 PBL-자체-04 — 4 정형 항목
+    problemDefinitionSheet: { background: '문제1', core: '핵심', scope: '범위', constraints: '제약' },
     priority: {
       items: [{ problem: '문제1', score: 5, rank: 1 }],
       method: 'AHP 설문 평균',
@@ -290,6 +297,80 @@ describe('editPBLV2', () => {
     expect(pblData.companyIssues).toBe('신규 이슈');
     // 기존 필드 보존
     expect(pblData.companyName).toBe('ACME');
+  });
+
+  // R8 분기 cover — trainingEnv 정형 객체 patch 병합 (PBL-자체-02)
+  it('trainingEnv 정형 patch — 기존 객체와 병합 (PBL-자체-02)', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: {
+        id: 'interview-1',
+        pbl_data: {
+          trainingEnv: {
+            properTrainingHours: '4시간',
+            internalPlace: '본사',
+            externalPlace: '',
+            internalInstructors: [],
+            externalInstructors: [],
+            aiInfrastructure: 'PC 30대',
+          },
+        },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    // properTrainingHours 만 patch — 나머지는 기존 값 보존
+    const r = await editPBLV2(VERSION_ID, {
+      trainingEnv: { properTrainingHours: '8시간' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const trainingEnv = pblData.trainingEnv as Record<string, unknown>;
+    expect(trainingEnv.properTrainingHours).toBe('8시간');
+    // 기존 값 보존
+    expect(trainingEnv.internalPlace).toBe('본사');
+    expect(trainingEnv.aiInfrastructure).toBe('PC 30대');
+  });
+
+  // R8 분기 cover — problemDefinitionSheet 정형 patch 병합 (PBL-자체-04)
+  it('problemDefinitionSheet patch — 기존 시트와 부분 병합 (PBL-자체-04)', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: {
+        id: 'interview-1',
+        pbl_data: {
+          problemDefinitionSheet: {
+            background: '기존 배경',
+            core: '기존 핵심',
+            scope: '기존 범위',
+            constraints: '기존 제약',
+          },
+        },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    // core 만 patch
+    const r = await editPBLV2(VERSION_ID, {
+      problemDefinitionSheet: { core: '신규 핵심' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const sheet = pblData.problemDefinitionSheet as Record<string, unknown>;
+    expect(sheet.core).toBe('신규 핵심');
+    expect(sheet.background).toBe('기존 배경');
+    expect(sheet.scope).toBe('기존 범위');
+    expect(sheet.constraints).toBe('기존 제약');
   });
 
   it('Ⅰ overview patch — 루트 필드로 병합', async () => {
@@ -489,7 +570,8 @@ describe('fetchPBLPageDataV2', () => {
       'https://signed.example/hrd.pdf',
     );
     // Ⅲ flat
-    expect(r.data.interview.activities).toHaveLength(1);
+    // R8 PBL-자체-03 — 평면 4행 배열로 변경됨 (1차 × 4 역할)
+    expect(r.data.interview.activities).toHaveLength(4);
     expect(r.data.interview.priority?.method).toBe('AHP 설문 평균');
   });
 

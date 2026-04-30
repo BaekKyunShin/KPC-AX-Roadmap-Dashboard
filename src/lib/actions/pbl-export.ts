@@ -94,8 +94,27 @@ function buildRequirementsFromV2(
   const env = v2.trainingEnv;
   const target = v2.target;
   if (!env && !target) return undefined;
+  // R8 PBL-자체-02 — env 가 정형 객체. 6 영역을 줄바꿈으로 결합해 단일 문자열로 출력.
+  const envSummary = env
+    ? [
+        env.properTrainingHours && `[적정 훈련시간] ${env.properTrainingHours}`,
+        env.internalPlace && `[훈련장소-사내] ${env.internalPlace}`,
+        env.externalPlace && `[훈련장소-사외] ${env.externalPlace}`,
+        env.aiInfrastructure && `[AI 인프라] ${env.aiInfrastructure}`,
+        env.internalInstructors.length > 0 &&
+          `[사내강사] ${env.internalInstructors
+            .map((i) => `${i.position} ${i.name} (${i.career})`)
+            .join(' / ')}`,
+        env.externalInstructors.length > 0 &&
+          `[외부강사] ${env.externalInstructors
+            .map((i) => `${i.position} ${i.name} (${i.career})`)
+            .join(' / ')}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : undefined;
   return {
-    trainingNeedsAnalysis: env || undefined,
+    trainingNeedsAnalysis: envSummary || undefined,
     selectionReason: target?.necessity || undefined,
     targetTaskDetails: target?.details?.map((d) => ({
       task_name: d.title ?? '',

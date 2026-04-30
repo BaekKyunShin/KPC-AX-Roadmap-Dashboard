@@ -46,6 +46,78 @@ function safeString(value: unknown): string {
   return String(value);
 }
 
+/** R8 PBL-자체-05 — outcome_analysis → P-25/P-26 4 키 매핑.
+ *  단일 옵셔널 chain 분기 4 개 → 헬퍼 1 개 분기로 단순화. */
+function buildOutcomeAnalysisP25(pblContent: PBLContent | null): Record<string, string> {
+  const oa = pblContent?.outcome_analysis;
+  return {
+    quantitative_metrics: oa?.outcome_metrics?.quantitative ?? '',
+    qualitative_metrics: oa?.outcome_metrics?.qualitative ?? '',
+    internalization_plan: oa?.diffusion_strategy?.internalization ?? '',
+    dissemination_plan: oa?.diffusion_strategy?.company_wide_diffusion ?? '',
+  };
+}
+
+/** R8 PBL-자체-01 — Project 의 신청서 자동표출 7필드 → P-02 18키 override dict.
+ *  단순 ?? '' fallback 들을 한 헬퍼로 묶어 분기 수 축소. */
+function buildApplicationMetaP02(project: Project): Record<string, string> {
+  const fallback = (v: string | null | undefined): string => v ?? '';
+  return {
+    business_registration_no: fallback(project.business_reg_no),
+    industry_code: fallback(project.industry_code),
+    industry_main: fallback(project.industry),
+    address: fallback(project.company_address),
+    training_address: fallback(project.training_address),
+    jurisdiction_office: fallback(project.jurisdiction_branch),
+    contact_name: fallback(project.contact_name),
+    contact_position: fallback(project.contact_position),
+    contact_phone: fallback(project.contact_phone),
+    contact_email: fallback(project.contact_email),
+  };
+}
+
+/** R8 PBL-자체-02 — `trainingEnv` 정형 객체 → P-05 6 셀 매핑 dict.
+ *  V2 정본은 항상 객체. legacy string / null / undefined 는 빈 dict 로 안전 변환. */
+function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined): {
+  training_env_internal_status: string;
+  training_env_external_status: string;
+  training_env_internal_capability: string;
+  training_env_external_capability: string;
+  training_env_internal_facility: string;
+  training_env_external_facility: string;
+} {
+  if (!env || typeof env !== 'object') {
+    return {
+      training_env_internal_status: '',
+      training_env_external_status: '',
+      training_env_internal_capability: '',
+      training_env_external_capability: '',
+      training_env_internal_facility: '',
+      training_env_external_facility: '',
+    };
+  }
+  const dumpInstructors = (
+    list: typeof env.internalInstructors | undefined,
+  ): string =>
+    (list ?? [])
+      .map((i) =>
+        [i.position, i.name, i.career, i.personalTraits].filter(Boolean).join(' / '),
+      )
+      .filter(Boolean)
+      .join('\n');
+  const internalStatusParts: string[] = [];
+  if (env.properTrainingHours) internalStatusParts.push(`훈련시간: ${env.properTrainingHours}`);
+  if (env.internalPlace) internalStatusParts.push(`사내 장소: ${env.internalPlace}`);
+  return {
+    training_env_internal_status: internalStatusParts.join(' · '),
+    training_env_external_status: env.externalPlace ?? '',
+    training_env_internal_capability: dumpInstructors(env.internalInstructors),
+    training_env_external_capability: dumpInstructors(env.externalInstructors),
+    training_env_internal_facility: env.aiInfrastructure ?? '',
+    training_env_external_facility: '',
+  };
+}
+
 /**
  * pbl_data JSONB 가 V2 정본인지 V1 legacy 인지 판별.
  * V2: companyName 키 (PBLOverviewSchema 의 필수) 가 최상위에 존재.
@@ -133,13 +205,9 @@ function buildDataFromV2(
     company_issues: v2.companyIssues ?? '',
     // V2 organization { orgTree, mainWork[] } 통째 전달 — Python 측에서 flatten
     organization: v2.organization ?? { orgTree: [], mainWork: [] },
-    // V2 trainingEnv 자유서술 (V1 의 6 셀 분리는 fallback 으로 빈 문자열)
-    training_env_internal_status: '',
-    training_env_external_status: '',
-    training_env_internal_capability: '',
-    training_env_external_capability: '',
-    training_env_internal_facility: v2.trainingEnv ?? '',
-    training_env_external_facility: '',
+    // R8 PBL-자체-02 — V2 trainingEnv 정형 객체 → P-05 6 셀 매핑.
+    // 6 영역 데이터를 양식 6 셀 (사내/사외 × status/capability/facility) 로 재배열.
+    ...buildTrainingEnvP05(v2.trainingEnv),
     // V2 hrdReportPdf {fileName, url, ...} → URL 또는 fileName
     hrd_report_attachment: v2.hrdReportPdf
       ? v2.hrdReportPdf.url || v2.hrdReportPdf.fileName || ''
@@ -147,21 +215,29 @@ function buildDataFromV2(
     course_necessity: v2.courseNecessity ?? '',
 
     // ==================== Ⅲ. AI기반 훈련과제 도출 ====================
+    // R8 PBL-자체-03 — 평면 4행 배열. Python 측 _fill_pbl_performance_activities
+    // 가 round 별로 그룹핑해 양식 13×6 표의 차수×4 역할 구조로 채운다.
     activities: (v2.activities ?? []).map((a) => ({
       round: a.round,
+      role: a.role,
+      person_name: a.personName ?? '',
       date: a.date,
       content: a.content,
       method: a.method,
-      participants: a.participants,
     })),
     // V1 호환: 양식 13x6 표 채우기는 generate.py 의 _fill_pbl_performance_activities
     // 가 activities (V2) 우선, performance_activities (V1) fallback 으로 처리.
     performance_activities: [] as Array<Record<string, unknown>>,
-    problems: (v2.problems ?? []).map((p) => ({
-      title: p.title,
-      description: p.description,
-      impact: p.impact,
-    })),
+    // R8 PBL-자체-04 — 양식 5×2 "문제 정의서" 표 정합 (4 정형 라벨 단일 세트).
+    // generate.py 의 _fill_pbl_problems 가 양식 4행 (배경/핵심/범위/제약) 으로 채움.
+    problem_definition_sheet: {
+      background: v2.problemDefinitionSheet?.background ?? '',
+      core: v2.problemDefinitionSheet?.core ?? '',
+      scope: v2.problemDefinitionSheet?.scope ?? '',
+      constraints: v2.problemDefinitionSheet?.constraints ?? '',
+    },
+    // V1 fallback (hwpx-payload-pbl.test.ts 가 problems 키 의 존재를 검사하지 않음)
+    problems: [] as Array<Record<string, unknown>>,
     priorities: (v2.priority?.items ?? []).map((p) => ({
       problem: p.problem,
       score: p.score,
@@ -280,6 +356,9 @@ function buildDataFromV2(
     problem_core: '',
     problem_scope: '',
     problem_constraints: '',
+
+    // R8 PBL-자체-05 — Ⅴ. 성과분석 LLM 결과 (P-25 / P-26 cell_fill 매핑).
+    ...buildOutcomeAnalysisP25(pblContent),
   };
 }
 
@@ -532,6 +611,9 @@ function buildDataFromV1(
         performance_level: c.performance_level,
       }),
     ),
+
+    // R8 PBL-자체-05 — Ⅴ. 성과분석 LLM 결과 (V1 fallback 동일 처리).
+    ...buildOutcomeAnalysisP25(pblContent),
   };
 }
 
@@ -598,6 +680,11 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   } else {
     data = buildDataEmpty(pblContent, companyName, reportDate);
   }
+
+  // PBL 양식 Ⅰ. 신청서 자동표출 7필드 override (마이그 071 — PBL-자체-01)
+  // — 양식 안내문상 "신청서 기준으로 자동 불러옴" 영역. project 테이블이 단일
+  //   진실 원천이며 인터뷰 입력값과 충돌 시 project 가 우선.
+  Object.assign(data, buildApplicationMetaP02(project));
 
   // 표지·결과보고서 표지에 들어가는 company_name 은 항상 채움
   const finalCompanyName = (data.company_name as string) || companyName;

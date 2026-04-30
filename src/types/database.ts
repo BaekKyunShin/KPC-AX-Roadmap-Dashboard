@@ -85,6 +85,12 @@ export interface Project {
   contact_email: string;
   contact_phone?: string;
   company_address?: string;
+  // PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071)
+  business_reg_no?: string; // 사업장관리번호
+  industry_code?: string; // 업종 코드
+  training_address?: string; // 훈련 실시 주소
+  jurisdiction_branch?: string; // 관할 지부·지사
+  contact_position?: string; // 담당자 직위
   // 상태 관리
   status: ProjectStatus;
   assigned_consultant_id?: string;

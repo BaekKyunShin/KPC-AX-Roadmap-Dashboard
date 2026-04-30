@@ -20,7 +20,21 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
         { dept: '품질관리팀', role: '검사', description: '제품 출하 전 샘플 검사' },
       ],
     },
-    trainingEnv: '사내 교육장 보유, PC 20대 · AI 도구 접근 가능',
+    trainingEnv: {
+      properTrainingHours: '회차당 4시간 × 10주',
+      internalPlace: '사내 교육장 (PC 20대)',
+      externalPlace: '',
+      internalInstructors: [
+        {
+          position: '품질 파트장',
+          name: '김품질',
+          career: '12년',
+          personalTraits: '데이터 친화',
+        },
+      ],
+      externalInstructors: [],
+      aiInfrastructure: 'PC 20대 · AI 도구 접근 가능',
+    },
     hrdReportPdf: {
       fileName: 'hrd_consulting.pdf',
       url: 'https://example.com/hrd_consulting.pdf',

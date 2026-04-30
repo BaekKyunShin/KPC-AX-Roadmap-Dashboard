@@ -504,7 +504,14 @@ function validPBLCamelCase(): PBLInterviewStrict {
         { dept: '생산', role: '품질검사', description: '출하 전 품질검사' },
       ],
     },
-    trainingEnv: '사내 교육장 보유, AI 도구 가능',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '사내 교육장 보유',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: 'AI 도구 가능',
+    },
     hrdReportPdf: {
       fileName: 'pbl-hrd.pdf',
       url: 'projects/yyy/pbl-hrd.pdf',
@@ -514,26 +521,18 @@ function validPBLCamelCase(): PBLInterviewStrict {
 
     // Ⅲ AI기반 훈련과제 도출
     activities: [
-      {
-        round: 1,
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-        participants: {
-          pm: '홍길동',
-          external_expert: '',
-          internal_expert: '김철수',
-          jurisdiction_manager: '',
-        },
-      },
+      // R8 PBL-자체-03 — 평면 4행 배열
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '김철수', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
     ],
-    problems: [
-      {
-        title: '품질 편차',
-        description: '검사자별 편차 발생',
-        impact: '고객 클레임 증가',
-      },
-    ],
+    problemDefinitionSheet: {
+      background: '검사자별 편차 발생, 고객 클레임 증가.',
+      core: '품질 편차',
+      scope: '생산·품질 부서',
+      constraints: '예산·일정 한계',
+    },
     priority: {
       items: [{ problem: '품질 편차', score: 5, rank: 1 }],
       method: 'AHP',

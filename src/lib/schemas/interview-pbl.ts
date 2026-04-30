@@ -664,15 +664,48 @@ export const PBLHrdReportPdfSchema = z.object({
 });
 export type PBLHrdReportPdf = z.infer<typeof PBLHrdReportPdfSchema>;
 
+// -- Ⅱ-2 훈련환경 정형 표 (R8 PBL-자체-02) ---------------------------------
+// 양식 12×7 표는 6 영역으로 그룹핑:
+//   1. 적정 훈련시간 (텍스트)
+//   2. 훈련장소 — 사내 (텍스트)
+//   3. 훈련장소 — 사외 (텍스트)
+//   4. 사내강사 — 직위/이름/경력/인적특성 행 배열
+//   5. 외부강사 — 직위/이름/경력/인적특성 행 배열
+//   6. AI 인프라 (텍스트)
+//
+// HWPX P-05 6 셀 매핑:
+//   - internal_status   ← properTrainingHours + internalPlace 요약
+//   - external_status   ← externalPlace 요약
+//   - internal_capability ← internalInstructors dump
+//   - external_capability ← externalInstructors dump
+//   - internal_facility  ← aiInfrastructure (사내)
+//   - external_facility  ← (외부 인프라 — 현재는 빈 문자열 fallback)
+export const PBLInstructorRowSchema = z.object({
+  position: z.string().default(''), // 직위
+  name: z.string().default(''),     // 이름
+  career: z.string().default(''),   // 직무경력
+  personalTraits: z.string().default(''), // 인적특성
+});
+export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
+
+export const PBLTrainingEnvSchema = z.object({
+  properTrainingHours: z.string().default(''),    // 적정 훈련시간
+  internalPlace: z.string().default(''),          // 훈련장소 — 사내
+  externalPlace: z.string().default(''),          // 훈련장소 — 사외
+  internalInstructors: z.array(PBLInstructorRowSchema).default([]), // 사내강사
+  externalInstructors: z.array(PBLInstructorRowSchema).default([]), // 외부강사
+  aiInfrastructure: z.string().default(''),       // AI 인프라 (사내)
+});
+export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
+
 // -- Ⅱ 훈련 요구 분석 [인터뷰 + PDF 첨부] ----------------------------------
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
   companyIssues: z.string().min(1, '기업 경영 이슈(bullet 서술)를 입력하세요.'),
   // Ⅱ-1-나 조직도 + 주요 업무
   organization: PBLOrganizationSchema,
-  // Ⅱ-2 기업 훈련환경 분석 (표 + 박스 자유서술 — 세부 필드는 기존 snake_case
-  // trainingEnvironmentSchema 에서 다루고, 본 신규 스키마는 요약/자유서술로 저장)
-  trainingEnv: z.string().min(1, '훈련환경 분석 결과를 입력하세요.'),
+  // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
+  trainingEnv: PBLTrainingEnvSchema,
   // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null)
   hrdReportPdf: PBLHrdReportPdfSchema.nullable(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성
@@ -691,59 +724,97 @@ export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 //
 // 기존 DB JSONB 데이터 호환: z.preprocess 로 string 입력 시 PM 필드에 채워
 // object 로 정규화. 마이그레이션 SQL 불요.
-export const PBLActivityParticipantsSchema = z.object({
-  pm: z.string().default(''),
-  external_expert: z.string().default(''),
-  internal_expert: z.string().default(''),
-  jurisdiction_manager: z.string().default(''),
-});
-export type PBLActivityParticipants = z.infer<typeof PBLActivityParticipantsSchema>;
+// R8 PBL-자체-03 — PBLActivityParticipantsSchema 폐기 (옵션 B). 외부 참조 없음 확인.
 
-export const PBLActivityItemSchema = z.object({
+// R8 PBL-자체-03 — 기존 PBLActivityItem (차수당 1행 + participants 4 person dict)
+// 폐기 (옵션 B 평면 4행 배열로 전환). PBLActivityParticipantsSchema 는
+// 다른 코드(외부 참조 없음 확인) 가 import 하지 않으므로 함께 제거.
+
+// -- Ⅲ-1 평면 4행 배열 (R8 PBL-자체-03, 옵션 B) -----------------------------
+// 양식 13×6 = 차수당 4 역할 (PM/외부전문가/내부전문가/주치의) × 일자/내용/방법.
+// `PBLActivityItem` 은 차수당 1행이라 역할별 일자·내용·방법 분리 불가.
+// 평면 4행 배열은 한 행 = 하나의 (차수, 역할) 조합 → 양식 1:1 정합.
+//
+// `superRefine` 제약:
+//   - 같은 round 내에서 정확히 4 role 행이 있어야 한다 (양식 정형).
+//   - 빈 round 는 기본값 채움이 아니라 사용자가 차수 추가 버튼으로 명시 추가.
+export const PBL_ACTIVITY_ROLE = z.enum([
+  'PM',
+  'EXTERNAL_EXPERT',
+  'INTERNAL_EXPERT',
+  'JURISDICTION_MANAGER',
+]);
+export type PBLActivityRole = z.infer<typeof PBL_ACTIVITY_ROLE>;
+export const PBL_ACTIVITY_ROLES_ORDERED: ReadonlyArray<PBLActivityRole> = [
+  'PM',
+  'EXTERNAL_EXPERT',
+  'INTERNAL_EXPERT',
+  'JURISDICTION_MANAGER',
+];
+export const PBL_ACTIVITY_ROLE_LABEL: Record<PBLActivityRole, string> = {
+  PM: 'PM',
+  EXTERNAL_EXPERT: '외부전문가',
+  INTERNAL_EXPERT: '기업내부전문가',
+  JURISDICTION_MANAGER: '능력개발전담주치의',
+};
+
+export const PBLActivityRowSchema = z.object({
   round: z
     .number({ message: '차수는 숫자여야 합니다.' })
     .int({ message: '차수는 정수여야 합니다.' })
     .positive({ message: '차수는 1 이상이어야 합니다.' }),
-  date: z.string().min(1, '수행 일자를 입력하세요.'),
-  content: z.string().min(1, '수행 내용을 입력하세요.'),
-  method: z.string().min(1, '수행 방법을 입력하세요.'),
-  participants: z.preprocess(
-    (val) => {
-      // 기존 string 형 데이터 호환 (PR #5 Phase F-4 마이그레이션):
-      //   "PM 홍길동, 외부 김전문, 내부 박관리" 같은 자유서술 → PM 필드에 통째로 채움.
-      // null / undefined → 빈 object.
-      if (typeof val === 'string') {
-        return {
-          pm: val,
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        };
-      }
-      if (val == null) {
-        return {
-          pm: '',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        };
-      }
-      return val;
-    },
-    PBLActivityParticipantsSchema,
-  ),
+  role: PBL_ACTIVITY_ROLE,
+  personName: z.string().default(''), // 역할 담당자 성명
+  date: z.string().default(''),
+  content: z.string().default(''),
+  method: z.string().default(''),
 });
-export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
+export type PBLActivityRow = z.infer<typeof PBLActivityRowSchema>;
 
-// -- Ⅲ-2-가 문제 도출 행 -----------------------------------------------------
-// 양식 Ⅲ-2-가 문제 정의서는 "배경/핵심/범위/제약" 4필드 표 + 문제 목록.
-// 본 스키마는 문제 목록(반복 행) 을 `problems[]` 로 단순화해 저장한다.
-export const PBLProblemItemSchema = z.object({
-  title: z.string().min(1, '문제명을 입력하세요.'),
-  description: z.string().min(1, '문제 설명을 입력하세요.'),
-  impact: z.string().min(1, '영향(임팩트)을 입력하세요.'),
+export const PBLActivitiesSchema = z
+  .array(PBLActivityRowSchema)
+  .superRefine((rows, ctx) => {
+    if (rows.length === 0) return;
+    // round 별 그룹핑 → 각 round 마다 정확히 4 role 행이 있어야 한다.
+    const byRound = new Map<number, Set<PBLActivityRole>>();
+    rows.forEach((r) => {
+      const set = byRound.get(r.round) ?? new Set<PBLActivityRole>();
+      set.add(r.role);
+      byRound.set(r.round, set);
+    });
+    byRound.forEach((roleSet, round) => {
+      const missing = PBL_ACTIVITY_ROLES_ORDERED.filter((r) => !roleSet.has(r));
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${round}차의 ${missing
+            .map((r) => PBL_ACTIVITY_ROLE_LABEL[r])
+            .join('/')} 행이 누락되었습니다.`,
+          path: [],
+        });
+      }
+    });
+  });
+export type PBLActivities = z.infer<typeof PBLActivitiesSchema>;
+
+// -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
+// 양식 Ⅲ-2-가 의 5×2 "문제 정의서" 표 — 4 정형 항목 (구분/내용) 단일 세트.
+// 양식 라벨 (문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건) 1:1 정합.
+//
+// R8 변경 이력 — 기존 `problems[]` 동적 행 (PBLProblemItem {title, description,
+// impact}) 폐기. 양식 단일 세트와 의미 충돌 제거 + HWPX P-09 4행 라벨 매핑 깔끔.
+// 사용자 결정: 옵션 C (개발 단계라 기존 데이터 무시 — 마이그/리하이드레이션 없음).
+//
+// 이름 주의: V1 측에 이미 `PBLProblemDefinition` (wrapper {problem_definition,
+// problem_priorities}) 가 있어 충돌 회피 위해 V2 에서는 `PBLProblemDefinitionSheet`
+// 로 명명. 양식 표(시트) 단일 세트 의미.
+export const PBLProblemDefinitionSheetSchema = z.object({
+  background: z.string().default(''),  // 문제 배경
+  core: z.string().default(''),        // 핵심 문제
+  scope: z.string().default(''),       // 문제 범위
+  constraints: z.string().default(''), // 제약 조건
 });
-export type PBLProblemItem = z.infer<typeof PBLProblemItemSchema>;
+export type PBLProblemDefinitionSheet = z.infer<typeof PBLProblemDefinitionSheetSchema>;
 
 // -- Ⅲ-2-나 문제 우선순위 행 -----------------------------------------------
 export const PBLPriorityItemSchema = z.object({
@@ -819,12 +890,10 @@ export type PBLAiLevelAssessment = z.infer<typeof PBLAiLevelAssessmentSchema>;
 
 // -- Ⅲ AI기반 훈련과제 도출 [인터뷰] ---------------------------------------
 export const PBLTasksSchema = z.object({
-  // Ⅲ-1 수행활동
-  activities: z
-    .array(PBLActivityItemSchema)
-    .min(1, '수행활동 최소 1차수 이상을 입력하세요.'),
-  // Ⅲ-2-가 문제 도출
-  problems: z.array(PBLProblemItemSchema).min(1, '문제를 최소 1건 이상 입력하세요.'),
+  // Ⅲ-1 수행활동 (R8 PBL-자체-03 — 평면 4행 배열)
+  activities: PBLActivitiesSchema,
+  // Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트)
+  problemDefinitionSheet: PBLProblemDefinitionSheetSchema,
   // Ⅲ-2-나 문제 우선순위 결정
   priority: PBLPrioritySchema,
   // Ⅲ-3 훈련대상 업무 (가·나·다 통합)

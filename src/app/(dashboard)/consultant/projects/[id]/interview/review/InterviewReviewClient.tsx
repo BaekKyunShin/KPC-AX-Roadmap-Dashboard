@@ -313,13 +313,48 @@ function ReviewSectionPbl({
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅱ-2. 훈련 환경">
-        <PblOverviewRow
-          label="훈련 환경"
-          projectId={projectId}
-          field="trainingEnv"
-          value={data.trainingEnv ?? ''}
-          multiline
-        />
+        {/* R8 PBL-자체-02 — 정형 객체. 인라인 편집은 인터뷰 페이지에서 (검토는 read-only 요약). */}
+        {(() => {
+          const env = data.trainingEnv;
+          if (!env) {
+            return (
+              <p className="text-sm text-muted-foreground">
+                훈련 환경이 입력되지 않았습니다.
+              </p>
+            );
+          }
+          return (
+            <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+              <dt className="font-medium">적정 훈련시간</dt>
+              <dd className="whitespace-pre-wrap">{env.properTrainingHours || '-'}</dd>
+              <dt className="font-medium">훈련장소 (사내)</dt>
+              <dd className="whitespace-pre-wrap">{env.internalPlace || '-'}</dd>
+              <dt className="font-medium">훈련장소 (사외)</dt>
+              <dd className="whitespace-pre-wrap">{env.externalPlace || '-'}</dd>
+              <dt className="font-medium">AI 인프라</dt>
+              <dd className="whitespace-pre-wrap">{env.aiInfrastructure || '-'}</dd>
+              <dt className="font-medium">사내강사</dt>
+              <dd>
+                {env.internalInstructors.length === 0
+                  ? '-'
+                  : env.internalInstructors
+                      .map((i) => `${i.position} ${i.name}`.trim() || '(미입력)')
+                      .join(' / ')}
+              </dd>
+              <dt className="font-medium">외부강사</dt>
+              <dd>
+                {env.externalInstructors.length === 0
+                  ? '-'
+                  : env.externalInstructors
+                      .map((i) => `${i.position} ${i.name}`.trim() || '(미입력)')
+                      .join(' / ')}
+              </dd>
+            </dl>
+          );
+        })()}
+        <p className="mt-2 text-xs text-muted-foreground">
+          📝 6 영역 (시간·장소·강사·인프라) 의 세부 내용은 인터뷰 페이지에서 수정하세요.
+        </p>
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅱ-3. 교과목 필요성">
@@ -346,18 +381,37 @@ function ReviewSectionPbl({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-2. 문제 도출 (${(data.problems ?? []).length}건)`}>
-        {(data.problems ?? []).length > 0 ? (
-          <ul className="list-decimal space-y-2 pl-5 text-sm">
-            {(data.problems ?? []).map((p, i) => (
-              <li key={i}>
-                <strong>{p.title || '제목 미입력'}</strong> — {p.description || '-'}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">문제가 입력되지 않았습니다.</p>
-        )}
+      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서">
+        {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
+            모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}
+        {(() => {
+          const sheet = data.problemDefinitionSheet;
+          const allEmpty =
+            !sheet ||
+            ((sheet.background ?? '').trim() === '' &&
+              (sheet.core ?? '').trim() === '' &&
+              (sheet.scope ?? '').trim() === '' &&
+              (sheet.constraints ?? '').trim() === '');
+          if (allEmpty) {
+            return (
+              <p className="text-sm text-muted-foreground">
+                문제 정의서가 입력되지 않았습니다.
+              </p>
+            );
+          }
+          return (
+            <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+              <dt className="font-medium">문제 배경</dt>
+              <dd className="whitespace-pre-wrap">{sheet.background || '-'}</dd>
+              <dt className="font-medium">핵심 문제</dt>
+              <dd className="whitespace-pre-wrap">{sheet.core || '-'}</dd>
+              <dt className="font-medium">문제 범위</dt>
+              <dd className="whitespace-pre-wrap">{sheet.scope || '-'}</dd>
+              <dt className="font-medium">제약 조건</dt>
+              <dd className="whitespace-pre-wrap">{sheet.constraints || '-'}</dd>
+            </dl>
+          );
+        })()}
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준">

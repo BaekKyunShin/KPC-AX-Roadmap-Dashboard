@@ -795,8 +795,11 @@ def _generate_pbl(data: dict) -> bytes:
     _fill_pbl_facilities(tables, build_pbl_table_rows, data, idx=34)
     _fill_pbl_training_instructors(tables, build_pbl_table_rows, data, idx=35)
     _fill_pbl_course_evaluation(tables, build_pbl_table_rows, data, idx=36)
-    # Ⅴ-1, Ⅴ-2 표(idx=39, 40)는 사용자 요구사항에 따라 공란 유지
-    # (이전 `_fill_pbl_performance_metrics` / `_fill_pbl_dissemination` 호출 제거됨)
+    # R8 PBL-자체-05 — Ⅴ-1, Ⅴ-2 LLM 결과 채움 복구.
+    # payload 빌더가 outcome_analysis 4 키 (quantitative_metrics / qualitative_metrics
+    # / internalization_plan / dissemination_plan) 를 생성하면 양식 표 39·40 에 채움.
+    _fill_pbl_performance_metrics(tables, data, idx=39)
+    _fill_pbl_dissemination(tables, data, idx=40)
 
     # --- 8) 저장 ---
     with tempfile.NamedTemporaryFile(delete=True, suffix=".hwpx") as tmp:

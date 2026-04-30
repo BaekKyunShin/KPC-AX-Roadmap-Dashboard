@@ -107,9 +107,30 @@ async function requireConsultantPBLReportAccess(
 // 조회
 // ============================================================================
 
+/**
+ * PBL 양식 Ⅰ. 신청서 자동표출 메타 (마이그 071 5필드 + 기존 4필드)
+ * — 결과 페이지·HWPX 의 P-02 18키 매핑에 활용.
+ */
+export interface PBLProjectMeta {
+  companyName: string;
+  track: string;
+  status: string;
+  // 신청서 자동표출 7필드
+  industry?: string;
+  companyAddress?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  businessRegNo?: string;
+  industryCode?: string;
+  trainingAddress?: string;
+  jurisdictionBranch?: string;
+  contactPosition?: string;
+}
+
 export async function fetchPBLProjectInfo(
   projectId: string,
-): Promise<ActionResult<{ companyName: string; track: string; status: string }>> {
+): Promise<ActionResult<PBLProjectMeta>> {
   try {
     const auth = await requireAuth();
     if ('error' in auth) return { success: false, error: auth.error };
@@ -118,7 +139,9 @@ export async function fetchPBLProjectInfo(
 
     const { data: project } = await supabase
       .from('projects')
-      .select('company_name, track, status, assigned_consultant_id')
+      .select(
+        'company_name, track, status, assigned_consultant_id, industry, company_address, contact_name, contact_email, contact_phone, business_reg_no, industry_code, training_address, jurisdiction_branch, contact_position',
+      )
       .eq('id', projectId)
       .single();
 
@@ -138,6 +161,16 @@ export async function fetchPBLProjectInfo(
         companyName: project.company_name,
         track: project.track,
         status: project.status,
+        industry: project.industry ?? undefined,
+        companyAddress: project.company_address ?? undefined,
+        contactName: project.contact_name ?? undefined,
+        contactEmail: project.contact_email ?? undefined,
+        contactPhone: project.contact_phone ?? undefined,
+        businessRegNo: project.business_reg_no ?? undefined,
+        industryCode: project.industry_code ?? undefined,
+        trainingAddress: project.training_address ?? undefined,
+        jurisdictionBranch: project.jurisdiction_branch ?? undefined,
+        contactPosition: project.contact_position ?? undefined,
       },
     };
   } catch (error) {
@@ -733,7 +766,9 @@ function toPBLInterviewSnapshot(
 
   // Ⅲ 훈련과제 도출 — flat 그대로 전달
   if (interview.activities !== undefined) out.activities = interview.activities;
-  if (interview.problems !== undefined) out.problems = interview.problems;
+  // R8 PBL-자체-04 — problems[] 폐기, problemDefinitionSheet 단일 객체로 대체
+  if (interview.problemDefinitionSheet !== undefined)
+    out.problemDefinitionSheet = interview.problemDefinitionSheet;
   if (interview.priority !== undefined) out.priority = interview.priority;
   if (interview.target !== undefined) out.target = interview.target;
   if (interview.currentAiLevel !== undefined) out.currentAiLevel = interview.currentAiLevel;
@@ -799,7 +834,7 @@ export async function editPBLV2(
       patch.courseNecessity !== undefined;
     const hasTasks =
       patch.activities !== undefined ||
-      patch.problems !== undefined ||
+      patch.problemDefinitionSheet !== undefined ||
       patch.priority !== undefined ||
       patch.target !== undefined ||
       patch.currentAiLevel !== undefined ||
@@ -832,10 +867,62 @@ export async function editPBLV2(
       ...(patch.organization !== undefined
         ? { organization: patch.organization as PBLInterviewStrict['organization'] }
         : {}),
-      ...(patch.trainingEnv !== undefined ? { trainingEnv: patch.trainingEnv } : {}),
+      // R8 PBL-자체-02 — Partial<PBLTrainingEnv> 를 기존 객체와 병합
+      ...(patch.trainingEnv !== undefined
+        ? {
+            trainingEnv: {
+              properTrainingHours:
+                patch.trainingEnv.properTrainingHours ??
+                current.trainingEnv?.properTrainingHours ??
+                '',
+              internalPlace:
+                patch.trainingEnv.internalPlace ??
+                current.trainingEnv?.internalPlace ??
+                '',
+              externalPlace:
+                patch.trainingEnv.externalPlace ??
+                current.trainingEnv?.externalPlace ??
+                '',
+              internalInstructors:
+                patch.trainingEnv.internalInstructors ??
+                current.trainingEnv?.internalInstructors ??
+                [],
+              externalInstructors:
+                patch.trainingEnv.externalInstructors ??
+                current.trainingEnv?.externalInstructors ??
+                [],
+              aiInfrastructure:
+                patch.trainingEnv.aiInfrastructure ??
+                current.trainingEnv?.aiInfrastructure ??
+                '',
+            },
+          }
+        : {}),
       ...(patch.courseNecessity !== undefined ? { courseNecessity: patch.courseNecessity } : {}),
       ...(patch.activities !== undefined ? { activities: patch.activities } : {}),
-      ...(patch.problems !== undefined ? { problems: patch.problems } : {}),
+      // R8 PBL-자체-04 — Partial<PBLProblemDefinitionSheet> 를 기존 시트와 병합
+      ...(patch.problemDefinitionSheet !== undefined
+        ? {
+            problemDefinitionSheet: {
+              background:
+                patch.problemDefinitionSheet.background ??
+                current.problemDefinitionSheet?.background ??
+                '',
+              core:
+                patch.problemDefinitionSheet.core ??
+                current.problemDefinitionSheet?.core ??
+                '',
+              scope:
+                patch.problemDefinitionSheet.scope ??
+                current.problemDefinitionSheet?.scope ??
+                '',
+              constraints:
+                patch.problemDefinitionSheet.constraints ??
+                current.problemDefinitionSheet?.constraints ??
+                '',
+            },
+          }
+        : {}),
       ...(patch.priority !== undefined
         ? { priority: patch.priority as PBLInterviewStrict['priority'] }
         : {}),

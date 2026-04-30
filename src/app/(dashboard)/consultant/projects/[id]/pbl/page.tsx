@@ -46,6 +46,7 @@ export default async function PBLPage({
     <PBLResultPageClient
       projectId={id}
       companyName={projectInfoResult.data.companyName}
+      projectMeta={projectInfoResult.data}
       initialVersions={pageData.versions}
       initialSelected={pageData.selectedVersion}
       initialInterview={pageData.interview}

@@ -113,12 +113,19 @@ const VALID_PBL_DATA_V2 = {
   // Ⅱ 분석
   companyIssues: '경영 이슈 V2',
   organization: { orgTree: [], mainWork: [] },
-  trainingEnv: 'V2 훈련환경 분석 결과',
+  trainingEnv: {
+    properTrainingHours: 'V2 훈련환경 분석 결과',
+    internalPlace: '',
+    externalPlace: '',
+    internalInstructors: [],
+    externalInstructors: [],
+    aiInfrastructure: '',
+  },
   hrdReportPdf: null,
   courseNecessity: 'AI훈련 필요성 V2',
   // Ⅲ 과제 도출 (Ⅲ-1·Ⅲ-2 는 본 테스트 대상 외 — 단지 schema 통과를 위한 최소 fixture)
   activities: [],
-  problems: [],
+  problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
   priority: { items: [], method: 'AHP' },
   target: {
     name: '품질 검사 자동화',
@@ -151,11 +158,18 @@ const PARTIAL_PBL_DATA_V2 = {
   businessIssues: '',
   companyIssues: '',
   organization: { orgTree: [], mainWork: [] },
-  trainingEnv: '부분 환경',
+  trainingEnv: {
+    properTrainingHours: '',
+    internalPlace: '부분 환경',
+    externalPlace: '',
+    internalInstructors: [],
+    externalInstructors: [],
+    aiInfrastructure: '',
+  },
   hrdReportPdf: null,
   courseNecessity: '',
   activities: [],
-  problems: [],
+  problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
   priority: { items: [], method: '' },
   target: {
     name: '부분 업무',
@@ -380,7 +394,10 @@ describe('preparePBLExportData', () => {
       expect(result.data.interviewOverview?.trainingGoals).toEqual([]);
 
       expect(result.data.requirements).toBeDefined();
-      expect(result.data.requirements?.trainingNeedsAnalysis).toBe('V2 훈련환경 분석 결과');
+      // R8 PBL-자체-02 — 정형 객체. buildRequirementsFromV2 가 6 영역을 줄바꿈으로 결합
+      expect(result.data.requirements?.trainingNeedsAnalysis).toContain(
+        'V2 훈련환경 분석 결과',
+      );
       expect(result.data.requirements?.selectionReason).toBe('V2 선정 사유');
       expect(result.data.requirements?.targetTaskDetails).toEqual([
         {

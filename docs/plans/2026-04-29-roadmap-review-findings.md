@@ -270,6 +270,8 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 
 > 메모(2026-04-29, R3 PR2로부터): 본격 데이터 바인딩은 `PBLResultClient` prop chain 변경 + server 측 project 메타 fetch + `TabPBLCommonProps` 확장이 필요해 R3 양식 정합성 정정 PR 범위 초과. **R7+ 별도 PR 권고.** R3 에서는 임시로 `TabPBLOverview` SectionCard description 에 "신청서 자동표출 항목(사업장관리번호·업종·주소·관할 지부·담당자)은 HWPX 다운로드 시 자동 채워집니다" 안내만 추가 [PR #43].
 
+> [해결됨][PR R8] 2026-04-30 — 마이그 071 로 `projects` 테이블에 5컬럼 추가 (`business_reg_no` / `industry_code` / `training_address` / `jurisdiction_branch` / `contact_position`, 모두 NULL 허용). `Project` 인터페이스 + `createProjectSchema` 5필드 옵셔널 확장. `ops/projects/new` 폼에 fieldset (5 입력 필드 — 모두 선택 입력) 추가. `fetchPBLProjectInfo` 가 `PBLProjectMeta` 7필드 (기존 4 + 신규 3 + companyName) 반환. `PBLResultPageClient` → `PBLResultClient` → `TabPBLCommonProps.projectMeta` prop chain 으로 결과 페이지에 전달. `TabPBLOverview` 에 신청서 자동표출 SectionCard 신설 (양식 안내문 "수정 불가" + 모든 필드 NULL 시 안내 문구). HWPX P-02 18키 매핑 — `project` 객체에서 5 신규 + 4 기존 필드 직접 override (인터뷰 입력값보다 project 가 우선 — 양식 의도 "신청서 자동표출 = 수정 불가" 일치). 회귀 테스트 4건 (TabPBLOverview projectMeta 표출 / 안내 문구 / "수정 불가" 라벨 / hwpx-payload-pbl P-02 매핑).
+
 ### PBL-자체-02 — Ⅱ-2 훈련환경 분석 양식 12×7 표 → 자유서술 1개 박스 단순화
 
 - **페이지**: AI PBL 인터뷰 입력 (`StepTrainingEnv.tsx`) · 결과 Ⅱ 요구분석 탭
@@ -278,6 +280,8 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **발견 라운드**: R0
 
 > 메모(2026-04-29, R3 PR2로부터): 인터뷰 스키마 (`PBLAnalysis.trainingEnv`) + Step UI + HWPX P-05 매퍼 모두 신설하는 대규모 모델 변경. R3 양식 정합성 정정 범위 초과. **R7+ 별도 PR 권고.**
+
+> [해결됨][PR R8] 2026-04-30 — `PBLAnalysisSchema.trainingEnv: string → PBLTrainingEnv` 정형 객체 6 영역 (적정훈련시간 / 사내장소 / 사외장소 / 사내강사 표 / 외부강사 표 / AI인프라). `PBLInstructorRow` 신규 (직위/이름/경력/인적특성). `StepTrainingEnv` UI 재작성 — 6 영역 입력 + 강사 표 행 추가/삭제 (max 5). `TabPBLAnalysis` Ⅱ-2 SectionCard 재구조화 (시간/장소/AI인프라 + 사내·외부강사 표 분리). HWPX P-05 6 셀 매핑 정형화 (`internal_status` ← 시간+사내장소 / `external_status` ← 사외장소 / `internal_capability` ← 사내강사 dump / `external_capability` ← 외부강사 dump / `internal_facility` ← AI인프라 / `external_facility` ← 빈 fallback). `pbl-export buildRequirementsFromV2` 도 6 영역 줄바꿈 결합 dump 로 갱신. 회귀 테스트 5건 (StepTrainingEnv 라벨·편집·강사 추가·readOnly).
 
 ### PBL-자체-03 — Ⅲ-1 수행활동 양식 차수당 4행 → 코드 차수당 1행 단순화
 
@@ -288,6 +292,8 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 
 > 메모(2026-04-29, R3 PR2로부터): `PBLActivityItem` 스키마 (`participants` → 차수×역할 행 모델) 변경 + Step UI 변경 + HWPX P-08 매퍼 변경. **R7+ 별도 PR 권고.**
 
+> [해결됨][PR R8] 2026-04-30 — 옵션 B (평면 4행 배열) 채택. `PBLActivityRow {round, role, personName, date, content, method}` 평면 배열로 신규 정의 (`PBLActivities = PBLActivityRow[]`). `PBL_ACTIVITY_ROLE` enum 4종 (PM/EXTERNAL_EXPERT/INTERNAL_EXPERT/JURISDICTION_MANAGER) + `PBL_ACTIVITY_ROLE_LABEL` 한글 라벨 맵. `PBLActivitiesSchema.superRefine` 으로 차수당 정확히 4 역할 행 강제 (양식 13×6 정형). `StepActivities` UI 재작성 — 차수 카드 안 4 역할 자동 렌더, 차수 추가/삭제 시 4 행 단위 (사용자가 행 단위 추가 못 함). `TabPBLTasks` Ⅲ-1 6 컬럼 표 (차수/역할/성명/일자/내용/방법). HWPX P-08 매핑 평면 4행 그대로 출력 (Python 측은 row[].role 로 양식 차수×역할 행 분배). pbl-export · fixture · converters · test-pbl 일괄 갱신. 회귀 테스트 6건 (StepActivities prefill·차수 추가/삭제·4 역할 입력 + Schema superRefine 차수당 4 역할 강제·빈 배열 통과).
+
 ### PBL-자체-04 — Ⅲ-2-가 양식 정형 4 항목(배경/핵심/범위/제약) → 코드 자유 problems[] 의미 충돌
 
 - **페이지**: AI PBL 인터뷰 입력 (`StepProblems.tsx` 첫 블록) · 결과 Ⅲ 훈련과제 탭 · HWPX P-09
@@ -297,6 +303,8 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 
 > 메모(2026-04-29, R3 PR2로부터): impact 매핑은 R3 에서 **`description` 셀에 결합 출력** 으로 임시 처리 (양식 5×2 한계 내). 정형 4 항목 (배경/핵심/범위/제약) 라벨 보존 매핑은 `PBLProblemItem` 스키마 변경 필요. **R7+ 별도 PR 권고.** [PR #43]
 
+> [해결됨][PR R8] 2026-04-30 — 옵션 C (신규 단독 모델 + 개발 단계 데이터 폐기) 채택. `PBLProblemDefinitionSheet {background, core, scope, constraints}` 단일 객체 신규 정의 (V1 wrapper `PBLProblemDefinition` 와 충돌 회피 위해 Sheet 접미사). 기존 `PBLProblemItem` + `problems[]` 동적 행 폐기. `StepProblems` UI 재작성 — 4 정형 라벨 고정 LargeTextBox + "+ 문제 추가" 버튼 제거 (양식 단일 세트). `TabPBLTasks` Ⅲ-2-가 5×2 표 (구분/내용 4 행) + InlineEditField 편집. HWPX `problem_definition_sheet` 4 키 매핑 (양식 4 라벨 1:1 정합). impact 임시 결합 출력 코드 제거. 회귀 테스트 7건 (StepProblems 4 정형 라벨·추가 버튼 부재·각 필드 편집·우선순위 분리 + Schema 빈 세트·전체 채움 통과·필드 누락 실패).
+
 ### PBL-자체-05 — Ⅴ. 성과분석 결과 페이지 영구 placeholder 상태
 
 - **페이지**: AI PBL 결과 페이지 · Ⅴ 성과분석 탭 (`TabPBLOutcomes.tsx`)
@@ -305,6 +313,8 @@ R0 매트릭스 작업 (`docs/plans/2026-04-29-roadmap-form-matrix.md`) 중 발�
 - **발견 라운드**: R0
 
 > 메모(2026-04-29, R3 PR2로부터): pbl_content Ⅴ 필드 신설 + LLM 프롬프트 + 결과 컴포넌트 + HWPX cell_fill 매퍼 모두 신설 (Task 2.10 미완 영역). **R7+ 별도 PR 권고.**
+
+> [해결됨][PR R8] 2026-04-30 — Task 2.10 완료. `PBLOutcomeAnalysis` 타입 (이미 `pbl-types.ts:223` 에 정의됨) 활용. LLM 프롬프트 (`pbl-prompts.ts:255~265`) 의 `outcome_analysis` JSON 스키마는 R5 PR4 에서 이미 정의되어 있어 추가 변경 불요. `hwpx-payload-pbl` 4 키 매핑 신설 (`quantitative_metrics` / `qualitative_metrics` / `internalization_plan` / `dissemination_plan`) — buildDataFromV2 + buildDataFromV1 양쪽. `api/hwpx/generate.py:799` 의 주석 처리되었던 `_fill_pbl_performance_metrics` / `_fill_pbl_dissemination` 호출 복구 (idx 39·40 양식 표 채움). `TabPBLOutcomes` placeholder → 본격 구현 — Ⅴ-1 SectionCard (선택 훈련목표 카테고리 + 정량/정성 2행 FormTable) + Ⅴ-2 SectionCard (내재화/전사 확산 2행 FormTable). LLM 결과가 없으면 RegeneratePlaceholder 폴백 유지. 회귀 테스트 — outcome_analysis 채움 시 결과 페이지 4 필드 노출 + HWPX P-25/P-26 cell_fill (전체 5841 테스트 통과).
 
 ### PBL-자체-06 — Step 9 단축명 `Ⅲ-3·4` 가 양식상 두 섹션 합성 표기
 

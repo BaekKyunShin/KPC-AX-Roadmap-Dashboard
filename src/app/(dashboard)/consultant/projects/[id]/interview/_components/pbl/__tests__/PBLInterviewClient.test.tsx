@@ -238,19 +238,20 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
-  it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다', async () => {
+  it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다 (R8 PBL-자체-02 — 정형 객체)', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련환경 분석'));
-    fireEvent.change(screen.getByLabelText('훈련환경 분석'), {
-      target: { value: '사내 교육장 활용' },
+    // 적정 훈련시간 입력 — 정형 객체의 한 필드
+    fireEvent.change(screen.getByLabelText('적정 훈련시간'), {
+      target: { value: '회차당 4시간' },
     });
     fireEvent.click(screen.getByLabelText('수동 저장'));
     await waitFor(() =>
       expect(savePBLInterviewV2).toHaveBeenCalledTimes(1),
     );
-    expect(savePBLInterviewV2.mock.calls[0][1].trainingEnv).toBe(
-      '사내 교육장 활용',
+    expect(savePBLInterviewV2.mock.calls[0][1].trainingEnv).toEqual(
+      expect.objectContaining({ properTrainingHours: '회차당 4시간' }),
     );
   });
 
@@ -267,19 +268,21 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 프리필', () => {
+  it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 prefill (R8 — 차수×4 역할 모델)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('수행활동'));
     expect(
       screen.getByRole('heading', { name: '훈련과제 도출 수행활동', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('3행 수행 일자')).toBeInTheDocument();
+    // 1·2·3차 카드가 prefill, 각 카드마다 4 역할 수행 일자 input
+    expect(screen.getByLabelText('1차 PM 수행 일자')).toBeInTheDocument();
+    expect(screen.getByLabelText('3차 능력개발전담주치의 수행 일자')).toBeInTheDocument();
   });
 
   it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('문제 도출·우선순위'));
-    expect(screen.getByText('Ⅲ-2-가 문제 도출')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-2-가 문제 정의서')).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-2-나 문제 우선순위 결정')).toBeInTheDocument();
   });
 
@@ -314,30 +317,29 @@ describe('PBLInterviewClient', () => {
           },
         ],
       },
-      trainingEnv: '사내 교육장 활용',
+      trainingEnv: {
+        properTrainingHours: '',
+        internalPlace: '사내 교육장 활용',
+        externalPlace: '',
+        internalInstructors: [],
+        externalInstructors: [],
+        aiInfrastructure: '',
+      },
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',
       activities: [
-        {
-          round: 1,
-          date: '26.04.01',
-          content: '인터뷰',
-          method: '대면',
-          participants: {
-            pm: '홍길동',
-            external_expert: '',
-            internal_expert: '',
-            jurisdiction_manager: '',
-          },
-        },
+        // R8 PBL-자체-03 — 평면 4행 배열. 1차에 4 역할 모두 채움 (superRefine 통과).
+        { round: 1, role: 'PM' as const, personName: '홍길동', date: '26.04.01', content: '인터뷰', method: '대면' },
+        { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '김전문', date: '26.04.01', content: '외부 전문가 자문', method: '대면' },
+        { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '박내부', date: '26.04.01', content: '사내 현황 공유', method: '대면' },
+        { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '26.04.01', content: 'HRD 점검', method: '서면' },
       ],
-      problems: [
-        {
-          title: '데이터 품질',
-          description: '수작업 정제 부담',
-          impact: '월 200시간',
-        },
-      ],
+      problemDefinitionSheet: {
+        background: '수작업 정제 부담으로 월 200시간 손실',
+        core: '데이터 품질 — 자동화 부재',
+        scope: '품질·생산 부서',
+        constraints: '예산·일정 한계',
+      },
       priority: {
         items: [{ problem: '데이터 품질', score: 5, rank: 1 }],
         method: '5점 척도 평균',

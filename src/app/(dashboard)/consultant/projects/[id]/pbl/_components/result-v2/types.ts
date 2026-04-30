@@ -16,14 +16,14 @@
 
 import type {
   PBLAILevel,
-  PBLActivityItem,
+  PBLActivityRow,
   PBLAiLevelAssessment,
   PBLAnalysis,
   PBLMainWorkItem,
   PBLOrgTreeNode,
   PBLOverview,
   PBLPriority,
-  PBLProblemItem,
+  PBLProblemDefinitionSheet,
   PBLTarget,
 } from '@/lib/schemas/interview-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
@@ -45,12 +45,14 @@ export interface PBLResultEditPayload {
     orgTree?: PBLOrgTreeNode[];
     mainWork?: PBLMainWorkItem[];
   };
-  trainingEnv?: string;
+  // R8 PBL-자체-02 — string → 정형 객체 (Partial 로 일부 필드만 patch 가능)
+  trainingEnv?: Partial<import('@/lib/schemas/interview-pbl').PBLTrainingEnv>;
   courseNecessity?: string;
 
   // Ⅲ 훈련과제 도출
-  activities?: PBLActivityItem[];
-  problems?: PBLProblemItem[];
+  activities?: PBLActivityRow[];
+  /** R8 PBL-자체-04 — 4 정형 항목 (배경/핵심/범위/제약) 단일 세트 */
+  problemDefinitionSheet?: Partial<PBLProblemDefinitionSheet>;
   priority?: Partial<PBLPriority>;
   target?: Partial<PBLTarget>;
   currentAiLevel?: Partial<PBLAiLevelAssessment>;
@@ -74,12 +76,31 @@ export interface ResultPBLInterviewSnapshot {
   analysis: PBLAnalysis;
 
   // Ⅲ 훈련과제 도출
-  activities: PBLActivityItem[];
-  problems: PBLProblemItem[];
+  activities: PBLActivityRow[];
+  /** R8 PBL-자체-04 — 4 정형 항목 단일 세트 */
+  problemDefinitionSheet: PBLProblemDefinitionSheet;
   priority: PBLPriority;
   target: PBLTarget;
   currentAiLevel: PBLAiLevelAssessment;
   expectedAiLevel: PBLAiLevelAssessment;
+}
+
+/**
+ * PBL 양식 Ⅰ. 신청서 자동표출 7필드 (마이그 071) — TabPBLOverview 표출용 메타.
+ * `fetchPBLProjectInfo` 의 반환 형태와 동일.
+ */
+export interface PBLProjectMetaSnapshot {
+  companyName: string;
+  industry?: string;
+  companyAddress?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  businessRegNo?: string;
+  industryCode?: string;
+  trainingAddress?: string;
+  jurisdictionBranch?: string;
+  contactPosition?: string;
 }
 
 /**
@@ -92,6 +113,8 @@ export interface TabPBLCommonProps {
   version: PBLReportRow | null;
   /** 인터뷰 원본값. Ⅰ·Ⅱ·Ⅲ 에서 참조. */
   interview?: Partial<ResultPBLInterviewSnapshot>;
+  /** PBL 양식 Ⅰ. 신청서 자동표출 7필드 (마이그 071). */
+  projectMeta?: PBLProjectMetaSnapshot;
   /** DRAFT 가 아니면 true — 편집 금지 */
   readOnly: boolean;
   /** 섹션 편집 콜백. 상위가 Server Action 호출을 담당. */

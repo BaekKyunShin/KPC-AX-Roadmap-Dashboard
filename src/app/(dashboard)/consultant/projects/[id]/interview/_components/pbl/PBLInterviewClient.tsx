@@ -18,8 +18,8 @@ import {
   type PBLInterviewStrict,
   type PBLOverview,
   type PBLOrganization,
-  type PBLActivityItem,
-  type PBLProblemItem,
+  type PBLActivityRow,
+  type PBLProblemDefinitionSheet,
   type PBLPriority,
   type PBLTarget,
   type PBLAiLevelAssessment,
@@ -160,7 +160,8 @@ export function PBLInterviewClient({
     (patch: {
       companyIssues?: string;
       organization?: PBLInterviewStrict['organization'];
-      trainingEnv?: string;
+      // R8 PBL-자체-02 — string → 정형 객체
+      trainingEnv?: PBLInterviewStrict['trainingEnv'];
       hrdReportPdf?: PBLInterviewStrict['hrdReportPdf'];
       courseNecessity?: string;
     }) => {
@@ -171,8 +172,8 @@ export function PBLInterviewClient({
 
   const updateTasks = useCallback(
     (patch: {
-      activities?: PBLActivityItem[];
-      problems?: PBLProblemItem[];
+      activities?: PBLActivityRow[];
+      problemDefinitionSheet?: PBLProblemDefinitionSheet;
       priority?: PBLPriority;
       target?: PBLTarget;
       currentAiLevel?: PBLAiLevelAssessment;
@@ -353,7 +354,16 @@ export function PBLInterviewClient({
       case 'trainingEnv':
         return (
           <StepTrainingEnv
-            value={data.trainingEnv ?? ''}
+            value={
+              data.trainingEnv ?? {
+                properTrainingHours: '',
+                internalPlace: '',
+                externalPlace: '',
+                internalInstructors: [],
+                externalInstructors: [],
+                aiInfrastructure: '',
+              }
+            }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}
           />
         );
@@ -374,7 +384,13 @@ export function PBLInterviewClient({
         );
       case 'problems': {
         const problemsValue: StepProblemsValue = {
-          problems: data.problems ?? [],
+          problemDefinitionSheet:
+            data.problemDefinitionSheet ?? {
+              background: '',
+              core: '',
+              scope: '',
+              constraints: '',
+            },
           priority: data.priority ?? { items: [], method: '' },
         };
         return (
@@ -382,7 +398,7 @@ export function PBLInterviewClient({
             value={problemsValue}
             onChange={(next) =>
               updateTasks({
-                problems: next.problems,
+                problemDefinitionSheet: next.problemDefinitionSheet,
                 priority: next.priority,
               })
             }

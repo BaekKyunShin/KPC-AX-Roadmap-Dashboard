@@ -4,6 +4,7 @@ import { AiLevel4Check } from '@/components/charts/AiLevel4Check';
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
+import { PBL_ACTIVITY_ROLE_LABEL } from '@/lib/schemas/interview-pbl';
 
 import type { TabPBLCommonProps } from './types';
 
@@ -22,18 +23,31 @@ import type { TabPBLCommonProps } from './types';
  */
 export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) {
   const activities = interview?.activities ?? [];
-  const problems = interview?.problems ?? [];
+  // R8 PBL-자체-04 — 4 정형 항목 단일 세트 (배경/핵심/범위/제약)
+  const problemDefinitionSheet = interview?.problemDefinitionSheet ?? {
+    background: '',
+    core: '',
+    scope: '',
+    constraints: '',
+  };
   const priority = interview?.priority;
   const target = interview?.target;
   const currentAiLevel = interview?.currentAiLevel ?? { level: 'BASIC' as const, note: '' };
   const expectedAiLevel = interview?.expectedAiLevel ?? { level: 'USER' as const, note: '' };
 
+  async function patchProblemDefinition(
+    key: keyof typeof problemDefinitionSheet,
+    value: string,
+  ): Promise<void> {
+    await onEdit({ problemDefinitionSheet: { [key]: value } });
+  }
+
   return (
     <div className="space-y-6">
-      {/* Ⅲ-1 훈련과제 도출 수행활동 */}
+      {/* Ⅲ-1 훈련과제 도출 수행활동 (R8 PBL-자체-03 — 차수×4 역할 평면 4행) */}
       <SectionCard
         title="Ⅲ-1. 훈련과제 도출 수행활동"
-        description="차수별 일시·내용·방법·참석자 (인터뷰 입력, 읽기 전용)"
+        description="양식 13×6 정형 — 차수×4 역할(PM·외부전문가·기업내부전문가·능력개발전담주치의)별 일자·내용·방법 (인터뷰 입력, 읽기 전용)"
       >
         {activities.length > 0 ? (
           <div className="overflow-x-auto">
@@ -42,17 +56,20 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
               headerRows={[
                 {
                   cells: [
-                    { content: '차수', header: true },
-                    { content: '일자', header: true },
+                    { content: '차수', header: true, className: 'w-[60px]' },
+                    { content: '역할', header: true, className: 'w-[140px]' },
+                    { content: '성명', header: true, className: 'w-[100px]' },
+                    { content: '일자', header: true, className: 'w-[110px]' },
                     { content: '수행 내용', header: true },
                     { content: '수행 방법', header: true },
-                    { content: '참석자', header: true },
                   ],
                 },
               ]}
               bodyRows={activities.map((a) => ({
                 cells: [
                   { content: `${a.round}차`, align: 'center' },
+                  { content: PBL_ACTIVITY_ROLE_LABEL[a.role], align: 'center' },
+                  { content: a.personName || '-', align: 'center' },
                   { content: a.date || '-', align: 'center' },
                   {
                     content: (
@@ -63,29 +80,6 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                     align: 'left',
                   },
                   { content: a.method || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {(() => {
-                          // PR #5 Phase F-4: participants 는 4 person dict.
-                          // 빈 역할은 제외하고 "PM 홍길동 / 외부 김전문" 형태로 표시.
-                          const p = a.participants;
-                          if (!p) return '-';
-                          if (typeof p === 'string') return p || '-';
-                          const parts: string[] = [];
-                          if (p.pm) parts.push(`PM ${p.pm}`);
-                          if (p.external_expert)
-                            parts.push(`외부 ${p.external_expert}`);
-                          if (p.internal_expert)
-                            parts.push(`내부 ${p.internal_expert}`);
-                          if (p.jurisdiction_manager)
-                            parts.push(`주치의 ${p.jurisdiction_manager}`);
-                          return parts.length > 0 ? parts.join(' · ') : '-';
-                        })()}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
                 ],
               }))}
             />
@@ -97,52 +91,92 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
         )}
       </SectionCard>
 
-      {/* Ⅲ-2-가 문제 도출 */}
+      {/* Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트) */}
       <SectionCard
-        title="Ⅲ-2-가. 문제 도출"
-        description="문제명 · 설명 · 영향 (인터뷰 입력)"
+        title="Ⅲ-2-가. 문제 정의서"
+        description="양식 5×2 표 정합 — 4 정형 항목(문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건)"
       >
-        {problems.length > 0 ? (
-          <div className="overflow-x-auto">
-            <FormTable
-              caption="문제 도출"
-              headerRows={[
+        <FormTable
+          caption="문제 정의서"
+          headerRows={[
+            {
+              cells: [
+                { content: '구분', header: true, className: 'w-[160px]' },
+                { content: '내용', header: true },
+              ],
+            },
+          ]}
+          bodyRows={[
+            {
+              cells: [
+                { content: '문제 배경', header: true, align: 'center' },
                 {
-                  cells: [
-                    { content: '문제명', header: true, className: 'w-[200px]' },
-                    { content: '문제 설명', header: true },
-                    { content: '영향(임팩트)', header: true },
-                  ],
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.background}
+                      onSave={(next) => patchProblemDefinition('background', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="문제 배경이 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
                 },
-              ]}
-              bodyRows={problems.map((p) => ({
-                cells: [
-                  { content: p.title || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {p.description || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {p.impact || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                ],
-              }))}
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            등록된 문제가 없습니다.
-          </p>
-        )}
+              ],
+            },
+            {
+              cells: [
+                { content: '핵심 문제', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.core}
+                      onSave={(next) => patchProblemDefinition('core', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="핵심 문제가 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '문제 범위', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.scope}
+                      onSave={(next) => patchProblemDefinition('scope', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="문제 범위가 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '제약 조건', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.constraints}
+                      onSave={(next) => patchProblemDefinition('constraints', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="제약 조건이 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+          ]}
+        />
       </SectionCard>
 
       {/* Ⅲ-2-나 문제 우선순위 결정 */}

@@ -50,6 +50,12 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     contact_email: formData.get('contact_email') as string,
     contact_phone: formData.get('contact_phone') as string || undefined,
     company_address: formData.get('company_address') as string || undefined,
+    // PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071) — 모두 선택 입력
+    business_reg_no: formData.get('business_reg_no') as string || undefined,
+    industry_code: formData.get('industry_code') as string || undefined,
+    training_address: formData.get('training_address') as string || undefined,
+    jurisdiction_branch: formData.get('jurisdiction_branch') as string || undefined,
+    contact_position: formData.get('contact_position') as string || undefined,
     customer_comment: formData.get('customer_comment') as string || undefined,
     // track 미지정(null/빈 문자열) → 스키마 default(ROADMAP) 적용. 명시 시 스키마에서 검증.
     ...(trackValue ? { track: trackValue } : {}),
