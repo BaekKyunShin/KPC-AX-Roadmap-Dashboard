@@ -78,4 +78,45 @@ describe('InlineSelectField', () => {
       expect(screen.getByRole('combobox')).toHaveValue('BEGINNER');
     });
   });
+
+  it('편집 진입 후 [취소] 버튼 클릭 시 view 모드 복귀', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <InlineSelectField value="BEGINNER" options={[...OPTIONS]} onSave={onSave} />,
+    );
+    await user.click(screen.getByText('초급'));
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('동일 값 선택 후 저장 시 onSave 호출 안 함 (no-op)', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <InlineSelectField value="BEGINNER" options={[...OPTIONS]} onSave={onSave} />,
+    );
+    await user.click(screen.getByText('초급'));
+    // 옵션 변경 없이 저장 클릭
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(onSave).not.toHaveBeenCalled();
+    // view 모드로 복귀
+    await waitFor(() => {
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+  });
+
+  it('options 에 없는 value 가 들어오면 value 자체를 라벨로 표시', () => {
+    // value 가 매핑되지 않으면 String(value) 로 fallback 표시 (TS 측에서는 generic V 로 통과)
+    render(
+      <InlineSelectField
+        value={'UNKNOWN' as 'BEGINNER'}
+        options={[...OPTIONS]}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('UNKNOWN')).toBeInTheDocument();
+  });
 });

@@ -133,4 +133,115 @@ describe('EditableTable', () => {
       expect(onChange).toHaveBeenCalledWith([{ name: 'B', hours: 1, notes: '' }]);
     });
   });
+
+  it('hours 셀에 빈 문자열 저장 시 Number(0) 으로 fallback', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    const rows: Row[] = [{ name: 'A', hours: 5, notes: '' }];
+    render(
+      <EditableTable rows={rows} columns={COLUMNS} onChange={onChange} emptyRow={emptyRow} />,
+    );
+    // hours 셀 클릭
+    await user.click(screen.getByText('5'));
+    const inputs = screen.getAllByRole('textbox');
+    // hours 입력 클리어 → 빈 문자열 → Number('') = 0 → || 0 으로 fallback
+    await user.clear(inputs[0]);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith([{ name: 'A', hours: 0, notes: '' }]);
+    });
+  });
+
+  it('rows 가 비어 있고 readOnly 이면 emptyMessage 표시', () => {
+    render(
+      <EditableTable
+        rows={[]}
+        columns={COLUMNS}
+        onChange={vi.fn()}
+        emptyRow={emptyRow}
+        readOnly
+        emptyMessage="데이터가 없습니다 (read-only)."
+      />,
+    );
+    expect(screen.getByText('데이터가 없습니다 (read-only).')).toBeInTheDocument();
+    // readOnly 면 행 추가 버튼 미노출
+    expect(screen.queryByRole('button', { name: /행 추가/ })).not.toBeInTheDocument();
+  });
+
+  it('getRowKey 가 주어지면 React key 로 사용된다 (rerender 시 행 식별)', () => {
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    const rows: Row[] = [
+      { name: 'A', hours: 1, notes: '' },
+      { name: 'B', hours: 2, notes: '' },
+    ];
+    const { rerender } = render(
+      <EditableTable
+        rows={rows}
+        columns={COLUMNS}
+        onChange={onChange}
+        emptyRow={emptyRow}
+        getRowKey={(row) => row.name}
+        testIdPrefix="getrowkey"
+      />,
+    );
+    expect(screen.getByTestId('getrowkey-row-0')).toBeInTheDocument();
+    rerender(
+      <EditableTable
+        rows={rows.slice().reverse()}
+        columns={COLUMNS}
+        onChange={onChange}
+        emptyRow={emptyRow}
+        getRowKey={(row) => row.name}
+        testIdPrefix="getrowkey"
+      />,
+    );
+    // 행 순서 바뀐 후에도 렌더 정상
+    expect(screen.getByTestId('getrowkey-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId('getrowkey-row-1')).toBeInTheDocument();
+  });
+
+  it('maxRows 표시 — "현재행수 / 최대행수" 카운터 노출', () => {
+    const rows: Row[] = [
+      { name: 'A', hours: 1, notes: '' },
+      { name: 'B', hours: 2, notes: '' },
+    ];
+    render(
+      <EditableTable
+        rows={rows}
+        columns={COLUMNS}
+        onChange={vi.fn()}
+        emptyRow={emptyRow}
+        maxRows={5}
+      />,
+    );
+    expect(screen.getByText('2 / 5')).toBeInTheDocument();
+  });
+
+  it('showRowNumber=false 이면 # 헤더 미노출', () => {
+    render(
+      <EditableTable
+        rows={[{ name: 'A', hours: 1, notes: '' }]}
+        columns={COLUMNS}
+        onChange={vi.fn()}
+        emptyRow={emptyRow}
+        showRowNumber={false}
+      />,
+    );
+    expect(screen.queryByRole('columnheader', { name: '#' })).not.toBeInTheDocument();
+  });
+
+  it('rows 가 비어 있고 readOnly=false 이면 emptyMessage 셀이 colspan 으로 표시', () => {
+    render(
+      <EditableTable
+        rows={[]}
+        columns={COLUMNS}
+        onChange={vi.fn()}
+        emptyRow={emptyRow}
+        emptyMessage="비어 있음"
+      />,
+    );
+    expect(screen.getByText('비어 있음')).toBeInTheDocument();
+    // readOnly=false 이므로 행 추가 버튼은 노출
+    expect(screen.getByRole('button', { name: /행 추가/ })).toBeInTheDocument();
+  });
 });

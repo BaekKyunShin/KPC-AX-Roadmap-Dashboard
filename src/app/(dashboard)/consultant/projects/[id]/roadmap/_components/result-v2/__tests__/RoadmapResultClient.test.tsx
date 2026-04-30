@@ -476,6 +476,56 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
     );
     expect(screen.queryByTestId('finalize-roadmap-button')).toBeNull();
   });
+
+  // PR5 (R6) — FINAL in-place 수정 안내 배너
+  it('CONSULTANT + FINAL 상태에서 in-place 수정 안내 배너 노출', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL', version_number: 3 })]}
+        selectedVersion={makeVersion({ status: 'FINAL', version_number: 3 })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('final-edit-warning-banner')).toBeInTheDocument();
+  });
+
+  it('CONSULTANT + DRAFT 상태에서는 FINAL 안내 배너가 노출되지 않는다', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('final-edit-warning-banner')).not.toBeInTheDocument();
+  });
+
+  it('OPS + FINAL 상태에서는 FINAL 안내 배너가 노출되지 않는다 (canEdit=false)', () => {
+    render(
+      <RoadmapResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('final-edit-warning-banner')).not.toBeInTheDocument();
+  });
 });
 
 // #002 회귀 방지 — 인터뷰 미완료 상태에서 "AI 로드맵 생성" 버튼이 silent fail 하던 결함.

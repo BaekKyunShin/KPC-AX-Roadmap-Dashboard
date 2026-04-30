@@ -371,5 +371,55 @@ describe('PBLResultClient — OPS role', () => {
       screen.queryByRole('heading', { name: 'AI 로드맵 생성 중' }),
     ).toBeNull();
   });
+
+  // PR5 (R6) — FINAL in-place 수정 안내 배너 분기 커버
+  it('CONSULTANT + FINAL 상태에서 PBL FINAL 안내 배너 노출', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL', version_number: 2 })]}
+        selectedVersion={makeVersion({ status: 'FINAL', version_number: 2 })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('pbl-final-edit-warning-banner')).toBeInTheDocument();
+  });
+
+  it('CONSULTANT + DRAFT 상태에서는 PBL FINAL 배너 미노출', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('pbl-final-edit-warning-banner')).not.toBeInTheDocument();
+  });
+
+  it('OPS + FINAL 상태 — PBL FINAL 배너 미노출 (canEdit=false)', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('pbl-final-edit-warning-banner')).not.toBeInTheDocument();
+  });
 });
 

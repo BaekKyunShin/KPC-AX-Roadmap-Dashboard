@@ -54,6 +54,14 @@ export default defineConfig({
         // 0% 커버리지 정당화 — 순수 UI 컴포넌트 (타이머 애니메이션, 대시보드 테이블) → E2E로 검증
         '**/AnalysisProgress.tsx',
         '**/QuotaClient.tsx',
+        // PR5 (R6) — 인터뷰 검토 페이지 client/server: 8/9 Step 접힘식 카드 + 인라인
+        // 편집 + Stale 배너 조합. helper 컴포넌트 (CompanyReqRow / TargetTaskRow /
+        // PblOverviewRow / RoadmapInlineText) 의 핵심 분기는 위 helper 컴포넌트
+        // 단위 테스트 (StaleResultBanner, ReviewActions, actions) 와 E2E
+        // (e2e/consultant/interview-review.spec.ts) 로 검증. ReviewSection
+        // 자체는 conditional rendering 위주라 E2E 가 더 적합.
+        '**/InterviewReviewClient.tsx',
+        '**/interview/review/page.tsx',
         // 0% 커버리지 정당화 파일 — 팩토리·래퍼·타입·정적 데이터
         'src/lib/services/export-pdf.ts',
         'src/lib/services/export-xlsx.ts',

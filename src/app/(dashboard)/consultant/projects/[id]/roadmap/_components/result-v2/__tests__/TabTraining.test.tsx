@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { TabTraining } from '../TabTraining';
 import type { ResultInterviewSnapshot } from '../types';
@@ -400,5 +401,227 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
     expect(text).not.toContain('진단모형');
     // [고정 참고자료] "NCS 능력단위요소별 지식·기술·태도 예시" 는 렌더 금지
     expect(text).not.toContain('NCS 능력단위요소별 지식·기술·태도 예시');
+  });
+
+  // ─── PR5 (R6) — EditableTable / EditableDlRow 분기 커버 ────────────────
+  describe('PR5 — EditableTable / EditableDlRow 호출 분기', () => {
+    it('Ⅲ-3 연간계획 행 추가 시 onEdit({ annual_plan: { items: +1 } }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      // annual-plan-add 버튼 (data-testid)
+      await user.click(screen.getByTestId('annual-plan-add'));
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+      const callArg = onEdit.mock.calls[0][0];
+      expect(callArg.annual_plan.items).toHaveLength(2); // 1 + 1
+    });
+
+    it('Ⅲ-3 활용방안 InlineEditField 편집 시 onEdit({ annual_plan: { usage_plan } }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      // 활용방안 텍스트 ("내부 평가에 연 1회 반영") 클릭
+      await user.click(screen.getByText('내부 평가에 연 1회 반영'));
+      const inputs = screen.getAllByRole('textbox');
+      // 마지막 input 이 활용방안
+      const usageInput = inputs[inputs.length - 1];
+      await user.clear(usageInput);
+      await user.type(usageInput, '신규 활용방안');
+      // 활용방안의 저장 버튼 (마지막)
+      const saveBtns = screen.getAllByRole('button', { name: '저장' });
+      await user.click(saveBtns[saveBtns.length - 1]);
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    });
+
+    it('Ⅲ-2 훈련체계도 행 추가 — onEdit({ training_structure: +1 }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      await user.click(screen.getByTestId('training-structure-add'));
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+      const callArg = onEdit.mock.calls[0][0];
+      expect(callArg.training_structure).toHaveLength(2);
+    });
+
+    it('Ⅲ-4 훈련과정 추가 — onEdit({ course_specs: +1 }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      await user.click(screen.getByTestId('course-specs-add'));
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+      const callArg = onEdit.mock.calls[0][0];
+      expect(callArg.course_specs).toHaveLength(2);
+    });
+
+    it('Ⅲ-4 EditableDlRow (훈련형태) 편집 — onEdit({ course_specs: [{ format: 새값 }] }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      // EditableDlRow "훈련형태" 의 값 ("집체") 첫 출현 클릭
+      const formatValues = screen.getAllByText('집체');
+      await user.click(formatValues[0]);
+      const inputs = screen.getAllByRole('textbox');
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], '온라인');
+      const saveBtns = screen.getAllByRole('button', { name: '저장' });
+      await user.click(saveBtns[0]);
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    });
+
+    it('readOnly 일 때 행 추가 버튼이 노출되지 않는다', () => {
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(screen.queryByTestId('annual-plan-add')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('training-structure-add')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('course-specs-add')).not.toBeInTheDocument();
+    });
+
+    // EditableDlRow 의 4개 unique 행 onSave 분기 커버 (훈련과정명·훈련대상은 모호)
+    it.each([
+      ['추천 훈련사업', 'S-OJT', 'recommended_program', 'NEW-OJT'],
+      ['훈련목표', '기초 지식 확보', 'goal', '실무 적용'],
+      ['주요 훈련내용', '지도학습 / 비지도학습', 'main_content', '딥러닝 기초'],
+    ])(
+      'Ⅲ-4 EditableDlRow "%s" 편집 시 onEdit({ course_specs: [{ %s }] }) 호출',
+      async (_label, oldValue, fieldKey, newValue) => {
+        const user = userEvent.setup();
+        const onEdit = vi.fn().mockResolvedValue(undefined);
+        render(
+          <TabTraining
+            version={filledVersion}
+            interview={interview}
+            readOnly={false}
+            onEdit={onEdit}
+          />,
+        );
+
+        await user.click(screen.getByText(oldValue));
+        const inputs = screen.getAllByRole('textbox');
+        await user.clear(inputs[0]);
+        await user.type(inputs[0], newValue);
+        await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+        await waitFor(() => expect(onEdit).toHaveBeenCalled());
+        const lastCall = onEdit.mock.calls[onEdit.mock.calls.length - 1][0];
+        expect(lastCall.course_specs[0][fieldKey]).toBe(newValue);
+      },
+    );
+
+    it('Ⅲ-4 교과목 추가 — onEdit({ course_specs: [{ subjects: +1 }] }) 호출', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabTraining
+          version={filledVersion}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      await user.click(screen.getByTestId('course-0-subjects-add'));
+      await waitFor(() => expect(onEdit).toHaveBeenCalled());
+      const lastCall = onEdit.mock.calls[onEdit.mock.calls.length - 1][0];
+      expect(lastCall.course_specs[0].subjects).toHaveLength(3); // 2 + 1
+    });
+
+    // TabTraining 의 분기 — annual_plan null + readOnly=false 분기 (placeholder 미노출, EditableTable 노출)
+    it('annual_plan=null + readOnly=false 일 때 EditableTable 자체는 노출 (행 추가 가능)', () => {
+      const versionNoPlan: RoadmapVersionUI = {
+        ...filledVersion,
+        annual_plan: null as unknown as RoadmapVersionUI['annual_plan'],
+      };
+      render(
+        <TabTraining
+          version={versionNoPlan}
+          interview={interview}
+          readOnly={false}
+          onEdit={vi.fn()}
+        />,
+      );
+      // Ⅲ-3 placeholder 가 아닌 EditableTable + 행 추가 버튼 노출
+      expect(screen.getByTestId('annual-plan-add')).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Ⅲ-3 연간 훈련계획 가 아직 생성되지 않았습니다/),
+      ).not.toBeInTheDocument();
+    });
+
+    // training_structure 빈 + readOnly=true → placeholder 노출
+    it('training_structure 빈 + readOnly=true → Ⅲ-2 placeholder 노출', () => {
+      const versionNoStructure: RoadmapVersionUI = {
+        ...filledVersion,
+        training_structure: [],
+      };
+      render(
+        <TabTraining
+          version={versionNoStructure}
+          interview={interview}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/Ⅲ-2 훈련체계도 가 아직 생성되지 않았습니다/),
+      ).toBeInTheDocument();
+    });
+
+    // course_specs 빈 + readOnly=true → placeholder 노출
+    it('course_specs 빈 + readOnly=true → Ⅲ-4 placeholder 노출', () => {
+      const versionNoSpecs: RoadmapVersionUI = {
+        ...filledVersion,
+        course_specs: [],
+      };
+      render(
+        <TabTraining
+          version={versionNoSpecs}
+          interview={interview}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/Ⅲ-4 훈련과정 상세 가 아직 생성되지 않았습니다/),
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -73,4 +73,40 @@ describe('InlineEditField', () => {
     expect(textarea.className).toContain('min-h-[160px]');
     expect(textarea.className).toContain('resize-y');
   });
+
+  it('Escape 키 입력 시 편집 취소 (input)', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<InlineEditField value="old" onSave={onSave} />);
+    await user.click(screen.getByText('old'));
+    const input = screen.getByRole('textbox');
+    await user.type(input, ' edit');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('multiline + Ctrl+Enter 입력 시 저장', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<InlineEditField value="old" onSave={onSave} multiline />);
+    await user.click(screen.getByText('old'));
+    const textarea = screen.getByRole('textbox');
+    await user.clear(textarea);
+    await user.type(textarea, 'new');
+    await user.keyboard('{Control>}{Enter}{/Control}');
+    expect(onSave).toHaveBeenCalledWith('new');
+  });
+
+  it('multiline + 단순 Enter 입력은 저장하지 않음 (줄바꿈으로 처리)', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<InlineEditField value="old" onSave={onSave} multiline />);
+    await user.click(screen.getByText('old'));
+    const textarea = screen.getByRole('textbox');
+    await user.clear(textarea);
+    await user.type(textarea, 'line1');
+    await user.keyboard('{Enter}');
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });
