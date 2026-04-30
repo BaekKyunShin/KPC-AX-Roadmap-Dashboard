@@ -107,7 +107,6 @@ export function PBLResultClient({
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
-  const isDraft = selectedVersion?.status === 'DRAFT';
   const isFinal = selectedVersion?.status === 'FINAL';
   const isArchived = selectedVersion?.status === 'ARCHIVED';
   const hasVersions = versions.length > 0;
