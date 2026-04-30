@@ -175,5 +175,53 @@ describe('TabPBLOverview (Ⅰ. 훈련과정 개요)', () => {
       );
       expect(screen.getByText(/123-45-67890/)).toBeInTheDocument();
     });
+
+    // R8 분기 cover — projectMeta undefined / 산업코드 부재 / 담당자 일부만 / 공백 처리
+    it('projectMeta undefined 시 안내 문구', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={undefined}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/프로젝트 메타에 입력된 신청서 자동표출 정보가 없습니다/),
+      ).toBeInTheDocument();
+    });
+
+    it('industry 만 있고 industryCode 없으면 코드 표기 생략', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={{ companyName: '㈜', industry: '제조업' }}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      // industry 만 있을 때 (코드 포함되지 않음)
+      expect(screen.getByText('제조업')).toBeInTheDocument();
+    });
+
+    it('공백만 입력된 필드는 — 로 표시 (displayOrDash 분기)', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={{
+            companyName: '㈜',
+            businessRegNo: '   ',
+            industry: '제조업',
+          }}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      // 공백 trim 후 빈 → '—'
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    });
   });
 });

@@ -64,4 +64,75 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     expect(screen.getByLabelText('적정 훈련시간')).toBeDisabled();
     expect(screen.getByLabelText('AI 인프라')).toBeDisabled();
   });
+
+  // R8 분기 cover
+  it('value undefined 시 빈 객체로 fallback (ensureValue 분기)', () => {
+    render(
+      <StepTrainingEnv
+        value={undefined as unknown as PBLTrainingEnv}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('적정 훈련시간')).toBeInTheDocument();
+  });
+
+  it('사내강사 추가 후 4 필드 (직위/이름/경력/특성) 편집 가능', () => {
+    const onChange = vi.fn();
+    const initial: PBLTrainingEnv = {
+      ...emptyEnv(),
+      internalInstructors: [
+        { position: '', name: '', career: '', personalTraits: '' },
+      ],
+    };
+    render(<StepTrainingEnv value={initial} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('사내강사 1 직위'), { target: { value: '팀장' } });
+    fireEvent.change(screen.getByLabelText('사내강사 1 이름'), { target: { value: '홍길동' } });
+    fireEvent.change(screen.getByLabelText('사내강사 1 직무경력'), { target: { value: '12년' } });
+    fireEvent.change(screen.getByLabelText('사내강사 1 인적특성'), { target: { value: '데이터 친화' } });
+    const calls = onChange.mock.calls;
+    expect((calls[0][0] as PBLTrainingEnv).internalInstructors[0].position).toBe('팀장');
+    expect((calls[1][0] as PBLTrainingEnv).internalInstructors[0].name).toBe('홍길동');
+    expect((calls[2][0] as PBLTrainingEnv).internalInstructors[0].career).toBe('12년');
+    expect((calls[3][0] as PBLTrainingEnv).internalInstructors[0].personalTraits).toBe('데이터 친화');
+  });
+
+  it('외부강사 추가 + 삭제 분기 cover', () => {
+    const onChange = vi.fn();
+    const initial: PBLTrainingEnv = {
+      ...emptyEnv(),
+      externalInstructors: [
+        { position: '', name: '', career: '', personalTraits: '' },
+      ],
+    };
+    render(<StepTrainingEnv value={initial} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('외부강사 1 삭제'));
+    const next = onChange.mock.calls[0][0] as PBLTrainingEnv;
+    expect(next.externalInstructors).toHaveLength(0);
+  });
+
+  it('사내강사 max(5) 도달 시 추가 버튼 disabled (분기 cover)', () => {
+    const filled: PBLTrainingEnv = {
+      ...emptyEnv(),
+      internalInstructors: Array.from({ length: 5 }, () => ({
+        position: '',
+        name: '',
+        career: '',
+        personalTraits: '',
+      })),
+    };
+    render(<StepTrainingEnv value={filled} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('사내강사 행 추가')).toBeDisabled();
+  });
+
+  it('사내장소·사외장소·AI인프라 편집 onChange 분기 cover', () => {
+    const onChange = vi.fn();
+    render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('훈련장소 사내'), { target: { value: '본사 3층' } });
+    fireEvent.change(screen.getByLabelText('훈련장소 사외'), { target: { value: '외부센터' } });
+    fireEvent.change(screen.getByLabelText('AI 인프라'), { target: { value: 'PC 30대' } });
+    const calls = onChange.mock.calls;
+    expect((calls[0][0] as PBLTrainingEnv).internalPlace).toBe('본사 3층');
+    expect((calls[1][0] as PBLTrainingEnv).externalPlace).toBe('외부센터');
+    expect((calls[2][0] as PBLTrainingEnv).aiInfrastructure).toBe('PC 30대');
+  });
 });

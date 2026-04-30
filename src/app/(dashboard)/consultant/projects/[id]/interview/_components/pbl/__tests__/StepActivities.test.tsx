@@ -86,4 +86,55 @@ describe('StepActivities (R8 PBL-자체-03 — 차수×4 역할 평면 4행)', (
     expect((calls[0][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'PM')?.personName).toBe('홍길동');
     expect((calls[1][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'EXTERNAL_EXPERT')?.personName).toBe('김전문');
   });
+
+  // R8 분기 cover — readOnly / MAX_ROUNDS / 1 round 만 있을 때 삭제 disabled
+  it('readOnly 이면 차수 추가 버튼이 disabled', () => {
+    render(<StepActivities value={[]} onChange={vi.fn()} readOnly />);
+    expect(screen.getByLabelText('차수 추가')).toBeDisabled();
+  });
+
+  it('MAX_ROUNDS=5 도달 시 차수 추가 버튼 disabled (분기 cover)', () => {
+    const fiveRounds: PBLActivityRow[] = [];
+    for (let r = 1; r <= 5; r++) {
+      ['PM', 'EXTERNAL_EXPERT', 'INTERNAL_EXPERT', 'JURISDICTION_MANAGER'].forEach(
+        (role) => {
+          fiveRounds.push({
+            round: r,
+            role: role as PBLActivityRow['role'],
+            personName: '',
+            date: '',
+            content: '',
+            method: '',
+          });
+        },
+      );
+    }
+    render(<StepActivities value={fiveRounds} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('차수 추가')).toBeDisabled();
+  });
+
+  it('1 round 만 있을 때 1차 삭제 버튼 disabled (분기 cover)', () => {
+    const oneRound: PBLActivityRow[] = [
+      { round: 1, role: 'PM', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'EXTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'INTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'JURISDICTION_MANAGER', personName: '', date: '', content: '', method: '' },
+    ];
+    render(<StepActivities value={oneRound} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('1차 삭제')).toBeDisabled();
+  });
+
+  it('updateRow — 일자 / 방법 편집 분기 cover', () => {
+    const onChange = vi.fn();
+    render(<StepActivities value={[]} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('1차 PM 수행 일자'), {
+      target: { value: '2026.05.01' },
+    });
+    fireEvent.change(screen.getByLabelText('1차 PM 수행 방법'), {
+      target: { value: '대면' },
+    });
+    const calls = onChange.mock.calls;
+    expect((calls[0][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'PM')?.date).toBe('2026.05.01');
+    expect((calls[1][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'PM')?.method).toBe('대면');
+  });
 });

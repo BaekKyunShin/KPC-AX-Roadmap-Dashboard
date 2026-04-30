@@ -308,6 +308,129 @@ describe('buildPBLHwpxPayload', () => {
     });
   });
 
+  // R8 PBL-자체-02 — buildTrainingEnvP05 6 셀 매핑 분기 cover
+  describe('PBL-자체-02: P-05 6 셀 매핑 (R8)', () => {
+    function makeV2WithTrainingEnv(env: unknown): Interview {
+      const v2 = (makeV2Interview() as unknown as { pbl_data: Record<string, unknown> })
+        .pbl_data;
+      return {
+        ...makeV2Interview(),
+        pbl_data: { ...v2, trainingEnv: env },
+      } as unknown as Interview;
+    }
+
+    it('trainingEnv 누락 시 6 셀 모두 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv(undefined),
+      });
+      expect(payload.data.training_env_internal_status).toBe('');
+      expect(payload.data.training_env_external_status).toBe('');
+      expect(payload.data.training_env_internal_capability).toBe('');
+      expect(payload.data.training_env_external_capability).toBe('');
+      expect(payload.data.training_env_internal_facility).toBe('');
+      expect(payload.data.training_env_external_facility).toBe('');
+    });
+
+    it('trainingEnv 6 영역 모두 채움 시 6 셀 매핑', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '회차당 4시간',
+          internalPlace: '본사 교육장',
+          externalPlace: '외부 AI센터',
+          internalInstructors: [
+            { position: '팀장', name: '김품질', career: '12년', personalTraits: '데이터 친화' },
+          ],
+          externalInstructors: [
+            { position: '교수', name: '박AI', career: '20년', personalTraits: 'NLP 전문' },
+          ],
+          aiInfrastructure: 'PC 30대',
+        }),
+      });
+      expect(payload.data.training_env_internal_status).toContain('훈련시간');
+      expect(payload.data.training_env_internal_status).toContain('본사 교육장');
+      expect(payload.data.training_env_external_status).toBe('외부 AI센터');
+      expect(payload.data.training_env_internal_capability).toContain('팀장');
+      expect(payload.data.training_env_internal_capability).toContain('김품질');
+      expect(payload.data.training_env_external_capability).toContain('박AI');
+      expect(payload.data.training_env_internal_facility).toBe('PC 30대');
+      expect(payload.data.training_env_external_facility).toBe('');
+    });
+
+    it('trainingEnv 빈 객체 (모든 필드 default) 시 6 셀 모두 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: '',
+        }),
+      });
+      expect(payload.data.training_env_internal_status).toBe('');
+      expect(payload.data.training_env_external_status).toBe('');
+      expect(payload.data.training_env_internal_capability).toBe('');
+      expect(payload.data.training_env_external_capability).toBe('');
+      expect(payload.data.training_env_internal_facility).toBe('');
+    });
+  });
+
+  // R8 PBL-자체-05 — outcome_analysis 4 키 매핑 분기 cover
+  describe('PBL-자체-05: Ⅴ. outcome_analysis 4 키 매핑 (R8)', () => {
+    it('outcome_analysis 부재 시 4 키 모두 빈 문자열', () => {
+      const pblNoOutcome = makePBL({
+        pbl_content: {
+          ...((makePBL().pbl_content as unknown) as Record<string, unknown>),
+          outcome_analysis: undefined,
+        } as unknown as PBLContent,
+      });
+      const payload = buildPBLHwpxPayload({
+        pbl: pblNoOutcome,
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.quantitative_metrics).toBe('');
+      expect(payload.data.qualitative_metrics).toBe('');
+      expect(payload.data.internalization_plan).toBe('');
+      expect(payload.data.dissemination_plan).toBe('');
+    });
+
+    it('outcome_analysis 채움 시 4 키 매핑', () => {
+      const baseContent = (makePBL().pbl_content as unknown) as Record<string, unknown>;
+      const pblWithOutcome = makePBL({
+        pbl_content: {
+          ...baseContent,
+          outcome_analysis: {
+            outcome_metrics: {
+              selected_goals: ['기술문제 해결'],
+              quantitative: '불량률 10% 감소',
+              qualitative: '협업 만족도 향상',
+            },
+            diffusion_strategy: {
+              internalization: '매뉴얼 정비 + 멘토링',
+              company_wide_diffusion: '경영진 보고 + 타 부서 적용',
+            },
+          },
+        } as unknown as PBLContent,
+      });
+      const payload = buildPBLHwpxPayload({
+        pbl: pblWithOutcome,
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.quantitative_metrics).toBe('불량률 10% 감소');
+      expect(payload.data.qualitative_metrics).toBe('협업 만족도 향상');
+      expect(payload.data.internalization_plan).toBe('매뉴얼 정비 + 멘토링');
+      expect(payload.data.dissemination_plan).toBe('경영진 보고 + 타 부서 적용');
+    });
+  });
+
   it('Ⅱ. 훈련환경 — 사내/사외 배열과 사내강사', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL(),
@@ -410,7 +533,15 @@ describe('buildPBLHwpxPayload', () => {
             { dept: '영업팀', role: '팀장', description: '고객 응대' },
           ],
         },
-        trainingEnv: '사내 강의실 + 외부 클라우드',
+        // R8 PBL-자체-02 — 정형 객체
+        trainingEnv: {
+          properTrainingHours: '40h',
+          internalPlace: '사내 강의실',
+          externalPlace: '외부 클라우드',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: '',
+        },
         hrdReportPdf: {
           fileName: 'hrd.pdf',
           url: 'https://x/hrd.pdf',

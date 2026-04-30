@@ -82,4 +82,90 @@ describe('StepProblems (R8 PBL-자체-04 — 4 정형 항목 단일 세트)', ()
     const next = onChange.mock.calls[0][0] as StepProblemsValue;
     expect(next.priority.method).toBe('AHP 평가');
   });
+
+  // R8 분기 cover — value.priority 누락 시 기본값으로 fallback
+  it('value.priority 누락 시 빈 priority items 로 안전 동작', () => {
+    const onChange = vi.fn();
+    const partialValue = {
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+    } as unknown as StepProblemsValue;
+    render(<StepProblems value={partialValue} onChange={onChange} />);
+    // 기본 행 1개 prefill — input 존재 확인
+    expect(screen.getByLabelText('우선순위 1 문제명')).toBeInTheDocument();
+  });
+
+  // R8 분기 cover — 우선순위 행 추가/삭제 분기
+  it('우선순위 "행 추가" 클릭 시 다음 rank 가 자동 증가한다', () => {
+    const onChange = vi.fn();
+    const initial: StepProblemsValue = {
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+      priority: {
+        items: [
+          { problem: 'A', score: 5, rank: 1 },
+          { problem: 'B', score: 3, rank: 2 },
+        ],
+        method: '',
+      },
+    };
+    render(<StepProblems value={initial} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('우선순위 행 추가'));
+    const next = onChange.mock.calls[0][0] as StepProblemsValue;
+    expect(next.priority.items).toHaveLength(3);
+    expect(next.priority.items[2].rank).toBe(3);
+  });
+
+  it('우선순위 행 삭제 — 1개 남았을 때 삭제 버튼 disabled (분기 cover)', () => {
+    render(<StepProblems value={base()} onChange={vi.fn()} />);
+    // 기본 1개 prefill — 삭제 버튼이 disabled
+    const deleteBtn = screen.getByLabelText('우선순위 1 삭제');
+    expect(deleteBtn).toBeDisabled();
+  });
+
+  it('우선순위 행 삭제 — 2개 이상일 때 삭제 가능 (분기 cover)', () => {
+    const onChange = vi.fn();
+    const initial: StepProblemsValue = {
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+      priority: {
+        items: [
+          { problem: 'A', score: 5, rank: 1 },
+          { problem: 'B', score: 3, rank: 2 },
+        ],
+        method: '',
+      },
+    };
+    render(<StepProblems value={initial} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('우선순위 2 삭제'));
+    const next = onChange.mock.calls[0][0] as StepProblemsValue;
+    expect(next.priority.items).toHaveLength(1);
+    expect(next.priority.items[0].problem).toBe('A');
+  });
+
+  it('우선순위 점수가 범위 밖(0, 6)이면 기존 값 유지 (분기 cover)', () => {
+    const onChange = vi.fn();
+    const initial: StepProblemsValue = {
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+      priority: { items: [{ problem: 'A', score: 3, rank: 1 }], method: '' },
+    };
+    render(<StepProblems value={initial} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('우선순위 1 점수'), {
+      target: { value: '0' },
+    });
+    const next = onChange.mock.calls[0][0] as StepProblemsValue;
+    // 0 은 범위 밖 → 기존 3 유지
+    expect(next.priority.items[0].score).toBe(3);
+  });
+
+  it('우선순위 순위 음수 입력 시 기존 값 유지 (분기 cover)', () => {
+    const onChange = vi.fn();
+    const initial: StepProblemsValue = {
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+      priority: { items: [{ problem: 'A', score: 3, rank: 1 }], method: '' },
+    };
+    render(<StepProblems value={initial} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('우선순위 1 순위'), {
+      target: { value: '-1' },
+    });
+    const next = onChange.mock.calls[0][0] as StepProblemsValue;
+    expect(next.priority.items[0].rank).toBe(1);
+  });
 });

@@ -724,49 +724,11 @@ export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 //
 // 기존 DB JSONB 데이터 호환: z.preprocess 로 string 입력 시 PM 필드에 채워
 // object 로 정규화. 마이그레이션 SQL 불요.
-export const PBLActivityParticipantsSchema = z.object({
-  pm: z.string().default(''),
-  external_expert: z.string().default(''),
-  internal_expert: z.string().default(''),
-  jurisdiction_manager: z.string().default(''),
-});
-export type PBLActivityParticipants = z.infer<typeof PBLActivityParticipantsSchema>;
+// R8 PBL-자체-03 — PBLActivityParticipantsSchema 폐기 (옵션 B). 외부 참조 없음 확인.
 
-export const PBLActivityItemSchema = z.object({
-  round: z
-    .number({ message: '차수는 숫자여야 합니다.' })
-    .int({ message: '차수는 정수여야 합니다.' })
-    .positive({ message: '차수는 1 이상이어야 합니다.' }),
-  date: z.string().min(1, '수행 일자를 입력하세요.'),
-  content: z.string().min(1, '수행 내용을 입력하세요.'),
-  method: z.string().min(1, '수행 방법을 입력하세요.'),
-  participants: z.preprocess(
-    (val) => {
-      // 기존 string 형 데이터 호환 (PR #5 Phase F-4 마이그레이션):
-      //   "PM 홍길동, 외부 김전문, 내부 박관리" 같은 자유서술 → PM 필드에 통째로 채움.
-      // null / undefined → 빈 object.
-      if (typeof val === 'string') {
-        return {
-          pm: val,
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        };
-      }
-      if (val == null) {
-        return {
-          pm: '',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        };
-      }
-      return val;
-    },
-    PBLActivityParticipantsSchema,
-  ),
-});
-export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
+// R8 PBL-자체-03 — 기존 PBLActivityItem (차수당 1행 + participants 4 person dict)
+// 폐기 (옵션 B 평면 4행 배열로 전환). PBLActivityParticipantsSchema 는
+// 다른 코드(외부 참조 없음 확인) 가 import 하지 않으므로 함께 제거.
 
 // -- Ⅲ-1 평면 4행 배열 (R8 PBL-자체-03, 옵션 B) -----------------------------
 // 양식 13×6 = 차수당 4 역할 (PM/외부전문가/내부전문가/주치의) × 일자/내용/방법.
