@@ -164,6 +164,8 @@
 - **증상**: 결과 페이지 내 내용을 직접 수정할 수 없음
 - **기대**: 도출된 결과를 직접 수정할 수 있도록 수정 기능 적용. **PBL 결과 페이지에도 동일 적용**
 
+> [해결됨][PR R7] 2026-04-30 — PR-A·PR-B 통합 적용. **로드맵 결과 페이지** Ⅲ-2 훈련체계도 / Ⅲ-3 연간 훈련계획 / Ⅲ-4 훈련과정 명세서·교과목 표 영역에 신규 `EditableTable` 컴포넌트 (행 단위 InlineEditField + 행 추가/삭제 + min/maxRows 가드) 적용. `editRoadmapManually`(roadmap-crud.ts:149) 의 DRAFT 가드를 ARCHIVED-만-차단 정책으로 변경해 **FINAL in-place 수정 허용** (동일 version_number·finalized_at 보존). 감사로그를 `ROADMAP_UPDATE` → `ROADMAP_RESULT_EDITED` 로 분기하고 meta 에 `status / version_id / fields_changed / diff` (텍스트 ≤200자 원문, 배열 length 비교) 페이로드 기록. **PBL 결과 페이지** `editPBLV2`(pbl/actions.ts:776) 도 동일하게 ARCHIVED-만-차단 + 감사로그 `PBL_REPORT_EDITED` (`source: 'RESULT_PAGE'`) 분기. 두 결과 페이지 모두 FINAL 상태 안내 배너 추가. 마이그 `070_audit_actions_pr5.sql` 로 `audit_action` enum 4 종 (`ROADMAP_RESULT_EDITED`, `PBL_REPORT_EDITED`, `INTERVIEW_FIELD_EDITED`, `RESULT_REGENERATED_FROM_REVIEW`) 확장. PBL Tab 의 표 영역 (activities / problems) EditableTable 적용은 patch 시그니처 확장이 동반되어 후속 PR 로 분리. Ⅴ 성과분석 placeholder 는 spec §5.2 명시대로 범위 외. `EditableTable` / `InlineSelectField` / `roadmap-crud` 회귀 테스트 12+5건, 기존 결과 페이지 회귀 (RoadmapResultClient·TabTraining·actions-v2) 갱신 완료.
+
 ---
 
 ## HWPX 다운로드
@@ -199,6 +201,8 @@
 
 - **증상**: 인터뷰 최종 제출 후 전체 항목을 한 페이지에서 확인할 수 있는 검토 페이지 없이 곧장 `AI 로드맵 생성` 버튼이 노출되어 UI/UX가 좋지 않음
 - **기대**: 최종 제출 후 인터뷰 항목 전체를 한 페이지에서 조회 가능. 해당 페이지에서 직접 수정도 가능하도록
+
+> [해결됨][PR R7] 2026-04-30 — PR-C 적용. 신규 라우트 `/consultant/projects/[id]/interview/review` 추가 (page.tsx + InterviewReviewClient + ReviewActions + StaleResultBanner). 로드맵 8 Step / PBL 9 Step 모두 한 페이지에서 접힘식 카드로 표시하며, 단일 텍스트 필드 (`establishmentNecessity` / `companyRequirements` 4행 / `targetTask` 4행 / `taskAnalysisNote` / PBL overview 4행) 는 `InlineEditField` 인라인 편집을 지원. 표 영역 (`performanceActivities` / `taskAnalysis` / `competencies` / `activities` / `problems`) 은 read-only 표시 + "📝 인터뷰 페이지로 돌아가기" CTA 안내 (행 추가·삭제는 인터뷰 페이지에서). `RoadmapInterviewClient.tsx` / `PBLInterviewClient.tsx` 의 제출 후 redirect 를 `/roadmap` · `/pbl` → `/interview/review` 로 변경. `interviews.updated_at > 결과.created_at` 일 때만 `StaleResultBanner` 노출 + `[재생성]` 클릭 시 `triggerResultRegenerationFromReview` 감사로그 (`RESULT_REGENERATED_FROM_REVIEW`) 후 결과 페이지 navigate. 단일 필드 patch 는 `editInterviewFieldRoadmap` / `editInterviewFieldPbl` Server Action 이 `saveRoadmapInterviewV2(autoSave: true)` / `savePBLInterviewV2(autoSave: true)` 를 위임 호출하고 `INTERVIEW_FIELD_EDITED` (`source: 'REVIEW_PAGE'`) 감사로그 추가. `StaleResultBanner` 단위 테스트 4건 + 인터뷰 클라이언트 redirect 회귀 갱신.
 
 ### 공통-C — AI 로드맵 생성 99% 단계 정체
 

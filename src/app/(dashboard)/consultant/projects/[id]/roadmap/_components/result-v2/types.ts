@@ -11,8 +11,10 @@
  */
 
 import type {
+  RoadmapAnnualPlan,
   RoadmapCompetency as LLMCompetency,
   RoadmapCourseSpec,
+  RoadmapTrainingStructureItem,
 } from '@/lib/services/roadmap';
 import type { RoadmapCompetency as InterviewCompetency } from '@/lib/schemas/interview-roadmap';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
@@ -64,6 +66,10 @@ export interface RoadmapResultEditPayload {
 
   // Ⅲ-2 훈련체계도 수립 방법 텍스트
   training_structure_method?: string;
+  // Ⅲ-2 훈련체계도 행 배열 (PR5 R6 — DRAFT/FINAL 편집 가능)
+  training_structure?: RoadmapTrainingStructureItem[];
+  // Ⅲ-3 연간 훈련계획 (PR5 R6 — DRAFT/FINAL 편집 가능)
+  annual_plan?: RoadmapAnnualPlan;
   // Ⅲ-4 훈련과정 명세서 배열 (LLM 생성, DRAFT 편집 가능)
   course_specs?: RoadmapCourseSpec[];
 }

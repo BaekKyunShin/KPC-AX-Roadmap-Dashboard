@@ -331,13 +331,16 @@ describe('editPBLV2', () => {
       interviewer_id: USER_A,
     });
 
-    // 감사로그 검증 — PBL_INTERVIEW_SAVED + schema_version: v2_result_edit
+    // PR5 (R6 spec) — 감사로그가 PBL_REPORT_EDITED 로 분기 + source: 'RESULT_PAGE'
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'PBL_INTERVIEW_SAVED',
+        action: 'PBL_REPORT_EDITED',
         targetType: 'pbl_report',
         targetId: VERSION_ID,
-        meta: expect.objectContaining({ schema_version: 'v2_result_edit' }),
+        meta: expect.objectContaining({
+          source: 'RESULT_PAGE',
+          fields_changed: expect.any(Array),
+        }),
       }),
     );
   });

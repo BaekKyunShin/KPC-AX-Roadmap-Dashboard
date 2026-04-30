@@ -352,7 +352,9 @@ export function RoadmapInterviewClient({
             '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         });
         if (ok) {
-          router.push(`/consultant/projects/${projectId}/roadmap`);
+          // PR5 (R6 spec) — 제출 직후 검토 페이지로 redirect.
+          // 사용자가 8 Step 입력을 한 번에 검토하고, stale 배너·재생성 트리거를 활용 가능.
+          router.push(`/consultant/projects/${projectId}/interview/review`);
         } else {
           setIsSubmitting(false);
         }

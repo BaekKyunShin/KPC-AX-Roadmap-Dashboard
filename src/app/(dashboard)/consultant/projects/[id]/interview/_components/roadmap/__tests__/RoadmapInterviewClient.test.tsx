@@ -394,7 +394,9 @@ describe('RoadmapInterviewClient', () => {
     );
     expect(submitRoadmapInterviewV2).toHaveBeenCalledWith('p1', expect.any(Object));
     await waitFor(() =>
-      expect(routerPush).toHaveBeenCalledWith('/consultant/projects/p1/roadmap'),
+      expect(routerPush).toHaveBeenCalledWith(
+        '/consultant/projects/p1/interview/review',
+      ),
     );
   });
 
