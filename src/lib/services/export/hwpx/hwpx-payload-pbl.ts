@@ -133,12 +133,53 @@ function buildDataFromV2(
     company_issues: v2.companyIssues ?? '',
     // V2 organization { orgTree, mainWork[] } 통째 전달 — Python 측에서 flatten
     organization: v2.organization ?? { orgTree: [], mainWork: [] },
-    // V2 trainingEnv 자유서술 (V1 의 6 셀 분리는 fallback 으로 빈 문자열)
-    training_env_internal_status: '',
-    training_env_external_status: '',
-    training_env_internal_capability: '',
-    training_env_external_capability: '',
-    training_env_internal_facility: v2.trainingEnv ?? '',
+    // R8 PBL-자체-02 — V2 trainingEnv 정형 객체 → P-05 6 셀 매핑.
+    // 6 영역 데이터를 양식 6 셀 (사내/사외 × status/capability/facility) 로 재배열:
+    //   - internal_status   ← 적정훈련시간 + 사내 장소 요약
+    //   - external_status   ← 사외 장소 요약
+    //   - internal_capability ← 사내 강사 dump
+    //   - external_capability ← 외부 강사 dump
+    //   - internal_facility  ← AI 인프라 (사내)
+    //   - external_facility  ← (현재 별도 필드 부재 — 빈 문자열)
+    training_env_internal_status: ((): string => {
+      const env = v2.trainingEnv;
+      if (!env || typeof env === 'string') return typeof env === 'string' ? env : '';
+      const parts: string[] = [];
+      if (env.properTrainingHours) parts.push(`훈련시간: ${env.properTrainingHours}`);
+      if (env.internalPlace) parts.push(`사내 장소: ${env.internalPlace}`);
+      return parts.join(' · ');
+    })(),
+    training_env_external_status: ((): string => {
+      const env = v2.trainingEnv;
+      if (!env || typeof env === 'string') return '';
+      return env.externalPlace ?? '';
+    })(),
+    training_env_internal_capability: ((): string => {
+      const env = v2.trainingEnv;
+      if (!env || typeof env === 'string') return '';
+      return env.internalInstructors
+        .map((i) =>
+          [i.position, i.name, i.career, i.personalTraits].filter(Boolean).join(' / '),
+        )
+        .filter(Boolean)
+        .join('\n');
+    })(),
+    training_env_external_capability: ((): string => {
+      const env = v2.trainingEnv;
+      if (!env || typeof env === 'string') return '';
+      return env.externalInstructors
+        .map((i) =>
+          [i.position, i.name, i.career, i.personalTraits].filter(Boolean).join(' / '),
+        )
+        .filter(Boolean)
+        .join('\n');
+    })(),
+    training_env_internal_facility: ((): string => {
+      const env = v2.trainingEnv;
+      if (!env) return '';
+      if (typeof env === 'string') return env;
+      return env.aiInfrastructure ?? '';
+    })(),
     training_env_external_facility: '',
     // V2 hrdReportPdf {fileName, url, ...} → URL 또는 fileName
     hrd_report_attachment: v2.hrdReportPdf

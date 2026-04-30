@@ -867,7 +867,37 @@ export async function editPBLV2(
       ...(patch.organization !== undefined
         ? { organization: patch.organization as PBLInterviewStrict['organization'] }
         : {}),
-      ...(patch.trainingEnv !== undefined ? { trainingEnv: patch.trainingEnv } : {}),
+      // R8 PBL-자체-02 — Partial<PBLTrainingEnv> 를 기존 객체와 병합
+      ...(patch.trainingEnv !== undefined
+        ? {
+            trainingEnv: {
+              properTrainingHours:
+                patch.trainingEnv.properTrainingHours ??
+                current.trainingEnv?.properTrainingHours ??
+                '',
+              internalPlace:
+                patch.trainingEnv.internalPlace ??
+                current.trainingEnv?.internalPlace ??
+                '',
+              externalPlace:
+                patch.trainingEnv.externalPlace ??
+                current.trainingEnv?.externalPlace ??
+                '',
+              internalInstructors:
+                patch.trainingEnv.internalInstructors ??
+                current.trainingEnv?.internalInstructors ??
+                [],
+              externalInstructors:
+                patch.trainingEnv.externalInstructors ??
+                current.trainingEnv?.externalInstructors ??
+                [],
+              aiInfrastructure:
+                patch.trainingEnv.aiInfrastructure ??
+                current.trainingEnv?.aiInfrastructure ??
+                '',
+            },
+          }
+        : {}),
       ...(patch.courseNecessity !== undefined ? { courseNecessity: patch.courseNecessity } : {}),
       ...(patch.activities !== undefined ? { activities: patch.activities } : {}),
       // R8 PBL-자체-04 — Partial<PBLProblemDefinitionSheet> 를 기존 시트와 병합

@@ -504,7 +504,14 @@ function validPBLCamelCase(): PBLInterviewStrict {
         { dept: '생산', role: '품질검사', description: '출하 전 품질검사' },
       ],
     },
-    trainingEnv: '사내 교육장 보유, AI 도구 가능',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '사내 교육장 보유',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: 'AI 도구 가능',
+    },
     hrdReportPdf: {
       fileName: 'pbl-hrd.pdf',
       url: 'projects/yyy/pbl-hrd.pdf',

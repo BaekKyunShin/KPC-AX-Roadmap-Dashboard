@@ -561,8 +561,14 @@ describe('PBLAnalysisSchema (Ⅱ 훈련 요구 분석)', () => {
         { dept: '품질팀', role: '검사', description: '완제품 품질 검사' },
       ],
     },
-    trainingEnv:
-      '훈련여건 24h, 사내 교육장 보유, 사내 강사 없음. 대상 15명 경력 5년 이상.',
+    trainingEnv: {
+      properTrainingHours: '24시간',
+      internalPlace: '사내 교육장',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '대상 15명 경력 5년 이상',
+    },
     hrdReportPdf: {
       fileName: 'HRD이음_진단보고서.pdf',
       url: 'interview-attachments/project-1/hrd.pdf',
@@ -946,7 +952,14 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
       orgTree: [{ id: 'r', name: '회사', children: [] }],
       mainWork: [{ dept: '생산팀', role: '공정관리', description: '라인' }],
     },
-    trainingEnv: '훈련환경 요약',
+    trainingEnv: {
+      properTrainingHours: '40시간',
+      internalPlace: '본사 교육장',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: 'PC 10대',
+    },
     hrdReportPdf: {
       fileName: 'HRD.pdf',
       url: 'interview-attachments/p1/hrd.pdf',

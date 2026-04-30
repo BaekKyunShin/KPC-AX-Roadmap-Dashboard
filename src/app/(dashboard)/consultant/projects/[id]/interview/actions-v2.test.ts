@@ -182,7 +182,14 @@ function validPBLV2(): PBLInterviewStrict {
       orgTree: [{ id: 'root', name: '대표이사', children: [] }],
       mainWork: [{ dept: '생산', role: '품질검사', description: '출하 전 품질검사' }],
     },
-    trainingEnv: '사내 교육장 보유',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '사내 교육장 보유',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '',
+    },
     hrdReportPdf: { fileName: 'pbl.pdf', url: 'p/pbl.pdf', size: 2048 },
     courseNecessity: 'AI 도입 필요',
     activities: [

@@ -238,19 +238,20 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
-  it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다', async () => {
+  it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다 (R8 PBL-자체-02 — 정형 객체)', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('훈련환경 분석'));
-    fireEvent.change(screen.getByLabelText('훈련환경 분석'), {
-      target: { value: '사내 교육장 활용' },
+    // 적정 훈련시간 입력 — 정형 객체의 한 필드
+    fireEvent.change(screen.getByLabelText('적정 훈련시간'), {
+      target: { value: '회차당 4시간' },
     });
     fireEvent.click(screen.getByLabelText('수동 저장'));
     await waitFor(() =>
       expect(savePBLInterviewV2).toHaveBeenCalledTimes(1),
     );
-    expect(savePBLInterviewV2.mock.calls[0][1].trainingEnv).toBe(
-      '사내 교육장 활용',
+    expect(savePBLInterviewV2.mock.calls[0][1].trainingEnv).toEqual(
+      expect.objectContaining({ properTrainingHours: '회차당 4시간' }),
     );
   });
 
@@ -314,7 +315,14 @@ describe('PBLInterviewClient', () => {
           },
         ],
       },
-      trainingEnv: '사내 교육장 활용',
+      trainingEnv: {
+        properTrainingHours: '',
+        internalPlace: '사내 교육장 활용',
+        externalPlace: '',
+        internalInstructors: [],
+        externalInstructors: [],
+        aiInfrastructure: '',
+      },
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',
       activities: [

@@ -113,20 +113,91 @@ export function TabPBLAnalysis({
         </div>
       </SectionCard>
 
-      {/* Ⅱ-2 기업 훈련환경 분석 */}
+      {/* Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 6 영역) */}
       <SectionCard
         title="Ⅱ-2. 기업 훈련환경 분석"
-        description="훈련장소 · 강사 · 대상 인원 · AI 인프라 등 요약 (인터뷰 입력)"
+        description="양식 12×7 정형 표 — 적정 훈련시간 · 훈련장소(사내/사외) · 사내·외부 강사 · AI 인프라"
       >
-        <InlineEditField
-          value={analysis?.trainingEnv ?? ''}
-          onSave={async (next) => {
-            await onEdit({ trainingEnv: next });
-          }}
-          readOnly={readOnly}
-          multiline
-          placeholder="훈련환경 분석 결과가 입력되지 않았습니다."
-        />
+        {(() => {
+          const env = analysis?.trainingEnv;
+          if (!env || typeof env === 'string') {
+            return (
+              <p className="text-sm text-muted-foreground">
+                훈련환경 분석이 입력되지 않았습니다.
+              </p>
+            );
+          }
+          return (
+            <div className="space-y-4">
+              <FormTable
+                caption="훈련환경 — 시간·장소·인프라"
+                bodyRows={[
+                  {
+                    cells: [
+                      { content: '적정 훈련시간', header: true, className: 'w-[160px]', align: 'center' },
+                      { content: env.properTrainingHours || '-', align: 'left' },
+                    ],
+                  },
+                  {
+                    cells: [
+                      { content: '훈련장소 (사내)', header: true, align: 'center' },
+                      { content: env.internalPlace || '-', align: 'left' },
+                    ],
+                  },
+                  {
+                    cells: [
+                      { content: '훈련장소 (사외)', header: true, align: 'center' },
+                      { content: env.externalPlace || '-', align: 'left' },
+                    ],
+                  },
+                  {
+                    cells: [
+                      { content: 'AI 인프라', header: true, align: 'center' },
+                      { content: env.aiInfrastructure || '-', align: 'left' },
+                    ],
+                  },
+                ]}
+              />
+              {(['internal', 'external'] as const).map((side) => {
+                const list =
+                  side === 'internal' ? env.internalInstructors : env.externalInstructors;
+                const heading = side === 'internal' ? '사내강사' : '외부강사';
+                return (
+                  <div key={side} className="space-y-2">
+                    <h4 className="text-sm font-semibold">{heading}</h4>
+                    {list.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        등록된 {heading}가 없습니다.
+                      </p>
+                    ) : (
+                      <FormTable
+                        caption={`${heading} 표`}
+                        headerRows={[
+                          {
+                            cells: [
+                              { content: '직위', header: true, className: 'w-[120px]' },
+                              { content: '이름', header: true, className: 'w-[120px]' },
+                              { content: '직무경력', header: true },
+                              { content: '인적특성', header: true },
+                            ],
+                          },
+                        ]}
+                        bodyRows={list.map((row) => ({
+                          cells: [
+                            { content: row.position || '-', align: 'center' },
+                            { content: row.name || '-', align: 'center' },
+                            { content: row.career || '-', align: 'left' },
+                            { content: row.personalTraits || '-', align: 'left' },
+                          ],
+                        }))}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </SectionCard>
 
       {/* Ⅱ-3-가 HRD이음 PDF */}

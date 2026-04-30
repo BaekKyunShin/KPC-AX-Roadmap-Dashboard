@@ -32,7 +32,14 @@ const baseInterview: Partial<ResultPBLInterviewSnapshot> = {
   analysis: {
     companyIssues: '',
     organization: { orgTree: [], mainWork: [] },
-    trainingEnv: '',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '',
+    },
     hrdReportPdf: null,
     courseNecessity: '',
   },

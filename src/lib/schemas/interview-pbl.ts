@@ -664,15 +664,48 @@ export const PBLHrdReportPdfSchema = z.object({
 });
 export type PBLHrdReportPdf = z.infer<typeof PBLHrdReportPdfSchema>;
 
+// -- Ⅱ-2 훈련환경 정형 표 (R8 PBL-자체-02) ---------------------------------
+// 양식 12×7 표는 6 영역으로 그룹핑:
+//   1. 적정 훈련시간 (텍스트)
+//   2. 훈련장소 — 사내 (텍스트)
+//   3. 훈련장소 — 사외 (텍스트)
+//   4. 사내강사 — 직위/이름/경력/인적특성 행 배열
+//   5. 외부강사 — 직위/이름/경력/인적특성 행 배열
+//   6. AI 인프라 (텍스트)
+//
+// HWPX P-05 6 셀 매핑:
+//   - internal_status   ← properTrainingHours + internalPlace 요약
+//   - external_status   ← externalPlace 요약
+//   - internal_capability ← internalInstructors dump
+//   - external_capability ← externalInstructors dump
+//   - internal_facility  ← aiInfrastructure (사내)
+//   - external_facility  ← (외부 인프라 — 현재는 빈 문자열 fallback)
+export const PBLInstructorRowSchema = z.object({
+  position: z.string().default(''), // 직위
+  name: z.string().default(''),     // 이름
+  career: z.string().default(''),   // 직무경력
+  personalTraits: z.string().default(''), // 인적특성
+});
+export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
+
+export const PBLTrainingEnvSchema = z.object({
+  properTrainingHours: z.string().default(''),    // 적정 훈련시간
+  internalPlace: z.string().default(''),          // 훈련장소 — 사내
+  externalPlace: z.string().default(''),          // 훈련장소 — 사외
+  internalInstructors: z.array(PBLInstructorRowSchema).default([]), // 사내강사
+  externalInstructors: z.array(PBLInstructorRowSchema).default([]), // 외부강사
+  aiInfrastructure: z.string().default(''),       // AI 인프라 (사내)
+});
+export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
+
 // -- Ⅱ 훈련 요구 분석 [인터뷰 + PDF 첨부] ----------------------------------
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
   companyIssues: z.string().min(1, '기업 경영 이슈(bullet 서술)를 입력하세요.'),
   // Ⅱ-1-나 조직도 + 주요 업무
   organization: PBLOrganizationSchema,
-  // Ⅱ-2 기업 훈련환경 분석 (표 + 박스 자유서술 — 세부 필드는 기존 snake_case
-  // trainingEnvironmentSchema 에서 다루고, 본 신규 스키마는 요약/자유서술로 저장)
-  trainingEnv: z.string().min(1, '훈련환경 분석 결과를 입력하세요.'),
+  // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
+  trainingEnv: PBLTrainingEnvSchema,
   // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null)
   hrdReportPdf: PBLHrdReportPdfSchema.nullable(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성

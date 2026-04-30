@@ -104,7 +104,14 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
     ...emptyOverview(),
     companyIssues: '',
     organization: emptyOrganization(),
-    trainingEnv: '',
+    trainingEnv: {
+      properTrainingHours: '',
+      internalPlace: '',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: '',
+    },
     hrdReportPdf: null,
     courseNecessity: '',
     activities: [],
@@ -387,7 +394,16 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
       case 'trainingEnv':
         return (
           <StepTrainingEnv
-            value={data.trainingEnv ?? ''}
+            value={
+              data.trainingEnv ?? {
+                properTrainingHours: '',
+                internalPlace: '',
+                externalPlace: '',
+                internalInstructors: [],
+                externalInstructors: [],
+                aiInfrastructure: '',
+              }
+            }
             onChange={(next) => update({ trainingEnv: next })}
           />
         );

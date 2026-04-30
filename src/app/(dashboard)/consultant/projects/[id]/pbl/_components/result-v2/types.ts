@@ -45,7 +45,8 @@ export interface PBLResultEditPayload {
     orgTree?: PBLOrgTreeNode[];
     mainWork?: PBLMainWorkItem[];
   };
-  trainingEnv?: string;
+  // R8 PBL-자체-02 — string → 정형 객체 (Partial 로 일부 필드만 patch 가능)
+  trainingEnv?: Partial<import('@/lib/schemas/interview-pbl').PBLTrainingEnv>;
   courseNecessity?: string;
 
   // Ⅲ 훈련과제 도출

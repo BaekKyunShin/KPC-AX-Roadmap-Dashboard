@@ -160,7 +160,8 @@ export function PBLInterviewClient({
     (patch: {
       companyIssues?: string;
       organization?: PBLInterviewStrict['organization'];
-      trainingEnv?: string;
+      // R8 PBL-자체-02 — string → 정형 객체
+      trainingEnv?: PBLInterviewStrict['trainingEnv'];
       hrdReportPdf?: PBLInterviewStrict['hrdReportPdf'];
       courseNecessity?: string;
     }) => {
@@ -353,7 +354,16 @@ export function PBLInterviewClient({
       case 'trainingEnv':
         return (
           <StepTrainingEnv
-            value={data.trainingEnv ?? ''}
+            value={
+              data.trainingEnv ?? {
+                properTrainingHours: '',
+                internalPlace: '',
+                externalPlace: '',
+                internalInstructors: [],
+                externalInstructors: [],
+                aiInfrastructure: '',
+              }
+            }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}
           />
         );

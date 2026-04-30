@@ -313,13 +313,48 @@ function ReviewSectionPbl({
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅱ-2. 훈련 환경">
-        <PblOverviewRow
-          label="훈련 환경"
-          projectId={projectId}
-          field="trainingEnv"
-          value={data.trainingEnv ?? ''}
-          multiline
-        />
+        {/* R8 PBL-자체-02 — 정형 객체. 인라인 편집은 인터뷰 페이지에서 (검토는 read-only 요약). */}
+        {(() => {
+          const env = data.trainingEnv;
+          if (!env) {
+            return (
+              <p className="text-sm text-muted-foreground">
+                훈련 환경이 입력되지 않았습니다.
+              </p>
+            );
+          }
+          return (
+            <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+              <dt className="font-medium">적정 훈련시간</dt>
+              <dd className="whitespace-pre-wrap">{env.properTrainingHours || '-'}</dd>
+              <dt className="font-medium">훈련장소 (사내)</dt>
+              <dd className="whitespace-pre-wrap">{env.internalPlace || '-'}</dd>
+              <dt className="font-medium">훈련장소 (사외)</dt>
+              <dd className="whitespace-pre-wrap">{env.externalPlace || '-'}</dd>
+              <dt className="font-medium">AI 인프라</dt>
+              <dd className="whitespace-pre-wrap">{env.aiInfrastructure || '-'}</dd>
+              <dt className="font-medium">사내강사</dt>
+              <dd>
+                {env.internalInstructors.length === 0
+                  ? '-'
+                  : env.internalInstructors
+                      .map((i) => `${i.position} ${i.name}`.trim() || '(미입력)')
+                      .join(' / ')}
+              </dd>
+              <dt className="font-medium">외부강사</dt>
+              <dd>
+                {env.externalInstructors.length === 0
+                  ? '-'
+                  : env.externalInstructors
+                      .map((i) => `${i.position} ${i.name}`.trim() || '(미입력)')
+                      .join(' / ')}
+              </dd>
+            </dl>
+          );
+        })()}
+        <p className="mt-2 text-xs text-muted-foreground">
+          📝 6 영역 (시간·장소·강사·인프라) 의 세부 내용은 인터뷰 페이지에서 수정하세요.
+        </p>
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅱ-3. 교과목 필요성">
