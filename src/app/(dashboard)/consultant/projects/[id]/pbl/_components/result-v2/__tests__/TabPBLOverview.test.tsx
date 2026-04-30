@@ -94,19 +94,86 @@ describe('TabPBLOverview (Ⅰ. 훈련과정 개요)', () => {
     ).toBeInTheDocument();
   });
 
-  // R3 PBL-자체-01 임시 처리 — 결과 페이지 description 에 신청서 자동표출 안내 노출
-  // (사업장관리번호·업종·업종코드·주소·훈련실시주소·관할 지부·담당자 정보 데이터 바인딩은 R7+ 별도 PR 위임)
-  it('Ⅰ. 훈련과정 개요 description 에 신청서 자동표출 안내가 노출된다 (PBL-자체-01)', () => {
-    render(
-      <TabPBLOverview
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByText(/신청서 자동표출.*HWPX 다운로드 시 자동/),
-    ).toBeInTheDocument();
+  // R8 PBL-자체-01 본격 데이터 바인딩 — projectMeta 7필드 결과 페이지 표출
+  describe('PBL-자체-01: 신청서 자동표출 7필드 (R8)', () => {
+    const fullMeta = {
+      companyName: '테스트기업',
+      industry: '제조업',
+      industryCode: 'C26',
+      companyAddress: '서울시 강남구 테헤란로 123',
+      trainingAddress: '서울시 강남구 테헤란로 456 (훈련센터)',
+      jurisdictionBranch: '한국산업인력공단 서울지역본부',
+      contactName: '홍길동',
+      contactPosition: '인사팀 대리',
+      contactPhone: '010-1234-5678',
+      contactEmail: 'hong@test.com',
+      businessRegNo: '123-45-67890',
+    };
+
+    it('projectMeta 가 모두 채워지면 신청서 자동표출 카드에 7필드를 표시한다', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={fullMeta}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(/신청서 자동표출 정보/)).toBeInTheDocument();
+      expect(screen.getByText(/123-45-67890/)).toBeInTheDocument();
+      expect(screen.getByText(/제조업/)).toBeInTheDocument();
+      expect(screen.getByText(/C26/)).toBeInTheDocument();
+      expect(screen.getByText(/서울시 강남구 테헤란로 123/)).toBeInTheDocument();
+      expect(screen.getByText(/서울시 강남구 테헤란로 456/)).toBeInTheDocument();
+      expect(screen.getByText(/한국산업인력공단 서울지역본부/)).toBeInTheDocument();
+      expect(screen.getByText(/홍길동/)).toBeInTheDocument();
+      expect(screen.getByText(/인사팀 대리/)).toBeInTheDocument();
+    });
+
+    it('projectMeta 가 모두 비어 있으면 안내 문구를 노출한다', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={{ companyName: '테스트기업' }}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/프로젝트 메타에 입력된 신청서 자동표출 정보가 없습니다/),
+      ).toBeInTheDocument();
+    });
+
+    it('신청서 자동표출 카드 description 에 "수정 불가" 명시', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={fullMeta}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(/수정 불가/)).toBeInTheDocument();
+    });
+
+    it('일부 필드만 비어 있으면 채워진 항목은 노출하고 빈 항목은 — 로 표시', () => {
+      render(
+        <TabPBLOverview
+          version={null}
+          interview={interview}
+          projectMeta={{
+            companyName: '테스트기업',
+            businessRegNo: '123-45-67890',
+            // industry, industryCode, etc. 누락
+          }}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(/123-45-67890/)).toBeInTheDocument();
+    });
   });
 });

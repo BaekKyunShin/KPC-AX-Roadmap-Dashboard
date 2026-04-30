@@ -279,7 +279,7 @@ describe('PBLInterviewClient', () => {
   it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('문제 도출·우선순위'));
-    expect(screen.getByText('Ⅲ-2-가 문제 도출')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-2-가 문제 정의서')).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-2-나 문제 우선순위 결정')).toBeInTheDocument();
   });
 
@@ -331,13 +331,12 @@ describe('PBLInterviewClient', () => {
           },
         },
       ],
-      problems: [
-        {
-          title: '데이터 품질',
-          description: '수작업 정제 부담',
-          impact: '월 200시간',
-        },
-      ],
+      problemDefinitionSheet: {
+        background: '수작업 정제 부담으로 월 200시간 손실',
+        core: '데이터 품질 — 자동화 부재',
+        scope: '품질·생산 부서',
+        constraints: '예산·일정 한계',
+      },
       priority: {
         items: [{ problem: '데이터 품질', score: 5, rank: 1 }],
         method: '5점 척도 평균',

@@ -37,7 +37,7 @@ const baseInterview: Partial<ResultPBLInterviewSnapshot> = {
     courseNecessity: '',
   },
   activities: [],
-  problems: [],
+  problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
   priority: { items: [], method: '' },
   target: { name: '', scope: '', necessity: '', necessity_score: 3, details: [] },
   currentAiLevel: { level: 'BASIC', note: '' },

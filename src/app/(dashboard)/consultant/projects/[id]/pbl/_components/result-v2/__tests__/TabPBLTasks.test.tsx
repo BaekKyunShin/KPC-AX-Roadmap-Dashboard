@@ -31,13 +31,12 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       },
     },
   ],
-  problems: [
-    {
-      title: '검사 누락',
-      description: '야간 교대시 샘플 누락 발생',
-      impact: '불량률 증가',
-    },
-  ],
+  problemDefinitionSheet: {
+    background: '야간 교대시 샘플 누락 발생',
+    core: '검사 누락',
+    scope: '품질 검사 라인',
+    constraints: '예산·일정 한계',
+  },
   priority: {
     items: [{ problem: '검사 누락', score: 5, rank: 1 }],
     method: 'AHP 기반 협의',
@@ -75,7 +74,7 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
     expect(
       screen.getByText(/Ⅲ-1\. 훈련과제 도출 수행활동/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-2-가\. 문제 도출/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅲ-2-가\. 문제 정의서/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅲ-2-나\. 문제 우선순위 결정/)).toBeInTheDocument();
     expect(
       screen.getByText(/Ⅲ-3-가\. 훈련대상 업무 선정/),
@@ -237,6 +236,31 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
       <TabPBLTasks version={null} interview={{}} readOnly onEdit={vi.fn()} />,
     );
     expect(screen.getByText(/등록된 수행활동이 없습니다/)).toBeInTheDocument();
-    expect(screen.getByText(/등록된 문제가 없습니다/)).toBeInTheDocument();
+    // R8 PBL-자체-04 — problemDefinitionSheet 는 양식상 단일 세트 (행 추가/삭제 불가)
+    // 라 빈 상태에서도 4 라벨 (배경/핵심/범위/제약) 이 항상 노출됨.
+    expect(screen.getByText('문제 배경')).toBeInTheDocument();
+    expect(screen.getByText('핵심 문제')).toBeInTheDocument();
+    expect(screen.getByText('문제 범위')).toBeInTheDocument();
+    expect(screen.getByText('제약 조건')).toBeInTheDocument();
+  });
+
+  // R8 PBL-자체-04 — 4 정형 항목 결과 페이지 표출
+  it('Ⅲ-2-가 문제 정의서 — 4 정형 라벨 + 입력값이 표 형태로 노출된다', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('문제 배경')).toBeInTheDocument();
+    expect(screen.getByText('핵심 문제')).toBeInTheDocument();
+    expect(screen.getByText('문제 범위')).toBeInTheDocument();
+    expect(screen.getByText('제약 조건')).toBeInTheDocument();
+    expect(screen.getByText(/야간 교대시 샘플 누락 발생/)).toBeInTheDocument();
+    // "검사 누락" 은 problemDefinitionSheet.core + priority.items 둘 다 있어 multiple
+    expect(screen.getAllByText(/검사 누락/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/품질 검사 라인/)).toBeInTheDocument();
   });
 });

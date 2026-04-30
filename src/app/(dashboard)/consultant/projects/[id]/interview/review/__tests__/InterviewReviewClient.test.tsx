@@ -182,7 +182,7 @@ describe('InterviewReviewClient', () => {
       trainingEnv: '환경',
       courseNecessity: '필요성',
       activities: [],
-      problems: [],
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
     };
 
     it('헤더 + 9 Step 카드 + CTA 영역 렌더', () => {
@@ -256,9 +256,10 @@ describe('InterviewReviewClient', () => {
         screen.getByText(/수행 활동이 입력되지 않았습니다/),
       ).toBeInTheDocument();
 
-      await user.click(screen.getByText(/Ⅲ-2\. 문제 도출/));
+      // R8 PBL-자체-04 — problemDefinitionSheet 가 undefined 면 안내 문구 표시
+      await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
       expect(
-        screen.getByText(/문제가 입력되지 않았습니다/),
+        screen.getByText(/문제 정의서가 입력되지 않았습니다/),
       ).toBeInTheDocument();
     });
 
@@ -274,12 +275,12 @@ describe('InterviewReviewClient', () => {
             method: '대면',
           } as PBLInterviewStrict['activities'][number],
         ],
-        problems: [
-          {
-            title: 'PBL 문제 제목',
-            description: 'PBL 문제 설명',
-          } as PBLInterviewStrict['problems'][number],
-        ],
+        problemDefinitionSheet: {
+          background: 'PBL 문제 배경',
+          core: 'PBL 핵심 문제',
+          scope: 'PBL 문제 범위',
+          constraints: 'PBL 제약 조건',
+        },
       };
       render(
         <InterviewReviewClient
@@ -293,8 +294,8 @@ describe('InterviewReviewClient', () => {
       await user.click(screen.getByText(/Ⅲ-1\. 수행 활동/));
       expect(screen.getByText(/PBL 활동 내용/)).toBeInTheDocument();
 
-      await user.click(screen.getByText(/Ⅲ-2\. 문제 도출/));
-      expect(screen.getByText('PBL 문제 제목')).toBeInTheDocument();
+      await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
+      expect(screen.getByText('PBL 핵심 문제')).toBeInTheDocument();
     });
   });
 });

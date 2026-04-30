@@ -346,18 +346,37 @@ function ReviewSectionPbl({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-2. 문제 도출 (${(data.problems ?? []).length}건)`}>
-        {(data.problems ?? []).length > 0 ? (
-          <ul className="list-decimal space-y-2 pl-5 text-sm">
-            {(data.problems ?? []).map((p, i) => (
-              <li key={i}>
-                <strong>{p.title || '제목 미입력'}</strong> — {p.description || '-'}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">문제가 입력되지 않았습니다.</p>
-        )}
+      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서">
+        {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
+            모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}
+        {(() => {
+          const sheet = data.problemDefinitionSheet;
+          const allEmpty =
+            !sheet ||
+            ((sheet.background ?? '').trim() === '' &&
+              (sheet.core ?? '').trim() === '' &&
+              (sheet.scope ?? '').trim() === '' &&
+              (sheet.constraints ?? '').trim() === '');
+          if (allEmpty) {
+            return (
+              <p className="text-sm text-muted-foreground">
+                문제 정의서가 입력되지 않았습니다.
+              </p>
+            );
+          }
+          return (
+            <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+              <dt className="font-medium">문제 배경</dt>
+              <dd className="whitespace-pre-wrap">{sheet.background || '-'}</dd>
+              <dt className="font-medium">핵심 문제</dt>
+              <dd className="whitespace-pre-wrap">{sheet.core || '-'}</dd>
+              <dt className="font-medium">문제 범위</dt>
+              <dd className="whitespace-pre-wrap">{sheet.scope || '-'}</dd>
+              <dt className="font-medium">제약 조건</dt>
+              <dd className="whitespace-pre-wrap">{sheet.constraints || '-'}</dd>
+            </dl>
+          );
+        })()}
       </CollapsibleSection>
 
       <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준">

@@ -22,11 +22,24 @@ import type { TabPBLCommonProps } from './types';
  */
 export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) {
   const activities = interview?.activities ?? [];
-  const problems = interview?.problems ?? [];
+  // R8 PBL-자체-04 — 4 정형 항목 단일 세트 (배경/핵심/범위/제약)
+  const problemDefinitionSheet = interview?.problemDefinitionSheet ?? {
+    background: '',
+    core: '',
+    scope: '',
+    constraints: '',
+  };
   const priority = interview?.priority;
   const target = interview?.target;
   const currentAiLevel = interview?.currentAiLevel ?? { level: 'BASIC' as const, note: '' };
   const expectedAiLevel = interview?.expectedAiLevel ?? { level: 'USER' as const, note: '' };
+
+  async function patchProblemDefinition(
+    key: keyof typeof problemDefinitionSheet,
+    value: string,
+  ): Promise<void> {
+    await onEdit({ problemDefinitionSheet: { [key]: value } });
+  }
 
   return (
     <div className="space-y-6">
@@ -97,52 +110,92 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
         )}
       </SectionCard>
 
-      {/* Ⅲ-2-가 문제 도출 */}
+      {/* Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트) */}
       <SectionCard
-        title="Ⅲ-2-가. 문제 도출"
-        description="문제명 · 설명 · 영향 (인터뷰 입력)"
+        title="Ⅲ-2-가. 문제 정의서"
+        description="양식 5×2 표 정합 — 4 정형 항목(문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건)"
       >
-        {problems.length > 0 ? (
-          <div className="overflow-x-auto">
-            <FormTable
-              caption="문제 도출"
-              headerRows={[
+        <FormTable
+          caption="문제 정의서"
+          headerRows={[
+            {
+              cells: [
+                { content: '구분', header: true, className: 'w-[160px]' },
+                { content: '내용', header: true },
+              ],
+            },
+          ]}
+          bodyRows={[
+            {
+              cells: [
+                { content: '문제 배경', header: true, align: 'center' },
                 {
-                  cells: [
-                    { content: '문제명', header: true, className: 'w-[200px]' },
-                    { content: '문제 설명', header: true },
-                    { content: '영향(임팩트)', header: true },
-                  ],
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.background}
+                      onSave={(next) => patchProblemDefinition('background', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="문제 배경이 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
                 },
-              ]}
-              bodyRows={problems.map((p) => ({
-                cells: [
-                  { content: p.title || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {p.description || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {p.impact || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                ],
-              }))}
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            등록된 문제가 없습니다.
-          </p>
-        )}
+              ],
+            },
+            {
+              cells: [
+                { content: '핵심 문제', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.core}
+                      onSave={(next) => patchProblemDefinition('core', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="핵심 문제가 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '문제 범위', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.scope}
+                      onSave={(next) => patchProblemDefinition('scope', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="문제 범위가 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '제약 조건', header: true, align: 'center' },
+                {
+                  content: (
+                    <InlineEditField
+                      value={problemDefinitionSheet.constraints}
+                      onSave={(next) => patchProblemDefinition('constraints', next)}
+                      readOnly={readOnly}
+                      multiline
+                      placeholder="제약 조건이 입력되지 않았습니다."
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+          ]}
+        />
       </SectionCard>
 
       {/* Ⅲ-2-나 문제 우선순위 결정 */}

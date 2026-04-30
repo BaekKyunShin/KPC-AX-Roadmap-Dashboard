@@ -78,6 +78,8 @@ export interface PBLResultClientProps {
   isGenerationComplete?: boolean;
   onCancelGenerate?: () => void;
   companyName?: string;
+  /** PBL 양식 Ⅰ. 신청서 자동표출 7필드 (마이그 071) — TabPBLOverview 표출용. */
+  projectMeta?: import('./types').PBLProjectMetaSnapshot;
 }
 
 type TabValue = 'overview' | 'analysis' | 'tasks' | 'ops' | 'outcomes';
@@ -101,6 +103,7 @@ export function PBLResultClient({
   isGenerationComplete = false,
   onCancelGenerate,
   companyName = '',
+  projectMeta,
 }: PBLResultClientProps) {
   const [downloadLoading, setDownloadLoading] = useState<DownloadType | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
@@ -139,10 +142,11 @@ export function PBLResultClient({
     () => ({
       version: selectedVersion,
       interview,
+      projectMeta,
       readOnly: tabReadOnly,
       onEdit: onEdit ?? NOOP_EDIT,
     }),
-    [selectedVersion, interview, tabReadOnly, onEdit],
+    [selectedVersion, interview, projectMeta, tabReadOnly, onEdit],
   );
 
   const tabs: ResultTabItem[] = useMemo(

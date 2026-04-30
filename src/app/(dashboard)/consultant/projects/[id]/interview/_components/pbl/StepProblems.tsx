@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 import type { PBLStepProps } from './types';
 import type {
-  PBLProblemItem,
+  PBLProblemDefinitionSheet,
   PBLPriority,
   PBLPriorityItem,
 } from '@/lib/schemas/interview-pbl';
@@ -18,17 +18,18 @@ import type {
  * Ⅲ-2 문제 도출 + 우선순위 — [인터뷰 입력]
  *
  * 두 블록을 하나의 Step 으로 묶는다:
- *  - Ⅲ-2-가 문제 도출: `problems[]` (title/description/impact)
+ *  - Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04): 양식 5×2 표의 정형 4 항목 단일 세트
+ *    (문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건). 행 추가/삭제 불가.
  *  - Ⅲ-2-나 문제 우선순위 결정: `priority { items[], method }`
  */
 
 export interface StepProblemsValue {
-  problems: PBLProblemItem[];
+  problemDefinitionSheet: PBLProblemDefinitionSheet;
   priority: PBLPriority;
 }
 
-function emptyProblem(): PBLProblemItem {
-  return { title: '', description: '', impact: '' };
+function emptyProblemDefinition(): PBLProblemDefinitionSheet {
+  return { background: '', core: '', scope: '', constraints: '' };
 }
 
 function emptyPriorityItem(rank: number): PBLPriorityItem {
@@ -40,10 +41,8 @@ export function StepProblems({
   onChange,
   readOnly = false,
 }: PBLStepProps<StepProblemsValue>) {
-  const problems: PBLProblemItem[] =
-    value.problems && value.problems.length > 0
-      ? value.problems
-      : [emptyProblem()];
+  const problemDefinitionSheet: PBLProblemDefinitionSheet =
+    value.problemDefinitionSheet ?? emptyProblemDefinition();
 
   const priorityItems: PBLPriorityItem[] =
     value.priority?.items && value.priority.items.length > 0
@@ -54,24 +53,14 @@ export function StepProblems({
 
   function emit(patch: Partial<StepProblemsValue>) {
     onChange({
-      problems,
+      problemDefinitionSheet,
       priority: { items: priorityItems, method: priorityMethod },
       ...patch,
     });
   }
 
-  function updateProblem(idx: number, patch: Partial<PBLProblemItem>) {
-    const next = problems.map((r, i) => (i === idx ? { ...r, ...patch } : r));
-    emit({ problems: next });
-  }
-
-  function addProblem() {
-    emit({ problems: [...problems, emptyProblem()] });
-  }
-
-  function removeProblem(idx: number) {
-    if (problems.length <= 1) return;
-    emit({ problems: problems.filter((_, i) => i !== idx) });
+  function updateDefinition(patch: Partial<PBLProblemDefinitionSheet>) {
+    emit({ problemDefinitionSheet: { ...problemDefinitionSheet, ...patch } });
   }
 
   function updatePriorityItem(idx: number, patch: Partial<PBLPriorityItem>) {
@@ -113,98 +102,91 @@ export function StepProblems({
       number="Ⅲ-2"
       title="문제 도출 및 우선순위"
       label="[인터뷰 입력]"
-      description="Ⅲ-2-가 문제 도출과 Ⅲ-2-나 문제 우선순위 결정을 함께 입력합니다."
+      description="Ⅲ-2-가 문제 정의서(배경·핵심·범위·제약)와 Ⅲ-2-나 문제 우선순위 결정을 함께 입력합니다."
     >
-      {/* 문제 도출 표 ----------------------------------------------------- */}
+      {/* 문제 정의서 (R8 PBL-자체-04 — 양식 5×2 표의 4 정형 항목 단일 세트) */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Ⅲ-2-가 문제 도출</h3>
+        <h3 className="text-sm font-semibold">Ⅲ-2-가 문제 정의서</h3>
+        <p className="text-xs text-muted-foreground">
+          양식상 단일 세트 — 4 정형 항목(배경/핵심/범위/제약)을 모두 작성합니다.
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-border text-sm">
-            <caption className="sr-only">문제 도출 표</caption>
+            <caption className="sr-only">문제 정의서</caption>
             <thead>
               <tr>
                 <th className="w-[160px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                  문제명
+                  구분
                 </th>
                 <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                  문제 설명
-                </th>
-                <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                  영향 (임팩트)
-                </th>
-                <th className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                  <span className="sr-only">삭제</span>
+                  내용
                 </th>
               </tr>
             </thead>
             <tbody>
-              {problems.map((row, idx) => (
-                <tr key={idx}>
-                  <td className="border border-border p-1 align-top">
-                    <input
-                      type="text"
-                      value={row.title}
-                      onChange={(e) =>
-                        updateProblem(idx, { title: e.target.value })
-                      }
-                      placeholder="문제명"
-                      disabled={readOnly}
-                      aria-label={`문제 ${idx + 1} 문제명`}
-                      className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </td>
-                  <td className="border border-border p-1 align-top">
-                    <LargeTextBox
-                      value={row.description}
-                      onChange={(e) =>
-                        updateProblem(idx, { description: e.target.value })
-                      }
-                      placeholder="문제의 맥락·원인"
-                      disabled={readOnly}
-                      aria-label={`문제 ${idx + 1} 설명`}
-                      minHeightClassName="min-h-[60px]"
-                    />
-                  </td>
-                  <td className="border border-border p-1 align-top">
-                    <LargeTextBox
-                      value={row.impact}
-                      onChange={(e) =>
-                        updateProblem(idx, { impact: e.target.value })
-                      }
-                      placeholder="경영 · 운영에 미치는 영향"
-                      disabled={readOnly}
-                      aria-label={`문제 ${idx + 1} 영향`}
-                      minHeightClassName="min-h-[60px]"
-                    />
-                  </td>
-                  <td className="border border-border p-1 text-center align-top">
-                    <button
-                      type="button"
-                      onClick={() => removeProblem(idx)}
-                      disabled={readOnly || problems.length <= 1}
-                      aria-label={`문제 ${idx + 1} 삭제`}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              <tr>
+                <td className="border border-border bg-muted/40 px-2 py-2 text-center font-medium">
+                  문제 배경
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={problemDefinitionSheet.background}
+                    onChange={(e) => updateDefinition({ background: e.target.value })}
+                    placeholder="문제가 발생하게 된 외·내부 환경, 시점, 트리거 사건 등"
+                    disabled={readOnly}
+                    aria-label="문제 배경"
+                    minHeightClassName="min-h-[80px]"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-border bg-muted/40 px-2 py-2 text-center font-medium">
+                  핵심 문제
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={problemDefinitionSheet.core}
+                    onChange={(e) => updateDefinition({ core: e.target.value })}
+                    placeholder="핵심 문제를 한 문장으로 명확히 정의"
+                    disabled={readOnly}
+                    aria-label="핵심 문제"
+                    minHeightClassName="min-h-[80px]"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-border bg-muted/40 px-2 py-2 text-center font-medium">
+                  문제 범위
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={problemDefinitionSheet.scope}
+                    onChange={(e) => updateDefinition({ scope: e.target.value })}
+                    placeholder="문제가 발생하는 부서·공정·제품군 등 범위"
+                    disabled={readOnly}
+                    aria-label="문제 범위"
+                    minHeightClassName="min-h-[80px]"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-border bg-muted/40 px-2 py-2 text-center font-medium">
+                  제약 조건
+                </td>
+                <td className="border border-border p-1 align-top">
+                  <LargeTextBox
+                    value={problemDefinitionSheet.constraints}
+                    onChange={(e) => updateDefinition({ constraints: e.target.value })}
+                    placeholder="해결을 어렵게 하는 자원·기술·법적·시간적 제약"
+                    disabled={readOnly}
+                    aria-label="제약 조건"
+                    minHeightClassName="min-h-[80px]"
+                  />
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addProblem}
-          disabled={readOnly}
-          aria-label="문제 행 추가"
-        >
-          <Plus className="mr-1 size-4" />
-          문제 추가
-        </Button>
       </div>
 
       {/* 우선순위 표 + 결정 방법 ----------------------------------------- */}
@@ -239,7 +221,7 @@ export function StepProblems({
                       onChange={(e) =>
                         updatePriorityItem(idx, { problem: e.target.value })
                       }
-                      placeholder="문제명 (문제 도출과 동일하게)"
+                      placeholder="문제명"
                       disabled={readOnly}
                       aria-label={`우선순위 ${idx + 1} 문제명`}
                       className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -335,9 +317,11 @@ export function StepProblems({
       <ExampleAccordion
         guide={
           <ul className="list-disc space-y-1 pl-4">
-            <li>문제 도출은 훈련과제의 근거가 되는 비즈니스·운영상 pain-point 를 구체적으로 기술합니다.</li>
-            <li>우선순위 점수는 1 (낮음) ~ 5 (높음) 5점 척도. 순위는 1 부터 정수로 부여합니다.</li>
-            <li>우선순위 결정 방법은 AHP · 전문가 협의 · 5점 척도 평균 등 실제 채택한 방법을 서술합니다.</li>
+            <li>
+              <strong>양식 √ 작성안내:</strong> 실제로 직무에 해결해야 할 문제를 선정하기 위한 문제 범위 도출하고 핵심 개념, 문제를 명확히 정의합니다. 외부 전문가, 기업 내·외부 인력의 의견을 종합해 작성합니다.
+            </li>
+            <li>4 정형 항목 모두 작성: 배경(맥락) → 핵심 문제(한 문장 정의) → 범위(영향 부서·공정) → 제약(자원·기술·법적 한계).</li>
+            <li>우선순위는 정의된 문제(또는 그 하위 케이스)를 1~5점 척도로 평가하고 순위를 정합니다.</li>
           </ul>
         }
       />

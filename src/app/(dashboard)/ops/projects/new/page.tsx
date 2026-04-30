@@ -256,6 +256,72 @@ export default function NewProjectPage() {
           />
         </div>
 
+        {/* PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071) — 모두 선택 입력 */}
+        <fieldset className="border border-gray-200 rounded-md p-4 space-y-4">
+          <legend className="text-sm font-medium text-gray-700 px-2">
+            신청서 자동표출 정보 (선택 — PBL 양식 Ⅰ.)
+          </legend>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="business_reg_no" className="block text-sm font-medium text-gray-700">
+                사업장관리번호
+              </label>
+              <input
+                id="business_reg_no"
+                name="business_reg_no"
+                type="text"
+                className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="industry_code" className="block text-sm font-medium text-gray-700">
+                업종 코드
+              </label>
+              <input
+                id="industry_code"
+                name="industry_code"
+                type="text"
+                className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="training_address" className="block text-sm font-medium text-gray-700">
+              훈련 실시 주소
+            </label>
+            <input
+              id="training_address"
+              name="training_address"
+              type="text"
+              className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="jurisdiction_branch" className="block text-sm font-medium text-gray-700">
+                관할 지부·지사
+              </label>
+              <input
+                id="jurisdiction_branch"
+                name="jurisdiction_branch"
+                type="text"
+                className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="contact_position" className="block text-sm font-medium text-gray-700">
+                담당자 직위
+              </label>
+              <input
+                id="contact_position"
+                name="contact_position"
+                type="text"
+                className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </fieldset>
+
         <div>
           <label htmlFor="customer_comment" className="block text-sm font-medium text-gray-700">
             고객 코멘트/요청사항

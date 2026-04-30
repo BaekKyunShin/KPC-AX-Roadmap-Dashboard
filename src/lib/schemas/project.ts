@@ -31,6 +31,12 @@ export const createProjectSchema = z.object({
   contact_email: z.string().email('유효한 이메일 주소를 입력하세요.'),
   contact_phone: z.string().optional(),
   company_address: z.string().optional(),
+  // PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071)
+  business_reg_no: z.string().max(50).optional(),
+  industry_code: z.string().max(20).optional(),
+  training_address: z.string().max(300).optional(),
+  jurisdiction_branch: z.string().max(100).optional(),
+  contact_position: z.string().max(50).optional(),
   customer_comment: z.string().max(2000).optional(),
   track: z.enum(PROJECT_TRACKS).default('ROADMAP'),
 });

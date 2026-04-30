@@ -157,11 +157,16 @@ function buildDataFromV2(
     // V1 호환: 양식 13x6 표 채우기는 generate.py 의 _fill_pbl_performance_activities
     // 가 activities (V2) 우선, performance_activities (V1) fallback 으로 처리.
     performance_activities: [] as Array<Record<string, unknown>>,
-    problems: (v2.problems ?? []).map((p) => ({
-      title: p.title,
-      description: p.description,
-      impact: p.impact,
-    })),
+    // R8 PBL-자체-04 — 양식 5×2 "문제 정의서" 표 정합 (4 정형 라벨 단일 세트).
+    // generate.py 의 _fill_pbl_problems 가 양식 4행 (배경/핵심/범위/제약) 으로 채움.
+    problem_definition_sheet: {
+      background: v2.problemDefinitionSheet?.background ?? '',
+      core: v2.problemDefinitionSheet?.core ?? '',
+      scope: v2.problemDefinitionSheet?.scope ?? '',
+      constraints: v2.problemDefinitionSheet?.constraints ?? '',
+    },
+    // V1 fallback (hwpx-payload-pbl.test.ts 가 problems 키 의 존재를 검사하지 않음)
+    problems: [] as Array<Record<string, unknown>>,
     priorities: (v2.priority?.items ?? []).map((p) => ({
       problem: p.problem,
       score: p.score,
@@ -598,6 +603,20 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   } else {
     data = buildDataEmpty(pblContent, companyName, reportDate);
   }
+
+  // PBL 양식 Ⅰ. 신청서 자동표출 7필드 override (마이그 071 — PBL-자체-01)
+  // — 양식 안내문상 "신청서 기준으로 자동 불러옴" 영역. project 테이블이 단일
+  //   진실 원천이며 인터뷰 입력값과 충돌 시 project 가 우선.
+  data.business_registration_no = project.business_reg_no ?? '';
+  data.industry_code = project.industry_code ?? '';
+  data.industry_main = project.industry ?? '';
+  data.address = project.company_address ?? '';
+  data.training_address = project.training_address ?? '';
+  data.jurisdiction_office = project.jurisdiction_branch ?? '';
+  data.contact_name = project.contact_name ?? '';
+  data.contact_position = project.contact_position ?? '';
+  data.contact_phone = project.contact_phone ?? '';
+  data.contact_email = project.contact_email ?? '';
 
   // 표지·결과보고서 표지에 들어가는 company_name 은 항상 채움
   const finalCompanyName = (data.company_name as string) || companyName;

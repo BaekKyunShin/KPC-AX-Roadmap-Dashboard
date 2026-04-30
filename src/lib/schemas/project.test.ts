@@ -57,6 +57,23 @@ describe('createProjectSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('PBL 양식 Ⅰ. 신청서 자동표출 5필드를 허용한다 (마이그 071)', () => {
+    const result = createProjectSchema.safeParse({
+      ...validProject,
+      business_reg_no: '123-45-67890',
+      industry_code: 'C26',
+      training_address: '서울시 강남구 테헤란로 123',
+      jurisdiction_branch: '한국산업인력공단 서울지역본부',
+      contact_position: '인사팀 대리',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('PBL 5필드는 모두 옵셔널 — 누락해도 통과한다', () => {
+    const result = createProjectSchema.safeParse(validProject);
+    expect(result.success).toBe(true);
+  });
+
   it('빈 회사명을 거부한다', () => {
     const result = createProjectSchema.safeParse({ ...validProject, company_name: '' });
     expect(result.success).toBe(false);

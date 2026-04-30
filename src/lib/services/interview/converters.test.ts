@@ -527,13 +527,12 @@ function validPBLCamelCase(): PBLInterviewStrict {
         },
       },
     ],
-    problems: [
-      {
-        title: '품질 편차',
-        description: '검사자별 편차 발생',
-        impact: '고객 클레임 증가',
-      },
-    ],
+    problemDefinitionSheet: {
+      background: '검사자별 편차 발생, 고객 클레임 증가.',
+      core: '품질 편차',
+      scope: '생산·품질 부서',
+      constraints: '예산·일정 한계',
+    },
     priority: {
       items: [{ problem: '품질 편차', score: 5, rank: 1 }],
       method: 'AHP',

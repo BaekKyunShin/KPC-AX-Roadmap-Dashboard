@@ -19,7 +19,7 @@ import {
   type PBLOverview,
   type PBLOrganization,
   type PBLActivityItem,
-  type PBLProblemItem,
+  type PBLProblemDefinitionSheet,
   type PBLPriority,
   type PBLTarget,
   type PBLAiLevelAssessment,
@@ -172,7 +172,7 @@ export function PBLInterviewClient({
   const updateTasks = useCallback(
     (patch: {
       activities?: PBLActivityItem[];
-      problems?: PBLProblemItem[];
+      problemDefinitionSheet?: PBLProblemDefinitionSheet;
       priority?: PBLPriority;
       target?: PBLTarget;
       currentAiLevel?: PBLAiLevelAssessment;
@@ -374,7 +374,13 @@ export function PBLInterviewClient({
         );
       case 'problems': {
         const problemsValue: StepProblemsValue = {
-          problems: data.problems ?? [],
+          problemDefinitionSheet:
+            data.problemDefinitionSheet ?? {
+              background: '',
+              core: '',
+              scope: '',
+              constraints: '',
+            },
           priority: data.priority ?? { items: [], method: '' },
         };
         return (
@@ -382,7 +388,7 @@ export function PBLInterviewClient({
             value={problemsValue}
             onChange={(next) =>
               updateTasks({
-                problems: next.problems,
+                problemDefinitionSheet: next.problemDefinitionSheet,
                 priority: next.priority,
               })
             }

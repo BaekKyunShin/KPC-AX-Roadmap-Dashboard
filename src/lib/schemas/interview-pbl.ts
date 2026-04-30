@@ -735,15 +735,24 @@ export const PBLActivityItemSchema = z.object({
 });
 export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
 
-// -- Ⅲ-2-가 문제 도출 행 -----------------------------------------------------
-// 양식 Ⅲ-2-가 문제 정의서는 "배경/핵심/범위/제약" 4필드 표 + 문제 목록.
-// 본 스키마는 문제 목록(반복 행) 을 `problems[]` 로 단순화해 저장한다.
-export const PBLProblemItemSchema = z.object({
-  title: z.string().min(1, '문제명을 입력하세요.'),
-  description: z.string().min(1, '문제 설명을 입력하세요.'),
-  impact: z.string().min(1, '영향(임팩트)을 입력하세요.'),
+// -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
+// 양식 Ⅲ-2-가 의 5×2 "문제 정의서" 표 — 4 정형 항목 (구분/내용) 단일 세트.
+// 양식 라벨 (문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건) 1:1 정합.
+//
+// R8 변경 이력 — 기존 `problems[]` 동적 행 (PBLProblemItem {title, description,
+// impact}) 폐기. 양식 단일 세트와 의미 충돌 제거 + HWPX P-09 4행 라벨 매핑 깔끔.
+// 사용자 결정: 옵션 C (개발 단계라 기존 데이터 무시 — 마이그/리하이드레이션 없음).
+//
+// 이름 주의: V1 측에 이미 `PBLProblemDefinition` (wrapper {problem_definition,
+// problem_priorities}) 가 있어 충돌 회피 위해 V2 에서는 `PBLProblemDefinitionSheet`
+// 로 명명. 양식 표(시트) 단일 세트 의미.
+export const PBLProblemDefinitionSheetSchema = z.object({
+  background: z.string().default(''),  // 문제 배경
+  core: z.string().default(''),        // 핵심 문제
+  scope: z.string().default(''),       // 문제 범위
+  constraints: z.string().default(''), // 제약 조건
 });
-export type PBLProblemItem = z.infer<typeof PBLProblemItemSchema>;
+export type PBLProblemDefinitionSheet = z.infer<typeof PBLProblemDefinitionSheetSchema>;
 
 // -- Ⅲ-2-나 문제 우선순위 행 -----------------------------------------------
 export const PBLPriorityItemSchema = z.object({
@@ -823,8 +832,8 @@ export const PBLTasksSchema = z.object({
   activities: z
     .array(PBLActivityItemSchema)
     .min(1, '수행활동 최소 1차수 이상을 입력하세요.'),
-  // Ⅲ-2-가 문제 도출
-  problems: z.array(PBLProblemItemSchema).min(1, '문제를 최소 1건 이상 입력하세요.'),
+  // Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트)
+  problemDefinitionSheet: PBLProblemDefinitionSheetSchema,
   // Ⅲ-2-나 문제 우선순위 결정
   priority: PBLPrioritySchema,
   // Ⅲ-3 훈련대상 업무 (가·나·다 통합)

@@ -17,6 +17,7 @@ import {
   editPBLV2,
   exportPBLHwpxV2,
   fetchPBLPageDataV2,
+  type PBLProjectMeta,
 } from '../actions';
 import { usePBLDownload } from '@/hooks/usePBLDownload';
 import { useHwpxDownload } from '@/hooks/useHwpxDownload';
@@ -34,6 +35,8 @@ import type {
 export interface PBLResultPageClientProps {
   projectId: string;
   companyName: string;
+  /** PBL 양식 Ⅰ. 신청서 자동표출 7필드 (마이그 071) — TabPBLOverview 표출용. */
+  projectMeta?: PBLProjectMeta;
   initialVersions: PBLReportRow[];
   initialSelected: PBLReportRow | null;
   initialInterview: Partial<ResultPBLInterviewSnapshot>;
@@ -45,6 +48,7 @@ export interface PBLResultPageClientProps {
 export default function PBLResultPageClient({
   projectId,
   companyName,
+  projectMeta,
   initialVersions,
   initialSelected,
   initialInterview,
@@ -147,6 +151,7 @@ export default function PBLResultPageClient({
       isGenerating={isGenerating}
       onCancelGenerate={handleCancelGenerate}
       companyName={companyName}
+      projectMeta={projectMeta}
     />
   );
 }

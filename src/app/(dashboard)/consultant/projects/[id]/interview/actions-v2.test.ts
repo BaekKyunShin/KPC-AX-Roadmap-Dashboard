@@ -199,9 +199,12 @@ function validPBLV2(): PBLInterviewStrict {
         },
       },
     ],
-    problems: [
-      { title: '품질 편차', description: '검사자별 편차', impact: '클레임 증가' },
-    ],
+    problemDefinitionSheet: {
+      background: '검사자별 편차로 클레임 증가.',
+      core: '품질 편차 — 육안 검사 의존',
+      scope: '생산·품질 부서',
+      constraints: '예산·일정 한계',
+    },
     priority: { items: [{ problem: '품질 편차', score: 5, rank: 1 }], method: 'AHP' },
     target: {
       name: '품질검사 자동화',

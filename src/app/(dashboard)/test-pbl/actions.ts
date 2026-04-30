@@ -103,10 +103,10 @@ function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
     },
     problemDefinition: {
       problem_definition: {
-        background: v2.problems.map((p) => p.description).join('\n'),
-        core_problem: v2.problems[0]?.title ?? '',
-        scope: v2.target.scope,
-        constraints: '',
+        background: v2.problemDefinitionSheet?.background ?? '',
+        core_problem: v2.problemDefinitionSheet?.core ?? '',
+        scope: v2.problemDefinitionSheet?.scope ?? v2.target.scope,
+        constraints: v2.problemDefinitionSheet?.constraints ?? '',
       },
       problem_priorities: v2.priority.items.map((it, i) => ({
         id: `pri-${i}`,

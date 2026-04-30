@@ -653,13 +653,12 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
         },
       },
     ],
-    problems: [
-      {
-        title: '불량률 증가',
-        description: '라인별 편차 및 육안 검사 의존.',
-        impact: '납기 지연 및 고객 클레임 증가',
-      },
-    ],
+    problemDefinitionSheet: {
+      background: '제조 공정 자동화 압박과 품질 데이터 분산.',
+      core: '불량률 증가 — 라인별 편차 및 육안 검사 의존',
+      scope: '생산팀 완제품 검사',
+      constraints: '예산·일정 한계, 부서 간 데이터 공유 규칙 미정',
+    },
     priority: {
       items: [
         { problem: '불량률 증가', score: 5, rank: 1 },
@@ -901,10 +900,32 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
     }
   });
 
-  it('problems[] 최소 1개 필요', () => {
-    expect(
-      PBLTasksSchema.safeParse({ ...validTasks, problems: [] }).success,
-    ).toBe(false);
+  // R8 PBL-자체-04 — 4 정형 항목 단일 세트 (행 추가/삭제 없음). 빈 객체도 통과.
+  it('problemDefinitionSheet 4 필드는 모두 string default("") 허용 — 빈 세트도 통과', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('problemDefinitionSheet 4 필드 모두 채워진 세트는 통과', () => {
+    const result = PBLTasksSchema.safeParse({
+      ...validTasks,
+      problemDefinitionSheet: {
+        background: '문제 발생 배경',
+        core: '핵심 문제',
+        scope: '범위',
+        constraints: '제약 조건',
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('problemDefinitionSheet 객체 자체가 누락되면 실패 (필수 필드)', () => {
+    const { problemDefinitionSheet: _omit, ...rest } = validTasks;
+    void _omit;
+    expect(PBLTasksSchema.safeParse(rest).success).toBe(false);
   });
 });
 
@@ -947,7 +968,12 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
         },
       },
     ],
-    problems: [{ title: '문제', description: '설명', impact: '영향' }],
+    problemDefinitionSheet: {
+      background: '문제 배경',
+      core: '핵심 문제',
+      scope: '범위',
+      constraints: '제약',
+    },
     priority: {
       items: [{ problem: '문제', score: 5, rank: 1 }],
       method: '협의',

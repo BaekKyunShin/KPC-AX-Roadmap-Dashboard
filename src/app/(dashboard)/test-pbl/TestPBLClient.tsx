@@ -108,7 +108,7 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
     hrdReportPdf: null,
     courseNecessity: '',
     activities: [],
-    problems: [],
+    problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
     priority: { items: [], method: '' },
     target: { name: '', code: '', scope: '', necessity: '', necessity_score: 3, details: [] },
     currentAiLevel: { level: 'BASIC', note: '' },
@@ -162,7 +162,7 @@ function toInterviewSnapshot(
       courseNecessity: interview.courseNecessity,
     },
     activities: interview.activities,
-    problems: interview.problems,
+    problemDefinitionSheet: interview.problemDefinitionSheet,
     priority: interview.priority,
     target: interview.target,
     currentAiLevel: interview.currentAiLevel,
@@ -219,7 +219,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
       (data.companyName ?? '').trim() !== '' ||
       (data.companyIssues ?? '').trim() !== '' ||
       (data.activities ?? []).length > 0 ||
-      (data.problems ?? []).length > 0;
+      (data.problemDefinitionSheet?.core ?? '').trim() !== '';
     if (
       hasInput &&
       typeof window !== 'undefined' &&
@@ -407,14 +407,23 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
         );
       case 'problems': {
         const value: StepProblemsValue = {
-          problems: data.problems ?? [],
+          problemDefinitionSheet:
+            data.problemDefinitionSheet ?? {
+              background: '',
+              core: '',
+              scope: '',
+              constraints: '',
+            },
           priority: data.priority ?? { items: [], method: '' },
         };
         return (
           <StepProblems
             value={value}
             onChange={(next) =>
-              update({ problems: next.problems, priority: next.priority })
+              update({
+                problemDefinitionSheet: next.problemDefinitionSheet,
+                priority: next.priority,
+              })
             }
           />
         );
