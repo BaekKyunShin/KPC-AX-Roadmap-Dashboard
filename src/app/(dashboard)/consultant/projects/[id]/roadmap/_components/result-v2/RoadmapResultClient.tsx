@@ -124,6 +124,7 @@ export function RoadmapResultClient({
 
   const isDraft = selectedVersion?.status === 'DRAFT';
   const isFinal = selectedVersion?.status === 'FINAL';
+  const isArchived = selectedVersion?.status === 'ARCHIVED';
   const hasVersions = versions.length > 0;
   // #002 — 인터뷰 snapshot 이 비어있으면 EmptyState 에서 생성 버튼을 사전 차단.
   // ROADMAP_ELIGIBLE_STATUSES 가 'INTERVIEWED' 이상을 통과시키지만, 실제 interviews
@@ -136,8 +137,9 @@ export function RoadmapResultClient({
     !!projectStatus &&
     (ROADMAP_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
   const canGenerateRoadmap = hasInterview && selfAssessmentExists && isStatusEligible;
-  // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
-  const tabReadOnly = !isDraft || !capabilities.canEdit;
+  // PR5 (R6 spec) — DRAFT/FINAL 모두 편집 허용. ARCHIVED 만 차단.
+  // FINAL in-place 수정은 동일 version_number 유지, 변경 이력은 audit_logs 기록.
+  const tabReadOnly = isArchived || !capabilities.canEdit;
 
   async function handleDownload(type: DownloadType) {
     setDownloadLoading(type);
@@ -278,6 +280,18 @@ export function RoadmapResultClient({
             onSubmit={handleRegenerate}
             isLoading={isGenerating}
           />
+        )}
+
+        {/* PR5 (R6 spec) — FINAL in-place 수정 안내 배너 */}
+        {selectedVersion && isFinal && capabilities.canEdit && (
+          <div
+            className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            data-testid="final-edit-warning-banner"
+          >
+            <strong>확정된 결과를 수정합니다.</strong> 동일 버전(v
+            {selectedVersion.version_number})에 그대로 반영되며, 수정 이력은 감사로그에
+            기록됩니다.
+          </div>
         )}
 
         {selectedVersion ? (

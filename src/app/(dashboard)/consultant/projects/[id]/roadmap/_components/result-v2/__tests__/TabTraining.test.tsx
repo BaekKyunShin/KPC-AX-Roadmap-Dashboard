@@ -182,36 +182,7 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
     ).toBeInTheDocument();
   });
 
-  it('Ⅲ-2~Ⅲ-4 LLM 결과가 있으면 실제 값 렌더', () => {
-    render(
-      <TabTraining
-        version={filledVersion}
-        interview={interview}
-        readOnly={false}
-        onEdit={vi.fn()}
-      />,
-    );
-    // Ⅲ-2 훈련체계도
-    expect(screen.getByText('실무 데이터셋 분석')).toBeInTheDocument();
-    expect(
-      screen.getByText('역량×3수준 매트릭스 기반'),
-    ).toBeInTheDocument();
-    // R2 #15 — 훈련수준 영문 → 한글 (INTERMEDIATE → 중급)
-    expect(screen.getByText('중급')).toBeInTheDocument();
-    expect(screen.queryByText('INTERMEDIATE')).not.toBeInTheDocument();
-    // Ⅲ-3 연간 훈련계획
-    expect(screen.getByText('ML 기초 과정')).toBeInTheDocument();
-    expect(screen.getByText('40시간')).toBeInTheDocument();
-    expect(
-      screen.getByText('내부 평가에 연 1회 반영'),
-    ).toBeInTheDocument();
-    // Ⅲ-4 훈련과정 명세서 (과목 세부)
-    expect(screen.getByText(/Python 기초/)).toBeInTheDocument();
-    expect(screen.getByText(/선형회귀/)).toBeInTheDocument();
-  });
-
-  // R3 #18 — Ⅲ-4 교과목이 표 형태(FormTable 3열 — 교과목명 / 세부 내용 / 훈련시간)
-  it('Ⅲ-4 교과목 영역이 FormTable 3열 (교과목명 · 세부 내용 · 훈련시간) 로 표시된다 (#18)', () => {
+  it('Ⅲ-2~Ⅲ-4 LLM 결과가 있으면 실제 값 렌더 (PR5 — EditableTable)', () => {
     render(
       <TabTraining
         version={filledVersion}
@@ -220,22 +191,53 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
         onEdit={vi.fn()}
       />,
     );
-    // Ⅲ-4 교과목 표 — 교과목명 / 세부 내용 헤더 (Ⅲ-3 표에는 이 헤더 없음)
+    // Ⅲ-2 훈련체계도 (EditableTable readOnly — 셀 InlineEditField view 모드 평문)
+    expect(screen.getByText('실무 데이터셋 분석')).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: '교과목명' }),
+      screen.getByText('역량×3수준 매트릭스 기반'),
     ).toBeInTheDocument();
+    // R2 #15 — 훈련수준 영문 → 한글 (INTERMEDIATE → 중급) — 라벨 변환 유지
+    expect(screen.getByText('중급')).toBeInTheDocument();
+    expect(screen.queryByText('INTERMEDIATE')).not.toBeInTheDocument();
+    // Ⅲ-3 연간 훈련계획 — 'ML 기초 과정' 은 Ⅲ-2 훈련체계도에도 등장 가능 → getAllByText
+    expect(screen.getAllByText('ML 기초 과정').length).toBeGreaterThanOrEqual(1);
+    // 훈련시간 셀은 number 로 표시 (이전 "40시간" 포맷 → 평문 "40")
+    expect(screen.getAllByText('40').length).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByRole('columnheader', { name: '세부 내용' }),
+      screen.getByText('내부 평가에 연 1회 반영'),
     ).toBeInTheDocument();
-    // '훈련시간' 헤더는 Ⅲ-3·Ⅲ-4 양쪽에 등장 — 최소 1건 이상
+    // Ⅲ-4 훈련과정 명세서 — 교과목명·세부내용 모두 평문 표시
+    expect(screen.getByText(/Python 기초/)).toBeInTheDocument();
+    expect(screen.getByText(/선형회귀/)).toBeInTheDocument();
+  });
+
+  // PR5 (R6) — Ⅲ-4 교과목 영역은 EditableTable 3열 (교과목명 / 세부 내용 / 훈련시간)
+  it('Ⅲ-4 교과목 영역이 EditableTable 3열 (교과목명 · 세부 내용 · 훈련시간) 로 표시된다', () => {
+    render(
+      <TabTraining
+        version={filledVersion}
+        interview={interview}
+        readOnly
+        onEdit={vi.fn()}
+      />,
+    );
+    // EditableTable 3열 헤더
+    expect(
+      screen.getAllByRole('columnheader', { name: '교과목명' }).length,
+    ).toBeGreaterThanOrEqual(1);
+    // 세부 내용 헤더 텍스트는 라벨 prefix 까지 일치
+    expect(
+      screen.getByRole('columnheader', { name: /세부 내용/ }),
+    ).toBeInTheDocument();
+    // '훈련시간' 헤더 — Ⅲ-3·Ⅲ-4 양쪽 등장
     const hourHeaders = screen.getAllByRole('columnheader', {
       name: '훈련시간',
     });
     expect(hourHeaders.length).toBeGreaterThanOrEqual(1);
   });
 
-  // R3 #17 — 단일 항목 / null 분기 — `renderSubjectDetails` 의 fallback 경로 커버
-  it('Ⅲ-4 교과목 details 가 단일 항목이면 평문, null 이면 "-" 표시 (#17 분기)', () => {
+  // PR5 (R6) — details 단일 항목 평문 + null 케이스 (EditableTable readOnly 셀 평문)
+  it('Ⅲ-4 교과목 details 가 단일 항목이면 평문, 빈 값이면 placeholder 표시', () => {
     const versionWithEdgeDetails: RoadmapVersionUI = {
       ...filledVersion,
       course_specs: [
@@ -243,7 +245,6 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
           ...filledVersion.course_specs[0],
           subjects: [
             { name: '기초', details: '단일 내용', hours: 4 },
-            // details 가 null/undefined 인 케이스
             { name: '실습', details: '', hours: 8 },
           ],
         },
@@ -257,48 +258,10 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
         onEdit={vi.fn()}
       />,
     );
-    // 단일 항목 — ul/li 머리기호 없이 평문
+    // 단일 항목 평문 표시
     expect(screen.getByText('단일 내용')).toBeInTheDocument();
-    // 빈 details 는 '-' 로 표시
-    const dashCells = screen.getAllByText('-');
-    expect(dashCells.length).toBeGreaterThanOrEqual(1);
-  });
-
-  // R3 #17 — Ⅲ-4 교과목 details 가 줄바꿈/단원 경계로 머리기호 분리되어 표시
-  it('Ⅲ-4 교과목 details 가 머리기호로 분리되어 표시된다 (#17)', () => {
-    const versionWithMultiLineDetails: RoadmapVersionUI = {
-      ...filledVersion,
-      course_specs: [
-        {
-          ...filledVersion.course_specs[0],
-          subjects: [
-            {
-              name: '데이터 전처리',
-              details: '결측치 처리\n정규화\n샘플링',
-              hours: 8,
-            },
-          ],
-        },
-      ],
-    };
-    render(
-      <TabTraining
-        version={versionWithMultiLineDetails}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // \n 분리 후 ul > li 3개 머리기호
-    const items = screen.getAllByRole('listitem');
-    const itemsText = items.map((li) => li.textContent ?? '');
-    expect(itemsText).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('결측치 처리'),
-        expect.stringContaining('정규화'),
-        expect.stringContaining('샘플링'),
-      ]),
-    );
+    // 빈 details 는 InlineEditField 의 placeholder ("클릭하여 편집") 표시
+    expect(screen.getAllByText('클릭하여 편집').length).toBeGreaterThan(0);
   });
 
   // R3 분기 보강 — Ⅲ-1 NCS 활용 시 onEdit 호출 분기 (TabTraining.tsx:167-168)

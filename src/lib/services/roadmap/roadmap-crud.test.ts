@@ -326,18 +326,19 @@ describe('updateRoadmapManually', () => {
       expect(result.error).toBe('로드맵을 찾을 수 없습니다.');
     });
 
-    it('FINAL 상태 → DRAFT만 편집 가능 error', async () => {
+    // PR5 (R6 spec) — FINAL in-place 수정 허용. ARCHIVED 만 차단.
+    it('FINAL 상태 → in-place 수정 허용 (PR5)', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow, status: 'FINAL' }, error: null });
+      sharedMock.addResult({ data: null, error: null });
 
       const result = await updateRoadmapManually('rv-1', 'consultant-1', {
         diagnosis_summary: '수정',
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('DRAFT 상태의 로드맵만 편집할 수 있습니다.');
+      expect(result.success).toBe(true);
     });
 
-    it('ARCHIVED 상태 → error', async () => {
+    it('ARCHIVED 상태 → 차단', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow, status: 'ARCHIVED' }, error: null });
 
       const result = await updateRoadmapManually('rv-1', 'consultant-1', {
@@ -345,7 +346,7 @@ describe('updateRoadmapManually', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('DRAFT 상태의 로드맵만 편집할 수 있습니다.');
+      expect(result.error).toBe('아카이브된 로드맵은 편집할 수 없습니다.');
     });
 
     it('다른 컨설턴트 → 배정 컨설턴트만 편집 가능 error', async () => {
@@ -561,7 +562,8 @@ describe('updateRoadmapManually', () => {
   // ─── 감사로그 ──────────────────────────────────────────────────────────
 
   describe('감사로그', () => {
-    it('edited_fields에 변경된 키 목록이 포함', async () => {
+    // PR5 (R6 spec) — action 이 ROADMAP_RESULT_EDITED 로 변경됨
+    it('action=ROADMAP_RESULT_EDITED + meta.fields_changed 에 변경 키 + status 포함', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
@@ -573,13 +575,58 @@ describe('updateRoadmapManually', () => {
       expect(createAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           actorUserId: 'consultant-1',
-          action: 'ROADMAP_UPDATE',
+          action: 'ROADMAP_RESULT_EDITED',
           targetType: 'roadmap',
           targetId: 'rv-1',
           meta: expect.objectContaining({
             project_id: 'p-1',
+            version_id: 'rv-1',
             version_number: 1,
-            edited_fields: ['diagnosis_summary', 'competencies'],
+            status: 'DRAFT',
+            fields_changed: ['diagnosis_summary', 'competencies'],
+          }),
+        }),
+      );
+    });
+
+    it('FINAL 상태 in-place 수정 시 meta.status=FINAL', async () => {
+      sharedMock.addResult({ data: { ...baseDraftRow, status: 'FINAL' }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', {
+        diagnosis_summary: '확정 후 수정',
+      });
+
+      expect(createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'ROADMAP_RESULT_EDITED',
+          meta: expect.objectContaining({
+            status: 'FINAL',
+            fields_changed: ['diagnosis_summary'],
+          }),
+        }),
+      );
+    });
+
+    it('diff 페이로드 — 짧은 텍스트 필드 원문 포함, 배열 필드는 length 비교', async () => {
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', {
+        diagnosis_summary: '새 진단',
+        competencies: [legacyCompetency, { ...legacyCompetency, name: '추가역량' }],
+      });
+
+      expect(createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meta: expect.objectContaining({
+            diff: expect.objectContaining({
+              diagnosis_summary: expect.objectContaining({ after: '새 진단' }),
+              competencies: expect.objectContaining({
+                before_length: 1,
+                after_length: 2,
+              }),
+            }),
           }),
         }),
       );

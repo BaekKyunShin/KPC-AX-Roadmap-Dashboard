@@ -183,11 +183,14 @@ export async function updateRoadmapManually(
     };
   }
 
-  if (roadmap.status !== 'DRAFT') {
+  // PR5 (R6 spec) — FINAL in-place 수정 허용. ARCHIVED 만 차단.
+  // DRAFT 든 FINAL 든 동일 위치(version_number 변경 X, finalized_at 보존)에서 patch.
+  // 변경 이력은 audit_logs (ROADMAP_RESULT_EDITED) 에만 누적.
+  if (roadmap.status === 'ARCHIVED') {
     return {
       success: false,
       validation: emptyValidation,
-      error: 'DRAFT 상태의 로드맵만 편집할 수 있습니다.',
+      error: '아카이브된 로드맵은 편집할 수 없습니다.',
     };
   }
 
@@ -241,16 +244,22 @@ export async function updateRoadmapManually(
     return { success: false, validation, error: updateError.message };
   }
 
-  // 감사로그
+  // 감사로그 (ROADMAP_RESULT_EDITED — PR5)
+  // FINAL in-place 수정 추적이 핵심이므로 status 필드를 meta 에 포함.
+  // diff 페이로드: 텍스트 ≤ 200자 원문 / 초과 시 preview 100자 + 길이.
+  // 배열 (표 행): length 변화만 기록 (개인정보 영향 최소화).
   await createAuditLog({
     actorUserId,
-    action: 'ROADMAP_UPDATE',
+    action: 'ROADMAP_RESULT_EDITED',
     targetType: 'roadmap',
     targetId: roadmapId,
     meta: {
       project_id: roadmap.project_id,
+      version_id: roadmapId,
       version_number: roadmap.version_number,
-      edited_fields: Object.keys(updates),
+      status: roadmap.status,
+      fields_changed: Object.keys(updates),
+      diff: buildEditDiff(current, merged, Object.keys(updates) as Array<keyof RoadmapResult>),
       validation_result: {
         isValid: validation.isValid,
         errorCount: validation.errors.length,
@@ -260,6 +269,66 @@ export async function updateRoadmapManually(
   });
 
   return { success: true, validation };
+}
+
+// ---------------------------------------------------------------------------
+// 감사로그 diff 빌더 (PR5)
+// ---------------------------------------------------------------------------
+// - 텍스트 필드 ≤ 200자: before/after 원문
+// - 텍스트 필드 > 200자: { before_preview, after_preview, before_length, after_length }
+// - 배열 필드 (표 행): { before_length, after_length } 만
+// - 객체 필드: JSON 직렬화 후 길이 비교
+// ---------------------------------------------------------------------------
+const TEXT_PREVIEW_THRESHOLD = 200;
+const TEXT_PREVIEW_LENGTH = 100;
+
+function buildEditDiff(
+  before: RoadmapResult,
+  after: RoadmapResult,
+  changedKeys: Array<keyof RoadmapResult>,
+): Record<string, unknown> {
+  const diff: Record<string, unknown> = {};
+  for (const key of changedKeys) {
+    const beforeVal = before[key];
+    const afterVal = after[key];
+    if (Array.isArray(beforeVal) || Array.isArray(afterVal)) {
+      diff[key] = {
+        before_length: Array.isArray(beforeVal) ? beforeVal.length : 0,
+        after_length: Array.isArray(afterVal) ? afterVal.length : 0,
+      };
+      continue;
+    }
+    if (typeof beforeVal === 'string' || typeof afterVal === 'string') {
+      const b = typeof beforeVal === 'string' ? beforeVal : '';
+      const a = typeof afterVal === 'string' ? afterVal : '';
+      if (b.length <= TEXT_PREVIEW_THRESHOLD && a.length <= TEXT_PREVIEW_THRESHOLD) {
+        diff[key] = { before: b, after: a };
+      } else {
+        diff[key] = {
+          before_preview: b.slice(0, TEXT_PREVIEW_LENGTH),
+          after_preview: a.slice(0, TEXT_PREVIEW_LENGTH),
+          before_length: b.length,
+          after_length: a.length,
+        };
+      }
+      continue;
+    }
+    if (typeof beforeVal === 'boolean' || typeof afterVal === 'boolean') {
+      diff[key] = { before: beforeVal, after: afterVal };
+      continue;
+    }
+    if (typeof beforeVal === 'object' || typeof afterVal === 'object') {
+      const bJson = JSON.stringify(beforeVal ?? null);
+      const aJson = JSON.stringify(afterVal ?? null);
+      diff[key] = {
+        before_length: bJson.length,
+        after_length: aJson.length,
+      };
+      continue;
+    }
+    diff[key] = { before: beforeVal, after: afterVal };
+  }
+  return diff;
 }
 
 // ─── 매퍼 재-export (CRUD 호출부가 raw row를 신규 구조로 변환하도록) ────
