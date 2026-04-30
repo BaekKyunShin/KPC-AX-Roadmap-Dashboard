@@ -329,6 +329,15 @@ function buildDataFromV2(
     problem_core: '',
     problem_scope: '',
     problem_constraints: '',
+
+    // R8 PBL-자체-05 — Ⅴ. 성과분석 LLM 결과 (P-25 / P-26 cell_fill 매핑).
+    // pbl_content.outcome_analysis 가 있으면 4 키 채움, 없으면 빈 문자열.
+    quantitative_metrics: pblContent?.outcome_analysis?.outcome_metrics?.quantitative ?? '',
+    qualitative_metrics: pblContent?.outcome_analysis?.outcome_metrics?.qualitative ?? '',
+    internalization_plan:
+      pblContent?.outcome_analysis?.diffusion_strategy?.internalization ?? '',
+    dissemination_plan:
+      pblContent?.outcome_analysis?.diffusion_strategy?.company_wide_diffusion ?? '',
   };
 }
 
@@ -581,6 +590,14 @@ function buildDataFromV1(
         performance_level: c.performance_level,
       }),
     ),
+
+    // R8 PBL-자체-05 — Ⅴ. 성과분석 LLM 결과 (V1 fallback 동일 처리).
+    quantitative_metrics: pblContent?.outcome_analysis?.outcome_metrics?.quantitative ?? '',
+    qualitative_metrics: pblContent?.outcome_analysis?.outcome_metrics?.qualitative ?? '',
+    internalization_plan:
+      pblContent?.outcome_analysis?.diffusion_strategy?.internalization ?? '',
+    dissemination_plan:
+      pblContent?.outcome_analysis?.diffusion_strategy?.company_wide_diffusion ?? '',
   };
 }
 

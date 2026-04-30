@@ -112,7 +112,7 @@ export function StepTrainingEnv({
                     colSpan={5}
                     className="border border-border px-3 py-3 text-center text-xs text-muted-foreground"
                   >
-                    {heading} 행이 없습니다. 아래 "+ {heading} 추가" 버튼으로 행을 추가하세요.
+                    {heading} 행이 없습니다. 아래 &quot;+ {heading} 추가&quot; 버튼으로 행을 추가하세요.
                   </td>
                 </tr>
               ) : (
@@ -286,7 +286,7 @@ export function StepTrainingEnv({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              <strong>양식 √ 작성안내:</strong> "훈련 대상자 특성"은 훈련업무를 수행하는 직원들의 특징을 기술하고, "훈련 여건"은 훈련과정 개발·운영을 위해 활용 가능한 사내 자원을 정리합니다.
+              <strong>양식 √ 작성안내:</strong> &quot;훈련 대상자 특성&quot;은 훈련업무를 수행하는 직원들의 특징을 기술하고, &quot;훈련 여건&quot;은 훈련과정 개발·운영을 위해 활용 가능한 사내 자원을 정리합니다.
             </li>
             <li>적정 훈련시간: 회차당 시간·총 시간·집중 가능 시간대.</li>
             <li>훈련장소: 사내(본사/공장)·사외(외부 시설)·특이사항.</li>
