@@ -188,12 +188,15 @@ function buildDataFromV2(
     course_necessity: v2.courseNecessity ?? '',
 
     // ==================== Ⅲ. AI기반 훈련과제 도출 ====================
+    // R8 PBL-자체-03 — 평면 4행 배열. Python 측 _fill_pbl_performance_activities
+    // 가 round 별로 그룹핑해 양식 13×6 표의 차수×4 역할 구조로 채운다.
     activities: (v2.activities ?? []).map((a) => ({
       round: a.round,
+      role: a.role,
+      person_name: a.personName ?? '',
       date: a.date,
       content: a.content,
       method: a.method,
-      participants: a.participants,
     })),
     // V1 호환: 양식 13x6 표 채우기는 generate.py 의 _fill_pbl_performance_activities
     // 가 activities (V2) 우선, performance_activities (V1) fallback 으로 처리.

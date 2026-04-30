@@ -768,6 +768,73 @@ export const PBLActivityItemSchema = z.object({
 });
 export type PBLActivityItem = z.infer<typeof PBLActivityItemSchema>;
 
+// -- Ⅲ-1 평면 4행 배열 (R8 PBL-자체-03, 옵션 B) -----------------------------
+// 양식 13×6 = 차수당 4 역할 (PM/외부전문가/내부전문가/주치의) × 일자/내용/방법.
+// `PBLActivityItem` 은 차수당 1행이라 역할별 일자·내용·방법 분리 불가.
+// 평면 4행 배열은 한 행 = 하나의 (차수, 역할) 조합 → 양식 1:1 정합.
+//
+// `superRefine` 제약:
+//   - 같은 round 내에서 정확히 4 role 행이 있어야 한다 (양식 정형).
+//   - 빈 round 는 기본값 채움이 아니라 사용자가 차수 추가 버튼으로 명시 추가.
+export const PBL_ACTIVITY_ROLE = z.enum([
+  'PM',
+  'EXTERNAL_EXPERT',
+  'INTERNAL_EXPERT',
+  'JURISDICTION_MANAGER',
+]);
+export type PBLActivityRole = z.infer<typeof PBL_ACTIVITY_ROLE>;
+export const PBL_ACTIVITY_ROLES_ORDERED: ReadonlyArray<PBLActivityRole> = [
+  'PM',
+  'EXTERNAL_EXPERT',
+  'INTERNAL_EXPERT',
+  'JURISDICTION_MANAGER',
+];
+export const PBL_ACTIVITY_ROLE_LABEL: Record<PBLActivityRole, string> = {
+  PM: 'PM',
+  EXTERNAL_EXPERT: '외부전문가',
+  INTERNAL_EXPERT: '기업내부전문가',
+  JURISDICTION_MANAGER: '능력개발전담주치의',
+};
+
+export const PBLActivityRowSchema = z.object({
+  round: z
+    .number({ message: '차수는 숫자여야 합니다.' })
+    .int({ message: '차수는 정수여야 합니다.' })
+    .positive({ message: '차수는 1 이상이어야 합니다.' }),
+  role: PBL_ACTIVITY_ROLE,
+  personName: z.string().default(''), // 역할 담당자 성명
+  date: z.string().default(''),
+  content: z.string().default(''),
+  method: z.string().default(''),
+});
+export type PBLActivityRow = z.infer<typeof PBLActivityRowSchema>;
+
+export const PBLActivitiesSchema = z
+  .array(PBLActivityRowSchema)
+  .superRefine((rows, ctx) => {
+    if (rows.length === 0) return;
+    // round 별 그룹핑 → 각 round 마다 정확히 4 role 행이 있어야 한다.
+    const byRound = new Map<number, Set<PBLActivityRole>>();
+    rows.forEach((r) => {
+      const set = byRound.get(r.round) ?? new Set<PBLActivityRole>();
+      set.add(r.role);
+      byRound.set(r.round, set);
+    });
+    byRound.forEach((roleSet, round) => {
+      const missing = PBL_ACTIVITY_ROLES_ORDERED.filter((r) => !roleSet.has(r));
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${round}차의 ${missing
+            .map((r) => PBL_ACTIVITY_ROLE_LABEL[r])
+            .join('/')} 행이 누락되었습니다.`,
+          path: [],
+        });
+      }
+    });
+  });
+export type PBLActivities = z.infer<typeof PBLActivitiesSchema>;
+
 // -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
 // 양식 Ⅲ-2-가 의 5×2 "문제 정의서" 표 — 4 정형 항목 (구분/내용) 단일 세트.
 // 양식 라벨 (문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건) 1:1 정합.
@@ -861,10 +928,8 @@ export type PBLAiLevelAssessment = z.infer<typeof PBLAiLevelAssessmentSchema>;
 
 // -- Ⅲ AI기반 훈련과제 도출 [인터뷰] ---------------------------------------
 export const PBLTasksSchema = z.object({
-  // Ⅲ-1 수행활동
-  activities: z
-    .array(PBLActivityItemSchema)
-    .min(1, '수행활동 최소 1차수 이상을 입력하세요.'),
+  // Ⅲ-1 수행활동 (R8 PBL-자체-03 — 평면 4행 배열)
+  activities: PBLActivitiesSchema,
   // Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트)
   problemDefinitionSheet: PBLProblemDefinitionSheetSchema,
   // Ⅲ-2-나 문제 우선순위 결정

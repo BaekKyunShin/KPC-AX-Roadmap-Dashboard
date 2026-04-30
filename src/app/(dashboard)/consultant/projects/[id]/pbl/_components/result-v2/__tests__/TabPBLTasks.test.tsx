@@ -5,31 +5,16 @@ import { TabPBLTasks } from '../TabPBLTasks';
 import type { ResultPBLInterviewSnapshot } from '../types';
 
 const interview: Partial<ResultPBLInterviewSnapshot> = {
+  // R8 PBL-자체-03 — 평면 4행 배열 (차수×4 역할). 1차·2차 = 8행.
   activities: [
-    {
-      round: 1,
-      date: '2026.04.10',
-      content: '경영진 인터뷰',
-      method: '대면',
-      participants: {
-        pm: '김PM',
-        external_expert: '',
-        internal_expert: '박차장',
-        jurisdiction_manager: '',
-      },
-    },
-    {
-      round: 2,
-      date: '2026.04.17',
-      content: '현장 워크숍',
-      method: '대면+실습',
-      participants: {
-        pm: '김PM',
-        external_expert: '박전문가',
-        internal_expert: '생산팀 전체',
-        jurisdiction_manager: '이주치',
-      },
-    },
+    { round: 1, role: 'PM', personName: '김PM', date: '2026.04.10', content: '경영진 인터뷰', method: '대면' },
+    { round: 1, role: 'EXTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
+    { round: 1, role: 'INTERNAL_EXPERT', personName: '박차장', date: '2026.04.10', content: '내부 현황 공유', method: '대면' },
+    { round: 1, role: 'JURISDICTION_MANAGER', personName: '', date: '', content: '', method: '' },
+    { round: 2, role: 'PM', personName: '김PM', date: '2026.04.17', content: '현장 워크숍', method: '대면+실습' },
+    { round: 2, role: 'EXTERNAL_EXPERT', personName: '박전문가', date: '2026.04.17', content: '데이터 분석 멘토링', method: '대면+실습' },
+    { round: 2, role: 'INTERNAL_EXPERT', personName: '생산팀 전체', date: '2026.04.17', content: '현장 사례 공유', method: '대면+실습' },
+    { round: 2, role: 'JURISDICTION_MANAGER', personName: '이주치', date: '2026.04.17', content: 'HRD 점검', method: '서면 검토' },
   ],
   problemDefinitionSheet: {
     background: '야간 교대시 샘플 누락 발생',
@@ -89,7 +74,7 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
     expect(screen.getByText(/Ⅲ-4-나\. 예상 AI 역량 수준/)).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 수행활동 2차수 행 표시', () => {
+  it('Ⅲ-1 수행활동 2차수 × 4 역할 = 8 행 표시', () => {
     render(
       <TabPBLTasks
         version={null}
@@ -98,13 +83,15 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
         onEdit={vi.fn()}
       />,
     );
-    expect(screen.getByText('1차')).toBeInTheDocument();
-    expect(screen.getByText('2차')).toBeInTheDocument();
+    // 차수 라벨 (1차·2차 × 4 행 = 8 셀)
+    expect(screen.getAllByText('1차').length).toBe(4);
+    expect(screen.getAllByText('2차').length).toBe(4);
+    // 수행 내용
     expect(screen.getByText('경영진 인터뷰')).toBeInTheDocument();
     expect(screen.getByText('현장 워크숍')).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 수행활동 participants 4 person dict 가 "PM 김PM · 내부 박차장" 형식으로 렌더된다 (PR #5 Phase F-4)', () => {
+  it('Ⅲ-1 수행활동 평면 4행 배열 — 4 역할 라벨이 차수마다 표시된다 (R8 PBL-자체-03)', () => {
     render(
       <TabPBLTasks
         version={null}
@@ -113,62 +100,30 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
         onEdit={vi.fn()}
       />,
     );
-    // 1차수: pm + internal_expert 만 채워짐 → "PM 김PM · 내부 박차장" (1·2차수 모두 PM 김PM 이라 multiple)
-    expect(screen.getAllByText(/PM 김PM/).length).toBeGreaterThanOrEqual(2);
-    // 1차수 specific — "내부 박차장" 은 1차수만 (2차수는 "내부 생산팀 전체")
-    expect(screen.getByText(/내부 박차장/)).toBeInTheDocument();
-    // 2차수: 4 person 모두 채워짐 — 외부·주치의는 2차수 only
-    expect(screen.getByText(/외부 박전문가/)).toBeInTheDocument();
-    expect(screen.getByText(/주치의 이주치/)).toBeInTheDocument();
+    // R8 PBL-자체-03 — 평면 4행 배열. 차수당 4 역할이 별도 행으로 노출됨.
+    // 1차 PM 성명 = "김PM" (1·2차 모두 PM 김PM 이라 2개 매치)
+    expect(screen.getAllByText('김PM').length).toBeGreaterThanOrEqual(2);
+    // 1차 INTERNAL_EXPERT 성명 = "박차장"
+    expect(screen.getByText('박차장')).toBeInTheDocument();
+    // 2차 EXTERNAL_EXPERT 성명 = "박전문가"
+    expect(screen.getByText('박전문가')).toBeInTheDocument();
+    // 2차 JURISDICTION_MANAGER 성명 = "이주치"
+    expect(screen.getByText('이주치')).toBeInTheDocument();
+    // 4 역할 라벨도 노출
+    expect(screen.getAllByText('PM').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('외부전문가').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('기업내부전문가').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('능력개발전담주치의').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('Ⅲ-1 수행활동 participants 가 string 인 legacy 데이터도 fallback 으로 렌더된다', () => {
-    const legacyInterview = {
-      ...interview,
-      activities: [
-        {
-          round: 1,
-          date: '2026.03.01',
-          content: 'legacy 인터뷰',
-          method: '대면',
-          // 기존 V2 string 형 데이터 (preprocess 마이그레이션 전)
-          participants: 'PM 홍길동, 외부 김전문' as unknown as {
-            pm: string;
-            external_expert: string;
-            internal_expert: string;
-            jurisdiction_manager: string;
-          },
-        },
-      ],
-    };
-    render(
-      <TabPBLTasks
-        version={null}
-        interview={legacyInterview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // string fallback 로직: 그대로 출력
-    expect(screen.getByText('PM 홍길동, 외부 김전문')).toBeInTheDocument();
-  });
-
-  it('Ⅲ-1 수행활동 participants 가 모두 빈 dict 일 때 "-" 로 fallback', () => {
+  it('Ⅲ-1 수행활동 — 빈 row(성명 없음) 는 "-" 로 fallback', () => {
     const emptyInterview = {
       ...interview,
       activities: [
-        {
-          round: 1,
-          date: '2026.03.01',
-          content: '데이터 없음 케이스',
-          method: '대면',
-          participants: {
-            pm: '',
-            external_expert: '',
-            internal_expert: '',
-            jurisdiction_manager: '',
-          },
-        },
+        { round: 1, role: 'PM' as const, personName: '', date: '', content: '', method: '' },
+        { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
+        { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
+        { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
       ],
     };
     render(
@@ -179,7 +134,7 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
         onEdit={vi.fn()}
       />,
     );
-    // 빈 dict → "-" fallback
+    // 빈 → "-" fallback
     const dashes = screen.getAllByText('-');
     expect(dashes.length).toBeGreaterThan(0);
   });

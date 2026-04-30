@@ -91,15 +91,36 @@ function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
         : undefined,
     },
     performanceActivities: {
-      performance_activities: v2.activities.map((a, i) => ({
-        id: `act-${i}`,
-        round: a.round,
-        date: a.date,
-        content: a.content,
-        method: a.method,
-        operation_mode: '대면',
-        participants: { pm: a.participants, external_expert: '', internal_expert: '', jurisdiction_manager: '' },
-      })),
+      // R8 PBL-자체-03 — 평면 4행을 차수별로 그룹핑해 V1 row 형태로 변환.
+      performance_activities: (() => {
+        const byRound = new Map<number, typeof v2.activities>();
+        v2.activities.forEach((a) => {
+          const list = byRound.get(a.round) ?? [];
+          list.push(a);
+          byRound.set(a.round, list);
+        });
+        return Array.from(byRound.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([round, rows], i) => {
+            const find = (role: typeof rows[number]['role']) =>
+              rows.find((r) => r.role === role)?.personName ?? '';
+            const first = rows[0];
+            return {
+              id: `act-${i}`,
+              round,
+              date: first?.date ?? '',
+              content: first?.content ?? '',
+              method: first?.method ?? '',
+              operation_mode: '대면',
+              participants: {
+                pm: find('PM'),
+                external_expert: find('EXTERNAL_EXPERT'),
+                internal_expert: find('INTERNAL_EXPERT'),
+                jurisdiction_manager: find('JURISDICTION_MANAGER'),
+              },
+            };
+          });
+      })(),
     },
     problemDefinition: {
       problem_definition: {

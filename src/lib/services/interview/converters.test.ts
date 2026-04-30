@@ -521,18 +521,11 @@ function validPBLCamelCase(): PBLInterviewStrict {
 
     // Ⅲ AI기반 훈련과제 도출
     activities: [
-      {
-        round: 1,
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-        participants: {
-          pm: '홍길동',
-          external_expert: '',
-          internal_expert: '김철수',
-          jurisdiction_manager: '',
-        },
-      },
+      // R8 PBL-자체-03 — 평면 4행 배열
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '김철수', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
     ],
     problemDefinitionSheet: {
       background: '검사자별 편차 발생, 고객 클레임 증가.',

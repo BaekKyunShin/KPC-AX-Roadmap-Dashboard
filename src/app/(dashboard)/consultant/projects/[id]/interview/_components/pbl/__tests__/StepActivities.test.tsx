@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import { StepActivities } from '../StepActivities';
-import type { PBLActivityItem } from '@/lib/schemas/interview-pbl';
+import type { PBLActivityRow } from '@/lib/schemas/interview-pbl';
 
-describe('StepActivities', () => {
+describe('StepActivities (R8 PBL-자체-03 — 차수×4 역할 평면 4행)', () => {
   it('FormSection 번호·제목이 노출된다', () => {
     render(<StepActivities value={[]} onChange={vi.fn()} />);
     expect(
@@ -13,74 +13,77 @@ describe('StepActivities', () => {
     expect(screen.getByText('Ⅲ-1')).toBeInTheDocument();
   });
 
-  it('빈 value 일 때 기본 3차수 행을 프리필한다', () => {
+  it('빈 value 일 때 기본 3차수 prefill (각 차수당 4 역할 = 12 행)', () => {
     render(<StepActivities value={[]} onChange={vi.fn()} />);
-    // 1~3차 수행 일자 input 이 모두 렌더
-    expect(screen.getByLabelText('1행 수행 일자')).toBeInTheDocument();
-    expect(screen.getByLabelText('2행 수행 일자')).toBeInTheDocument();
-    expect(screen.getByLabelText('3행 수행 일자')).toBeInTheDocument();
+    // 1·2·3차 카드 + 각 카드마다 4 역할 (PM/외부전문가/기업내부전문가/능력개발전담주치의) 라벨 노출
+    expect(screen.getByText('1차')).toBeInTheDocument();
+    expect(screen.getByText('2차')).toBeInTheDocument();
+    expect(screen.getByText('3차')).toBeInTheDocument();
+    expect(screen.getAllByText('PM').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('외부전문가').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('기업내부전문가').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('능력개발전담주치의').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('행 편집 시 onChange 에 변경 배열이 전달된다', () => {
+  it('1차 PM 수행 내용 편집 시 onChange 에 평면 배열로 전달된다', () => {
     const onChange = vi.fn();
     render(<StepActivities value={[]} onChange={onChange} />);
-    fireEvent.change(screen.getByLabelText('1행 수행 내용'), {
+    fireEvent.change(screen.getByLabelText('1차 PM 수행 내용'), {
       target: { value: '현장 인터뷰 수행' },
     });
-    const next = onChange.mock.calls[0][0] as PBLActivityItem[];
-    expect(next[0].content).toBe('현장 인터뷰 수행');
+    const next = onChange.mock.calls[0][0] as PBLActivityRow[];
+    const pmRow = next.find((r) => r.round === 1 && r.role === 'PM');
+    expect(pmRow?.content).toBe('현장 인터뷰 수행');
   });
 
-  it('차수 추가 클릭 시 다음 차수가 추가된다 (round 자동 증가)', () => {
+  it('차수 추가 클릭 시 4 역할 행이 한 번에 추가된다', () => {
     const onChange = vi.fn();
-    const initial: PBLActivityItem[] = [
-      {
-        round: 1,
-        date: '26.04.01',
-        content: '',
-        method: '',
-        participants: {
-          pm: '',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        },
-      },
-      {
-        round: 2,
-        date: '26.04.15',
-        content: '',
-        method: '',
-        participants: {
-          pm: '',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        },
-      },
+    const initial: PBLActivityRow[] = [
+      // 1차 (4 역할)
+      { round: 1, role: 'PM', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'EXTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'INTERNAL_EXPERT', personName: '', date: '', content: '', method: '' },
+      { round: 1, role: 'JURISDICTION_MANAGER', personName: '', date: '', content: '', method: '' },
     ];
     render(<StepActivities value={initial} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText('차수 추가'));
-    const next = onChange.mock.calls[0][0] as PBLActivityItem[];
-    expect(next).toHaveLength(3);
-    expect(next[2].round).toBe(3);
+    const next = onChange.mock.calls[0][0] as PBLActivityRow[];
+    expect(next).toHaveLength(8); // 1차 4 + 2차 4
+    const round2Rows = next.filter((r) => r.round === 2);
+    expect(round2Rows).toHaveLength(4);
+    expect(new Set(round2Rows.map((r) => r.role))).toEqual(
+      new Set(['PM', 'EXTERNAL_EXPERT', 'INTERNAL_EXPERT', 'JURISDICTION_MANAGER']),
+    );
   });
 
-  it('참석자 4역할 (PM/외부/내부/주치의) input 이 차수마다 별도 렌더된다 (PR #5 Phase F-4)', () => {
+  it('차수 삭제 클릭 시 해당 차수 4 행이 모두 제거된다', () => {
+    const onChange = vi.fn();
+    const initial: PBLActivityRow[] = [
+      ...['PM', 'EXTERNAL_EXPERT', 'INTERNAL_EXPERT', 'JURISDICTION_MANAGER'].map(
+        (role) => ({ round: 1, role: role as PBLActivityRow['role'], personName: '', date: '', content: '', method: '' }),
+      ),
+      ...['PM', 'EXTERNAL_EXPERT', 'INTERNAL_EXPERT', 'JURISDICTION_MANAGER'].map(
+        (role) => ({ round: 2, role: role as PBLActivityRow['role'], personName: '', date: '', content: '', method: '' }),
+      ),
+    ];
+    render(<StepActivities value={initial} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('2차 삭제'));
+    const next = onChange.mock.calls[0][0] as PBLActivityRow[];
+    expect(next).toHaveLength(4);
+    expect(next.every((r) => r.round === 1)).toBe(true);
+  });
+
+  it('1차 4 역할 성명 입력이 각각 정확한 키에 반영된다', () => {
     const onChange = vi.fn();
     render(<StepActivities value={[]} onChange={onChange} />);
-    // 1행 4역할 input
-    expect(screen.getByLabelText('1행 PM 성명')).toBeInTheDocument();
-    expect(screen.getByLabelText('1행 외부전문가 성명')).toBeInTheDocument();
-    expect(screen.getByLabelText('1행 내부전문가 성명')).toBeInTheDocument();
-    expect(screen.getByLabelText('1행 주치의 성명')).toBeInTheDocument();
-
-    // 입력 시 onChange 의 participants object 에 반영
-    fireEvent.change(screen.getByLabelText('1행 PM 성명'), {
+    fireEvent.change(screen.getByLabelText('1차 PM 성명'), {
       target: { value: '홍길동' },
     });
-    const next = onChange.mock.calls[0][0] as PBLActivityItem[];
-    expect(next[0].participants.pm).toBe('홍길동');
-    expect(next[0].participants.external_expert).toBe('');
+    fireEvent.change(screen.getByLabelText('1차 외부전문가 성명'), {
+      target: { value: '김전문' },
+    });
+    const calls = onChange.mock.calls;
+    expect((calls[0][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'PM')?.personName).toBe('홍길동');
+    expect((calls[1][0] as PBLActivityRow[]).find((r) => r.round === 1 && r.role === 'EXTERNAL_EXPERT')?.personName).toBe('김전문');
   });
 });

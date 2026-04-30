@@ -16,7 +16,7 @@
 
 import type {
   PBLAILevel,
-  PBLActivityItem,
+  PBLActivityRow,
   PBLAiLevelAssessment,
   PBLAnalysis,
   PBLMainWorkItem,
@@ -50,7 +50,7 @@ export interface PBLResultEditPayload {
   courseNecessity?: string;
 
   // Ⅲ 훈련과제 도출
-  activities?: PBLActivityItem[];
+  activities?: PBLActivityRow[];
   /** R8 PBL-자체-04 — 4 정형 항목 (배경/핵심/범위/제약) 단일 세트 */
   problemDefinitionSheet?: Partial<PBLProblemDefinitionSheet>;
   priority?: Partial<PBLPriority>;
@@ -76,7 +76,7 @@ export interface ResultPBLInterviewSnapshot {
   analysis: PBLAnalysis;
 
   // Ⅲ 훈련과제 도출
-  activities: PBLActivityItem[];
+  activities: PBLActivityRow[];
   /** R8 PBL-자체-04 — 4 정형 항목 단일 세트 */
   problemDefinitionSheet: PBLProblemDefinitionSheet;
   priority: PBLPriority;

@@ -268,13 +268,15 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
-  it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 프리필', () => {
+  it('Ⅲ-1 activities 스텝 진입 시 StepActivities 기본 3차수 prefill (R8 — 차수×4 역할 모델)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('수행활동'));
     expect(
       screen.getByRole('heading', { name: '훈련과제 도출 수행활동', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('3행 수행 일자')).toBeInTheDocument();
+    // 1·2·3차 카드가 prefill, 각 카드마다 4 역할 수행 일자 input
+    expect(screen.getByLabelText('1차 PM 수행 일자')).toBeInTheDocument();
+    expect(screen.getByLabelText('3차 능력개발전담주치의 수행 일자')).toBeInTheDocument();
   });
 
   it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
@@ -326,18 +328,11 @@ describe('PBLInterviewClient', () => {
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',
       activities: [
-        {
-          round: 1,
-          date: '26.04.01',
-          content: '인터뷰',
-          method: '대면',
-          participants: {
-            pm: '홍길동',
-            external_expert: '',
-            internal_expert: '',
-            jurisdiction_manager: '',
-          },
-        },
+        // R8 PBL-자체-03 — 평면 4행 배열. 1차에 4 역할 모두 채움 (superRefine 통과).
+        { round: 1, role: 'PM' as const, personName: '홍길동', date: '26.04.01', content: '인터뷰', method: '대면' },
+        { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '김전문', date: '26.04.01', content: '외부 전문가 자문', method: '대면' },
+        { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '박내부', date: '26.04.01', content: '사내 현황 공유', method: '대면' },
+        { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '26.04.01', content: 'HRD 점검', method: '서면' },
       ],
       problemDefinitionSheet: {
         background: '수작업 정제 부담으로 월 200시간 손실',

@@ -4,6 +4,7 @@ import { AiLevel4Check } from '@/components/charts/AiLevel4Check';
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
+import { PBL_ACTIVITY_ROLE_LABEL } from '@/lib/schemas/interview-pbl';
 
 import type { TabPBLCommonProps } from './types';
 
@@ -43,10 +44,10 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
 
   return (
     <div className="space-y-6">
-      {/* Ⅲ-1 훈련과제 도출 수행활동 */}
+      {/* Ⅲ-1 훈련과제 도출 수행활동 (R8 PBL-자체-03 — 차수×4 역할 평면 4행) */}
       <SectionCard
         title="Ⅲ-1. 훈련과제 도출 수행활동"
-        description="차수별 일시·내용·방법·참석자 (인터뷰 입력, 읽기 전용)"
+        description="양식 13×6 정형 — 차수×4 역할(PM·외부전문가·기업내부전문가·능력개발전담주치의)별 일자·내용·방법 (인터뷰 입력, 읽기 전용)"
       >
         {activities.length > 0 ? (
           <div className="overflow-x-auto">
@@ -55,17 +56,20 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
               headerRows={[
                 {
                   cells: [
-                    { content: '차수', header: true },
-                    { content: '일자', header: true },
+                    { content: '차수', header: true, className: 'w-[60px]' },
+                    { content: '역할', header: true, className: 'w-[140px]' },
+                    { content: '성명', header: true, className: 'w-[100px]' },
+                    { content: '일자', header: true, className: 'w-[110px]' },
                     { content: '수행 내용', header: true },
                     { content: '수행 방법', header: true },
-                    { content: '참석자', header: true },
                   ],
                 },
               ]}
               bodyRows={activities.map((a) => ({
                 cells: [
                   { content: `${a.round}차`, align: 'center' },
+                  { content: PBL_ACTIVITY_ROLE_LABEL[a.role], align: 'center' },
+                  { content: a.personName || '-', align: 'center' },
                   { content: a.date || '-', align: 'center' },
                   {
                     content: (
@@ -76,29 +80,6 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                     align: 'left',
                   },
                   { content: a.method || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {(() => {
-                          // PR #5 Phase F-4: participants 는 4 person dict.
-                          // 빈 역할은 제외하고 "PM 홍길동 / 외부 김전문" 형태로 표시.
-                          const p = a.participants;
-                          if (!p) return '-';
-                          if (typeof p === 'string') return p || '-';
-                          const parts: string[] = [];
-                          if (p.pm) parts.push(`PM ${p.pm}`);
-                          if (p.external_expert)
-                            parts.push(`외부 ${p.external_expert}`);
-                          if (p.internal_expert)
-                            parts.push(`내부 ${p.internal_expert}`);
-                          if (p.jurisdiction_manager)
-                            parts.push(`주치의 ${p.jurisdiction_manager}`);
-                          return parts.length > 0 ? parts.join(' · ') : '-';
-                        })()}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
                 ],
               }))}
             />

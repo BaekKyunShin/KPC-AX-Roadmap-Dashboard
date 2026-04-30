@@ -8,55 +8,92 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { Button } from '@/components/ui/button';
 
 import type { PBLStepProps } from './types';
-import type { PBLActivityItem } from '@/lib/schemas/interview-pbl';
+import {
+  type PBLActivityRow,
+  type PBLActivityRole,
+  PBL_ACTIVITY_ROLES_ORDERED,
+  PBL_ACTIVITY_ROLE_LABEL,
+} from '@/lib/schemas/interview-pbl';
 
 /**
- * Ⅲ-1 훈련과제 도출 수행활동 — [인터뷰 입력]
+ * Ⅲ-1 훈련과제 도출 수행활동 — [인터뷰 입력] (R8 PBL-자체-03, 옵션 B)
  *
- * 양식 기준: 차수별로 "차수/일자/수행 내용/수행 방법/참석자" 5컬럼의 행을 작성.
- * 데이터 슬라이스: `PBLTasks.activities` (PBLActivityItem[]).
+ * 양식 13×6 = 차수당 4행 (PM/외부전문가/기업내부전문가/능력개발전담주치의)
+ * × 일자/내용/방법 정형. 각 행이 하나의 (차수, 역할) 조합.
+ *
+ * 데이터 슬라이스: `PBLTasks.activities` — `PBLActivityRow[]` (평면 배열).
+ *   - 차수 추가 시 자동으로 4 역할 행을 한 번에 생성 (양식 정형 강제).
+ *   - 차수 삭제 시 4 행 동시 제거.
+ *   - 사용자는 행 단위 추가/삭제 못 함 (양식 4 역할 정형 유지).
  */
 
-function emptyActivity(round: number): PBLActivityItem {
-  return {
-    round,
-    date: '',
-    content: '',
-    method: '',
-    participants: {
-      pm: '',
-      external_expert: '',
-      internal_expert: '',
-      jurisdiction_manager: '',
-    },
-  };
+const MAX_ROUNDS = 5;
+const DEFAULT_ROUNDS = 3; // 양식 prefill 1·2·3차
+
+function emptyRow(round: number, role: PBLActivityRole): PBLActivityRow {
+  return { round, role, personName: '', date: '', content: '', method: '' };
 }
 
-function defaultRows(): PBLActivityItem[] {
-  // 양식 기본 3차수 프리필 — 사용자가 3차 이상 입력하는 경우가 다수.
-  return [emptyActivity(1), emptyActivity(2), emptyActivity(3)];
+function roundToRows(round: number): PBLActivityRow[] {
+  return PBL_ACTIVITY_ROLES_ORDERED.map((role) => emptyRow(round, role));
+}
+
+function defaultRows(): PBLActivityRow[] {
+  // 양식 √ 안내: 1·2·3차 prefill (DEFAULT_ROUNDS)
+  return Array.from({ length: DEFAULT_ROUNDS }, (_, i) =>
+    roundToRows(i + 1),
+  ).flat();
+}
+
+/** rows 에서 round 별 4 행을 묶어 정렬·반환 (역할 순서 고정). */
+function groupByRound(rows: PBLActivityRow[]): Map<number, PBLActivityRow[]> {
+  const map = new Map<number, PBLActivityRow[]>();
+  // 역할 순서 인덱스 맵
+  const roleOrder = new Map<PBLActivityRole, number>(
+    PBL_ACTIVITY_ROLES_ORDERED.map((r, i) => [r, i]),
+  );
+  rows.forEach((r) => {
+    const list = map.get(r.round) ?? [];
+    list.push(r);
+    map.set(r.round, list);
+  });
+  // 각 round 내에서 역할 순서로 정렬
+  map.forEach((list) => {
+    list.sort(
+      (a, b) =>
+        (roleOrder.get(a.role) ?? 99) - (roleOrder.get(b.role) ?? 99),
+    );
+  });
+  return map;
 }
 
 export function StepActivities({
   value,
   onChange,
   readOnly = false,
-}: PBLStepProps<PBLActivityItem[]>) {
-  const rows: PBLActivityItem[] =
-    value && value.length > 0 ? value : defaultRows();
+}: PBLStepProps<PBLActivityRow[]>) {
+  const rows: PBLActivityRow[] = value && value.length > 0 ? value : defaultRows();
+  const grouped = groupByRound(rows);
+  const rounds = Array.from(grouped.keys()).sort((a, b) => a - b);
+  const maxRound = rounds.length > 0 ? Math.max(...rounds) : 0;
 
-  function updateRow(idx: number, patch: Partial<PBLActivityItem>) {
-    onChange(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+  function updateRow(target: PBLActivityRow, patch: Partial<PBLActivityRow>) {
+    onChange(
+      rows.map((r) =>
+        r.round === target.round && r.role === target.role ? { ...r, ...patch } : r,
+      ),
+    );
   }
 
-  function addRow() {
-    const nextRound = rows.length === 0 ? 1 : rows[rows.length - 1].round + 1;
-    onChange([...rows, emptyActivity(nextRound)]);
+  function addRound() {
+    if (rounds.length >= MAX_ROUNDS) return;
+    const nextRound = maxRound + 1;
+    onChange([...rows, ...roundToRows(nextRound)]);
   }
 
-  function removeRow(idx: number) {
-    if (rows.length <= 1) return;
-    onChange(rows.filter((_, i) => i !== idx));
+  function removeRound(round: number) {
+    if (rounds.length <= 1) return;
+    onChange(rows.filter((r) => r.round !== round));
   }
 
   return (
@@ -64,167 +101,114 @@ export function StepActivities({
       number="Ⅲ-1"
       title="훈련과제 도출 수행활동"
       label="[인터뷰 입력]"
-      description="PM·외부전문가·기업내부전문가·능력개발전담주치의가 참여한 훈련과제 도출 과정을 차수별로 정리합니다."
+      description="양식 13×6 정형 — 차수당 4역할(PM·외부전문가·기업내부전문가·능력개발전담주치의)별 일자/내용/방법을 분리 입력."
     >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-border text-sm">
-          <caption className="sr-only">훈련과제 도출 수행활동 표</caption>
-          <thead>
-            <tr>
-              <th className="w-[70px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                차수
-              </th>
-              <th className="w-[120px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                수행 일자
-              </th>
-              <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                수행 내용
-              </th>
-              <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                수행 방법
-              </th>
-              <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                참석자 (PM/외부/내부/주치의)
-              </th>
-              <th className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                <span className="sr-only">삭제</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, idx) => (
-              <tr key={idx}>
-                <td className="border border-border p-1 align-top">
-                  <input
-                    type="number"
-                    min={1}
-                    value={row.round}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      updateRow(idx, {
-                        round: Number.isFinite(n) && n >= 1 ? Math.trunc(n) : 1,
-                      });
-                    }}
-                    disabled={readOnly}
-                    aria-label={`${idx + 1}행 차수`}
-                    className="w-full rounded border border-border bg-background px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <input
-                    type="text"
-                    value={row.date}
-                    onChange={(e) => updateRow(idx, { date: e.target.value })}
-                    placeholder="YYYY.MM.DD"
-                    disabled={readOnly}
-                    aria-label={`${idx + 1}행 수행 일자`}
-                    className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <LargeTextBox
-                    value={row.content}
-                    onChange={(e) =>
-                      updateRow(idx, { content: e.target.value })
-                    }
-                    placeholder="수행 내용"
-                    disabled={readOnly}
-                    aria-label={`${idx + 1}행 수행 내용`}
-                    minHeightClassName="min-h-[60px]"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <LargeTextBox
-                    value={row.method}
-                    onChange={(e) =>
-                      updateRow(idx, { method: e.target.value })
-                    }
-                    placeholder="수행 방법"
-                    disabled={readOnly}
-                    aria-label={`${idx + 1}행 수행 방법`}
-                    minHeightClassName="min-h-[60px]"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    <input
-                      type="text"
-                      value={row.participants.pm}
-                      onChange={(e) =>
-                        updateRow(idx, {
-                          participants: { ...row.participants, pm: e.target.value },
-                        })
-                      }
-                      placeholder="컨설팅책임자(PM) 성명"
-                      disabled={readOnly}
-                      aria-label={`${idx + 1}행 PM 성명`}
-                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <input
-                      type="text"
-                      value={row.participants.external_expert}
-                      onChange={(e) =>
-                        updateRow(idx, {
-                          participants: {
-                            ...row.participants,
-                            external_expert: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="외부전문가(직무·HRD) 성명"
-                      disabled={readOnly}
-                      aria-label={`${idx + 1}행 외부전문가 성명`}
-                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <input
-                      type="text"
-                      value={row.participants.internal_expert}
-                      onChange={(e) =>
-                        updateRow(idx, {
-                          participants: {
-                            ...row.participants,
-                            internal_expert: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="기업내부전문가 성명"
-                      disabled={readOnly}
-                      aria-label={`${idx + 1}행 내부전문가 성명`}
-                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <input
-                      type="text"
-                      value={row.participants.jurisdiction_manager}
-                      onChange={(e) =>
-                        updateRow(idx, {
-                          participants: {
-                            ...row.participants,
-                            jurisdiction_manager: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="능력개발전담주치의 성명"
-                      disabled={readOnly}
-                      aria-label={`${idx + 1}행 주치의 성명`}
-                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </div>
-                </td>
-                <td className="border border-border p-1 text-center align-top">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(idx)}
-                    disabled={readOnly || rows.length <= 1}
-                    aria-label={`${idx + 1}행 삭제`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="space-y-4">
+        {rounds.map((round) => {
+          const roundRows = grouped.get(round) ?? [];
+          return (
+            <div
+              key={round}
+              className="rounded-md border border-border bg-card p-3 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">{round}차</h3>
+                <button
+                  type="button"
+                  onClick={() => removeRound(round)}
+                  disabled={readOnly || rounds.length <= 1}
+                  aria-label={`${round}차 삭제`}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-border text-sm">
+                  <caption className="sr-only">{round}차 수행활동 4 역할 표</caption>
+                  <thead>
+                    <tr>
+                      <th className="w-[140px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+                        역할
+                      </th>
+                      <th className="w-[120px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+                        성명
+                      </th>
+                      <th className="w-[120px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+                        수행 일자
+                      </th>
+                      <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
+                        수행 내용
+                      </th>
+                      <th className="border border-border bg-muted px-2 py-2 text-center font-semibold">
+                        수행 방법
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roundRows.map((row) => (
+                      <tr key={row.role}>
+                        <td className="border border-border bg-muted/40 px-2 py-2 text-center font-medium">
+                          {PBL_ACTIVITY_ROLE_LABEL[row.role]}
+                        </td>
+                        <td className="border border-border p-1 align-top">
+                          <input
+                            type="text"
+                            value={row.personName}
+                            onChange={(e) =>
+                              updateRow(row, { personName: e.target.value })
+                            }
+                            placeholder="성명"
+                            disabled={readOnly}
+                            aria-label={`${round}차 ${PBL_ACTIVITY_ROLE_LABEL[row.role]} 성명`}
+                            className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                        </td>
+                        <td className="border border-border p-1 align-top">
+                          <input
+                            type="text"
+                            value={row.date}
+                            onChange={(e) =>
+                              updateRow(row, { date: e.target.value })
+                            }
+                            placeholder="YYYY.MM.DD"
+                            disabled={readOnly}
+                            aria-label={`${round}차 ${PBL_ACTIVITY_ROLE_LABEL[row.role]} 수행 일자`}
+                            className="w-full rounded border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                        </td>
+                        <td className="border border-border p-1 align-top">
+                          <LargeTextBox
+                            value={row.content}
+                            onChange={(e) =>
+                              updateRow(row, { content: e.target.value })
+                            }
+                            placeholder="수행 내용"
+                            disabled={readOnly}
+                            aria-label={`${round}차 ${PBL_ACTIVITY_ROLE_LABEL[row.role]} 수행 내용`}
+                            minHeightClassName="min-h-[60px]"
+                          />
+                        </td>
+                        <td className="border border-border p-1 align-top">
+                          <LargeTextBox
+                            value={row.method}
+                            onChange={(e) =>
+                              updateRow(row, { method: e.target.value })
+                            }
+                            placeholder="수행 방법 (대면/비대면 등)"
+                            disabled={readOnly}
+                            aria-label={`${round}차 ${PBL_ACTIVITY_ROLE_LABEL[row.role]} 수행 방법`}
+                            minHeightClassName="min-h-[60px]"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div>
@@ -232,21 +216,23 @@ export function StepActivities({
           type="button"
           variant="outline"
           size="sm"
-          onClick={addRow}
-          disabled={readOnly}
+          onClick={addRound}
+          disabled={readOnly || rounds.length >= MAX_ROUNDS}
           aria-label="차수 추가"
         >
-          <Plus className="mr-1 size-4" />
-          차수 추가
+          <Plus className="mr-1 size-4" />차수 추가 ({rounds.length}/{MAX_ROUNDS})
         </Button>
       </div>
 
       <ExampleAccordion
         guide={
           <ul className="list-disc space-y-1 pl-4">
-            <li>1차 (기업 현황·문제 도출), 2차 (해결 방향 설정), 3차 (훈련과제 확정) 순으로 통상 3~4차수 진행합니다.</li>
-            <li>참석자는 4역할 (PM·외부전문가·기업내부전문가·능력개발전담주치의) 의 성명을 모두 기재합니다.</li>
-            <li>수행 방법은 대면/비대면/혼합 여부와 사용 도구 (예: 현장 인터뷰·Miro 워크숍) 를 함께 기재합니다.</li>
+            <li>
+              <strong>양식 √ 작성안내:</strong> 문제도출 및 훈련대상 업무 선정을 위한 중요한 활동으로, 기업이 지닌 본질적인 핵심문제 파악 및 문제정의에 경영진과 기업 핵심 인력이 함께 참여합니다.
+            </li>
+            <li>1차 (기업 현황·문제 도출), 2차 (해결 방향 설정), 3차 (훈련과제 확정) 순으로 통상 3차수 진행합니다.</li>
+            <li>차수당 4 역할 (PM·외부전문가·기업내부전문가·능력개발전담주치의) 각각의 일자·내용·방법을 분리해 양식 13×6 표에 1:1 정합으로 작성합니다.</li>
+            <li>"차수 추가" 시 4 역할 행이 자동 생성됩니다. 행 단위 추가/삭제는 불가 (양식 정형).</li>
           </ul>
         }
       />

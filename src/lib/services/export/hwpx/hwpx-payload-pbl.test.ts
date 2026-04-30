@@ -417,15 +417,12 @@ describe('buildPBLHwpxPayload', () => {
           size: 1024,
         },
         courseNecessity: 'AI 도입 필요성 본문',
-        // PBLTasks
+        // PBLTasks (R8 PBL-자체-03 — 평면 4행 배열)
         activities: [
-          {
-            round: 1,
-            date: '26/04/10',
-            content: '킥오프',
-            method: '대면',
-            participants: 'PM 홍길동, 외부전문가 김전문',
-          },
+          { round: 1, role: 'PM', personName: '홍길동', date: '26/04/10', content: '킥오프', method: '대면' },
+          { round: 1, role: 'EXTERNAL_EXPERT', personName: '김전문', date: '26/04/10', content: '전문가 자문', method: '대면' },
+          { round: 1, role: 'INTERNAL_EXPERT', personName: '박관리', date: '26/04/10', content: '내부 공유', method: '대면' },
+          { round: 1, role: 'JURISDICTION_MANAGER', personName: '이주치', date: '26/04/10', content: 'HRD 점검', method: '서면' },
         ],
         // R8 PBL-자체-04 — 4 정형 항목 단일 세트
         problemDefinitionSheet: {
@@ -499,10 +496,15 @@ describe('buildPBLHwpxPayload', () => {
     });
     const activities = payload.data.activities as Array<{
       round: number;
-      participants: string;
+      role: string;
+      person_name: string;
     }>;
-    expect(activities).toHaveLength(1);
-    expect(activities[0].participants).toBe('PM 홍길동, 외부전문가 김전문');
+    // R8 PBL-자체-03 — 평면 4행 배열 (1차 × 4 역할)
+    expect(activities).toHaveLength(4);
+    expect(activities[0].role).toBe('PM');
+    expect(activities[0].person_name).toBe('홍길동');
+    expect(activities[1].role).toBe('EXTERNAL_EXPERT');
+    expect(activities[1].person_name).toBe('김전문');
     // R8 PBL-자체-04 — problems 배열 폐기, problem_definition_sheet 단일 객체
     const problemSheet = payload.data.problem_definition_sheet as {
       background: string;

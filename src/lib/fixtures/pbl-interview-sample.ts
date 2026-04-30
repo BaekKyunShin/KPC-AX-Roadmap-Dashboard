@@ -115,44 +115,23 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   courseNecessity:
     '기존 공개과정은 AI 일반론 중심이라 자사 품질 데이터·공정·용어에 직접 적용하기 어려움. 본 PBL 과정은 ① 자사 최근 6개월 불량 이미지 12만 장을 실습 데이터로 사용, ② 품질검사·공정개선·설비보전 3개 직무가 공통으로 겪는 불량 원인 추적 문제를 중심 과제로 설계, ③ ChatGPT/Claude/Notebook 도구로 데이터 분석·보고 자동화 루틴을 조직 내부에 내재화하는 것을 목표로 한다. 훈련 종료 후에도 수강생이 즉시 현장에 적용할 수 있도록 실제 업무 산출물(월간 품질 보고서 템플릿·불량 분석 Notebook) 을 결과물로 작성한다.',
 
-  // ── Ⅲ-1 수행활동 ─────────────────────────────────────────────────────────
+  // ── Ⅲ-1 수행활동 (R8 PBL-자체-03 — 평면 4행 배열 / 차수당 4 역할) ────────
   activities: [
-    {
-      round: 1,
-      date: '2026-04-20',
-      content: 'HRD 분석 및 훈련 목표 합의 · 양식 2 Ⅱ-1·2 입력 검토',
-      method: '대면 워크숍',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '',
-        internal_expert: '홍길동',
-        jurisdiction_manager: '',
-      },
-    },
-    {
-      round: 2,
-      date: '2026-04-27',
-      content: '훈련과정 설계 · 데이터 샘플(불량 이미지 12만 장) 준비 · 실습 환경 점검',
-      method: '비대면 회의 + 문서 공유',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '박AI전문가',
-        internal_expert: '홍길동',
-        jurisdiction_manager: '',
-      },
-    },
-    {
-      round: 3,
-      date: '2026-05-10',
-      content: '훈련 실시(1차) · 중간 점검 · 과제 피드백',
-      method: '대면 실습',
-      participants: {
-        pm: '김컨설턴트',
-        external_expert: '박AI전문가',
-        internal_expert: '김품질',
-        jurisdiction_manager: '이주치',
-      },
-    },
+    // 1차 — 4 역할 행
+    { round: 1, role: 'PM' as const, personName: '김컨설턴트', date: '2026-04-20', content: 'HRD 분석 및 훈련 목표 합의 진행', method: '대면 워크숍' },
+    { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '', content: '', method: '' },
+    { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '홍길동', date: '2026-04-20', content: '사내 현황 공유 및 양식 2 Ⅱ-1·2 입력 검토', method: '대면 워크숍' },
+    { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
+    // 2차
+    { round: 2, role: 'PM' as const, personName: '김컨설턴트', date: '2026-04-27', content: '훈련과정 설계 총괄', method: '비대면 회의 + 문서 공유' },
+    { round: 2, role: 'EXTERNAL_EXPERT' as const, personName: '박AI전문가', date: '2026-04-27', content: '데이터 샘플(불량 이미지 12만 장) 준비 및 실습 환경 점검', method: '비대면 회의' },
+    { round: 2, role: 'INTERNAL_EXPERT' as const, personName: '홍길동', date: '2026-04-27', content: '사내 데이터 접근 권한 확인', method: '비대면 회의' },
+    { round: 2, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '', content: '', method: '' },
+    // 3차
+    { round: 3, role: 'PM' as const, personName: '김컨설턴트', date: '2026-05-10', content: '훈련 실시(1차) 진행 총괄 · 중간 점검', method: '대면 실습' },
+    { round: 3, role: 'EXTERNAL_EXPERT' as const, personName: '박AI전문가', date: '2026-05-10', content: '데이터 분석 실습 멘토링 · 과제 피드백', method: '대면 실습' },
+    { round: 3, role: 'INTERNAL_EXPERT' as const, personName: '김품질', date: '2026-05-10', content: '현장 사례 연계 · 검사 표준화 PoC 시연', method: '대면 실습' },
+    { round: 3, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '2026-05-10', content: 'HRD이음 결과 활용 점검 · 능력개발 관점 컨설팅', method: '서면 검토' },
   ],
 
   // ── Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트) ──────────

@@ -635,29 +635,29 @@ describe('PBLAnalysisSchema (Ⅱ 훈련 요구 분석)', () => {
     expect(PBLAnalysisSchema.safeParse(withEmptyWork).success).toBe(true);
   });
 
-  it('companyIssues·trainingEnv·courseNecessity 는 필수 (빈 문자열 거부)', () => {
-    for (const key of ['companyIssues', 'trainingEnv', 'courseNecessity'] as const) {
+  it('companyIssues·courseNecessity 는 필수 (빈 문자열 거부)', () => {
+    for (const key of ['companyIssues', 'courseNecessity'] as const) {
       const invalid = { ...validAnalysis, [key]: '' };
       expect(PBLAnalysisSchema.safeParse(invalid).success).toBe(false);
     }
+  });
+
+  // R8 PBL-자체-02 — trainingEnv 가 정형 객체로 변경됨. 빈 객체도 통과 (default 채움).
+  it('trainingEnv 객체 자체가 누락되면 실패 (필수 필드)', () => {
+    const { trainingEnv: _omit, ...rest } = validAnalysis;
+    void _omit;
+    expect(PBLAnalysisSchema.safeParse(rest).success).toBe(false);
   });
 });
 
 describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
   const validTasks = {
+    // R8 PBL-자체-03 — 평면 4행 배열 (1차에 4 역할 모두)
     activities: [
-      {
-        round: 1,
-        date: '2026-03-15',
-        content: '현장 인터뷰 및 문제 도출',
-        method: '대면 워크숍',
-        participants: {
-          pm: 'PM 홍길동',
-          external_expert: '외부전문가 김전문',
-          internal_expert: '내부전문가 박관리',
-          jurisdiction_manager: '능력개발전담주치의 이주치',
-        },
-      },
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-03-15', content: '현장 인터뷰', method: '대면' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '김전문', date: '2026-03-15', content: '전문가 자문', method: '대면' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '박관리', date: '2026-03-15', content: '사내 현황', method: '대면' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '2026-03-15', content: 'HRD 점검', method: '서면' },
     ],
     problemDefinitionSheet: {
       background: '제조 공정 자동화 압박과 품질 데이터 분산.',
@@ -839,71 +839,31 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출)', () => {
     }
   });
 
-  it('activities[].participants string 입력 시 PM 필드에 자동 채움 (PR #5 Phase F-4 호환)', () => {
-    const result = PBLTasksSchema.safeParse({
-      ...validTasks,
-      activities: [
-        {
-          ...validTasks.activities[0],
-          // 기존 V2 데이터 형 (string) — preprocess 가 PM 으로 자동 변환
-          participants: 'PM 홍길동, 외부 김전문',
-        } as unknown as (typeof validTasks)['activities'][0],
-      ],
-    });
+  // R8 PBL-자체-03 — 평면 4행 배열로 모델 변경. 차수당 4 역할이 정확히 있어야 통과.
+  it('activities — 차수당 4 역할이 모두 있으면 통과', () => {
+    const result = PBLTasksSchema.safeParse(validTasks);
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.activities[0].participants).toEqual({
-        pm: 'PM 홍길동, 외부 김전문',
-        external_expert: '',
-        internal_expert: '',
-        jurisdiction_manager: '',
-      });
-    }
   });
 
-  it('activities[].participants null/undefined 입력 시 빈 object 로 정규화', () => {
-    for (const nullish of [null, undefined]) {
-      const result = PBLTasksSchema.safeParse({
-        ...validTasks,
-        activities: [
-          {
-            ...validTasks.activities[0],
-            participants: nullish,
-          } as unknown as (typeof validTasks)['activities'][0],
-        ],
-      });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.activities[0].participants).toEqual({
-          pm: '',
-          external_expert: '',
-          internal_expert: '',
-          jurisdiction_manager: '',
-        });
-      }
-    }
+  it('activities — 차수에 4 역할 중 하나라도 누락되면 실패 (양식 정형)', () => {
+    // 1차에서 JURISDICTION_MANAGER 누락
+    const incomplete = validTasks.activities.slice(0, 3);
+    const result = PBLTasksSchema.safeParse({ ...validTasks, activities: incomplete });
+    expect(result.success).toBe(false);
   });
 
-  it('activities[].participants object 입력 시 그대로 통과', () => {
-    const result = PBLTasksSchema.safeParse({
-      ...validTasks,
-      activities: [
-        {
-          ...validTasks.activities[0],
-          participants: {
-            pm: '홍길동',
-            external_expert: '김전문',
-            internal_expert: '박관리',
-            jurisdiction_manager: '이주치',
-          },
-        },
-      ],
-    });
+  it('activities — 빈 배열은 통과 (자동저장 / 작성 중 단계)', () => {
+    const result = PBLTasksSchema.safeParse({ ...validTasks, activities: [] });
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.activities[0].participants.pm).toBe('홍길동');
-      expect(result.data.activities[0].participants.jurisdiction_manager).toBe('이주치');
-    }
+  });
+
+  it('activities — 2차수 × 4 역할 = 8 행 통과', () => {
+    const twoRounds = [
+      ...validTasks.activities,
+      ...validTasks.activities.map((r) => ({ ...r, round: 2 })),
+    ];
+    const result = PBLTasksSchema.safeParse({ ...validTasks, activities: twoRounds });
+    expect(result.success).toBe(true);
   });
 
   // R8 PBL-자체-04 — 4 정형 항목 단일 세트 (행 추가/삭제 없음). 빈 객체도 통과.
@@ -966,20 +926,12 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
       size: 1024,
     },
     courseNecessity: 'AI 과정개발 필요성 bullet',
-    // Ⅲ 훈련과제
+    // Ⅲ 훈련과제 (R8 PBL-자체-03 — 평면 4행 배열, 차수당 4 역할 정형 강제)
     activities: [
-      {
-        round: 1,
-        date: '2026-03-15',
-        content: '인터뷰',
-        method: '대면',
-        participants: {
-          pm: 'PM 홍길동',
-          external_expert: '전문가 김전문',
-          internal_expert: '내부 박관리',
-          jurisdiction_manager: '주치의 이주치',
-        },
-      },
+      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-03-15', content: '인터뷰', method: '대면' },
+      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '김전문', date: '2026-03-15', content: '전문가 자문', method: '대면' },
+      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '박관리', date: '2026-03-15', content: '사내 현황', method: '대면' },
+      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '이주치', date: '2026-03-15', content: 'HRD 점검', method: '서면' },
     ],
     problemDefinitionSheet: {
       background: '문제 배경',

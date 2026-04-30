@@ -18,7 +18,7 @@ import {
   type PBLInterviewStrict,
   type PBLOverview,
   type PBLOrganization,
-  type PBLActivityItem,
+  type PBLActivityRow,
   type PBLProblemDefinitionSheet,
   type PBLPriority,
   type PBLTarget,
@@ -172,7 +172,7 @@ export function PBLInterviewClient({
 
   const updateTasks = useCallback(
     (patch: {
-      activities?: PBLActivityItem[];
+      activities?: PBLActivityRow[];
       problemDefinitionSheet?: PBLProblemDefinitionSheet;
       priority?: PBLPriority;
       target?: PBLTarget;
