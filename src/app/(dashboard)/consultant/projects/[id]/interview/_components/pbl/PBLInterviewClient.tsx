@@ -287,7 +287,8 @@ export function PBLInterviewClient({
             '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         });
         if (ok) {
-          router.push(`/consultant/projects/${projectId}/pbl`);
+          // PR5 (R6 spec) — 제출 직후 검토 페이지로 redirect.
+          router.push(`/consultant/projects/${projectId}/interview/review`);
         } else {
           setIsSubmitting(false);
         }

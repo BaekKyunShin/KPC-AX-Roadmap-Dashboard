@@ -370,7 +370,9 @@ describe('PBLInterviewClient', () => {
       expect(submitPBLInterviewV2).toHaveBeenCalledTimes(1),
     );
     await waitFor(() =>
-      expect(routerPush).toHaveBeenCalledWith('/consultant/projects/p1/pbl'),
+      expect(routerPush).toHaveBeenCalledWith(
+        '/consultant/projects/p1/interview/review',
+      ),
     );
   });
 
