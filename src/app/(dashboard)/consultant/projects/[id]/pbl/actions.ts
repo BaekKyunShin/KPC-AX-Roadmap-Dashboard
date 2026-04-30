@@ -883,20 +883,20 @@ export async function editPBLV2(
     }
 
     // 감사로그 (after — 응답 차단 방지).
-    // PBL 결과 페이지 편집은 실질적으로 인터뷰 원본(pbl_data JSONB) 을
-    // 수정하는 경로이므로 기존 `PBL_INTERVIEW_SAVED` 액션을 재사용한다.
-    // meta.schema_version 으로 결과 화면 경유 편집임을 식별.
+    // PR5 (R6 spec) — 결과 페이지 편집 전용 PBL_REPORT_EDITED 로 분기.
+    // (인터뷰 페이지 자동저장 PBL_INTERVIEW_SAVED 와 분리하여 감사 추적성 강화)
     after(async () => {
       try {
         await createAuditLog({
           actorUserId: user.id,
-          action: 'PBL_INTERVIEW_SAVED',
+          action: 'PBL_REPORT_EDITED',
           targetType: 'pbl_report',
           targetId: versionId,
           meta: {
-            projectId,
-            schema_version: 'v2_result_edit',
-            patchedKeys: Object.keys(patch),
+            project_id: projectId,
+            version_id: versionId,
+            fields_changed: Object.keys(patch),
+            source: 'RESULT_PAGE',
           },
         });
       } catch (e) {

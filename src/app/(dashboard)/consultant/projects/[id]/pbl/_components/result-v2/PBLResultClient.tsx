@@ -108,6 +108,8 @@ export function PBLResultClient({
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
   const isDraft = selectedVersion?.status === 'DRAFT';
+  const isFinal = selectedVersion?.status === 'FINAL';
+  const isArchived = selectedVersion?.status === 'ARCHIVED';
   const hasVersions = versions.length > 0;
   // #013 fix — 인터뷰 row + 프로젝트 status 사전 가드. server-side 검증 fail 후
   // generic 토스트 ("오류가 발생했습니다.") 대신 클릭 자체를 차단해 사용자가 다음
@@ -116,8 +118,8 @@ export function PBLResultClient({
     !!projectStatus &&
     (PBL_ELIGIBLE_STATUSES as readonly string[]).includes(projectStatus as ProjectStatus);
   const canGeneratePbl = hasInterview && isStatusEligible;
-  // DRAFT + 편집 가능 역할일 때만 인라인 편집 활성
-  const tabReadOnly = !isDraft || !capabilities.canEdit;
+  // PR5 (R6 spec) — DRAFT/FINAL 모두 편집 허용. ARCHIVED 만 차단.
+  const tabReadOnly = isArchived || !capabilities.canEdit;
 
   async function handleDownload(type: DownloadType) {
     setDownloadLoading(type);
@@ -213,6 +215,18 @@ export function PBLResultClient({
             isLoading={isGenerating}
             disabled={!canGeneratePbl}
           />
+        )}
+
+        {/* PR5 (R6 spec) — FINAL in-place 수정 안내 배너 */}
+        {selectedVersion && isFinal && capabilities.canEdit && (
+          <div
+            className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            data-testid="pbl-final-edit-warning-banner"
+          >
+            <strong>확정된 PBL 결과를 수정합니다.</strong> 동일 버전(v
+            {selectedVersion.version_number})에 그대로 반영되며, 수정 이력은 감사로그에
+            기록됩니다.
+          </div>
         )}
 
         {selectedVersion ? (
