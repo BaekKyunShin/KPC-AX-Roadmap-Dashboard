@@ -25,6 +25,7 @@ import {
   type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
 
+import { useBeforeUnloadGuard } from '../../_hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
 import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';
@@ -256,6 +257,22 @@ export function PBLInterviewClient({
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
   }, []);
+
+  // #003 (Nielsen H3) — 자동저장 디바운스 중 탭 닫기 시 변경분 손실 방지.
+  // dirty 일 때만 브라우저 기본 경고를 띄운다. 디바운스 윈도우(500ms) 내 변경분도
+  // 보호하기 위해 lastSerializedRef 비교까지 포함. ref 는 렌더 중 직접 읽지 않고
+  // useEffect 로 state 와 동기화한다 (react-hooks/refs 정책 준수).
+  // 자동저장 effect 와는 별개의 동기화 effect 로 분리해 dirty 추적 책임을 격리.
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  useEffect(() => {
+    const dirty =
+      saveState === 'saving' ||
+      saveState === 'error' ||
+      JSON.stringify(data) !== lastSerializedRef.current;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 자동저장 패턴: data/saveState/ref 변경에 응답해 dirty 추적
+    setIsDirty(dirty);
+  }, [data, saveState]);
+  useBeforeUnloadGuard(isDirty);
 
   const handleSubmit = useCallback(() => {
     // Strict 검증 — hrdReportPdf=null 일 때 courseNecessity 비공백 조건 포함
