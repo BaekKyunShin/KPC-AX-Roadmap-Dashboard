@@ -16,6 +16,16 @@ import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
 import { ShareToggle } from '@/components/gallery/ShareToggle';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, CheckCircle2, FileText } from 'lucide-react';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
@@ -119,6 +129,8 @@ export function RoadmapResultClient({
 }: RoadmapResultClientProps) {
   const [downloadLoading, setDownloadLoading] = useState<DownloadType | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
+  // #2 — 최종 확정 AlertDialog 노출 상태. window.confirm 대체.
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
@@ -156,13 +168,15 @@ export function RoadmapResultClient({
   }
 
   async function handleFinalize() {
+    // #2 — window.confirm 대신 shadcn AlertDialog 노출. 실제 onFinalize 는
+    // confirmFinalize() 에서 호출.
     if (!selectedVersion || !onFinalize) return;
-    if (
-      typeof window !== 'undefined' &&
-      !window.confirm('이 버전을 최종 확정하시겠습니까? 이전 확정본은 아카이브됩니다.')
-    ) {
-      return;
-    }
+    setIsConfirmOpen(true);
+  }
+
+  async function confirmFinalize() {
+    if (!selectedVersion || !onFinalize) return;
+    setIsConfirmOpen(false);
     await onFinalize(selectedVersion.id);
   }
 
@@ -319,6 +333,30 @@ export function RoadmapResultClient({
           isCompleted={isGenerationComplete}
         />
       )}
+
+      {/* #2 — 최종 확정 확인 AlertDialog (window.confirm 대체). */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>로드맵을 최종 확정하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              확정 후 프로젝트가 &lsquo;최종 확정&rsquo; 상태로 전환됩니다.
+              <br />
+              이전 확정본이 있다면 아카이브됩니다.
+              <br />
+              <span className="text-muted-foreground">
+                (확정본은 추후 필요 시 직접 수정할 수 있습니다.)
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmFinalize}>
+              최종 확정
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

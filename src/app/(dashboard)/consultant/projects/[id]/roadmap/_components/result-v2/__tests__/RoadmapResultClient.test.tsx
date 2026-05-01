@@ -23,6 +23,148 @@ vi.mock('@/components/gallery/ShareToggle', () => ({
   ),
 }));
 
+// AlertDialog 를 상태 기반 mock 으로 대체 (DeleteAccountSection.test.tsx 패턴 동일).
+// open / onOpenChange 를 받아 자식에 isOpen·setOpen prop 을 주입한다.
+vi.mock('@/components/ui/alert-dialog', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+
+  function AlertDialog({ children, open, onOpenChange }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }) {
+    const [internalOpen, setInternalOpen] = React.useState(open ?? false);
+    React.useEffect(() => {
+      if (open !== undefined) setInternalOpen(open);
+    }, [open]);
+
+    return (
+      <div data-testid="alert-dialog">
+        {React.Children.map(children, (child: React.ReactElement) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child as React.ReactElement<{ isOpen: boolean; setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, {
+                isOpen: internalOpen,
+                setOpen: (v: boolean) => {
+                  setInternalOpen(v);
+                  onOpenChange?.(v);
+                },
+                onOpenChange,
+              })
+            : child,
+        )}
+      </div>
+    );
+  }
+
+  function AlertDialogTrigger({ children, asChild, isOpen: _isOpen, setOpen, ...props }: {
+    children: React.ReactNode;
+    asChild?: boolean;
+    isOpen?: boolean;
+    setOpen?: (v: boolean) => void;
+    [key: string]: unknown;
+  }) {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<{ onClick: () => void }>, {
+        onClick: () => setOpen?.(true),
+      });
+    }
+    return <button onClick={() => setOpen?.(true)} {...props}>{children}</button>;
+  }
+
+  function AlertDialogContent({ children, isOpen, setOpen, onOpenChange, ...props }: {
+    children: React.ReactNode;
+    isOpen?: boolean;
+    setOpen?: (v: boolean) => void;
+    onOpenChange?: (v: boolean) => void;
+    [key: string]: unknown;
+  }) {
+    if (!isOpen) return null;
+    return (
+      <div role="alertdialog" {...props}>
+        {React.Children.map(children, (child: React.ReactElement) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
+            : child,
+        )}
+      </div>
+    );
+  }
+
+  function AlertDialogHeader({ children }: { children: React.ReactNode }) {
+    return <div>{children}</div>;
+  }
+  function AlertDialogTitle({ children }: { children: React.ReactNode }) {
+    return <h2>{children}</h2>;
+  }
+  function AlertDialogDescription({ children, asChild: _asChild }: { children: React.ReactNode; asChild?: boolean }) {
+    return <div>{children}</div>;
+  }
+  function AlertDialogFooter({ children, setOpen, onOpenChange, ...props }: {
+    children: React.ReactNode;
+    setOpen?: (v: boolean) => void;
+    onOpenChange?: (v: boolean) => void;
+    [key: string]: unknown;
+  }) {
+    return (
+      <div {...props}>
+        {React.Children.map(children, (child: React.ReactElement) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child as React.ReactElement<{ setOpen: (v: boolean) => void; onOpenChange?: (v: boolean) => void }>, { setOpen, onOpenChange })
+            : child,
+        )}
+      </div>
+    );
+  }
+  function AlertDialogCancel({ children, setOpen, onOpenChange, disabled, ...props }: {
+    children: React.ReactNode;
+    setOpen?: (v: boolean) => void;
+    onOpenChange?: (v: boolean) => void;
+    disabled?: boolean;
+    [key: string]: unknown;
+  }) {
+    return (
+      <button
+        onClick={() => {
+          setOpen?.(false);
+          onOpenChange?.(false);
+        }}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+  function AlertDialogAction({ children, onClick, disabled, setOpen: _setOpen, onOpenChange: _onOpenChange, variant: _variant, ...props }: {
+    children: React.ReactNode;
+    onClick?: (e: React.MouseEvent) => void;
+    disabled?: boolean;
+    setOpen?: (v: boolean) => void;
+    onOpenChange?: (v: boolean) => void;
+    variant?: string;
+    [key: string]: unknown;
+  }) {
+    return (
+      <button onClick={onClick} disabled={disabled} {...props}>
+        {children}
+      </button>
+    );
+  }
+
+  return {
+    AlertDialog,
+    AlertDialogTrigger,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+  };
+});
+
 import { RoadmapResultClient } from '../RoadmapResultClient';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import type { ResultInterviewSnapshot } from '../types';
@@ -389,9 +531,9 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
     await waitFor(() => expect(onGenerate).toHaveBeenCalledTimes(1));
   });
 
-  it('role="CONSULTANT" + DRAFT 선택 버전 일 때 "최종 확정" 버튼 클릭 → onFinalize 호출', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const onFinalize = vi.fn().mockResolvedValue(undefined);
+  it('selected-version-heading 이 선택 버전 번호를 h2 로 노출 (CONSULTANT)', () => {
+    // confirm 기반 테스트는 신규 AlertDialog 동작과 충돌하므로 #2 신규 describe 블록으로 이관.
+    // 본 테스트는 다른 회귀 가드 흐름 유지를 위한 placeholder 유지.
     render(
       <RoadmapResultClient
         role="CONSULTANT"
@@ -403,41 +545,10 @@ describe('RoadmapResultClient — EmptyState + Finalize (E2E 셀렉터 대응)',
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-        onFinalize={onFinalize}
+        onFinalize={vi.fn()}
       />,
     );
-    const btn = screen.getByTestId('finalize-roadmap-button');
-    expect(btn).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(btn);
-    });
-    await waitFor(() => expect(onFinalize).toHaveBeenCalledTimes(1));
-    confirmSpy.mockRestore();
-  });
-
-  it('confirm 취소 시 onFinalize 호출되지 않음', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    const onFinalize = vi.fn();
-    render(
-      <RoadmapResultClient
-        role="CONSULTANT"
-        projectId="p1"
-        versions={[makeVersion({ status: 'DRAFT' })]}
-        selectedVersion={makeVersion({ status: 'DRAFT' })}
-        interview={baseInterview}
-        onSelectVersion={vi.fn()}
-        onEdit={vi.fn()}
-        onGenerate={vi.fn()}
-        onDownload={vi.fn()}
-        onFinalize={onFinalize}
-      />,
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
-    });
-    expect(onFinalize).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
+    expect(screen.getByTestId('finalize-roadmap-button')).toBeInTheDocument();
   });
 
   it('selected-version-heading 이 선택 버전 번호를 h2 로 노출', () => {
@@ -654,3 +765,176 @@ describe('RoadmapResultClient — 자가진단/status 가드 (#013)', () => {
   });
 });
 
+// #2 — 로드맵 최종 확정 AlertDialog (window.confirm → shadcn AlertDialog 마이그레이션).
+// 사용자 워딩 옵션 A: "로드맵을 최종 확정하시겠습니까?" + 안내 3줄 + 취소/최종 확정 버튼.
+// 회귀 가드: window.confirm 호출 금지.
+describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('"최종 확정" 클릭 시 즉시 onFinalize 호출되지 않고 AlertDialog 가 열린다', async () => {
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+
+    expect(
+      screen.getByText('로드맵을 최종 확정하시겠습니까?'),
+    ).toBeInTheDocument();
+    expect(onFinalize).not.toHaveBeenCalled();
+  });
+
+  it('AlertDialog 본문에 정확한 안내문 3줄이 노출된다', async () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+
+    // AlertDialogDescription 은 한 노드에 <br> 로 줄바꿈되어 있어 textContent 부분
+    // 매칭 + textNode-aware matcher 를 사용한다.
+    const dialog = screen.getByRole('alertdialog');
+    const text = dialog.textContent ?? '';
+    expect(text).toMatch(/확정 후 프로젝트가 ['‘]최종 확정['’] 상태로 전환됩니다\./);
+    expect(text).toContain('이전 확정본이 있다면 아카이브됩니다.');
+    expect(text).toContain('(확정본은 추후 필요 시 직접 수정할 수 있습니다.)');
+  });
+
+  it('"취소" 클릭 시 AlertDialog 가 닫히고 onFinalize 미호출', async () => {
+    const onFinalize = vi.fn();
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+    // 다이얼로그 노출 확인
+    expect(
+      screen.getByText('로드맵을 최종 확정하시겠습니까?'),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('로드맵을 최종 확정하시겠습니까?'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(onFinalize).not.toHaveBeenCalled();
+  });
+
+  it('"최종 확정"(destructive) 클릭 시 onFinalize(selectedVersion.id) 1회 호출', async () => {
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    const selected = makeVersion({ id: 'v-final-1', status: 'DRAFT' });
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[selected]}
+        selectedVersion={selected}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+
+    // 트리거 버튼 (캘린더의 "최종 확정") 클릭 → 다이얼로그 오픈
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+
+    // 다이얼로그 내부의 "최종 확정" 버튼 (alertdialog role 안) 클릭
+    const dialog = screen.getByRole('alertdialog');
+    const confirmBtn = Array.from(
+      dialog.querySelectorAll('button'),
+    ).find((b) => b.textContent === '최종 확정');
+    expect(confirmBtn).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(confirmBtn!);
+    });
+
+    await waitFor(() => {
+      expect(onFinalize).toHaveBeenCalledTimes(1);
+      expect(onFinalize).toHaveBeenCalledWith('v-final-1');
+    });
+    // 호출 후 다이얼로그 닫힘
+    await waitFor(() =>
+      expect(
+        screen.queryByText('로드맵을 최종 확정하시겠습니까?'),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('window.confirm 은 더는 호출되지 않는다 (회귀 가드)', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+        onFinalize={onFinalize}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('finalize-roadmap-button'));
+    });
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+});
