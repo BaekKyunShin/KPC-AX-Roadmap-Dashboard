@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, Power, Copy, Trash2, FileText, Info } from 'lucide-react';
+import { MoreVertical, Power, Copy, Trash2, FileText, Info, Plus } from 'lucide-react';
 import type { SelfAssessmentTemplate } from '@/types/database';
 import { setActiveTemplate, duplicateTemplate, deleteTemplate } from '../actions';
 import { showSuccessToast } from '@/lib/utils/toast';
@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
@@ -254,12 +255,21 @@ export default function TemplateList({ templates }: TemplateListProps) {
     });
 
   if (templates.length === 0) {
+    // #4 — EmptyState 통일 + "새 템플릿 생성" 액션
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-        <FileText className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">템플릿 없음</h3>
-        <p className="mt-1 text-sm text-gray-500">새 템플릿을 생성해주세요.</p>
-      </div>
+      <EmptyState
+        icon={<FileText className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+        title="등록된 템플릿이 없습니다"
+        description="새 템플릿을 생성하여 시작하세요"
+        action={
+          <Button asChild>
+            <Link href="/ops/templates/new">
+              <Plus className="mr-2 h-4 w-4" />
+              새 템플릿 생성
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 

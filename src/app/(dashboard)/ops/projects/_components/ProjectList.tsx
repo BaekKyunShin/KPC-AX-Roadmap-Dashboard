@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Building2,
   FolderOpen,
+  Plus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/status';
@@ -356,20 +358,33 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
       ) : (
       <div className="bg-white shadow rounded-lg overflow-x-auto">
           {projects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <FolderOpen className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">프로젝트 없음</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {hasFilters ? '검색 조건에 맞는 프로젝트가 없습니다.' : '등록된 프로젝트가 없습니다.'}
-              </p>
-              {hasFilters && (
-                <Button variant="link" onClick={handleResetFilters} className="mt-2">
-                  필터 초기화
-                </Button>
-              )}
-            </div>
+            // #4 — EmptyState 통일 (필터 없음 / 필터 활성 분기)
+            hasFilters ? (
+              <EmptyState
+                icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+                title="검색 조건에 맞는 프로젝트가 없습니다"
+                description="필터를 초기화하거나 다른 검색어를 시도해보세요"
+                action={
+                  <Button variant="outline" onClick={handleResetFilters}>
+                    필터 초기화
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={<FolderOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+                title="등록된 프로젝트가 없습니다"
+                description="새 프로젝트를 생성하여 컨설턴트를 배정하세요"
+                action={
+                  <Button asChild>
+                    <Link href="/ops/projects/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      새 프로젝트 생성
+                    </Link>
+                  </Button>
+                }
+              />
+            )
           ) : (
             <>
               {/* 데스크톱: 테이블 뷰 */}

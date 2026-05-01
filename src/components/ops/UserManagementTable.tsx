@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useRef, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Users } from 'lucide-react';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
 import {
@@ -21,6 +22,7 @@ import {
   TableCell,
   TableActionLink,
 } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
@@ -365,11 +367,15 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               </TableRow>
             ))}
 
-            {/* 빈 상태 */}
+            {/* 빈 상태 — #4 EmptyState 통일 (액션 버튼 없음: 사용자는 회원가입을 통해 등록됨) */}
             {users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-12 text-gray-500">
-                  등록된 사용자가 없습니다.
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={<Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+                    title="등록된 사용자가 없습니다"
+                    description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -380,9 +386,11 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
         {/* 모바일: 카드 뷰 */}
         <div className="md:hidden space-y-3 p-4">
           {users.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
-              등록된 사용자가 없습니다.
-            </div>
+            <EmptyState
+              icon={<Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+              title="등록된 사용자가 없습니다"
+              description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
+            />
           ) : (
             users.map((user) => (
               <UserMobileCard
