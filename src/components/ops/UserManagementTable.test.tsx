@@ -250,4 +250,18 @@ describe('UserManagementTable', () => {
     expect(desktopEmail).toHaveClass('break-all');
     expect(desktopEmail).toHaveTextContent('audit-c-20260428@test.com');
   });
+
+  // #4 — 운영관리 빈 목록 EmptyState 통일
+  describe('빈 상태 EmptyState (#4)', () => {
+    it('users 배열이 비었을 때 EmptyState 제목·설명을 노출하고 액션 링크는 없어야 한다', () => {
+      render(<UserManagementTable users={[]} currentUserId="x" />);
+      // 제목·설명은 EmptyState 가 데스크톱·모바일 양쪽에 렌더링됨 (jsdom 미디어쿼리 미지원)
+      const titles = screen.getAllByText('등록된 사용자가 없습니다');
+      expect(titles.length).toBeGreaterThan(0);
+      const descs = screen.getAllByText(/사용자가 회원가입을 완료하면/);
+      expect(descs.length).toBeGreaterThan(0);
+      // 사용자 추가 흐름은 도메인과 불일치 — 액션 링크 없어야 함
+      expect(screen.queryByRole('link', { name: /사용자 추가|새 사용자/ })).not.toBeInTheDocument();
+    });
+  });
 });

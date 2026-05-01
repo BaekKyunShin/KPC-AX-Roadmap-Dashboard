@@ -1,12 +1,15 @@
 import { redirect } from 'next/navigation';
+import { AlertTriangle } from 'lucide-react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createAdminClient } from '@/lib/supabase/admin';
 import UserManagementTable from '@/components/ops/UserManagementTable';
 import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   OPS_ADMIN_MANAGEABLE_ROLES,
   SYSTEM_ADMIN_MANAGEABLE_ROLES,
 } from '@/lib/constants/status';
+import { RefreshButton } from './_components/RefreshButton';
 
 // =============================================================================
 // Constants
@@ -57,11 +60,22 @@ export default async function UsersPage() {
       .select('id, user_id, expertise_domains, available_industries, sub_industries, teaching_levels, coaching_methods, skill_tags, years_of_experience, affiliation, representative_experience, portfolio, strengths_constraints, created_at, updated_at'),
   ]);
 
-  if (usersError) {
-    console.error('[Users Query Error]', usersError);
-  }
-  if (profilesError) {
-    console.error('[Profiles Query Error]', profilesError);
+  if (usersError || profilesError) {
+    // 운영팀 추적용 로깅 — 기존 동작 유지
+    if (usersError) console.error('[Users Query Error]', usersError);
+    if (profilesError) console.error('[Profiles Query Error]', profilesError);
+
+    return (
+      <div className="space-y-6">
+        <PageHeader title="사용자 관리" description={PAGE_DESCRIPTION} />
+        <EmptyState
+          icon={<AlertTriangle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-amber-500" />}
+          title="사용자 데이터를 불러올 수 없습니다"
+          description="잠시 후 다시 시도해주세요. 계속되면 운영팀에 문의해주세요."
+          action={<RefreshButton />}
+        />
+      </div>
+    );
   }
 
   // 프로필을 user_id로 매핑

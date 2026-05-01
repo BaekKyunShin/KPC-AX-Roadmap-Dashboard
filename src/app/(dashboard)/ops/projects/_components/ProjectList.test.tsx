@@ -192,23 +192,37 @@ describe('ProjectList', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 3. 빈 데이터 상태
+  // 3. 빈 데이터 상태 (#4 — 운영관리 빈 목록 EmptyState 통일)
   // --------------------------------------------------------------------------
   describe('빈 데이터 상태', () => {
-    it('프로젝트가 없으면 "프로젝트 없음" 메시지를 표시한다', async () => {
+    it('필터 없을 때 "등록된 프로젝트가 없습니다" 제목 + "새 프로젝트 생성" 링크 노출', async () => {
       setupMocks({ projects: [], total: 0, totalPages: 0 });
       render(<ProjectList />);
       await waitFor(() => {
-        expect(screen.getByText('프로젝트 없음')).toBeInTheDocument();
+        expect(screen.getByText('등록된 프로젝트가 없습니다')).toBeInTheDocument();
       });
+      expect(
+        screen.getByText('새 프로젝트를 생성하여 컨설턴트를 배정하세요'),
+      ).toBeInTheDocument();
+      const link = screen.getByRole('link', { name: /새 프로젝트 생성/ });
+      expect(link).toHaveAttribute('href', '/ops/projects/new');
     });
 
-    it('프로젝트가 없으면 "등록된 프로젝트가 없습니다" 문구를 표시한다', async () => {
+    it('필터 활성 시 "검색 조건에 맞는 프로젝트가 없습니다" + "필터 초기화" 버튼 노출', async () => {
       setupMocks({ projects: [], total: 0, totalPages: 0 });
-      render(<ProjectList />);
+      // statusFilter prop 으로 외부 필터 활성화 → hasFilters=true
+      render(<ProjectList statusFilter={['NEW']} />);
       await waitFor(() => {
-        expect(screen.getByText('등록된 프로젝트가 없습니다.')).toBeInTheDocument();
+        expect(
+          screen.getByText('검색 조건에 맞는 프로젝트가 없습니다'),
+        ).toBeInTheDocument();
       });
+      expect(
+        screen.getByText('필터를 초기화하거나 다른 검색어를 시도해보세요'),
+      ).toBeInTheDocument();
+      // EmptyState 내 액션 버튼
+      const resetButtons = screen.getAllByRole('button', { name: /필터 초기화/ });
+      expect(resetButtons.length).toBeGreaterThan(0);
     });
   });
 

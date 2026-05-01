@@ -187,7 +187,16 @@ export async function saveRoadmapInterview(
     const schema = options?.autoSave ? roadmapInterviewAutoSaveSchema : roadmapInterviewSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
-      return { success: false, error: validation.error.errors[0].message };
+      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
+      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
+      const messages = validation.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
+      return {
+        success: false,
+        error: messages.length > 0 ? messages.join('\n') : '필수 입력 항목을 확인해주세요.',
+      };
     }
     const validated = validation.data;
 
@@ -674,7 +683,16 @@ export async function savePBLInterview(
     const schema = options?.autoSave ? pblInterviewAutoSaveSchema : pblInterviewSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
-      return { success: false, error: validation.error.errors[0].message };
+      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
+      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
+      const messages = validation.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
+      return {
+        success: false,
+        error: messages.length > 0 ? messages.join('\n') : '필수 입력 항목을 확인해주세요.',
+      };
     }
     const validated = validation.data;
 
@@ -1014,7 +1032,16 @@ export async function saveRoadmapInterviewV2(
       : RoadmapInterviewStrictSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
-      return { success: false, error: validation.error.errors[0].message };
+      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
+      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
+      const messages = validation.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
+      return {
+        success: false,
+        error: messages.length > 0 ? messages.join('\n') : '필수 입력 항목을 확인해주세요.',
+      };
     }
     const validated = validation.data as Partial<RoadmapInterviewStrict>;
 
@@ -1190,7 +1217,16 @@ export async function savePBLInterviewV2(
       : PBLInterviewStrictSchema;
     const validation = schema.safeParse(data);
     if (!validation.success) {
-      return { success: false, error: validation.error.errors[0].message };
+      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
+      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
+      const messages = validation.error.errors
+        .map((e) => e.message)
+        .filter((m) => Boolean(m?.trim()))
+        .slice(0, 5);
+      return {
+        success: false,
+        error: messages.length > 0 ? messages.join('\n') : '필수 입력 항목을 확인해주세요.',
+      };
     }
     const validated = validation.data as Partial<PBLInterviewStrict>;
 

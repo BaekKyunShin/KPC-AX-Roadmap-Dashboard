@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Agentation } from "agentation";
 import "./globals.css";
 
@@ -32,7 +33,7 @@ export default function RootLayout({
       <body
         className={`${pretendard.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>

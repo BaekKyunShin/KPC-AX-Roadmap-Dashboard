@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -15,6 +15,15 @@ vi.mock('../actions', () => ({
   editInterviewFieldPbl: vi.fn().mockResolvedValue({ success: true }),
   triggerResultRegenerationFromReview: vi.fn(),
 }));
+
+vi.mock('@/lib/utils', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/utils')>('@/lib/utils');
+  return {
+    ...actual,
+    showSuccessToast: vi.fn(),
+    showErrorToast: vi.fn(),
+  };
+});
 
 const baseLatestResult = { createdAt: null, status: null, versionId: null } as const;
 
@@ -303,6 +312,140 @@ describe('InterviewReviewClient', () => {
 
       await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
       expect(screen.getByText('PBL 핵심 문제')).toBeInTheDocument();
+    });
+  });
+
+  // ─── #7 편집 성공 토스트 두 줄 ───────────────────────────────────────
+  describe('편집 성공 토스트 (#7)', () => {
+    const SUCCESS_TITLE = '수정되었습니다';
+    const SUCCESS_DESC = "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다";
+
+    const roadmapData: Partial<RoadmapInterviewStrict> = {
+      establishmentNecessity: '훈련 수립 필요성 텍스트',
+      performanceActivities: [],
+      aiLevel: 'INTERMEDIATE',
+      selectedTask: '데이터 분석',
+      companyRequirements: {
+        status: '현황 텍스트',
+        problem: '문제',
+        will: '의지',
+        outcomes: '성과',
+      },
+      taskAnalysis: [],
+      taskAnalysisNote: '메모',
+      targetTask: {
+        name: '결산 자동화',
+        reason: '효율',
+        expectedAsIs: '수기',
+        expectedToBe: '자동',
+      },
+      competencies: [],
+      ncsUsed: false,
+    };
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      const { editInterviewFieldRoadmap } = await import('../actions');
+      vi.mocked(editInterviewFieldRoadmap).mockResolvedValue({ success: true });
+    });
+
+    it('RoadmapInlineText (단순 필드: 선정 과업) 저장 성공 시 두 줄 success 토스트', async () => {
+      const user = userEvent.setup();
+      const { showSuccessToast } = await import('@/lib/utils');
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={roadmapData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      // Ⅰ-3 카드 펼치기 (selectedTask = '데이터 분석' 노출)
+      await user.click(screen.getByText(/Ⅰ-3\. 수립 주요 결과/));
+      await user.click(screen.getByText('데이터 분석'));
+      const inputs = screen.getAllByRole('textbox');
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], '신규 과업');
+      await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+      expect(showSuccessToast).toHaveBeenCalledWith(SUCCESS_TITLE, SUCCESS_DESC);
+      expect(showSuccessToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('CompanyReqRow (companyRequirements 분기) 저장 성공 시 두 줄 success 토스트', async () => {
+      const user = userEvent.setup();
+      const { showSuccessToast } = await import('@/lib/utils');
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={roadmapData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      // Ⅱ-2 는 defaultOpen=true → 첫 행 '현황 텍스트'
+      await user.click(screen.getByText('현황 텍스트'));
+      const inputs = screen.getAllByRole('textbox');
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], '갱신');
+      await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+      expect(showSuccessToast).toHaveBeenCalledWith(SUCCESS_TITLE, SUCCESS_DESC);
+      expect(showSuccessToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('TargetTaskRow (targetTask 분기) 저장 성공 시 두 줄 success 토스트', async () => {
+      const user = userEvent.setup();
+      const { showSuccessToast } = await import('@/lib/utils');
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={roadmapData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      // Ⅱ-4 카드 펼치기 → '결산 자동화' (targetTask.name)
+      await user.click(screen.getByText(/Ⅱ-4\. 훈련대상 과업/));
+      await user.click(screen.getByText('결산 자동화'));
+      const inputs = screen.getAllByRole('textbox');
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], '신규 과업명');
+      await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+      expect(showSuccessToast).toHaveBeenCalledWith(SUCCESS_TITLE, SUCCESS_DESC);
+      expect(showSuccessToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('실패 분기에서는 success 토스트 미호출 + error 토스트 호출 (회귀)', async () => {
+      const user = userEvent.setup();
+      const { editInterviewFieldRoadmap } = await import('../actions');
+      const { showSuccessToast, showErrorToast } = await import('@/lib/utils');
+      vi.mocked(editInterviewFieldRoadmap).mockResolvedValue({
+        success: false,
+        error: '권한 없음',
+      });
+
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={roadmapData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      await user.click(screen.getByText('현황 텍스트'));
+      const inputs = screen.getAllByRole('textbox');
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], '실패 케이스');
+      await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+      expect(showSuccessToast).not.toHaveBeenCalled();
+      expect(showErrorToast).toHaveBeenCalledWith('인터뷰 수정 실패', '권한 없음');
     });
   });
 });

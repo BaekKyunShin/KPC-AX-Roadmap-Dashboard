@@ -19,9 +19,16 @@ import {
   ChevronDown,
   Settings,
   Search,
+  Mail,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import NotificationBell from '@/components/NotificationBell';
 import MessageIcon from '@/components/MessageIcon';
 import dynamic from 'next/dynamic';
@@ -343,14 +350,48 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
               <Search className="h-4 w-4" />
             </Button>
 
-            {/* Message Icon — 승인된 사용자만 (#010) */}
-            {isApprovedUser && (
+            {/* Message Icon — 승인된 사용자만 활성, 미승인은 disabled + Tooltip (#010·#8) */}
+            {isApprovedUser ? (
               <MessageIcon initialUnreadCount={unreadMessageCount} />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0} className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled
+                      aria-label="메시지 (운영팀 승인 후 사용 가능)"
+                      className="text-gray-400 cursor-not-allowed"
+                    >
+                      <Mail className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>운영팀 승인 후 사용 가능합니다</TooltipContent>
+              </Tooltip>
             )}
 
-            {/* Notification Bell — 승인된 사용자만 (#010) */}
-            {isApprovedUser && (
+            {/* Notification Bell — 승인된 사용자만 활성, 미승인은 disabled + Tooltip (#010·#8) */}
+            {isApprovedUser ? (
               <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0} className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled
+                      aria-label="알림 (운영팀 승인 후 사용 가능)"
+                      className="text-gray-400 cursor-not-allowed"
+                    >
+                      <Bell className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>운영팀 승인 후 사용 가능합니다</TooltipContent>
+              </Tooltip>
             )}
 
             {/* User Dropdown */}
@@ -437,11 +478,46 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
             >
               <Search className="h-4 w-4" />
             </Button>
-            {/* Message + Notification — 승인된 사용자만 (#010) */}
-            {isApprovedUser && (
+            {/* Message + Notification — 승인된 사용자만 활성, 미승인은 disabled + Tooltip (#010·#8) */}
+            {isApprovedUser ? (
               <>
                 <MessageIcon initialUnreadCount={unreadMessageCount} />
                 <NotificationBell initialUnreadCount={unreadCount} userRole={user.role} />
+              </>
+            ) : (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0} className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled
+                        aria-label="메시지 (운영팀 승인 후 사용 가능)"
+                        className="h-9 w-9 text-gray-400 cursor-not-allowed"
+                      >
+                        <Mail className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>운영팀 승인 후 사용 가능합니다</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0} className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled
+                        aria-label="알림 (운영팀 승인 후 사용 가능)"
+                        className="h-9 w-9 text-gray-400 cursor-not-allowed"
+                      >
+                        <Bell className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>운영팀 승인 후 사용 가능합니다</TooltipContent>
+                </Tooltip>
               </>
             )}
             <Button

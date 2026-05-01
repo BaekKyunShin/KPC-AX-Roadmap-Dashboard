@@ -203,7 +203,16 @@ describe('TemplateList', () => {
     it('템플릿이 없을 때 빈 상태 메시지를 표시해야 한다', () => {
       render(<TemplateList templates={[]} />);
 
-      expect(screen.getByText('템플릿 없음')).toBeInTheDocument();
+      expect(screen.getByText('등록된 템플릿이 없습니다')).toBeInTheDocument();
+    });
+
+    // #4 — 운영관리 빈 목록 EmptyState 통일
+    it('templates 배열이 비었을 때 "등록된 템플릿이 없습니다" + 설명 + "새 템플릿 생성" 링크를 노출한다', () => {
+      render(<TemplateList templates={[]} />);
+      expect(screen.getByText('등록된 템플릿이 없습니다')).toBeInTheDocument();
+      expect(screen.getByText('새 템플릿을 생성하여 시작하세요')).toBeInTheDocument();
+      const link = screen.getByRole('link', { name: /새 템플릿 생성/ });
+      expect(link).toHaveAttribute('href', '/ops/templates/new');
     });
   });
 

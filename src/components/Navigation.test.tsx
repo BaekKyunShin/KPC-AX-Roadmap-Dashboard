@@ -97,6 +97,7 @@ vi.mock('@/components/command-palette/CommandPalette', () => ({
 // ─── Import ─────────────────────────────────────────────────────────────────
 
 import Navigation from './Navigation';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { User } from '@/types/database';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -121,7 +122,12 @@ function renderNavigation(overrides: Partial<Parameters<typeof Navigation>[0]> =
     unreadMessageCount: 0,
     ...overrides,
   };
-  return render(<Navigation {...defaultProps} />);
+  // 실제 앱은 root layout 의 TooltipProvider 로 감싸져 있음 — 테스트에서도 동일하게 감쌈 (#8)
+  return render(
+    <TooltipProvider>
+      <Navigation {...defaultProps} />
+    </TooltipProvider>
+  );
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -665,15 +671,16 @@ describe('Navigation', () => {
 
   // ─── #010 — USER_PENDING 헤더 아이콘 가드 ──────────────────────────────
   describe('#010 — 승인 대기 사용자 헤더 아이콘 가드', () => {
-    it('USER_PENDING 사용자에게 메시지·알림 아이콘이 노출되지 않는다', () => {
+    it('USER_PENDING 사용자에게 활성 메시지·알림 아이콘이 노출되지 않는다', () => {
       renderNavigation({
         user: createUser({ role: 'USER_PENDING' }),
       });
+      // 활성 컴포넌트(MessageIcon / NotificationBell) 는 미노출 — 대신 disabled placeholder 가 표시됨 (#8)
       expect(screen.queryByTestId('message-icon')).not.toBeInTheDocument();
       expect(screen.queryByTestId('notification-bell')).not.toBeInTheDocument();
     });
 
-    it('OPS_ADMIN_PENDING 사용자에게도 메시지·알림 아이콘이 노출되지 않는다', () => {
+    it('OPS_ADMIN_PENDING 사용자에게도 활성 메시지·알림 아이콘이 노출되지 않는다', () => {
       renderNavigation({
         user: createUser({ role: 'OPS_ADMIN_PENDING' }),
       });
@@ -696,6 +703,56 @@ describe('Navigation', () => {
       });
       expect(screen.getAllByTestId('message-icon').length).toBeGreaterThan(0);
       expect(screen.getAllByTestId('notification-bell').length).toBeGreaterThan(0);
+    });
+  });
+
+  // ─── #8 — 비활성 아이콘 Tooltip ────────────────────────────────────────
+  describe('#8 — 비활성 아이콘 Tooltip (운영팀 승인 후 사용 가능)', () => {
+    it('USER_PENDING 사용자에게 disabled 메시지 아이콘 + aria-label 노출', () => {
+      renderNavigation({ user: createUser({ role: 'USER_PENDING' }) });
+      const labels = screen.getAllByLabelText(/메시지.*승인 후 사용 가능/);
+      expect(labels.length).toBeGreaterThan(0);
+    });
+
+    it('USER_PENDING 사용자에게 disabled 알림 아이콘 + aria-label 노출', () => {
+      renderNavigation({ user: createUser({ role: 'USER_PENDING' }) });
+      const labels = screen.getAllByLabelText(/알림.*승인 후 사용 가능/);
+      expect(labels.length).toBeGreaterThan(0);
+    });
+
+    it('OPS_ADMIN_PENDING 사용자에게도 disabled 메시지·알림 아이콘이 노출된다', () => {
+      renderNavigation({ user: createUser({ role: 'OPS_ADMIN_PENDING' }) });
+      expect(screen.getAllByLabelText(/메시지.*승인 후 사용 가능/).length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText(/알림.*승인 후 사용 가능/).length).toBeGreaterThan(0);
+    });
+
+    it('USER_PENDING 사용자의 disabled 아이콘 버튼은 disabled 속성이 적용된다', () => {
+      renderNavigation({ user: createUser({ role: 'USER_PENDING' }) });
+      const disabledButtons = screen
+        .getAllByLabelText(/(메시지|알림).*승인 후 사용 가능/)
+        .filter((el) => el.tagName === 'BUTTON');
+      expect(disabledButtons.length).toBeGreaterThan(0);
+      disabledButtons.forEach((btn) => {
+        expect(btn).toBeDisabled();
+      });
+    });
+
+    it('CONSULTANT_APPROVED 사용자에겐 disabled 아이콘이 노출되지 않는다 (회귀)', () => {
+      renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
+      expect(screen.queryByLabelText(/메시지.*승인 후 사용 가능/)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/알림.*승인 후 사용 가능/)).not.toBeInTheDocument();
+    });
+
+    it('OPS_ADMIN 사용자에겐 disabled 아이콘이 노출되지 않는다 (회귀)', () => {
+      renderNavigation({ user: createUser({ role: 'OPS_ADMIN' }) });
+      expect(screen.queryByLabelText(/메시지.*승인 후 사용 가능/)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/알림.*승인 후 사용 가능/)).not.toBeInTheDocument();
+    });
+
+    it('SYSTEM_ADMIN 사용자에겐 disabled 아이콘이 노출되지 않는다 (회귀)', () => {
+      renderNavigation({ user: createUser({ role: 'SYSTEM_ADMIN' }) });
+      expect(screen.queryByLabelText(/메시지.*승인 후 사용 가능/)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/알림.*승인 후 사용 가능/)).not.toBeInTheDocument();
     });
   });
 });
