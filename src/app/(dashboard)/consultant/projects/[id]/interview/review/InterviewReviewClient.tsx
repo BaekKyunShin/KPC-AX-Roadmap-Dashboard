@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { InlineEditField } from '@/components/result/InlineEditField';
-import { showErrorToast } from '@/lib/utils';
+import { showErrorToast, showSuccessToast } from '@/lib/utils';
 
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
@@ -473,6 +473,10 @@ function RoadmapInlineText({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
+    showSuccessToast(
+      '수정되었습니다',
+      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
+    );
   };
   return (
     <InlineEditField
@@ -506,6 +510,10 @@ function CompanyReqRow({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
+    showSuccessToast(
+      '수정되었습니다',
+      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
+    );
   };
   return (
     <div>
@@ -539,6 +547,10 @@ function TargetTaskRow({
       showErrorToast('인터뷰 수정 실패', msg);
       throw new Error(msg);
     }
+    showSuccessToast(
+      '수정되었습니다',
+      "결과 탭에서 '다시 생성' 버튼을 눌러야 반영됩니다",
+    );
   };
   return (
     <div>
