@@ -128,13 +128,23 @@ test.describe('로드맵 상태 전이', () => {
       timeout: 10_000,
     });
 
-    // confirm 다이얼로그 자동 수락
-    page.on('dialog', (dialog) => dialog.accept());
-
+    // PR #50 (#2) — window.confirm 이 shadcn AlertDialog 로 교체됨.
+    // 페이지의 "최종 확정" 버튼 클릭 → AlertDialog 노출 →
+    // AlertDialog 내부의 destructive "최종 확정" 버튼을 다시 클릭해야 onFinalize 실행.
     const finalizeButton = page.getByRole('button', { name: '최종 확정' });
     await expect(finalizeButton).toBeVisible({ timeout: 5_000 });
     await expect(finalizeButton).toBeEnabled();
     await finalizeButton.click();
+
+    // AlertDialog 노출 확인
+    const confirmDialog = page.getByRole('alertdialog');
+    await expect(confirmDialog).toBeVisible({ timeout: 3_000 });
+    await expect(
+      confirmDialog.getByText('로드맵을 최종 확정하시겠습니까?'),
+    ).toBeVisible();
+
+    // AlertDialog 내부의 destructive "최종 확정" 버튼 클릭
+    await confirmDialog.getByRole('button', { name: '최종 확정' }).click();
 
     // 토스트 검증
     await expectToast(page, '로드맵이 최종 확정되었습니다');
