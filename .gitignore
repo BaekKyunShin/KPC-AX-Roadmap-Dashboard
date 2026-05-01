@@ -64,6 +64,8 @@ next-env.d.ts
 # tool artifacts
 .playwright-mcp/
 .superpowers/
+# Claude Code scheduled task 일시 락 파일 — 런타임에 자동 생성됨
+.claude/scheduled_tasks.lock
 # Playwright MCP 검증 시 생성되는 스크린샷
 pbl-*.png
 roadmap-*.png
