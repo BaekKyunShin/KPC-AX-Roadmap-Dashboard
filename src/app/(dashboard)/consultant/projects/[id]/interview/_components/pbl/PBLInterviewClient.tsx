@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import { showErrorToast } from '@/lib/utils';
 import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
@@ -487,20 +488,36 @@ export function PBLInterviewClient({
         isLastStep={isLastStep}
         isSaving={isPending}
         saveIndicator={
-          saveState === 'saving'
-            ? '저장 중…'
-            : saveState === 'saved'
-              ? '자동 저장됨'
-              : saveState === 'error'
-                ? '저장 실패'
-                : undefined
+          saveState === 'saving' ? (
+            '저장 중…'
+          ) : saveState === 'saved' ? (
+            '자동 저장됨'
+          ) : saveState === 'error' ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="text-destructive">저장 실패</span>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={handleSave}
+                disabled={isPending}
+                className="h-auto p-0 text-xs"
+              >
+                다시 저장
+              </Button>
+            </span>
+          ) : undefined
         }
         submit={
           isLastStep
             ? {
                 label: '최종 제출',
                 onSubmit: handleSubmit,
-                disabled: isPending || isSubmitting,
+                disabled: isPending || isSubmitting || saveState === 'error',
+                disabledReason:
+                  saveState === 'error'
+                    ? "자동 저장이 실패했습니다. '저장' 버튼으로 다시 저장한 뒤 제출해주세요."
+                    : undefined,
               }
             : undefined
         }

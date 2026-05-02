@@ -24,6 +24,12 @@ interface StickyFormNavProps {
     label: string;
     onSubmit: () => void;
     disabled?: boolean;
+    /**
+     * disabled=true 일 때 노출할 사유. 브라우저 native tooltip(title 속성)으로 표시되어
+     * 마우스 hover 시 사용자에게 차단 이유를 안내한다. disabled=false 면 무시된다.
+     * (#2 Nielsen H5 — 자동저장 'error' 상태에서 제출 차단 사유 노출)
+     */
+    disabledReason?: string;
   };
   /** className 합성 */
   className?: string;
@@ -101,6 +107,7 @@ export function StickyFormNav({
             onClick={submit.onSubmit}
             disabled={submit.disabled || isSaving}
             aria-label={submit.label}
+            title={submit.disabled && submit.disabledReason ? submit.disabledReason : undefined}
             className="disabled:opacity-40"
           >
             {submit.label}

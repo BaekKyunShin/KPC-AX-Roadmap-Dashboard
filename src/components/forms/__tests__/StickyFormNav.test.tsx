@@ -130,6 +130,46 @@ describe('StickyFormNav', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
+  it('submit.disabledReason 이 있고 disabled=true 면 native title 로 사유를 노출한다', () => {
+    render(
+      <StickyFormNav
+        onPrev={() => {}}
+        onNext={() => {}}
+        onSave={() => {}}
+        isLastStep
+        submit={{
+          label: '최종 제출',
+          onSubmit: () => {},
+          disabled: true,
+          disabledReason: '자동 저장이 실패했습니다.',
+        }}
+      />,
+    );
+    const submitBtn = screen.getByRole('button', { name: '최종 제출' });
+    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toHaveAttribute('title', '자동 저장이 실패했습니다.');
+  });
+
+  it('submit.disabledReason 이 있어도 disabled=false 면 title 을 노출하지 않는다', () => {
+    render(
+      <StickyFormNav
+        onPrev={() => {}}
+        onNext={() => {}}
+        onSave={() => {}}
+        isLastStep
+        submit={{
+          label: '최종 제출',
+          onSubmit: () => {},
+          disabled: false,
+          disabledReason: '활성 상태에선 표시 안 함',
+        }}
+      />,
+    );
+    const submitBtn = screen.getByRole('button', { name: '최종 제출' });
+    expect(submitBtn).not.toBeDisabled();
+    expect(submitBtn).not.toHaveAttribute('title');
+  });
+
   it('className prop 이 root 에 cn() 으로 합성된다', () => {
     const { container } = render(
       <StickyFormNav
