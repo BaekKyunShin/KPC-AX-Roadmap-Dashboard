@@ -20,4 +20,23 @@ describe('ReviewActions', () => {
     const back = screen.getByTestId('review-cta-back-to-interview');
     expect(back).toHaveAttribute('href', '/consultant/projects/p-3/interview');
   });
+
+  // #4 — 분리 카드형 레이아웃: 헤딩(h3) + 설명(p) + 우측 정렬 CTA 그룹
+  it('헤딩과 설명이 분리되어 있고 CTA 그룹이 우측 정렬 컨테이너에 묶인다', () => {
+    render(<ReviewActions projectId="p-1" track="ROADMAP" />);
+    expect(
+      screen.getByRole('heading', { level: 3, name: /검토를 마치셨나요/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서/),
+    ).toBeInTheDocument();
+    const ctaGroup = screen.getByTestId('review-cta-group');
+    expect(ctaGroup.className).toMatch(/justify-end/);
+    expect(ctaGroup).toContainElement(
+      screen.getByTestId('review-cta-back-to-interview'),
+    );
+    expect(ctaGroup).toContainElement(
+      screen.getByTestId('review-cta-go-to-result'),
+    );
+  });
 });
