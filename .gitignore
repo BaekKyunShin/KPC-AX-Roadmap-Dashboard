@@ -66,6 +66,11 @@ next-env.d.ts
 .superpowers/
 # Claude Code scheduled task 일시 락 파일 — 런타임에 자동 생성됨
 .claude/scheduled_tasks.lock
+# Claude Code 권한·설정 파일 — 로컬·팀 모두 개별 관리
+.claude/settings.json
+
+# 임시 작업용 Nielsen 휴리스틱 감사 보고서 (재실행 시마다 갱신)
+docs/reports/2026-05-02-nielsen-heuristics-audit.md
 # Playwright MCP 검증 시 생성되는 스크린샷
 pbl-*.png
 roadmap-*.png
