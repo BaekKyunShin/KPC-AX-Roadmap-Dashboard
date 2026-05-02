@@ -6,285 +6,194 @@
 
 ## 프로젝트 개요
 
-KPC AI 훈련 로드맵 대시보드 - 기업 AI 교육 진단, 컨설턴트 매칭, 로드맵 생성을 위한 B2B 내부 도구입니다.
+KPC AI 훈련 로드맵 대시보드 — 기업 AI 교육 진단·컨설턴트 매칭·로드맵 생성 B2B 내부 도구.
 
 **워크플로우:** 기업 진단 → 컨설턴트 배정 → 현장 인터뷰 → AI 훈련 로드맵 출력
 
 ## 명령어
 
 ```bash
-npm run dev              # 개발 서버 시작 (localhost:3000, Next.js 전용)
-npm run dev:vercel       # vercel dev — Python Functions 포함 (HWPX 다운로드 로컬 테스트용)
+npm run dev              # 개발 서버 (Next.js, localhost:3000)
+npm run dev:vercel       # vercel dev (Python Functions 포함, HWPX 다운로드 테스트)
+npm run dev:with-hwpx    # HWPX 브리지 서버 + Next.js 프록시 (권장)
 npm run build            # 프로덕션 빌드
-npm run lint             # ESLint 검사
-npm run lint:fix         # 린트 오류 자동 수정
-npm run typecheck        # TypeScript 타입 검사
+npm run lint:fix         # ESLint 자동 수정
 npm run format           # Prettier 포맷팅
-npm run format:check     # 포맷팅 검사 (CI용)
-npm run test             # 테스트 실행 (Vitest)
-npm run test:watch       # 테스트 워치 모드
-npm run test:coverage    # 커버리지 리포트 생성
-npm run validate         # typecheck + lint + test 통합 검증
-npm run test:e2e         # E2E 테스트 실행 (Playwright)
-npm run test:e2e:ui      # E2E 테스트 UI 모드
-npm run test:e2e:headed  # 브라우저 표시 E2E 테스트
-npm run test:e2e:report  # E2E 테스트 리포트 열기
+npm run validate         # typecheck + lint + test 통합 검증 (CI와 동일)
+npm run test             # Vitest 단위 테스트
+npm run test:watch       # Vitest 워치 모드
+npm run test:coverage    # 커버리지 리포트
+npm run test:e2e         # Playwright E2E
+npm run db:start         # 로컬 Supabase 시작 (Docker Desktop 필요)
+npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
 ```
 
-**데이터베이스 마이그레이션 규칙 (엄수):**
+**작업 완료 검증:** 코드 수정 후 반드시 `npm run validate && npm run build` 통과 확인.
 
-- `supabase/migrations/NNN_*.sql` 파일을 **신규 작성·수정**했다면, 같은 작업 내에서 반드시 DB에 적용까지 완료할 것. 파일만 만들고 작업을 종료하는 것을 금지.
-- 적용 우선순위: ① `mcp__supabase__apply_migration` (권장) → ② `supabase db push` → ③ SQL Editor (최종 폴백)
-- 적용 후 `mcp__supabase__list_migrations` 또는 `list_tables`로 반영 검증
-- 과거 수동 적용으로 `schema_migrations`에 기록이 없는 마이그는 멱등 패치판(`DROP IF EXISTS + CREATE`, `IF NOT EXISTS`)으로 재적용해 정식 등록
-- 이유: 파일·DB 불일치는 후속 Step·에이전트가 테이블/컬럼 부재로 즉시 차단되는 잠재적 지뢰
+**배포 전 체크리스트:** `npm run validate` → `npm run build` → Vercel 배포.
 
-**작업 완료 검증:** 코드 수정 작업 완료 시 반드시 `npm run validate && npm run build` 실행 후 통과를 확인할 것
+## 핵심 규칙
 
-**PR CI 통과 판정 규칙:** PR 의 CI 통과 여부는 `gh pr checks <PR>` 출력의 **모든 check** (Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel) 가 pass 일 때만 "✅ 통과" 로 결정한다. **Unit Test 만 보고 단정 금지** — E2E 가 별도 job 으로 가장 마지막에 실행되며, 진행 중이면 "⏳ 대기" 로 보고하고 결정 보류. 모니터링 cron/loop 의 prompt 에도 단편적 조건(예: "Unit Test pass 시 종료")을 쓰지 말고 모든 check 를 명시적으로 나열할 것. `gh pr checks` 의 exit code 0 ≠ 모든 check pass — 진행 중일 때도 비-0 코드 반환 가능하므로 출력 파싱이 정답.
+**브랜치 워크플로우 (엄수):**
 
-**HWPX 다운로드(로드맵·PBL) 로컬 테스트 규칙:**
+- `main`에 **직접 커밋 금지** — 모든 작업은 `git checkout -b <type>/<slug>` 분기 후 PR
+- PR Squash merge 직후 로컬 동기화: `git fetch && git checkout main && git reset --hard origin/main`
+- 이유: Squash merge는 해시가 바뀌므로 동기화 누락 시 분기 누적
 
-- `/api/hwpx/generate`는 **Vercel Python Function** (`api/hwpx/generate.py`) — `next dev`는 Python 런타임을 서빙하지 않고, 구버전 Vercel CLI의 `vercel dev`도 Python 함수 빌드에 실패할 수 있다.
-- **권장 로컬 워크플로우 (브리지 서버 방식 — 검증 완료)**:
+**DB 마이그레이션 (엄수):**
 
-  ```bash
-  # 최초 1회: Python venv 생성 + python-hwpx 설치
-  npm run dev:hwpx:setup
+- `supabase/migrations/NNN_*.sql` 신규 작성·수정 시 **같은 작업 내**에 DB 적용까지 완료 (파일만 만들고 종료 금지)
+- 적용 우선순위: ① `mcp__supabase__apply_migration` → ② `supabase db push` → ③ SQL Editor
+- 적용 후 `mcp__supabase__list_migrations` 또는 `list_tables`로 검증
+- 과거 수동 적용 마이그는 멱등 패치(`DROP IF EXISTS + CREATE`, `IF NOT EXISTS`)로 재등록
+- ⚠️ `src/types/database.ts`는 **수동 작성 파일** — `supabase gen types`로 덮어쓰면 40+ 타입 참조가 깨짐. 마이그 후 신규 enum 값·인터페이스는 수동 편집 필수
 
-  # 터미널 A: HWPX 브리지 서버 (포트 3010)
-  npm run dev:hwpx
+**PR CI 통과 판정:** `gh pr checks <PR>`의 **모든 check** (Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel)가 pass 일 때만 "✅ 통과" 결정. Unit Test 만 보고 단정 금지 — E2E 가 별도 job 으로 가장 마지막. exit code 0 ≠ 모든 pass (출력 파싱이 정답).
 
-  # 터미널 B: HWPX 프록시 활성화된 Next.js dev (포트 3000)
-  npm run dev:with-hwpx
-  ```
+## HWPX 로컬 테스트
 
-  동작 원리: `next.config.ts`의 `rewrites()`가 `HWPX_DEV_PROXY_URL` 환경변수를 감지하면 `/api/hwpx/*` 요청을 브리지 서버(`scripts/dev-hwpx-server.py`)로 포워딩. 브리지 서버는 `api/hwpx/generate.py` 핸들러를 그대로 재사용하므로 프로덕션(Vercel)과 동일한 출력 보장(PBL 117KB·ROADMAP 411KB ZIP 매직 넘버 `504b 0304` 확인 완료).
+`/api/hwpx/generate`는 Vercel Python Function — `next dev`에서 동작하지 않음. 권장 워크플로우(브리지 서버):
 
-- 대체 옵션:
-  ① Preview 배포(`git push` → Preview URL)에서 테스트
-  ② `npm run dev:vercel` (Vercel CLI 51.7+ 권장 — 구버전은 Python 런타임 빌드 실패 가능)
+```bash
+npm run dev:hwpx:setup   # 최초 1회 (Python venv 생성)
+npm run dev:hwpx         # 터미널 A: 브리지 서버 (포트 3010)
+npm run dev:with-hwpx    # 터미널 B: Next.js + 프록시 (포트 3000)
+```
 
-- `npm run dev` (브리지 서버 없이)로 HWPX 버튼을 누르면 클라이언트에 안내 메시지가 표출된다(3가지 해결 옵션 포함).
+`next.config.ts`의 `rewrites()`가 `HWPX_DEV_PROXY_URL` 감지 시 `/api/hwpx/*`를 브리지로 포워딩 → 프로덕션 동일 출력 보장 (PBL 117KB · ROADMAP 411KB ZIP 검증 완료). 브리지 서버 없이 `npm run dev`로 HWPX 버튼 누르면 클라이언트에 3가지 해결 옵션 안내 메시지가 표출됨.
 
-**배포 전 체크리스트:** `npm run validate` (typecheck + lint + test) → `npm run build` → Vercel 배포
+**대안:** ① Preview 배포(`git push` → Preview URL)에서 테스트 ② `npm run dev:vercel` — ⚠️ Vercel CLI 51.7+ 필수 (구버전은 Python 런타임 빌드 실패).
 
 ## 아키텍처
 
 ```text
-Next.js App Router (src/app/)
-         │
-         ├── 공개 라우트
-         │   ├── page.tsx        → 랜딩 페이지
-         │   └── demo/           → 샘플 데모
-         │
-         ├── Route Groups
-         │   ├── (auth)/         → 로그인, 회원가입
-         │   └── (dashboard)/    → 인증 필요 라우트
-         │       ├── dashboard/    → 공통 대시보드 + 프로필 + 메시지
-         │       │   └── messages/ → DM 메시징 (1:1 대화, Realtime)
-         │       ├── consultant/   → 컨설턴트 전용
-         │       │   ├── home/     → 컨설턴트 대시보드 (KPI, 최근 활동)
-         │       │   ├── profile/  → 프로필 관리
-         │       │   └── projects/ → 담당 프로젝트 (인터뷰, 로드맵)
-         │       ├── gallery/      → 로드맵 갤러리 (공유/좋아요)
-         │       ├── notifications/→ 알림 Server Actions
-         │       ├── ops/          → 운영관리자 전용 (프로젝트, 사용자, 템플릿, 감사로그, 쿼터)
-         │       └── test-roadmap/ → 테스트 로드맵 (컨설턴트 연습용)
-         │
-         ├── API Routes (src/app/api/) → 최소화 (Server Actions 우선)
-         │
-         └── middleware.ts → 세션 관리
-                 │
-                 ▼
-Shared Layers (src/lib/)
-    ├── services/           → 핵심 비즈니스 로직
-    │   ├── roadmap/            → 로드맵 생성 (모듈 분리)
-    │   ├── matching/           → 컨설턴트 LLM 매칭
-    │   ├── export/pdf/         → PDF 내보내기
-    │   ├── export/xlsx/        → XLSX 내보내기
-    │   ├── llm.ts              → LLM API 호출 추상화
-    │   ├── quota.ts            → 일별/월별 LLM 호출 제한
-    │   ├── notification.ts     → 알림 생성 헬퍼
-    │   ├── stt.ts              → STT 인사이트 추출
-    │   ├── audit.ts            → 이벤트 로깅
-    │   └── email.ts            → 이메일 발송 (SMTP)
-    ├── constants/          → 역할·상태·업종 등 상수 집중 관리
-    ├── schemas/            → Zod 검증 스키마 + 테스트
-    ├── utils/              → 유틸리티 함수 (에러 처리, 토스트 등)
-    ├── actions/            → 공유 Server Actions 헬퍼 (인증/역할 검증, 내보내기)
-    └── types/              → ActionResult 등 공통 타입
-                 │
-                 ▼
-Supabase Clients (src/lib/supabase/)
-    ├── client.ts       → 브라우저용 (anon key)
-    ├── server.ts       → 서버/SSR용 (세션 갱신 포함)
-    ├── admin.ts        → 서비스 역할 (RLS 우회, 내부 작업용)
-    └── middleware.ts   → 미들웨어용
-                 │
-                 ▼
-Supabase Backend
-    ├── PostgreSQL + RLS 정책
-    ├── Auth 시스템
-    ├── Realtime (메시지 실시간 구독)
-    └── Storage (PDF/XLSX 파일)
+src/app/                       # Next.js App Router
+├── (auth)/                    # 로그인·회원가입
+├── (dashboard)/               # 인증 필요
+│   ├── dashboard/             # 공통 + 프로필 + 메시지(Realtime DM)
+│   ├── consultant/            # 컨설턴트 (home, profile, projects)
+│   ├── gallery/               # 로드맵 갤러리 (공유·좋아요)
+│   ├── ops/                   # 운영관리자 (프로젝트·사용자·템플릿·감사·쿼터)
+│   └── notifications/         # 알림 Server Actions
+├── api/                       # 최소화 (Server Actions 우선)
+└── middleware.ts              # 세션 관리
+
+src/lib/
+├── services/                  # 핵심 로직 (roadmap·matching·pbl·interview·
+│                              #   export·llm·quota·notification·stt·audit·email)
+├── supabase/                  # client(브라우저) · server(SSR) · admin(RLS우회) · middleware
+├── schemas/                   # Zod 검증 + 테스트
+├── actions/                   # 공유 Server Action 헬퍼 (인증·역할 검증)
+├── constants/                 # 역할·상태·업종 상수
+├── utils/                     # 유틸 (에러·토스트 등)
+└── types/                     # ActionResult 등 공통 타입
 ```
 
-## 주요 패턴
+**Backend:** Supabase (Postgres + RLS · Auth · Realtime · Storage). 시스템 다이어그램: `docs/ARCHITECTURE.md`.
 
-**Server Actions 우선:**
+## 핵심 패턴
 
-- API Routes 대신 Server Actions를 우선 사용
-- 각 라우트의 `actions.ts` 파일에 정의
-- API Routes는 스트리밍이나 외부 호출이 필요한 경우에만 사용
+**Server Actions 우선:** API Routes 대신 라우트별 `actions.ts` 사용. API Routes는 스트리밍·외부 호출이 필요한 경우만.
 
-**Supabase 클라이언트 4종:**
+**Server Action 5단계 패턴:**
 
-- `client.ts` - 브라우저 측, anon key 사용
-- `server.ts` - 서버/SSR용, 세션 갱신 포함 (Server Components와 Server Actions에서 사용)
-- `admin.ts` - 서비스 역할, RLS 우회 (내부 작업 전용)
-- `middleware.ts` - 미들웨어에서 세션 확인용
+1. 세션 확인 → 2. 역할 권한 검사 → 3. Zod 입력 검증 → 4. 비즈니스 로직 → 5. `ActionResult<T>` 반환 (`src/lib/types/action-result.ts`)
 
-**역할 기반 접근 제어 (RBAC):**
+주의: 직렬화 불가 객체(Date, Map) 반환 금지. `.select().single()` 후 에러 처리 필수. 컨설턴트는 자신의 담당 프로젝트만 접근하도록 추가 검증.
 
-- 역할: PUBLIC, USER_PENDING, OPS_ADMIN_PENDING, CONSULTANT_APPROVED, OPS_ADMIN, SYSTEM_ADMIN
-- RLS 정책으로 데이터베이스 수준 보안 적용 (`docs/RLS.md` 참조)
-- 컨설턴트는 자신의 담당 프로젝트만 접근 가능
+**Supabase 클라이언트 4종 (`src/lib/supabase/`):**
 
-**데이터 검증:**
+- `client.ts` — 브라우저 (anon key)
+- `server.ts` — Server Components/Actions (세션 갱신 포함)
+- `admin.ts` — 서비스 역할 (RLS 우회, 내부 작업 전용)
+- `middleware.ts` — 미들웨어 세션 확인
 
-- 모든 입력은 `src/lib/schemas/`의 Zod 스키마로 검증
-- 스키마와 테스트 파일(`.test.ts`)은 같은 위치에 배치
+**RBAC (6역할):** `PUBLIC`, `USER_PENDING`, `OPS_ADMIN_PENDING`, `CONSULTANT_APPROVED`, `OPS_ADMIN`, `SYSTEM_ADMIN`. RLS 정책으로 DB 수준 보안 (`docs/RLS.md`).
 
-**Server Action 패턴:**
+**데이터 검증:** 모든 입력은 `src/lib/schemas/`의 Zod 스키마로. 스키마와 `*.test.ts`는 같은 위치 배치.
 
-1. 세션 확인
-2. 역할 권한 검사
-3. Zod로 입력 검증
-4. 비즈니스 로직 실행
-5. `ActionResult<T>` 타입으로 반환 (`src/lib/types/action-result.ts`)
+**라우트 디렉터리 규칙:**
 
-**프로젝트 워크플로우 상태:**
+- `(group)/` — 라우트 그룹 (URL 영향 없음, 레이아웃 분리용)
+- `_components/` — 라우트 내부 전용 컴포넌트 (라우팅 제외)
+- `actions.ts` — 라우트별 Server Action 정의
+- `__tests__/` — 단위 테스트 코로케이션
+
+**프로젝트 상태 흐름:**
 
 ```text
 NEW → DIAGNOSED → MATCH_RECOMMENDED → ASSIGNED → INTERVIEWED → ROADMAP_DRAFTED → FINALIZED
 ```
 
-**로드맵 버전 관리:**
+각 상태 의미:
 
-- DRAFT 버전은 무제한 생성 가능
-- FINAL 버전 생성 시 기존 FINAL은 ARCHIVED로 변경
-- 내보내기(PDF/XLSX)는 저장된 데이터 사용 (LLM 재호출 없음)
+- `NEW` → `DIAGNOSED`: 기업이 진단 설문 완료
+- `DIAGNOSED` → `MATCH_RECOMMENDED`: LLM 매칭으로 컨설턴트 후보 추천
+- `MATCH_RECOMMENDED` → `ASSIGNED`: 운영관리자가 컨설턴트 배정
+- `ASSIGNED` → `INTERVIEWED`: 컨설턴트가 현장 인터뷰 완료
+- `INTERVIEWED` → `ROADMAP_DRAFTED`: 로드맵 DRAFT 생성 (LLM 호출)
+- `ROADMAP_DRAFTED` → `FINALIZED`: 운영관리자가 FINAL 확정
+
+**로드맵 버전 관리:** DRAFT 무제한, FINAL 생성 시 기존 FINAL은 ARCHIVED. 내보내기(PDF/XLSX/HWPX)는 저장 데이터 사용 (LLM 재호출 없음).
 
 ## 기술 스택
 
-- **프레임워크:** Next.js 16.x (App Router, React Compiler 활성화) + TypeScript 5.x (strict 모드)
-- **데이터베이스/인증:** Supabase (Postgres + Auth + RLS + Realtime + Storage)
-- **스타일링:** Tailwind CSS 4.x
-- **UI 컴포넌트:** Radix UI + shadcn/ui + Lucide React (아이콘)
-- **폼/검증:** Zod (네이티브 HTML 폼 사용, React Hook Form 미사용)
-- **차트:** Recharts
-- **토스트:** Sonner
-- **애니메이션:** GSAP + motion (Framer Motion) + Lenis (스무스 스크롤)
-- **테스트:** Vitest + React Testing Library + Playwright (E2E)
-- **내보내기:** jspdf + jspdf-autotable, xlsx-js-style (SheetJS 포크)
+Next.js 16.x (App Router · React Compiler) + TypeScript 5.x strict / Supabase / Tailwind 4.x / Radix UI + shadcn/ui / Zod (네이티브 폼, RHF 미사용) / Recharts / Sonner / Vitest + RTL + Playwright / jspdf · xlsx-js-style.
 
 ## 환경 변수
 
-**필수:**
+**필수:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `LLM_API_KEY`.
 
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase 프로젝트 URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase 익명 키
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase 서비스 역할 키 (서버 전용)
-- `LLM_API_KEY` - LLM API 키 (서버 전용)
-
-**선택:**
-
-- `LLM_API_BASE_URL` - LLM API 기본 URL (기본값: OpenAI 호환)
-- `DAILY_LLM_CALL_LIMIT` - 일별 LLM 호출 제한 (기본값: 50)
-- `MONTHLY_LLM_CALL_LIMIT` - 월별 LLM 호출 제한 (기본값: 500)
-- `NEXT_PUBLIC_APP_URL` - 앱 URL (기본값: <http://localhost:3000>)
-- `SMTP_HOST` - SMTP 서버 호스트 (기본값: smtp.gmail.com)
-- `SMTP_PORT` - SMTP 포트 (기본값: 465)
-- `SMTP_USER` - SMTP 사용자
-- `SMTP_PASS` - SMTP 비밀번호
-- `EMAIL_FROM` - 발신자 이메일 주소
+**선택:** `LLM_API_BASE_URL`, `DAILY_LLM_CALL_LIMIT`(기본 50), `MONTHLY_LLM_CALL_LIMIT`(기본 500), `NEXT_PUBLIC_APP_URL`, SMTP (`SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM`).
 
 ## 커밋 메시지 규칙
 
-커밋 메시지는 한국어로 작성하며, 다음 형식을 따릅니다:
-
 ```text
-<타입>: <제목>
+<타입>: <한국어 제목>
 
 <본문 (선택)>
 ```
 
-**타입:**
-
-- `feat`: 새로운 기능 추가
-- `fix`: 버그 수정
-- `refactor`: 리팩토링 (기능 변경 없음)
-- `docs`: 문서 수정
-- `style`: 코드 포맷팅, 세미콜론 누락 등
-- `test`: 테스트 추가/수정
-- `chore`: 빌드, 설정 파일 수정
+**타입:** `feat`(신규), `fix`(버그), `refactor`(리팩토링), `docs`, `style`, `test`, `chore`(빌드·설정).
 
 **예시:**
 
 ```text
 feat: 로드맵 PDF 내보내기 기능 추가
 
-- jspdf를 사용한 PDF 생성 로직 구현
-- 로드맵 테이블 자동 레이아웃 적용
+- jspdf 사용한 PDF 생성 로직 구현
 - 한글 폰트 지원 추가
 ```
 
-```text
-fix: 컨설턴트 매칭 점수 계산 오류 수정
-
-- 산업 분야 가중치 누락 문제 해결
-- calculateScore 함수에 industryWeight 반영
-```
-
-**PR 제목도 동일 규칙을 따를 것.** 이 저장소는 Squash merge를 사용하므로 PR 제목이 그대로 main의 커밋 메시지가 된다. `feat:`, `fix:`, `test(e2e):` 같은 타입(+scope)·한국어 제목 규칙을 PR 제목에도 반드시 적용한다.
+**PR 제목도 동일 규칙.** 본 저장소는 Squash merge → PR 제목이 그대로 main 커밋 메시지가 됨.
 
 ## 스킬 규칙
 
-IMPORTANT: Superpowers 플러그인이 설치되어 있음. 모든 작업 전에 관련 superpowers 스킬을 확인하고 호출할 것. TDD는 전면 적용 (예외: 일회성 프로토타입, 생성 코드, 설정 파일만).
+IMPORTANT: Superpowers 플러그인 설치됨. 작업 전 관련 superpowers 스킬 확인·호출. **TDD 전면 적용** (예외: 일회성 프로토타입, 생성 코드, 설정 파일).
 
 **해당 영역 코드 수정 시 반드시 호출:**
 
 | 조건 | 스킬 | 범위 |
 |------|------|------|
-| UI 컴포넌트, 페이지 등 프론트엔드 코드를 **작성**할 때 | `frontend-guide` | 프로젝트 |
-| UI 코드를 **검수**(접근성, UX 감사)할 때 | `web-design-guidelines` | 전역 |
-| React/Next.js 코드 작성·리뷰·성능 최적화 시 | `react-best-practices` | 전역 |
-| 컴포넌트 구조 설계·리팩토링 (prop 증식, compound component 등) 시 | `composition-patterns` | 전역 |
-| Server Action (`actions.ts`) 파일을 수정할 때 | `check-server-action` | 프로젝트 |
-| SQL 마이그레이션, RLS 정책, DB 함수를 작성할 때 | `supabase-dev` | 프로젝트 |
-| 리팩터링/코드 정리를 요청할 때 | `refactoring` | 전역 |
+| UI 컴포넌트·페이지 작성 | `frontend-guide` | 프로젝트 |
+| UI 검수 (접근성·UX 감사) | `web-design-guidelines` | 전역 |
+| React/Next.js 작성·리뷰·성능 | `react-best-practices` | 전역 |
+| 컴포넌트 구조 설계·리팩토링 | `composition-patterns` | 전역 |
+| Server Action (`actions.ts`) 수정 | `check-server-action` | 프로젝트 |
+| 마이그레이션·RLS·DB 함수 작성 | `supabase-dev` | 프로젝트 |
+| 리팩터링·코드 정리 | `refactoring` | 전역 |
 
-- 하나의 작업에 여러 스킬이 해당되면 모두 호출
-- 스킬 호출 후 그 지침을 따르되, 작업 컨텍스트에 맞게 적용
-
-## 코드 품질
-
-**Server Actions 주의사항:**
-
-- Server Action 함수의 반환 타입이 `ActionResult` 인터페이스와 일치하는지 확인
-- Supabase 쿼리 후 `.select().single()` 사용 시 에러 처리 철저히 할 것
-- 직렬화 불가능한 객체(Date, Map 등)를 반환하지 않도록 주의
+여러 스킬 해당 시 모두 호출. 스킬 호출 후 작업 컨텍스트에 맞게 적용.
 
 ## 문서
 
-- `docs/ARCHITECTURE.md` - 시스템 다이어그램 및 데이터 흐름
-- `docs/RLS.md` - Row-Level Security 정책
-- `docs/DECISIONS.md` - 아키텍처 결정 기록 (ADR)
-- `docs/CONSULTANT_PROFILE_SPEC.md` - 컨설턴트 프로필 명세
-- `docs/PROJECT_OUTLINE.md` - 초기 기획서 (아카이브)
+| 문서 | 용도 |
+|------|------|
+| `docs/ARCHITECTURE.md` | 시스템 다이어그램·데이터 흐름 |
+| `docs/RLS.md` | Row-Level Security 정책 |
+| `docs/DECISIONS.md` | 아키텍처 결정 기록 (ADR) |
+| `docs/CONSULTANT_PROFILE_SPEC.md` | 컨설턴트 프로필 명세 |
+| `docs/PERFORMANCE_BUDGET.md` | 성능 예산·측정 기준 |
+| `docs/PROJECT_OUTLINE.md` | 초기 기획서 (아카이브) |
 
-**문서 네이밍 규칙:**
-
-- 상시 참조 문서 → `UPPER_SNAKE_CASE.md` (예: `ARCHITECTURE.md`, `TEST_PLAN.md`)
-- 시점 기반 기획/설계 → `YYYY-MM-DD-kebab-case.md` (예: `2026-02-10-interview-guide-design.md`)
+**네이밍:** 상시 참조는 `UPPER_SNAKE_CASE.md` (예: `ARCHITECTURE.md`), 시점 기반 기획·설계는 `YYYY-MM-DD-kebab-case.md`.
