@@ -336,6 +336,70 @@ describe('saveRoadmapInterviewV2', () => {
     );
   });
 
+  // (#4) Lost update 차단 — 부분 patch 가 다른 필드를 보존하는지 검증.
+  // 두 탭 동시 편집 시 stale base 로 인한 데이터 손실 방지의 핵심 가드.
+  it('autoSave 부분 patch 가 기존 row 의 다른 필드를 보존한다 (deep merge)', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+
+    // 기존 DB row 시뮬레이션 — companyRequirements 4개 필드 모두 채워져 있고
+    // taskAnalysisNote 도 기존 값 보유.
+    adminMock.addResult({
+      data: {
+        id: 'existing-interview-id',
+        company_details: {
+          roadmap_overview: {
+            establishment_necessity: '기존 필요성',
+            performance_activities: [],
+            ai_competency_level: 'INTERMEDIATE',
+            selected_tasks_summary: '기존 과업',
+          },
+          roadmap_company_requirements: {
+            company_status: '기존 상태',
+            main_problems: '기존 문제',
+            push_willingness: '기존 의지',
+            expected_outcomes: '기존 성과',
+          },
+          roadmap_analysis_notes: { text: '기존 메모', attachment_files: [] },
+          roadmap_competency_models: [],
+          roadmap_ncs_usage: { uses_ncs: false },
+        },
+        job_tasks: [],
+        improvement_goals: [],
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+
+    // 사용자가 'problem' 필드만 변경한 상황 (인터뷰 검토 페이지 InlineEdit).
+    const r = await saveRoadmapInterviewV2(
+      PROJECT_ID,
+      { companyRequirements: { problem: '새 문제' } },
+      { autoSave: true },
+    );
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    expect(updateCalls.length).toBeGreaterThan(0);
+    const updated = updateCalls[0][0];
+    const cd = updated.company_details as Record<string, unknown>;
+
+    // problem 만 새값, 나머지 3개는 보존
+    const cr = cd.roadmap_company_requirements as Record<string, unknown>;
+    expect(cr.main_problems).toBe('새 문제');
+    expect(cr.company_status).toBe('기존 상태');
+    expect(cr.push_willingness).toBe('기존 의지');
+    expect(cr.expected_outcomes).toBe('기존 성과');
+
+    // 다른 섹션도 통째로 보존되었는지 확인 (이전 lost update 의 핵심 메커니즘)
+    const overview = cd.roadmap_overview as Record<string, unknown>;
+    expect(overview.establishment_necessity).toBe('기존 필요성');
+    expect(overview.selected_tasks_summary).toBe('기존 과업');
+    const an = cd.roadmap_analysis_notes as Record<string, unknown>;
+    expect(an.text).toBe('기존 메모');
+  });
+
   it('HRD PDF extractedText 가 DB 의 extracted_text 로 save 된다 (Critical 리뷰 수정)', async () => {
     await mockCachedAuth();
     mockProjectAssignmentCheck(serverMock);
@@ -561,6 +625,46 @@ describe('savePBLInterviewV2', () => {
         meta: expect.objectContaining({ schema_version: 'v2_camelCase' }),
       }),
     );
+  });
+
+  // (#4) PBL Lost update 차단.
+  it('autoSave 부분 patch 가 기존 pbl_data 의 다른 필드를 보존한다 (deep merge)', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'PBL' });
+
+    // 기존 DB row — pbl_data 에 다수 필드 보유
+    adminMock.addResult({
+      data: {
+        id: 'existing-pbl-interview-id',
+        pbl_data: {
+          companyName: '기존 기업',
+          courseName: '기존 과정',
+          trainingHours: 40,
+          businessIssues: '기존 비즈니스 이슈',
+        },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null }); // update
+
+    // 사용자가 courseName 만 변경
+    const r = await savePBLInterviewV2(
+      PROJECT_ID,
+      { courseName: '새 과정' },
+      { autoSave: true },
+    );
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    expect(updateCalls.length).toBeGreaterThan(0);
+    const updated = updateCalls[0][0];
+    const pblData = updated.pbl_data as Record<string, unknown>;
+
+    expect(pblData.courseName).toBe('새 과정');
+    expect(pblData.companyName).toBe('기존 기업');
+    expect(pblData.trainingHours).toBe(40);
+    expect(pblData.businessIssues).toBe('기존 비즈니스 이슈');
   });
 });
 

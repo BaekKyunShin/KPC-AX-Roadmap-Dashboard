@@ -448,6 +448,36 @@ export async function sendMessage(
 }
 
 /**
+ * (#3 Nielsen H7) 모든 대화 일괄 읽음 처리.
+ *
+ * 사용자가 참여한 모든 conversation_participants 레코드의 last_read_at 을 현재 시각으로
+ * 갱신한다. 알림 드롭다운의 markAllNotificationsRead 와 동일한 골격이며, RLS 정책 우회
+ * 없이 user_id 필터로 본인 레코드만 갱신된다.
+ */
+export async function markAllConversationsRead(): Promise<SimpleActionResult> {
+  try {
+    const auth = await requireAuth();
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user, supabase } = auth;
+
+    const { error } = await supabase
+      .from('conversation_participants')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('[markAllConversationsRead Error]', error);
+      return { success: false, error: '읽음 처리에 실패했습니다.' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[markAllConversationsRead Error]', error);
+    return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
+  }
+}
+
+/**
  * 대화 읽음 처리 (last_read_at 갱신)
  * - RLS가 본인 참여자 레코드만 업데이트하도록 보장
  */

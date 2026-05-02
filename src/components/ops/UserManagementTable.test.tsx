@@ -8,8 +8,17 @@ import type { User, ConsultantProfile } from '@/types/database';
 // =============================================================================
 
 const mockRefresh = vi.fn();
+const mockReplace = vi.fn();
+const mockSearchParams = new URLSearchParams();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRefresh, push: vi.fn(), back: vi.fn() }),
+  useRouter: () => ({ refresh: mockRefresh, replace: mockReplace, push: vi.fn(), back: vi.fn() }),
+  useSearchParams: () => mockSearchParams,
+  usePathname: () => '/ops/users',
+}));
+
+// 디바운스를 우회 — 입력 즉시 반영되어 테스트 단순화 (실제 동작은 300ms)
+vi.mock('@/hooks/useDebounce', () => ({
+  useDebounce: <T,>(value: T) => value,
 }));
 
 const mockUpdateUserStatus = vi.fn();
@@ -262,6 +271,71 @@ describe('UserManagementTable', () => {
       expect(descs.length).toBeGreaterThan(0);
       // 사용자 추가 흐름은 도메인과 불일치 — 액션 링크 없어야 함
       expect(screen.queryByRole('link', { name: /사용자 추가|새 사용자/ })).not.toBeInTheDocument();
+    });
+  });
+
+  // =============================================================================
+  // #1 — 검색 · 역할/상태 필터 · 페이지네이션 (Nielsen H6 · H7)
+  // =============================================================================
+  describe('검색 · 필터 · 페이지네이션 (#1)', () => {
+    function makeUsers(): UserWithProfile[] {
+      return [
+        makeUser({ id: 'u1', name: '박철수', email: 'park@test.com', role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }),
+        makeUser({ id: 'u2', name: '김영희', email: 'kim@test.com', role: 'USER_PENDING', status: 'ACTIVE' }),
+        makeUser({ id: 'u3', name: '이민수', email: 'lee@test.com', role: 'CONSULTANT_APPROVED', status: 'SUSPENDED' }),
+        makeUser({ id: 'u4', name: '최지영', email: 'choi@test.com', role: 'OPS_ADMIN', status: 'ACTIVE' }),
+      ];
+    }
+
+    it('검색 input·역할 select·상태 select 가 헤더에 노출된다', () => {
+      render(<UserManagementTable users={makeUsers()} />);
+      expect(screen.getByPlaceholderText(/이름·이메일·전화번호/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/역할 필터/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/상태 필터/)).toBeInTheDocument();
+    });
+
+    it('이름 검색 시 매칭 사용자만 노출된다', async () => {
+      const user = (await import('@testing-library/user-event')).default.setup();
+      render(<UserManagementTable users={makeUsers()} />);
+      await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), '박');
+      expect(getTable().getByText('박철수')).toBeInTheDocument();
+      expect(getTable().queryByText('김영희')).not.toBeInTheDocument();
+      expect(getTable().queryByText('이민수')).not.toBeInTheDocument();
+    });
+
+    it('이메일 일부로 검색 시 매칭 사용자만 노출', async () => {
+      const user = (await import('@testing-library/user-event')).default.setup();
+      render(<UserManagementTable users={makeUsers()} />);
+      await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), 'kim@');
+      expect(getTable().getByText('김영희')).toBeInTheDocument();
+      expect(getTable().queryByText('박철수')).not.toBeInTheDocument();
+    });
+
+    it('11번째 사용자는 첫 페이지에 노출되지 않는다 (페이지당 10건)', () => {
+      const many: UserWithProfile[] = Array.from({ length: 12 }, (_, i) =>
+        makeUser({ id: `u${i + 1}`, name: `사용자${String(i + 1).padStart(2, '0')}`, email: `u${i + 1}@t.com` }),
+      );
+      render(<UserManagementTable users={many} />);
+      expect(getTable().getByText('사용자01')).toBeInTheDocument();
+      expect(getTable().getByText('사용자10')).toBeInTheDocument();
+      expect(getTable().queryByText('사용자11')).not.toBeInTheDocument();
+      expect(getTable().queryByText('사용자12')).not.toBeInTheDocument();
+    });
+
+    it('검색 결과 0건일 때 검색 결과 EmptyState 가 노출된다', async () => {
+      const user = (await import('@testing-library/user-event')).default.setup();
+      render(<UserManagementTable users={makeUsers()} />);
+      await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), '존재하지않는검색어ZZZ');
+      expect(screen.getAllByText(/검색 결과가 없습니다/).length).toBeGreaterThan(0);
+    });
+
+    it('총 사용자 수 캡션이 페이지 정보와 함께 노출된다', () => {
+      const many: UserWithProfile[] = Array.from({ length: 12 }, (_, i) =>
+        makeUser({ id: `u${i + 1}`, name: `사용자${i + 1}`, email: `u${i + 1}@t.com` }),
+      );
+      render(<UserManagementTable users={many} />);
+      // 예: "총 12명" 또는 "총 12명 중 1~10"
+      expect(screen.getByText(/총\s*12\s*명/)).toBeInTheDocument();
     });
   });
 });

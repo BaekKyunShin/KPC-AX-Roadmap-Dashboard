@@ -1,6 +1,7 @@
 'use client';
 
-import { SquarePen, MessageSquare } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { SquarePen, MessageSquare, Search, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,8 @@ interface ConversationListProps {
   isLoading: boolean;
   onSelect: (id: string) => void;
   onNewConversation: () => void;
+  /** (#3) 모든 대화 일괄 읽음 처리. 호출자는 markAllConversationsRead 후 setConversations 갱신 */
+  onMarkAllRead?: () => void;
 }
 
 // =============================================================================
@@ -40,12 +43,44 @@ export default function ConversationList({
   isLoading,
   onSelect,
   onNewConversation,
+  onMarkAllRead,
 }: ConversationListProps) {
+  const [query, setQuery] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
+
+  // (#3) 클라이언트 derived state — Realtime 으로 conversations 가 갱신돼도 자동 재계산.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return conversations.filter((conv) => {
+      if (unreadOnly && !conv.has_unread) return false;
+      if (q.length === 0) return true;
+      return conv.other_user.name.toLowerCase().includes(q);
+    });
+  }, [conversations, query, unreadOnly]);
+
+  const unreadCount = useMemo(
+    () => conversations.filter((c) => c.has_unread).length,
+    [conversations],
+  );
+
   return (
     <>
       {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h2 className="text-base font-semibold text-gray-900">메시지</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-gray-900">메시지</h2>
+          {unreadCount > 0 && onMarkAllRead && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onMarkAllRead}
+              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <Check className="h-3.5 w-3.5 mr-1" />
+              모두 읽음
+            </Button>
+          )}
+        </div>
         <Button
           size="sm"
           variant="outline"
@@ -57,6 +92,32 @@ export default function ConversationList({
         </Button>
       </div>
 
+      {/* 검색·필터 */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b bg-gray-50/50">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="이름으로 검색"
+            className="w-full h-8 pl-8 pr-2 text-xs rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setUnreadOnly((v) => !v)}
+          className={cn(
+            'shrink-0 h-8 px-2.5 text-xs rounded-md border transition-colors',
+            unreadOnly
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
+          )}
+        >
+          안읽음만
+        </button>
+      </div>
+
       {/* 대화 목록 */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -66,8 +127,13 @@ export default function ConversationList({
             <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
             <p className="text-sm">메시지가 없습니다</p>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <Search className="h-8 w-8 mb-2 opacity-40" />
+            <p className="text-sm">검색 결과가 없습니다</p>
+          </div>
         ) : (
-          conversations.map((conv) => (
+          filtered.map((conv) => (
             <ConversationItem
               key={conv.id}
               conversation={conv}

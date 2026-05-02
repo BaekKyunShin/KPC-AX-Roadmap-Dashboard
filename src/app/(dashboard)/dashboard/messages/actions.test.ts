@@ -24,6 +24,7 @@ import {
   createConversation,
   sendMessage,
   markConversationRead,
+  markAllConversationsRead,
 } from './actions';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
@@ -859,5 +860,45 @@ describe('markConversationRead', () => {
     const result = await markConversationRead(CONV_ID);
 
     expect(result).toEqual({ success: true });
+  });
+});
+
+// =============================================================================
+// markAllConversationsRead (#3 Nielsen H7)
+// =============================================================================
+
+describe('markAllConversationsRead', () => {
+  it('인증 실패 → error 반환', async () => {
+    setupAuthFailure();
+
+    const result = await markAllConversationsRead();
+
+    expect(result).toEqual({ success: false, error: '로그인이 필요합니다.' });
+  });
+
+  it('DB 에러 → error 반환', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupAuth();
+    serverMock.addResult({ data: null, error: { message: 'DB error' } });
+
+    const result = await markAllConversationsRead();
+
+    expect(result).toEqual({ success: false, error: '읽음 처리에 실패했습니다.' });
+    spy.mockRestore();
+  });
+
+  it('성공 → { success: true } 반환 + user_id 조건으로 last_read_at 갱신', async () => {
+    setupAuth();
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await markAllConversationsRead();
+
+    expect(result).toEqual({ success: true });
+    // 보안 가드: user_id eq 필터를 호출했는지 검증 (다른 사용자 last_read_at 미변경)
+    expect(serverMock.chainable.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID);
+    // last_read_at 갱신 패치를 보냈는지 검증
+    const updateCalls = serverMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    expect(updateCalls.length).toBeGreaterThan(0);
+    expect(updateCalls[0][0]).toHaveProperty('last_read_at');
   });
 });

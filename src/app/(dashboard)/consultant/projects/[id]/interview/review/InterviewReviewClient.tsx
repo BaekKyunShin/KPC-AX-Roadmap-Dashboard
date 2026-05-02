@@ -150,30 +150,22 @@ function ReviewSectionRoadmap({
             label="현재 상태"
             projectId={projectId}
             field="status"
-            value={data.companyRequirements?.status ?? ''}
-            base={data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }}
-          />
+            value={data.companyRequirements?.status ?? ''}          />
           <CompanyReqRow
             label="문제점"
             projectId={projectId}
             field="problem"
-            value={data.companyRequirements?.problem ?? ''}
-            base={data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }}
-          />
+            value={data.companyRequirements?.problem ?? ''}          />
           <CompanyReqRow
             label="기업 의지"
             projectId={projectId}
             field="will"
-            value={data.companyRequirements?.will ?? ''}
-            base={data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }}
-          />
+            value={data.companyRequirements?.will ?? ''}          />
           <CompanyReqRow
             label="기대 성과"
             projectId={projectId}
             field="outcomes"
-            value={data.companyRequirements?.outcomes ?? ''}
-            base={data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }}
-          />
+            value={data.companyRequirements?.outcomes ?? ''}          />
         </div>
       </CollapsibleSection>
 
@@ -209,32 +201,24 @@ function ReviewSectionRoadmap({
             label="과업명"
             projectId={projectId}
             field="name"
-            value={data.targetTask?.name ?? ''}
-            base={data.targetTask ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' }}
-          />
+            value={data.targetTask?.name ?? ''}          />
           <TargetTaskRow
             label="선정 사유"
             projectId={projectId}
             field="reason"
-            value={data.targetTask?.reason ?? ''}
-            base={data.targetTask ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' }}
-            multiline
+            value={data.targetTask?.reason ?? ''}            multiline
           />
           <TargetTaskRow
             label="기대 효과 As-Is"
             projectId={projectId}
             field="expectedAsIs"
-            value={data.targetTask?.expectedAsIs ?? ''}
-            base={data.targetTask ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' }}
-            multiline
+            value={data.targetTask?.expectedAsIs ?? ''}            multiline
           />
           <TargetTaskRow
             label="기대 효과 To-Be"
             projectId={projectId}
             field="expectedToBe"
-            value={data.targetTask?.expectedToBe ?? ''}
-            base={data.targetTask ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' }}
-            multiline
+            value={data.targetTask?.expectedToBe ?? ''}            multiline
           />
         </div>
       </CollapsibleSection>
@@ -493,17 +477,18 @@ function CompanyReqRow({
   projectId,
   field,
   value,
-  base,
 }: {
   label: string;
   projectId: string;
   field: 'status' | 'problem' | 'will' | 'outcomes';
   value: string;
-  base: { status: string; problem: string; will: string; outcomes: string };
 }) {
   const handleSave = async (next: string) => {
+    // (#4) 변경된 키만 부분 patch 로 전송. 서버는 deepMerge 로 다른 필드를 보존하므로
+    // 두 탭 동시 편집 시에도 lost update 가 발생하지 않는다 (이전엔 stale base 를
+    // 사용해 다른 키들의 최신 변경분을 덮어썼음).
     const result = await editInterviewFieldRoadmap(projectId, {
-      companyRequirements: { ...base, [field]: next },
+      companyRequirements: { [field]: next },
     });
     if (!result.success) {
       const msg = result.error ?? '저장 실패';
@@ -528,19 +513,18 @@ function TargetTaskRow({
   projectId,
   field,
   value,
-  base,
   multiline = false,
 }: {
   label: string;
   projectId: string;
   field: 'name' | 'reason' | 'expectedAsIs' | 'expectedToBe';
   value: string;
-  base: { name: string; reason: string; expectedAsIs: string; expectedToBe: string };
   multiline?: boolean;
 }) {
   const handleSave = async (next: string) => {
+    // (#4) 부분 patch 만 전송 — 서버 deepMerge 로 다른 필드 보존.
     const result = await editInterviewFieldRoadmap(projectId, {
-      targetTask: { ...base, [field]: next },
+      targetTask: { [field]: next },
     });
     if (!result.success) {
       const msg = result.error ?? '저장 실패';
