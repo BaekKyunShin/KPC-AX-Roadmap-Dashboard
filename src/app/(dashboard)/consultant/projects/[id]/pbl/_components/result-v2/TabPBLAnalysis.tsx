@@ -88,15 +88,24 @@ export function TabPBLAnalysis({
                       ],
                     },
                   ]}
-                  bodyRows={mainWork.map((w) => ({
+                  bodyRows={mainWork.map((w, idx) => ({
                     cells: [
                       { content: w.dept || '-', align: 'left' },
                       { content: w.role || '-', align: 'left' },
                       {
                         content: (
-                          <span className="whitespace-pre-wrap text-sm">
-                            {w.description || '-'}
-                          </span>
+                          <InlineEditField
+                            value={w.description ?? ''}
+                            onSave={async (next) => {
+                              const draft = mainWork.map((row, i) =>
+                                i === idx ? { ...row, description: next } : row,
+                              );
+                              await onEdit({ organization: { mainWork: draft } });
+                            }}
+                            readOnly={readOnly}
+                            multiline
+                            placeholder="주요 업무 설명이 입력되지 않았습니다."
+                          />
                         ),
                         align: 'left',
                       },
