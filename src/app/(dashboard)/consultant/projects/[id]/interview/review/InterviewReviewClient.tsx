@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, ChevronsDown, ChevronsUp } from 'lucide-react';
 
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -468,14 +468,20 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
+  // React 19 권장 — 렌더 중 prev-prop 비교 후 state 동기화 (useEffect 안 setState
+  // 의 'react-hooks/set-state-in-effect' 룰 위반 회피).
+  // 부모의 토글 버튼이 expandSignal/collapseSignal counter 를 증가시키면 다음 렌더에
+  // 이전 카운터와 비교하여 한 번 setOpen 후 prev 도 갱신.
+  const [prevExpand, setPrevExpand] = useState(0);
+  const [prevCollapse, setPrevCollapse] = useState(0);
+  if (expandSignal !== prevExpand) {
+    setPrevExpand(expandSignal);
     if (expandSignal > 0) setOpen(true);
-  }, [expandSignal]);
-
-  useEffect(() => {
+  }
+  if (collapseSignal !== prevCollapse) {
+    setPrevCollapse(collapseSignal);
     if (collapseSignal > 0) setOpen(false);
-  }, [collapseSignal]);
+  }
 
   return (
     <div className="rounded-lg border bg-card p-4" data-testid={`review-section-${title}`}>
