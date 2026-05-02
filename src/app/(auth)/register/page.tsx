@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field-error';
 import { Logo } from '@/components/ui/logo';
 import { AuthBackgroundDecoration } from '@/components/auth/AuthBackgroundDecoration';
+import { PasswordPolicyChecklist } from '@/components/auth/PasswordPolicyChecklist';
 import { FooterCredit } from '@/components/ui/FooterCredit';
 import ProfileForm from '@/components/consultant/ProfileForm';
 import {
@@ -421,6 +422,9 @@ function Step1Form({
   isLoading,
   onSubmit,
 }: Step1FormProps) {
+  // #5 — 비밀번호 정책 실시간 체크리스트용 입력 추적.
+  // 입력 시작 후에는 정적 헬퍼 텍스트를 체크리스트로 교체한다 (Nielsen H10 사전 안내).
+  const [passwordInput, setPasswordInput] = useState('');
   return (
     <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
       <CardHeader>
@@ -554,6 +558,8 @@ function Step1Form({
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 required
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
                 className={`h-11 pr-10 ${step1Errors.password ? 'border-destructive' : ''}`}
               />
               <button
@@ -564,7 +570,11 @@ function Step1Form({
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-sm text-muted-foreground">8자 이상, 영문과 숫자 포함</p>
+            {passwordInput.length === 0 ? (
+              <p className="text-sm text-muted-foreground">8자 이상, 영문자와 숫자 포함</p>
+            ) : (
+              <PasswordPolicyChecklist password={passwordInput} />
+            )}
             <FieldError message={step1Errors.password} />
           </div>
 

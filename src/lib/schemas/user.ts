@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_LETTER_REGEX,
+  PASSWORD_NUMBER_REGEX,
+} from '@/lib/utils/password-policy';
 
 // 사용자 역할
 export const userRoleSchema = z.enum([
@@ -25,11 +30,12 @@ export const coachingMethodSchema = z.enum(['PBL', 'WORKSHOP', 'MENTORING', 'LEC
 export const registerTypeSchema = z.enum(['CONSULTANT', 'OPS_ADMIN']);
 
 // 비밀번호 공통 규칙 (회원가입, 비밀번호 변경에서 공유)
+// 정규식·길이는 src/lib/utils/password-policy.ts 단일 출처에서 import (#5).
 const passwordSchema = z
   .string()
-  .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
-  .regex(/[a-zA-Z]/, '비밀번호에 영문자가 포함되어야 합니다.')
-  .regex(/[0-9]/, '비밀번호에 숫자가 포함되어야 합니다.');
+  .min(PASSWORD_MIN_LENGTH, '비밀번호는 최소 8자 이상이어야 합니다.')
+  .regex(PASSWORD_LETTER_REGEX, '비밀번호에 영문자가 포함되어야 합니다.')
+  .regex(PASSWORD_NUMBER_REGEX, '비밀번호에 숫자가 포함되어야 합니다.');
 
 // 회원가입 스키마
 export const registerSchema = z
