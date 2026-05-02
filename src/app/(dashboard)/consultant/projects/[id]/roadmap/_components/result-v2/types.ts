@@ -16,7 +16,10 @@ import type {
   RoadmapCourseSpec,
   RoadmapTrainingStructureItem,
 } from '@/lib/services/roadmap';
-import type { RoadmapCompetency as InterviewCompetency } from '@/lib/schemas/interview-roadmap';
+import type {
+  RoadmapCompetency as InterviewCompetency,
+  RoadmapTaskAnalysisItem,
+} from '@/lib/schemas/interview-roadmap';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 /**
@@ -48,6 +51,10 @@ export interface RoadmapResultEditPayload {
       outcomes?: string;
     };
   };
+  // Ⅱ-3 과업·워크플로우 분석표 (DRAFT 편집 가능, 행 단위 patch — 전체 배열 교체).
+  // 행에 stable id 가 없으므로 클라이언트는 항상 전체 배열을 보내고 서버는
+  // saveRoadmapInterviewV2 의 deepMerge 에서 taskAnalysis 키를 통째로 교체한다.
+  task_analysis?: RoadmapTaskAnalysisItem[];
   // Ⅱ-3 분석 메모 텍스트
   task_analysis_note?: string;
   // Ⅱ-4 훈련대상 과업 선정
