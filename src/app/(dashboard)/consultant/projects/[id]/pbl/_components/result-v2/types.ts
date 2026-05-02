@@ -27,6 +27,10 @@ import type {
   PBLTarget,
 } from '@/lib/schemas/interview-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import type {
+  PBLTrainingContent,
+  PBLTrainingInstructor,
+} from '@/lib/services/pbl/pbl-types';
 
 /**
  * 결과 페이지 인라인 편집 patch. Task 2.8 에서 Server Action 과 병합 시
@@ -58,7 +62,18 @@ export interface PBLResultEditPayload {
   currentAiLevel?: Partial<PBLAiLevelAssessment>;
   expectedAiLevel?: Partial<PBLAiLevelAssessment>;
 
-  // Ⅳ 운영계획 · Ⅴ 성과분석 — Task 2.10 LLM 결과 (현 Task 에서는 편집 스텁 없음)
+  // Ⅳ 운영계획 (LLM 결과 — pbl_reports.pbl_content 에 저장).
+  // DB 트리(pbl_content.operation_plan.training_plan.*) 를 그대로 미러링하여
+  // 향후 메타 필드(course_name, total_hours 등) 편집 확장에 친화적이도록 둔다.
+  // 본 PR 범위 — Ⅳ-3-다 training_contents[i].detail / Ⅳ-3-마 training_instructors[i].detailed_training_content.
+  operations?: {
+    training_plan?: {
+      subject_profile?: {
+        training_contents?: PBLTrainingContent[];
+      };
+      training_instructors?: PBLTrainingInstructor[];
+    };
+  };
 }
 
 /**

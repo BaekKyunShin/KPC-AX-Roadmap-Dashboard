@@ -22,6 +22,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
+import type {
+  PBLContent,
+  PBLTrainingContent,
+  PBLTrainingInstructor,
+} from '@/lib/services/pbl/pbl-types';
+import sampleResponse from '@/lib/services/pbl/__fixtures__/sample-llm-response.json';
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
@@ -424,6 +430,177 @@ describe('editPBLV2', () => {
         }),
       }),
     );
+  });
+
+  // ─── operations 슬라이스 (Ⅳ-3-다 / Ⅳ-3-마 LLM 결과 편집) ────────────────────
+  // pbl_reports.pbl_content 를 직접 갱신 (interviews 미수정).
+  // patch 형식: operations.training_plan.{ subject_profile.training_contents | training_instructors }
+
+  function makeValidPBLContent(): PBLContent {
+    // sample-llm-response.json 은 strict pblContentSchema 통과 (LLM 출력 1차 파싱 fixture)
+    return JSON.parse(JSON.stringify(sampleResponse)) as PBLContent;
+  }
+
+  it('operations.training_contents patch — pbl_reports.pbl_content 만 갱신, interviews 미수정', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    // pbl_reports row 조회 (pbl_content + status)
+    const existing = makeValidPBLContent();
+    adminMock.addResult({
+      data: { pbl_content: existing, status: 'DRAFT' },
+      error: null,
+    });
+    // pbl_reports update
+    adminMock.addResult({ data: null, error: null });
+
+    // 사용자 시나리오: detail 만 컨설턴트가 보강, 시간 컬럼은 read-only 유지
+    // → 클라이언트가 기존 배열 전체를 송신하되 변경 행의 detail 만 새 값
+    const baseContents =
+      existing.operation_plan.training_plan.subject_profile.training_contents;
+    const newContents: PBLTrainingContent[] = baseContents.map((c, i) =>
+      i === 0 ? { ...c, detail: '컨설턴트가 보강한 단원 세부 내용' } : c,
+    );
+    const r = await editPBLV2(VERSION_ID, {
+      operations: {
+        training_plan: { subject_profile: { training_contents: newContents } },
+      },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    // interviews 테이블은 건드리지 않아야 함
+    // (admin 호출은 pbl_reports.select + pbl_reports.update 만 발생)
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<
+      [Record<string, unknown>]
+    >;
+    expect(updateCalls.length).toBe(1);
+    const updated = updateCalls[0][0].pbl_content as PBLContent;
+    const updatedContents =
+      updated.operation_plan.training_plan.subject_profile.training_contents;
+    expect(updatedContents).toHaveLength(baseContents.length);
+    expect(updatedContents[0].detail).toBe('컨설턴트가 보강한 단원 세부 내용');
+    expect(updatedContents[0].unit_name).toBe(baseContents[0].unit_name);
+    // 나머지 필드는 보존
+    expect(updated.operation_plan.training_plan.subject_profile.course_name).toBe(
+      existing.operation_plan.training_plan.subject_profile.course_name,
+    );
+    expect(updated.operation_plan.training_plan.training_instructors).toEqual(
+      existing.operation_plan.training_plan.training_instructors,
+    );
+  });
+
+  it('operations.training_instructors patch — training_instructors 만 교체', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    const existing = makeValidPBLContent();
+    adminMock.addResult({
+      data: { pbl_content: existing, status: 'DRAFT' },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const newInstructors: PBLTrainingInstructor[] = [
+      {
+        name: '컨설턴트 보정 강사',
+        internal_external: '외부',
+        career_years: 12,
+        work_name: 'AI 컨설팅',
+        detailed_training_content: ['수정된 항목 1', '수정된 항목 2'],
+      },
+    ];
+    const r = await editPBLV2(VERSION_ID, {
+      operations: { training_plan: { training_instructors: newInstructors } },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<
+      [Record<string, unknown>]
+    >;
+    const updated = updateCalls[0][0].pbl_content as PBLContent;
+    expect(updated.operation_plan.training_plan.training_instructors).toEqual(
+      newInstructors,
+    );
+    // training_contents 는 보존
+    expect(
+      updated.operation_plan.training_plan.subject_profile.training_contents,
+    ).toEqual(
+      existing.operation_plan.training_plan.subject_profile.training_contents,
+    );
+  });
+
+  it('operations patch 감사로그 meta — target: llm_generated + slice: operations', async () => {
+    const { createAuditLog } = await import('@/lib/services/audit');
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: { pbl_content: makeValidPBLContent(), status: 'DRAFT' },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const r = await editPBLV2(VERSION_ID, {
+      operations: {
+        training_plan: {
+          training_instructors: [
+            {
+              name: '강사 A',
+              internal_external: '외부',
+              career_years: 5,
+              work_name: '업무 A',
+              detailed_training_content: ['항목'],
+            },
+          ],
+        },
+      },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'PBL_REPORT_EDITED',
+        targetType: 'pbl_report',
+        meta: expect.objectContaining({
+          source: 'RESULT_PAGE',
+          target: 'llm_generated',
+          slice: 'operations',
+        }),
+      }),
+    );
+  });
+
+  it('operations + 인터뷰 슬라이스 동시 patch → 명시적 에러', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    const r = await editPBLV2(VERSION_ID, {
+      companyIssues: '신규 이슈',
+      operations: {
+        training_plan: { subject_profile: { training_contents: [] } },
+      },
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error).toContain('한 번에');
+    }
+  });
+
+  it('operations patch 가 strict 검증 실패 (training_contents 빈 배열) → error', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: { pbl_content: makeValidPBLContent(), status: 'DRAFT' },
+      error: null,
+    });
+
+    const r = await editPBLV2(VERSION_ID, {
+      operations: {
+        training_plan: { subject_profile: { training_contents: [] } },
+      },
+    });
+    expect(r.success).toBe(false);
+    // pbl_reports update 는 호출되지 않아야 함
+    expect(adminMock.chainable.update.mock.calls).toHaveLength(0);
   });
 });
 

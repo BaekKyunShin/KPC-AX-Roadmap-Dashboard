@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { TabPBLOps } from '../TabPBLOps';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
@@ -493,5 +494,117 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     expect(text).not.toContain('결과보고서');
     expect(text).not.toContain('수행일지');
     expect(text).not.toContain('결과물 표지');
+  });
+
+  // ─── operations 슬라이스 인라인 편집 (Ⅳ-3-다 detail / Ⅳ-3-마 detailed_training_content) ──
+
+  it('Ⅳ-3-다 — readOnly=false 일 때 detail 셀 클릭 → InlineEditField 진입', async () => {
+    const user = userEvent.setup();
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly={false} onEdit={vi.fn()} />);
+
+    // 첫 detail 셀 (sample fixture: "AI 학습 데이터 개념...")
+    const cell = screen.getByText(/AI 학습 데이터 개념/);
+    await user.click(cell);
+
+    // textarea 등장 + 초기값에 detail 텍스트 포함
+    const textarea = await screen.findByRole('textbox');
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect((textarea as HTMLTextAreaElement).value).toContain(
+      'AI 학습 데이터 개념',
+    );
+  });
+
+  it('Ⅳ-3-다 — detail 수정 후 저장 → onEdit payload 가 전체 training_contents 배열', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly={false} onEdit={onEdit} />);
+
+    const cell = screen.getByText(/AI 학습 데이터 개념/);
+    await user.click(cell);
+    const textarea = (await screen.findByRole('textbox')) as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: '컨설턴트가 보강한 세부 내용' } });
+    // 저장 버튼 클릭 (aria-label="저장")
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    const payload = onEdit.mock.calls[0][0];
+    const contents =
+      payload.operations.training_plan.subject_profile.training_contents;
+    expect(Array.isArray(contents)).toBe(true);
+    // 전체 배열 (sample fixture: 3행) 그대로 송신
+    expect(contents).toHaveLength(3);
+    // 첫 행 detail 만 변경
+    expect(contents[0].detail).toBe('컨설턴트가 보강한 세부 내용');
+    expect(contents[0].unit_name).toBe('AI 데이터 이해 및 수집');
+    // 다른 행은 보존
+    expect(contents[1].detail).toContain('Teachable Machine');
+  });
+
+  it('Ⅳ-3-마 — detailed_training_content 셀 편집모드 textarea 초기값 = bulletize 결과', async () => {
+    const user = userEvent.setup();
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly={false} onEdit={vi.fn()} />);
+
+    const cell = screen.getByText(/노코드 AI 도구.*Teachable/);
+    await user.click(cell);
+    const textarea = (await screen.findByRole('textbox')) as HTMLTextAreaElement;
+    // bullet `• ` prefix + 줄바꿈 분리
+    expect(textarea.value).toMatch(/^•\s/);
+    expect(textarea.value).toContain('\n');
+  });
+
+  it('Ⅳ-3-마 — bullet 줄 삭제 후 저장 → detailed_training_content 가 string[] 로 송신', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly={false} onEdit={onEdit} />);
+
+    const cell = screen.getByText(/노코드 AI 도구.*Teachable/);
+    await user.click(cell);
+    const textarea = (await screen.findByRole('textbox')) as HTMLTextAreaElement;
+
+    // 새 평문으로 교체 (3개 → 2개)
+    fireEvent.change(textarea, { target: { value: '• 새 항목 1\n• 새 항목 2' } });
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => expect(onEdit).toHaveBeenCalled());
+    const payload = onEdit.mock.calls[0][0];
+    const instructors = payload.operations.training_plan.training_instructors;
+    expect(Array.isArray(instructors)).toBe(true);
+    expect(instructors[0].detailed_training_content).toEqual([
+      '새 항목 1',
+      '새 항목 2',
+    ]);
+  });
+
+  it('Ⅳ-3-마 — textarea 비우고 저장 시도 → onEdit 호출되지 않음 (빈 배열 차단)', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn().mockResolvedValue(undefined);
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly={false} onEdit={onEdit} />);
+
+    const cell = screen.getByText(/노코드 AI 도구.*Teachable/);
+    await user.click(cell);
+    const textarea = (await screen.findByRole('textbox')) as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: '   \n   ' } });
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    // 잠시 대기 후 호출이 없음을 확인
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it('Ⅳ-3-다 / Ⅳ-3-마 — readOnly=true 면 클릭해도 textarea 진입 불가', async () => {
+    const user = userEvent.setup();
+    const v = makeFilledVersion();
+    render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
+
+    const detailCell = screen.getByText(/AI 학습 데이터 개념/);
+    await user.click(detailCell);
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 });

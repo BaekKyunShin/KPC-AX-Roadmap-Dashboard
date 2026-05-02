@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bulletize, splitByUnit } from './list-format';
+import { bulletize, parseBullets, splitByUnit } from './list-format';
 
 describe('bulletize', () => {
   it('항목이 없으면 빈 문자열', () => {
@@ -51,5 +51,42 @@ describe('splitByUnit', () => {
 
   it('큰 숫자 단원도 매칭 (예: 10단원)', () => {
     expect(splitByUnit('9단원: X, 10단원: Y')).toBe('9단원: X\n10단원: Y');
+  });
+});
+
+describe('parseBullets', () => {
+  it('빈 입력은 빈 배열', () => {
+    expect(parseBullets('')).toEqual([]);
+    expect(parseBullets('   ')).toEqual([]);
+    expect(parseBullets('\n\n')).toEqual([]);
+  });
+
+  it('머리기호 `• ` prefix 제거 후 항목 추출', () => {
+    expect(parseBullets('• AI 기초\n• ML 이해\n• 도구 활용')).toEqual([
+      'AI 기초',
+      'ML 이해',
+      '도구 활용',
+    ]);
+  });
+
+  it('머리기호가 없어도 줄 단위로 추출 (사용자 직접 입력 허용)', () => {
+    expect(parseBullets('A\nB\nC')).toEqual(['A', 'B', 'C']);
+  });
+
+  it('가운뎃점·하이픈·별표 머리기호도 제거', () => {
+    expect(parseBullets('· A\n- B\n* C')).toEqual(['A', 'B', 'C']);
+  });
+
+  it('빈 줄과 공백만 있는 줄은 무시', () => {
+    expect(parseBullets('• A\n\n• B\n   \n• C')).toEqual(['A', 'B', 'C']);
+  });
+
+  it('각 항목 양 끝 공백 trim', () => {
+    expect(parseBullets('•   AI  \n•  ML  ')).toEqual(['AI', 'ML']);
+  });
+
+  it('bulletize ↔ parseBullets 라운드트립', () => {
+    const items = ['노코드 AI 도구 활용', '데이터 전처리', '모델 검증'];
+    expect(parseBullets(bulletize(items))).toEqual(items);
   });
 });

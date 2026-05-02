@@ -839,12 +839,113 @@ export async function editPBLV2(
       patch.target !== undefined ||
       patch.currentAiLevel !== undefined ||
       patch.expectedAiLevel !== undefined;
-    if (!hasOverview && !hasAnalysis && !hasTasks) {
+    const hasInterviewSlice = hasOverview || hasAnalysis || hasTasks;
+    const hasOperationsSlice = patch.operations !== undefined;
+
+    // 인터뷰 슬라이스(interviews.pbl_data) 와 operations 슬라이스(pbl_reports.pbl_content)
+    // 는 저장 대상 테이블이 다르므로 한 번에 부분 실패가 발생하지 않도록 명시적 차단.
+    if (hasInterviewSlice && hasOperationsSlice) {
+      return {
+        success: false,
+        error: '한 번에 한 슬라이스만 편집할 수 있습니다.',
+      };
+    }
+
+    if (!hasInterviewSlice && !hasOperationsSlice) {
       return { success: true };
     }
 
-    // (4) 비즈니스 — 기존 pbl_data 조회 후 patch 병합 → loose partial 검증 → 업서트
+    // (4) 비즈니스 — operations 슬라이스: pbl_reports.pbl_content 직접 갱신
     const admin = createAdminClient();
+    if (hasOperationsSlice) {
+      const { data: row, error: rowError } = await admin
+        .from('pbl_reports')
+        .select('pbl_content, status')
+        .eq('id', versionId)
+        .single();
+      if (rowError || !row) {
+        console.error('[editPBLV2 operations] Fetch:', rowError?.message);
+        return { success: false, error: 'PBL 보고서를 찾을 수 없습니다.' };
+      }
+      if (row.status !== 'DRAFT') {
+        return {
+          success: false,
+          error: 'DRAFT 상태의 PBL 보고서만 편집할 수 있습니다.',
+        };
+      }
+
+      const currentContent = row.pbl_content as PBLContent;
+      const ops = patch.operations!;
+      const tp = ops.training_plan ?? {};
+      const mergedContent: PBLContent = {
+        ...currentContent,
+        operation_plan: {
+          ...currentContent.operation_plan,
+          training_plan: {
+            ...currentContent.operation_plan.training_plan,
+            ...(tp.subject_profile?.training_contents !== undefined
+              ? {
+                  subject_profile: {
+                    ...currentContent.operation_plan.training_plan.subject_profile,
+                    training_contents: tp.subject_profile.training_contents,
+                  },
+                }
+              : {}),
+            ...(tp.training_instructors !== undefined
+              ? { training_instructors: tp.training_instructors }
+              : {}),
+          },
+        },
+      };
+
+      const validation = pblContentSchema.safeParse(mergedContent);
+      if (!validation.success) {
+        return {
+          success: false,
+          error:
+            validation.error.errors[0]?.message ??
+            'PBL 운영계획 편집 데이터가 양식을 충족하지 못합니다.',
+        };
+      }
+
+      const { error: updateError } = await admin
+        .from('pbl_reports')
+        .update({
+          pbl_content: validation.data as PBLContent,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', versionId);
+      if (updateError) {
+        console.error('[editPBLV2 operations] Update:', updateError.message);
+        return { success: false, error: 'PBL 운영계획 저장에 실패했습니다.' };
+      }
+
+      // 감사로그 (operations 전용 meta 라벨)
+      after(async () => {
+        try {
+          await createAuditLog({
+            actorUserId: user.id,
+            action: 'PBL_REPORT_EDITED',
+            targetType: 'pbl_report',
+            targetId: versionId,
+            meta: {
+              project_id: projectId,
+              version_id: versionId,
+              fields_changed: Object.keys(patch),
+              source: 'RESULT_PAGE',
+              target: 'llm_generated',
+              slice: 'operations',
+            },
+          });
+        } catch (e) {
+          console.error('[editPBLV2 operations] 감사로그 실패:', e);
+        }
+      });
+
+      return { success: true };
+    }
+
+    // (4) 비즈니스 — 인터뷰 슬라이스: 기존 pbl_data 조회 후 patch 병합 → loose partial 검증 → 업서트
     const { data: existing, error: fetchError } = await admin
       .from('interviews')
       .select('id, pbl_data')
