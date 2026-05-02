@@ -24,7 +24,8 @@ import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schema
 import { buildRoadmapHwpxPayload, generateRoadmapHwpx } from '@/lib/services/export/hwpx';
 import { createAuditLog } from '@/lib/services/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { fetchRoadmapInterviewV2 } from '../interview/actions';
+import { fetchRoadmapInterviewV2, saveRoadmapInterviewV2 } from '../interview/actions';
+import { createClient } from '@/lib/supabase/server';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 import type { RoadmapResultEditPayload, ResultInterviewSnapshot } from './_components/result-v2/types';
@@ -622,27 +623,82 @@ export async function confirmFinalRoadmapV2(
 }
 
 /**
+ * `RoadmapResultEditPayload` 중 interview 원본 편집 슬라이스(camelCase 매핑) 추출.
+ *
+ * 결과 페이지에서 편집된 Ⅱ-2(기업 요구분석) · Ⅱ-3 표·분석 메모 · Ⅱ-4 훈련대상 과업
+ * 은 모두 `interviews` 행에 저장된다. snake_case 키 → camelCase 키 매핑 후
+ * `saveRoadmapInterviewV2(autoSave: true)` 가 deepMerge 로 patch 적용.
+ */
+function extractInterviewFieldsFromPayload(
+  patch: RoadmapResultEditPayload,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (patch.company_requirements !== undefined) {
+    out.companyRequirements = patch.company_requirements;
+  }
+  if (patch.task_analysis !== undefined) {
+    out.taskAnalysis = patch.task_analysis;
+  }
+  if (patch.task_analysis_note !== undefined) {
+    out.taskAnalysisNote = patch.task_analysis_note;
+  }
+  if (patch.target_task !== undefined) {
+    out.targetTask = patch.target_task;
+  }
+  return out;
+}
+
+/**
  * 로드맵 결과 페이지 V2 — 인라인 편집 patch 반영.
  *
- * V2 Client 의 `RoadmapResultEditPayload` (camelCase + Ⅰ·Ⅱ·Ⅲ 혼재) 를 받아
- * Roadmap 소유 필드만 Legacy `editRoadmapManually` 로 위임한다. Interview 원본
- * 편집 (company_requirements / task_analysis_note / target_task / main_content)
- * 은 Task 2.11 에서 Legacy 스키마 확장 + interview V2 save 병합 이후 지원.
+ * `RoadmapResultEditPayload` (camelCase + Ⅰ·Ⅱ·Ⅲ 혼재) 를 두 슬라이스로 분리해
+ * 처리한다.
+ *  - Roadmap 소유 필드 → `editRoadmapManually` (versions 행 편집)
+ *  - Interview 원본 필드 → `saveRoadmapInterviewV2(autoSave: true)`
+ *      (interviews 행 partial deepMerge 저장)
  *
- * 현 Task 범위: Ⅰ-1 수립 필요성 / Ⅲ-1 역량 + NCS / Ⅲ-2 훈련체계도 수립 방법 /
- *              Ⅲ-4 훈련과정 명세서
+ * 두 슬라이스가 동시에 포함될 수 있으며, 그 경우 interview 저장이 먼저 수행된다.
  */
 export async function editRoadmapV2(
   versionId: string,
   patch: RoadmapResultEditPayload,
 ): Promise<ActionResult<Record<string, unknown>>> {
   const roadmapFields = extractRoadmapFieldsFromPayload(patch);
-  if (Object.keys(roadmapFields).length === 0) {
-    // 현 Task 에서 지원하지 않는 필드만 포함된 경우 — 무시하고 성공 처리.
-    // Task 2.11 에서 interview 원본 편집 경로 추가 예정.
+  const interviewFields = extractInterviewFieldsFromPayload(patch);
+
+  const hasRoadmap = Object.keys(roadmapFields).length > 0;
+  const hasInterview = Object.keys(interviewFields).length > 0;
+
+  if (!hasRoadmap && !hasInterview) {
     return { success: true, data: {} };
   }
-  return editRoadmapManually(versionId, roadmapFields);
+
+  // Interview 원본 patch — versionId 로부터 projectId 조회 후 위임
+  if (hasInterview) {
+    const supabase = await createClient();
+    const { data: version, error: versionErr } = await supabase
+      .from('roadmap_versions')
+      .select('project_id')
+      .eq('id', versionId)
+      .maybeSingle();
+    if (versionErr || !version) {
+      return { success: false, error: '로드맵 버전을 찾을 수 없습니다.' };
+    }
+    const projectId = (version as { project_id: string }).project_id;
+    const interviewResult = await saveRoadmapInterviewV2(projectId, interviewFields, {
+      autoSave: true,
+    });
+    if (!interviewResult.success) {
+      return interviewResult as ActionResult<Record<string, unknown>>;
+    }
+  }
+
+  // Roadmap 소유 patch
+  if (hasRoadmap) {
+    return editRoadmapManually(versionId, roadmapFields);
+  }
+
+  return { success: true, data: {} };
 }
 
 /**

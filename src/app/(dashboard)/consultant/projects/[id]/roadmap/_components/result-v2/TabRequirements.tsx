@@ -5,6 +5,13 @@ import { ExternalLink, FileText } from 'lucide-react';
 import { SectionCard } from '@/components/result/SectionCard';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { FormTable } from '@/components/forms/FormTable';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import type { TabCommonProps } from './types';
 
@@ -164,37 +171,113 @@ export function TabRequirements({
                   ],
                 },
               ]}
-              bodyRows={tasks.map((t) => ({
-                cells: [
-                  { content: t.domain || '-', align: 'left' },
-                  { content: t.task || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {t.asIs || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {t.problem || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {t.dataTiming || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  { content: String(t.aiScore ?? '-'), align: 'center' },
-                ],
-              }))}
+              bodyRows={tasks.map((t, idx) => {
+                // 행에 stable id 가 없으므로 인덱스 기반 patch — 항상 전체 배열을 보내고
+                // 서버는 saveRoadmapInterviewV2 의 deepMerge 에서 taskAnalysis 키를 통째로 교체.
+                const patchRow = async (next: Partial<typeof t>) => {
+                  const draft = tasks.map((row, i) => (i === idx ? { ...row, ...next } : row));
+                  await onEdit({ task_analysis: draft });
+                };
+                return {
+                  cells: [
+                    {
+                      content: (
+                        <InlineEditField
+                          value={t.domain ?? ''}
+                          onSave={async (next) => {
+                            await patchRow({ domain: next });
+                          }}
+                          readOnly={readOnly}
+                          placeholder="직무 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={t.task ?? ''}
+                          onSave={async (next) => {
+                            await patchRow({ task: next });
+                          }}
+                          readOnly={readOnly}
+                          placeholder="과업 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={t.asIs ?? ''}
+                          onSave={async (next) => {
+                            await patchRow({ asIs: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="현행 방식 (As-Is) 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={t.problem ?? ''}
+                          onSave={async (next) => {
+                            await patchRow({ problem: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="문제점 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={t.dataTiming ?? ''}
+                          onSave={async (next) => {
+                            await patchRow({ dataTiming: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="데이터 발생/보유 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: readOnly ? (
+                        <span className="text-sm">{t.aiScore ?? '-'}</span>
+                      ) : (
+                        <Select
+                          value={String(t.aiScore ?? '')}
+                          onValueChange={async (nextValue) => {
+                            await patchRow({ aiScore: Number(nextValue) });
+                          }}
+                        >
+                          <SelectTrigger
+                            className="mx-auto h-8 w-16"
+                            aria-label={`AI 필요도 ${idx + 1}`}
+                          >
+                            <SelectValue placeholder="-" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ),
+                      align: 'center',
+                    },
+                  ],
+                };
+              })}
             />
           </div>
         ) : (

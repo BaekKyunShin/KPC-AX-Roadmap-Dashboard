@@ -65,7 +65,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                   ],
                 },
               ]}
-              bodyRows={activities.map((a) => ({
+              bodyRows={activities.map((a, idx) => ({
                 cells: [
                   { content: `${a.round}차`, align: 'center' },
                   { content: PBL_ACTIVITY_ROLE_LABEL[a.role], align: 'center' },
@@ -73,9 +73,18 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                   { content: a.date || '-', align: 'center' },
                   {
                     content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {a.content || '-'}
-                      </span>
+                      <InlineEditField
+                        value={a.content ?? ''}
+                        onSave={async (next) => {
+                          const draft = activities.map((row, i) =>
+                            i === idx ? { ...row, content: next } : row,
+                          );
+                          await onEdit({ activities: draft });
+                        }}
+                        readOnly={readOnly}
+                        multiline
+                        placeholder="수행 내용이 입력되지 않았습니다."
+                      />
                     ),
                     align: 'left',
                   },
@@ -331,43 +340,75 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
                   ],
                 },
               ]}
-              bodyRows={target.details.map((d) => ({
-                cells: [
-                  { content: d.title || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {d.as_is || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {d.to_be || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {d.required_knowledge || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {d.required_skill || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                ],
-              }))}
+              bodyRows={target.details.map((d, idx) => {
+                const patchDetail = async (next: Partial<typeof d>) => {
+                  const draft = target.details.map((row, i) =>
+                    i === idx ? { ...row, ...next } : row,
+                  );
+                  await onEdit({ target: { details: draft } });
+                };
+                return {
+                  cells: [
+                    { content: d.title || '-', align: 'left' },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={d.as_is ?? ''}
+                          onSave={async (next) => {
+                            await patchDetail({ as_is: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="현재 업무방식 (AS-IS) 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={d.to_be ?? ''}
+                          onSave={async (next) => {
+                            await patchDetail({ to_be: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="AI활용방식 (TO-BE) 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={d.required_knowledge ?? ''}
+                          onSave={async (next) => {
+                            await patchDetail({ required_knowledge: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="요구지식 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                    {
+                      content: (
+                        <InlineEditField
+                          value={d.required_skill ?? ''}
+                          onSave={async (next) => {
+                            await patchDetail({ required_skill: next });
+                          }}
+                          readOnly={readOnly}
+                          multiline
+                          placeholder="기술 미입력"
+                        />
+                      ),
+                      align: 'left',
+                    },
+                  ],
+                };
+              })}
             />
           </div>
         ) : (

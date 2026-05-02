@@ -312,4 +312,19 @@ describe('StepTaskAnalysis', () => {
     expect(screen.getByLabelText('분석내용')).toBeDisabled();
     expect(screen.getByLabelText('직무 1')).toBeDisabled();
   });
+
+  it('Ⅱ-3 표 5개 셀 LargeTextBox 모두 min-h-[225px] 클래스를 가진다 (사용자 보고 #1 — 150px의 1.5배)', () => {
+    render(
+      <StepTaskAnalysis
+        projectId="p1"
+        value={makeValue({ taskAnalysis: [emptyItem()] })}
+        onChange={() => {}}
+      />,
+    );
+    const labels = ['직무 1', '과업 1', '현행 방식 1', '문제점 1', '데이터 발생 시점 1'];
+    for (const label of labels) {
+      const textarea = screen.getByLabelText(label);
+      expect(textarea.className).toMatch(/min-h-\[225px\]/);
+    }
+  });
 });

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsDown, ChevronsUp } from 'lucide-react';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { InlineEditField } from '@/components/result/InlineEditField';
+import { Button } from '@/components/ui/button';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
 
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
@@ -48,6 +49,11 @@ export function InterviewReviewClient({
   interviewUpdatedAt,
   latestResult,
 }: InterviewReviewClientProps) {
+  // #3 — 모든 CollapsibleSection 의 일괄 펼침/접기 신호.
+  // counter 증가가 useEffect 트리거 → 자식이 internal open state 갱신.
+  const [expandSignal, setExpandSignal] = useState(0);
+  const [collapseSignal, setCollapseSignal] = useState(0);
+
   return (
     <PageContainer>
       <PageHeader
@@ -62,15 +68,42 @@ export function InterviewReviewClient({
         resultCreatedAt={latestResult.createdAt}
       />
 
+      <div className="mb-3 mt-2 flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setExpandSignal((s) => s + 1)}
+          data-testid="review-expand-all"
+        >
+          <ChevronsDown className="mr-1 size-4" aria-hidden />
+          전체 펼치기
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setCollapseSignal((s) => s + 1)}
+          data-testid="review-collapse-all"
+        >
+          <ChevronsUp className="mr-1 size-4" aria-hidden />
+          전체 접기
+        </Button>
+      </div>
+
       {track === 'ROADMAP' ? (
         <ReviewSectionRoadmap
           projectId={projectId}
           data={interviewData as Partial<RoadmapInterviewStrict>}
+          expandSignal={expandSignal}
+          collapseSignal={collapseSignal}
         />
       ) : (
         <ReviewSectionPbl
           projectId={projectId}
           data={interviewData as Partial<PBLInterviewStrict>}
+          expandSignal={expandSignal}
+          collapseSignal={collapseSignal}
         />
       )}
 
@@ -86,13 +119,18 @@ export function InterviewReviewClient({
 function ReviewSectionRoadmap({
   projectId,
   data,
+  expandSignal,
+  collapseSignal,
 }: {
   projectId: string;
   data: Partial<RoadmapInterviewStrict>;
+  expandSignal: number;
+  collapseSignal: number;
 }) {
+  const sigProps = { expandSignal, collapseSignal };
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="Ⅰ-1. 수립 필요성">
+      <CollapsibleSection title="Ⅰ-1. 수립 필요성" {...sigProps}>
         <RoadmapInlineText
           projectId={projectId}
           fieldKey="establishmentNecessity"
@@ -102,7 +140,7 @@ function ReviewSectionRoadmap({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅰ-2. 주요 활동 (${(data.performanceActivities ?? []).length}차수)`}>
+      <CollapsibleSection title={`Ⅰ-2. 주요 활동 (${(data.performanceActivities ?? []).length}차수)`} {...sigProps}>
         {(data.performanceActivities ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.performanceActivities ?? []).map((act, i) => (
@@ -120,7 +158,7 @@ function ReviewSectionRoadmap({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅰ-3. 수립 주요 결과 (AI 수준 · 선정 과업)">
+      <CollapsibleSection title="Ⅰ-3. 수립 주요 결과 (AI 수준 · 선정 과업)" {...sigProps}>
         <p className="text-sm">
           AI 수준: <strong>{data.aiLevel ?? '미정'}</strong>
         </p>
@@ -136,7 +174,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. HRD이음 PDF">
+      <CollapsibleSection title="Ⅱ-1. HRD이음 PDF" {...sigProps}>
         <p className="text-sm">
           {data.hrdReportPdf?.fileName
             ? `첨부 파일: ${data.hrdReportPdf.fileName}`
@@ -144,7 +182,7 @@ function ReviewSectionRoadmap({
         </p>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-2. 기업 요구분석" defaultOpen>
+      <CollapsibleSection title="Ⅱ-2. 기업 요구분석" {...sigProps}>
         <div className="space-y-3">
           <CompanyReqRow
             label="현재 상태"
@@ -169,7 +207,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅱ-3. 과업·워크플로우 분석 (${(data.taskAnalysis ?? []).length}건)`}>
+      <CollapsibleSection title={`Ⅱ-3. 과업·워크플로우 분석 (${(data.taskAnalysis ?? []).length}건)`} {...sigProps}>
         {(data.taskAnalysis ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.taskAnalysis ?? []).map((t, i) => (
@@ -195,7 +233,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-4. 훈련대상 과업·워크플로우 선정">
+      <CollapsibleSection title="Ⅱ-4. 훈련대상 과업·워크플로우 선정" {...sigProps}>
         <div className="space-y-3">
           <TargetTaskRow
             label="과업명"
@@ -223,7 +261,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-1. 역량 모델링 (${(data.competencies ?? []).length}건)`}>
+      <CollapsibleSection title={`Ⅲ-1. 역량 모델링 (${(data.competencies ?? []).length}건)`} {...sigProps}>
         {(data.competencies ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.competencies ?? []).map((c, i) => (
@@ -250,13 +288,18 @@ function ReviewSectionRoadmap({
 function ReviewSectionPbl({
   projectId,
   data,
+  expandSignal,
+  collapseSignal,
 }: {
   projectId: string;
   data: Partial<PBLInterviewStrict>;
+  expandSignal: number;
+  collapseSignal: number;
 }) {
+  const sigProps = { expandSignal, collapseSignal };
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="Ⅰ-1. 훈련과정 개요" defaultOpen>
+      <CollapsibleSection title="Ⅰ-1. 훈련과정 개요" {...sigProps}>
         <div className="space-y-3">
           <PblOverviewRow
             label="훈련과정명"
@@ -286,7 +329,7 @@ function ReviewSectionPbl({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. 기업 이슈">
+      <CollapsibleSection title="Ⅱ-1. 기업 이슈" {...sigProps}>
         <PblOverviewRow
           label="기업 이슈"
           projectId={projectId}
@@ -296,7 +339,7 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-2. 훈련 환경">
+      <CollapsibleSection title="Ⅱ-2. 훈련 환경" {...sigProps}>
         {/* R8 PBL-자체-02 — 정형 객체. 인라인 편집은 인터뷰 페이지에서 (검토는 read-only 요약). */}
         {(() => {
           const env = data.trainingEnv;
@@ -341,7 +384,7 @@ function ReviewSectionPbl({
         </p>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-3. 교과목 필요성">
+      <CollapsibleSection title="Ⅱ-3. 교과목 필요성" {...sigProps}>
         <PblOverviewRow
           label="교과목 필요성"
           projectId={projectId}
@@ -351,7 +394,7 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title={`Ⅲ-1. 수행 활동 (${(data.activities ?? []).length}건)`}>
+      <CollapsibleSection title={`Ⅲ-1. 수행 활동 (${(data.activities ?? []).length}건)`} {...sigProps}>
         {(data.activities ?? []).length > 0 ? (
           <ul className="list-decimal space-y-2 pl-5 text-sm">
             {(data.activities ?? []).map((a, i) => (
@@ -365,7 +408,7 @@ function ReviewSectionPbl({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서">
+      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서" {...sigProps}>
         {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
             모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}
         {(() => {
@@ -398,7 +441,7 @@ function ReviewSectionPbl({
         })()}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준">
+      <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준" {...sigProps}>
         <p className="text-sm text-muted-foreground">
           상세 내용은 인터뷰 페이지에서 확인·수정하세요.
         </p>
@@ -413,14 +456,33 @@ function ReviewSectionPbl({
 
 function CollapsibleSection({
   title,
-  defaultOpen = false,
+  expandSignal = 0,
+  collapseSignal = 0,
   children,
 }: {
   title: string;
-  defaultOpen?: boolean;
+  /** 부모가 counter 증가시 모든 섹션을 펼친다 (전체 펼치기 토글). */
+  expandSignal?: number;
+  /** 부모가 counter 증가시 모든 섹션을 접는다 (전체 접기 토글). */
+  collapseSignal?: number;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
+  // React 19 권장 — 렌더 중 prev-prop 비교 후 state 동기화 (useEffect 안 setState
+  // 의 'react-hooks/set-state-in-effect' 룰 위반 회피).
+  // 부모의 토글 버튼이 expandSignal/collapseSignal counter 를 증가시키면 다음 렌더에
+  // 이전 카운터와 비교하여 한 번 setOpen 후 prev 도 갱신.
+  const [prevExpand, setPrevExpand] = useState(0);
+  const [prevCollapse, setPrevCollapse] = useState(0);
+  if (expandSignal !== prevExpand) {
+    setPrevExpand(expandSignal);
+    if (expandSignal > 0) setOpen(true);
+  }
+  if (collapseSignal !== prevCollapse) {
+    setPrevCollapse(collapseSignal);
+    if (collapseSignal > 0) setOpen(false);
+  }
+
   return (
     <div className="rounded-lg border bg-card p-4" data-testid={`review-section-${title}`}>
       <button

@@ -158,4 +158,90 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
     expect(text).not.toContain('고정 참고자료');
     expect(text).not.toContain('고정 양식·결과 화면 제외');
   });
+
+  // #2 (사용자 보고): Ⅱ-3 표 6셀 모두 편집 가능
+  describe('Ⅱ-3 표 셀 편집 (#2)', () => {
+    it('readOnly=false 일 때 As-Is 셀이 InlineEditField 의 button role 로 렌더된다', () => {
+      render(
+        <TabRequirements
+          version={null}
+          interview={interview}
+          readOnly={false}
+          onEdit={vi.fn()}
+        />,
+      );
+      // InlineEditField 는 readOnly=false 일 때 role='button' 으로 렌더 (편집 트리거).
+      // '육안 검사' 텍스트를 가진 button 요소가 존재해야 한다.
+      const editTriggers = screen.getAllByRole('button').filter((b) =>
+        b.textContent?.includes('육안 검사'),
+      );
+      expect(editTriggers.length).toBeGreaterThan(0);
+    });
+
+    it('readOnly=false 일 때 AI 필요도 셀이 Select(combobox) 로 렌더된다', () => {
+      render(
+        <TabRequirements
+          version={null}
+          interview={interview}
+          readOnly={false}
+          onEdit={vi.fn()}
+        />,
+      );
+      // shadcn Select 는 role='combobox' 의 trigger button 으로 렌더된다.
+      const aiSelects = screen.getAllByRole('combobox').filter((c) =>
+        /AI 필요도/.test(c.getAttribute('aria-label') ?? ''),
+      );
+      expect(aiSelects.length).toBe(2); // taskAnalysis 2행
+    });
+
+    it('readOnly=true 일 때 AI 필요도가 단순 텍스트로 렌더된다 (Select 미노출)', () => {
+      render(
+        <TabRequirements
+          version={null}
+          interview={interview}
+          readOnly
+          onEdit={vi.fn()}
+        />,
+      );
+      const aiSelects = screen.queryAllByRole('combobox').filter((c) =>
+        /AI 필요도/.test(c.getAttribute('aria-label') ?? ''),
+      );
+      expect(aiSelects).toHaveLength(0);
+    });
+
+    it('Ⅱ-3 표 As-Is 편집 → onEdit 가 task_analysis 전체 배열 patch 로 호출된다', async () => {
+      const user = (await import('@testing-library/user-event')).default.setup();
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabRequirements
+          version={null}
+          interview={interview}
+          readOnly={false}
+          onEdit={onEdit}
+        />,
+      );
+      // 첫 행 As-Is '육안 검사' 셀 클릭 → 편집 모드 진입
+      const trigger = screen.getAllByRole('button').find((b) =>
+        b.textContent?.includes('육안 검사'),
+      );
+      expect(trigger).toBeDefined();
+      await user.click(trigger!);
+      const editor = screen.getByRole('textbox');
+      await user.clear(editor);
+      await user.type(editor, '엑셀 매크로');
+      await user.click(screen.getAllByRole('button', { name: '저장' })[0]);
+
+      expect(onEdit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task_analysis: expect.arrayContaining([
+            expect.objectContaining({ asIs: '엑셀 매크로' }),
+          ]),
+        }),
+      );
+      // 다른 행은 보존
+      const call = onEdit.mock.calls[0][0];
+      expect(call.task_analysis).toHaveLength(2);
+      expect(call.task_analysis[1].asIs).toBe('수작업 집계');
+    });
+  });
 });

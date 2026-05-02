@@ -25,6 +25,15 @@ import { createMockSupabase } from '@/test/helpers/mock-supabase';
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
+vi.mock('../interview/actions', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('../interview/actions');
+  return {
+    ...actual,
+    // saveRoadmapInterviewV2 만 mock — fetchRoadmapInterviewV2 는 실제 구현 사용
+    // (fetchRoadmapPageDataV2 가 인터뷰 데이터를 실제 deserialize 해야 HRD signed URL 주입 검증 가능).
+    saveRoadmapInterviewV2: vi.fn().mockResolvedValue({ success: true }),
+  };
+});
 vi.mock('@/lib/services/audit', () => ({ createAuditLog: vi.fn() }));
 vi.mock('@/lib/services/activity-log', () => ({ insertSystemActivityLog: vi.fn() }));
 vi.mock('@/lib/services/notification', () => ({ createNotificationForAdmins: vi.fn() }));
@@ -202,24 +211,109 @@ describe('editRoadmapV2', () => {
   });
   afterEach(() => vi.clearAllMocks());
 
-  it('Roadmap 소유 필드 없음 → 성공(no-op)', async () => {
-    // Interview 원본 편집 필드(company_requirements 등)만 포함된 patch 는
-    // 현 Task 에서 no-op 처리. Task 2.11 에서 interview 편집 경로 추가 예정.
-    const r = await editRoadmapV2(VERSION_ID, {
-      company_requirements: { status: '변경' },
-    });
+  it('Patch 가 비어있음 → 성공(no-op)', async () => {
+    const r = await editRoadmapV2(VERSION_ID, {});
     expect(r.success).toBe(true);
   });
 
-  it('setup_necessity 포함 → updateRoadmapManually 위임', async () => {
-    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+  it('company_requirements patch → versionId→projectId 조회 후 saveRoadmapInterviewV2(autoSave) 위임', async () => {
+    const { saveRoadmapInterviewV2 } = await import('../interview/actions');
     await mockCachedAuth();
-    // requireConsultantRoadmapAccess
+    // version → project_id 조회
     serverMock.addResult({
-      data: {
-        project_id: PROJECT_ID,
-        projects: { assigned_consultant_id: USER_A },
+      data: { project_id: PROJECT_ID },
+      error: null,
+    });
+    vi.mocked(saveRoadmapInterviewV2).mockResolvedValue({ success: true });
+
+    const r = await editRoadmapV2(VERSION_ID, {
+      company_requirements: { status: '갱신' },
+    });
+
+    expect(r.success).toBe(true);
+    expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.objectContaining({
+        companyRequirements: { status: '갱신' },
+      }),
+      { autoSave: true },
+    );
+  });
+
+  it('task_analysis patch (Ⅱ-3 표 행 편집) → saveRoadmapInterviewV2 에 taskAnalysis camelCase 전달', async () => {
+    const { saveRoadmapInterviewV2 } = await import('../interview/actions');
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID },
+      error: null,
+    });
+    vi.mocked(saveRoadmapInterviewV2).mockResolvedValue({ success: true });
+
+    const draft = [
+      {
+        domain: '재무',
+        task: '결산',
+        asIs: '엑셀 매크로',
+        problem: '오류',
+        dataTiming: '월말',
+        aiScore: 5,
       },
+    ];
+    const r = await editRoadmapV2(VERSION_ID, { task_analysis: draft });
+
+    expect(r.success).toBe(true);
+    expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+      PROJECT_ID,
+      { taskAnalysis: draft },
+      { autoSave: true },
+    );
+  });
+
+  it('task_analysis_note + target_task patch → saveRoadmapInterviewV2 에 camelCase 변환되어 전달', async () => {
+    const { saveRoadmapInterviewV2 } = await import('../interview/actions');
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID },
+      error: null,
+    });
+    vi.mocked(saveRoadmapInterviewV2).mockResolvedValue({ success: true });
+
+    const r = await editRoadmapV2(VERSION_ID, {
+      task_analysis_note: '신규 메모',
+      target_task: { name: '결산 자동화', reason: '효율' },
+    });
+
+    expect(r.success).toBe(true);
+    expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+      PROJECT_ID,
+      {
+        taskAnalysisNote: '신규 메모',
+        targetTask: { name: '결산 자동화', reason: '효율' },
+      },
+      { autoSave: true },
+    );
+  });
+
+  it('versionId 조회 실패 → error 반환 (saveRoadmapInterviewV2 미호출)', async () => {
+    const { saveRoadmapInterviewV2 } = await import('../interview/actions');
+    serverMock.addResult({ data: null, error: null });
+    const r = await editRoadmapV2(VERSION_ID, {
+      company_requirements: { status: '변경' },
+    });
+    expect(r.success).toBe(false);
+    expect(saveRoadmapInterviewV2).not.toHaveBeenCalled();
+  });
+
+  it('Roadmap 슬라이스 + interview 슬라이스 혼합 → 두 위임 모두 수행', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+    const { saveRoadmapInterviewV2 } = await import('../interview/actions');
+    await mockCachedAuth();
+    // version → project_id (interview 슬라이스 처리용)
+    serverMock.addResult({ data: { project_id: PROJECT_ID }, error: null });
+    vi.mocked(saveRoadmapInterviewV2).mockResolvedValue({ success: true });
+    // requireConsultantRoadmapAccess (editRoadmapManually 내부)
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
       error: null,
     });
     vi.mocked(updateRoadmapManually).mockResolvedValue({
@@ -229,21 +323,30 @@ describe('editRoadmapV2', () => {
 
     const r = await editRoadmapV2(VERSION_ID, {
       setup_necessity: '변경된 필요성',
-      // interview 슬라이스 — 무시되어야 함
-      company_requirements: { status: '무시됨' },
-      task_analysis_note: '무시됨',
+      // interview 슬라이스 — 더 이상 무시되지 않고 saveRoadmapInterviewV2 로 위임
+      company_requirements: { status: '갱신' },
+      task_analysis_note: '메모 갱신',
     });
 
     expect(r.success).toBe(true);
+    // Roadmap 슬라이스 → updateRoadmapManually
     expect(updateRoadmapManually).toHaveBeenCalledWith(
       VERSION_ID,
       USER_A,
       expect.objectContaining({ setup_necessity: '변경된 필요성' }),
     );
-    // Interview 원본 필드는 Legacy 시그니처에 전달되지 않아야 한다 (Task 2.11 이월).
     const call = vi.mocked(updateRoadmapManually).mock.calls[0];
     expect(call[2]).not.toHaveProperty('company_requirements');
     expect(call[2]).not.toHaveProperty('task_analysis_note');
+    // Interview 슬라이스 → saveRoadmapInterviewV2 (camelCase)
+    expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
+      PROJECT_ID,
+      {
+        companyRequirements: { status: '갱신' },
+        taskAnalysisNote: '메모 갱신',
+      },
+      { autoSave: true },
+    );
   });
 
   it('Ⅲ-1 역량 + NCS + Ⅲ-4 course_specs 혼합 → 전체 전달', async () => {

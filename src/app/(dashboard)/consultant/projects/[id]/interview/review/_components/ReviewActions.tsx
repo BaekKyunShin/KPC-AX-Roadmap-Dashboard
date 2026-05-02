@@ -22,13 +22,28 @@ export function ReviewActions({ projectId, track }: ReviewActionsProps) {
       : `/consultant/projects/${projectId}/roadmap`;
 
   return (
-    <div className="flex flex-col items-stretch justify-between gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center">
-      <p className="text-sm text-muted-foreground">
-        검토를 마치셨나요? 표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서, 결과 확인은 결과
-        페이지에서 진행할 수 있습니다.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button asChild type="button" variant="outline" size="sm" data-testid="review-cta-back-to-interview">
+    <section
+      aria-label="검토 후 다음 단계"
+      className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-5"
+    >
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold">검토를 마치셨나요?</h3>
+        <p className="text-sm text-muted-foreground">
+          표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서, 결과 확인은 결과 페이지에서
+          진행할 수 있습니다.
+        </p>
+      </div>
+      <div
+        data-testid="review-cta-group"
+        className="flex flex-col gap-2 sm:flex-row sm:justify-end"
+      >
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="review-cta-back-to-interview"
+        >
           <Link href={`/consultant/projects/${projectId}/interview`}>
             <ArrowLeft className="mr-1 size-4" />
             인터뷰 페이지로 돌아가기
@@ -41,6 +56,6 @@ export function ReviewActions({ projectId, track }: ReviewActionsProps) {
           </Link>
         </Button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -167,7 +167,8 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />,
       );
-      // Ⅱ-2 는 defaultOpen=true → 첫 행 값('현황 텍스트') 클릭 → 편집 모드 진입
+      // #3 이후: 카드 default 닫힘 → 카드 헤더 먼저 클릭하여 펼친 후 첫 행 값 편집
+      await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));
       const statusValue = screen.getByText('현황 텍스트');
       await user.click(statusValue);
       const inputs = screen.getAllByRole('textbox');
@@ -231,7 +232,8 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />,
       );
-      // Ⅰ-1 카드는 defaultOpen=true, 첫 행 값 'PBL 과정' 클릭
+      // #3 이후: PBL Ⅰ-1 카드도 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
+      await user.click(screen.getByText(/Ⅰ-1\. 훈련과정 개요/));
       await user.click(screen.getByText('PBL 과정'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);
@@ -315,6 +317,109 @@ describe('InterviewReviewClient', () => {
     });
   });
 
+  // ─── #3 모두 접힘 default + 전체 펼치기/접기 토글 ──────────────────
+  describe('전체 펼치기/접기 토글 (#3)', () => {
+    const minimalRoadmap: Partial<RoadmapInterviewStrict> = {
+      establishmentNecessity: '필요성',
+      performanceActivities: [],
+      aiLevel: 'INTERMEDIATE',
+      selectedTask: '과업',
+      companyRequirements: { status: '현황', problem: '문제', will: '의지', outcomes: '성과' },
+      taskAnalysis: [],
+      taskAnalysisNote: '메모',
+      targetTask: { name: '명', reason: '사유', expectedAsIs: 'A', expectedToBe: 'B' },
+      competencies: [],
+      ncsUsed: false,
+    };
+
+    const minimalPbl: Partial<PBLInterviewStrict> = {
+      courseName: '과정',
+      companyName: '회사',
+      trainingTarget: '대상',
+      businessIssues: '이슈',
+      companyIssues: '기업 이슈',
+      trainingEnv: {
+        properTrainingHours: '',
+        internalPlace: '',
+        externalPlace: '',
+        internalInstructors: [],
+        externalInstructors: [],
+        aiInfrastructure: '',
+      },
+      courseNecessity: '필요',
+      activities: [],
+      problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
+    };
+
+    it('로드맵 트랙: 모든 CollapsibleSection 이 default 닫힘 (aria-expanded=false)', () => {
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={minimalRoadmap}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      const expanded = screen
+        .queryAllByRole('button')
+        .filter((b) => b.getAttribute('aria-expanded') === 'true');
+      expect(expanded).toHaveLength(0);
+    });
+
+    it('PBL 트랙: 모든 CollapsibleSection 이 default 닫힘 (aria-expanded=false)', () => {
+      render(
+        <InterviewReviewClient
+          projectId="p-2"
+          track="PBL"
+          interviewData={minimalPbl}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      const expanded = screen
+        .queryAllByRole('button')
+        .filter((b) => b.getAttribute('aria-expanded') === 'true');
+      expect(expanded).toHaveLength(0);
+    });
+
+    it('[전체 펼치기] 클릭 시 모든 섹션이 펼쳐진다 (로드맵 8개)', async () => {
+      const user = userEvent.setup();
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={minimalRoadmap}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: '전체 펼치기' }));
+      const expanded = screen.getAllByRole('button', { expanded: true });
+      // 토글 버튼 자체는 expanded 속성이 없고, 8개 CollapsibleSection 헤더만 expanded=true
+      expect(expanded.length).toBeGreaterThanOrEqual(8);
+    });
+
+    it('[전체 접기] 클릭 시 펼쳐진 섹션이 모두 접힌다', async () => {
+      const user = userEvent.setup();
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={minimalRoadmap}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: '전체 펼치기' }));
+      await user.click(screen.getByRole('button', { name: '전체 접기' }));
+      const expanded = screen
+        .queryAllByRole('button')
+        .filter((b) => b.getAttribute('aria-expanded') === 'true');
+      expect(expanded).toHaveLength(0);
+    });
+  });
+
   // ─── #7 편집 성공 토스트 두 줄 ───────────────────────────────────────
   describe('편집 성공 토스트 (#7)', () => {
     const SUCCESS_TITLE = '수정되었습니다';
@@ -385,7 +490,8 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />,
       );
-      // Ⅱ-2 는 defaultOpen=true → 첫 행 '현황 텍스트'
+      // #3 이후: Ⅱ-2 카드 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
+      await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));
       await user.click(screen.getByText('현황 텍스트'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);
@@ -438,6 +544,8 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />,
       );
+      // #3 이후: 카드 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
+      await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));
       await user.click(screen.getByText('현황 텍스트'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);
