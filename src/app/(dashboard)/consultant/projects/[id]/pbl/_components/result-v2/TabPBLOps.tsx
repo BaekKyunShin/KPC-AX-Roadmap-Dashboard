@@ -3,15 +3,18 @@
 import { Sparkles } from 'lucide-react';
 
 import { FormTable, type FormTableRow } from '@/components/forms/FormTable';
+import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
-import { bulletize, splitByUnit } from '@/lib/utils/list-format';
+import { bulletize, parseBullets, splitByUnit } from '@/lib/utils/list-format';
 import type {
   PBLInstructor,
   PBLSubjectProfile,
   PBLTrainee,
+  PBLTrainingContent,
+  PBLTrainingInstructor,
 } from '@/lib/services/pbl/pbl-types';
 
-import type { TabPBLCommonProps } from './types';
+import type { PBLResultEditPayload, TabPBLCommonProps } from './types';
 
 /**
  * Ⅳ. AI 기반 운영계획 탭 — PBL 결과 V2.
@@ -31,8 +34,38 @@ import type { TabPBLCommonProps } from './types';
  *    양식에 고정 설문(만족도 · 성취도 · 외부전문가 · 현업적용도) 이 포함되어 있지만
  *    계획서 §1.2 기준 결과 화면에서는 노출하지 않는다.
  */
-export function TabPBLOps({ version }: TabPBLCommonProps) {
+export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
   const ops = version?.pbl_content?.operation_plan;
+  const trainingContents =
+    ops?.training_plan?.subject_profile?.training_contents ?? [];
+  const trainingInstructors = ops?.training_plan?.training_instructors ?? [];
+
+  const saveTrainingContent = async (index: number, nextDetail: string) => {
+    const next: PBLTrainingContent[] = trainingContents.map((c, i) =>
+      i === index ? { ...c, detail: nextDetail } : c,
+    );
+    const payload: PBLResultEditPayload = {
+      operations: {
+        training_plan: { subject_profile: { training_contents: next } },
+      },
+    };
+    await onEdit(payload);
+  };
+
+  const saveInstructorDetail = async (index: number, nextText: string) => {
+    const list = parseBullets(nextText);
+    if (list.length === 0) {
+      // 빈 입력 차단 — Zod min(1) 사전 가드
+      throw new Error('세부 훈련 내용은 최소 1개 항목이 필요합니다.');
+    }
+    const next: PBLTrainingInstructor[] = trainingInstructors.map((it, i) =>
+      i === index ? { ...it, detailed_training_content: list } : it,
+    );
+    const payload: PBLResultEditPayload = {
+      operations: { training_plan: { training_instructors: next } },
+    };
+    await onEdit(payload);
+  };
 
   // 각 하위 섹션별로 LLM 결과 존재 여부를 판정. Task 2.10 이후 실제 렌더 확장.
   const hasTrainingGoal = Boolean(ops?.training_goal && ops.training_goal.trim().length > 0);
@@ -193,16 +226,22 @@ export function TabPBLOps({ version }: TabPBLCommonProps) {
                     ],
                   },
                 ]}
-                bodyRows={(
-                  ops?.training_plan.subject_profile.training_contents ?? []
-                ).map((c) => ({
+                bodyRows={trainingContents.map((c, idx) => ({
                   cells: [
                     { content: c.unit_name || '-', align: 'left' },
                     {
-                      content: (
+                      content: readOnly ? (
                         <span className="whitespace-pre-wrap text-sm">
                           {splitByUnit(c.detail) || '-'}
                         </span>
+                      ) : (
+                        <InlineEditField
+                          multiline
+                          value={c.detail ?? ''}
+                          onSave={(next) => saveTrainingContent(idx, next)}
+                          placeholder="세부 내용을 입력하세요"
+                          className="text-sm"
+                        />
                       ),
                       align: 'left',
                     },
@@ -294,28 +333,34 @@ export function TabPBLOps({ version }: TabPBLCommonProps) {
                 ],
               },
             ]}
-            bodyRows={(ops?.training_plan.training_instructors ?? []).map(
-              (i) => ({
-                cells: [
-                  { content: i.name || '-', align: 'left' },
-                  { content: i.internal_external || '-', align: 'center' },
-                  {
-                    content:
-                      i.career_years != null ? `${i.career_years}년` : '-',
-                    align: 'center',
-                  },
-                  { content: i.work_name || '-', align: 'left' },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">
-                        {bulletize(i.detailed_training_content) || '-'}
-                      </span>
-                    ),
-                    align: 'left',
-                  },
-                ],
-              }),
-            )}
+            bodyRows={trainingInstructors.map((i, idx) => ({
+              cells: [
+                { content: i.name || '-', align: 'left' },
+                { content: i.internal_external || '-', align: 'center' },
+                {
+                  content:
+                    i.career_years != null ? `${i.career_years}년` : '-',
+                  align: 'center',
+                },
+                { content: i.work_name || '-', align: 'left' },
+                {
+                  content: readOnly ? (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {bulletize(i.detailed_training_content) || '-'}
+                    </span>
+                  ) : (
+                    <InlineEditField
+                      multiline
+                      value={bulletize(i.detailed_training_content)}
+                      onSave={(next) => saveInstructorDetail(idx, next)}
+                      placeholder="• 세부 항목을 줄바꿈으로 구분하여 입력"
+                      className="text-sm"
+                    />
+                  ),
+                  align: 'left',
+                },
+              ],
+            }))}
           />
         ) : (
           <RegeneratePlaceholder section="Ⅳ-3-마 훈련강사" />

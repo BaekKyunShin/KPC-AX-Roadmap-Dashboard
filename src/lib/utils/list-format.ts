@@ -18,6 +18,20 @@ export function bulletize(
 }
 
 /**
+ * `bulletize` 의 역변환. 줄바꿈으로 split 후 머리기호(`•·-*`)와 양 끝 공백을
+ * 제거하고 빈 줄을 걸러 `string[]` 으로 반환한다.
+ *
+ * 라운드트립 보장: `parseBullets(bulletize(x)) === x` (공백 trim 만 적용).
+ */
+export function parseBullets(text: string | null | undefined): string[] {
+  if (!text) return [];
+  return text
+    .split('\n')
+    .map((line) => line.replace(/^[•·\-*]\s*/, '').trim())
+    .filter((line) => line.length > 0);
+}
+
+/**
  * 훈련과정 명세서의 "세부 내용(단원, 과제명)" 텍스트에서 단원 경계마다 줄바꿈을 삽입한다.
  *
  * 예:
