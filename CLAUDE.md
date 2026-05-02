@@ -36,9 +36,7 @@ npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
 
 **브랜치 워크플로우 (엄수):**
 
-- `main`에 **직접 커밋 금지** — 모든 작업은 `git checkout -b <type>/<slug>` 분기 후 PR
-- PR Squash merge 직후 로컬 동기화: `git fetch && git checkout main && git reset --hard origin/main`
-- 이유: Squash merge는 해시가 바뀌므로 동기화 누락 시 분기 누적
+- `main`에 **직접 커밋 금지** — 모든 작업은 `git checkout -b <type>/<slug>` 분기 후 PR (Squash merge 환경에서 분기 누적 방지)
 
 **DB 마이그레이션 (엄수):**
 
