@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useTransition, useRef, useLayoutEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Users } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useTransition, useRef, useLayoutEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Users, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { updateUserStatus } from '@/app/(auth)/actions';
 import type { User, ConsultantProfile } from '@/types/database';
 import {
@@ -13,6 +13,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableHeader,
@@ -23,6 +33,7 @@ import {
   TableActionLink,
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useDebounce } from '@/hooks/useDebounce';
 import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
@@ -78,6 +89,45 @@ const TABLE_COLUMNS = {
   joinDate: 'min-w-[100px]',
   actions: 'min-w-[100px]',
 } as const;
+
+// (#1) 검색 · 필터 · 페이지네이션 상수
+const ITEMS_PER_PAGE = 10;
+const MAX_VISIBLE_PAGES = 5;
+const DEFAULT_FILTER_VALUE = 'all';
+const SEARCH_DEBOUNCE_DELAY = 300;
+
+const ROLE_FILTER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'USER_PENDING', label: '컨설턴트 (승인 대기)' },
+  { value: 'CONSULTANT_APPROVED', label: '컨설턴트' },
+  { value: 'OPS_ADMIN_PENDING', label: '운영관리자 (승인 대기)' },
+  { value: 'OPS_ADMIN', label: '운영관리자' },
+  { value: 'SYSTEM_ADMIN', label: '시스템관리자' },
+];
+
+const STATUS_FILTER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'ACTIVE', label: '활성' },
+  { value: 'SUSPENDED', label: '정지' },
+  { value: 'WITHDRAWN', label: '탈퇴' },
+];
+
+function FilterBadge({
+  label,
+  value,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  onClear: () => void;
+}) {
+  return (
+    <Badge variant="secondary" className="gap-1">
+      {label}: {value}
+      <button onClick={onClear} aria-label={`${label} 필터 제거`}>
+        <X className="h-3 w-3" />
+      </button>
+    </Badge>
+  );
+}
 
 /** 프로필 모달 내 서술형 텍스트 영역 스타일 */
 const PROFILE_TEXT_AREA_CLASSES =
@@ -153,6 +203,8 @@ function UserMobileCard({
 
 export default function UserManagementTable({ users, currentUserId }: UserManagementTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const urlSearchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +212,87 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
     profile: ConsultantProfile;
     userName: string;
   } | null>(null);
+
+  // (#1) 검색·필터·페이지네이션 — URL state 동기화. ProjectList 패턴 차용.
+  const [searchInput, setSearchInput] = useState(urlSearchParams.get('search') || '');
+  const [roleFilter, setRoleFilter] = useState(urlSearchParams.get('role') || DEFAULT_FILTER_VALUE);
+  const [statusFilter, setStatusFilter] = useState(urlSearchParams.get('status') || DEFAULT_FILTER_VALUE);
+  const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
+  const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
+
+  const updateParams = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(urlSearchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== DEFAULT_FILTER_VALUE && value !== '1') {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    if (params.get('page') === '1') params.delete('page');
+    const search = params.toString();
+    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+  };
+
+  // 디바운스 검색·필터 변경 시 URL 동기화 + 첫 페이지로 리셋
+  useEffect(() => {
+    const currentSearch = urlSearchParams.get('search') || '';
+    if (debouncedSearch !== currentSearch) {
+      setPage(1);
+      updateParams({ search: debouncedSearch, page: '1' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
+  const handleRoleChange = (value: string) => {
+    setRoleFilter(value);
+    setPage(1);
+    updateParams({ role: value, page: '1' });
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+    updateParams({ status: value, page: '1' });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateParams({ page: String(newPage) });
+  };
+
+  // 클라이언트 필터링 (Realtime 미적용 — props 갱신 시 자동 재계산)
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return users.filter((u) => {
+      if (q) {
+        const match =
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.phone ? u.phone.toLowerCase().includes(q) : false);
+        if (!match) return false;
+      }
+      if (roleFilter !== DEFAULT_FILTER_VALUE && u.role !== roleFilter) return false;
+      if (statusFilter !== DEFAULT_FILTER_VALUE && u.status !== statusFilter) return false;
+      return true;
+    });
+  }, [users, debouncedSearch, roleFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pagedUsers = filtered.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+  const startIdx = filtered.length === 0 ? 0 : (safePage - 1) * ITEMS_PER_PAGE + 1;
+  const endIdx = Math.min(filtered.length, safePage * ITEMS_PER_PAGE);
+
+  const selectedRoleLabel = roleFilter === DEFAULT_FILTER_VALUE
+    ? null
+    : ROLE_FILTER_OPTIONS.find((opt) => opt.value === roleFilter)?.label ?? null;
+  const selectedStatusLabel = statusFilter === DEFAULT_FILTER_VALUE
+    ? null
+    : STATUS_FILTER_OPTIONS.find((opt) => opt.value === statusFilter)?.label ?? null;
+
+  const hasFilters = !!debouncedSearch || roleFilter !== DEFAULT_FILTER_VALUE || statusFilter !== DEFAULT_FILTER_VALUE;
+  const isFilteredEmpty = filtered.length === 0 && users.length > 0;
 
   const scrollPositionRef = useRef<number | null>(null);
 
@@ -296,12 +429,80 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   // ---------------------------------------------------------------------------
 
   return (
-    <div>
+    <div className="space-y-4">
       {/* 에러 메시지 */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
+      )}
+
+      {/* (#1) 검색 · 필터 — ProjectList 패턴 차용 */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="이름·이메일·전화번호로 검색"
+                aria-label="이름·이메일·전화번호 검색"
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={roleFilter} onValueChange={handleRoleChange}>
+                <SelectTrigger className="w-full sm:w-[180px]" aria-label="역할 필터">
+                  <SelectValue placeholder="역할" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_FILTER_VALUE}>모든 역할</SelectItem>
+                  {ROLE_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-full sm:w-[120px]" aria-label="상태 필터">
+                  <SelectValue placeholder="상태" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_FILTER_VALUE}>모든 상태</SelectItem>
+                  {STATUS_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* 활성 필터 칩 */}
+          {hasFilters && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {debouncedSearch && (
+                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
+              )}
+              {selectedRoleLabel && (
+                <FilterBadge label="역할" value={selectedRoleLabel} onClear={() => handleRoleChange(DEFAULT_FILTER_VALUE)} />
+              )}
+              {selectedStatusLabel && (
+                <FilterBadge label="상태" value={selectedStatusLabel} onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)} />
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 캡션 — 총 N명 중 a~b 표시 */}
+      {users.length > 0 && (
+        <p className="text-xs text-muted-foreground" data-testid="user-count-caption">
+          총 {filtered.length}명{filtered.length > 0 ? ` 중 ${startIdx}~${endIdx}` : ''}
+        </p>
       )}
 
       {/* 사용자 테이블 */}
@@ -320,7 +521,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {pagedUsers.map((user) => (
               <TableRow key={user.id}>
                 {/* 사용자 정보 */}
                 <TableCell className="pl-4 md:pl-20 pr-6 text-left">
@@ -367,7 +568,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               </TableRow>
             ))}
 
-            {/* 빈 상태 — #4 EmptyState 통일 (액션 버튼 없음: 사용자는 회원가입을 통해 등록됨) */}
+            {/* 빈 상태 — 검색·필터 결과 0건 vs 사용자 자체가 0명을 구분 */}
             {users.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="p-0">
@@ -375,6 +576,17 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
                     icon={<Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
                     title="등록된 사용자가 없습니다"
                     description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {isFilteredEmpty && (
+              <TableRow>
+                <TableCell colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+                    title="검색 결과가 없습니다"
+                    description="검색어 또는 필터 조건을 변경해 보세요"
                   />
                 </TableCell>
               </TableRow>
@@ -391,8 +603,14 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               title="등록된 사용자가 없습니다"
               description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
             />
+          ) : isFilteredEmpty ? (
+            <EmptyState
+              icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+              title="검색 결과가 없습니다"
+              description="검색어 또는 필터 조건을 변경해 보세요"
+            />
           ) : (
-            users.map((user) => (
+            pagedUsers.map((user) => (
               <UserMobileCard
                 key={user.id}
                 user={user}
@@ -405,6 +623,51 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
           )}
         </div>
       </div>
+
+      {/* (#1) 페이지네이션 — ProjectList 패턴 (최대 5 페이지 버튼) */}
+      {filtered.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-center gap-1 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePageChange(safePage - 1)}
+            disabled={safePage <= 1}
+            aria-label="이전 페이지"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {(() => {
+            const start = Math.max(1, Math.min(safePage - 2, totalPages - MAX_VISIBLE_PAGES + 1));
+            const end = Math.min(totalPages, start + MAX_VISIBLE_PAGES - 1);
+            const buttons: React.ReactNode[] = [];
+            for (let p = start; p <= end; p += 1) {
+              buttons.push(
+                <Button
+                  key={p}
+                  variant={p === safePage ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handlePageChange(p)}
+                  aria-label={`${p} 페이지`}
+                  aria-current={p === safePage ? 'page' : undefined}
+                  className="h-8 min-w-8 px-2"
+                >
+                  {p}
+                </Button>,
+              );
+            }
+            return buttons;
+          })()}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePageChange(safePage + 1)}
+            disabled={safePage >= totalPages}
+            aria-label="다음 페이지"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* 프로필 상세 모달 */}
       <Dialog open={!!selectedProfile} onOpenChange={handleCloseProfile}>
