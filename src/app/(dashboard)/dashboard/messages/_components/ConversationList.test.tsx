@@ -47,6 +47,7 @@ function renderList(
 ) {
   const onSelect = vi.fn();
   const onNewConversation = vi.fn();
+  const onMarkAllRead = vi.fn();
 
   render(
     <ConversationList
@@ -55,10 +56,11 @@ function renderList(
       isLoading={isLoading}
       onSelect={onSelect}
       onNewConversation={onNewConversation}
+      onMarkAllRead={onMarkAllRead}
     />,
   );
 
-  return { onSelect, onNewConversation };
+  return { onSelect, onNewConversation, onMarkAllRead };
 }
 
 // =============================================================================
@@ -263,6 +265,81 @@ describe('ConversationList', () => {
       });
       renderList([conv]);
       expect(screen.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…')).toBeInTheDocument();
+    });
+  });
+
+  // ─── #3 검색 ────────────────────────────────────────────────────────
+  describe('검색', () => {
+    it('대화 검색 input 이 헤더 아래에 노출된다', () => {
+      const convs = [createConversation({ other_user: { id: 'u1', name: '홍길동', role: 'OPS_ADMIN' } })];
+      renderList(convs);
+      expect(screen.getByPlaceholderText(/이름으로 검색|검색/)).toBeInTheDocument();
+    });
+
+    it('검색어 입력 시 상대방 이름이 매칭되는 대화만 노출된다', async () => {
+      const user = userEvent.setup();
+      const convs = [
+        createConversation({ id: 'c1', other_user: { id: 'u1', name: '홍길동', role: 'OPS_ADMIN' } }),
+        createConversation({ id: 'c2', other_user: { id: 'u2', name: '김영희', role: 'OPS_ADMIN' } }),
+      ];
+      renderList(convs);
+      await user.type(screen.getByPlaceholderText(/이름으로 검색|검색/), '홍');
+      expect(screen.getByText('홍길동')).toBeInTheDocument();
+      expect(screen.queryByText('김영희')).not.toBeInTheDocument();
+    });
+
+    it('대소문자 구분 없이 검색된다', async () => {
+      const user = userEvent.setup();
+      const convs = [
+        createConversation({ other_user: { id: 'u1', name: 'JohnDoe', role: 'OPS_ADMIN' } }),
+      ];
+      renderList(convs);
+      await user.type(screen.getByPlaceholderText(/이름으로 검색|검색/), 'john');
+      expect(screen.getByText('JohnDoe')).toBeInTheDocument();
+    });
+  });
+
+  // ─── #3 안읽음 필터 ─────────────────────────────────────────────────
+  describe('안읽음만 토글', () => {
+    it('"안읽음만" 토글 활성화 시 has_unread=true 인 대화만 노출된다', async () => {
+      const user = userEvent.setup();
+      const convs = [
+        createConversation({ id: 'c1', has_unread: true, other_user: { id: 'u1', name: '안읽음A', role: 'OPS_ADMIN' } }),
+        createConversation({ id: 'c2', has_unread: false, other_user: { id: 'u2', name: '읽음B', role: 'OPS_ADMIN' } }),
+      ];
+      renderList(convs);
+      await user.click(screen.getByRole('button', { name: /안읽음만/ }));
+      expect(screen.getByText('안읽음A')).toBeInTheDocument();
+      expect(screen.queryByText('읽음B')).not.toBeInTheDocument();
+    });
+  });
+
+  // ─── #3 모두 읽음 ───────────────────────────────────────────────────
+  describe('모두 읽음 버튼', () => {
+    it('안읽음 대화가 1개 이상이면 "모두 읽음" 버튼이 노출된다', () => {
+      const convs = [
+        createConversation({ has_unread: true, other_user: { id: 'u1', name: 'A', role: 'OPS_ADMIN' } }),
+      ];
+      renderList(convs);
+      expect(screen.getByRole('button', { name: /모두 읽음/ })).toBeInTheDocument();
+    });
+
+    it('안읽음 대화가 0개이면 "모두 읽음" 버튼이 노출되지 않는다', () => {
+      const convs = [
+        createConversation({ has_unread: false, other_user: { id: 'u1', name: 'A', role: 'OPS_ADMIN' } }),
+      ];
+      renderList(convs);
+      expect(screen.queryByRole('button', { name: /모두 읽음/ })).not.toBeInTheDocument();
+    });
+
+    it('"모두 읽음" 버튼 클릭 시 onMarkAllRead 가 호출된다', async () => {
+      const user = userEvent.setup();
+      const convs = [
+        createConversation({ has_unread: true, other_user: { id: 'u1', name: 'A', role: 'OPS_ADMIN' } }),
+      ];
+      const { onMarkAllRead } = renderList(convs);
+      await user.click(screen.getByRole('button', { name: /모두 읽음/ }));
+      expect(onMarkAllRead).toHaveBeenCalledTimes(1);
     });
   });
 });

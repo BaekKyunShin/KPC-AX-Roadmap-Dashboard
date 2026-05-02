@@ -14,12 +14,18 @@ import {
   REALTIME_RETRY_BASE_MS,
   REALTIME_RETRY_MAX_MS,
 } from '@/lib/constants/message';
-import { showErrorToast } from '@/lib/utils/toast';
+import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import type { ConversationWithPreview, Message } from '@/types/database';
 import ConversationList from './ConversationList';
 import MessageThread from './MessageThread';
 import NewConversationDialog from './NewConversationDialog';
-import { fetchConversations, fetchMessages, sendMessage, markConversationRead } from '../actions';
+import {
+  fetchConversations,
+  fetchMessages,
+  sendMessage,
+  markConversationRead,
+  markAllConversationsRead,
+} from '../actions';
 
 /** Polling 간격: Realtime 실패 시에만 활성화되는 fallback (10초) */
 const THREAD_POLL_MS = 10_000;
@@ -102,6 +108,20 @@ export default function MessagesClient() {
     await markConversationRead(convId);
     clearUnreadFlag(convId);
     window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+  };
+
+  /** (#3) 모든 대화 일괄 읽음 처리 — Nielsen H7 효율 가속기. */
+  const handleMarkAllRead = async () => {
+    const unreadCount = conversations.filter((c) => c.has_unread).length;
+    if (unreadCount === 0) return;
+    const result = await markAllConversationsRead();
+    if (!result.success) {
+      showErrorToast(result.error ?? '읽음 처리에 실패했습니다.');
+      return;
+    }
+    setConversations((prev) => prev.map((c) => ({ ...c, has_unread: false })));
+    window.dispatchEvent(new CustomEvent(CONVERSATION_READ_EVENT));
+    showSuccessToast(`${unreadCount}개 대화를 모두 읽음 처리했습니다.`);
   };
 
   /** 읽음 처리: 자동 감지용 (Realtime + polling 중복 호출 방지) */
@@ -442,6 +462,7 @@ export default function MessagesClient() {
           isLoading={isLoading}
           onSelect={handleSelectConversation}
           onNewConversation={() => setIsNewDialogOpen(true)}
+          onMarkAllRead={handleMarkAllRead}
         />
       </div>
 
