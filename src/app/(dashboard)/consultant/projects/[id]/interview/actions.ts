@@ -34,6 +34,7 @@ import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
 import { validateStatusTransition } from '@/lib/constants/status';
+import { deepMerge } from '@/lib/utils/deep-merge';
 import { after } from 'next/server';
 
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -1047,9 +1048,12 @@ export async function saveRoadmapInterviewV2(
 
     const adminSupabase = createAdminClient();
 
+    // (#4) 부분 머지를 위해 기존 jsonb 컬럼들도 함께 fetch.
+    // 이전에는 id 만 select 했기 때문에 mapRoadmapInterviewToDb(validated) 가
+    // 다른 필드를 빈 객체·빈 배열로 채워 update 시 lost update 가 발생했다.
     const { data: existing, error: fetchError } = await adminSupabase
       .from('interviews')
-      .select('id')
+      .select('id, company_details, job_tasks, improvement_goals')
       .eq('project_id', projectId)
       .maybeSingle();
 
@@ -1058,7 +1062,12 @@ export async function saveRoadmapInterviewV2(
       return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
     }
 
-    const dbPayload = mapRoadmapInterviewToDb(validated);
+    // (#4) 기존 row 가 있으면 camelCase 로 변환 후 부분 patch 와 깊이 머지.
+    // 신규 row 면 validated 만 사용 (기존과 동일).
+    const merged: Partial<RoadmapInterviewStrict> = existing
+      ? deepMerge(mapDbToRoadmapInterview(existing), validated)
+      : validated;
+    const dbPayload = mapRoadmapInterviewToDb(merged);
     // 기존 로드맵 저장 Action 과 동일하게 interviewer_id 는 항상 기록한다.
     // interviews 테이블의 interview_date 는 NOT NULL 제약이 있어 INSERT 시
     // 반드시 값을 제공해야 한다 (DB 기본값이 없는 환경 호환). camelCase V2
@@ -1232,9 +1241,10 @@ export async function savePBLInterviewV2(
 
     const adminSupabase = createAdminClient();
 
+    // (#4) 부분 머지를 위해 pbl_data 컬럼도 함께 fetch.
     const { data: existing, error: fetchError } = await adminSupabase
       .from('interviews')
-      .select('id')
+      .select('id, pbl_data')
       .eq('project_id', projectId)
       .maybeSingle();
 
@@ -1243,7 +1253,11 @@ export async function savePBLInterviewV2(
       return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
     }
 
-    const dbPayload = mapPBLInterviewToDb(validated);
+    // (#4) 기존 row 가 있으면 camelCase 로 변환 후 부분 patch 와 깊이 머지.
+    const merged: Partial<PBLInterviewStrict> = existing
+      ? deepMerge(mapDbToPBLInterview(existing), validated)
+      : validated;
+    const dbPayload = mapPBLInterviewToDb(merged);
 
     if (existing) {
       const { error: updateError } = await adminSupabase
