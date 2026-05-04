@@ -6,9 +6,17 @@ import { LikeButton } from './LikeButton';
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockToggleLike = vi.fn();
+const mockTogglePBLLike = vi.fn();
 
 vi.mock('@/app/(dashboard)/gallery/actions', () => ({
   toggleLike: (...args: unknown[]) => mockToggleLike(...args),
+  togglePBLLike: (...args: unknown[]) => mockTogglePBLLike(...args),
+}));
+
+const mockShowErrorToast = vi.fn();
+vi.mock('@/lib/utils/toast', () => ({
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+  showSuccessToast: vi.fn(),
 }));
 
 // ─── 테스트 ──────────────────────────────────────────────────────────────────
@@ -199,6 +207,39 @@ describe('LikeButton', () => {
       });
       const btn = screen.getByRole('button');
       expect(btn.className).toContain('bg-rose-50');
+    });
+
+    it('서버 응답 실패 시 showErrorToast 가 호출돼 사용자에게 신호를 준다', async () => {
+      mockToggleLike.mockResolvedValue({ success: false, error: 'RLS denied' });
+
+      const user = userEvent.setup();
+      render(
+        <LikeButton roadmapVersionId="rv-2" initialLiked={false} initialCount={5} />
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+      });
+      // 실제 노출 라벨 검증
+      expect(mockShowErrorToast.mock.calls[0][0]).toContain('좋아요 저장에 실패');
+    });
+
+    it('성공 응답 시 showErrorToast 는 호출되지 않는다', async () => {
+      mockToggleLike.mockResolvedValue({ success: true, data: { liked: true, count: 6 } });
+
+      const user = userEvent.setup();
+      render(
+        <LikeButton roadmapVersionId="rv-3" initialLiked={false} initialCount={5} />
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      await waitFor(() => {
+        expect(mockToggleLike).toHaveBeenCalled();
+      });
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
     });
   });
 

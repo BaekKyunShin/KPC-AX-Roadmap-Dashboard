@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toggleLike, togglePBLLike } from '@/app/(dashboard)/gallery/actions';
+import { showErrorToast } from '@/lib/utils/toast';
 import type { ProjectTrack } from '@/lib/constants/tracks';
 
 interface LikeButtonProps {
@@ -39,9 +40,10 @@ export function LikeButton({
         setLiked(result.data.liked);
         setCount(result.data.count);
       } else {
-        // 롤백
+        // 롤백 + 사용자에게 실패 신호 전달 (사일런트 롤백 방지)
         setLiked((prev) => !prev);
         setCount((prev) => (liked ? prev + 1 : prev - 1));
+        showErrorToast('좋아요 저장에 실패했습니다', '잠시 후 다시 시도해주세요');
       }
     });
   };
