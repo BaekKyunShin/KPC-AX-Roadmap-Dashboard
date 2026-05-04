@@ -46,7 +46,7 @@ describe('InlineEditField', () => {
     });
   });
 
-  it('저장 실패 시 value 가 롤백되고 error 상태를 표시한다', async () => {
+  it('저장 실패 시 사용자 입력은 보존되고 error 상태를 표시한다 (재시도용)', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockRejectedValue(new Error('network'));
     render(<InlineEditField value="old" onSave={onSave} />);
@@ -55,11 +55,10 @@ describe('InlineEditField', () => {
     await user.clear(input);
     await user.type(input, 'new');
     await user.click(screen.getByRole('button', { name: '저장' }));
-    // 실패 시 edit 모드 유지, editBuffer 롤백
+    // 실패해도 edit 모드 유지 + 사용자 입력 보존 — "다시 시도" 버튼이 같은 값으로 재호출하기 위해
     await waitFor(() => {
-      expect(input).toHaveValue('old');
+      expect(input).toHaveValue('new');
     });
-    // 에러 인디케이터는 view/edit 공통 영역에서 표현되므로, "저장 실패" 텍스트 존재 확인
     expect(await screen.findByText(/저장 실패/)).toBeInTheDocument();
   });
 
@@ -108,5 +107,79 @@ describe('InlineEditField', () => {
     await user.type(textarea, 'line1');
     await user.keyboard('{Enter}');
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('savingState 가 root div 의 data-saving-state 속성으로 노출된다 (#2 ResultTabs 연동)', async () => {
+    const user = userEvent.setup();
+    let resolveSave: (() => void) | undefined;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+
+    const { container } = render(<InlineEditField value="원본" onSave={onSave} />);
+
+    // idle 상태에서도 마커 존재
+    expect(container.querySelector('[data-saving-state="idle"]')).toBeInTheDocument();
+
+    // saving 진입
+    await user.click(screen.getByText('원본'));
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), '수정');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      container.querySelector('[data-saving-state="saving"]'),
+    ).toBeInTheDocument();
+
+    // cleanup
+    resolveSave?.();
+  });
+
+  describe('error 복구 동선 (#1)', () => {
+    it('저장 실패 시 "다시 시도" 버튼이 노출되고 클릭 시 onSave 가 재호출된다', async () => {
+      const user = userEvent.setup();
+      const onSave = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('network'))
+        .mockResolvedValueOnce(undefined);
+
+      render(<InlineEditField value="원본" onSave={onSave} />);
+
+      await user.click(screen.getByText('원본'));
+      const input = screen.getByRole('textbox');
+      await user.clear(input);
+      await user.type(input, '수정값');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      expect(await screen.findByText(/저장 실패/)).toBeInTheDocument();
+      const retry = screen.getByRole('button', { name: '다시 시도' });
+      expect(retry).toBeInTheDocument();
+
+      await user.click(retry);
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+      expect(onSave).toHaveBeenLastCalledWith('수정값');
+    });
+
+    it('error 상태에서 취소 후 같은 셀을 다시 클릭해 편집 모드로 들어가면 빨간 표시가 자동으로 사라진다', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn().mockRejectedValueOnce(new Error('network'));
+
+      render(<InlineEditField value="원본" onSave={onSave} />);
+
+      await user.click(screen.getByText('원본'));
+      await user.clear(screen.getByRole('textbox'));
+      await user.type(screen.getByRole('textbox'), '수정값');
+      await user.click(screen.getByRole('button', { name: '저장' }));
+      expect(await screen.findByText(/저장 실패/)).toBeInTheDocument();
+
+      // 취소 → view 모드 → 같은 셀 재클릭 → edit 모드 (idle 로 복귀)
+      await user.click(screen.getByRole('button', { name: '취소' }));
+      await user.click(screen.getByText('원본'));
+
+      expect(screen.queryByText(/저장 실패/)).not.toBeInTheDocument();
+    });
   });
 });

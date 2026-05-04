@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Pencil, Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { Pencil, Check, X, Loader2, AlertCircle, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
  * - edit 모드: input/textarea + 저장/취소 버튼. Enter=저장(input only), Esc=취소,
  *   Ctrl/⌘+Enter=저장(multiline).
  * - 저장 성공: `saved` 인디케이터(3초 후 idle) + view 모드 복귀.
- * - 저장 실패: `error` 인디케이터 + editBuffer 를 원본 value 로 롤백, edit 모드 유지.
+ * - 저장 실패: `error` 인디케이터 + 사용자 입력(editBuffer) 보존, edit 모드 유지.
+ *   "다시 시도" 버튼 클릭 시 동일 입력으로 saveEdit 재호출.
  *
  * 낙관적 업데이트는 호출부가 책임진다. 이 컴포넌트는 `onSave` Promise 결과만 반영.
  */
@@ -83,7 +84,7 @@ export function InlineEditField({
       setMode('view');
     } catch {
       setSavingState('error');
-      setEditBuffer(value); // 롤백
+      // 사용자 입력 보존 — "다시 시도" 버튼이 같은 입력으로 saveEdit 재호출.
     }
   }, [editBuffer, onSave, value]);
 
@@ -108,6 +109,15 @@ export function InlineEditField({
     savingState === 'error' ? (
       <span className="flex items-center gap-1 text-xs text-destructive">
         <AlertCircle className="size-3" /> 저장 실패
+        <button
+          type="button"
+          onClick={() => void saveEdit()}
+          className="ml-1 inline-flex items-center gap-0.5 rounded px-1 text-destructive underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
+          aria-label="다시 시도"
+        >
+          <RefreshCcw className="size-3" />
+          다시 시도
+        </button>
       </span>
     ) : null;
 
@@ -118,7 +128,10 @@ export function InlineEditField({
     );
 
     return (
-      <div className={cn('flex items-start gap-2', className)}>
+      <div
+        className={cn('flex items-start gap-2', className)}
+        data-saving-state={savingState}
+      >
         {multiline ? (
           <textarea
             value={editBuffer}
@@ -190,6 +203,7 @@ export function InlineEditField({
         !readOnly && 'cursor-pointer',
         className,
       )}
+      data-saving-state={savingState}
       onClick={startEdit}
       role={readOnly ? undefined : 'button'}
       tabIndex={readOnly ? undefined : 0}

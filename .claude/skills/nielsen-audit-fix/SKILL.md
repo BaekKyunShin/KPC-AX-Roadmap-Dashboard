@@ -42,7 +42,7 @@ $ARGUMENTS(보고서 경로) 또는 `docs/reports/`의 가장 최근 `*-nielsen-
 #N [★★★★★ H{번호} {휴리스틱명}] {제목}
    현재: {사용자가 막히는 상황 — 1문장}
    개선 후: "{실제 노출될 라벨}" {플로우 변화 — 1문장}
-   변경: {파일 경로} ({재사용 자산 명})
+   변경: {파일 경로} (재사용: {자산 명} | 신규: {사유 1줄})
 ```
 
 **N개를 한 번에 출력**한 뒤 `AskUserQuestion` 으로 일괄 승인 — 옵션 워딩 고정:
@@ -69,7 +69,7 @@ $ARGUMENTS(보고서 경로) 또는 `docs/reports/`의 가장 최근 `*-nielsen-
 
 | 변경 위치 | 호출 대상 |
 |---|---|
-| `src/app/**/*.tsx` (UI) | `frontend-guide`, `composition-patterns`, `react-best-practices`, `web-design-guidelines` |
+| `src/app/**/*.tsx` (UI) | `frontend-guide`(shadcn/ui 우선), `composition-patterns`, `react-best-practices`, `web-design-guidelines` |
 | `actions.ts` (Server Action) | `check-server-action` |
 | `supabase/migrations/*` | `supabase-dev` + `mcp__supabase__apply_migration` + `list_migrations` 검증 |
 | `src/types/database.ts` 갱신 | 수동 편집 (메모리 규칙: gen types로 덮어쓰기 금지) |
@@ -88,7 +88,11 @@ $ARGUMENTS(보고서 경로) 또는 `docs/reports/`의 가장 최근 `*-nielsen-
 각 이슈마다 **RED → GREEN → REFACTOR**:
 
 1. **RED** — 실패하는 테스트 먼저 작성 (Vitest 또는 Playwright). 보고서의 "사용자 시나리오" 를 그대로 테스트 케이스로 변환
-2. **GREEN** — 최소 구현으로 테스트 통과. 재사용 자산(`EmptyState`/`AlertDialog`/`PageSkeleton`/`showSuccessToast`/`ActionResult`) 우선
+2. **GREEN** — 최소 구현으로 테스트 통과. 컴포넌트 결정은 다음 우선순위 엄수:
+   1. **보고서 「재사용 가능 자산」 표** (`EmptyState`/`AlertDialog`/`PageSkeleton`/`showSuccessToast 등`/`ActionResult`/`FilterBadge`) ← 최우선
+   2. **`src/components/ui/`** — 이미 설치된 shadcn 기본 + 커스텀 공용 (button, card, dialog, alert-dialog, badge, table, page-header, form-field, field-error 등)
+   3. **shadcn 레지스트리** — 미설치 컴포넌트는 `npx shadcn@latest add <name>` 으로 추가 (Radix 기반·접근성 보장)
+   4. **신규 작성** — 위 셋 중 어느 것도 부합하지 않을 때만. 사유를 커밋 메시지·PR 본문·Phase 1 승인 라인에 명시
 3. **REFACTOR** — `superpowers:refactoring` 패턴 적용
 
 이슈 단위 커밋 (한국어):
@@ -97,7 +101,7 @@ $ARGUMENTS(보고서 경로) 또는 `docs/reports/`의 가장 최근 `*-nielsen-
 fix: H{번호} {짧은 한국어 제목}
 
 - {변경 요약}
-- {재사용 자산 활용}
+- 재사용: {자산 경로} | 신규: {사유} ← 둘 중 해당 항목 선택
 - 테스트: {새 테스트 파일·케이스 수}
 ```
 
@@ -280,6 +284,8 @@ main 직접 커밋 금지 (메모리 규칙) → 핫픽스 브랜치 분기:
 - [ ] main 머지 후 main CI 모든 check `conclusion=SUCCESS`
 - [ ] CI 실패가 있었다면 근본 원인 해결로 통과 (임시 우회 X)
 - [ ] 인용한 모든 `src/...` 경로 실재 (`ls`로 샘플 검증)
+- [ ] **재사용 자산 우선 적용** — 신규 컴포넌트 작성 시 ① 보고서 자산 표 ② `src/components/ui/` ③ shadcn 레지스트리 검토 사유 PR 본문 기재
+- [ ] **shadcn/ui 외 UI 라이브러리 도입 0건** (또는 도입 사유가 PR 본문에 명시)
 
 ---
 
@@ -289,7 +295,8 @@ main 직접 커밋 금지 (메모리 규칙) → 핫픽스 브랜치 분기:
 - **main 보호** — 모든 변경은 브랜치 → PR → squash merge (직접 커밋 금지)
 - **TDD 강제** — 모든 코드 변경은 RED → GREEN → REFACTOR
 - **임시 우회 금지** — CI 실패는 근본 원인 해결만 (메모리 규칙)
-- **재사용 우선** — 신규 컴포넌트 제안 전 `nielsen-audit` 의 재사용 자산 표 검토
+- **shadcn/ui 우선** — 신규 UI 요소는 ① `src/components/ui/` 기존 자산 → ② `npx shadcn@latest add <name>` 레지스트리 → ③ 신규 작성 순서. Radix 비호환 라이브러리 도입은 사유 명시 필수
+- **재사용 우선** — Phase 3 GREEN 4단계 플로우 엄수. 신규 컴포넌트 작성 시 사유를 PR 본문에 기재
 - **한국어 커밋·PR** — 메모리 규칙
 - **E2E 포함 모든 check pass** — Unit Test 만 보고 단정 금지
 - **보고서 archive** — 해결 완료 후 `docs/reports/archive/` 이동 (단독 커밋)
