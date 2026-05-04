@@ -70,8 +70,114 @@ $ARGUMENTS 영역(미지정 시 전체)을 대상으로 Nielsen 10가지 사용�
 1. **위치** — 메뉴 경로(예: 컨설턴트 > 담당 프로젝트 > 인터뷰 작성) + 파일 경로(`src/app/...:라인번호`)
 2. **사용자 시나리오** — 페르소나·동선·체감 결함을 스토리텔링으로 묘사 (개발자 용어 금지, 비개발자도 이해 가능하게)
 3. **위배 원칙** — `**H{번호} {명칭}**` 굵게 표기
-4. **사용자 관점 개선 후** — 화면·메시지·플로우의 변화를 구체 라벨까지 포함해 묘사 ("안내 추가"가 아니라 「영업일 기준 1일 이내 검토」처럼 실제 문구를 적는다)
+4. **사용자 관점 개선 후** — 화면·메시지·플로우의 변화를 구체 라벨까지 포함해 묘사 ("안내 추가"가 아니라 「영업일 기준 1일 이내 검토」처럼 실제 문구를 적는다). 본문 끝에 다음 한 줄을 **의무 첨부** (Phase 3.5 산출물):
+
+   ```text
+   🖥️ **시각 확인:** http://localhost:3000/mockup/nielsen-audit/{보고서날짜}/issue-{N}
+   ```
+
 5. **개발자 구현 노트** — 코드 변경 위치, 재사용 가능 자산 경로, 짧은 코드 예시
+
+### Phase 3.5 — mockup 라우트 작성 (Phase 3과 짝, 코드 작성 허용)
+
+본 스킬의 원칙은 "코드 변경 금지"이지만, **mockup 라우트는 시각 시안 자료**로서 production 코드를 변경하지 않는다(별개 폴더에 격리). 따라서 Phase 3 보고서가 확정되면 각 CRITICAL 이슈마다 `src/app/mockup/nielsen-audit/{보고서날짜}/issue-{N}/page.tsx` 1 페이지를 작성한다.
+
+**작성 절차:**
+
+1. 일자 폴더 생성: `src/app/mockup/nielsen-audit/YYYY-MM-DD/`
+2. 일자 인덱스 페이지 작성: `page.tsx` — 해당 보고서 이슈 카드 N개를 그룹별·우선순위 순 노출
+3. 일자 공용 프레임 작성 (1회): `_components/BeforeAfterFrame.tsx` — 이전/이후 세로 풀 너비 비교 컨테이너
+4. 이슈별 페이지 작성: `issue-{N}/page.tsx` — `BeforeAfterFrame`을 사용해 production 화면을 픽셀 단위로 재현
+5. 기존 `src/app/mockup/layout.tsx`의 `MOCKUP_NAV` 배열에 "Nielsen 감사 — YYYY-MM-DD" 그룹·일자 인덱스 링크 추가
+6. 기존 `src/app/mockup/page.tsx` 인덱스에 "Nielsen 감사" 그룹 카드 추가
+
+**mockup 페이지 코드 품질 기준 (강제 조건):**
+
+1. **실제 production 컴포넌트만 import** — `@/components/ui/*`·`@/components/layout/*`·`@/lib/utils/toast` 등. mockup 전용 더미 컴포넌트 신설 금지
+2. **TypeScript strict 통과** — `npm run validate` 로컬 통과 필수
+3. **모의 데이터 타입 일치** — `src/types/database.ts` 등에서 가져온 production 타입 그대로 사용. `as any` 금지
+4. **재현 범위** — 페이지 전체 복제 X. **변경 영역 + 직접 인접한 컨텍스트 1-2 섹션**만 재현
+5. **디자인 토큰 일관성** — `globals.css` 변수와 Tailwind 시멘틱 토큰만 사용. 인라인 hex·px 금지
+6. **인터랙션 실제 작동** — 토스트·모달 트리거는 production 함수(`showSuccessToast` 등) 그대로 호출 (`'use client'` + `useState` 사용)
+7. **상단 안내 카드** — 각 이슈 페이지 최상단에 「Nielsen 감사 #N · 별점 · 휴리스틱 명 · 위치」 메타 카드 표시 (시안 임을 명확히)
+8. **빈 상태·로딩 상태 변형** — 해당 이슈가 빈 상태/로딩 변경을 수반하면 함께 재현
+
+**`BeforeAfterFrame` 컴포넌트 시그니처 (각 일자 폴더에 1회 작성):**
+
+```tsx
+// src/app/mockup/nielsen-audit/{date}/_components/BeforeAfterFrame.tsx
+import { ReactNode } from 'react';
+import { Info, Check } from 'lucide-react';
+
+interface BeforeAfterFrameProps {
+  before: ReactNode;
+  after: ReactNode;
+  beforeLabel?: string;  // 기본: "이전 (현재 production)"
+  afterLabel?: string;   // 기본: "이후 (개선 제안)"
+}
+
+export function BeforeAfterFrame({
+  before,
+  after,
+  beforeLabel = '이전 (현재 production)',
+  afterLabel = '이후 (개선 제안)',
+}: BeforeAfterFrameProps) {
+  return (
+    <div className="space-y-12">
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-500">
+          <Info className="h-4 w-4" /> {beforeLabel}
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          {before}
+        </div>
+      </section>
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-emerald-600">
+          <Check className="h-4 w-4" /> {afterLabel}
+        </div>
+        <div className="rounded-lg border border-emerald-200 bg-white p-6 ring-1 ring-emerald-100">
+          {after}
+        </div>
+      </section>
+    </div>
+  );
+}
+```
+
+**이슈 페이지 골격 예시:**
+
+```tsx
+// src/app/mockup/nielsen-audit/2026-05-04/issue-1/page.tsx
+'use client';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BeforeAfterFrame } from '../_components/BeforeAfterFrame';
+
+export default function Issue1MockupPage() {
+  return (
+    <div className="space-y-8">
+      <Card className="border-amber-200 bg-amber-50">
+        <CardHeader>
+          <CardTitle className="text-base">
+            #1 [★★★★★ H9] {이슈 제목}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-amber-900">
+          위치: {메뉴 경로} / 위배 원칙: H9 오류 인식·진단·복구
+        </CardContent>
+      </Card>
+
+      <BeforeAfterFrame
+        before={<BeforeScene />}   {/* 현재 production 화면 재현 */}
+        after={<AfterScene />}      {/* 개선안 재현 */}
+      />
+    </div>
+  );
+}
+```
+
+**archive 정책:** 후속 `nielsen-audit-fix` 스킬이 보고서를 `docs/reports/archive/` 로 이동할 때 mockup 코드도 `src/app/mockup/_archive/{date}/` 로 함께 이동시킨다 (`_archive/` prefix는 Next.js App Router에서 라우트 자동 제외).
 
 ### Phase 4 — 자체 검증
 
@@ -82,6 +188,33 @@ $ARGUMENTS 영역(미지정 시 전체)을 대상으로 Nielsen 10가지 사용�
 - [ ] 누적 작업 시간 추정이 3시간 이내
 - [ ] 5단 포맷의 다섯 항목이 각 이슈마다 모두 채워짐
 - [ ] 같은 날짜 기존 보고서가 있다면 `-vN` 접미사로 신규 생성됐는지 확인
+- [ ] 모든 이슈에 mockup 페이지 1개씩 존재 — `ls src/app/mockup/nielsen-audit/{date}/issue-*` 로 개수 일치 확인
+- [ ] mockup 일자 인덱스(`page.tsx`)·`_components/BeforeAfterFrame.tsx`·`MOCKUP_NAV` 갱신·인덱스 카드 추가 완료
+- [ ] `npm run validate` 통과 (mockup 페이지 포함 typecheck·lint·test)
+- [ ] 각 mockup 페이지를 `npm run dev` → `http://localhost:3000/mockup/nielsen-audit/{date}/issue-{N}` 에서 직접 접속해 인터랙션(토스트·모달·버튼) 작동 확인
+- [ ] mockup 인덱스 URL이 보고서 메타에 명시됨, 각 이슈 4단에 mockup URL 행이 포함됨
+
+### Phase 4-끝 — 사용자 종료 안내
+
+검증 통과 후 사용자에게 다음 형식으로 안내한다 (라벨 고정):
+
+```text
+✅ Nielsen 휴리스틱 감사 완료
+
+📄 보고서: docs/reports/{date}-nielsen-heuristics-audit.md (CRITICAL N건)
+🖥️ Mockup 인덱스: http://localhost:3000/mockup/nielsen-audit/{date}
+   (`npm run dev` 미기동 시 별도 터미널에서 실행)
+
+다음 단계:
+  ① /nielsen-audit-fix — mockup 일괄 검토 사이클을 시작합니다.
+     · N개 mockup을 한 번에 보여드린 뒤 "그대로 진행" 또는 "특정 항목 수정"을
+       물어봅니다. 수정 요청 시 mockup·보고서를 동시에 갱신해 다시 보여드리고,
+       만족하실 때까지 사이클을 반복합니다.
+     · 사이클이 끝나야 코드 구현(브랜치·TDD·PR)으로 진행합니다.
+  ② 보고서·mockup 폐기 후 다른 영역으로 재감사
+```
+
+본 스킬은 mockup·보고서 수정 사이클을 진행하지 않는다 — **수정 사이클은 후속 `/nielsen-audit-fix` 의 Phase 1 책임**이다. 본 스킬에서 사용자 피드백을 받아 즉석 수정하는 분기는 두지 않는다 (역할 분리).
 
 ---
 
@@ -94,6 +227,7 @@ $ARGUMENTS 영역(미지정 시 전체)을 대상으로 Nielsen 10가지 사용�
 
 ## 메타
 - 조사일 / 조사 범위 / 조사 방법 / 선별 기준 / 총평(2~3문장)
+- **Mockup 인덱스: `http://localhost:3000/mockup/nielsen-audit/YYYY-MM-DD`** (Phase 3.5 산출물)
 
 ## Nielsen 10가지 휴리스틱 (참조표)
 | 번호 | 명칭 | 한 줄 정의 |  ← 아래 표 그대로 복사
@@ -146,6 +280,7 @@ $ARGUMENTS 영역(미지정 시 전체)을 대상으로 Nielsen 10가지 사용�
 | `showSuccessToast` 등 | `src/lib/utils/toast.ts` | 토스트 표준화 (title + description 지원) |
 | `ActionResult` | `src/lib/types/action-result.ts` | Server Action 반환 타입 |
 | `FilterBadge` | `src/app/(dashboard)/ops/projects/_components/ProjectList.tsx` | 검색·필터 시각화 |
+| `BeforeAfterFrame` | `src/app/mockup/nielsen-audit/{date}/_components/BeforeAfterFrame.tsx` | mockup 이전/이후 세로 풀 너비 비교 (Phase 3.5 산출물) |
 
 ---
 
