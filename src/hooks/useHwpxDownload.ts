@@ -9,7 +9,7 @@
  *
  * Step 10에서 PBL DownloadButton이 동일 훅을 재사용한다 (신규 작성 금지).
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import type { ActionResult } from '@/lib/types/action-result';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
@@ -49,6 +49,10 @@ export function useHwpxDownload({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 실패 토스트의 "다시 시도" 액션이 동일 download 함수를 재호출할 수 있도록 self-ref 유지.
+  // useCallback 본문에서 자기 자신을 참조하기 위해 ref 패턴 사용.
+  const downloadRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   const download = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -56,7 +60,12 @@ export function useHwpxDownload({
       const result = await action();
       if (!result.success) {
         setError(result.error);
-        showErrorToast(errorTitle, result.error);
+        showErrorToast(errorTitle, result.error, {
+          label: '다시 시도',
+          onClick: () => {
+            void downloadRef.current();
+          },
+        });
         return;
       }
       const { fileName, contentBase64, mimeType } = result.data;
@@ -76,11 +85,19 @@ export function useHwpxDownload({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'HWPX 다운로드 중 오류가 발생했습니다.';
       setError(message);
-      showErrorToast(errorTitle, message);
+      showErrorToast(errorTitle, message, {
+        label: '다시 시도',
+        onClick: () => {
+          void downloadRef.current();
+        },
+      });
     } finally {
       setIsLoading(false);
     }
   }, [action, errorTitle, successMessage]);
+
+  // 매 렌더마다 최신 download 를 ref 에 저장 — 자기 참조 시 무한 루프 없음
+  downloadRef.current = download;
 
   return { download, isLoading, error };
 }

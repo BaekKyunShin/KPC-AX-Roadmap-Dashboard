@@ -7,6 +7,7 @@ import { ChevronUp, ChevronDown, X, GripVertical } from 'lucide-react';
 import { Reorder, useDragControls } from 'motion/react';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import { createTemplate, updateTemplate } from '../actions';
 import {
   Select,
@@ -207,11 +208,30 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [name, setName] = useState(template?.name || '');
-  const [description, setDescription] = useState(template?.description || '');
-  const [questions, setQuestions] = useState<SelfAssessmentQuestion[]>(
-    template?.questions || [createEmptyQuestion(1)]
-  );
+  // 초기 state 를 한 번에 산출 — createEmptyQuestion 의 Date.now() 가 단 한 번만 호출되도록 lazy 평가.
+  // questions 와 baseline 이 동일한 객체를 공유해야 isDirty 가 영구 true 가 되지 않는다.
+  const [initial] = useState(() => {
+    const qs = template?.questions || [createEmptyQuestion(1)];
+    return {
+      name: template?.name || '',
+      description: template?.description || '',
+      questions: qs,
+      baseline: JSON.stringify({
+        name: template?.name || '',
+        description: template?.description || '',
+        questions: qs,
+      }),
+    };
+  });
+
+  const [name, setName] = useState(initial.name);
+  const [description, setDescription] = useState(initial.description);
+  const [questions, setQuestions] = useState<SelfAssessmentQuestion[]>(initial.questions);
+  const [baseline, setBaseline] = useState(initial.baseline);
+
+  // 미저장 변경 추적 — 저장 성공 시 setBaseline 으로 갱신해 isDirty=false 로 떨어지게 한다.
+  const isDirty = JSON.stringify({ name, description, questions }) !== baseline;
+  useBeforeUnloadGuard(isDirty);
 
   // 질문 ID 배열 (Reorder.Group values용 - 문자열이므로 값 비교로 동작)
   const questionIds = questions.map((q) => q.id);
@@ -321,6 +341,9 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       const data = result.data as { message?: string; id?: string };
       const successMessage = data?.message || '저장되었습니다.';
       setSuccess(successMessage);
+
+      // 저장 성공 → baseline 갱신해 isDirty=false 로 떨어뜨려 beforeunload 경고 해제
+      setBaseline(JSON.stringify({ name, description, questions }));
 
       showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
 

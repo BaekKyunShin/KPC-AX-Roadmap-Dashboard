@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, FileSpreadsheet, FileType, Loader2 } from 'lucide-react';
+import { AlertCircle, FileText, FileSpreadsheet, FileType, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,11 @@ export type DownloadType = 'PDF' | 'XLSX' | 'HWPX';
 interface DownloadButtonGroupProps {
   onDownload: (type: DownloadType) => void;
   loading?: DownloadType | null;
+  /**
+   * 마지막으로 실패한 다운로드 형식 — 해당 버튼 옆에 ⚠ 아이콘으로 잠시 표시한다.
+   * 사용자가 같은 버튼을 다시 누르거나 다른 형식을 시도하면 자연스럽게 해제된다.
+   */
+  errorType?: DownloadType | null;
   disabled?: boolean;
   className?: string;
 }
@@ -35,6 +40,7 @@ const TYPES: readonly DownloadType[] = ['PDF', 'XLSX', 'HWPX'] as const;
 export function DownloadButtonGroup({
   onDownload,
   loading = null,
+  errorType = null,
   disabled = false,
   className,
 }: DownloadButtonGroupProps) {
@@ -43,6 +49,7 @@ export function DownloadButtonGroup({
       {TYPES.map((type) => {
         const { label, icon: Icon } = BUTTON_CONFIG[type];
         const isLoading = loading === type;
+        const isErrored = errorType === type && !isLoading;
         const isDisabled = disabled || loading !== null;
         return (
           <Button
@@ -56,6 +63,8 @@ export function DownloadButtonGroup({
           >
             {isLoading ? (
               <Loader2 className="mr-1.5 size-4 animate-spin" />
+            ) : isErrored ? (
+              <AlertCircle className="mr-1.5 size-4 text-amber-500" aria-hidden />
             ) : (
               <Icon className="mr-1.5 size-4" />
             )}

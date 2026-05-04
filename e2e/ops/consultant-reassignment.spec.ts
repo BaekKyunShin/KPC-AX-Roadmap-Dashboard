@@ -132,12 +132,18 @@ test.describe('컨설턴트 재배정 + 해제 알림', () => {
     await expect(reasonTextarea).toBeVisible({ timeout: 10_000 });
     await reasonTextarea.fill('E2E 재배정 해제 알림 검증을 위한 컨설턴트 변경입니다.');
 
-    // 배정 제출
+    // 배정 제출 — "배정하기" 클릭 시 AlertDialog 가 노출되고 "배정 확인" 클릭 후에만 실제 RPC 호출.
+    // (Nielsen v2 #1: 비가역 액션 사전 차단)
     const assignButton = page.getByRole('button', { name: '배정하기' });
     await expect(assignButton).toBeEnabled({ timeout: 10_000 });
     await assignButton.click();
 
-    // assignConsultant는 성공 시 window.location.reload() → networkidle로 대기
+    // 재배정 확인 다이얼로그 — destructive variant
+    const confirmButton = page.getByRole('button', { name: '배정 확인' });
+    await expect(confirmButton).toBeVisible({ timeout: 10_000 });
+    await confirmButton.click();
+
+    // assignConsultant 성공 시 router.refresh() — networkidle 로 대기
     await page.waitForLoadState('networkidle');
 
     // DB 검증: 이전 컨설턴트 → '프로젝트 배정 해제' 알림 생성

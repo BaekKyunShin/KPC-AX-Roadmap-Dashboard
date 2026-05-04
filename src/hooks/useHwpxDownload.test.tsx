@@ -76,7 +76,7 @@ describe('useHwpxDownload', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('실패(ActionResult) 시 errorToast + error 상태 설정', async () => {
+  it('실패(ActionResult) 시 errorToast(title·desc·action) + error 상태 설정', async () => {
     const action = vi.fn().mockResolvedValue({
       success: false,
       error: '권한 없음',
@@ -88,10 +88,45 @@ describe('useHwpxDownload', () => {
       await result.current.download();
     });
 
-    expect(showErrorToast).toHaveBeenCalledWith('HWPX 다운로드 실패', '권한 없음');
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'HWPX 다운로드 실패',
+      '권한 없음',
+      expect.objectContaining({ label: '다시 시도', onClick: expect.any(Function) }),
+    );
     expect(clickSpy).not.toHaveBeenCalled();
     expect(result.current.error).toBe('권한 없음');
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('실패 토스트의 action.onClick 콜백이 download 를 재호출한다', async () => {
+    const action = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: '일시 오류' })
+      .mockResolvedValueOnce({
+        success: true,
+        data: {
+          fileName: 'retry.hwpx',
+          contentBase64: Buffer.from('ok').toString('base64'),
+          mimeType: 'application/vnd.hancom.hwpx',
+        },
+      });
+
+    const { result } = renderHook(() => useHwpxDownload({ action }));
+    await act(async () => {
+      await result.current.download();
+    });
+    expect(action).toHaveBeenCalledTimes(1);
+
+    const lastCall = vi.mocked(showErrorToast).mock.calls.at(-1);
+    const onClick = (lastCall?.[2] as { onClick: () => void } | undefined)?.onClick;
+    expect(onClick).toBeDefined();
+
+    await act(async () => {
+      await onClick?.();
+    });
+    // 두 번째 호출(재시도) 후 action 이 한 번 더 실행됨
+    expect(action).toHaveBeenCalledTimes(2);
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it('action이 throw → errorToast + error 상태', async () => {

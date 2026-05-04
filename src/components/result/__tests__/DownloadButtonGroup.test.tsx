@@ -65,4 +65,23 @@ describe('DownloadButtonGroup', () => {
     expect(root.className).toMatch(/gap-2/);
     expect(root.className).toMatch(/justify-end/);
   });
+
+  it('errorType="HWPX" 일 때 HWPX 버튼 옆에 ⚠ 아이콘(text-amber-500)이 노출된다', () => {
+    render(<DownloadButtonGroup onDownload={() => {}} errorType="HWPX" />);
+    const hwpxButton = screen.getByRole('button', { name: /HWPX/ });
+    expect(hwpxButton.querySelector('.text-amber-500')).toBeTruthy();
+
+    const pdfButton = screen.getByRole('button', { name: /PDF/ });
+    expect(pdfButton.querySelector('.text-amber-500')).toBeFalsy();
+  });
+
+  it('errorType=null 이면 어떤 버튼에도 ⚠ 아이콘이 노출되지 않는다', () => {
+    render(<DownloadButtonGroup onDownload={() => {}} errorType={null} />);
+    expect(
+      screen.getByRole('button', { name: /PDF/ }).querySelector('.text-amber-500'),
+    ).toBeFalsy();
+    expect(
+      screen.getByRole('button', { name: /HWPX/ }).querySelector('.text-amber-500'),
+    ).toBeFalsy();
+  });
 });
