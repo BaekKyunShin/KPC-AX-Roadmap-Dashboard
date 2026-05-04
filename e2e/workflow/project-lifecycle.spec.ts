@@ -160,12 +160,17 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(reasonTextarea).toBeVisible({ timeout: 10_000 });
     await reasonTextarea.fill('E2E 워크플로우 테스트를 위한 컨설턴트 수동 배정입니다.');
 
-    // "배정하기" 버튼 클릭
+    // "배정하기" 클릭 → AlertDialog 노출 → "배정 확인" 까지 완료해야 실제 RPC 호출.
+    // (Nielsen v2 #1: 비가역 액션 사전 차단)
     const assignButton = page.getByRole('button', { name: '배정하기' });
     await expect(assignButton).toBeEnabled({ timeout: 10_000 });
     await assignButton.click();
 
-    // 페이지가 리로드되므로 (window.location.reload) 상태 확인
+    const confirmButton = page.getByRole('button', { name: '배정 확인' });
+    await expect(confirmButton).toBeVisible({ timeout: 10_000 });
+    await confirmButton.click();
+
+    // router.refresh() 후 networkidle 로 대기
     await page.waitForLoadState('networkidle');
     await waitForPageLoad(page);
 
