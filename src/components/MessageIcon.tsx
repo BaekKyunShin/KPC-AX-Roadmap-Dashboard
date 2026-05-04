@@ -47,6 +47,14 @@ export default function MessageIcon({ initialUnreadCount }: MessageIconProps) {
     setUnreadCount(count);
   };
 
+  // 마운트 시 서버에서 최신 unread count 조회. layout이 더 이상 server-side로
+  // fetch하지 않으므로(라우트 변경마다 await가 children swap을 막던 문제 해소)
+  // client component가 자체적으로 갱신한다.
+  useEffect(() => {
+    refreshCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, []);
+
   // Realtime: 인증 세션 로드 후 구독 (CHANNEL_ERROR 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);

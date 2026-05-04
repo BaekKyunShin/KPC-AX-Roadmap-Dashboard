@@ -22,11 +22,13 @@ vi.mock('next/navigation', () => ({
 const mockFetchNotifications = vi.fn();
 const mockMarkNotificationRead = vi.fn();
 const mockMarkAllNotificationsRead = vi.fn();
+const mockFetchUnreadCount = vi.fn();
 
 vi.mock('@/app/(dashboard)/notifications/actions', () => ({
   fetchNotifications: (...args: unknown[]) => mockFetchNotifications(...args),
   markNotificationRead: (...args: unknown[]) => mockMarkNotificationRead(...args),
   markAllNotificationsRead: (...args: unknown[]) => mockMarkAllNotificationsRead(...args),
+  fetchUnreadCount: (...args: unknown[]) => mockFetchUnreadCount(...args),
 }));
 
 vi.mock('@/lib/utils/consultant-home', () => ({
@@ -143,10 +145,18 @@ function createSuccessResult(notifications: Notification[], hasMore = false) {
   };
 }
 
-function renderBell(overrides: Partial<{ initialUnreadCount: number; userRole: UserRole }> = {}) {
+function renderBell(
+  overrides: Partial<{ initialUnreadCount: number; userRole: UserRole; fetchResult: number }> = {},
+) {
+  const initialUnreadCount = overrides.initialUnreadCount ?? 0;
+  // NotificationBell은 마운트 시 fetchUnreadCount로 최신값을 받아 unreadCount를 갱신한다.
+  // 기존 prop 기반 시나리오는 fetch 결과를 prop과 동일하게 두어 보존한다.
+  // (마운트 시 fetch 동작 자체는 별도 describe 블록에서 fetchResult로 명시적 검증)
+  const fetchResult = overrides.fetchResult ?? initialUnreadCount;
+  mockFetchUnreadCount.mockResolvedValue(fetchResult);
   return render(
     <NotificationBell
-      initialUnreadCount={overrides.initialUnreadCount ?? 0}
+      initialUnreadCount={initialUnreadCount}
       userRole={overrides.userRole ?? 'CONSULTANT_APPROVED'}
     />
   );
@@ -160,6 +170,28 @@ describe('NotificationBell', () => {
     mockFetchNotifications.mockResolvedValue(createSuccessResult([]));
     mockMarkNotificationRead.mockResolvedValue({ success: true });
     mockMarkAllNotificationsRead.mockResolvedValue({ success: true });
+    mockFetchUnreadCount.mockResolvedValue(0);
+  });
+
+  // ─── 마운트 시 자체 fetch ──────────────────────────────────────────────
+
+  describe('마운트 시 unread count 자체 갱신', () => {
+    it('마운트 직후 fetchUnreadCount가 호출된다', async () => {
+      renderBell({ initialUnreadCount: 0 });
+      await waitFor(() => {
+        expect(mockFetchUnreadCount).toHaveBeenCalled();
+      });
+    });
+
+    it('마운트 후 fetchUnreadCount 결과로 뱃지가 갱신된다', async () => {
+      renderBell({ initialUnreadCount: 0, fetchResult: 7 });
+      expect(await screen.findByText('7')).toBeInTheDocument();
+    });
+
+    it('initialUnreadCount보다 fetch 결과가 우선한다', async () => {
+      renderBell({ initialUnreadCount: 99, fetchResult: 3 });
+      expect(await screen.findByText('3')).toBeInTheDocument();
+    });
   });
 
   // ─── 뱃지 표시 ────────────────────────────────────────────────────────
