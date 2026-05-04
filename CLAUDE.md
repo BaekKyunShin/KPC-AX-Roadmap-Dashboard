@@ -48,6 +48,23 @@ npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
 
 **PR CI 통과 판정:** `gh pr checks <PR>`의 **모든 check** (Lint & Typecheck · Unit Test · Build · **E2E Test** · Vercel)가 pass 일 때만 "✅ 통과" 결정. Unit Test 만 보고 단정 금지 — E2E 가 별도 job 으로 가장 마지막. exit code 0 ≠ 모든 pass (출력 파싱이 정답).
 
+**사전 grep으로 영향 범위 점검 (엄수):**
+
+UI 라벨·플로우·Server Action 시그니처·Helper 시맨틱·Component prop·라우트·환경변수·Enum 값을 변경한 직후, 푸쉬 전에 다음 한 줄 그렙으로 사용처 전수를 확인한다. CI 안전망에 의존하기 전에 30초로 막아야 한다.
+
+| 변경 종류 | 그렙 키워드 |
+|---|---|
+| UI 버튼·라벨 텍스트 | 새 라벨 + 옛 라벨 (예: `"배정하기"`, `"확인"`) |
+| Server Action 시그니처·반환 타입 | 함수명 (예: `assignConsultant`) |
+| Helper/훅 시맨틱 변경 | helper 이름 + 의존 키워드 (예: `window.location.reload`, `router.refresh`) |
+| Component prop 추가·이름 변경 | 컴포넌트명 (예: `ManualAssignmentForm`) |
+| URL 라우트 변경 | 옛 path |
+| 토스트·다이얼로그 워딩 | 워딩 일부 문자열 |
+| Enum/타입 값 | enum 값명 |
+| 환경변수 | ENV 변수명 |
+
+검색 범위: `src/` + `e2e/`. 의심 spec 발견 시 `npx playwright test e2e/<path>.spec.ts`로 부분 실행. 단위 테스트(`npm run validate`) 통과해도 통합 흐름 결함은 못 잡으므로 그렙은 별도로 필수.
+
 ## HWPX 로컬 테스트
 
 `/api/hwpx/generate`는 Vercel Python Function — `next dev`에서 동작하지 않음. 권장 워크플로우(브리지 서버):
