@@ -158,6 +158,22 @@ describe('MessageIcon', () => {
     });
   });
 
+  describe('마운트 시 unread count 자체 갱신', () => {
+    it('마운트 직후 fetchUnreadConversationCount가 호출된다', async () => {
+      mockFetchUnreadCount.mockResolvedValue(0);
+      render(<MessageIcon initialUnreadCount={0} />);
+      await act(async () => { await Promise.resolve(); });
+      expect(mockFetchUnreadCount).toHaveBeenCalled();
+    });
+
+    it('마운트 후 fetch 결과로 뱃지가 갱신된다', async () => {
+      mockFetchUnreadCount.mockResolvedValue(4);
+      const { container } = render(<MessageIcon initialUnreadCount={0} />);
+      await act(async () => { await Promise.resolve(); });
+      expect(container.querySelector('.bg-blue-500')).toBeInTheDocument();
+    });
+  });
+
   describe('visibilitychange 이벤트 — refreshCount 호출', () => {
     it('탭이 다시 보이면 fetchUnreadConversationCount가 호출된다', async () => {
       render(<MessageIcon initialUnreadCount={0} />);
@@ -176,6 +192,9 @@ describe('MessageIcon', () => {
 
     it('탭이 숨겨지면 fetchUnreadConversationCount가 호출되지 않는다', async () => {
       render(<MessageIcon initialUnreadCount={0} />);
+      // 마운트 시 자체 fetch 한 번은 정상 동작 — 이 테스트는 visibilitychange만 검증
+      await act(async () => { await Promise.resolve(); });
+      mockFetchUnreadCount.mockClear();
 
       await act(async () => {
         Object.defineProperty(document, 'visibilityState', {
@@ -250,6 +269,8 @@ describe('MessageIcon', () => {
     it('내가 보낸 메시지 수신 시 fetchUnreadCount를 호출하지 않는다', async () => {
       render(<MessageIcon initialUnreadCount={0} />);
       await act(async () => { await Promise.resolve(); });
+      // 마운트 시 자체 fetch 한 번은 정상 동작 — 이 테스트는 postgres_changes만 검증
+      mockFetchUnreadCount.mockClear();
 
       if (postgresCallback) {
         await act(async () => {

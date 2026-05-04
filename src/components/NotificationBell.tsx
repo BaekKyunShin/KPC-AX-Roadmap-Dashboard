@@ -13,6 +13,7 @@ import {
 import { formatRelativeTime } from '@/lib/utils/consultant-home';
 import {
   fetchNotifications,
+  fetchUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/app/(dashboard)/notifications/actions';
@@ -64,6 +65,19 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   useEffect(() => {
     setUnreadCount(initialUnreadCount);
   }, [initialUnreadCount]);
+
+  // 마운트 시 서버에서 최신 unread count 조회. layout이 더 이상 server-side로
+  // fetch하지 않으므로(라우트 변경마다 await가 children swap을 막던 문제 해소)
+  // client component가 자체적으로 갱신한다.
+  useEffect(() => {
+    let cancelled = false;
+    fetchUnreadCount().then((count) => {
+      if (!cancelled) setUnreadCount(count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Popover 열릴 때마다 알림 목록을 fresh fetch
   const handleOpenChange = async (open: boolean) => {
