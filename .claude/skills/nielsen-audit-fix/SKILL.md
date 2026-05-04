@@ -32,26 +32,71 @@ $ARGUMENTS(보고서 경로) 또는 `docs/reports/`의 가장 최근 `*-nielsen-
 3. 후보가 0건이면 "먼저 `/nielsen-audit` 으로 보고서를 생성하세요" 안내 후 종료
 4. `git log --oneline -20` 으로 최근 PR에서 이미 해결된 이슈가 있는지 식별 (보고서 이슈와 대조해 자동 제외 후보로 표시)
 
-### Phase 1 — 이슈 일괄 요약 + 사용자 승인 (단 한 번)
+### Phase 0.5 — mockup 사전 검증
 
-보고서를 파싱해 `### #N [★★★★★ H?] 제목` 형식의 모든 이슈를 추출한다.
+보고서가 `nielsen-audit` 스킬(Phase 3.5 포함)로 작성됐다면 mockup 라우트 `src/app/mockup/nielsen-audit/{report-date}/` 가 이미 존재한다. 사용자는 Phase 1 일괄 승인 단계에서 텍스트 + mockup 시각 자료를 함께 보고 의사결정한다.
 
-각 이슈를 다음 4줄로 사용자 관점 압축 (개발자 용어 금지, 메뉴명·실제 노출 라벨 사용):
+**확인 절차:**
+
+1. `ls src/app/mockup/nielsen-audit/{report-date}/` 로 일자 폴더·이슈 페이지 존재 확인 (보고서 이슈 번호와 1:1 매칭)
+2. 누락된 이슈가 있다면 `nielsen-audit` 스킬의 Phase 3.5 절차로 보강 (이 스킬 안에서 진행)
+   - 일자 인덱스 `page.tsx` / `_components/BeforeAfterFrame.tsx` / `issue-{N}/page.tsx`
+   - `src/app/mockup/layout.tsx`의 `MOCKUP_NAV` 갱신
+   - `src/app/mockup/page.tsx` 인덱스 카드 추가
+   - 코드 품질 기준 엄수 (실제 production 컴포넌트만 import, TS strict, 디자인 토큰 일관성)
+3. mockup 보강이 필요했다면 `npm run validate` 통과 확인 후 Phase 1 진행
+4. 사용자에게 mockup 인덱스 URL 안내 (Phase 1 출력 직전에 한 줄):
+   - 「🖥️ `http://localhost:3000/mockup/nielsen-audit/{date}` 에서 N개 이슈의 이전/이후 화면을 확인하실 수 있습니다. (`npm run dev` 미기동 시 별도 터미널에서 실행)」
+
+⚠️ **Phase 0.5 가 끝나기 전에 Phase 1 으로 넘어가지 말 것.** 사용자가 시각 자료 없이 일괄 승인하면 본 스킬의 핵심 가치(사전 합의)가 손상된다.
+
+### Phase 1 — mockup 일괄 검토 사이클 (수정 요청 0건이 될 때까지 반복)
+
+보고서를 파싱해 `### #N [★★★★★ H?] 제목` 형식의 모든 이슈를 추출하고, **N개 모두를 한 화면에 일괄 표시**한 뒤 사용자 합의가 완전히 끝날 때까지 사이클을 반복한다. 합의가 끝나야 Phase 2(코드 구현)로 넘어간다.
+
+#### 1-A. 일괄 표시
+
+각 이슈를 다음 5줄로 사용자 관점 압축 (개발자 용어 금지, 메뉴명·실제 노출 라벨 사용):
 
 ```text
 #N [★★★★★ H{번호} {휴리스틱명}] {제목}
    현재: {사용자가 막히는 상황 — 1문장}
    개선 후: "{실제 노출될 라벨}" {플로우 변화 — 1문장}
+   🖥️ mockup: http://localhost:3000/mockup/nielsen-audit/{date}/issue-{N}
    변경: {파일 경로} (재사용: {자산 명} | 신규: {사유 1줄})
 ```
 
-**N개를 한 번에 출력**한 뒤 `AskUserQuestion` 으로 일괄 승인 — 옵션 워딩 고정:
+`{date}` 는 보고서 일자(`YYYY-MM-DD`)와 동일. mockup URL이 누락되면 Phase 0.5 로 돌아가 보강 후 재출력. **수정 사이클이 반복돼도 매번 N개 전체를 다시 표시**한다 (1개씩 차례차례 묻지 않는다).
 
-- **모두 진행** — N개 전체 해결
-- **일부 제외하고 진행** — 제외할 이슈 번호(들) 입력 후 진행
+#### 1-B. 일괄 질문
+
+`AskUserQuestion` 으로 다음 옵션 (워딩 고정):
+
+- **그대로 진행** — N개 전체를 현 mockup 그대로 해결. Phase 2 로 이동
+- **특정 항목 수정** — 어느 이슈를 어떻게 바꿀지 후속 자유 텍스트 입력
 - **취소** — 작업 중단
 
-⛔ **1개씩 승인 받지 말 것.** 사용자 메모리 규칙: "UI/UX 변경은 사용자 관점 사전 승인 필수 — 추상적 옵션 금지". 본 스킬은 일괄 승인이 본질.
+⛔ **1개씩 승인 받지 말 것.** 매번 N개 전체를 한 번에 보여주고 한 번에 묻는다. 사용자 메모리 규칙: "UI/UX 변경은 사용자 관점 사전 승인 필수 — 추상적 옵션 금지".
+
+#### 1-C. "특정 항목 수정" 선택 시 처리
+
+1. 사용자에게 자유 텍스트로 수정 내역을 받는다 (한 번에 여러 이슈도 가능):
+   - 예: "#2 의 토스트 문구를 「24시간 이내 검토」로 바꿔줘. #4 는 모달 대신 인라인 안내로."
+2. 수정 대상 이슈마다 **mockup 페이지 + 보고서 4단을 동시 갱신** (옵션 A — 진실의 원천 일치 유지):
+   - mockup 페이지: `src/app/mockup/nielsen-audit/{date}/issue-{N}/page.tsx` — Phase 3.5 코드 품질 기준 엄수 (실제 production 컴포넌트만, TS strict, 디자인 토큰)
+   - 보고서 4단: `docs/reports/{date}-nielsen-heuristics-audit.md` 의 해당 이슈 「사용자 관점 개선 후」 단의 따옴표 라벨·플로우 묘사
+   - 둘 다 변경된 라벨이 정확히 일치하는지 grep 검증 (예: `grep "24시간 이내 검토" docs/reports/... src/app/mockup/...`)
+3. 변경된 이슈가 다른 이슈와 의존(예: 공용 컴포넌트 변경)이 있으면 그 이슈도 함께 갱신
+4. `npm run validate` 통과 확인 (mockup 페이지 typecheck·lint pass)
+5. 사용자에게 안내:
+   - 「✅ #2, #4 mockup·보고서 갱신 완료. 변경된 mockup 을 다시 확인해주세요. (`npm run dev` 필요 시 별도 터미널)」
+6. **1-A 단계로 회귀** — N개 전체를 다시 일괄 표시 → 1-B 일괄 질문 반복
+
+#### 1-D. 사이클 종료 조건
+
+사용자가 **그대로 진행**을 선택할 때만 Phase 2 로 넘어간다. 사이클 횟수에 상한은 없다 — 사용자가 만족할 때까지 반복.
+
+수정 사이클이 5회 초과 시 사용자에게 한 번 안내: 「현재 N회째 수정 사이클입니다. 보고서 자체를 재작성하는 게 빠를 수도 있습니다 — `/nielsen-audit` 재실행도 검토해보세요. 계속 진행하시려면 다시 수정 요청을 주시면 됩니다.」 (안내만, 강제 종료 X)
 
 ### Phase 2 — 브랜치 생성 + 플랜 모드 + 계획서 작성
 
@@ -113,13 +158,25 @@ fix: H{번호} {짧은 한국어 제목}
 **전체 완료 후 (브랜치 푸쉬 직전):**
 
 1. `npm run validate && npm run build` 모두 pass 확인
-2. **보고서 archive 이동 + 단독 커밋**:
+2. **보고서 + mockup archive 이동 + 단독 커밋**:
 
 ```bash
+# 보고서 archive
 mkdir -p docs/reports/archive
 git mv docs/reports/<file>.md docs/reports/archive/<file>.md
-git commit -m "docs: Nielsen 감사 보고서 아카이브 (N건 해결 완료)"
+
+# mockup archive (Phase 0.5 산출물 함께 이동)
+mkdir -p src/app/mockup/_archive
+git mv src/app/mockup/nielsen-audit/<date> src/app/mockup/_archive/<date>
+
+# 인덱스·네비 정리: src/app/mockup/layout.tsx 의 MOCKUP_NAV 에서 해당 일자 그룹 제거,
+# src/app/mockup/page.tsx 의 인덱스 카드에서도 해당 일자 카드 제거.
+# (직접 편집 — 단순 항목 삭제이므로 본 archive 커밋에 포함)
+
+git commit -m "docs: Nielsen 감사 보고서·mockup 아카이브 (N건 해결 완료)"
 ```
+
+⚠️ `_archive/` 는 Next.js App Router에서 폴더명 prefix `_` 로 라우트 자동 제외 — main에 mockup 코드는 남되 `/mockup/...` URL은 사라진다 (시안 누적 방지).
 
 3. (선택) `superpowers:requesting-code-review` 로 자체 리뷰 → 이슈 발견 시 `receiving-code-review` 로 보강 후 추가 커밋
 
@@ -270,14 +327,19 @@ main 직접 커밋 금지 (메모리 규칙) → 핫픽스 브랜치 분기:
 
 ## 자체 검증 체크리스트 (verification-before-completion)
 
-- [ ] Phase 1 에서 N개를 한 번에 일괄 승인 받음 (1개씩 X)
-- [ ] 모든 이슈가 보고서 항목과 1:1 매칭 (제외분 명시)
+- [ ] Phase 0.5 에서 mockup 라우트 존재 확인 (없으면 nielsen-audit Phase 3.5 절차로 보강)
+- [ ] Phase 1 사이클이 매번 N개 전체를 일괄 표시했음 (1개씩 차례차례 X)
+- [ ] Phase 1 사이클이 사용자 "그대로 진행" 선택으로 종료됐음 (수정 요청 0건)
+- [ ] 사이클 중 수정 요청이 있었다면 mockup 페이지 + 보고서 4단의 라벨이 정확히 일치 (grep 검증)
+- [ ] 모든 이슈가 보고서 항목과 1:1 매칭
 - [ ] main 직접 커밋 0건 — 모든 변경은 브랜치 → PR → squash merge
 - [ ] 신규 테스트 추가됨 (TDD), 회귀 테스트 통과
 - [ ] `grep -rE "(test|it)\.skip" src/` 결과 0건
 - [ ] 임시 우회·예산 상향·timeout 완화 0건
-- [ ] `npm run validate && npm run build` pass
-- [ ] 보고서가 `docs/reports/archive/` 로 이동됨 (단독 커밋)
+- [ ] `npm run validate && npm run build` pass — mockup 라우트도 포함해 빌드 성공 (Next.js App Router dynamic route 정상 컴파일)
+- [ ] 보고서가 `docs/reports/archive/` 로 이동됨, mockup 코드도 `src/app/mockup/_archive/<date>/` 로 이동됨 (단독 커밋)
+- [ ] PR diff 에 mockup 파일이 포함됨 (Preview 배포에서 운영자도 시각 확인 가능)
+- [ ] `src/app/mockup/layout.tsx` MOCKUP_NAV·`page.tsx` 인덱스에서 archive 이동된 일자 그룹·카드가 제거됨
 - [ ] PR 제목 = `fix: Nielsen 휴리스틱 N건 해결`
 - [ ] 한국어 커밋 메시지·PR 본문
 - [ ] PR CI 모든 check (Lint·Unit·Build·**E2E**·Vercel) `conclusion=SUCCESS`
@@ -291,7 +353,7 @@ main 직접 커밋 금지 (메모리 규칙) → 핫픽스 브랜치 분기:
 
 ## 작성 원칙
 
-- **사용자 관점 일괄 승인** — Phase 1 에서 N개 한꺼번에 (1개씩 X)
+- **사용자 관점 일괄 검토 사이클** — Phase 1 에서 매번 N개 전체를 한꺼번에 표시 (1개씩 X). 사용자 "그대로 진행" 시까지 사이클 반복, 수정 요청 시 mockup + 보고서 4단 동시 갱신
 - **main 보호** — 모든 변경은 브랜치 → PR → squash merge (직접 커밋 금지)
 - **TDD 강제** — 모든 코드 변경은 RED → GREEN → REFACTOR
 - **임시 우회 금지** — CI 실패는 근본 원인 해결만 (메모리 규칙)
