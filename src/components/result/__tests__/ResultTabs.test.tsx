@@ -115,4 +115,71 @@ describe('ResultTabs', () => {
     expect(root.className).toMatch(/result-tabs-root/);
     expect(root.className).toMatch(/custom-root/);
   });
+
+  describe('탭 전환 시 미저장 변경사항 감지 (#2)', () => {
+    const TABS_WITH_SAVING: ResultTabItem[] = [
+      {
+        value: 'overview',
+        label: 'Ⅰ. 개요',
+        content: (
+          <div>
+            개요 콘텐츠
+            {/* InlineEditField 의 saving 상태를 흉내내는 DOM 마커 */}
+            <span data-saving-state="saving" data-testid="pending-cell">
+              저장 중 셀
+            </span>
+          </div>
+        ),
+      },
+      {
+        value: 'requirements',
+        label: 'Ⅱ. 요구분석',
+        content: <div>요구분석 콘텐츠</div>,
+      },
+    ];
+
+    it('saving 상태 셀이 존재할 때 다른 탭 클릭 시 AlertDialog 노출 + 탭 미전환', async () => {
+      const user = userEvent.setup();
+      render(<ResultTabs tabs={TABS_WITH_SAVING} />);
+
+      await user.click(screen.getByRole('tab', { name: /요구분석/ }));
+
+      expect(
+        await screen.findByText('저장 중인 변경 사항이 있습니다'),
+      ).toBeInTheDocument();
+      // 다이얼로그 미선택 상태에서는 첫 탭 콘텐츠가 그대로 노출
+      expect(screen.getByText('개요 콘텐츠')).toBeInTheDocument();
+      expect(screen.queryByText('요구분석 콘텐츠')).not.toBeInTheDocument();
+    });
+
+    it('AlertDialog "그래도 이동" 클릭 시 탭이 전환된다', async () => {
+      const user = userEvent.setup();
+      render(<ResultTabs tabs={TABS_WITH_SAVING} />);
+      await user.click(screen.getByRole('tab', { name: /요구분석/ }));
+      await user.click(screen.getByRole('button', { name: '그래도 이동' }));
+
+      expect(screen.getByText('요구분석 콘텐츠')).toBeInTheDocument();
+    });
+
+    it('AlertDialog "취소" 시 첫 탭이 그대로 유지된다', async () => {
+      const user = userEvent.setup();
+      render(<ResultTabs tabs={TABS_WITH_SAVING} />);
+      await user.click(screen.getByRole('tab', { name: /요구분석/ }));
+      await user.click(screen.getByRole('button', { name: '취소' }));
+
+      expect(screen.getByText('개요 콘텐츠')).toBeInTheDocument();
+      expect(screen.queryByText('요구분석 콘텐츠')).not.toBeInTheDocument();
+    });
+
+    it('saving 셀이 없으면 즉시 탭 전환 (다이얼로그 미노출)', async () => {
+      const user = userEvent.setup();
+      render(<ResultTabs tabs={TABS} />);
+      await user.click(screen.getByRole('tab', { name: /요구분석/ }));
+
+      expect(screen.getByText('요구분석 콘텐츠')).toBeInTheDocument();
+      expect(
+        screen.queryByText('저장 중인 변경 사항이 있습니다'),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

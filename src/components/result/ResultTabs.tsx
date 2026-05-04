@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Tabs,
@@ -8,6 +14,16 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { List, LayoutList } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -93,7 +109,13 @@ export function ResultTabs({
 
   const [expandAll, setExpandAll] = useState(false);
 
-  const handleValueChange = useCallback(
+  // #2 fix — 탭 전환 시 saving 상태인 InlineEditField 감지 → AlertDialog 차단.
+  // prop drill 회피를 위해 DOM 마커 패턴 사용 (InlineEditField 가 root 에
+  // data-saving-state 속성을 노출).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+
+  const performTabChange = useCallback(
     (newValue: string) => {
       setActiveValue(newValue);
       startTransition(() => {
@@ -105,8 +127,22 @@ export function ResultTabs({
     [router, searchParams, searchParamName],
   );
 
+  const handleValueChange = useCallback(
+    (newValue: string) => {
+      const hasSaving = rootRef.current?.querySelector(
+        '[data-saving-state="saving"]',
+      );
+      if (hasSaving) {
+        setPendingTab(newValue);
+        return;
+      }
+      performTabChange(newValue);
+    },
+    [performTabChange],
+  );
+
   return (
-    <div className={cn('result-tabs-root', className)}>
+    <div ref={rootRef} className={cn('result-tabs-root', className)}>
       <Tabs value={activeValue} onValueChange={handleValueChange}>
         <div className="sticky top-16 z-10 -mx-4 sm:-mx-6 lg:-mx-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b">
           <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 gap-2">
@@ -166,6 +202,37 @@ export function ResultTabs({
           ))
         )}
       </Tabs>
+
+      <AlertDialog
+        open={pendingTab !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTab(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>저장 중인 변경 사항이 있습니다</AlertDialogTitle>
+            <AlertDialogDescription>
+              저장이 끝나기 전에 다른 탭으로 이동하면 변경 결과를 확인할 수
+              없습니다. 잠시 후 다시 이동하세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingTab) {
+                  const next = pendingTab;
+                  setPendingTab(null);
+                  performTabChange(next);
+                }
+              }}
+            >
+              그래도 이동
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

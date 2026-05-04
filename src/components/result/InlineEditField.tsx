@@ -128,7 +128,10 @@ export function InlineEditField({
     );
 
     return (
-      <div className={cn('flex items-start gap-2', className)}>
+      <div
+        className={cn('flex items-start gap-2', className)}
+        data-saving-state={savingState}
+      >
         {multiline ? (
           <textarea
             value={editBuffer}
@@ -200,6 +203,7 @@ export function InlineEditField({
         !readOnly && 'cursor-pointer',
         className,
       )}
+      data-saving-state={savingState}
       onClick={startEdit}
       role={readOnly ? undefined : 'button'}
       tabIndex={readOnly ? undefined : 0}

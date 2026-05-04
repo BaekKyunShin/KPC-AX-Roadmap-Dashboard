@@ -109,6 +109,35 @@ describe('InlineEditField', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it('savingState 가 root div 의 data-saving-state 속성으로 노출된다 (#2 ResultTabs 연동)', async () => {
+    const user = userEvent.setup();
+    let resolveSave: (() => void) | undefined;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+
+    const { container } = render(<InlineEditField value="원본" onSave={onSave} />);
+
+    // idle 상태에서도 마커 존재
+    expect(container.querySelector('[data-saving-state="idle"]')).toBeInTheDocument();
+
+    // saving 진입
+    await user.click(screen.getByText('원본'));
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), '수정');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      container.querySelector('[data-saving-state="saving"]'),
+    ).toBeInTheDocument();
+
+    // cleanup
+    resolveSave?.();
+  });
+
   describe('error 복구 동선 (#1)', () => {
     it('저장 실패 시 "다시 시도" 버튼이 노출되고 클릭 시 onSave 가 재호출된다', async () => {
       const user = userEvent.setup();
