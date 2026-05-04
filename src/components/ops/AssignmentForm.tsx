@@ -1,7 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
+import { showSuccessToast } from '@/lib/utils/toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ReasonLengthHint, REASON_LENGTH } from './assignment';
 
 // ============================================================================
@@ -30,19 +42,20 @@ interface AssignmentFormProps {
 // ============================================================================
 
 export default function AssignmentForm({ projectId, recommendations }: AssignmentFormProps) {
+  const router = useRouter();
   const [selectedConsultantId, setSelectedConsultantId] = useState<string>('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const selectedRecommendation = recommendations.find((r) => r.candidate_user_id === selectedConsultantId);
 
-  // 폼 제출
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // 폼 제출 — 유효성 검사 후 AlertDialog 노출.
+  function requestAssign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    // 유효성 검사
     if (!selectedConsultantId) {
       setError('배정할 컨설턴트를 선택하세요.');
       return;
@@ -53,6 +66,13 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
       return;
     }
 
+    setIsConfirmOpen(true);
+  }
+
+  // AlertDialog "배정 확인" 클릭 — 실제 Server Action 호출 + router.refresh + 토스트.
+  // ManualAssignmentForm 의 검증된 패턴(PR #58) 그대로 차용.
+  async function confirmAssign() {
+    setIsConfirmOpen(false);
     setIsLoading(true);
 
     try {
@@ -64,8 +84,12 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
       const result = await assignConsultant(formData);
 
       if (result.success) {
-        // 성공 시 페이지 새로고침으로 업데이트된 데이터 표시
-        window.location.reload();
+        // window.location.reload() 대신 부드러운 갱신 — 사이드바·헤더가 깜빡이지 않는다.
+        showSuccessToast(
+          '배정 완료',
+          `${selectedRecommendation?.candidate.name ?? ''}컨설턴트가 배정되었습니다`,
+        );
+        router.refresh();
       } else {
         setError(result.error || '배정에 실패했습니다.');
         setIsLoading(false);
@@ -78,62 +102,82 @@ export default function AssignmentForm({ projectId, recommendations }: Assignmen
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* 에러 메시지 */}
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+    <div>
+      <form onSubmit={requestAssign}>
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* 컨설턴트 선택 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">배정할 컨설턴트 선택 *</label>
+          <div className="space-y-2">
+            {recommendations.map((rec) => (
+              <RecommendationItem
+                key={rec.candidate_user_id}
+                recommendation={rec}
+                isSelected={selectedConsultantId === rec.candidate_user_id}
+                onSelect={setSelectedConsultantId}
+              />
+            ))}
+          </div>
         </div>
-      )}
 
-      {/* 컨설턴트 선택 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">배정할 컨설턴트 선택 *</label>
-        <div className="space-y-2">
-          {recommendations.map((rec) => (
-            <RecommendationItem
-              key={rec.candidate_user_id}
-              recommendation={rec}
-              isSelected={selectedConsultantId === rec.candidate_user_id}
-              onSelect={setSelectedConsultantId}
-            />
-          ))}
+        {/* 배정 사유 */}
+        <div className="mb-4">
+          <label htmlFor="assignment_reason" className="block text-sm font-medium text-gray-700 mb-2">
+            배정 사유 *
+          </label>
+          <textarea
+            id="assignment_reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            maxLength={REASON_LENGTH.MAX}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
+            placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 경험이 풍부하고 일정 조율이 가능함)`}
+          />
+          <ReasonLengthHint currentLength={reason.length} />
         </div>
-      </div>
 
-      {/* 배정 사유 */}
-      <div className="mb-4">
-        <label htmlFor="assignment_reason" className="block text-sm font-medium text-gray-700 mb-2">
-          배정 사유 *
-        </label>
-        <textarea
-          id="assignment_reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          maxLength={REASON_LENGTH.MAX}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 break-keep"
-          placeholder={`배정 사유를 ${REASON_LENGTH.MIN}자 이상 입력하세요. (예: 해당 업종 경험이 풍부하고 일정 조율이 가능함)`}
-        />
-        <ReasonLengthHint currentLength={reason.length} />
-      </div>
+        {/* 선택한 컨설턴트 요약 */}
+        {selectedRecommendation && (
+          <SelectedRecommendationSummary recommendation={selectedRecommendation} />
+        )}
 
-      {/* 선택한 컨설턴트 요약 */}
-      {selectedRecommendation && (
-        <SelectedRecommendationSummary recommendation={selectedRecommendation} />
-      )}
+        {/* 제출 버튼 */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isLoading || !selectedConsultantId || reason.length < REASON_LENGTH.MIN}
+            className="px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? '배정 중...' : '컨설턴트 배정'}
+          </button>
+        </div>
+      </form>
 
-      {/* 제출 버튼 */}
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={isLoading || !selectedConsultantId || reason.length < REASON_LENGTH.MIN}
-          className="px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? '배정 중...' : '컨설턴트 배정'}
-        </button>
-      </div>
-    </form>
+      {/* 비가역 액션 사전 차단 — ManualAssignmentForm 패턴(PR #58) 차용 */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedRecommendation?.candidate.name ?? ''}컨설턴트를 이 프로젝트에 배정하시겠습니까?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              확인을 누르면 이 컨설턴트가 즉시 프로젝트에 배정됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAssign}>배정 확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 

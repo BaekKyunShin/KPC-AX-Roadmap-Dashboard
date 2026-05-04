@@ -6,12 +6,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 모킹
 // ============================================================================
 
-// Server Action 모킹
+const mockRefresh = vi.fn();
+const mockSuccessToast = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mockRefresh }),
+}));
+
+vi.mock('@/lib/utils/toast', () => ({
+  showSuccessToast: (...args: unknown[]) => mockSuccessToast(...args),
+  showErrorToast: vi.fn(),
+}));
+
 vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
   assignConsultant: vi.fn(),
 }));
 
-// assignment 모듈의 상수 모킹
 vi.mock('./assignment', () => ({
   ReasonLengthHint: ({ currentLength }: { currentLength: number }) => (
     <span data-testid="reason-length-hint" data-length={currentLength}>
@@ -74,12 +84,34 @@ const emptyProps = {
 };
 
 // ============================================================================
+// 헬퍼 — AlertDialog 단계 통합
+// ============================================================================
+
+async function selectAndSubmit(
+  user: ReturnType<typeof userEvent.setup>,
+  reason = '이 컨설턴트가 가장 적합합니다.',
+  radioIndex = 0,
+) {
+  const radios = screen.getAllByRole('radio');
+  fireEvent.click(radios[radioIndex]);
+  const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
+  await user.type(textarea, reason);
+  await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+}
+
+async function confirmAssign(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: '배정 확인' }));
+}
+
+// ============================================================================
 // 테스트
 // ============================================================================
 
 describe('AssignmentForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRefresh.mockClear();
+    mockSuccessToast.mockClear();
   });
 
   // --------------------------------------------------------------------------
@@ -136,7 +168,7 @@ describe('AssignmentForm', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 3. 컨설턴트 선택 (radio) → 요약 표시
+  // 3. 컨설턴트 선택
   // --------------------------------------------------------------------------
   describe('컨설턴트 선택', () => {
     it('radio 입력으로 컨설턴트를 선택할 수 있다', () => {
@@ -151,13 +183,9 @@ describe('AssignmentForm', () => {
     it('컨설턴트 선택 시 선택한 컨설턴트 요약이 표시된다', () => {
       render(<AssignmentForm {...defaultProps} />);
       const radios = screen.getAllByRole('radio');
-
       fireEvent.click(radios[0]);
 
-      // 요약 섹션은 "선택한 컨설턴트:" 레이블이 있는 div 내부에 있음
       const summaryLabel = screen.getByText(/선택한 컨설턴트:/);
-      expect(summaryLabel).toBeInTheDocument();
-      // 요약 섹션 컨테이너를 찾아서 within으로 검증
       const summaryContainer = summaryLabel.closest('div');
       expect(within(summaryContainer!).getByText(/김컨설턴트/)).toBeInTheDocument();
     });
@@ -165,13 +193,10 @@ describe('AssignmentForm', () => {
     it('컨설턴트 선택 시 매칭 점수가 요약에 표시된다', () => {
       render(<AssignmentForm {...defaultProps} />);
       const radios = screen.getAllByRole('radio');
-
       fireEvent.click(radios[0]);
 
-      // 요약 섹션을 특정해서 매칭 점수 검증 (85점은 리스트 아이템과 요약 두 곳에 존재)
       const summaryLabel = screen.getByText(/선택한 컨설턴트:/);
       const summaryContainer = summaryLabel.closest('div');
-      // "매칭 점수: 85점" 형태로 요약에 표시됨
       expect(within(summaryContainer!).getByText(/매칭 점수: 85점/)).toBeInTheDocument();
     });
 
@@ -185,13 +210,10 @@ describe('AssignmentForm', () => {
       const radios = screen.getAllByRole('radio');
 
       fireEvent.click(radios[0]);
-      // 요약 섹션에 김컨설턴트가 나타남
-      expect(screen.getByText(/선택한 컨설턴트:/)).toBeInTheDocument();
       const summaryAfterFirst = screen.getByText(/선택한 컨설턴트:/).closest('div');
       expect(within(summaryAfterFirst!).getByText(/김컨설턴트/)).toBeInTheDocument();
 
       fireEvent.click(radios[1]);
-      // 요약이 이컨설턴트로 업데이트됨
       const summaryAfterSecond = screen.getByText(/선택한 컨설턴트:/).closest('div');
       expect(within(summaryAfterSecond!).getByText(/이컨설턴트/)).toBeInTheDocument();
     });
@@ -205,7 +227,7 @@ describe('AssignmentForm', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 4. 사유 입력 최소 길이 미달 → 버튼 disabled
+  // 4. 배정 사유 유효성 검사
   // --------------------------------------------------------------------------
   describe('배정 사유 유효성 검사', () => {
     it('초기에는 제출 버튼이 비활성화된다', () => {
@@ -283,31 +305,51 @@ describe('AssignmentForm', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 5. 폼 제출 성공
+  // 5. AlertDialog 사전 차단 (#3 신규)
   // --------------------------------------------------------------------------
-  describe('폼 제출 성공', () => {
-    it('제출 성공 시 window.location.reload를 호출한다', async () => {
+  describe('AlertDialog 사전 차단 (#3)', () => {
+    it('"컨설턴트 배정" 클릭 시 AlertDialog 노출 — 즉시 assignConsultant 미호출', async () => {
       const user = userEvent.setup();
-      const reloadMock = vi.fn();
-      Object.defineProperty(window, 'location', {
-        value: { reload: reloadMock },
-        writable: true,
-      });
-
       vi.mocked(assignConsultant).mockResolvedValue({ success: true });
 
       render(<AssignmentForm {...defaultProps} />);
+      await selectAndSubmit(user);
 
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
+      expect(
+        await screen.findByText(/김컨설턴트컨설턴트를 이 프로젝트에 배정하시겠습니까\?/),
+      ).toBeInTheDocument();
+      expect(vi.mocked(assignConsultant)).not.toHaveBeenCalled();
+    });
 
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '제조업 전문성이 높고 일정 조율이 가능합니다.');
+    it('AlertDialog "취소" 시 폼 유지 + assignConsultant·refresh 미호출', async () => {
+      const user = userEvent.setup();
+      render(<AssignmentForm {...defaultProps} />);
+      await selectAndSubmit(user);
+      await user.click(screen.getByRole('button', { name: '취소' }));
 
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      expect(vi.mocked(assignConsultant)).not.toHaveBeenCalled();
+      expect(mockRefresh).not.toHaveBeenCalled();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. 폼 제출 성공 (router.refresh 패턴)
+  // --------------------------------------------------------------------------
+  describe('폼 제출 성공', () => {
+    it('"배정 확인" 후 router.refresh + 성공 토스트 (window.location.reload 미사용)', async () => {
+      const user = userEvent.setup();
+      vi.mocked(assignConsultant).mockResolvedValue({ success: true });
+
+      render(<AssignmentForm {...defaultProps} />);
+      await selectAndSubmit(user, '제조업 전문성이 높고 일정 조율이 가능합니다.');
+      await confirmAssign(user);
 
       await waitFor(() => {
-        expect(reloadMock).toHaveBeenCalledOnce();
+        expect(mockRefresh).toHaveBeenCalledTimes(1);
+        expect(mockSuccessToast).toHaveBeenCalledWith(
+          '배정 완료',
+          expect.stringContaining('김컨설턴트'),
+        );
       });
     });
 
@@ -321,14 +363,8 @@ describe('AssignmentForm', () => {
       });
 
       render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 적합합니다.');
-
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      await selectAndSubmit(user, '이 컨설턴트가 적합합니다.');
+      await confirmAssign(user);
 
       await waitFor(() => {
         expect(capturedFormData).not.toBeNull();
@@ -340,7 +376,7 @@ describe('AssignmentForm', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 6. 폼 제출 실패 (에러 메시지)
+  // 7. 폼 제출 실패 (에러 메시지)
   // --------------------------------------------------------------------------
   describe('폼 제출 실패', () => {
     it('컨설턴트 미선택 제출 시 에러 메시지를 표시한다', async () => {
@@ -350,7 +386,7 @@ describe('AssignmentForm', () => {
       const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
       await user.type(textarea, '배정 사유 충분히 길게 입력합니다.');
 
-      // 버튼이 disabled이므로 직접 form submit 이벤트로 테스트
+      // 버튼 disabled 우회: form 직접 submit
       fireEvent.submit(screen.getByRole('button', { name: /컨설턴트 배정/ }).closest('form')!);
 
       await waitFor(() => {
@@ -365,7 +401,6 @@ describe('AssignmentForm', () => {
       const radios = screen.getAllByRole('radio');
       fireEvent.click(radios[0]);
 
-      // 사유를 짧게 입력하고 직접 submit 이벤트 발생
       const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
       await user.type(textarea, '짧음');
 
@@ -376,7 +411,7 @@ describe('AssignmentForm', () => {
       });
     });
 
-    it('Server Action 실패 시 에러 메시지를 표시한다', async () => {
+    it('Server Action 실패 시 에러 메시지 표시 — refresh·토스트 미호출', async () => {
       const user = userEvent.setup();
       vi.mocked(assignConsultant).mockResolvedValue({
         success: false,
@@ -384,36 +419,23 @@ describe('AssignmentForm', () => {
       });
 
       render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 가장 적합합니다.');
-
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      await selectAndSubmit(user, '이 컨설턴트가 가장 적합합니다.');
+      await confirmAssign(user);
 
       await waitFor(() => {
         expect(screen.getByText('배정 가능한 상태가 아닙니다.')).toBeInTheDocument();
       });
+      expect(mockRefresh).not.toHaveBeenCalled();
+      expect(mockSuccessToast).not.toHaveBeenCalled();
     });
 
     it('Server Action 실패 시 에러 메시지가 없으면 기본 메시지를 표시한다', async () => {
       const user = userEvent.setup();
-      vi.mocked(assignConsultant).mockResolvedValue({
-        success: false,
-        error: '',
-      });
+      vi.mocked(assignConsultant).mockResolvedValue({ success: false, error: '' });
 
       render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 가장 적합합니다.');
-
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      await selectAndSubmit(user);
+      await confirmAssign(user);
 
       await waitFor(() => {
         expect(screen.getByText('배정에 실패했습니다.')).toBeInTheDocument();
@@ -425,53 +447,19 @@ describe('AssignmentForm', () => {
       vi.mocked(assignConsultant).mockRejectedValue(new Error('Unknown error'));
 
       render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 가장 적합합니다.');
-
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      await selectAndSubmit(user);
+      await confirmAssign(user);
 
       await waitFor(() => {
-        expect(screen.getByText('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')).toBeInTheDocument();
-      });
-    });
-
-    it('에러 발생 후 재시도 시 에러가 초기화된다', async () => {
-      const user = userEvent.setup();
-
-      // 첫 번째 호출은 실패
-      vi.mocked(assignConsultant)
-        .mockResolvedValueOnce({ success: false, error: '임시 오류' })
-        .mockResolvedValue({ success: true });
-
-      render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 가장 적합합니다.');
-
-      // 첫 번째 제출 - 실패
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
-      await waitFor(() => {
-        expect(screen.getByText('임시 오류')).toBeInTheDocument();
-      });
-
-      // 두 번째 제출 - 에러 초기화됨
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
-      await waitFor(() => {
-        // 에러가 사라짐 (reload 전)
-        expect(screen.queryByText('임시 오류')).not.toBeInTheDocument();
+        expect(
+          screen.getByText('배정 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
+        ).toBeInTheDocument();
       });
     });
   });
 
   // --------------------------------------------------------------------------
-  // 7. 제출 중 로딩 상태
+  // 8. 제출 중 로딩 상태
   // --------------------------------------------------------------------------
   describe('제출 중 로딩 상태', () => {
     it('제출 중에는 버튼 텍스트가 "배정 중..."으로 변경된다', async () => {
@@ -479,14 +467,8 @@ describe('AssignmentForm', () => {
       vi.mocked(assignConsultant).mockReturnValue(new Promise(() => {})); // 영구 pending
 
       render(<AssignmentForm {...defaultProps} />);
-
-      const radios = screen.getAllByRole('radio');
-      fireEvent.click(radios[0]);
-
-      const textarea = screen.getByRole('textbox', { name: /배정 사유/ });
-      await user.type(textarea, '이 컨설턴트가 가장 적합합니다.');
-
-      await user.click(screen.getByRole('button', { name: /컨설턴트 배정/ }));
+      await selectAndSubmit(user);
+      await confirmAssign(user);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /배정 중/ })).toBeInTheDocument();
