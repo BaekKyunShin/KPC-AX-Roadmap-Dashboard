@@ -1,7 +1,7 @@
 // e2e/workflow/project-lifecycle.spec.ts
 // 워크플로우 관통 E2E: NEW → DIAGNOSED → ASSIGNED → INTERVIEWED → ROADMAP_DRAFTED → FINALIZED
 import { test, expect } from '../fixtures/auth.fixture';
-import { setupConsoleErrorCheck, expectToast, waitForPageLoad } from '../helpers/assertions.helper';
+import { setupConsoleErrorCheck, expectToast } from '../helpers/assertions.helper';
 import { deleteProject, deleteProjectsByName } from '../helpers/cleanup.helper';
 
 const E2E_COMPANY = 'E2E워크플로우테스트';
@@ -170,9 +170,10 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await expect(confirmButton).toBeVisible({ timeout: 10_000 });
     await confirmButton.click();
 
-    // router.refresh() 후 networkidle 로 대기
+    // router.refresh() 후 — 상태 뱃지로 직접 안정화 판정.
+    // (waitForPageLoad 의 .animate-pulse 셀렉터가 NotificationBell unread dot 같은 영구
+    //  pulse 요소를 잡아 timeout 되므로 의존하지 않는다.)
     await page.waitForLoadState('networkidle');
-    await waitForPageLoad(page);
 
     // 상태 뱃지: "컨설턴트 배정 완료"
     await expect(page.getByText('컨설턴트 배정 완료')).toBeVisible({ timeout: 15_000 });
