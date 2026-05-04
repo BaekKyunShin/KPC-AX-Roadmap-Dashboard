@@ -159,7 +159,12 @@ export default function AssignmentTabSection({
   const renderTabContent = () => (
     <>
       <p className="text-sm text-gray-500 mb-4">{TAB_DESCRIPTIONS[activeTab]}</p>
-      {activeTab === 'auto' ? renderAutoMatchingContent() : <ManualAssignmentForm projectId={projectId} />}
+      {activeTab === 'auto' ? renderAutoMatchingContent() : (
+        <ManualAssignmentForm
+          projectId={projectId}
+          currentAssignment={projectData.assigned_consultant ?? null}
+        />
+      )}
     </>
   );
 
