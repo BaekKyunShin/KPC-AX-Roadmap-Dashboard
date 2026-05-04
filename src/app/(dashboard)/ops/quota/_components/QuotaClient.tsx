@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Info } from 'lucide-react';
 import {
   Table,
   TableHeader,
@@ -17,6 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { QuotaTableSkeleton } from '@/components/ui/Skeleton';
 import { fetchUsageStats, updateQuota, type UsageStats } from '../actions';
 
@@ -24,16 +31,80 @@ import { fetchUsageStats, updateQuota, type UsageStats } from '../actions';
 // Helpers (순수 함수)
 // =============================================================================
 
-function getUsageColor(percent: number): string {
-  if (percent >= 90) return 'text-red-600 bg-red-100';
-  if (percent >= 70) return 'text-yellow-600 bg-yellow-100';
-  return 'text-green-600 bg-green-100';
+export interface UsageStatus {
+  label: '정상' | '주의' | '경고';
+  /** 사용량 % badge 의 텍스트+배경 색 (색맹 보조용 라벨 노출과 함께 사용). */
+  color: string;
+  /** 진행률 바 색. */
+  progressColor: string;
+  /** 권장 액션 — Tooltip 안내 문구. */
+  action: string;
 }
 
-function getProgressColor(percent: number): string {
-  if (percent >= 90) return 'bg-red-500';
-  if (percent >= 70) return 'bg-yellow-500';
-  return 'bg-green-500';
+/**
+ * LLM 사용량 % 를 단일 status 객체로 매핑한다.
+ *
+ * 임계값 (한 곳에서만 정의 — 향후 변경 시 여기 한 함수만 수정):
+ * - 0~69%   → 정상 / 초록 / 모니터링만
+ * - 70~89%  → 주의 / 노랑 / 일일 한도 점검·소통 권장
+ * - 90~100%+→ 경고 / 빨강 / 즉시 한도 조정 또는 사용 가이드 안내
+ *
+ * #4 — H10·H7: Tooltip 안내 + 진행률 바 옆 한 글자 라벨로 색맹 사용자 인지 보장.
+ */
+export function getUsageStatus(percent: number): UsageStatus {
+  if (percent >= 90)
+    return {
+      label: '경고',
+      color: 'text-red-600 bg-red-100',
+      progressColor: 'bg-red-500',
+      action: '즉시 한도 조정 또는 사용 가이드 안내',
+    };
+  if (percent >= 70)
+    return {
+      label: '주의',
+      color: 'text-yellow-600 bg-yellow-100',
+      progressColor: 'bg-yellow-500',
+      action: '일일 한도 점검·소통 권장',
+    };
+  return {
+    label: '정상',
+    color: 'text-green-600 bg-green-100',
+    progressColor: 'bg-green-500',
+    action: '모니터링만',
+  };
+}
+
+/**
+ * 「월간 사용량」 헤더 옆 ⓘ — 정상·주의·경고 임계값 + 권장 액션 안내.
+ * Mobile 카드 + Desktop Table 두 곳에서 재사용.
+ */
+function UsageHeaderInfo() {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="사용량 임계값 설명"
+            className="ml-1 inline-flex items-center text-gray-400 hover:text-gray-600"
+          >
+            <Info className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-xs leading-relaxed">
+          <p>
+            <strong>정상</strong> (70% 미만): 모니터링만
+          </p>
+          <p>
+            <strong>주의</strong> (70~89%): 일일 한도 점검·소통 권장
+          </p>
+          <p>
+            <strong>경고</strong> (90% 이상): 즉시 한도 조정 또는 사용 가이드 안내
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 function getRoleBadge(role: string) {
@@ -81,17 +152,20 @@ function QuotaMobileCard({
 
       <div className="space-y-1">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">월간 사용량</span>
+          <span className="text-gray-500 inline-flex items-center">
+            월간 사용량
+            <UsageHeaderInfo />
+          </span>
           <div className="flex items-center gap-2">
             <span>{user.monthlyUsage.toLocaleString()}회</span>
-            <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageColor(user.usagePercent)}`}>
-              {user.usagePercent}%
+            <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageStatus(user.usagePercent).color}`}>
+              {user.usagePercent}% · {getUsageStatus(user.usagePercent).label}
             </span>
           </div>
         </div>
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className={`h-full ${getProgressColor(user.usagePercent)}`}
+            className={`h-full ${getUsageStatus(user.usagePercent).progressColor}`}
             style={{ width: `${Math.min(100, user.usagePercent)}%` }}
           />
         </div>
@@ -320,7 +394,12 @@ export default function QuotaClient({
               <TableRow>
                 <TableHead className="min-w-[140px]">사용자</TableHead>
                 <TableHead className="min-w-[100px]">역할</TableHead>
-                <TableHead className="min-w-[160px]">월간 사용량</TableHead>
+                <TableHead className="min-w-[160px]">
+                  <span className="inline-flex items-center">
+                    월간 사용량
+                    <UsageHeaderInfo />
+                  </span>
+                </TableHead>
                 <TableHead className="min-w-[100px]">일일 한도</TableHead>
                 <TableHead className="min-w-[100px]">월간 한도</TableHead>
                 <TableHead className="min-w-[100px]">한도 설정</TableHead>
@@ -344,13 +423,13 @@ export default function QuotaClient({
                     <div className="space-y-1 inline-block">
                       <div className="flex items-center justify-between text-sm gap-2">
                         <span>{user.monthlyUsage.toLocaleString()}회</span>
-                        <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageColor(user.usagePercent)}`}>
-                          {user.usagePercent}%
+                        <span className={`px-1.5 py-0.5 text-xs rounded ${getUsageStatus(user.usagePercent).color}`}>
+                          {user.usagePercent}% · {getUsageStatus(user.usagePercent).label}
                         </span>
                       </div>
                       <div className="w-24 sm:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className={`h-full ${getProgressColor(user.usagePercent)}`}
+                          className={`h-full ${getUsageStatus(user.usagePercent).progressColor}`}
                           style={{ width: `${Math.min(100, user.usagePercent)}%` }}
                         />
                       </div>
