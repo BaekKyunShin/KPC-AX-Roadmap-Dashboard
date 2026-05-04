@@ -26,7 +26,7 @@ import {
   type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
 
-import { useBeforeUnloadGuard } from '../../_hooks/useBeforeUnloadGuard';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
 import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';

@@ -7,6 +7,7 @@ import { ChevronUp, ChevronDown, X, GripVertical } from 'lucide-react';
 import { Reorder, useDragControls } from 'motion/react';
 import type { SelfAssessmentTemplate, SelfAssessmentQuestion } from '@/types/database';
 import { showErrorToast, showSuccessToast, scrollToElement } from '@/lib/utils';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import { createTemplate, updateTemplate } from '../actions';
 import {
   Select,
@@ -209,9 +210,20 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
 
   const [name, setName] = useState(template?.name || '');
   const [description, setDescription] = useState(template?.description || '');
-  const [questions, setQuestions] = useState<SelfAssessmentQuestion[]>(
+  // lazy initializer — createEmptyQuestion 의 Date.now() 가 매 렌더마다 호출되지 않도록 단 한 번 평가.
+  const [questions, setQuestions] = useState<SelfAssessmentQuestion[]>(() =>
     template?.questions || [createEmptyQuestion(1)]
   );
+
+  // 미저장 변경 추적 — 초기 snapshot 과 현재 폼 값을 비교해 isDirty 산출.
+  // 저장 성공 시 baselineRef.current 를 갱신해 isDirty=false 로 떨어지게 한다.
+  const baselineRef = useRef<string>(JSON.stringify({
+    name: template?.name || '',
+    description: template?.description || '',
+    questions,
+  }));
+  const isDirty = JSON.stringify({ name, description, questions }) !== baselineRef.current;
+  useBeforeUnloadGuard(isDirty);
 
   // 질문 ID 배열 (Reorder.Group values용 - 문자열이므로 값 비교로 동작)
   const questionIds = questions.map((q) => q.id);
@@ -321,6 +333,9 @@ export default function TemplateForm({ mode, template, isInUse }: TemplateFormPr
       const data = result.data as { message?: string; id?: string };
       const successMessage = data?.message || '저장되었습니다.';
       setSuccess(successMessage);
+
+      // 저장 성공 → baseline 갱신해 isDirty=false 로 떨어뜨려 beforeunload 경고 해제
+      baselineRef.current = JSON.stringify({ name, description, questions });
 
       showSuccessToast(mode === 'create' ? '템플릿 생성 완료' : '템플릿 수정 완료', successMessage);
 

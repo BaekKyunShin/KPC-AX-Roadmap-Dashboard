@@ -468,4 +468,45 @@ describe('TemplateForm', () => {
       expect((textarea as HTMLTextAreaElement).value).toBe('새 질문 내용');
     });
   });
+
+  describe('미저장 이탈 경고 (useBeforeUnloadGuard)', () => {
+    it('초기 상태에서는 beforeunload 리스너가 등록되지 않는다', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<TemplateForm mode="create" />);
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(false);
+    });
+
+    it('이름 한 글자 입력 시 beforeunload 리스너가 등록된다', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<TemplateForm mode="create" />);
+      const nameInput = screen.getByLabelText(/템플릿 이름/);
+      fireEvent.change(nameInput, { target: { value: '테스트' } });
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(true);
+    });
+
+    it('edit 모드에서 초기값과 동일한 값이면 isDirty=false 로 리스너 미등록', () => {
+      const baseTemplate = {
+        id: 't-1',
+        name: '제조업 진단 v1',
+        description: '제조업용',
+        questions: [
+          { id: 'q-1', order: 1, dimension: 'AI 성숙도', question_text: '문항1', weight: 1 },
+        ],
+        version: 1,
+        created_at: '',
+        updated_at: '',
+        created_by: 'u-1',
+        is_active: true,
+      } as never;
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<TemplateForm mode="edit" template={baseTemplate} />);
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(false);
+    });
+  });
 });

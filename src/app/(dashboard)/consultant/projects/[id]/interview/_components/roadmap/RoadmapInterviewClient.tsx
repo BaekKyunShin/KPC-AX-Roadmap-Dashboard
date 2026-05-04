@@ -26,7 +26,7 @@ import {
   type RoadmapCompetency,
 } from '@/lib/schemas/interview-roadmap';
 
-import { useBeforeUnloadGuard } from '../../_hooks/useBeforeUnloadGuard';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
 import { StepNecessity } from './StepNecessity';
 import { StepMainResult, type StepMainResultValue } from './StepMainResult';
