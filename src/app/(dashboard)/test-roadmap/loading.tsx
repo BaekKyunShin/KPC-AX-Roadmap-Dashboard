@@ -1,228 +1,80 @@
-import { FlaskConical, Info } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/page-header';
-
-// ============================================================================
-// 로컬 헬퍼 컴포넌트
-// ============================================================================
+import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 /**
- * 입력 필드 스켈레톤
- */
-function InputSkeleton() {
-  return <Skeleton className="h-10 w-full" />;
-}
-
-/**
- * 폼 카드 스켈레톤 - 제목과 설명 포함
- */
-function FormCardSkeleton({
-  title,
-  description,
-  children,
-}: {
-  title: React.ReactNode;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2 text-lg font-semibold">{title}</div>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// 섹션별 스켈레톤 컴포넌트
-// ============================================================================
-
-/**
- * 기업 기본정보 카드 스켈레톤
- */
-function CompanyInfoSkeleton() {
-  return (
-    <FormCardSkeleton
-      title={
-        <>
-          <Skeleton className="h-5 w-5" />
-          기업 기본정보
-        </>
-      }
-      description="테스트용 기업 정보를 입력하세요."
-    >
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <InputSkeleton />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-12" />
-          <InputSkeleton />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-20" />
-          <InputSkeleton />
-        </div>
-      </div>
-    </FormCardSkeleton>
-  );
-}
-
-/**
- * 세부 업무 카드 스켈레톤
- */
-function JobTasksSkeleton() {
-  return (
-    <FormCardSkeleton
-      title={
-        <>
-          <Skeleton className="h-5 w-5" />
-          세부 업무
-        </>
-      }
-      description="AI 교육이 필요한 업무를 입력하세요. (최소 1개)"
-    >
-      <div className="space-y-4">
-        <div className="flex gap-3 items-start">
-          <div className="flex-1 grid gap-3 md:grid-cols-2">
-            <InputSkeleton />
-            <InputSkeleton />
-          </div>
-          <Skeleton className="h-10 w-10 shrink-0" />
-        </div>
-        <Skeleton className="h-9 w-24" />
-      </div>
-    </FormCardSkeleton>
-  );
-}
-
-/**
- * 페인포인트 카드 스켈레톤
- */
-function PainPointsSkeleton() {
-  return (
-    <FormCardSkeleton
-      title={
-        <>
-          <Skeleton className="h-5 w-5" />
-          페인포인트
-        </>
-      }
-      description="현재 업무에서 겪는 어려움이나 병목을 입력하세요. (최소 1개)"
-    >
-      <div className="space-y-4">
-        <div className="flex gap-3 items-start">
-          <div className="flex-1 grid gap-3 md:grid-cols-[1fr_auto]">
-            <InputSkeleton />
-            <Skeleton className="h-10 w-full md:w-[120px]" />
-          </div>
-          <Skeleton className="h-10 w-10 shrink-0" />
-        </div>
-        <Skeleton className="h-9 w-32" />
-      </div>
-    </FormCardSkeleton>
-  );
-}
-
-/**
- * 개선 목표 카드 스켈레톤
- */
-function ImprovementGoalsSkeleton() {
-  return (
-    <FormCardSkeleton
-      title={
-        <>
-          <Skeleton className="h-5 w-5" />
-          개선 목표
-        </>
-      }
-      description="AI 교육을 통해 달성하고자 하는 목표를 입력하세요. (최소 1개)"
-    >
-      <div className="space-y-4">
-        <div className="flex gap-3 items-start">
-          <InputSkeleton />
-          <Skeleton className="h-10 w-10 shrink-0" />
-        </div>
-        <Skeleton className="h-9 w-24" />
-      </div>
-    </FormCardSkeleton>
-  );
-}
-
-/**
- * 추가 요구사항 카드 스켈레톤
- */
-function AdditionalRequirementsSkeleton() {
-  return (
-    <FormCardSkeleton
-      title="추가 요구사항 (선택)"
-      description="기타 참고할 사항이 있으면 입력하세요."
-    >
-      <Skeleton className="h-20 w-full" />
-    </FormCardSkeleton>
-  );
-}
-
-// ============================================================================
-// 메인 컴포넌트
-// ============================================================================
-
-/**
- * 로드맵 테스트 페이지 로딩 스켈레톤
+ * 로드맵 테스트 페이지 로딩 스켈레톤 — TestRoadmapClient 실제 마크업 미러.
+ *
+ * 실제 페이지 구조:
+ *  헤더(돌아가기 + 제목 + 샘플 데이터 채우기)
+ *  → 안내 Alert
+ *  → 기업 정보 행 (기업명/업종/규모)
+ *  → InterviewStepper 가로 띠
+ *  → 단일 단계 폼 영역 (min-h-[400px])
+ *  → 하단 고정 네비게이션
+ *
+ * backLink 는 사용자 역할 (isOpsAdmin) 에 따라 동적이라 loading 에서는 표시하지 않음.
  */
 export default function TestRoadmapLoading() {
   return (
-    <div className="max-w-4xl mx-auto py-6">
-      {/* 헤더 */}
-      <div className="mb-6">
+    // PageContainer 와 동일한 마크업 — 좌우 폭 (max-w-5xl) + 패딩 + 섹션 간격을 실제와 일치
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* 헤더 — backLink 자리 + PageHeader (제목·설명 즉시 노출) + 샘플 데이터 버튼 */}
+      <div>
+        <Skeleton className="h-3.5 w-24 mb-2 opacity-70" />
         <PageHeader
-          title="로드맵 테스트"
-          description="시스템 사용법 연습을 위한 로드맵 테스트을 생성합니다."
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          actions={<Skeleton className="h-9 w-36 rounded-md" />}
         />
       </div>
 
-      {/* 안내 */}
-      <Alert className="mb-6">
-        <Info className="h-4 w-4" />
-        <AlertTitle>테스트 모드 안내</AlertTitle>
-        <AlertDescription>
-          로드맵 테스트은 실제 기업 진단 결과 없이 입력한 정보만으로 생성됩니다. 실제 컨설팅 시에는
-          진단 결과와 현장 인터뷰 데이터를 바탕으로 더 정확한 로드맵이 생성됩니다.
-        </AlertDescription>
-      </Alert>
+      {/* 안내 Alert */}
+      <div className="rounded-lg border bg-card p-4 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-5/6 opacity-70" />
+        <Skeleton className="h-3 w-3/4 opacity-70" />
+      </div>
 
-      {/* 탭 */}
-      <Tabs defaultValue="create">
-        <TabsList className="mb-6">
-          <TabsTrigger value="create" className="flex items-center gap-2" disabled>
-            <FlaskConical className="h-4 w-4" />새 테스트
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2" disabled>
-            <Skeleton className="h-4 w-4 rounded-full" />
-            테스트 기록
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* 기업 정보 행 (기업명/업종/규모) */}
+      <div className="bg-muted/30 border border-border rounded-lg p-4 flex items-center gap-3 flex-wrap">
+        <Skeleton className="h-4 w-4" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-7 w-32 rounded" />
+        <Skeleton className="h-7 w-32 rounded" />
+        <Skeleton className="h-7 w-28 rounded" />
+      </div>
 
-      {/* 폼 스켈레톤 */}
-      <div className="space-y-6">
-        <CompanyInfoSkeleton />
-        <JobTasksSkeleton />
-        <PainPointsSkeleton />
-        <ImprovementGoalsSkeleton />
-        <AdditionalRequirementsSkeleton />
-
-        {/* 제출 버튼 */}
-        <div className="flex justify-end">
-          <Skeleton className="h-11 w-40" />
+      {/* InterviewStepper 가로 띠 */}
+      <div className="rounded-lg border bg-card p-4">
+        <div className="flex items-center justify-between">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 flex-1">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-3 w-16 opacity-70" />
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* 단일 단계 폼 영역 */}
+      <div className="rounded-lg border bg-card p-6 min-h-[400px] space-y-4">
+        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-4 w-2/3 opacity-70" />
+        <div className="space-y-4 pt-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 하단 고정 네비게이션 */}
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-10 w-20" />
+        <Skeleton className="h-10 w-32" />
       </div>
     </div>
   );

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { listNotices } from '@/lib/services/notice';
 import { NoticeTable } from './_components/NoticeTable';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export const metadata = {
-  title: '공지 관리',
+  title: PAGE_TITLE,
 };
 
 export default async function OpsNoticesPage() {
@@ -34,8 +35,8 @@ export default async function OpsNoticesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="공지 관리"
-        description="컨설턴트와 공유할 공지·양식 파일을 관리합니다."
+        title={PAGE_TITLE}
+        description={PAGE_DESCRIPTION}
         actions={
           <Button asChild>
             <Link href="/ops/notices/new">

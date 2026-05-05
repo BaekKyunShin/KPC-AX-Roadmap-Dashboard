@@ -1,12 +1,13 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export default function Loading() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="공지 관리"
-        description="컨설턴트와 공유할 공지·양식 파일을 관리합니다."
+        title={PAGE_TITLE}
+        description={PAGE_DESCRIPTION}
         actions={<Skeleton className="h-9 w-32 rounded-md" />}
       />
 

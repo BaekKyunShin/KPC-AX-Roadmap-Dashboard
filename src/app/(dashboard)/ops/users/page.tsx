@@ -10,6 +10,7 @@ import {
   SYSTEM_ADMIN_MANAGEABLE_ROLES,
 } from '@/lib/constants/status';
 import { RefreshButton } from './_components/RefreshButton';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 // =============================================================================
 // Constants
@@ -17,9 +18,6 @@ import { RefreshButton } from './_components/RefreshButton';
 
 /** 이 페이지에 접근 가능한 역할 */
 const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
-
-/** 페이지 설명 (로딩 상태와 일관성 유지를 위해 통일) */
-const PAGE_DESCRIPTION = '운영관리자·시스템관리자 본인 정보와 컨설턴트 승인/정지 상태를 관리합니다.';
 
 // =============================================================================
 // Page Component
@@ -67,7 +65,7 @@ export default async function UsersPage() {
 
     return (
       <div className="space-y-6">
-        <PageHeader title="사용자 관리" description={PAGE_DESCRIPTION} />
+        <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
         <EmptyState
           icon={<AlertTriangle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-amber-500" />}
           title="사용자 데이터를 불러올 수 없습니다"
@@ -107,7 +105,7 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="사용자 관리" description={PAGE_DESCRIPTION} />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
       <UserManagementTable users={users} currentUserId={user.id} />
     </div>
   );

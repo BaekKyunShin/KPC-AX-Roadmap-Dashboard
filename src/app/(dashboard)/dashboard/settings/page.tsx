@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import DeleteAccountSection from '@/components/auth/DeleteAccountSection';
 import EmailNotifyToggle from '@/app/(dashboard)/dashboard/profile/_components/EmailNotifyToggle';
 import PasswordChangeSection from './_components/PasswordChangeSection';
+import { PAGE_TITLE, PAGE_DESCRIPTION, BACK_LINK } from './_meta';
 
 export default async function SettingsPage() {
   const user = await getCachedUser();
@@ -16,11 +17,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <PageHeader
-        title="계정 설정"
-        description="비밀번호 변경 및 계정 관리"
-        backLink={{ href: '/dashboard', label: '대시보드', useBack: true }}
-      />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} backLink={BACK_LINK} />
 
       {/* 이메일 알림 설정 (대상 역할만 표시) */}
       {isEmailNotifyEligible && (

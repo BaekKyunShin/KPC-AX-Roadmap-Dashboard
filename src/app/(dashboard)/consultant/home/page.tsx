@@ -2,7 +2,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
-import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import { formatCompanySizeShort } from '@/lib/constants/company-size';
 import { aggregateProjectStats, formatRelativeTime } from '@/lib/utils/consultant-home';
 import { inferTrack } from '@/lib/utils/project-track';
 import { SummaryCards } from './_components/SummaryCards';
@@ -13,14 +13,6 @@ const StatusDistributionChart = dynamic(
   () => import('./_components/StatusDistributionChart').then(mod => ({ default: mod.StatusDistributionChart })),
   { loading: () => <div className="h-[260px] animate-pulse rounded bg-gray-100" /> }
 );
-
-/** 기업 규모 라벨을 간략화 (괄호 안의 분류만 추출) */
-function shortSizeLabel(size: string): string {
-  const full = COMPANY_SIZE_LABELS[size as CompanySizeValue];
-  if (!full) return size;
-  const match = full.match(/\((.+)\)/);
-  return match ? match[1] : full;
-}
 
 export default async function ConsultantHomePage() {
   // 인증/역할 검증은 consultant/layout.tsx에서 일괄 처리
@@ -53,7 +45,7 @@ export default async function ConsultantHomePage() {
     id: p.id,
     companyName: p.company_name,
     industry: p.industry,
-    companySizeLabel: shortSizeLabel(p.company_size),
+    companySizeLabel: formatCompanySizeShort(p.company_size),
     status: p.status,
     track: inferTrack((p as { track?: string }).track),
     relativeTime: formatRelativeTime(p.updated_at),

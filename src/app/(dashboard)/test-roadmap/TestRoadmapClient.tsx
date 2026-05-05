@@ -21,6 +21,7 @@ import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity';
@@ -498,8 +499,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     <>
       <PageContainer>
         <PageHeader
-          title="로드맵 테스트"
-          description="산인공 양식 1번 V2 기반 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
           backLink={{ ...backLink, useBack: true }}
           actions={
             <Button

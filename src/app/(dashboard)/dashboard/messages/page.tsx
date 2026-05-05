@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import MessagesClient from './_components/MessagesClient';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export default async function MessagesPage() {
   const supabase = await createClient();
@@ -14,10 +15,7 @@ export default async function MessagesPage() {
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100vh-10rem)]">
-      <PageHeader
-        title="메시지"
-        description="멤버에게 메시지를 보내보세요."
-      />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
       <div className="flex-1 min-h-0 pt-6">
         <Suspense fallback={<MessagesSkeleton />}>
           <MessagesClient />

@@ -41,6 +41,18 @@ vi.mock('@/lib/constants/company-size', () => ({
     medium: '중기업 (50~299명)',
     large: '대기업 (300명 이상)',
   },
+  // 실제 헬퍼 동작 미러: 괄호 안 분류만 추출
+  formatCompanySizeShort: (size: string) => {
+    const labels: Record<string, string> = {
+      small: '소기업 (10~49명)',
+      medium: '중기업 (50~299명)',
+      large: '대기업 (300명 이상)',
+    };
+    const full = labels[size];
+    if (!full) return size;
+    const m = full.match(/\((.+)\)/);
+    return m ? m[1] : full;
+  },
 }));
 
 vi.mock('@/components/ui/Skeleton', () => ({

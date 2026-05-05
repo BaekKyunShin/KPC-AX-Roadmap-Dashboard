@@ -1,9 +1,10 @@
 import { PageHeader } from '@/components/ui/page-header';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export default function Loading() {
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100vh-10rem)]">
-      <PageHeader title="메시지" />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
       <div className="flex flex-1 min-h-0 pt-6 bg-white rounded-lg shadow overflow-hidden">
         {/* 좌측 목록 스켈레톤 */}
         <div className="w-full md:w-80 lg:w-96 border-r">

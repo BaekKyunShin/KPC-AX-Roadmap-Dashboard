@@ -1,14 +1,11 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE, PAGE_DESCRIPTION, BACK_LINK } from './_meta';
 
 export default function Loading() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <PageHeader
-        title="계정 설정"
-        description="비밀번호 변경 및 계정 관리"
-        backLink={{ href: '/dashboard', label: '대시보드' }}
-      />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} backLink={BACK_LINK} />
 
       {/* 이메일 알림 설정 카드 스켈레톤 */}
       <div className="rounded-xl border bg-card px-6 py-4">
