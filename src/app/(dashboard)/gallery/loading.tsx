@@ -1,13 +1,16 @@
+import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
+
+/**
+ * 페이지 제목 — page.tsx 와 일치해야 함.
+ * description 은 사용자 역할(isAdmin) 에 따라 동적이라 정적 노출 불가 → 회색 박스로 처리.
+ */
+const PAGE_TITLE = '로드맵·PBL 갤러리';
 
 export default function Loading() {
   return (
     <div className="space-y-6">
-      {/* 헤더 영역 — 정적 텍스트 노출 금지 (실제 페이지 헤더와 불일치 방지) */}
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-1/2" />
-        <Skeleton className="h-4 w-2/3 opacity-70" />
-      </div>
+      <PageHeader title={PAGE_TITLE} />
       <div className="space-y-4">
         <Skeleton className="h-10 rounded-md" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -1,19 +1,35 @@
 import { render } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// PageHeader 의 backLink useBack:true 가 BackButton (useRouter) 을 사용 → 테스트 환경에 router context 필요
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    back: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+    forward: vi.fn(),
+  }),
+  usePathname: () => '/dashboard/settings',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+  redirect: vi.fn(),
+  notFound: vi.fn(),
+}));
+
 import Loading from './loading';
 
 describe('dashboard/settings/loading.tsx', () => {
-  it('"계정 설정" 정적 텍스트를 노출하지 않는다 (cross-route 누출 방지)', () => {
+  it('실제 page.tsx와 동일한 헤더 제목·설명·backLink를 즉시 노출한다 (A안)', () => {
     const { container } = render(<Loading />);
-    expect(container.textContent ?? '').not.toContain('계정 설정');
+    const text = container.textContent ?? '';
+    expect(text).toContain('계정 설정');
+    expect(text).toContain('비밀번호 변경 및 계정 관리');
+    expect(text).toContain('대시보드'); // backLink label
   });
 
-  it('"대시보드" backLink 텍스트를 노출하지 않는다', () => {
-    const { container } = render(<Loading />);
-    expect(container.textContent ?? '').not.toContain('대시보드');
-  });
-
-  it('animate-shimmer 스켈레톤 요소를 포함한다', () => {
+  it('animate-shimmer 본문 스켈레톤 요소를 포함한다', () => {
     const { container } = render(<Loading />);
     expect(container.querySelector('.animate-shimmer')).toBeInTheDocument();
   });

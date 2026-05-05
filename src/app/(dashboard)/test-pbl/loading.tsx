@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
@@ -11,22 +12,25 @@ import { Skeleton } from '@/components/ui/Skeleton';
  *  → 단일 단계 폼 영역 (min-h-[400px])
  *  → 하단 고정 네비게이션
  *
- * 결함 C: 이전 로딩은 단일 카드(아이콘+제목+6줄)와 잘못된 안내문을 노출하여 실제 화면과 완전히 달랐음.
+ * 헤더 텍스트는 TestPBLClient 의 PageHeader 와 일치해야 함.
+ * backLink 는 사용자 역할에 따라 동적이라 loading 에서는 표시하지 않음.
  */
+const PAGE_TITLE = 'PBL 테스트';
+const PAGE_DESCRIPTION =
+  '산인공 양식 2번 V2 기반 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다.';
+
 export default function TestPBLLoading() {
   return (
     // PageContainer 와 동일한 마크업 — 좌우 폭 (max-w-5xl) + 패딩 + 섹션 간격을 실제와 일치
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-      {/* 헤더 — 정적 텍스트 노출 금지 */}
+      {/* 헤더 — backLink 자리 + PageHeader (제목·설명 즉시 노출) + 샘플 데이터 버튼 */}
       <div>
         <Skeleton className="h-3.5 w-24 mb-2 opacity-70" />
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-7 w-1/3" />
-            <Skeleton className="h-4 w-2/3 opacity-70" />
-          </div>
-          <Skeleton className="h-9 w-36 rounded-md" />
-        </div>
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          actions={<Skeleton className="h-9 w-36 rounded-md" />}
+        />
       </div>
 
       {/* 안내 Alert */}
