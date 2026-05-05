@@ -1,25 +1,17 @@
-import { redirect } from 'next/navigation';
-import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
-import Navigation from '@/components/Navigation';
+import { Suspense } from 'react';
+import NavigationContainer from '@/components/NavigationContainer';
+import NavigationFallback from '@/components/NavigationFallback';
 import { FooterCredit } from '@/components/ui/FooterCredit';
 
-// 안읽음 알림/메시지 카운트 fetch는 NotificationBell·MessageIcon이 자체적으로
-// 마운트 시 수행한다(라우트 변경마다 layout await로 children swap이 막히던 잔존
-// 현상 해소). 헤더 뱃지는 첫 진입 시 잠깐 0으로 보였다가 fetch 결과로 swap됨.
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCachedUser();
-  if (!user) {
-    redirect('/login');
-  }
-
-  const profile = await getCachedProfile();
-  if (!profile) {
-    redirect('/login');
-  }
-
+// layout을 sync function으로 유지해 자식 segment의 loading.tsx가 즉시 표시되도록 한다.
+// user/profile fetch는 NavigationContainer가 Suspense 경계 안에서 수행 → layout-await로
+// children swap이 막히던 잔존 현상이 해소된다. 인증/리다이렉트는 middleware(proxy)가 처리.
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navigation user={profile} />
+      <Suspense fallback={<NavigationFallback />}>
+        <NavigationContainer />
+      </Suspense>
       <main className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
