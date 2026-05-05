@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
@@ -7,6 +8,7 @@ import {
 } from '../actions';
 import { fetchLatestResultMeta } from './actions';
 import { InterviewReviewClient } from './InterviewReviewClient';
+import ParentLoading from '../loading';
 
 /**
  * PR5 (R6 spec) — 인터뷰 검토 페이지 (`/consultant/projects/[id]/interview/review`).
@@ -21,11 +23,19 @@ import { InterviewReviewClient } from './InterviewReviewClient';
  * `interviews.updated_at > result.created_at` 인 경우 stale 배너를 노출해 결과 재생성을
  * 안내한다.
  */
-export default async function InterviewReviewPage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
+}
+
+export default function InterviewReviewPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<ParentLoading />}>
+      <InterviewReviewPageInner params={params} />
+    </Suspense>
+  );
+}
+
+async function InterviewReviewPageInner({ params }: PageProps) {
   const { id } = await params;
 
   const user = await getCachedUser();

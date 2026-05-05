@@ -1,13 +1,23 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import PBLResultPageClient from './_components/PBLResultPageClient';
 import { fetchPBLPageDataV2, fetchPBLProjectInfo } from './actions';
+import Loading from './loading';
 
-export default async function PBLPage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
+}
+
+export default function PBLPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PBLPageInner params={params} />
+    </Suspense>
+  );
+}
+
+async function PBLPageInner({ params }: PageProps) {
   const user = await getCachedUser();
   if (!user) redirect('/login');
 

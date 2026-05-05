@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import ProjectList from './_components/ProjectList';
 import { fetchConsultantProjects, fetchConsultantProjectFilters } from './actions';
+import Loading from './loading';
 
 interface PageProps {
   searchParams: Promise<{
@@ -19,7 +21,15 @@ interface PageProps {
  * 여기서 파라미터 없이 전체 데이터를 넘기면 URL 필터가 '뱃지만 표시되고
  * 실제 리스트는 전체가 조회'되는 버그가 발생한다(과거 발생 이력).
  */
-export default async function ConsultantProjectsPage({ searchParams }: PageProps) {
+export default function ConsultantProjectsPage({ searchParams }: PageProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ConsultantProjectsPageInner searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ConsultantProjectsPageInner({ searchParams }: PageProps) {
   const params = await searchParams;
   const search = params.search ?? '';
   const status = params.status && params.status !== 'all' ? params.status : '';

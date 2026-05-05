@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
@@ -8,6 +9,7 @@ import {
 } from './actions';
 import { RoadmapInterviewClient } from './_components/roadmap/RoadmapInterviewClient';
 import { PBLInterviewClient } from './_components/pbl/PBLInterviewClient';
+import Loading from './loading';
 
 /**
  * HRD 첨부 버킷 이름 (actions.ts 의 HRD_BUCKET 과 동기화).
@@ -60,13 +62,23 @@ async function hydrateHrdReportSignedUrl(
   }
 }
 
-export default async function InterviewPage({
-  params,
-  searchParams,
-}: {
+interface InterviewPageProps {
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ track?: string }>;
-}) {
+}
+
+export default function InterviewPage({ params, searchParams }: InterviewPageProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <InterviewPageInner params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function InterviewPageInner({
+  params,
+  searchParams,
+}: InterviewPageProps) {
   const { id } = await params;
   const sp = (await searchParams) ?? {};
 

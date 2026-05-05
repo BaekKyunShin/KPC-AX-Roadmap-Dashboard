@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
@@ -8,6 +9,7 @@ import { inferTrack } from '@/lib/utils/project-track';
 import { SummaryCards } from './_components/SummaryCards';
 import { RecentProjects, type RecentProjectItem } from './_components/RecentProjects';
 import { RecentActivity, type RecentActivityItem } from './_components/RecentActivity';
+import Loading from './loading';
 
 const StatusDistributionChart = dynamic(
   () => import('./_components/StatusDistributionChart').then(mod => ({ default: mod.StatusDistributionChart })),
@@ -22,7 +24,15 @@ function shortSizeLabel(size: string): string {
   return match ? match[1] : full;
 }
 
-export default async function ConsultantHomePage() {
+export default function ConsultantHomePage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ConsultantHomePageInner />
+    </Suspense>
+  );
+}
+
+async function ConsultantHomePageInner() {
   // 인증/역할 검증은 consultant/layout.tsx에서 일괄 처리
   const user = (await getCachedUser())!;
   const profile = (await getCachedProfile())!;

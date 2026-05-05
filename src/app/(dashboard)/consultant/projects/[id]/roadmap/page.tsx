@@ -1,13 +1,23 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { fetchProjectInfo, fetchRoadmapPageDataV2 } from './actions';
 import RoadmapResultPageClient from './_components/RoadmapResultPageClient';
+import Loading from './loading';
 
-export default async function RoadmapPage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-}) {
+}
+
+export default function RoadmapPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <RoadmapPageInner params={params} />
+    </Suspense>
+  );
+}
+
+async function RoadmapPageInner({ params }: PageProps) {
   const user = await getCachedUser();
   if (!user) redirect('/login');
 

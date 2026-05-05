@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Loading from './loading';
 import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
@@ -29,7 +31,15 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ConsultantProjectDetailPage({ params }: PageProps) {
+export default function ConsultantProjectDetailPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ConsultantProjectDetailPageInner params={params} />
+    </Suspense>
+  );
+}
+
+async function ConsultantProjectDetailPageInner({ params }: PageProps) {
   const { id: projectId } = await params;
 
   const user = await getCachedUser();
