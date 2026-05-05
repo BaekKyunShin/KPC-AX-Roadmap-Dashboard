@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 /**
  * PBL 테스트 페이지 로딩 스켈레톤 — TestPBLClient 실제 마크업 미러.
@@ -12,13 +13,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
  *  → 단일 단계 폼 영역 (min-h-[400px])
  *  → 하단 고정 네비게이션
  *
- * 헤더 텍스트는 TestPBLClient 의 PageHeader 와 일치해야 함.
  * backLink 는 사용자 역할에 따라 동적이라 loading 에서는 표시하지 않음.
  */
-const PAGE_TITLE = 'PBL 테스트';
-const PAGE_DESCRIPTION =
-  '산인공 양식 2번 V2 기반 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다.';
-
 export default function TestPBLLoading() {
   return (
     // PageContainer 와 동일한 마크업 — 좌우 폭 (max-w-5xl) + 패딩 + 섹션 간격을 실제와 일치

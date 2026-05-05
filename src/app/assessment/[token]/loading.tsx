@@ -1,12 +1,9 @@
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 /**
  * 외부 진단 페이지 로딩 스켈레톤 — PublicAssessmentClient.tsx (intro phase) 마크업 미러.
- * 헤더 텍스트는 실제 클라이언트의 h1·p 와 일치해야 함.
  */
-const PAGE_TITLE = 'AI 훈련 수준 자가진단';
-const PAGE_DESCRIPTION = '귀사의 AI 활용 현황을 파악하기 위한 진단입니다.';
-
 export default function Loading() {
   return (
     <div className="max-w-lg mx-auto">

@@ -34,7 +34,7 @@ import {
 import { Search, X, ClipboardList } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { CONSULTANT_PROJECT_STATUS_CONFIG } from '@/lib/constants/status';
-import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
+import { formatCompanySizeShort } from '@/lib/constants/company-size';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 import { statusLabel } from '@/lib/utils/project-track';
 import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
@@ -83,15 +83,9 @@ const INITIAL_FILTER_OPTIONS: FilterOptions = { statuses: [] };
 // Helpers
 // =============================================================================
 
-/**
- * 기업 규모 라벨을 간략화 (인원수·괄호 제거)
- */
-function formatCompanySize(size: string): string {
-  return COMPANY_SIZE_LABELS[size as CompanySizeValue]
-    ?.replace(/\d+[~,]?\d*명\s*/, '')
-    ?.replace(/[()]/g, '')
-    || size;
-}
+// 표·카드의 "규모" 열 라벨은 단일 헬퍼 (formatCompanySizeShort) 를 통해 추출.
+// 이전에 두 사용처가 각자 다른 정규식·로직으로 라벨을 가공하던 drift 가 있었고,
+// "10명 미만 (소상공인)" -> "미만 소상공인" 같은 라벨 깨짐 버그의 원인이었음.
 
 /**
  * 상태 옵션에서 라벨 찾기
@@ -179,7 +173,7 @@ function ProjectRow({ project }: { project: ConsultantProjectItem }) {
         <TrackBadge track={project.track} />
       </TableCell>
       <TableCell className="text-muted-foreground">{project.industry}</TableCell>
-      <TableCell className="text-muted-foreground">{formatCompanySize(project.company_size)}</TableCell>
+      <TableCell className="text-muted-foreground">{formatCompanySizeShort(project.company_size)}</TableCell>
       <TableCell>
         <ProjectStatusBadge
           status={project.status}
@@ -223,7 +217,7 @@ function ProjectMobileCard({ project }: { project: ConsultantProjectItem }) {
         <div className="text-gray-500">업종</div>
         <div className="text-gray-900">{project.industry}</div>
         <div className="text-gray-500">규모</div>
-        <div className="text-gray-900">{formatCompanySize(project.company_size)}</div>
+        <div className="text-gray-900">{formatCompanySizeShort(project.company_size)}</div>
         <div className="text-gray-500">배정일</div>
         <div className="text-gray-900">{formatDateKR(displayDate)}</div>
       </div>

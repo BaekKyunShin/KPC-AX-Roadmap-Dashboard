@@ -1,21 +1,11 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
-
-/**
- * 페이지 헤더 텍스트 — page.tsx 와 일치해야 함.
- * (page.tsx 변경 시 본 텍스트도 함께 갱신할 것)
- */
-const PAGE_TITLE = '계정 설정';
-const PAGE_DESCRIPTION = '비밀번호 변경 및 계정 관리';
+import { PAGE_TITLE, PAGE_DESCRIPTION, BACK_LINK } from './_meta';
 
 export default function Loading() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <PageHeader
-        title={PAGE_TITLE}
-        description={PAGE_DESCRIPTION}
-        backLink={{ href: '/dashboard', label: '대시보드', useBack: true }}
-      />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} backLink={BACK_LINK} />
 
       {/* 이메일 알림 설정 카드 스켈레톤 */}
       <div className="rounded-xl border bg-card px-6 py-4">

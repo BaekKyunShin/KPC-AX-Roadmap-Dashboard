@@ -1,12 +1,10 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PAGE_TITLE } from './_meta';
 
 /**
- * 페이지 제목 — page.tsx 와 일치해야 함.
- * description 은 사용자 역할(isAdmin) 에 따라 동적이라 정적 노출 불가 → 회색 박스로 처리.
+ * description 은 사용자 역할 (isAdmin) 별로 동적이라 loading 에서는 노출하지 않음.
  */
-const PAGE_TITLE = '로드맵·PBL 갤러리';
-
 export default function Loading() {
   return (
     <div className="space-y-6">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import type { Template } from '@/components/ops/self-assessment';
 
 import PublicSelfAssessmentForm from '@/components/assessment/PublicSelfAssessmentForm';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 type Phase = 'intro' | 'form' | 'complete';
 
@@ -45,12 +46,8 @@ export default function PublicAssessmentClient({
     return (
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            AI 훈련 수준 자가진단
-          </h1>
-          <p className="text-gray-600">
-            귀사의 AI 활용 현황을 파악하기 위한 진단입니다.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{PAGE_TITLE}</h1>
+          <p className="text-gray-600">{PAGE_DESCRIPTION}</p>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4 mb-8">

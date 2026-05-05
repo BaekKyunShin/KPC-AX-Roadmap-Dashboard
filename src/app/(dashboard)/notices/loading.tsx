@@ -1,12 +1,6 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
-
-/**
- * 페이지 헤더 텍스트 — page.tsx 와 일치해야 함.
- * (page.tsx 변경 시 본 텍스트도 함께 갱신할 것)
- */
-const PAGE_TITLE = '공지사항';
-const PAGE_DESCRIPTION = '운영자가 공유한 공지와 양식 파일을 확인합니다.';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export default function Loading() {
   return (

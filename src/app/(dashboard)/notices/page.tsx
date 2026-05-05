@@ -20,9 +20,10 @@ import { noticeSearchSchema } from '@/lib/schemas/notice';
 import { NoticeSearchBar } from './_components/NoticeSearchBar';
 import { NoticePagination } from './_components/NoticePagination';
 import { cn } from '@/lib/utils';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export const metadata = {
-  title: '공지사항',
+  title: PAGE_TITLE,
 };
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
@@ -65,10 +66,7 @@ export default async function NoticesPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="공지사항"
-        description="운영자가 공유한 공지와 양식 파일을 확인합니다."
-      />
+      <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} />
 
       <NoticeSearchBar />
 

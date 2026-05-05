@@ -20,6 +20,7 @@ import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast } from '@/lib/utils';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { StepOverview } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOverview';
@@ -479,8 +480,8 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
     <>
       <PageContainer>
         <PageHeader
-          title="PBL 테스트"
-          description="산인공 양식 2번 V2 기반 PBL 인터뷰 연습 — 입력 내용은 저장되지 않습니다."
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
           backLink={{
             href: '/consultant/projects',
             label: '담당 프로젝트로 돌아가기',

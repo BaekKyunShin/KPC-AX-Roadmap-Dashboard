@@ -1,11 +1,5 @@
 import { PageHeader } from '@/components/ui/page-header';
-
-/**
- * 페이지 헤더 텍스트 — page.tsx 와 일치해야 함.
- * (page.tsx 변경 시 본 텍스트도 함께 갱신할 것)
- */
-const PAGE_TITLE = '메시지';
-const PAGE_DESCRIPTION = '멤버에게 메시지를 보내보세요.';
+import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export default function Loading() {
   return (

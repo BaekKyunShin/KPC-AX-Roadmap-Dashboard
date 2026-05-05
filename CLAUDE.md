@@ -131,8 +131,13 @@ src/lib/
 
 - `(group)/` — 라우트 그룹 (URL 영향 없음, 레이아웃 분리용)
 - `_components/` — 라우트 내부 전용 컴포넌트 (라우팅 제외)
+- `_meta.ts` — `PAGE_TITLE` / `PAGE_DESCRIPTION` 등 헤더 텍스트 단일 출처 (page와 loading이 같이 import)
 - `actions.ts` — 라우트별 Server Action 정의
 - `__tests__/` — 단위 테스트 코로케이션
+
+**page ↔ loading 헤더 텍스트 동기화 (엄수):**
+
+`page.tsx` 의 `PageHeader` 텍스트(또는 `<h1>`/`<p>`)는 같은 디렉터리의 `_meta.ts` 에서 export 한 상수만 사용한다. 같은 디렉터리의 `loading.tsx` 도 동일 상수를 import 해 사용한다. 하드코딩 금지. 두 파일에 같은 문자열이 직접 박혀 있으면 page만 수정되고 loading 이 누락되어 drift(공지 관리 → 게시글 클릭 시 잘못된 헤더 깜빡 등) 가 누적된다. 헤더 텍스트 수정은 `_meta.ts` 한 곳에서만 수행.
 
 **프로젝트 상태 흐름:**
 
