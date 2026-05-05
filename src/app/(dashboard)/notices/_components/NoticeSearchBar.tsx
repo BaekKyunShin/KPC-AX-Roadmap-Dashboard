@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -108,7 +108,11 @@ export function NoticeSearchBar() {
       {/* 액션 버튼 */}
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending} className="gap-1.5">
-          <Search className="h-4 w-4" />
+          {isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
           검색
         </Button>
         {hasActiveFilter && (

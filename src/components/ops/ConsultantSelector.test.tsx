@@ -115,16 +115,23 @@ describe('ConsultantSelector', () => {
   // --------------------------------------------------------------------------
 
   describe('초기 로딩 상태', () => {
-    it('컴포넌트 마운트 직후 스피너(로딩 중...)가 표시된다', () => {
-      renderSelector();
+    it('컴포넌트 마운트 직후 행 형태 스켈레톤 4개 이상이 표시된다', () => {
+      const { container } = renderSelector();
+      const skeletonRows = container.querySelectorAll(
+        '[data-testid="consultant-loading-row"]',
+      );
+      expect(skeletonRows.length).toBeGreaterThanOrEqual(4);
+      // sr-only "로딩 중..." 은 스크린리더용으로 유지 (시각적으로는 안 보임)
       expect(screen.getByText('로딩 중...')).toBeInTheDocument();
-      expect(screen.getByTestId('spinner-icon')).toBeInTheDocument();
     });
 
-    it('로딩 완료 후 스피너가 사라진다', async () => {
-      renderSelector();
+    it('로딩 완료 후 스켈레톤 행이 사라진다', async () => {
+      const { container } = renderSelector();
       await waitForLoaded();
-      expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument();
+      const skeletonRows = container.querySelectorAll(
+        '[data-testid="consultant-loading-row"]',
+      );
+      expect(skeletonRows.length).toBe(0);
     });
   });
 

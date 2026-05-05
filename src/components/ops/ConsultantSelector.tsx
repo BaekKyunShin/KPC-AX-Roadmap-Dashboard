@@ -6,7 +6,7 @@ import {
   fetchConsultantFilterOptions,
   type ConsultantCandidate,
 } from '@/app/(dashboard)/ops/projects/actions';
-import { getLevelLabel, CheckIcon, SpinnerIcon } from './assignment';
+import { getLevelLabel, CheckIcon } from './assignment';
 
 // ============================================================================
 // 타입 정의
@@ -330,11 +330,32 @@ function FilterSection({ title, items, selectedItems, onToggle }: FilterSectionP
 }
 
 function LoadingState() {
+  // 실제 ConsultantListItem 구조 (이름·이메일·배지 행) 와 동일한 형태 4개 행 노출.
+  // 스크린리더용 "로딩 중..." 은 sr-only 로 유지 (a11y).
   return (
-    <div className="p-8 text-center text-gray-500">
-      <SpinnerIcon className="h-6 w-6 text-blue-500 mx-auto mb-2" />
-      로딩 중...
-    </div>
+    <>
+      <span className="sr-only" aria-live="polite">로딩 중...</span>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          data-testid="consultant-loading-row"
+          className="p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-3 w-40 bg-gray-100 rounded animate-pulse" />
+              <div className="flex gap-1 pt-1">
+                <div className="h-5 w-12 bg-gray-100 rounded animate-pulse" />
+                <div className="h-5 w-16 bg-gray-100 rounded animate-pulse" />
+                <div className="h-5 w-10 bg-gray-100 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="h-5 w-5 bg-gray-100 rounded-full animate-pulse shrink-0" />
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 

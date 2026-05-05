@@ -215,16 +215,24 @@ describe('MessageThread', () => {
   // ─── 이전 메시지 로드 (isLoadingMore) ───────────────────────────────
 
   describe('이전 메시지 로드 중 표시', () => {
-    it('isLoadingMore=true 이면 로딩 스피너가 표시된다', () => {
+    it('isLoadingMore=true 이면 prev-loading 영역이 표시되고 시각적 텍스트는 노출되지 않는다', () => {
       const msg = createMessage({ content: '기존 메시지' });
       renderThread({ messages: [msg], isLoadingMore: true });
-      expect(screen.getByText('이전 메시지 로딩 중...')).toBeInTheDocument();
+      // 이전 메시지 로드 영역 자체는 존재
+      const prevLoadingArea = screen.getByTestId('prev-loading');
+      expect(prevLoadingArea).toBeInTheDocument();
+      // 메시지 흐름과 톤 어긋나지 않게 시각적 텍스트 ("이전 메시지 로딩 중...") 는 노출되지 않음
+      const visibleText = Array.from(prevLoadingArea.querySelectorAll('span'))
+        .filter((el) => !el.classList.contains('sr-only'))
+        .map((el) => el.textContent ?? '')
+        .join(' ');
+      expect(visibleText).not.toContain('이전 메시지 로딩 중');
     });
 
-    it('isLoadingMore=false 이면 로딩 스피너가 표시되지 않는다', () => {
+    it('isLoadingMore=false 이면 prev-loading 영역이 표시되지 않는다', () => {
       const msg = createMessage({ content: '기존 메시지' });
       renderThread({ messages: [msg], isLoadingMore: false });
-      expect(screen.queryByText('이전 메시지 로딩 중...')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('prev-loading')).not.toBeInTheDocument();
     });
   });
 
