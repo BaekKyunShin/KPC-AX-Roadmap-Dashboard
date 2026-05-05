@@ -1,14 +1,18 @@
-import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
   return (
     <div className="space-y-6">
-      <PageHeader title="로드맵 갤러리" />
+      {/* 헤더 영역 — 정적 텍스트 노출 금지 (실제 페이지 헤더와 불일치 방지) */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-4 w-2/3 opacity-70" />
+      </div>
       <div className="space-y-4">
-        <div className="h-10 animate-shimmer rounded-md" />
+        <Skeleton className="h-10 rounded-md" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-64 animate-shimmer rounded-lg border" />
+            <Skeleton key={i} className="h-64 rounded-lg border" />
           ))}
         </div>
       </div>

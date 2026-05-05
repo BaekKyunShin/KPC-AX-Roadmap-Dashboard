@@ -311,7 +311,7 @@ export function ConsultantProjectTableSkeleton({ rows = 5 }: TableSkeletonProps)
   const { columns, minWidth } = CONSULTANT_PROJECT_TABLE;
 
   return (
-    <ResponsiveTableSkeleton>
+    <ResponsiveTableSkeleton mobileCard={<ConsultantProjectCardSkeleton />}>
       <TableSkeletonWrapper minWidth={minWidth}>
         <TableSkeletonHeader columns={columns} theadClassName={TABLE_STYLES.theadMuted} />
         <tbody className={TABLE_STYLES.tbody}>
@@ -354,7 +354,7 @@ export function AuditLogTableSkeleton({ rows = 10 }: TableSkeletonProps) {
   const { columns, minWidth } = AUDIT_LOG_TABLE;
 
   return (
-    <ResponsiveTableSkeleton mobileCards={4}>
+    <ResponsiveTableSkeleton mobileCards={4} mobileCard={<AuditLogCardSkeleton />}>
       <TableSkeletonWrapper minWidth={minWidth}>
         <TableSkeletonHeader columns={columns} />
         <tbody className={TABLE_STYLES.tbody}>
@@ -400,7 +400,7 @@ export function UserTableSkeleton({ rows = 5 }: TableSkeletonProps) {
   const { columns, minWidth } = USER_TABLE;
 
   return (
-    <ResponsiveTableSkeleton>
+    <ResponsiveTableSkeleton mobileCard={<UserCardSkeleton />}>
       <TableSkeletonWrapper minWidth={minWidth}>
         <TableSkeletonHeader columns={columns} />
         <tbody className={TABLE_STYLES.tbody}>
@@ -672,27 +672,144 @@ export function TemplatePreviewSkeleton() {
 }
 
 // ============================================================================
+// 모바일 카드 스켈레톤 (실제 *MobileCard 컴포넌트 구조 미러)
+// ============================================================================
+
+/** 헤더(이름+배지)·그리드 행 묶음·푸터를 그려내는 카드 베이스 */
+function MobileCardSkeletonBase({
+  header,
+  rows,
+  footer,
+}: {
+  header: React.ReactNode;
+  rows: Array<[string, string]>; // [라벨 width, 값 width]
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">{header}</div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {rows.map(([labelWidth, valueWidth], i) => (
+          <div key={i} className="contents">
+            <SkeletonBar height="h-3.5" width={labelWidth} variant="secondary" />
+            <SkeletonBar height="h-3.5" width={valueWidth} />
+          </div>
+        ))}
+      </div>
+      {footer && <div className="pt-2 border-t">{footer}</div>}
+    </div>
+  );
+}
+
+/** UserMobileCard 스켈레톤 (이름+역할 배지 / 이메일·상태·가입일 그리드 / 프로필+관리) */
+export function UserCardSkeleton() {
+  return (
+    <MobileCardSkeletonBase
+      header={
+        <>
+          <SkeletonBar height="h-4" width="w-24" />
+          <SkeletonBar height="h-6" width="w-20" variant="secondary" />
+        </>
+      }
+      rows={[
+        ['w-12', 'w-32'],
+        ['w-16', 'w-12'],
+        ['w-12', 'w-20'],
+      ]}
+      footer={
+        <div className="flex items-center justify-between">
+          <SkeletonBar height="h-4" width="w-20" variant="secondary" />
+          <SkeletonBar height="h-8" width="w-8" variant="secondary" />
+        </div>
+      }
+    />
+  );
+}
+
+/** AuditMobileCard 스켈레톤 (action 배지+성공/실패 / 날짜 / 사용자·이메일·대상 그리드) */
+export function AuditLogCardSkeleton() {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <SkeletonBar height="h-6" width="w-20" />
+        <SkeletonBar height="h-6" width="w-12" variant="secondary" />
+      </div>
+      <SkeletonBar height="h-3" width="w-32" variant="secondary" />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {[
+          ['w-12', 'w-20'],
+          ['w-12', 'w-32'],
+          ['w-12', 'w-24'],
+        ].map(([l, v], i) => (
+          <div key={i} className="contents">
+            <SkeletonBar height="h-3.5" width={l} variant="secondary" />
+            <SkeletonBar height="h-3.5" width={v} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** ProjectMobileCard 스켈레톤 (회사명+트랙배지 / 상태배지 / 업종·규모·배정일 / 상세보기) */
+export function ConsultantProjectCardSkeleton() {
+  return (
+    <div className="border rounded-lg p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <SkeletonBar height="h-4" width="w-28" />
+          <SkeletonBar height="h-5" width="w-12" variant="secondary" />
+        </div>
+        <SkeletonBar height="h-6" width="w-20" variant="secondary" />
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+        {[
+          ['w-12', 'w-20'],
+          ['w-12', 'w-16'],
+          ['w-12', 'w-24'],
+        ].map(([l, v], i) => (
+          <div key={i} className="contents">
+            <SkeletonBar height="h-3.5" width={l} variant="secondary" />
+            <SkeletonBar height="h-3.5" width={v} />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end pt-2 border-t">
+        <SkeletonBar height="h-4" width="w-16" variant="secondary" />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // 반응형 테이블 스켈레톤 래퍼 (데스크톱: 테이블 / 모바일: 카드)
 // ============================================================================
 
 /** 테이블 스켈레톤의 반응형 래퍼 — md 이상에서 테이블, 미만에서 카드 표시 */
 function ResponsiveTableSkeleton({
   mobileCards = 3,
+  mobileCard,
   children,
 }: {
   mobileCards?: number;
+  /** 실제 페이지의 *MobileCard 와 같은 구조의 카드 스켈레톤 (지정하지 않으면 generic 3줄) */
+  mobileCard?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const fallbackCard = (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-2">
+      <SkeletonBar height="h-4" width="w-3/4" />
+      <SkeletonBar height="h-3" width="w-1/2" variant="secondary" />
+      <SkeletonBar height="h-3" width="w-1/3" variant="secondary" />
+    </div>
+  );
+
   return (
     <>
       <div className="hidden md:block">{children}</div>
       <div className="md:hidden space-y-3">
         {renderItems(mobileCards, (i) => (
-          <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-2">
-            <SkeletonBar height="h-4" width="w-3/4" />
-            <SkeletonBar height="h-3" width="w-1/2" variant="secondary" />
-            <SkeletonBar height="h-3" width="w-1/3" variant="secondary" />
-          </div>
+          <div key={i}>{mobileCard ?? fallbackCard}</div>
         ))}
       </div>
     </>

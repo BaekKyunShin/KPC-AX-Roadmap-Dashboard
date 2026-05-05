@@ -1,14 +1,16 @@
-import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="공지 관리"
-        description="컨설턴트와 공유할 공지·양식 파일을 관리합니다."
-        actions={<Skeleton className="h-9 w-32 rounded-md" />}
-      />
+      {/* 헤더 영역 — 정적 텍스트 노출 금지 (cross-route 누출 방지) */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-4 w-2/3 opacity-70" />
+        </div>
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </div>
 
       {/* 상단 고정 섹션 */}
       <div className="space-y-2">

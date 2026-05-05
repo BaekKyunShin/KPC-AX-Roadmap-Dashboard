@@ -1,13 +1,13 @@
-import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="공지사항"
-        description="운영자가 공유한 공지와 양식 파일을 확인합니다."
-      />
+      {/* 헤더 영역 — 정적 텍스트 노출 금지 (cross-route 누출 방지) */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-2/3 opacity-70" />
+      </div>
 
       {/* 검색바 스켈레톤: 세그먼트 탭 + 검색 입력 + 버튼 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

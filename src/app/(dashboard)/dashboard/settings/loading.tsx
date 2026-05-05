@@ -1,14 +1,14 @@
-import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <PageHeader
-        title="계정 설정"
-        description="비밀번호 변경 및 계정 관리"
-        backLink={{ href: '/dashboard', label: '대시보드' }}
-      />
+      {/* 헤더 영역 — 정적 텍스트 노출 금지 (cross-route 누출 방지) */}
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32 opacity-70" />
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-2/3 opacity-70" />
+      </div>
 
       {/* 이메일 알림 설정 카드 스켈레톤 */}
       <div className="rounded-xl border bg-card px-6 py-4">

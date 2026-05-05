@@ -7,6 +7,9 @@ import {
   ConsultantProjectTableSkeleton,
   AuditLogTableSkeleton,
   UserTableSkeleton,
+  UserCardSkeleton,
+  AuditLogCardSkeleton,
+  ConsultantProjectCardSkeleton,
   QuotaTableSkeleton,
   TemplateTableSkeleton,
   TemplateFormSkeleton,
@@ -275,6 +278,79 @@ describe('Skeleton', () => {
     it('animate-shimmer 클래스를 포함한 요소가 존재한다', () => {
       const { container } = render(<TemplatePreviewSkeleton />);
       expect(container.querySelector('.animate-shimmer')).toBeInTheDocument();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 모바일 카드 스켈레톤 (UserMobileCard / AuditMobileCard / ProjectMobileCard 미러)
+  // --------------------------------------------------------------------------
+
+  describe('UserCardSkeleton', () => {
+    it('렌더링된다', () => {
+      const { container } = render(<UserCardSkeleton />);
+      expect(container.firstChild).toBeInTheDocument();
+    });
+
+    it('animate-shimmer 요소가 다수 존재한다 (헤더+그리드+푸터 구조)', () => {
+      const { container } = render(<UserCardSkeleton />);
+      // 실제 UserMobileCard와 동일하게 헤더 2개 + 그리드 4쌍 + 푸터 2개 = 최소 8개
+      expect(container.querySelectorAll('.animate-shimmer').length).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  describe('AuditLogCardSkeleton', () => {
+    it('렌더링된다', () => {
+      const { container } = render(<AuditLogCardSkeleton />);
+      expect(container.firstChild).toBeInTheDocument();
+    });
+
+    it('animate-shimmer 요소가 다수 존재한다', () => {
+      const { container } = render(<AuditLogCardSkeleton />);
+      expect(container.querySelectorAll('.animate-shimmer').length).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  describe('ConsultantProjectCardSkeleton', () => {
+    it('렌더링된다', () => {
+      const { container } = render(<ConsultantProjectCardSkeleton />);
+      expect(container.firstChild).toBeInTheDocument();
+    });
+
+    it('animate-shimmer 요소가 다수 존재한다', () => {
+      const { container } = render(<ConsultantProjectCardSkeleton />);
+      expect(container.querySelectorAll('.animate-shimmer').length).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 표 스켈레톤이 모바일에서 카드 스켈레톤을 렌더한다 (md:hidden 분기)
+  // --------------------------------------------------------------------------
+
+  describe('UserTableSkeleton — 모바일 분기', () => {
+    it('md:hidden 컨테이너에 카드 형태 스켈레톤을 포함한다', () => {
+      const { container } = render(<UserTableSkeleton />);
+      const mobileContainer = container.querySelector('.md\\:hidden');
+      expect(mobileContainer).toBeInTheDocument();
+      // 이메일 라벨이 보이는 등 그리드 구조를 추측할 수 있어야 함
+      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  describe('AuditLogTableSkeleton — 모바일 분기', () => {
+    it('md:hidden 컨테이너에 카드 형태 스켈레톤을 포함한다', () => {
+      const { container } = render(<AuditLogTableSkeleton />);
+      const mobileContainer = container.querySelector('.md\\:hidden');
+      expect(mobileContainer).toBeInTheDocument();
+      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
+    });
+  });
+
+  describe('ConsultantProjectTableSkeleton — 모바일 분기', () => {
+    it('md:hidden 컨테이너에 카드 형태 스켈레톤을 포함한다', () => {
+      const { container } = render(<ConsultantProjectTableSkeleton />);
+      const mobileContainer = container.querySelector('.md\\:hidden');
+      expect(mobileContainer).toBeInTheDocument();
+      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
     });
   });
 
