@@ -15,7 +15,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
  */
 export default function TestRoadmapLoading() {
   return (
-    <div className="space-y-6">
+    // PageContainer 와 동일한 마크업 — 좌우 폭 (max-w-5xl) + 패딩 + 섹션 간격을 실제와 일치
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       {/* 헤더: 뒤로가기 + 제목 + 샘플 데이터 채우기 버튼 — 정적 텍스트 노출 금지 */}
       <div>
         <Skeleton className="h-3.5 w-24 mb-2 opacity-70" />

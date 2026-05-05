@@ -24,4 +24,10 @@ describe('test-pbl/loading.tsx', () => {
     const { container } = render(<Loading />);
     expect(container.querySelector('.min-h-\\[400px\\]')).toBeInTheDocument();
   });
+
+  it('실제 페이지와 동일한 컨테이너 폭 (max-w-5xl mx-auto)을 사용한다', () => {
+    const { container } = render(<Loading />);
+    const wrapper = container.querySelector('.max-w-5xl.mx-auto');
+    expect(wrapper).toBeInTheDocument();
+  });
 });
