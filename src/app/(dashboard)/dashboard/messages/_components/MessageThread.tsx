@@ -242,9 +242,13 @@ export default function MessageThread({
         ) : (
           <>
             {isLoadingMore && (
-              <div className="flex items-center justify-center py-2">
+              <div
+                data-testid="prev-loading"
+                className="flex items-center justify-center py-2"
+              >
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                <span className="ml-2 text-xs text-gray-400">이전 메시지 로딩 중...</span>
+                {/* 메시지 흐름과 톤 어긋나지 않게 텍스트는 sr-only 로 유지 (a11y) */}
+                <span className="sr-only">이전 메시지 로딩 중</span>
               </div>
             )}
             {messages.map((msg, idx) => {

@@ -15,12 +15,13 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: mockSearchParamsGet }),
 }));
 
-// useTransition: isPending=false, startTransition은 즉시 실행
+// useTransition: 기본은 isPending=false, 테스트별로 변경 가능
+let isPendingMock = false;
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>();
   return {
     ...actual,
-    useTransition: () => [false, (fn: () => void) => fn()],
+    useTransition: () => [isPendingMock, (fn: () => void) => fn()],
   };
 });
 
@@ -37,11 +38,33 @@ import { NoticeSearchBar } from './NoticeSearchBar';
 describe('NoticeSearchBar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isPendingMock = false;
     // 기본: q='', filter_by=null (→ 'title' 기본값)
     mockSearchParamsGet.mockImplementation((key: string) => {
       if (key === 'q') return '';
       if (key === 'filter_by') return null;
       return null;
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 진행 표시 (isPending)
+  // ---------------------------------------------------------------------------
+  describe('isPending 진행 표시', () => {
+    it('isPending=true 시 검색 버튼 안에 Loader2 스피너 (animate-spin) 가 표시된다', () => {
+      isPendingMock = true;
+      const { container } = render(<NoticeSearchBar />);
+      const submitButton = screen.getByRole('button', { name: /검색/ });
+      expect(submitButton.querySelector('.animate-spin')).toBeInTheDocument();
+      // hint: Loader2 는 SVG 이므로 container 차원에서도 검증
+      expect(container.querySelector('.animate-spin')).toBeInTheDocument();
+    });
+
+    it('isPending=false 시 검색 버튼 안에 스피너가 표시되지 않는다', () => {
+      isPendingMock = false;
+      render(<NoticeSearchBar />);
+      const submitButton = screen.getByRole('button', { name: /검색/ });
+      expect(submitButton.querySelector('.animate-spin')).not.toBeInTheDocument();
     });
   });
 
