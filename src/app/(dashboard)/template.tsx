@@ -1,17 +1,22 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+
 /**
- * (dashboard) 라우트 그룹 template.
+ * (dashboard) 라우트 그룹 template — V5: client component + key={pathname}.
  *
- * 라우트 변경 시 직전 페이지가 잠깐 잔존하다가 새 페이지로 swap되던 결함의 진짜
- * 해결책. Next.js 공식 문서 인용:
+ * V4(server template)는 매 navigation 시 새 인스턴스로 마운트되지만, RSC payload
+ * 도착 시점이 그대로라 React의 instant transition이 직전 페이지를 유지하는 default
+ * 동작이 그대로 작동했다.
  *
- *   "Suspense boundaries inside layouts only show a fallback on first load,
- *    while templates show it on every navigation."
+ * V5는 client component로 만들고 pathname을 children div의 key로 부여한다.
+ * pathname이 바뀌면 React는 새 컴포넌트 트리로 인식하여 children을 즉시 unmount →
+ * remount 한다. 이로써 instant transition 정책이 우회되고 자식 segment의
+ * loading.tsx Suspense fallback이 즉시 표시된다.
  *
- * template은 매 navigation마다 새 인스턴스로 마운트되어 children Suspense
- * fallback(= 각 page의 loading.tsx skeleton)이 라우트 변경 즉시 표시되도록 한다.
- *
- * 다른 UI/UX·로직·디자인 변경 없음. 단순 pass-through wrapper.
+ * 다른 UI/UX·로직·디자인 변경 없음. 단순 wrapper에 key만 부여.
  */
 export default function DashboardTemplate({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  const pathname = usePathname();
+  return <div key={pathname}>{children}</div>;
 }
