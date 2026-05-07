@@ -14,7 +14,9 @@ import type { SimpleActionResult } from '@/lib/types/action-result';
  */
 async function getVerifiedUser(password: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return {
@@ -43,7 +45,14 @@ async function getVerifiedUser(password: string) {
  * 1. 세션 확인
  * 2. Zod 검증
  * 3. 현재 비밀번호 검증
- * 4. 새 비밀번호 설정
+ * 4. 새 비밀번호 설정 (admin client — 세션 토큰 의존성 제거)
+ *
+ * NOTE: 과거에는 sessionful client 의 auth.updateUser({password}) 를 호출했으나,
+ *   getVerifiedUser 내부의 signInWithPassword 가 cookie 갱신에 실패하면 (server.ts 의
+ *   setAll 이 try/catch 로 silent 통과) 후속 updateUser 가 stale 토큰으로 실패하며
+ *   매핑되지 않은 generic 오류가 fallback 메시지로 노출되었다. 본인 검증은 이미
+ *   signInWithPassword 로 통과했으므로 admin.updateUserById 를 사용해 토큰 의존성을
+ *   제거한다 (admin client = RLS 우회·내부 작업 전용).
  */
 export async function changePassword(
   currentPassword: string,
@@ -51,7 +60,11 @@ export async function changePassword(
   confirmPassword: string
 ): Promise<SimpleActionResult> {
   // 1. 입력 검증
-  const validation = changePasswordSchema.safeParse({ currentPassword, newPassword, confirmPassword });
+  const validation = changePasswordSchema.safeParse({
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
   if (!validation.success) {
     return { success: false, error: validation.error.errors[0].message };
   }
@@ -62,8 +75,18 @@ export async function changePassword(
     return { success: false, error: auth.error };
   }
 
-  // 3. 새 비밀번호 설정
-  const { error: updateError } = await auth.supabase.auth.updateUser({
+  // 3. admin client 로 새 비밀번호 설정 (세션 토큰 의존성 없음)
+  let adminSupabase;
+  try {
+    adminSupabase = createAdminClient();
+  } catch {
+    return {
+      success: false,
+      error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
+    };
+  }
+
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(auth.user.id, {
     password: newPassword,
   });
 

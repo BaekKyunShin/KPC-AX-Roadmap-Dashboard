@@ -27,7 +27,6 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 
 const mockGetUser = vi.fn();
 const mockSignInWithPassword = vi.fn();
-const mockUpdateUser = vi.fn();
 const mockSignOut = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -35,7 +34,6 @@ vi.mock('@/lib/supabase/server', () => ({
     auth: {
       getUser: () => mockGetUser(),
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
-      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       signOut: () => mockSignOut(),
     },
   }),
@@ -51,10 +49,12 @@ vi.mock('@/lib/supabase/admin', () => ({
     from: () => ({
       update: (...args: unknown[]) => {
         mockAdminUpdate(...args);
-        return { eq: (...eqArgs: unknown[]) => {
-          mockAdminEq(...eqArgs);
-          return adminUpdateReturnValue;
-        }};
+        return {
+          eq: (...eqArgs: unknown[]) => {
+            mockAdminEq(...eqArgs);
+            return adminUpdateReturnValue;
+          },
+        };
       },
     }),
     auth: {
@@ -176,9 +176,9 @@ describe('changePassword', () => {
     });
   });
 
-  it('updateUser 실패 → 에러 번역', async () => {
+  it('admin.updateUserById 실패 → 에러 번역', async () => {
     setupPasswordVerified();
-    mockUpdateUser.mockResolvedValue({
+    mockAdminUpdateUserById.mockResolvedValue({
       error: { message: 'New password should be different from the old password' },
     });
 
@@ -190,14 +190,16 @@ describe('changePassword', () => {
     });
   });
 
-  it('전체 성공', async () => {
+  it('전체 성공: admin.updateUserById 로 새 비밀번호 적용', async () => {
     setupPasswordVerified();
-    mockUpdateUser.mockResolvedValue({ error: null });
+    mockAdminUpdateUserById.mockResolvedValue({ error: null });
 
     const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
 
     expect(result).toEqual({ success: true });
-    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'NewPass1!' });
+    expect(mockAdminUpdateUserById).toHaveBeenCalledWith(TEST_USER_ID, {
+      password: 'NewPass1!',
+    });
   });
 });
 
@@ -280,7 +282,7 @@ describe('deleteAccount', () => {
         targetType: 'user',
         targetId: TEST_USER_ID,
         meta: { email: TEST_EMAIL },
-      }),
+      })
     );
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockRedirect).toHaveBeenCalledWith('/login');
@@ -302,7 +304,7 @@ describe('deleteAccount', () => {
         action: 'USER_WITHDRAW',
         targetType: 'user',
         targetId: TEST_USER_ID,
-      }),
+      })
     );
 
     // 익명화 데이터 확인
@@ -312,7 +314,7 @@ describe('deleteAccount', () => {
         email: expect.stringContaining('withdrawn_'),
         phone: null,
         status: 'WITHDRAWN',
-      }),
+      })
     );
     expect(mockAdminEq).toHaveBeenCalledWith('id', TEST_USER_ID);
 
@@ -323,7 +325,7 @@ describe('deleteAccount', () => {
         email: expect.stringContaining('withdrawn_'),
         email_confirm: true,
         ban_duration: '876600h',
-      }),
+      })
     );
 
     // 이메일 형식 확인

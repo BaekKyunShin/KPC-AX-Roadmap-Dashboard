@@ -64,12 +64,8 @@ export const loginSchema = z.object({
 // 컨설턴트 프로필 스키마
 export const consultantProfileSchema = z.object({
   // 정형 데이터 (필수)
-  expertise_domains: z
-    .array(z.string())
-    .min(1, 'AI 적용 가능 업무를 최소 1개 이상 선택하세요.'),
-  available_industries: z
-    .array(z.string())
-    .min(1, 'AI 훈련 가능 산업을 최소 1개 이상 선택하세요.'),
+  expertise_domains: z.array(z.string()).min(1, 'AI 적용 가능 업무를 최소 1개 이상 선택하세요.'),
+  available_industries: z.array(z.string()).min(1, 'AI 훈련 가능 산업을 최소 1개 이상 선택하세요.'),
   sub_industries: z
     .array(z.string().max(SUB_INDUSTRY_CONSTRAINTS.maxLength))
     .max(SUB_INDUSTRY_CONSTRAINTS.maxTags)
@@ -80,17 +76,12 @@ export const consultantProfileSchema = z.object({
   coaching_methods: z
     .array(coachingMethodSchema)
     .min(1, '선호 교육 방식을 최소 1개 이상 선택하세요.'),
-  skill_tags: z
-    .array(z.string())
-    .min(1, '보유 역량을 최소 1개 이상 선택하세요.'),
+  skill_tags: z.array(z.string()).min(1, '보유 역량을 최소 1개 이상 선택하세요.'),
   years_of_experience: z
     .number()
     .min(0, '경력 연수는 0 이상이어야 합니다.')
     .max(50, '경력 연수는 50년 이하여야 합니다.'),
-  affiliation: z
-    .string()
-    .min(1, '소속을 입력하세요.')
-    .max(50, '소속은 50자 이하여야 합니다.'),
+  affiliation: z.string().min(1, '소속을 입력하세요.').max(50, '소속은 50자 이하여야 합니다.'),
   // 서술 데이터 (필수)
   representative_experience: z
     .string()
@@ -137,6 +128,22 @@ export const deleteAccountSchema = z.object({
   }),
 });
 
+// 비밀번호 재설정 메일 요청 스키마
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email('유효한 이메일 주소를 입력하세요.'),
+});
+
+// 메일 링크 클릭 후 새 비밀번호 설정 스키마
+export const resetPasswordSchema = z
+  .object({
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['confirmPassword'],
+  });
+
 // 타입 추출
 export type RegisterType = z.infer<typeof registerTypeSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -145,3 +152,5 @@ export type ConsultantProfileInput = z.infer<typeof consultantProfileSchema>;
 export type UserApprovalInput = z.infer<typeof userApprovalSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

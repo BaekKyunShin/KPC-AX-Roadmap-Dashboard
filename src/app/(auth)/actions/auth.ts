@@ -3,12 +3,18 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { registerSchema, loginSchema, consultantProfileSchema } from '@/lib/schemas/user';
+import {
+  registerSchema,
+  loginSchema,
+  consultantProfileSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+} from '@/lib/schemas/user';
 import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
 import { getDefaultRouteForRole } from '@/lib/utils/role-routes';
-import type { ActionResult } from '@/lib/types/action-result';
+import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
  * 이메일 중복 사전 확인 (#004 옵션 C)
@@ -20,7 +26,7 @@ const emailOnlySchema = z.object({
 });
 
 export async function checkEmailAvailability(
-  email: string,
+  email: string
 ): Promise<ActionResult<{ available: boolean }>> {
   const validation = emailOnlySchema.safeParse({ email });
   if (!validation.success) {
@@ -63,7 +69,9 @@ export async function checkEmailAvailability(
  * 2. users 테이블에 프로필 생성 (역할에 따라 USER_PENDING 또는 OPS_ADMIN_PENDING)
  * 3. consultant_profiles 는 별도 액션 (saveConsultantProfile / registerConsultantWithProfile) 으로 처리
  */
-export async function registerUser(formData: FormData): Promise<ActionResult<{ userId: string; registerType: string; needsLogin?: boolean }>> {
+export async function registerUser(
+  formData: FormData
+): Promise<ActionResult<{ userId: string; registerType: string; needsLogin?: boolean }>> {
   const supabase = await createClient();
 
   // 폼 데이터 파싱
@@ -111,7 +119,10 @@ export async function registerUser(formData: FormData): Promise<ActionResult<{ u
 
   if (authError) {
     // 이미 등록된 이메일인 경우
-    if (authError.message?.includes('already been registered') || authError.message?.includes('already exists')) {
+    if (
+      authError.message?.includes('already been registered') ||
+      authError.message?.includes('already exists')
+    ) {
       return {
         success: false,
         error: '이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.',
@@ -195,7 +206,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult<{ u
  * 성공 시 역할 기반 기본 랜딩 경로를 반환하여 리다이렉트 체인을 제거합니다.
  */
 export async function loginUser(
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionResult<{ defaultRoute: string }>> {
   const supabase = await createClient();
 
@@ -259,16 +270,14 @@ export async function logoutUser(): Promise<void> {
 export async function fetchCurrentUser() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
 
   return profile;
 }
@@ -319,7 +328,7 @@ function parseConsultantProfileFromFormData(formData: FormData) {
  */
 export async function registerConsultantWithProfile(
   step1FormData: FormData,
-  profileFormData: FormData,
+  profileFormData: FormData
 ): Promise<ActionResult<{ userId: string; needsLogin?: boolean }>> {
   // 1. Step1 검증 (registerType 은 CONSULTANT 로 고정 — 본 함수는 컨설턴트 전용)
   const step1Raw = {
@@ -408,17 +417,15 @@ export async function registerConsultantWithProfile(
   }
 
   // 6. consultant_profiles INSERT — 실패 시 Auth user 삭제 (users 는 CASCADE 정리)
-  const { error: profileInsertError } = await adminSupabase
-    .from('consultant_profiles')
-    .insert({
-      user_id: userId,
-      ...profileValidation.data,
-      sub_industries: profileValidation.data.sub_industries || [],
-    });
+  const { error: profileInsertError } = await adminSupabase.from('consultant_profiles').insert({
+    user_id: userId,
+    ...profileValidation.data,
+    sub_industries: profileValidation.data.sub_industries || [],
+  });
   if (profileInsertError) {
     console.error(
       '[registerConsultantWithProfile] consultant_profiles INSERT 실패:',
-      profileInsertError,
+      profileInsertError
     );
     await adminSupabase.auth.admin.deleteUser(userId);
     return {
@@ -438,4 +445,102 @@ export async function registerConsultantWithProfile(
   }
 
   return { success: true, data: { userId } };
+}
+
+// =============================================================================
+// 비밀번호 찾기 (메일 발송 + 메일 링크 클릭 후 새 비번 설정)
+// =============================================================================
+
+/**
+ * 비밀번호 재설정 메일 발송
+ *
+ * 보안상 등록되지 않은 이메일이라도 동일하게 성공 응답을 반환한다 (계정 존재 여부 노출 방지).
+ * Supabase 가 redirectTo 로 지정된 URL 에 access/refresh 토큰을 fragment 로 붙여 메일을
+ * 전송한다. 사용자는 메일 링크를 눌러 /reset-password 로 이동 후 새 비밀번호를 설정한다.
+ */
+export async function requestPasswordReset(email: string): Promise<SimpleActionResult> {
+  // 1. Zod 검증
+  const validation = requestPasswordResetSchema.safeParse({ email });
+  if (!validation.success) {
+    return { success: false, error: validation.error.errors[0].message };
+  }
+
+  // 2. 메일 발송 (계정 존재 여부와 무관하게 항상 성공 응답)
+  const supabase = await createClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const redirectTo = `${appUrl}/reset-password`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(validation.data.email, {
+    redirectTo,
+  });
+
+  // rate limit 등 보안성 노출 위험이 적은 사례는 사용자에게 안내, 그 외엔 silent 성공
+  if (error) {
+    console.error('[requestPasswordReset Error]', error.message);
+    if (error.message?.toLowerCase().includes('rate limit')) {
+      return {
+        success: false,
+        error: translateAuthError(error.message),
+      };
+    }
+    // 보안상 silent success — 존재하지 않는 이메일·일반 에러 등은 동일 응답
+    return { success: true };
+  }
+
+  return { success: true };
+}
+
+/**
+ * 메일 링크 클릭 후 새 비밀번호 설정
+ *
+ * Supabase 메일 링크는 fragment(`#access_token=...&refresh_token=...&type=recovery`)로
+ * 클라이언트에 토큰을 전달한다. 클라이언트가 setSession 으로 임시 세션을 만든 뒤 본 액션을
+ * 호출하면 server 측 cookie 에도 세션이 반영되어 있으므로 getUser 로 본인 식별이 가능하다.
+ *
+ * 비밀번호 갱신은 changePassword 와 동일한 패턴으로 admin client 를 사용 — 세션 토큰
+ * 갱신 실패에 따른 stale-token 리스크를 회피한다.
+ */
+export async function setNewPasswordWithToken(
+  newPassword: string,
+  confirmPassword: string
+): Promise<SimpleActionResult> {
+  // 1. Zod 검증
+  const validation = resetPasswordSchema.safeParse({ newPassword, confirmPassword });
+  if (!validation.success) {
+    return { success: false, error: validation.error.errors[0].message };
+  }
+
+  // 2. 세션 확인 (recovery 토큰으로 setSession 된 사용자)
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: '재설정 링크가 만료되었거나 유효하지 않습니다. 메일을 다시 요청해주세요.',
+    };
+  }
+
+  // 3. admin client 로 비밀번호 갱신
+  let adminSupabase;
+  try {
+    adminSupabase = createAdminClient();
+  } catch {
+    return {
+      success: false,
+      error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
+    };
+  }
+
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
+    password: validation.data.newPassword,
+  });
+
+  if (updateError) {
+    return { success: false, error: translateAuthError(updateError.message) };
+  }
+
+  return { success: true };
 }
