@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { DataSourceBadge, type DataSourceKind } from '@/components/common/DataSourceBadge';
 
 /**
  * 결과 페이지(로드맵/PBL) 탭 내부에서 각 섹션(Ⅰ-1, Ⅰ-2 등)의 시각적 래퍼 카드.
@@ -20,6 +21,8 @@ export interface SectionCardProps {
   children: ReactNode;
   /** 추가 className. root 에 cn() 으로 합성. */
   className?: string;
+  /** 데이터 출처 배지. 'user' / 'ai' / 'mixed'. */
+  dataSource?: DataSourceKind;
 }
 
 export function SectionCard({
@@ -28,12 +31,16 @@ export function SectionCard({
   actions,
   children,
   className,
+  dataSource,
 }: SectionCardProps) {
   return (
     <div className={cn('rounded-lg border bg-card p-6', className)}>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold">{title}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold">{title}</h3>
+            {dataSource && <DataSourceBadge kind={dataSource} />}
+          </div>
           {description && (
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           )}

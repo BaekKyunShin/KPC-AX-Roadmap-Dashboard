@@ -32,6 +32,19 @@ export function parseBullets(text: string | null | undefined): string[] {
 }
 
 /**
+ * 줄바꿈으로 구분된 일반 텍스트를 받아 각 라인에 머리기호를 prepend한다.
+ * 이미 머리기호가 붙어있으면 정규화(중복 prefix 방지). 빈 줄·공백 줄은 무시.
+ *
+ * 표시 전용 변환이며 DB 저장값에는 영향 없음.
+ */
+export function bulletizeText(
+  text: string | null | undefined,
+  bullet: string = '• ',
+): string {
+  return bulletize(parseBullets(text), bullet);
+}
+
+/**
  * 훈련과정 명세서의 "세부 내용(단원, 과제명)" 텍스트에서 단원 경계마다 줄바꿈을 삽입한다.
  *
  * 예:

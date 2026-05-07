@@ -30,6 +30,7 @@ export function TabPBLOutcomes({ version }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅴ-1. 성과분석 측정 지표"
         description="훈련 전·후 정량·정성 측정 지표 (LLM 자동 생성)"
+        dataSource="ai"
       >
         {metrics ? (
           <div className="space-y-3">
@@ -80,6 +81,7 @@ export function TabPBLOutcomes({ version }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅴ-2. 성과 확산 전략"
         description="조직 내 내재화 · 전사 확산 전략 (LLM 자동 생성)"
+        dataSource="ai"
       >
         {diffusion ? (
           <FormTable

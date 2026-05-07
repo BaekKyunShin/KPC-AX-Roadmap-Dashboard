@@ -38,6 +38,7 @@ export function TabPBLAnalysis({
       <SectionCard
         title="Ⅱ-1-가. 기업 경영 이슈"
         description="bullet 서술 (인터뷰 입력)"
+        dataSource="user"
       >
         <InlineEditField
           value={analysis?.companyIssues ?? ''}
@@ -54,6 +55,7 @@ export function TabPBLAnalysis({
       <SectionCard
         title="Ⅱ-1-나. 조직 및 주요 업무"
         description="조직도(재귀 트리) + 부서별 주요 업무"
+        dataSource="user"
       >
         <div className="space-y-4">
           <div>
@@ -126,6 +128,7 @@ export function TabPBLAnalysis({
       <SectionCard
         title="Ⅱ-2. 기업 훈련환경 분석"
         description="양식 12×7 정형 표 — 적정 훈련시간 · 훈련장소(사내/사외) · 사내·외부 강사 · AI 인프라"
+        dataSource="user"
       >
         {(() => {
           const env = analysis?.trainingEnv;
@@ -213,6 +216,7 @@ export function TabPBLAnalysis({
       <SectionCard
         title="Ⅱ-3-가. HRD이음 컨설팅 결과 보고서"
         description="HRD이음 컨설팅 결과 PDF 첨부 (인터뷰에서 업로드, LLM 내부 분석용)"
+        dataSource="user"
       >
         {hrdPdf ? (
           <div className="space-y-3">
@@ -256,6 +260,7 @@ export function TabPBLAnalysis({
       <SectionCard
         title="Ⅱ-3-나. AI훈련과정 개발 필요성"
         description="인터뷰 입력 (HRD이음 PDF 미첨부 시 필수)"
+        dataSource="user"
       >
         <InlineEditField
           value={analysis?.courseNecessity ?? ''}

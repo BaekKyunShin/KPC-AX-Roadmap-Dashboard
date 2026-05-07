@@ -63,9 +63,15 @@ test.describe('Phase 2.4: 프로젝트 목록', () => {
     await expect(page.getByRole('columnheader', { name: '작업' })).toBeVisible();
   });
 
-  test('"상세보기" 클릭 → 프로젝트 상세 이동', async ({ opsPage: page }) => {
-    await page.getByRole('link', { name: '상세보기' }).first().click();
+  test('기업명 클릭 → 프로젝트 상세 이동', async ({ opsPage: page }) => {
+    await page.locator('table a[href^="/ops/projects/"]').first().click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/);
+  });
+
+  test('작업 열에 "삭제" 버튼이 노출된다', async ({ opsPage: page }) => {
+    await expect(
+      page.getByRole('button', { name: '삭제' }).first(),
+    ).toBeVisible();
   });
 
   test('"새 프로젝트 생성" 버튼 → /ops/projects/new', async ({ opsPage: page }) => {
@@ -126,7 +132,7 @@ test.describe('Phase 2.6: 프로젝트 상세 (기존)', () => {
     // 기존 프로젝트의 상세 페이지 접근
     await page.goto('/ops/projects');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: '상세보기' }).first().click();
+    await page.locator('table a[href^="/ops/projects/"]').first().click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/);
 
     // 기업 정보 카드 확인
@@ -140,7 +146,7 @@ test.describe('Phase 2.6: 프로젝트 상세 (기존)', () => {
   test('뒤로가기 버튼 → /ops/projects', async ({ opsPage: page }) => {
     await page.goto('/ops/projects');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: '상세보기' }).first().click();
+    await page.locator('table a[href^="/ops/projects/"]').first().click();
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+/);
 
     await page.getByRole('button', { name: /프로젝트 목록/ }).click();
@@ -250,8 +256,9 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     await page.goto('/ops/projects');
     await page.waitForLoadState('networkidle');
 
-    // 테이블 행에서 "로드맵 최종 확정" 또는 "로드맵 초안 완료" 텍스트를 포함하는 행의 상세보기 링크 href 추출
-    const allDetailLinks = page.locator('a').filter({ hasText: '상세보기' });
+    // 테이블 행에서 "로드맵 최종 확정" 또는 "로드맵 초안 완료" 텍스트를 포함하는 행의 상세 링크 href 추출
+    // (기업명 셀이 상세 페이지 링크로 동작)
+    const allDetailLinks = page.locator('table a[href^="/ops/projects/"]');
     const linkCount = await allDetailLinks.count();
     let targetHref: string | null = null;
 

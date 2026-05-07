@@ -88,8 +88,15 @@ export const reassignConsultantSchema = z.object({
     .max(500),
 });
 
+// 프로젝트 삭제 — 회사명 직접 입력으로 안전 가드
+export const deleteProjectSchema = z.object({
+  project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
+  confirm_text: z.string().min(1, '확인 문구를 입력하세요.'),
+});
+
 // 타입 추출
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+export type DeleteProjectInput = z.infer<typeof deleteProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type CreateSelfAssessmentInput = z.infer<typeof createSelfAssessmentSchema>;
 export type UpdateSelfAssessmentInput = z.infer<typeof updateSelfAssessmentSchema>;

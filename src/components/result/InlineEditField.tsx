@@ -30,6 +30,11 @@ export interface InlineEditFieldProps {
   className?: string;
   /** true 면 textarea, false 면 input. */
   multiline?: boolean;
+  /**
+   * view 모드 표시 전용 변환. edit 모드의 editBuffer/onSave 에는 영향 없음.
+   * 예: 줄바꿈 텍스트에 머리기호 prepend.
+   */
+  displayTransform?: (raw: string) => string;
 }
 
 type SavingState = 'idle' | 'saving' | 'saved' | 'error';
@@ -41,6 +46,7 @@ export function InlineEditField({
   placeholder = '클릭하여 편집',
   className,
   multiline = false,
+  displayTransform,
 }: InlineEditFieldProps) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   // edit 모드 진입 시의 편집 버퍼. view 모드에서는 외부 value 를 직접 표시하므로
@@ -214,8 +220,14 @@ export function InlineEditField({
         }
       }}
     >
-      <span className={cn('flex-1', !value && 'text-muted-foreground')}>
-        {value || placeholder}
+      <span
+        className={cn(
+          'flex-1',
+          multiline && 'whitespace-pre-line',
+          !value && 'text-muted-foreground',
+        )}
+      >
+        {value ? (displayTransform ? displayTransform(value) : value) : placeholder}
       </span>
       {viewIndicator ??
         (!readOnly && (
