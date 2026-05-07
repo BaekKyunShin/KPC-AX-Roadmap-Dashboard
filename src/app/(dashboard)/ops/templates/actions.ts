@@ -70,9 +70,13 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
     const { supabase } = auth;
 
     // 템플릿 목록 조회 (사용 현황 포함)
+    // 주의: OPS_ADMIN 의 RLS 정책(templates_select_ops)은 감사 목적으로 삭제된 레코드도
+    // 노출한다. 목록 화면에서는 소프트 삭제된 행이 보이면 안 되므로 애플리케이션 레벨에서
+    // deleted_at IS NULL 필터를 적용한다.
     const { data: templates, error } = await supabase
       .from('self_assessment_templates')
       .select('*')
+      .is('deleted_at', null)
       .order('version', { ascending: false });
 
     if (error) {

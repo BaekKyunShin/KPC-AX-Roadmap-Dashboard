@@ -659,6 +659,26 @@ describe('fetchTemplates', () => {
     const data = (result as { success: true; data: Array<{ id: string; usage_count: number }> }).data;
     expect(data[0].usage_count).toBe(0);
   });
+
+  // 버그: 삭제(soft delete) 후 UI에 행이 남는 문제.
+  // OPS_ADMIN 의 RLS 정책(templates_select_ops)은 감사 목적으로 삭제된 레코드도 노출하므로,
+  // 애플리케이션 레벨에서 deleted_at IS NULL 필터를 적용해야 한다.
+  it('소프트 삭제된 템플릿을 제외한다 (deleted_at IS NULL 필터 적용)', async () => {
+    mockAuthResult.mockResolvedValue({
+      user: { id: TEST_USER_ID },
+      supabase: serverMock.client,
+    });
+
+    // 1. 템플릿 목록 조회 → 빈 배열 (응답 자체는 무관)
+    serverMock.addResult({ data: [], error: null });
+    // 2. usage 조회 → 빈 배열
+    serverMock.addResult({ data: [], error: null });
+
+    await fetchTemplates();
+
+    // self_assessment_templates 쿼리에 .is('deleted_at', null) 가 포함되어야 한다
+    expect(serverMock.chainable.is).toHaveBeenCalledWith('deleted_at', null);
+  });
 });
 
 // ─── fetchTemplate ───────────────────────────────────────────────────────────
