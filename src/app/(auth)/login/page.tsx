@@ -48,8 +48,7 @@ function LoginForm() {
       if (result.success) {
         // 명시적 redirect 파라미터가 있고 /dashboard가 아닌 경우 그대로 사용,
         // 아니면 서버가 역할 기반으로 계산한 기본 경로로 직접 이동
-        const destination =
-          redirectTo !== '/dashboard' ? redirectTo : result.data.defaultRoute;
+        const destination = redirectTo !== '/dashboard' ? redirectTo : result.data.defaultRoute;
         router.push(destination);
         router.refresh();
       } else {
@@ -90,7 +89,15 @@ function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">비밀번호</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">비밀번호</Label>
+          <Link
+            href="/forgot-password"
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
         <div className="relative">
           <Input
             id="password"

@@ -37,6 +37,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 const mockSignInWithPassword = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
+const mockResetPasswordForEmail = vi.fn();
 const mockFromChain = {
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
@@ -50,6 +51,7 @@ vi.mock('@/lib/supabase/server', () => ({
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
       signOut: () => mockSignOut(),
       getUser: () => mockGetUser(),
+      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
     },
     from: () => mockFromChain,
   }),
@@ -57,6 +59,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 const mockAdminCreateUser = vi.fn();
 const mockAdminDeleteUser = vi.fn();
+const mockAdminUpdateUserById = vi.fn();
 const mockAdminInsertChain = {
   insert: vi.fn(),
   select: vi.fn().mockReturnThis(),
@@ -70,6 +73,7 @@ vi.mock('@/lib/supabase/admin', () => ({
       admin: {
         createUser: (...args: unknown[]) => mockAdminCreateUser(...args),
         deleteUser: (...args: unknown[]) => mockAdminDeleteUser(...args),
+        updateUserById: (...args: unknown[]) => mockAdminUpdateUserById(...args),
       },
     },
     from: () => mockAdminInsertChain,
@@ -93,6 +97,8 @@ import {
   fetchCurrentUser,
   checkEmailAvailability,
   registerConsultantWithProfile,
+  requestPasswordReset,
+  setNewPasswordWithToken,
 } from './auth';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
 
@@ -260,7 +266,9 @@ describe('registerUser', () => {
     });
     mockAdminInsertChain.insert.mockReturnValue({
       then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: { code: PG_UNIQUE_VIOLATION, message: 'duplicate key' } })),
+        Promise.resolve(
+          resolve({ error: { code: PG_UNIQUE_VIOLATION, message: 'duplicate key' } })
+        ),
     });
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -282,7 +290,9 @@ describe('registerUser', () => {
     });
     mockAdminInsertChain.insert.mockReturnValue({
       then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: { code: PG_TABLE_NOT_FOUND, message: 'relation does not exist' } })),
+        Promise.resolve(
+          resolve({ error: { code: PG_TABLE_NOT_FOUND, message: 'relation does not exist' } })
+        ),
     });
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -304,7 +314,9 @@ describe('registerUser', () => {
     });
     mockAdminInsertChain.insert.mockReturnValue({
       then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: { code: '23503', message: 'violates foreign key constraint' } })),
+        Promise.resolve(
+          resolve({ error: { code: '23503', message: 'violates foreign key constraint' } })
+        ),
     });
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -347,8 +359,7 @@ describe('registerUser', () => {
       error: null,
     });
     mockAdminInsertChain.insert.mockReturnValue({
-      then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: null })),
+      then: (resolve: (v: unknown) => void) => Promise.resolve(resolve({ error: null })),
     });
     mockSignInWithPassword.mockResolvedValue({
       error: { message: 'Invalid login credentials' },
@@ -369,8 +380,7 @@ describe('registerUser', () => {
       error: null,
     });
     mockAdminInsertChain.insert.mockReturnValue({
-      then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: null })),
+      then: (resolve: (v: unknown) => void) => Promise.resolve(resolve({ error: null })),
     });
     mockSignInWithPassword.mockResolvedValue({ error: null });
 
@@ -383,7 +393,7 @@ describe('registerUser', () => {
     }
     // admin insert에 OPS_ADMIN_PENDING 역할로 삽입되었는지 확인
     expect(mockAdminInsertChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'OPS_ADMIN_PENDING' }),
+      expect.objectContaining({ role: 'OPS_ADMIN_PENDING' })
     );
   });
 
@@ -393,8 +403,7 @@ describe('registerUser', () => {
       error: null,
     });
     mockAdminInsertChain.insert.mockReturnValue({
-      then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: null })),
+      then: (resolve: (v: unknown) => void) => Promise.resolve(resolve({ error: null })),
     });
     mockSignInWithPassword.mockResolvedValue({ error: null });
 
@@ -403,7 +412,7 @@ describe('registerUser', () => {
 
     expect(result.success).toBe(true);
     expect(mockAdminInsertChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'USER_PENDING' }),
+      expect.objectContaining({ role: 'USER_PENDING' })
     );
   });
 
@@ -413,8 +422,7 @@ describe('registerUser', () => {
       error: null,
     });
     mockAdminInsertChain.insert.mockReturnValue({
-      then: (resolve: (v: unknown) => void) =>
-        Promise.resolve(resolve({ error: null })),
+      then: (resolve: (v: unknown) => void) => Promise.resolve(resolve({ error: null })),
     });
     mockSignInWithPassword.mockResolvedValue({ error: null });
 
@@ -617,15 +625,15 @@ describe('registerConsultantWithProfile', () => {
     fd.set('affiliation', 'KPC');
     fd.set(
       'representative_experience',
-      '대표 경력 — 다양한 산업군에서 LLM 기반 AI 교육 및 컨설팅 프로젝트를 5년 이상 수행하였습니다.',
+      '대표 경력 — 다양한 산업군에서 LLM 기반 AI 교육 및 컨설팅 프로젝트를 5년 이상 수행하였습니다.'
     );
     fd.set(
       'portfolio',
-      '포트폴리오 — 제조업·금융업 대상 AI 도입 워크숍 다수 진행, 사내 PBL 프로그램 설계 및 운영 경험 보유.',
+      '포트폴리오 — 제조업·금융업 대상 AI 도입 워크숍 다수 진행, 사내 PBL 프로그램 설계 및 운영 경험 보유.'
     );
     fd.set(
       'strengths_constraints',
-      '강점은 현장 친화적 커뮤니케이션과 빠른 프로토타이핑 역량이며, 제약은 영어권 자료 번역에 시간이 더 소요된다는 점입니다.',
+      '강점은 현장 친화적 커뮤니케이션과 빠른 프로토타이핑 역량이며, 제약은 영어권 자료 번역에 시간이 더 소요된다는 점입니다.'
     );
     Object.entries(overrides).forEach(([k, v]) => fd.set(k, v));
     return fd;
@@ -641,10 +649,7 @@ describe('registerConsultantWithProfile', () => {
       .mockResolvedValueOnce({ error: null }); // consultant_profiles
     mockSignInWithPassword.mockResolvedValueOnce({ error: null });
 
-    const result = await registerConsultantWithProfile(
-      createStep1Form(),
-      createProfileForm(),
-    );
+    const result = await registerConsultantWithProfile(createStep1Form(), createProfileForm());
 
     expect(result).toEqual({
       success: true,
@@ -735,6 +740,136 @@ describe('registerConsultantWithProfile', () => {
     expect(result).toEqual({
       success: true,
       data: { userId: TEST_USER_ID, needsLogin: true },
+    });
+  });
+});
+
+// ─── requestPasswordReset ─────────────────────────────────────────────────
+// 보안: 등록되지 않은 이메일이라도 동일하게 success=true 반환 (계정 존재 여부 노출 방지).
+// rate limit 만 사용자에게 안내.
+
+describe('requestPasswordReset', () => {
+  const ORIGINAL_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_APP_URL;
+  });
+
+  it('Zod 검증 실패: 잘못된 이메일 형식', async () => {
+    const result = await requestPasswordReset('not-an-email');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('이메일');
+    }
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+  });
+
+  it('성공: redirectTo 에 NEXT_PUBLIC_APP_URL/reset-password 사용', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    const result = await requestPasswordReset('user@example.com');
+
+    expect(result).toEqual({ success: true });
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'https://app.example.com/reset-password',
+    });
+  });
+
+  it('일반 에러 → silent success (계정 존재 여부 노출 방지)', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({
+      error: { message: 'User not found' },
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await requestPasswordReset('unknown@example.com');
+
+    expect(result).toEqual({ success: true });
+    consoleSpy.mockRestore();
+  });
+
+  it('rate limit 에러는 사용자에게 안내', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({
+      error: { message: 'Email rate limit exceeded' },
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await requestPasswordReset('user@example.com');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('한도');
+    }
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── setNewPasswordWithToken ──────────────────────────────────────────────
+// recovery 토큰으로 setSession 된 사용자가 새 비밀번호를 설정한다.
+// admin client 로 비밀번호 갱신 (changePassword 와 동일 패턴).
+
+describe('setNewPasswordWithToken', () => {
+  it('Zod 검증 실패: 비밀번호 규칙 미충족 (숫자 없음)', async () => {
+    const result = await setNewPasswordWithToken('newpassword', 'newpassword');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('숫자');
+    }
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it('Zod 검증 실패: 비밀번호 불일치', async () => {
+    const result = await setNewPasswordWithToken('NewPass1!', 'Different1!');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('일치');
+    }
+  });
+
+  it('세션 없음 (토큰 만료) → 안내 에러', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+
+    const result = await setNewPasswordWithToken('NewPass1!', 'NewPass1!');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('재설정 링크');
+    }
+  });
+
+  it('admin.updateUserById 실패 → 에러 번역', async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID, email: 'user@example.com' } },
+    });
+    mockAdminUpdateUserById.mockResolvedValueOnce({
+      error: { message: 'Password should be at least 8 characters' },
+    });
+
+    const result = await setNewPasswordWithToken('NewPass1!', 'NewPass1!');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('8자');
+    }
+  });
+
+  it('전체 성공: admin.updateUserById 호출 확인', async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: TEST_USER_ID, email: 'user@example.com' } },
+    });
+    mockAdminUpdateUserById.mockResolvedValueOnce({ error: null });
+
+    const result = await setNewPasswordWithToken('NewPass1!', 'NewPass1!');
+
+    expect(result).toEqual({ success: true });
+    expect(mockAdminUpdateUserById).toHaveBeenCalledWith(TEST_USER_ID, {
+      password: 'NewPass1!',
     });
   });
 });

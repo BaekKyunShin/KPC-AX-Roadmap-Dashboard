@@ -6,11 +6,19 @@ import {
   userApprovalSchema,
   userRoleSchema,
   userStatusSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
 } from './user';
 
 describe('userRoleSchema', () => {
   it('유효한 역할을 허용한다', () => {
-    const validRoles = ['PUBLIC', 'USER_PENDING', 'CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
+    const validRoles = [
+      'PUBLIC',
+      'USER_PENDING',
+      'CONSULTANT_APPROVED',
+      'OPS_ADMIN',
+      'SYSTEM_ADMIN',
+    ];
     validRoles.forEach((role) => {
       expect(userRoleSchema.safeParse(role).success).toBe(true);
     });
@@ -136,9 +144,9 @@ describe('consultantProfileSchema', () => {
     affiliation: 'ABC컨설팅',
     representative_experience:
       '대기업 제조사에서 AI 기반 품질관리 시스템 구축 프로젝트를 수행했습니다. 데이터 수집부터 모델 배포까지 전 과정을 담당했습니다.',
-    portfolio:
-      '삼성전자, LG전자 등 대기업 교육 다수 진행. 중소기업 AI 도입 컨설팅 10건 이상 수행.',
-    strengths_constraints: '제조업 도메인 전문성이 강점입니다. 특히 품질관리와 생산 프로세스 개선에 강합니다. 금융권 경험은 제한적임.',
+    portfolio: '삼성전자, LG전자 등 대기업 교육 다수 진행. 중소기업 AI 도입 컨설팅 10건 이상 수행.',
+    strengths_constraints:
+      '제조업 도메인 전문성이 강점입니다. 특히 품질관리와 생산 프로세스 개선에 강합니다. 금융권 경험은 제한적임.',
   };
 
   it('유효한 컨설턴트 프로필을 허용한다', () => {
@@ -245,5 +253,60 @@ describe('userApprovalSchema', () => {
       action: 'invalid',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('requestPasswordResetSchema', () => {
+  it('유효한 이메일을 허용한다', () => {
+    const result = requestPasswordResetSchema.safeParse({ email: 'user@example.com' });
+    expect(result.success).toBe(true);
+  });
+
+  it('잘못된 이메일 형식을 거부한다', () => {
+    const result = requestPasswordResetSchema.safeParse({ email: 'not-email' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errors[0].message).toContain('이메일');
+    }
+  });
+});
+
+describe('resetPasswordSchema', () => {
+  it('유효한 새 비밀번호 + 확인 일치를 허용한다', () => {
+    const result = resetPasswordSchema.safeParse({
+      newPassword: 'NewPass1!',
+      confirmPassword: 'NewPass1!',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('비밀번호 정책 미충족 (숫자 없음) 거부', () => {
+    const result = resetPasswordSchema.safeParse({
+      newPassword: 'newpassword',
+      confirmPassword: 'newpassword',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errors[0].message).toContain('숫자');
+    }
+  });
+
+  it('비밀번호 8자 미만 거부', () => {
+    const result = resetPasswordSchema.safeParse({
+      newPassword: 'New1',
+      confirmPassword: 'New1',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('비밀번호 확인 불일치 거부', () => {
+    const result = resetPasswordSchema.safeParse({
+      newPassword: 'NewPass1!',
+      confirmPassword: 'Different1!',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.errors[0].message).toContain('일치');
+    }
   });
 });

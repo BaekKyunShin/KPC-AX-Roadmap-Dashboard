@@ -6,6 +6,8 @@ export {
   fetchCurrentUser,
   checkEmailAvailability,
   registerConsultantWithProfile,
+  requestPasswordReset,
+  setNewPasswordWithToken,
 } from './auth';
 export { translateAuthError } from './auth-utils';
 // 컨설턴트 프로필
