@@ -438,7 +438,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                 <Table className="min-w-[1060px] table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[260px] text-center">기업명</TableHead>
+                      <TableHead className="w-[260px] text-left">기업명</TableHead>
                       <TableHead className="w-[80px]">트랙</TableHead>
                       <TableHead className="w-[110px]">업종</TableHead>
                       <TableHead className="w-[220px] text-center">진행 상태</TableHead>
@@ -451,7 +451,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                     {projects.map((projectItem) => (
                       <TableRow key={projectItem.id}>
                         <TableCell className="align-top">
-                          <div className="flex items-center justify-center gap-3">
+                          <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
@@ -501,11 +501,13 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                           {formatDateKR(projectItem.created_at)}
                         </TableCell>
                         <TableCell className="align-top text-center">
-                          <DeleteProjectDialog
-                            projectId={projectItem.id}
-                            companyName={projectItem.company_name}
-                            onConfirm={handleDeleteProject}
-                          />
+                          <div className="flex justify-center">
+                            <DeleteProjectDialog
+                              projectId={projectItem.id}
+                              companyName={projectItem.company_name}
+                              onConfirm={handleDeleteProject}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -305,22 +305,22 @@ describe('ProjectList', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 6. 컬럼 정렬 — 기업명·작업 컬럼은 중앙 정렬로 통일
+  // 6. 컬럼 정렬 — 기업명은 left(아이콘 X 좌표 일관성), 작업은 center(명시적 flex)
   // --------------------------------------------------------------------------
   describe('컬럼 정렬', () => {
-    it('데스크톱 테이블 "기업명" 헤더는 text-center 정렬이다', async () => {
+    it('데스크톱 테이블 "기업명" 헤더는 text-left 정렬이다 (아이콘 X 좌표 일관성)', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
         expect(screen.getAllByText('알파주식회사').length).toBeGreaterThan(0);
       });
       const heading = screen.getByRole('columnheader', { name: '기업명' });
-      expect(heading.className).toMatch(/text-center/);
-      // 좌측 정렬 클래스가 셀 옵트로 들어가있지 않아야 한다
-      expect(heading.className).not.toMatch(/text-left/);
+      expect(heading.className).toMatch(/text-left/);
+      // 가운데 정렬 클래스가 헤더에 남아있지 않아야 한다
+      expect(heading.className).not.toMatch(/text-center/);
     });
 
-    it('데스크톱 테이블 기업명 셀 내부 컨테이너는 justify-center 로 가운데 정렬한다', async () => {
+    it('데스크톱 테이블 기업명 셀 내부 컨테이너는 justify-center 가 없다 (기본 justify-start)', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
@@ -334,8 +334,11 @@ describe('ProjectList', () => {
       // 데스크톱 테이블 행의 셀 (align-top 클래스 가진 td)
       const td = link!.closest('td');
       expect(td).toBeTruthy();
-      const flexContainer = td!.querySelector('.flex');
-      expect(flexContainer?.className).toMatch(/justify-center/);
+      // 셀 직속 flex 컨테이너 (아이콘+텍스트 묶음) — 아이콘 박스의 inner flex 가 아닌 outer flex
+      const outerFlex = td!.querySelector(':scope > .flex');
+      expect(outerFlex).toBeTruthy();
+      expect(outerFlex!.className).not.toMatch(/justify-center/);
+      expect(outerFlex!.className).toMatch(/items-center/);
     });
 
     it('데스크톱 테이블 "작업" 헤더는 text-center 정렬이다', async () => {
@@ -347,6 +350,25 @@ describe('ProjectList', () => {
       const heading = screen.getByRole('columnheader', { name: '작업' });
       expect(heading.className).toMatch(/text-center/);
       expect(heading.className).not.toMatch(/text-right/);
+    });
+
+    it('데스크톱 테이블 작업 셀은 명시적 flex justify-center wrapper 로 버튼을 가운데 배치한다', async () => {
+      setupMocks();
+      render(<ProjectList />);
+      await waitFor(() => {
+        expect(screen.getAllByText('알파주식회사').length).toBeGreaterThan(0);
+      });
+      // "삭제" 버튼의 가장 가까운 td (작업 컬럼 셀)
+      const deleteButtons = screen.getAllByRole('button', { name: '삭제' });
+      // 데스크톱 테이블 셀에 속한 삭제 버튼만 — td 조상이 있는 버튼
+      const deleteBtnInTd = deleteButtons.find((btn) => btn.closest('td'));
+      expect(deleteBtnInTd).toBeTruthy();
+      const td = deleteBtnInTd!.closest('td');
+      expect(td).toBeTruthy();
+      // 셀 직속 자식 div 가 flex justify-center 인지 확인
+      const wrapper = td!.querySelector(':scope > .flex');
+      expect(wrapper).toBeTruthy();
+      expect(wrapper!.className).toMatch(/justify-center/);
     });
   });
 
