@@ -36,10 +36,12 @@ import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
-import { fetchProjectsWithTimeline, fetchProjectFilters, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
+import { fetchProjectsWithTimeline, fetchProjectFilters, deleteProject, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
 import MiniStepper from './MiniStepper';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
+import { DeleteProjectDialog } from './DeleteProjectDialog';
+import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 
 const ITEMS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES = 5;
@@ -70,29 +72,41 @@ function FilterBadge({
   );
 }
 
-function OpsProjectMobileCard({ project }: { project: ProjectWithTimeline }) {
+function OpsProjectMobileCard({
+  project,
+  onDelete,
+}: {
+  project: ProjectWithTimeline;
+  onDelete: (
+    projectId: string,
+    confirmText: string,
+  ) => ReturnType<typeof deleteProject>;
+}) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
-      {/* 헤더: 기업명 + 상세보기 */}
+      {/* 헤더: 기업명(상세보기 링크) + 삭제 */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50">
             <Building2 className="h-4 w-4 text-blue-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-gray-900 break-keep flex items-center gap-2 flex-wrap">
+            <Link
+              href={`/ops/projects/${project.id}`}
+              className="font-medium text-gray-900 break-keep flex items-center gap-2 flex-wrap hover:text-blue-700 hover:underline underline-offset-2"
+              title={`${project.company_name} 상세보기`}
+            >
               {project.company_name}
               <TrackBadge track={project.track} size="sm" />
-            </div>
+            </Link>
             <div className="text-xs text-gray-500 break-all">{project.contact_email}</div>
           </div>
         </div>
-        <Link
-          href={`/ops/projects/${project.id}`}
-          className="text-sm text-blue-600 hover:text-blue-800 hover:underline underline-offset-2 transition-colors duration-150 shrink-0"
-        >
-          상세보기
-        </Link>
+        <DeleteProjectDialog
+          projectId={project.id}
+          companyName={project.company_name}
+          onConfirm={(id, confirm) => onDelete(id, confirm)}
+        />
       </div>
 
       {/* 본문: 업종, 컨설턴트, 생성일 */}
@@ -198,6 +212,21 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
   const effectiveStatuses = (statusFilter !== null && statusFilter !== undefined)
     ? statusFilter
     : selectedStatusOption?.statuses;
+
+  // 프로젝트 삭제 핸들러 — DeleteProjectDialog 가 onConfirm 으로 호출.
+  // 성공 시 토스트 + 목록 즉시 재로드 (router.refresh 대신 loadData 가 더 빠름).
+  const handleDeleteProject = async (projectId: string, confirmText: string) => {
+    const result = await deleteProject({ project_id: projectId, confirm_text: confirmText });
+    await handleSimpleActionResult(result, {
+      successMessage: { title: '프로젝트가 삭제되었습니다.' },
+      errorTitle: '프로젝트 삭제 실패',
+      errorFallback: '프로젝트 삭제 중 오류가 발생했습니다.',
+    });
+    if (result.success) {
+      await loadData();
+    }
+    return result;
+  };
 
   // 데이터 로드
   const loadData = async () => {
@@ -410,9 +439,13 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
                             <div className="min-w-0">
-                              <div className="font-medium text-gray-900 break-keep truncate" title={projectItem.company_name}>
+                              <Link
+                                href={`/ops/projects/${projectItem.id}`}
+                                className="font-medium text-gray-900 break-keep truncate hover:text-blue-700 hover:underline underline-offset-2 block"
+                                title={`${projectItem.company_name} 상세보기`}
+                              >
                                 {projectItem.company_name}
-                              </div>
+                              </Link>
                               <div
                                 className="text-sm text-muted-foreground truncate"
                                 title={projectItem.contact_email}
@@ -446,12 +479,11 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                           {formatDateKR(projectItem.created_at)}
                         </TableCell>
                         <TableCell className="align-top">
-                          <Link
-                            href={`/ops/projects/${projectItem.id}`}
-                            className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline cursor-pointer transition-colors duration-150 text-sm"
-                          >
-                            상세보기
-                          </Link>
+                          <DeleteProjectDialog
+                            projectId={projectItem.id}
+                            companyName={projectItem.company_name}
+                            onConfirm={handleDeleteProject}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -462,7 +494,11 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
               {/* 모바일: 카드 뷰 */}
               <div className="md:hidden space-y-3 p-4">
                 {projects.map((projectItem) => (
-                  <OpsProjectMobileCard key={projectItem.id} project={projectItem} />
+                  <OpsProjectMobileCard
+                    key={projectItem.id}
+                    project={projectItem}
+                    onDelete={handleDeleteProject}
+                  />
                 ))}
               </div>
 

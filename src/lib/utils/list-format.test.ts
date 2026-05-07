@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bulletize, parseBullets, splitByUnit } from './list-format';
+import { bulletize, bulletizeText, parseBullets, splitByUnit } from './list-format';
 
 describe('bulletize', () => {
   it('항목이 없으면 빈 문자열', () => {
@@ -88,5 +88,32 @@ describe('parseBullets', () => {
   it('bulletize ↔ parseBullets 라운드트립', () => {
     const items = ['노코드 AI 도구 활용', '데이터 전처리', '모델 검증'];
     expect(parseBullets(bulletize(items))).toEqual(items);
+  });
+});
+
+describe('bulletizeText', () => {
+  it('빈 입력은 빈 문자열', () => {
+    expect(bulletizeText('')).toBe('');
+    expect(bulletizeText(null)).toBe('');
+    expect(bulletizeText(undefined)).toBe('');
+    expect(bulletizeText('   \n  \n')).toBe('');
+  });
+
+  it('줄바꿈 텍스트 각 라인에 `• ` 머리기호 prepend', () => {
+    expect(bulletizeText('AI 기초\nML 이해\n도구 활용')).toBe(
+      '• AI 기초\n• ML 이해\n• 도구 활용',
+    );
+  });
+
+  it('이미 머리기호가 붙어있어도 중복 prefix 없이 정규화', () => {
+    expect(bulletizeText('• AI\n· ML\n- 도구')).toBe('• AI\n• ML\n• 도구');
+  });
+
+  it('빈 줄과 공백 줄은 무시', () => {
+    expect(bulletizeText('A\n\nB\n   \nC')).toBe('• A\n• B\n• C');
+  });
+
+  it('단일 라인도 머리기호 prepend', () => {
+    expect(bulletizeText('AI 기초')).toBe('• AI 기초');
   });
 });

@@ -48,6 +48,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-1. 훈련과제 도출 수행활동"
         description="양식 13×6 정형 — 차수×4 역할(PM·외부전문가·기업내부전문가·능력개발전담주치의)별 일자·내용·방법 (인터뷰 입력, 읽기 전용)"
+        dataSource="user"
       >
         {activities.length > 0 ? (
           <div className="overflow-x-auto">
@@ -104,6 +105,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-2-가. 문제 정의서"
         description="양식 5×2 표 정합 — 4 정형 항목(문제 배경 / 핵심 문제 / 문제 범위 / 제약 조건)"
+        dataSource="user"
       >
         <FormTable
           caption="문제 정의서"
@@ -192,6 +194,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-2-나. 문제 우선순위 결정"
         description="문제별 점수·순위 + 우선순위 결정 방법 (AHP · 협의 등)"
+        dataSource="user"
       >
         {priority?.items && priority.items.length > 0 ? (
           <div className="overflow-x-auto">
@@ -241,6 +244,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-3-가. 훈련대상 업무 선정"
         description="업무명 · NCS 코드 · 업무 범위 (인터뷰 입력)"
+        dataSource="user"
       >
         <FormTable
           caption="훈련대상 업무 선정"
@@ -308,6 +312,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-3-나. AI기반 문제해결 필요성 (선정 사유)"
         description="인터뷰 입력 (DRAFT 인라인 편집)"
+        dataSource="user"
       >
         <InlineEditField
           value={target?.necessity ?? ''}
@@ -324,6 +329,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-3-다. 훈련대상 업무 세부내용"
         description="업무명 / AS-IS / TO-BE / 요구지식 / 기술 5 컬럼 (인터뷰 입력, 읽기 전용)"
+        dataSource="user"
       >
         {target?.details && target.details.length > 0 ? (
           <div className="overflow-x-auto">
@@ -422,6 +428,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-4-가. 현재 AI 역량 수준"
         description="4등급(AI기초형/AI탐구형/AI활용형/AI선도형) 택1 + 선택 근거"
+        dataSource="user"
       >
         <AiLevel4Check
           value={currentAiLevel}
@@ -437,6 +444,7 @@ export function TabPBLTasks({ interview, readOnly, onEdit }: TabPBLCommonProps) 
       <SectionCard
         title="Ⅲ-4-나. 예상 AI 역량 수준"
         description="훈련 후 도달 예상 등급 + 선택 근거"
+        dataSource="user"
       >
         <AiLevel4Check
           value={expectedAiLevel}

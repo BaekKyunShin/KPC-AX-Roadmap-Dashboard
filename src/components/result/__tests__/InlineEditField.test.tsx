@@ -182,4 +182,40 @@ describe('InlineEditField', () => {
       expect(screen.queryByText(/저장 실패/)).not.toBeInTheDocument();
     });
   });
+
+  describe('displayTransform (표시 전용 변환)', () => {
+    it('displayTransform 가 view 모드 표시 텍스트를 변환한다', () => {
+      render(
+        <InlineEditField
+          value="A\nB"
+          onSave={vi.fn()}
+          displayTransform={(raw) => raw.replace(/\\n/g, '|')}
+        />,
+      );
+      expect(screen.getByText('A|B')).toBeInTheDocument();
+    });
+
+    it('edit 모드 진입 시 textarea 에는 원본 value 가 들어간다 (변환 X)', async () => {
+      const user = userEvent.setup();
+      render(
+        <InlineEditField
+          value="raw text"
+          onSave={vi.fn()}
+          multiline
+          displayTransform={() => '변환된 텍스트'}
+        />,
+      );
+      await user.click(screen.getByText('변환된 텍스트'));
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textarea.value).toBe('raw text');
+    });
+
+    it('multiline view 모드는 whitespace-pre-line 으로 줄바꿈을 시각화한다', () => {
+      const { container } = render(
+        <InlineEditField value={'1\n2'} onSave={vi.fn()} multiline />,
+      );
+      const span = container.querySelector('span.whitespace-pre-line');
+      expect(span).not.toBeNull();
+    });
+  });
 });

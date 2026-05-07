@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 
+import { VersionSwitchOverlay } from '@/components/common/VersionSwitchOverlay';
 import {
   exportPBLHwpxV2,
   fetchPBLPageDataV2,
@@ -43,6 +44,7 @@ export default function OpsPBLResultPageClient({
   );
   const [interview, setInterview] =
     useState<Partial<ResultPBLInterviewSnapshot>>(initialInterview);
+  const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
   const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
@@ -52,11 +54,17 @@ export default function OpsPBLResultPageClient({
   });
 
   async function handleSelectVersion(versionId: string) {
-    const result = await fetchPBLPageDataV2(projectId, versionId);
-    if (result.success) {
-      setVersions(result.data.versions);
-      setSelectedVersion(result.data.selectedVersion);
-      setInterview(result.data.interview);
+    if (versionId === selectedVersion?.id) return;
+    setIsSwitchingVersion(true);
+    try {
+      const result = await fetchPBLPageDataV2(projectId, versionId);
+      if (result.success) {
+        setVersions(result.data.versions);
+        setSelectedVersion(result.data.selectedVersion);
+        setInterview(result.data.interview);
+      }
+    } finally {
+      setIsSwitchingVersion(false);
     }
   }
 
@@ -75,14 +83,17 @@ export default function OpsPBLResultPageClient({
   void isHwpxDownloading;
 
   return (
-    <PBLResultClient
-      role="OPS"
-      projectId={projectId}
-      versions={versions}
-      selectedVersion={selectedVersion}
-      interview={interview}
-      onSelectVersion={handleSelectVersion}
-      onDownload={handleDownload}
-    />
+    <>
+      <PBLResultClient
+        role="OPS"
+        projectId={projectId}
+        versions={versions}
+        selectedVersion={selectedVersion}
+        interview={interview}
+        onSelectVersion={handleSelectVersion}
+        onDownload={handleDownload}
+      />
+      <VersionSwitchOverlay open={isSwitchingVersion} />
+    </>
   );
 }

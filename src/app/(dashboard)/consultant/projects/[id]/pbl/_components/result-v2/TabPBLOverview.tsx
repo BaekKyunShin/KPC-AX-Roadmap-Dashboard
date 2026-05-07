@@ -67,6 +67,7 @@ export function TabPBLOverview({
         title="신청서 자동표출 정보"
         description="(기업명 · 사업장관리번호 · 업종 · 업종코드 · 주소 · 훈련실시주소 · 관할 지부 · 담당자) 신청서 기준으로 자동 불러옴 처리되며, 본 결과 페이지·HWPX 출력 시 그대로 노출됩니다 — 수정 불가."
         data-testid="pbl-overview-application-meta"
+        dataSource="user"
       >
         {isAllAutoFieldsEmpty(projectMeta) ? (
           <p className="text-sm text-gray-500">
@@ -144,6 +145,7 @@ export function TabPBLOverview({
       <SectionCard
         title="Ⅰ. 훈련과정 개요"
         description="기업명 · 훈련과정명 · NCS · 시간 · 대상 · 형태 · 기간 · 경영 이슈 (인터뷰 입력값)"
+        dataSource="user"
       >
         <FormTable
           caption="훈련과정 개요"

@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 
+import { VersionSwitchOverlay } from '@/components/common/VersionSwitchOverlay';
 import {
   exportRoadmapHwpxV2,
   fetchRoadmapPageDataV2,
@@ -45,6 +46,7 @@ export default function OpsRoadmapResultPageClient({
   );
   const [interview, setInterview] =
     useState<Partial<ResultInterviewSnapshot>>(initialInterview);
+  const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
   const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
@@ -54,11 +56,17 @@ export default function OpsRoadmapResultPageClient({
   });
 
   async function handleSelectVersion(versionId: string) {
-    const result = await fetchRoadmapPageDataV2(projectId, versionId);
-    if (result.success) {
-      setVersions(result.data.versions);
-      setSelectedVersion(result.data.selectedVersion);
-      setInterview(result.data.interview);
+    if (versionId === selectedVersion?.id) return;
+    setIsSwitchingVersion(true);
+    try {
+      const result = await fetchRoadmapPageDataV2(projectId, versionId);
+      if (result.success) {
+        setVersions(result.data.versions);
+        setSelectedVersion(result.data.selectedVersion);
+        setInterview(result.data.interview);
+      }
+    } finally {
+      setIsSwitchingVersion(false);
     }
   }
 
@@ -77,14 +85,17 @@ export default function OpsRoadmapResultPageClient({
   void isHwpxDownloading;
 
   return (
-    <RoadmapResultClient
-      role="OPS"
-      projectId={projectId}
-      versions={versions}
-      selectedVersion={selectedVersion}
-      interview={interview}
-      onSelectVersion={handleSelectVersion}
-      onDownload={handleDownload}
-    />
+    <>
+      <RoadmapResultClient
+        role="OPS"
+        projectId={projectId}
+        versions={versions}
+        selectedVersion={selectedVersion}
+        interview={interview}
+        onSelectVersion={handleSelectVersion}
+        onDownload={handleDownload}
+      />
+      <VersionSwitchOverlay open={isSwitchingVersion} />
+    </>
   );
 }

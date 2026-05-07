@@ -84,24 +84,26 @@ test.describe('운영 프로젝트 목록 (/ops/projects) 접근성', () => {
     }
   });
 
-  test('"상세보기" 링크에 충분한 컨텍스트 제공', async ({ opsPage: page }) => {
-    const detailLinks = page.getByRole('link', { name: '상세보기' });
+  test('기업명 상세 링크에 충분한 컨텍스트 제공', async ({ opsPage: page }) => {
+    // 기업명 셀이 상세 페이지 링크로 동작 — title 속성으로 회사명 명시
+    const detailLinks = page.locator('table a[href^="/ops/projects/"]');
     const count = await detailLinks.count();
 
-    // 최소 1개의 상세보기 링크가 있는 경우
     if (count > 0) {
-      // 링크가 테이블 행 안에 있어 행 컨텍스트로 구분 가능한지 확인
       const firstLink = detailLinks.first();
       const closestRow = firstLink.locator('xpath=ancestor::tr');
-      const hasRowContext = await closestRow.count().then(c => c > 0).catch(() => false);
+      const hasRowContext = await closestRow
+        .count()
+        .then((c) => c > 0)
+        .catch(() => false);
 
-      // 테이블 행 내에 있거나, aria-label로 추가 컨텍스트를 제공해야 함
+      // 테이블 행 컨텍스트 또는 title/aria-label 둘 중 하나는 있어야 함
       if (!hasRowContext) {
+        const title = await firstLink.getAttribute('title');
         const ariaLabel = await firstLink.getAttribute('aria-label');
-        // 행 컨텍스트가 없으면 aria-label이 있어야 함 (경고만, 실패하지 않음)
-        if (!ariaLabel) {
-           
-          console.warn('"상세보기" 링크에 aria-label로 추가 컨텍스트를 제공하면 접근성이 향상됩니다');
+        if (!title && !ariaLabel) {
+
+          console.warn('상세 링크에 title 또는 aria-label로 회사명 컨텍스트를 제공하세요');
         }
       }
     }

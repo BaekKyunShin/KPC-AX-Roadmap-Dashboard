@@ -11,6 +11,8 @@
 
 import { useState } from 'react';
 
+import { VersionSwitchOverlay } from '@/components/common/VersionSwitchOverlay';
+
 import {
   cancelPBLGeneration,
   createPBLV2,
@@ -64,6 +66,7 @@ export default function PBLResultPageClient({
   const [hasInterview, setHasInterview] = useState<boolean>(initialHasInterview);
   const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = usePBLDownload();
   const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
@@ -84,7 +87,13 @@ export default function PBLResultPageClient({
   }
 
   async function handleSelectVersion(versionId: string) {
-    await refreshPageData(versionId);
+    if (versionId === selectedVersion?.id) return;
+    setIsSwitchingVersion(true);
+    try {
+      await refreshPageData(versionId);
+    } finally {
+      setIsSwitchingVersion(false);
+    }
   }
 
   async function handleGenerate(revisionPrompt?: string) {
@@ -136,22 +145,25 @@ export default function PBLResultPageClient({
   void isHwpxDownloading;
 
   return (
-    <PBLResultClient
-      role="CONSULTANT"
-      projectId={projectId}
-      versions={versions}
-      selectedVersion={selectedVersion}
-      interview={interview}
-      hasInterview={hasInterview}
-      projectStatus={projectStatus}
-      onSelectVersion={handleSelectVersion}
-      onEdit={handleEdit}
-      onGenerate={handleGenerate}
-      onDownload={handleDownload}
-      isGenerating={isGenerating}
-      onCancelGenerate={handleCancelGenerate}
-      companyName={companyName}
-      projectMeta={projectMeta}
-    />
+    <>
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId={projectId}
+        versions={versions}
+        selectedVersion={selectedVersion}
+        interview={interview}
+        hasInterview={hasInterview}
+        projectStatus={projectStatus}
+        onSelectVersion={handleSelectVersion}
+        onEdit={handleEdit}
+        onGenerate={handleGenerate}
+        onDownload={handleDownload}
+        isGenerating={isGenerating}
+        onCancelGenerate={handleCancelGenerate}
+        companyName={companyName}
+        projectMeta={projectMeta}
+      />
+      <VersionSwitchOverlay open={isSwitchingVersion} />
+    </>
   );
 }

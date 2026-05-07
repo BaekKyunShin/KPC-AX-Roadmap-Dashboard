@@ -35,6 +35,8 @@ export type EditableTableColumn<T> = {
   type?: 'text' | 'number';
   /** 셀 표시 폭 (Tailwind class). 미지정 시 균등. */
   className?: string;
+  /** view 모드 표시 전용 변환 (예: 줄바꿈 텍스트 → 머리기호 텍스트). */
+  displayTransform?: (raw: string) => string;
 };
 
 export interface EditableTableProps<T> {
@@ -174,6 +176,7 @@ export function EditableTable<T extends Record<string, unknown>>({
                           }
                           multiline={col.multiline}
                           readOnly={readOnly}
+                          displayTransform={col.displayTransform}
                         />
                       </td>
                     );

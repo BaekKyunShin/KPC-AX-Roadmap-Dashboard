@@ -149,13 +149,25 @@ describe('ProjectList', () => {
       });
     });
 
-    it('상세보기 링크가 올바른 href를 갖는다', async () => {
+    it('기업명 셀이 상세 페이지 링크로 동작한다', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
-        const links = screen.getAllByText('상세보기');
-        const firstLink = links[0].closest('a');
-        expect(firstLink).toHaveAttribute('href', '/ops/projects/proj-1');
+        const companyAnchors = screen
+          .getAllByText('알파주식회사')
+          .map((el) => el.closest('a'));
+        const linkToDetail = companyAnchors.find(
+          (a) => a?.getAttribute('href') === '/ops/projects/proj-1',
+        );
+        expect(linkToDetail).toBeTruthy();
+      });
+    });
+
+    it('작업 열에 "삭제" 버튼이 노출된다 (상세보기 링크 대신)', async () => {
+      setupMocks();
+      render(<ProjectList />);
+      await waitFor(() => {
+        expect(screen.getAllByRole('button', { name: '삭제' }).length).toBeGreaterThan(0);
       });
     });
   });

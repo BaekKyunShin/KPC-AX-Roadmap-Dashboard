@@ -14,6 +14,7 @@ import type {
 } from '@/lib/services/roadmap';
 import { TRAINING_LEVEL_LABEL } from '@/lib/services/roadmap/roadmap-types';
 import type { RoadmapCompetency as InterviewCompetency } from '@/lib/schemas/interview-roadmap';
+import { bulletizeText } from '@/lib/utils/list-format';
 
 import type { TabCommonProps } from './types';
 
@@ -92,6 +93,7 @@ export function TabTraining({
       <SectionCard
         title="Ⅲ-1. 역량 모델링"
         description="인터뷰에서 정의된 역량(수행준거 + 지식·기술·태도). LLM 확장 없이 사용자 입력값을 그대로 사용합니다."
+        dataSource="mixed"
       >
         {competencies.length > 0 ? (
           <div className="overflow-x-auto">
@@ -197,6 +199,7 @@ export function TabTraining({
       <SectionCard
         title="Ⅲ-2. 훈련체계도"
         description="역량 × 초·중·고급 수준별 훈련 내용 (LLM 생성 결과, 직접 수정 가능)"
+        dataSource="ai"
       >
         {trainingStructure.length > 0 || !readOnly ? (
           <>
@@ -244,6 +247,7 @@ export function TabTraining({
       <SectionCard
         title="Ⅲ-3. 연간 훈련계획"
         description="역량별 훈련과정 · 훈련형태 · 시간 · 활용방안 (LLM 생성 결과, 직접 수정 가능)"
+        dataSource="ai"
       >
         {(annualPlan && annualPlan.items && annualPlan.items.length > 0) || !readOnly ? (
           <>
@@ -296,6 +300,7 @@ export function TabTraining({
       <SectionCard
         title="Ⅲ-4. 훈련과정 명세서"
         description="주요 훈련과정(3개 이상) 상세 — 과정명·목표·주요내용·훈련대상·교과목 (LLM 생성 결과, 직접 수정 가능)"
+        dataSource="ai"
       >
         {courseSpecs.length > 0 || !readOnly ? (
           <div className="space-y-4">
@@ -497,7 +502,12 @@ const ANNUAL_PLAN_COLUMNS: EditableTableColumn<RoadmapAnnualPlanItem & Record<st
 
 const COURSE_SUBJECT_COLUMNS: EditableTableColumn<RoadmapCourseSubject & Record<string, unknown>>[] = [
   { key: 'name', label: '교과목명' },
-  { key: 'details', label: '세부 내용 (2~5개 항목, 줄바꿈 구분)', multiline: true },
+  {
+    key: 'details',
+    label: '세부 내용',
+    multiline: true,
+    displayTransform: (raw) => bulletizeText(raw),
+  },
   { key: 'hours', label: '훈련시간', type: 'number' },
 ];
 

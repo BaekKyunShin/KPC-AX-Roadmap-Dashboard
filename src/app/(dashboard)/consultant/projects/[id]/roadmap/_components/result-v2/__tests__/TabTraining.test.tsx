@@ -259,8 +259,8 @@ describe('TabTraining (Ⅲ. 훈련체계)', () => {
         onEdit={vi.fn()}
       />,
     );
-    // 단일 항목 평문 표시
-    expect(screen.getByText('단일 내용')).toBeInTheDocument();
+    // 단일 항목도 머리기호로 표시 (bulletizeText 적용)
+    expect(screen.getByText('• 단일 내용')).toBeInTheDocument();
     // 빈 details 는 InlineEditField 의 placeholder ("클릭하여 편집") 표시
     expect(screen.getAllByText('클릭하여 편집').length).toBeGreaterThan(0);
   });

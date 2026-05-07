@@ -11,6 +11,8 @@
 
 import { useState } from 'react';
 
+import { VersionSwitchOverlay } from '@/components/common/VersionSwitchOverlay';
+
 import {
   cancelRoadmapGeneration,
   confirmFinalRoadmapV2,
@@ -65,6 +67,7 @@ export default function RoadmapResultPageClient({
   const [projectStatus, setProjectStatus] = useState<string>(initialProjectStatus);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerationComplete, setIsGenerationComplete] = useState(false);
+  const [isSwitchingVersion, setIsSwitchingVersion] = useState(false);
 
   const { isDownloading, downloadPDF, downloadXLSX } = useRoadmapDownload();
   const { download: downloadHwpx, isLoading: isHwpxDownloading } = useHwpxDownload({
@@ -85,7 +88,13 @@ export default function RoadmapResultPageClient({
   }
 
   async function handleSelectVersion(versionId: string) {
-    await refreshPageData(versionId);
+    if (versionId === selectedVersion?.id) return;
+    setIsSwitchingVersion(true);
+    try {
+      await refreshPageData(versionId);
+    } finally {
+      setIsSwitchingVersion(false);
+    }
   }
 
   async function handleGenerate(revisionPrompt?: string) {
@@ -158,23 +167,26 @@ export default function RoadmapResultPageClient({
   void isHwpxDownloading;
 
   return (
-    <RoadmapResultClient
-      role="CONSULTANT"
-      projectId={projectId}
-      versions={versions}
-      selectedVersion={selectedVersion}
-      interview={interview}
-      selfAssessmentExists={selfAssessmentExists}
-      projectStatus={projectStatus}
-      onSelectVersion={handleSelectVersion}
-      onEdit={handleEdit}
-      onGenerate={handleGenerate}
-      onFinalize={handleFinalize}
-      onDownload={handleDownload}
-      isGenerating={isGenerating}
-      isGenerationComplete={isGenerationComplete}
-      onCancelGenerate={handleCancelGenerate}
-      companyName={companyName}
-    />
+    <>
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId={projectId}
+        versions={versions}
+        selectedVersion={selectedVersion}
+        interview={interview}
+        selfAssessmentExists={selfAssessmentExists}
+        projectStatus={projectStatus}
+        onSelectVersion={handleSelectVersion}
+        onEdit={handleEdit}
+        onGenerate={handleGenerate}
+        onFinalize={handleFinalize}
+        onDownload={handleDownload}
+        isGenerating={isGenerating}
+        isGenerationComplete={isGenerationComplete}
+        onCancelGenerate={handleCancelGenerate}
+        companyName={companyName}
+      />
+      <VersionSwitchOverlay open={isSwitchingVersion} />
+    </>
   );
 }

@@ -44,6 +44,7 @@ export function TabRequirements({
       <SectionCard
         title="Ⅱ-1. HRD이음 진단 보고서"
         description="훈련수요 진단 보고서 PDF 첨부 (인터뷰에서 업로드, LLM 내부 분석용)"
+        dataSource="user"
       >
         {hrdPdf ? (
           <div className="space-y-3">
@@ -87,6 +88,7 @@ export function TabRequirements({
       <SectionCard
         title="Ⅱ-2. 기업 요구분석"
         description="기업 현황 · 주요 문제 · 추진 의지 · 기대 성과"
+        dataSource="user"
       >
         <FormTable
           caption="기업 요구분석 4항목"
@@ -154,6 +156,7 @@ export function TabRequirements({
       <SectionCard
         title="Ⅱ-3. 과업·워크플로우 분석"
         description="직무별 과업 As-Is / 문제점 / 데이터 보유 / AI 필요도 (1~5) + 분석 메모"
+        dataSource="user"
       >
         {tasks.length > 0 ? (
           <div className="overflow-x-auto">
@@ -325,6 +328,7 @@ export function TabRequirements({
       <SectionCard
         title="Ⅱ-4. 훈련대상 과업(Task)·워크플로우 선정"
         description="선정 과업명 · 사유 · 기대효과 (현행 → 개선)"
+        dataSource="user"
       >
         <FormTable
           caption="훈련대상 과업 선정"

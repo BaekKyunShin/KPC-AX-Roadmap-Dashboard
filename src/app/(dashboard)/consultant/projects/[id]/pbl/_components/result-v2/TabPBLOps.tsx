@@ -5,7 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { FormTable, type FormTableRow } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
-import { bulletize, parseBullets, splitByUnit } from '@/lib/utils/list-format';
+import { bulletize, bulletizeText, parseBullets, splitByUnit } from '@/lib/utils/list-format';
 import type {
   PBLInstructor,
   PBLSubjectProfile,
@@ -88,6 +88,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-1. 훈련 목표"
         description="LLM 생성 (Task 2.10)"
+        dataSource="ai"
       >
         {hasTrainingGoal ? (
           <p className="whitespace-pre-wrap text-sm">{ops?.training_goal}</p>
@@ -100,6 +101,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-2. AI 도구 활용 계획"
         description="단계별 주요활동 · AI 도구 · 데이터 · 목적 · 방법 (LLM 생성)"
+        dataSource="ai"
       >
         {hasAIToolUsage ? (
           <ul className="list-disc space-y-2 pl-5 text-sm">
@@ -123,6 +125,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-3-가. 훈련과정 개요"
         description="과정명 · 훈련기간 (LLM 생성)"
+        dataSource="ai"
       >
         {hasCourseOverview ? (
           <FormTable
@@ -159,6 +162,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-3-나. 학습그룹 구성"
         description="강사(외부/내부) + 훈련생 명단 (LLM 생성)"
+        dataSource="ai"
       >
         {hasLearningGroup ? (
           <FormTable
@@ -189,6 +193,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-3-다. 훈련 교과목 프로파일"
         description="과정명 · 전체 훈련시간 · 훈련목표 · AI 도구 · 교과목 (LLM 생성)"
+        dataSource="ai"
       >
         {hasSubjectProfile ? (
           <div className="space-y-4">
@@ -232,7 +237,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                     {
                       content: readOnly ? (
                         <span className="whitespace-pre-wrap text-sm">
-                          {splitByUnit(c.detail) || '-'}
+                          {bulletizeText(splitByUnit(c.detail)) || '-'}
                         </span>
                       ) : (
                         <InlineEditField
@@ -241,6 +246,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                           onSave={(next) => saveTrainingContent(idx, next)}
                           placeholder="세부 내용을 입력하세요"
                           className="text-sm"
+                          displayTransform={(raw) => bulletizeText(splitByUnit(raw))}
                         />
                       ),
                       align: 'left',
@@ -284,6 +290,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-3-라. 시설·장비"
         description="시설 · 장비 목록 (LLM 생성)"
+        dataSource="ai"
       >
         {hasFacilities ? (
           <FormTable
@@ -318,6 +325,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-3-마. 훈련강사"
         description="강사별 경력 · 담당 교과 (LLM 생성)"
+        dataSource="ai"
       >
         {hasTrainingInstructors ? (
           <FormTable
@@ -371,6 +379,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       <SectionCard
         title="Ⅳ-4-가. 과정평가 계획"
         description="평가방법 · 평가기준 · 수행 수준 체크리스트 (LLM 생성)"
+        dataSource="ai"
       >
         {hasCourseEvaluation ? (
           <p className="text-sm">

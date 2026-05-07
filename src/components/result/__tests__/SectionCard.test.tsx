@@ -31,6 +31,20 @@ describe('SectionCard', () => {
     ).toBeInTheDocument();
   });
 
+  it('dataSource prop 이 있으면 제목 옆에 DataSourceBadge 를 렌더한다', () => {
+    render(
+      <SectionCard title="Ⅲ-4. 훈련과정 명세서" dataSource="ai">
+        x
+      </SectionCard>,
+    );
+    expect(screen.getByText('AI 생성')).toBeInTheDocument();
+  });
+
+  it('dataSource 가 없으면 배지를 렌더하지 않는다', () => {
+    render(<SectionCard title="제목">x</SectionCard>);
+    expect(screen.queryByText(/AI 생성|사용자 입력|혼합/)).not.toBeInTheDocument();
+  });
+
   it('className 이 root 에 cn() 으로 합성된다', () => {
     const { container } = render(
       <SectionCard title="x" className="bg-red-100">
