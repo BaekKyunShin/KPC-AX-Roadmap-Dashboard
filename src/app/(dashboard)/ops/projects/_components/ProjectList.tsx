@@ -438,19 +438,19 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                 <Table className="min-w-[1060px] table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[260px] text-left">기업명</TableHead>
+                      <TableHead className="w-[260px] text-center pl-6">기업명</TableHead>
                       <TableHead className="w-[80px]">트랙</TableHead>
                       <TableHead className="w-[110px]">업종</TableHead>
                       <TableHead className="w-[220px] text-center">진행 상태</TableHead>
                       <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
                       <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
-                      <TableHead className="w-[80px] text-center">작업</TableHead>
+                      <TableHead className="w-[80px] text-center pr-6">작업</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {projects.map((projectItem) => (
                       <TableRow key={projectItem.id}>
-                        <TableCell className="align-top">
+                        <TableCell className="align-top text-left pl-6">
                           <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                               <Building2 className="h-4 w-4 text-blue-600" />
@@ -500,7 +500,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                         <TableCell className="text-muted-foreground align-top whitespace-nowrap">
                           {formatDateKR(projectItem.created_at)}
                         </TableCell>
-                        <TableCell className="align-top text-center">
+                        <TableCell className="align-top text-center pr-6">
                           <div className="flex justify-center">
                             <DeleteProjectDialog
                               projectId={projectItem.id}

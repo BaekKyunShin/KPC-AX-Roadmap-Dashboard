@@ -305,43 +305,46 @@ describe('ProjectList', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 6. 컬럼 정렬 — 기업명은 left(아이콘 X 좌표 일관성), 작업은 center(명시적 flex)
+  // 6. 컬럼 정렬 — 기업명 헤더는 center, 셀은 left(아이콘 X 좌표 일관성),
+  //                작업은 center(명시적 flex), 좌우 컬럼은 pl-6/pr-6 여백
   // --------------------------------------------------------------------------
   describe('컬럼 정렬', () => {
-    it('데스크톱 테이블 "기업명" 헤더는 text-left 정렬이다 (아이콘 X 좌표 일관성)', async () => {
+    it('데스크톱 테이블 "기업명" 헤더는 text-center 정렬이다 (시각 균형)', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
         expect(screen.getAllByText('알파주식회사').length).toBeGreaterThan(0);
       });
       const heading = screen.getByRole('columnheader', { name: '기업명' });
-      expect(heading.className).toMatch(/text-left/);
-      // 가운데 정렬 클래스가 헤더에 남아있지 않아야 한다
-      expect(heading.className).not.toMatch(/text-center/);
+      expect(heading.className).toMatch(/text-center/);
+      // 헤더에 좌측 패딩 pl-6 이 적용되어야 한다
+      expect(heading.className).toMatch(/pl-6/);
     });
 
-    it('데스크톱 테이블 기업명 셀 내부 컨테이너는 justify-center 가 없다 (기본 justify-start)', async () => {
+    it('데스크톱 테이블 기업명 셀은 text-left + pl-6 (아이콘 X 좌표 일관성·테이블 좌측 여백)', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
         expect(screen.getAllByText('알파주식회사').length).toBeGreaterThan(0);
       });
-      // 기업명 링크의 가장 가까운 flex 컨테이너 — 데스크톱 테이블 셀에서 아이콘+텍스트 묶음
+      // 기업명 링크의 가장 가까운 td (데스크톱 테이블 셀)
       const link = screen
         .getAllByText('알파주식회사')
         .find((el) => el.closest('a')?.getAttribute('href') === '/ops/projects/proj-1');
       expect(link).toBeTruthy();
-      // 데스크톱 테이블 행의 셀 (align-top 클래스 가진 td)
       const td = link!.closest('td');
       expect(td).toBeTruthy();
-      // 셀 직속 flex 컨테이너 (아이콘+텍스트 묶음) — 아이콘 박스의 inner flex 가 아닌 outer flex
+      // 셀에 text-left + pl-6 클래스 존재
+      expect(td!.className).toMatch(/text-left/);
+      expect(td!.className).toMatch(/pl-6/);
+      // 셀 직속 flex 컨테이너 (아이콘+텍스트 묶음) — justify-center 없음
       const outerFlex = td!.querySelector(':scope > .flex');
       expect(outerFlex).toBeTruthy();
       expect(outerFlex!.className).not.toMatch(/justify-center/);
       expect(outerFlex!.className).toMatch(/items-center/);
     });
 
-    it('데스크톱 테이블 "작업" 헤더는 text-center 정렬이다', async () => {
+    it('데스크톱 테이블 "작업" 헤더는 text-center + pr-6 정렬이다', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
@@ -349,10 +352,11 @@ describe('ProjectList', () => {
       });
       const heading = screen.getByRole('columnheader', { name: '작업' });
       expect(heading.className).toMatch(/text-center/);
+      expect(heading.className).toMatch(/pr-6/);
       expect(heading.className).not.toMatch(/text-right/);
     });
 
-    it('데스크톱 테이블 작업 셀은 명시적 flex justify-center wrapper 로 버튼을 가운데 배치한다', async () => {
+    it('데스크톱 테이블 작업 셀은 flex justify-center wrapper + pr-6 여백을 가진다', async () => {
       setupMocks();
       render(<ProjectList />);
       await waitFor(() => {
@@ -360,11 +364,12 @@ describe('ProjectList', () => {
       });
       // "삭제" 버튼의 가장 가까운 td (작업 컬럼 셀)
       const deleteButtons = screen.getAllByRole('button', { name: '삭제' });
-      // 데스크톱 테이블 셀에 속한 삭제 버튼만 — td 조상이 있는 버튼
       const deleteBtnInTd = deleteButtons.find((btn) => btn.closest('td'));
       expect(deleteBtnInTd).toBeTruthy();
       const td = deleteBtnInTd!.closest('td');
       expect(td).toBeTruthy();
+      // 셀에 pr-6 클래스 존재
+      expect(td!.className).toMatch(/pr-6/);
       // 셀 직속 자식 div 가 flex justify-center 인지 확인
       const wrapper = td!.querySelector(':scope > .flex');
       expect(wrapper).toBeTruthy();
