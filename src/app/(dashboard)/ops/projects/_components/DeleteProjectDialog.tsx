@@ -57,8 +57,13 @@ export function DeleteProjectDialog({
     }
   }
 
-  async function handleConfirm() {
-    if (!canDelete) return;
+  async function handleConfirm(event: React.MouseEvent<HTMLButtonElement>) {
+    if (!canDelete) {
+      event.preventDefault();
+      return;
+    }
+    // Radix AlertDialogAction 의 디폴트 close 동작을 차단 — 비동기 완료 후 직접 close
+    event.preventDefault();
     setIsPending(true);
     try {
       const result = await onConfirm(projectId, confirmText);
@@ -95,8 +100,7 @@ export function DeleteProjectDialog({
         <div className="space-y-2 py-2">
           <Label htmlFor="confirm-delete-text" className="text-sm">
             삭제를 확인하려면 아래에{' '}
-            <span className="font-semibold text-red-600">{expectedText}</span>
-            {' '}를 정확히 입력하세요.
+            <span className="font-semibold text-red-600">{expectedText}</span> 를 정확히 입력하세요.
           </Label>
           <Input
             id="confirm-delete-text"
@@ -113,10 +117,10 @@ export function DeleteProjectDialog({
             onClick={handleConfirm}
             disabled={!canDelete}
             className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 disabled:bg-red-300"
-            aria-label="삭제 확정"
+            aria-label={isPending ? '삭제 중' : '삭제 확정'}
           >
             {isPending && <Loader2 className="mr-1 size-4 animate-spin" aria-hidden />}
-            삭제 확정
+            {isPending ? '삭제 중...' : '삭제 확정'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
