@@ -3,15 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import {
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
-  FolderOpen,
-  Plus,
-} from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Building2, FolderOpen, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +28,13 @@ import { ProjectTableSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PROJECT_STATUS_CONFIG, getStatusFilterOptions } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
-import { fetchProjectsWithTimeline, fetchProjectFilters, deleteProject, type ProjectWithTimeline, type ProjectFilterOptions } from '../actions';
+import {
+  fetchProjectsWithTimeline,
+  fetchProjectFilters,
+  deleteProject,
+  type ProjectWithTimeline,
+  type ProjectFilterOptions,
+} from '../actions';
 import MiniStepper from './MiniStepper';
 import { TrackBadge } from '@/components/ui/TrackBadge';
 import { formatDateKR, formatNumberKR } from '@/lib/utils/date';
@@ -50,7 +48,12 @@ const SEARCH_DEBOUNCE_DELAY = 300;
 
 interface ProjectListProps {
   statusFilter?: ProjectStatus[] | null;
-  initialData?: { projects: ProjectWithTimeline[]; totalPages: number; total: number; page: number } | null;
+  initialData?: {
+    projects: ProjectWithTimeline[];
+    totalPages: number;
+    total: number;
+    page: number;
+  } | null;
 }
 
 function FilterBadge({
@@ -77,10 +80,7 @@ function OpsProjectMobileCard({
   onDelete,
 }: {
   project: ProjectWithTimeline;
-  onDelete: (
-    projectId: string,
-    confirmText: string,
-  ) => ReturnType<typeof deleteProject>;
+  onDelete: (projectId: string, confirmText: string) => ReturnType<typeof deleteProject>;
 }) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
@@ -115,14 +115,10 @@ function OpsProjectMobileCard({
         <div className="text-gray-900">{project.industry}</div>
         <div className="text-gray-500">담당 컨설턴트</div>
         <div className="text-gray-900">
-          {project.assigned_consultant?.name || (
-            <span className="text-gray-400">미배정</span>
-          )}
+          {project.assigned_consultant?.name || <span className="text-gray-400">미배정</span>}
         </div>
         <div className="text-gray-500">생성일</div>
-        <div className="text-gray-900">
-          {formatDateKR(project.created_at)}
-        </div>
+        <div className="text-gray-900">{formatDateKR(project.created_at)}</div>
       </div>
 
       {/* 진행 상태: MiniStepper */}
@@ -157,12 +153,8 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
   const [internalStatus, setInternalStatus] = useState<string>(
     urlSearchParams.get('status') || DEFAULT_FILTER_VALUE
   );
-  const [industry, setIndustry] = useState(
-    urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE
-  );
-  const [page, setPage] = useState(
-    Number(urlSearchParams.get('page')) || 1
-  );
+  const [industry, setIndustry] = useState(urlSearchParams.get('industry') || DEFAULT_FILTER_VALUE);
+  const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   // 필터 옵션 (statuses는 상수 기반이므로 동기 초기화 — 플리커 방지)
@@ -189,8 +181,8 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
 
   // 업종 옵션만 비동기 로드 (statuses는 이미 동기 초기화됨)
   useEffect(() => {
-    fetchProjectFilters().then(result => {
-      setFilterOptions(prev => ({ ...prev, industries: result.industries }));
+    fetchProjectFilters().then((result) => {
+      setFilterOptions((prev) => ({ ...prev, industries: result.industries }));
     });
   }, []);
 
@@ -204,14 +196,16 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
   }, [statusFilter]);
 
   // 선택된 상태 필터 옵션 (드롭다운 선택)
-  const selectedStatusOption = internalStatus === DEFAULT_FILTER_VALUE
-    ? null
-    : filterOptions.statuses.find((opt) => opt.value === internalStatus) ?? null;
+  const selectedStatusOption =
+    internalStatus === DEFAULT_FILTER_VALUE
+      ? null
+      : (filterOptions.statuses.find((opt) => opt.value === internalStatus) ?? null);
 
   // 실제 적용할 상태 필터 결정 (외부 prop 우선, 없으면 내부 상태)
-  const effectiveStatuses = (statusFilter !== null && statusFilter !== undefined)
-    ? statusFilter
-    : selectedStatusOption?.statuses;
+  const effectiveStatuses =
+    statusFilter !== null && statusFilter !== undefined
+      ? statusFilter
+      : selectedStatusOption?.statuses;
 
   // 프로젝트 삭제 핸들러 — DeleteProjectDialog 가 onConfirm 으로 호출.
   // 성공 시 토스트 + 목록 즉시 재로드 (router.refresh 대신 loadData 가 더 빠름).
@@ -293,7 +287,11 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
   };
 
   // 외부 필터(카드) 또는 내부 필터(드롭다운) 활성화 여부
-  const hasFilters = debouncedSearch || internalStatus !== DEFAULT_FILTER_VALUE || industry !== DEFAULT_FILTER_VALUE || (statusFilter && statusFilter.length > 0);
+  const hasFilters =
+    debouncedSearch ||
+    internalStatus !== DEFAULT_FILTER_VALUE ||
+    industry !== DEFAULT_FILTER_VALUE ||
+    (statusFilter && statusFilter.length > 0);
 
   return (
     <div className="space-y-4">
@@ -342,7 +340,12 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
               </Select>
 
               {hasFilters && (
-                <Button variant="ghost" size="icon" onClick={handleResetFilters} aria-label="필터 초기화">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetFilters}
+                  aria-label="필터 초기화"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -353,18 +356,33 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
           {hasFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
               {debouncedSearch && (
-                <FilterBadge label="검색" value={debouncedSearch} onClear={() => setSearchInput('')} />
+                <FilterBadge
+                  label="검색"
+                  value={debouncedSearch}
+                  onClear={() => setSearchInput('')}
+                />
               )}
               {selectedStatusOption && (
-                <FilterBadge label="상태" value={selectedStatusOption.label} onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge
+                  label="상태"
+                  value={selectedStatusOption.label}
+                  onClear={() => handleStatusChange(DEFAULT_FILTER_VALUE)}
+                />
               )}
               {statusFilter && statusFilter.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
-                  카드 필터: {[...new Set(statusFilter.map(s => PROJECT_STATUS_CONFIG[s]?.label || s))].join(', ')}
+                  카드 필터:{' '}
+                  {[...new Set(statusFilter.map((s) => PROJECT_STATUS_CONFIG[s]?.label || s))].join(
+                    ', '
+                  )}
                 </Badge>
               )}
               {industry !== DEFAULT_FILTER_VALUE && (
-                <FilterBadge label="업종" value={industry} onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)} />
+                <FilterBadge
+                  label="업종"
+                  value={industry}
+                  onClear={() => handleIndustryChange(DEFAULT_FILTER_VALUE)}
+                />
               )}
             </div>
           )}
@@ -385,7 +403,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
       {loading ? (
         <ProjectTableSkeleton rows={5} />
       ) : (
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           {projects.length === 0 ? (
             // #4 — EmptyState 통일 (필터 없음 / 필터 활성 분기)
             hasFilters ? (
@@ -407,8 +425,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                 action={
                   <Button asChild>
                     <Link href="/ops/projects/new">
-                      <Plus className="mr-2 h-4 w-4" />
-                      새 프로젝트 생성
+                      <Plus className="mr-2 h-4 w-4" />새 프로젝트 생성
                     </Link>
                   </Button>
                 }
@@ -419,26 +436,26 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
               {/* 데스크톱: 테이블 뷰 */}
               <div className="hidden md:block">
                 <Table className="min-w-[1060px] table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[260px]">기업명</TableHead>
-                    <TableHead className="w-[80px]">트랙</TableHead>
-                    <TableHead className="w-[110px]">업종</TableHead>
-                    <TableHead className="w-[220px] text-center">진행 상태</TableHead>
-                    <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
-                    <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
-                    <TableHead className="w-[80px]">작업</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projects.map((projectItem) => (
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[260px] text-center">기업명</TableHead>
+                      <TableHead className="w-[80px]">트랙</TableHead>
+                      <TableHead className="w-[110px]">업종</TableHead>
+                      <TableHead className="w-[220px] text-center">진행 상태</TableHead>
+                      <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
+                      <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
+                      <TableHead className="w-[80px] text-center">작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projects.map((projectItem) => (
                       <TableRow key={projectItem.id}>
                         <TableCell className="align-top">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                               <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                               <Link
                                 href={`/ops/projects/${projectItem.id}`}
                                 className="font-medium text-gray-900 break-keep truncate hover:text-blue-700 hover:underline underline-offset-2 block"
@@ -458,7 +475,12 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                         <TableCell className="align-top">
                           <TrackBadge track={projectItem.track} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground align-top truncate" title={projectItem.industry}>{projectItem.industry}</TableCell>
+                        <TableCell
+                          className="text-muted-foreground align-top truncate"
+                          title={projectItem.industry}
+                        >
+                          {projectItem.industry}
+                        </TableCell>
                         <TableCell className="align-top">
                           <div className="flex justify-center">
                             <MiniStepper
@@ -478,7 +500,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                         <TableCell className="text-muted-foreground align-top whitespace-nowrap">
                           {formatDateKR(projectItem.created_at)}
                         </TableCell>
-                        <TableCell className="align-top">
+                        <TableCell className="align-top text-center">
                           <DeleteProjectDialog
                             projectId={projectItem.id}
                             companyName={projectItem.company_name}
@@ -487,7 +509,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
                         </TableCell>
                       </TableRow>
                     ))}
-                </TableBody>
+                  </TableBody>
                 </Table>
               </div>
 
@@ -506,8 +528,8 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3">
                   <div className="text-base text-muted-foreground">
-                    {(page - 1) * ITEMS_PER_PAGE + 1}-
-                    {Math.min(page * ITEMS_PER_PAGE, total)} / {total}개
+                    {(page - 1) * ITEMS_PER_PAGE + 1}-{Math.min(page * ITEMS_PER_PAGE, total)} /{' '}
+                    {total}개
                   </div>
                   <div className="flex gap-1">
                     <Button
@@ -558,7 +580,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
               )}
             </>
           )}
-      </div>
+        </div>
       )}
     </div>
   );
