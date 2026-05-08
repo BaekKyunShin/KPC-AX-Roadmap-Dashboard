@@ -286,13 +286,18 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     if (await analysisNoteField.isVisible().catch(() => false)) {
       await analysisNoteField.fill('E2E 과업 분석 — 외관 검사 자동화 우선');
     }
-    // 프리필된 빈 행 제거 (있으면) — Strict 검증에서 빈 행이 fail 하는 것을 방지
+    // 프리필된 빈 행 제거 (있으면) — Strict 검증에서 빈 행이 fail 하는 것을 방지.
+    // PR #72(#1 H5·H3) — 휴지통 클릭 시 AlertDialog 사전 확인 노출 → 다이얼로그 「삭제」 추가 클릭 필요.
     const deleteButtons = page.getByRole('button', { name: /과업 삭제 [2-9]|행 삭제 [2-9]/ });
     const deleteCount = await deleteButtons.count();
     for (let i = deleteCount - 1; i >= 0; i--) {
       const btn = deleteButtons.nth(i);
       if (await btn.isVisible().catch(() => false)) {
         await btn.click();
+        const confirmDialog = page.getByRole('alertdialog');
+        await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+        await confirmDialog.getByRole('button', { name: '삭제' }).click();
+        await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
       }
     }
     await nextButton().click();
@@ -322,12 +327,17 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
     await page.getByLabel('태도 1').fill('데이터 기반 의사결정 선호');
     // 프리필된 빈 역량 행(2~N) 제거 — Strict 검증은 배열 모든 요소를 요구하므로
     // 빈 행이 남아 있으면 fail. index 역순으로 삭제해 index 변경 안전.
+    // PR #72(#1 H5·H3) — 휴지통 클릭 시 AlertDialog 사전 확인 노출 → 다이얼로그 「삭제」 추가 클릭 필요.
     const competencyDeleteButtons = page.getByRole('button', { name: /역량 삭제 [2-9]/ });
     const competencyDeleteCount = await competencyDeleteButtons.count();
     for (let i = competencyDeleteCount - 1; i >= 0; i--) {
       const btn = competencyDeleteButtons.nth(i);
       if (await btn.isVisible().catch(() => false)) {
         await btn.click();
+        const confirmDialog = page.getByRole('alertdialog');
+        await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+        await confirmDialog.getByRole('button', { name: '삭제' }).click();
+        await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
       }
     }
     // NCS 미활용 기본 → "역량별 도출 방법" textarea 필수
