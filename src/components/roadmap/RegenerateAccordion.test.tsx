@@ -76,6 +76,37 @@ describe('RegenerateAccordion', () => {
     expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
   });
 
+  it('#5 H7 — defaultOpen=true 시 첫 렌더부터 펼쳐짐 (검토 페이지 ?regenerate=open 진입 케이스)', () => {
+    render(
+      <RegenerateAccordion
+        value={''}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isLoading={false}
+        defaultOpen
+      />,
+    );
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('#5 H7 — autoFocus=true + 펼친 상태에서 textarea 에 포커스', () => {
+    render(
+      <RegenerateAccordion
+        value={''}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isLoading={false}
+        defaultOpen
+        autoFocus
+      />,
+    );
+    expect(screen.getByRole('textbox')).toHaveFocus();
+  });
+
   it('aria-expanded가 초기 false, 클릭 후 true로 전환', async () => {
     render(
       <RegenerateAccordion

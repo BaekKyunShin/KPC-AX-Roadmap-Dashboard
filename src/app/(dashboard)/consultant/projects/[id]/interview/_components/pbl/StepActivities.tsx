@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { ConfirmRemoveRowButton } from '../ConfirmRemoveRowButton';
 
 import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
@@ -113,15 +114,12 @@ export function StepActivities({
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{round}차</h3>
-                <button
-                  type="button"
-                  onClick={() => removeRound(round)}
+                <ConfirmRemoveRowButton
+                  title={`${round}차 행을 삭제하시겠습니까?`}
+                  ariaLabel={`${round}차 삭제`}
                   disabled={readOnly || rounds.length <= 1}
-                  aria-label={`${round}차 삭제`}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                  onConfirm={() => removeRound(round)}
+                />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse border border-border text-sm">

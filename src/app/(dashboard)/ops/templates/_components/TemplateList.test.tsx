@@ -232,10 +232,8 @@ describe('TemplateList', () => {
   // 추가: executeAction·handleSetActive·handleDuplicate·handleDelete 커버리지
   // =====================================================================
 
-  describe('handleSetActive — 활성화 액션', () => {
-    it('활성화 메뉴 클릭 시 confirm → setActiveTemplate 호출', async () => {
-      // confirm 모킹
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  describe('handleSetActive — 활성화 액션 (#2 H4·H5 — AlertDialog 통일)', () => {
+    it('활성화 메뉴 클릭 → AlertDialog "활성화" 확인 후 setActiveTemplate 호출', async () => {
       mockSetActiveTemplate.mockResolvedValue({ success: true });
 
       render(<TemplateList templates={[inactiveUnusedTemplate]} />);
@@ -248,18 +246,18 @@ describe('TemplateList', () => {
 
       fireEvent.click(screen.getByRole('menuitem', { name: /활성화/ }));
 
+      // AlertDialog 노출 검증 + 다이얼로그 내 "활성화" 클릭
+      const dialog = await screen.findByRole('alertdialog');
+      expect(within(dialog).getByText(/이 템플릿을 활성화하시겠습니까/)).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: '활성화' }));
+
       await waitFor(() => {
         expect(mockSetActiveTemplate).toHaveBeenCalledWith(inactiveUnusedTemplate.id);
       });
-
-      confirmSpy.mockRestore();
     });
 
-    it('confirm 취소 시 setActiveTemplate가 호출되지 않는다', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      // beforeEach에서 vi.restoreAllMocks() 호출하므로 mock 재설정
+    it('AlertDialog "취소" 클릭 시 setActiveTemplate가 호출되지 않는다', async () => {
       mockSetActiveTemplate.mockResolvedValue({ success: true });
-      // 이전 테스트의 호출 기록 초기화
       mockSetActiveTemplate.mockClear();
 
       render(<TemplateList templates={[inactiveUnusedTemplate]} />);
@@ -271,11 +269,11 @@ describe('TemplateList', () => {
       });
 
       fireEvent.click(screen.getByRole('menuitem', { name: /활성화/ }));
-      // confirm이 false를 반환하므로 setActiveTemplate 호출되지 않아야 함
-      expect(confirmSpy).toHaveBeenCalled();
-      expect(mockSetActiveTemplate).not.toHaveBeenCalled();
 
-      confirmSpy.mockRestore();
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+
+      expect(mockSetActiveTemplate).not.toHaveBeenCalled();
     });
   });
 
@@ -317,9 +315,8 @@ describe('TemplateList', () => {
     });
   });
 
-  describe('handleDelete — 삭제 액션', () => {
-    it('삭제 메뉴 클릭 시 confirm → deleteTemplate 호출', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  describe('handleDelete — 삭제 액션 (#2 H4·H5 — AlertDialog 통일)', () => {
+    it('삭제 메뉴 클릭 → AlertDialog "삭제" 확인 후 deleteTemplate 호출', async () => {
       mockDeleteTemplate.mockResolvedValue({ success: true });
 
       render(<TemplateList templates={[inactiveUnusedTemplate]} />);
@@ -332,15 +329,16 @@ describe('TemplateList', () => {
 
       fireEvent.click(screen.getByRole('menuitem', { name: /삭제/ }));
 
+      const dialog = await screen.findByRole('alertdialog');
+      expect(within(dialog).getByText(/이 템플릿을 삭제하시겠습니까/)).toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
+
       await waitFor(() => {
         expect(mockDeleteTemplate).toHaveBeenCalledWith(inactiveUnusedTemplate.id);
       });
-
-      confirmSpy.mockRestore();
     });
 
     it('삭제 실패 시 에러 메시지가 표시된다', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteTemplate.mockResolvedValue({ success: false, error: '삭제 권한 없음' });
 
       render(<TemplateList templates={[inactiveUnusedTemplate]} />);
@@ -353,11 +351,12 @@ describe('TemplateList', () => {
 
       fireEvent.click(screen.getByRole('menuitem', { name: /삭제/ }));
 
+      const dialog = await screen.findByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
+
       await waitFor(() => {
         expect(screen.getByText('삭제 권한 없음')).toBeInTheDocument();
       });
-
-      confirmSpy.mockRestore();
     });
   });
 

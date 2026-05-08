@@ -12,6 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -218,6 +228,8 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   const [roleFilter, setRoleFilter] = useState(urlSearchParams.get('role') || DEFAULT_FILTER_VALUE);
   const [statusFilter, setStatusFilter] = useState(urlSearchParams.get('status') || DEFAULT_FILTER_VALUE);
   const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
+  // #2 H5 — 정지(destructive) 사전 확인 다이얼로그용 state. id+name 보관해 「{사용자명}님을 정지하시겠습니까?」 노출.
+  const [confirmSuspend, setConfirmSuspend] = useState<{ id: string; name: string } | null>(null);
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   const updateParams = (updates: Record<string, string>) => {
@@ -293,6 +305,37 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
 
   const hasFilters = !!debouncedSearch || roleFilter !== DEFAULT_FILTER_VALUE || statusFilter !== DEFAULT_FILTER_VALUE;
   const isFilteredEmpty = filtered.length === 0 && users.length > 0;
+
+  // #4 H1·H7 — 검색·필터 0건일 때 한 영역으로 통합된 EmptyState. 데스크톱·모바일 두 분기에서 재사용.
+  const renderFilteredEmptyState = () => {
+    const titleText = debouncedSearch
+      ? `'${debouncedSearch}'과(와) 일치하는 사용자가 없습니다`
+      : '조건과 일치하는 사용자가 없습니다';
+    const filterParts = [
+      selectedRoleLabel ? `역할: ${selectedRoleLabel}` : null,
+      selectedStatusLabel ? `상태: ${selectedStatusLabel}` : null,
+    ].filter((s): s is string => s !== null);
+    const descriptionText = filterParts.length > 0
+      ? `현재 적용된 필터: ${filterParts.join(', ')}`
+      : undefined;
+    const handleResetAll = () => {
+      setSearchInput('');
+      handleRoleChange(DEFAULT_FILTER_VALUE);
+      handleStatusChange(DEFAULT_FILTER_VALUE);
+    };
+    return (
+      <EmptyState
+        icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+        title={titleText}
+        description={descriptionText}
+        action={
+          <Button variant="outline" size="sm" onClick={handleResetAll}>
+            필터 초기화
+          </Button>
+        }
+      />
+    );
+  };
 
   const scrollPositionRef = useRef<number | null>(null);
 
@@ -403,7 +446,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
       return (
         <TableActionLink
           variant="danger"
-          onClick={() => handleAction(id, 'suspend')}
+          onClick={() => setConfirmSuspend({ id, name: user.name })}
           disabled={isLoading === id || isPending}
         >
           {isLoading === id ? '처리 중...' : '정지'}
@@ -583,11 +626,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
             {isFilteredEmpty && (
               <TableRow>
                 <TableCell colSpan={6} className="p-0">
-                  <EmptyState
-                    icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-                    title="검색 결과가 없습니다"
-                    description="검색어 또는 필터 조건을 변경해 보세요"
-                  />
+                  {renderFilteredEmptyState()}
                 </TableCell>
               </TableRow>
             )}
@@ -604,11 +643,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
             />
           ) : isFilteredEmpty ? (
-            <EmptyState
-              icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-              title="검색 결과가 없습니다"
-              description="검색어 또는 필터 조건을 변경해 보세요"
-            />
+            renderFilteredEmptyState()
           ) : (
             pagedUsers.map((user) => (
               <UserMobileCard
@@ -794,6 +829,36 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
           )}
         </DialogContent>
       </Dialog>
+
+      {/* #2 H5·H4 — 사용자 정지(destructive) 사전 확인 AlertDialog. PR #58·#60 통일 패턴 차용. */}
+      <AlertDialog
+        open={confirmSuspend !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmSuspend(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmSuspend?.name}님을 정지하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              정지된 사용자는 즉시 로그인이 차단되며, 알림 메일이 발송됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmSuspend) {
+                  void handleAction(confirmSuspend.id, 'suspend');
+                }
+                setConfirmSuspend(null);
+              }}
+            >
+              정지
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

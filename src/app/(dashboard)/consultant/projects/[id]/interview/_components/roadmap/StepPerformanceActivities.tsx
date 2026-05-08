@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { ConfirmRemoveRowButton } from '../ConfirmRemoveRowButton';
 
 import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
@@ -317,15 +318,12 @@ function RoundRows({
           rowSpan={2}
           className="border border-border p-1 text-center align-middle"
         >
-          <button
-            type="button"
-            onClick={onRemove}
+          <ConfirmRemoveRowButton
+            title={`${label} 행을 삭제하시겠습니까?`}
+            ariaLabel={`차수 삭제 ${idx + 1}`}
             disabled={readOnly || disableRemove}
-            aria-label={`차수 삭제 ${idx + 1}`}
-            className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-          >
-            <Trash2 className="size-4" />
-          </button>
+            onConfirm={onRemove}
+          />
         </td>
       </tr>
       <tr>

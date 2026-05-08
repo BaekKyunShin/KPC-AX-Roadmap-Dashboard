@@ -132,6 +132,9 @@ describe('StepTaskAnalysis', () => {
       />,
     );
     fireEvent.click(screen.getByLabelText('행 삭제 2'));
+    // #1 H5·H3 — AlertDialog 노출 검증 후 삭제 확인
+    expect(screen.getByText(/선택한 행을 삭제하시겠습니까/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     const call = onChange.mock.calls[0][0] as StepTaskAnalysisValue;
     expect(call.taskAnalysis).toHaveLength(2);
     expect(call.taskAnalysis.map((r) => r.domain)).toEqual(['A', 'C']);

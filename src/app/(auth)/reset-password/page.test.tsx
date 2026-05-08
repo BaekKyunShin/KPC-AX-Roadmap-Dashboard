@@ -62,7 +62,7 @@ describe('ResetPasswordPage — 정상 세션 폼', () => {
     });
     expect(screen.getByLabelText(/새 비밀번호/)).toBeInTheDocument();
     expect(screen.getByLabelText(/비밀번호 확인/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '비밀번호 재설정' })).toBeInTheDocument();
   });
 
   it('폼 제출 → setNewPasswordWithToken 호출', async () => {
@@ -71,12 +71,12 @@ describe('ResetPasswordPage — 정상 세션 폼', () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '비밀번호 재설정' })).toBeInTheDocument();
     });
 
     await user.type(screen.getByLabelText(/새 비밀번호/), 'NewPass1!');
     await user.type(screen.getByLabelText(/비밀번호 확인/), 'NewPass1!');
-    await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
+    await user.click(screen.getByRole('button', { name: '비밀번호 재설정' }));
 
     await waitFor(() => {
       expect(mockSetNewPasswordWithToken).toHaveBeenCalledWith('NewPass1!', 'NewPass1!');
@@ -92,12 +92,12 @@ describe('ResetPasswordPage — 정상 세션 폼', () => {
     render(<ResetPasswordPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '비밀번호 변경' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '비밀번호 재설정' })).toBeInTheDocument();
     });
 
     await user.type(screen.getByLabelText(/새 비밀번호/), 'NewPass1!');
     await user.type(screen.getByLabelText(/비밀번호 확인/), 'NewPass1!');
-    await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
+    await user.click(screen.getByRole('button', { name: '비밀번호 재설정' }));
 
     await waitFor(() => {
       expect(screen.getByText(/재설정 링크/)).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('ResetPasswordPage — done=1 완료 화면', () => {
 
   it('완료 메시지와 로그인 페이지로 버튼을 렌더한다', () => {
     render(<ResetPasswordPage />);
-    expect(screen.getByRole('heading', { name: '비밀번호가 변경되었습니다' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '비밀번호가 재설정되었습니다' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /로그인 페이지로/ })).toBeInTheDocument();
   });
 });

@@ -100,11 +100,11 @@ function ResetPasswordContent() {
         const result = await setNewPasswordWithToken(newPassword, confirmPassword);
         if (!result.success) {
           setError(result.error);
-          showErrorToast('비밀번호 변경 실패', result.error);
+          showErrorToast('비밀번호 재설정 실패', result.error);
           return;
         }
-        showSuccessToast('변경 완료', '새 비밀번호로 다시 로그인해주세요.');
-        // 변경 후 세션은 의도적으로 종료 — 사용자가 새 비번으로 재로그인
+        showSuccessToast('재설정 완료', '새 비밀번호로 다시 로그인해주세요.');
+        // 재설정 후 세션은 의도적으로 종료 — 사용자가 새 비번으로 재로그인
         const supabase = createClient();
         await supabase.auth.signOut();
 
@@ -114,7 +114,7 @@ function ResetPasswordContent() {
         window.dispatchEvent(new PopStateEvent('popstate'));
       } catch {
         setError('처리 중 오류가 발생했습니다.');
-        showErrorToast('비밀번호 변경 실패', TOAST_ERROR.NETWORK);
+        showErrorToast('비밀번호 재설정 실패', TOAST_ERROR.NETWORK);
       }
     });
   }
@@ -266,17 +266,17 @@ function ResetPasswordContent() {
 
           <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
             <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-            <span>변경 후에는 새 비밀번호로 다시 로그인해주세요.</span>
+            <span>재설정 후에는 새 비밀번호로 다시 로그인해주세요.</span>
           </div>
 
           <Button type="submit" disabled={isPending} className="w-full h-11 mt-6">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                변경 중...
+                재설정 중...
               </>
             ) : (
-              '비밀번호 변경'
+              '비밀번호 재설정'
             )}
           </Button>
         </form>
