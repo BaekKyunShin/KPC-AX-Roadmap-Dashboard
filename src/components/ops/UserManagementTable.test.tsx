@@ -88,9 +88,15 @@ describe('UserManagementTable', () => {
     // "정지" 버튼이 보이는지 확인
     expect(getTable().getByText('정지')).toBeInTheDocument();
 
-    // Act: "정지" 버튼 클릭
+    // Act: "정지" 버튼 클릭 → AlertDialog 노출 후 "정지" 확인 (#2 H5)
     await act(async () => {
       getTable().getByText('정지').click();
+    });
+    // 다이얼로그 노출 검증
+    expect(screen.getByText(/님을 정지하시겠습니까\?/)).toBeInTheDocument();
+    // 다이얼로그의 "정지"(AlertDialogAction) 클릭
+    await act(async () => {
+      screen.getByRole('button', { name: '정지' }).click();
     });
 
     // Assert: "처리 중..." 표시
@@ -123,9 +129,12 @@ describe('UserManagementTable', () => {
 
     render(<UserManagementTable users={[makeUser()]} />);
 
-    // Act: "정지" 버튼 클릭
+    // Act: "정지" 버튼 클릭 → AlertDialog → "정지" 확인 (#2 H5)
     await act(async () => {
       getTable().getByText('정지').click();
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: '정지' }).click();
     });
 
     // Assert: 실패 시 바로 "정지" 버튼이 다시 표시됨

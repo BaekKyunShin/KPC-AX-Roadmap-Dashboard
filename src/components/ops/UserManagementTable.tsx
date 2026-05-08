@@ -12,6 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -218,6 +228,8 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   const [roleFilter, setRoleFilter] = useState(urlSearchParams.get('role') || DEFAULT_FILTER_VALUE);
   const [statusFilter, setStatusFilter] = useState(urlSearchParams.get('status') || DEFAULT_FILTER_VALUE);
   const [page, setPage] = useState(Number(urlSearchParams.get('page')) || 1);
+  // #2 H5 — 정지(destructive) 사전 확인 다이얼로그용 state. id+name 보관해 「{사용자명}님을 정지하시겠습니까?」 노출.
+  const [confirmSuspend, setConfirmSuspend] = useState<{ id: string; name: string } | null>(null);
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_DELAY);
 
   const updateParams = (updates: Record<string, string>) => {
@@ -434,7 +446,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
       return (
         <TableActionLink
           variant="danger"
-          onClick={() => handleAction(id, 'suspend')}
+          onClick={() => setConfirmSuspend({ id, name: user.name })}
           disabled={isLoading === id || isPending}
         >
           {isLoading === id ? '처리 중...' : '정지'}
@@ -817,6 +829,36 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
           )}
         </DialogContent>
       </Dialog>
+
+      {/* #2 H5·H4 — 사용자 정지(destructive) 사전 확인 AlertDialog. PR #58·#60 통일 패턴 차용. */}
+      <AlertDialog
+        open={confirmSuspend !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmSuspend(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmSuspend?.name}님을 정지하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              정지된 사용자는 즉시 로그인이 차단되며, 알림 메일이 발송됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmSuspend) {
+                  void handleAction(confirmSuspend.id, 'suspend');
+                }
+                setConfirmSuspend(null);
+              }}
+            >
+              정지
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

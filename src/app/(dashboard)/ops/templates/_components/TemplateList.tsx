@@ -25,6 +25,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { formatDateKR } from '@/lib/utils/date';
 
 // =============================================================================
@@ -207,15 +217,15 @@ export default function TemplateList({ templates }: TemplateListProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // #2 H4·H5 — 활성화·삭제 사전 확인을 native confirm() 에서 shadcn AlertDialog 로 통일.
+  const [confirmActivateId, setConfirmActivateId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const executeAction = async (
     templateId: string,
     action: () => Promise<{ success: boolean; error?: string }>,
-    options: { confirmMessage?: string; errorFallback: string; onSuccess?: () => void },
+    options: { errorFallback: string; onSuccess?: () => void },
   ) => {
-    if (options.confirmMessage && !confirm(options.confirmMessage)) {
-      return;
-    }
-
     setLoading(templateId);
     setError(null);
 
@@ -236,22 +246,24 @@ export default function TemplateList({ templates }: TemplateListProps) {
     }
   };
 
-  const handleSetActive = (templateId: string) =>
-    executeAction(templateId, () => setActiveTemplate(templateId), {
-      confirmMessage: '이 템플릿을 활성화하시겠습니까? 기존 활성 템플릿은 비활성화됩니다.',
-      errorFallback: '활성화에 실패했습니다.',
-    });
-
-  const handleDelete = (templateId: string) =>
-    executeAction(templateId, () => deleteTemplate(templateId), {
-      confirmMessage: '이 템플릿을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
-      errorFallback: '삭제에 실패했습니다.',
-      onSuccess: () => showSuccessToast('템플릿이 삭제되었습니다.'),
-    });
+  // 메뉴에서는 AlertDialog 만 띄우고, 실제 액션은 다이얼로그 「확인」/「삭제」에서 호출.
+  const handleSetActive = (templateId: string) => setConfirmActivateId(templateId);
+  const handleDelete = (templateId: string) => setConfirmDeleteId(templateId);
 
   const handleDuplicate = (templateId: string) =>
     executeAction(templateId, () => duplicateTemplate(templateId), {
       errorFallback: '복제에 실패했습니다.',
+    });
+
+  const performSetActive = (templateId: string) =>
+    executeAction(templateId, () => setActiveTemplate(templateId), {
+      errorFallback: '활성화에 실패했습니다.',
+    });
+
+  const performDelete = (templateId: string) =>
+    executeAction(templateId, () => deleteTemplate(templateId), {
+      errorFallback: '삭제에 실패했습니다.',
+      onSuccess: () => showSuccessToast('템플릿이 삭제되었습니다.'),
     });
 
   if (templates.length === 0) {
@@ -394,6 +406,66 @@ export default function TemplateList({ templates }: TemplateListProps) {
           </div>
         </div>
       </div>
+
+      {/* #2 H4·H5 — 활성화 사전 확인 (PR #58·#60 통일 패턴). 활성화는 비파괴이지만 톤 통일 위해 AlertDialog 사용. */}
+      <AlertDialog
+        open={confirmActivateId !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmActivateId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 템플릿을 활성화하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              기존 활성 템플릿은 비활성화됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmActivateId) {
+                  void performSetActive(confirmActivateId);
+                }
+                setConfirmActivateId(null);
+              }}
+            >
+              활성화
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* #2 H4·H5 — 삭제(destructive) 사전 확인. native confirm() 대신 AlertDialog 통일. */}
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 템플릿을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteId) {
+                  void performDelete(confirmDeleteId);
+                }
+                setConfirmDeleteId(null);
+              }}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
