@@ -68,6 +68,9 @@ describe('StepActivities (R8 PBL-자체-03 — 차수×4 역할 평면 4행)', (
     ];
     render(<StepActivities value={initial} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText('2차 삭제'));
+    // #1 H5·H3 — AlertDialog 노출 검증 후 삭제 확인
+    expect(screen.getByText(/2차 행을 삭제하시겠습니까/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     const next = onChange.mock.calls[0][0] as PBLActivityRow[];
     expect(next).toHaveLength(4);
     expect(next.every((r) => r.round === 1)).toBe(true);

@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { ConfirmRemoveRowButton } from '../ConfirmRemoveRowButton';
 
 import { FormSection } from '@/components/forms/FormSection';
 import { LargeTextBox } from '@/components/forms/LargeTextBox';
@@ -236,15 +237,12 @@ export function StepCompetencyModeling({
                   />
                 </td>
                 <td className="border border-border p-1 text-center align-top">
-                  <button
-                    type="button"
-                    onClick={() => removeRow(idx)}
+                  <ConfirmRemoveRowButton
+                    title={`역량 행을 삭제하시겠습니까?`}
+                    ariaLabel={`역량 삭제 ${idx + 1}`}
                     disabled={readOnly || rows.length <= 1}
-                    aria-label={`역량 삭제 ${idx + 1}`}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                    onConfirm={() => removeRow(idx)}
+                  />
                 </td>
               </tr>
             ))}

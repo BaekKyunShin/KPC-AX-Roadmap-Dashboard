@@ -95,6 +95,9 @@ describe('StepCompetencyModeling', () => {
       />,
     );
     fireEvent.click(screen.getByLabelText('역량 삭제 2'));
+    // #1 H5·H3 — AlertDialog 노출 검증 후 삭제 확인
+    expect(screen.getByText(/역량 행을 삭제하시겠습니까/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     const call = onChange.mock.calls[0][0] as StepCompetencyModelingValue;
     expect(call.competencies).toHaveLength(2);
     expect(call.competencies.map((c) => c.name)).toEqual(['A', 'C']);

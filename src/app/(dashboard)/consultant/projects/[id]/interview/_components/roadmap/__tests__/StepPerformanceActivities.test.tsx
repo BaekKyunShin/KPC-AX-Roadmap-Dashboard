@@ -108,7 +108,7 @@ describe('StepPerformanceActivities', () => {
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
   });
 
-  it('"차수 삭제" 클릭 시 해당 차수가 제거된 상태로 onChange 가 호출된다', () => {
+  it('"차수 삭제" 클릭 → AlertDialog "삭제" 확인 후 onChange 호출 (#1 H5·H3 비가역 보호)', () => {
     const onChange = vi.fn();
     render(
       <StepPerformanceActivities
@@ -121,9 +121,28 @@ describe('StepPerformanceActivities', () => {
       />,
     );
     fireEvent.click(screen.getByLabelText('차수 삭제 2'));
+    // AlertDialog 노출 검증 + 삭제 확인
+    expect(screen.getByText(/2차 행을 삭제하시겠습니까/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     const call = onChange.mock.calls[0][0] as RoadmapPerformanceActivity[];
     expect(call).toHaveLength(2);
     expect(call.map((r) => r.pmName)).toEqual(['A', 'C']);
+  });
+
+  it('"차수 삭제" → AlertDialog "취소" 클릭 시 onChange 미호출 (행 보존)', () => {
+    const onChange = vi.fn();
+    render(
+      <StepPerformanceActivities
+        value={[
+          emptyActivity({ round: 1, pmName: 'A' }),
+          emptyActivity({ round: 2, pmName: 'B' }),
+        ]}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('차수 삭제 2'));
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('마지막 1차수만 남으면 "차수 삭제" 버튼이 비활성화된다', () => {
