@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { AlertTriangle, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { showErrorToast } from '@/lib/utils';
 import { triggerResultRegenerationFromReview } from '../actions';
@@ -58,7 +58,11 @@ export function StaleResultBanner({
         showErrorToast('재생성 트리거 실패', result.error ?? '잠시 후 다시 시도해주세요.');
         return;
       }
-      router.push(result.data?.resultPath ?? `/consultant/projects/${projectId}/${track === 'PBL' ? 'pbl' : 'roadmap'}`);
+      // #5 H2·H4·H7 — ?regenerate=open 쿼리로 결과 페이지가 진입 시 RegenerateAccordion 자동 펼침 + textarea 포커스.
+      const targetPath =
+        result.data?.resultPath ??
+        `/consultant/projects/${projectId}/${track === 'PBL' ? 'pbl' : 'roadmap'}`;
+      router.push(`${targetPath}?regenerate=open`);
     });
   }
 
@@ -92,9 +96,9 @@ export function StaleResultBanner({
             {isPending ? (
               <Loader2 className="mr-1 size-4 animate-spin" />
             ) : (
-              <RefreshCw className="mr-1 size-4" />
+              <Plus className="mr-1 size-4" />
             )}
-            결과 재생성하기
+            새 버전 생성
           </Button>
           <Button
             type="button"

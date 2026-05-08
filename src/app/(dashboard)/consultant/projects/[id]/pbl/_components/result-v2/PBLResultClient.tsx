@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
@@ -108,6 +109,20 @@ export function PBLResultClient({
   const [downloadLoading, setDownloadLoading] = useState<DownloadType | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
 
+  // #5 H2·H4·H7 — 검토 페이지 「새 버전 생성」 클릭 시 ?regenerate=open 으로 진입.
+  // RegenerateAccordion 자동 펼침 + textarea 포커스 + 부드러운 스크롤. ROADMAP 트랙과 동일 패턴.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isRegenerateRequested = searchParams?.get('regenerate') === 'open';
+  const accordionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isRegenerateRequested && accordionRef.current) {
+      accordionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      router.replace(pathname);
+    }
+  }, [isRegenerateRequested, router, pathname]);
+
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
   const isFinal = selectedVersion?.status === 'FINAL';
@@ -211,13 +226,17 @@ export function PBLResultClient({
         </div>
 
         {capabilities.showRegenerate && (
-          <RegenerateAccordion
-            value={revisionPrompt}
-            onChange={setRevisionPrompt}
-            onSubmit={handleRegenerate}
-            isLoading={isGenerating}
-            disabled={!canGeneratePbl}
-          />
+          <div ref={accordionRef}>
+            <RegenerateAccordion
+              value={revisionPrompt}
+              onChange={setRevisionPrompt}
+              onSubmit={handleRegenerate}
+              isLoading={isGenerating}
+              disabled={!canGeneratePbl}
+              defaultOpen={isRegenerateRequested}
+              autoFocus={isRegenerateRequested}
+            />
+          </div>
         )}
 
         {/* PR5 (R6 spec) — FINAL in-place 수정 안내 배너 */}

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-// next/navigation — ResultTabs 가 useSearchParams / useRouter 사용
+// next/navigation — ResultTabs / RoadmapResultClient 가 useSearchParams / useRouter / usePathname 사용
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -12,6 +12,7 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/consultant/projects/p1/roadmap',
 }));
 
 // ShareToggle — Server Action 의존 모킹 (OPS FINAL 상태에서만 렌더되는 경로 검증용)

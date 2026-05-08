@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,10 @@ interface RegenerateAccordionProps {
   onSubmit: () => void;
   isLoading: boolean;
   disabled?: boolean;
+  /** #5 H2·H7 — 검토 페이지에서 ?regenerate=open 진입 시 자동 펼침. */
+  defaultOpen?: boolean;
+  /** #5 H7 — defaultOpen=true 와 함께 textarea 에 자동 포커스. */
+  autoFocus?: boolean;
 }
 
 export function RegenerateAccordion({
@@ -20,8 +24,20 @@ export function RegenerateAccordion({
   onSubmit,
   isLoading,
   disabled,
+  defaultOpen = false,
+  autoFocus = false,
 }: RegenerateAccordionProps) {
-  const [open, setOpen] = useState(false);
+  // #5 — defaultOpen 은 마운트 시점만 평가. URL cleanup(?regenerate=open 제거) 후
+  // 재렌더에서도 open 상태는 useState 가 유지하므로 의도적 동작.
+  const [open, setOpen] = useState(defaultOpen);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // #5 — 펼친 직후 textarea 포커스. autoFocus 가 true 이고 펼친 상태일 때만.
+  useEffect(() => {
+    if (autoFocus && open) {
+      textareaRef.current?.focus();
+    }
+  }, [autoFocus, open]);
   return (
     <div className="rounded-lg border border-border bg-background">
       <Button
@@ -54,6 +70,7 @@ export function RegenerateAccordion({
               수정 요청 사항 (선택)
             </Label>
             <Textarea
+              ref={textareaRef}
               id="regenerate-prompt"
               rows={8}
               value={value}

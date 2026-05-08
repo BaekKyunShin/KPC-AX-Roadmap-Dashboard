@@ -2,8 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { StaleResultBanner } from '../StaleResultBanner';
 
+const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 vi.mock('../../actions', () => ({
@@ -101,6 +102,42 @@ describe('StaleResultBanner', () => {
     );
     await user.click(screen.getByTestId('stale-result-banner-regenerate'));
     expect(triggerResultRegenerationFromReview).toHaveBeenCalledWith(projectId, 'ROADMAP');
+  });
+
+  it('#5 H2·H4 — 버튼 라벨이 「새 버전 생성」 (결과 페이지 RegenerateAccordion 과 통일)', () => {
+    render(
+      <StaleResultBanner
+        projectId={projectId}
+        track="ROADMAP"
+        interviewUpdatedAt="2026-04-30T14:00:00Z"
+        resultCreatedAt="2026-04-29T09:00:00Z"
+      />,
+    );
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeInTheDocument();
+    // 옛 라벨이 잔존하지 않음 회귀 검증
+    expect(screen.queryByRole('button', { name: /결과 재생성하기/ })).not.toBeInTheDocument();
+  });
+
+  it('#5 H7 — 버튼 클릭 시 router.push 가 ?regenerate=open 쿼리 포함해 호출됨', async () => {
+    mockPush.mockClear();
+    const userEvent = (await import('@testing-library/user-event')).default;
+    const user = userEvent.setup();
+    const { triggerResultRegenerationFromReview } = await import('../../actions');
+    vi.mocked(triggerResultRegenerationFromReview).mockResolvedValueOnce({
+      success: true,
+      data: { resultPath: '/consultant/projects/p-1/roadmap' },
+    });
+
+    render(
+      <StaleResultBanner
+        projectId={projectId}
+        track="ROADMAP"
+        interviewUpdatedAt="2026-04-30T14:00:00Z"
+        resultCreatedAt="2026-04-29T09:00:00Z"
+      />,
+    );
+    await user.click(screen.getByTestId('stale-result-banner-regenerate'));
+    expect(mockPush).toHaveBeenCalledWith('/consultant/projects/p-1/roadmap?regenerate=open');
   });
 
   it('[결과 재생성하기] 실패 시 에러 토스트 (push 호출 안 됨)', async () => {

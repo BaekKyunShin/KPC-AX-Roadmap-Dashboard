@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
@@ -131,6 +132,21 @@ export function RoadmapResultClient({
   const [revisionPrompt, setRevisionPrompt] = useState('');
   // #2 — 최종 확정 AlertDialog 노출 상태. window.confirm 대체.
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // #5 H2·H4·H7 — 검토 페이지 「새 버전 생성」 클릭 시 ?regenerate=open 으로 진입.
+  // 결과 페이지가 쿼리를 감지해 RegenerateAccordion 자동 펼침 + textarea 포커스 + 부드러운 스크롤.
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isRegenerateRequested = searchParams?.get('regenerate') === 'open';
+  const accordionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isRegenerateRequested && accordionRef.current) {
+      accordionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // URL cleanup — 새로고침 시 또 펼치지 않게 쿼리 제거 (히스토리 누적 방지).
+      router.replace(pathname);
+    }
+  }, [isRegenerateRequested, router, pathname]);
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
@@ -288,12 +304,16 @@ export function RoadmapResultClient({
          * 생성용). versions=0 일 때는 EmptyState 안의 큰 버튼으로 최초 생성 흐름을 유도.
          */}
         {capabilities.showRegenerate && hasVersions && (
-          <RegenerateAccordion
-            value={revisionPrompt}
-            onChange={setRevisionPrompt}
-            onSubmit={handleRegenerate}
-            isLoading={isGenerating}
-          />
+          <div ref={accordionRef}>
+            <RegenerateAccordion
+              value={revisionPrompt}
+              onChange={setRevisionPrompt}
+              onSubmit={handleRegenerate}
+              isLoading={isGenerating}
+              defaultOpen={isRegenerateRequested}
+              autoFocus={isRegenerateRequested}
+            />
+          </div>
         )}
 
         {/* PR5 (R6 spec) — FINAL in-place 수정 안내 배너 */}
