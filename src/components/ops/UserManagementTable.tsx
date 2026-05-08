@@ -294,6 +294,37 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
   const hasFilters = !!debouncedSearch || roleFilter !== DEFAULT_FILTER_VALUE || statusFilter !== DEFAULT_FILTER_VALUE;
   const isFilteredEmpty = filtered.length === 0 && users.length > 0;
 
+  // #4 H1·H7 — 검색·필터 0건일 때 한 영역으로 통합된 EmptyState. 데스크톱·모바일 두 분기에서 재사용.
+  const renderFilteredEmptyState = () => {
+    const titleText = debouncedSearch
+      ? `'${debouncedSearch}'과(와) 일치하는 사용자가 없습니다`
+      : '조건과 일치하는 사용자가 없습니다';
+    const filterParts = [
+      selectedRoleLabel ? `역할: ${selectedRoleLabel}` : null,
+      selectedStatusLabel ? `상태: ${selectedStatusLabel}` : null,
+    ].filter((s): s is string => s !== null);
+    const descriptionText = filterParts.length > 0
+      ? `현재 적용된 필터: ${filterParts.join(', ')}`
+      : undefined;
+    const handleResetAll = () => {
+      setSearchInput('');
+      handleRoleChange(DEFAULT_FILTER_VALUE);
+      handleStatusChange(DEFAULT_FILTER_VALUE);
+    };
+    return (
+      <EmptyState
+        icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+        title={titleText}
+        description={descriptionText}
+        action={
+          <Button variant="outline" size="sm" onClick={handleResetAll}>
+            필터 초기화
+          </Button>
+        }
+      />
+    );
+  };
+
   const scrollPositionRef = useRef<number | null>(null);
 
   // users prop이 갱신되면 로딩 상태 해제 (React 권장 패턴: props 변경 시 상태 조정)
@@ -583,11 +614,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
             {isFilteredEmpty && (
               <TableRow>
                 <TableCell colSpan={6} className="p-0">
-                  <EmptyState
-                    icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-                    title="검색 결과가 없습니다"
-                    description="검색어 또는 필터 조건을 변경해 보세요"
-                  />
+                  {renderFilteredEmptyState()}
                 </TableCell>
               </TableRow>
             )}
@@ -604,11 +631,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
               description="사용자가 회원가입을 완료하면 이 목록에 표시됩니다"
             />
           ) : isFilteredEmpty ? (
-            <EmptyState
-              icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-              title="검색 결과가 없습니다"
-              description="검색어 또는 필터 조건을 변경해 보세요"
-            />
+            renderFilteredEmptyState()
           ) : (
             pagedUsers.map((user) => (
               <UserMobileCard

@@ -322,11 +322,28 @@ describe('UserManagementTable', () => {
       expect(getTable().queryByText('사용자12')).not.toBeInTheDocument();
     });
 
-    it('검색 결과 0건일 때 검색 결과 EmptyState 가 노출된다', async () => {
+    it('검색만 0건일 때 EmptyState title 에 검색어 노출 + 「필터 초기화」 버튼', async () => {
       const user = (await import('@testing-library/user-event')).default.setup();
       render(<UserManagementTable users={makeUsers()} />);
-      await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), '존재하지않는검색어ZZZ');
-      expect(screen.getAllByText(/검색 결과가 없습니다/).length).toBeGreaterThan(0);
+      await user.type(screen.getByPlaceholderText(/이름·이메일·전화번호/), '존재없음ZZZ');
+      // title 에 검색어가 따옴표로 명시되고, 필터가 비었으므로 description 미노출
+      expect(screen.getAllByText(/'존재없음ZZZ'과\(와\) 일치하는 사용자가 없습니다/).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/현재 적용된 필터/)).not.toBeInTheDocument();
+      // 「필터 초기화」 버튼 노출
+      expect(screen.getAllByRole('button', { name: '필터 초기화' }).length).toBeGreaterThan(0);
+    });
+
+    it('「필터 초기화」 클릭 → 검색어 + 역할 + 상태 동시 리셋', async () => {
+      const user = (await import('@testing-library/user-event')).default.setup();
+      render(<UserManagementTable users={makeUsers()} />);
+      const searchInput = screen.getByPlaceholderText(/이름·이메일·전화번호/);
+      await user.type(searchInput, '존재없음ZZZ');
+      const resetButtons = screen.getAllByRole('button', { name: '필터 초기화' });
+      await user.click(resetButtons[0]);
+      // 검색 input 비워짐
+      expect((searchInput as HTMLInputElement).value).toBe('');
+      // 0건 EmptyState 사라지고 사용자 목록 다시 노출
+      expect(screen.queryByText(/일치하는 사용자가 없습니다/)).not.toBeInTheDocument();
     });
 
     it('총 사용자 수 캡션이 페이지 정보와 함께 노출된다', () => {
