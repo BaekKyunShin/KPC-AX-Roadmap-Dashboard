@@ -302,6 +302,41 @@ describe('ProjectList', () => {
       });
       expect(screen.queryByLabelText('필터 초기화')).not.toBeInTheDocument();
     });
+
+    it('카드 필터만 활성 상태에서 EmptyState "필터 초기화" 클릭 시 onResetCardFilter 콜백이 호출된다', async () => {
+      setupMocks({ projects: [], total: 0, totalPages: 0 });
+      const onResetCardFilter = vi.fn();
+      render(
+        <ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />
+      );
+      await waitFor(() => {
+        expect(screen.getByText('검색 조건에 맞는 프로젝트가 없습니다')).toBeInTheDocument();
+      });
+      // EmptyState 내부 outline 버튼 — 텍스트 자식 "필터 초기화"
+      // (상단 ghost icon 버튼은 aria-label만 있고 텍스트 자식 없음 → getByText로 매칭 안 됨)
+      const emptyStateBtn = screen.getByText('필터 초기화');
+      await act(async () => {
+        fireEvent.click(emptyStateBtn);
+      });
+      expect(onResetCardFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it('카드 필터만 활성 상태에서 상단 x 아이콘 버튼 클릭 시 onResetCardFilter 콜백이 호출된다', async () => {
+      setupMocks({ projects: [], total: 0, totalPages: 0 });
+      const onResetCardFilter = vi.fn();
+      render(
+        <ProjectList statusFilter={['NEW']} onResetCardFilter={onResetCardFilter} />
+      );
+      await waitFor(() => {
+        expect(screen.getByLabelText('필터 초기화')).toBeInTheDocument();
+      });
+      // 상단 ghost icon 버튼 — aria-label="필터 초기화"
+      const xBtn = screen.getByLabelText('필터 초기화');
+      await act(async () => {
+        fireEvent.click(xBtn);
+      });
+      expect(onResetCardFilter).toHaveBeenCalledTimes(1);
+    });
   });
 
   // --------------------------------------------------------------------------
