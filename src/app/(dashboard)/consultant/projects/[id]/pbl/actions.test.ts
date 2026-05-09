@@ -639,6 +639,8 @@ describe('generatePBLAction', () => {
     adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
     // consultantProfile
     adminMock.addResult({ data: null, error: null });
+    // self_assessments
+    adminMock.addResult({ data: null, error: null });
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await generatePBLAction(PROJECT_ID);
@@ -664,6 +666,8 @@ describe('generatePBLAction', () => {
     });
     adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
     // consultantProfile
+    adminMock.addResult({ data: null, error: null });
+    // self_assessments
     adminMock.addResult({ data: null, error: null });
     // projects.update (상태 전이)
     adminMock.addResult({ data: null, error: null });
@@ -696,7 +700,11 @@ describe('generatePBLAction', () => {
       error: null,
     });
     adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
+    // consultantProfile
     adminMock.addResult({ data: null, error: null });
+    // self_assessments
+    adminMock.addResult({ data: null, error: null });
+    // projects.update (상태 전이)
     adminMock.addResult({ data: null, error: null });
 
     await generatePBLAction(PROJECT_ID, '더 자세하게 작성해 주세요');
@@ -723,6 +731,9 @@ describe('generatePBLAction', () => {
       error: null,
     });
     adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
+    // consultantProfile
+    adminMock.addResult({ data: null, error: null });
+    // self_assessments
     adminMock.addResult({ data: null, error: null });
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

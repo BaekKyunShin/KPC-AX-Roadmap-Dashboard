@@ -301,6 +301,16 @@ export async function generatePBLAction(
       consultantProfile = (profile as ConsultantProfile | null) ?? null;
     }
 
+    // 사전 자가진단 조회 — 있으면 LLM 프롬프트에 점수 JSON 으로 주입 (로드맵과 동일 패턴).
+    // 없어도 PBL 생성을 차단하지 않는다(기존 워크플로우 호환).
+    const { data: selfAssessmentRow } = await adminSupabase
+      .from('self_assessments')
+      .select('scores')
+      .eq('project_id', projectId)
+      .maybeSingle();
+    const selfAssessment =
+      (selfAssessmentRow as { scores?: unknown } | null) ?? null;
+
     // 진단 요약 구성 (인터뷰 기반 간단 요약)
     const courseOverview =
       (pblDataValidation.data.courseOverview ?? {}) as { course_name?: string; training_job?: string };
@@ -324,6 +334,7 @@ export async function generatePBLAction(
         diagnosisSummary,
         revisionPrompt,
         signal: abortController.signal,
+        selfAssessment,
       });
 
       // DRAFT 저장

@@ -4,6 +4,9 @@ import {
   type AttachmentMeta,
   formatAttachmentBody,
 } from '../attachment-prompt';
+// STT 인사이트 포맷터 — 두 키(stt_insights/sttInsights) 모두 인식하도록 일반화됨.
+// 로드맵·PBL 양쪽에서 재사용.
+import { buildSttInsightsSection } from '../roadmap/roadmap-stt-formatter';
 
 // ISSUE-14 PBL 확장: Ⅱ-3-가 기업HRD이음컨설팅 결과 보고서 첨부를 프롬프트에 주입
 function buildPBLHrdAttachmentSection(
@@ -269,6 +272,10 @@ export function buildPBLSystemPrompt(): string {
 
 /**
  * 사용자 프롬프트 (입력 데이터 포함)
+ *
+ * @param selfAssessment 기업이 입력한 사전 자가진단 행 (`self_assessments` 테이블).
+ *   `scores` JSONB(역량별 점수) 를 LLM 프롬프트에 그대로 주입한다. 로드맵 측과
+ *   동일한 패턴 — `null/undefined` 일 때는 자가진단 결과 섹션을 렌더하지 않는다.
  */
 export function buildPBLUserPrompt(
   interview: Record<string, unknown>,
@@ -276,6 +283,7 @@ export function buildPBLUserPrompt(
   consultantProfile: ConsultantProfile | null,
   diagnosisSummary: string,
   revisionPrompt?: string,
+  selfAssessment?: { scores?: unknown } | null,
 ): string {
   // 인터뷰 섹션 안전 추출
   const courseOverview = (interview.courseOverview ?? {}) as Record<string, unknown>;
@@ -304,7 +312,11 @@ export function buildPBLUserPrompt(
 ## 진단 요약
 
 ${diagnosisSummary}
-
+${
+  selfAssessment
+    ? `\n## 자가진단 결과\n\n${JSON.stringify(selfAssessment.scores ?? {}, null, 2)}\n`
+    : ''
+}
 ## Ⅰ. 훈련과정 개요
 
 - 과정명: ${courseOverview.course_name ?? '미입력'}
@@ -336,6 +348,7 @@ ${diagnosisSummary}
 
 - 과정개발 필요성: ${hrdNecessity.course_development_necessity ?? '미입력'}
 - 훈련 이력: ${JSON.stringify(hrdNecessity.training_history ?? [], null, 2)}
+- 지원 이력 (연도별 한도/실집행/비율): ${JSON.stringify(hrdNecessity.support_history ?? [], null, 2)}
 - 추천 사업: ${JSON.stringify(hrdNecessity.recommendations ?? [], null, 2)}
 ${buildPBLHrdAttachmentSection(hrdNecessity)}
 ## Ⅲ-1. 훈련과제 도출 수행활동
@@ -360,7 +373,8 @@ ${JSON.stringify(performanceActivities.performance_activities ?? [], null, 2)}
 
 - 현재 AI 수준: ${aiLevelDiagnosis.current_ai_level ?? '미입력'}
 - 향후 목표 AI 수준: ${aiLevelDiagnosis.expected_ai_level ?? '미입력'}
-- 향상 사유: ${aiLevelDiagnosis.improvement_reason ?? '미입력'}`;
+- 향상 사유: ${aiLevelDiagnosis.improvement_reason ?? '미입력'}
+${buildSttInsightsSection(interview)}`;
 
   if (consultantProfile) {
     const consultantSubIndustries = Array.isArray(consultantProfile.sub_industries)

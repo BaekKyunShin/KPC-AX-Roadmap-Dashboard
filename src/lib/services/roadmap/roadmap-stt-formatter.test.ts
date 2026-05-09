@@ -144,4 +144,32 @@ describe('buildSttInsightsSection', () => {
     expect(result).toContain('**조직 맥락:**');
     expect(result).toContain('IT 부서 인력 부족');
   });
+
+  // PBL 인터뷰 스키마(interview-pbl.ts)는 camelCase `sttInsights` 로 저장한다.
+  // 본 함수는 로드맵·PBL 양쪽에서 재사용되므로 두 명명을 모두 인식해야 한다.
+  it('camelCase sttInsights 키도 인식한다 (PBL 호환)', () => {
+    const interview = {
+      sttInsights: {
+        AI_태도: 'PBL 도입에 적극적',
+      },
+    };
+
+    const result = buildSttInsightsSection(interview);
+
+    expect(result).toContain('### STT 인터뷰 분석 인사이트');
+    expect(result).toContain('**AI 도입에 대한 태도:**');
+    expect(result).toContain('PBL 도입에 적극적');
+  });
+
+  it('두 키가 동시에 있으면 stt_insights(snake_case)를 우선 사용한다', () => {
+    const interview = {
+      stt_insights: { AI_태도: 'snake 우선' },
+      sttInsights: { AI_태도: 'camel 무시' },
+    };
+
+    const result = buildSttInsightsSection(interview);
+
+    expect(result).toContain('snake 우선');
+    expect(result).not.toContain('camel 무시');
+  });
 });
