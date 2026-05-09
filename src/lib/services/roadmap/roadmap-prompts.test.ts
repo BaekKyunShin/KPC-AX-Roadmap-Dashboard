@@ -653,6 +653,43 @@ describe('buildUserPrompt', () => {
     expect(prompt).toContain('워크숍사진.png');
     expect(prompt).toContain('본문 추출 실패');
   });
+
+  // 분석 노트 본문(text) — 컨설턴트가 직접 작성한 종합 분석 메모.
+  // 첨부 파일과 별개로 LLM 프롬프트에 반드시 포함되어야 한다.
+  it('analysis_notes.text 본문이 프롬프트에 포함된다', () => {
+    const interview = makeInterview({
+      analysis_notes: {
+        text: '컨설턴트 종합 분석: 데이터 인프라 미흡, 우선순위는 비전검사 자동화',
+        attachment_files: [],
+      },
+    });
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      interview,
+      null,
+    );
+
+    expect(prompt).toContain('분석 노트');
+    expect(prompt).toContain(
+      '컨설턴트 종합 분석: 데이터 인프라 미흡, 우선순위는 비전검사 자동화',
+    );
+  });
+
+  it('analysis_notes.text 가 빈 문자열이면 본문 섹션이 렌더되지 않는다', () => {
+    const interview = makeInterview({
+      analysis_notes: { text: '', attachment_files: [] },
+    });
+    const prompt = buildUserPrompt(
+      makeProjectData(),
+      makeSelfAssessmentData(),
+      interview,
+      null,
+    );
+
+    // text 가 빈 문자열인 경우 본문 라벨이 등장하지 않아야 한다.
+    expect(prompt).not.toContain('### 분석 노트 본문');
+  });
 });
 
 // ============================================================================

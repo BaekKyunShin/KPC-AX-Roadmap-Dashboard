@@ -228,4 +228,100 @@ describe('buildPBLUserPrompt', () => {
       expect(match?.[1]).not.toContain('"');
     });
   });
+
+  // PBL 인터뷰 스키마(interview-pbl.ts)는 sttInsights 를 camelCase 로 저장한다.
+  // STT 인사이트가 있으면 LLM 프롬프트에 반드시 반영되어야 한다.
+  describe('STT 인사이트 (sttInsights)', () => {
+    it('sttInsights 가 있으면 STT 인사이트 섹션이 포함된다', () => {
+      const interview = {
+        ...fakeInterview,
+        sttInsights: {
+          숨은_니즈: ['부서 간 데이터 사일로 해소'],
+          AI_태도: 'PBL 도입에 적극적이나 학습 부담 우려',
+          주요_인용: ['"우리도 ChatGPT를 써보고 싶다"'],
+        },
+      };
+      const result = buildPBLUserPrompt(interview, {}, null, '요약');
+      expect(result).toContain('### STT 인터뷰 분석 인사이트');
+      expect(result).toContain('**숨은 니즈:**');
+      expect(result).toContain('부서 간 데이터 사일로 해소');
+      expect(result).toContain('PBL 도입에 적극적이나 학습 부담 우려');
+    });
+
+    it('sttInsights 가 없으면 STT 섹션이 렌더되지 않는다', () => {
+      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
+      expect(result).not.toContain('### STT 인터뷰 분석 인사이트');
+    });
+  });
+
+  // 자가진단 점수 — 로드맵과 동일하게 기업이 사전 입력한 점수를 LLM 에 전달한다.
+  // 5번째 인자 selfAssessment 로 받아 scores JSON 을 프롬프트에 직접 출력한다.
+  describe('자가진단 결과 (selfAssessment)', () => {
+    it('selfAssessment.scores 가 있으면 자가진단 결과 섹션이 포함된다', () => {
+      const selfAssessment = {
+        scores: {
+          data_capability: 3,
+          ai_awareness: 4,
+          process_maturity: 2,
+        },
+      };
+      const result = buildPBLUserPrompt(
+        fakeInterview,
+        {},
+        null,
+        '요약',
+        undefined,
+        selfAssessment,
+      );
+      expect(result).toContain('자가진단 결과');
+      expect(result).toContain('"data_capability"');
+      expect(result).toContain('"ai_awareness"');
+      expect(result).toContain('"process_maturity"');
+    });
+
+    it('selfAssessment 가 없으면 자가진단 결과 섹션이 렌더되지 않는다', () => {
+      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
+      expect(result).not.toContain('## 자가진단 결과');
+    });
+
+    it('selfAssessment.scores 가 빈 객체여도 섹션이 렌더된다(객체 형태로)', () => {
+      const result = buildPBLUserPrompt(
+        fakeInterview,
+        {},
+        null,
+        '요약',
+        undefined,
+        { scores: {} },
+      );
+      expect(result).toContain('## 자가진단 결과');
+    });
+  });
+
+  // hrdNecessity.support_history (Ⅱ-3 정부 지원 이력) — recommended_program 추천
+  // 정확도에 영향. 기존에 누락 → 본 PR 에서 프롬프트에 추가.
+  describe('hrdNecessity.support_history (정부 지원 이력)', () => {
+    it('support_history 가 있으면 지원 이력 섹션이 포함된다', () => {
+      const interview = {
+        ...fakeInterview,
+        hrdNecessity: {
+          ...fakeInterview.hrdNecessity,
+          support_history: [
+            { id: 's1', year: '2024', annual_limit: 10, supported: 8, ratio: '80%' },
+            { id: 's2', year: '2025', annual_limit: 12, supported: 5, ratio: '42%' },
+          ],
+        },
+      };
+      const result = buildPBLUserPrompt(interview, {}, null, '요약');
+      expect(result).toContain('지원 이력');
+      expect(result).toContain('"2024"');
+      expect(result).toContain('"2025"');
+      expect(result).toContain('80%');
+    });
+
+    it('support_history 가 비어있으면 빈 배열로 렌더(JSON.stringify)', () => {
+      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
+      // fakeInterview.hrdNecessity 에는 support_history 가 없으므로 빈 배열로 출력
+      expect(result).toContain('지원 이력');
+    });
+  });
 });

@@ -205,6 +205,17 @@ ${formatAttachmentBody(f)}`;
   return `\n### 분석 노트 첨부 파일 본문${blocks.join('')}`;
 }
 
+// 컨설턴트가 직접 작성한 분석 노트 본문 텍스트. 첨부 파일과 별개로
+// 인터뷰 Ⅱ-3 과업·워크플로우 분석에 대한 종합 메모를 LLM 에 전달한다.
+function buildAnalysisNotesTextSection(
+  interview: Record<string, unknown>,
+): string {
+  const an = interview.analysis_notes as { text?: string } | undefined;
+  const text = typeof an?.text === 'string' ? an.text.trim() : '';
+  if (text === '') return '';
+  return `\n### 분석 노트 본문\n${text}`;
+}
+
 /**
  * 사용자 프롬프트 (입력 데이터 포함)
  */
@@ -251,6 +262,7 @@ ${JSON.stringify(interview.competency_models ?? [], null, 2)}
 
 ### NCS 활용 — 컨설턴트 입력 (Ⅲ-1) — 인터뷰 설정 그대로 반영
 ${JSON.stringify(interview.ncs_usage ?? null, null, 2)}
+${buildAnalysisNotesTextSection(interview)}
 ${buildAnalysisNotesAttachmentSection(interview)}
 ### 추가 메모
 ${interview.notes || '없음'}

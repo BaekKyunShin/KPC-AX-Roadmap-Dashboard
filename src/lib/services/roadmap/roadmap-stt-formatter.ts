@@ -63,10 +63,14 @@ export function formatSttInsights(insights: SttInsights): string {
 }
 
 /**
- * 인터뷰 데이터에서 STT 인사이트 섹션 생성
+ * 인터뷰 데이터에서 STT 인사이트 섹션 생성.
+ * 로드맵 인터뷰는 `stt_insights`(snake_case), PBL 인터뷰는 `sttInsights`(camelCase)
+ * 로 저장하므로 두 키 모두 인식한다. 둘 다 있으면 snake_case 가 우선.
  */
 export function buildSttInsightsSection(interview: Record<string, unknown>): string {
-  const sttInsights = interview.stt_insights;
+  const sttInsights = isSttInsights(interview.stt_insights)
+    ? interview.stt_insights
+    : interview.sttInsights;
 
   if (!isSttInsights(sttInsights)) {
     return '';

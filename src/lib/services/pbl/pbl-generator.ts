@@ -32,6 +32,8 @@ export interface GeneratePBLContentInput {
   diagnosisSummary: string;
   revisionPrompt?: string;
   signal?: AbortSignal;
+  /** 사전 자가진단 행 — `self_assessments.scores` 를 LLM 프롬프트에 주입한다. */
+  selfAssessment?: { scores?: unknown } | null;
 }
 
 export interface GeneratePBLContentResult {
@@ -55,6 +57,7 @@ export async function generatePBLContent(
     input.consultantProfile,
     input.diagnosisSummary,
     input.revisionPrompt,
+    input.selfAssessment ?? null,
   );
 
   let lastError: unknown = null;
