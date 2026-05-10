@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import type { SimpleActionResult } from '@/lib/types/action-result';
 import { showErrorToast, showSuccessToast, scrollToElement, scrollToFirstError } from '@/lib/utils';
 import { consultantProfileSchema } from '@/lib/schemas/user';
@@ -67,6 +68,8 @@ export default function ProfileForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // 미저장 변경 추적 — 텍스트 input(uncontrolled)은 <form onInput>, 다중 선택은 useEffect 로 감지
+  const [isDirty, setIsDirty] = useState(false);
 
   // 선택된 값들을 상태로 관리
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
@@ -79,6 +82,17 @@ export default function ProfileForm({
   const [selectedLevels, setSelectedLevels] = useState<string[]>(profile?.teaching_levels || []);
   const [selectedMethods, setSelectedMethods] = useState<string[]>(profile?.coaching_methods || []);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile?.skill_tags || []);
+
+  // 미저장 상태에서 페이지 이탈 시도 시 브라우저 기본 경고 — 운영자 템플릿 편집과 동일 보호 패턴
+  useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
+
+  // 다중 선택 6종 변경 감지 — setter 호출 시점에 isDirty=true 로 표시 (텍스트 input 은 form onInput 으로 처리)
+  const handleIndustriesChange = (next: string[]) => { setSelectedIndustries(next); setIsDirty(true); };
+  const handleSubIndustriesChange = (next: string[]) => { setSubIndustries(next); setIsDirty(true); };
+  const handleDomainsChange = (next: string[]) => { setSelectedDomains(next); setIsDirty(true); };
+  const handleLevelsChange = (next: string[]) => { setSelectedLevels(next); setIsDirty(true); };
+  const handleMethodsChange = (next: string[]) => { setSelectedMethods(next); setIsDirty(true); };
+  const handleTagsChange = (next: string[]) => { setSelectedTags(next); setIsDirty(true); };
 
   // 파생 상태
   const isRegistrationMode = variant === 'registration';
@@ -162,6 +176,7 @@ export default function ProfileForm({
 
       if (result.success) {
         setFormStatus('completed');
+        setIsDirty(false); // 저장 성공 — beforeunload 가드 해제 (성공 라우팅 시 경고 차단)
 
         if (isRegistrationMode) {
           setSuccess('가입이 완료되었습니다. 승인 후 서비스를 이용하실 수 있습니다.');
@@ -263,7 +278,12 @@ export default function ProfileForm({
           <CardDescription>{uiText.cardDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} noValidate className="space-y-9">
+          <form
+            onSubmit={handleSubmit}
+            onInput={() => setIsDirty(true)}
+            noValidate
+            className="space-y-9"
+          >
             {/* 회원가입 완료 알림 */}
             {showRegistrationAlert && (
               <Alert className="bg-blue-50 border-blue-200">
@@ -305,7 +325,7 @@ export default function ProfileForm({
                 description="AI 훈련/코칭을 수행할 수 있는 산업을 선택해주세요."
                 options={INDUSTRIES}
                 selected={selectedIndustries}
-                onSelectionChange={setSelectedIndustries}
+                onSelectionChange={handleIndustriesChange}
                 color="blue"
               />
               <FieldError message={fieldErrors.available_industries} />
@@ -323,7 +343,7 @@ export default function ProfileForm({
               </div>
               <TagInput
                 value={subIndustries}
-                onChange={setSubIndustries}
+                onChange={handleSubIndustriesChange}
                 placeholder="세부 업종 입력 후 Enter 또는 추가 버튼"
                 maxTags={SUB_INDUSTRY_CONSTRAINTS.maxTags}
                 maxLength={SUB_INDUSTRY_CONSTRAINTS.maxLength}
@@ -338,7 +358,7 @@ export default function ProfileForm({
                 description="AI를 활용해 개선할 수 있는 업무 영역을 선택해주세요."
                 options={EXPERTISE_DOMAINS}
                 selected={selectedDomains}
-                onSelectionChange={setSelectedDomains}
+                onSelectionChange={handleDomainsChange}
                 color="indigo"
               />
               <FieldError message={fieldErrors.expertise_domains} />
@@ -352,7 +372,7 @@ export default function ProfileForm({
                 description="교육 가능한 학습자의 AI 활용 수준을 선택해주세요."
                 options={TEACHING_LEVELS}
                 selected={selectedLevels}
-                onSelectionChange={setSelectedLevels}
+                onSelectionChange={handleLevelsChange}
                 color="emerald"
                 showOptionDescriptions
               />
@@ -367,7 +387,7 @@ export default function ProfileForm({
                 description="주로 활용하는 교육/코칭 방식을 선택해주세요."
                 options={COACHING_METHODS}
                 selected={selectedMethods}
-                onSelectionChange={setSelectedMethods}
+                onSelectionChange={handleMethodsChange}
                 color="purple"
               />
               <FieldError message={fieldErrors.coaching_methods} />
@@ -381,7 +401,7 @@ export default function ProfileForm({
                 description="본인이 보유한 핵심 역량을 모두 선택해주세요."
                 options={SKILL_TAGS}
                 selected={selectedTags}
-                onSelectionChange={setSelectedTags}
+                onSelectionChange={handleTagsChange}
                 color="amber"
               />
               <FieldError message={fieldErrors.skill_tags} />
