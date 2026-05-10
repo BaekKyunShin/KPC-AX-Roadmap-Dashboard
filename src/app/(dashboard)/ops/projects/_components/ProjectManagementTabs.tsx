@@ -77,7 +77,11 @@ export default function ProjectManagementTabs({
         </TabsList>
 
         <TabsContent value="list">
-          <ProjectList statusFilter={statusFilter} initialData={initialProjects} />
+          <ProjectList
+            statusFilter={statusFilter}
+            onResetCardFilter={() => setStatusFilter(null)}
+            initialData={initialProjects}
+          />
         </TabsContent>
 
         <TabsContent value="dashboard">

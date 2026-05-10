@@ -48,6 +48,7 @@ const SEARCH_DEBOUNCE_DELAY = 300;
 
 interface ProjectListProps {
   statusFilter?: ProjectStatus[] | null;
+  onResetCardFilter?: () => void;
   initialData?: {
     projects: ProjectWithTimeline[];
     totalPages: number;
@@ -135,7 +136,11 @@ function OpsProjectMobileCard({
   );
 }
 
-export default function ProjectList({ statusFilter, initialData = null }: ProjectListProps) {
+export default function ProjectList({
+  statusFilter,
+  onResetCardFilter,
+  initialData = null,
+}: ProjectListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
@@ -284,6 +289,7 @@ export default function ProjectList({ statusFilter, initialData = null }: Projec
     setIndustry(DEFAULT_FILTER_VALUE);
     setPage(1);
     router.replace(pathname);
+    onResetCardFilter?.();
   };
 
   // 외부 필터(카드) 또는 내부 필터(드롭다운) 활성화 여부
