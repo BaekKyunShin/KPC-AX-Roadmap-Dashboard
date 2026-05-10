@@ -124,22 +124,23 @@
 5. **개발자 구현 노트**
 
    - 변경 파일: `src/components/consultant/ProfileForm.tsx` 단일
-   - **두 가지 가드 동시 적용**:
-     1. **`useBeforeUnloadGuard(isDirty && formStatus !== 'completed')`** — 새로고침·탭 닫기·외부 이동 보호. 재사용 자산 `src/hooks/useBeforeUnloadGuard.ts` (TemplateForm 동형)
-     2. **`useEffect` 로 document-level capture-phase 클릭 핸들러** — Next.js client-side navigation 보호. `<a>` 태그 클릭 가로채 isDirty 면 `window.confirm()` 호출, 사용자가 취소 시 `e.preventDefault() + e.stopPropagation()` 로 이동 차단. 폼 내부 anchor 는 `data-profile-form-root` 속성으로 제외
-     3. **"돌아가기"·"취소" 버튼 onClick 가드** — `<Button>` 은 anchor 가 아니므로 (1)·(2) 모두 catch 못 함. `router.push(backUrl)` 호출 직전 `isDirty` 면 `window.confirm()` 호출
-   - 적용 위치: `useState` 블록 직후, `prepareFormData` 위
+   - **두 가지 가드 동시 적용 + AlertDialog 로 일관성 표준화**:
+     1. **`useBeforeUnloadGuard(isDirty && formStatus !== 'completed')`** — 새로고침·탭 닫기·외부 이동 보호 (브라우저 native beforeunload). 재사용 자산 `src/hooks/useBeforeUnloadGuard.ts` (TemplateForm 동형)
+     2. **`useEffect` 로 document-level capture-phase 클릭 핸들러** — Next.js client-side navigation 보호. `<a>` 태그 클릭 가로채 `e.preventDefault() + e.stopPropagation()` 로 이동 차단 후 `setPendingNavigation(href)` 로 AlertDialog 노출. 폼 내부 anchor 는 `data-profile-form-root="true"` 속성으로 제외
+     3. **"돌아가기"·"취소" 버튼 onClick 가드** — `<Button>` 은 anchor 가 아니므로 (2) 가 catch 못 함. `guardedNavigate(url)` wrapper 가 isDirty 시 `setPendingNavigation(url)` 로 AlertDialog 노출, idle 시 즉시 `router.push(url)`
+     4. **`<AlertDialog>` (shadcn/ui Radix)** — `window.confirm()` 시스템 팝업 대신 시스템 표준 모달. 본 시스템의 다른 비가역 액션 확인(사용자 정지·템플릿 삭제·로드맵 FINAL 확정 등)과 동일 컴포넌트로 H4 일관성 확보. 사용자 「확인」 → `handleConfirmLeave` 가 `setIsDirty(false) + router.push(pendingNavigation)`, 「취소」 → `setPendingNavigation(null)` 로 머무름
+   - 적용 위치: `useState` 블록 직후, `prepareFormData` 위 + form 닫는 태그 뒤에 `<AlertDialog>` JSX
    - 짧은 코드 스케치:
 
      ```tsx
      import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
+     import { AlertDialog, AlertDialogAction, AlertDialogCancel, ... } from '@/components/ui/alert-dialog';
 
      const [isDirty, setIsDirty] = useState(false);
+     const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
-     // (나) 새로고침·탭 닫기 보호 — TemplateForm 동형
      useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
 
-     // (가) Next.js client-side navigation 보호 — document capture click
      useEffect(() => {
        if (!isDirty || formStatus === 'completed') return;
        const handler = (e: MouseEvent) => {
@@ -147,29 +148,49 @@
          if (!anchor) return;
          const href = anchor.getAttribute('href');
          if (!href || href.startsWith('#') || anchor.target === '_blank') return;
-         if (anchor.closest('[data-profile-form-root]')) return; // 폼 내부 제외
-         if (window.confirm('이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?')) return;
+         if (anchor.closest('[data-profile-form-root="true"]')) return;
          e.preventDefault();
          e.stopPropagation();
+         setPendingNavigation(href);
        };
        document.addEventListener('click', handler, { capture: true });
        return () => document.removeEventListener('click', handler, { capture: true });
      }, [isDirty, formStatus]);
 
-     // (가') "돌아가기"·"취소" 버튼 가드 — anchor 가 아닌 Button onClick 우회로
      const guardedNavigate = (url: string) => {
-       if (isDirty && formStatus !== 'completed' &&
-           !window.confirm('이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?')) {
+       if (isDirty && formStatus !== 'completed') {
+         setPendingNavigation(url);
          return;
        }
        router.push(url);
      };
+
+     const handleConfirmLeave = () => {
+       const url = pendingNavigation;
+       setPendingNavigation(null);
+       setIsDirty(false);
+       if (url) router.push(url);
+     };
+
+     // JSX
+     <AlertDialog open={pendingNavigation !== null} onOpenChange={(o) => !o && setPendingNavigation(null)}>
+       <AlertDialogContent>
+         <AlertDialogHeader>
+           <AlertDialogTitle>변경사항이 저장되지 않을 수 있습니다</AlertDialogTitle>
+           <AlertDialogDescription>이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?</AlertDialogDescription>
+         </AlertDialogHeader>
+         <AlertDialogFooter>
+           <AlertDialogCancel>취소</AlertDialogCancel>
+           <AlertDialogAction onClick={handleConfirmLeave}>확인</AlertDialogAction>
+         </AlertDialogFooter>
+       </AlertDialogContent>
+     </AlertDialog>
      ```
 
-   - 테스트: `ProfileForm.test.tsx` 에 추가 describe — (가)·(가')·(나) 세 가지 가드 각각 검증 (총 7 케이스 권장)
-     - (나) beforeunload 리스너 등록·미등록 4 케이스
-     - (가) anchor 클릭 시 confirm 호출, 취소 시 preventDefault, OK 시 통과 3 케이스
-     - (가') "돌아가기" 클릭 시 router.push 차단/통과 검증 (선택)
+   - 테스트: `ProfileForm.test.tsx` 에 3개 describe (총 11 신규 케이스):
+     - 「미저장 이탈 경고 (useBeforeUnloadGuard)」 4 케이스 — beforeunload 리스너 등록/미등록
+     - 「Client-side navigation 가드 (AlertDialog)」 4 케이스 — anchor 클릭 시 다이얼로그 노출, 취소/확인 분기
+     - 「"돌아가기" 버튼 클라이언트 네비게이션 가드 (AlertDialog)」 3 케이스 — Button 우회로 가드
 
 ---
 

@@ -842,10 +842,10 @@ describe('ProfileForm', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 미저장 이탈 경고 — Client-side navigation 가드 (Next.js Link 클릭 차단)
-  // beforeunload 가 발화하지 않는 좌측 네비·메뉴 링크 클릭에 대한 보호
+  // 미저장 이탈 경고 — Client-side navigation 가드 (좌측 네비 anchor 클릭 차단)
+  // window.confirm 대신 시스템 표준 AlertDialog (Radix) 사용 — H4 일관성
   // ---------------------------------------------------------------------------
-  describe('Client-side navigation 가드', () => {
+  describe('Client-side navigation 가드 (AlertDialog)', () => {
     function renderWithExternalLink() {
       return render(
         <div>
@@ -857,37 +857,19 @@ describe('ProfileForm', () => {
       );
     }
 
-    it('isDirty=false 상태에서 외부 anchor 클릭 시 confirm 미호출', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('isDirty=false 상태에서 외부 anchor 클릭 시 AlertDialog 미노출', () => {
       renderWithExternalLink();
 
       const link = screen.getByTestId('external-link');
       fireEvent.click(link);
 
-      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     });
 
-    it('isDirty=true 상태에서 외부 anchor 클릭 시 confirm 호출', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('isDirty=true 상태에서 외부 anchor 클릭 시 AlertDialog 노출 + click preventDefault', () => {
       renderWithExternalLink();
 
       // 텍스트 input 변경으로 isDirty=true 진입
-      const affiliationInput = screen.getByLabelText(/소속/);
-      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
-
-      const link = screen.getByTestId('external-link');
-      fireEvent.click(link);
-
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringContaining('변경사항이 저장되지 않을 수 있습니다'),
-      );
-    });
-
-    it('isDirty=true + confirm 취소 시 click 이벤트 preventDefault', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
-      renderWithExternalLink();
-
-      // isDirty=true 진입
       const affiliationInput = screen.getByLabelText(/소속/);
       fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
 
@@ -896,40 +878,67 @@ describe('ProfileForm', () => {
 
       // fireEvent.click 반환값: preventDefault 호출 시 false
       expect(wasNotCancelled).toBe(false);
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(
+        screen.getByText('변경사항이 저장되지 않을 수 있습니다'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다/),
+      ).toBeInTheDocument();
     });
 
-    it('isDirty=true + confirm 확인 시 click 이벤트 통과', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('AlertDialog "취소" 클릭 시 다이얼로그 닫힘 + router.push 호출 안 함', async () => {
+      const user = userEvent.setup();
       renderWithExternalLink();
 
       const affiliationInput = screen.getByLabelText(/소속/);
       fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
 
       const link = screen.getByTestId('external-link');
-      const wasNotCancelled = fireEvent.click(link);
+      fireEvent.click(link);
 
-      expect(wasNotCancelled).toBe(true);
+      const cancelButton = screen.getByRole('button', { name: '취소' });
+      await user.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('AlertDialog "확인" 클릭 시 router.push 호출 (실제 이동 수행)', async () => {
+      const user = userEvent.setup();
+      renderWithExternalLink();
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
+
+      const link = screen.getByTestId('external-link');
+      fireEvent.click(link);
+
+      const confirmButton = screen.getByRole('button', { name: '확인' });
+      await user.click(confirmButton);
+
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/messages');
     });
   });
 
   // ---------------------------------------------------------------------------
   // "돌아가기" / "취소" 버튼 가드 — anchor 가 아닌 Button onClick 우회로
   // ---------------------------------------------------------------------------
-  describe('"돌아가기" 버튼 클라이언트 네비게이션 가드', () => {
-    it('isDirty=false 상태에서 "돌아가기" 클릭 시 confirm 미호출, router.push 즉시 호출', async () => {
+  describe('"돌아가기" 버튼 클라이언트 네비게이션 가드 (AlertDialog)', () => {
+    it('isDirty=false 상태에서 "돌아가기" 클릭 시 AlertDialog 미노출, router.push 즉시 호출', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       render(<ProfileForm {...defaultProps} />);
 
       await user.click(screen.getByText('돌아가기'));
 
-      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(mockPush).toHaveBeenCalledWith('/consultant/profile');
     });
 
-    it('isDirty=true 상태에서 "돌아가기" 클릭 시 confirm 호출', async () => {
+    it('isDirty=true 상태에서 "돌아가기" 클릭 시 AlertDialog 노출', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       render(<ProfileForm {...defaultProps} />);
 
       const affiliationInput = screen.getByLabelText(/소속/);
@@ -937,22 +946,21 @@ describe('ProfileForm', () => {
 
       await user.click(screen.getByText('돌아가기'));
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringContaining('변경사항이 저장되지 않을 수 있습니다'),
-      );
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it('isDirty=true + "돌아가기" + confirm 취소 시 router.push 호출 안 함', async () => {
+    it('isDirty=true + "돌아가기" + AlertDialog "확인" 클릭 시 router.push 호출', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
       render(<ProfileForm {...defaultProps} />);
 
       const affiliationInput = screen.getByLabelText(/소속/);
       await user.type(affiliationInput, 'A');
 
       await user.click(screen.getByText('돌아가기'));
+      await user.click(screen.getByRole('button', { name: '확인' }));
 
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/consultant/profile');
     });
   });
 });

@@ -15,6 +15,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import BadgeSelector from './BadgeSelector';
 import {
   INDUSTRIES,
@@ -68,8 +78,10 @@ export default function ProfileForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  // 미저장 변경 추적 — 텍스트 input(uncontrolled)은 <form onInput>, 다중 선택은 useEffect 로 감지
+  // 미저장 변경 추적 — 텍스트 input(uncontrolled)은 <form onInput>, 다중 선택은 setter wrapper 로 감지
   const [isDirty, setIsDirty] = useState(false);
+  // 미저장 이탈 시도 시 AlertDialog 노출 + 사용자 확인 시 이동할 URL 기억
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // 선택된 값들을 상태로 관리
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
@@ -87,7 +99,7 @@ export default function ProfileForm({
   useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
 
   // (가) Next.js client-side navigation 보호 — 좌측 네비·메뉴 anchor 클릭 시 이동 차단
-  // beforeunload 가 발화하지 않는 SPA 네비게이션을 capture-phase 에서 가로챈다.
+  // beforeunload 가 발화하지 않는 SPA 네비게이션을 capture-phase 에서 가로채 AlertDialog 노출.
   useEffect(() => {
     if (!isDirty || formStatus === 'completed') return;
     const handler = (e: MouseEvent) => {
@@ -97,12 +109,9 @@ export default function ProfileForm({
       if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
       if (anchor.target === '_blank') return; // 새 탭은 beforeunload 가 처리
       if (anchor.closest('[data-profile-form-root="true"]')) return; // 폼 내부 anchor 제외
-      const ok = window.confirm(
-        '이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?',
-      );
-      if (ok) return;
       e.preventDefault();
       e.stopPropagation();
+      setPendingNavigation(href);
     };
     document.addEventListener('click', handler, { capture: true });
     return () => document.removeEventListener('click', handler, { capture: true });
@@ -110,16 +119,19 @@ export default function ProfileForm({
 
   // (가') "돌아가기"·"취소" 버튼 가드 — Button 은 anchor 가 아니라 (가) 가 catch 못 함
   const guardedNavigate = (url: string) => {
-    if (
-      isDirty &&
-      formStatus !== 'completed' &&
-      !window.confirm(
-        '이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?',
-      )
-    ) {
+    if (isDirty && formStatus !== 'completed') {
+      setPendingNavigation(url);
       return;
     }
     router.push(url);
+  };
+
+  // 사용자 "확인" 클릭 시 — 가드 해제 후 실제 이동 수행
+  const handleConfirmLeave = () => {
+    const url = pendingNavigation;
+    setPendingNavigation(null);
+    setIsDirty(false);
+    if (url) router.push(url);
   };
 
   // 다중 선택 6종 변경 감지 — setter 호출 시점에 isDirty=true 로 표시 (텍스트 input 은 form onInput 으로 처리)
@@ -586,6 +598,27 @@ export default function ProfileForm({
           </form>
         </CardContent>
       </Card>
+
+      {/* 미저장 이탈 확인 다이얼로그 — window.confirm 대신 시스템 표준 AlertDialog 사용 (H4 일관성) */}
+      <AlertDialog
+        open={pendingNavigation !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingNavigation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>변경사항이 저장되지 않을 수 있습니다</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLeave}>확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
