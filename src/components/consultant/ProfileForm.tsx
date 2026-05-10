@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
+import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import type { SimpleActionResult } from '@/lib/types/action-result';
 import { showErrorToast, showSuccessToast, scrollToElement, scrollToFirstError } from '@/lib/utils';
 import { consultantProfileSchema } from '@/lib/schemas/user';
@@ -14,6 +15,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import BadgeSelector from './BadgeSelector';
 import {
   INDUSTRIES,
@@ -67,6 +78,10 @@ export default function ProfileForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // 미저장 변경 추적 — 텍스트 input(uncontrolled)은 <form onInput>, 다중 선택은 setter wrapper 로 감지
+  const [isDirty, setIsDirty] = useState(false);
+  // 미저장 이탈 시도 시 AlertDialog 노출 + 사용자 확인 시 이동할 URL 기억
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // 선택된 값들을 상태로 관리
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(
@@ -79,6 +94,53 @@ export default function ProfileForm({
   const [selectedLevels, setSelectedLevels] = useState<string[]>(profile?.teaching_levels || []);
   const [selectedMethods, setSelectedMethods] = useState<string[]>(profile?.coaching_methods || []);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile?.skill_tags || []);
+
+  // (나) 새로고침·탭 닫기·외부 사이트 이동 보호 (브라우저 beforeunload)
+  useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
+
+  // (가) Next.js client-side navigation 보호 — 좌측 네비·메뉴 anchor 클릭 시 이동 차단
+  // beforeunload 가 발화하지 않는 SPA 네비게이션을 capture-phase 에서 가로채 AlertDialog 노출.
+  useEffect(() => {
+    if (!isDirty || formStatus === 'completed') return;
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      if (anchor.target === '_blank') return; // 새 탭은 beforeunload 가 처리
+      if (anchor.closest('[data-profile-form-root="true"]')) return; // 폼 내부 anchor 제외
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingNavigation(href);
+    };
+    document.addEventListener('click', handler, { capture: true });
+    return () => document.removeEventListener('click', handler, { capture: true });
+  }, [isDirty, formStatus]);
+
+  // (가') "돌아가기"·"취소" 버튼 가드 — Button 은 anchor 가 아니라 (가) 가 catch 못 함
+  const guardedNavigate = (url: string) => {
+    if (isDirty && formStatus !== 'completed') {
+      setPendingNavigation(url);
+      return;
+    }
+    router.push(url);
+  };
+
+  // 사용자 "확인" 클릭 시 — 가드 해제 후 실제 이동 수행
+  const handleConfirmLeave = () => {
+    const url = pendingNavigation;
+    setPendingNavigation(null);
+    setIsDirty(false);
+    if (url) router.push(url);
+  };
+
+  // 다중 선택 6종 변경 감지 — setter 호출 시점에 isDirty=true 로 표시 (텍스트 input 은 form onInput 으로 처리)
+  const handleIndustriesChange = (next: string[]) => { setSelectedIndustries(next); setIsDirty(true); };
+  const handleSubIndustriesChange = (next: string[]) => { setSubIndustries(next); setIsDirty(true); };
+  const handleDomainsChange = (next: string[]) => { setSelectedDomains(next); setIsDirty(true); };
+  const handleLevelsChange = (next: string[]) => { setSelectedLevels(next); setIsDirty(true); };
+  const handleMethodsChange = (next: string[]) => { setSelectedMethods(next); setIsDirty(true); };
+  const handleTagsChange = (next: string[]) => { setSelectedTags(next); setIsDirty(true); };
 
   // 파생 상태
   const isRegistrationMode = variant === 'registration';
@@ -162,6 +224,7 @@ export default function ProfileForm({
 
       if (result.success) {
         setFormStatus('completed');
+        setIsDirty(false); // 저장 성공 — beforeunload 가드 해제 (성공 라우팅 시 경고 차단)
 
         if (isRegistrationMode) {
           setSuccess('가입이 완료되었습니다. 승인 후 서비스를 이용하실 수 있습니다.');
@@ -221,11 +284,15 @@ export default function ProfileForm({
   };
 
   return (
-    <div ref={formContainerRef} className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}>
+    <div
+      ref={formContainerRef}
+      data-profile-form-root="true"
+      className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}
+    >
       {/* 헤더 영역 - 회원가입 모드에서는 숨김 */}
       {!isRegistrationMode && (
         <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.push(backUrl)} className="mb-4">
+          <Button variant="ghost" onClick={() => guardedNavigate(backUrl)} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             {backLabel}
           </Button>
@@ -263,7 +330,12 @@ export default function ProfileForm({
           <CardDescription>{uiText.cardDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} noValidate className="space-y-9">
+          <form
+            onSubmit={handleSubmit}
+            onInput={() => setIsDirty(true)}
+            noValidate
+            className="space-y-9"
+          >
             {/* 회원가입 완료 알림 */}
             {showRegistrationAlert && (
               <Alert className="bg-blue-50 border-blue-200">
@@ -305,7 +377,7 @@ export default function ProfileForm({
                 description="AI 훈련/코칭을 수행할 수 있는 산업을 선택해주세요."
                 options={INDUSTRIES}
                 selected={selectedIndustries}
-                onSelectionChange={setSelectedIndustries}
+                onSelectionChange={handleIndustriesChange}
                 color="blue"
               />
               <FieldError message={fieldErrors.available_industries} />
@@ -323,7 +395,7 @@ export default function ProfileForm({
               </div>
               <TagInput
                 value={subIndustries}
-                onChange={setSubIndustries}
+                onChange={handleSubIndustriesChange}
                 placeholder="세부 업종 입력 후 Enter 또는 추가 버튼"
                 maxTags={SUB_INDUSTRY_CONSTRAINTS.maxTags}
                 maxLength={SUB_INDUSTRY_CONSTRAINTS.maxLength}
@@ -338,7 +410,7 @@ export default function ProfileForm({
                 description="AI를 활용해 개선할 수 있는 업무 영역을 선택해주세요."
                 options={EXPERTISE_DOMAINS}
                 selected={selectedDomains}
-                onSelectionChange={setSelectedDomains}
+                onSelectionChange={handleDomainsChange}
                 color="indigo"
               />
               <FieldError message={fieldErrors.expertise_domains} />
@@ -352,7 +424,7 @@ export default function ProfileForm({
                 description="교육 가능한 학습자의 AI 활용 수준을 선택해주세요."
                 options={TEACHING_LEVELS}
                 selected={selectedLevels}
-                onSelectionChange={setSelectedLevels}
+                onSelectionChange={handleLevelsChange}
                 color="emerald"
                 showOptionDescriptions
               />
@@ -367,7 +439,7 @@ export default function ProfileForm({
                 description="주로 활용하는 교육/코칭 방식을 선택해주세요."
                 options={COACHING_METHODS}
                 selected={selectedMethods}
-                onSelectionChange={setSelectedMethods}
+                onSelectionChange={handleMethodsChange}
                 color="purple"
               />
               <FieldError message={fieldErrors.coaching_methods} />
@@ -381,7 +453,7 @@ export default function ProfileForm({
                 description="본인이 보유한 핵심 역량을 모두 선택해주세요."
                 options={SKILL_TAGS}
                 selected={selectedTags}
-                onSelectionChange={setSelectedTags}
+                onSelectionChange={handleTagsChange}
                 color="amber"
               />
               <FieldError message={fieldErrors.skill_tags} />
@@ -493,7 +565,7 @@ export default function ProfileForm({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push(backUrl)}
+                    onClick={() => guardedNavigate(backUrl)}
                     disabled={formStatus !== 'idle'}
                   >
                     취소
@@ -526,6 +598,27 @@ export default function ProfileForm({
           </form>
         </CardContent>
       </Card>
+
+      {/* 미저장 이탈 확인 다이얼로그 — window.confirm 대신 시스템 표준 AlertDialog 사용 (H4 일관성) */}
+      <AlertDialog
+        open={pendingNavigation !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingNavigation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>변경사항이 저장되지 않을 수 있습니다</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLeave}>확인</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

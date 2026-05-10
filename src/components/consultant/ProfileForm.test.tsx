@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ProfileForm from './ProfileForm';
@@ -786,6 +786,181 @@ describe('ProfileForm', () => {
       // Card 최상위 div에 적용되는지 확인
       const card = container.querySelector('.custom-card-class');
       expect(card).toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 미저장 이탈 경고 (useBeforeUnloadGuard) — Nielsen H3·H4·H5
+  // 같은 시스템 운영자 템플릿 편집(TemplateForm)과 동일 보호 패턴 적용
+  // ---------------------------------------------------------------------------
+  describe('미저장 이탈 경고 (useBeforeUnloadGuard)', () => {
+    it('초기 상태(create 모드, 입력 없음)에서는 beforeunload 리스너가 등록되지 않는다', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<ProfileForm {...defaultProps} />);
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(false);
+    });
+
+    it('텍스트 input 한 글자 입력 시 beforeunload 리스너가 등록된다', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<ProfileForm {...defaultProps} />);
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      // 폼의 onInput 핸들러로 isDirty=true 진입
+      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
+
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(true);
+    });
+
+    it('다중 선택 뱃지 클릭 시 beforeunload 리스너가 등록된다', async () => {
+      const user = userEvent.setup();
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      render(<ProfileForm {...defaultProps} />);
+
+      // AI 훈련 가능 산업 첫 옵션 클릭으로 selectedIndustries 변경
+      await user.click(screen.getByText('제조업'));
+
+      await waitFor(() => {
+        expect(
+          addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+        ).toBe(true);
+      });
+    });
+
+    it('edit 모드에서 초기값과 동일한 상태면 isDirty=false 로 리스너 미등록', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      const baseProfile = makeProfile();
+      render(<ProfileForm {...defaultProps} profile={baseProfile} />);
+
+      expect(
+        addSpy.mock.calls.some((call) => call[0] === 'beforeunload'),
+      ).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 미저장 이탈 경고 — Client-side navigation 가드 (좌측 네비 anchor 클릭 차단)
+  // window.confirm 대신 시스템 표준 AlertDialog (Radix) 사용 — H4 일관성
+  // ---------------------------------------------------------------------------
+  describe('Client-side navigation 가드 (AlertDialog)', () => {
+    function renderWithExternalLink() {
+      return render(
+        <div>
+          <ProfileForm {...defaultProps} />
+          <a href="/dashboard/messages" data-testid="external-link">
+            메시지로 이동
+          </a>
+        </div>,
+      );
+    }
+
+    it('isDirty=false 상태에서 외부 anchor 클릭 시 AlertDialog 미노출', () => {
+      renderWithExternalLink();
+
+      const link = screen.getByTestId('external-link');
+      fireEvent.click(link);
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it('isDirty=true 상태에서 외부 anchor 클릭 시 AlertDialog 노출 + click preventDefault', () => {
+      renderWithExternalLink();
+
+      // 텍스트 input 변경으로 isDirty=true 진입
+      const affiliationInput = screen.getByLabelText(/소속/);
+      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
+
+      const link = screen.getByTestId('external-link');
+      const wasNotCancelled = fireEvent.click(link);
+
+      // fireEvent.click 반환값: preventDefault 호출 시 false
+      expect(wasNotCancelled).toBe(false);
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(
+        screen.getByText('변경사항이 저장되지 않을 수 있습니다'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다/),
+      ).toBeInTheDocument();
+    });
+
+    it('AlertDialog "취소" 클릭 시 다이얼로그 닫힘 + router.push 호출 안 함', async () => {
+      const user = userEvent.setup();
+      renderWithExternalLink();
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
+
+      const link = screen.getByTestId('external-link');
+      fireEvent.click(link);
+
+      const cancelButton = screen.getByRole('button', { name: '취소' });
+      await user.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('AlertDialog "확인" 클릭 시 router.push 호출 (실제 이동 수행)', async () => {
+      const user = userEvent.setup();
+      renderWithExternalLink();
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      fireEvent.input(affiliationInput, { target: { value: 'KPC' } });
+
+      const link = screen.getByTestId('external-link');
+      fireEvent.click(link);
+
+      const confirmButton = screen.getByRole('button', { name: '확인' });
+      await user.click(confirmButton);
+
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/messages');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // "돌아가기" / "취소" 버튼 가드 — anchor 가 아닌 Button onClick 우회로
+  // ---------------------------------------------------------------------------
+  describe('"돌아가기" 버튼 클라이언트 네비게이션 가드 (AlertDialog)', () => {
+    it('isDirty=false 상태에서 "돌아가기" 클릭 시 AlertDialog 미노출, router.push 즉시 호출', async () => {
+      const user = userEvent.setup();
+      render(<ProfileForm {...defaultProps} />);
+
+      await user.click(screen.getByText('돌아가기'));
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(mockPush).toHaveBeenCalledWith('/consultant/profile');
+    });
+
+    it('isDirty=true 상태에서 "돌아가기" 클릭 시 AlertDialog 노출', async () => {
+      const user = userEvent.setup();
+      render(<ProfileForm {...defaultProps} />);
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      await user.type(affiliationInput, 'A');
+
+      await user.click(screen.getByText('돌아가기'));
+
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('isDirty=true + "돌아가기" + AlertDialog "확인" 클릭 시 router.push 호출', async () => {
+      const user = userEvent.setup();
+      render(<ProfileForm {...defaultProps} />);
+
+      const affiliationInput = screen.getByLabelText(/소속/);
+      await user.type(affiliationInput, 'A');
+
+      await user.click(screen.getByText('돌아가기'));
+      await user.click(screen.getByRole('button', { name: '확인' }));
+
+      expect(mockPush).toHaveBeenCalledWith('/consultant/profile');
     });
   });
 });
