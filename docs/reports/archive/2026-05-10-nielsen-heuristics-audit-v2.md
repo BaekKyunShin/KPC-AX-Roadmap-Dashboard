@@ -64,7 +64,13 @@
 
 4. **사용자 관점 개선 후**
 
-   김컨설턴트가 다중 셀렉트 한 칸이라도 변경하면 그 즉시 폼이 **"미저장 상태(isDirty)"** 로 진입하고, 같은 페이지에서 다른 메뉴 클릭·뒤로가기·새로고침·탭 닫기 시도 시 브라우저 기본 다이얼로그가 뜬다 — 「**이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다.** [페이지 나가기] [페이지에 머무르기]」. 사용자가 **"페이지에 머무르기"** 를 선택하면 입력은 그대로 보존된 채 화면에 돌아오고, **"페이지 나가기"** 를 명시 선택했을 때만 이탈된다. **"저장"** 버튼을 눌러 성공 토스트가 뜨면 isDirty 가 false 로 떨어져 다음부터는 깨끗한 상태로 자유롭게 이탈할 수 있다. 운영자 템플릿 편집과 같은 보호 패턴이라 **"이 시스템은 미저장 변경을 항상 지켜준다"** 는 일관된 멘탈 모델이 형성된다
+   김컨설턴트가 다중 셀렉트 한 칸이라도 변경하면 그 즉시 폼이 **"미저장 상태(isDirty)"** 로 진입하고, **두 가지 이탈 경로** 모두에서 보호 다이얼로그가 뜬다:
+
+   **(가) 좌측 네비 "메시지" 클릭, 햄버거 메뉴 다른 항목 클릭, "돌아가기"·"취소" 버튼 클릭** (Next.js client-side navigation) 시도 시 브라우저 기본 confirm 다이얼로그 — 「**이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?** [확인] [취소]」. 사용자가 **"취소"** 를 선택하면 이동이 차단되어 입력 그대로 페이지에 머문다. **"확인"** 을 선택했을 때만 이탈된다.
+
+   **(나) 새로고침(F5/Cmd+R)·탭 닫기·창 닫기·외부 사이트 이동** 시도 시 브라우저 기본 beforeunload 다이얼로그 (브라우저별 기본 문구는 OS·언어에 따라 다소 다름).
+
+   **"저장"** 버튼을 눌러 성공 토스트가 뜨면 isDirty 가 false 로 떨어져 두 가지 가드 모두 자동 해제 — 다음부터는 자유롭게 이탈할 수 있다. 운영자 템플릿 편집(`TemplateForm`)은 (나)만 보호하지만 컨설턴트 프로필은 입력 분량이 훨씬 크므로 (가)까지 추가해 더 강력한 보호를 적용한다. **"이 시스템은 미저장 변경을 항상 지켜준다"** 는 일관된 멘탈 모델이 형성된다.
 
    ```text
    [이전]
@@ -102,11 +108,12 @@
    └──────────────────────────────────────────────────────┘
    ↓ 사용자가 무심코 좌측 네비 "메시지" 클릭
    ┌──────────────────────────────────────────────────────┐
-   │ ⚠ 이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다.  │
+   │ ⚠ 이 프로필 페이지의 변경사항이 저장되지 않을 수    │
+   │    있습니다. 페이지를 나가시겠습니까?               │
    │                                                      │
-   │      [페이지에 머무르기]   [페이지 나가기]           │
+   │                          [취소]   [확인]            │
    └──────────────────────────────────────────────────────┘
-   ↓ "페이지에 머무르기" 선택
+   ↓ "취소" 선택 (= 이동 차단)
    ┌──────────────────────────────────────────────────────┐
    │ 내 프로필           ● 미저장 변경 있음               │
    │ (입력 그대로 유지, 사용자가 [💾 저장] 누르면         │
@@ -117,35 +124,52 @@
 5. **개발자 구현 노트**
 
    - 변경 파일: `src/components/consultant/ProfileForm.tsx` 단일
+   - **두 가지 가드 동시 적용**:
+     1. **`useBeforeUnloadGuard(isDirty && formStatus !== 'completed')`** — 새로고침·탭 닫기·외부 이동 보호. 재사용 자산 `src/hooks/useBeforeUnloadGuard.ts` (TemplateForm 동형)
+     2. **`useEffect` 로 document-level capture-phase 클릭 핸들러** — Next.js client-side navigation 보호. `<a>` 태그 클릭 가로채 isDirty 면 `window.confirm()` 호출, 사용자가 취소 시 `e.preventDefault() + e.stopPropagation()` 로 이동 차단. 폼 내부 anchor 는 `data-profile-form-root` 속성으로 제외
+     3. **"돌아가기"·"취소" 버튼 onClick 가드** — `<Button>` 은 anchor 가 아니므로 (1)·(2) 모두 catch 못 함. `router.push(backUrl)` 호출 직전 `isDirty` 면 `window.confirm()` 호출
    - 적용 위치: `useState` 블록 직후, `prepareFormData` 위
-   - 재사용 자산: `src/hooks/useBeforeUnloadGuard.ts` (이미 인터뷰 자동저장 + 운영자 템플릿 편집에서 사용 중) — 본 라운드 신규 코드 작성 없음
-   - 비교 대조군: `src/app/(dashboard)/ops/templates/_components/TemplateForm.tsx:10, 212-234` 가 baseline 기반 `isDirty` 산출 + 저장 성공 시 baseline 갱신 패턴 — 동일 패턴 적용
-   - 짧은 코드 스케치 (실제 구현은 TDD 로):
+   - 짧은 코드 스케치:
 
      ```tsx
      import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 
-     // baseline 은 profile prop 또는 첫 마운트 시 캡처
-     const baseline = useRef(JSON.stringify({
-       ...(profile ?? {}),
-       available_industries: profile?.available_industries || [],
-       sub_industries: profile?.sub_industries || [],
-       expertise_domains: profile?.expertise_domains || [],
-       teaching_levels: profile?.teaching_levels || [],
-       coaching_methods: profile?.coaching_methods || [],
-       skill_tags: profile?.skill_tags || [],
-     }));
+     const [isDirty, setIsDirty] = useState(false);
 
-     const isDirty = formStatus !== 'completed' && JSON.stringify({
-       /* 현재 상태와 동일 키 6종 + 텍스트 input refs */
-     }) !== baseline.current;
+     // (나) 새로고침·탭 닫기 보호 — TemplateForm 동형
+     useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
 
-     useBeforeUnloadGuard(isDirty);
+     // (가) Next.js client-side navigation 보호 — document capture click
+     useEffect(() => {
+       if (!isDirty || formStatus === 'completed') return;
+       const handler = (e: MouseEvent) => {
+         const anchor = (e.target as HTMLElement).closest('a');
+         if (!anchor) return;
+         const href = anchor.getAttribute('href');
+         if (!href || href.startsWith('#') || anchor.target === '_blank') return;
+         if (anchor.closest('[data-profile-form-root]')) return; // 폼 내부 제외
+         if (window.confirm('이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?')) return;
+         e.preventDefault();
+         e.stopPropagation();
+       };
+       document.addEventListener('click', handler, { capture: true });
+       return () => document.removeEventListener('click', handler, { capture: true });
+     }, [isDirty, formStatus]);
 
-     // 저장 성공(setFormStatus('completed')) 시 baseline.current 갱신해 isDirty=false
+     // (가') "돌아가기"·"취소" 버튼 가드 — anchor 가 아닌 Button onClick 우회로
+     const guardedNavigate = (url: string) => {
+       if (isDirty && formStatus !== 'completed' &&
+           !window.confirm('이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?')) {
+         return;
+       }
+       router.push(url);
+     };
      ```
 
-   - 테스트: `src/app/(dashboard)/ops/templates/_components/TemplateForm.test.tsx:472-510` 의 "미저장 이탈 경고" describe 블록을 본보기로 `ProfileForm.test.tsx` 에 동일 4 케이스 추가 (초기 무등록 / 한 글자 입력 시 등록 / edit 모드 동일 값 미등록 / 저장 성공 시 해제)
+   - 테스트: `ProfileForm.test.tsx` 에 추가 describe — (가)·(가')·(나) 세 가지 가드 각각 검증 (총 7 케이스 권장)
+     - (나) beforeunload 리스너 등록·미등록 4 케이스
+     - (가) anchor 클릭 시 confirm 호출, 취소 시 preventDefault, OK 시 통과 3 케이스
+     - (가') "돌아가기" 클릭 시 router.push 차단/통과 검증 (선택)
 
 ---
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Save, User } from 'lucide-react';
 import { updateConsultantProfile, saveConsultantProfile } from '@/app/(auth)/actions';
@@ -83,8 +83,44 @@ export default function ProfileForm({
   const [selectedMethods, setSelectedMethods] = useState<string[]>(profile?.coaching_methods || []);
   const [selectedTags, setSelectedTags] = useState<string[]>(profile?.skill_tags || []);
 
-  // 미저장 상태에서 페이지 이탈 시도 시 브라우저 기본 경고 — 운영자 템플릿 편집과 동일 보호 패턴
+  // (나) 새로고침·탭 닫기·외부 사이트 이동 보호 (브라우저 beforeunload)
   useBeforeUnloadGuard(isDirty && formStatus !== 'completed');
+
+  // (가) Next.js client-side navigation 보호 — 좌측 네비·메뉴 anchor 클릭 시 이동 차단
+  // beforeunload 가 발화하지 않는 SPA 네비게이션을 capture-phase 에서 가로챈다.
+  useEffect(() => {
+    if (!isDirty || formStatus === 'completed') return;
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest?.('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      if (anchor.target === '_blank') return; // 새 탭은 beforeunload 가 처리
+      if (anchor.closest('[data-profile-form-root="true"]')) return; // 폼 내부 anchor 제외
+      const ok = window.confirm(
+        '이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?',
+      );
+      if (ok) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('click', handler, { capture: true });
+    return () => document.removeEventListener('click', handler, { capture: true });
+  }, [isDirty, formStatus]);
+
+  // (가') "돌아가기"·"취소" 버튼 가드 — Button 은 anchor 가 아니라 (가) 가 catch 못 함
+  const guardedNavigate = (url: string) => {
+    if (
+      isDirty &&
+      formStatus !== 'completed' &&
+      !window.confirm(
+        '이 프로필 페이지의 변경사항이 저장되지 않을 수 있습니다. 페이지를 나가시겠습니까?',
+      )
+    ) {
+      return;
+    }
+    router.push(url);
+  };
 
   // 다중 선택 6종 변경 감지 — setter 호출 시점에 isDirty=true 로 표시 (텍스트 input 은 form onInput 으로 처리)
   const handleIndustriesChange = (next: string[]) => { setSelectedIndustries(next); setIsDirty(true); };
@@ -236,11 +272,15 @@ export default function ProfileForm({
   };
 
   return (
-    <div ref={formContainerRef} className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}>
+    <div
+      ref={formContainerRef}
+      data-profile-form-root="true"
+      className={isRegistrationMode ? undefined : 'max-w-2xl mx-auto'}
+    >
       {/* 헤더 영역 - 회원가입 모드에서는 숨김 */}
       {!isRegistrationMode && (
         <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.push(backUrl)} className="mb-4">
+          <Button variant="ghost" onClick={() => guardedNavigate(backUrl)} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             {backLabel}
           </Button>
@@ -513,7 +553,7 @@ export default function ProfileForm({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push(backUrl)}
+                    onClick={() => guardedNavigate(backUrl)}
                     disabled={formStatus !== 'idle'}
                   >
                     취소
