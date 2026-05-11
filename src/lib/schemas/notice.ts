@@ -20,8 +20,8 @@ export const ALLOWED_ATTACHMENT_EXT = [
   '.webp',
 ] as const;
 
-/** 20MB 업로드 상한 (마이그 062 file_size_limit와 일치) */
-export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+/** 30MB 업로드 상한 (마이그 072 file_size_limit와 일치) */
+export const MAX_ATTACHMENT_BYTES = 30 * 1024 * 1024;
 
 export const noticeInputSchema = z.object({
   title: z
@@ -47,7 +47,7 @@ export const attachmentInputSchema = z.object({
     .number()
     .int()
     .positive('파일 크기가 올바르지 않습니다.')
-    .max(MAX_ATTACHMENT_BYTES, '파일은 20MB 이하여야 합니다.'),
+    .max(MAX_ATTACHMENT_BYTES, '파일은 30MB 이하여야 합니다.'),
   storage_path: z.string().min(1, 'storage_path는 비어 있을 수 없습니다.'),
 });
 

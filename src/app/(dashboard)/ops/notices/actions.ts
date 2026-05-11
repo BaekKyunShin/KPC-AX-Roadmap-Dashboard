@@ -213,7 +213,7 @@ export async function uploadAttachmentAction(
     return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    return { success: false, error: '파일은 20MB 이하여야 합니다.' };
+    return { success: false, error: '파일은 30MB 이하여야 합니다.' };
   }
 
   // 서버 측 Zod 검증 — storage_path는 실제 업로드 성공 후 확정되므로

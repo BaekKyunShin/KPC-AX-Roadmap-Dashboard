@@ -58,7 +58,7 @@ export function AttachmentUploader({
       return;
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setError('파일은 20MB 이하여야 합니다.');
+      setError('파일은 30MB 이하여야 합니다.');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
@@ -124,7 +124,7 @@ export function AttachmentUploader({
       </Button>
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Paperclip className="h-3.5 w-3.5" />
-        허용 형식: {ALLOWED_ATTACHMENT_EXT.join(', ')} · 최대 20MB
+        허용 형식: {ALLOWED_ATTACHMENT_EXT.join(', ')} · 최대 30MB
       </p>
       <FieldError message={error ?? undefined} />
     </div>
