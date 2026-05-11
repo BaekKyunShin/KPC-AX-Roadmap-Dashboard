@@ -107,8 +107,11 @@ describe('StepSttUpload (.txt 파일 업로드)', () => {
       expect(showSuccessToast).toHaveBeenCalled();
     });
 
-    // 파일명 노출
-    expect(screen.getByText('session1.txt')).toBeInTheDocument();
+    // 파일명 노출 — startTransition + isPending 전이가 끝난 뒤 렌더되므로
+    // 별도 waitFor 로 견고화 (CI 환경의 timing flakiness 방지).
+    await waitFor(() => {
+      expect(screen.getByText('session1.txt')).toBeInTheDocument();
+    });
 
     // 부모가 insights 를 내려준 상태로 rerender → 6 카드 노출
     rerender(<StepSttUpload insights={SAMPLE_INSIGHTS} onChange={onChange} onExtract={onExtract} />);
