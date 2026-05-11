@@ -905,94 +905,41 @@ export function PaginationSkeleton() {
 //        ├─ 헤더: 버전 뱃지 + revision prompt
 //        ├─ RoadmapOverviewSummary (Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과)
 //        ├─ diagnosis_summary
-//        ├─ 4개 탭 (sticky, 역량 모델링·훈련체계도·연간계획·명세서)
-//        └─ 탭 컨텐츠 (기본: 역량 모델링 표 + NCS 박스)
+//        ├─ 탭 (sticky, variant 별: Roadmap 3 / PBL 5)
+//        └─ 첫 탭(Ⅰ. 개요) 컨텐츠: RoadmapOverviewTabSkeleton / PBLOverviewTabSkeleton
 // ============================================================================
 
-/** 역량 모델링 표 스켈레톤 (Ⅲ-1, 5열: 역량명·정의·지식·기술·태도) */
-function CompetencyModelingTableSkeleton({ rows = 3 }: { rows?: number }) {
-  const COLUMNS = ['역량명', '역량 정의 (수행준거)', '지식', '기술', '태도'];
+/**
+ * 버전 선택 + 다운로드 행 스켈레톤.
+ *
+ * 실제 RoadmapResultClient/PBLResultClient 의 PageHeader 아래 줄을 미러한다:
+ * `<div flex-col gap-3 sm:flex-row sm:justify-between>`
+ *   좌: VersionSelector(min-w-[240px]) + "버전 N" h2 + Badge + (consultant DRAFT) 최종 확정 버튼
+ *   우: DownloadButtonGroup (PDF/XLSX/HWPX × 3, outline size-sm)
+ *
+ * 카드/배경/sticky 없이 평탄한 flex 행이다.
+ */
+function VersionActionsRowSkeleton({
+  showFinalizeButton = false,
+}: { showFinalizeButton?: boolean } = {}) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="w-full min-w-[900px] table-fixed border-collapse">
-        <thead className="bg-gray-50">
-          <tr>
-            {COLUMNS.map((header) => (
-              <th
-                key={header}
-                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {renderItems(rows, (rowIdx) => (
-            <tr key={rowIdx}>
-              {renderItems(5, (colIdx) => (
-                <td key={colIdx} className="px-3 py-3 align-top">
-                  <div className="space-y-1.5">
-                    <SkeletonBar height="h-3.5" width="w-full" />
-                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-4/5" variant="secondary" />}
-                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-3/5" variant="secondary" />}
-                  </div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** NCS 방법론 박스 스켈레톤 (Step 6.5 신규 — 역량 모델링 탭 하단) */
-function NcsMethodologyBoxSkeleton() {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <SkeletonBar height="h-4" width="w-4" />
-        <SkeletonBar height="h-4" width="w-24" />
+    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* VersionSelector — Select trigger (min-w-[240px], h-9) */}
+        <SkeletonBar height="h-9" width="w-60" />
+        {/* "버전 N" h2 (text-sm font-semibold) */}
+        <SkeletonBar height="h-4" width="w-12" variant="secondary" />
+        {/* VersionStatusBadge */}
+        <SkeletonBar height="h-6" width="w-14" variant="secondary" />
+        {/* (consultant DRAFT) 최종 확정 버튼 */}
+        {showFinalizeButton && <SkeletonBar height="h-9" width="w-24" variant="secondary" />}
       </div>
-      <SkeletonBar height="h-4" width="w-48" variant="secondary" />
-      <div className="space-y-2 pt-2">
-        <SkeletonBar height="h-3.5" width="w-full" />
-        <SkeletonBar height="h-3.5" width="w-11/12" />
-        <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
+      {/* DownloadButtonGroup (3 outline size-sm 버튼) */}
+      <div className="flex gap-2">
+        <SkeletonBar height="h-9" width="w-20" />
+        <SkeletonBar height="h-9" width="w-20" />
+        <SkeletonBar height="h-9" width="w-20" />
       </div>
-    </div>
-  );
-}
-
-/** 로드맵 개요 요약 스켈레톤 (Step 6.5 신규 — Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과) */
-function RoadmapOverviewSummarySkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {renderItems(2, (i) => (
-        <div key={i} className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <SkeletonBar height="h-3.5" width="w-4" />
-            <SkeletonBar height="h-4" width="w-28" />
-          </div>
-          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-5/6" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-2/3" variant="secondary" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** VersionSelector 바 스켈레톤 (sticky 바 형태) */
-function VersionSelectorBarSkeleton() {
-  return (
-    <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
-      <div className="flex items-center gap-2">
-        <SkeletonBar height="h-9" width="w-32" />
-        <SkeletonBar height="h-6" width="w-16" variant="secondary" />
-      </div>
-      <SkeletonBar height="h-8" width="w-24" variant="secondary" />
     </div>
   );
 }
@@ -1012,161 +959,303 @@ function RegenerateAccordionSkeleton() {
   );
 }
 
-/** 로드맵 버전 카드 스켈레톤 (Step 6/6.5 4탭 구조) */
-function RoadmapVersionCardSkeleton() {
-  const TAB_LABELS = ['역량 모델링', '훈련체계도', '연간 훈련계획', '훈련과정 명세서'];
+type FirstTabContent = 'roadmap-overview' | 'pbl-overview';
+
+/** Roadmap 결과 첫 탭(Ⅰ. 개요): Ⅰ-1 수립필요성 + Ⅰ-2 주요활동(6컬럼 테이블 3행) + Ⅰ-3 결과 2-컬럼 카드 */
+function RoadmapOverviewTabSkeleton() {
   return (
-    <div className={`${CARD_STYLES.base} pb-1`}>
-      {/* 헤더 영역: 버전 뱃지 + Overview 요약 + 진단 요약 */}
-      <div className="px-6 py-5 border-b border-gray-200 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <SkeletonBar height="h-6" width="w-20" />
-          <SkeletonBar height="h-6" width="w-14" />
-        </div>
-        <RoadmapOverviewSummarySkeleton />
+    <div className="space-y-6">
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-32" />
         <div className="space-y-2">
           <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
           <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-9/12" variant="secondary" />
         </div>
       </div>
-
-      {/* 탭 바 (4개) */}
-      <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
-        <nav className="flex -mb-px overflow-x-auto">
-          {TAB_LABELS.map((label, i) => (
-            <div
-              key={label}
-              className={`px-3 py-2 sm:px-6 sm:py-3 flex-shrink-0 border-b-2 ${
-                i === 0 ? 'border-purple-300' : 'border-transparent'
-              }`}
-            >
-              <SkeletonBar height="h-4" width="w-20" variant={i === 0 ? 'primary' : 'secondary'} />
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-28" />
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-6 gap-2 border-b border-gray-200 pb-2">
+            {renderItems(6, (i) => (
+              <SkeletonBar key={i} height="h-4" width="w-full" variant="secondary" />
+            ))}
+          </div>
+          {renderItems(3, (row) => (
+            <div key={row} className="grid grid-cols-6 gap-2 py-2 border-b border-gray-100">
+              {renderItems(6, (col) => (
+                <SkeletonBar key={col} height="h-4" width="w-full" />
+              ))}
             </div>
           ))}
-        </nav>
+        </div>
       </div>
-
-      {/* 기본 탭(역량 모델링) 컨텐츠 */}
-      <div className="p-4 sm:p-6 space-y-5">
-        <CompetencyModelingTableSkeleton />
-        <NcsMethodologyBoxSkeleton />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {renderItems(2, (i) => (
+          <div key={i} className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-2`}>
+            <SkeletonBar height="h-4" width="w-24" />
+            <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+            <SkeletonBar height="h-3.5" width="w-10/12" variant="secondary" />
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-/** 로드맵 페이지 스켈레톤 공통 레이아웃 */
-function RoadmapPageSkeletonBase({
-  showDescription = false,
-  showRegenerateAccordion = false,
-}: {
-  showDescription?: boolean;
-  showRegenerateAccordion?: boolean;
-}) {
+/** PBL 결과 첫 탭(Ⅰ. 개요): 신청서 자동표출 FormTable(2-컬럼 4행) + 훈련과정 개요 카드 2개 */
+function PBLOverviewTabSkeleton() {
   return (
     <div className="space-y-6">
-      {/* PageHeader: 뒤로가기 + 제목 + 다운로드 버튼 그룹 */}
-      <div>
-        <SkeletonBar height="h-3.5" width="w-32" className="mb-2" variant="secondary" />
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <SkeletonBar height="h-7" width="w-48" />
-          <div className="flex items-center gap-2">
-            {/* PDF / Excel / HWPX 다운로드 버튼 3종 */}
-            <SkeletonBar height="h-9" width="w-20" />
-            <SkeletonBar height="h-9" width="w-20" />
-            <SkeletonBar height="h-9" width="w-20" />
-          </div>
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-40" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+          {renderItems(8, (i) => (
+            <div key={i} className="flex items-center gap-3 py-1.5">
+              <SkeletonBar height="h-4" width="w-20" variant="secondary" />
+              <SkeletonBar height="h-4" width="w-32" />
+            </div>
+          ))}
         </div>
-        {showDescription && (
-          <SkeletonBar height="h-3.5" width="w-64" className="mt-2" variant="secondary" />
-        )}
       </div>
-
-      {/* VersionSelector 바 (sticky) */}
-      <VersionSelectorBarSkeleton />
-
-      {/* 수정 요청 아코디언 (컨설턴트 전용) */}
-      {showRegenerateAccordion && <RegenerateAccordionSkeleton />}
-
-      {/* 버전 카드 (4탭 구조) */}
-      <RoadmapVersionCardSkeleton />
+      {renderItems(2, (i) => (
+        <div key={i} className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-2`}>
+          <SkeletonBar height="h-5" width="w-28" />
+          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
+        </div>
+      ))}
     </div>
   );
 }
 
-/** 로드맵 페이지 스켈레톤 (컨설턴트용 - 수정 요청 아코디언 포함) */
-export function RoadmapPageSkeleton() {
-  return <RoadmapPageSkeletonBase showRegenerateAccordion />;
+/**
+ * ResultTabs 스켈레톤 (탭 개수·첫 탭 컨텐츠 variant 분기).
+ *
+ * 실제 ResultTabs 는 카드 컨테이너 없이 평탄하게 렌더되며, 탭 바는 화면 너비를
+ * 가로지르는 sticky bar (`sticky top-16 z-10 -mx-4 sm:-mx-6 lg:-mx-8`)이다.
+ * 탭 바 우측에는 "모두 펼치기/접기" 토글 버튼이 있다.
+ */
+function ResultTabsSkeleton({
+  tabCount,
+  firstTabContent,
+}: {
+  tabCount: 3 | 5;
+  firstTabContent: FirstTabContent;
+}) {
+  return (
+    <div>
+      {/* 탭 바 (sticky, 화면 가로지르는 -mx 인셋) */}
+      <div
+        className="sticky top-16 z-10 -mx-4 sm:-mx-6 lg:-mx-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b"
+        data-testid="skeleton-version-card-tabs"
+      >
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 gap-2">
+          <nav className="flex gap-1">
+            {renderItems(tabCount, (i) => (
+              <div
+                key={i}
+                className={`px-3 py-1.5 rounded-md ${
+                  i === 0 ? 'bg-muted' : ''
+                } flex-shrink-0`}
+              >
+                <SkeletonBar
+                  height="h-4"
+                  width="w-20"
+                  variant={i === 0 ? 'primary' : 'secondary'}
+                />
+              </div>
+            ))}
+          </nav>
+          {/* "모두 펼치기/접기" 토글 버튼 */}
+          <SkeletonBar height="h-8" width="w-20" variant="secondary" />
+        </div>
+      </div>
+
+      {/* 첫 탭(Ⅰ. 개요) 컨텐츠 — variant 별 분기 */}
+      <div className="pt-6 space-y-5">
+        {firstTabContent === 'roadmap-overview' ? (
+          <RoadmapOverviewTabSkeleton />
+        ) : (
+          <PBLOverviewTabSkeleton />
+        )}
+      </div>
+    </div>
+  );
 }
 
-/** 로드맵 페이지 스켈레톤 (OPS용 - 읽기 전용) */
+/**
+ * 로드맵/PBL 결과 페이지 스켈레톤 공통 레이아웃 (variant 분기).
+ *
+ * 실제 페이지의 PageContainer + RoadmapResultClient/PBLResultClient 구조를 미러:
+ *   <max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8>
+ *     ├ PageHeader (title + description, 우측 actions 없음)
+ *     ├ VersionActionsRow (VersionSelector + 버전N + Badge + (DRAFT) 확정 / DownloadGroup)
+ *     ├ (consultant) RegenerateAccordion
+ *     └ ResultTabs (카드 없이 평탄, sticky 탭 바 + 첫 탭 컨텐츠)
+ */
+function RoadmapPageSkeletonBase({
+  tabCount,
+  firstTabContent,
+  showRegenerateAccordion = false,
+  showFinalizeButton = false,
+}: {
+  tabCount: 3 | 5;
+  firstTabContent: FirstTabContent;
+  showRegenerateAccordion?: boolean;
+  /** consultant 측만 DRAFT 일 때 "최종 확정" 버튼 노출 가능. */
+  showFinalizeButton?: boolean;
+}) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* PageHeader: 제목 + description (우측 actions 없음 — 다운로드는 아래 행에 위치) */}
+      <div>
+        <SkeletonBar height="h-7" width="w-48" />
+        <div data-testid="skeleton-page-description" className="mt-1">
+          <SkeletonBar height="h-3.5" width="w-72" variant="secondary" />
+        </div>
+      </div>
+
+      {/* 버전 선택 + 다운로드 행 (sticky·카드 X, 그냥 flex 행) */}
+      <VersionActionsRowSkeleton showFinalizeButton={showFinalizeButton} />
+
+      {/* 수정 요청 아코디언 (컨설턴트 전용 + versions > 0 일 때만 — 로딩 중엔 가시화) */}
+      {showRegenerateAccordion && (
+        <div data-testid="skeleton-regenerate-accordion">
+          <RegenerateAccordionSkeleton />
+        </div>
+      )}
+
+      {/* ResultTabs (평탄 구조, 카드 없음) */}
+      <ResultTabsSkeleton tabCount={tabCount} firstTabContent={firstTabContent} />
+    </div>
+  );
+}
+
+/** Consultant 로드맵 결과 페이지 스켈레톤 (3탭, regenerate + DRAFT 확정 버튼 자리) */
+export function ConsultantRoadmapPageSkeleton() {
+  return (
+    <RoadmapPageSkeletonBase
+      tabCount={3}
+      firstTabContent="roadmap-overview"
+      showRegenerateAccordion
+      showFinalizeButton
+    />
+  );
+}
+
+/** Consultant PBL 결과 페이지 스켈레톤 (5탭, regenerate + DRAFT 확정 버튼 자리) */
+export function ConsultantPBLPageSkeleton() {
+  return (
+    <RoadmapPageSkeletonBase
+      tabCount={5}
+      firstTabContent="pbl-overview"
+      showRegenerateAccordion
+      showFinalizeButton
+    />
+  );
+}
+
+/** 로드맵 결과 페이지 스켈레톤 (OPS용 — 3탭, regenerate·확정 버튼 없음) */
 export function OpsRoadmapPageSkeleton() {
-  return <RoadmapPageSkeletonBase showDescription />;
+  return <RoadmapPageSkeletonBase tabCount={3} firstTabContent="roadmap-overview" />;
+}
+
+/** PBL 결과 페이지 스켈레톤 (OPS용 — 5탭, regenerate·확정 버튼 없음) */
+export function OpsPBLPageSkeleton() {
+  return <RoadmapPageSkeletonBase tabCount={5} firstTabContent="pbl-overview" />;
 }
 
 // ============================================================================
 // 프로필 폼 스켈레톤
 // ============================================================================
 
-/** 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션) */
-export function InterviewFormSkeleton() {
-  const stepCount = 6;
-
+/**
+ * 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션).
+ *
+ * Roadmap 트랙은 9 스텝 (`ROADMAP_STEPS`), PBL 트랙은 10 스텝 (`PBL_STEPS`).
+ * `interview/loading.tsx` 가 `searchParams.track` 으로 분기해 적절한 stepCount 를 전달한다.
+ * default 9 는 Roadmap 트랙 기본값.
+ */
+export function InterviewFormSkeleton({
+  stepCount = 9,
+}: { stepCount?: number } = {}) {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <SkeletonBar height="h-4" width="w-36" className="mb-2" variant="secondary" />
-        <SkeletonBar height="h-8" width="w-44" />
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* PageHeader 미러 (제목 + description, 우측 actions 없음) */}
+      <div>
+        <SkeletonBar height="h-7" width="w-56" />
+        <div className="mt-1">
+          <SkeletonBar height="h-4" width="w-80" variant="secondary" />
+        </div>
       </div>
 
-      {/* 스테퍼 */}
-      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact} mb-6`}>
+      {/* 스테퍼 (카드 안에 들어감 — 실제 InterviewStepper 가 자체 카드 wrapper 보유) */}
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
         {/* 데스크톱 스테퍼 */}
-        <div className="hidden md:block relative">
+        <div className="hidden md:block relative" data-testid="skeleton-stepper-desktop">
           <div className="absolute top-4 inset-x-4 h-0.5 bg-gray-200" />
           <div className="flex justify-between relative">
             {renderItems(stepCount, (i) => (
               <div key={i} className="flex flex-col items-center">
                 <div className={`h-8 w-8 rounded-full ${SKELETON_BAR.primary} relative z-10`} />
-                <SkeletonBar height="h-3" width="w-16" className="mt-2" variant="secondary" />
+                <SkeletonBar height="h-3" width="w-20" className="mt-2" variant="secondary" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* 모바일 스테퍼 */}
-        <div className="md:hidden">
+        {/* 모바일 스테퍼 — "N/M단계" + 현재 스텝명 + 진행 바 */}
+        <div className="md:hidden" data-testid="skeleton-stepper-mobile">
           <div className="flex items-center justify-between mb-2">
             <SkeletonBar height="h-4" width="w-16" />
             <SkeletonBar height="h-4" width="w-24" />
           </div>
           <div className="flex items-center gap-1">
             {renderItems(stepCount, (i) => (
-              <div key={i} className={`flex-1 h-2 rounded-full ${SKELETON_BAR[i === 0 ? 'primary' : 'secondary']}`} />
+              <div
+                key={i}
+                className={`flex-1 h-2 rounded-full ${SKELETON_BAR[i === 0 ? 'primary' : 'secondary']}`}
+              />
             ))}
           </div>
         </div>
       </div>
 
-      {/* 폼 컨텐츠 */}
-      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} mb-6 min-h-[400px] space-y-6`}>
-        <SkeletonBar height="h-6" width="w-32" />
-        <div className="space-y-4">
-          {renderItems(3, (i) => (
-            <div key={i} className="space-y-2">
-              <SkeletonBar height="h-4" width="w-24" />
-              <SkeletonBar height="h-10" width="w-full" />
-            </div>
-          ))}
-        </div>
+      {/*
+       * 폼 컨텐츠 — 실제 FormSection 은 카드 wrapper 가 없는 section 이다.
+       * min-h-[400px] 로 영역 확보 + FormSection 헤더(번호 + 제목 + 라벨 + 설명) 미러.
+       */}
+      <div className="min-h-[400px] space-y-4">
+        <header className="space-y-1">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <SkeletonBar height="h-6" width="w-10" /> {/* 번호 (Ⅰ-1) */}
+            <SkeletonBar height="h-6" width="w-32" /> {/* 제목 */}
+            <SkeletonBar height="h-5" width="w-20" variant="secondary" /> {/* [인터뷰 입력] 라벨 */}
+          </div>
+          <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" /> {/* description */}
+        </header>
+        {/* 본문 — large textarea 1개 + 가이드 아코디언 */}
+        <SkeletonBar height="h-40" width="w-full" />
+        <SkeletonBar height="h-10" width="w-48" variant="secondary" />
       </div>
 
-      {/* 네비게이션 버튼 */}
-      <div className="flex justify-between items-center">
-        <SkeletonBar height="h-10" width="w-20" />
-        <SkeletonBar height="h-10" width="w-20" />
+      {/*
+       * StickyFormNav 미러 — sticky bottom-0 z-10 -mx 인셋 + border-t + backdrop-blur.
+       * 좌(이전), 중(저장 인디케이터 + 저장 버튼), 우(다음 또는 최종 제출) 3섹션 구조.
+       */}
+      <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
+          {/* 이전 (size-sm h-9) */}
+          <SkeletonBar height="h-9" width="w-20" />
+          {/* 중앙: 저장 인디케이터 + 수동 저장 버튼 */}
+          <div className="flex items-center gap-3">
+            <SkeletonBar height="h-3.5" width="w-24" variant="secondary" />
+            <SkeletonBar height="h-9" width="w-20" />
+          </div>
+          {/* 다음/최종 제출 (마지막 스텝일 때 폭 더 넓어짐 — 평균값 w-24) */}
+          <SkeletonBar height="h-9" width="w-24" />
+        </div>
       </div>
     </div>
   );

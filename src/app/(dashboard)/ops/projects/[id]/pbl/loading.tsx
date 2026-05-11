@@ -1,5 +1,5 @@
-import { OpsRoadmapPageSkeleton } from '@/components/ui/Skeleton';
+import { OpsPBLPageSkeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
-  return <OpsRoadmapPageSkeleton />;
+  return <OpsPBLPageSkeleton />;
 }

@@ -6,7 +6,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
  * - PageHeader: backLink + title
  * - 메타 카드(bg-muted/30, rounded-lg border, p-4): 작성자·작성일·조회수
  * - 본문(article, min-h-[200px])
- * - 첨부 섹션(조건부) — 스켈레톤은 있다고 가정하고 렌더
+ * (첨부 섹션은 page.tsx에서 attachments.length > 0 조건부 렌더이므로
+ *  로딩 스켈레톤에서는 렌더하지 않아 시각적 점프를 방지)
  */
 export default function Loading() {
   return (
@@ -17,12 +18,21 @@ export default function Loading() {
         <Skeleton className="h-8 w-3/4" />
       </div>
 
-      {/* 메타 카드 */}
+      {/* 메타 카드 — 각 항목: 아이콘(h-3.5 w-3.5) + 텍스트(작성자/작성일/조회수) */}
       <div className="rounded-lg border bg-muted/30 p-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-16" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-20" />
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-24" />
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-16" />
+          </span>
         </div>
       </div>
 
@@ -34,15 +44,6 @@ export default function Loading() {
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-9/12" />
         <Skeleton className="h-4 w-11/12" />
-      </div>
-
-      {/* 첨부 섹션 */}
-      <div className="border-t pt-6 space-y-3">
-        <Skeleton className="h-5 w-28" />
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full rounded-md" />
-          <Skeleton className="h-10 w-full rounded-md" />
-        </div>
       </div>
     </div>
   );

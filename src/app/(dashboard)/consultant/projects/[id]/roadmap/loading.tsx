@@ -1,5 +1,5 @@
-import { RoadmapPageSkeleton } from '@/components/ui/Skeleton';
+import { ConsultantRoadmapPageSkeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
-  return <RoadmapPageSkeleton />;
+  return <ConsultantRoadmapPageSkeleton />;
 }
