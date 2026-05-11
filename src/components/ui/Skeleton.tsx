@@ -1180,10 +1180,8 @@ function RoadmapPageSkeletonBase({
   );
 }
 
-/**
- * @deprecated Task 2-6 임시 호환용. ConsultantRoadmapPageSkeleton 으로 교체 예정.
- */
-export function RoadmapPageSkeleton() {
+/** Consultant 로드맵 결과 페이지 스켈레톤 (3탭 + description + regenerate accordion) */
+export function ConsultantRoadmapPageSkeleton() {
   return (
     <RoadmapPageSkeletonBase
       tabCount={3}
@@ -1192,6 +1190,11 @@ export function RoadmapPageSkeleton() {
     />
   );
 }
+
+/**
+ * @deprecated Task 6 에서 제거 예정. ConsultantRoadmapPageSkeleton 으로 임시 별칭.
+ */
+export const RoadmapPageSkeleton = ConsultantRoadmapPageSkeleton;
 
 /** 로드맵 페이지 스켈레톤 (OPS용 - 3탭, regenerate 없음) */
 export function OpsRoadmapPageSkeleton() {
