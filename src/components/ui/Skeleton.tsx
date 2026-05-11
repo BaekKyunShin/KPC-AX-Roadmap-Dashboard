@@ -905,67 +905,11 @@ export function PaginationSkeleton() {
 //        ├─ 헤더: 버전 뱃지 + revision prompt
 //        ├─ RoadmapOverviewSummary (Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과)
 //        ├─ diagnosis_summary
-//        ├─ 4개 탭 (sticky, 역량 모델링·훈련체계도·연간계획·명세서)
-//        └─ 탭 컨텐츠 (기본: 역량 모델링 표 + NCS 박스)
+//        ├─ 탭 (sticky, variant 별: Roadmap 3 / PBL 5)
+//        └─ 첫 탭(Ⅰ. 개요) 컨텐츠: RoadmapOverviewTabSkeleton / PBLOverviewTabSkeleton
 // ============================================================================
 
-/** 역량 모델링 표 스켈레톤 (Ⅲ-1, 5열: 역량명·정의·지식·기술·태도) */
-function CompetencyModelingTableSkeleton({ rows = 3 }: { rows?: number }) {
-  const COLUMNS = ['역량명', '역량 정의 (수행준거)', '지식', '기술', '태도'];
-  return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="w-full min-w-[900px] table-fixed border-collapse">
-        <thead className="bg-gray-50">
-          <tr>
-            {COLUMNS.map((header) => (
-              <th
-                key={header}
-                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {renderItems(rows, (rowIdx) => (
-            <tr key={rowIdx}>
-              {renderItems(5, (colIdx) => (
-                <td key={colIdx} className="px-3 py-3 align-top">
-                  <div className="space-y-1.5">
-                    <SkeletonBar height="h-3.5" width="w-full" />
-                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-4/5" variant="secondary" />}
-                    {colIdx > 1 && <SkeletonBar height="h-3.5" width="w-3/5" variant="secondary" />}
-                  </div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** NCS 방법론 박스 스켈레톤 (Step 6.5 신규 — 역량 모델링 탭 하단) */
-function NcsMethodologyBoxSkeleton() {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <SkeletonBar height="h-4" width="w-4" />
-        <SkeletonBar height="h-4" width="w-24" />
-      </div>
-      <SkeletonBar height="h-4" width="w-48" variant="secondary" />
-      <div className="space-y-2 pt-2">
-        <SkeletonBar height="h-3.5" width="w-full" />
-        <SkeletonBar height="h-3.5" width="w-11/12" />
-        <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
-      </div>
-    </div>
-  );
-}
-
-/** 로드맵 개요 요약 스켈레톤 (Step 6.5 신규 — Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과) */
+/** 로드맵 개요 요약 스켈레톤 (Step 6.5 — Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과) */
 function RoadmapOverviewSummarySkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
