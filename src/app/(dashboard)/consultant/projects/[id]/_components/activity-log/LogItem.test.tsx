@@ -98,8 +98,6 @@ describe('LogItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // confirm 모킹
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   describe('시스템 자동 기록', () => {
@@ -308,7 +306,12 @@ describe('LogItem', () => {
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
+      // 트리거: 휴지통 아이콘 버튼 (aria-label="기록 삭제") 클릭 → ConfirmDialog 오픈
       await user.click(screen.getByRole('button', { name: '기록 삭제' }));
+
+      // 다이얼로그 안의 "삭제" 액션 버튼 클릭
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(mockDeleteActivityLog).toHaveBeenCalledWith('log-1', 'proj-1');
@@ -317,13 +320,17 @@ describe('LogItem', () => {
     });
 
     it('confirm 취소 시 삭제가 실행되지 않는다', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
       const user = userEvent.setup();
       render(
         <LogItem log={makeLog()} projectId="proj-1" onUpdated={onUpdated} />,
       );
 
+      // 트리거: 휴지통 아이콘 버튼 클릭 → ConfirmDialog 오픈
       await user.click(screen.getByRole('button', { name: '기록 삭제' }));
+
+      // 다이얼로그 안의 "취소" 버튼 클릭 → 호출되지 않음
+      const cancelButton = await screen.findByRole('button', { name: '취소' });
+      await user.click(cancelButton);
 
       expect(mockDeleteActivityLog).not.toHaveBeenCalled();
     });

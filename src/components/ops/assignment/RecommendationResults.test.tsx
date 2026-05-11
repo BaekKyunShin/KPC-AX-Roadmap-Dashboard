@@ -27,6 +27,13 @@ vi.mock('@/app/(dashboard)/ops/projects/actions', () => ({
   assignConsultant: vi.fn(),
 }));
 
+// toast util 모킹 (showErrorToast 호출 검증용)
+const mockShowErrorToast = vi.fn();
+vi.mock('@/lib/utils/toast', () => ({
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+  showSuccessToast: vi.fn(),
+}));
+
 // assignment 인덱스 모킹 (AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE)
 vi.mock('./index', () => ({
   AlertMessage: ({ message, onDismiss }: { message: string; onDismiss?: () => void }) => (
@@ -356,9 +363,8 @@ describe('RecommendationResults', () => {
   // 5. 배정 제출 실패
   // --------------------------------------------------------------------------
   describe('배정 제출 실패', () => {
-    it('배정 실패 시 alert를 호출한다', async () => {
+    it('배정 실패 시 에러 메시지로 showErrorToast를 호출한다', async () => {
       const user = userEvent.setup();
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(vi.fn());
 
       vi.mocked(assignConsultant).mockResolvedValue({
         success: false,
@@ -375,15 +381,12 @@ describe('RecommendationResults', () => {
       await user.click(screen.getByRole('button', { name: /배정하기/ }));
 
       await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith('배정 권한이 없습니다.');
+        expect(mockShowErrorToast).toHaveBeenCalledWith('배정 실패', '배정 권한이 없습니다.');
       });
-
-      alertMock.mockRestore();
     });
 
-    it('배정 실패 시 에러 메시지가 없으면 기본 메시지로 alert를 호출한다', async () => {
+    it('배정 실패 시 에러 메시지가 없으면 기본 메시지로 showErrorToast를 호출한다', async () => {
       const user = userEvent.setup();
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(vi.fn());
 
       vi.mocked(assignConsultant).mockResolvedValue({
         success: false,
@@ -400,15 +403,12 @@ describe('RecommendationResults', () => {
       await user.click(screen.getByRole('button', { name: /배정하기/ }));
 
       await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith('배정에 실패했습니다.');
+        expect(mockShowErrorToast).toHaveBeenCalledWith('배정 실패', '배정 요청이 거부되었습니다.');
       });
-
-      alertMock.mockRestore();
     });
 
-    it('예외 발생 시 "배정에 실패했습니다." alert를 호출한다', async () => {
+    it('예외 발생 시 네트워크 오류 메시지로 showErrorToast를 호출한다', async () => {
       const user = userEvent.setup();
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(vi.fn());
 
       vi.mocked(assignConsultant).mockRejectedValue(new Error('Network Error'));
 
@@ -422,15 +422,15 @@ describe('RecommendationResults', () => {
       await user.click(screen.getByRole('button', { name: /배정하기/ }));
 
       await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith('배정에 실패했습니다.');
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '배정 실패',
+          expect.stringContaining('네트워크'),
+        );
       });
-
-      alertMock.mockRestore();
     });
 
     it('배정 실패 후 isSubmitting이 false로 복구된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'alert').mockImplementation(vi.fn());
       vi.mocked(assignConsultant).mockResolvedValue({ success: false, error: '실패' });
 
       render(<RecommendationResults {...defaultProps} />);
@@ -495,6 +495,33 @@ describe('RecommendationResults', () => {
       render(<RecommendationResults {...props} />);
 
       fireEvent.click(screen.getByRole('button', { name: /매칭 재계산/ }));
+
+      expect(onRecalculate).toHaveBeenCalledOnce();
+    });
+
+    it('hasAssignedConsultant=true 시 매칭 재계산 클릭 시 ConfirmDialog가 열리고 onRecalculate는 즉시 호출되지 않는다', () => {
+      const onRecalculate = vi.fn();
+      const props = { ...defaultProps, onRecalculate, hasAssignedConsultant: true };
+      render(<RecommendationResults {...props} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /매칭 재계산/ }));
+
+      // ConfirmDialog 가 열리고 (제목 노출)
+      expect(screen.getByText('매칭 추천을 재계산하시겠습니까?')).toBeInTheDocument();
+      // 다이얼로그 확인 전이므로 콜백 미호출
+      expect(onRecalculate).not.toHaveBeenCalled();
+    });
+
+    it('hasAssignedConsultant=true 시 ConfirmDialog의 "재계산" 클릭 시 onRecalculate가 호출된다', () => {
+      const onRecalculate = vi.fn();
+      const props = { ...defaultProps, onRecalculate, hasAssignedConsultant: true };
+      render(<RecommendationResults {...props} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /매칭 재계산/ }));
+
+      // ConfirmDialog 내 "재계산" 액션 버튼 클릭
+      const confirmButton = screen.getByRole('button', { name: '재계산' });
+      fireEvent.click(confirmButton);
 
       expect(onRecalculate).toHaveBeenCalledOnce();
     });
