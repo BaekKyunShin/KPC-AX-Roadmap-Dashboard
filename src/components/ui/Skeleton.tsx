@@ -1212,6 +1212,11 @@ export function OpsRoadmapPageSkeleton() {
   return <RoadmapPageSkeletonBase tabCount={3} firstTabContent="roadmap-overview" />;
 }
 
+/** PBL 페이지 스켈레톤 (OPS용 - 5탭, regenerate 없음) */
+export function OpsPBLPageSkeleton() {
+  return <RoadmapPageSkeletonBase tabCount={5} firstTabContent="pbl-overview" />;
+}
+
 // ============================================================================
 // 프로필 폼 스켈레톤
 // ============================================================================
