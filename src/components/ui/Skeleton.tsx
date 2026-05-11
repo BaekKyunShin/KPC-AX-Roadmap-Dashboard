@@ -1012,9 +1012,84 @@ function RegenerateAccordionSkeleton() {
   );
 }
 
-/** 로드맵 버전 카드 스켈레톤 (Step 6/6.5 4탭 구조) */
-function RoadmapVersionCardSkeleton() {
-  const TAB_LABELS = ['역량 모델링', '훈련체계도', '연간 훈련계획', '훈련과정 명세서'];
+type FirstTabContent = 'roadmap-overview' | 'pbl-overview';
+
+/** Roadmap 결과 첫 탭(Ⅰ. 개요): Ⅰ-1 수립필요성 + Ⅰ-2 주요활동(6컬럼 테이블 3행) + Ⅰ-3 결과 2-컬럼 카드 */
+function RoadmapOverviewTabSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-32" />
+        <div className="space-y-2">
+          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-9/12" variant="secondary" />
+        </div>
+      </div>
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-28" />
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-6 gap-2 border-b border-gray-200 pb-2">
+            {renderItems(6, (i) => (
+              <SkeletonBar key={i} height="h-4" width="w-full" variant="secondary" />
+            ))}
+          </div>
+          {renderItems(3, (row) => (
+            <div key={row} className="grid grid-cols-6 gap-2 py-2 border-b border-gray-100">
+              {renderItems(6, (col) => (
+                <SkeletonBar key={col} height="h-4" width="w-full" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {renderItems(2, (i) => (
+          <div key={i} className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-2`}>
+            <SkeletonBar height="h-4" width="w-24" />
+            <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+            <SkeletonBar height="h-3.5" width="w-10/12" variant="secondary" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** PBL 결과 첫 탭(Ⅰ. 개요): 신청서 자동표출 FormTable(2-컬럼 4행) + 훈련과정 개요 카드 2개 */
+function PBLOverviewTabSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-3`}>
+        <SkeletonBar height="h-5" width="w-40" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+          {renderItems(8, (i) => (
+            <div key={i} className="flex items-center gap-3 py-1.5">
+              <SkeletonBar height="h-4" width="w-20" variant="secondary" />
+              <SkeletonBar height="h-4" width="w-32" />
+            </div>
+          ))}
+        </div>
+      </div>
+      {renderItems(2, (i) => (
+        <div key={i} className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} space-y-2`}>
+          <SkeletonBar height="h-5" width="w-28" />
+          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
+          <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 로드맵/PBL 결과 버전 카드 스켈레톤 (탭 개수·첫 탭 컨텐츠 variant 분기) */
+function RoadmapVersionCardSkeleton({
+  tabCount,
+  firstTabContent,
+}: {
+  tabCount: 3 | 5;
+  firstTabContent: FirstTabContent;
+}) {
   return (
     <div className={`${CARD_STYLES.base} pb-1`}>
       {/* 헤더 영역: 버전 뱃지 + Overview 요약 + 진단 요약 */}
@@ -1031,12 +1106,15 @@ function RoadmapVersionCardSkeleton() {
         </div>
       </div>
 
-      {/* 탭 바 (4개) */}
-      <div className="sticky top-16 z-10 bg-card border-b border-gray-200">
+      {/* 탭 바 (라벨 텍스트 없이 회색 막대만 — 향후 라벨 변경 시 동기화 부담 제거) */}
+      <div
+        className="sticky top-16 z-10 bg-card border-b border-gray-200"
+        data-testid="skeleton-version-card-tabs"
+      >
         <nav className="flex -mb-px overflow-x-auto">
-          {TAB_LABELS.map((label, i) => (
+          {renderItems(tabCount, (i) => (
             <div
-              key={label}
+              key={i}
               className={`px-3 py-2 sm:px-6 sm:py-3 flex-shrink-0 border-b-2 ${
                 i === 0 ? 'border-purple-300' : 'border-transparent'
               }`}
@@ -1047,62 +1125,77 @@ function RoadmapVersionCardSkeleton() {
         </nav>
       </div>
 
-      {/* 기본 탭(역량 모델링) 컨텐츠 */}
+      {/* 기본 탭(Ⅰ. 개요) 컨텐츠 */}
       <div className="p-4 sm:p-6 space-y-5">
-        <CompetencyModelingTableSkeleton />
-        <NcsMethodologyBoxSkeleton />
+        {firstTabContent === 'roadmap-overview' ? (
+          <RoadmapOverviewTabSkeleton />
+        ) : (
+          <PBLOverviewTabSkeleton />
+        )}
       </div>
     </div>
   );
 }
 
-/** 로드맵 페이지 스켈레톤 공통 레이아웃 */
+/** 로드맵 결과 페이지 스켈레톤 공통 레이아웃 (variant 분기) */
 function RoadmapPageSkeletonBase({
-  showDescription = false,
+  tabCount,
+  firstTabContent,
   showRegenerateAccordion = false,
 }: {
-  showDescription?: boolean;
+  tabCount: 3 | 5;
+  firstTabContent: FirstTabContent;
   showRegenerateAccordion?: boolean;
 }) {
   return (
     <div className="space-y-6">
-      {/* PageHeader: 뒤로가기 + 제목 + 다운로드 버튼 그룹 */}
+      {/* PageHeader: 제목 + 우측 다운로드 버튼 3개 + description (항상 노출) */}
       <div>
-        <SkeletonBar height="h-3.5" width="w-32" className="mb-2" variant="secondary" />
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <SkeletonBar height="h-7" width="w-48" />
           <div className="flex items-center gap-2">
-            {/* PDF / Excel / HWPX 다운로드 버튼 3종 */}
             <SkeletonBar height="h-9" width="w-20" />
             <SkeletonBar height="h-9" width="w-20" />
             <SkeletonBar height="h-9" width="w-20" />
           </div>
         </div>
-        {showDescription && (
-          <SkeletonBar height="h-3.5" width="w-64" className="mt-2" variant="secondary" />
-        )}
+        <div data-testid="skeleton-page-description" className="mt-2">
+          <SkeletonBar height="h-3.5" width="w-72" variant="secondary" />
+        </div>
       </div>
 
       {/* VersionSelector 바 (sticky) */}
       <VersionSelectorBarSkeleton />
 
       {/* 수정 요청 아코디언 (컨설턴트 전용) */}
-      {showRegenerateAccordion && <RegenerateAccordionSkeleton />}
+      {showRegenerateAccordion && (
+        <div data-testid="skeleton-regenerate-accordion">
+          <RegenerateAccordionSkeleton />
+        </div>
+      )}
 
-      {/* 버전 카드 (4탭 구조) */}
-      <RoadmapVersionCardSkeleton />
+      {/* 버전 카드 */}
+      <RoadmapVersionCardSkeleton tabCount={tabCount} firstTabContent={firstTabContent} />
     </div>
   );
 }
 
-/** 로드맵 페이지 스켈레톤 (컨설턴트용 - 수정 요청 아코디언 포함) */
+/**
+ * @deprecated Task 2-6 임시 호환용. ConsultantRoadmapPageSkeleton 으로 교체 예정.
+ */
 export function RoadmapPageSkeleton() {
-  return <RoadmapPageSkeletonBase showRegenerateAccordion />;
+  return (
+    <RoadmapPageSkeletonBase
+      tabCount={3}
+      firstTabContent="roadmap-overview"
+      showRegenerateAccordion
+    />
+  );
 }
 
-/** 로드맵 페이지 스켈레톤 (OPS용 - 읽기 전용) */
+/** 로드맵 페이지 스켈레톤 (OPS용 - 3탭, regenerate 없음) */
 export function OpsRoadmapPageSkeleton() {
-  return <RoadmapPageSkeletonBase showDescription />;
+  return <RoadmapPageSkeletonBase tabCount={3} firstTabContent="roadmap-overview" />;
 }
 
 // ============================================================================
