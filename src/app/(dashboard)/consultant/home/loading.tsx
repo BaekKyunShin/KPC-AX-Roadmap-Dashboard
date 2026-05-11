@@ -7,8 +7,8 @@ export default function ConsultantHomeLoading() {
           <div className="h-8 w-72 bg-gray-200 rounded" />
           <div className="mt-2 h-4 w-56 bg-gray-200 rounded" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[0, 1, 2, 3].map((i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white rounded-lg shadow p-4 border-l-4 border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="h-4 w-20 bg-gray-200 rounded" />
