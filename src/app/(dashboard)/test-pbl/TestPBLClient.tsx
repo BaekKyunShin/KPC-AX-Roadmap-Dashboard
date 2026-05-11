@@ -40,9 +40,11 @@ import {
 
 import {
   PBLInterviewStrictSchema,
+  PBL_AI_LEVEL_LABEL,
   type PBLInterviewStrict,
   type PBLOverview,
   type PBLOrganization,
+  type PBLAILevel,
 } from '@/lib/schemas/interview-pbl';
 import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
 import type {
@@ -52,6 +54,9 @@ import type {
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
+import type { PBLExportPayload } from '@/lib/actions/pbl-export';
+import type { DownloadType } from '@/components/result/DownloadButtonGroup';
+import { showSuccessToast } from '@/lib/utils/toast';
 
 import { generateTestPBL, cancelTestPBLGeneration } from './actions';
 
@@ -145,6 +150,79 @@ function toPBLReportRow(content: PBLContent): PBLReportRow {
     finalized_at: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * 테스트 PBL 결과(in-memory) → 다운로드용 PBLExportPayload 변환.
+ *
+ * 실제 PBL의 `preparePBLExportData` 와 동일한 페이로드 형태를 생성해
+ * `generatePBLPDF` · `generatePBLXLSX` 를 그대로 재사용할 수 있도록 한다.
+ * DB 저장이 없는 테스트 모드에서도 PDF/XLSX 다운로드가 가능해진다.
+ *
+ * Why: 실제 PBL의 `buildOverviewFromV2` / `buildRequirementsFromV2` 는
+ *   server file ('use server') 내부 헬퍼라 클라이언트에서 import 불가.
+ *   동일 매핑 규칙을 inline 으로 재현한다.
+ */
+export function buildTestPBLExportPayload(args: {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
+  companyName: string;
+}): PBLExportPayload {
+  const { content, interview, companyName } = args;
+  const aiLevel = interview.currentAiLevel?.level as PBLAILevel | undefined;
+
+  const env = interview.trainingEnv;
+  const envSummary = env
+    ? [
+        env.properTrainingHours && `[적정 훈련시간] ${env.properTrainingHours}`,
+        env.internalPlace && `[훈련장소-사내] ${env.internalPlace}`,
+        env.externalPlace && `[훈련장소-사외] ${env.externalPlace}`,
+        env.aiInfrastructure && `[AI 인프라] ${env.aiInfrastructure}`,
+        env.internalInstructors.length > 0 &&
+          `[사내강사] ${env.internalInstructors
+            .map((i) => `${i.position} ${i.name} (${i.career})`)
+            .join(' / ')}`,
+        env.externalInstructors.length > 0 &&
+          `[외부강사] ${env.externalInstructors
+            .map((i) => `${i.position} ${i.name} (${i.career})`)
+            .join(' / ')}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : undefined;
+
+  return {
+    companyName,
+    projectId: 'test-mode',
+    versionNumber: 1,
+    status: 'DRAFT',
+    diagnosisSummary: '',
+    pblContent: content,
+    createdAt: new Date().toISOString(),
+    finalizedAt: null,
+    interviewOverview: {
+      courseName: interview.courseName,
+      trainingHours: interview.trainingHours,
+      traineeCount: 0,
+      trainingJob: interview.trainingTarget,
+      aiLevel: aiLevel ? PBL_AI_LEVEL_LABEL[aiLevel] : '',
+      trainingGoals: [],
+    },
+    requirements:
+      env || interview.target
+        ? {
+            trainingNeedsAnalysis: envSummary || undefined,
+            selectionReason: interview.target?.necessity || undefined,
+            targetTaskDetails: interview.target?.details?.map((d) => ({
+              task_name: d.title ?? '',
+              as_is: d.as_is ?? '',
+              to_be: d.to_be ?? '',
+              required_knowledge: d.required_knowledge ?? '',
+              required_skill: d.required_skill ?? '',
+            })),
+          }
+        : undefined,
   };
 }
 
@@ -353,8 +431,55 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           onGenerate={async () => {
             showErrorToast('테스트 모드에서는 재생성이 비활성화되어 있습니다.');
           }}
-          onDownload={async () => {
-            showErrorToast('테스트 모드에서는 다운로드가 비활성화되어 있습니다.');
+          onDownload={async (type: DownloadType) => {
+            const payload = buildTestPBLExportPayload({
+              content: testResult.content,
+              interview: testResult.interview,
+              companyName,
+            });
+            try {
+              if (type === 'PDF') {
+                const { generatePBLPDF } = await import(
+                  '@/lib/services/export/pdf'
+                );
+                const blob = await generatePBLPDF(payload);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pbl_test_${companyName}_v1.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showSuccessToast('PDF 다운로드 완료');
+                return;
+              }
+              if (type === 'XLSX') {
+                const { generatePBLXLSX, downloadPBLXLSX } = await import(
+                  '@/lib/services/export/xlsx'
+                );
+                const bytes = await generatePBLXLSX(payload);
+                downloadPBLXLSX(
+                  bytes,
+                  `pbl_test_${companyName}_v1.xlsx`,
+                );
+                showSuccessToast('Excel 다운로드 완료');
+                return;
+              }
+              // HWPX 는 Vercel Python Function (DB 의 pbl_reports.id) 의존이라
+              // 테스트 모드 in-memory 데이터를 그대로 넘길 수 없음. PDF/Excel 안내.
+              showErrorToast(
+                '테스트 모드 HWPX 미지원',
+                '테스트 모드에서는 PDF/Excel 다운로드로 결과를 확인할 수 있습니다.',
+              );
+            } catch (err) {
+              const message =
+                err instanceof Error
+                  ? err.message
+                  : '다운로드 중 오류가 발생했습니다.';
+              console.error('[TestPBLClient] 다운로드 예외:', err);
+              showErrorToast('다운로드 실패', message);
+            }
           }}
           companyName={companyName}
         />

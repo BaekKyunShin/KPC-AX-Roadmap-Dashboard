@@ -28,7 +28,9 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
-import TestPBLClient from './TestPBLClient';
+import TestPBLClient, { buildTestPBLExportPayload } from './TestPBLClient';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
+import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 
 // ─── V2 Step 컴포넌트 경로로 모킹 ─────────────────────────────────────────
 vi.mock(
@@ -138,5 +140,76 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
     );
     expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
     confirmSpy.mockRestore();
+  });
+});
+
+// ─── 회귀 #이슈3-B — 테스트 PBL 다운로드 페이로드 변환 ─────────────────────
+describe('buildTestPBLExportPayload', () => {
+  function emptyContent(): PBLContent {
+    return {
+      header: { course_name: '', training_hours: 0, training_target: '' },
+      diagnosis: { current_level: 'BASIC', expected_level: 'USER', summary: '' },
+      competency: { name: '', criteria: '', knowledge: [], skill: [], attitude: [] },
+      task_analysis: [],
+      tasks: [],
+      operation_plan: {
+        training_goal: '',
+        ai_tool_usage_plan: [],
+        training_plan: {
+          overview: { course_name: '', training_period: { start: '', end: '' } },
+          learning_group: { instructors: [], trainees: [] },
+          subject_profile: {
+            course_name: '',
+            total_hours: 0,
+            training_goals: [],
+            ai_tools: [],
+            utilized_data: '',
+            analysis_method: '',
+            training_contents: [],
+            total_sum_hours: 0,
+          },
+          facilities: [],
+          evaluation: { method: '', criteria: [] },
+        },
+      },
+      outcome_analysis: {
+        learner_assessment: { method: '', criteria: [] },
+        instructor_evaluation: { criteria: [] },
+        management_assessment: { items: [] },
+        roi_analysis: { metrics: [] },
+        improvement_plan: { items: [] },
+      },
+    } as unknown as PBLContent;
+  }
+
+  it('companyName · 인터뷰 V2 데이터 · pblContent 로 PBLExportPayload 를 구성한다', () => {
+    const payload = buildTestPBLExportPayload({
+      content: emptyContent(),
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '회귀테스트 기업',
+    });
+
+    expect(payload.companyName).toBe('회귀테스트 기업');
+    expect(payload.projectId).toBe('test-mode');
+    expect(payload.versionNumber).toBe(1);
+    expect(payload.status).toBe('DRAFT');
+    expect(payload.pblContent).toBeDefined();
+    expect(payload.interviewOverview?.courseName).toBe(
+      PBL_INTERVIEW_SAMPLE.courseName,
+    );
+    expect(payload.interviewOverview?.trainingHours).toBe(
+      PBL_INTERVIEW_SAMPLE.trainingHours,
+    );
+  });
+
+  it('finalizedAt 은 null, createdAt 은 ISO 문자열', () => {
+    const payload = buildTestPBLExportPayload({
+      content: emptyContent(),
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '테스트',
+    });
+    expect(payload.finalizedAt).toBeNull();
+    expect(typeof payload.createdAt).toBe('string');
+    expect(payload.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 });
