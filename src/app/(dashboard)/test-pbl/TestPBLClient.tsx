@@ -20,6 +20,8 @@ import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast } from '@/lib/utils';
+import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
+import { PBL_FIELD_LABELS } from '@/lib/schemas/interview-pbl-labels';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
@@ -58,7 +60,11 @@ import type { PBLExportPayload } from '@/lib/actions/pbl-export';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showSuccessToast } from '@/lib/utils/toast';
 
-import { generateTestPBL, cancelTestPBLGeneration } from './actions';
+import {
+  generateTestPBL,
+  cancelTestPBLGeneration,
+  exportTestPBLHwpx,
+} from './actions';
 
 // ─── 테스트 모드 스텝 정의 (HRD PDF 업로드는 테스트 불가 → 제외, 8 스텝) ──────
 
@@ -323,7 +329,11 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const handleSubmit = async () => {
     const parsed = PBLInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
-      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      const message = formatZodIssuesForToast(parsed.error, PBL_FIELD_LABELS);
+      showErrorToast(
+        '제출 검증 실패',
+        message || '필수 입력 항목을 확인해주세요.',
+      );
       return;
     }
 
@@ -466,12 +476,35 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 showSuccessToast('Excel 다운로드 완료');
                 return;
               }
-              // HWPX 는 Vercel Python Function (DB 의 pbl_reports.id) 의존이라
-              // 테스트 모드 in-memory 데이터를 그대로 넘길 수 없음. PDF/Excel 안내.
-              showErrorToast(
-                '테스트 모드 HWPX 미지원',
-                '테스트 모드에서는 PDF/Excel 다운로드로 결과를 확인할 수 있습니다.',
-              );
+              if (type === 'HWPX') {
+                // in-memory 인터뷰·결과를 신규 server action 으로 HWPX 생성
+                const result = await exportTestPBLHwpx({
+                  content: testResult.content,
+                  interview: testResult.interview,
+                  companyName,
+                });
+                if (!result.success) {
+                  showErrorToast('HWPX 다운로드 실패', result.error);
+                  return;
+                }
+                const { fileName, contentBase64, mimeType } = result.data;
+                const binary = atob(contentBase64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                  bytes[i] = binary.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showSuccessToast('HWPX 다운로드 완료');
+                return;
+              }
             } catch (err) {
               const message =
                 err instanceof Error

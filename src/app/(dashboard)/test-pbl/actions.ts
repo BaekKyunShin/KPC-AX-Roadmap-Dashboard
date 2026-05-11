@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -13,8 +14,10 @@ import {
   type PBLInterviewStrict,
   PBL_AI_LEVEL_LABEL,
 } from '@/lib/schemas/interview-pbl';
-import type { ConsultantProfile } from '@/types/database';
+import type { ConsultantProfile, Interview, Project } from '@/types/database';
+import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import { buildPBLHwpxPayload, generatePBLHwpx } from '@/lib/services/export/hwpx';
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
@@ -281,4 +284,123 @@ export async function cancelTestPBLGeneration(): Promise<SimpleActionResult> {
   if ('error' in auth) return { success: false, error: auth.error };
   cancelAbort(abortKey(auth.user.id));
   return { success: true };
+}
+
+// =============================================================================
+// Server Action — exportTestPBLHwpx (in-memory HWPX 생성)
+// =============================================================================
+
+/**
+ * 테스트 PBL 결과(in-memory) → HWPX 다운로드.
+ *
+ * 실제 PBL은 `exportPBLAsHwpxAction(pblId)` 로 DB 의 pbl_reports row 를 조회해
+ * payload 를 만들지만, 테스트 모드는 DB 저장이 없으므로 client 가 보낸
+ * in-memory content/interview/companyName 으로 **가짜 row 객체**를 만들어
+ * 동일한 `buildPBLHwpxPayload` + `generatePBLHwpx` 파이프라인을 사용한다.
+ *
+ * 보안: 테스트 모드 허용 역할(CONSULTANT_APPROVED / OPS_ADMIN / SYSTEM_ADMIN)만.
+ */
+export async function exportTestPBLHwpx(input: {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
+  companyName: string;
+}): Promise<
+  ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>
+> {
+  const auth = await requireAuthWithRole(ALLOWED_ROLES);
+  if ('error' in auth) return { success: false, error: auth.error };
+  const { user } = auth;
+
+  // 인터뷰 검증 — Strict 통과해야 인터뷰 데이터가 payload 변환에 안전.
+  const parsedInterview = PBLInterviewStrictSchema.safeParse(input.interview);
+  if (!parsedInterview.success) {
+    return {
+      success: false,
+      error: '테스트 인터뷰 데이터 검증에 실패했습니다.',
+    };
+  }
+  const companyName = (input.companyName ?? '').trim() || '테스트기업';
+
+  // ── 가짜 row 객체 구성 ──────────────────────────────────────────────────
+  const nowIso = new Date().toISOString();
+  const fakePblRow: PBLReportRow = {
+    id: 'test-mode',
+    project_id: 'test-mode',
+    version_number: 1,
+    status: 'DRAFT',
+    consultant_profile_snapshot: {},
+    diagnosis_summary: '',
+    pbl_content: input.content,
+    free_tool_validated: true,
+    time_limit_validated: true,
+    revision_prompt: null,
+    is_shared: false,
+    like_count: 0,
+    created_by: user.id,
+    finalized_by: null,
+    finalized_at: null,
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  // Project — buildPBLHwpxPayload 가 참조하는 핵심 필드만 채움. raw row 캐스팅.
+  const fakeProject = {
+    id: 'test-mode',
+    company_name: companyName,
+    track: 'PBL',
+    is_test_mode: true,
+    created_by: user.id,
+    created_at: nowIso,
+    updated_at: nowIso,
+  } as unknown as Project;
+
+  // Interview — V2 pbl_data JSONB 컬럼에 인터뷰 본체를 그대로 주입. raw row 캐스팅.
+  const fakeInterview = {
+    id: 'test-mode',
+    project_id: 'test-mode',
+    interviewer_id: user.id,
+    pbl_data: parsedInterview.data,
+    interview_date: nowIso,
+    created_at: nowIso,
+    updated_at: nowIso,
+  } as unknown as Interview;
+
+  // ── payload 변환 + Python 호출 ──────────────────────────────────────────
+  const payload = buildPBLHwpxPayload({
+    pbl: fakePblRow,
+    project: fakeProject,
+    interview: fakeInterview,
+  });
+
+  const reqHeaders = await headers();
+  const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+  const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+  const baseUrl = host ? `${proto}://${host}` : undefined;
+
+  let buffer: Buffer;
+  try {
+    buffer = await generatePBLHwpx(payload, { baseUrl });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[exportTestPBLHwpx generatePBLHwpx Error]', {
+      baseUrl,
+      error: message,
+    });
+    const isLocalDevFallback = message.includes('Vercel Python 런타임');
+    return {
+      success: false,
+      error: isLocalDevFallback
+        ? message
+        : 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      fileName: payload.fileName,
+      contentBase64: buffer.toString('base64'),
+      mimeType: 'application/vnd.hancom.hwpx',
+    },
+  };
 }

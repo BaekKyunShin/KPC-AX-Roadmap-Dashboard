@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import { showErrorToast } from '@/lib/utils';
 import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
+import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
+import { ROADMAP_FIELD_LABELS } from '@/lib/schemas/interview-roadmap-labels';
 
 import {
   saveRoadmapInterviewV2,
@@ -362,17 +364,14 @@ export function RoadmapInterviewClient({
     // 2) Strict 검증 (safeParse) — NCS XOR + 필수 필드 검증
     const parsed = RoadmapInterviewStrictSchema.safeParse(cleanedData);
     if (!parsed.success) {
-      // #012 fix — 모든 zod 에러 메시지를 join 해 사용자가 비어있는 필드를 한 번에
-      // 파악할 수 있게 한다 (기존: errors[0] 하나만 표시 → 사용자가 어디 부족한지 모름).
-      const messages = parsed.error.errors
-        .map((e) => e.message)
-        .filter((m) => Boolean(m?.trim()))
-        .slice(0, 5);
+      // 누락된 필드 모두 노출 + path → 사용자 라벨 매핑으로 Step·항목 명시
+      const message = formatZodIssuesForToast(
+        parsed.error,
+        ROADMAP_FIELD_LABELS,
+      );
       showErrorToast(
         '제출 검증 실패',
-        messages.length > 0
-          ? messages.join('\n')
-          : '필수 입력 항목을 확인해주세요.',
+        message || '필수 입력 항목을 확인해주세요.',
       );
       return;
     }
