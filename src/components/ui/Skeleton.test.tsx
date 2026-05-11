@@ -461,11 +461,22 @@ describe('Skeleton', () => {
       expect(container.querySelector('.animate-shimmer')).toBeInTheDocument();
     });
 
-    it('스테퍼 영역 6개 원형 요소가 렌더링된다', () => {
+    it('default 호출 시 9개 step 원형이 렌더된다 (Roadmap 기본)', () => {
       const { container } = render(<InterviewFormSkeleton />);
-      // 스테퍼의 각 단계: h-8 w-8 rounded-full animate-shimmer
-      const stepCircles = container.querySelectorAll('.h-8.w-8.rounded-full.animate-shimmer');
-      expect(stepCircles.length).toBeGreaterThanOrEqual(6);
+      const stepperDesktop = container.querySelector('[data-testid="skeleton-stepper-desktop"]');
+      expect(stepperDesktop?.querySelectorAll('.h-8.w-8.rounded-full').length).toBe(9);
+    });
+
+    it('stepCount=10 (PBL) 시 10개 step 원형이 렌더된다', () => {
+      const { container } = render(<InterviewFormSkeleton stepCount={10} />);
+      const stepperDesktop = container.querySelector('[data-testid="skeleton-stepper-desktop"]');
+      expect(stepperDesktop?.querySelectorAll('.h-8.w-8.rounded-full').length).toBe(10);
+    });
+
+    it('stepCount=9 명시 호출 시 9개', () => {
+      const { container } = render(<InterviewFormSkeleton stepCount={9} />);
+      const stepperDesktop = container.querySelector('[data-testid="skeleton-stepper-desktop"]');
+      expect(stepperDesktop?.querySelectorAll('.h-8.w-8.rounded-full').length).toBe(9);
     });
   });
 

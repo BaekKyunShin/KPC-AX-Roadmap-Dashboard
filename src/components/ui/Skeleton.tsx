@@ -1216,10 +1216,16 @@ export function OpsPBLPageSkeleton() {
 // 프로필 폼 스켈레톤
 // ============================================================================
 
-/** 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션) */
-export function InterviewFormSkeleton() {
-  const stepCount = 6;
-
+/**
+ * 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션).
+ *
+ * Roadmap 트랙은 9 스텝 (`ROADMAP_STEPS`), PBL 트랙은 10 스텝 (`PBL_STEPS`).
+ * `interview/loading.tsx` 가 `searchParams.track` 으로 분기해 적절한 stepCount 를 전달한다.
+ * default 9 는 Roadmap 트랙 기본값.
+ */
+export function InterviewFormSkeleton({
+  stepCount = 9,
+}: { stepCount?: number } = {}) {
   return (
     <div className="max-w-4xl mx-auto">
       {/* 헤더 */}
@@ -1231,7 +1237,7 @@ export function InterviewFormSkeleton() {
       {/* 스테퍼 */}
       <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact} mb-6`}>
         {/* 데스크톱 스테퍼 */}
-        <div className="hidden md:block relative">
+        <div className="hidden md:block relative" data-testid="skeleton-stepper-desktop">
           <div className="absolute top-4 inset-x-4 h-0.5 bg-gray-200" />
           <div className="flex justify-between relative">
             {renderItems(stepCount, (i) => (
@@ -1244,7 +1250,7 @@ export function InterviewFormSkeleton() {
         </div>
 
         {/* 모바일 스테퍼 */}
-        <div className="md:hidden">
+        <div className="md:hidden" data-testid="skeleton-stepper-mobile">
           <div className="flex items-center justify-between mb-2">
             <SkeletonBar height="h-4" width="w-16" />
             <SkeletonBar height="h-4" width="w-24" />
