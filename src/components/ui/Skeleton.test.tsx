@@ -18,7 +18,7 @@ import {
   DetailPageSkeleton,
   StatsCardSkeleton,
   PaginationSkeleton,
-  RoadmapPageSkeleton,
+  ConsultantRoadmapPageSkeleton,
   OpsRoadmapPageSkeleton,
   InterviewFormSkeleton,
   ProfileFormSkeleton,
@@ -422,14 +422,14 @@ describe('Skeleton', () => {
   // RoadmapPageSkeleton / OpsRoadmapPageSkeleton
   // --------------------------------------------------------------------------
 
-  describe('RoadmapPageSkeleton', () => {
+  describe('ConsultantRoadmapPageSkeleton', () => {
     it('렌더링된다', () => {
-      const { container } = render(<RoadmapPageSkeleton />);
+      const { container } = render(<ConsultantRoadmapPageSkeleton />);
       expect(container.firstChild).toBeInTheDocument();
     });
 
     it('animate-shimmer 클래스를 포함한 요소가 존재한다', () => {
-      const { container } = render(<RoadmapPageSkeleton />);
+      const { container } = render(<ConsultantRoadmapPageSkeleton />);
       expect(container.querySelector('.animate-shimmer')).toBeInTheDocument();
     });
   });

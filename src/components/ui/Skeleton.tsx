@@ -1191,11 +1191,6 @@ export function ConsultantRoadmapPageSkeleton() {
   );
 }
 
-/**
- * @deprecated Task 6 에서 제거 예정. ConsultantRoadmapPageSkeleton 으로 임시 별칭.
- */
-export const RoadmapPageSkeleton = ConsultantRoadmapPageSkeleton;
-
 /** Consultant PBL 결과 페이지 스켈레톤 (5탭 + description + regenerate accordion) */
 export function ConsultantPBLPageSkeleton() {
   return (
