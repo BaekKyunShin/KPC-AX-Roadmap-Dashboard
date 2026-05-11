@@ -1011,6 +1011,26 @@ describe('PBLInterviewSchema (strict / loose 이중 검증)', () => {
     expect(PBLInterviewStrictSchema.safeParse(fullValid).success).toBe(true);
   });
 
+  it('PBLInterviewStrictSchema: hrdReportPdf 키 누락(undefined) 도 null 과 동일하게 미첨부 처리', () => {
+    // hrdReportPdf 키가 아예 없는 데이터로 strict parse → Required 가 아니라
+    // null 과 동일한 동작 (courseNecessity 가 채워져 있으면 통과).
+    const withoutHrdKey = { ...fullValid };
+    delete (withoutHrdKey as Partial<typeof fullValid>).hrdReportPdf;
+    expect(PBLInterviewStrictSchema.safeParse(withoutHrdKey).success).toBe(true);
+
+    // hrdReportPdf 키 누락 + courseNecessity 공백 → superRefine 차단 (path=courseNecessity)
+    const withoutBoth = { ...fullValid, courseNecessity: '' };
+    delete (withoutBoth as Partial<typeof fullValid>).hrdReportPdf;
+    const result = PBLInterviewStrictSchema.safeParse(withoutBoth);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      // 'hrdReportPdf' 단독 path 는 발생하면 안 됨 — courseNecessity 로 떨어져야 함
+      expect(paths).not.toContain('hrdReportPdf');
+      expect(paths).toContain('courseNecessity');
+    }
+  });
+
   it('PBLInterviewStrictSchema: currentAiLevel 이 기대보다 높은 엉뚱한 케이스는 통과 (enum 만 막음)', () => {
     // 현재 LEADER · 기대 BASIC 같은 역전 케이스도 enum 측면에서는 통과해야 함
     // (UI/데이터 해석은 결과 화면 책임)

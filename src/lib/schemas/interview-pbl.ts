@@ -706,8 +706,10 @@ export const PBLAnalysisSchema = z.object({
   organization: PBLOrganizationSchema,
   // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
   trainingEnv: PBLTrainingEnvSchema,
-  // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null)
-  hrdReportPdf: PBLHrdReportPdfSchema.nullable(),
+  // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null + undefined 모두 허용).
+  // optional() 을 추가해 키 자체가 누락된 경우에도 'Required' 가 발생하지 않도록 함
+  // (본래 선택 첨부 필드).
+  hrdReportPdf: PBLHrdReportPdfSchema.nullable().optional(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성
   courseNecessity: z.string().min(1, 'AI훈련과정 개발 필요성을 입력하세요.'),
 });
@@ -938,7 +940,10 @@ export type PBLInterviewAutoSave = z.infer<typeof PBLInterviewAutoSaveSchema>;
 // (trim 후 비공백) 이 필수. 본체 `courseNecessity` 자체는 min(1) 로 이미
 // 보호되나, 공백만 입력된 케이스를 strict 경계에서 한 번 더 차단한다.
 export const PBLInterviewStrictSchema = PBLInterviewSchema.superRefine((d, ctx) => {
-  if (d.hrdReportPdf === null) {
+  // null + undefined 모두 '미첨부' 로 동일 취급 (hrdReportPdf 가 optional+nullable 이므로
+  // 키 자체가 누락된 케이스도 보호).
+  const noPdf = d.hrdReportPdf == null;
+  if (noPdf) {
     const trimmed = (d.courseNecessity ?? '').trim();
     if (trimmed === '') {
       ctx.addIssue({

@@ -777,7 +777,9 @@ export type RoadmapTargetTask = z.infer<typeof RoadmapTargetTaskSchema>;
 
 // -- Ⅱ 요구분석 -------------------------------------------------------------
 export const RoadmapRequirementsSchema = z.object({
-  hrdReportPdf: RoadmapHrdReportPdfSchema.nullable(),
+  // optional + nullable — 키 누락(undefined) 도 null 과 동일하게 미첨부로 취급.
+  // (이 필드는 본래 선택 첨부이므로 키 자체가 없어도 'Required' 가 발생해서는 안 됨)
+  hrdReportPdf: RoadmapHrdReportPdfSchema.nullable().optional(),
   companyRequirements: RoadmapCompanyRequirementsSchema,
   taskAnalysis: z
     .array(RoadmapTaskAnalysisItemSchema)

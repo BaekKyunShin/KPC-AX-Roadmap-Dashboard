@@ -11,6 +11,7 @@ import {
   type TestRoadmapInput,
 } from '@/lib/services/roadmap';
 import { toRoadmapVersionColumns } from '@/lib/services/roadmap/roadmap-storage-mapper';
+import { mapRoadmapInterviewToDb } from '@/lib/services/interview/converters';
 import { createAuditLog } from '@/lib/services/audit';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-registry';
@@ -378,12 +379,17 @@ export async function exportTestRoadmapHwpx(input: {
     updated_at: nowIso,
   } as unknown as Project;
 
+  // V2 인터뷰 → DB nested shape 변환 (company_details.roadmap_overview / job_tasks /
+  // improvement_goals). buildRoadmapHwpxPayload 가 이 shape 의 raw row 를 직접 읽으므로
+  // mapRoadmapInterviewToDb 의 결과를 그대로 펼쳐 넣지 않으면 모든 필드가 빈 값이 되어
+  // Python HWPX 함수에서 처리가 실패한다.
+  const interviewDbShape = mapRoadmapInterviewToDb(parsedInterview.data);
   const fakeInterview = {
     id: 'test-mode',
     project_id: 'test-mode',
     interviewer_id: user.id,
-    roadmap_data: parsedInterview.data,
     interview_date: nowIso,
+    ...interviewDbShape,
     created_at: nowIso,
     updated_at: nowIso,
   } as unknown as Interview;
