@@ -488,7 +488,11 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
                   companyName,
                 });
                 if (!result.success) {
-                  showErrorToast('HWPX 다운로드 실패', result.error);
+                  // 실패 시 영구 토스트 + 콘솔 풀 로그 (요청 ID 추적용)
+                  console.error('[TestRoadmap HWPX] result.success=false', result);
+                  showErrorToast('HWPX 다운로드 실패', result.error, {
+                    duration: Infinity,
+                  });
                   return;
                 }
                 const { fileName, contentBase64, mimeType } = result.data;

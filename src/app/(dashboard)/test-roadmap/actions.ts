@@ -405,24 +405,34 @@ export async function exportTestRoadmapHwpx(input: {
   const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
   const baseUrl = host ? `${proto}://${host}` : undefined;
 
+  // Vercel 로그 추적용 짧은 requestId (실패 시 토스트에 노출).
+  const requestId = `troad-hwpx-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  console.log(`[exportTestRoadmapHwpx ${requestId}] start`, {
+    baseUrl,
+    fileName: payload.fileName,
+  });
+
   let buffer: Buffer;
   try {
     buffer = await generateRoadmapHwpx(payload, { baseUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[exportTestRoadmapHwpx generateRoadmapHwpx Error]', {
+    console.error(`[exportTestRoadmapHwpx ${requestId}] FAILED`, {
       baseUrl,
       error: message,
     });
     const isLocalDevFallback = message.includes('Vercel Python 런타임');
+    if (isLocalDevFallback) {
+      return { success: false, error: message };
+    }
+    const detail = message.length > 250 ? `${message.slice(0, 250)}…` : message;
     return {
       success: false,
-      error: isLocalDevFallback
-        ? message
-        : 'HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      error: `HWPX 생성에 실패했습니다. (요청 ID: ${requestId})\n원인: ${detail}`,
     };
   }
 
+  console.log(`[exportTestRoadmapHwpx ${requestId}] OK`, { bytes: buffer.length });
   return {
     success: true,
     data: {

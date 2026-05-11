@@ -332,12 +332,21 @@ export async function exportTestPBLHwpx(input: {
   const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
   const baseUrl = host ? `${proto}://${host}` : undefined;
 
+  // 사용자가 토스트 메시지를 보고 Vercel 로그에서 즉시 트레이스 할 수 있도록
+  // 짧은 requestId 부여 + 양쪽 로그 동일 prefix.
+  const requestId = `tpbl-hwpx-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  console.log(`[exportTestPBLHwpx ${requestId}] start`, {
+    baseUrl,
+    fileName: payload.fileName,
+    track: payload.track,
+  });
+
   let buffer: Buffer;
   try {
     buffer = await generatePBLHwpx(payload, { baseUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[exportTestPBLHwpx generatePBLHwpx Error]', {
+    console.error(`[exportTestPBLHwpx ${requestId}] FAILED`, {
       baseUrl,
       error: message,
     });
@@ -345,15 +354,15 @@ export async function exportTestPBLHwpx(input: {
     if (isLocalDevFallback) {
       return { success: false, error: message };
     }
-    // 사용자에게도 원인 노출 — Preview·Production 진단에 필요. 메시지가 너무 길면
-    // 첫 200자만 표기해 토스트가 깨지지 않도록 한다.
-    const detail = message.length > 200 ? `${message.slice(0, 200)}…` : message;
+    // 사용자에게 cause + requestId 노출 — Vercel 로그에서 동일 ID 로 추적 가능.
+    const detail = message.length > 250 ? `${message.slice(0, 250)}…` : message;
     return {
       success: false,
-      error: `HWPX 생성에 실패했습니다. 잠시 후 다시 시도해주세요.\n원인: ${detail}`,
+      error: `HWPX 생성에 실패했습니다. (요청 ID: ${requestId})\n원인: ${detail}`,
     };
   }
 
+  console.log(`[exportTestPBLHwpx ${requestId}] OK`, { bytes: buffer.length });
   return {
     success: true,
     data: {

@@ -484,7 +484,12 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                   companyName,
                 });
                 if (!result.success) {
-                  showErrorToast('HWPX 다운로드 실패', result.error);
+                  // 실패 시 즉시 dismiss 되지 않도록 영구 토스트 + 콘솔에도 풀 로그.
+                  // (요청 ID + 원인 메시지가 토스트에 포함됨 — Vercel 로그 매칭용)
+                  console.error('[TestPBL HWPX] result.success=false', result);
+                  showErrorToast('HWPX 다운로드 실패', result.error, {
+                    duration: Infinity,
+                  });
                   return;
                 }
                 const { fileName, contentBase64, mimeType } = result.data;
