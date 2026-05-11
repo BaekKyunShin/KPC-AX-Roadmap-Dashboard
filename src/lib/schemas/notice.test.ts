@@ -58,11 +58,21 @@ describe('noticeUpdateSchema', () => {
 });
 
 describe('attachmentInputSchema', () => {
-  it('20MB 초과 거부', () => {
+  it('정확히 30MB 는 허용', () => {
+    const exactly30mb = {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 30 * 1024 * 1024,
+      storage_path: 'x',
+    };
+    expect(attachmentInputSchema.safeParse(exactly30mb).success).toBe(true);
+  });
+
+  it('30MB 초과 거부', () => {
     const big = {
       file_name: 'a.pdf',
       mime_type: 'application/pdf',
-      file_size: 20 * 1024 * 1024 + 1,
+      file_size: 30 * 1024 * 1024 + 1,
       storage_path: 'x',
     };
     expect(attachmentInputSchema.safeParse(big).success).toBe(false);

@@ -143,6 +143,61 @@ describe('PBLResultClient — CONSULTANT role', () => {
     expect(screen.getByLabelText('HWPX 다운로드')).toBeInTheDocument();
   });
 
+  it('selectedVersion 이 truthy 면 다운로드 3종이 모두 활성화 (회귀 #이슈3)', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('PDF 다운로드')).toBeEnabled();
+    expect(screen.getByLabelText('Excel 다운로드')).toBeEnabled();
+    expect(screen.getByLabelText('HWPX 다운로드')).toBeEnabled();
+  });
+
+  it('OPS 역할에서도 selectedVersion 이 truthy 면 다운로드 3종이 활성화 (회귀 #이슈3)', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('PDF 다운로드')).toBeEnabled();
+    expect(screen.getByLabelText('Excel 다운로드')).toBeEnabled();
+    expect(screen.getByLabelText('HWPX 다운로드')).toBeEnabled();
+  });
+
+  it('selectedVersion=null 일 때만 다운로드 3종이 비활성화 (정상 동작 보존)', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('PDF 다운로드')).toBeDisabled();
+    expect(screen.getByLabelText('Excel 다운로드')).toBeDisabled();
+    expect(screen.getByLabelText('HWPX 다운로드')).toBeDisabled();
+  });
+
   it('5탭 (Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획 / Ⅴ 성과분석) 을 ResultTabs 에 전달', () => {
     render(
       <PBLResultClient

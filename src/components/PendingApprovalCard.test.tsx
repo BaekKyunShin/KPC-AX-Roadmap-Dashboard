@@ -27,7 +27,14 @@ describe('PendingApprovalCard', () => {
       render(<PendingApprovalCard userName="테스트" userRole="CONSULTANT" />);
       expect(screen.getByText('도움이 필요하신가요?')).toBeInTheDocument();
       expect(screen.getByText('ykkim@kpc.or.kr')).toBeInTheDocument();
-      expect(screen.getByText('02-398-4311')).toBeInTheDocument();
+      expect(screen.getByText('02-398-7667')).toBeInTheDocument();
+    });
+
+    it('운영 담당자 전화번호 tel: 링크를 표시한다', () => {
+      render(<PendingApprovalCard userName="테스트" userRole="CONSULTANT" />);
+      const links = screen.getAllByRole('link');
+      const phoneLink = links.find((l) => l.getAttribute('href') === 'tel:02-398-7667');
+      expect(phoneLink).toBeDefined();
     });
 
     it('예상 소요 시간 뱃지를 표시한다', () => {

@@ -196,11 +196,11 @@ export default function PendingApprovalCard({
                   ykkim@kpc.or.kr
                 </a>
                 <a
-                  href="tel:02-398-4311"
+                  href="tel:02-398-7667"
                   className="flex items-center gap-1 text-blue-600 hover:underline"
                 >
                   <Phone className="h-4 w-4" />
-                  02-398-4311
+                  02-398-7667
                 </a>
               </div>
             </div>

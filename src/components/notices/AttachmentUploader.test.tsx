@@ -26,7 +26,7 @@ vi.mock('@/lib/utils/toast', () => ({
 // ALLOWED_ATTACHMENT_EXT와 MAX_ATTACHMENT_BYTES 모킹
 vi.mock('@/lib/schemas/notice', () => ({
   ALLOWED_ATTACHMENT_EXT: ['.pdf', '.docx', '.xlsx', '.hwpx', '.jpg', '.png'],
-  MAX_ATTACHMENT_BYTES: 20 * 1024 * 1024, // 20MB
+  MAX_ATTACHMENT_BYTES: 30 * 1024 * 1024, // 30MB
 }));
 
 // =============================================================================
@@ -189,26 +189,26 @@ describe('AttachmentUploader', () => {
       expect(mockOnFileSelected).not.toHaveBeenCalled();
     });
 
-    it('20MB 초과 파일을 선택하면 에러 메시지가 표시된다', async () => {
+    it('30MB 초과 파일을 선택하면 에러 메시지가 표시된다', async () => {
       render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
 
       const input = screen.getByTestId('attachment-input');
-      const oversizedFile = makeFile('big.pdf', 20 * 1024 * 1024 + 1);
+      const oversizedFile = makeFile('big.pdf', 30 * 1024 * 1024 + 1);
 
       await act(async () => {
         await userEvent.upload(input, oversizedFile);
       });
 
       await waitFor(() => {
-        expect(screen.getByText('파일은 20MB 이하여야 합니다.')).toBeInTheDocument();
+        expect(screen.getByText('파일은 30MB 이하여야 합니다.')).toBeInTheDocument();
       });
     });
 
-    it('20MB 초과 파일 선택 시 onFileSelected가 호출되지 않는다', async () => {
+    it('30MB 초과 파일 선택 시 onFileSelected가 호출되지 않는다', async () => {
       render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
 
       const input = screen.getByTestId('attachment-input');
-      const oversizedFile = makeFile('big.pdf', 20 * 1024 * 1024 + 1);
+      const oversizedFile = makeFile('big.pdf', 30 * 1024 * 1024 + 1);
 
       await act(async () => {
         await userEvent.upload(input, oversizedFile);

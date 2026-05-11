@@ -124,7 +124,13 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '알 수 없는 오류';
+      // 진단 강화 — Server Action throw 시 원본 에러를 콘솔에 남기고
+      // 토스트에는 메시지를 그대로 노출해 다음 시도 시 원인 파악을 돕는다.
+      console.error('[NoticeForm] submit 예외:', err);
+      const message =
+        err instanceof Error
+          ? err.message || err.toString()
+          : '알 수 없는 오류';
       showErrorToast('저장 실패', message);
     } finally {
       setIsSubmitting(false);

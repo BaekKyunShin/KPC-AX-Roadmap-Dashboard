@@ -41,6 +41,8 @@ import {
 } from './actions';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import * as noticeService from '@/lib/services/notice';
+import { createAuditLog } from '@/lib/services/audit';
+import { revalidatePath } from 'next/cache';
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────
 
@@ -114,6 +116,37 @@ describe('createNoticeAction', () => {
       makeFormData({ title: '공지', body: 'b' }),
     );
     expect(result.success).toBe(false);
+  });
+
+  it('createAuditLog throw 해도 noticeId 반환 (회귀 #이슈1)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
+    vi.mocked(createAuditLog).mockRejectedValueOnce(new Error('audit 테이블 에러'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createNoticeAction(
+      makeFormData({ title: '공지', body: '본문' }),
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.noticeId).toBe('n-1');
+    consoleSpy.mockRestore();
+  });
+
+  it('revalidatePath throw 해도 noticeId 반환 (회귀 #이슈1)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
+    vi.mocked(revalidatePath).mockImplementationOnce(() => {
+      throw new Error('cache 무효화 실패');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createNoticeAction(
+      makeFormData({ title: '공지', body: '본문' }),
+    );
+
+    expect(result.success).toBe(true);
+    consoleSpy.mockRestore();
   });
 });
 
@@ -210,9 +243,9 @@ describe('uploadAttachmentAction', () => {
     expect(result.success).toBe(false);
   });
 
-  it('20MB 초과 거부', async () => {
+  it('30MB 초과 거부', async () => {
     setAuthSuccess();
-    const huge = makeFile('a.pdf', 21 * 1024 * 1024, 'application/pdf');
+    const huge = makeFile('a.pdf', 31 * 1024 * 1024, 'application/pdf');
     const result = await uploadAttachmentAction(
       'n-1',
       makeFormData({ file: huge }),
@@ -250,6 +283,58 @@ describe('uploadAttachmentAction', () => {
       }),
     );
     expect(result.success).toBe(false);
+  });
+
+  it('createAuditLog throw 해도 attachment 반환 (회귀 #이슈1)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.uploadAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-1',
+        notice_id: 'n-1',
+        file_name: 'a.pdf',
+        storage_path: 'n-1/uuid-a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 10,
+        uploaded_at: '2026-01-01',
+      },
+    } as never);
+    vi.mocked(createAuditLog).mockRejectedValueOnce(new Error('audit 테이블 에러'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await uploadAttachmentAction(
+      'n-1',
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+    );
+
+    expect(result.success).toBe(true);
+    consoleSpy.mockRestore();
+  });
+
+  it('revalidatePath throw 해도 attachment 반환 (회귀 #이슈1)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.uploadAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-1',
+        notice_id: 'n-1',
+        file_name: 'a.pdf',
+        storage_path: 'n-1/uuid-a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 10,
+        uploaded_at: '2026-01-01',
+      },
+    } as never);
+    vi.mocked(revalidatePath).mockImplementationOnce(() => {
+      throw new Error('cache 무효화 실패');
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await uploadAttachmentAction(
+      'n-1',
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+    );
+
+    expect(result.success).toBe(true);
+    consoleSpy.mockRestore();
   });
 });
 
