@@ -1181,7 +1181,7 @@ export async function fetchRoadmapInterviewV2(
     const supabase = createAdminClient();
     const { data: interview } = await supabase
       .from('interviews')
-      .select('company_details, job_tasks, improvement_goals')
+      .select('company_details, job_tasks, improvement_goals, stt_insights')
       .eq('project_id', projectId)
       .maybeSingle();
 

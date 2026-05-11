@@ -88,7 +88,7 @@ export default async function InterviewPage({
 
   if (!project) notFound();
 
-  // PBL 트랙 — Task 2.4: V2 Client (camelCase 스키마 + 9 스텝 + 자동저장)
+  // PBL 트랙 — V2 Client (camelCase 스키마 + 10 스텝[양식 9 + STT 첨부 1] + 자동저장)
   // `?track=PBL` 쿼리가 있을 때도 동일 경로. `fetchPBLInterviewV2` 가 DB pbl_data
   // 를 camelCase Partial 로 반환 → signed URL hydration 후 Client 에 주입.
   if (project.track === 'PBL' || sp.track === 'PBL') {
@@ -106,7 +106,7 @@ export default async function InterviewPage({
     );
   }
 
-  // 로드맵 트랙 — V2 Client (camelCase 스키마 + 8 스텝 + 자동저장)
+  // 로드맵 트랙 — V2 Client (camelCase 스키마 + 9 스텝[양식 8 + STT 첨부 1] + 자동저장)
   const raw = (await fetchRoadmapInterviewV2(project.id)) ?? {};
   const hydrated = await hydrateHrdReportSignedUrl(
     raw as Record<string, unknown>,

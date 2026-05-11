@@ -1,9 +1,8 @@
 // e2e/consultant/interview-pbl.spec.ts
-// PR #2 Task 2.4-d: PBL V2 인터뷰 9 스텝 골든 플로우 E2E (양식 2:1 정합)
-//   - V2 Client (camelCase 스키마 + 양식 2 Ⅰ·Ⅱ·Ⅲ 장 9 스텝)
-//   - 이전 버전(legacy 9스텝)은 본 Task 의 page.tsx V2 전환으로 더 이상 노출되지 않음
+// PBL V2 인터뷰 10 스텝 골든 플로우 E2E (양식 2:1 정합 9 + STT 첨부 선택 1)
+//   - V2 Client (camelCase 스키마 + 양식 2 Ⅰ·Ⅱ·Ⅲ 장 9 스텝 + STT 인사이트 추출 선택 1)
 //   - 골든 플로우: Ⅰ → Ⅱ-1-가 → Ⅱ-1-나 → Ⅱ-2 → Ⅱ-3-가(스킵) → Ⅱ-3-나 →
-//                  Ⅲ-1 → Ⅲ-2 → Ⅲ-3·4 → 최종 제출 검증
+//                  Ⅲ-1 → Ⅲ-2 → Ⅲ-3·4 → 인터뷰 녹취 STT 첨부 (선택) → 최종 제출 검증
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 import { findFirstLinkHref } from '../helpers/navigation.helper';
@@ -31,7 +30,7 @@ async function findPBLProjectInterviewUrl(
   return `${href}/interview`;
 }
 
-test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝)', () => {
+test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝 + STT 첨부 1)', () => {
   test('V2 Client 로드 + 첫 스텝(Ⅰ 훈련과정 개요) 렌더', async ({
     consultantPage: page,
   }) => {
@@ -170,16 +169,21 @@ test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝)', () =
     ).toBeVisible();
   });
 
-  test('마지막 스텝에서 "최종 제출" 버튼이 노출된다', async ({
+  test('마지막 스텝(STT 첨부 — 선택)에서 "최종 제출" 버튼이 노출되고 STT 원문 textarea 가 렌더된다', async ({
     consultantPage: page,
   }) => {
     test.skip(!isPblAvailable || !interviewUrl, 'PBL 인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
 
-    for (let i = 0; i < 8; i += 1) {
+    // 9회 다음 클릭 → 10번째 step (STT 첨부) 도달
+    for (let i = 0; i < 9; i += 1) {
       await page.getByRole('button', { name: '다음 스텝' }).click();
     }
+    await expect(
+      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+    ).toBeVisible();
+    await expect(page.getByLabel('STT 파일')).toBeVisible();
     await expect(
       page.getByRole('button', { name: '최종 제출' }),
     ).toBeVisible();

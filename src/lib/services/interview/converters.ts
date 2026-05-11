@@ -40,6 +40,11 @@
  *     · knowledge/skill/attitude 동일
  *   training.ncsUsed + ncsMethodology/ncsDerivationMethod
  *     ↔ company_details.roadmap_ncs_usage.{uses_ncs/ncs_usage_method/competency_derivation_method}
+ *   sttInsights (선택) ↔ interviews.stt_insights (JSONB 컬럼 직저장)
+ *     · 6 카테고리(추가_업무·추가_페인포인트·숨은_니즈·조직_맥락·AI_태도·주요_인용)
+ *       를 camelCase 스키마의 동일 키 그대로 보존. snake_case 별도 변환 없음
+ *       (한국어 키라 케이스 변환 무의미). LLM 프롬프트는 buildSttInsightsSection
+ *       이 stt_insights/sttInsights 둘 다 인식.
  *
  * ── PBL ─────────────────────────────────────────────────────────────────
  * PBL 은 `interviews.pbl_data` JSONB 하나에 camelCase 를 그대로 저장한다.
@@ -56,6 +61,7 @@ import type {
   RoadmapHrdReportPdf,
   RoadmapTaskAnalysisAttachment,
   RoadmapTargetTask,
+  SttInsights,
 } from '@/lib/schemas/interview-roadmap';
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 
@@ -152,6 +158,9 @@ export interface RoadmapInterviewDbUpdate {
     roadmap_as_is: string;
     roadmap_to_be: string;
   }>;
+  // STT 인사이트 — interviews.stt_insights 컬럼(JSONB)에 직저장.
+  // camelCase 스키마의 sttInsights 와 동일 구조를 그대로 보존(키도 동일).
+  stt_insights: SttInsights | null;
 }
 
 // ============================================================================
@@ -317,6 +326,7 @@ export function mapRoadmapInterviewToDb(
     },
     job_tasks: (data.taskAnalysis ?? []).map(taskAnalysisItemToDb),
     improvement_goals: data.targetTask ? [targetTaskToDb(data.targetTask)] : [],
+    stt_insights: data.sttInsights ?? null,
   };
 }
 
@@ -401,6 +411,7 @@ interface DbRoadmapInterviewRow {
     roadmap_as_is?: string;
     roadmap_to_be?: string;
   }> | null;
+  stt_insights?: SttInsights | null;
 }
 
 function coerceAiLevel(v: string | undefined): RoadmapInterviewStrict['aiLevel'] {
@@ -568,6 +579,13 @@ export function mapDbToRoadmapInterview(
     result.ncsMethodology = ncs.ncs_usage_method ?? '';
   } else {
     result.ncsDerivationMethod = ncs.competency_derivation_method ?? '';
+  }
+
+  // STT 인사이트 — interviews.stt_insights 컬럼이 채워져 있을 때만 camelCase
+  // sttInsights 키를 노출. null/undefined 면 키 자체를 결과에 두지 않는다
+  // (Partial<RoadmapInterviewStrict> 의 optional 의미 보존).
+  if (row.stt_insights) {
+    result.sttInsights = row.stt_insights;
   }
 
   return result;

@@ -249,6 +249,29 @@ describe('mapRoadmapInterviewToDb', () => {
     const db = mapRoadmapInterviewToDb(data);
     expect(db.company_details.roadmap_analysis_notes?.attachment_files).toEqual([]);
   });
+
+  it('data.sttInsights 를 stt_insights 컬럼 update payload 에 포함한다', () => {
+    const data: Partial<RoadmapInterviewStrict> = {
+      ...validRoadmapCamelCase(),
+      sttInsights: {
+        추가_업무: ['데이터 정리'],
+        추가_페인포인트: ['Excel 수기 복붙'],
+        숨은_니즈: ['PDF 자동 분류'],
+        조직_맥락: 'TF 신설 직후',
+        AI_태도: '호의적이나 보안 우려',
+        주요_인용: ['실무자 시간이 부족'],
+      },
+    };
+    const db = mapRoadmapInterviewToDb(data);
+    expect(db.stt_insights).toEqual(data.sttInsights);
+  });
+
+  it('data.sttInsights 가 undefined 면 stt_insights=null 로 명시한다', () => {
+    const data = { ...validRoadmapCamelCase() };
+    delete (data as { sttInsights?: unknown }).sttInsights;
+    const db = mapRoadmapInterviewToDb(data);
+    expect(db.stt_insights).toBeNull();
+  });
 });
 
 // ============================================================================
@@ -475,6 +498,26 @@ describe('mapDbToRoadmapInterview', () => {
       expectedAsIs: '육안 검사',
       expectedToBe: 'AI 1차 검사',
     });
+  });
+
+  it('row.stt_insights 를 camelCase sttInsights 키로 그대로 노출한다', () => {
+    const stt = {
+      추가_업무: ['데이터 정리', '주간 보고 자동화'],
+      추가_페인포인트: ['Excel 수기 복붙'],
+      숨은_니즈: ['PDF 자동 분류'],
+      조직_맥락: 'TF 신설 직후',
+      AI_태도: '호의적이나 보안 우려',
+      주요_인용: ['실무자 시간이 부족'],
+    };
+    const row = { stt_insights: stt };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.sttInsights).toEqual(stt);
+  });
+
+  it('row.stt_insights 가 null 이면 sttInsights 키는 결과에 등장하지 않는다', () => {
+    const row = { stt_insights: null };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.sttInsights).toBeUndefined();
   });
 });
 

@@ -914,9 +914,11 @@ export type PBLTasks = z.infer<typeof PBLTasksSchema>;
 // zod v3 에서 `.refine()`·`.superRefine()` 결과는 ZodEffects 로 감싸져
 // `.partial()`·`.merge()` 를 제공하지 않는다. 따라서 조건부 검증은 본 ZodObject
 // 위에 별도 export 로 부착하고, 본체는 ZodObject 를 유지한다.
-export const PBLInterviewSchema = PBLOverviewSchema.merge(PBLAnalysisSchema).merge(
-  PBLTasksSchema,
-);
+export const PBLInterviewSchema = PBLOverviewSchema.merge(PBLAnalysisSchema)
+  .merge(PBLTasksSchema)
+  // STT 인사이트(선택) — 10번째 Step "인터뷰 녹취 STT 첨부" 추출 결과.
+  // optional 이라 strict 제출에 영향 없음. pbl_data JSONB 에 통째 저장됨.
+  .extend({ sttInsights: sttInsightsSchema.optional() });
 export type PBLInterviewStrict = z.infer<typeof PBLInterviewSchema>;
 
 // V2 PBL autoSave 전용 (#011 fix — PBL 측 동일 패턴).

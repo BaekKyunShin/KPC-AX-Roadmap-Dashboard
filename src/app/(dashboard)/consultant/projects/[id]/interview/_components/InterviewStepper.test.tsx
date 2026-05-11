@@ -207,8 +207,9 @@ describe('InterviewStepper', () => {
         />,
       );
 
-      // title이 있는 버튼들이 모바일 바 버튼 (shortName을 title로 가짐)
-      const mobileBars = screen.getAllByTitle(/기본|시스템|업무|페인|제약|확인/);
+      // 모바일 진행 바 버튼은 shortName 을 title 로 가짐. 데스크톱 버튼은
+      // step.name 을 title 로 가지므로 anchor(^…$) 로 모바일만 좁혀 매칭.
+      const mobileBars = screen.getAllByTitle(/^(기본|시스템|업무|페인|제약|확인)$/);
       expect(mobileBars).toHaveLength(STEPS.length);
     });
 
@@ -224,6 +225,48 @@ describe('InterviewStepper', () => {
 
       // 오류 없이 렌더링
       expect(screen.getByText('1/6단계')).toBeInTheDocument();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 5. 데스크톱 라벨 폭 제약 (9~10 Step 확장 시 겹침 방어)
+  // -------------------------------------------------------------------------
+  describe('데스크톱 라벨 폭 제약', () => {
+    it('데스크톱 라벨 span 에 truncate · max-w-[80px] 클래스가 적용된다', () => {
+      const { container } = render(
+        <InterviewStepper
+          steps={STEPS}
+          currentStep={1}
+          onStepClick={vi.fn()}
+          completedSteps={[]}
+        />,
+      );
+
+      // 데스크톱 라벨은 step.name 텍스트 노드의 직속 span — 가장 긴 라벨로 조회
+      const labelSpans = Array.from(
+        container.querySelectorAll('span'),
+      ).filter((el) => el.textContent === '시스템/AI 경험');
+      expect(labelSpans.length).toBeGreaterThan(0);
+      const labelSpan = labelSpans[0];
+      expect(labelSpan.className).toMatch(/truncate/);
+      expect(labelSpan.className).toMatch(/max-w-\[80px\]/);
+    });
+
+    it('각 데스크톱 스텝 버튼에 title 속성으로 step.name 풀텍스트가 노출된다 (truncate 시 hover 접근성)', () => {
+      render(
+        <InterviewStepper
+          steps={STEPS}
+          currentStep={1}
+          onStepClick={vi.fn()}
+          completedSteps={[]}
+        />,
+      );
+
+      STEPS.forEach((step) => {
+        // title=step.name 으로 데스크톱 hover 시 풀텍스트 확인 가능 (Nielsen H4)
+        const elements = screen.getAllByTitle(step.name);
+        expect(elements.length).toBeGreaterThanOrEqual(1);
+      });
     });
   });
 });

@@ -22,6 +22,7 @@ import {
 } from '@/lib/schemas/interview-roadmap';
 import { formatTimeRange } from '@/lib/utils/time';
 import { AI_NECESSITY_LABELS } from '@/lib/constants/interview';
+import { SttInsightsCards } from './SttInsightsCards';
 
 export interface RoadmapInterviewSummaryProps {
   /** mapInterviewRowToRoadmapInterview() 결과 (Partial) */
@@ -409,56 +410,8 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
       {hasStt && stt && (
         <section>
           <SectionTitle>STT 인사이트</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(stt.추가_업무?.length ?? 0) > 0 && (
-              <SttCard title="추가 업무" items={stt.추가_업무!} />
-            )}
-            {(stt.추가_페인포인트?.length ?? 0) > 0 && (
-              <SttCard title="추가 페인포인트" items={stt.추가_페인포인트!} />
-            )}
-            {(stt.숨은_니즈?.length ?? 0) > 0 && (
-              <SttCard title="숨은 니즈" items={stt.숨은_니즈!} />
-            )}
-            {isNonEmpty(stt.조직_맥락) && (
-              <SttCard title="조직 맥락" text={stt.조직_맥락} />
-            )}
-            {isNonEmpty(stt.AI_태도) && (
-              <SttCard title="AI 태도" text={stt.AI_태도} />
-            )}
-            {(stt.주요_인용?.length ?? 0) > 0 && (
-              <SttCard title="주요 인용" items={stt.주요_인용!} />
-            )}
-          </div>
+          <SttInsightsCards stt={stt} />
         </section>
-      )}
-    </div>
-  );
-}
-
-function SttCard({
-  title,
-  items,
-  text,
-}: {
-  title: string;
-  items?: string[];
-  text?: string;
-}) {
-  return (
-    <div className="rounded-md border border-purple-200 bg-purple-50/60 p-3">
-      <p className="text-xs font-medium text-purple-900">{title}</p>
-      {items ? (
-        <ul className="mt-1.5 list-disc list-inside space-y-1 text-sm text-gray-700">
-          {items.map((item, idx) => (
-            <li key={idx} className="whitespace-pre-line break-keep break-words">
-              {item}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-1.5 text-sm text-gray-700 whitespace-pre-line break-keep break-words">
-          {text}
-        </p>
       )}
     </div>
   );

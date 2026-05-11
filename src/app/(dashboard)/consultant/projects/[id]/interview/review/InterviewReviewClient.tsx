@@ -15,6 +15,10 @@ import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import { editInterviewFieldRoadmap, editInterviewFieldPbl } from './actions';
 import { StaleResultBanner } from './_components/StaleResultBanner';
 import { ReviewActions } from './_components/ReviewActions';
+import {
+  SttInsightsCards,
+  hasAnyStt,
+} from '@/components/interview/SttInsightsCards';
 
 /**
  * PR5 (R6 spec) §5.3 — 인터뷰 검토 페이지 Client.
@@ -277,6 +281,13 @@ function ReviewSectionRoadmap({
           NCS 활용: <strong>{data.ncsUsed ? '사용' : '미사용'}</strong>
         </p>
       </CollapsibleSection>
+
+      {/* 선택 항목 — STT 인사이트가 추출되어 있을 때만 노출 */}
+      {hasAnyStt(data.sttInsights) && (
+        <CollapsibleSection title="STT 인사이트 (선택)" {...sigProps}>
+          <SttInsightsCards stt={data.sttInsights} />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }
@@ -446,6 +457,13 @@ function ReviewSectionPbl({
           상세 내용은 인터뷰 페이지에서 확인·수정하세요.
         </p>
       </CollapsibleSection>
+
+      {/* 선택 항목 — STT 인사이트가 추출되어 있을 때만 노출 */}
+      {hasAnyStt(data.sttInsights) && (
+        <CollapsibleSection title="STT 인사이트 (선택)" {...sigProps}>
+          <SttInsightsCards stt={data.sttInsights} />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }
