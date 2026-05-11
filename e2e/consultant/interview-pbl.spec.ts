@@ -183,7 +183,7 @@ test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝 + STT �
     await expect(
       page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeVisible();
-    await expect(page.getByLabel('STT 파일')).toBeVisible();
+    await expect(page.getByLabel('STT 파일', { exact: true })).toBeVisible();
     await expect(
       page.getByRole('button', { name: '최종 제출' }),
     ).toBeVisible();
