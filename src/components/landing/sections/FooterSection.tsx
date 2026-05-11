@@ -46,7 +46,7 @@ const CONTACT_PERSONS: ContactPerson[] = [
     description: '서비스 이용 및 컨설턴트 배정 관련',
     links: [
       { type: 'email', value: 'ykkim@kpc.or.kr' },
-      { type: 'phone', value: '02-398-4311' },
+      { type: 'phone', value: '02-398-7667' },
     ],
   },
   {
