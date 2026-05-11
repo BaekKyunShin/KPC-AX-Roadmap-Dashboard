@@ -201,8 +201,10 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
       .catch(() => false);
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
-    // 마지막 9번째 스텝(STT 첨부 — 선택)에서 "최종 제출" 버튼 노출
-    await page.getByText('인터뷰 녹취 STT 첨부').first().click();
+    // 마지막 9번째 스텝(STT 첨부 — 선택)에서 "최종 제출" 버튼 노출.
+    // Stepper 는 단축 라벨 "인터뷰 STT" (PR #77 stepperLabel 도입) → 풀텍스트 클릭 대신 단축 라벨 사용.
+    // 페이지 헤더(h2) 는 풀텍스트 "인터뷰 녹취 STT 첨부" 유지.
+    await page.getByText('인터뷰 STT', { exact: true }).first().click();
     await expect(
       page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeVisible();
