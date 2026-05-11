@@ -67,7 +67,6 @@ import { NoticeRowActions } from './NoticeRowActions';
 describe('NoticeRowActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   // ---------------------------------------------------------------------------
@@ -171,45 +170,59 @@ describe('NoticeRowActions', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 삭제
+  // 삭제 (ConfirmDialog 흐름)
   // ---------------------------------------------------------------------------
   describe('삭제', () => {
-    it('삭제 버튼 클릭 시 confirm 대화상자가 표시된다', async () => {
+    it('휴지통 트리거 클릭 시 ConfirmDialog 가 열린다', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
       render(
         <NoticeRowActions noticeId="notice-1" isPinned={false} title="테스트 공지" />,
       );
 
+      // 다이얼로그가 열리기 전에는 제목이 노출되지 않는다
+      expect(screen.queryByText('공지를 삭제하시겠습니까?')).not.toBeInTheDocument();
+
+      // 트리거(휴지통 아이콘 버튼) 클릭
       await user.click(screen.getByLabelText('삭제'));
 
-      expect(confirmSpy).toHaveBeenCalled();
+      // 다이얼로그 제목이 노출된다
+      expect(
+        await screen.findByText('공지를 삭제하시겠습니까?'),
+      ).toBeInTheDocument();
     });
 
-    it('confirm 취소 시 deleteNoticeAction이 호출되지 않는다', async () => {
+    it('다이얼로그 취소 시 deleteNoticeAction이 호출되지 않는다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
 
       render(
         <NoticeRowActions noticeId="notice-1" isPinned={false} title="테스트 공지" />,
       );
 
+      // 트리거 클릭 → 다이얼로그 오픈
       await user.click(screen.getByLabelText('삭제'));
+
+      // 다이얼로그 안의 "취소" 버튼 클릭
+      const cancelButton = await screen.findByRole('button', { name: '취소' });
+      await user.click(cancelButton);
 
       expect(mockDeleteNoticeAction).not.toHaveBeenCalled();
     });
 
-    it('confirm 확인 후 deleteNoticeAction(noticeId)가 호출된다', async () => {
+    it('다이얼로그 "삭제" 확인 후 deleteNoticeAction(noticeId)가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteNoticeAction.mockResolvedValue({ success: true });
 
       render(
         <NoticeRowActions noticeId="notice-1" isPinned={false} title="테스트 공지" />,
       );
 
+      // 트리거 클릭 → 다이얼로그 오픈
       await user.click(screen.getByLabelText('삭제'));
+
+      // 다이얼로그 안의 "삭제" 액션 버튼 클릭
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(mockDeleteNoticeAction).toHaveBeenCalledWith('notice-1');
@@ -218,7 +231,6 @@ describe('NoticeRowActions', () => {
 
     it('삭제 성공 시 성공 토스트와 router.refresh가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteNoticeAction.mockResolvedValue({ success: true });
 
       render(
@@ -226,6 +238,9 @@ describe('NoticeRowActions', () => {
       );
 
       await user.click(screen.getByLabelText('삭제'));
+
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('공지가 삭제되었습니다.');
@@ -235,7 +250,6 @@ describe('NoticeRowActions', () => {
 
     it('삭제 실패 시 에러 토스트가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteNoticeAction.mockResolvedValue({ success: false, error: '삭제 불가' });
 
       render(
@@ -243,6 +257,9 @@ describe('NoticeRowActions', () => {
       );
 
       await user.click(screen.getByLabelText('삭제'));
+
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith('삭제 실패', '삭제 불가');

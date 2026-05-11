@@ -14,6 +14,7 @@ import { Info, FlaskConical, Wand2 } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
@@ -288,6 +289,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const [isComplete, setIsComplete] = useState(false);
   const [testResult, setTestResult] = useState<TestResultState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
 
   const currentStepDef = STEPS[currentStep - 1];
   const isFirstStep = currentStep === 1;
@@ -299,25 +301,26 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const updateOverview = (patch: Partial<PBLOverview>) => update(patch);
 
   // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
-  const fillSample = () => {
+  const applySample = () => {
+    const sample = JSON.parse(
+      JSON.stringify(PBL_INTERVIEW_SAMPLE),
+    ) as PBLInterviewStrict;
+    setData(sample);
+    setCurrentStep(1);
+  };
+
+  const handleFillSampleClick = () => {
     const hasInput =
       (data.courseName ?? '').trim() !== '' ||
       (data.companyName ?? '').trim() !== '' ||
       (data.companyIssues ?? '').trim() !== '' ||
       (data.activities ?? []).length > 0 ||
       (data.problemDefinitionSheet?.core ?? '').trim() !== '';
-    if (
-      hasInput &&
-      typeof window !== 'undefined' &&
-      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
-    ) {
-      return;
+    if (hasInput) {
+      setSampleConfirmOpen(true);
+    } else {
+      applySample();
     }
-    const sample = JSON.parse(
-      JSON.stringify(PBL_INTERVIEW_SAMPLE),
-    ) as PBLInterviewStrict;
-    setData(sample);
-    setCurrentStep(1);
   };
 
   const handleSubmit = async () => {
@@ -617,7 +620,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={fillSample}
+              onClick={handleFillSampleClick}
               data-testid="test-pbl-fill-sample"
             >
               <Wand2 className="w-4 h-4 mr-1.5" />
@@ -721,6 +724,25 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           isCompleted={isComplete}
         />
       )}
+
+      <ConfirmDialog
+        open={sampleConfirmOpen}
+        onOpenChange={setSampleConfirmOpen}
+        title="샘플 데이터로 덮어쓰시겠습니까?"
+        description={
+          <>
+            현재 입력한 인터뷰 내용이 모두 사라지고
+            <br />
+            샘플 값으로 교체됩니다.
+          </>
+        }
+        actionLabel="덮어쓰기"
+        variant="destructive"
+        onConfirm={() => {
+          applySample();
+          setSampleConfirmOpen(false);
+        }}
+      />
     </>
   );
 }

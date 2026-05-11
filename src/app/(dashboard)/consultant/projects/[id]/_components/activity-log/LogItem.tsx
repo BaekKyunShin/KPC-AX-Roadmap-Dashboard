@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
@@ -33,6 +34,8 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(log.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const config = ACTIVITY_LOG_TYPE_CONFIG[log.type];
   const IconComponent = ICON_MAP[log.type];
@@ -61,19 +64,21 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
   }
 
   async function handleDelete() {
-    if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-
+    setIsDeleting(true);
     try {
       const result = await deleteActivityLog(log.id, projectId);
 
       if (result.success) {
         showSuccessToast('기록 삭제 완료', '활동 기록이 삭제되었습니다.');
+        setConfirmOpen(false);
         onUpdated();
       } else {
         showErrorToast('삭제 실패', result.error);
       }
     } catch {
       showErrorToast('기록 삭제 실패', TOAST_ERROR.NETWORK);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -199,7 +204,7 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
             variant="ghost"
             size="sm"
             className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:text-red-600"
-            onClick={handleDelete}
+            onClick={() => setConfirmOpen(true)}
             title="삭제"
             aria-label="기록 삭제"
             data-testid="delete-log-button"
@@ -208,6 +213,16 @@ export function LogItem({ log, projectId, onUpdated }: LogItemProps) {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="활동 기록을 삭제하시겠습니까?"
+        actionLabel="삭제"
+        variant="destructive"
+        loading={isDeleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

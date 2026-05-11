@@ -1,10 +1,11 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2, Pin, PinOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   deleteNoticeAction,
@@ -24,6 +25,7 @@ export function NoticeRowActions({
 }: NoticeRowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function handleTogglePin() {
     startTransition(async () => {
@@ -39,9 +41,7 @@ export function NoticeRowActions({
     });
   }
 
-  function handleDelete() {
-    if (!confirm(`"${title}" 공지를 삭제하시겠습니까?\n첨부 파일도 함께 제거됩니다.`))
-      return;
+  function handleConfirm() {
     startTransition(async () => {
       const result = await deleteNoticeAction(noticeId);
       if (result.success) {
@@ -50,6 +50,7 @@ export function NoticeRowActions({
       } else {
         showErrorToast('삭제 실패', result.error);
       }
+      setConfirmOpen(false);
     });
   }
 
@@ -85,13 +86,29 @@ export function NoticeRowActions({
         type="button"
         variant="ghost"
         size="sm"
-        onClick={handleDelete}
+        onClick={() => setConfirmOpen(true)}
         disabled={isPending}
         aria-label="삭제"
         className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="공지를 삭제하시겠습니까?"
+        description={
+          <>
+            <span>&quot;{title}&quot;</span>
+            <br />
+            첨부 파일도 함께 제거됩니다.
+          </>
+        }
+        actionLabel="삭제"
+        variant="destructive"
+        loading={isPending}
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }

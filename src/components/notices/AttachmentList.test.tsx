@@ -66,7 +66,6 @@ describe('AttachmentList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   // ---------------------------------------------------------------------------
@@ -247,12 +246,11 @@ describe('AttachmentList', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 삭제
+  // 삭제 (ConfirmDialog 흐름)
   // ---------------------------------------------------------------------------
   describe('삭제', () => {
-    it('삭제 버튼 클릭 시 confirm 대화상자가 표시된다', async () => {
+    it('휴지통 트리거 클릭 시 ConfirmDialog 가 열린다', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
       const attachments = [makeAttachment({ file_name: 'file.pdf' })];
       render(
@@ -264,14 +262,22 @@ describe('AttachmentList', () => {
         />,
       );
 
+      // 다이얼로그가 열리기 전에는 제목이 노출되지 않는다
+      expect(
+        screen.queryByText('첨부 파일을 삭제하시겠습니까?'),
+      ).not.toBeInTheDocument();
+
+      // 트리거(휴지통 아이콘 버튼) 클릭
       await user.click(screen.getByLabelText('file.pdf 삭제'));
 
-      expect(confirmSpy).toHaveBeenCalled();
+      // 다이얼로그 제목이 노출된다
+      expect(
+        await screen.findByText('첨부 파일을 삭제하시겠습니까?'),
+      ).toBeInTheDocument();
     });
 
-    it('confirm 취소 시 deleteAttachmentAction이 호출되지 않는다', async () => {
+    it('다이얼로그 취소 시 deleteAttachmentAction이 호출되지 않는다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
 
       const attachments = [makeAttachment({ file_name: 'file.pdf' })];
       render(
@@ -283,14 +289,18 @@ describe('AttachmentList', () => {
         />,
       );
 
+      // 트리거 클릭 → 다이얼로그 오픈
       await user.click(screen.getByLabelText('file.pdf 삭제'));
+
+      // 다이얼로그 안의 "취소" 버튼 클릭
+      const cancelButton = await screen.findByRole('button', { name: '취소' });
+      await user.click(cancelButton);
 
       expect(mockDeleteAttachmentAction).not.toHaveBeenCalled();
     });
 
-    it('confirm 확인 후 deleteAttachmentAction(att.id)가 호출된다', async () => {
+    it('다이얼로그 "삭제" 확인 후 deleteAttachmentAction(att.id)가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteAttachmentAction.mockResolvedValue({ success: true });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
@@ -303,8 +313,15 @@ describe('AttachmentList', () => {
         />,
       );
 
+      // 트리거 클릭 → 다이얼로그 오픈
       await act(async () => {
         await user.click(screen.getByLabelText('file.pdf 삭제'));
+      });
+
+      // 다이얼로그 안의 "삭제" 액션 버튼 클릭
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await act(async () => {
+        await user.click(confirmButton);
       });
 
       await waitFor(() => {
@@ -314,7 +331,6 @@ describe('AttachmentList', () => {
 
     it('삭제 성공 시 성공 토스트와 onDeleted(id)가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteAttachmentAction.mockResolvedValue({ success: true });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
@@ -329,6 +345,11 @@ describe('AttachmentList', () => {
 
       await act(async () => {
         await user.click(screen.getByLabelText('file.pdf 삭제'));
+      });
+
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await act(async () => {
+        await user.click(confirmButton);
       });
 
       await waitFor(() => {
@@ -339,7 +360,6 @@ describe('AttachmentList', () => {
 
     it('삭제 실패 시 에러 토스트가 호출된다', async () => {
       const user = userEvent.setup();
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockDeleteAttachmentAction.mockResolvedValue({ success: false, error: '삭제 불가' });
 
       const attachments = [makeAttachment({ id: 'att-123', file_name: 'file.pdf' })];
@@ -354,6 +374,11 @@ describe('AttachmentList', () => {
 
       await act(async () => {
         await user.click(screen.getByLabelText('file.pdf 삭제'));
+      });
+
+      const confirmButton = await screen.findByRole('button', { name: '삭제' });
+      await act(async () => {
+        await user.click(confirmButton);
       });
 
       await waitFor(() => {

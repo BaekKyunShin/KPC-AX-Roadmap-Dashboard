@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Trash2, Download, Paperclip, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import { deleteAttachmentAction } from '@/app/(dashboard)/ops/notices/actions';
 import type { NoticeAttachment } from '@/types/database';
@@ -31,6 +32,9 @@ export function AttachmentList({
 }: AttachmentListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<NoticeAttachment | null>(
+    null,
+  );
   const [isPending, startTransition] = useTransition();
 
   if (!attachments || attachments.length === 0) {
@@ -64,8 +68,9 @@ export function AttachmentList({
     }
   }
 
-  function handleDelete(att: NoticeAttachment) {
-    if (!confirm(`"${att.file_name}" 파일을 삭제하시겠습니까?`)) return;
+  function handleConfirmDelete() {
+    if (!confirmTarget) return;
+    const att = confirmTarget;
     setDeletingId(att.id);
     startTransition(async () => {
       const result = await deleteAttachmentAction(att.id);
@@ -76,10 +81,12 @@ export function AttachmentList({
         showErrorToast('삭제 실패', result.error);
       }
       setDeletingId(null);
+      setConfirmTarget(null);
     });
   }
 
   return (
+    <>
     <ul className="divide-y divide-border rounded-md border" data-testid="attachment-list">
       {attachments.map((att) => {
         const deleting = deletingId === att.id && isPending;
@@ -119,7 +126,7 @@ export function AttachmentList({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleDelete(att)}
+                  onClick={() => setConfirmTarget(att)}
                   disabled={deleting}
                   className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   aria-label={`${att.file_name} 삭제`}
@@ -136,5 +143,22 @@ export function AttachmentList({
         );
       })}
     </ul>
+    <ConfirmDialog
+      open={confirmTarget !== null}
+      onOpenChange={(open) => {
+        if (!open) setConfirmTarget(null);
+      }}
+      title="첨부 파일을 삭제하시겠습니까?"
+      description={
+        confirmTarget ? (
+          <span>&quot;{confirmTarget.file_name}&quot;</span>
+        ) : undefined
+      }
+      actionLabel="삭제"
+      variant="destructive"
+      loading={isPending}
+      onConfirm={handleConfirmDelete}
+    />
+    </>
   );
 }

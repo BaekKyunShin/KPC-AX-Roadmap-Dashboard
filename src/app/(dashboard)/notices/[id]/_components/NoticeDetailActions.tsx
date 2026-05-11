@@ -1,10 +1,11 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import { deleteNoticeAction } from '@/app/(dashboard)/ops/notices/actions';
 
@@ -23,14 +24,9 @@ export function NoticeDetailActions({
 }: NoticeDetailActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  function handleDelete() {
-    if (
-      !confirm(
-        `"${title}" 공지를 삭제하시겠습니까?\n첨부 파일도 함께 제거됩니다.`,
-      )
-    )
-      return;
+  function handleConfirm() {
     startTransition(async () => {
       const result = await deleteNoticeAction(noticeId);
       if (result.success) {
@@ -40,6 +36,7 @@ export function NoticeDetailActions({
       } else {
         showErrorToast('삭제 실패', result.error);
       }
+      setConfirmOpen(false);
     });
   }
 
@@ -55,7 +52,7 @@ export function NoticeDetailActions({
         type="button"
         variant="outline"
         size="sm"
-        onClick={handleDelete}
+        onClick={() => setConfirmOpen(true)}
         disabled={isPending}
         className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
       >
@@ -66,6 +63,22 @@ export function NoticeDetailActions({
         )}
         삭제
       </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="공지를 삭제하시겠습니까?"
+        description={
+          <>
+            <span>&quot;{title}&quot;</span>
+            <br />
+            첨부 파일도 함께 제거됩니다.
+          </>
+        }
+        actionLabel="삭제"
+        variant="destructive"
+        loading={isPending}
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }
