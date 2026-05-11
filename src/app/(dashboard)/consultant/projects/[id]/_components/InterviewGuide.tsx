@@ -33,7 +33,7 @@ export function InterviewGuide({
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function handleGenerate() {
-    if (guideData && !confirm('기존 분석 결과를 덮어씁니다. 계속하시겠습니까?')) {
+    if (guideData && !confirm('기존 분석 결과가 새 결과로 덮어써집니다. 계속하시겠습니까?')) {
       return;
     }
 

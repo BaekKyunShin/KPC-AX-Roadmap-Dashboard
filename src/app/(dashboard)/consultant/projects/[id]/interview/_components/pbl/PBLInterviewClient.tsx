@@ -546,7 +546,7 @@ export function PBLInterviewClient({
                 disabled: isPending || isSubmitting || saveState === 'error',
                 disabledReason:
                   saveState === 'error'
-                    ? "자동 저장이 실패했습니다. '저장' 버튼으로 다시 저장한 뒤 제출해주세요."
+                    ? "자동 저장이 실패했습니다. 화면 하단의 '저장' 버튼을 눌러 직접 저장한 뒤 다시 시도해주세요."
                     : undefined,
               }
             : undefined

@@ -760,14 +760,14 @@ describe('RoadmapResultClient — 자가진단/status 가드 (#013)', () => {
       />,
     );
     expect(
-      screen.getByText(/프로젝트가 인터뷰 완료 상태가 아닙니다/),
+      screen.getByText(/인터뷰는 작성됐지만 아직 최종 제출 전입니다/),
     ).toBeInTheDocument();
     expect(screen.getByTestId('empty-state-generate-roadmap')).toBeDisabled();
   });
 });
 
 // #2 — 로드맵 최종 확정 AlertDialog (window.confirm → shadcn AlertDialog 마이그레이션).
-// 사용자 워딩 옵션 A: "로드맵을 최종 확정하시겠습니까?" + 안내 3줄 + 취소/최종 확정 버튼.
+// 안내문은 2줄(상태 전환 + 이전 확정본 처리, 확정 후 수정 가능) + 취소/최종 확정 버튼.
 // 회귀 가드: window.confirm 호출 금지.
 describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
   beforeEach(() => {
@@ -801,7 +801,7 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
     expect(onFinalize).not.toHaveBeenCalled();
   });
 
-  it('AlertDialog 본문에 정확한 안내문 3줄이 노출된다', async () => {
+  it('AlertDialog 본문에 정확한 안내문이 노출된다', async () => {
     render(
       <RoadmapResultClient
         role="CONSULTANT"
@@ -825,9 +825,10 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
     // 매칭 + textNode-aware matcher 를 사용한다.
     const dialog = screen.getByRole('alertdialog');
     const text = dialog.textContent ?? '';
-    expect(text).toMatch(/확정 후 프로젝트가 ['‘]최종 확정['’] 상태로 전환됩니다\./);
-    expect(text).toContain('이전 확정본이 있다면 아카이브됩니다.');
-    expect(text).toContain('(확정본은 추후 필요 시 직접 수정할 수 있습니다.)');
+    expect(text).toMatch(
+      /확정하면 프로젝트 상태가 ['‘]최종 확정['’]으로 바뀌고, 이전 확정본은 자동 아카이브됩니다\./,
+    );
+    expect(text).toContain('확정 후에도 항목을 직접 수정할 수 있습니다(같은 버전에 반영).');
   });
 
   it('"취소" 클릭 시 AlertDialog 가 닫히고 onFinalize 미호출', async () => {

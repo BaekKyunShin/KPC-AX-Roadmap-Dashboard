@@ -322,9 +322,8 @@ export function RoadmapResultClient({
             className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             data-testid="final-edit-warning-banner"
           >
-            <strong>확정된 결과를 수정합니다.</strong> 동일 버전(v
-            {selectedVersion.version_number})에 그대로 반영되며, 수정 이력은 감사로그에
-            기록됩니다.
+            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을
+            직접 편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
           </div>
         )}
 
@@ -360,13 +359,10 @@ export function RoadmapResultClient({
           <AlertDialogHeader>
             <AlertDialogTitle>로드맵을 최종 확정하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              확정 후 프로젝트가 &lsquo;최종 확정&rsquo; 상태로 전환됩니다.
+              확정하면 프로젝트 상태가 &lsquo;최종 확정&rsquo;으로 바뀌고, 이전 확정본은 자동
+              아카이브됩니다.
               <br />
-              이전 확정본이 있다면 아카이브됩니다.
-              <br />
-              <span className="text-muted-foreground">
-                (확정본은 추후 필요 시 직접 수정할 수 있습니다.)
-              </span>
+              확정 후에도 항목을 직접 수정할 수 있습니다(같은 버전에 반영).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -449,7 +445,7 @@ function EmptyState({
   const guideMessage = !selfAssessmentExists
     ? '자가진단 결과가 없습니다. 자가진단을 먼저 완료해주세요.'
     : !isStatusEligible
-      ? '프로젝트가 인터뷰 완료 상태가 아닙니다. 인터뷰 입력의 "최종 제출" 을 완료해주세요.'
+      ? '인터뷰는 작성됐지만 아직 최종 제출 전입니다. 인터뷰 페이지 하단의 "최종 제출" 버튼을 눌러주세요.'
       : '인터뷰가 완료된 후 아래 버튼을 눌러 AI 훈련 로드맵을 생성하세요.';
 
   return (

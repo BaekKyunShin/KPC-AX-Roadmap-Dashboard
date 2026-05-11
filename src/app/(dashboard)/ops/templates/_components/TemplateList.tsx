@@ -240,7 +240,7 @@ export default function TemplateList({ templates }: TemplateListProps) {
         router.refresh();
       });
     } catch {
-      setError('서버와 통신 중 오류가 발생했습니다.');
+      setError('템플릿 작업 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(null);
     }
@@ -252,17 +252,17 @@ export default function TemplateList({ templates }: TemplateListProps) {
 
   const handleDuplicate = (templateId: string) =>
     executeAction(templateId, () => duplicateTemplate(templateId), {
-      errorFallback: '복제에 실패했습니다.',
+      errorFallback: '템플릿 복제에 실패했습니다. 잠시 후 다시 시도해주세요.',
     });
 
   const performSetActive = (templateId: string) =>
     executeAction(templateId, () => setActiveTemplate(templateId), {
-      errorFallback: '활성화에 실패했습니다.',
+      errorFallback: '템플릿 활성화에 실패했습니다. 잠시 후 다시 시도해주세요.',
     });
 
   const performDelete = (templateId: string) =>
     executeAction(templateId, () => deleteTemplate(templateId), {
-      errorFallback: '삭제에 실패했습니다.',
+      errorFallback: '템플릿 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.',
       onSuccess: () => showSuccessToast('템플릿이 삭제되었습니다.'),
     });
 

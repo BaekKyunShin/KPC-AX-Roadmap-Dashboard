@@ -375,7 +375,9 @@ describe('TemplateList', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /복제/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('서버와 통신 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(
+          screen.getByText('템플릿 작업 처리에 실패했습니다. 잠시 후 다시 시도해주세요.'),
+        ).toBeInTheDocument();
       });
     });
   });
