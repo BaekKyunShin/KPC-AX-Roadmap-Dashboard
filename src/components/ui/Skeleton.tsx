@@ -1200,15 +1200,17 @@ export function InterviewFormSkeleton({
   stepCount = 9,
 }: { stepCount?: number } = {}) {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <SkeletonBar height="h-4" width="w-36" className="mb-2" variant="secondary" />
-        <SkeletonBar height="h-8" width="w-44" />
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* PageHeader 미러 (제목 + description, 우측 actions 없음) */}
+      <div>
+        <SkeletonBar height="h-7" width="w-56" />
+        <div className="mt-1">
+          <SkeletonBar height="h-4" width="w-80" variant="secondary" />
+        </div>
       </div>
 
-      {/* 스테퍼 */}
-      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact} mb-6`}>
+      {/* 스테퍼 (카드 안에 들어감 — 실제 InterviewStepper 가 자체 카드 wrapper 보유) */}
+      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.compact}`}>
         {/* 데스크톱 스테퍼 */}
         <div className="hidden md:block relative" data-testid="skeleton-stepper-desktop">
           <div className="absolute top-4 inset-x-4 h-0.5 bg-gray-200" />
@@ -1216,13 +1218,13 @@ export function InterviewFormSkeleton({
             {renderItems(stepCount, (i) => (
               <div key={i} className="flex flex-col items-center">
                 <div className={`h-8 w-8 rounded-full ${SKELETON_BAR.primary} relative z-10`} />
-                <SkeletonBar height="h-3" width="w-16" className="mt-2" variant="secondary" />
+                <SkeletonBar height="h-3" width="w-20" className="mt-2" variant="secondary" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* 모바일 스테퍼 */}
+        {/* 모바일 스테퍼 — "N/M단계" + 현재 스텝명 + 진행 바 */}
         <div className="md:hidden" data-testid="skeleton-stepper-mobile">
           <div className="flex items-center justify-between mb-2">
             <SkeletonBar height="h-4" width="w-16" />
@@ -1230,29 +1232,49 @@ export function InterviewFormSkeleton({
           </div>
           <div className="flex items-center gap-1">
             {renderItems(stepCount, (i) => (
-              <div key={i} className={`flex-1 h-2 rounded-full ${SKELETON_BAR[i === 0 ? 'primary' : 'secondary']}`} />
+              <div
+                key={i}
+                className={`flex-1 h-2 rounded-full ${SKELETON_BAR[i === 0 ? 'primary' : 'secondary']}`}
+              />
             ))}
           </div>
         </div>
       </div>
 
-      {/* 폼 컨텐츠 */}
-      <div className={`${CARD_STYLES.base} ${CARD_STYLES.padding.default} mb-6 min-h-[400px] space-y-6`}>
-        <SkeletonBar height="h-6" width="w-32" />
-        <div className="space-y-4">
-          {renderItems(3, (i) => (
-            <div key={i} className="space-y-2">
-              <SkeletonBar height="h-4" width="w-24" />
-              <SkeletonBar height="h-10" width="w-full" />
-            </div>
-          ))}
-        </div>
+      {/*
+       * 폼 컨텐츠 — 실제 FormSection 은 카드 wrapper 가 없는 section 이다.
+       * min-h-[400px] 로 영역 확보 + FormSection 헤더(번호 + 제목 + 라벨 + 설명) 미러.
+       */}
+      <div className="min-h-[400px] space-y-4">
+        <header className="space-y-1">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <SkeletonBar height="h-6" width="w-10" /> {/* 번호 (Ⅰ-1) */}
+            <SkeletonBar height="h-6" width="w-32" /> {/* 제목 */}
+            <SkeletonBar height="h-5" width="w-20" variant="secondary" /> {/* [인터뷰 입력] 라벨 */}
+          </div>
+          <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" /> {/* description */}
+        </header>
+        {/* 본문 — large textarea 1개 + 가이드 아코디언 */}
+        <SkeletonBar height="h-40" width="w-full" />
+        <SkeletonBar height="h-10" width="w-48" variant="secondary" />
       </div>
 
-      {/* 네비게이션 버튼 */}
-      <div className="flex justify-between items-center">
-        <SkeletonBar height="h-10" width="w-20" />
-        <SkeletonBar height="h-10" width="w-20" />
+      {/*
+       * StickyFormNav 미러 — sticky bottom-0 z-10 -mx 인셋 + border-t + backdrop-blur.
+       * 좌(이전), 중(저장 인디케이터 + 저장 버튼), 우(다음 또는 최종 제출) 3섹션 구조.
+       */}
+      <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
+          {/* 이전 (size-sm h-9) */}
+          <SkeletonBar height="h-9" width="w-20" />
+          {/* 중앙: 저장 인디케이터 + 수동 저장 버튼 */}
+          <div className="flex items-center gap-3">
+            <SkeletonBar height="h-3.5" width="w-24" variant="secondary" />
+            <SkeletonBar height="h-9" width="w-20" />
+          </div>
+          {/* 다음/최종 제출 (마지막 스텝일 때 폭 더 넓어짐 — 평균값 w-24) */}
+          <SkeletonBar height="h-9" width="w-24" />
+        </div>
       </div>
     </div>
   );
