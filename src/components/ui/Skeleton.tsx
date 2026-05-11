@@ -909,25 +909,6 @@ export function PaginationSkeleton() {
 //        └─ 첫 탭(Ⅰ. 개요) 컨텐츠: RoadmapOverviewTabSkeleton / PBLOverviewTabSkeleton
 // ============================================================================
 
-/** 로드맵 개요 요약 스켈레톤 (Step 6.5 — Ⅰ-1 수립 필요성 + Ⅰ-3 수립 결과) */
-function RoadmapOverviewSummarySkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {renderItems(2, (i) => (
-        <div key={i} className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <SkeletonBar height="h-3.5" width="w-4" />
-            <SkeletonBar height="h-4" width="w-28" />
-          </div>
-          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-5/6" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-2/3" variant="secondary" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * 버전 선택 + 다운로드 행 스켈레톤.
  *
