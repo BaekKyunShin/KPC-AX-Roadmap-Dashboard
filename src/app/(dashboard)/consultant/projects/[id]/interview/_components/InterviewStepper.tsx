@@ -2,8 +2,15 @@
 
 interface Step {
   id: number;
+  /** 페이지 헤더용 풀텍스트 (FormSection h2 제목과 동일) */
   name: string;
+  /** 모바일 진행 바 hover title 용 양식 번호 */
   shortName: string;
+  /**
+   * 데스크톱 Stepper 라벨 표시용 단축 텍스트(선택).
+   * 미지정 시 name 그대로 사용. truncate 와 함께 hover title 은 항상 name 풀텍스트.
+   */
+  stepperLabel?: string;
 }
 
 interface InterviewStepperProps {
@@ -105,7 +112,7 @@ export default function InterviewStepper({
                   <span
                     className={`mt-2 text-xs max-w-[80px] lg:max-w-[96px] truncate text-center ${TEXT_STYLES[state]}`}
                   >
-                    {step.name}
+                    {step.stepperLabel ?? step.name}
                   </span>
                 </button>
               </li>
@@ -121,7 +128,10 @@ export default function InterviewStepper({
             {currentStep}/{steps.length}단계
           </span>
           <span className="text-sm font-medium text-gray-900">
-            {steps.find((s) => s.id === currentStep)?.name}
+            {(() => {
+              const cur = steps.find((s) => s.id === currentStep);
+              return cur?.stepperLabel ?? cur?.name;
+            })()}
           </span>
         </div>
 

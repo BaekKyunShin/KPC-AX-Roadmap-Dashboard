@@ -67,7 +67,10 @@ interface StepDef {
   id: number;
   stepId: PBLStepId;
   shortName: string;
+  /** 절 제목 — FormSection h2·페이지 헤더용 풀텍스트 */
   name: string;
+  /** 데스크톱 Stepper 라벨 단축 텍스트(선택). 미지정 시 name 사용 */
+  stepperLabel?: string;
   required: boolean;
 }
 
@@ -76,12 +79,16 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
   { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무', required: true },
   { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
-  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', required: false },
-  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', required: true },
+  // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
+  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
+  // Stepper 라벨 13자 → 6자 단축
+  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
   { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
-  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', required: true },
+  // Stepper 라벨 10자 → 7자 단축
+  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
   { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
-  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', required: false },
+  // Stepper 라벨 10자 → 6자 단축
+  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
 ];
 
 // ============================================================================
@@ -494,6 +501,7 @@ export function PBLInterviewClient({
           id: s.id,
           name: s.name,
           shortName: s.shortName,
+          stepperLabel: s.stepperLabel,
         }))}
         currentStep={currentStep}
         onStepClick={(idx) => setCurrentStep(idx)}

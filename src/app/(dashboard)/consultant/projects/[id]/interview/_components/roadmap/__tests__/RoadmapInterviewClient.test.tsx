@@ -75,12 +75,14 @@ describe('RoadmapInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI훈련로드맵 인터뷰');
   });
 
-  it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (8개 양식 + 1개 STT 첨부)', () => {
+  it('9개 스텝이 모두 정의되어 있고 stepperLabel(있으면) 또는 name 으로 노출된다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // 스테퍼는 데스크톱·모바일 모두 렌더되므로 같은 텍스트가 여러 번 등장할 수 있음
     expect(ROADMAP_STEPS).toHaveLength(9);
     for (const s of ROADMAP_STEPS) {
-      expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
+      // 스테퍼 노출 텍스트는 stepperLabel 이 있으면 그것, 없으면 name
+      const visibleLabel = s.stepperLabel ?? s.name;
+      expect(screen.getAllByText(visibleLabel).length).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -98,15 +100,16 @@ describe('RoadmapInterviewClient', () => {
     expect(screen.getByText(/총 9개 스텝/)).toBeInTheDocument();
   });
 
-  it('9번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
+  it('9번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더되고 FormSection h2 는 풀텍스트, Stepper 는 단축 라벨을 노출한다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('인터뷰 녹취 STT 첨부'));
-    // FormSection h2 "인터뷰 녹취 STT 첨부" 가 본문에 노출
+    // 스테퍼는 단축 라벨 "인터뷰 STT" 로 클릭
+    fireEvent.click(screen.getAllByText('인터뷰 STT')[0]);
+    // FormSection h2 는 풀텍스트 "인터뷰 녹취 STT 첨부" 를 표시 (페이지 헤더는 풀)
     expect(
       screen.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeInTheDocument();
-    // STT 원문 textarea 가 노출
-    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
+    // STT 파일 input 노출
+    expect(screen.getByLabelText('STT 파일')).toBeInTheDocument();
   });
 
   it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2) 으로 이동하고 실제 StepPerformanceActivities 가 렌더된다', () => {
@@ -200,7 +203,8 @@ describe('RoadmapInterviewClient', () => {
   // R3 #10 — Ⅱ-3 첨부 항목명 정정 (분석 노트 추가 첨부 → 추가 내부 자료)
   it('Ⅱ-3 첨부 항목명이 "추가 내부 자료" 로 표시된다 (#10)', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    // Stepper 는 단축 라벨 "과업·워크플로우" 로 클릭 (페이지 헤더 풀텍스트는 별도 검증)
+    fireEvent.click(screen.getAllByText('과업·워크플로우')[0]);
     expect(screen.getByText('추가 내부 자료')).toBeInTheDocument();
     expect(screen.queryByText('분석 노트 추가 첨부')).not.toBeInTheDocument();
   });
@@ -246,7 +250,8 @@ describe('RoadmapInterviewClient', () => {
   // R3 공통-A — Ⅱ-3 양식 √ "기업 내부전문가와의 인터뷰" + 양식 ◆ "공정 분석" 예시 노출
   it('Ⅱ-3 작성 안내 영역에 양식 √ "AI 도입·활용이 필요하다고 판단되는 과업 분석" 안내가 노출된다 (공통-A)', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    // Stepper 는 단축 라벨 "과업·워크플로우" 로 클릭 (페이지 헤더 풀텍스트는 별도 검증)
+    fireEvent.click(screen.getAllByText('과업·워크플로우')[0]);
     fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
     expect(
       screen.getByText(/AI 도입·활용이 필요하다고 판단되는 과업 분석/),
@@ -255,7 +260,8 @@ describe('RoadmapInterviewClient', () => {
 
   it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('과업·워크플로우 분석'));
+    // Stepper 는 단축 라벨 "과업·워크플로우" 로 클릭 (페이지 헤더 풀텍스트는 별도 검증)
+    fireEvent.click(screen.getAllByText('과업·워크플로우')[0]);
     expect(
       screen.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 }),
     ).toBeInTheDocument();

@@ -75,7 +75,9 @@ describe('PBLInterviewClient', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(PBL_STEPS).toHaveLength(10);
     for (const s of PBL_STEPS) {
-      expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
+      // 스테퍼 노출 텍스트는 stepperLabel(있으면) 또는 name
+      const visibleLabel = s.stepperLabel ?? s.name;
+      expect(screen.getAllByText(visibleLabel).length).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -95,11 +97,12 @@ describe('PBLInterviewClient', () => {
 
   it('10번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('인터뷰 녹취 STT 첨부'));
+    // Stepper 는 단축 라벨 "인터뷰 STT", 본문 FormSection h2 는 풀텍스트
+    fireEvent.click(screen.getAllByText('인터뷰 STT')[0]);
     expect(
       screen.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
+    expect(screen.getByLabelText('STT 파일')).toBeInTheDocument();
   });
 
   // R3 #12(PBL) / PBL-자체-06 — Step 9 단축명을 양식 정확 표기로 재설계
@@ -111,14 +114,14 @@ describe('PBLInterviewClient', () => {
     expect(step9Def.shortName).not.toBe('Ⅲ-3·4');
   });
 
-  // R3 #10(PBL) — Ⅱ-3-가 항목명 양식 정확 표기
-  it('PBL Ⅱ-3-가 항목명이 "기업HRD이음컨설팅 결과 (PDF 첨부)" 로 표시된다 (#10 PBL)', () => {
+  // R3 #10(PBL) — Ⅱ-3-가 항목명: Stepper 는 단축 "HRD이음 결과", 페이지 헤더는 풀텍스트
+  it('PBL Ⅱ-3-가: Stepper 단축 라벨 "HRD이음 결과" + 페이지 헤더 풀텍스트 노출 (#10 PBL)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    // 신규 step name = FormSection title — 두 곳 모두 '기업HRD이음컨설팅 결과 (PDF 첨부)'
-    const matches = screen.getAllByText(/기업HRD이음컨설팅 결과 \(PDF 첨부\)/);
-    // step indicator(데스크톱·모바일) + step name 노출 + 컴포넌트 진입 후 FormSection title
-    expect(matches.length).toBeGreaterThanOrEqual(1);
-    fireEvent.click(matches[0]);
+    // Stepper 의 단축 라벨로 클릭
+    const stepperLabels = screen.getAllByText('HRD이음 결과');
+    expect(stepperLabels.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(stepperLabels[0]);
+    // 페이지 본문 FormSection h2 는 풀텍스트
     expect(
       screen.getByRole('heading', {
         name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
@@ -186,7 +189,8 @@ describe('PBLInterviewClient', () => {
   it('Ⅱ-3-나 courseNecessity 편집 시 저장 payload 에 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('AI훈련과정 개발 필요성'));
+    // Stepper 는 단축 라벨 "과정 필요성" 으로 클릭
+    fireEvent.click(screen.getAllByText('과정 필요성')[0]);
     fireEvent.change(screen.getByLabelText('AI훈련과정 개발 필요성'), {
       target: { value: '현장 AI 리터러시 확보 필요' },
     });
@@ -280,11 +284,10 @@ describe('PBLInterviewClient', () => {
     );
   });
 
-  it('Ⅱ-3-가 hrdReport 스텝 진입 시 StepHrdReportPdf 가 렌더된다', () => {
+  it('Ⅱ-3-가 hrdReport 스텝 진입 시 StepHrdReportPdf 가 렌더된다 (Stepper: HRD이음 결과)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    // R3 #10(PBL) — step name 양식 정확 표기로 갱신됨
-    const matches = screen.getAllByText(/기업HRD이음컨설팅 결과 \(PDF 첨부\)/);
-    fireEvent.click(matches[0]);
+    // Stepper 단축 라벨로 클릭
+    fireEvent.click(screen.getAllByText('HRD이음 결과')[0]);
     expect(
       screen.getByRole('heading', {
         name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
@@ -304,9 +307,10 @@ describe('PBLInterviewClient', () => {
     expect(screen.getByLabelText('3차 능력개발전담주치의 수행 일자')).toBeInTheDocument();
   });
 
-  it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다', () => {
+  it('Ⅲ-2 problems 스텝 진입 시 StepProblems 두 블록이 렌더된다 (Stepper: 문제·우선순위)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('문제 도출·우선순위'));
+    // Stepper 단축 라벨로 클릭
+    fireEvent.click(screen.getAllByText('문제·우선순위')[0]);
     expect(screen.getByText('Ⅲ-2-가 문제 정의서')).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-2-나 문제 우선순위 결정')).toBeInTheDocument();
   });

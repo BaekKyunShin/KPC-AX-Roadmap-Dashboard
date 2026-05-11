@@ -71,8 +71,10 @@ interface StepDef {
   stepId: RoadmapStepId;
   /** 양식 번호 (모바일 진행 바 title) */
   shortName: string;
-  /** 절 제목 (데스크톱 텍스트, 모바일 현재 단계 표기) */
+  /** 절 제목 — FormSection h2·페이지 헤더용 풀텍스트 */
   name: string;
+  /** 데스크톱 Stepper 라벨 단축 텍스트(선택). 미지정 시 name 사용 */
+  stepperLabel?: string;
   /** Strict 검증에 필수인 스텝인지 (Task 2.3-d 의 검증 로직 참조용) */
   required: boolean;
 }
@@ -83,10 +85,12 @@ export const ROADMAP_STEPS: ReadonlyArray<StepDef> = [
   { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과', required: true },
   { id: 4, stepId: 'hrdReport', shortName: 'Ⅱ-1', name: 'HRD이음 PDF', required: false },
   { id: 5, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석', required: true },
-  { id: 6, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석', required: true },
+  // Stepper 라벨은 11자 → 7자로 단축 (페이지 헤더는 풀텍스트 유지)
+  { id: 6, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석', stepperLabel: '과업·워크플로우', required: true },
   { id: 7, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업', required: true },
   { id: 8, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링', required: true },
-  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', required: false },
+  // Stepper 라벨은 10자 → 6자로 단축 (페이지 헤더는 풀텍스트 유지)
+  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
 ];
 
 // ============================================================================
@@ -531,6 +535,7 @@ export function RoadmapInterviewClient({
           id: s.id,
           name: s.name,
           shortName: s.shortName,
+          stepperLabel: s.stepperLabel,
         }))}
         currentStep={currentStep}
         onStepClick={(idx) => setCurrentStep(idx)}

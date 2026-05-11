@@ -10,7 +10,6 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 
 vi.mock('@/lib/utils', async (importOriginal) => {
@@ -56,12 +55,12 @@ describe('StepSttAttach', () => {
     expect(screen.queryByRole('heading', { level: 3, name: /STT 인사이트 추출/ })).toBeNull();
   });
 
-  it('textarea 와 "인사이트 추출" 버튼은 그대로 렌더된다 (본문 위임)', () => {
+  it('STT 파일 input 과 업로드 영역이 그대로 렌더된다 (본문 위임)', () => {
     render(
       <StepSttAttach value={undefined} onChange={vi.fn()} onExtract={vi.fn()} />,
     );
-    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /인사이트 추출/ })).toBeInTheDocument();
+    expect(screen.getByLabelText('STT 파일')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /STT 파일 업로드/ })).toBeInTheDocument();
   });
 
   it('value(insights) 가 있으면 6 카테고리 카드가 표시된다', () => {
@@ -72,7 +71,7 @@ describe('StepSttAttach', () => {
     expect(screen.getByText('주간 KPI 리포트 작성')).toBeInTheDocument();
   });
 
-  it('추출 버튼 클릭 시 부모가 넘긴 onExtract 콜백을 trim 된 텍스트로 호출한다', async () => {
+  it('.txt 파일 업로드 시 부모가 넘긴 onExtract 콜백을 trim 된 텍스트로 호출한다', async () => {
     const onExtract = vi
       .fn()
       .mockResolvedValue({ success: true as const, data: SAMPLE_INSIGHTS });
@@ -81,9 +80,19 @@ describe('StepSttAttach', () => {
       <StepSttAttach value={undefined} onChange={onChange} onExtract={onExtract} />,
     );
 
-    await userEvent.type(screen.getByLabelText('STT 원문'), '  STT 본문  ');
-    await userEvent.click(screen.getByRole('button', { name: /인사이트 추출/ }));
+    const content = '  STT 본문 — 충분히 긴 텍스트.  ';
+    const file = new File([content], 'interview.txt', { type: 'text/plain' });
+    Object.defineProperty(file, 'text', {
+      value: () => Promise.resolve(content),
+      configurable: true,
+    });
+    const input = screen.getByLabelText('STT 파일');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    (await import('@testing-library/react')).fireEvent.change(input);
 
-    expect(onExtract).toHaveBeenCalledWith('STT 본문');
+    const { waitFor } = await import('@testing-library/react');
+    await waitFor(() =>
+      expect(onExtract).toHaveBeenCalledWith('STT 본문 — 충분히 긴 텍스트.'),
+    );
   });
 });

@@ -206,7 +206,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
       page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeVisible();
     // 본문에 STT 원문 textarea 노출 (FormSection 헤더는 어댑터 제공, StepSttUpload 본문)
-    await expect(page.getByLabel('STT 원문')).toBeVisible();
+    await expect(page.getByLabel('STT 파일')).toBeVisible();
     const submitBtn = page.getByRole('button', { name: '최종 제출' });
     await expect(submitBtn).toBeVisible();
 

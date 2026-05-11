@@ -1,20 +1,30 @@
 'use client';
 
 /**
- * STT 인사이트 추출 UI (ISSUE-16)
+ * STT 인사이트 추출 UI — .txt 파일 업로드 방식.
  *
- * - 현장 인터뷰 녹취 STT 텍스트를 붙여넣고 LLM 으로 6 카테고리 인사이트로 정리한다.
- * - ROADMAP/PBL 트랙의 확인·제출 페이지에서 동일하게 사용한다.
- * - 추출된 인사이트는 부모 컴포넌트의 `onChange` 로 끌어올려 자동저장(useInterviewAutoSave)이
- *   formData 와 함께 영속화한다. 이 컴포넌트 자체는 DB 에 직접 쓰지 않는다.
+ * - 현장 인터뷰 녹취 STT 텍스트 파일(.txt)을 업로드하면 클라이언트가
+ *   `file.text()` 로 본문을 읽어 부모의 `onExtract(text)` 콜백으로 전달한다.
+ * - 부모는 일반적으로 `extractSttInsights(projectId, text)` Server Action 으로
+ *   래핑한다. 추출된 6 카테고리 인사이트는 `onChange` 로 끌어올려 자동저장
+ *   (useInterviewAutoSave / 디바운스 saveRoadmapInterviewV2) 이 영속화한다.
+ * - 본 컴포넌트는 DB 에 직접 쓰지 않는다 — 원문 파일도 Storage 에 올리지 않고
+ *   클라이언트에서 휘발 처리한다 (인사이트만 영속화).
+ *
+ * 파일 제약 (`src/lib/constants/stt.ts`):
+ *   - 확장자: `.txt`
+ *   - 최대 크기: 500KB
  */
 
-import { useState, useTransition } from 'react';
-import { Upload, Loader2, FileText } from 'lucide-react';
+import { useRef, useState, useTransition } from 'react';
+import { Upload, Loader2, FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { showSuccessToast, showErrorToast } from '@/lib/utils';
+import {
+  ALLOWED_STT_FILE_EXTENSIONS,
+  MAX_STT_FILE_SIZE_BYTES,
+  MAX_STT_FILE_SIZE_KB,
+} from '@/lib/constants/stt';
 import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 
 export interface StepSttUploadProps {
@@ -50,32 +60,73 @@ export function StepSttUpload({
   onExtract,
   showHeader = true,
 }: StepSttUploadProps) {
-  const [sttText, setSttText] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleExtract() {
-    const trimmed = sttText.trim();
-    if (!trimmed) {
-      showErrorToast('STT 원문 필요', '추출할 텍스트를 먼저 입력해 주세요.');
+  function validateFile(file: File): string | null {
+    const lower = file.name.toLowerCase();
+    const hasAllowedExt = ALLOWED_STT_FILE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+    if (!hasAllowedExt) {
+      return `.txt 파일만 업로드 가능합니다. (선택한 파일: ${file.name})`;
+    }
+    if (file.size > MAX_STT_FILE_SIZE_BYTES) {
+      const currentKb = Math.round(file.size / 1024);
+      return `파일 크기가 너무 큽니다. 최대 ${MAX_STT_FILE_SIZE_KB}KB 까지 업로드 가능합니다. (현재: ${currentKb}KB)`;
+    }
+    return null;
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateFile(file);
+    if (validationError) {
+      showErrorToast('파일 형식 오류', validationError);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
+
     startTransition(async () => {
-      const result = await onExtract(trimmed);
-      if (result.success) {
-        onChange(result.data);
-        showSuccessToast('인사이트 추출 완료', '6개 카테고리로 정리되었습니다.');
-      } else {
-        showErrorToast('추출 실패', result.error);
+      try {
+        const text = await file.text();
+        const trimmed = text.trim();
+        if (trimmed.length < 10) {
+          showErrorToast('파일 내용 부족', 'STT 본문이 너무 짧습니다 (10자 이상).');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+        }
+
+        const result = await onExtract(trimmed);
+        if (result.success) {
+          setFileName(file.name);
+          onChange(result.data);
+          showSuccessToast('인사이트 추출 완료', `${file.name} 파일에서 6개 카테고리를 정리했습니다.`);
+        } else {
+          showErrorToast('추출 실패', result.error);
+        }
+      } catch (error) {
+        showErrorToast(
+          '파일 읽기 실패',
+          error instanceof Error ? error.message : '파일을 읽는 중 오류가 발생했습니다.',
+        );
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     });
   }
 
   function handleClear() {
-    setSttText('');
+    setFileName(null);
     onChange(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  const isEmpty = sttText.trim().length === 0;
+  function handleClickUpload() {
+    if (isPending) return;
+    fileInputRef.current?.click();
+  }
 
   return (
     <section className="border border-border rounded-lg p-4 space-y-3">
@@ -83,47 +134,65 @@ export function StepSttUpload({
         <div>
           <h3 className="text-sm font-semibold text-foreground">STT 인사이트 추출 (선택)</h3>
           <p className="mt-1 text-xs text-muted-foreground break-keep">
-            현장 인터뷰 녹취 STT 텍스트를 붙여넣고 LLM 으로 6개 카테고리(추가 업무·페인포인트·숨은
-            니즈·조직 맥락·AI 태도·주요 인용)로 자동 정리하세요. 추출 결과는 자동 저장됩니다.
+            현장 인터뷰 녹취 STT 텍스트 파일(.txt)을 업로드하면 LLM 으로 6개 카테고리(추가 업무·페인포인트·숨은
+            니즈·조직 맥락·AI 태도·주요 인용)로 자동 정리합니다. 추출 결과는 자동 저장됩니다.
           </p>
         </div>
       )}
 
+      {/* 파일 업로드 영역 */}
       <div className="space-y-2">
-        <Label htmlFor="stt-input">STT 원문</Label>
-        <Textarea
-          id="stt-input"
-          value={sttText}
-          onChange={(e) => setSttText(e.target.value)}
-          rows={5}
-          placeholder="STT 원문을 붙여넣으세요…"
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ALLOWED_STT_FILE_EXTENSIONS.join(',')}
+          aria-label="STT 파일"
+          onChange={handleFileChange}
           disabled={isPending}
+          className="sr-only"
         />
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleExtract}
-            disabled={isPending || isEmpty}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                분석 중…
-              </>
-            ) : (
-              <>
-                <Upload className="w-3.5 h-3.5 mr-1" />
-                인사이트 추출
-              </>
-            )}
-          </Button>
-          {insights && (
-            <Button type="button" size="sm" variant="ghost" onClick={handleClear} disabled={isPending}>
+        <button
+          type="button"
+          onClick={handleClickUpload}
+          disabled={isPending}
+          aria-label="STT 파일 업로드"
+          className={`w-full rounded-lg border-2 border-dashed px-4 py-6 transition-colors text-sm ${
+            isPending
+              ? 'border-border bg-muted/30 cursor-not-allowed text-muted-foreground'
+              : 'border-border hover:border-primary hover:bg-primary/5 text-foreground cursor-pointer'
+          }`}
+        >
+          {isPending ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              AI 가 인사이트를 추출하는 중…
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              .txt 파일을 클릭하여 업로드 (최대 {MAX_STT_FILE_SIZE_KB}KB)
+            </span>
+          )}
+        </button>
+
+        {fileName && !isPending && (
+          <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <FileText className="w-3.5 h-3.5" />
+              {fileName}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleClear}
+              className="h-auto px-2 py-1"
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
               초기화
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {insights && <SttInsightsDisplay insights={insights} />}
@@ -145,7 +214,7 @@ function SttInsightsDisplay({ insights }: { insights: SttInsights }) {
   if (cards.length === 0) {
     return (
       <p className="text-xs text-muted-foreground bg-muted/30 rounded-md p-3">
-        추출된 인사이트가 없습니다. 다른 텍스트로 다시 시도해 보세요.
+        추출된 인사이트가 없습니다. 다른 파일로 다시 시도해 보세요.
       </p>
     );
   }
