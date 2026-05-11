@@ -291,7 +291,7 @@ export default function AuditLogClient({
           endDate: endDate || undefined,
         });
         if (!result.logs || result.logs.length === 0) {
-          showErrorToast('내보내기 실패', '내보낼 로그가 없습니다.');
+          showErrorToast('내보내기 실패', '선택한 필터 조건에 해당하는 로그가 없습니다.');
           setExporting(null);
           return;
         }
@@ -302,7 +302,7 @@ export default function AuditLogClient({
       }
     } catch (error) {
       console.error('[handleExportExcel]', error);
-      showErrorToast('내보내기 실패', '서버와 통신 중 오류가 발생했습니다.');
+      showErrorToast('내보내기 실패', '감사 로그 내보내기에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
     setExporting(null);
   }

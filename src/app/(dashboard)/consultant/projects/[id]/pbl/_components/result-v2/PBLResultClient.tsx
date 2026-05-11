@@ -245,9 +245,8 @@ export function PBLResultClient({
             className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             data-testid="pbl-final-edit-warning-banner"
           >
-            <strong>확정된 PBL 결과를 수정합니다.</strong> 동일 버전(v
-            {selectedVersion.version_number})에 그대로 반영되며, 수정 이력은 감사로그에
-            기록됩니다.
+            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을
+            직접 편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
           </div>
         )}
 
@@ -282,9 +281,9 @@ interface EmptyStateProps {
 function EmptyState({ hasInterview, isStatusEligible }: EmptyStateProps) {
   // #013 fix — 인터뷰/status 부재 케이스를 안내 문구로 명확히 구분
   const guideMessage = !hasInterview
-    ? '인터뷰가 완료되지 않았습니다. 인터뷰 입력을 먼저 완료해주세요.'
+    ? '아직 인터뷰 입력이 없습니다. 인터뷰 페이지에서 입력을 진행해주세요.'
     : !isStatusEligible
-      ? '프로젝트가 인터뷰 완료 상태가 아닙니다. 인터뷰 입력의 "최종 제출" 을 완료해주세요.'
+      ? '인터뷰는 작성됐지만 아직 최종 제출 전입니다. 인터뷰 페이지 하단의 "최종 제출" 버튼을 눌러주세요.'
       : '인터뷰가 완료되었습니다. 상단 "새 버전 생성" 을 눌러 AI PBL 보고서를 생성하세요.';
 
   return (
