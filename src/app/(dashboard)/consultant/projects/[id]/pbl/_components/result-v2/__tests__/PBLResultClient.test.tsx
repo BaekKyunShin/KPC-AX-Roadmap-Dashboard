@@ -245,6 +245,54 @@ describe('PBLResultClient — CONSULTANT role', () => {
     expect(screen.queryByRole('tab', { name: 'Ⅰ. 개요' })).toBeNull();
   });
 
+  // 로드맵 패턴과의 정합 회귀 — 초안 0건 일 때는 상단의 RegenerateAccordion 이
+  // 노출되지 않고 EmptyState 의 "AI PBL 보고서 생성" 버튼으로 첫 초안을 만든다.
+  it('versions=0 + CONSULTANT → RegenerateAccordion 숨김 + EmptyState 생성 버튼 노출', () => {
+    const onGenerate = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        hasInterview={true}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={onGenerate}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: /새 버전 생성/ }),
+    ).toBeNull();
+    const ctaButton = screen.getByTestId('empty-state-generate-pbl');
+    expect(ctaButton).toBeEnabled();
+    fireEvent.click(ctaButton);
+    expect(onGenerate).toHaveBeenCalled();
+  });
+
+  // versions=0 일 때 인터뷰/status 가드가 불충분하면 EmptyState 생성 버튼이 disabled
+  it('versions=0 + hasInterview=false → EmptyState 생성 버튼 disabled', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[]}
+        selectedVersion={null}
+        interview={baseInterview}
+        hasInterview={false}
+        projectStatus="ASSIGNED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('empty-state-generate-pbl')).toBeDisabled();
+  });
+
   it('DRAFT 상태에서 RegenerateAccordion 을 통해 onGenerate 호출', () => {
     const onGenerate = vi.fn().mockResolvedValue(undefined);
     render(

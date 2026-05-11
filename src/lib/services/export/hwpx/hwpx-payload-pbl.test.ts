@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 
-import { buildPBLHwpxPayload } from './hwpx-payload-pbl';
+import {
+  buildPBLHwpxPayload,
+  buildPBLHwpxPayloadFromInputs,
+} from './hwpx-payload-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { Interview, Project } from '@/types/database';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 function makeProject(overrides?: Partial<Project>): Project {
   return {
@@ -918,5 +922,66 @@ describe('buildPBLHwpxPayload', () => {
     const dataKeys = new Set(Object.keys(payload.data));
     const missing = ssotV2PblPyKeys.filter((k) => !dataKeys.has(k));
     expect(missing).toEqual([]);
+  });
+});
+
+// ─── buildPBLHwpxPayloadFromInputs (테스트 모드 in-memory 경로) ──────────────
+describe('buildPBLHwpxPayloadFromInputs', () => {
+  const sampleContent: PBLContent = {
+    operation_plan: {
+      training_goal: '',
+      ai_tool_usage_plan: [],
+      training_plan: {} as never,
+      evaluation_plan: {} as never,
+    },
+    outcome_analysis: createEmptyOutcomeAnalysis(),
+  } as unknown as PBLContent;
+
+  it('V2 인터뷰 + content → V2 path 의 data 와 동일 키 set 반환', () => {
+    const payload = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+    });
+    expect(payload.track).toBe('PBL');
+    expect(payload.fileName).toMatch(/\.hwpx$/);
+    expect(payload.data.company_name).toBe(PBL_INTERVIEW_SAMPLE.companyName);
+    expect(payload.data.course_name).toBe(PBL_INTERVIEW_SAMPLE.courseName);
+  });
+
+  it('인터뷰 companyName 우선, 비면 인자 companyName, 둘 다 비면 "테스트기업" fallback', () => {
+    const blankInterview = {
+      ...PBL_INTERVIEW_SAMPLE,
+      companyName: '',
+    };
+    const a = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: blankInterview,
+      companyName: '인자기업',
+    });
+    expect(a.data.company_name).toBe('인자기업');
+
+    const b = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: blankInterview,
+      companyName: '   ',
+    });
+    expect(b.data.company_name).toBe('테스트기업');
+  });
+
+  it('versionNumber 기본 1, 명시 시 fileName 에 반영', () => {
+    const v1 = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+    });
+    expect(v1.fileName).toContain('_v1.hwpx');
+    const v3 = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+      versionNumber: 3,
+    });
+    expect(v3.fileName).toContain('_v3.hwpx');
   });
 });

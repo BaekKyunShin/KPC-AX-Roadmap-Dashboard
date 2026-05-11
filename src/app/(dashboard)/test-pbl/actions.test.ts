@@ -199,10 +199,11 @@ vi.mock('next/headers', () => ({
 }));
 
 const mockGeneratePBLHwpx = vi.fn();
-const mockBuildPBLHwpxPayload = vi.fn();
+const mockBuildPBLHwpxPayloadFromInputs = vi.fn();
 
 vi.mock('@/lib/services/export/hwpx', () => ({
-  buildPBLHwpxPayload: (...args: unknown[]) => mockBuildPBLHwpxPayload(...args),
+  buildPBLHwpxPayloadFromInputs: (...args: unknown[]) =>
+    mockBuildPBLHwpxPayloadFromInputs(...args),
   generatePBLHwpx: (...args: unknown[]) => mockGeneratePBLHwpx(...args),
 }));
 
@@ -214,7 +215,7 @@ describe('exportTestPBLHwpx', () => {
   });
 
   beforeEach(() => {
-    mockBuildPBLHwpxPayload.mockReturnValue({
+    mockBuildPBLHwpxPayloadFromInputs.mockReturnValue({
       fileName: '테스트기업_PBL_v1.hwpx',
     });
     mockGeneratePBLHwpx.mockResolvedValue(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
@@ -247,18 +248,16 @@ describe('exportTestPBLHwpx', () => {
     }
   });
 
-  it('companyName 공백이면 "테스트기업" fallback 사용', async () => {
+  it('companyName 공백 + 인터뷰 companyName 도 비면 헬퍼가 "테스트기업" fallback 처리', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await exportTestPBLHwpx({ ...validInput(), companyName: '   ' });
-    expect(mockBuildPBLHwpxPayload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        project: expect.objectContaining({ company_name: '테스트기업' }),
-      }),
+    expect(mockBuildPBLHwpxPayloadFromInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ companyName: '   ' }),
     );
     consoleSpy.mockRestore();
   });
 
-  it('generatePBLHwpx throw → error 반환 + 로컬 dev fallback 메시지 전달', async () => {
+  it('generatePBLHwpx throw → 로컬 dev fallback 메시지 전달', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockGeneratePBLHwpx.mockRejectedValueOnce(
       new Error('Vercel Python 런타임 미동작'),
@@ -271,13 +270,17 @@ describe('exportTestPBLHwpx', () => {
     consoleSpy.mockRestore();
   });
 
-  it('generatePBLHwpx 일반 throw → generic 에러 메시지', async () => {
+  it('generatePBLHwpx 일반 throw → 사용자에게 원인 노출', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGeneratePBLHwpx.mockRejectedValueOnce(new Error('알 수 없는 오류'));
+    mockGeneratePBLHwpx.mockRejectedValueOnce(
+      new Error('HWPX generation failed: 500 KeyError'),
+    );
     const result = await exportTestPBLHwpx(validInput());
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toContain('HWPX 생성에 실패');
+      expect(result.error).toContain('원인:');
+      expect(result.error).toContain('KeyError');
     }
     consoleSpy.mockRestore();
   });

@@ -18,5 +18,11 @@ export type {
 export { buildRoadmapHwpxPayload } from './hwpx-payload-roadmap';
 export type { RoadmapHwpxPayloadInputs } from './hwpx-payload-roadmap';
 
-export { buildPBLHwpxPayload } from './hwpx-payload-pbl';
-export type { PBLHwpxPayloadInputs } from './hwpx-payload-pbl';
+export {
+  buildPBLHwpxPayload,
+  buildPBLHwpxPayloadFromInputs,
+} from './hwpx-payload-pbl';
+export type {
+  PBLHwpxPayloadInputs,
+  InMemoryPBLPayloadInputs,
+} from './hwpx-payload-pbl';

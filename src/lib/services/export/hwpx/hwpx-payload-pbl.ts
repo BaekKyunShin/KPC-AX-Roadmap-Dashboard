@@ -696,3 +696,50 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
     data,
   };
 }
+
+/**
+ * 테스트 모드(/test-pbl) 전용 — DB row 없이 in-memory 입력만으로 PBL HWPX
+ * payload 를 구성. 가짜 PBLReportRow/Project/Interview 캐스팅 indirection 을
+ * 제거해 흐름을 명시적으로 만든다.
+ *
+ * 신청서 자동표출(P-02) override 는 실제 project 신청서 데이터가 없으므로 생략
+ * — Python 측은 누락된 키를 빈 문자열 fallback 으로 안전 처리한다.
+ */
+export interface InMemoryPBLPayloadInputs {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
+  companyName: string;
+  versionNumber?: number;
+  reportDate?: string;
+}
+
+export function buildPBLHwpxPayloadFromInputs(
+  inputs: InMemoryPBLPayloadInputs,
+): PBLHwpxPayload {
+  const versionNumber = inputs.versionNumber ?? 1;
+  const reportDate =
+    inputs.reportDate ??
+    new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+  const companyName =
+    (inputs.interview.companyName?.trim() || inputs.companyName.trim()) ||
+    '테스트기업';
+
+  const data = buildDataFromV2(
+    inputs.interview,
+    inputs.content,
+    companyName,
+    reportDate,
+  );
+  data.company_name = companyName;
+
+  return {
+    track: 'PBL' as const,
+    fileName: buildFileName(companyName, versionNumber),
+    data,
+  };
+}
