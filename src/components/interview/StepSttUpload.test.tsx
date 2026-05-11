@@ -117,4 +117,30 @@ describe('StepSttUpload', () => {
     await userEvent.click(clearBtn);
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
+
+  it('showHeader=false 일 때 자체 h3 헤더와 안내문이 렌더되지 않는다 (어댑터에서 FormSection 헤더 제공 시 중복 방지)', () => {
+    const onChange = vi.fn();
+    const onExtract = vi.fn();
+    render(
+      <StepSttUpload
+        insights={undefined}
+        onChange={onChange}
+        onExtract={onExtract}
+        showHeader={false}
+      />,
+    );
+
+    // h3 "STT 인사이트 추출 (선택)" 미렌더
+    expect(screen.queryByRole('heading', { level: 3, name: /STT 인사이트 추출/ })).toBeNull();
+    // 본문 textarea 와 추출 버튼은 그대로 노출
+    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /인사이트 추출/ })).toBeInTheDocument();
+  });
+
+  it('showHeader 미지정(기본값) 일 때 h3 헤더가 그대로 렌더된다 (기존 사용처 호환)', () => {
+    const onChange = vi.fn();
+    const onExtract = vi.fn();
+    render(<StepSttUpload insights={undefined} onChange={onChange} onExtract={onExtract} />);
+    expect(screen.getByRole('heading', { level: 3, name: /STT 인사이트 추출/ })).toBeInTheDocument();
+  });
 });

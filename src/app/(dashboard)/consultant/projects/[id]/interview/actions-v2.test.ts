@@ -549,6 +549,31 @@ describe('fetchRoadmapInterviewV2', () => {
       extractedText: '내부 본문',
     });
   });
+
+  it('stt_insights 컬럼을 select 하여 camelCase sttInsights 키로 반환한다', async () => {
+    await mockCachedAuth();
+    mockProjectAssignmentCheck(serverMock);
+    mockProjectMeta(adminMock, { track: 'ROADMAP' });
+    const stt = {
+      추가_업무: ['데이터 정리'],
+      추가_페인포인트: ['Excel 수기 복붙'],
+      숨은_니즈: ['PDF 자동 분류'],
+      조직_맥락: 'TF 신설 직후',
+      AI_태도: '호의적이나 보안 우려',
+      주요_인용: ['실무자 시간이 부족'],
+    };
+    adminMock.addResult({
+      data: {
+        company_details: {},
+        stt_insights: stt,
+      },
+      error: null,
+    });
+
+    const r = await fetchRoadmapInterviewV2(PROJECT_ID);
+    expect(r).not.toBeNull();
+    expect(r?.sttInsights).toEqual(stt);
+  });
 });
 
 // ============================================================================

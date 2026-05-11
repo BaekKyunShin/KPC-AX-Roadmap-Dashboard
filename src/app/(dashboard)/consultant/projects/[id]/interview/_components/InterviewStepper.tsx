@@ -93,6 +93,7 @@ export default function InterviewStepper({
                   type="button"
                   onClick={() => onStepClick(step.id)}
                   className="flex flex-col items-center group cursor-pointer"
+                  title={step.name}
                 >
                   <span
                     className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all relative z-10 ${CIRCLE_STYLES[state]} ${
@@ -101,7 +102,9 @@ export default function InterviewStepper({
                   >
                     {showCheckIcon ? <CheckIcon /> : step.id}
                   </span>
-                  <span className={`mt-2 text-xs whitespace-nowrap ${TEXT_STYLES[state]}`}>
+                  <span
+                    className={`mt-2 text-xs max-w-[80px] lg:max-w-[96px] truncate text-center ${TEXT_STYLES[state]}`}
+                  >
                     {step.name}
                   </span>
                 </button>

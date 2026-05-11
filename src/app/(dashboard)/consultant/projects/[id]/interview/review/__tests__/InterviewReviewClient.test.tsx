@@ -80,7 +80,7 @@ describe('InterviewReviewClient', () => {
       ncsUsed: false,
     };
 
-    it('헤더 + 8 Step 카드 + CTA 영역 렌더', () => {
+    it('헤더 + 8 Step 양식 카드 + CTA 영역 렌더 (STT 섹션은 데이터 있을 때만)', () => {
       render(
         <InterviewReviewClient
           projectId="p-1"
@@ -178,6 +178,50 @@ describe('InterviewReviewClient', () => {
 
       // 인터뷰 patch 호출 검증
       expect(editInterviewFieldRoadmap).toHaveBeenCalled();
+    });
+
+    it('sttInsights 가 채워졌으면 "STT 인사이트 (선택)" 섹션과 6 카테고리 카드가 노출된다', async () => {
+      const user = userEvent.setup();
+      const dataWithStt: Partial<RoadmapInterviewStrict> = {
+        ...roadmapData,
+        sttInsights: {
+          추가_업무: ['주간 보고 자동화'],
+          조직_맥락: 'TF 신설 직후',
+          AI_태도: '호의적이나 보안 우려',
+          주요_인용: ['"실무자 시간이 부족하다"'],
+        },
+      };
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={dataWithStt}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      // 섹션 헤더 — "선택" 표기로 양식 절·장과 구분
+      const sttHeader = screen.getByText(/STT 인사이트 \(선택\)/);
+      expect(sttHeader).toBeInTheDocument();
+      // 섹션 펼친 후 카테고리 카드 확인
+      await user.click(sttHeader);
+      expect(screen.getByText('추가 업무')).toBeInTheDocument();
+      expect(screen.getByText('주간 보고 자동화')).toBeInTheDocument();
+      expect(screen.getByText('조직 맥락')).toBeInTheDocument();
+      expect(screen.getByText('TF 신설 직후')).toBeInTheDocument();
+    });
+
+    it('sttInsights 가 없거나 6 필드 모두 비면 "STT 인사이트 (선택)" 섹션이 렌더되지 않는다', () => {
+      render(
+        <InterviewReviewClient
+          projectId="p-1"
+          track="ROADMAP"
+          interviewData={roadmapData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      expect(screen.queryByText(/STT 인사이트 \(선택\)/)).toBeNull();
     });
   });
 
@@ -314,6 +358,45 @@ describe('InterviewReviewClient', () => {
 
       await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
       expect(screen.getByText('PBL 핵심 문제')).toBeInTheDocument();
+    });
+
+    it('PBL: sttInsights 가 채워졌으면 "STT 인사이트 (선택)" 섹션과 6 카테고리 카드가 노출된다', async () => {
+      const user = userEvent.setup();
+      const pblWithStt: Partial<PBLInterviewStrict> = {
+        ...pblData,
+        sttInsights: {
+          추가_페인포인트: ['Excel 수기 복붙'],
+          숨은_니즈: ['PDF 자동 분류'],
+        },
+      };
+      render(
+        <InterviewReviewClient
+          projectId="p-2"
+          track="PBL"
+          interviewData={pblWithStt}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      const sttHeader = screen.getByText(/STT 인사이트 \(선택\)/);
+      expect(sttHeader).toBeInTheDocument();
+      await user.click(sttHeader);
+      expect(screen.getByText('추가 페인포인트')).toBeInTheDocument();
+      expect(screen.getByText('Excel 수기 복붙')).toBeInTheDocument();
+      expect(screen.getByText('숨은 니즈')).toBeInTheDocument();
+    });
+
+    it('PBL: sttInsights 가 없으면 "STT 인사이트 (선택)" 섹션이 렌더되지 않는다', () => {
+      render(
+        <InterviewReviewClient
+          projectId="p-2"
+          track="PBL"
+          interviewData={pblData}
+          interviewUpdatedAt={null}
+          latestResult={baseLatestResult}
+        />,
+      );
+      expect(screen.queryByText(/STT 인사이트 \(선택\)/)).toBeNull();
     });
   });
 

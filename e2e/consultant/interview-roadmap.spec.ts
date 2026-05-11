@@ -1,8 +1,8 @@
 // e2e/consultant/interview-roadmap.spec.ts
-// PR #2 Task 2.3-d: 로드맵 V2 인터뷰 8 스텝 골든 플로우 E2E
-//   - V2 Client (camelCase 스키마 + 양식 1:1 정합 8 스텝)
-//   - 이전 버전(legacy 7스텝)은 본 Task 의 page.tsx V2 전환으로 더 이상 노출되지 않음
-//   - 골든 플로우: Ⅰ-1 → Ⅰ-2 → Ⅰ-3 → Ⅱ-1(스킵) → Ⅱ-2 → Ⅱ-3 → Ⅱ-4 → Ⅲ-1 → 최종 제출
+// 로드맵 V2 인터뷰 9 스텝 골든 플로우 E2E (양식 8 + STT 첨부 선택 1)
+//   - V2 Client (camelCase 스키마 + 양식 1:1 정합 8 스텝 + STT 인사이트 추출 선택 1)
+//   - 골든 플로우: Ⅰ-1 → Ⅰ-2 → Ⅰ-3 → Ⅱ-1(스킵) → Ⅱ-2 → Ⅱ-3 → Ⅱ-4 → Ⅲ-1
+//                → 인터뷰 녹취 STT 첨부 (선택) → 최종 제출
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
 import { findFirstLinkHref } from '../helpers/navigation.helper';
@@ -11,7 +11,7 @@ test.describe.configure({ mode: 'serial' });
 
 let interviewUrl: string | null = null;
 
-test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝)', () => {
+test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 + STT 첨부 1)', () => {
   test('V2 Client 로드 + 첫 스텝(Ⅰ-1 수립 필요성) 렌더', async ({
     consultantPage: page,
   }) => {
@@ -43,7 +43,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝)'
     await expect(
       page.getByRole('heading', { name: '수립 필요성', level: 2 }),
     ).toBeVisible();
-    // 8 스텝 스테퍼 노출
+    // 9 스텝 스테퍼 노출 (8 양식 + STT 첨부 선택 1)
     const stepper = page.locator('nav[aria-label="Progress"]');
     await expect(stepper).toBeVisible();
 
@@ -200,16 +200,21 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝)'
       .catch(() => false);
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
-    await page.getByText('역량 모델링').first().click();
-    // 8번째 스텝에서 "최종 제출" 버튼 노출
+    // 마지막 9번째 스텝(STT 첨부 — 선택)에서 "최종 제출" 버튼 노출
+    await page.getByText('인터뷰 녹취 STT 첨부').first().click();
+    await expect(
+      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+    ).toBeVisible();
+    // 본문에 STT 원문 textarea 노출 (FormSection 헤더는 어댑터 제공, StepSttUpload 본문)
+    await expect(page.getByLabel('STT 원문')).toBeVisible();
     const submitBtn = page.getByRole('button', { name: '최종 제출' });
     await expect(submitBtn).toBeVisible();
 
     // 빈 필수 필드 상태에서 클릭 → strict 검증 실패 → 토스트 노출,
     // 제출이 서버에 도달하지 않으므로 URL 변하지 않아야 한다.
+    // (STT 는 선택 항목이라 strict 검증과 무관 — 다른 필수 필드 미입력 때문에 실패)
     const prevUrl = page.url();
     await submitBtn.click();
-    // 리다이렉트는 strict 검증 실패 시 발생하지 않는다 (간접 검증)
     await page.waitForTimeout(500);
     expect(page.url()).toBe(prevUrl);
   });

@@ -13,6 +13,7 @@ import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import {
   savePBLInterviewV2,
   submitPBLInterviewV2,
+  extractSttInsights,
 } from '../../actions';
 import {
   PBLInterviewStrictSchema,
@@ -25,6 +26,7 @@ import {
   type PBLTarget,
   type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
@@ -40,9 +42,10 @@ import {
   StepTargetAndLevel,
   type StepTargetAndLevelValue,
 } from './StepTargetAndLevel';
+import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
-// 9 스텝 정의 (PR #2 Task 2.4 — 양식 2:1 정합)
+// 10 스텝 정의 — 양식 2:1 정합 9개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
 // id 는 양식 섹션 의미를 그대로 노출 (camelCase 단일 단어). UI 텍스트는 shortName
 // / name. required 는 strict 제출 시 빈 값 금지 여부.
@@ -57,7 +60,8 @@ export type PBLStepId =
   | 'courseNecessity'
   | 'activities'
   | 'problems'
-  | 'targetAndLevel';
+  | 'targetAndLevel'
+  | 'sttAttach';
 
 interface StepDef {
   id: number;
@@ -77,6 +81,7 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', required: true },
   { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
+  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', required: false },
 ];
 
 // ============================================================================
@@ -182,6 +187,15 @@ export function PBLInterviewClient({
       expectedAiLevel?: PBLAiLevelAssessment;
     }) => {
       setData((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
+  // STT 인사이트(선택) — 10번째 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
+  // 에 저장되므로 별도 converter 매핑 불필요. mapPBLInterviewToDb 가 통째 보존.
+  const updateSttInsights = useCallback(
+    (next: SttInsights | undefined) => {
+      setData((prev) => ({ ...prev, sttInsights: next }));
     },
     [],
   );
@@ -455,6 +469,14 @@ export function PBLInterviewClient({
           />
         );
       }
+      case 'sttAttach':
+        return (
+          <StepSttAttach
+            value={data.sttInsights}
+            onChange={updateSttInsights}
+            onExtract={(text) => extractSttInsights(projectId, text)}
+          />
+        );
       default:
         return null;
     }
@@ -464,7 +486,7 @@ export function PBLInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI PBL 인터뷰"
-        description="산인공 양식 2 Ⅰ·Ⅱ·Ⅲ 장을 9개 스텝으로 입력합니다."
+        description="산인공 양식 2 9개 장과 선택 항목인 STT 첨부를 포함해 총 10개 스텝으로 진행합니다."
       />
 
       <InterviewStepper

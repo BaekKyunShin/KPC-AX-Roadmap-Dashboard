@@ -823,9 +823,11 @@ export type RoadmapTrainingInterview = z.infer<typeof RoadmapTrainingInterviewSc
 // zod v3 에서 `.refine()`·`.superRefine()` 결과는 ZodEffects 로 감싸져
 // `.partial()`·`.merge()` 를 제공하지 않는다. 따라서 XOR 검증은 본 ZodObject
 // 위에 별도 export 로 부착하고, 본체는 ZodObject 를 유지한다.
-export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequirementsSchema).merge(
-  RoadmapTrainingInterviewSchema,
-);
+export const RoadmapInterviewSchema = RoadmapOverviewSchema.merge(RoadmapRequirementsSchema)
+  .merge(RoadmapTrainingInterviewSchema)
+  // STT 인사이트(선택) — 9번째 Step "인터뷰 녹취 STT 첨부" 추출 결과.
+  // optional 이라 strict 제출에 영향 없음. 자동저장은 부분 입력 그대로 보존.
+  .extend({ sttInsights: sttInsightsSchema.optional() });
 export type RoadmapInterviewStrict = z.infer<typeof RoadmapInterviewSchema>;
 
 // V2 camelCase autoSave 전용 (#011 fix).
@@ -903,6 +905,8 @@ export const RoadmapInterviewAutoSaveSchema = z.object({
   ncsUsed: z.boolean().optional(),
   ncsMethodology: z.string().optional(),
   ncsDerivationMethod: z.string().optional(),
+  // STT 인사이트(선택) — 9번째 Step. 자동저장 경로에서 sttInsights JSON 보존.
+  sttInsights: sttInsightsSchema.optional(),
 });
 export type RoadmapInterviewAutoSave = z.infer<typeof RoadmapInterviewAutoSaveSchema>;
 

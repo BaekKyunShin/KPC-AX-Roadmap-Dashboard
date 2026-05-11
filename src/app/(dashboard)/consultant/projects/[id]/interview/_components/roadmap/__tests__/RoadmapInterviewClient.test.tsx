@@ -29,10 +29,12 @@ vi.mock('next/navigation', () => ({
 const saveRoadmapInterviewV2 = vi.fn();
 const submitRoadmapInterviewV2 = vi.fn();
 const uploadInterviewAttachment = vi.fn();
+const extractSttInsights = vi.fn();
 vi.mock('../../../actions', () => ({
   saveRoadmapInterviewV2: (...args: unknown[]) => saveRoadmapInterviewV2(...args),
   submitRoadmapInterviewV2: (...args: unknown[]) => submitRoadmapInterviewV2(...args),
   uploadInterviewAttachment: (...args: unknown[]) => uploadInterviewAttachment(...args),
+  extractSttInsights: (...args: unknown[]) => extractSttInsights(...args),
 }));
 
 import {
@@ -73,13 +75,38 @@ describe('RoadmapInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI훈련로드맵 인터뷰');
   });
 
-  it('8개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
+  it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (8개 양식 + 1개 STT 첨부)', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // 스테퍼는 데스크톱·모바일 모두 렌더되므로 같은 텍스트가 여러 번 등장할 수 있음
-    expect(ROADMAP_STEPS).toHaveLength(8);
+    expect(ROADMAP_STEPS).toHaveLength(9);
     for (const s of ROADMAP_STEPS) {
       expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('9번째 Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
+    const last = ROADMAP_STEPS[ROADMAP_STEPS.length - 1];
+    expect(last.id).toBe(9);
+    expect(last.stepId).toBe('sttAttach');
+    expect(last.required).toBe(false);
+    expect(last.name).toBe('인터뷰 녹취 STT 첨부');
+    expect(last.shortName).toBe('선택');
+  });
+
+  it('PageHeader description 에 "총 9개 스텝" 문구가 포함된다', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    expect(screen.getByText(/총 9개 스텝/)).toBeInTheDocument();
+  });
+
+  it('9번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
+    render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('인터뷰 녹취 STT 첨부'));
+    // FormSection h2 "인터뷰 녹취 STT 첨부" 가 본문에 노출
+    expect(
+      screen.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+    ).toBeInTheDocument();
+    // STT 원문 textarea 가 노출
+    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
   });
 
   it('"다음" 클릭 시 두 번째 스텝(Ⅰ-2) 으로 이동하고 실제 StepPerformanceActivities 가 렌더된다', () => {
@@ -382,8 +409,8 @@ describe('RoadmapInterviewClient', () => {
       ncsDerivationMethod: '도출 방법',
     };
     render(<RoadmapInterviewClient projectId="p1" initial={validInitial} />);
-    // 8회 다음 클릭으로 마지막 스텝까지 이동
-    for (let i = 0; i < 7; i += 1) {
+    // 9회 다음 클릭으로 마지막 스텝(sttAttach)까지 이동 — 9개 Step
+    for (let i = 0; i < ROADMAP_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
     const submitBtn = screen.getByRole('button', { name: '최종 제출' });
@@ -403,7 +430,7 @@ describe('RoadmapInterviewClient', () => {
   it('strict 검증 실패 시 submit Action 은 호출되지 않는다 (빈 초기 데이터)', async () => {
     submitRoadmapInterviewV2.mockResolvedValue({ success: true });
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
-    for (let i = 0; i < 7; i += 1) {
+    for (let i = 0; i < ROADMAP_STEPS.length - 1; i += 1) {
       fireEvent.click(screen.getByLabelText('다음 스텝'));
     }
     fireEvent.click(screen.getByRole('button', { name: '최종 제출' }));

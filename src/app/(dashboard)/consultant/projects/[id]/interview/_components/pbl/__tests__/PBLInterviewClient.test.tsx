@@ -25,11 +25,13 @@ vi.mock('next/navigation', () => ({
 const savePBLInterviewV2 = vi.fn();
 const submitPBLInterviewV2 = vi.fn();
 const uploadInterviewAttachment = vi.fn();
+const extractSttInsights = vi.fn();
 vi.mock('../../../actions', () => ({
   savePBLInterviewV2: (...args: unknown[]) => savePBLInterviewV2(...args),
   submitPBLInterviewV2: (...args: unknown[]) => submitPBLInterviewV2(...args),
   uploadInterviewAttachment: (...args: unknown[]) =>
     uploadInterviewAttachment(...args),
+  extractSttInsights: (...args: unknown[]) => extractSttInsights(...args),
 }));
 
 import {
@@ -69,12 +71,35 @@ describe('PBLInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI PBL 인터뷰');
   });
 
-  it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다', () => {
+  it('10개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (9개 양식 + 1개 STT 첨부)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(PBL_STEPS).toHaveLength(9);
+    expect(PBL_STEPS).toHaveLength(10);
     for (const s of PBL_STEPS) {
       expect(screen.getAllByText(s.name).length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it('10번째 Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
+    const last = PBL_STEPS[PBL_STEPS.length - 1];
+    expect(last.id).toBe(10);
+    expect(last.stepId).toBe('sttAttach');
+    expect(last.required).toBe(false);
+    expect(last.name).toBe('인터뷰 녹취 STT 첨부');
+    expect(last.shortName).toBe('선택');
+  });
+
+  it('PageHeader description 에 "총 10개 스텝" 문구가 포함된다', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    expect(screen.getByText(/총 10개 스텝/)).toBeInTheDocument();
+  });
+
+  it('10번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getByText('인터뷰 녹취 STT 첨부'));
+    expect(
+      screen.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('STT 원문')).toBeInTheDocument();
   });
 
   // R3 #12(PBL) / PBL-자체-06 — Step 9 단축명을 양식 정확 표기로 재설계

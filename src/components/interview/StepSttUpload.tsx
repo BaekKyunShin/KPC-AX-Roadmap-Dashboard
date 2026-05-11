@@ -27,6 +27,12 @@ export interface StepSttUploadProps {
   onExtract: (
     sttText: string,
   ) => Promise<{ success: true; data: SttInsights } | { success: false; error: string }>;
+  /**
+   * 자체 h3 헤더와 안내문을 렌더할지 여부. 기본값 true (기존 사용처 호환).
+   * 어댑터(`StepSttAttach`) 가 FormSection 으로 감싸 외부 헤더를 제공할 때
+   * false 로 내려 헤더 중복을 차단한다.
+   */
+  showHeader?: boolean;
 }
 
 const SECTION_LABELS: Array<[keyof SttInsights, string]> = [
@@ -38,7 +44,12 @@ const SECTION_LABELS: Array<[keyof SttInsights, string]> = [
   ['주요_인용', '주요 인용'],
 ];
 
-export function StepSttUpload({ insights, onChange, onExtract }: StepSttUploadProps) {
+export function StepSttUpload({
+  insights,
+  onChange,
+  onExtract,
+  showHeader = true,
+}: StepSttUploadProps) {
   const [sttText, setSttText] = useState('');
   const [isPending, startTransition] = useTransition();
 
@@ -68,13 +79,15 @@ export function StepSttUpload({ insights, onChange, onExtract }: StepSttUploadPr
 
   return (
     <section className="border border-border rounded-lg p-4 space-y-3">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">STT 인사이트 추출 (선택)</h3>
-        <p className="mt-1 text-xs text-muted-foreground break-keep">
-          현장 인터뷰 녹취 STT 텍스트를 붙여넣고 LLM 으로 6개 카테고리(추가 업무·페인포인트·숨은
-          니즈·조직 맥락·AI 태도·주요 인용)로 자동 정리하세요. 추출 결과는 자동 저장됩니다.
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">STT 인사이트 추출 (선택)</h3>
+          <p className="mt-1 text-xs text-muted-foreground break-keep">
+            현장 인터뷰 녹취 STT 텍스트를 붙여넣고 LLM 으로 6개 카테고리(추가 업무·페인포인트·숨은
+            니즈·조직 맥락·AI 태도·주요 인용)로 자동 정리하세요. 추출 결과는 자동 저장됩니다.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="stt-input">STT 원문</Label>

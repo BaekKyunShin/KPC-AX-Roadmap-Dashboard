@@ -13,6 +13,7 @@ import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import {
   saveRoadmapInterviewV2,
   submitRoadmapInterviewV2,
+  extractSttInsights,
 } from '../../actions';
 import {
   RoadmapInterviewStrictSchema,
@@ -24,6 +25,7 @@ import {
   type RoadmapTaskAnalysisAttachment,
   type RoadmapTargetTask,
   type RoadmapCompetency,
+  type SttInsights,
 } from '@/lib/schemas/interview-roadmap';
 
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
@@ -42,12 +44,14 @@ import {
   StepCompetencyModeling,
   type StepCompetencyModelingValue,
 } from './StepCompetencyModeling';
+import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
-// 8 스텝 정의 (PR #2 Task 2.3 — 양식 1:1 정합)
+// 9 스텝 정의 — 양식 1:1 정합 8개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
 // id 는 양식 섹션 의미를 그대로 노출 (snake_case 단일 단어). UI 상의 표시 텍스트는
-// shortName / name 을 사용한다. shortName 은 양식 번호, name 은 절 제목.
+// shortName / name 을 사용한다. shortName 은 양식 번호(선택 항목은 "선택"),
+// name 은 절 제목 또는 보조 단계명.
 // ============================================================================
 
 export type RoadmapStepId =
@@ -58,7 +62,8 @@ export type RoadmapStepId =
   | 'companyReq'
   | 'taskAnalysis'
   | 'targetTask'
-  | 'competencyModeling';
+  | 'competencyModeling'
+  | 'sttAttach';
 
 interface StepDef {
   /** 1-based 인덱스 (InterviewStepper 가 number 키를 요구한다) */
@@ -81,6 +86,7 @@ export const ROADMAP_STEPS: ReadonlyArray<StepDef> = [
   { id: 6, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석', required: true },
   { id: 7, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업', required: true },
   { id: 8, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링', required: true },
+  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', required: false },
 ];
 
 // ============================================================================
@@ -193,6 +199,15 @@ export function RoadmapInterviewClient({
       ncsDerivationMethod: string | undefined;
     }>) => {
       setData((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
+  // STT 인사이트(선택) — 9번째 Step. undefined 로 초기화/초기화 시 키를 빼지 않고
+  // sttInsights:undefined 로 두면 자동저장 페이로드에 키가 빠지므로 set 으로 처리.
+  const updateSttInsights = useCallback(
+    (next: SttInsights | undefined) => {
+      setData((prev) => ({ ...prev, sttInsights: next }));
     },
     [],
   );
@@ -491,6 +506,14 @@ export function RoadmapInterviewClient({
           />
         );
       }
+      case 'sttAttach':
+        return (
+          <StepSttAttach
+            value={data.sttInsights}
+            onChange={updateSttInsights}
+            onExtract={(text) => extractSttInsights(projectId, text)}
+          />
+        );
       default:
         return null;
     }
@@ -500,7 +523,7 @@ export function RoadmapInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI훈련로드맵 인터뷰"
-        description="산인공 양식 Ⅰ·Ⅱ·Ⅲ-1 절을 8개 스텝으로 입력합니다."
+        description="산인공 양식 8개 절과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
       />
 
       <InterviewStepper
