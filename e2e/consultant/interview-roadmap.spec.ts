@@ -134,7 +134,8 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
       .catch(() => false);
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
-    await page.getByText('과업·워크플로우 분석').first().click();
+    // Stepper 는 PR #77 부터 단축 라벨 "과업·워크플로우" 노출. 페이지 헤더(h2) 는 풀텍스트 유지.
+    await page.getByText('과업·워크플로우', { exact: true }).first().click();
     await expect(
       page.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 }),
     ).toBeVisible();

@@ -181,10 +181,11 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
   });
 
   // ─── 4단계: 인터뷰 입력 (ASSIGNED → INTERVIEWED) ──────────────────────────
-  // V2 재설계 이후 로드맵 인터뷰는 산인공 양식 8스텝 (Ⅰ-1~3, Ⅱ-1~4, Ⅲ-1).
-  // Ⅱ-1 HRD이음 PDF 는 optional 이라 업로드 없이 "다음" 으로 건너뛴다.
+  // V2 재설계 이후 로드맵 인터뷰는 산인공 양식 8스텝 + STT 첨부 선택 1스텝 = 총 9스텝
+  // (Ⅰ-1~3, Ⅱ-1~4, Ⅲ-1, 인터뷰 녹취 STT 첨부).
+  // Ⅱ-1 HRD이음 PDF · 9번째 STT 첨부는 optional 이라 업로드 없이 "다음" 으로 건너뛴다.
   // 전체 진행은 기본 30초 timeout을 넘으므로 120초로 연장.
-  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 8-스텝 V2)', async ({ consultantPage: page }) => {
+  test('4단계: 인터뷰 입력 → INTERVIEWED 상태 (산인공 9-스텝 V2)', async ({ consultantPage: page }) => {
     test.skip(!projectId, '테스트 데이터 없음: 선행 프로젝트 생성 실패');
     test.skip(!isAssigned, '3단계(컨설턴트 배정) 미완료 — 인터뷰 입력 불가');
     test.setTimeout(120_000);
@@ -345,7 +346,15 @@ test.describe('워크플로우 관통: NEW → FINALIZED', () => {
       .getByLabel('역량별 도출 방법')
       .fill('3개 현장 인터뷰 + 업계 벤치마킹');
 
-    // V2 StickyFormNav — 마지막 스텝에서 "최종 제출" 버튼이 노출된다.
+    // ── 스텝 9: 인터뷰 녹취 STT 첨부 (선택, PR #77 추가) ──
+    // STT 는 optional 이라 파일 업로드 없이 그대로 통과해도 strict 검증 영향 없음.
+    // 8 → 9 step 으로 한 번 더 "다음" 클릭 → 마지막 sttAttach step 에 도달.
+    await nextButton().click();
+    await expect(
+      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+    ).toBeVisible({ timeout: 5_000 });
+
+    // V2 StickyFormNav — 마지막 스텝(sttAttach)에서 "최종 제출" 버튼이 노출된다.
     const submitButton = page.getByRole('button', { name: /최종 제출/ });
     await expect(submitButton).toBeVisible({ timeout: 5_000 });
     await expect(submitButton).toBeEnabled({ timeout: 10_000 });
