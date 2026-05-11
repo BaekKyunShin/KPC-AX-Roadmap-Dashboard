@@ -1196,6 +1196,17 @@ export function ConsultantRoadmapPageSkeleton() {
  */
 export const RoadmapPageSkeleton = ConsultantRoadmapPageSkeleton;
 
+/** Consultant PBL 결과 페이지 스켈레톤 (5탭 + description + regenerate accordion) */
+export function ConsultantPBLPageSkeleton() {
+  return (
+    <RoadmapPageSkeletonBase
+      tabCount={5}
+      firstTabContent="pbl-overview"
+      showRegenerateAccordion
+    />
+  );
+}
+
 /** 로드맵 페이지 스켈레톤 (OPS용 - 3탭, regenerate 없음) */
 export function OpsRoadmapPageSkeleton() {
   return <RoadmapPageSkeletonBase tabCount={3} firstTabContent="roadmap-overview" />;
