@@ -18,12 +18,21 @@ export default function Loading() {
         <Skeleton className="h-8 w-3/4" />
       </div>
 
-      {/* 메타 카드 */}
+      {/* 메타 카드 — 각 항목: 아이콘(h-3.5 w-3.5) + 텍스트(작성자/작성일/조회수) */}
       <div className="rounded-lg border bg-muted/30 p-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-16" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-20" />
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-24" />
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-4 w-16" />
+          </span>
         </div>
       </div>
 
