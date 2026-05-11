@@ -17,10 +17,32 @@ import {
 } from '../Skeleton';
 
 describe('ConsultantRoadmapPageSkeleton', () => {
+  it('PageContainer 폭(max-w-5xl mx-auto px-4 sm:px-6 lg:px-8)을 미러한다', () => {
+    const { container } = render(<ConsultantRoadmapPageSkeleton />);
+    const root = container.firstChild as HTMLElement;
+    expect(root.className).toContain('max-w-5xl');
+    expect(root.className).toContain('mx-auto');
+    expect(root.className).toContain('space-y-8');
+  });
+
   it('탭 nav 안에 정확히 3개의 탭 자리가 렌더된다', () => {
     const { getByTestId } = render(<ConsultantRoadmapPageSkeleton />);
     const tabs = getByTestId('skeleton-version-card-tabs');
     expect(tabs.querySelectorAll('nav > div').length).toBe(3);
+  });
+
+  it('카드 컨테이너 (rounded-lg + bg-white + shadow + border 가 동시에 적용된) 가 없다 — ResultTabs 평탄 구조', () => {
+    const { container } = render(<ConsultantRoadmapPageSkeleton />);
+    // 결과 컨텐츠 영역에는 카드 wrapper (3종 모두) 가 없어야 함
+    const allDivs = container.querySelectorAll('div');
+    const cardLike = Array.from(allDivs).filter(
+      (d) =>
+        d.className.includes('rounded-lg') &&
+        d.className.includes('bg-white') &&
+        d.className.includes('shadow') &&
+        d.className.includes('border'),
+    );
+    expect(cardLike.length).toBe(0);
   });
 
   it('description 자리 스켈레톤이 존재한다', () => {

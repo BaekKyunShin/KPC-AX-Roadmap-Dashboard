@@ -928,15 +928,37 @@ function RoadmapOverviewSummarySkeleton() {
   );
 }
 
-/** VersionSelector 바 스켈레톤 (sticky 바 형태) */
-function VersionSelectorBarSkeleton() {
+/**
+ * 버전 선택 + 다운로드 행 스켈레톤.
+ *
+ * 실제 RoadmapResultClient/PBLResultClient 의 PageHeader 아래 줄을 미러한다:
+ * `<div flex-col gap-3 sm:flex-row sm:justify-between>`
+ *   좌: VersionSelector(min-w-[240px]) + "버전 N" h2 + Badge + (consultant DRAFT) 최종 확정 버튼
+ *   우: DownloadButtonGroup (PDF/XLSX/HWPX × 3, outline size-sm)
+ *
+ * 카드/배경/sticky 없이 평탄한 flex 행이다.
+ */
+function VersionActionsRowSkeleton({
+  showFinalizeButton = false,
+}: { showFinalizeButton?: boolean } = {}) {
   return (
-    <div className="bg-background border-b border-border -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 flex items-center justify-between gap-3 flex-wrap">
-      <div className="flex items-center gap-2">
-        <SkeletonBar height="h-9" width="w-32" />
-        <SkeletonBar height="h-6" width="w-16" variant="secondary" />
+    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* VersionSelector — Select trigger (min-w-[240px], h-9) */}
+        <SkeletonBar height="h-9" width="w-60" />
+        {/* "버전 N" h2 (text-sm font-semibold) */}
+        <SkeletonBar height="h-4" width="w-12" variant="secondary" />
+        {/* VersionStatusBadge */}
+        <SkeletonBar height="h-6" width="w-14" variant="secondary" />
+        {/* (consultant DRAFT) 최종 확정 버튼 */}
+        {showFinalizeButton && <SkeletonBar height="h-9" width="w-24" variant="secondary" />}
       </div>
-      <SkeletonBar height="h-8" width="w-24" variant="secondary" />
+      {/* DownloadButtonGroup (3 outline size-sm 버튼) */}
+      <div className="flex gap-2">
+        <SkeletonBar height="h-9" width="w-20" />
+        <SkeletonBar height="h-9" width="w-20" />
+        <SkeletonBar height="h-9" width="w-20" />
+      </div>
     </div>
   );
 }
@@ -1026,8 +1048,14 @@ function PBLOverviewTabSkeleton() {
   );
 }
 
-/** 로드맵/PBL 결과 버전 카드 스켈레톤 (탭 개수·첫 탭 컨텐츠 variant 분기) */
-function RoadmapVersionCardSkeleton({
+/**
+ * ResultTabs 스켈레톤 (탭 개수·첫 탭 컨텐츠 variant 분기).
+ *
+ * 실제 ResultTabs 는 카드 컨테이너 없이 평탄하게 렌더되며, 탭 바는 화면 너비를
+ * 가로지르는 sticky bar (`sticky top-16 z-10 -mx-4 sm:-mx-6 lg:-mx-8`)이다.
+ * 탭 바 우측에는 "모두 펼치기/접기" 토글 버튼이 있다.
+ */
+function ResultTabsSkeleton({
   tabCount,
   firstTabContent,
 }: {
@@ -1035,42 +1063,36 @@ function RoadmapVersionCardSkeleton({
   firstTabContent: FirstTabContent;
 }) {
   return (
-    <div className={`${CARD_STYLES.base} pb-1`}>
-      {/* 헤더 영역: 버전 뱃지 + Overview 요약 + 진단 요약 */}
-      <div className="px-6 py-5 border-b border-gray-200 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <SkeletonBar height="h-6" width="w-20" />
-          <SkeletonBar height="h-6" width="w-14" />
-        </div>
-        <RoadmapOverviewSummarySkeleton />
-        <div className="space-y-2">
-          <SkeletonBar height="h-3.5" width="w-full" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-11/12" variant="secondary" />
-          <SkeletonBar height="h-3.5" width="w-3/4" variant="secondary" />
-        </div>
-      </div>
-
-      {/* 탭 바 (라벨 텍스트 없이 회색 막대만 — 향후 라벨 변경 시 동기화 부담 제거) */}
+    <div>
+      {/* 탭 바 (sticky, 화면 가로지르는 -mx 인셋) */}
       <div
-        className="sticky top-16 z-10 bg-card border-b border-gray-200"
+        className="sticky top-16 z-10 -mx-4 sm:-mx-6 lg:-mx-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b"
         data-testid="skeleton-version-card-tabs"
       >
-        <nav className="flex -mb-px overflow-x-auto">
-          {renderItems(tabCount, (i) => (
-            <div
-              key={i}
-              className={`px-3 py-2 sm:px-6 sm:py-3 flex-shrink-0 border-b-2 ${
-                i === 0 ? 'border-purple-300' : 'border-transparent'
-              }`}
-            >
-              <SkeletonBar height="h-4" width="w-20" variant={i === 0 ? 'primary' : 'secondary'} />
-            </div>
-          ))}
-        </nav>
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 gap-2">
+          <nav className="flex gap-1">
+            {renderItems(tabCount, (i) => (
+              <div
+                key={i}
+                className={`px-3 py-1.5 rounded-md ${
+                  i === 0 ? 'bg-muted' : ''
+                } flex-shrink-0`}
+              >
+                <SkeletonBar
+                  height="h-4"
+                  width="w-20"
+                  variant={i === 0 ? 'primary' : 'secondary'}
+                />
+              </div>
+            ))}
+          </nav>
+          {/* "모두 펼치기/접기" 토글 버튼 */}
+          <SkeletonBar height="h-8" width="w-20" variant="secondary" />
+        </div>
       </div>
 
-      {/* 기본 탭(Ⅰ. 개요) 컨텐츠 */}
-      <div className="p-4 sm:p-6 space-y-5">
+      {/* 첫 탭(Ⅰ. 개요) 컨텐츠 — variant 별 분기 */}
+      <div className="pt-6 space-y-5">
         {firstTabContent === 'roadmap-overview' ? (
           <RoadmapOverviewTabSkeleton />
         ) : (
@@ -1081,77 +1103,84 @@ function RoadmapVersionCardSkeleton({
   );
 }
 
-/** 로드맵 결과 페이지 스켈레톤 공통 레이아웃 (variant 분기) */
+/**
+ * 로드맵/PBL 결과 페이지 스켈레톤 공통 레이아웃 (variant 분기).
+ *
+ * 실제 페이지의 PageContainer + RoadmapResultClient/PBLResultClient 구조를 미러:
+ *   <max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8>
+ *     ├ PageHeader (title + description, 우측 actions 없음)
+ *     ├ VersionActionsRow (VersionSelector + 버전N + Badge + (DRAFT) 확정 / DownloadGroup)
+ *     ├ (consultant) RegenerateAccordion
+ *     └ ResultTabs (카드 없이 평탄, sticky 탭 바 + 첫 탭 컨텐츠)
+ */
 function RoadmapPageSkeletonBase({
   tabCount,
   firstTabContent,
   showRegenerateAccordion = false,
+  showFinalizeButton = false,
 }: {
   tabCount: 3 | 5;
   firstTabContent: FirstTabContent;
   showRegenerateAccordion?: boolean;
+  /** consultant 측만 DRAFT 일 때 "최종 확정" 버튼 노출 가능. */
+  showFinalizeButton?: boolean;
 }) {
   return (
-    <div className="space-y-6">
-      {/* PageHeader: 제목 + 우측 다운로드 버튼 3개 + description (항상 노출) */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* PageHeader: 제목 + description (우측 actions 없음 — 다운로드는 아래 행에 위치) */}
       <div>
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <SkeletonBar height="h-7" width="w-48" />
-          <div className="flex items-center gap-2">
-            <SkeletonBar height="h-9" width="w-20" />
-            <SkeletonBar height="h-9" width="w-20" />
-            <SkeletonBar height="h-9" width="w-20" />
-          </div>
-        </div>
-        <div data-testid="skeleton-page-description" className="mt-2">
+        <SkeletonBar height="h-7" width="w-48" />
+        <div data-testid="skeleton-page-description" className="mt-1">
           <SkeletonBar height="h-3.5" width="w-72" variant="secondary" />
         </div>
       </div>
 
-      {/* VersionSelector 바 (sticky) */}
-      <VersionSelectorBarSkeleton />
+      {/* 버전 선택 + 다운로드 행 (sticky·카드 X, 그냥 flex 행) */}
+      <VersionActionsRowSkeleton showFinalizeButton={showFinalizeButton} />
 
-      {/* 수정 요청 아코디언 (컨설턴트 전용) */}
+      {/* 수정 요청 아코디언 (컨설턴트 전용 + versions > 0 일 때만 — 로딩 중엔 가시화) */}
       {showRegenerateAccordion && (
         <div data-testid="skeleton-regenerate-accordion">
           <RegenerateAccordionSkeleton />
         </div>
       )}
 
-      {/* 버전 카드 */}
-      <RoadmapVersionCardSkeleton tabCount={tabCount} firstTabContent={firstTabContent} />
+      {/* ResultTabs (평탄 구조, 카드 없음) */}
+      <ResultTabsSkeleton tabCount={tabCount} firstTabContent={firstTabContent} />
     </div>
   );
 }
 
-/** Consultant 로드맵 결과 페이지 스켈레톤 (3탭 + description + regenerate accordion) */
+/** Consultant 로드맵 결과 페이지 스켈레톤 (3탭, regenerate + DRAFT 확정 버튼 자리) */
 export function ConsultantRoadmapPageSkeleton() {
   return (
     <RoadmapPageSkeletonBase
       tabCount={3}
       firstTabContent="roadmap-overview"
       showRegenerateAccordion
+      showFinalizeButton
     />
   );
 }
 
-/** Consultant PBL 결과 페이지 스켈레톤 (5탭 + description + regenerate accordion) */
+/** Consultant PBL 결과 페이지 스켈레톤 (5탭, regenerate + DRAFT 확정 버튼 자리) */
 export function ConsultantPBLPageSkeleton() {
   return (
     <RoadmapPageSkeletonBase
       tabCount={5}
       firstTabContent="pbl-overview"
       showRegenerateAccordion
+      showFinalizeButton
     />
   );
 }
 
-/** 로드맵 페이지 스켈레톤 (OPS용 - 3탭, regenerate 없음) */
+/** 로드맵 결과 페이지 스켈레톤 (OPS용 — 3탭, regenerate·확정 버튼 없음) */
 export function OpsRoadmapPageSkeleton() {
   return <RoadmapPageSkeletonBase tabCount={3} firstTabContent="roadmap-overview" />;
 }
 
-/** PBL 페이지 스켈레톤 (OPS용 - 5탭, regenerate 없음) */
+/** PBL 결과 페이지 스켈레톤 (OPS용 — 5탭, regenerate·확정 버튼 없음) */
 export function OpsPBLPageSkeleton() {
   return <RoadmapPageSkeletonBase tabCount={5} firstTabContent="pbl-overview" />;
 }
