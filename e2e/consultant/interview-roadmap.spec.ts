@@ -209,7 +209,8 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
       page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
     ).toBeVisible();
     // 본문에 STT 원문 textarea 노출 (FormSection 헤더는 어댑터 제공, StepSttUpload 본문)
-    await expect(page.getByLabel('STT 파일')).toBeVisible();
+    // exact:true — "STT 파일" (input) 과 "STT 파일 업로드" (button) 가 substring 충돌 → strict mode 위반 방지
+    await expect(page.getByLabel('STT 파일', { exact: true })).toBeVisible();
     const submitBtn = page.getByRole('button', { name: '최종 제출' });
     await expect(submitBtn).toBeVisible();
 
