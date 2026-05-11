@@ -658,11 +658,11 @@ describe('uploadAttachment', () => {
     expect(mock.storageMethods.upload).toHaveBeenCalled();
   });
 
-  it('Storage 실패 시 error 반환', async () => {
+  it('Storage 실패 시 원본 message 포함 error 반환', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mock.storageMethods.upload.mockResolvedValueOnce({
       data: null as never,
-      error: { message: 'storage full' } as never,
+      error: { message: 'mime type not allowed' } as never,
     });
     const file = makeFile('x', 'a.pdf', 'application/pdf');
     const result = await uploadAttachment(
@@ -671,12 +671,20 @@ describe('uploadAttachment', () => {
       mock.mockClient as never,
     );
     expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toBe(
+        '파일 업로드에 실패했습니다. (mime type not allowed)',
+      );
+    }
     consoleSpy.mockRestore();
   });
 
-  it('DB insert 실패 시 Storage 롤백', async () => {
+  it('DB insert 실패 시 Storage 롤백 + 원본 message 포함', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mock.addResult({ data: null, error: { message: 'db fail' } });
+    mock.addResult({
+      data: null,
+      error: { message: 'duplicate key value violates unique constraint' },
+    });
     const file = makeFile('x', 'a.pdf', 'application/pdf');
     const result = await uploadAttachment(
       file,
@@ -684,6 +692,11 @@ describe('uploadAttachment', () => {
       mock.mockClient as never,
     );
     expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toBe(
+        '첨부 정보 저장에 실패했습니다. (duplicate key value violates unique constraint)',
+      );
+    }
     expect(mock.storageMethods.remove).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });

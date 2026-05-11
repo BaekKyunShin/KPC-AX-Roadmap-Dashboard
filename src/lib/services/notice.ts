@@ -411,8 +411,10 @@ export async function uploadAttachment(
     });
 
   if (uploadError) {
-    console.error('[uploadAttachment] Storage upload error:', uploadError.message);
-    return { error: '파일 업로드에 실패했습니다.' };
+    console.error('[uploadAttachment] Storage upload error:', uploadError);
+    return {
+      error: `파일 업로드에 실패했습니다. (${uploadError.message})`,
+    };
   }
 
   // 2) DB row insert — mime_type도 확장자 기반 보정 값 사용
@@ -436,11 +438,16 @@ export async function uploadAttachment(
     .single();
 
   if (insertError || !data) {
-    if (insertError)
-      console.error('[uploadAttachment] Insert error:', insertError.message);
+    if (insertError) {
+      console.error('[uploadAttachment] Insert error:', insertError);
+    }
     // 롤백: Storage에 올린 파일 제거
     await adminClient.storage.from('notice-attachments').remove([storagePath]);
-    return { error: '첨부 정보 저장에 실패했습니다.' };
+    return {
+      error: insertError
+        ? `첨부 정보 저장에 실패했습니다. (${insertError.message})`
+        : '첨부 정보 저장에 실패했습니다.',
+    };
   }
 
   return { attachment: data as unknown as NoticeAttachment };

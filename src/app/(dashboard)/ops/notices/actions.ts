@@ -55,16 +55,26 @@ export async function createNoticeAction(
     return { success: false, error: '공지 작성에 실패했습니다.' };
   }
 
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'NOTICE_CREATED',
-    targetType: 'notice',
-    targetId: result.id,
-    meta: { title: validation.data.title },
-  });
+  // 감사로그·캐시 무효화는 부수 작업 — 실패해도 본 흐름을 차단하지 않음.
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'NOTICE_CREATED',
+      targetType: 'notice',
+      targetId: result.id,
+      meta: { title: validation.data.title },
+    });
+  } catch (e) {
+    console.error('[createNoticeAction] 감사로그 실패:', e);
+  }
 
-  revalidatePath('/ops/notices');
-  revalidatePath('/notices');
+  try {
+    revalidatePath('/ops/notices');
+    revalidatePath('/notices');
+  } catch (e) {
+    console.error('[createNoticeAction] 캐시 무효화 실패:', e);
+  }
+
   return { success: true, data: { noticeId: result.id } };
 }
 
@@ -236,21 +246,31 @@ export async function uploadAttachmentAction(
     return { success: false, error: result.error };
   }
 
-  await createAuditLog({
-    actorUserId: user.id,
-    action: 'NOTICE_UPDATED',
-    targetType: 'notice_attachment',
-    targetId: result.attachment.id,
-    meta: {
-      notice_id: noticeId,
-      file_name: file.name,
-      file_size: file.size,
-      kind: 'attachment_upload',
-    },
-  });
+  // 감사로그·캐시 무효화는 부수 작업 — 실패해도 첨부 업로드 성공을 그대로 반환.
+  try {
+    await createAuditLog({
+      actorUserId: user.id,
+      action: 'NOTICE_UPDATED',
+      targetType: 'notice_attachment',
+      targetId: result.attachment.id,
+      meta: {
+        notice_id: noticeId,
+        file_name: file.name,
+        file_size: file.size,
+        kind: 'attachment_upload',
+      },
+    });
+  } catch (e) {
+    console.error('[uploadAttachmentAction] 감사로그 실패:', e);
+  }
 
-  revalidatePath(`/ops/notices/${noticeId}/edit`);
-  revalidatePath(`/notices/${noticeId}`);
+  try {
+    revalidatePath(`/ops/notices/${noticeId}/edit`);
+    revalidatePath(`/notices/${noticeId}`);
+  } catch (e) {
+    console.error('[uploadAttachmentAction] 캐시 무효화 실패:', e);
+  }
+
   return { success: true, data: { attachment: result.attachment } };
 }
 
