@@ -121,6 +121,66 @@ describe('formatZodIssuesForToast', () => {
     expect(message).toBe('');
   });
 
+  it('path 가 빈 배열(루트)인 issue 는 "(루트)" 로 출력', () => {
+    const rootError = new z.ZodError([
+      {
+        code: z.ZodIssueCode.custom,
+        path: [],
+        message: '루트 검증 실패',
+      },
+    ]);
+    const message = formatZodIssuesForToast(rootError, {});
+    expect(message).toContain('(루트): 루트 검증 실패');
+  });
+
+  it('message 가 빈 문자열인 issue 는 "필수 입력입니다." fallback 으로 출력', () => {
+    const emptyMsgError = new z.ZodError([
+      {
+        code: z.ZodIssueCode.custom,
+        path: ['someField'],
+        message: '',
+      },
+    ]);
+    const message = formatZodIssuesForToast(emptyMsgError, {
+      someField: '어떤 필드',
+    });
+    expect(message).toBe('어떤 필드: 필수 입력입니다.');
+  });
+
+  it('배열 index(number) 가 포함된 path 는 "*" 로 정규화', () => {
+    const arrayError = new z.ZodError([
+      {
+        code: z.ZodIssueCode.custom,
+        path: ['items', 0, 'name'],
+        message: '항목 이름 필수',
+      },
+    ]);
+    const message = formatZodIssuesForToast(arrayError, {
+      'items.*.name': '항목 이름',
+    });
+    expect(message).toBe('항목 이름: 항목 이름 필수');
+  });
+
+  it('options.maxItems 를 명시적으로 지정하면 그 값을 사용', () => {
+    const ManySchema = z.object({
+      a: z.string().min(1),
+      b: z.string().min(1),
+      c: z.string().min(1),
+    });
+    const result = ManySchema.safeParse({ a: '', b: '', c: '' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const message = formatZodIssuesForToast(
+        result.error,
+        { a: 'A', b: 'B', c: 'C' },
+        { maxItems: 1 },
+      );
+      const lines = message.split('\n');
+      expect(lines.length).toBe(2); // 1 + 외 N건
+      expect(message).toMatch(/외 2건 더 있음/);
+    }
+  });
+
   it('같은 path 의 중복 에러는 한 번만 출력', () => {
     // 동일 path 가 여러 error 로 떨어지는 케이스 시뮬레이션 (Refine + min 동시)
     const result = TestSchema.safeParse({

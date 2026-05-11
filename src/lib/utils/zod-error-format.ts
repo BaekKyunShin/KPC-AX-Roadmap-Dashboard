@@ -23,7 +23,8 @@ export function formatZodIssuesForToast(
   options: { maxItems?: number } = {},
 ): string {
   const maxItems = options.maxItems ?? 5;
-  const issues: ZodIssue[] = error.issues ?? [];
+  // Zod v3 의 ZodError.issues 는 항상 array 보장 — null/undefined fallback 불필요.
+  const issues: ZodIssue[] = error.issues;
   if (issues.length === 0) return '';
 
   const seen = new Set<string>();

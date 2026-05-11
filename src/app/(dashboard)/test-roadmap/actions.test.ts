@@ -32,7 +32,12 @@ vi.mock('@/lib/services/roadmap', async () => {
 
 vi.mock('next/server', () => ({ after: (fn: () => void) => fn() }));
 
-import { createTestRoadmap, cancelTestRoadmapGeneration, reviseTestRoadmap } from './actions';
+import {
+  createTestRoadmap,
+  cancelTestRoadmapGeneration,
+  reviseTestRoadmap,
+  exportTestRoadmapHwpx,
+} from './actions';
 import {
   generateTestRoadmap,
   reviseTestRoadmap as reviseTestRoadmapService,
@@ -141,5 +146,115 @@ describe('cancelTestRoadmapGeneration', () => {
   it('성공', async () => {
     const result = await cancelTestRoadmapGeneration();
     expect(result).toEqual({ success: true });
+  });
+});
+
+// ─── exportTestRoadmapHwpx ───────────────────────────────────────────────────
+
+vi.mock('next/headers', () => ({
+  headers: () => Promise.resolve(new Map<string, string>()),
+}));
+
+const mockGenerateRoadmapHwpx = vi.fn();
+const mockBuildRoadmapHwpxPayload = vi.fn();
+
+vi.mock('@/lib/services/export/hwpx', () => ({
+  buildRoadmapHwpxPayload: (...args: unknown[]) =>
+    mockBuildRoadmapHwpxPayload(...args),
+  generateRoadmapHwpx: (...args: unknown[]) => mockGenerateRoadmapHwpx(...args),
+}));
+
+describe('exportTestRoadmapHwpx', () => {
+  const validInput = () => ({
+    result: {
+      diagnosis_summary: '',
+      setup_necessity: '',
+      outcome_summary: {
+        ai_competency_level: 'BEGINNER' as const,
+        selected_tasks: '',
+        main_content: '',
+      },
+      competencies: [],
+      ncs_used: false,
+      ncs_methodology: '',
+      ncs_derivation_method: '',
+      training_structure: [],
+      training_structure_method: '',
+      annual_plan: { items: [], usage_plan: '' },
+      course_specs: [],
+    } as never,
+    interview: ROADMAP_INTERVIEW_SAMPLE,
+    companyName: '테스트 기업',
+  });
+
+  beforeEach(() => {
+    mockBuildRoadmapHwpxPayload.mockReturnValue({
+      fileName: '테스트기업_로드맵_v1.hwpx',
+    });
+    mockGenerateRoadmapHwpx.mockResolvedValue(
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+    );
+  });
+
+  it('미인증 → error 반환', async () => {
+    mockRequireAuthWithRole.mockResolvedValueOnce({ error: '권한 없음' });
+    const result = await exportTestRoadmapHwpx(validInput());
+    expect(result.success).toBe(false);
+  });
+
+  it('인터뷰 검증 실패 → error 반환', async () => {
+    const result = await exportTestRoadmapHwpx({
+      ...validInput(),
+      interview: {} as never,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('인터뷰 데이터 검증');
+    }
+  });
+
+  it('성공 → base64 + fileName 반환', async () => {
+    const result = await exportTestRoadmapHwpx(validInput());
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fileName).toBe('테스트기업_로드맵_v1.hwpx');
+      expect(result.data.mimeType).toBe('application/vnd.hancom.hwpx');
+      expect(result.data.contentBase64.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('companyName 공백이면 "테스트기업" fallback 사용', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await exportTestRoadmapHwpx({ ...validInput(), companyName: '   ' });
+    expect(mockBuildRoadmapHwpxPayload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project: expect.objectContaining({ company_name: '테스트기업' }),
+      }),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('generateRoadmapHwpx throw → 로컬 dev fallback 메시지 전달', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockGenerateRoadmapHwpx.mockRejectedValueOnce(
+      new Error('Vercel Python 런타임 미동작'),
+    );
+    const result = await exportTestRoadmapHwpx(validInput());
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('Vercel Python 런타임');
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('generateRoadmapHwpx 일반 throw → generic 에러 메시지', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockGenerateRoadmapHwpx.mockRejectedValueOnce(new Error('알 수 없는 오류'));
+    const result = await exportTestRoadmapHwpx(validInput());
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('HWPX 생성에 실패');
+    }
+    consoleSpy.mockRestore();
   });
 });
