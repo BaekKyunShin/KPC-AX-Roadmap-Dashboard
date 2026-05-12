@@ -688,6 +688,12 @@ export const PBLInstructorRowSchema = z.object({
 });
 export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
 
+// Phase E — 양식 P-05 Ⅱ-2 훈련환경(12×7) 의 11 행 정합을 위한 enum
+export const PBL_AI_TOOL_CAPACITY = z.enum(['AVAILABLE', 'LIMITED', 'UNAVAILABLE']);
+export type PBLAIToolCapacity = z.infer<typeof PBL_AI_TOOL_CAPACITY>;
+export const PBL_NETWORK_STATUS = z.enum(['GOOD', 'NORMAL', 'IMPROVEMENT_NEEDED']);
+export type PBLNetworkStatus = z.infer<typeof PBL_NETWORK_STATUS>;
+
 export const PBLTrainingEnvSchema = z.object({
   properTrainingHours: z.string().default(''),    // 적정 훈련시간
   internalPlace: z.string().default(''),          // 훈련장소 — 사내
@@ -695,6 +701,24 @@ export const PBLTrainingEnvSchema = z.object({
   internalInstructors: z.array(PBLInstructorRowSchema).default([]), // 사내강사
   externalInstructors: z.array(PBLInstructorRowSchema).default([]), // 외부강사
   aiInfrastructure: z.string().default(''),       // AI 인프라 (사내)
+  // Phase E (Step 4b 기대효과·요구분석) — 양식 P-05 의 row 6/7/8/9/11 정합 5 신규 필드.
+  // 모두 default 안전 fallback — 기존 DB 인터뷰 데이터 호환.
+  targetCharacteristics: z
+    .object({
+      career: z.string().default(''),  // 업무 경력 (자유 텍스트)
+      level: z.string().default(''),   // 수준/직급 (자유 텍스트)
+    })
+    .default({ career: '', level: '' }),
+  aiInfraDetail: z
+    .object({
+      toolCapacity: PBL_AI_TOOL_CAPACITY.default('AVAILABLE'),
+      networkStatus: PBL_NETWORK_STATUS.default('GOOD'),
+      pcCount: z.number().int().min(0).default(0),
+    })
+    .default({ toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 }),
+  trainingNeedsAnalysis: z.string().default(''),  // AI훈련 요구분석
+  expectationAsIs: z.string().default(''),        // 기대효과 As-is (현재)
+  expectationToBe: z.string().default(''),        // 기대효과 To-be (개선)
 });
 export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 

@@ -554,6 +554,11 @@ function validPBLCamelCase(): PBLInterviewStrict {
       internalInstructors: [],
       externalInstructors: [],
       aiInfrastructure: 'AI 도구 가능',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: {
       fileName: 'pbl-hrd.pdf',

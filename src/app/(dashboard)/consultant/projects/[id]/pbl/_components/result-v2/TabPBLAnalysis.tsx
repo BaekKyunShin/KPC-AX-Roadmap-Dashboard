@@ -136,6 +136,117 @@ export function TabPBLAnalysis({
                   </div>
                 );
               })}
+
+              {/* Phase E (Step 4b) — 양식 P-05 row 6~11 정합 5 신규 필드 */}
+              {(() => {
+                const target =
+                  env.targetCharacteristics ?? { career: '', level: '' };
+                const infra =
+                  env.aiInfraDetail ??
+                  { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 };
+                const toolLabel = {
+                  AVAILABLE: '가능',
+                  LIMITED: '제한적',
+                  UNAVAILABLE: '불가능',
+                }[infra.toolCapacity];
+                const networkLabel = {
+                  GOOD: '양호',
+                  NORMAL: '보통',
+                  IMPROVEMENT_NEEDED: '개선필요',
+                }[infra.networkStatus];
+                const infraSummary =
+                  `AI 도구: ${toolLabel} · 네트워크: ${networkLabel} · PC ${infra.pcCount}대`;
+                return (
+                  <FormTable
+                    caption="훈련환경 — 대상자·인프라 세부·요구분석·기대효과"
+                    bodyRows={[
+                      {
+                        cells: [
+                          { content: '대상자 특성', header: true, className: 'w-[160px]', align: 'center' },
+                          {
+                            content: (
+                              <div className="space-y-1">
+                                <div>
+                                  <span className="font-medium text-muted-foreground">업무 경력 </span>
+                                  {target.career || '-'}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-muted-foreground">수준 </span>
+                                  {target.level || '-'}
+                                </div>
+                              </div>
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: 'AI 인프라 세부', header: true, align: 'center' },
+                          { content: infraSummary, align: 'left' },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: 'AI훈련 요구분석', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.trainingNeedsAnalysis ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { trainingNeedsAnalysis: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="AI훈련 요구분석이 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: '기대효과 As-is', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.expectationAsIs ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { expectationAsIs: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="As-is 가 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: '기대효과 To-be', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.expectationToBe ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { expectationToBe: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="To-be 가 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                );
+              })()}
             </div>
           );
         })()}

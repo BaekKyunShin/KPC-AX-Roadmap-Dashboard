@@ -1007,6 +1007,27 @@ export async function editPBLV2(
                 patch.trainingEnv.aiInfrastructure ??
                 current.trainingEnv?.aiInfrastructure ??
                 '',
+              // Phase E — Step 4b (기대효과·요구분석) 5 신규 필드
+              targetCharacteristics:
+                patch.trainingEnv.targetCharacteristics ??
+                current.trainingEnv?.targetCharacteristics ??
+                { career: '', level: '' },
+              aiInfraDetail:
+                patch.trainingEnv.aiInfraDetail ??
+                current.trainingEnv?.aiInfraDetail ??
+                { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+              trainingNeedsAnalysis:
+                patch.trainingEnv.trainingNeedsAnalysis ??
+                current.trainingEnv?.trainingNeedsAnalysis ??
+                '',
+              expectationAsIs:
+                patch.trainingEnv.expectationAsIs ??
+                current.trainingEnv?.expectationAsIs ??
+                '',
+              expectationToBe:
+                patch.trainingEnv.expectationToBe ??
+                current.trainingEnv?.expectationToBe ??
+                '',
             },
           }
         : {}),

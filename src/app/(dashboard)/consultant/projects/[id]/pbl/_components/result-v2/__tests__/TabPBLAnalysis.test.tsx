@@ -34,6 +34,11 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       ],
       externalInstructors: [],
       aiInfrastructure: 'PC 20대 · AI 도구 접근 가능',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: {
       fileName: 'hrd_consulting.pdf',

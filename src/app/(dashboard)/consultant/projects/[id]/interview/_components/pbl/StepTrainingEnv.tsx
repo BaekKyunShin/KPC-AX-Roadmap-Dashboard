@@ -38,6 +38,14 @@ function ensureValue(value: PBLTrainingEnv | undefined): PBLTrainingEnv {
     internalInstructors: value?.internalInstructors ?? [],
     externalInstructors: value?.externalInstructors ?? [],
     aiInfrastructure: value?.aiInfrastructure ?? '',
+    // Phase E (Step 4b) — 5 신규 필드 default fallback
+    targetCharacteristics: value?.targetCharacteristics ?? { career: '', level: '' },
+    aiInfraDetail:
+      value?.aiInfraDetail ??
+      { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+    trainingNeedsAnalysis: value?.trainingNeedsAnalysis ?? '',
+    expectationAsIs: value?.expectationAsIs ?? '',
+    expectationToBe: value?.expectationToBe ?? '',
   };
 }
 

@@ -72,10 +72,10 @@ describe('PBLInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI PBL 인터뷰');
   });
 
-  it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (8개 양식 + 1개 STT 첨부)', () => {
-    // Phase E: 조직 및 주요 업무 step 제거 → 10 → 9 step.
+  it('10개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (Phase E: 조직 제거 + Step 4b 기대효과 추가)', () => {
+    // Phase E: 조직 제거 → 9 step + 기대효과 신규 step → 10 step (조직 제거 전과 동일 개수, 다른 구성)
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(PBL_STEPS).toHaveLength(9);
+    expect(PBL_STEPS).toHaveLength(10);
     for (const s of PBL_STEPS) {
       // 스테퍼 노출 텍스트는 stepperLabel(있으면) 또는 name
       const visibleLabel = s.stepperLabel ?? s.name;
@@ -83,18 +83,27 @@ describe('PBLInterviewClient', () => {
     }
   });
 
-  it('9번째 (마지막) Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
+  it('10번째 (마지막) Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
     const last = PBL_STEPS[PBL_STEPS.length - 1];
-    expect(last.id).toBe(9);
+    expect(last.id).toBe(10);
     expect(last.stepId).toBe('sttAttach');
     expect(last.required).toBe(false);
     expect(last.name).toBe('인터뷰 녹취 STT 첨부');
     expect(last.shortName).toBe('선택');
   });
 
-  it('PageHeader description 에 "총 9개 스텝" 문구가 포함된다', () => {
+  it('PageHeader description 에 "총 10개 스텝" 문구가 포함된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(screen.getByText(/총 9개 스텝/)).toBeInTheDocument();
+    expect(screen.getByText(/총 10개 스텝/)).toBeInTheDocument();
+  });
+
+  // Phase E: Step 4b "기대효과·요구분석" 신규 검증
+  it('Step 4 (Ⅱ-2-b) 가 expectations stepId 로 정의되어 있고 라벨이 "기대효과·요구분석"', () => {
+    const step = PBL_STEPS[3];
+    expect(step.stepId).toBe('expectations');
+    expect(step.name).toBe('기대효과·요구분석');
+    expect(step.shortName).toBe('Ⅱ-2-b');
+    expect(step.required).toBe(true);
   });
 
   it('마지막 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
@@ -264,7 +273,8 @@ describe('PBLInterviewClient', () => {
   it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다 (R8 PBL-자체-02 — 정형 객체)', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('훈련환경 분석'));
+    // Phase E: stepperLabel="훈련환경" 으로 단축됨. stepper 클릭 → 페이지 헤더는 "훈련환경 분석"
+    fireEvent.click(screen.getAllByText('훈련환경')[0]);
     // 적정 훈련시간 입력 — 정형 객체의 한 필드
     fireEvent.change(screen.getByLabelText('적정 훈련시간'), {
       target: { value: '회차당 4시간' },
@@ -347,6 +357,11 @@ describe('PBLInterviewClient', () => {
         internalInstructors: [],
         externalInstructors: [],
         aiInfrastructure: '',
+        targetCharacteristics: { career: '', level: '' },
+        aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+        trainingNeedsAnalysis: '',
+        expectationAsIs: '',
+        expectationToBe: '',
       },
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',

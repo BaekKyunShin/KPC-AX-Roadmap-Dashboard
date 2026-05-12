@@ -27,7 +27,7 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서 제거.
   // 양식의 P-04 표는 한컴오피스 사용자가 직접 작성하는 영역.
 
-  // ── Ⅱ-2 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 표 6 영역) ─────────────
+  // ── Ⅱ-2 훈련환경 분석 (Phase E — 양식 P-05 11행 정합 11 영역) ────────────
   trainingEnv: {
     properTrainingHours: '회차당 4시간 × 10주 (총 40시간) / 평일 야간 집중 가능',
     internalPlace: '본사 3층 교육장 (PC 10대, 대형 디스플레이) · 생산 현장 품질검사 라인 동시 활용',
@@ -43,6 +43,17 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
     externalInstructors: [],
     aiInfrastructure:
       '사내 PC 10대 (i7/16GB), 네트워크 양호, ChatGPT/Claude 접근 가능 · 검사용 카메라 2대 · 측정기기 부서 공유 · 사내 보안 규정상 고객사 데이터 익명화 필수',
+    targetCharacteristics: {
+      career: '품질·생산기술 평균 7년 (최소 3년 / 최대 15년)',
+      level: '대리~과장급 (사원 1, 대리 4, 과장 7, 차장 3, 부장 1)',
+    },
+    aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 10 },
+    trainingNeedsAnalysis:
+      '품질검사·공정개선·설비보전 3 직무가 공통으로 불량 원인 추적·보고에 시간을 과다 투입. AI 도구로 분석·시각화·보고 자동화 루틴을 도입해 리드타임 50% 단축 + 신규 인력 OJT 비용 감소가 시급.',
+    expectationAsIs:
+      '수동 검사 92% 정확도, 보고서 작성 평균 4시간, 불량 원인 추적은 숙련 인력 의존.',
+    expectationToBe:
+      'AI 자동검사 정확도 96%+, 보고서 자동 생성 1시간, 신규 인력도 동일 수준 분석 가능.',
   },
 
   // ── Ⅱ-3-가 HRD이음 PDF (테스트 모드에서는 첨부 없음) ──────────────────────

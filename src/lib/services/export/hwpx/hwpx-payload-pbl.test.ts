@@ -313,7 +313,7 @@ describe('buildPBLHwpxPayload', () => {
   });
 
   // R8 PBL-자체-02 — buildTrainingEnvP05 6 셀 매핑 분기 cover
-  describe('PBL-자체-02: P-05 6 셀 매핑 (R8)', () => {
+  describe('PBL-자체-02 Phase E: P-05 11 행 매핑', () => {
     function makeV2WithTrainingEnv(env: unknown): Interview {
       const v2 = (makeV2Interview() as unknown as { pbl_data: Record<string, unknown> })
         .pbl_data;
@@ -323,21 +323,25 @@ describe('buildPBLHwpxPayload', () => {
       } as unknown as Interview;
     }
 
-    it('trainingEnv 누락 시 6 셀 모두 빈 문자열', () => {
+    it('trainingEnv 누락 시 11 키 모두 빈 문자열', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
         interview: makeV2WithTrainingEnv(undefined),
       });
-      expect(payload.data.training_env_internal_status).toBe('');
-      expect(payload.data.training_env_external_status).toBe('');
-      expect(payload.data.training_env_internal_capability).toBe('');
-      expect(payload.data.training_env_external_capability).toBe('');
-      expect(payload.data.training_env_internal_facility).toBe('');
-      expect(payload.data.training_env_external_facility).toBe('');
+      expect(payload.data.proper_training_hours).toBe('');
+      expect(payload.data.training_place_location).toBe('');
+      expect(payload.data.training_place_special_notes).toBe('');
+      expect(payload.data.internal_instructor_name).toBe('');
+      expect(payload.data.internal_instructor_position).toBe('');
+      expect(payload.data.target_career).toBe('');
+      expect(payload.data.target_level).toBe('');
+      expect(payload.data.training_needs_analysis).toBe('');
+      expect(payload.data.expectation_as_is).toBe('');
+      expect(payload.data.expectation_to_be).toBe('');
     });
 
-    it('trainingEnv 6 영역 모두 채움 시 6 셀 매핑', () => {
+    it('trainingEnv 11 영역 모두 채움 시 양식 P-05 11 행 매핑', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
@@ -352,19 +356,32 @@ describe('buildPBLHwpxPayload', () => {
             { position: '교수', name: '박AI', career: '20년', personalTraits: 'NLP 전문' },
           ],
           aiInfrastructure: 'PC 30대',
+          targetCharacteristics: { career: '평균 5년', level: '대리~과장' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 30 },
+          trainingNeedsAnalysis: '품질 데이터 통합 시급',
+          expectationAsIs: '검사 92% 정확도',
+          expectationToBe: 'AI 자동검사 96%',
         }),
       });
-      expect(payload.data.training_env_internal_status).toContain('훈련시간');
-      expect(payload.data.training_env_internal_status).toContain('본사 교육장');
-      expect(payload.data.training_env_external_status).toBe('외부 AI센터');
-      expect(payload.data.training_env_internal_capability).toContain('팀장');
-      expect(payload.data.training_env_internal_capability).toContain('김품질');
-      expect(payload.data.training_env_external_capability).toContain('박AI');
-      expect(payload.data.training_env_internal_facility).toBe('PC 30대');
-      expect(payload.data.training_env_external_facility).toBe('');
+      // V1 호환 키 (양식 row 1~5, 8)
+      expect(payload.data.proper_training_hours).toBe('회차당 4시간');
+      expect(payload.data.training_place_location).toBe('본사 교육장');
+      expect(payload.data.training_place_special_notes).toBe('외부 AI센터');
+      expect(payload.data.internal_instructor_name).toBe('김품질');
+      expect(payload.data.internal_instructor_position).toBe('팀장');
+      expect(payload.data.ai_tools_status).toBe('가능');
+      expect(payload.data.network_status).toBe('양호');
+      expect(payload.data.pc_count).toBe('30');
+      expect(payload.data.etc_equipment).toBe('PC 30대');
+      // Phase E 신규 5 키 (양식 row 6/7/9/11)
+      expect(payload.data.target_career).toBe('평균 5년');
+      expect(payload.data.target_level).toBe('대리~과장');
+      expect(payload.data.training_needs_analysis).toBe('품질 데이터 통합 시급');
+      expect(payload.data.expectation_as_is).toBe('검사 92% 정확도');
+      expect(payload.data.expectation_to_be).toBe('AI 자동검사 96%');
     });
 
-    it('trainingEnv 빈 객체 (모든 필드 default) 시 6 셀 모두 빈 문자열', () => {
+    it('trainingEnv 빈 객체 (모든 필드 default) 시 11 키 모두 빈 문자열', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
@@ -375,13 +392,18 @@ describe('buildPBLHwpxPayload', () => {
           internalInstructors: [],
           externalInstructors: [],
           aiInfrastructure: '',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
         }),
       });
-      expect(payload.data.training_env_internal_status).toBe('');
-      expect(payload.data.training_env_external_status).toBe('');
-      expect(payload.data.training_env_internal_capability).toBe('');
-      expect(payload.data.training_env_external_capability).toBe('');
-      expect(payload.data.training_env_internal_facility).toBe('');
+      expect(payload.data.proper_training_hours).toBe('');
+      expect(payload.data.training_place_location).toBe('');
+      expect(payload.data.target_career).toBe('');
+      expect(payload.data.training_needs_analysis).toBe('');
+      expect(payload.data.expectation_to_be).toBe('');
     });
   });
 

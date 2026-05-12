@@ -114,6 +114,11 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
       internalInstructors: [],
       externalInstructors: [],
       aiInfrastructure: '',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: null,
     courseNecessity: '',
@@ -549,6 +554,11 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 internalInstructors: [],
                 externalInstructors: [],
                 aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
               }
             }
             onChange={(next) => update({ trainingEnv: next })}

@@ -35,6 +35,7 @@ import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';
 import { StepCourseNecessity } from './StepCourseNecessity';
 import { StepTrainingEnv } from './StepTrainingEnv';
+import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
 import { StepActivities } from './StepActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
@@ -55,6 +56,7 @@ export type PBLStepId =
   | 'overview'
   | 'companyIssues'
   | 'trainingEnv'
+  | 'expectations'
   | 'hrdReport'
   | 'courseNecessity'
   | 'activities'
@@ -76,17 +78,20 @@ interface StepDef {
 export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
-  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
+  // Phase E: Step 3a 훈련환경 (기본 6 영역) — stepperLabel 5자 단축
+  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2-a', name: '훈련환경 분석', stepperLabel: '훈련환경', required: true },
+  // Phase E: Step 3b 기대효과·요구분석 (5 신규 영역, 양식 P-05 row 6~11 정합)
+  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
   // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
-  { id: 4, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
+  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
   // Stepper 라벨 13자 → 6자 단축
-  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
-  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
+  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
+  { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   // Stepper 라벨 10자 → 7자 단축
-  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
-  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
+  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
+  { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
   // Stepper 라벨 10자 → 6자 단축
-  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
+  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
 ];
 
 // ============================================================================
@@ -378,6 +383,32 @@ export function PBLInterviewClient({
                 internalInstructors: [],
                 externalInstructors: [],
                 aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
+              }
+            }
+            onChange={(next) => updateAnalysis({ trainingEnv: next })}
+          />
+        );
+      case 'expectations':
+        return (
+          <StepExpectations
+            value={
+              data.trainingEnv ?? {
+                properTrainingHours: '',
+                internalPlace: '',
+                externalPlace: '',
+                internalInstructors: [],
+                externalInstructors: [],
+                aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
               }
             }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}
@@ -470,7 +501,7 @@ export function PBLInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI PBL 인터뷰"
-        description="산인공 양식 2 8개 장과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
+        description="산인공 양식 2 9개 장과 선택 항목인 STT 첨부를 포함해 총 10개 스텝으로 진행합니다."
       />
 
       <InterviewStepper
