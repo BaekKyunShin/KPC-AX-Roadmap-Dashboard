@@ -24,73 +24,10 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   companyIssues:
     '① 완제품 외관·치수 검사가 육안에 의존해 불량률 2.4% 로 상승. ② 품질 데이터는 엑셀·수기에 분산되어 근본 원인 추적이 어려움. ③ 고객사(현대모비스·LS오토모티브) 품질 요구 강화로 AI 기반 품질 관리·예측 도입이 긴급 과제. ④ 현장 실무자는 AI 개념은 들어봤으나 실제 데이터에 적용한 경험이 부족.',
 
-  // ── Ⅱ-1-나 조직 및 주요 업무 ──────────────────────────────────────────────
-  organization: {
-    orgTree: [
-      {
-        id: 'org-root',
-        name: '샘플정밀공업(주)',
-        children: [
-          {
-            id: 'org-quality',
-            name: '품질관리부',
-            children: [
-              { id: 'org-incoming', name: '수입검사팀', children: [] },
-              { id: 'org-inprocess', name: '공정검사팀', children: [] },
-              { id: 'org-outgoing', name: '출하검사팀', children: [] },
-            ],
-          },
-          {
-            id: 'org-prodtech',
-            name: '생산기술부',
-            children: [
-              { id: 'org-process', name: '공정개선팀', children: [] },
-              { id: 'org-maint', name: '설비보전팀', children: [] },
-            ],
-          },
-          {
-            id: 'org-support',
-            name: '경영지원팀',
-            children: [{ id: 'org-hrd', name: '인재개발 담당', children: [] }],
-          },
-        ],
-      },
-    ],
-    mainWork: [
-      {
-        dept: '품질관리부',
-        role: '공정검사 담당',
-        description:
-          '생산 라인에서 완제품 외관·치수 검사를 수행하고 불량 유형별 체크시트·엑셀에 기록. 월간 품질 보고서 작성.',
-      },
-      {
-        dept: '품질관리부',
-        role: '품질 데이터 분석 담당',
-        description:
-          '불량 데이터 집계 및 원인 분석, 고객사 반품 건 대응 리포트 작성. 현재 엑셀·수작업 중심.',
-      },
-      {
-        dept: '생산기술부',
-        role: '공정개선 엔지니어',
-        description:
-          '불량률 개선 과제 기획, 현장 설비 파라미터 조정, SPC(통계적 공정관리) 데이터 해석 및 개선 적용.',
-      },
-      {
-        dept: '생산기술부',
-        role: '설비보전 담당',
-        description:
-          'CNC 38 대의 예방 보전 및 고장 대응. PLC 로그 모니터링(임계치 알람 수준).',
-      },
-      {
-        dept: '경영지원팀',
-        role: '인재개발 담당',
-        description:
-          '전사 훈련 계획 수립, 훈련비 집행, 외부 공개과정 연계, 훈련 수료 현황 관리.',
-      },
-    ],
-  },
+  // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서 제거.
+  // 양식의 P-04 표는 한컴오피스 사용자가 직접 작성하는 영역.
 
-  // ── Ⅱ-2 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 표 6 영역) ─────────────
+  // ── Ⅱ-2 훈련환경 분석 (Phase E — 양식 P-05 11행 정합 11 영역) ────────────
   trainingEnv: {
     properTrainingHours: '회차당 4시간 × 10주 (총 40시간) / 평일 야간 집중 가능',
     internalPlace: '본사 3층 교육장 (PC 10대, 대형 디스플레이) · 생산 현장 품질검사 라인 동시 활용',
@@ -106,6 +43,17 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
     externalInstructors: [],
     aiInfrastructure:
       '사내 PC 10대 (i7/16GB), 네트워크 양호, ChatGPT/Claude 접근 가능 · 검사용 카메라 2대 · 측정기기 부서 공유 · 사내 보안 규정상 고객사 데이터 익명화 필수',
+    targetCharacteristics: {
+      career: '품질·생산기술 평균 7년 (최소 3년 / 최대 15년)',
+      level: '대리~과장급 (사원 1, 대리 4, 과장 7, 차장 3, 부장 1)',
+    },
+    aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 10 },
+    trainingNeedsAnalysis:
+      '품질검사·공정개선·설비보전 3 직무가 공통으로 불량 원인 추적·보고에 시간을 과다 투입. AI 도구로 분석·시각화·보고 자동화 루틴을 도입해 리드타임 50% 단축 + 신규 인력 OJT 비용 감소가 시급.',
+    expectationAsIs:
+      '수동 검사 92% 정확도, 보고서 작성 평균 4시간, 불량 원인 추적은 숙련 인력 의존.',
+    expectationToBe:
+      'AI 자동검사 정확도 96%+, 보고서 자동 생성 1시간, 신규 인력도 동일 수준 분석 가능.',
   },
 
   // ── Ⅱ-3-가 HRD이음 PDF (테스트 모드에서는 첨부 없음) ──────────────────────

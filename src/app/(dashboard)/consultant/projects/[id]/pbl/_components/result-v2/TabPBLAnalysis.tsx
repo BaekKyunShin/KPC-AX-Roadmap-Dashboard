@@ -2,7 +2,6 @@
 
 import { ExternalLink, FileText } from 'lucide-react';
 
-import { OrganizationTree } from '@/components/charts/OrganizationTree';
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
@@ -14,10 +13,12 @@ import type { TabPBLCommonProps } from './types';
  *
  * 섹션:
  *  - P-03 Ⅱ-1-가 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
- *  - P-04 Ⅱ-1-나 조직 및 주요 업무 — OrganizationTree readOnly + FormTable (mainWork).
  *  - P-05 Ⅱ-2 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
  *  - P-06 Ⅱ-3-가 HRD이음 결과 PDF — iframe 미리보기 (로드맵 결과 V2 Ⅱ-1 과 동일 UX).
  *  - P-07 Ⅱ-3-나 AI훈련과정 개발 필요성 — 인터뷰 입력. DRAFT 인라인 편집.
+ *
+ * Phase E: Ⅱ-1-나 조직 및 주요 업무 — 로드맵과 동일하게 인터뷰/결과/HWPX
+ * 3 계층에서 제거. 양식의 P-04 표는 한컴오피스 사용자가 직접 작성.
  *
  * 제외:
  *  - [결과보고서] 섹션 (P-27~P-29) — 렌더 금지
@@ -29,8 +30,6 @@ export function TabPBLAnalysis({
 }: TabPBLCommonProps) {
   const analysis = interview?.analysis;
   const hrdPdf = analysis?.hrdReportPdf ?? null;
-  const orgTree = analysis?.organization?.orgTree ?? [];
-  const mainWork = analysis?.organization?.mainWork ?? [];
 
   return (
     <div className="space-y-6">
@@ -51,78 +50,8 @@ export function TabPBLAnalysis({
         />
       </SectionCard>
 
-      {/* Ⅱ-1-나 조직 및 주요 업무 */}
-      <SectionCard
-        title="Ⅱ-1-나. 조직 및 주요 업무"
-        description="조직도(재귀 트리) + 부서별 주요 업무"
-        dataSource="user"
-      >
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted-foreground">조직도</p>
-            {orgTree.length > 0 ? (
-              <OrganizationTree
-                value={orgTree}
-                onChange={() => {
-                  /* 결과 화면은 readOnly — 인터뷰에서만 수정 */
-                }}
-                readOnly
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                등록된 조직도 노드가 없습니다.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted-foreground">주요 업무</p>
-            {mainWork.length > 0 ? (
-              <div className="overflow-x-auto">
-                <FormTable
-                  caption="부서별 주요 업무"
-                  headerRows={[
-                    {
-                      cells: [
-                        { content: '부서', header: true, className: 'w-[160px]' },
-                        { content: '역할', header: true, className: 'w-[160px]' },
-                        { content: '주요 업무 설명', header: true },
-                      ],
-                    },
-                  ]}
-                  bodyRows={mainWork.map((w, idx) => ({
-                    cells: [
-                      { content: w.dept || '-', align: 'left' },
-                      { content: w.role || '-', align: 'left' },
-                      {
-                        content: (
-                          <InlineEditField
-                            value={w.description ?? ''}
-                            onSave={async (next) => {
-                              const draft = mainWork.map((row, i) =>
-                                i === idx ? { ...row, description: next } : row,
-                              );
-                              await onEdit({ organization: { mainWork: draft } });
-                            }}
-                            readOnly={readOnly}
-                            multiline
-                            placeholder="주요 업무 설명이 입력되지 않았습니다."
-                          />
-                        ),
-                        align: 'left',
-                      },
-                    ],
-                  }))}
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                등록된 주요 업무 행이 없습니다.
-              </p>
-            )}
-          </div>
-        </div>
-      </SectionCard>
+      {/* Ⅱ-1-나 조직 및 주요 업무 — Phase E: 로드맵과 동일하게 인터뷰/결과/HWPX
+          3 계층에서 제거. 양식의 P-04 표는 한컴오피스 사용자가 직접 작성. */}
 
       {/* Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 6 영역) */}
       <SectionCard
@@ -207,6 +136,117 @@ export function TabPBLAnalysis({
                   </div>
                 );
               })}
+
+              {/* Phase E (Step 4b) — 양식 P-05 row 6~11 정합 5 신규 필드 */}
+              {(() => {
+                const target =
+                  env.targetCharacteristics ?? { career: '', level: '' };
+                const infra =
+                  env.aiInfraDetail ??
+                  { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 };
+                const toolLabel = {
+                  AVAILABLE: '가능',
+                  LIMITED: '제한적',
+                  UNAVAILABLE: '불가능',
+                }[infra.toolCapacity];
+                const networkLabel = {
+                  GOOD: '양호',
+                  NORMAL: '보통',
+                  IMPROVEMENT_NEEDED: '개선필요',
+                }[infra.networkStatus];
+                const infraSummary =
+                  `AI 도구: ${toolLabel} · 네트워크: ${networkLabel} · PC ${infra.pcCount}대`;
+                return (
+                  <FormTable
+                    caption="훈련환경 — 대상자·인프라 세부·요구분석·기대효과"
+                    bodyRows={[
+                      {
+                        cells: [
+                          { content: '대상자 특성', header: true, className: 'w-[160px]', align: 'center' },
+                          {
+                            content: (
+                              <div className="space-y-1">
+                                <div>
+                                  <span className="font-medium text-muted-foreground">업무 경력 </span>
+                                  {target.career || '-'}
+                                </div>
+                                <div>
+                                  <span className="font-medium text-muted-foreground">수준 </span>
+                                  {target.level || '-'}
+                                </div>
+                              </div>
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: 'AI 인프라 세부', header: true, align: 'center' },
+                          { content: infraSummary, align: 'left' },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: 'AI훈련 요구분석', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.trainingNeedsAnalysis ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { trainingNeedsAnalysis: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="AI훈련 요구분석이 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: '기대효과 As-is', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.expectationAsIs ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { expectationAsIs: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="As-is 가 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                      {
+                        cells: [
+                          { content: '기대효과 To-be', header: true, align: 'center' },
+                          {
+                            content: (
+                              <InlineEditField
+                                value={env.expectationToBe ?? ''}
+                                onSave={async (next) =>
+                                  onEdit({ trainingEnv: { expectationToBe: next } })
+                                }
+                                readOnly={readOnly}
+                                multiline
+                                placeholder="To-be 가 입력되지 않았습니다."
+                              />
+                            ),
+                            align: 'left',
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                );
+              })()}
             </div>
           );
         })()}

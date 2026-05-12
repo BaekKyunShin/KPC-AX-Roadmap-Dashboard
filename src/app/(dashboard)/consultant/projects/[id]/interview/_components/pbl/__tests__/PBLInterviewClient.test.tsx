@@ -37,6 +37,7 @@ vi.mock('../../../actions', () => ({
 import {
   PBLInterviewClient,
   PBL_STEPS,
+  type PBLStepId,
 } from '../PBLInterviewClient';
 
 describe('PBLInterviewClient', () => {
@@ -71,7 +72,8 @@ describe('PBLInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI PBL 인터뷰');
   });
 
-  it('10개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (9개 양식 + 1개 STT 첨부)', () => {
+  it('10개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (Phase E: 조직 제거 + Step 4b 기대효과 추가)', () => {
+    // Phase E: 조직 제거 → 9 step + 기대효과 신규 step → 10 step (조직 제거 전과 동일 개수, 다른 구성)
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     expect(PBL_STEPS).toHaveLength(10);
     for (const s of PBL_STEPS) {
@@ -81,7 +83,7 @@ describe('PBLInterviewClient', () => {
     }
   });
 
-  it('10번째 Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
+  it('10번째 (마지막) Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
     const last = PBL_STEPS[PBL_STEPS.length - 1];
     expect(last.id).toBe(10);
     expect(last.stepId).toBe('sttAttach');
@@ -95,7 +97,16 @@ describe('PBLInterviewClient', () => {
     expect(screen.getByText(/총 10개 스텝/)).toBeInTheDocument();
   });
 
-  it('10번째 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
+  // Phase E: Step 4b "기대효과·요구분석" 신규 검증
+  it('Step 4 (Ⅱ-2-b) 가 expectations stepId 로 정의되어 있고 라벨이 "기대효과·요구분석"', () => {
+    const step = PBL_STEPS[3];
+    expect(step.stepId).toBe('expectations');
+    expect(step.name).toBe('기대효과·요구분석');
+    expect(step.shortName).toBe('Ⅱ-2-b');
+    expect(step.required).toBe(true);
+  });
+
+  it('마지막 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     // Stepper 는 단축 라벨 "인터뷰 STT", 본문 FormSection h2 는 풀텍스트
     fireEvent.click(screen.getAllByText('인터뷰 STT')[0]);
@@ -105,13 +116,12 @@ describe('PBLInterviewClient', () => {
     expect(screen.getByLabelText('STT 파일')).toBeInTheDocument();
   });
 
-  // R3 #12(PBL) / PBL-자체-06 — Step 9 단축명을 양식 정확 표기로 재설계
-  it('PBL Step 9 단축명이 "Ⅲ-3·Ⅲ-4" 로 표시된다 (#12 PBL · PBL-자체-06)', () => {
+  // R3 #12(PBL) / PBL-자체-06 — Ⅲ-3·Ⅲ-4 단축명 양식 정확 표기 (Phase E: Step 8 로 위치 변경)
+  it('PBL targetAndLevel 단축명이 "Ⅲ-3·Ⅲ-4" 로 표시된다 (#12 PBL · PBL-자체-06)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    // shortName 은 step indicator 의 양식 번호로 노출
-    const step9Def = PBL_STEPS[8];
-    expect(step9Def.shortName).toBe('Ⅲ-3·Ⅲ-4');
-    expect(step9Def.shortName).not.toBe('Ⅲ-3·4');
+    const stepDef = PBL_STEPS.find((s) => s.stepId === 'targetAndLevel');
+    expect(stepDef?.shortName).toBe('Ⅲ-3·Ⅲ-4');
+    expect(stepDef?.shortName).not.toBe('Ⅲ-3·4');
   });
 
   // R3 #10(PBL) — Ⅱ-3-가 항목명: Stepper 는 단축 "HRD이음 결과", 페이지 헤더는 풀텍스트
@@ -255,22 +265,16 @@ describe('PBLInterviewClient', () => {
     );
   });
 
-  it('Ⅱ-1-나 organization 스텝 진입 시 StepOrganization 이 렌더된다', () => {
-    render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('조직 및 주요 업무'));
-    expect(
-      screen.getByRole('heading', { name: '조직 및 주요 업무', level: 2 }),
-    ).toBeInTheDocument();
-    // OrganizationTree 의 루트 노드 추가 버튼
-    expect(
-      screen.getByRole('button', { name: '루트 노드 추가' }),
-    ).toBeInTheDocument();
+  // Phase E: Ⅱ-1-나 조직 및 주요 업무 step 제거 — 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층 모두 제거.
+  it('Ⅱ-1-나 조직 및 주요 업무 step 이 제거되어 PBL_STEPS 에 organization 이 없다', () => {
+    expect(PBL_STEPS.some((s) => s.stepId === ('organization' as PBLStepId))).toBe(false);
   });
 
   it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다 (R8 PBL-자체-02 — 정형 객체)', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    fireEvent.click(screen.getByText('훈련환경 분석'));
+    // Phase E: stepperLabel="훈련환경" 으로 단축됨. stepper 클릭 → 페이지 헤더는 "훈련환경 분석"
+    fireEvent.click(screen.getAllByText('훈련환경')[0]);
     // 적정 훈련시간 입력 — 정형 객체의 한 필드
     fireEvent.change(screen.getByLabelText('적정 훈련시간'), {
       target: { value: '회차당 4시간' },
@@ -353,6 +357,11 @@ describe('PBLInterviewClient', () => {
         internalInstructors: [],
         externalInstructors: [],
         aiInfrastructure: '',
+        targetCharacteristics: { career: '', level: '' },
+        aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+        trainingNeedsAnalysis: '',
+        expectationAsIs: '',
+        expectationToBe: '',
       },
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',

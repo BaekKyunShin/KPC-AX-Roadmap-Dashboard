@@ -12,6 +12,11 @@ function emptyEnv(): PBLTrainingEnv {
     internalInstructors: [],
     externalInstructors: [],
     aiInfrastructure: '',
+    targetCharacteristics: { career: '', level: '' },
+    aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+    trainingNeedsAnalysis: '',
+    expectationAsIs: '',
+    expectationToBe: '',
   };
 }
 

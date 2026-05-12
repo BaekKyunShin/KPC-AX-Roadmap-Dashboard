@@ -554,6 +554,11 @@ function validPBLCamelCase(): PBLInterviewStrict {
       internalInstructors: [],
       externalInstructors: [],
       aiInfrastructure: 'AI 도구 가능',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: {
       fileName: 'pbl-hrd.pdf',
@@ -610,7 +615,7 @@ describe('mapPBLInterviewToDb', () => {
     const pbl = db.pbl_data as PBLInterviewStrict;
     expect(pbl.companyName).toBe('테스트 기업');
     expect(pbl.courseName).toBe('AI 현장 문제해결 과정');
-    expect(pbl.organization.orgTree[0].name).toBe('대표이사');
+    expect(pbl.organization?.orgTree[0].name).toBe('대표이사');
     expect(pbl.target.name).toBe('품질검사 자동화');
     expect(pbl.currentAiLevel.level).toBe('BASIC');
     expect(pbl.expectedAiLevel.level).toBe('USER');

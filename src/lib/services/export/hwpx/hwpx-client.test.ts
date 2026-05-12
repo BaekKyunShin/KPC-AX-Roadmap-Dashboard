@@ -134,16 +134,21 @@ describe('generateRoadmapHwpx', () => {
     await expect(generateRoadmapHwpx(payload)).rejects.toThrow(/500/);
   });
 
-  it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더만 추가 (set-bypass-cookie 제외)', async () => {
+  it('VERCEL_AUTOMATION_BYPASS_SECRET 설정 시 bypass 헤더 + URL 쿼리 모두 추가 (set-bypass-cookie 제외)', async () => {
     vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'bypass-secret-xyz');
     const fetchFn = mockFetchOk(new Uint8Array([0]));
 
     await generateRoadmapHwpx(payload);
 
-    const [, init] = fetchFn.mock.calls[0];
+    const [calledUrl, init] = fetchFn.mock.calls[0];
+    // 헤더로 전달
     expect((init as RequestInit).headers).toMatchObject({
       'x-vercel-protection-bypass': 'bypass-secret-xyz',
     });
+    // 쿼리스트링으로도 전달 (Edge/CDN 변형 대응 — 헤더 누락 시 fallback)
+    expect(String(calledUrl)).toContain(
+      'x-vercel-protection-bypass=bypass-secret-xyz',
+    );
     // set-bypass-cookie는 Node fetch 리다이렉트 루프를 유발하므로 보내지 않아야 함
     expect((init as RequestInit).headers).not.toHaveProperty('x-vercel-set-bypass-cookie');
   });

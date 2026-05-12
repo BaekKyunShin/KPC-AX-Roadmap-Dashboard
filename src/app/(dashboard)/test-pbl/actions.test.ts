@@ -10,7 +10,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateTestPBL, cancelTestPBLGeneration, type TestPBLActionInput } from './actions';
+import {
+  generateTestPBL,
+  cancelTestPBLGeneration,
+  exportTestPBLHwpx,
+  type TestPBLActionInput,
+} from './actions';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 // ─── 외부 모듈 모킹 ───────────────────────────────────────────────────────────
@@ -184,5 +189,99 @@ describe('cancelTestPBLGeneration', () => {
   it('성공 → { success: true }', async () => {
     const result = await cancelTestPBLGeneration();
     expect(result).toEqual({ success: true });
+  });
+});
+
+// ─── exportTestPBLHwpx ───────────────────────────────────────────────────────
+
+vi.mock('next/headers', () => ({
+  headers: () => Promise.resolve(new Map<string, string>()),
+}));
+
+const mockGeneratePBLHwpx = vi.fn();
+const mockBuildPBLHwpxPayloadFromInputs = vi.fn();
+
+vi.mock('@/lib/services/export/hwpx', () => ({
+  buildPBLHwpxPayloadFromInputs: (...args: unknown[]) =>
+    mockBuildPBLHwpxPayloadFromInputs(...args),
+  generatePBLHwpx: (...args: unknown[]) => mockGeneratePBLHwpx(...args),
+}));
+
+describe('exportTestPBLHwpx', () => {
+  const validInput = () => ({
+    content: { operation_plan: {}, outcome_analysis: {} } as never,
+    interview: PBL_INTERVIEW_SAMPLE,
+    companyName: '테스트 기업',
+  });
+
+  beforeEach(() => {
+    mockBuildPBLHwpxPayloadFromInputs.mockReturnValue({
+      fileName: '테스트기업_PBL_v1.hwpx',
+    });
+    mockGeneratePBLHwpx.mockResolvedValue(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+  });
+
+  it('미인증 → error 반환', async () => {
+    mockRequireAuthWithRole.mockResolvedValueOnce({ error: '권한 없음' });
+    const result = await exportTestPBLHwpx(validInput());
+    expect(result.success).toBe(false);
+  });
+
+  it('인터뷰 검증 실패 → error 반환', async () => {
+    const result = await exportTestPBLHwpx({
+      ...validInput(),
+      interview: { companyName: '' } as never,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('인터뷰 데이터 검증');
+    }
+  });
+
+  it('성공 → base64 + fileName 반환', async () => {
+    const result = await exportTestPBLHwpx(validInput());
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fileName).toBe('테스트기업_PBL_v1.hwpx');
+      expect(result.data.mimeType).toBe('application/vnd.hancom.hwpx');
+      expect(result.data.contentBase64.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('companyName 공백 + 인터뷰 companyName 도 비면 헬퍼가 "테스트기업" fallback 처리', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await exportTestPBLHwpx({ ...validInput(), companyName: '   ' });
+    expect(mockBuildPBLHwpxPayloadFromInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ companyName: '   ' }),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('generatePBLHwpx throw → 로컬 dev fallback 메시지 전달', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockGeneratePBLHwpx.mockRejectedValueOnce(
+      new Error('Vercel Python 런타임 미동작'),
+    );
+    const result = await exportTestPBLHwpx(validInput());
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('Vercel Python 런타임');
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('generatePBLHwpx 일반 throw → 사용자에게 원인 노출', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockGeneratePBLHwpx.mockRejectedValueOnce(
+      new Error('HWPX generation failed: 500 KeyError'),
+    );
+    const result = await exportTestPBLHwpx(validInput());
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('HWPX 생성에 실패');
+      expect(result.error).toContain('원인:');
+      expect(result.error).toContain('KeyError');
+    }
+    consoleSpy.mockRestore();
   });
 });

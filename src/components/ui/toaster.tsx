@@ -21,7 +21,7 @@ export function Toaster({ ...props }: ToasterProps) {
           toast:
             'group toast group-[.toaster]:bg-white group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:rounded-lg',
           title: 'group-[.toast]:font-semibold',
-          description: 'group-[.toast]:text-muted-foreground',
+          description: 'group-[.toast]:text-muted-foreground whitespace-pre-line',
           actionButton:
             'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
           cancelButton:

@@ -22,6 +22,8 @@ import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
+import { ROADMAP_FIELD_LABELS } from '@/lib/schemas/interview-roadmap-labels';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
@@ -53,7 +55,12 @@ import type { ResultInterviewSnapshot } from '@/app/(dashboard)/consultant/proje
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import { ROADMAP_INTERVIEW_SAMPLE } from '@/lib/fixtures/roadmap-interview-sample';
 
-import { createTestRoadmap, cancelTestRoadmapGeneration, reviseTestRoadmap } from './actions';
+import {
+  createTestRoadmap,
+  cancelTestRoadmapGeneration,
+  reviseTestRoadmap,
+  exportTestRoadmapHwpx,
+} from './actions';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 import { isCancelledError } from '@/lib/services/llm';
 
@@ -143,6 +150,38 @@ function toRoadmapVersionUI(result: RoadmapResult): RoadmapVersionUI {
     is_shared: false,
     created_at: new Date().toISOString(),
     finalized_at: null,
+  };
+}
+
+// ─── RoadmapResult → RoadmapExportData (테스트 모드 PDF/Excel 다운로드용) ────
+
+/**
+ * 테스트 로드맵 결과(in-memory) → PDF/Excel 다운로드용 RoadmapExportData 변환.
+ *
+ * 실제 로드맵은 `prepareExportData(roadmapId)` 가 DB row → ExportData 매핑을
+ * 수행하지만, 테스트 모드는 DB 저장이 없으므로 4섹션 RoadmapResult 를 그대로
+ * camelCase 로 옮긴다.
+ */
+export function buildTestRoadmapExportData(
+  result: RoadmapResult,
+  companyName: string,
+): import('@/lib/services/export-pdf').RoadmapExportData {
+  return {
+    companyName,
+    projectId: 'test-mode',
+    versionNumber: 1,
+    status: 'DRAFT',
+    diagnosisSummary: result.diagnosis_summary ?? '',
+    competencies: result.competencies ?? [],
+    ncsUsed: result.ncs_used ?? false,
+    ncsMethodology: result.ncs_methodology ?? '',
+    ncsDerivationMethod: result.ncs_derivation_method ?? '',
+    trainingStructure: result.training_structure ?? [],
+    trainingStructureMethod: result.training_structure_method ?? '',
+    annualPlan: result.annual_plan ?? { items: [], usage_plan: '' },
+    courseSpecs: result.course_specs ?? [],
+    createdAt: new Date().toISOString(),
+    finalizedAt: null,
   };
 }
 
@@ -245,7 +284,11 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const handleSubmit = async () => {
     const parsed = RoadmapInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
-      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      const message = formatZodIssuesForToast(parsed.error, ROADMAP_FIELD_LABELS);
+      showErrorToast(
+        '제출 검증 실패',
+        message || '필수 입력 항목을 확인해주세요.',
+      );
       return;
     }
 
@@ -289,7 +332,11 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     if (!testResult) return;
     const parsed = RoadmapInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
-      showErrorToast(parsed.error.errors[0]?.message ?? '수정에 필요한 인터뷰 검증 실패.');
+      const message = formatZodIssuesForToast(parsed.error, ROADMAP_FIELD_LABELS);
+      showErrorToast(
+        '수정 검증 실패',
+        message || '인터뷰 입력을 확인해주세요.',
+      );
       return;
     }
     setIsRevising(true);
@@ -391,8 +438,92 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           /* 테스트 모드 — 인라인 편집은 NOOP (in-memory 저장 없음). */
           onEdit={async () => undefined}
           onGenerate={handleRegenerate}
-          onDownload={async () => {
-            showErrorToast('테스트 모드에서는 다운로드가 비활성화되어 있습니다.');
+          onDownload={async (type) => {
+            try {
+              if (type === 'PDF') {
+                const exportData = buildTestRoadmapExportData(
+                  testResult.result,
+                  companyName,
+                );
+                const { generatePDF } = await import(
+                  '@/lib/services/export-pdf'
+                );
+                const blob = await generatePDF(exportData);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `roadmap_test_${companyName}_v1.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showSuccessToast('PDF 다운로드 완료');
+                return;
+              }
+              if (type === 'XLSX') {
+                const exportData = buildTestRoadmapExportData(
+                  testResult.result,
+                  companyName,
+                );
+                const { downloadXLSX } = await import(
+                  '@/lib/services/export-xlsx'
+                );
+                await downloadXLSX(
+                  exportData,
+                  `roadmap_test_${companyName}_v1.xlsx`,
+                );
+                showSuccessToast('Excel 다운로드 완료');
+                return;
+              }
+              if (type === 'HWPX') {
+                const parsedInterview =
+                  RoadmapInterviewStrictSchema.safeParse(data);
+                if (!parsedInterview.success) {
+                  showErrorToast(
+                    'HWPX 다운로드 실패',
+                    '인터뷰 검증에 실패했습니다.',
+                  );
+                  return;
+                }
+                const result = await exportTestRoadmapHwpx({
+                  result: testResult.result,
+                  interview: parsedInterview.data,
+                  companyName,
+                });
+                if (!result.success) {
+                  // 실패 시 영구 토스트 + 콘솔 풀 로그 (요청 ID 추적용)
+                  console.error('[TestRoadmap HWPX] result.success=false', result);
+                  showErrorToast('HWPX 다운로드 실패', result.error, {
+                    duration: Infinity,
+                  });
+                  return;
+                }
+                const { fileName, contentBase64, mimeType } = result.data;
+                const binary = atob(contentBase64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                  bytes[i] = binary.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showSuccessToast('HWPX 다운로드 완료');
+                return;
+              }
+            } catch (err) {
+              const message =
+                err instanceof Error
+                  ? err.message
+                  : '다운로드 중 오류가 발생했습니다.';
+              console.error('[TestRoadmapClient] 다운로드 예외:', err);
+              showErrorToast('다운로드 실패', message);
+            }
           }}
           isGenerating={isRevising}
           isGenerationComplete={isRevisionComplete}

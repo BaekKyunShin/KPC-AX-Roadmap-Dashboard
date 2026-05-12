@@ -241,22 +241,30 @@ def _collect_tables(doc):
     return tables
 
 
+_HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+
+
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
-    공식 API만 사용. lxml·OXML 직접 편집 금지.
+    공식 API 우선. 셀의 subList lineWrap 속성은 OWPML attribute setter 로
+    BREAK 로 변경 (한컴오피스의 셀 폭 끝 단어 단위 자동 wrap 활성).
 
     핵심 원칙:
-    1. 셀 내부 모든 paragraph의 모든 run text를 무조건 비움
-       (placeholder 흔적 완전 제거)
-    2. text 를 '\n' 기준으로 분할, 각 줄을 paragraph[i].runs[0] 에 1:1 매핑.
+    1. 셀 내부 모든 paragraph 의 모든 run text 를 무조건 비움 (placeholder 흔적 완전 제거).
+    2. text 를 '\n' 기준으로 분할. 각 줄을 paragraph[i].runs[0] 에 1:1 매핑.
+       자동 분할 (구 `_smart_wrap`) 은 한국어 의미 단위·번호 매김·어미 무시
+       하고 강제 분할하여 문장 중간 끊김을 일으켰으므로 제거. 대신 셀 내부
+       subList 의 lineWrap 을 BREAK 로 설정해 한컴오피스가 셀 폭 끝에서 단어
+       단위 자연 wrap 하도록 위임.
     3. **줄 수 > 템플릿 paragraph 수** 인 경우 `cell.add_paragraph(...)` 로
-       부족한 paragraph 를 동적으로 추가 (이슈 #2 회귀 방지).
-       - 기존 동작: 마지막 paragraph 하나에 잉여 줄을 '\n' 으로 join → OWPML
-         의 `lineWrap="SQUEEZE"` 속성에 의해 좁은 셀 안에서 다중 라인이 압축
-         렌더되어 글자가 겹쳐 보이는 문제 (역량 모델링·훈련과정 상세 표).
-       - 새 동작: 1 줄 == 1 paragraph 의 1:1 매핑 보장.
+       부족한 paragraph 를 동적 추가 + 첫 paragraph 의 paraPrIDRef·
+       styleIDRef·charPrIDRef 를 명시 전달 (한컴오피스 폰트 일관성 보장 —
+       python-hwpx Cell.add_paragraph 는 None 전달 시 기본 글꼴로 폴백).
     4. 줄 수 <= 템플릿 paragraph 수 인 경우 남은 paragraph 는 빈 상태 유지.
+    5. (Phase E) 셀의 subList lineWrap 을 BREAK 로 설정. 양식 원본이 SQUEEZE
+       또는 누락 상태이면 한컴오피스가 셀 폭 초과 텍스트를 압축 렌더해 글자
+       겹침이 발생하므로, 단어 wrap 으로 강제 전환.
     """
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
         return
@@ -272,16 +280,25 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         for r in p.runs:
             r.text = ""
 
-    # Step 2: 입력 텍스트 정규화
+    # Step 2: 입력 텍스트 정규화 + 줄바꿈 분할 (자동 분할 비활성)
     text = text if text is not None else ""
     lines = text.split("\n") if text else [""]
 
     # Step 3: 줄 수가 paragraph 수보다 많으면 부족분을 동적 추가
-    #   `cell.add_paragraph(text)` 는 빈 paragraph + 첫 run.text=text 를 반환
-    #   하므로 step 4 의 일관 처리를 위해 빈 문자열로 추가 후 별도 기록.
+    #   첫 paragraph 의 paraPrIDRef·styleIDRef·charPrIDRef 를 명시 전달하여
+    #   한컴오피스 렌더링에서 같은 셀 안 줄별 폰트가 통일되도록 한다.
     existing_paragraphs = list(cell.paragraphs)
+    first_p = existing_paragraphs[0]
+    first_para_id = first_p.para_pr_id_ref
+    first_style_id = first_p.style_id_ref
+    first_char_id = first_p.runs[0].char_pr_id_ref if first_p.runs else None
     while len(existing_paragraphs) < len(lines):
-        new_p = cell.add_paragraph("")
+        new_p = cell.add_paragraph(
+            "",
+            para_pr_id_ref=first_para_id,
+            style_id_ref=first_style_id,
+            char_pr_id_ref=first_char_id,
+        )
         existing_paragraphs.append(new_p)
 
     # Step 4: 각 줄을 각 paragraph.runs[0] 에 1:1 기입
@@ -289,6 +306,18 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         if not p.runs:
             continue
         p.runs[0].text = lines[i] if i < len(lines) else ""
+
+    # Step 5: 셀 subList 의 lineWrap 을 BREAK 로 설정 (한컴오피스 자동 단어 wrap)
+    #   양식 원본의 SQUEEZE 또는 누락 상태에서 발생하는 글자 겹침 회피.
+    #   python-hwpx 에 공식 setter 가 없어 OWPML subList element 의 lineWrap
+    #   속성을 직접 set. 실패 시 silent — 양식 의도 보존.
+    try:
+        cell._ensure_sublist()
+        sublist_elem = cell.element.find(f"{_HP_NS}subList")
+        if sublist_elem is not None and sublist_elem.get("lineWrap") != "BREAK":
+            sublist_elem.set("lineWrap", "BREAK")
+    except Exception:
+        pass
 
 
 def _replace_in_all_runs(doc, old: str, new: str) -> None:
@@ -1236,18 +1265,41 @@ def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: in
 
 
 def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
-    """Ⅲ-2-가 문제 정의 — 5×2 (V2: problems[] 4 항목).
+    """Ⅲ-2-가 문제 정의 — 5×2.
 
-    양식 5x2 (구분/내용) — row 0 헤더, row 1~4 데이터 (max_items=4).
-    V2 problems[] = [{title, description, impact}]
-      → col 0 = title, col 1 = description.
+    우선순위 (V2 정본 → V2 problems[] → V1):
+      ① data["problem_definition_sheet"] {background, core, scope, constraints}
+         → 4 행 col 1 에 1:1 매핑 (양식 라벨 행 0 + 구분 col 0 = 양식 고정 텍스트).
+         TS V2 PBL 인터뷰 (`PBLInterviewStrict`) 가 송신하는 정본 키.
+      ② data["problems"][] {title, description, impact} (대안 형식, max 4)
+         → col 0 = title, col 1 = description.
+      ③ V1 fallback — problem_background / core / scope / constraints (legacy).
 
-    V1 호환: data.get("problems") 가 비어 있으면 V1 problem_background/core/
-    scope/constraints 4 cell_fill 로 fallback.
+    근거: TS payload (`hwpx-payload-pbl.ts:233-238`) 가 V2 정본 키
+    `problem_definition_sheet` 로 데이터 송신하지만, 이전 구현은 V1 키만
+    인지해 셀이 빈 채로 출력됐음. 패턴 참고: `_fill_pbl_performance_activities`
+    (V2 activities → V1 performance_activities fallback).
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
+
+    # ① V2 정본 — problem_definition_sheet
+    sheet = data.get("problem_definition_sheet")
+    if isinstance(sheet, dict) and any(
+        sheet.get(k) for k in ("background", "core", "scope", "constraints")
+    ):
+        mapping = [
+            (1, 1, sheet.get("background")),
+            (2, 1, sheet.get("core")),
+            (3, 1, sheet.get("scope")),
+            (4, 1, sheet.get("constraints")),
+        ]
+        for r, c, text in mapping:
+            _set_cell_text(tbl, r, c, text or "")
+        return
+
+    # ② V2 problems[] (대안 형식)
     problems = build_pbl_table_rows(data, "problems")
     if problems:
         max_rows = min(4, tbl.row_count - 1)
@@ -1256,7 +1308,8 @@ def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
             _set_cell_text(tbl, target_row, 0, row.get("title", ""))
             _set_cell_text(tbl, target_row, 1, row.get("description", ""))
         return
-    # V1 fallback
+
+    # ③ V1 fallback (legacy)
     mapping = [
         (1, 1, data.get("problem_background")),
         (2, 1, data.get("problem_core")),

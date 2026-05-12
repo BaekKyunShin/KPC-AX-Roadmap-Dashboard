@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -15,6 +16,10 @@ import {
 } from '@/lib/schemas/interview-pbl';
 import type { ConsultantProfile } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
+import {
+  buildPBLHwpxPayloadFromInputs,
+  generatePBLHwpx,
+} from '@/lib/services/export/hwpx';
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
@@ -61,7 +66,7 @@ function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
     },
     companyStatus: {
       business_issues: v2.businessIssues,
-      organization: v2.organization.orgTree.map((node, i) => ({
+      organization: (v2.organization?.orgTree ?? []).map((node, i) => ({
         id: `org-${i}`,
         department_name: node.name,
         tasks: node.children.map((c) => c.name),
@@ -281,4 +286,89 @@ export async function cancelTestPBLGeneration(): Promise<SimpleActionResult> {
   if ('error' in auth) return { success: false, error: auth.error };
   cancelAbort(abortKey(auth.user.id));
   return { success: true };
+}
+
+// =============================================================================
+// Server Action — exportTestPBLHwpx (in-memory HWPX 생성)
+// =============================================================================
+
+/**
+ * 테스트 PBL 결과(in-memory) → HWPX 다운로드.
+ *
+ * 실제 PBL은 `exportPBLAsHwpxAction(pblId)` 가 DB 의 pbl_reports 행을 조회해
+ * payload 를 만들지만, 테스트 모드는 DB 저장이 없으므로 in-memory 입력만으로
+ * `buildPBLHwpxPayloadFromInputs` 를 직접 호출한다 (가짜 row 캐스팅 indirection
+ * 제거).
+ *
+ * 보안: 테스트 모드 허용 역할(CONSULTANT_APPROVED / OPS_ADMIN / SYSTEM_ADMIN)만.
+ */
+export async function exportTestPBLHwpx(input: {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
+  companyName: string;
+}): Promise<
+  ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>
+> {
+  const auth = await requireAuthWithRole(ALLOWED_ROLES);
+  if ('error' in auth) return { success: false, error: auth.error };
+
+  // 인터뷰 검증 — Strict 통과해야 인터뷰 데이터가 payload 변환에 안전.
+  const parsedInterview = PBLInterviewStrictSchema.safeParse(input.interview);
+  if (!parsedInterview.success) {
+    return {
+      success: false,
+      error: '테스트 인터뷰 데이터 검증에 실패했습니다.',
+    };
+  }
+
+  const payload = buildPBLHwpxPayloadFromInputs({
+    content: input.content,
+    interview: parsedInterview.data,
+    companyName: input.companyName,
+  });
+
+  const reqHeaders = await headers();
+  const host = reqHeaders.get('x-forwarded-host') ?? reqHeaders.get('host');
+  const proto = reqHeaders.get('x-forwarded-proto') ?? 'https';
+  const baseUrl = host ? `${proto}://${host}` : undefined;
+
+  // 사용자가 토스트 메시지를 보고 Vercel 로그에서 즉시 트레이스 할 수 있도록
+  // 짧은 requestId 부여 + 양쪽 로그 동일 prefix.
+  const requestId = `tpbl-hwpx-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  console.log(`[exportTestPBLHwpx ${requestId}] start`, {
+    baseUrl,
+    fileName: payload.fileName,
+    track: payload.track,
+  });
+
+  let buffer: Buffer;
+  try {
+    buffer = await generatePBLHwpx(payload, { baseUrl });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[exportTestPBLHwpx ${requestId}] FAILED`, {
+      baseUrl,
+      error: message,
+    });
+    const isLocalDevFallback = message.includes('Vercel Python 런타임');
+    if (isLocalDevFallback) {
+      return { success: false, error: message };
+    }
+    // 사용자에게 cause + requestId 노출 — Vercel 로그에서 동일 ID 로 추적 가능.
+    const detail = message.length > 250 ? `${message.slice(0, 250)}…` : message;
+    return {
+      success: false,
+      error: `HWPX 생성에 실패했습니다. (요청 ID: ${requestId})\n원인: ${detail}`,
+    };
+  }
+
+  console.log(`[exportTestPBLHwpx ${requestId}] OK`, { bytes: buffer.length });
+  return {
+    success: true,
+    data: {
+      fileName: payload.fileName,
+      contentBase64: buffer.toString('base64'),
+      mimeType: 'application/vnd.hancom.hwpx',
+    },
+  };
 }

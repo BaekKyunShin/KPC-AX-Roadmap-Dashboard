@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Plus } from 'lucide-react';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
 import {
@@ -225,7 +227,12 @@ export function PBLResultClient({
           />
         </div>
 
-        {capabilities.showRegenerate && (
+        {/**
+         * 로드맵과 동일 패턴 — RegenerateAccordion 은 versions > 0 일 때만 노출
+         * (이미 생성된 PBL의 "수정본" 생성용). versions=0 일 때는 EmptyState 안의
+         * 큰 버튼으로 최초 생성 흐름을 유도해 사용자 혼란 차단.
+         */}
+        {capabilities.showRegenerate && hasVersions && (
           <div ref={accordionRef}>
             <RegenerateAccordion
               value={revisionPrompt}
@@ -254,8 +261,12 @@ export function PBLResultClient({
           <ResultTabs tabs={tabs} defaultValue="overview" />
         ) : (
           <EmptyState
+            canGenerate={capabilities.showRegenerate}
+            isGenerating={isGenerating}
             hasInterview={hasInterview}
             isStatusEligible={isStatusEligible}
+            canGeneratePbl={canGeneratePbl}
+            onGenerate={() => void handleRegenerate()}
           />
         )}
       </PageContainer>
@@ -274,22 +285,49 @@ export function PBLResultClient({
 }
 
 interface EmptyStateProps {
+  /** CONSULTANT 역할일 때만 생성 버튼이 노출된다. */
+  canGenerate: boolean;
+  isGenerating: boolean;
   hasInterview: boolean;
   isStatusEligible: boolean;
+  /** 인터뷰 + status 가 모두 충족돼야 생성 버튼이 enabled. */
+  canGeneratePbl: boolean;
+  onGenerate: () => void;
 }
 
-function EmptyState({ hasInterview, isStatusEligible }: EmptyStateProps) {
+function EmptyState({
+  canGenerate,
+  isGenerating,
+  hasInterview,
+  isStatusEligible,
+  canGeneratePbl,
+  onGenerate,
+}: EmptyStateProps) {
   // #013 fix — 인터뷰/status 부재 케이스를 안내 문구로 명확히 구분
   const guideMessage = !hasInterview
     ? '아직 인터뷰 입력이 없습니다. 인터뷰 페이지에서 입력을 진행해주세요.'
     : !isStatusEligible
       ? '인터뷰는 작성됐지만 아직 최종 제출 전입니다. 인터뷰 페이지 하단의 "최종 제출" 버튼을 눌러주세요.'
-      : '인터뷰가 완료되었습니다. 상단 "새 버전 생성" 을 눌러 AI PBL 보고서를 생성하세요.';
+      : '인터뷰가 완료된 후 아래 버튼을 눌러 AI PBL 보고서를 생성하세요.';
 
   return (
     <div className="rounded-lg border bg-card p-12 text-center">
       <h3 className="text-base font-semibold">아직 생성된 PBL 보고서가 없습니다</h3>
       <p className="mt-2 text-sm text-muted-foreground">{guideMessage}</p>
+      {canGenerate && (
+        <div className="mt-6">
+          <Button
+            type="button"
+            size="lg"
+            onClick={onGenerate}
+            disabled={isGenerating || !canGeneratePbl}
+            data-testid="empty-state-generate-pbl"
+          >
+            <Plus className="mr-1.5 size-4" aria-hidden="true" />
+            {isGenerating ? 'AI 생성 중…' : 'AI PBL 보고서 생성'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

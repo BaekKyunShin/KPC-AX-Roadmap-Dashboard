@@ -34,6 +34,11 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       ],
       externalInstructors: [],
       aiInfrastructure: 'PC 20대 · AI 도구 접근 가능',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: {
       fileName: 'hrd_consulting.pdf',
@@ -45,7 +50,7 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
 };
 
 describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
-  it('5개 하위 섹션 렌더 — Ⅱ-1-가 / Ⅱ-1-나 / Ⅱ-2 / Ⅱ-3-가 / Ⅱ-3-나', () => {
+  it('4개 하위 섹션 렌더 — Ⅱ-1-가 / Ⅱ-2 / Ⅱ-3-가 / Ⅱ-3-나 (Phase E: Ⅱ-1-나 조직 섹션 제거)', () => {
     render(
       <TabPBLAnalysis
         version={null}
@@ -55,7 +60,6 @@ describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
       />,
     );
     expect(screen.getByText(/Ⅱ-1-가\. 기업 경영 이슈/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-1-나\. 조직 및 주요 업무/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-2\. 기업 훈련환경 분석/)).toBeInTheDocument();
     expect(
       screen.getByText(/Ⅱ-3-가\. HRD이음 컨설팅 결과 보고서/),
@@ -63,54 +67,8 @@ describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
     expect(
       screen.getByText(/Ⅱ-3-나\. AI훈련과정 개발 필요성/),
     ).toBeInTheDocument();
-  });
-
-  it('OrganizationTree 가 readOnly 로 렌더된다 — 삭제/추가 버튼 미노출', () => {
-    render(
-      <TabPBLAnalysis
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // readOnly 인 경우 "자식 노드 추가" / "삭제" / "루트 노드 추가" aria-label 버튼이 없어야 한다.
-    expect(
-      screen.queryByRole('button', { name: /루트 노드 추가/ }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole('button', { name: /자식 노드 추가/ }),
-    ).toBeNull();
-  });
-
-  it('OrganizationTree 조직 노드 이름을 표시', () => {
-    render(
-      <TabPBLAnalysis
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // input 의 value 로 값이 들어간다 — aria-label 로 조회해 value 검증
-    const nodes = screen.getAllByLabelText(/조직 노드 이름/);
-    expect(nodes.length).toBeGreaterThan(0);
-  });
-
-  it('mainWork 행 — 부서·역할·설명 컬럼 노출', () => {
-    render(
-      <TabPBLAnalysis
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    // 품질관리팀 — 조직도 input value + mainWork 행 양쪽에 등장 가능
-    expect(screen.getAllByText(/품질관리팀/).length).toBeGreaterThan(0);
-    // 검사 — mainWork role 셀 + 설명 셀 양쪽에 등장할 수 있음
-    expect(screen.getAllByText(/검사/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/제품 출하 전 샘플 검사/)).toBeInTheDocument();
+    // Ⅱ-1-나 조직 섹션은 더 이상 렌더되지 않음 (로드맵과 동일 패턴)
+    expect(screen.queryByText(/Ⅱ-1-나\. 조직 및 주요 업무/)).toBeNull();
   });
 
   it('HRD이음 PDF 링크 + iframe 미리보기 렌더', () => {

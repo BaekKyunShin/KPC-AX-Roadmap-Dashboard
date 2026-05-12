@@ -76,45 +76,81 @@ function buildApplicationMetaP02(project: Project): Record<string, string> {
   };
 }
 
-/** R8 PBL-자체-02 — `trainingEnv` 정형 객체 → P-05 6 셀 매핑 dict.
- *  V2 정본은 항상 객체. legacy string / null / undefined 는 빈 dict 로 안전 변환. */
+/** R8 PBL-자체-02 / Phase E — `trainingEnv` 정형 객체 → P-05 11 키 매핑 dict.
+ *
+ *  Python `_fill_pbl_training_env` (양식 P-05 12×7) 의 11 행 데이터 영역과
+ *  1:1 정합. V1 호환 키 + 신규 5 키 (Step 4b 기대효과·요구분석) 함께 송신.
+ *  V2 정본은 항상 객체. legacy string / null / undefined 는 빈 dict 로 안전 변환.
+ */
 function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined): {
-  training_env_internal_status: string;
-  training_env_external_status: string;
-  training_env_internal_capability: string;
-  training_env_external_capability: string;
-  training_env_internal_facility: string;
-  training_env_external_facility: string;
+  // V1 호환 + 양식 P-05 row 1~5·8 매핑
+  proper_training_hours: string;
+  training_place_location: string;
+  training_place_special_notes: string;
+  internal_instructor_name: string;
+  internal_instructor_position: string;
+  ai_tools_status: string;
+  network_status: string;
+  pc_count: string;
+  etc_equipment: string;
+  // Phase E 신규 5 키 — Step 4b "기대효과·요구분석" (양식 P-05 row 6/7/9/11)
+  target_count: string;
+  target_career: string;
+  target_level: string;
+  training_needs_analysis: string;
+  expectation_as_is: string;
+  expectation_to_be: string;
 } {
   if (!env || typeof env !== 'object') {
     return {
-      training_env_internal_status: '',
-      training_env_external_status: '',
-      training_env_internal_capability: '',
-      training_env_external_capability: '',
-      training_env_internal_facility: '',
-      training_env_external_facility: '',
+      proper_training_hours: '',
+      training_place_location: '',
+      training_place_special_notes: '',
+      internal_instructor_name: '',
+      internal_instructor_position: '',
+      ai_tools_status: '',
+      network_status: '',
+      pc_count: '',
+      etc_equipment: '',
+      target_count: '',
+      target_career: '',
+      target_level: '',
+      training_needs_analysis: '',
+      expectation_as_is: '',
+      expectation_to_be: '',
     };
   }
-  const dumpInstructors = (
-    list: typeof env.internalInstructors | undefined,
-  ): string =>
-    (list ?? [])
-      .map((i) =>
-        [i.position, i.name, i.career, i.personalTraits].filter(Boolean).join(' / '),
-      )
-      .filter(Boolean)
-      .join('\n');
-  const internalStatusParts: string[] = [];
-  if (env.properTrainingHours) internalStatusParts.push(`훈련시간: ${env.properTrainingHours}`);
-  if (env.internalPlace) internalStatusParts.push(`사내 장소: ${env.internalPlace}`);
+  const firstInternalInstructor = env.internalInstructors?.[0];
+  const target = env.targetCharacteristics ?? { career: '', level: '' };
+  const infra =
+    env.aiInfraDetail ??
+    { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 };
+  const toolLabel = {
+    AVAILABLE: '가능',
+    LIMITED: '제한적',
+    UNAVAILABLE: '불가능',
+  }[infra.toolCapacity];
+  const networkLabel = {
+    GOOD: '양호',
+    NORMAL: '보통',
+    IMPROVEMENT_NEEDED: '개선필요',
+  }[infra.networkStatus];
   return {
-    training_env_internal_status: internalStatusParts.join(' · '),
-    training_env_external_status: env.externalPlace ?? '',
-    training_env_internal_capability: dumpInstructors(env.internalInstructors),
-    training_env_external_capability: dumpInstructors(env.externalInstructors),
-    training_env_internal_facility: env.aiInfrastructure ?? '',
-    training_env_external_facility: '',
+    proper_training_hours: env.properTrainingHours ?? '',
+    training_place_location: env.internalPlace ?? '',
+    training_place_special_notes: env.externalPlace ?? '',
+    internal_instructor_name: firstInternalInstructor?.name ?? '',
+    internal_instructor_position: firstInternalInstructor?.position ?? '',
+    ai_tools_status: toolLabel,
+    network_status: networkLabel,
+    pc_count: String(infra.pcCount ?? 0),
+    etc_equipment: env.aiInfrastructure ?? '',
+    target_count: '', // 양식의 대상 인원은 trainingTarget 으로 별도 매핑되므로 빈 채
+    target_career: target.career ?? '',
+    target_level: target.level ?? '',
+    training_needs_analysis: env.trainingNeedsAnalysis ?? '',
+    expectation_as_is: env.expectationAsIs ?? '',
+    expectation_to_be: env.expectationToBe ?? '',
   };
 }
 
@@ -203,8 +239,10 @@ function buildDataFromV2(
 
     // ==================== Ⅱ. 훈련 요구 분석 ====================
     company_issues: v2.companyIssues ?? '',
-    // V2 organization { orgTree, mainWork[] } 통째 전달 — Python 측에서 flatten
-    organization: v2.organization ?? { orgTree: [], mainWork: [] },
+    // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서
+    // 제거. Python 측 _fill_pbl_organization 은 disabled 상태로 유지되어 빈 객체
+    // 송신해도 안전 (양식 P-04 표는 한컴오피스 사용자 작성 영역).
+    organization: { orgTree: [], mainWork: [] },
     // R8 PBL-자체-02 — V2 trainingEnv 정형 객체 → P-05 6 셀 매핑.
     // 6 영역 데이터를 양식 6 셀 (사내/사외 × status/capability/facility) 로 재배열.
     ...buildTrainingEnvP05(v2.trainingEnv),
@@ -319,27 +357,17 @@ function buildDataFromV2(
     training_history: [],
     support_history: [],
     recommendations: [],
-    // V1 호환 키 (HWPX 표 14행 본문 체크박스). V2 인터뷰에 별도 필드 없음 → 빈 배열.
-    training_goals: [] as TrainingGoal[],
+    // Phase E — 양식 5 종 훈련목표 체크박스 (generate.py:744-752 의 5 종 체크박스 활성).
+    // outcome_analysis.outcome_metrics.selected_goals (결과 페이지 Ⅴ-1 카테고리 뱃지)
+    // 를 V1 호환 키 `training_goals` 로 송신하면 양식 체크박스 자동 활성.
+    training_goals:
+      (pblContent?.outcome_analysis?.outcome_metrics?.selected_goals ?? []) as TrainingGoal[],
     training_place_types: [] as TrainingPlaceType[],
     internal_instructor_used: false,
 
-    // V2 에 없는 V1 호환 셀 (필요 시 fallback 빈 문자열)
-    proper_training_hours: '',
-    training_place_location: '',
-    training_place_special_notes: '',
-    internal_instructor_name: '',
-    internal_instructor_position: '',
-    target_count: '',
-    target_career: '',
-    target_level: '',
-    ai_tools_status: '',
-    network_status: '',
-    pc_count: '',
-    etc_equipment: '',
-    training_needs_analysis: '',
-    expectation_as_is: '',
-    expectation_to_be: '',
+    // Phase E: V2 trainingEnv → V1 호환 키 11 종 매핑은 buildTrainingEnvP05 가
+    // 위 spread (...buildTrainingEnvP05(v2.trainingEnv)) 로 송신. 여기서 중복
+    // 빈 문자열 명시는 제거 (덮어쓰기 회피).
     course_development_necessity: v2.courseNecessity ?? '',
     training_job: '',
     trainee_count: '',
@@ -693,6 +721,53 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   return {
     track: 'PBL' as const,
     fileName: buildFileName(finalCompanyName, pbl.version_number),
+    data,
+  };
+}
+
+/**
+ * 테스트 모드(/test-pbl) 전용 — DB row 없이 in-memory 입력만으로 PBL HWPX
+ * payload 를 구성. 가짜 PBLReportRow/Project/Interview 캐스팅 indirection 을
+ * 제거해 흐름을 명시적으로 만든다.
+ *
+ * 신청서 자동표출(P-02) override 는 실제 project 신청서 데이터가 없으므로 생략
+ * — Python 측은 누락된 키를 빈 문자열 fallback 으로 안전 처리한다.
+ */
+export interface InMemoryPBLPayloadInputs {
+  content: PBLContent;
+  interview: PBLInterviewStrict;
+  companyName: string;
+  versionNumber?: number;
+  reportDate?: string;
+}
+
+export function buildPBLHwpxPayloadFromInputs(
+  inputs: InMemoryPBLPayloadInputs,
+): PBLHwpxPayload {
+  const versionNumber = inputs.versionNumber ?? 1;
+  const reportDate =
+    inputs.reportDate ??
+    new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+  const companyName =
+    (inputs.interview.companyName?.trim() || inputs.companyName.trim()) ||
+    '테스트기업';
+
+  const data = buildDataFromV2(
+    inputs.interview,
+    inputs.content,
+    companyName,
+    reportDate,
+  );
+  data.company_name = companyName;
+
+  return {
+    track: 'PBL' as const,
+    fileName: buildFileName(companyName, versionNumber),
     data,
   };
 }

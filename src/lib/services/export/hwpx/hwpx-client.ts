@@ -60,18 +60,23 @@ async function postToPythonGenerate(
     throw new Error('HWPX_API_SECRET 환경변수가 설정되지 않았습니다.');
   }
 
-  const url = `${resolveBaseUrl(options?.baseUrl)}/api/hwpx/generate`;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-HWPX-Secret': secret,
-  };
-
-  // Vercel Deployment Protection (Preview SSO) 우회 헤더
+  // Vercel Deployment Protection (Preview SSO) 우회.
   // 주의: `x-vercel-set-bypass-cookie`는 의도적으로 보내지 않는다.
   // 이 헤더가 있으면 Vercel이 `_vercel_jwt` 쿠키를 세팅하는 307 리다이렉트로
   // 응답하는데, Node fetch는 쿠키를 자동으로 재요청에 포함하지 않아
   // 리다이렉트 루프에 빠진다 (`redirect count exceeded`).
+  //
+  // 헤더 + 쿼리스트링 이중 적용 — Vercel 의 protection 검사가 일부 환경에서
+  // 헤더만으로 통과되지 않는 케이스를 방어 (Edge 캐시·CDN 변형 대응).
   const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const baseUrl = resolveBaseUrl(options?.baseUrl);
+  const url = bypassSecret
+    ? `${baseUrl}/api/hwpx/generate?x-vercel-protection-bypass=${encodeURIComponent(bypassSecret)}`
+    : `${baseUrl}/api/hwpx/generate`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-HWPX-Secret': secret,
+  };
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
   }

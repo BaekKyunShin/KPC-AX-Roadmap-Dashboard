@@ -153,6 +153,58 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_activities_v2_flat_array_normalized_3_rounds_4_roles(self):
+        """V2 평면 배열 (round×role×personName) 12 항목 → 3 round × 4 role 정규화.
+
+        실제 production LLM·인터뷰 입력은 V2 schema (`PBLActivityRowSchema`)
+        대로 `{round, role, personName, date, content, method}` 평면 12 항목.
+        Python 측 `build_pbl_table_rows("activities")` 가 `role` 필드 감지 시
+        round 별 그룹핑하여 dict participants 형태로 정규화해야 함.
+        결함 사용자 보고: 모든 행 "1차" + 참석자 이름 빈 채 + 중간 행 빈 채.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        # V2 평면 형식으로 activities 교체 (3 round × 4 role = 12 항목)
+        data["activities"] = [
+            {"round": 1, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 2, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 3, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+        ]
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+
+        # 4 참석자 이름 모두 노출 (4 role × 3 round = 12 셀에 분배)
+        for person in ("홍PM", "김외부", "박내부", "이주치"):
+            assert person in text, f"V2 평면 person={person!r} 미노출"
+        # 3 round content 모두 노출 (양식 vertical merge 통해 base 행에만)
+        for content in ("킥오프 회의", "문제 정의 워크숍", "초안 검토"):
+            assert content in text, f"round content={content!r} 미노출"
+        # 3 round date 모두 노출
+        for date in ("2026-04-01", "2026-04-15", "2026-04-30"):
+            assert date in text, f"round date={date!r} 미노출"
+
     def test_pbl_activities_renders_4_person_per_round(self):
         """P-08 PR #5 Phase F-4: 차수당 4 행 (PM/외부/내부/주치의) 모두 채워진다.
 
@@ -742,6 +794,206 @@ class TestNoPlaceholderResidue:
             assert "}}" not in text
         finally:
             os.unlink(tmp_path)
+
+
+# ---------------------------------------------------------------
+# PBL HWPX 콘텐츠 품질 회귀 (Task 1·2·3·4 — V2 키 인지, 글자 겹침, 표 전수)
+# ---------------------------------------------------------------
+
+
+def _open_pbl_doc(data: dict):
+    """fixture 로 _generate_pbl 호출 → 임시 파일에 저장 → HwpxDocument 반환.
+
+    호출자가 닫을 책임 없음 (한 테스트당 1회 사용). 임시 파일은 OS 가 정리.
+    """
+    from hwpx import HwpxDocument
+    from generate import _generate_pbl
+    import tempfile
+
+    out = _generate_pbl(data)
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
+        tmp.write(out)
+        return HwpxDocument.open(tmp.name)
+
+
+def _open_roadmap_doc(data: dict):
+    """fixture 로 _generate_roadmap 호출 → 임시 파일 저장 → HwpxDocument 반환."""
+    from hwpx import HwpxDocument
+    from generate import _generate_roadmap
+    import tempfile
+
+    out = _generate_roadmap(data)
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
+        tmp.write(out)
+        return HwpxDocument.open(tmp.name)
+
+
+def _cell_text(tbl, row: int, col: int) -> str:
+    """표 셀의 모든 paragraph·run 텍스트를 합쳐 단일 문자열로 반환."""
+    try:
+        cell = tbl.cell(row, col)
+    except Exception:
+        return ""
+    parts = []
+    for p in cell.paragraphs:
+        for r in p.runs:
+            if r.text:
+                parts.append(r.text)
+    return "".join(parts).strip()
+
+
+@pytest.mark.skipif(
+    not os.path.exists(PBL_TEMPLATE),
+    reason="templates/hwpx/pbl.hwpx 미존재",
+)
+class TestPblContentQualityV2Keys:
+    """유형 A — TS 가 송신하는 V2 정본 키를 Python 이 정확히 셀로 옮기는지 검증.
+
+    핵심: 사용자가 한컴오피스로 열었을 때 빈 칸이면 안 됨. fixture 의 의도된
+    데이터가 양식 셀에 표시되는지 1:1 매핑 회귀.
+    """
+
+    def test_pbl_problem_definition_sheet_v2_filled(self):
+        """Ⅲ-2-가 문제 정의서 (table 15, 5×2) — V2 problem_definition_sheet
+        키로 4 행 col 1 (배경/핵심/범위/제약) 모두 채워짐.
+
+        근거: TS payload 가 problems=[] 빈 배열 + problem_definition_sheet
+        nested 객체를 송신하는 실 사용자 시나리오 재현. 이 회귀가 없으면
+        Python `_fill_pbl_problems` 가 V1 fallback 키만 보고 셀이 빈 채로
+        출력됨.
+        """
+        from generate import _collect_tables
+
+        data = _load_fixture("pbl-full.json")
+        # V1 호환 키 제거 — 실 TS payload shape 그대로 재현
+        data["problems"] = []
+        data.pop("problem_background", None)
+        data.pop("problem_core", None)
+        data.pop("problem_scope", None)
+        data.pop("problem_constraints", None)
+        sheet = data["problem_definition_sheet"]
+
+        doc = _open_pbl_doc(data)
+        tbl = _collect_tables(doc)[15]
+        cells = [_cell_text(tbl, r, 1) for r in range(1, 5)]
+        assert all(cells), f"Ⅲ-2-가 4 행 col 1 빈 칸 발견: {cells}"
+        assert cells[0] == sheet["background"]
+        assert cells[1] == sheet["core"]
+        assert cells[2] == sheet["scope"]
+        assert cells[3] == sheet["constraints"]
+
+    def test_pbl_outcome_analysis_v_section_filled(self):
+        """Ⅴ-1 성과지표 (table 39) + Ⅴ-2 확산전략 (table 40) — outcome_analysis
+        4 키 (quantitative/qualitative_metrics, internalization/dissemination_plan)
+        가 양식 r1·r2 col 1 셀에 정확히 표시.
+        """
+        from generate import _collect_tables
+
+        data = _load_fixture("pbl-full.json")
+        doc = _open_pbl_doc(data)
+        tables = _collect_tables(doc)
+
+        # Ⅴ-1
+        v1 = tables[39]
+        assert data["quantitative_metrics"] in _cell_text(v1, 1, 1)
+        assert data["qualitative_metrics"] in _cell_text(v1, 2, 1)
+
+        # Ⅴ-2
+        v2 = tables[40]
+        assert data["internalization_plan"] in _cell_text(v2, 1, 1)
+        assert data["dissemination_plan"] in _cell_text(v2, 2, 1)
+
+
+# ---------------------------------------------------------------
+# 유형 B — 1-paragraph 셀 + 긴 단일 문장 글자 겹침 회귀
+# ---------------------------------------------------------------
+
+PBL_ONE_PARAGRAPH_CELLS = [
+    (3, (0, 0), "company_issues"),
+    (11, (0, 0), "course_necessity"),
+    (20, (0, 0), "target_necessity"),
+    (27, (0, 0), "training_goal"),
+]
+
+ROADMAP_ONE_PARAGRAPH_CELLS = [
+    (3, (0, 0), "establishment_necessity"),
+    (28, (0, 1), "training_structure_method"),
+]
+
+
+@pytest.mark.skipif(
+    not os.path.exists(PBL_TEMPLATE),
+    reason="templates/hwpx/pbl.hwpx 미존재",
+)
+@pytest.mark.parametrize("idx,coord,key", PBL_ONE_PARAGRAPH_CELLS)
+def test_pbl_long_text_in_1_paragraph_cell_keeps_one_paragraph_with_line_wrap_break(
+    idx, coord, key,
+):
+    """Phase E — 1-paragraph 셀에 80자+ 단일 문장 (마침표·\\n 없음) 투입 시
+    paragraph 분할 없이 1 paragraph 유지 + 셀의 OWPML lineWrap 속성이 "BREAK"
+    로 설정되어 한컴오피스가 셀 폭에서 단어 단위 자동 wrap 한다.
+
+    근거: Phase C 의 `_smart_wrap` 자동 분할은 한국어 의미 단위·번호 매김·
+    어미를 무시하고 강제 분할하여 문장 중간 끊김 광범위. Phase E 에서 제거하고
+    셀의 lineWrap 을 BREAK 로 설정해 한컴오피스 자동 wrap 에 위임. 양식 원본
+    SQUEEZE 셀도 BREAK 로 강제 전환.
+    """
+    from generate import _collect_tables
+
+    data = _load_fixture("pbl-full.json")
+    # 마침표·\n 없는 100자+ 단일 문장 (LLM 출력 모사)
+    long_text = "공정 불량 원인 분석에 AI 도구를 활용해 데이터 정제와 시각화 보고서 자동 생성 그리고 표준 템플릿 기반 AI 초안 작성 그리고 담당자 검토 후 확정"
+    assert "\n" not in long_text
+    assert len(long_text) >= 80
+    data[key] = long_text
+
+    doc = _open_pbl_doc(data)
+    tbl = _collect_tables(doc)[idx]
+    cell = tbl.cell(*coord)
+    paragraphs = list(cell.paragraphs)
+    non_empty_paragraphs = [p for p in paragraphs
+                             if any(r.text for r in p.runs)]
+    assert len(non_empty_paragraphs) == 1, (
+        f"PBL idx={idx} {key}: Phase E 에서 자동 분할 비활성 — 1 paragraph 유지 기대. "
+        f"non_empty_paragraphs={len(non_empty_paragraphs)}"
+    )
+    # 셀의 OWPML subList lineWrap 속성이 BREAK 인지 검증
+    hp = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+    sublist = cell.element.find(f"{hp}subList")
+    assert sublist is not None, f"PBL idx={idx} {key}: subList element 부재"
+    assert sublist.get("lineWrap") == "BREAK", (
+        f"PBL idx={idx} {key}: lineWrap 이 BREAK 아님: {sublist.get('lineWrap')!r}"
+    )
+
+
+@pytest.mark.skipif(
+    not os.path.exists(ROADMAP_TEMPLATE),
+    reason="templates/hwpx/roadmap.hwpx 미존재",
+)
+@pytest.mark.parametrize("idx,coord,key", ROADMAP_ONE_PARAGRAPH_CELLS)
+def test_roadmap_long_text_in_1_paragraph_cell_keeps_one_paragraph_with_line_wrap_break(
+    idx, coord, key,
+):
+    """Phase E — Roadmap 양식의 동일 회귀. _set_cell_text 공유 헬퍼이므로 자동 적용."""
+    from generate import _collect_tables
+
+    data = _load_fixture("roadmap-full.json")
+    long_text = "공정 불량 원인 분석에 AI 도구를 활용해 데이터 정제와 시각화 보고서 자동 생성 그리고 표준 템플릿 기반 AI 초안 작성 그리고 담당자 검토 후 확정"
+    data[key] = long_text
+
+    doc = _open_roadmap_doc(data)
+    tbl = _collect_tables(doc)[idx]
+    cell = tbl.cell(*coord)
+    paragraphs = list(cell.paragraphs)
+    non_empty_paragraphs = [p for p in paragraphs
+                             if any(r.text for r in p.runs)]
+    assert len(non_empty_paragraphs) == 1, (
+        f"Roadmap idx={idx} {key}: Phase E 에서 자동 분할 비활성 — 1 paragraph 유지 기대."
+    )
+    hp = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+    sublist = cell.element.find(f"{hp}subList")
+    assert sublist is not None
+    assert sublist.get("lineWrap") == "BREAK"
 
 
 # ---------------------------------------------------------------

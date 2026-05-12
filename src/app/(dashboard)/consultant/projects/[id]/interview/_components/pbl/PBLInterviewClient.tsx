@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import { showErrorToast } from '@/lib/utils';
 import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
+import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
+import { PBL_FIELD_LABELS } from '@/lib/schemas/interview-pbl-labels';
 
 import {
   savePBLInterviewV2,
@@ -19,7 +21,6 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLOrganization,
   type PBLActivityRow,
   type PBLProblemDefinitionSheet,
   type PBLPriority,
@@ -33,8 +34,8 @@ import InterviewStepper from '../InterviewStepper';
 import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';
 import { StepCourseNecessity } from './StepCourseNecessity';
-import { StepOrganization } from './StepOrganization';
 import { StepTrainingEnv } from './StepTrainingEnv';
+import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
 import { StepActivities } from './StepActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
@@ -54,8 +55,8 @@ import { StepSttAttach } from '@/components/interview/StepSttAttach';
 export type PBLStepId =
   | 'overview'
   | 'companyIssues'
-  | 'organization'
   | 'trainingEnv'
+  | 'expectations'
   | 'hrdReport'
   | 'courseNecessity'
   | 'activities'
@@ -77,8 +78,10 @@ interface StepDef {
 export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
-  { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무', required: true },
-  { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
+  // Phase E: Step 3a 훈련환경 (기본 6 영역) — stepperLabel 5자 단축
+  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2-a', name: '훈련환경 분석', stepperLabel: '훈련환경', required: true },
+  // Phase E: Step 3b 기대효과·요구분석 (5 신규 영역, 양식 P-05 row 6~11 정합)
+  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
   // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
   { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
   // Stepper 라벨 13자 → 6자 단축
@@ -105,13 +108,6 @@ function emptyOverview(): PBLOverview {
     trainingForm: '',
     trainingPeriod: '',
     businessIssues: '',
-  };
-}
-
-function emptyOrganization(): PBLOrganization {
-  return {
-    orgTree: [],
-    mainWork: [],
   };
 }
 
@@ -173,7 +169,6 @@ export function PBLInterviewClient({
   const updateAnalysis = useCallback(
     (patch: {
       companyIssues?: string;
-      organization?: PBLInterviewStrict['organization'];
       // R8 PBL-자체-02 — string → 정형 객체
       trainingEnv?: PBLInterviewStrict['trainingEnv'];
       hrdReportPdf?: PBLInterviewStrict['hrdReportPdf'];
@@ -300,17 +295,11 @@ export function PBLInterviewClient({
     // Strict 검증 — hrdReportPdf=null 일 때 courseNecessity 비공백 조건 포함
     const parsed = PBLInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
-      // #012 fix — 모든 zod 에러 메시지를 join 해 사용자가 비어있는 필드를 한 번에
-      // 파악할 수 있게 한다 (기존: errors[0] 하나만 표시 → 사용자가 어디 부족한지 모름).
-      const messages = parsed.error.errors
-        .map((e) => e.message)
-        .filter((m) => Boolean(m?.trim()))
-        .slice(0, 5);
+      // 누락된 필드 모두 노출 + path → 사용자 라벨 매핑으로 Step·항목 명시
+      const message = formatZodIssuesForToast(parsed.error, PBL_FIELD_LABELS);
       showErrorToast(
         '제출 검증 실패',
-        messages.length > 0
-          ? messages.join('\n')
-          : '필수 입력 항목을 확인해주세요.',
+        message || '필수 입력 항목을 확인해주세요.',
       );
       return;
     }
@@ -383,13 +372,6 @@ export function PBLInterviewClient({
             onChange={(next) => updateAnalysis({ courseNecessity: next })}
           />
         );
-      case 'organization':
-        return (
-          <StepOrganization
-            value={data.organization ?? emptyOrganization()}
-            onChange={(next) => updateAnalysis({ organization: next })}
-          />
-        );
       case 'trainingEnv':
         return (
           <StepTrainingEnv
@@ -401,6 +383,32 @@ export function PBLInterviewClient({
                 internalInstructors: [],
                 externalInstructors: [],
                 aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
+              }
+            }
+            onChange={(next) => updateAnalysis({ trainingEnv: next })}
+          />
+        );
+      case 'expectations':
+        return (
+          <StepExpectations
+            value={
+              data.trainingEnv ?? {
+                properTrainingHours: '',
+                internalPlace: '',
+                externalPlace: '',
+                internalInstructors: [],
+                externalInstructors: [],
+                aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
               }
             }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}
@@ -558,5 +566,4 @@ export function PBLInterviewClient({
 
 export const __testing = {
   emptyOverview,
-  emptyOrganization,
 };

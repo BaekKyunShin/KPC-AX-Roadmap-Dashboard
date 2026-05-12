@@ -688,6 +688,12 @@ export const PBLInstructorRowSchema = z.object({
 });
 export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
 
+// Phase E — 양식 P-05 Ⅱ-2 훈련환경(12×7) 의 11 행 정합을 위한 enum
+export const PBL_AI_TOOL_CAPACITY = z.enum(['AVAILABLE', 'LIMITED', 'UNAVAILABLE']);
+export type PBLAIToolCapacity = z.infer<typeof PBL_AI_TOOL_CAPACITY>;
+export const PBL_NETWORK_STATUS = z.enum(['GOOD', 'NORMAL', 'IMPROVEMENT_NEEDED']);
+export type PBLNetworkStatus = z.infer<typeof PBL_NETWORK_STATUS>;
+
 export const PBLTrainingEnvSchema = z.object({
   properTrainingHours: z.string().default(''),    // 적정 훈련시간
   internalPlace: z.string().default(''),          // 훈련장소 — 사내
@@ -695,6 +701,24 @@ export const PBLTrainingEnvSchema = z.object({
   internalInstructors: z.array(PBLInstructorRowSchema).default([]), // 사내강사
   externalInstructors: z.array(PBLInstructorRowSchema).default([]), // 외부강사
   aiInfrastructure: z.string().default(''),       // AI 인프라 (사내)
+  // Phase E (Step 4b 기대효과·요구분석) — 양식 P-05 의 row 6/7/8/9/11 정합 5 신규 필드.
+  // 모두 default 안전 fallback — 기존 DB 인터뷰 데이터 호환.
+  targetCharacteristics: z
+    .object({
+      career: z.string().default(''),  // 업무 경력 (자유 텍스트)
+      level: z.string().default(''),   // 수준/직급 (자유 텍스트)
+    })
+    .default({ career: '', level: '' }),
+  aiInfraDetail: z
+    .object({
+      toolCapacity: PBL_AI_TOOL_CAPACITY.default('AVAILABLE'),
+      networkStatus: PBL_NETWORK_STATUS.default('GOOD'),
+      pcCount: z.number().int().min(0).default(0),
+    })
+    .default({ toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 }),
+  trainingNeedsAnalysis: z.string().default(''),  // AI훈련 요구분석
+  expectationAsIs: z.string().default(''),        // 기대효과 As-is (현재)
+  expectationToBe: z.string().default(''),        // 기대효과 To-be (개선)
 });
 export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 
@@ -702,8 +726,9 @@ export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
   companyIssues: z.string().min(1, '기업 경영 이슈(bullet 서술)를 입력하세요.'),
-  // Ⅱ-1-나 조직도 + 주요 업무
-  organization: PBLOrganizationSchema,
+  // Ⅱ-1-나 조직 및 주요 업무 — Phase E: 로드맵과 동일하게 인터뷰/결과/HWPX
+  // 3 계층에서 제거. schema 는 기존 DB 데이터 호환을 위해 optional 로 유지.
+  organization: PBLOrganizationSchema.optional(),
   // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
   trainingEnv: PBLTrainingEnvSchema,
   // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null) + 키 누락도 허용 (undefined).
@@ -942,13 +967,16 @@ export type PBLInterviewAutoSave = z.infer<typeof PBLInterviewAutoSaveSchema>;
 // (trim 후 비공백) 이 필수. 본체 `courseNecessity` 자체는 min(1) 로 이미
 // 보호되나, 공백만 입력된 케이스를 strict 경계에서 한 번 더 차단한다.
 export const PBLInterviewStrictSchema = PBLInterviewSchema.superRefine((d, ctx) => {
-  if (d.hrdReportPdf === null) {
+  // null + undefined 모두 '미첨부' 로 동일 취급 (hrdReportPdf 가 optional+nullable 이므로
+  // 키 자체가 누락된 케이스도 보호).
+  const noPdf = d.hrdReportPdf == null;
+  if (noPdf) {
     const trimmed = (d.courseNecessity ?? '').trim();
     if (trimmed === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'HRD이음 보고서 PDF 가 없을 때는 AI훈련과정 개발 필요성(Ⅱ-3-나)을 반드시 작성해야 합니다.',
+          'Ⅱ-3-가 HRD이음 보고서 PDF 첨부 또는 Ⅱ-3-나 AI훈련과정 개발 필요성 작성 중 하나는 필수입니다.',
         path: ['courseNecessity'],
       });
     }

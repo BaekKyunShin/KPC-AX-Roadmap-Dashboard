@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 
-import { buildPBLHwpxPayload } from './hwpx-payload-pbl';
+import {
+  buildPBLHwpxPayload,
+  buildPBLHwpxPayloadFromInputs,
+} from './hwpx-payload-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { createEmptyOutcomeAnalysis } from '@/lib/services/pbl/__fixtures__/empty-outcome-analysis';
 import type { Interview, Project } from '@/types/database';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 function makeProject(overrides?: Partial<Project>): Project {
   return {
@@ -309,7 +313,7 @@ describe('buildPBLHwpxPayload', () => {
   });
 
   // R8 PBL-자체-02 — buildTrainingEnvP05 6 셀 매핑 분기 cover
-  describe('PBL-자체-02: P-05 6 셀 매핑 (R8)', () => {
+  describe('PBL-자체-02 Phase E: P-05 11 행 매핑', () => {
     function makeV2WithTrainingEnv(env: unknown): Interview {
       const v2 = (makeV2Interview() as unknown as { pbl_data: Record<string, unknown> })
         .pbl_data;
@@ -319,21 +323,25 @@ describe('buildPBLHwpxPayload', () => {
       } as unknown as Interview;
     }
 
-    it('trainingEnv 누락 시 6 셀 모두 빈 문자열', () => {
+    it('trainingEnv 누락 시 11 키 모두 빈 문자열', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
         interview: makeV2WithTrainingEnv(undefined),
       });
-      expect(payload.data.training_env_internal_status).toBe('');
-      expect(payload.data.training_env_external_status).toBe('');
-      expect(payload.data.training_env_internal_capability).toBe('');
-      expect(payload.data.training_env_external_capability).toBe('');
-      expect(payload.data.training_env_internal_facility).toBe('');
-      expect(payload.data.training_env_external_facility).toBe('');
+      expect(payload.data.proper_training_hours).toBe('');
+      expect(payload.data.training_place_location).toBe('');
+      expect(payload.data.training_place_special_notes).toBe('');
+      expect(payload.data.internal_instructor_name).toBe('');
+      expect(payload.data.internal_instructor_position).toBe('');
+      expect(payload.data.target_career).toBe('');
+      expect(payload.data.target_level).toBe('');
+      expect(payload.data.training_needs_analysis).toBe('');
+      expect(payload.data.expectation_as_is).toBe('');
+      expect(payload.data.expectation_to_be).toBe('');
     });
 
-    it('trainingEnv 6 영역 모두 채움 시 6 셀 매핑', () => {
+    it('trainingEnv 11 영역 모두 채움 시 양식 P-05 11 행 매핑', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
@@ -348,19 +356,32 @@ describe('buildPBLHwpxPayload', () => {
             { position: '교수', name: '박AI', career: '20년', personalTraits: 'NLP 전문' },
           ],
           aiInfrastructure: 'PC 30대',
+          targetCharacteristics: { career: '평균 5년', level: '대리~과장' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 30 },
+          trainingNeedsAnalysis: '품질 데이터 통합 시급',
+          expectationAsIs: '검사 92% 정확도',
+          expectationToBe: 'AI 자동검사 96%',
         }),
       });
-      expect(payload.data.training_env_internal_status).toContain('훈련시간');
-      expect(payload.data.training_env_internal_status).toContain('본사 교육장');
-      expect(payload.data.training_env_external_status).toBe('외부 AI센터');
-      expect(payload.data.training_env_internal_capability).toContain('팀장');
-      expect(payload.data.training_env_internal_capability).toContain('김품질');
-      expect(payload.data.training_env_external_capability).toContain('박AI');
-      expect(payload.data.training_env_internal_facility).toBe('PC 30대');
-      expect(payload.data.training_env_external_facility).toBe('');
+      // V1 호환 키 (양식 row 1~5, 8)
+      expect(payload.data.proper_training_hours).toBe('회차당 4시간');
+      expect(payload.data.training_place_location).toBe('본사 교육장');
+      expect(payload.data.training_place_special_notes).toBe('외부 AI센터');
+      expect(payload.data.internal_instructor_name).toBe('김품질');
+      expect(payload.data.internal_instructor_position).toBe('팀장');
+      expect(payload.data.ai_tools_status).toBe('가능');
+      expect(payload.data.network_status).toBe('양호');
+      expect(payload.data.pc_count).toBe('30');
+      expect(payload.data.etc_equipment).toBe('PC 30대');
+      // Phase E 신규 5 키 (양식 row 6/7/9/11)
+      expect(payload.data.target_career).toBe('평균 5년');
+      expect(payload.data.target_level).toBe('대리~과장');
+      expect(payload.data.training_needs_analysis).toBe('품질 데이터 통합 시급');
+      expect(payload.data.expectation_as_is).toBe('검사 92% 정확도');
+      expect(payload.data.expectation_to_be).toBe('AI 자동검사 96%');
     });
 
-    it('trainingEnv 빈 객체 (모든 필드 default) 시 6 셀 모두 빈 문자열', () => {
+    it('trainingEnv 빈 객체 (모든 필드 default) 시 11 키 모두 빈 문자열', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
@@ -371,13 +392,18 @@ describe('buildPBLHwpxPayload', () => {
           internalInstructors: [],
           externalInstructors: [],
           aiInfrastructure: '',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
         }),
       });
-      expect(payload.data.training_env_internal_status).toBe('');
-      expect(payload.data.training_env_external_status).toBe('');
-      expect(payload.data.training_env_internal_capability).toBe('');
-      expect(payload.data.training_env_external_capability).toBe('');
-      expect(payload.data.training_env_internal_facility).toBe('');
+      expect(payload.data.proper_training_hours).toBe('');
+      expect(payload.data.training_place_location).toBe('');
+      expect(payload.data.target_career).toBe('');
+      expect(payload.data.training_needs_analysis).toBe('');
+      expect(payload.data.expectation_to_be).toBe('');
     });
   });
 
@@ -605,7 +631,7 @@ describe('buildPBLHwpxPayload', () => {
     expect(payload.data.business_issues).toBe('수작업 비효율');
   });
 
-  it('V2 인터뷰 — Ⅱ analysis (companyIssues, organization, courseNecessity)', () => {
+  it('V2 인터뷰 — Ⅱ analysis (companyIssues, courseNecessity) — Phase E: organization 빈 객체', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL(),
       project: makeProject(),
@@ -613,9 +639,11 @@ describe('buildPBLHwpxPayload', () => {
     });
     expect(payload.data.company_issues).toBe('경영 이슈 본문 (V2)');
     expect(payload.data.course_necessity).toBe('AI 도입 필요성 본문');
-    // organization 은 V2 raw 구조 통째 전달
+    // Phase E: 조직 및 주요 업무는 인터뷰/결과/HWPX 3 계층에서 제거 (로드맵과 동일).
+    // 빈 객체로 송신해 Python 측 _fill_pbl_organization (disabled) 와 호환.
     const org = payload.data.organization as { orgTree: unknown[]; mainWork: unknown[] };
-    expect(org.mainWork).toHaveLength(2);
+    expect(org.orgTree).toEqual([]);
+    expect(org.mainWork).toEqual([]);
     expect(payload.data.hrd_report_attachment).toBe('https://x/hrd.pdf');
   });
 
@@ -918,5 +946,66 @@ describe('buildPBLHwpxPayload', () => {
     const dataKeys = new Set(Object.keys(payload.data));
     const missing = ssotV2PblPyKeys.filter((k) => !dataKeys.has(k));
     expect(missing).toEqual([]);
+  });
+});
+
+// ─── buildPBLHwpxPayloadFromInputs (테스트 모드 in-memory 경로) ──────────────
+describe('buildPBLHwpxPayloadFromInputs', () => {
+  const sampleContent: PBLContent = {
+    operation_plan: {
+      training_goal: '',
+      ai_tool_usage_plan: [],
+      training_plan: {} as never,
+      evaluation_plan: {} as never,
+    },
+    outcome_analysis: createEmptyOutcomeAnalysis(),
+  } as unknown as PBLContent;
+
+  it('V2 인터뷰 + content → V2 path 의 data 와 동일 키 set 반환', () => {
+    const payload = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+    });
+    expect(payload.track).toBe('PBL');
+    expect(payload.fileName).toMatch(/\.hwpx$/);
+    expect(payload.data.company_name).toBe(PBL_INTERVIEW_SAMPLE.companyName);
+    expect(payload.data.course_name).toBe(PBL_INTERVIEW_SAMPLE.courseName);
+  });
+
+  it('인터뷰 companyName 우선, 비면 인자 companyName, 둘 다 비면 "테스트기업" fallback', () => {
+    const blankInterview = {
+      ...PBL_INTERVIEW_SAMPLE,
+      companyName: '',
+    };
+    const a = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: blankInterview,
+      companyName: '인자기업',
+    });
+    expect(a.data.company_name).toBe('인자기업');
+
+    const b = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: blankInterview,
+      companyName: '   ',
+    });
+    expect(b.data.company_name).toBe('테스트기업');
+  });
+
+  it('versionNumber 기본 1, 명시 시 fileName 에 반영', () => {
+    const v1 = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+    });
+    expect(v1.fileName).toContain('_v1.hwpx');
+    const v3 = buildPBLHwpxPayloadFromInputs({
+      content: sampleContent,
+      interview: PBL_INTERVIEW_SAMPLE,
+      companyName: '㈜테스트',
+      versionNumber: 3,
+    });
+    expect(v3.fileName).toContain('_v3.hwpx');
   });
 });

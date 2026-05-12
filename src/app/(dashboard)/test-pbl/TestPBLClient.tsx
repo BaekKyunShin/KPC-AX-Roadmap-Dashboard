@@ -21,12 +21,13 @@ import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
 import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast } from '@/lib/utils';
+import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
+import { PBL_FIELD_LABELS } from '@/lib/schemas/interview-pbl-labels';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { StepOverview } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOverview';
 import { StepCompanyIssues } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues';
-import { StepOrganization } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization';
 import { StepTrainingEnv } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv';
 import { StepCourseNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity';
 import { StepActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities';
@@ -44,7 +45,6 @@ import {
   PBL_AI_LEVEL_LABEL,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLOrganization,
   type PBLAILevel,
 } from '@/lib/schemas/interview-pbl';
 import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
@@ -59,14 +59,17 @@ import type { PBLExportPayload } from '@/lib/actions/pbl-export';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showSuccessToast } from '@/lib/utils/toast';
 
-import { generateTestPBL, cancelTestPBLGeneration } from './actions';
+import {
+  generateTestPBL,
+  cancelTestPBLGeneration,
+  exportTestPBLHwpx,
+} from './actions';
 
 // ─── 테스트 모드 스텝 정의 (HRD PDF 업로드는 테스트 불가 → 제외, 8 스텝) ──────
 
 type StepId =
   | 'overview'
   | 'companyIssues'
-  | 'organization'
   | 'trainingEnv'
   | 'courseNecessity'
   | 'activities'
@@ -81,12 +84,11 @@ const STEPS: ReadonlyArray<{
 }> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
-  { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무' },
-  { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석' },
-  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성' },
-  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
-  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위' },
-  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
+  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석' },
+  { id: 4, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성' },
+  { id: 5, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
+  { id: 6, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위' },
+  { id: 7, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
 ];
 
 function emptyOverview(): PBLOverview {
@@ -102,15 +104,10 @@ function emptyOverview(): PBLOverview {
   };
 }
 
-function emptyOrganization(): PBLOrganization {
-  return { orgTree: [], mainWork: [] };
-}
-
 function emptyInitial(): Partial<PBLInterviewStrict> {
   return {
     ...emptyOverview(),
     companyIssues: '',
-    organization: emptyOrganization(),
     trainingEnv: {
       properTrainingHours: '',
       internalPlace: '',
@@ -118,6 +115,11 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
       internalInstructors: [],
       externalInstructors: [],
       aiInfrastructure: '',
+      targetCharacteristics: { career: '', level: '' },
+      aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+      trainingNeedsAnalysis: '',
+      expectationAsIs: '',
+      expectationToBe: '',
     },
     hrdReportPdf: null,
     courseNecessity: '',
@@ -243,7 +245,6 @@ function toInterviewSnapshot(
     },
     analysis: {
       companyIssues: interview.companyIssues,
-      organization: interview.organization,
       trainingEnv: interview.trainingEnv,
       hrdReportPdf: interview.hrdReportPdf,
       courseNecessity: interview.courseNecessity,
@@ -326,7 +327,11 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const handleSubmit = async () => {
     const parsed = PBLInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
-      showErrorToast(parsed.error.errors[0]?.message ?? '제출 검증에 실패했습니다.');
+      const message = formatZodIssuesForToast(parsed.error, PBL_FIELD_LABELS);
+      showErrorToast(
+        '제출 검증 실패',
+        message || '필수 입력 항목을 확인해주세요.',
+      );
       return;
     }
 
@@ -469,12 +474,40 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 showSuccessToast('Excel 다운로드 완료');
                 return;
               }
-              // HWPX 는 Vercel Python Function (DB 의 pbl_reports.id) 의존이라
-              // 테스트 모드 in-memory 데이터를 그대로 넘길 수 없음. PDF/Excel 안내.
-              showErrorToast(
-                '테스트 모드 HWPX 미지원',
-                '테스트 모드에서는 PDF/Excel 다운로드로 결과를 확인할 수 있습니다.',
-              );
+              if (type === 'HWPX') {
+                // in-memory 인터뷰·결과를 신규 server action 으로 HWPX 생성
+                const result = await exportTestPBLHwpx({
+                  content: testResult.content,
+                  interview: testResult.interview,
+                  companyName,
+                });
+                if (!result.success) {
+                  // 실패 시 즉시 dismiss 되지 않도록 영구 토스트 + 콘솔에도 풀 로그.
+                  // (요청 ID + 원인 메시지가 토스트에 포함됨 — Vercel 로그 매칭용)
+                  console.error('[TestPBL HWPX] result.success=false', result);
+                  showErrorToast('HWPX 다운로드 실패', result.error, {
+                    duration: Infinity,
+                  });
+                  return;
+                }
+                const { fileName, contentBase64, mimeType } = result.data;
+                const binary = atob(contentBase64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                  bytes[i] = binary.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showSuccessToast('HWPX 다운로드 완료');
+                return;
+              }
             } catch (err) {
               const message =
                 err instanceof Error
@@ -513,13 +546,6 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             onChange={(next) => update({ companyIssues: next })}
           />
         );
-      case 'organization':
-        return (
-          <StepOrganization
-            value={data.organization ?? emptyOrganization()}
-            onChange={(next) => update({ organization: next })}
-          />
-        );
       case 'trainingEnv':
         return (
           <StepTrainingEnv
@@ -531,6 +557,11 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 internalInstructors: [],
                 externalInstructors: [],
                 aiInfrastructure: '',
+                targetCharacteristics: { career: '', level: '' },
+                aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+                trainingNeedsAnalysis: '',
+                expectationAsIs: '',
+                expectationToBe: '',
               }
             }
             onChange={(next) => update({ trainingEnv: next })}
