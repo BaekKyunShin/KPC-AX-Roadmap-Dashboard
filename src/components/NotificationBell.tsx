@@ -74,20 +74,28 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   }, [initialUnreadCount]);
 
   // 클라이언트 자체 안읽음 카운트 갱신
-  // - mount 직후 1회 fetch
+  // - 첫 paint 후 1회 fetch (page redirect/transition 과 race 회피)
   // - 30s polling (visible 일 때만)
   // - visibilitychange visible 시 즉시 fetch
   // layout 에서 await 를 제거해 첫 paint 를 가속하는 대신, 카운트는 client 에서 갱신한다.
+  // 첫 fetch 를 requestAnimationFrame 으로 지연하는 이유: `/dashboard` 같은 redirect
+  // 경유 페이지에서 RSC navigation transition 도중 server action 을 호출하면
+  // page.evaluate 가 destroy 되거나 axe 가 redirect placeholder 를 위반으로 잡는다
+  // (E2E /dashboard a11y · CLS 테스트 실패 사례). 첫 paint 후 = transition 완료 시점.
   useEffect(() => {
     let cancelled = false;
+    let rafId: number | null = null;
 
     const refresh = async () => {
-      if (document.visibilityState !== 'visible') return;
+      if (cancelled || document.visibilityState !== 'visible') return;
       const count = await fetchUnreadCount();
       if (!cancelled) setUnreadCount(count);
     };
 
-    void refresh();
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      void refresh();
+    });
     const intervalId = setInterval(refresh, POLL_INTERVAL_MS);
 
     const handleVisibility = () => {
@@ -97,6 +105,7 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
 
     return () => {
       cancelled = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };

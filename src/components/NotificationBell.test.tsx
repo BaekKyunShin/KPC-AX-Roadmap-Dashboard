@@ -1,6 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -173,6 +173,19 @@ describe('NotificationBell', () => {
       configurable: true,
       get: () => 'visible',
     });
+    // NotificationBell 은 첫 fetch 를 requestAnimationFrame 으로 지연한다 (page
+    // redirect transition 과 race 회피용). 테스트에서는 setTimeout(0) 으로 stub 해
+    // 기존 timer 기반 검증 패턴과 일관성 있게 처리한다.
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      (cb: FrameRequestCallback) =>
+        setTimeout(() => cb(typeof performance !== 'undefined' ? performance.now() : 0), 0) as unknown as number,
+    );
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   // ─── 뱃지 표시 ────────────────────────────────────────────────────────
@@ -962,24 +975,24 @@ describe('NotificationBell', () => {
     });
 
     it('30초 간격 polling 으로 fetchUnreadCount 가 주기적으로 재호출된다', async () => {
-      vi.useFakeTimers();
+      // raf 은 beforeEach 에서 setTimeout(0) 으로 stub 되어 있으므로 fake 대상에서 제외해야
+      // stub 이 유지된다. setTimeout/setInterval 만 fake 하여 polling 검증.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
       try {
         renderBell({ initialUnreadCount: 0 });
-        // mount 직후 1회 호출
+        // 첫 fetch 는 stub 된 raf → setTimeout(0) 으로 지연
         await act(async () => {
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(0);
         });
         expect(mockFetchUnreadCount).toHaveBeenCalledTimes(1);
 
         await act(async () => {
-          vi.advanceTimersByTime(30_000);
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(30_000);
         });
         expect(mockFetchUnreadCount).toHaveBeenCalledTimes(2);
 
         await act(async () => {
-          vi.advanceTimersByTime(30_000);
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(30_000);
         });
         expect(mockFetchUnreadCount).toHaveBeenCalledTimes(3);
       } finally {
@@ -988,12 +1001,12 @@ describe('NotificationBell', () => {
     });
 
     it('unmount 시 polling interval 과 visibilitychange 리스너가 정리된다', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
       const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
       try {
         const { unmount } = renderBell({ initialUnreadCount: 0 });
         await act(async () => {
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(0);
         });
         expect(mockFetchUnreadCount).toHaveBeenCalledTimes(1);
 
@@ -1002,8 +1015,7 @@ describe('NotificationBell', () => {
 
         // unmount 후 60초 진행해도 polling 호출 없음
         await act(async () => {
-          vi.advanceTimersByTime(60_000);
-          await Promise.resolve();
+          await vi.advanceTimersByTimeAsync(60_000);
         });
         expect(mockFetchUnreadCount).not.toHaveBeenCalled();
 
