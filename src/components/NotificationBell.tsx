@@ -13,10 +13,18 @@ import {
 import { formatRelativeTime } from '@/lib/utils/consultant-home';
 import {
   fetchNotifications,
+  fetchUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/app/(dashboard)/notifications/actions';
 import type { Notification, NotificationType, UserRole } from '@/types/database';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** 안읽음 카운트 백그라운드 polling 간격 (MessageIcon 과 동일 톤) */
+const POLL_INTERVAL_MS = 30_000;
 
 // =============================================================================
 // Types
@@ -64,6 +72,35 @@ export default function NotificationBell({ initialUnreadCount, userRole }: Notif
   useEffect(() => {
     setUnreadCount(initialUnreadCount);
   }, [initialUnreadCount]);
+
+  // 클라이언트 자체 안읽음 카운트 갱신
+  // - mount 직후 1회 fetch
+  // - 30s polling (visible 일 때만)
+  // - visibilitychange visible 시 즉시 fetch
+  // layout 에서 await 를 제거해 첫 paint 를 가속하는 대신, 카운트는 client 에서 갱신한다.
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const count = await fetchUnreadCount();
+      if (!cancelled) setUnreadCount(count);
+    };
+
+    void refresh();
+    const intervalId = setInterval(refresh, POLL_INTERVAL_MS);
+
+    const handleVisibility = () => {
+      void refresh();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   // Popover 열릴 때마다 알림 목록을 fresh fetch
   const handleOpenChange = async (open: boolean) => {
