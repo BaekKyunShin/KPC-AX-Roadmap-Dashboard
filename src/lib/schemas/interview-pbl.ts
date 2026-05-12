@@ -706,8 +706,12 @@ export const PBLAnalysisSchema = z.object({
   organization: PBLOrganizationSchema,
   // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
   trainingEnv: PBLTrainingEnvSchema,
-  // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null)
-  hrdReportPdf: PBLHrdReportPdfSchema.nullable(),
+  // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null) + 키 누락도 허용 (undefined).
+  // `superRefine` 의 `d.hrdReportPdf == null` 분기가 null/undefined 양쪽을 동일
+  // 취급하므로 nullable 만으로 충분치 않다 — 인터뷰 폼이 PDF 미첨부 시 키 자체를
+  // omit 해 저장할 수 있고 (production data 확인), 이 경우 Required 오류로
+  // 보고서 생성이 막혀 거짓 토스트가 발생한다. nullish() 로 양쪽 모두 통과시킨다.
+  hrdReportPdf: PBLHrdReportPdfSchema.nullish(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성
   courseNecessity: z.string().min(1, 'AI훈련과정 개발 필요성을 입력하세요.'),
 });

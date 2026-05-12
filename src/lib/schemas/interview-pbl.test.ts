@@ -587,6 +587,14 @@ describe('PBLAnalysisSchema (Ⅱ 훈련 요구 분석)', () => {
     ).toBe(true);
   });
 
+  it('hrdReportPdf 는 키 누락(undefined) 도 허용 — production 인터뷰 폼이 미첨부 시 키를 omit 함', () => {
+    // 사용자 보고 버그 회귀: 'ㅇㅇ' 으로 채운 production data 에 hrdReportPdf 키가
+    // 없어 보고서 생성이 거짓 토스트로 막혔다. nullable() 만으로는 undefined 를
+    // 거절하므로 nullish() 로 양쪽 모두 통과시킨다 (superRefine 의 `== null` 분기와 정합).
+    const { hrdReportPdf: _omit, ...withoutKey } = validAnalysis;
+    expect(PBLAnalysisSchema.safeParse(withoutKey).success).toBe(true);
+  });
+
   it('organization.orgTree 중첩(재귀) 구조 파싱', () => {
     const deepTree = {
       ...validAnalysis,
