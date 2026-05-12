@@ -25,12 +25,14 @@ vi.mock('next/navigation', () => ({
 const mockCreateNoticeAction = vi.fn();
 const mockUpdateNoticeAction = vi.fn();
 const mockUploadAttachmentAction = vi.fn();
+const mockDeleteNoticeAction = vi.fn();
 const mockGetAttachmentDownloadUrl = vi.fn();
 
 vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
   createNoticeAction: (...args: unknown[]) => mockCreateNoticeAction(...args),
   updateNoticeAction: (...args: unknown[]) => mockUpdateNoticeAction(...args),
   uploadAttachmentAction: (...args: unknown[]) => mockUploadAttachmentAction(...args),
+  deleteNoticeAction: (...args: unknown[]) => mockDeleteNoticeAction(...args),
 }));
 
 vi.mock('@/app/(dashboard)/notices/actions', () => ({
@@ -441,36 +443,146 @@ describe('NoticeForm', () => {
   // ---------------------------------------------------------------------------
   // create 모드 — 일부 파일 업로드 실패
   // ---------------------------------------------------------------------------
-  describe('create 모드 — 일부 업로드 실패', () => {
-    it('일부 파일 업로드 실패 시 실패 토스트와 수정 페이지로 이동한다', async () => {
+  // 회귀 #이슈1-D: 원자성 보장
+  // 첨부 업로드 실패 시 → 공지 row 자동 삭제(보상 트랜잭션) → 작성 페이지 머무름
+  describe('create 모드 — 첨부 실패 시 원자성 보장', () => {
+    it('첨부 업로드 실패 시 deleteNoticeAction(noticeId)가 호출된다', async () => {
       const user = userEvent.setup();
       mockCreateNoticeAction.mockResolvedValue({
         success: true,
         data: { noticeId: 'new-notice-fail' },
       });
-      // 첫 번째 파일만 실패
-      mockUploadAttachmentAction.mockResolvedValue({ success: false, error: '업로드 실패' });
+      mockUploadAttachmentAction.mockResolvedValue({
+        success: false,
+        error: '업로드 실패',
+      });
+      mockDeleteNoticeAction.mockResolvedValue({ success: true });
 
       render(<NoticeForm mode="create" />);
 
-      // 파일 선택 (mock이 제공하는 test.pdf)
       await user.click(screen.getByTestId('mock-select-file'));
-      // 폼 제출
       await user.type(screen.getByRole('textbox', { name: /제목/ }), '새 공지');
       await user.click(screen.getByRole('button', { name: '작성' }));
 
       await waitFor(() => {
-        // uploadAttachmentAction 실패로 에러 토스트 발생
-        expect(mockShowErrorToast).toHaveBeenCalledWith(
-          expect.stringContaining('첨부 업로드 실패'),
-          expect.any(String),
-        );
-        // 실패가 있으면 edit 페이지로 이동
-        expect(mockPush).toHaveBeenCalledWith('/ops/notices/new-notice-fail/edit');
+        expect(mockDeleteNoticeAction).toHaveBeenCalledWith('new-notice-fail');
       });
     });
 
-    it('예외가 발생하면 catch 블록에서 에러 토스트가 표시된다', async () => {
+    it('첨부 업로드 실패 시 "공지 등록 실패" 토스트가 표시된다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-fail' },
+      });
+      mockUploadAttachmentAction.mockResolvedValue({
+        success: false,
+        error: '업로드 실패',
+      });
+      mockDeleteNoticeAction.mockResolvedValue({ success: true });
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '새 공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '공지 등록 실패',
+          expect.stringContaining('첨부 업로드 오류'),
+        );
+      });
+      // 성공 토스트는 호출되지 않아야 함
+      expect(mockShowSuccessToast).not.toHaveBeenCalled();
+    });
+
+    it('첨부 업로드 실패 시 router.push가 호출되지 않는다 (작성 페이지 머무름)', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-fail' },
+      });
+      mockUploadAttachmentAction.mockResolvedValue({
+        success: false,
+        error: '업로드 실패',
+      });
+      mockDeleteNoticeAction.mockResolvedValue({ success: true });
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '새 공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockDeleteNoticeAction).toHaveBeenCalled();
+      });
+
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('uploadAttachmentAction이 throw해도 보상 트랜잭션이 호출된다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-throw' },
+      });
+      mockUploadAttachmentAction.mockRejectedValue(new Error('네트워크 단절'));
+      mockDeleteNoticeAction.mockResolvedValue({ success: true });
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '새 공지');
+
+      await act(async () => {
+        fireEvent.submit(screen.getByTestId('notice-form'));
+      });
+
+      await waitFor(() => {
+        expect(mockDeleteNoticeAction).toHaveBeenCalledWith('new-notice-throw');
+      });
+
+      // 작성 페이지에 머무름
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('deleteNoticeAction 자체가 실패해도 사용자 토스트는 정상 표시된다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-rollback-fail' },
+      });
+      mockUploadAttachmentAction.mockResolvedValue({
+        success: false,
+        error: '업로드 실패',
+      });
+      mockDeleteNoticeAction.mockResolvedValue({
+        success: false,
+        error: '롤백 실패',
+      });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '새 공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalledWith(
+          '공지 등록 실패',
+          expect.stringContaining('첨부 업로드 오류'),
+        );
+      });
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('create 모드 — Server Action 예외', () => {
+    it('createNoticeAction 예외 발생 시 catch 블록에서 에러 토스트가 표시된다', async () => {
       const user = userEvent.setup();
       mockCreateNoticeAction.mockRejectedValue(new Error('네트워크 예외'));
 

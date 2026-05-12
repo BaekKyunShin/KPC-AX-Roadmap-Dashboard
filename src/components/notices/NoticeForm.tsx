@@ -16,6 +16,7 @@ import {
   createNoticeAction,
   updateNoticeAction,
   uploadAttachmentAction,
+  deleteNoticeAction,
 } from '@/app/(dashboard)/ops/notices/actions';
 import { getAttachmentDownloadUrl } from '@/app/(dashboard)/notices/actions';
 import type { NoticeAttachment } from '@/types/database';
@@ -83,34 +84,56 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
 
         const { noticeId } = result.data;
 
-        // 선택된 파일을 순차 업로드 (실패해도 공지 본문은 이미 저장된 상태)
+        // 첨부 업로드 — 원자성 보장: 1건이라도 실패 시 공지 row 자동 삭제(보상 트랜잭션).
+        // try-catch 로 throw 도 실패로 간주하여 동일 보상 흐름을 적용한다.
         let uploadedCount = 0;
-        let failedCount = 0;
+        let firstError: string | null = null;
         for (const file of pendingFiles) {
-          const fd = new FormData();
-          fd.append('file', file);
-          const uploadRes = await uploadAttachmentAction(noticeId, fd);
-          if (uploadRes.success) {
-            uploadedCount += 1;
-          } else {
-            failedCount += 1;
-            showErrorToast(`첨부 업로드 실패: ${file.name}`, uploadRes.error);
+          try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const uploadRes = await uploadAttachmentAction(noticeId, fd);
+            if (uploadRes.success) {
+              uploadedCount += 1;
+            } else if (firstError === null) {
+              firstError = `${file.name}: ${uploadRes.error}`;
+            }
+          } catch (err) {
+            if (firstError === null) {
+              const msg = err instanceof Error ? err.message : '알 수 없는 오류';
+              firstError = `${file.name}: ${msg}`;
+            }
           }
         }
 
-        if (failedCount > 0) {
-          showSuccessToast(
-            `공지가 작성되었습니다. 첨부 ${uploadedCount}/${pendingFiles.length} 성공 · 실패한 파일은 수정 페이지에서 재시도하세요.`,
+        if (firstError !== null) {
+          // 보상 트랜잭션 — 공지 row + 이미 업로드된 첨부 모두 자동 정리.
+          // deleteNoticeAction 자체 실패는 console.error 로 남기고 사용자 토스트는 정상 표시.
+          try {
+            const rollbackRes = await deleteNoticeAction(noticeId);
+            if (!rollbackRes.success) {
+              console.error(
+                '[NoticeForm] 보상 트랜잭션 실패:',
+                rollbackRes.error,
+              );
+            }
+          } catch (rollbackErr) {
+            console.error('[NoticeForm] 보상 트랜잭션 예외:', rollbackErr);
+          }
+          showErrorToast(
+            '공지 등록 실패',
+            `첨부 업로드 오류: ${firstError}. 다시 시도해 주세요.`,
           );
-          router.push(`/ops/notices/${noticeId}/edit`);
-        } else {
-          showSuccessToast(
-            pendingFiles.length > 0
-              ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
-              : '공지가 작성되었습니다.',
-          );
-          router.push('/ops/notices');
+          // 작성 페이지에 머무름 — 폼 state(title/body/pendingFiles) 자동 보존
+          return;
         }
+
+        showSuccessToast(
+          pendingFiles.length > 0
+            ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
+            : '공지가 작성되었습니다.',
+        );
+        router.push('/ops/notices');
         router.refresh();
       } else if (initial) {
         const result = await updateNoticeAction(initial.id, formData);
