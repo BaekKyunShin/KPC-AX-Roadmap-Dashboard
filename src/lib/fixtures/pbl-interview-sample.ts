@@ -24,71 +24,8 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   companyIssues:
     '① 완제품 외관·치수 검사가 육안에 의존해 불량률 2.4% 로 상승. ② 품질 데이터는 엑셀·수기에 분산되어 근본 원인 추적이 어려움. ③ 고객사(현대모비스·LS오토모티브) 품질 요구 강화로 AI 기반 품질 관리·예측 도입이 긴급 과제. ④ 현장 실무자는 AI 개념은 들어봤으나 실제 데이터에 적용한 경험이 부족.',
 
-  // ── Ⅱ-1-나 조직 및 주요 업무 ──────────────────────────────────────────────
-  organization: {
-    orgTree: [
-      {
-        id: 'org-root',
-        name: '샘플정밀공업(주)',
-        children: [
-          {
-            id: 'org-quality',
-            name: '품질관리부',
-            children: [
-              { id: 'org-incoming', name: '수입검사팀', children: [] },
-              { id: 'org-inprocess', name: '공정검사팀', children: [] },
-              { id: 'org-outgoing', name: '출하검사팀', children: [] },
-            ],
-          },
-          {
-            id: 'org-prodtech',
-            name: '생산기술부',
-            children: [
-              { id: 'org-process', name: '공정개선팀', children: [] },
-              { id: 'org-maint', name: '설비보전팀', children: [] },
-            ],
-          },
-          {
-            id: 'org-support',
-            name: '경영지원팀',
-            children: [{ id: 'org-hrd', name: '인재개발 담당', children: [] }],
-          },
-        ],
-      },
-    ],
-    mainWork: [
-      {
-        dept: '품질관리부',
-        role: '공정검사 담당',
-        description:
-          '생산 라인에서 완제품 외관·치수 검사를 수행하고 불량 유형별 체크시트·엑셀에 기록. 월간 품질 보고서 작성.',
-      },
-      {
-        dept: '품질관리부',
-        role: '품질 데이터 분석 담당',
-        description:
-          '불량 데이터 집계 및 원인 분석, 고객사 반품 건 대응 리포트 작성. 현재 엑셀·수작업 중심.',
-      },
-      {
-        dept: '생산기술부',
-        role: '공정개선 엔지니어',
-        description:
-          '불량률 개선 과제 기획, 현장 설비 파라미터 조정, SPC(통계적 공정관리) 데이터 해석 및 개선 적용.',
-      },
-      {
-        dept: '생산기술부',
-        role: '설비보전 담당',
-        description:
-          'CNC 38 대의 예방 보전 및 고장 대응. PLC 로그 모니터링(임계치 알람 수준).',
-      },
-      {
-        dept: '경영지원팀',
-        role: '인재개발 담당',
-        description:
-          '전사 훈련 계획 수립, 훈련비 집행, 외부 공개과정 연계, 훈련 수료 현황 관리.',
-      },
-    ],
-  },
+  // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서 제거.
+  // 양식의 P-04 표는 한컴오피스 사용자가 직접 작성하는 영역.
 
   // ── Ⅱ-2 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 표 6 영역) ─────────────
   trainingEnv: {

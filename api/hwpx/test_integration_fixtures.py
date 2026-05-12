@@ -153,6 +153,58 @@ class TestPblFixtures:
         assert _is_zip_bytes(out)
         assert len(out) > 50_000
 
+    def test_pbl_activities_v2_flat_array_normalized_3_rounds_4_roles(self):
+        """V2 평면 배열 (round×role×personName) 12 항목 → 3 round × 4 role 정규화.
+
+        실제 production LLM·인터뷰 입력은 V2 schema (`PBLActivityRowSchema`)
+        대로 `{round, role, personName, date, content, method}` 평면 12 항목.
+        Python 측 `build_pbl_table_rows("activities")` 가 `role` 필드 감지 시
+        round 별 그룹핑하여 dict participants 형태로 정규화해야 함.
+        결함 사용자 보고: 모든 행 "1차" + 참석자 이름 빈 채 + 중간 행 빈 채.
+        """
+        from generate import _generate_pbl
+
+        data = _load_fixture("pbl-full.json")
+        # V2 평면 형식으로 activities 교체 (3 round × 4 role = 12 항목)
+        data["activities"] = [
+            {"round": 1, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 1, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-01", "content": "킥오프 회의", "method": "대면"},
+            {"round": 2, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 2, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-15", "content": "문제 정의 워크숍", "method": "대면"},
+            {"round": 3, "role": "PM", "personName": "홍PM",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "EXTERNAL_EXPERT", "personName": "김외부",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "INTERNAL_EXPERT", "personName": "박내부",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+            {"round": 3, "role": "JURISDICTION_MANAGER", "personName": "이주치",
+             "date": "2026-04-30", "content": "초안 검토", "method": "비대면"},
+        ]
+        out = _generate_pbl(data)
+        text = _extract_all_text(out)
+
+        # 4 참석자 이름 모두 노출 (4 role × 3 round = 12 셀에 분배)
+        for person in ("홍PM", "김외부", "박내부", "이주치"):
+            assert person in text, f"V2 평면 person={person!r} 미노출"
+        # 3 round content 모두 노출 (양식 vertical merge 통해 base 행에만)
+        for content in ("킥오프 회의", "문제 정의 워크숍", "초안 검토"):
+            assert content in text, f"round content={content!r} 미노출"
+        # 3 round date 모두 노출
+        for date in ("2026-04-01", "2026-04-15", "2026-04-30"):
+            assert date in text, f"round date={date!r} 미노출"
+
     def test_pbl_activities_renders_4_person_per_round(self):
         """P-08 PR #5 Phase F-4: 차수당 4 행 (PM/외부/내부/주치의) 모두 채워진다.
 

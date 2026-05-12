@@ -22,7 +22,6 @@ track 분기:
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import re
 import sys
 import tempfile
 import urllib.parse
@@ -242,90 +241,30 @@ def _collect_tables(doc):
     return tables
 
 
-SMART_WRAP_SOFT_LIMIT = 45
-SMART_WRAP_HARD_LIMIT = 60
-
-_SENTENCE_END_RE = re.compile(r"(?<=[.!?。?!])\s+")
-
-
-def _wrap_by_words(text: str, limit: int) -> list[str]:
-    """공백 어절 경계 그리디 분할. 단일 토큰이 limit 초과면 글자 단위 강제.
-
-    한국어 어절 평균 ~10자 기준. limit=60 이면 4~5 어절씩 자연스럽게 묶임.
-    """
-    if len(text) <= limit:
-        return [text]
-    out: list[str] = []
-    buf = ""
-    for tok in text.split(" "):
-        candidate = (buf + " " + tok).strip() if buf else tok
-        if len(candidate) <= limit:
-            buf = candidate
-        else:
-            if buf:
-                out.append(buf)
-            if len(tok) > limit:
-                for i in range(0, len(tok), limit):
-                    out.append(tok[i : i + limit])
-                buf = ""
-            else:
-                buf = tok
-    if buf:
-        out.append(buf)
-    return out
-
-
-def _smart_wrap(line: str) -> list[str]:
-    """단일 줄 텍스트를 SOFT_LIMIT 기준으로 자연스럽게 분할.
-
-    OWPML `lineWrap="SQUEEZE"` 속성이 적용된 1-paragraph 셀에 긴 단일 문장이
-    들어가면, 한컴오피스가 셀 폭에 맞춰 자동 wrap 한 줄들을 압축 렌더해 글자가
-    겹쳐 보임. 미리 paragraph 단위로 분할해 두면 셀 높이가 자동 확장되어
-    겹침을 회피할 수 있다.
-
-    알고리즘:
-      1. SOFT_LIMIT (45자) 이하면 분할 없음.
-      2. 문장 부호 (마침표·물음표·느낌표 + 공백) 뒤에서 1차 분할.
-      3. 각 조각이 HARD_LIMIT (60자) 초과면 공백 어절 경계로 2차 분할.
-    """
-    if len(line) <= SMART_WRAP_SOFT_LIMIT:
-        return [line]
-    parts = _SENTENCE_END_RE.split(line)
-    out: list[str] = []
-    for p in parts:
-        p = p.strip()
-        if not p:
-            continue
-        if len(p) <= SMART_WRAP_HARD_LIMIT:
-            out.append(p)
-        else:
-            out.extend(_wrap_by_words(p, SMART_WRAP_HARD_LIMIT))
-    return out or [line]
+_HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
 
 
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
-    공식 API만 사용. lxml·OXML 직접 편집 금지.
+    공식 API 우선. 셀의 subList lineWrap 속성은 OWPML attribute setter 로
+    BREAK 로 변경 (한컴오피스의 셀 폭 끝 단어 단위 자동 wrap 활성).
 
     핵심 원칙:
-    1. 셀 내부 모든 paragraph의 모든 run text를 무조건 비움
-       (placeholder 흔적 완전 제거)
-    2. text 를 '\n' 기준으로 분할, 각 줄을 paragraph[i].runs[0] 에 1:1 매핑.
-       단, 다음 2중 게이트를 모두 만족하면 `_smart_wrap` 으로 추가 분할:
-         ① 텍스트에 `\n` 없음 (단일 줄 — multi-line 데이터는 의도 존중)
-         ② 텍스트 길이 > SOFT_LIMIT (짧은 셀은 손대지 않음)
-       SQUEEZE 압축으로 인한 글자 겹침 (PBL Ⅳ-1 훈련 목표 등) 회피.
-       multi-paragraph 템플릿 셀에 단일 줄 짧은 텍스트가 들어오면 그대로
-       paragraph[0] 에 기입 (회귀 없음). LLM 단일 줄 긴 텍스트가 들어오면
-       분할 후 paragraph[0..n] 에 분배 (양식이 multi-paragraph 의도).
+    1. 셀 내부 모든 paragraph 의 모든 run text 를 무조건 비움 (placeholder 흔적 완전 제거).
+    2. text 를 '\n' 기준으로 분할. 각 줄을 paragraph[i].runs[0] 에 1:1 매핑.
+       자동 분할 (구 `_smart_wrap`) 은 한국어 의미 단위·번호 매김·어미 무시
+       하고 강제 분할하여 문장 중간 끊김을 일으켰으므로 제거. 대신 셀 내부
+       subList 의 lineWrap 을 BREAK 로 설정해 한컴오피스가 셀 폭 끝에서 단어
+       단위 자연 wrap 하도록 위임.
     3. **줄 수 > 템플릿 paragraph 수** 인 경우 `cell.add_paragraph(...)` 로
-       부족한 paragraph 를 동적으로 추가 (이슈 #2 회귀 방지).
-       - 기존 동작: 마지막 paragraph 하나에 잉여 줄을 '\n' 으로 join → OWPML
-         의 `lineWrap="SQUEEZE"` 속성에 의해 좁은 셀 안에서 다중 라인이 압축
-         렌더되어 글자가 겹쳐 보이는 문제 (역량 모델링·훈련과정 상세 표).
-       - 새 동작: 1 줄 == 1 paragraph 의 1:1 매핑 보장.
+       부족한 paragraph 를 동적 추가 + 첫 paragraph 의 paraPrIDRef·
+       styleIDRef·charPrIDRef 를 명시 전달 (한컴오피스 폰트 일관성 보장 —
+       python-hwpx Cell.add_paragraph 는 None 전달 시 기본 글꼴로 폴백).
     4. 줄 수 <= 템플릿 paragraph 수 인 경우 남은 paragraph 는 빈 상태 유지.
+    5. (Phase E) 셀의 subList lineWrap 을 BREAK 로 설정. 양식 원본이 SQUEEZE
+       또는 누락 상태이면 한컴오피스가 셀 폭 초과 텍스트를 압축 렌더해 글자
+       겹침이 발생하므로, 단어 wrap 으로 강제 전환.
     """
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
         return
@@ -341,19 +280,13 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         for r in p.runs:
             r.text = ""
 
-    # Step 2: 입력 텍스트 정규화 + 자동 분할 게이트 (SQUEEZE 글자 겹침 회피)
+    # Step 2: 입력 텍스트 정규화 + 줄바꿈 분할 (자동 분할 비활성)
     text = text if text is not None else ""
-    if "\n" not in text and len(text) > SMART_WRAP_SOFT_LIMIT:
-        lines = _smart_wrap(text)
-    else:
-        lines = text.split("\n") if text else [""]
+    lines = text.split("\n") if text else [""]
 
     # Step 3: 줄 수가 paragraph 수보다 많으면 부족분을 동적 추가
     #   첫 paragraph 의 paraPrIDRef·styleIDRef·charPrIDRef 를 명시 전달하여
     #   한컴오피스 렌더링에서 같은 셀 안 줄별 폰트가 통일되도록 한다.
-    #   python-hwpx 의 Cell.add_paragraph 는 inherit_style 옵션이 없고
-    #   None 전달 시 paraPrIDRef 미설정 + charPrIDRef="0" 기본 글꼴로 폴백한다
-    #   (oxml/document.py:2130-2160 직접 확인).
     existing_paragraphs = list(cell.paragraphs)
     first_p = existing_paragraphs[0]
     first_para_id = first_p.para_pr_id_ref
@@ -373,6 +306,18 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         if not p.runs:
             continue
         p.runs[0].text = lines[i] if i < len(lines) else ""
+
+    # Step 5: 셀 subList 의 lineWrap 을 BREAK 로 설정 (한컴오피스 자동 단어 wrap)
+    #   양식 원본의 SQUEEZE 또는 누락 상태에서 발생하는 글자 겹침 회피.
+    #   python-hwpx 에 공식 setter 가 없어 OWPML subList element 의 lineWrap
+    #   속성을 직접 set. 실패 시 silent — 양식 의도 보존.
+    try:
+        cell._ensure_sublist()
+        sublist_elem = cell.element.find(f"{_HP_NS}subList")
+        if sublist_elem is not None and sublist_elem.get("lineWrap") != "BREAK":
+            sublist_elem.set("lineWrap", "BREAK")
+    except Exception:
+        pass
 
 
 def _replace_in_all_runs(doc, old: str, new: str) -> None:

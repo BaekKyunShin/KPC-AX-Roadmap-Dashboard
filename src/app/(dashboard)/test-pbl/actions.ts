@@ -66,7 +66,7 @@ function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
     },
     companyStatus: {
       business_issues: v2.businessIssues,
-      organization: v2.organization.orgTree.map((node, i) => ({
+      organization: (v2.organization?.orgTree ?? []).map((node, i) => ({
         id: `org-${i}`,
         department_name: node.name,
         tasks: node.children.map((c) => c.name),

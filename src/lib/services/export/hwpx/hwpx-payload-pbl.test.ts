@@ -609,7 +609,7 @@ describe('buildPBLHwpxPayload', () => {
     expect(payload.data.business_issues).toBe('수작업 비효율');
   });
 
-  it('V2 인터뷰 — Ⅱ analysis (companyIssues, organization, courseNecessity)', () => {
+  it('V2 인터뷰 — Ⅱ analysis (companyIssues, courseNecessity) — Phase E: organization 빈 객체', () => {
     const payload = buildPBLHwpxPayload({
       pbl: makePBL(),
       project: makeProject(),
@@ -617,9 +617,11 @@ describe('buildPBLHwpxPayload', () => {
     });
     expect(payload.data.company_issues).toBe('경영 이슈 본문 (V2)');
     expect(payload.data.course_necessity).toBe('AI 도입 필요성 본문');
-    // organization 은 V2 raw 구조 통째 전달
+    // Phase E: 조직 및 주요 업무는 인터뷰/결과/HWPX 3 계층에서 제거 (로드맵과 동일).
+    // 빈 객체로 송신해 Python 측 _fill_pbl_organization (disabled) 와 호환.
     const org = payload.data.organization as { orgTree: unknown[]; mainWork: unknown[] };
-    expect(org.mainWork).toHaveLength(2);
+    expect(org.orgTree).toEqual([]);
+    expect(org.mainWork).toEqual([]);
     expect(payload.data.hrd_report_attachment).toBe('https://x/hrd.pdf');
   });
 

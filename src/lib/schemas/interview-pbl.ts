@@ -702,8 +702,9 @@ export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
   companyIssues: z.string().min(1, '기업 경영 이슈(bullet 서술)를 입력하세요.'),
-  // Ⅱ-1-나 조직도 + 주요 업무
-  organization: PBLOrganizationSchema,
+  // Ⅱ-1-나 조직 및 주요 업무 — Phase E: 로드맵과 동일하게 인터뷰/결과/HWPX
+  // 3 계층에서 제거. schema 는 기존 DB 데이터 호환을 위해 optional 로 유지.
+  organization: PBLOrganizationSchema.optional(),
   // Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 6 영역 정형 구조)
   trainingEnv: PBLTrainingEnvSchema,
   // Ⅱ-3-가 HRD이음 PDF — 미첨부 허용 (null + undefined 모두 허용).

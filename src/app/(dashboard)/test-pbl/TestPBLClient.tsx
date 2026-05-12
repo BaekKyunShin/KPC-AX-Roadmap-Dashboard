@@ -27,7 +27,6 @@ import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { StepOverview } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOverview';
 import { StepCompanyIssues } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues';
-import { StepOrganization } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization';
 import { StepTrainingEnv } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv';
 import { StepCourseNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity';
 import { StepActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities';
@@ -45,7 +44,6 @@ import {
   PBL_AI_LEVEL_LABEL,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLOrganization,
   type PBLAILevel,
 } from '@/lib/schemas/interview-pbl';
 import { PBLResultClient } from '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient';
@@ -71,7 +69,6 @@ import {
 type StepId =
   | 'overview'
   | 'companyIssues'
-  | 'organization'
   | 'trainingEnv'
   | 'courseNecessity'
   | 'activities'
@@ -86,12 +83,11 @@ const STEPS: ReadonlyArray<{
 }> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
-  { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무' },
-  { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석' },
-  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성' },
-  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
-  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위' },
-  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
+  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석' },
+  { id: 4, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성' },
+  { id: 5, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
+  { id: 6, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위' },
+  { id: 7, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
 ];
 
 function emptyOverview(): PBLOverview {
@@ -107,15 +103,10 @@ function emptyOverview(): PBLOverview {
   };
 }
 
-function emptyOrganization(): PBLOrganization {
-  return { orgTree: [], mainWork: [] };
-}
-
 function emptyInitial(): Partial<PBLInterviewStrict> {
   return {
     ...emptyOverview(),
     companyIssues: '',
-    organization: emptyOrganization(),
     trainingEnv: {
       properTrainingHours: '',
       internalPlace: '',
@@ -248,7 +239,6 @@ function toInterviewSnapshot(
     },
     analysis: {
       companyIssues: interview.companyIssues,
-      organization: interview.organization,
       trainingEnv: interview.trainingEnv,
       hrdReportPdf: interview.hrdReportPdf,
       courseNecessity: interview.courseNecessity,
@@ -546,13 +536,6 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           <StepCompanyIssues
             value={data.companyIssues ?? ''}
             onChange={(next) => update({ companyIssues: next })}
-          />
-        );
-      case 'organization':
-        return (
-          <StepOrganization
-            value={data.organization ?? emptyOrganization()}
-            onChange={(next) => update({ organization: next })}
           />
         );
       case 'trainingEnv':

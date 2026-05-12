@@ -21,7 +21,6 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLOrganization,
   type PBLActivityRow,
   type PBLProblemDefinitionSheet,
   type PBLPriority,
@@ -35,7 +34,6 @@ import InterviewStepper from '../InterviewStepper';
 import { StepOverview } from './StepOverview';
 import { StepCompanyIssues } from './StepCompanyIssues';
 import { StepCourseNecessity } from './StepCourseNecessity';
-import { StepOrganization } from './StepOrganization';
 import { StepTrainingEnv } from './StepTrainingEnv';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
 import { StepActivities } from './StepActivities';
@@ -56,7 +54,6 @@ import { StepSttAttach } from '@/components/interview/StepSttAttach';
 export type PBLStepId =
   | 'overview'
   | 'companyIssues'
-  | 'organization'
   | 'trainingEnv'
   | 'hrdReport'
   | 'courseNecessity'
@@ -79,18 +76,17 @@ interface StepDef {
 export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
-  { id: 3, stepId: 'organization', shortName: 'Ⅱ-1-나', name: '조직 및 주요 업무', required: true },
-  { id: 4, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
+  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2', name: '훈련환경 분석', required: true },
   // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
-  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
+  { id: 4, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
   // Stepper 라벨 13자 → 6자 단축
-  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
-  { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
+  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
+  { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   // Stepper 라벨 10자 → 7자 단축
-  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
-  { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
+  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
+  { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
   // Stepper 라벨 10자 → 6자 단축
-  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
+  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
 ];
 
 // ============================================================================
@@ -107,13 +103,6 @@ function emptyOverview(): PBLOverview {
     trainingForm: '',
     trainingPeriod: '',
     businessIssues: '',
-  };
-}
-
-function emptyOrganization(): PBLOrganization {
-  return {
-    orgTree: [],
-    mainWork: [],
   };
 }
 
@@ -175,7 +164,6 @@ export function PBLInterviewClient({
   const updateAnalysis = useCallback(
     (patch: {
       companyIssues?: string;
-      organization?: PBLInterviewStrict['organization'];
       // R8 PBL-자체-02 — string → 정형 객체
       trainingEnv?: PBLInterviewStrict['trainingEnv'];
       hrdReportPdf?: PBLInterviewStrict['hrdReportPdf'];
@@ -379,13 +367,6 @@ export function PBLInterviewClient({
             onChange={(next) => updateAnalysis({ courseNecessity: next })}
           />
         );
-      case 'organization':
-        return (
-          <StepOrganization
-            value={data.organization ?? emptyOrganization()}
-            onChange={(next) => updateAnalysis({ organization: next })}
-          />
-        );
       case 'trainingEnv':
         return (
           <StepTrainingEnv
@@ -489,7 +470,7 @@ export function PBLInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI PBL 인터뷰"
-        description="산인공 양식 2 9개 장과 선택 항목인 STT 첨부를 포함해 총 10개 스텝으로 진행합니다."
+        description="산인공 양식 2 8개 장과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
       />
 
       <InterviewStepper
@@ -554,5 +535,4 @@ export function PBLInterviewClient({
 
 export const __testing = {
   emptyOverview,
-  emptyOrganization,
 };

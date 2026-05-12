@@ -108,54 +108,12 @@ def test_set_cell_text_empty_text_keeps_paragraph_count():
 
 
 # ---------------------------------------------------------------
-# _smart_wrap 단위 테스트 (Task 2 — SQUEEZE 글자 겹침 회피)
+# 기본 동작 회귀 (Phase E — 자동 분할 비활성, 줄바꿈 보존)
 # ---------------------------------------------------------------
 
-from generate import _smart_wrap, SMART_WRAP_SOFT_LIMIT, SMART_WRAP_HARD_LIMIT  # noqa: E402
 
-
-def test_smart_wrap_short_sentence_no_split():
-    """SOFT_LIMIT 미만 단일 문장 → 분할 없음."""
-    text = "짧은 한 문장입니다."
-    assert len(text) < SMART_WRAP_SOFT_LIMIT
-    assert _smart_wrap(text) == [text]
-
-
-def test_smart_wrap_long_with_periods_sentence_split():
-    """100자 텍스트, 마침표 2 개 → 마침표 직후 분할. 각 조각 HARD_LIMIT 이하."""
-    text = (
-        "첫 문장은 충분히 긴 분석 결과 내용이며 SQUEEZE 압축 임계를 초과합니다. "
-        "두 번째 문장도 동일한 길이로 자연스러운 호흡 단위를 가집니다."
-    )
-    assert len(text) > SMART_WRAP_SOFT_LIMIT
-    result = _smart_wrap(text)
-    assert len(result) >= 2, f"마침표 기반 분할 실패: {result}"
-    assert all(len(p) <= SMART_WRAP_HARD_LIMIT + 5 for p in result)
-
-
-def test_smart_wrap_long_no_period_word_boundary_fallback():
-    """100자+, 마침표 없음 → 공백 어절 경계로 분할. 단어 보존."""
-    text = (
-        "공정 불량 원인 분석에 AI 도구를 활용해 데이터 정제와 시각화 보고서 "
-        "자동 생성 그리고 표준 템플릿 기반 AI 초안 작성 그리고 담당자 검토 후 확정"
-    )
-    assert len(text) > SMART_WRAP_HARD_LIMIT
-    result = _smart_wrap(text)
-    assert len(result) >= 2, f"어절 경계 분할 실패: {result}"
-    # 합치면 원본과 동일 (공백 손실 없음)
-    assert " ".join(result).replace("  ", " ").strip() == text.strip().replace("  ", " ")
-
-
-def test_smart_wrap_very_long_no_space_force_glyph_split():
-    """공백·마침표 없는 200자 단일 토큰 → 글자 단위 강제 분할. 모든 조각 HARD_LIMIT 이하."""
-    text = "가" * 200
-    result = _smart_wrap(text)
-    assert len(result) >= 4, f"강제 글자 분할 실패: paragraph={len(result)}"
-    assert all(len(p) <= SMART_WRAP_HARD_LIMIT for p in result)
-
-
-def test_set_cell_text_existing_newline_preserved_no_smart_wrap():
-    """이미 \\n 포함된 multi-line 텍스트 → _smart_wrap 비활성, 줄 그대로 매핑."""
+def test_set_cell_text_existing_newline_preserved():
+    """\\n 포함된 multi-line 텍스트 → 줄 그대로 paragraph 분배."""
     doc = _open_template()
     tables = _gather_tables(doc)
     tbl = tables[22]  # 역량 모델링 셀
@@ -168,17 +126,16 @@ def test_set_cell_text_existing_newline_preserved_no_smart_wrap():
     )
 
 
-def test_set_cell_text_short_single_line_keeps_paragraph_unchanged():
-    """SOFT_LIMIT 이하 단일 줄은 자동 분할 발동 안 함 (기존 동작 유지)."""
+def test_set_cell_text_short_single_line_kept_as_one_paragraph():
+    """짧은 단일 줄 → 자동 분할 없이 paragraph[0] 에 그대로 기입."""
     doc = _open_template()
     tables = _gather_tables(doc)
     tbl = tables[22]
     short_text = "짧은 한 줄"
-    assert len(short_text) < SMART_WRAP_SOFT_LIMIT
     _set_cell_text(tbl, 2, 2, short_text)
     paragraphs_text = _cell_paragraphs_text(tbl, 2, 2)
     assert paragraphs_text[0] == short_text
-    # 나머지 paragraph 는 빈 채 유지 (분할 없음)
+    # 나머지 paragraph 는 빈 채 유지
     assert all(t == "" for t in paragraphs_text[1:])
 
 
@@ -225,20 +182,85 @@ def test_set_cell_text_added_paragraph_inherits_char_pr_id_ref():
         )
 
 
-def test_set_cell_text_smart_wrap_split_inherits_style():
-    """_smart_wrap 으로 SOFT_LIMIT 초과 단일 줄을 분할해 추가한 paragraph 도 상속."""
+def test_set_cell_text_multiline_added_paragraphs_inherit_style():
+    """`\\n` 으로 추가된 multi-paragraph 가 모두 첫 paragraph 의 paraPrIDRef 를 상속."""
     doc = _open_template()
     tbl = _gather_tables(doc)[22]
     first_id = tbl.cell(2, 2).paragraphs[0].para_pr_id_ref
-    long_text = "긴 문장을 마침표 없이 연속해서 작성한 LLM 출력의 모사 예시 " * 3
-    assert len(long_text) > SMART_WRAP_SOFT_LIMIT
+
+    _set_cell_text(tbl, 2, 2, "줄 1\n줄 2\n줄 3\n줄 4")
+
+    paragraphs = list(tbl.cell(2, 2).paragraphs)
+    assert len(paragraphs) == 4
+    for i, p in enumerate(paragraphs[1:], start=1):
+        assert p.para_pr_id_ref == first_id, (
+            f"새 paragraph[{i}].para_pr_id_ref={p.para_pr_id_ref!r} ≠ {first_id!r}"
+        )
+
+
+# ---------------------------------------------------------------
+# Phase E — _smart_wrap 제거 + 셀 lineWrap=BREAK 동적 설정 회귀
+#
+# 사용자가 시각 검증으로 발견: _smart_wrap 이 한국어 문장의 의미 단위·번호
+# 매김 (①②③)·어미 무시하고 공백 어절 경계로 강제 분할 → 문장 중간 끊김 광범위.
+# 해결: 자동 분할 비활성화 + 셀의 OWPML lineWrap 속성을 BREAK 로 설정해
+# 한컴오피스가 셀 폭에서 단어 단위 자연 wrap 하도록 함.
+# ---------------------------------------------------------------
+
+
+_HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+
+
+def _cell_line_wrap(tbl, row: int, col: int) -> str | None:
+    """셀 내부 subList element 의 lineWrap 속성을 반환."""
+    cell = tbl.cell(row, col)
+    sublist = cell.element.find(f"{_HP_NS}subList")
+    return sublist.get("lineWrap") if sublist is not None else None
+
+
+def test_set_cell_text_long_single_line_keeps_one_paragraph_with_line_wrap_break():
+    """60+ 자 단일 줄 → 자동 분할 안 함, 1 paragraph 유지 + 셀 lineWrap=BREAK.
+
+    회귀: _smart_wrap 알고리즘이 한국어 문장의 의미 단위를 무시하고 강제
+    분할하여 문장 중간 끊김 발생. 해결로 단일 paragraph 유지하고 한컴오피스
+    가 셀 폭에서 단어 단위 자연 wrap 하도록 lineWrap=BREAK 설정.
+    """
+    doc = _open_template()
+    tbl = _gather_tables(doc)[22]  # 역량 모델링 — 1-paragraph 셀
+    long_text = (
+        "ChatGPT, Claude, Notebook 도구로 데이터 분석·보고 자동화 루틴을 "
+        "조직 내부에 내재화하는 것을 목표로 한다."
+    )
+    assert len(long_text) > 60, f"전제: 60자 초과 ({len(long_text)})"
 
     _set_cell_text(tbl, 2, 2, long_text)
 
     paragraphs = list(tbl.cell(2, 2).paragraphs)
-    assert len(paragraphs) >= 2, f"_smart_wrap 분할 실패: {len(paragraphs)}"
-    for i, p in enumerate(paragraphs[1:], start=1):
-        assert p.para_pr_id_ref == first_id, (
-            f"_smart_wrap 으로 추가된 paragraph[{i}].para_pr_id_ref="
-            f"{p.para_pr_id_ref!r} ≠ {first_id!r}"
-        )
+    assert len(paragraphs) == 1, (
+        f"단일 paragraph 유지 실패 (강제 분할 됨): {len(paragraphs)}개"
+    )
+    assert paragraphs[0].runs[0].text == long_text, (
+        f"텍스트 손실: {paragraphs[0].runs[0].text!r}"
+    )
+    assert _cell_line_wrap(tbl, 2, 2) == "BREAK", (
+        f"셀 lineWrap 이 BREAK 아님: {_cell_line_wrap(tbl, 2, 2)!r}"
+    )
+
+
+def test_set_cell_text_existing_newline_creates_paragraphs_with_line_wrap_break():
+    """\\n 다수 → multi-paragraph 유지 + 모든 paragraph 의 셀 lineWrap=BREAK.
+
+    `\\n` 분할은 의도된 줄바꿈이므로 그대로 paragraph 분배. 셀 lineWrap 은
+    BREAK 로 설정하여 각 paragraph 가 셀 폭 초과 시 자연 단어 wrap.
+    """
+    doc = _open_template()
+    tbl = _gather_tables(doc)[22]
+    multiline = "첫 줄 텍스트\n둘째 줄 텍스트\n셋째 줄 텍스트"
+
+    _set_cell_text(tbl, 2, 2, multiline)
+
+    paragraphs = list(tbl.cell(2, 2).paragraphs)
+    assert len(paragraphs) == 3, f"3 줄 multi-paragraph 분배 실패: {len(paragraphs)}"
+    texts = [p.runs[0].text if p.runs else "" for p in paragraphs]
+    assert texts == ["첫 줄 텍스트", "둘째 줄 텍스트", "셋째 줄 텍스트"]
+    assert _cell_line_wrap(tbl, 2, 2) == "BREAK"

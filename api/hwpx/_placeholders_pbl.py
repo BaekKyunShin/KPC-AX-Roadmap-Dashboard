@@ -642,10 +642,66 @@ def build_pbl_table_rows(data: dict, key: str) -> list[dict]:
         return rows
 
     if key == "activities":
-        # V2 P-08 (PR #5 Phase F-4): activities[] {round, date, content, method,
-        #   participants: {pm, external_expert, internal_expert, jurisdiction_manager}}
-        # 기존 string 형 데이터 호환 — string 이면 PM 에 통째로 채움.
+        # 양식 P-08 Ⅲ-1 수행활동 — 양식 13×6 = 차수당 4 역할 (PM/외부/내부/주치의).
+        # 두 입력 schema 지원:
+        #   (A) V2 평면 배열 (PR #84 Phase E, `PBLActivityRowSchema`):
+        #       `{round, role, personName, date, content, method}` 항목들이
+        #       4 role × N round 으로 평면 분배. `role` enum 키 감지로 분기.
+        #   (B) Legacy dict participants 통합 형식 (fixture·이전 V1):
+        #       `{round, date, content, method, participants: {pm, ...}}`.
+        # 결과 row 는 항상 (B) 형식으로 정규화 — `_fill_pbl_performance_activities`
+        # 는 round 당 1 row + dict participants 4 person 을 기대.
         items = data.get("activities") or []
+
+        # V2 평면 감지: 첫 항목에 `role` 키 존재
+        is_v2_flat = bool(items) and isinstance(items[0], dict) and "role" in items[0]
+
+        if is_v2_flat:
+            # round 별 그룹핑 + role → participants 매핑
+            role_to_key = {
+                "PM": "pm",
+                "EXTERNAL_EXPERT": "external_expert",
+                "INTERNAL_EXPERT": "internal_expert",
+                "JURISDICTION_MANAGER": "jurisdiction_manager",
+            }
+            by_round: dict[int, dict] = {}
+            for item in items:
+                round_num = item.get("round")
+                if round_num is None:
+                    continue
+                if round_num not in by_round:
+                    by_round[round_num] = {
+                        "round": round_num,
+                        "date": _str_or_empty(item.get("date")),
+                        "content": _str_or_empty(item.get("content")),
+                        "method": _str_or_empty(item.get("method")),
+                        "participants": {
+                            "pm": "",
+                            "external_expert": "",
+                            "internal_expert": "",
+                            "jurisdiction_manager": "",
+                        },
+                    }
+                else:
+                    # 같은 round 의 빈 메타 (date/content/method) 를 다른 항목이
+                    # 보유한 경우 채움 — round 단위 단일 값 보장.
+                    grp = by_round[round_num]
+                    for meta_key in ("date", "content", "method"):
+                        if not grp[meta_key]:
+                            grp[meta_key] = _str_or_empty(item.get(meta_key))
+                role_key = role_to_key.get(item.get("role", ""))
+                person = _str_or_empty(item.get("personName") or item.get("person_name"))
+                if role_key and person:
+                    by_round[round_num]["participants"][role_key] = person
+            # round 번호 순으로 정렬 + 라벨화
+            normalized = []
+            for round_num in sorted(by_round.keys()):
+                entry = by_round[round_num]
+                entry["round"] = f"{round_num}차"
+                normalized.append(entry)
+            return normalized
+
+        # Legacy dict participants 형식
         rows = []
         for i in items:
             raw_round = i.get("round")

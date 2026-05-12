@@ -203,8 +203,10 @@ function buildDataFromV2(
 
     // ==================== Ⅱ. 훈련 요구 분석 ====================
     company_issues: v2.companyIssues ?? '',
-    // V2 organization { orgTree, mainWork[] } 통째 전달 — Python 측에서 flatten
-    organization: v2.organization ?? { orgTree: [], mainWork: [] },
+    // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서
+    // 제거. Python 측 _fill_pbl_organization 은 disabled 상태로 유지되어 빈 객체
+    // 송신해도 안전 (양식 P-04 표는 한컴오피스 사용자 작성 영역).
+    organization: { orgTree: [], mainWork: [] },
     // R8 PBL-자체-02 — V2 trainingEnv 정형 객체 → P-05 6 셀 매핑.
     // 6 영역 데이터를 양식 6 셀 (사내/사외 × status/capability/facility) 로 재배열.
     ...buildTrainingEnvP05(v2.trainingEnv),
