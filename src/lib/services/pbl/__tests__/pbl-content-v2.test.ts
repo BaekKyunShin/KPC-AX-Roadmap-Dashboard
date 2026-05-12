@@ -13,6 +13,7 @@ import { pblContentSchema } from '../pbl-validator';
 import { buildPBLSystemPrompt, buildPBLUserPrompt } from '../pbl-prompts';
 import { TRAINING_GOAL_CATEGORIES } from '../pbl-types';
 import sampleFixture from '../__fixtures__/sample-llm-response.json';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 // ============================================================================
 // 1. fixture safeParse — pblContentSchema (Ⅴ장 포함)
@@ -200,36 +201,8 @@ describe('TRAINING_GOAL_CATEGORIES 상수', () => {
 // ============================================================================
 
 describe('buildPBLUserPrompt — Ⅴ장 생성 요청 포함', () => {
-  const fakeInterview = {
-    courseOverview: {
-      company_name: '테스트제조(주)',
-      course_name: 'AI 품질검사 자동화 과정',
-      training_hours: 32,
-      trainee_count: 5,
-      training_job: '품질 관리',
-      ai_level: 'AI탐구형',
-      training_goals: ['불량률 감소'],
-    },
-    companyStatus: { business_issues: '불량률 문제', organization: [] },
-    trainingEnvironment: {
-      proper_training_hours: 32,
-      training_place: { types: ['사내'], location: '본사', special_notes: '' },
-      internal_instructor: { used: false, name: '', position: '' },
-      target_count: 5,
-      target_characteristics: { career: '3년 이상', level: '초급' },
-      ai_infrastructure: { ai_tools: '가능', network: '양호', pc_count: 10, etc_equipment: '' },
-      training_needs_analysis: 'AI 도구 실무 적용',
-      expectation: { as_is: '수동 검사', to_be: 'AI 자동화' },
-    },
-    hrdNecessity: { course_development_necessity: 'AI 과정 필요', training_history: [], recommendations: [] },
-    performanceActivities: { performance_activities: [] },
-    problemDefinition: {
-      problem_definition: { background: '', core_problem: '', scope: '', constraints: '' },
-      problem_priorities: [],
-    },
-    targetTasks: { target_tasks: [], selection_reason: '', target_task_details: [] },
-    aiLevelDiagnosis: { current_ai_level: 'AI탐구형', expected_ai_level: 'AI활용형', improvement_reason: '훈련 후 역량 향상' },
-  };
+  // V2 (PBLInterviewStrict, flat camelCase) 정본 fixture 사용.
+  const fakeInterview = PBL_INTERVIEW_SAMPLE as unknown as Record<string, unknown>;
 
   it('프롬프트에 Ⅴ장 생성 요청 문구가 포함된다', () => {
     const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');

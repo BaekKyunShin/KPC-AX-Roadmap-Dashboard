@@ -15,12 +15,8 @@ import {
 } from '@/lib/schemas/interview-roadmap';
 import { extractTextFromAttachment } from '@/lib/services/file-parser';
 import {
-  pblInterviewSchema,
-  pblInterviewAutoSaveSchema,
   PBLInterviewStrictSchema,
   PBLInterviewAutoSaveSchema,
-  type PBLInterviewInput,
-  type PBLInterviewAutoSaveInput,
   type PBLInterviewStrict,
 } from '@/lib/schemas/interview-pbl';
 import {
@@ -647,133 +643,6 @@ export async function fetchPBLInterview(
     return { pbl_data: (interview.pbl_data as Record<string, unknown> | null) ?? {} };
   } catch {
     return null;
-  }
-}
-
-/**
- * PBL 인터뷰 저장 (OFA-08 산인공 양식 2번)
- *
- * 5단계 패턴: 인증·역할 → track=PBL 가드 → Zod 검증 → admin 저장 → 상태 전이 + 감사로그
- */
-export async function savePBLInterview(
-  projectId: string,
-  data: PBLInterviewInput | PBLInterviewAutoSaveInput,
-  options?: { autoSave?: boolean },
-): Promise<SimpleActionResult> {
-  try {
-    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
-      roleError: '컨설턴트만 인터뷰를 입력할 수 있습니다.',
-    });
-    if ('error' in auth) return { success: false, error: auth.error };
-    const { user, supabase } = auth;
-
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode')
-      .eq('id', projectId)
-      .eq('assigned_consultant_id', user.id)
-      .single();
-
-    if (!projectData) {
-      return { success: false, error: '해당 프로젝트에 대한 접근 권한이 없습니다.' };
-    }
-    if (projectData.track !== 'PBL') {
-      return { success: false, error: '로드맵 트랙 프로젝트는 로드맵 인터뷰 화면을 사용해야 합니다.' };
-    }
-
-    const schema = options?.autoSave ? pblInterviewAutoSaveSchema : pblInterviewSchema;
-    const validation = schema.safeParse(data);
-    if (!validation.success) {
-      // #001 — 모든 zod 에러를 join 해 사용자가 비어있는 필드를 한 번에 파악할 수 있게 한다.
-      // 클라이언트 측 RoadmapInterviewClient.tsx 의 동일 패턴과 일관성 유지.
-      const messages = validation.error.errors
-        .map((e) => e.message)
-        .filter((m) => Boolean(m?.trim()))
-        .slice(0, 5);
-      return {
-        success: false,
-        error: messages.length > 0 ? messages.join('\n') : '필수 입력 항목을 확인해주세요.',
-      };
-    }
-    const validated = validation.data;
-
-    const adminSupabase = createAdminClient();
-
-    const { data: existing, error: fetchError } = await adminSupabase
-      .from('interviews')
-      .select('id')
-      .eq('project_id', projectId)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error('[savePBLInterview] Fetch:', fetchError.message);
-      return { success: false, error: '기존 인터뷰 확인에 실패했습니다.' };
-    }
-
-    if (existing) {
-      const { error: updateError } = await adminSupabase
-        .from('interviews')
-        .update({ pbl_data: validated })
-        .eq('id', existing.id);
-      if (updateError) {
-        console.error('[savePBLInterview] Update:', updateError.message);
-        return { success: false, error: 'PBL 인터뷰 수정에 실패했습니다.' };
-      }
-    } else {
-      const { error: insertError } = await adminSupabase.from('interviews').insert({
-        project_id: projectId,
-        interviewer_id: user.id,
-        pbl_data: validated,
-      });
-      if (insertError) {
-        console.error('[savePBLInterview] Insert:', insertError.message);
-        return { success: false, error: 'PBL 인터뷰 저장에 실패했습니다.' };
-      }
-    }
-
-    let statusTransitioned = false;
-    if (!options?.autoSave && validateStatusTransition(projectData.status, 'INTERVIEWED')) {
-      await adminSupabase
-        .from('projects')
-        .update({ status: 'INTERVIEWED' })
-        .eq('id', projectId);
-      statusTransitioned = true;
-    }
-
-    after(async () => {
-      if (statusTransitioned && !projectData.is_test_mode) {
-        await createNotificationForAdmins({
-          type: 'interview_complete',
-          title: 'PBL 인터뷰 완료',
-          message: `${projectData.company_name || '(알 수 없는 기업)'} PBL 프로젝트 인터뷰가 완료되었습니다.`,
-          link: `/ops/projects/${projectId}`,
-        });
-      }
-
-      await createAuditLog({
-        actorUserId: user.id,
-        action: 'PBL_INTERVIEW_SAVED',
-        targetType: 'interview',
-        targetId: projectId,
-        meta: {
-          track: 'PBL',
-          auto_save: Boolean(options?.autoSave),
-        },
-      });
-
-      if (!options?.autoSave) {
-        await insertSystemActivityLog(
-          projectId,
-          user.id,
-          'PBL 인터뷰가 저장되었습니다.',
-        );
-      }
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('[savePBLInterview Error]', error);
-    return { success: false, error: 'PBL 인터뷰 저장 중 오류가 발생했습니다.' };
   }
 }
 
