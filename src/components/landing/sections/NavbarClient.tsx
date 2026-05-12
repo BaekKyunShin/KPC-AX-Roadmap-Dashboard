@@ -12,6 +12,16 @@ import { Logo } from '@/components/ui/logo';
 
 interface NavbarClientProps {
   isLoggedIn: boolean;
+  /**
+   * 대시보드 버튼이 이동할 경로. Navbar 서버 컴포넌트가 사용자 역할을 조회해
+   * 역할별 목적지(/ops/projects · /consultant/home 등)를 직접 전달하면,
+   * /dashboard 서버 redirect 체인을 우회한다. 미전달 시 기존 동작(/dashboard).
+   *
+   * 우회 이유: Next.js 16 의 내부 Router 컴포넌트가 mpaNavigation flag 조건부
+   * throw 로 인해 hook 호출 개수 mismatch (react.dev/errors/310) 를 일으키는
+   * 경로 전환이 일부 환경에서 발생한다. 직접 링크는 그 트리거 자체를 회피한다.
+   */
+  dashboardHref?: string;
 }
 
 // ============================================================================
@@ -80,12 +90,13 @@ interface AuthButtonsProps {
   isLoggedIn: boolean;
   variant: 'desktop' | 'mobile';
   onNavigate?: () => void;
+  dashboardHref: string;
 }
 
-function AuthButtons({ isLoggedIn, variant, onNavigate }: AuthButtonsProps) {
+function AuthButtons({ isLoggedIn, variant, onNavigate, dashboardHref }: AuthButtonsProps) {
   if (isLoggedIn) {
     return (
-      <Link href="/dashboard" onClick={onNavigate}>
+      <Link href={dashboardHref} onClick={onNavigate}>
         <Button
           className={
             variant === 'desktop'
@@ -132,9 +143,10 @@ interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
   isLoggedIn: boolean;
+  dashboardHref: string;
 }
 
-function MobileMenu({ isOpen, onClose, isLoggedIn }: MobileMenuProps) {
+function MobileMenu({ isOpen, onClose, isLoggedIn, dashboardHref }: MobileMenuProps) {
   return (
     <div
       className={`md:hidden overflow-hidden ${MOBILE_MENU_TRANSITION} ${
@@ -152,7 +164,12 @@ function MobileMenu({ isOpen, onClose, isLoggedIn }: MobileMenuProps) {
 
         {/* CTA Buttons */}
         <div className="border-t border-gray-200 bg-gray-50 px-4 py-4 flex flex-col gap-3">
-          <AuthButtons isLoggedIn={isLoggedIn} variant="mobile" onNavigate={onClose} />
+          <AuthButtons
+            isLoggedIn={isLoggedIn}
+            variant="mobile"
+            onNavigate={onClose}
+            dashboardHref={dashboardHref}
+          />
         </div>
       </div>
     </div>
@@ -163,7 +180,10 @@ function MobileMenu({ isOpen, onClose, isLoggedIn }: MobileMenuProps) {
 // 메인 컴포넌트
 // ============================================================================
 
-export default function NavbarClient({ isLoggedIn }: NavbarClientProps) {
+export default function NavbarClient({
+  isLoggedIn,
+  dashboardHref = '/dashboard',
+}: NavbarClientProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -233,7 +253,11 @@ export default function NavbarClient({ isLoggedIn }: NavbarClientProps) {
 
             {/* Desktop CTA */}
             <div className="hidden md:flex items-center gap-3" data-testid="desktop-cta">
-              <AuthButtons isLoggedIn={isLoggedIn} variant="desktop" />
+              <AuthButtons
+                isLoggedIn={isLoggedIn}
+                variant="desktop"
+                dashboardHref={dashboardHref}
+              />
             </div>
 
             {/* Mobile Menu Button */}
@@ -254,7 +278,12 @@ export default function NavbarClient({ isLoggedIn }: NavbarClientProps) {
         </div>
 
         {/* Mobile Menu */}
-        <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} isLoggedIn={isLoggedIn} />
+        <MobileMenu
+          isOpen={isMobileMenuOpen}
+          onClose={closeMobileMenu}
+          isLoggedIn={isLoggedIn}
+          dashboardHref={dashboardHref}
+        />
       </nav>
     </header>
   );

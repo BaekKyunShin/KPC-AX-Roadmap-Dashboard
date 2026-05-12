@@ -97,10 +97,24 @@ describe('NavbarClient', () => {
       expect(screen.getAllByText('대시보드').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('대시보드 버튼이 /dashboard로의 링크를 가진다', () => {
+    it('dashboardHref 미지정 시 대시보드 버튼이 /dashboard fallback 으로 링크된다', () => {
       render(<NavbarClient isLoggedIn={true} />);
       const dashLinks = screen.getAllByText('대시보드').map((el) => el.closest('a'));
       const dashLink = dashLinks.find((a) => a?.getAttribute('href') === '/dashboard');
+      expect(dashLink).toBeTruthy();
+    });
+
+    it('OPS_ADMIN dashboardHref (/ops/projects) 가 전달되면 대시보드 버튼이 해당 경로로 링크된다', () => {
+      render(<NavbarClient isLoggedIn={true} dashboardHref="/ops/projects" />);
+      const dashLinks = screen.getAllByText('대시보드').map((el) => el.closest('a'));
+      const dashLink = dashLinks.find((a) => a?.getAttribute('href') === '/ops/projects');
+      expect(dashLink).toBeTruthy();
+    });
+
+    it('CONSULTANT_APPROVED dashboardHref (/consultant/home) 가 전달되면 대시보드 버튼이 해당 경로로 링크된다', () => {
+      render(<NavbarClient isLoggedIn={true} dashboardHref="/consultant/home" />);
+      const dashLinks = screen.getAllByText('대시보드').map((el) => el.closest('a'));
+      const dashLink = dashLinks.find((a) => a?.getAttribute('href') === '/consultant/home');
       expect(dashLink).toBeTruthy();
     });
 
@@ -156,7 +170,7 @@ describe('NavbarClient', () => {
   });
 
   describe('모바일 메뉴 로그인 상태', () => {
-    it('로그인 상태에서 모바일 메뉴에도 대시보드 버튼이 포함된다', async () => {
+    it('로그인 상태에서 모바일 메뉴에도 대시보드 버튼이 포함된다 (fallback /dashboard)', async () => {
       const user = userEvent.setup();
       render(<NavbarClient isLoggedIn={true} />);
 
@@ -165,6 +179,19 @@ describe('NavbarClient', () => {
       const mobileMenu = screen.getByTestId('mobile-menu');
       const dashLink = Array.from(mobileMenu.querySelectorAll('a')).find(
         (a) => a.getAttribute('href') === '/dashboard',
+      );
+      expect(dashLink).toBeTruthy();
+    });
+
+    it('OPS_ADMIN dashboardHref 가 전달되면 모바일 메뉴 대시보드 버튼도 동일 경로로 링크된다', async () => {
+      const user = userEvent.setup();
+      render(<NavbarClient isLoggedIn={true} dashboardHref="/ops/projects" />);
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+
+      const mobileMenu = screen.getByTestId('mobile-menu');
+      const dashLink = Array.from(mobileMenu.querySelectorAll('a')).find(
+        (a) => a.getAttribute('href') === '/ops/projects',
       );
       expect(dashLink).toBeTruthy();
     });
