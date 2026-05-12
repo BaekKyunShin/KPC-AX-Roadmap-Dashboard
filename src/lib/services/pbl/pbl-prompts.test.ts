@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPBLSystemPrompt, buildPBLUserPrompt } from './pbl-prompts';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 describe('buildPBLSystemPrompt', () => {
   it('평가방법 3종이 모두 포함된다', () => {
@@ -37,77 +38,9 @@ describe('buildPBLSystemPrompt', () => {
 });
 
 describe('buildPBLUserPrompt', () => {
-  const fakeInterview = {
-    courseOverview: {
-      company_name: '테스트 기업',
-      course_name: 'AI 활용 업무 혁신 과정',
-      training_hours: 32,
-      trainee_count: 5,
-      training_job: '생산 관리',
-      ai_level: 'AI탐구형',
-      training_goals: ['기술문제 해결'],
-    },
-    companyStatus: {
-      business_issues: '불량률 증가로 인한 생산성 저하',
-      organization: [{ id: '1', department_name: '생산부', tasks: ['품질 검사'] }],
-    },
-    trainingEnvironment: {
-      proper_training_hours: 32,
-      training_place: { types: ['사내'], location: '본사 2층', special_notes: '' },
-      internal_instructor: { used: true, name: '홍길동', position: '과장' },
-      target_count: 5,
-      target_characteristics: { career: '5년 이상', level: '중급' },
-      ai_infrastructure: { ai_tools: '가능', network: '양호', pc_count: 10, etc_equipment: '' },
-      training_needs_analysis: 'AI 품질 검사 도구 도입 필요',
-      expectation: { as_is: '수동 검사 의존', to_be: 'AI 자동화 검사 도입' },
-    },
-    hrdNecessity: {
-      course_development_necessity: '현장 맞춤형 AI 과정 개발 필요',
-      training_history: [],
-      recommendations: [],
-    },
-    performanceActivities: {
-      performance_activities: [
-        {
-          id: '1',
-          round: 1,
-          date: '2026-04-01',
-          content: '현장 인터뷰',
-          method: '대면 인터뷰',
-          operation_mode: '대면',
-          participants: { pm: '김PM', external_expert: '', internal_expert: '이내부', jurisdiction_manager: '' },
-        },
-      ],
-    },
-    problemDefinition: {
-      problem_definition: {
-        background: '불량률 높음',
-        core_problem: 'AI 품질 검사 미적용',
-        scope: '생산부 전체',
-        constraints: '예산 제한',
-      },
-      problem_priorities: [{ id: '1', problem_name: '불량 검사 자동화', priority: 1, selected: true }],
-    },
-    targetTasks: {
-      target_tasks: [{ id: '1', task_name: '품질 검사', necessity: 5, selected: true }],
-      selection_reason: 'AI 적용 시 효과가 크고 즉시 개선 가능',
-      target_task_details: [
-        {
-          id: '1',
-          task_name: '품질 검사',
-          as_is: '수동 육안 검사',
-          to_be: 'AI 이미지 인식 검사',
-          required_knowledge: '머신러닝 기초',
-          required_skill: 'AI 도구 활용',
-        },
-      ],
-    },
-    aiLevelDiagnosis: {
-      current_ai_level: 'AI탐구형',
-      expected_ai_level: 'AI활용형',
-      improvement_reason: '훈련 후 실무 적용 가능 수준 도달',
-    },
-  };
+  // V2 (PBLInterviewStrict, flat camelCase) — 인터뷰 제출(`submitPBLInterviewV2`)이
+  // 저장하는 정본 모양과 동일하다.
+  const fakeInterview = PBL_INTERVIEW_SAMPLE as unknown as Record<string, unknown>;
 
   it('예외 없이 문자열을 반환한다', () => {
     const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
@@ -157,75 +90,46 @@ describe('buildPBLUserPrompt', () => {
     expect(result).toContain('AI 교육');
   });
 
-  // ISSUE-14 PBL 확장: Ⅱ-3-가 HRD이음 첨부 본문을 프롬프트에 병합
+  // ISSUE-14 PBL 확장: Ⅱ-3-가 HRD이음 첨부 본문을 프롬프트에 병합 (V2 hrdReportPdf).
   describe('Ⅱ-3-가 HRD이음 보고서 첨부 통합 (ISSUE-14 PBL)', () => {
-    it('extracted_text 가 있으면 attachment_body 태그로 본문이 포함된다', () => {
+    it('extractedText 가 있으면 본문이 프롬프트에 포함된다', () => {
       const interview = {
         ...fakeInterview,
-        hrdNecessity: {
-          ...fakeInterview.hrdNecessity,
-          hrd_report_attachment: {
-            storage_path: 'p/note-x.pdf',
-            file_name: 'HRD이음 결과 2026.pdf',
-            mime_type: 'application/pdf',
-            size: 512000,
-            extracted_text: '본 보고서는 스마트팩토리 도입 컨설팅 요약임.',
-          },
+        hrdReportPdf: {
+          fileName: 'HRD이음 결과 2026.pdf',
+          url: 'https://example/p/note-x.pdf',
+          size: 512000,
+          extractedText: '본 보고서는 스마트팩토리 도입 컨설팅 요약임.',
         },
       };
       const result = buildPBLUserPrompt(interview, {}, null, '요약');
       expect(result).toContain('Ⅱ-3-가. 기업HRD이음컨설팅 결과');
       expect(result).toContain('HRD이음 결과 2026.pdf');
-      expect(result).toContain('<attachment_body');
       expect(result).toContain(
         '본 보고서는 스마트팩토리 도입 컨설팅 요약임.',
       );
-      expect(result).toContain('</attachment_body>');
     });
 
-    it('parse_error 만 있을 때 본문 추출 실패 안내가 포함된다', () => {
+    it('parseError 만 있을 때 본문 추출 실패 안내가 포함된다', () => {
       const interview = {
         ...fakeInterview,
-        hrdNecessity: {
-          ...fakeInterview.hrdNecessity,
-          hrd_report_attachment: {
-            storage_path: 'p/note-broken.pdf',
-            file_name: 'broken.pdf',
-            mime_type: 'application/pdf',
-            parse_error: '손상된 PDF',
-          },
+        hrdReportPdf: {
+          fileName: 'broken.pdf',
+          url: 'https://example/p/note-broken.pdf',
+          size: 0,
+          parseError: '손상된 PDF',
         },
       };
       const result = buildPBLUserPrompt(interview, {}, null, '요약');
       expect(result).toContain('broken.pdf');
-      expect(result).toContain('본문 추출 실패');
+      expect(result).toContain('파싱 실패');
       expect(result).toContain('손상된 PDF');
     });
 
     it('첨부가 없으면 Ⅱ-3-가 HRD이음 섹션이 렌더링되지 않는다', () => {
-      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
-      expect(result).not.toContain('Ⅱ-3-가. 기업HRD이음컨설팅 결과');
-      expect(result).not.toContain('<attachment_body');
-    });
-
-    it('첨부 본문 내 따옴표는 file 속성에서 escape 된다 (Prompt-injection 방어)', () => {
-      const interview = {
-        ...fakeInterview,
-        hrdNecessity: {
-          ...fakeInterview.hrdNecessity,
-          hrd_report_attachment: {
-            storage_path: 'p/note-x.pdf',
-            file_name: 'he"llo".pdf',
-            extracted_text: 'dummy',
-          },
-        },
-      };
+      const interview = { ...fakeInterview, hrdReportPdf: null };
       const result = buildPBLUserPrompt(interview, {}, null, '요약');
-      // file="..." 값 안에는 " 대신 &quot; 만 존재해야 한다
-      const match = result.match(/<attachment_body file="([^"]*)"/);
-      expect(match).not.toBeNull();
-      expect(match?.[1]).toContain('&quot;');
-      expect(match?.[1]).not.toContain('"');
+      expect(result).not.toContain('Ⅱ-3-가. 기업HRD이음컨설팅 결과 (첨부 보고서)');
     });
   });
 
@@ -297,31 +201,7 @@ describe('buildPBLUserPrompt', () => {
     });
   });
 
-  // hrdNecessity.support_history (Ⅱ-3 정부 지원 이력) — recommended_program 추천
-  // 정확도에 영향. 기존에 누락 → 본 PR 에서 프롬프트에 추가.
-  describe('hrdNecessity.support_history (정부 지원 이력)', () => {
-    it('support_history 가 있으면 지원 이력 섹션이 포함된다', () => {
-      const interview = {
-        ...fakeInterview,
-        hrdNecessity: {
-          ...fakeInterview.hrdNecessity,
-          support_history: [
-            { id: 's1', year: '2024', annual_limit: 10, supported: 8, ratio: '80%' },
-            { id: 's2', year: '2025', annual_limit: 12, supported: 5, ratio: '42%' },
-          ],
-        },
-      };
-      const result = buildPBLUserPrompt(interview, {}, null, '요약');
-      expect(result).toContain('지원 이력');
-      expect(result).toContain('"2024"');
-      expect(result).toContain('"2025"');
-      expect(result).toContain('80%');
-    });
-
-    it('support_history 가 비어있으면 빈 배열로 렌더(JSON.stringify)', () => {
-      const result = buildPBLUserPrompt(fakeInterview, {}, null, '요약');
-      // fakeInterview.hrdNecessity 에는 support_history 가 없으므로 빈 배열로 출력
-      expect(result).toContain('지원 이력');
-    });
-  });
+  // V2 (PBLInterviewStrict) 에는 V1 의 support_history(정부 지원 이력) 필드가 없다.
+  // 폼에서 입력받지 않으므로 LLM 프롬프트에서도 해당 섹션을 렌더하지 않는 게 정합.
+  // V1 시절 어설션 제거.
 });

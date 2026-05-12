@@ -30,6 +30,7 @@ import {
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
+import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 
 // ─── 외부 모듈 모킹 ───────────────────────────────────────────────────────────
 
@@ -77,26 +78,6 @@ vi.mock('@/lib/services/pbl/pbl-generator', () => ({
     }
   },
 }));
-
-// pblInterviewSchema를 mock하여 generatePBLAction 내 검증을 제어 가능하게 함
-vi.mock('@/lib/schemas/interview-pbl', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/schemas/interview-pbl')>();
-  return {
-    ...actual,
-    pblInterviewSchema: {
-      safeParse: vi.fn((data: unknown) => {
-        // 기본값: VALID_PBL_INTERVIEW_DATA 형태면 통과, 그 외 실패
-        if (data && typeof data === 'object' && 'courseOverview' in data) {
-          const d = data as { courseOverview?: { course_name?: string } };
-          if (d.courseOverview?.course_name) {
-            return { success: true, data };
-          }
-        }
-        return { success: false, error: { issues: [{ message: 'Required' }] } };
-      }),
-    },
-  };
-});
 
 vi.mock('@/lib/services/pbl/pbl-crud', () => ({
   createDraftVersion: vi.fn().mockResolvedValue({ id: 'new-pbl-id', version_number: 1 }),
@@ -154,24 +135,12 @@ const PBL_ACCESS_SUCCESS_ROW = {
   },
 };
 
-/** pbl_data: pblInterviewSchema 최소 유효 데이터 (엄격한 스키마라 stub 사용) */
-const VALID_PBL_INTERVIEW_DATA = {
-  courseOverview: {
-    course_name: 'AI PBL 과정',
-    training_job: '제조 직무',
-    training_hours: 16,
-    trainee_count: 10,
-    ai_level: 'AI기초형',
-    training_goals: ['기술문제 해결'],
-    company_name: '테스트기업',
-    industry_main: '제조업',
-    contact: { name: '홍길동', email: 'test@example.com', phone: '010-1234-5678' },
-  },
-  trainingEnvironment: {},
-  targetTasks: {},
-  problemDefinition: {},
-  learningProcess: {},
-};
+/**
+ * pbl_data: V2 (camelCase) 형태 — `PBLInterviewStrictSchema` 를 통과하는 완전한 fixture.
+ * 인터뷰 제출(`submitPBLInterviewV2`)이 저장하는 모양과 동일. 실제 production DB 의
+ * `interviews.pbl_data` 컬럼 구조와 일치하므로 보고서 생성 경로 회귀 테스트의 정본.
+ */
+const VALID_PBL_INTERVIEW_DATA = PBL_INTERVIEW_SAMPLE;
 
 /** pblContentSchema 최소 유효 데이터 (stub) */
 const VALID_PBL_CONTENT = {
@@ -605,7 +574,7 @@ describe('generatePBLAction', () => {
     if (!result.success) expect(result.error).toContain('인터뷰 데이터');
   });
 
-  it('pblInterviewSchema 검증 실패 → error', async () => {
+  it('PBLInterviewStrictSchema 검증 실패 (V2 키 누락) → "완성되지 않았" 토스트', async () => {
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({
       data: {

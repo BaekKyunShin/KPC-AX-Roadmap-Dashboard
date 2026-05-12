@@ -13,7 +13,10 @@ import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cleanupAbort } from '@/lib/services/abort-registry';
-import { pblInterviewSchema, PBLInterviewSchema } from '@/lib/schemas/interview-pbl';
+import {
+  PBLInterviewSchema,
+  PBLInterviewStrictSchema,
+} from '@/lib/schemas/interview-pbl';
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import {
   createDraftVersion,
@@ -281,7 +284,11 @@ export async function generatePBLAction(
       return { success: false, error: 'PBL 인터뷰 데이터가 없습니다.' };
     }
 
-    const pblDataValidation = pblInterviewSchema.safeParse(interview.pbl_data);
+    // 인터뷰 제출(submitPBLInterviewV2)이 `PBLInterviewStrictSchema` 로 검증해
+    // `interviews.pbl_data` JSONB 에 V2 (flat camelCase) 모양으로 저장하므로,
+    // 보고서 생성 분기도 동일 스키마로 검증해야 한다 (V1 nested snake_case 스키마로
+    // 검증하던 과거 코드는 모든 V2 데이터를 거절하는 양식 비대칭 버그를 일으켰음).
+    const pblDataValidation = PBLInterviewStrictSchema.safeParse(interview.pbl_data);
     if (!pblDataValidation.success) {
       return {
         success: false,
@@ -311,13 +318,12 @@ export async function generatePBLAction(
     const selfAssessment =
       (selfAssessmentRow as { scores?: unknown } | null) ?? null;
 
-    // 진단 요약 구성 (인터뷰 기반 간단 요약)
-    const courseOverview =
-      (pblDataValidation.data.courseOverview ?? {}) as { course_name?: string; training_job?: string };
+    // 진단 요약 구성 (인터뷰 기반 간단 요약). V2 (flat camelCase) 키 직접 접근.
+    const { courseName, trainingTarget } = pblDataValidation.data;
     const diagnosisSummary = [
       `${project.company_name ?? '기업'} 대상`,
-      courseOverview.training_job ? `${courseOverview.training_job} 직무의` : '',
-      `AI 기반 PBL 과정(${courseOverview.course_name ?? '과정명 미지정'})`,
+      trainingTarget ? `${trainingTarget} 대상의` : '',
+      `AI 기반 PBL 과정(${courseName || '과정명 미지정'})`,
     ]
       .filter(Boolean)
       .join(' ');
