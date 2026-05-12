@@ -926,13 +926,17 @@ ROADMAP_ONE_PARAGRAPH_CELLS = [
     reason="templates/hwpx/pbl.hwpx 미존재",
 )
 @pytest.mark.parametrize("idx,coord,key", PBL_ONE_PARAGRAPH_CELLS)
-def test_pbl_long_text_in_1_paragraph_cell_splits(idx, coord, key):
-    """1-paragraph 셀에 80자+ 단일 문장 (마침표·\\n 없음) 투입 시
-    `_set_cell_text` 자동 분할이 발동해 paragraph 가 2 개 이상 생성됨.
+def test_pbl_long_text_in_1_paragraph_cell_keeps_one_paragraph_with_line_wrap_break(
+    idx, coord, key,
+):
+    """Phase E — 1-paragraph 셀에 80자+ 단일 문장 (마침표·\\n 없음) 투입 시
+    paragraph 분할 없이 1 paragraph 유지 + 셀의 OWPML lineWrap 속성이 "BREAK"
+    로 설정되어 한컴오피스가 셀 폭에서 단어 단위 자동 wrap 한다.
 
-    근거: lineWrap="SQUEEZE" 양식 속성 때문에 1-paragraph 셀에 긴 텍스트가
-    들어가면 한컴오피스가 자동 wrap → 압축 → 글자 겹침. paragraph 단위로
-    미리 분할되면 셀 높이가 자동 확장되어 겹침 방지.
+    근거: Phase C 의 `_smart_wrap` 자동 분할은 한국어 의미 단위·번호 매김·
+    어미를 무시하고 강제 분할하여 문장 중간 끊김 광범위. Phase E 에서 제거하고
+    셀의 lineWrap 을 BREAK 로 설정해 한컴오피스 자동 wrap 에 위임. 양식 원본
+    SQUEEZE 셀도 BREAK 로 강제 전환.
     """
     from generate import _collect_tables
 
@@ -949,9 +953,16 @@ def test_pbl_long_text_in_1_paragraph_cell_splits(idx, coord, key):
     paragraphs = list(cell.paragraphs)
     non_empty_paragraphs = [p for p in paragraphs
                              if any(r.text for r in p.runs)]
-    assert len(non_empty_paragraphs) >= 2, (
-        f"PBL idx={idx} {key}: 긴 단일 문장 자동 분할 실패. "
+    assert len(non_empty_paragraphs) == 1, (
+        f"PBL idx={idx} {key}: Phase E 에서 자동 분할 비활성 — 1 paragraph 유지 기대. "
         f"non_empty_paragraphs={len(non_empty_paragraphs)}"
+    )
+    # 셀의 OWPML subList lineWrap 속성이 BREAK 인지 검증
+    hp = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+    sublist = cell.element.find(f"{hp}subList")
+    assert sublist is not None, f"PBL idx={idx} {key}: subList element 부재"
+    assert sublist.get("lineWrap") == "BREAK", (
+        f"PBL idx={idx} {key}: lineWrap 이 BREAK 아님: {sublist.get('lineWrap')!r}"
     )
 
 
@@ -960,8 +971,10 @@ def test_pbl_long_text_in_1_paragraph_cell_splits(idx, coord, key):
     reason="templates/hwpx/roadmap.hwpx 미존재",
 )
 @pytest.mark.parametrize("idx,coord,key", ROADMAP_ONE_PARAGRAPH_CELLS)
-def test_roadmap_long_text_in_1_paragraph_cell_splits(idx, coord, key):
-    """Roadmap 양식의 동일 회귀. _set_cell_text 공유 헬퍼이므로 자동 적용."""
+def test_roadmap_long_text_in_1_paragraph_cell_keeps_one_paragraph_with_line_wrap_break(
+    idx, coord, key,
+):
+    """Phase E — Roadmap 양식의 동일 회귀. _set_cell_text 공유 헬퍼이므로 자동 적용."""
     from generate import _collect_tables
 
     data = _load_fixture("roadmap-full.json")
@@ -974,9 +987,13 @@ def test_roadmap_long_text_in_1_paragraph_cell_splits(idx, coord, key):
     paragraphs = list(cell.paragraphs)
     non_empty_paragraphs = [p for p in paragraphs
                              if any(r.text for r in p.runs)]
-    assert len(non_empty_paragraphs) >= 2, (
-        f"Roadmap idx={idx} {key}: 긴 단일 문장 자동 분할 실패."
+    assert len(non_empty_paragraphs) == 1, (
+        f"Roadmap idx={idx} {key}: Phase E 에서 자동 분할 비활성 — 1 paragraph 유지 기대."
     )
+    hp = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+    sublist = cell.element.find(f"{hp}subList")
+    assert sublist is not None
+    assert sublist.get("lineWrap") == "BREAK"
 
 
 # ---------------------------------------------------------------

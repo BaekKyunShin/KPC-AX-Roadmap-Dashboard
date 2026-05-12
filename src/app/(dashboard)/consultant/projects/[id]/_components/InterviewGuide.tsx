@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { RefreshCw, Download, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { showSuccessToast, showErrorToast } from '@/lib/utils/toast';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { formatDateKR } from '@/lib/utils/date';
@@ -31,12 +32,9 @@ export function InterviewGuide({
     initialGuideData as GuideData | null,
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleGenerate() {
-    if (guideData && !confirm('기존 분석 결과가 새 결과로 덮어써집니다. 계속하시겠습니까?')) {
-      return;
-    }
-
     setIsGenerating(true);
     try {
       const result = await generateInterviewGuide(projectId);
@@ -51,6 +49,11 @@ export function InterviewGuide({
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  async function handleConfirmRegenerate() {
+    setConfirmOpen(false);
+    await handleGenerate();
   }
 
   function handleQuestionsChange(updatedQuestions: GuideQuestion[]) {
@@ -107,7 +110,12 @@ export function InterviewGuide({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleGenerate}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmOpen(true)}
+              disabled={isGenerating}
+            >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               분석 재생성
             </Button>
@@ -148,6 +156,17 @@ export function InterviewGuide({
           <GuideCautions cautions={guideData.cautions} />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="인터뷰 가이드를 재생성하시겠습니까?"
+        description="기존 분석 결과가 새 결과로 완전히 덮어써집니다."
+        actionLabel="재생성"
+        variant="destructive"
+        loading={isGenerating}
+        onConfirm={handleConfirmRegenerate}
+      />
     </>
   );
 }

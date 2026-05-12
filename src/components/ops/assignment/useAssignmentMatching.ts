@@ -131,17 +131,8 @@ export default function useAssignmentMatching({
     executeMatching(!!hasAssignedConsultant);
   };
 
-  // 매칭 재계산
+  // 매칭 재계산 (배정된 컨설턴트가 있는 경우의 확인은 호출하는 컴포넌트에서 ConfirmDialog로 처리)
   const handleRecalculate = () => {
-    if (
-      hasAssignedConsultant &&
-      !confirm(
-        '이미 컨설턴트가 배정되어 있습니다.\n매칭 추천만 재계산되며, 현재 배정은 변경되지 않습니다.\n계속하시겠습니까?'
-      )
-    ) {
-      return;
-    }
-
     executeMatching(true);
   };
 
@@ -151,6 +142,7 @@ export default function useAssignmentMatching({
     cardRef,
     isGenerating,
     generateError,
+    hasAssignedConsultant,
     handleGenerateMatching,
     handleRecalculate,
     handleCancelMatching,

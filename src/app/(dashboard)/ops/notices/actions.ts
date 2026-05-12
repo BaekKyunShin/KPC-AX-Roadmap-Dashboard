@@ -30,52 +30,67 @@ const OPS_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 export async function createNoticeAction(
   formData: FormData,
 ): Promise<ActionResult<{ noticeId: string }>> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
-    authError: '로그인이 필요합니다.',
-    roleError: '공지 작성 권한이 없습니다.',
-  });
-  if ('error' in auth) return { success: false, error: auth.error };
-  const { user } = auth;
-
-  const raw = {
-    title: String(formData.get('title') ?? ''),
-    body: String(formData.get('body') ?? ''),
-    is_pinned: formData.get('is_pinned') === 'on' || formData.get('is_pinned') === 'true',
-  };
-
-  const validation = noticeInputSchema.safeParse(raw);
-  if (!validation.success) {
-    return { success: false, error: validation.error.errors[0].message };
-  }
-
-  const adminClient = createAdminClient();
-  const result = await createNotice(validation.data, user.id, adminClient);
-
-  if (!result) {
-    return { success: false, error: '공지 작성에 실패했습니다.' };
-  }
-
-  // 감사로그·캐시 무효화는 부수 작업 — 실패해도 본 흐름을 차단하지 않음.
+  // 본 흐름의 unknown throw 가 Server Action 응답 직렬화를 손상시켜
+  // 클라이언트에 "An unexpected response was received from the server"
+  // (Next.js E394) 가 발생하지 않도록 outer try-catch 로 모든 throw 를
+  // ActionResult 로 변환한다. (이슈 1-C 재발 차단)
   try {
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'NOTICE_CREATED',
-      targetType: 'notice',
-      targetId: result.id,
-      meta: { title: validation.data.title },
+    const auth = await requireAuthWithRole(OPS_ROLES, {
+      authError: '로그인이 필요합니다.',
+      roleError: '공지 작성 권한이 없습니다.',
     });
-  } catch (e) {
-    console.error('[createNoticeAction] 감사로그 실패:', e);
-  }
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
-  try {
-    revalidatePath('/ops/notices');
-    revalidatePath('/notices');
-  } catch (e) {
-    console.error('[createNoticeAction] 캐시 무효화 실패:', e);
-  }
+    const raw = {
+      title: String(formData.get('title') ?? ''),
+      body: String(formData.get('body') ?? ''),
+      is_pinned:
+        formData.get('is_pinned') === 'on' ||
+        formData.get('is_pinned') === 'true',
+    };
 
-  return { success: true, data: { noticeId: result.id } };
+    const validation = noticeInputSchema.safeParse(raw);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+
+    const adminClient = createAdminClient();
+    const result = await createNotice(validation.data, user.id, adminClient);
+
+    if (!result) {
+      return { success: false, error: '공지 작성에 실패했습니다.' };
+    }
+
+    // 감사로그·캐시 무효화는 부수 작업 — 실패해도 본 흐름을 차단하지 않음.
+    try {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'NOTICE_CREATED',
+        targetType: 'notice',
+        targetId: result.id,
+        meta: { title: validation.data.title },
+      });
+    } catch (e) {
+      console.error('[createNoticeAction] 감사로그 실패:', e);
+    }
+
+    try {
+      revalidatePath('/ops/notices');
+      revalidatePath('/notices');
+    } catch (e) {
+      console.error('[createNoticeAction] 캐시 무효화 실패:', e);
+    }
+
+    return { success: true, data: { noticeId: result.id } };
+  } catch (e) {
+    console.error('[createNoticeAction] unknown throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `공지 작성 중 예기치 못한 오류가 발생했습니다. (${msg})`,
+    };
+  }
 }
 
 // ============================================================================
@@ -204,74 +219,87 @@ export async function uploadAttachmentAction(
   noticeId: string,
   formData: FormData,
 ): Promise<ActionResult<{ attachment: NoticeAttachment }>> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
-    authError: '로그인이 필요합니다.',
-    roleError: '첨부 업로드 권한이 없습니다.',
-  });
-  if ('error' in auth) return { success: false, error: auth.error };
-  const { user } = auth;
-
-  if (!noticeId || typeof noticeId !== 'string') {
-    return { success: false, error: '공지 ID가 유효하지 않습니다.' };
-  }
-
-  const file = formData.get('file');
-  if (!(file instanceof File)) {
-    return { success: false, error: '파일을 선택해 주세요.' };
-  }
-  if (file.size === 0) {
-    return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
-  }
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    return { success: false, error: '파일은 30MB 이하여야 합니다.' };
-  }
-
-  // 서버 측 Zod 검증 — storage_path는 실제 업로드 성공 후 확정되므로
-  // 사전 검증은 파일명/크기/확장자만 수행한다.
-  const preCheckPath = buildStoragePath(noticeId, file.name);
-  const preCheck = attachmentInputSchema.safeParse({
-    file_name: file.name,
-    mime_type: file.type || 'application/octet-stream',
-    file_size: file.size,
-    storage_path: preCheckPath,
-  });
-  if (!preCheck.success) {
-    return { success: false, error: preCheck.error.errors[0].message };
-  }
-
-  const adminClient = createAdminClient();
-  const result = await uploadAttachment(file, noticeId, adminClient);
-
-  if ('error' in result) {
-    return { success: false, error: result.error };
-  }
-
-  // 감사로그·캐시 무효화는 부수 작업 — 실패해도 첨부 업로드 성공을 그대로 반환.
+  // 본 흐름의 unknown throw 가 Server Action 응답 직렬화를 손상시켜
+  // 클라이언트에 "An unexpected response was received from the server"
+  // (Next.js E394) 가 발생하지 않도록 outer try-catch 로 모든 throw 를
+  // ActionResult 로 변환한다. (이슈 1-C 재발 차단)
   try {
-    await createAuditLog({
-      actorUserId: user.id,
-      action: 'NOTICE_UPDATED',
-      targetType: 'notice_attachment',
-      targetId: result.attachment.id,
-      meta: {
-        notice_id: noticeId,
-        file_name: file.name,
-        file_size: file.size,
-        kind: 'attachment_upload',
-      },
+    const auth = await requireAuthWithRole(OPS_ROLES, {
+      authError: '로그인이 필요합니다.',
+      roleError: '첨부 업로드 권한이 없습니다.',
     });
-  } catch (e) {
-    console.error('[uploadAttachmentAction] 감사로그 실패:', e);
-  }
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
 
-  try {
-    revalidatePath(`/ops/notices/${noticeId}/edit`);
-    revalidatePath(`/notices/${noticeId}`);
-  } catch (e) {
-    console.error('[uploadAttachmentAction] 캐시 무효화 실패:', e);
-  }
+    if (!noticeId || typeof noticeId !== 'string') {
+      return { success: false, error: '공지 ID가 유효하지 않습니다.' };
+    }
 
-  return { success: true, data: { attachment: result.attachment } };
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return { success: false, error: '파일을 선택해 주세요.' };
+    }
+    if (file.size === 0) {
+      return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+    }
+
+    // 서버 측 Zod 검증 — storage_path는 실제 업로드 성공 후 확정되므로
+    // 사전 검증은 파일명/크기/확장자만 수행한다.
+    const preCheckPath = buildStoragePath(noticeId, file.name);
+    const preCheck = attachmentInputSchema.safeParse({
+      file_name: file.name,
+      mime_type: file.type || 'application/octet-stream',
+      file_size: file.size,
+      storage_path: preCheckPath,
+    });
+    if (!preCheck.success) {
+      return { success: false, error: preCheck.error.errors[0].message };
+    }
+
+    const adminClient = createAdminClient();
+    const result = await uploadAttachment(file, noticeId, adminClient);
+
+    if ('error' in result) {
+      return { success: false, error: result.error };
+    }
+
+    // 감사로그·캐시 무효화는 부수 작업 — 실패해도 첨부 업로드 성공을 그대로 반환.
+    try {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'NOTICE_UPDATED',
+        targetType: 'notice_attachment',
+        targetId: result.attachment.id,
+        meta: {
+          notice_id: noticeId,
+          file_name: file.name,
+          file_size: file.size,
+          kind: 'attachment_upload',
+        },
+      });
+    } catch (e) {
+      console.error('[uploadAttachmentAction] 감사로그 실패:', e);
+    }
+
+    try {
+      revalidatePath(`/ops/notices/${noticeId}/edit`);
+      revalidatePath(`/notices/${noticeId}`);
+    } catch (e) {
+      console.error('[uploadAttachmentAction] 캐시 무효화 실패:', e);
+    }
+
+    return { success: true, data: { attachment: result.attachment } };
+  } catch (e) {
+    console.error('[uploadAttachmentAction] unknown throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `첨부 업로드 중 예기치 못한 오류가 발생했습니다. (${msg})`,
+    };
+  }
 }
 
 // ============================================================================

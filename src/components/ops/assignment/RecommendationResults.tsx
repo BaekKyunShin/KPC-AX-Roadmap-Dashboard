@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { assignConsultant } from '@/app/(dashboard)/ops/projects/actions';
 import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { showErrorToast } from '@/lib/utils/toast';
 import { AlertMessage, REASON_LENGTH, ASSIGN_BUTTON_STYLE } from './index';
 import SelectableCard from './SelectableCard';
 import type { ValidRecommendation } from './utils';
@@ -31,6 +33,7 @@ export default function RecommendationResults({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recalculateConfirmOpen, setRecalculateConfirmOpen] = useState(false);
   const router = useRouter();
 
   const handleAssign = async () => {
@@ -48,12 +51,20 @@ export default function RecommendationResults({
       if (result.success) {
         router.refresh();
       } else {
-        alert(result.error || '배정에 실패했습니다.');
+        showErrorToast('배정 실패', result.error || '배정 요청이 거부되었습니다.');
         setIsSubmitting(false);
       }
     } catch {
-      alert('배정에 실패했습니다.');
+      showErrorToast('배정 실패', '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRecalculateClick = () => {
+    if (hasAssignedConsultant) {
+      setRecalculateConfirmOpen(true);
+    } else {
+      onRecalculate();
     }
   };
 
@@ -110,7 +121,7 @@ export default function RecommendationResults({
       {/* 재계산 버튼 */}
       <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
         <button
-          onClick={onRecalculate}
+          onClick={handleRecalculateClick}
           disabled={isGenerating}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
         >
@@ -121,6 +132,26 @@ export default function RecommendationResults({
           <span className="text-xs text-gray-400">현재 배정은 변경되지 않습니다</span>
         )}
       </div>
+
+      <ConfirmDialog
+        open={recalculateConfirmOpen}
+        onOpenChange={setRecalculateConfirmOpen}
+        title="매칭 추천을 재계산하시겠습니까?"
+        description={
+          <>
+            이미 컨설턴트가 배정된 프로젝트입니다.
+            <br />
+            매칭 추천만 다시 계산되며, 현재 배정은 그대로 유지됩니다.
+          </>
+        }
+        actionLabel="재계산"
+        variant="default"
+        loading={isGenerating}
+        onConfirm={() => {
+          setRecalculateConfirmOpen(false);
+          onRecalculate();
+        }}
+      />
     </div>
   );
 }

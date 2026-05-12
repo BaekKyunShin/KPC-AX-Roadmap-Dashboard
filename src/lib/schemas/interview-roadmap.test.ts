@@ -1280,6 +1280,13 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
     ).toBe(true);
   });
 
+  it('hrdReportPdf 는 키 누락(undefined) 도 허용 — production 폼이 미첨부 시 키를 omit 함', () => {
+    // PBL 측 동일 패턴. nullable() 만으로는 키 누락 케이스가 Required 로 거절되어
+    // 보고서 생성이 거짓 토스트로 막힌다. nullish() 로 양쪽 모두 통과.
+    const { hrdReportPdf: _omit, ...withoutKey } = validRequirements;
+    expect(RoadmapRequirementsSchema.safeParse(withoutKey).success).toBe(true);
+  });
+
   it('taskAnalysis[].aiScore 는 1-5 정수만 허용 (0, 6, 3.5 거부)', () => {
     const makeWithScore = (score: number) => ({
       ...validRequirements,

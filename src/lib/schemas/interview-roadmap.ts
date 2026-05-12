@@ -777,9 +777,10 @@ export type RoadmapTargetTask = z.infer<typeof RoadmapTargetTaskSchema>;
 
 // -- Ⅱ 요구분석 -------------------------------------------------------------
 export const RoadmapRequirementsSchema = z.object({
-  // optional + nullable — 키 누락(undefined) 도 null 과 동일하게 미첨부로 취급.
-  // (이 필드는 본래 선택 첨부이므로 키 자체가 없어도 'Required' 가 발생해서는 안 됨)
-  hrdReportPdf: RoadmapHrdReportPdfSchema.nullable().optional(),
+  // HRD이음 PDF — 미첨부 허용. PBL 측 hrdReportPdf 와 동일하게 키 자체 누락
+  // (undefined) 도 허용하기 위해 nullish() 사용 (production 인터뷰 폼이
+  // 미첨부 시 키를 omit 해 저장하므로 nullable 만으로는 Required 오류 발생).
+  hrdReportPdf: RoadmapHrdReportPdfSchema.nullish(),
   companyRequirements: RoadmapCompanyRequirementsSchema,
   taskAnalysis: z
     .array(RoadmapTaskAnalysisItemSchema)

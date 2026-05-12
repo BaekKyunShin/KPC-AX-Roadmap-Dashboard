@@ -1,28 +1,30 @@
 import type { ConsultantProfile } from '@/types/database';
 import { PBL_EVALUATION_SCALE_DESCRIPTION } from './pbl-types';
-import {
-  type AttachmentMeta,
-  formatAttachmentBody,
-} from '../attachment-prompt';
+import type { PBLHrdReportPdf } from '@/lib/schemas/interview-pbl';
 // STT 인사이트 포맷터 — 두 키(stt_insights/sttInsights) 모두 인식하도록 일반화됨.
 // 로드맵·PBL 양쪽에서 재사용.
 import { buildSttInsightsSection } from '../roadmap/roadmap-stt-formatter';
 
-// ISSUE-14 PBL 확장: Ⅱ-3-가 기업HRD이음컨설팅 결과 보고서 첨부를 프롬프트에 주입
+// ISSUE-14 PBL 확장: Ⅱ-3-가 기업HRD이음컨설팅 결과 보고서 첨부를 프롬프트에 주입.
+// V2 (PBLInterviewStrict) 의 `hrdReportPdf` 모양 — { fileName, url, size,
+// extractedText?, parseError? } — 을 받는다.
 function buildPBLHrdAttachmentSection(
-  hrdNecessity: Record<string, unknown>,
+  hrdReportPdf: PBLHrdReportPdf | null | undefined,
 ): string {
-  const att = hrdNecessity.hrd_report_attachment as
-    | AttachmentMeta
-    | null
-    | undefined;
-  if (!att) return '';
+  if (!hrdReportPdf) return '';
+
+  const sizeLabel = hrdReportPdf.size
+    ? `${Math.round(hrdReportPdf.size / 1024)} KB`
+    : '-';
+  const body = hrdReportPdf.extractedText
+    ? `\n[추출된 본문]\n${hrdReportPdf.extractedText}`
+    : hrdReportPdf.parseError
+      ? `\n[파싱 실패: ${hrdReportPdf.parseError}]`
+      : '';
 
   return `\n### Ⅱ-3-가. 기업HRD이음컨설팅 결과 (첨부 보고서)
-- 파일명: ${att.file_name ?? '-'}
-- 형식: ${att.mime_type ?? '-'}
-- 크기: ${att.size ? `${Math.round(att.size / 1024)} KB` : '-'}
-${formatAttachmentBody(att)}`;
+- 파일명: ${hrdReportPdf.fileName ?? '-'}
+- 크기: ${sizeLabel}${body}`;
 }
 
 // ============================================================================
@@ -84,8 +86,8 @@ export function buildPBLSystemPrompt(): string {
 \`\`\`
 
 ### Ⅳ-3-가. 훈련과정 개요 (training_plan.overview)
-- course_name: 인터뷰 courseOverview.course_name 값을 그대로 사용하라.
-- training_period.start/end: "YYYY-MM-DD" 형식으로 작성하라. 인터뷰에 없으면 합리적 추정값을 사용하라.
+- course_name: 인터뷰 courseName 값을 그대로 사용하라.
+- training_period.start/end: 인터뷰 trainingPeriod 의 시작·종료를 파싱해 "YYYY-MM-DD" 형식으로 작성하라. 인터뷰에 없으면 합리적 추정값을 사용하라.
 
 ### Ⅳ-3-나. 학습그룹 구성 (learning_group)
 - instructors: type("외부"|"내부"), role("팀원"|"팀장"), affiliation, position, name 필드를 모두 채워라.
@@ -142,7 +144,7 @@ export function buildPBLSystemPrompt(): string {
 - 길이가 다르면 검증 오류가 발생한다.
 
 ### Ⅴ-1. 성과분석 측정 지표 (outcome_analysis.outcome_metrics)
-- selected_goals: 인터뷰 courseOverview.training_goals에서 선택한 카테고리와 일치하도록 설정하라. 허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타"
+- selected_goals: 인터뷰의 courseNecessity, problemDefinitionSheet.core, priority.items 를 종합해 가장 적합한 카테고리를 1~3개 선택하라. 허용값: "기술문제 해결" | "공정 최적화" | "불량률 감소" | "기술 매뉴얼 개발" | "기타"
 - quantitative: 정량 지표를 구체적 수치(%, 건수, 시간)로 작성하라. 최소 2개 지표.
 - qualitative: 정성 지표를 협업·역량·조직문화 관점에서 작성하라. 최소 2개 항목.
 
@@ -271,7 +273,11 @@ export function buildPBLSystemPrompt(): string {
 }
 
 /**
- * 사용자 프롬프트 (입력 데이터 포함)
+ * 사용자 프롬프트 (입력 데이터 포함) — V2 (`PBLInterviewStrict`, flat camelCase) 입력.
+ *
+ * 인터뷰 제출(`submitPBLInterviewV2`)이 저장하는 정본 모양과 동일하다. `Record<string,
+ * unknown>` 시그니처는 호출자 호환을 위해 유지하되, 본 함수 내부에서 V2 타입으로
+ * 좁혀 키에 직접 접근한다.
  *
  * @param selfAssessment 기업이 입력한 사전 자가진단 행 (`self_assessments` 테이블).
  *   `scores` JSONB(역량별 점수) 를 LLM 프롬프트에 그대로 주입한다. 로드맵 측과
@@ -285,26 +291,72 @@ export function buildPBLUserPrompt(
   revisionPrompt?: string,
   selfAssessment?: { scores?: unknown } | null,
 ): string {
-  // 인터뷰 섹션 안전 추출
-  const courseOverview = (interview.courseOverview ?? {}) as Record<string, unknown>;
-  const companyStatus = (interview.companyStatus ?? {}) as Record<string, unknown>;
-  const trainingEnvironment = (interview.trainingEnvironment ?? {}) as Record<string, unknown>;
-  const expectation = (trainingEnvironment.expectation ?? {}) as Record<string, unknown>;
-  const hrdNecessity = (interview.hrdNecessity ?? {}) as Record<string, unknown>;
-  const performanceActivities = (interview.performanceActivities ?? {}) as Record<string, unknown>;
-  const problemDefinition = (interview.problemDefinition ?? {}) as Record<string, unknown>;
-  const problemDef = (
-    (problemDefinition.problem_definition ?? {}) as Record<string, unknown>
-  );
-  const targetTasks = (interview.targetTasks ?? {}) as Record<string, unknown>;
-  const aiLevelDiagnosis = (interview.aiLevelDiagnosis ?? {}) as Record<string, unknown>;
+  // V2 (PBLInterviewStrict) 모양에 직접 접근. 자동저장 partial 케이스 대비해
+  // 각 키는 ?? 폴백으로 보호한다.
+  const i = interview as Partial<{
+    // Ⅰ 훈련과정 개요
+    companyName: string;
+    courseName: string;
+    ncsCode: string;
+    trainingHours: number;
+    trainingTarget: string;
+    trainingForm: string;
+    trainingPeriod: string;
+    businessIssues: string;
+    // Ⅱ-1 기업 현황
+    companyIssues: string;
+    organization: { orgTree?: unknown[]; mainWork?: unknown[] };
+    // Ⅱ-2 훈련환경
+    trainingEnv: {
+      properTrainingHours?: string;
+      internalPlace?: string;
+      externalPlace?: string;
+      internalInstructors?: unknown[];
+      externalInstructors?: unknown[];
+      aiInfrastructure?: string;
+    };
+    // Ⅱ-3 HRD 필요성
+    hrdReportPdf: PBLHrdReportPdf | null;
+    courseNecessity: string;
+    // Ⅲ-1 수행활동
+    activities: unknown[];
+    // Ⅲ-2-가 문제 정의서
+    problemDefinitionSheet: {
+      background?: string;
+      core?: string;
+      scope?: string;
+      constraints?: string;
+    };
+    // Ⅲ-2-나 우선순위
+    priority: { method?: string; items?: unknown[] };
+    // Ⅲ-3 훈련대상 업무
+    target: {
+      name?: string;
+      code?: string;
+      scope?: string;
+      necessity?: string;
+      necessity_score?: number;
+      details?: unknown[];
+    };
+    // Ⅲ-4 AI 수준
+    currentAiLevel: { level?: string; note?: string };
+    expectedAiLevel: { level?: string; note?: string };
+  }>;
+
+  const trainingEnv = i.trainingEnv ?? {};
+  const organization = i.organization ?? {};
+  const problemDef = i.problemDefinitionSheet ?? {};
+  const priority = i.priority ?? {};
+  const target = i.target ?? {};
+  const currentAiLevel = i.currentAiLevel ?? {};
+  const expectedAiLevel = i.expectedAiLevel ?? {};
 
   const subIndustries = Array.isArray(project.sub_industries) ? project.sub_industries : [];
 
   let prompt = `## 기업 정보
 
-- 회사명: ${project.company_name ?? courseOverview.company_name ?? '미입력'}
-- 업종: ${project.industry ?? courseOverview.industry_main ?? '미입력'}
+- 회사명: ${project.company_name ?? i.companyName ?? '미입력'}
+- 업종: ${project.industry ?? '미입력'}
 - 세부 업종: ${subIndustries.length > 0 ? subIndustries.join(', ') : '미지정'}
 - 규모: ${project.company_size ?? '미입력'}
 - 요청사항: ${project.customer_comment ?? '없음'}
@@ -319,61 +371,61 @@ ${
 }
 ## Ⅰ. 훈련과정 개요
 
-- 과정명: ${courseOverview.course_name ?? '미입력'}
-- NCS 코드: ${courseOverview.ncs_code ?? '미입력'}
-- 훈련시간: ${courseOverview.training_hours ?? 0}시간
-- 훈련생 수: ${courseOverview.trainee_count ?? 0}명
-- 훈련 직무: ${courseOverview.training_job ?? '미입력'}
-- AI 역량 수준: ${courseOverview.ai_level ?? '미입력'}
-- 훈련 목표(체크): ${Array.isArray(courseOverview.training_goals) ? (courseOverview.training_goals as string[]).join(', ') : '미입력'}
+- 과정명: ${i.courseName ?? '미입력'}
+- NCS 코드: ${i.ncsCode ?? '미입력'}
+- 훈련시간: ${i.trainingHours ?? 0}시간
+- 훈련대상(훈련생): ${i.trainingTarget ?? '미입력'}
+- 훈련형태: ${i.trainingForm ?? '미입력'}
+- 훈련기간: ${i.trainingPeriod ?? '미입력'}
+- 사업 쟁점 요약: ${i.businessIssues ?? '미입력'}
 
 ## Ⅱ-1. 기업 현황 분석
 
-- 경영 이슈: ${companyStatus.business_issues ?? '미입력'}
-- 조직도: ${JSON.stringify(companyStatus.organization ?? [], null, 2)}
+- 경영 이슈(bullet): ${i.companyIssues ?? '미입력'}
+- 조직도: ${JSON.stringify(organization.orgTree ?? [], null, 2)}
+- 부서별 주요 업무: ${JSON.stringify(organization.mainWork ?? [], null, 2)}
 
 ## Ⅱ-2. 훈련환경 분석
 
-- 적정 훈련시간: ${(trainingEnvironment.proper_training_hours as number | undefined) ?? 0}시간
-- 훈련장소: ${JSON.stringify((trainingEnvironment.training_place as Record<string, unknown> | undefined) ?? {}, null, 2)}
-- 내부 강사: ${JSON.stringify((trainingEnvironment.internal_instructor as Record<string, unknown> | undefined) ?? {}, null, 2)}
-- 대상 인원: ${(trainingEnvironment.target_count as number | undefined) ?? 0}명
-- 대상자 특성: ${JSON.stringify((trainingEnvironment.target_characteristics as Record<string, unknown> | undefined) ?? {}, null, 2)}
-- AI 인프라: ${JSON.stringify((trainingEnvironment.ai_infrastructure as Record<string, unknown> | undefined) ?? {}, null, 2)}
-- AI 훈련 요구분석: ${trainingEnvironment.training_needs_analysis ?? '미입력'}
-- 기대효과 As-Is: ${(expectation.as_is as string | undefined) ?? '미입력'}
-- 기대효과 To-Be: ${(expectation.to_be as string | undefined) ?? '미입력'}
+- 적정 훈련시간: ${trainingEnv.properTrainingHours ?? '미입력'}
+- 훈련장소(사내): ${trainingEnv.internalPlace ?? '미입력'}
+- 훈련장소(사외): ${trainingEnv.externalPlace ?? '미입력'}
+- 사내 강사: ${JSON.stringify(trainingEnv.internalInstructors ?? [], null, 2)}
+- 외부 강사: ${JSON.stringify(trainingEnv.externalInstructors ?? [], null, 2)}
+- AI 인프라(사내): ${trainingEnv.aiInfrastructure ?? '미입력'}
 
 ## Ⅱ-3. HRD 제안·과정개발 필요성
 
-- 과정개발 필요성: ${hrdNecessity.course_development_necessity ?? '미입력'}
-- 훈련 이력: ${JSON.stringify(hrdNecessity.training_history ?? [], null, 2)}
-- 지원 이력 (연도별 한도/실집행/비율): ${JSON.stringify(hrdNecessity.support_history ?? [], null, 2)}
-- 추천 사업: ${JSON.stringify(hrdNecessity.recommendations ?? [], null, 2)}
-${buildPBLHrdAttachmentSection(hrdNecessity)}
-## Ⅲ-1. 훈련과제 도출 수행활동
+- AI훈련과정 개발 필요성: ${i.courseNecessity ?? '미입력'}
+${buildPBLHrdAttachmentSection(i.hrdReportPdf)}
+## Ⅲ-1. 훈련과제 도출 수행활동 (차수 × 4역할 평면 배열)
 
-${JSON.stringify(performanceActivities.performance_activities ?? [], null, 2)}
+${JSON.stringify(i.activities ?? [], null, 2)}
 
-## Ⅲ-2. 문제 도출·우선순위
+## Ⅲ-2. 문제 정의·우선순위
 
-- 문제 배경: ${(problemDef.background as string | undefined) ?? '미입력'}
-- 핵심 문제: ${(problemDef.core_problem as string | undefined) ?? '미입력'}
-- 문제 범위: ${(problemDef.scope as string | undefined) ?? '미입력'}
-- 제약 조건: ${(problemDef.constraints as string | undefined) ?? '미입력'}
-- 문제 우선순위: ${JSON.stringify(problemDefinition.problem_priorities ?? [], null, 2)}
+- 문제 배경: ${problemDef.background ?? '미입력'}
+- 핵심 문제: ${problemDef.core ?? '미입력'}
+- 문제 범위: ${problemDef.scope ?? '미입력'}
+- 제약 조건: ${problemDef.constraints ?? '미입력'}
+- 우선순위 결정 방법: ${priority.method ?? '미입력'}
+- 문제 우선순위 항목: ${JSON.stringify(priority.items ?? [], null, 2)}
 
 ## Ⅲ-3. 훈련대상 업무 선정
 
-- 선정 사유: ${(targetTasks.selection_reason as string | undefined) ?? '미입력'}
-- 훈련대상 업무 목록: ${JSON.stringify((targetTasks.target_tasks as unknown[] | undefined) ?? [], null, 2)}
-- 업무 세부내용: ${JSON.stringify((targetTasks.target_task_details as unknown[] | undefined) ?? [], null, 2)}
+- 업무명: ${target.name ?? '미입력'}
+- NCS 분류: ${target.code ?? '미입력'}
+- 업무 범위(부서·인원): ${target.scope ?? '미입력'}
+- AI기반 문제해결 필요성(선정 사유): ${target.necessity ?? '미입력'}
+- 필요성 점수(1~5): ${target.necessity_score ?? '-'}
+- 업무 세부내용(AS-IS / TO-BE / 요구지식 / 기술): ${JSON.stringify(target.details ?? [], null, 2)}
 
-## Ⅲ-4. AI수준 진단
+## Ⅲ-4. AI 역량 수준
 
-- 현재 AI 수준: ${aiLevelDiagnosis.current_ai_level ?? '미입력'}
-- 향후 목표 AI 수준: ${aiLevelDiagnosis.expected_ai_level ?? '미입력'}
-- 향상 사유: ${aiLevelDiagnosis.improvement_reason ?? '미입력'}
+- 현재 AI 수준: ${currentAiLevel.level ?? '미입력'}
+- 현재 수준 상세: ${currentAiLevel.note ?? '미입력'}
+- 향후 목표 AI 수준: ${expectedAiLevel.level ?? '미입력'}
+- 목표 수준 상세 · 향상 사유: ${expectedAiLevel.note ?? '미입력'}
 ${buildSttInsightsSection(interview)}`;
 
   if (consultantProfile) {

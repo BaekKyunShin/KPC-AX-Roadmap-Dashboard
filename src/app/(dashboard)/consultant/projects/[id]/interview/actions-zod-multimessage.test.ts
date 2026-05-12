@@ -1,11 +1,14 @@
 /**
  * #1 — 인터뷰 Server Action Zod 다중 메시지 테스트
  *
- * 변경 대상 4개 함수의 Zod 검증 실패 시 에러 메시지 직렬화 동작:
+ * 변경 대상 3개 함수의 Zod 검증 실패 시 에러 메시지 직렬화 동작:
  *   - saveRoadmapInterview      (v1 / 산인공 양식 1)
- *   - savePBLInterview          (v1 / 산인공 양식 2)
  *   - saveRoadmapInterviewV2    (v2 / camelCase strict)
  *   - savePBLInterviewV2        (v2 / camelCase strict)
+ *
+ * PBL v1(`savePBLInterview`) 은 클라이언트 호출 없는 dead code 로 확인되어 제거됨.
+ * 본 PR 에서 PBL 보고서 생성 경로 V2 정렬과 함께 정리. 로드맵 v1 은 별도 후속 PR
+ * 에서 처리.
  *
  * 기대 동작:
  *   - 다수 필드 누락 시: `validation.error.errors` 의 모든 메시지를
@@ -20,7 +23,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   saveRoadmapInterview,
-  savePBLInterview,
   saveRoadmapInterviewV2,
   savePBLInterviewV2,
 } from './actions';
@@ -163,37 +165,6 @@ describe('Server Action Zod 다중 메시지 (#1)', () => {
       expect(lines.length).toBeGreaterThanOrEqual(3);
       expect(lines.length).toBeLessThanOrEqual(5);
       // 모든 라인이 비어있지 않은 메시지
-      for (const line of lines) {
-        expect(line.trim().length).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  // ────────────────────────────────────────────────────────────────────────
-  // savePBLInterview (v1)
-  // ────────────────────────────────────────────────────────────────────────
-  it('savePBLInterview — 필수 필드 3개 이상 비우면 모든 메시지가 줄바꿈으로 반환', async () => {
-    await mockCachedAuth();
-    serverMock.addResult({
-      data: {
-        id: PROJECT_ID,
-        status: 'ASSIGNED',
-        track: 'PBL',
-        assigned_consultant_id: USER_A,
-        company_name: '테스트',
-        is_test_mode: false,
-      },
-      error: null,
-    });
-
-    // pblInterviewSchema 는 8개 최상위 필드(courseOverview, companyStatus, ...)를 모두 요구
-    // → {} 입력 시 다수 issue 발생
-    const r = await savePBLInterview(PROJECT_ID, {} as never);
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      const lines = r.error.split('\n');
-      expect(lines.length).toBeGreaterThanOrEqual(3);
-      expect(lines.length).toBeLessThanOrEqual(5);
       for (const line of lines) {
         expect(line.trim().length).toBeGreaterThan(0);
       }

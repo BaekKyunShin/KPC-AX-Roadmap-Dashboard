@@ -700,6 +700,78 @@ describe('uploadAttachment', () => {
     expect(mock.storageMethods.remove).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
+
+  // ─── unknown throw 방어 (이슈 1-C 재발 차단) ───────────────────────────
+  // supabase-js 의 fetch 가 네트워크 에러로 throw 하거나, File.arrayBuffer()
+  // 가 abort 로 throw 하는 등 본 흐름의 unknown throw 가 Server Action 응답
+  // 직렬화를 손상시켜 클라이언트에 "An unexpected response..." 토스트가
+  // 발생한 정황이 있음. 모든 throw 는 { error } 로 변환되어야 한다.
+
+  it('file.arrayBuffer() throw 해도 { error } 반환', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const file = {
+      name: 'a.pdf',
+      type: 'application/pdf',
+      size: 10,
+      arrayBuffer: () => Promise.reject(new Error('aborted')),
+    } as unknown as File;
+
+    const result = await uploadAttachment(
+      file,
+      'n1',
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('Storage upload 호출이 throw해도 { error } 반환', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mock.storageMethods.upload.mockRejectedValueOnce(new Error('network down'));
+
+    const file = makeFile('x', 'a.pdf', 'application/pdf');
+    const result = await uploadAttachment(
+      file,
+      'n1',
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('DB insert 호출이 throw해도 { error } 반환', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // single() 호출 자체가 throw하도록 모킹
+    mock.chainable.single = vi.fn(() =>
+      Promise.reject(new Error('socket hang up')),
+    );
+
+    const file = makeFile('x', 'a.pdf', 'application/pdf');
+    const result = await uploadAttachment(
+      file,
+      'n1',
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
+    // Storage 롤백도 시도되어야 함 (best-effort)
+    expect(mock.storageMethods.remove).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });
 
 // ─── deleteAttachment ──────────────────────────────────────────────────────

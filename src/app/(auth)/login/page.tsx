@@ -47,10 +47,13 @@ function LoginForm() {
 
       if (result.success) {
         // 명시적 redirect 파라미터가 있고 /dashboard가 아닌 경우 그대로 사용,
-        // 아니면 서버가 역할 기반으로 계산한 기본 경로로 직접 이동
+        // 아니면 서버가 역할 기반으로 계산한 기본 경로로 직접 이동.
+        //
+        // router.refresh() 는 호출하지 않는다 — server-side data 를 다시 가져오면서
+        // 같은 라우트가 두 번 진행되어 사용자에게 흰 화면이 길어진다. push 후 다음
+        // 페이지의 server work 가 정상적으로 수행되므로 refresh 가 필요 없다.
         const destination = redirectTo !== '/dashboard' ? redirectTo : result.data.defaultRoute;
         router.push(destination);
-        router.refresh();
       } else {
         const errorMessage = result.error || '로그인에 실패했습니다.';
         setError(errorMessage);

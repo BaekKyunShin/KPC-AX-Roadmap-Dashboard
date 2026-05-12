@@ -90,7 +90,6 @@ const sampleGuideData: GuideData = {
 describe('InterviewGuide', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   describe('가이드 미생성 상태 (guideData=null)', () => {
@@ -281,7 +280,12 @@ describe('InterviewGuide', () => {
         />,
       );
 
-      await user.click(screen.getByText('분석 재생성'));
+      // 트리거: "분석 재생성" 버튼 클릭 → ConfirmDialog 오픈
+      await user.click(screen.getByRole('button', { name: '분석 재생성' }));
+
+      // 다이얼로그 안의 "재생성" 액션 버튼 클릭
+      const confirmButton = await screen.findByRole('button', { name: '재생성' });
+      await user.click(confirmButton);
 
       await waitFor(() => {
         expect(mockGenerateInterviewGuide).toHaveBeenCalledWith('proj-1');
@@ -289,7 +293,6 @@ describe('InterviewGuide', () => {
     });
 
     it('"분석 재생성" 클릭 후 confirm 취소 시 generateInterviewGuide가 호출되지 않는다', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
       const user = userEvent.setup();
 
       render(
@@ -301,7 +304,12 @@ describe('InterviewGuide', () => {
         />,
       );
 
-      await user.click(screen.getByText('분석 재생성'));
+      // 트리거: "분석 재생성" 버튼 클릭 → ConfirmDialog 오픈
+      await user.click(screen.getByRole('button', { name: '분석 재생성' }));
+
+      // 다이얼로그 안의 "취소" 버튼 클릭 → 호출되지 않음
+      const cancelButton = await screen.findByRole('button', { name: '취소' });
+      await user.click(cancelButton);
 
       expect(mockGenerateInterviewGuide).not.toHaveBeenCalled();
     });

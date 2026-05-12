@@ -15,6 +15,7 @@ import { Info, FlaskConical, Wand2 } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
@@ -238,6 +239,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const [error, setError] = useState<string | null>(null);
   const [isRevising, setIsRevising] = useState(false);
   const [isRevisionComplete, setIsRevisionComplete] = useState(false);
+  const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
 
   const currentStepDef = STEPS[currentStep - 1];
   const isFirstStep = currentStep === 1;
@@ -249,25 +251,26 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   ) => setData((prev) => ({ ...prev, ...patch }));
 
   // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
-  const fillSample = () => {
+  const applySample = () => {
+    const sample = JSON.parse(
+      JSON.stringify(ROADMAP_INTERVIEW_SAMPLE),
+    ) as RoadmapInterviewStrict;
+    setData(sample);
+    setCurrentStep(1);
+  };
+
+  const handleFillSampleClick = () => {
     const hasInput =
       (data.establishmentNecessity ?? '').trim() !== '' ||
       (data.selectedTask ?? '').trim() !== '' ||
       (data.companyRequirements?.status ?? '').trim() !== '' ||
       (data.taskAnalysis ?? []).length > 0 ||
       (data.competencies ?? []).length > 0;
-    if (
-      hasInput &&
-      typeof window !== 'undefined' &&
-      !window.confirm('기존 입력값이 모두 덮어써집니다. 계속하시겠습니까?')
-    ) {
-      return;
+    if (hasInput) {
+      setSampleConfirmOpen(true);
+    } else {
+      applySample();
     }
-    const sample = JSON.parse(
-      JSON.stringify(ROADMAP_INTERVIEW_SAMPLE),
-    ) as RoadmapInterviewStrict;
-    setData(sample);
-    setCurrentStep(1);
   };
 
   // ── 생성 / 수정 / 리셋 ───────────────────────────────────────────────────
@@ -638,7 +641,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
               type="button"
               variant="outline"
               size="sm"
-              onClick={fillSample}
+              onClick={handleFillSampleClick}
               data-testid="test-roadmap-fill-sample"
             >
               <Wand2 className="w-4 h-4 mr-1.5" />
@@ -755,6 +758,25 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           isCompleted={isComplete}
         />
       )}
+
+      <ConfirmDialog
+        open={sampleConfirmOpen}
+        onOpenChange={setSampleConfirmOpen}
+        title="샘플 데이터로 덮어쓰시겠습니까?"
+        description={
+          <>
+            현재 입력한 인터뷰 내용이 모두 사라지고
+            <br />
+            샘플 값으로 교체됩니다.
+          </>
+        }
+        actionLabel="덮어쓰기"
+        variant="destructive"
+        onConfirm={() => {
+          applySample();
+          setSampleConfirmOpen(false);
+        }}
+      />
     </>
   );
 }
