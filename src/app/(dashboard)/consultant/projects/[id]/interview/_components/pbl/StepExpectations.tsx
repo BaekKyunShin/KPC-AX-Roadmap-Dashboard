@@ -189,10 +189,10 @@ export function StepExpectations({
       <ExampleAccordion
         guide={
           <ul className="list-disc space-y-1 pl-4">
-            <li>대상자 특성은 양식 P-05 row 7 의 "(업무 경력) (수준)" 영역에 그대로 매핑됩니다.</li>
+            <li>대상자 특성은 양식 P-05 row 7 의 (업무 경력) (수준) 영역에 그대로 매핑됩니다.</li>
             <li>
-              AI 인프라 세부는 row 8 의 "AI 도구 사용 가능 환경: 가능/제한적/불가능 · 네트워크
-              환경: 양호/보통/개선필요 · PC 보유 수" 와 1:1 정합.
+              AI 인프라 세부는 row 8 의 AI 도구 사용 가능 환경 (가능/제한적/불가능) · 네트워크
+              환경 (양호/보통/개선필요) · PC 보유 수 와 1:1 정합.
             </li>
             <li>요구분석·기대효과는 row 9·11 자유 서술 영역. 3~5 줄 권장.</li>
           </ul>
