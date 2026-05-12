@@ -15,6 +15,8 @@ import {
   incrementNoticeViewCount,
   sanitizeFileName,
   buildStoragePath,
+  createNoticeAttachmentUploadUrl,
+  registerNoticeAttachment,
 } from './notice';
 
 // ─── Supabase 체인 모킹 ─────────────────────────────────────────────────────
@@ -60,6 +62,16 @@ function createMockSupabase() {
     createSignedUrl: vi.fn<() => Promise<{ data: { signedUrl: string } | null; error: { message: string } | null }>>(() =>
       Promise.resolve({
         data: { signedUrl: 'https://signed.example/path' },
+        error: null,
+      }),
+    ),
+    createSignedUploadUrl: vi.fn<() => Promise<{ data: { signedUrl: string; token: string; path: string } | null; error: { message: string } | null }>>(() =>
+      Promise.resolve({
+        data: {
+          signedUrl: 'https://upload.example/path?token=abc',
+          token: 'abc',
+          path: 'n1/uuid-a.pdf',
+        },
         error: null,
       }),
     ),
@@ -769,6 +781,183 @@ describe('uploadAttachment', () => {
       expect(result.error.length).toBeGreaterThan(0);
     }
     // Storage 롤백도 시도되어야 함 (best-effort)
+    expect(mock.storageMethods.remove).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── createNoticeAttachmentUploadUrl (Storage 직접 업로드용 signed URL 발급) ──
+
+describe('createNoticeAttachmentUploadUrl', () => {
+  let mock: ReturnType<typeof createMockSupabase>;
+  beforeEach(() => {
+    mock = createMockSupabase();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('성공 시 signedUrl·token·storagePath·resolvedMime 반환', async () => {
+    const result = await createNoticeAttachmentUploadUrl(
+      'n1',
+      'document.pdf',
+      'application/pdf',
+      1024,
+      mock.mockClient as never,
+    );
+
+    expect('signedUrl' in result).toBe(true);
+    if ('signedUrl' in result) {
+      expect(result.signedUrl).toBe('https://upload.example/path?token=abc');
+      expect(result.token).toBe('abc');
+      expect(result.storagePath.startsWith('n1/')).toBe(true);
+      expect(result.storagePath.endsWith('document.pdf')).toBe(true);
+      expect(result.resolvedMime).toBe('application/pdf');
+    }
+    expect(mock.storageMethods.createSignedUploadUrl).toHaveBeenCalled();
+  });
+
+  it('확장자 기반 MIME 보정 (.hwp → application/x-hwp)', async () => {
+    const result = await createNoticeAttachmentUploadUrl(
+      'n1',
+      'report.hwp',
+      'application/octet-stream',
+      1024,
+      mock.mockClient as never,
+    );
+
+    expect('signedUrl' in result).toBe(true);
+    if ('signedUrl' in result) {
+      expect(result.resolvedMime).toBe('application/x-hwp');
+    }
+  });
+
+  it('createSignedUploadUrl 에러 시 { error } 반환', async () => {
+    mock.storageMethods.createSignedUploadUrl.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'bucket not found' },
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createNoticeAttachmentUploadUrl(
+      'n1',
+      'a.pdf',
+      'application/pdf',
+      10,
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toContain('bucket not found');
+    }
+    consoleSpy.mockRestore();
+  });
+
+  it('createSignedUploadUrl throw 해도 { error } 반환', async () => {
+    mock.storageMethods.createSignedUploadUrl.mockRejectedValueOnce(
+      new Error('network down'),
+    );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createNoticeAttachmentUploadUrl(
+      'n1',
+      'a.pdf',
+      'application/pdf',
+      10,
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── registerNoticeAttachment (Storage 업로드 후 DB row insert) ──────────────
+
+describe('registerNoticeAttachment', () => {
+  let mock: ReturnType<typeof createMockSupabase>;
+  beforeEach(() => {
+    mock = createMockSupabase();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('성공 시 attachment 반환', async () => {
+    const expected = {
+      id: 'att-1',
+      notice_id: 'n1',
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n1/uuid-a.pdf',
+      uploaded_at: '2026-01-01',
+    };
+    mock.addResult({ data: expected, error: null });
+
+    const result = await registerNoticeAttachment(
+      'n1',
+      {
+        file_name: 'a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 100,
+        storage_path: 'n1/uuid-a.pdf',
+      },
+      mock.mockClient as never,
+    );
+
+    expect('attachment' in result).toBe(true);
+    if ('attachment' in result) {
+      expect(result.attachment.id).toBe('att-1');
+    }
+    expect(mock.chainable.insert).toHaveBeenCalled();
+  });
+
+  it('insert 실패 시 Storage 롤백 + 원본 message 포함 error 반환', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mock.addResult({
+      data: null,
+      error: { message: 'unique violation' },
+    });
+
+    const result = await registerNoticeAttachment(
+      'n1',
+      {
+        file_name: 'a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 100,
+        storage_path: 'n1/uuid-a.pdf',
+      },
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toContain('unique violation');
+    }
+    expect(mock.storageMethods.remove).toHaveBeenCalledWith(['n1/uuid-a.pdf']);
+    consoleSpy.mockRestore();
+  });
+
+  it('insert throw 해도 { error } 반환 + Storage 롤백 best-effort', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mock.chainable.single = vi.fn(() =>
+      Promise.reject(new Error('socket hang up')),
+    );
+
+    const result = await registerNoticeAttachment(
+      'n1',
+      {
+        file_name: 'a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 100,
+        storage_path: 'n1/uuid-a.pdf',
+      },
+      mock.mockClient as never,
+    );
+
+    expect('error' in result).toBe(true);
     expect(mock.storageMethods.remove).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });

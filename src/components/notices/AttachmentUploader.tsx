@@ -10,7 +10,7 @@ import {
   ALLOWED_ATTACHMENT_EXT,
   MAX_ATTACHMENT_BYTES,
 } from '@/lib/schemas/notice';
-import { uploadAttachmentAction } from '@/app/(dashboard)/ops/notices/actions';
+import { uploadNoticeAttachmentDirect } from '@/lib/utils/upload-notice-attachment';
 import type { NoticeAttachment } from '@/types/database';
 
 interface AttachmentUploaderProps {
@@ -72,13 +72,11 @@ export function AttachmentUploader({
       return;
     }
 
-    // 즉시 업로드 모드 (수정 페이지)
+    // 즉시 업로드 모드 (수정 페이지) — Storage 직접 업로드 패턴
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
-      const result = await uploadAttachmentAction(noticeId, formData);
+      const result = await uploadNoticeAttachmentDirect(noticeId, file);
       if (result.success) {
         showSuccessToast('첨부 파일이 업로드되었습니다.');
         onUploaded?.(result.data.attachment);

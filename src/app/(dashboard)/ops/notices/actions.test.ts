@@ -29,6 +29,8 @@ vi.mock('@/lib/services/notice', () => ({
   uploadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
   buildStoragePath: vi.fn((noticeId: string, name: string) => `${noticeId}/uuid-${name}`),
+  createNoticeAttachmentUploadUrl: vi.fn(),
+  registerNoticeAttachment: vi.fn(),
 }));
 
 import {
@@ -38,6 +40,8 @@ import {
   togglePinAction,
   uploadAttachmentAction,
   deleteAttachmentAction,
+  createUploadUrlAction,
+  registerAttachmentAction,
 } from './actions';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import * as noticeService from '@/lib/services/notice';
@@ -405,5 +409,203 @@ describe('deleteAttachmentAction', () => {
     vi.mocked(noticeService.deleteAttachment).mockResolvedValueOnce(true);
     const result = await deleteAttachmentAction('att-1');
     expect(result.success).toBe(true);
+  });
+});
+
+// ─── createUploadUrlAction (Storage 직접 업로드용 signed URL 발급) ───────
+
+describe('createUploadUrlAction', () => {
+  it('권한 없으면 실패', async () => {
+    setAuthFailure();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      100,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('빈 noticeId 거부', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      '',
+      'a.pdf',
+      'application/pdf',
+      100,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('30MB 초과 거부', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      31 * 1024 * 1024,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('빈 파일(0바이트) 거부', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      0,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('허용되지 않은 확장자 거부 (.exe)', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'mal.exe',
+      'application/octet-stream',
+      100,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('성공 시 signedUrl·token·storagePath·resolvedMime 반환', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.createNoticeAttachmentUploadUrl).mockResolvedValueOnce({
+      signedUrl: 'https://upload.example/path?token=abc',
+      token: 'abc',
+      storagePath: 'n-1/uuid-a.pdf',
+      resolvedMime: 'application/pdf',
+    });
+
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      100,
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.signedUrl).toContain('upload.example');
+      expect(result.data.token).toBe('abc');
+      expect(result.data.storagePath).toBe('n-1/uuid-a.pdf');
+    }
+  });
+
+  it('서비스 throw 해도 ActionResult 반환', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.createNoticeAttachmentUploadUrl).mockRejectedValueOnce(
+      new Error('network down'),
+    );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      100,
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(typeof result.error).toBe('string');
+    }
+    consoleSpy.mockRestore();
+  });
+});
+
+// ─── registerAttachmentAction (Storage 업로드 후 DB row 등록) ─────────────
+
+describe('registerAttachmentAction', () => {
+  it('권한 없으면 실패', async () => {
+    setAuthFailure();
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('빈 noticeId 거부', async () => {
+    setAuthSuccess();
+    const result = await registerAttachmentAction('', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('성공 시 attachment 반환', async () => {
+    setAuthSuccess();
+    const attachment = {
+      id: 'att-1',
+      notice_id: 'n-1',
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+      uploaded_at: '2026-01-01',
+    };
+    vi.mocked(noticeService.registerNoticeAttachment).mockResolvedValueOnce({
+      attachment,
+    } as never);
+
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.attachment.id).toBe('att-1');
+    }
+  });
+
+  it('서비스 실패 시 error 반환', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.registerNoticeAttachment).mockResolvedValueOnce({
+      error: 'duplicate key',
+    });
+
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('duplicate key');
+    }
+  });
+
+  it('서비스 throw 해도 ActionResult 반환', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.registerNoticeAttachment).mockRejectedValueOnce(
+      new Error('db down'),
+    );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(typeof result.error).toBe('string');
+    }
+    consoleSpy.mockRestore();
   });
 });

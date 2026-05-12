@@ -489,6 +489,118 @@ export async function uploadAttachment(
   return { attachment: insertData as NoticeAttachment };
 }
 
+// ============================================================================
+// Storage 직접 업로드 패턴 (signed upload URL)
+// ============================================================================
+
+export interface NoticeAttachmentUploadUrl {
+  signedUrl: string;
+  token: string;
+  storagePath: string;
+  resolvedMime: string;
+}
+
+/**
+ * 공지 첨부 직접 업로드용 signed URL 발급.
+ * - 클라이언트가 브라우저에서 직접 Supabase Storage 에 PUT 으로 업로드할 수
+ *   있도록 admin client 가 signed URL 과 token 을 발급한다.
+ * - Server Action 의 multipart body 한도(Vercel platform 제약)를 우회한다.
+ * - 발급 후 클라이언트는 `uploadToSignedUrl(storagePath, token, file)` 또는
+ *   fetch PUT 으로 업로드한다. 업로드 성공 후 별도로 `registerNoticeAttachment`
+ *   를 호출해 DB row 를 등록해야 한다.
+ */
+export async function createNoticeAttachmentUploadUrl(
+  noticeId: string,
+  fileName: string,
+  mimeType: string,
+  _fileSize: number,
+  adminClient: SupaClient,
+): Promise<NoticeAttachmentUploadUrl | { error: string }> {
+  const storagePath = buildStoragePath(noticeId, fileName);
+  // 브라우저 MIME 감지 실패(.hwp 등) 대비: 확장자 기반 매핑을 우선 사용.
+  const resolvedMime =
+    getMimeTypeByExtension(fileName) ??
+    (mimeType && mimeType.length > 0 ? mimeType : 'application/octet-stream');
+
+  try {
+    const { data, error } = await adminClient.storage
+      .from('notice-attachments')
+      .createSignedUploadUrl(storagePath);
+
+    if (error || !data) {
+      const msg = error?.message ?? '알 수 없는 오류';
+      console.error('[createNoticeAttachmentUploadUrl] error:', error);
+      return { error: `업로드 URL 발급 실패: ${msg}` };
+    }
+
+    return {
+      signedUrl: data.signedUrl,
+      token: data.token,
+      storagePath,
+      resolvedMime,
+    };
+  } catch (e) {
+    console.error('[createNoticeAttachmentUploadUrl] throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return { error: `업로드 URL 발급 실패: ${msg}` };
+  }
+}
+
+/**
+ * 첨부 업로드(Storage 직접 PUT) 성공 후 DB row 등록.
+ * - 등록 실패 시 Storage 파일 best-effort 제거 (orphan 방지).
+ */
+export async function registerNoticeAttachment(
+  noticeId: string,
+  metadata: AttachmentInput,
+  adminClient: SupaClient,
+): Promise<UploadAttachmentResult | { error: string }> {
+  let insertData: unknown = null;
+  let insertError: { message: string } | null = null;
+  try {
+    const { data, error } = await adminClient
+      .from('notice_attachments')
+      .insert({
+        notice_id: noticeId,
+        file_name: metadata.file_name,
+        mime_type: metadata.mime_type,
+        file_size: metadata.file_size,
+        storage_path: metadata.storage_path,
+      })
+      .select('*')
+      .single();
+    insertData = data;
+    insertError = (error as { message: string } | null) ?? null;
+  } catch (e) {
+    console.error('[registerNoticeAttachment] insert throw:', e);
+    try {
+      await adminClient.storage
+        .from('notice-attachments')
+        .remove([metadata.storage_path]);
+    } catch (rollbackErr) {
+      console.error('[registerNoticeAttachment] rollback throw:', rollbackErr);
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    return { error: `첨부 정보 저장에 실패했습니다. (${msg})` };
+  }
+
+  if (insertError || !insertData) {
+    if (insertError) {
+      console.error('[registerNoticeAttachment] insert error:', insertError);
+    }
+    await adminClient.storage
+      .from('notice-attachments')
+      .remove([metadata.storage_path]);
+    return {
+      error: insertError
+        ? `첨부 정보 저장에 실패했습니다. (${insertError.message})`
+        : '첨부 정보 저장에 실패했습니다.',
+    };
+  }
+
+  return { attachment: insertData as NoticeAttachment };
+}
+
 /**
  * 첨부 삭제 — DB row + Storage 파일 제거.
  */

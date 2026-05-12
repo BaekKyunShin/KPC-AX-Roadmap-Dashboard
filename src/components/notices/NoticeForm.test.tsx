@@ -27,12 +27,18 @@ const mockUpdateNoticeAction = vi.fn();
 const mockUploadAttachmentAction = vi.fn();
 const mockDeleteNoticeAction = vi.fn();
 const mockGetAttachmentDownloadUrl = vi.fn();
+const mockUploadNoticeAttachmentDirect = vi.fn();
 
 vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
   createNoticeAction: (...args: unknown[]) => mockCreateNoticeAction(...args),
   updateNoticeAction: (...args: unknown[]) => mockUpdateNoticeAction(...args),
   uploadAttachmentAction: (...args: unknown[]) => mockUploadAttachmentAction(...args),
   deleteNoticeAction: (...args: unknown[]) => mockDeleteNoticeAction(...args),
+}));
+
+// 클라이언트 helper (Storage 직접 업로드)
+vi.mock('@/lib/utils/upload-notice-attachment', () => ({
+  uploadNoticeAttachmentDirect: (...args: unknown[]) => mockUploadNoticeAttachmentDirect(...args),
 }));
 
 vi.mock('@/app/(dashboard)/notices/actions', () => ({
@@ -327,7 +333,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-1' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({ success: true });
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({ success: true });
 
       render(<NoticeForm mode="create" />);
 
@@ -353,7 +359,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-2' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({ success: true });
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({ success: true });
 
       render(<NoticeForm mode="create" />);
 
@@ -452,7 +458,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-fail' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: false,
         error: '업로드 실패',
       });
@@ -475,7 +481,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-fail' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: false,
         error: '업로드 실패',
       });
@@ -503,7 +509,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-fail' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: false,
         error: '업로드 실패',
       });
@@ -528,7 +534,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-throw' },
       });
-      mockUploadAttachmentAction.mockRejectedValue(new Error('네트워크 단절'));
+      mockUploadNoticeAttachmentDirect.mockRejectedValue(new Error('네트워크 단절'));
       mockDeleteNoticeAction.mockResolvedValue({ success: true });
 
       render(<NoticeForm mode="create" />);
@@ -554,7 +560,7 @@ describe('NoticeForm', () => {
         success: true,
         data: { noticeId: 'new-notice-rollback-fail' },
       });
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: false,
         error: '업로드 실패',
       });
