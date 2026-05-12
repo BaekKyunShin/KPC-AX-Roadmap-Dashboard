@@ -392,8 +392,18 @@ export async function uploadAttachment(
   adminClient: SupaClient,
 ): Promise<UploadAttachmentResult | { error: string }> {
   const storagePath = buildStoragePath(noticeId, file.name);
-  const arrayBuffer = await file.arrayBuffer();
-  const body = new Uint8Array(arrayBuffer);
+
+  // 파일 바이트 변환 — File.arrayBuffer() 는 abort/취소 등으로 throw 가능.
+  // Server Action 응답 직렬화를 손상시키지 않도록 try-catch 로 격리한다.
+  let body: Uint8Array;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    body = new Uint8Array(arrayBuffer);
+  } catch (e) {
+    console.error('[uploadAttachment] arrayBuffer error:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return { error: `파일을 읽지 못했습니다. (${msg})` };
+  }
 
   // 브라우저 MIME 감지 실패(.hwp 등) 대비: 확장자 기반 매핑을 우선 사용.
   // 버킷 `notice-attachments`는 allowed_mime_types로 contentType을 검사하므로
@@ -402,13 +412,21 @@ export async function uploadAttachment(
     getMimeTypeByExtension(file.name) ??
     (file.type && file.type.length > 0 ? file.type : 'application/octet-stream');
 
-  // 1) Storage 업로드
-  const { error: uploadError } = await adminClient.storage
-    .from('notice-attachments')
-    .upload(storagePath, body, {
-      contentType: resolvedMime,
-      upsert: false,
-    });
+  // 1) Storage 업로드 — supabase-js 내부 fetch 가 네트워크 에러로 throw 가능.
+  let uploadError: { message: string } | null = null;
+  try {
+    const res = await adminClient.storage
+      .from('notice-attachments')
+      .upload(storagePath, body, {
+        contentType: resolvedMime,
+        upsert: false,
+      });
+    uploadError = (res.error as { message: string } | null) ?? null;
+  } catch (e) {
+    console.error('[uploadAttachment] Storage upload throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return { error: `파일 업로드에 실패했습니다. (${msg})` };
+  }
 
   if (uploadError) {
     console.error('[uploadAttachment] Storage upload error:', uploadError);
@@ -417,7 +435,7 @@ export async function uploadAttachment(
     };
   }
 
-  // 2) DB row insert — mime_type도 확장자 기반 보정 값 사용
+  // 2) DB row insert — mime_type도 확장자 기반 보정 값 사용. fetch throw 도 보호.
   const attachmentInput: AttachmentInput = {
     file_name: file.name,
     mime_type: resolvedMime,
@@ -425,19 +443,37 @@ export async function uploadAttachment(
     storage_path: storagePath,
   };
 
-  const { data, error: insertError } = await adminClient
-    .from('notice_attachments')
-    .insert({
-      notice_id: noticeId,
-      file_name: attachmentInput.file_name,
-      mime_type: attachmentInput.mime_type,
-      file_size: attachmentInput.file_size,
-      storage_path: attachmentInput.storage_path,
-    })
-    .select('*')
-    .single();
+  let insertData: unknown = null;
+  let insertError: { message: string } | null = null;
+  try {
+    const { data, error } = await adminClient
+      .from('notice_attachments')
+      .insert({
+        notice_id: noticeId,
+        file_name: attachmentInput.file_name,
+        mime_type: attachmentInput.mime_type,
+        file_size: attachmentInput.file_size,
+        storage_path: attachmentInput.storage_path,
+      })
+      .select('*')
+      .single();
+    insertData = data;
+    insertError = (error as { message: string } | null) ?? null;
+  } catch (e) {
+    console.error('[uploadAttachment] Insert throw:', e);
+    // 롤백: Storage에 올린 파일 제거 (best-effort, 롤백 throw 는 무시)
+    try {
+      await adminClient.storage
+        .from('notice-attachments')
+        .remove([storagePath]);
+    } catch (rollbackErr) {
+      console.error('[uploadAttachment] Rollback throw:', rollbackErr);
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    return { error: `첨부 정보 저장에 실패했습니다. (${msg})` };
+  }
 
-  if (insertError || !data) {
+  if (insertError || !insertData) {
     if (insertError) {
       console.error('[uploadAttachment] Insert error:', insertError);
     }
@@ -450,7 +486,7 @@ export async function uploadAttachment(
     };
   }
 
-  return { attachment: data as unknown as NoticeAttachment };
+  return { attachment: insertData as NoticeAttachment };
 }
 
 /**

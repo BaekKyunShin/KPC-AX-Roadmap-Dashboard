@@ -148,6 +148,32 @@ describe('createNoticeAction', () => {
     expect(result.success).toBe(true);
     consoleSpy.mockRestore();
   });
+
+  // ─── 본 흐름 unknown throw 방어 (이슈 1-C 재발 차단) ─────────────────────
+  // 증상: 첨부 포함 등록 시 클라이언트에 "An unexpected response was received
+  // from the server" 토스트가 뜨지만 공지 row 는 저장됨. 원인은 본 흐름의
+  // unknown throw 가 응답 직렬화를 손상시켜 fetch-server-response.ts(E394)
+  // 에서 throw 한 것. createNotice / createAdminClient 등 모든 unknown
+  // throw 가 ActionResult 로 변환되어야 한다.
+
+  it('createNotice 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.createNotice).mockRejectedValueOnce(
+      new Error('DB 네트워크 에러'),
+    );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await createNoticeAction(
+      makeFormData({ title: '공지', body: '본문' }),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
+    consoleSpy.mockRestore();
+  });
 });
 
 // ─── updateNoticeAction ─────────────────────────────────────────────────
@@ -334,6 +360,33 @@ describe('uploadAttachmentAction', () => {
     );
 
     expect(result.success).toBe(true);
+    consoleSpy.mockRestore();
+  });
+
+  // ─── 본 흐름 unknown throw 방어 (이슈 1-C 재발 차단) ─────────────────────
+  // 증상: 첨부 포함 등록 시 catch 블록에 도달하여 "저장 실패 - An unexpected
+  // response was received from the server" 토스트가 발생, 공지는 저장되었으나
+  // 첨부는 누락. 본 흐름(서비스/admin client/파일 처리)에서의 unknown throw 가
+  // 응답 직렬화를 손상시킨 것으로 판단. 모든 unknown throw 는 ActionResult 로
+  // 변환되어 클라이언트 catch 블록에 도달하지 않아야 한다.
+
+  it('uploadAttachment 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.uploadAttachment).mockRejectedValueOnce(
+      new Error('storage 네트워크 에러'),
+    );
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await uploadAttachmentAction(
+      'n-1',
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(typeof result.error).toBe('string');
+      expect(result.error.length).toBeGreaterThan(0);
+    }
     consoleSpy.mockRestore();
   });
 });

@@ -341,6 +341,34 @@ describe('NoticeForm', () => {
         );
       });
     });
+
+    // 회귀 #이슈1-C: 첨부 포함 정상 흐름에서 "저장 실패" 토스트가 발생해선 안 됨.
+    // (이전 증상: 공지 + 첨부 등록 시 클라이언트 catch 블록에 도달해
+    //  "저장 실패 - An unexpected response..." 토스트가 잘못 표시됨)
+    it('첨부 포함 정상 흐름에서 "저장 실패" 토스트가 호출되지 않는다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-2' },
+      });
+      mockUploadAttachmentAction.mockResolvedValue({ success: true });
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockShowSuccessToast).toHaveBeenCalled();
+      });
+
+      // "저장 실패" 토스트는 단 한 번도 호출되어서는 안 됨
+      const errorCalls = mockShowErrorToast.mock.calls.filter(
+        (call) => call[0] === '저장 실패',
+      );
+      expect(errorCalls).toHaveLength(0);
+    });
   });
 
   // ---------------------------------------------------------------------------
