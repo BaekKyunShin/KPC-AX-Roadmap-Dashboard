@@ -22,6 +22,7 @@ track 분기:
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.parse
@@ -241,6 +242,67 @@ def _collect_tables(doc):
     return tables
 
 
+SMART_WRAP_SOFT_LIMIT = 45
+SMART_WRAP_HARD_LIMIT = 60
+
+_SENTENCE_END_RE = re.compile(r"(?<=[.!?。?!])\s+")
+
+
+def _wrap_by_words(text: str, limit: int) -> list[str]:
+    """공백 어절 경계 그리디 분할. 단일 토큰이 limit 초과면 글자 단위 강제.
+
+    한국어 어절 평균 ~10자 기준. limit=60 이면 4~5 어절씩 자연스럽게 묶임.
+    """
+    if len(text) <= limit:
+        return [text]
+    out: list[str] = []
+    buf = ""
+    for tok in text.split(" "):
+        candidate = (buf + " " + tok).strip() if buf else tok
+        if len(candidate) <= limit:
+            buf = candidate
+        else:
+            if buf:
+                out.append(buf)
+            if len(tok) > limit:
+                for i in range(0, len(tok), limit):
+                    out.append(tok[i : i + limit])
+                buf = ""
+            else:
+                buf = tok
+    if buf:
+        out.append(buf)
+    return out
+
+
+def _smart_wrap(line: str) -> list[str]:
+    """단일 줄 텍스트를 SOFT_LIMIT 기준으로 자연스럽게 분할.
+
+    OWPML `lineWrap="SQUEEZE"` 속성이 적용된 1-paragraph 셀에 긴 단일 문장이
+    들어가면, 한컴오피스가 셀 폭에 맞춰 자동 wrap 한 줄들을 압축 렌더해 글자가
+    겹쳐 보임. 미리 paragraph 단위로 분할해 두면 셀 높이가 자동 확장되어
+    겹침을 회피할 수 있다.
+
+    알고리즘:
+      1. SOFT_LIMIT (45자) 이하면 분할 없음.
+      2. 문장 부호 (마침표·물음표·느낌표 + 공백) 뒤에서 1차 분할.
+      3. 각 조각이 HARD_LIMIT (60자) 초과면 공백 어절 경계로 2차 분할.
+    """
+    if len(line) <= SMART_WRAP_SOFT_LIMIT:
+        return [line]
+    parts = _SENTENCE_END_RE.split(line)
+    out: list[str] = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        if len(p) <= SMART_WRAP_HARD_LIMIT:
+            out.append(p)
+        else:
+            out.extend(_wrap_by_words(p, SMART_WRAP_HARD_LIMIT))
+    return out or [line]
+
+
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
@@ -250,6 +312,13 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     1. 셀 내부 모든 paragraph의 모든 run text를 무조건 비움
        (placeholder 흔적 완전 제거)
     2. text 를 '\n' 기준으로 분할, 각 줄을 paragraph[i].runs[0] 에 1:1 매핑.
+       단, 다음 2중 게이트를 모두 만족하면 `_smart_wrap` 으로 추가 분할:
+         ① 텍스트에 `\n` 없음 (단일 줄 — multi-line 데이터는 의도 존중)
+         ② 텍스트 길이 > SOFT_LIMIT (짧은 셀은 손대지 않음)
+       SQUEEZE 압축으로 인한 글자 겹침 (PBL Ⅳ-1 훈련 목표 등) 회피.
+       multi-paragraph 템플릿 셀에 단일 줄 짧은 텍스트가 들어오면 그대로
+       paragraph[0] 에 기입 (회귀 없음). LLM 단일 줄 긴 텍스트가 들어오면
+       분할 후 paragraph[0..n] 에 분배 (양식이 multi-paragraph 의도).
     3. **줄 수 > 템플릿 paragraph 수** 인 경우 `cell.add_paragraph(...)` 로
        부족한 paragraph 를 동적으로 추가 (이슈 #2 회귀 방지).
        - 기존 동작: 마지막 paragraph 하나에 잉여 줄을 '\n' 으로 join → OWPML
@@ -272,9 +341,12 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         for r in p.runs:
             r.text = ""
 
-    # Step 2: 입력 텍스트 정규화
+    # Step 2: 입력 텍스트 정규화 + 자동 분할 게이트 (SQUEEZE 글자 겹침 회피)
     text = text if text is not None else ""
-    lines = text.split("\n") if text else [""]
+    if "\n" not in text and len(text) > SMART_WRAP_SOFT_LIMIT:
+        lines = _smart_wrap(text)
+    else:
+        lines = text.split("\n") if text else [""]
 
     # Step 3: 줄 수가 paragraph 수보다 많으면 부족분을 동적 추가
     #   `cell.add_paragraph(text)` 는 빈 paragraph + 첫 run.text=text 를 반환
@@ -1236,18 +1308,41 @@ def _fill_pbl_performance_activities(tables, build_pbl_table_rows, data, idx: in
 
 
 def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
-    """Ⅲ-2-가 문제 정의 — 5×2 (V2: problems[] 4 항목).
+    """Ⅲ-2-가 문제 정의 — 5×2.
 
-    양식 5x2 (구분/내용) — row 0 헤더, row 1~4 데이터 (max_items=4).
-    V2 problems[] = [{title, description, impact}]
-      → col 0 = title, col 1 = description.
+    우선순위 (V2 정본 → V2 problems[] → V1):
+      ① data["problem_definition_sheet"] {background, core, scope, constraints}
+         → 4 행 col 1 에 1:1 매핑 (양식 라벨 행 0 + 구분 col 0 = 양식 고정 텍스트).
+         TS V2 PBL 인터뷰 (`PBLInterviewStrict`) 가 송신하는 정본 키.
+      ② data["problems"][] {title, description, impact} (대안 형식, max 4)
+         → col 0 = title, col 1 = description.
+      ③ V1 fallback — problem_background / core / scope / constraints (legacy).
 
-    V1 호환: data.get("problems") 가 비어 있으면 V1 problem_background/core/
-    scope/constraints 4 cell_fill 로 fallback.
+    근거: TS payload (`hwpx-payload-pbl.ts:233-238`) 가 V2 정본 키
+    `problem_definition_sheet` 로 데이터 송신하지만, 이전 구현은 V1 키만
+    인지해 셀이 빈 채로 출력됐음. 패턴 참고: `_fill_pbl_performance_activities`
+    (V2 activities → V1 performance_activities fallback).
     """
     if idx >= len(tables):
         return
     tbl = tables[idx]
+
+    # ① V2 정본 — problem_definition_sheet
+    sheet = data.get("problem_definition_sheet")
+    if isinstance(sheet, dict) and any(
+        sheet.get(k) for k in ("background", "core", "scope", "constraints")
+    ):
+        mapping = [
+            (1, 1, sheet.get("background")),
+            (2, 1, sheet.get("core")),
+            (3, 1, sheet.get("scope")),
+            (4, 1, sheet.get("constraints")),
+        ]
+        for r, c, text in mapping:
+            _set_cell_text(tbl, r, c, text or "")
+        return
+
+    # ② V2 problems[] (대안 형식)
     problems = build_pbl_table_rows(data, "problems")
     if problems:
         max_rows = min(4, tbl.row_count - 1)
@@ -1256,7 +1351,8 @@ def _fill_pbl_problems(tables, build_pbl_table_rows, data, idx: int = 15):
             _set_cell_text(tbl, target_row, 0, row.get("title", ""))
             _set_cell_text(tbl, target_row, 1, row.get("description", ""))
         return
-    # V1 fallback
+
+    # ③ V1 fallback (legacy)
     mapping = [
         (1, 1, data.get("problem_background")),
         (2, 1, data.get("problem_core")),

@@ -745,6 +745,189 @@ class TestNoPlaceholderResidue:
 
 
 # ---------------------------------------------------------------
+# PBL HWPX 콘텐츠 품질 회귀 (Task 1·2·3·4 — V2 키 인지, 글자 겹침, 표 전수)
+# ---------------------------------------------------------------
+
+
+def _open_pbl_doc(data: dict):
+    """fixture 로 _generate_pbl 호출 → 임시 파일에 저장 → HwpxDocument 반환.
+
+    호출자가 닫을 책임 없음 (한 테스트당 1회 사용). 임시 파일은 OS 가 정리.
+    """
+    from hwpx import HwpxDocument
+    from generate import _generate_pbl
+    import tempfile
+
+    out = _generate_pbl(data)
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
+        tmp.write(out)
+        return HwpxDocument.open(tmp.name)
+
+
+def _open_roadmap_doc(data: dict):
+    """fixture 로 _generate_roadmap 호출 → 임시 파일 저장 → HwpxDocument 반환."""
+    from hwpx import HwpxDocument
+    from generate import _generate_roadmap
+    import tempfile
+
+    out = _generate_roadmap(data)
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
+        tmp.write(out)
+        return HwpxDocument.open(tmp.name)
+
+
+def _cell_text(tbl, row: int, col: int) -> str:
+    """표 셀의 모든 paragraph·run 텍스트를 합쳐 단일 문자열로 반환."""
+    try:
+        cell = tbl.cell(row, col)
+    except Exception:
+        return ""
+    parts = []
+    for p in cell.paragraphs:
+        for r in p.runs:
+            if r.text:
+                parts.append(r.text)
+    return "".join(parts).strip()
+
+
+@pytest.mark.skipif(
+    not os.path.exists(PBL_TEMPLATE),
+    reason="templates/hwpx/pbl.hwpx 미존재",
+)
+class TestPblContentQualityV2Keys:
+    """유형 A — TS 가 송신하는 V2 정본 키를 Python 이 정확히 셀로 옮기는지 검증.
+
+    핵심: 사용자가 한컴오피스로 열었을 때 빈 칸이면 안 됨. fixture 의 의도된
+    데이터가 양식 셀에 표시되는지 1:1 매핑 회귀.
+    """
+
+    def test_pbl_problem_definition_sheet_v2_filled(self):
+        """Ⅲ-2-가 문제 정의서 (table 15, 5×2) — V2 problem_definition_sheet
+        키로 4 행 col 1 (배경/핵심/범위/제약) 모두 채워짐.
+
+        근거: TS payload 가 problems=[] 빈 배열 + problem_definition_sheet
+        nested 객체를 송신하는 실 사용자 시나리오 재현. 이 회귀가 없으면
+        Python `_fill_pbl_problems` 가 V1 fallback 키만 보고 셀이 빈 채로
+        출력됨.
+        """
+        from generate import _collect_tables
+
+        data = _load_fixture("pbl-full.json")
+        # V1 호환 키 제거 — 실 TS payload shape 그대로 재현
+        data["problems"] = []
+        data.pop("problem_background", None)
+        data.pop("problem_core", None)
+        data.pop("problem_scope", None)
+        data.pop("problem_constraints", None)
+        sheet = data["problem_definition_sheet"]
+
+        doc = _open_pbl_doc(data)
+        tbl = _collect_tables(doc)[15]
+        cells = [_cell_text(tbl, r, 1) for r in range(1, 5)]
+        assert all(cells), f"Ⅲ-2-가 4 행 col 1 빈 칸 발견: {cells}"
+        assert cells[0] == sheet["background"]
+        assert cells[1] == sheet["core"]
+        assert cells[2] == sheet["scope"]
+        assert cells[3] == sheet["constraints"]
+
+    def test_pbl_outcome_analysis_v_section_filled(self):
+        """Ⅴ-1 성과지표 (table 39) + Ⅴ-2 확산전략 (table 40) — outcome_analysis
+        4 키 (quantitative/qualitative_metrics, internalization/dissemination_plan)
+        가 양식 r1·r2 col 1 셀에 정확히 표시.
+        """
+        from generate import _collect_tables
+
+        data = _load_fixture("pbl-full.json")
+        doc = _open_pbl_doc(data)
+        tables = _collect_tables(doc)
+
+        # Ⅴ-1
+        v1 = tables[39]
+        assert data["quantitative_metrics"] in _cell_text(v1, 1, 1)
+        assert data["qualitative_metrics"] in _cell_text(v1, 2, 1)
+
+        # Ⅴ-2
+        v2 = tables[40]
+        assert data["internalization_plan"] in _cell_text(v2, 1, 1)
+        assert data["dissemination_plan"] in _cell_text(v2, 2, 1)
+
+
+# ---------------------------------------------------------------
+# 유형 B — 1-paragraph 셀 + 긴 단일 문장 글자 겹침 회귀
+# ---------------------------------------------------------------
+
+PBL_ONE_PARAGRAPH_CELLS = [
+    (3, (0, 0), "company_issues"),
+    (11, (0, 0), "course_necessity"),
+    (20, (0, 0), "target_necessity"),
+    (27, (0, 0), "training_goal"),
+]
+
+ROADMAP_ONE_PARAGRAPH_CELLS = [
+    (3, (0, 0), "establishment_necessity"),
+    (28, (0, 1), "training_structure_method"),
+]
+
+
+@pytest.mark.skipif(
+    not os.path.exists(PBL_TEMPLATE),
+    reason="templates/hwpx/pbl.hwpx 미존재",
+)
+@pytest.mark.parametrize("idx,coord,key", PBL_ONE_PARAGRAPH_CELLS)
+def test_pbl_long_text_in_1_paragraph_cell_splits(idx, coord, key):
+    """1-paragraph 셀에 80자+ 단일 문장 (마침표·\\n 없음) 투입 시
+    `_set_cell_text` 자동 분할이 발동해 paragraph 가 2 개 이상 생성됨.
+
+    근거: lineWrap="SQUEEZE" 양식 속성 때문에 1-paragraph 셀에 긴 텍스트가
+    들어가면 한컴오피스가 자동 wrap → 압축 → 글자 겹침. paragraph 단위로
+    미리 분할되면 셀 높이가 자동 확장되어 겹침 방지.
+    """
+    from generate import _collect_tables
+
+    data = _load_fixture("pbl-full.json")
+    # 마침표·\n 없는 100자+ 단일 문장 (LLM 출력 모사)
+    long_text = "공정 불량 원인 분석에 AI 도구를 활용해 데이터 정제와 시각화 보고서 자동 생성 그리고 표준 템플릿 기반 AI 초안 작성 그리고 담당자 검토 후 확정"
+    assert "\n" not in long_text
+    assert len(long_text) >= 80
+    data[key] = long_text
+
+    doc = _open_pbl_doc(data)
+    tbl = _collect_tables(doc)[idx]
+    cell = tbl.cell(*coord)
+    paragraphs = list(cell.paragraphs)
+    non_empty_paragraphs = [p for p in paragraphs
+                             if any(r.text for r in p.runs)]
+    assert len(non_empty_paragraphs) >= 2, (
+        f"PBL idx={idx} {key}: 긴 단일 문장 자동 분할 실패. "
+        f"non_empty_paragraphs={len(non_empty_paragraphs)}"
+    )
+
+
+@pytest.mark.skipif(
+    not os.path.exists(ROADMAP_TEMPLATE),
+    reason="templates/hwpx/roadmap.hwpx 미존재",
+)
+@pytest.mark.parametrize("idx,coord,key", ROADMAP_ONE_PARAGRAPH_CELLS)
+def test_roadmap_long_text_in_1_paragraph_cell_splits(idx, coord, key):
+    """Roadmap 양식의 동일 회귀. _set_cell_text 공유 헬퍼이므로 자동 적용."""
+    from generate import _collect_tables
+
+    data = _load_fixture("roadmap-full.json")
+    long_text = "공정 불량 원인 분석에 AI 도구를 활용해 데이터 정제와 시각화 보고서 자동 생성 그리고 표준 템플릿 기반 AI 초안 작성 그리고 담당자 검토 후 확정"
+    data[key] = long_text
+
+    doc = _open_roadmap_doc(data)
+    tbl = _collect_tables(doc)[idx]
+    cell = tbl.cell(*coord)
+    paragraphs = list(cell.paragraphs)
+    non_empty_paragraphs = [p for p in paragraphs
+                             if any(r.text for r in p.runs)]
+    assert len(non_empty_paragraphs) >= 2, (
+        f"Roadmap idx={idx} {key}: 긴 단일 문장 자동 분할 실패."
+    )
+
+
+# ---------------------------------------------------------------
 # max-length / special-chars 회귀 (DoD #6 — 4 조합 보강)
 # ---------------------------------------------------------------
 
