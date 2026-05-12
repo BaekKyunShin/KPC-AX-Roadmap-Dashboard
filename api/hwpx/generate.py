@@ -349,11 +349,23 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         lines = text.split("\n") if text else [""]
 
     # Step 3: 줄 수가 paragraph 수보다 많으면 부족분을 동적 추가
-    #   `cell.add_paragraph(text)` 는 빈 paragraph + 첫 run.text=text 를 반환
-    #   하므로 step 4 의 일관 처리를 위해 빈 문자열로 추가 후 별도 기록.
+    #   첫 paragraph 의 paraPrIDRef·styleIDRef·charPrIDRef 를 명시 전달하여
+    #   한컴오피스 렌더링에서 같은 셀 안 줄별 폰트가 통일되도록 한다.
+    #   python-hwpx 의 Cell.add_paragraph 는 inherit_style 옵션이 없고
+    #   None 전달 시 paraPrIDRef 미설정 + charPrIDRef="0" 기본 글꼴로 폴백한다
+    #   (oxml/document.py:2130-2160 직접 확인).
     existing_paragraphs = list(cell.paragraphs)
+    first_p = existing_paragraphs[0]
+    first_para_id = first_p.para_pr_id_ref
+    first_style_id = first_p.style_id_ref
+    first_char_id = first_p.runs[0].char_pr_id_ref if first_p.runs else None
     while len(existing_paragraphs) < len(lines):
-        new_p = cell.add_paragraph("")
+        new_p = cell.add_paragraph(
+            "",
+            para_pr_id_ref=first_para_id,
+            style_id_ref=first_style_id,
+            char_pr_id_ref=first_char_id,
+        )
         existing_paragraphs.append(new_p)
 
     # Step 4: 각 줄을 각 paragraph.runs[0] 에 1:1 기입

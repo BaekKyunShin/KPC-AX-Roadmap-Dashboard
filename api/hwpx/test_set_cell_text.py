@@ -180,3 +180,65 @@ def test_set_cell_text_short_single_line_keeps_paragraph_unchanged():
     assert paragraphs_text[0] == short_text
     # 나머지 paragraph 는 빈 채 유지 (분할 없음)
     assert all(t == "" for t in paragraphs_text[1:])
+
+
+# ---------------------------------------------------------------
+# 폰트 상속 회귀 (Phase D — _set_cell_text 가 동적 추가하는 paragraph 가
+# 첫 paragraph 의 paraPrIDRef·styleIDRef·charPrIDRef 를 상속해야 한컴오피스
+# 렌더링에서 줄 사이 폰트가 통일된다. python-hwpx 의 Cell.add_paragraph 는
+# inherit_style 옵션이 없고 None 전달 시 paraPrIDRef 미설정 +
+# charPrIDRef="0" 로 폴백하므로 명시 전달 필수.)
+# ---------------------------------------------------------------
+
+
+def test_set_cell_text_added_paragraph_inherits_para_pr_id_ref():
+    """동적 추가된 paragraph 는 첫 paragraph 의 paraPrIDRef 를 상속한다."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[22]  # 역량 모델링 — knowledge 셀은 1 paragraph
+    first_id = tbl.cell(2, 2).paragraphs[0].para_pr_id_ref
+
+    _set_cell_text(tbl, 2, 2, "줄 1\n줄 2\n줄 3")
+
+    paragraphs = list(tbl.cell(2, 2).paragraphs)
+    assert len(paragraphs) == 3
+    for i, p in enumerate(paragraphs[1:], start=1):
+        assert p.para_pr_id_ref == first_id, (
+            f"paragraph[{i}].para_pr_id_ref={p.para_pr_id_ref!r} ≠ "
+            f"template paragraph[0].para_pr_id_ref={first_id!r}"
+        )
+
+
+def test_set_cell_text_added_paragraph_inherits_char_pr_id_ref():
+    """동적 추가된 paragraph 의 run.char_pr_id_ref 가 paragraph[0].runs[0].char_pr_id_ref 와 일치."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[22]
+    first_run_id = tbl.cell(2, 2).paragraphs[0].runs[0].char_pr_id_ref
+
+    _set_cell_text(tbl, 2, 2, "A\nB\nC")
+
+    for i, p in enumerate(list(tbl.cell(2, 2).paragraphs)[1:], start=1):
+        if not p.runs:
+            continue
+        assert p.runs[0].char_pr_id_ref == first_run_id, (
+            f"paragraph[{i}].runs[0].char_pr_id_ref={p.runs[0].char_pr_id_ref!r} ≠ "
+            f"template paragraph[0].runs[0].char_pr_id_ref={first_run_id!r}"
+        )
+
+
+def test_set_cell_text_smart_wrap_split_inherits_style():
+    """_smart_wrap 으로 SOFT_LIMIT 초과 단일 줄을 분할해 추가한 paragraph 도 상속."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[22]
+    first_id = tbl.cell(2, 2).paragraphs[0].para_pr_id_ref
+    long_text = "긴 문장을 마침표 없이 연속해서 작성한 LLM 출력의 모사 예시 " * 3
+    assert len(long_text) > SMART_WRAP_SOFT_LIMIT
+
+    _set_cell_text(tbl, 2, 2, long_text)
+
+    paragraphs = list(tbl.cell(2, 2).paragraphs)
+    assert len(paragraphs) >= 2, f"_smart_wrap 분할 실패: {len(paragraphs)}"
+    for i, p in enumerate(paragraphs[1:], start=1):
+        assert p.para_pr_id_ref == first_id, (
+            f"_smart_wrap 으로 추가된 paragraph[{i}].para_pr_id_ref="
+            f"{p.para_pr_id_ref!r} ≠ {first_id!r}"
+        )

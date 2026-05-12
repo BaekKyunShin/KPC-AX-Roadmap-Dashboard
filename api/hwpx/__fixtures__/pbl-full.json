@@ -234,5 +234,12 @@
   "quantitative_metrics": "정확도 92% → 98% 향상, 보고서 리드타임 4시간 → 1시간 단축",
   "qualitative_metrics": "QA 인력 재배치 성공, 사내 AI 챔피언 3명 양성",
   "internalization_plan": "QA팀 표준 운영 프로세스로 정착, 월 1회 사내 세미나 운영",
-  "dissemination_plan": "전사 AI 센터 설립, 생산기술부·R&D 부서로 6개월 내 확산"
+  "dissemination_plan": "전사 AI 센터 설립, 생산기술부·R&D 부서로 6개월 내 확산",
+  "performance_checklist": [
+    {"unit_name": "CV 기초", "evaluation_criteria": "영상 처리 기본 개념 이해", "performance_level": 4},
+    {"unit_name": "객체 검출", "evaluation_criteria": "YOLO 모델 학습 운영 가능", "performance_level": 3},
+    {"unit_name": "데이터 라벨링", "evaluation_criteria": "AutoLabel 도구 활용 라벨링", "performance_level": 5},
+    {"unit_name": "모델 평가", "evaluation_criteria": "mAP·Recall 지표 산출", "performance_level": 4},
+    {"unit_name": "현장 적용", "evaluation_criteria": "생산 라인 실 데이터 검증", "performance_level": 3}
+  ]
 }
