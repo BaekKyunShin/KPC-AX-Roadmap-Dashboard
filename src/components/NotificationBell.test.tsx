@@ -1,6 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -22,11 +22,13 @@ vi.mock('next/navigation', () => ({
 const mockFetchNotifications = vi.fn();
 const mockMarkNotificationRead = vi.fn();
 const mockMarkAllNotificationsRead = vi.fn();
+const mockFetchUnreadCount = vi.fn();
 
 vi.mock('@/app/(dashboard)/notifications/actions', () => ({
   fetchNotifications: (...args: unknown[]) => mockFetchNotifications(...args),
   markNotificationRead: (...args: unknown[]) => mockMarkNotificationRead(...args),
   markAllNotificationsRead: (...args: unknown[]) => mockMarkAllNotificationsRead(...args),
+  fetchUnreadCount: (...args: unknown[]) => mockFetchUnreadCount(...args),
 }));
 
 vi.mock('@/lib/utils/consultant-home', () => ({
@@ -144,9 +146,14 @@ function createSuccessResult(notifications: Notification[], hasMore = false) {
 }
 
 function renderBell(overrides: Partial<{ initialUnreadCount: number; userRole: UserRole }> = {}) {
+  const initialUnreadCount = overrides.initialUnreadCount ?? 0;
+  // 옵션 1: layout 에서 await 제거 → client 가 mount 시 fetchUnreadCount 자체 호출.
+  // 단위 테스트 기본 동작 = fetch 결과가 initialUnreadCount 와 동일하도록 동기화.
+  // 신규 갱신 시나리오를 검증할 때는 mockResolvedValueOnce 로 큐에 다른 값 push 가능.
+  mockFetchUnreadCount.mockResolvedValue(initialUnreadCount);
   return render(
     <NotificationBell
-      initialUnreadCount={overrides.initialUnreadCount ?? 0}
+      initialUnreadCount={initialUnreadCount}
       userRole={overrides.userRole ?? 'CONSULTANT_APPROVED'}
     />
   );
@@ -160,6 +167,25 @@ describe('NotificationBell', () => {
     mockFetchNotifications.mockResolvedValue(createSuccessResult([]));
     mockMarkNotificationRead.mockResolvedValue({ success: true });
     mockMarkAllNotificationsRead.mockResolvedValue({ success: true });
+    mockFetchUnreadCount.mockResolvedValue(0);
+    // visibilityState 기본값을 visible 로 복원 (다른 테스트 영향 차단)
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    // NotificationBell 은 첫 fetch 를 requestAnimationFrame 으로 지연한다 (page
+    // redirect transition 과 race 회피용). 테스트에서는 setTimeout(0) 으로 stub 해
+    // 기존 timer 기반 검증 패턴과 일관성 있게 처리한다.
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      (cb: FrameRequestCallback) =>
+        setTimeout(() => cb(typeof performance !== 'undefined' ? performance.now() : 0), 0) as unknown as number,
+    );
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   // ─── 뱃지 표시 ────────────────────────────────────────────────────────
@@ -895,6 +921,113 @@ describe('NotificationBell', () => {
       await waitFor(() => {
         expect(screen.getByText('알 수 없는 타입')).toBeInTheDocument();
       });
+    });
+  });
+
+  // ─── 클라이언트 자체 카운트 갱신 (layout 의 await 제거 대응) ───────────────
+
+  describe('클라이언트 자체 카운트 갱신', () => {
+    it('mount 직후 fetchUnreadCount 를 호출해 뱃지를 갱신한다', async () => {
+      // helper 의 mockResolvedValue(0) 보다 우선 적용되도록 Once 큐에 5 push
+      mockFetchUnreadCount.mockResolvedValueOnce(5);
+      renderBell({ initialUnreadCount: 0 });
+
+      await waitFor(() => {
+        expect(mockFetchUnreadCount).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('5')).toBeInTheDocument();
+      });
+    });
+
+    it('탭이 visible 일 때 visibilitychange 가 발생하면 fetchUnreadCount 가 재호출된다', async () => {
+      renderBell({ initialUnreadCount: 0 });
+      await waitFor(() => expect(mockFetchUnreadCount).toHaveBeenCalled());
+      mockFetchUnreadCount.mockClear();
+
+      await act(async () => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get: () => 'visible',
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        await Promise.resolve();
+      });
+
+      expect(mockFetchUnreadCount).toHaveBeenCalled();
+    });
+
+    it('탭이 hidden 일 때 visibilitychange 가 발생하면 fetchUnreadCount 가 호출되지 않는다', async () => {
+      renderBell({ initialUnreadCount: 0 });
+      await waitFor(() => expect(mockFetchUnreadCount).toHaveBeenCalled());
+      mockFetchUnreadCount.mockClear();
+
+      await act(async () => {
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true,
+          get: () => 'hidden',
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+        await Promise.resolve();
+      });
+
+      expect(mockFetchUnreadCount).not.toHaveBeenCalled();
+    });
+
+    it('30초 간격 polling 으로 fetchUnreadCount 가 주기적으로 재호출된다', async () => {
+      // raf 은 beforeEach 에서 setTimeout(0) 으로 stub 되어 있으므로 fake 대상에서 제외해야
+      // stub 이 유지된다. setTimeout/setInterval 만 fake 하여 polling 검증.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+      try {
+        renderBell({ initialUnreadCount: 0 });
+        // 첫 fetch 는 stub 된 raf → setTimeout(0) 으로 지연
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(mockFetchUnreadCount).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+        expect(mockFetchUnreadCount).toHaveBeenCalledTimes(2);
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+        expect(mockFetchUnreadCount).toHaveBeenCalledTimes(3);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('unmount 시 polling interval 과 visibilitychange 리스너가 정리된다', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+      const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
+      try {
+        const { unmount } = renderBell({ initialUnreadCount: 0 });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(mockFetchUnreadCount).toHaveBeenCalledTimes(1);
+
+        unmount();
+        mockFetchUnreadCount.mockClear();
+
+        // unmount 후 60초 진행해도 polling 호출 없음
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(60_000);
+        });
+        expect(mockFetchUnreadCount).not.toHaveBeenCalled();
+
+        // visibilitychange 리스너가 정리됐는지 확인
+        expect(removeEventListenerSpy).toHaveBeenCalledWith(
+          'visibilitychange',
+          expect.any(Function),
+        );
+      } finally {
+        vi.useRealTimers();
+        removeEventListenerSpy.mockRestore();
+      }
     });
   });
 });
