@@ -17,6 +17,8 @@ import {
   uploadAttachment,
   deleteAttachment,
   buildStoragePath,
+  createNoticeAttachmentUploadUrl,
+  registerNoticeAttachment,
 } from '@/lib/services/notice';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import type { NoticeAttachment } from '@/types/database';
@@ -298,6 +300,171 @@ export async function uploadAttachmentAction(
     return {
       success: false,
       error: `첨부 업로드 중 예기치 못한 오류가 발생했습니다. (${msg})`,
+    };
+  }
+}
+
+// ============================================================================
+// 첨부 직접 업로드용 signed URL 발급 (Storage 직접 업로드 패턴)
+// ============================================================================
+
+export interface CreateUploadUrlResult {
+  signedUrl: string;
+  token: string;
+  storagePath: string;
+  resolvedMime: string;
+}
+
+/**
+ * 공지 첨부를 클라이언트에서 Supabase Storage 로 직접 PUT 업로드하기 위한
+ * signed URL 을 발급한다. Server Action 의 multipart body 한도(Vercel
+ * Functions platform 제약)를 우회하는 표준 패턴.
+ *
+ * 발급 후 클라이언트는 signedUrl 로 PUT 요청을 보내고, 업로드 성공 후
+ * registerAttachmentAction 으로 DB row 를 등록해야 한다.
+ */
+export async function createUploadUrlAction(
+  noticeId: string,
+  fileName: string,
+  mimeType: string,
+  fileSize: number,
+): Promise<ActionResult<CreateUploadUrlResult>> {
+  try {
+    const auth = await requireAuthWithRole(OPS_ROLES, {
+      authError: '로그인이 필요합니다.',
+      roleError: '첨부 업로드 권한이 없습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+
+    if (!noticeId || typeof noticeId !== 'string') {
+      return { success: false, error: '공지 ID가 유효하지 않습니다.' };
+    }
+
+    if (typeof fileSize !== 'number' || fileSize <= 0) {
+      return { success: false, error: '파일 크기가 올바르지 않습니다.' };
+    }
+    if (fileSize > MAX_ATTACHMENT_BYTES) {
+      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+    }
+
+    // Zod 사전 검증 — storage_path 는 service 에서 buildStoragePath 로 생성되므로
+    // 형식만 임시값으로 통과시키고 file_name·mime_type·file_size 만 실질 검증.
+    const preCheckPath = buildStoragePath(noticeId, fileName);
+    const preCheck = attachmentInputSchema.safeParse({
+      file_name: fileName,
+      mime_type: mimeType || 'application/octet-stream',
+      file_size: fileSize,
+      storage_path: preCheckPath,
+    });
+    if (!preCheck.success) {
+      return { success: false, error: preCheck.error.errors[0].message };
+    }
+
+    const adminClient = createAdminClient();
+    const result = await createNoticeAttachmentUploadUrl(
+      noticeId,
+      fileName,
+      mimeType,
+      fileSize,
+      adminClient,
+    );
+
+    if ('error' in result) {
+      return { success: false, error: result.error };
+    }
+
+    return {
+      success: true,
+      data: {
+        signedUrl: result.signedUrl,
+        token: result.token,
+        storagePath: result.storagePath,
+        resolvedMime: result.resolvedMime,
+      },
+    };
+  } catch (e) {
+    console.error('[createUploadUrlAction] unknown throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `업로드 URL 발급 중 예기치 못한 오류가 발생했습니다. (${msg})`,
+    };
+  }
+}
+
+// ============================================================================
+// 첨부 직접 업로드 성공 후 DB row 등록
+// ============================================================================
+
+export async function registerAttachmentAction(
+  noticeId: string,
+  metadata: {
+    file_name: string;
+    mime_type: string;
+    file_size: number;
+    storage_path: string;
+  },
+): Promise<ActionResult<{ attachment: NoticeAttachment }>> {
+  try {
+    const auth = await requireAuthWithRole(OPS_ROLES, {
+      authError: '로그인이 필요합니다.',
+      roleError: '첨부 등록 권한이 없습니다.',
+    });
+    if ('error' in auth) return { success: false, error: auth.error };
+    const { user } = auth;
+
+    if (!noticeId || typeof noticeId !== 'string') {
+      return { success: false, error: '공지 ID가 유효하지 않습니다.' };
+    }
+
+    const validation = attachmentInputSchema.safeParse(metadata);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+
+    const adminClient = createAdminClient();
+    const result = await registerNoticeAttachment(
+      noticeId,
+      validation.data,
+      adminClient,
+    );
+
+    if ('error' in result) {
+      return { success: false, error: result.error };
+    }
+
+    // 부수 작업 — 실패해도 본 흐름 차단하지 않음
+    try {
+      await createAuditLog({
+        actorUserId: user.id,
+        action: 'NOTICE_UPDATED',
+        targetType: 'notice_attachment',
+        targetId: result.attachment.id,
+        meta: {
+          notice_id: noticeId,
+          file_name: validation.data.file_name,
+          file_size: validation.data.file_size,
+          kind: 'attachment_upload',
+        },
+      });
+    } catch (e) {
+      console.error('[registerAttachmentAction] 감사로그 실패:', e);
+    }
+
+    try {
+      revalidatePath(`/ops/notices/${noticeId}/edit`);
+      revalidatePath(`/notices/${noticeId}`);
+    } catch (e) {
+      console.error('[registerAttachmentAction] 캐시 무효화 실패:', e);
+    }
+
+    return { success: true, data: { attachment: result.attachment } };
+  } catch (e) {
+    console.error('[registerAttachmentAction] unknown throw:', e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      success: false,
+      error: `첨부 등록 중 예기치 못한 오류가 발생했습니다. (${msg})`,
     };
   }
 }

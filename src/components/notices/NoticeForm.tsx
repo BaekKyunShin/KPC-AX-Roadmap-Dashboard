@@ -15,10 +15,13 @@ import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   createNoticeAction,
   updateNoticeAction,
-  uploadAttachmentAction,
+  deleteNoticeAction,
 } from '@/app/(dashboard)/ops/notices/actions';
+import { uploadNoticeAttachmentDirect } from '@/lib/utils/upload-notice-attachment';
 import { getAttachmentDownloadUrl } from '@/app/(dashboard)/notices/actions';
 import type { NoticeAttachment } from '@/types/database';
+
+type SubmitPhase = 'idle' | 'creating' | 'uploading';
 
 interface NoticeFormProps {
   mode: 'create' | 'edit';
@@ -39,13 +42,17 @@ function formatBytes(bytes: number): string {
 
 export function NoticeForm({ mode, initial }: NoticeFormProps) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
+  const [uploadIndex, setUploadIndex] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [attachments, setAttachments] = useState<NoticeAttachment[]>(
     initial?.attachments ?? [],
   );
   /** 지연 업로드 모드(create)에서 선택된 파일들 */
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+
+  const isSubmitting = submitPhase !== 'idle';
 
   async function handleDownload(path: string): Promise<string | null> {
     const result = await getAttachmentDownloadUrl(path);
@@ -57,7 +64,6 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
   ): Promise<void> {
     e.preventDefault();
     setErrors({});
-    setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
     const title = String(formData.get('title') ?? '').trim();
@@ -69,12 +75,12 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
       nextErrors.body = '본문은 50,000자 이하로 입력하세요.';
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
-      setIsSubmitting(false);
       return;
     }
 
     try {
       if (mode === 'create') {
+        setSubmitPhase('creating');
         const result = await createNoticeAction(formData);
         if (!result.success) {
           showErrorToast('작성 실패', result.error);
@@ -83,36 +89,64 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
 
         const { noticeId } = result.data;
 
-        // 선택된 파일을 순차 업로드 (실패해도 공지 본문은 이미 저장된 상태)
+        // 첨부 업로드 — Storage 직접 업로드 패턴(uploadNoticeAttachmentDirect).
+        // 원자성 보장: 1건이라도 실패 시 공지 row 자동 삭제(보상 트랜잭션).
         let uploadedCount = 0;
-        let failedCount = 0;
-        for (const file of pendingFiles) {
-          const fd = new FormData();
-          fd.append('file', file);
-          const uploadRes = await uploadAttachmentAction(noticeId, fd);
-          if (uploadRes.success) {
-            uploadedCount += 1;
-          } else {
-            failedCount += 1;
-            showErrorToast(`첨부 업로드 실패: ${file.name}`, uploadRes.error);
+        let firstError: string | null = null;
+        setUploadTotal(pendingFiles.length);
+        if (pendingFiles.length > 0) {
+          setSubmitPhase('uploading');
+        }
+        for (let i = 0; i < pendingFiles.length; i += 1) {
+          const file = pendingFiles[i];
+          setUploadIndex(i + 1);
+          try {
+            const uploadRes = await uploadNoticeAttachmentDirect(noticeId, file);
+            if (uploadRes.success) {
+              uploadedCount += 1;
+            } else if (firstError === null) {
+              firstError = `${file.name}: ${uploadRes.error}`;
+            }
+          } catch (err) {
+            if (firstError === null) {
+              const msg = err instanceof Error ? err.message : '알 수 없는 오류';
+              firstError = `${file.name}: ${msg}`;
+            }
           }
         }
 
-        if (failedCount > 0) {
-          showSuccessToast(
-            `공지가 작성되었습니다. 첨부 ${uploadedCount}/${pendingFiles.length} 성공 · 실패한 파일은 수정 페이지에서 재시도하세요.`,
+        if (firstError !== null) {
+          // 보상 트랜잭션 — 공지 row + 이미 업로드된 첨부(Storage prefix `${noticeId}/`)
+          // 모두 자동 정리. deleteNoticeAction 자체 실패는 console.error 만 남기고
+          // 사용자 토스트는 정상 표시.
+          try {
+            const rollbackRes = await deleteNoticeAction(noticeId);
+            if (!rollbackRes.success) {
+              console.error(
+                '[NoticeForm] 보상 트랜잭션 실패:',
+                rollbackRes.error,
+              );
+            }
+          } catch (rollbackErr) {
+            console.error('[NoticeForm] 보상 트랜잭션 예외:', rollbackErr);
+          }
+          showErrorToast(
+            '공지 등록 실패',
+            `첨부 업로드 오류: ${firstError}. 다시 시도해 주세요.`,
           );
-          router.push(`/ops/notices/${noticeId}/edit`);
-        } else {
-          showSuccessToast(
-            pendingFiles.length > 0
-              ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
-              : '공지가 작성되었습니다.',
-          );
-          router.push('/ops/notices');
+          // 작성 페이지에 머무름 — 폼 state(title/body/pendingFiles) 자동 보존
+          return;
         }
+
+        showSuccessToast(
+          pendingFiles.length > 0
+            ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
+            : '공지가 작성되었습니다.',
+        );
+        router.push('/ops/notices');
         router.refresh();
       } else if (initial) {
+        setSubmitPhase('creating');
         const result = await updateNoticeAction(initial.id, formData);
         if (result.success) {
           showSuccessToast('공지가 수정되었습니다.');
@@ -133,8 +167,22 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
           : '알 수 없는 오류';
       showErrorToast('저장 실패', message);
     } finally {
-      setIsSubmitting(false);
+      setSubmitPhase('idle');
+      setUploadIndex(0);
+      setUploadTotal(0);
     }
+  }
+
+  // 작성/수정 버튼 라벨 — 단계별로 동적 변경
+  function getSubmitLabel(): string {
+    if (mode === 'edit') {
+      return submitPhase === 'creating' ? '수정 저장 중...' : '수정 저장';
+    }
+    if (submitPhase === 'creating') return '공지 작성 중...';
+    if (submitPhase === 'uploading') {
+      return `첨부 업로드 중 (${uploadIndex}/${uploadTotal})...`;
+    }
+    return '작성';
   }
 
   return (
@@ -271,7 +319,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         </Button>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {mode === 'create' ? '작성' : '수정 저장'}
+          {getSubmitLabel()}
         </Button>
       </div>
     </form>

@@ -7,11 +7,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 모킹
 // =============================================================================
 
-// Server Actions
-const mockUploadAttachmentAction = vi.fn();
+// 클라이언트 helper (Storage 직접 업로드)
+const mockUploadNoticeAttachmentDirect = vi.fn();
 
-vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
-  uploadAttachmentAction: (...args: unknown[]) => mockUploadAttachmentAction(...args),
+vi.mock('@/lib/utils/upload-notice-attachment', () => ({
+  uploadNoticeAttachmentDirect: (...args: unknown[]) => mockUploadNoticeAttachmentDirect(...args),
 }));
 
 // 토스트
@@ -134,7 +134,7 @@ describe('AttachmentUploader', () => {
       expect(mockOnFileSelected).toHaveBeenCalledWith(file);
     });
 
-    it('지연 업로드 모드에서는 uploadAttachmentAction이 호출되지 않는다', async () => {
+    it('지연 업로드 모드에서는 업로드 helper가 호출되지 않는다', async () => {
       render(<AttachmentUploader onFileSelected={mockOnFileSelected} />);
 
       const input = screen.getByTestId('attachment-input');
@@ -144,7 +144,7 @@ describe('AttachmentUploader', () => {
         await userEvent.upload(input, file);
       });
 
-      expect(mockUploadAttachmentAction).not.toHaveBeenCalled();
+      expect(mockUploadNoticeAttachmentDirect).not.toHaveBeenCalled();
     });
   });
 
@@ -256,7 +256,7 @@ describe('AttachmentUploader', () => {
   // 즉시 업로드 모드 (noticeId 있음)
   // ---------------------------------------------------------------------------
   describe('즉시 업로드 모드', () => {
-    it('올바른 파일 선택 시 uploadAttachmentAction(noticeId, formData)가 호출된다', async () => {
+    it('올바른 파일 선택 시 uploadNoticeAttachmentDirect(noticeId, file)가 호출된다', async () => {
       const fakeAttachment: NoticeAttachment = {
         id: 'att-1',
         notice_id: 'n-1',
@@ -266,7 +266,7 @@ describe('AttachmentUploader', () => {
         file_size: 1024,
         uploaded_at: '2024-01-01T00:00:00Z',
       };
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: true,
         data: { attachment: fakeAttachment },
       });
@@ -283,9 +283,9 @@ describe('AttachmentUploader', () => {
       });
 
       await waitFor(() => {
-        expect(mockUploadAttachmentAction).toHaveBeenCalledWith(
+        expect(mockUploadNoticeAttachmentDirect).toHaveBeenCalledWith(
           'n-1',
-          expect.any(FormData),
+          expect.any(File),
         );
       });
     });
@@ -300,7 +300,7 @@ describe('AttachmentUploader', () => {
         file_size: 1024,
         uploaded_at: '2024-01-01T00:00:00Z',
       };
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: true,
         data: { attachment: fakeAttachment },
       });
@@ -321,7 +321,7 @@ describe('AttachmentUploader', () => {
     });
 
     it('업로드 실패 시 에러 토스트가 표시된다', async () => {
-      mockUploadAttachmentAction.mockResolvedValue({
+      mockUploadNoticeAttachmentDirect.mockResolvedValue({
         success: false,
         error: '서버 오류',
       });
@@ -341,7 +341,7 @@ describe('AttachmentUploader', () => {
     });
 
     it('예외 발생 시 에러 토스트가 표시된다', async () => {
-      mockUploadAttachmentAction.mockRejectedValue(new Error('네트워크 오류'));
+      mockUploadNoticeAttachmentDirect.mockRejectedValue(new Error('네트워크 오류'));
 
       render(
         <AttachmentUploader noticeId="n-1" onUploaded={mockOnUploaded} />,
