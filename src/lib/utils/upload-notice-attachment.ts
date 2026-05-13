@@ -47,6 +47,19 @@ export async function uploadNoticeAttachmentDirect(
       } catch {
         // 응답 본문 파싱 실패는 무시
       }
+      // Supabase Storage 413 (버킷 file_size_limit 초과): outer status 400 +
+      // body JSON 의 statusCode==="413"/error==="Payload too large" 형태로 응답.
+      // 직접 413을 받는 경로도 함께 감지해 사용자 친화 메시지로 치환한다.
+      const isPayloadTooLarge =
+        res.status === 413 ||
+        detail.includes('"statusCode":"413"') ||
+        detail.includes('Payload too large');
+      if (isPayloadTooLarge) {
+        return {
+          success: false,
+          error: '파일이 너무 큽니다 (최대 30MB). 파일 크기를 줄여 다시 시도해 주세요.',
+        };
+      }
       return {
         success: false,
         error: `파일 업로드 실패 (${res.status}${detail ? `: ${detail}` : ''})`,

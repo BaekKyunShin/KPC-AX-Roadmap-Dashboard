@@ -130,6 +130,102 @@ describe('uploadNoticeAttachmentDirect', () => {
     expect(mockRegisterAttachmentAction).not.toHaveBeenCalled();
   });
 
+  // ─── 413 Payload Too Large: 사용자 친화 메시지로 변환 ─────────────────
+  // 배경: Supabase Storage 버킷 file_size_limit 초과 시 outer HTTP 400 +
+  //       body JSON 의 statusCode === "413" / error === "Payload too large"
+  //       형태로 응답한다. raw JSON 그대로 노출하면 사용자가 의미를
+  //       파악할 수 없으므로 한국어 친화 메시지로 치환한다.
+
+  it('Supabase Storage 413 응답(outer 400 + inner statusCode 413) 시 친화 메시지로 변환', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue({
+      success: true,
+      data: {
+        signedUrl: 'https://upload.example/path?token=abc',
+        token: 'abc',
+        storagePath: 'n-1/uuid-large.pdf',
+        resolvedMime: 'application/pdf',
+      },
+    });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: () =>
+        Promise.resolve(
+          '{"statusCode":"413","error":"Payload too large","message":"The object exceeded the maximum allowed size"}',
+        ),
+    });
+
+    const result = await uploadNoticeAttachmentDirect(
+      'n-1',
+      makeFile('large.pdf', 25 * 1024 * 1024, 'application/pdf'),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('30MB');
+      expect(result.error).not.toContain('statusCode');
+      expect(result.error).not.toContain('Payload too large');
+    }
+    expect(mockRegisterAttachmentAction).not.toHaveBeenCalled();
+  });
+
+  it('직접 status 413 응답 시에도 친화 메시지로 변환', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue({
+      success: true,
+      data: {
+        signedUrl: 'https://upload.example/path?token=abc',
+        token: 'abc',
+        storagePath: 'n-1/uuid-large.pdf',
+        resolvedMime: 'application/pdf',
+      },
+    });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 413,
+      text: () => Promise.resolve('Payload Too Large'),
+    });
+
+    const result = await uploadNoticeAttachmentDirect(
+      'n-1',
+      makeFile('large.pdf', 25 * 1024 * 1024, 'application/pdf'),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('30MB');
+    }
+    expect(mockRegisterAttachmentAction).not.toHaveBeenCalled();
+  });
+
+  it('status 500 등 413과 무관한 에러는 raw 메시지 유지 (회귀 방지)', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue({
+      success: true,
+      data: {
+        signedUrl: 'https://upload.example/path?token=abc',
+        token: 'abc',
+        storagePath: 'n-1/uuid-a.pdf',
+        resolvedMime: 'application/pdf',
+      },
+    });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve('Internal Server Error'),
+    });
+
+    const result = await uploadNoticeAttachmentDirect(
+      'n-1',
+      makeFile('a.pdf', 100, 'application/pdf'),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('500');
+      expect(result.error).toContain('Internal Server Error');
+      expect(result.error).not.toContain('30MB');
+    }
+  });
+
   it('fetch PUT throw 해도 error 반환', async () => {
     mockCreateUploadUrlAction.mockResolvedValue({
       success: true,
