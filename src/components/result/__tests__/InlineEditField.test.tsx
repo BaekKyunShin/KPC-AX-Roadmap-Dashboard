@@ -73,6 +73,37 @@ describe('InlineEditField', () => {
     expect(textarea.className).toContain('resize-y');
   });
 
+  // 결과 페이지 editFiel 의 textarea 스타일을 테스트 페이지 LargeTextBox 와 시각 일관성 일치
+  it('multiline=true 시 textarea 스타일이 LargeTextBox 와 일치한다 (padding/모서리/포커스 링)', async () => {
+    const user = userEvent.setup();
+    render(<InlineEditField value="hi" onSave={vi.fn()} multiline />);
+    await user.click(screen.getByText('hi'));
+    const textarea = screen.getByRole('textbox');
+    // LargeTextBox(`src/components/forms/LargeTextBox.tsx`) 와 동일해야 하는 항목
+    expect(textarea.className).toContain('px-3');
+    expect(textarea.className).toContain('py-2');
+    expect(textarea.className).toContain('rounded-md');
+    expect(textarea.className).toContain('focus-visible:ring-2');
+    expect(textarea.className).toContain('focus-visible:ring-ring');
+    // 회귀 방지: 변경 전 컴팩트 스타일이 남아있지 않아야 함
+    expect(textarea.className).not.toContain('px-2 ');
+    expect(textarea.className).not.toContain('py-1');
+  });
+
+  it('multiline=false (단일행 input) 은 기존 컴팩트 스타일 유지', async () => {
+    const user = userEvent.setup();
+    render(<InlineEditField value="hi" onSave={vi.fn()} />);
+    await user.click(screen.getByText('hi'));
+    const input = screen.getByRole('textbox');
+    expect(input.tagName).toBe('INPUT');
+    // 단일행은 인라인 편집용 컴팩트 스타일 유지 (의도적 차이)
+    expect(input.className).toContain('px-2');
+    expect(input.className).toContain('py-1');
+    expect(input.className).not.toContain('rounded-md');
+    expect(input.className).not.toContain('px-3');
+    expect(input.className).not.toContain('py-2');
+  });
+
   it('Escape 키 입력 시 편집 취소 (input)', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
