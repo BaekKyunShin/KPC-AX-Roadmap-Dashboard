@@ -297,6 +297,8 @@ describe('RoadmapResultClient — CONSULTANT role', () => {
         versions={[makeVersion({ status: 'DRAFT' })]}
         selectedVersion={makeVersion({ status: 'DRAFT' })}
         interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="INTERVIEWED"
         onSelectVersion={vi.fn()}
         onEdit={vi.fn()}
         onGenerate={onGenerate}
@@ -938,5 +940,89 @@ describe('RoadmapResultClient — 최종 확정 AlertDialog (#2)', () => {
 
     expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+});
+
+// 다운로드 진행 중 '+ 새 버전 생성' 토글 비활성화 회귀 가드.
+// PBL 결과 페이지와 동일한 UX 보장 — 사용자가 다운로드 도중 새 버전 생성을 클릭해
+// state 충돌이 일어나는 시나리오 차단.
+describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 토글 비활성화', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('HWPX 다운로드 진행 중에는 + 새 버전 생성 토글이 disabled 상태가 된다', async () => {
+    let resolveDownload: () => void = () => {};
+    const slowDownload = vi.fn(
+      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+    );
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={slowDownload}
+      />,
+    );
+
+    // 다운로드 시작 전: 토글 활성화
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled();
+
+    // HWPX 다운로드 클릭 → pending 상태 유지
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('HWPX 다운로드'));
+    });
+
+    expect(slowDownload).toHaveBeenCalledWith('HWPX');
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
+
+    // resolve 후 토글 다시 활성화
+    await act(async () => {
+      resolveDownload();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
+    );
+  });
+
+  it('PDF·XLSX 다운로드 진행 중에도 + 새 버전 생성 토글이 disabled 가 된다', async () => {
+    let resolveDownload: () => void = () => {};
+    const slowDownload = vi.fn(
+      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+    );
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        selfAssessmentExists={true}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={slowDownload}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('PDF 다운로드'));
+    });
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
+
+    await act(async () => {
+      resolveDownload();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
+    );
   });
 });

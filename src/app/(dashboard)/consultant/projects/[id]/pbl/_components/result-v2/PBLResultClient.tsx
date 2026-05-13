@@ -239,7 +239,7 @@ export function PBLResultClient({
               onChange={setRevisionPrompt}
               onSubmit={handleRegenerate}
               isLoading={isGenerating}
-              disabled={!canGeneratePbl}
+              disabled={!canGeneratePbl || downloadLoading !== null}
               defaultOpen={isRegenerateRequested}
               autoFocus={isRegenerateRequested}
             />
