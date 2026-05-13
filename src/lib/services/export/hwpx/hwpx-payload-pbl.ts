@@ -64,6 +64,22 @@ function safeString(value: unknown): string {
   return String(value);
 }
 
+/**
+ * 자유서술 텍스트에서 동그라미 숫자 패턴(① ② ③ … ⑳) 앞에 자동 줄바꿈 삽입.
+ * 양식 셀(예: P-03 company_issues, P-07 course_necessity)이 paragraph 별로
+ * 머리기호(▪)를 자동 표시하므로 \n 으로 분할하면 항목마다 머리기호가 자연스럽게
+ * 붙는다. 사용자가 한 줄로 "① 완제품 ... ② 품질 ..." 입력해도 다음과 같이 출력:
+ *   ▪ ① 완제품 ...
+ *   ▪ ② 품질 ...
+ *
+ * Look-behind \S 로 string 시작 직후 번호는 줄바꿈 추가 안 함 (중복 빈 줄 방지).
+ * 동일 효과를 LLM 출력 detail 필드에도 적용 (subject_profile training_contents).
+ */
+function normalizeListText(text: string | undefined | null): string {
+  if (!text) return '';
+  return text.replace(/(?<=\S)\s*(?=[①-⑳])/g, '\n');
+}
+
 /** R8 PBL-자체-05 — outcome_analysis → P-25/P-26 4 키 매핑.
  *  단일 옵셔널 chain 분기 4 개 → 헬퍼 1 개 분기로 단순화. */
 function buildOutcomeAnalysisP25(pblContent: PBLContent | null): Record<string, string> {
@@ -290,9 +306,14 @@ function buildDataFromV2(
     training_form: v2.trainingForm ?? '',
     training_period: v2.trainingPeriod ?? opsTrainingPeriod,
     business_issues: v2.businessIssues ?? '',
+    // 훈련 직무 — V2 인터뷰에서 직접 받지 않으므로 훈련대상 업무명(Ⅲ-3-가)
+    // 우선, 비어 있으면 훈련과정명(Ⅰ)에서 fallback. 양식 Ⅰ장 표의 빈 칸 해소.
+    training_job: v2.target?.name?.trim() || v2.courseName?.trim() || '',
 
     // ==================== Ⅱ. 훈련 요구 분석 ====================
-    company_issues: v2.companyIssues ?? '',
+    // 자유서술 ①②③ 등 동그라미 숫자 앞에 자동 줄바꿈 → 양식 셀 paragraph 별
+    // 머리기호(▪)가 항목마다 붙도록 출력 (사용자 보고).
+    company_issues: normalizeListText(v2.companyIssues),
     // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서
     // 제거. Python 측 _fill_pbl_organization 은 disabled 상태로 유지되어 빈 객체
     // 송신해도 안전 (양식 P-04 표는 한컴오피스 사용자 작성 영역).
@@ -304,7 +325,7 @@ function buildDataFromV2(
     hrd_report_attachment: v2.hrdReportPdf
       ? v2.hrdReportPdf.url || v2.hrdReportPdf.fileName || ''
       : '',
-    course_necessity: v2.courseNecessity ?? '',
+    course_necessity: normalizeListText(v2.courseNecessity),
 
     // ==================== Ⅲ. AI기반 훈련과제 도출 ====================
     // R8 PBL-자체-03 — 평면 4행 배열. Python 측 _fill_pbl_performance_activities
@@ -370,7 +391,9 @@ function buildDataFromV2(
     subject_total_sum_hours: safeString(trainingPlan?.subject_profile?.total_sum_hours),
     training_contents: (trainingPlan?.subject_profile?.training_contents ?? []).map((c) => ({
       unit_name: c.unit_name,
-      detail: c.detail,
+      // LLM 이 detail 을 다층 구조로 작성하면 \n 으로 줄바꿈하여 양식 셀에
+      // paragraph 별 머리기호가 붙도록 처리. 동그라미 숫자 ①②③ 도 자동 분할.
+      detail: normalizeListText(c.detail),
       training_hours: c.training_hours,
       instructor_hours: {
         external: c.instructor_hours?.external ?? 0,
@@ -424,7 +447,7 @@ function buildDataFromV2(
     // 위 spread (...buildTrainingEnvP05(v2.trainingEnv)) 로 송신. 여기서 중복
     // 빈 문자열 명시는 제거 (덮어쓰기 회피).
     course_development_necessity: v2.courseNecessity ?? '',
-    training_job: '',
+    // `training_job` 은 위 P-02 영역에서 v2.target.name → v2.courseName fallback 으로 채움.
     trainee_count: '',
     // V2 표지 → 라벨 호환
     current_ai_level_label: v2.currentAiLevel?.level
@@ -659,7 +682,9 @@ function buildDataFromV1(
     subject_total_sum_hours: safeString(trainingPlan?.subject_profile?.total_sum_hours),
     training_contents: (trainingPlan?.subject_profile?.training_contents ?? []).map((c) => ({
       unit_name: c.unit_name,
-      detail: c.detail,
+      // LLM 이 detail 을 다층 구조로 작성하면 \n 으로 줄바꿈하여 양식 셀에
+      // paragraph 별 머리기호가 붙도록 처리. 동그라미 숫자 ①②③ 도 자동 분할.
+      detail: normalizeListText(c.detail),
       training_hours: c.training_hours,
       instructor_hours: {
         external: c.instructor_hours?.external ?? 0,

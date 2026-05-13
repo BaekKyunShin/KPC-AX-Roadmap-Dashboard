@@ -94,14 +94,29 @@ export function buildPBLSystemPrompt(): string {
 - trainees: role("팀원"|"팀장"), affiliation, position, name 필드를 모두 채워라.
 - 이름이 없을 경우 "미정"으로 작성하라.
 
-### Ⅳ-3-다. 훈련 교과목 프로파일 (subject_profile) — training_contents 3개 이상 권장
-- training_contents는 최소 1개, 권장 3개 이상 작성하라.
-- 각 행: unit_name(업무/단원명), detail(세부 내용), training_hours(훈련시간), instructor_hours({ external, internal }) 필드를 채워라.
-- **필수 제약: instructor_hours.external + instructor_hours.internal === training_hours** (양식 가이드 #9). 이 합계가 맞지 않으면 검증 오류가 발생한다. 반드시 준수하라.
+### Ⅳ-3-다. 훈련 교과목 프로파일 (subject_profile) — PBL 핵심 섹션, 풍부하게 작성
+
+PBL 보고서에서 가장 중요한 섹션. **단순 키워드 나열을 피하고 학습목표→활동→실습→결과물→평가 흐름이 명확히 드러나도록 작성**하라.
+
+- training_contents는 최소 1개, **권장 3~5개**.
+- 각 행: unit_name(업무/단원명), detail(세부 내용), training_hours(훈련시간), instructor_hours({ external, internal }).
+- **필수 제약: instructor_hours.external + instructor_hours.internal === training_hours** (양식 가이드 #9). 합계 불일치 시 검증 오류.
 - total_sum_hours = training_contents의 training_hours 합계와 정확히 일치해야 한다.
 - analysis_method: "LLM 기반 데이터 분석, RAG 등" 형식으로 기술하라.
 
-**Ⅳ-3-다 few-shot 예시 (훈련시간 합 검증)**
+**🔑 detail 필드 작성 규칙 (PBL 의 핵심 — 매우 중요)**
+
+각 단원의 detail 은 다음 5개 항목을 **각 항목 앞에 \`▪\` 머리기호**를 붙이고 **항목 사이를 \`\\n\` (실제 줄바꿈) 으로 분리**하여 작성하라. 양식 셀이 paragraph 별로 자동 들여쓰기 되므로 \\n 줄바꿈이 필수다.
+
+\`\`\`
+▪ 학습목표: (이 단원에서 훈련생이 달성해야 할 구체적 목표 1~2문장)
+▪ 핵심 활동: (강의·토론·시연·실습·발표 등 수행할 활동을 2~3개)
+▪ 실습 방법: (사용 AI 도구·데이터·실습 절차를 구체적으로)
+▪ 결과물: (포트폴리오·보고서·시연 등 산출물)
+▪ 평가 포인트: (수행 수준 측정 기준 1~2개)
+\`\`\`
+
+**Ⅳ-3-다 few-shot 예시 (훈련시간 합 검증 + detail 다층 구조)**
 \`\`\`json
 {
   "course_name": "AI 비전검사 실무 과정",
@@ -111,9 +126,24 @@ export function buildPBLSystemPrompt(): string {
   "utilized_data": "생산라인 불량·정상 이미지 데이터셋 (1,000장 이상)",
   "analysis_method": "노코드 이미지 분류(Teachable Machine), LLM 기반 결과 해석(ChatGPT)",
   "training_contents": [
-    { "unit_name": "AI 데이터 이해 및 수집", "detail": "AI 학습 데이터 개념, 이미지 라벨링 가이드라인 작성, Label Studio 실습", "training_hours": 8, "instructor_hours": { "external": 6, "internal": 2 } },
-    { "unit_name": "노코드 AI 모델 학습", "detail": "Teachable Machine으로 불량/정상 이미지 분류 모델 학습·평가", "training_hours": 12, "instructor_hours": { "external": 8, "internal": 4 } },
-    { "unit_name": "결과 공유 및 피드백", "detail": "모델 배포 실습, KPI 달성도 분석, 경영진 보고용 자료 작성", "training_hours": 12, "instructor_hours": { "external": 8, "internal": 4 } }
+    {
+      "unit_name": "AI 데이터 이해 및 수집",
+      "detail": "▪ 학습목표: AI 학습 데이터의 기본 개념을 이해하고, 자사 품질검사 영역에 적합한 이미지 데이터를 수집·라벨링할 수 있다.\n▪ 핵심 활동: AI/머신러닝 개요 강의, 자사 검사기준 분석 워크숍, 이미지 데이터 수집 시연, 라벨링 가이드라인 공동 작성.\n▪ 실습 방법: Label Studio 환경에 자사 불량·정상 이미지 200장을 업로드하고, 결함 유형별 (스크래치/이물/치수불량) 클래스 라벨링 실습.\n▪ 결과물: 라벨링 가이드라인 문서 1건, 라벨링 완료 데이터셋 (CSV + 이미지).\n▪ 평가 포인트: 라벨링 일관성 (검사자 간 일치율 80% 이상), 가이드라인 명확성.",
+      "training_hours": 8,
+      "instructor_hours": { "external": 6, "internal": 2 }
+    },
+    {
+      "unit_name": "노코드 AI 모델 학습·평가",
+      "detail": "▪ 학습목표: Teachable Machine 으로 불량/정상 이미지 분류 모델을 학습하고, 정확도·재현율·정밀도 지표를 해석할 수 있다.\n▪ 핵심 활동: 모델 학습 시연, 하이퍼파라미터 튜닝 실습, ChatGPT 로 결과 해석, 부서별 결과 발표.\n▪ 실습 방법: Teachable Machine 으로 학습→export→웹 브라우저 inference, ChatGPT 에 confusion matrix 붙여넣고 개선점 질의.\n▪ 결과물: 학습된 모델 파일, 성능 분석 리포트 1건 (정확도·재현율·개선 제안).\n▪ 평가 포인트: 모델 정확도 90% 이상 달성, 성능 해석의 논리성.",
+      "training_hours": 12,
+      "instructor_hours": { "external": 8, "internal": 4 }
+    },
+    {
+      "unit_name": "현장 적용·확산 및 피드백",
+      "detail": "▪ 학습목표: 학습한 모델을 실제 검사 라인에 시범 적용하고, 개선·확산 계획을 수립할 수 있다.\n▪ 핵심 활동: 시범 운영 (2주), 운영 데이터 수집, KPI 달성도 분석, 경영진 보고용 자료 작성, 향후 확산 로드맵 논의.\n▪ 실습 방법: 사내 PC + 카메라로 실시간 inference 환경 구축, 매일 검사 결과 vs 모델 결과 비교, 일주일 단위 정합도 측정.\n▪ 결과물: 시범 운영 결과 보고서, 경영진 발표 자료 (PPT), 6개월 확산 계획서.\n▪ 평가 포인트: 시범 운영 데이터 정합도 85% 이상, 확산 계획의 구체성·실행 가능성.",
+      "training_hours": 12,
+      "instructor_hours": { "external": 8, "internal": 4 }
+    }
   ],
   "total_sum_hours": 32
 }
