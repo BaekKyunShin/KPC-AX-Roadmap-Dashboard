@@ -89,9 +89,10 @@ const STEPS: ReadonlyArray<{
 }> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
+  // PR #92 (main) 의 8단계 + 본 PR 의 5번 stepperLabel '과정 개발 필요성' 단축 결합.
   { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2-a', name: '훈련환경 분석', stepperLabel: '훈련환경' },
   { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석' },
-  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성' },
+  { id: 5, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 개발 필요성' },
   { id: 6, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동' },
   { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위' },
   { id: 8, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·4', name: '훈련대상·AI수준' },
@@ -126,6 +127,10 @@ function emptyInitial(): Partial<PBLInterviewStrict> {
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
+      targetTraineeCount: 0,
+      internalInstructorUsage: 'NO',
+      internalInstructorPrimary: { name: '', position: '' },
+      otherEquipment: '',
     },
     hrdReportPdf: null,
     courseNecessity: '',
@@ -568,6 +573,10 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 trainingNeedsAnalysis: '',
                 expectationAsIs: '',
                 expectationToBe: '',
+                targetTraineeCount: 0,
+                internalInstructorUsage: 'NO',
+                internalInstructorPrimary: { name: '', position: '' },
+                otherEquipment: '',
               }
             }
             onChange={(next) => update({ trainingEnv: next })}
@@ -589,6 +598,10 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 trainingNeedsAnalysis: '',
                 expectationAsIs: '',
                 expectationToBe: '',
+                targetTraineeCount: 0,
+                internalInstructorUsage: 'NO',
+                internalInstructorPrimary: { name: '', position: '' },
+                otherEquipment: '',
               }
             }
             onChange={(next) => update({ trainingEnv: next })}
@@ -748,6 +761,9 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             id: s.id,
             name: s.name,
             shortName: s.shortName,
+            // BUG FIX: stepperLabel 누락으로 InterviewStepper 가 항상 풀텍스트 name
+            // 만 사용해 '과정 개발 필요성' 단축이 안 보였음 (사용자 보고). 명시 전달.
+            stepperLabel: s.stepperLabel,
           }))}
           currentStep={currentStep}
           onStepClick={(idx) => setCurrentStep(idx)}

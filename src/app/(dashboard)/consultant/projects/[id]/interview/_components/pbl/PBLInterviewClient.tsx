@@ -84,8 +84,8 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
   // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
   { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
-  // Stepper 라벨 13자 → 6자 단축
-  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 필요성', required: true },
+  // Stepper 라벨 13자 → 8자 단축 (사용자 보고 — '과정 개발 필요성', 말줄임 사라지도록)
+  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 개발 필요성', required: true },
   { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   // Stepper 라벨 10자 → 7자 단축
   { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
@@ -388,6 +388,10 @@ export function PBLInterviewClient({
                 trainingNeedsAnalysis: '',
                 expectationAsIs: '',
                 expectationToBe: '',
+                targetTraineeCount: 0,
+                internalInstructorUsage: 'NO',
+                internalInstructorPrimary: { name: '', position: '' },
+                otherEquipment: '',
               }
             }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}
@@ -409,6 +413,10 @@ export function PBLInterviewClient({
                 trainingNeedsAnalysis: '',
                 expectationAsIs: '',
                 expectationToBe: '',
+                targetTraineeCount: 0,
+                internalInstructorUsage: 'NO',
+                internalInstructorPrimary: { name: '', position: '' },
+                otherEquipment: '',
               }
             }
             onChange={(next) => updateAnalysis({ trainingEnv: next })}

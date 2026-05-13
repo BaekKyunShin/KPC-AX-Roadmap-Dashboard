@@ -559,6 +559,10 @@ function validPBLCamelCase(): PBLInterviewStrict {
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
+      targetTraineeCount: 0,
+      internalInstructorUsage: 'NO' as const,
+      internalInstructorPrimary: { name: '', position: '' },
+      otherEquipment: '',
     },
     hrdReportPdf: {
       fileName: 'pbl-hrd.pdf',

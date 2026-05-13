@@ -32,6 +32,7 @@ import {
   PBLTargetDetailSchema,
   PBLInterviewSchema,
   PBLInterviewStrictSchema,
+  PBLTrainingEnvSchema,
 } from './interview-pbl';
 
 describe('interview-pbl enum constants (양식 한글 그대로)', () => {
@@ -655,6 +656,84 @@ describe('PBLAnalysisSchema (Ⅱ 훈련 요구 분석)', () => {
     const { trainingEnv: _omit, ...rest } = validAnalysis;
     void _omit;
     expect(PBLAnalysisSchema.safeParse(rest).success).toBe(false);
+  });
+});
+
+describe('PBLTrainingEnvSchema — 양식 Ⅱ-2 누락 3개 (대상 인원·사내강사 활용·기타 장비)', () => {
+  const baseEnv = {
+    properTrainingHours: '24시간',
+    internalPlace: '사내 교육장',
+    externalPlace: '',
+    internalInstructors: [],
+    externalInstructors: [],
+    aiInfrastructure: '대상 15명 경력 5년 이상',
+  };
+
+  it('신규 4 필드 누락 시에도 default 로 채워 통과 — 기존 인터뷰 데이터 호환', () => {
+    const parsed = PBLTrainingEnvSchema.safeParse(baseEnv);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.targetTraineeCount).toBe(0);
+      expect(parsed.data.internalInstructorUsage).toBe('NO');
+      expect(parsed.data.internalInstructorPrimary).toEqual({ name: '', position: '' });
+      expect(parsed.data.otherEquipment).toBe('');
+    }
+  });
+
+  it('targetTraineeCount 는 자연수(0 포함) 허용 — 양식 "대상 인원" 행', () => {
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, targetTraineeCount: 5 }).success,
+    ).toBe(true);
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, targetTraineeCount: 0 }).success,
+    ).toBe(true);
+  });
+
+  it('targetTraineeCount 음수·소수 거부', () => {
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, targetTraineeCount: -1 }).success,
+    ).toBe(false);
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, targetTraineeCount: 1.5 }).success,
+    ).toBe(false);
+  });
+
+  it('internalInstructorUsage 는 YES|NO 만 허용', () => {
+    expect(
+      PBLTrainingEnvSchema.safeParse({
+        ...baseEnv,
+        internalInstructorUsage: 'YES',
+        internalInstructorPrimary: { name: '홍길동', position: '생산팀장' },
+      }).success,
+    ).toBe(true);
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, internalInstructorUsage: 'NO' }).success,
+    ).toBe(true);
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, internalInstructorUsage: 'MAYBE' }).success,
+    ).toBe(false);
+  });
+
+  it('internalInstructorUsage="NO" 일 때 primary 비어 있어도 통과', () => {
+    expect(
+      PBLTrainingEnvSchema.safeParse({
+        ...baseEnv,
+        internalInstructorUsage: 'NO',
+        internalInstructorPrimary: { name: '', position: '' },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('otherEquipment 는 자유서술 (빈 문자열·임의 텍스트 통과) — 양식 "AI인프라 기타 장비 보유" 행', () => {
+    expect(
+      PBLTrainingEnvSchema.safeParse({ ...baseEnv, otherEquipment: '' }).success,
+    ).toBe(true);
+    expect(
+      PBLTrainingEnvSchema.safeParse({
+        ...baseEnv,
+        otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대',
+      }).success,
+    ).toBe(true);
   });
 });
 

@@ -405,6 +405,209 @@ describe('buildPBLHwpxPayload', () => {
       expect(payload.data.training_needs_analysis).toBe('');
       expect(payload.data.expectation_to_be).toBe('');
     });
+
+    // 양식 P-05 누락 3행 보강 (사용자 보고) — 대상 인원·사내강사 활용 yes-no·기타 장비
+    it('targetTraineeCount → target_count 문자열 매핑 (양식 row 6)', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '24시간',
+          internalPlace: '본사',
+          externalPlace: '',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: '',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
+          targetTraineeCount: 15,
+          internalInstructorUsage: 'NO',
+          internalInstructorPrimary: { name: '', position: '' },
+          otherEquipment: '',
+        }),
+      });
+      expect(payload.data.target_count).toBe('15');
+    });
+
+    it('internalInstructorUsage="YES" + primary 채움 → internal_instructor_usage/name/position 매핑', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          internalInstructors: [], // 배열 비어도 primary 우선
+          externalInstructors: [],
+          aiInfrastructure: '',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
+          targetTraineeCount: 0,
+          internalInstructorUsage: 'YES',
+          internalInstructorPrimary: { name: '홍길동', position: '생산팀장' },
+          otherEquipment: '',
+        }),
+      });
+      expect(payload.data.internal_instructor_usage).toBe('YES');
+      expect(payload.data.internal_instructor_name).toBe('홍길동');
+      expect(payload.data.internal_instructor_position).toBe('생산팀장');
+    });
+
+    it('internalInstructorUsage="NO" → internal_instructor_usage="NO" + name/position 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          // 배열에 행이 있어도 usage=NO 면 비워야 함 (양식 디테일)
+          internalInstructors: [
+            { position: '팀장', name: '김품질', career: '12년', personalTraits: '' },
+          ],
+          externalInstructors: [],
+          aiInfrastructure: '',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
+          targetTraineeCount: 0,
+          internalInstructorUsage: 'NO',
+          internalInstructorPrimary: { name: '', position: '' },
+          otherEquipment: '',
+        }),
+      });
+      expect(payload.data.internal_instructor_usage).toBe('NO');
+      expect(payload.data.internal_instructor_name).toBe('');
+      expect(payload.data.internal_instructor_position).toBe('');
+    });
+
+    it('otherEquipment 신규 우선, 빈 경우 aiInfrastructure fallback (회귀 안전)', () => {
+      // 케이스 A: otherEquipment 채움 → 우선
+      const payloadA = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: 'PC 30대 (통합 메모)',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
+          targetTraineeCount: 0,
+          internalInstructorUsage: 'NO',
+          internalInstructorPrimary: { name: '', position: '' },
+          otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대',
+        }),
+      });
+      expect(payloadA.data.etc_equipment).toBe('프로젝터 2대, 디지털 화이트보드 1대');
+
+      // 케이스 B: otherEquipment 비어 있음 → aiInfrastructure fallback (기존 동작 유지)
+      const payloadB = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv({
+          properTrainingHours: '',
+          internalPlace: '',
+          externalPlace: '',
+          internalInstructors: [],
+          externalInstructors: [],
+          aiInfrastructure: 'PC 30대 (통합 메모)',
+          targetCharacteristics: { career: '', level: '' },
+          aiInfraDetail: { toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 },
+          trainingNeedsAnalysis: '',
+          expectationAsIs: '',
+          expectationToBe: '',
+          targetTraineeCount: 0,
+          internalInstructorUsage: 'NO',
+          internalInstructorPrimary: { name: '', position: '' },
+          otherEquipment: '',
+        }),
+      });
+      expect(payloadB.data.etc_equipment).toBe('PC 30대 (통합 메모)');
+    });
+
+    it('trainingEnv 누락 시 신규 3 키도 빈 문자열', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2WithTrainingEnv(undefined),
+      });
+      expect(payload.data.target_count).toBe('');
+      expect(payload.data.internal_instructor_usage).toBe('');
+      expect(payload.data.etc_equipment).toBe('');
+    });
+  });
+
+  // 사용자 보고 — 표지 4 서명자 (PM/외부전문가/내부전문가/주치의) 자동 인입
+  describe('표지 서명자 자동 인입 (signerMeta 옵션)', () => {
+    it('signerMeta 미전달 시 표지 8 필드 모두 빈 문자열 (internal_expert_affiliation 은 companyName fallback)', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.pm_affiliation).toBe('');
+      expect(payload.data.pm_name).toBe('');
+      expect(payload.data.external_expert_affiliation).toBe('');
+      expect(payload.data.external_expert_name).toBe('');
+      // 기존 fallback 유지 — 내부전문가 소속 = 기업명 (makeProject company_name)
+      expect(payload.data.internal_expert_affiliation).toBe('㈜테스트');
+      expect(payload.data.internal_expert_name).toBe('');
+      expect(payload.data.doctor_affiliation).toBe('');
+      expect(payload.data.doctor_name).toBe('');
+    });
+
+    it('signerMeta 전달 시 표지 8 필드 모두 자동 채움', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+        signerMeta: {
+          pm: { affiliation: '컨설팅랩', name: '김컨설' },
+          external_expert: { affiliation: '서울대 AI', name: '박전문' },
+          internal_expert: { affiliation: 'AI테크㈜', name: '이내부' },
+          doctor: { affiliation: '주치의센터', name: '최주치' },
+        },
+      });
+      expect(payload.data.pm_affiliation).toBe('컨설팅랩');
+      expect(payload.data.pm_name).toBe('김컨설');
+      expect(payload.data.external_expert_affiliation).toBe('서울대 AI');
+      expect(payload.data.external_expert_name).toBe('박전문');
+      expect(payload.data.internal_expert_affiliation).toBe('AI테크㈜');
+      expect(payload.data.internal_expert_name).toBe('이내부');
+      expect(payload.data.doctor_affiliation).toBe('주치의센터');
+      expect(payload.data.doctor_name).toBe('최주치');
+    });
+
+    it('signerMeta 부분 전달 (PM 만) 시 명시된 것만 채워지고 나머지는 기존 fallback', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+        signerMeta: {
+          pm: { affiliation: '컨설팅랩', name: '김컨설' },
+        },
+      });
+      expect(payload.data.pm_affiliation).toBe('컨설팅랩');
+      expect(payload.data.pm_name).toBe('김컨설');
+      // 미전달 키는 기존 fallback (빈 문자열 / companyName)
+      expect(payload.data.external_expert_affiliation).toBe('');
+      expect(payload.data.internal_expert_affiliation).toBe('㈜테스트');
+      expect(payload.data.doctor_affiliation).toBe('');
+    });
   });
 
   // R8 PBL-자체-05 — outcome_analysis 4 키 매핑 분기 cover

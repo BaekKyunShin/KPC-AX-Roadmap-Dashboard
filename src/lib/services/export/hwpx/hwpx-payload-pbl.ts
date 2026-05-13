@@ -30,10 +30,28 @@ import type { PBLInterviewStrict, PBLAILevel } from '@/lib/schemas/interview-pbl
 import type { PBLHwpxPayload } from './hwpx-client';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
+/**
+ * 양식 표지 4 서명자 (PM/외부전문가/내부전문가/주치의) 메타.
+ * 사용자 보고 — 인터뷰 페이지에서 받지 않고 프로젝트 메타에서 자동 인입.
+ * actions.ts 의 `exportPBLAsHwpxAction` 가 컨설턴트·내부전문가 row 를 추가 조회해 전달.
+ * 부분 전달 가능 (예: PM 만 알면 PM 만 채움, 나머지는 기존 fallback 유지).
+ */
+export interface PBLSignerEntry {
+  affiliation: string;
+  name: string;
+}
+export interface PBLSignerMeta {
+  pm?: PBLSignerEntry;
+  external_expert?: PBLSignerEntry;
+  internal_expert?: PBLSignerEntry;
+  doctor?: PBLSignerEntry;
+}
+
 export interface PBLHwpxPayloadInputs {
   pbl: PBLReportRow;
   project: Project;
   interview: Interview | null;
+  signerMeta?: PBLSignerMeta;
 }
 
 function buildFileName(companyName: string, versionNumber: number): string {
@@ -44,6 +62,29 @@ function buildFileName(companyName: string, versionNumber: number): string {
 function safeString(value: unknown): string {
   if (value === null || value === undefined) return '';
   return String(value);
+}
+
+/**
+ * 자유서술 텍스트의 양식 셀 출력을 정규화한다.
+ *
+ *  1) **동그라미 숫자 자동 줄바꿈** — ①②③…⑳ 앞 (string 시작 외) 에 \n 삽입.
+ *     양식 셀이 paragraph 별로 머리기호(▪)를 자동 부여하므로 \n 분할 시 항목마다
+ *     머리기호가 자연스럽게 붙는다.
+ *  2) **각 라인 시작 머리기호 제거** — ▪ ● ◆ ■ □ - * + 같은 사용자/LLM 이 직접
+ *     붙인 머리기호는 양식 셀의 자동 머리기호와 중복돼 "▪ ▪ 학습목표:" 처럼
+ *     보이는 회귀가 있어 항상 strip 한다 (사용자 보고).
+ *
+ * 적용 대상: company_issues, course_necessity, training_contents[].detail.
+ */
+function normalizeListText(text: string | undefined | null): string {
+  if (!text) return '';
+  // (1) 동그라미 숫자 앞 강제 줄바꿈
+  const withBreaks = text.replace(/(?<=\S)\s*(?=[①-⑳])/g, '\n');
+  // (2) 각 라인 시작 머리기호 (▪ ● ◆ ■ □ - * +) + 공백 제거
+  return withBreaks
+    .split('\n')
+    .map((line) => line.replace(/^\s*[▪●◆■□\-*+•·]+\s*/u, ''))
+    .join('\n');
 }
 
 /** R8 PBL-자체-05 — outcome_analysis → P-25/P-26 4 키 매핑.
@@ -76,11 +117,16 @@ function buildApplicationMetaP02(project: Project): Record<string, string> {
   };
 }
 
-/** R8 PBL-자체-02 / Phase E — `trainingEnv` 정형 객체 → P-05 11 키 매핑 dict.
+/** R8 PBL-자체-02 / Phase E — `trainingEnv` 정형 객체 → P-05 14 키 매핑 dict.
  *
- *  Python `_fill_pbl_training_env` (양식 P-05 12×7) 의 11 행 데이터 영역과
- *  1:1 정합. V1 호환 키 + 신규 5 키 (Step 4b 기대효과·요구분석) 함께 송신.
+ *  Python `_fill_pbl_training_env` (양식 P-05 12×7) 의 11 행 데이터 영역 + 사용자
+ *  보고 보강 3 행 (대상 인원·사내강사 활용 yes-no·기타 장비) 과 1:1 정합.
+ *  V1 호환 키 + Phase E 5 키 + 보강 3 키 (target_count/internal_instructor_usage/
+ *  etc_equipment 의미 분리) 송신.
+ *
  *  V2 정본은 항상 객체. legacy string / null / undefined 는 빈 dict 로 안전 변환.
+ *  Legacy 호환: `internalInstructorUsage` 키 자체가 없고 강사 배열이 있으면 'YES'
+ *  로 추론 (기존 DB 데이터 회귀 없음).
  */
 function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined): {
   // V1 호환 + 양식 P-05 row 1~5·8 매핑
@@ -100,6 +146,11 @@ function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined)
   training_needs_analysis: string;
   expectation_as_is: string;
   expectation_to_be: string;
+  // 양식 P-05 누락 3행 보강 (사용자 보고) — 사내강사 활용 yes-no
+  internal_instructor_usage: 'YES' | 'NO' | '';
+  // Python `_generate_pbl` line 763~770 의 [4,2]=☑예 / [4,6]=☑아니오 체크박스
+  // 토글용 boolean. Python 측 키 이름 `internal_instructor_used` 와 정합.
+  internal_instructor_used: boolean;
 } {
   if (!env || typeof env !== 'object') {
     return {
@@ -118,6 +169,8 @@ function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined)
       training_needs_analysis: '',
       expectation_as_is: '',
       expectation_to_be: '',
+      internal_instructor_usage: '',
+      internal_instructor_used: false,
     };
   }
   const firstInternalInstructor = env.internalInstructors?.[0];
@@ -135,22 +188,46 @@ function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined)
     NORMAL: '보통',
     IMPROVEMENT_NEEDED: '개선필요',
   }[infra.networkStatus];
+
+  // 사내강사 활용 yes/no 결정 (양식 row 4 [4,2]=□예 vs [4,6]=□아니오):
+  //   사용자가 명시한 usage 우선. 명시 안 됨 + 강사 배열 있음 → 'YES' 로 자동 추론
+  //   (legacy DB 데이터 회귀 안전 — 기존엔 usage 필드 없이 배열만 저장).
+  const usage: 'YES' | 'NO' =
+    env.internalInstructorUsage ??
+    ((env.internalInstructors?.length ?? 0) > 0 ? 'YES' : 'NO');
+  // 대표 강사 이름·직책: usage='YES' 일 때만 출력. primary 우선, fallback to first row.
+  const primary = env.internalInstructorPrimary ?? { name: '', position: '' };
+  const internalName =
+    usage === 'YES' ? primary.name || firstInternalInstructor?.name || '' : '';
+  const internalPosition =
+    usage === 'YES'
+      ? primary.position || firstInternalInstructor?.position || ''
+      : '';
+  // 대상 인원: 0 또는 미입력 시 빈 문자열 (Python `_str_count` 가 falsy면 '' 출력).
+  const traineeCount = env.targetTraineeCount ?? 0;
+  const targetCountStr = traineeCount > 0 ? String(traineeCount) : '';
+  // 기타 장비: 신규 otherEquipment 우선, 빈 경우 aiInfrastructure fallback (회귀 안전).
+  const otherEquip = (env.otherEquipment ?? '').trim();
+  const etcEquipment = otherEquip.length > 0 ? otherEquip : env.aiInfrastructure ?? '';
+
   return {
     proper_training_hours: env.properTrainingHours ?? '',
     training_place_location: env.internalPlace ?? '',
     training_place_special_notes: env.externalPlace ?? '',
-    internal_instructor_name: firstInternalInstructor?.name ?? '',
-    internal_instructor_position: firstInternalInstructor?.position ?? '',
+    internal_instructor_name: internalName,
+    internal_instructor_position: internalPosition,
     ai_tools_status: toolLabel,
     network_status: networkLabel,
     pc_count: String(infra.pcCount ?? 0),
-    etc_equipment: env.aiInfrastructure ?? '',
-    target_count: '', // 양식의 대상 인원은 trainingTarget 으로 별도 매핑되므로 빈 채
+    etc_equipment: etcEquipment,
+    target_count: targetCountStr,
     target_career: target.career ?? '',
     target_level: target.level ?? '',
     training_needs_analysis: env.trainingNeedsAnalysis ?? '',
     expectation_as_is: env.expectationAsIs ?? '',
     expectation_to_be: env.expectationToBe ?? '',
+    internal_instructor_usage: usage,
+    internal_instructor_used: usage === 'YES',
   };
 }
 
@@ -236,9 +313,14 @@ function buildDataFromV2(
     training_form: v2.trainingForm ?? '',
     training_period: v2.trainingPeriod ?? opsTrainingPeriod,
     business_issues: v2.businessIssues ?? '',
+    // 훈련 직무 — V2 인터뷰에서 직접 받지 않으므로 훈련대상 업무명(Ⅲ-3-가)
+    // 우선, 비어 있으면 훈련과정명(Ⅰ)에서 fallback. 양식 Ⅰ장 표의 빈 칸 해소.
+    training_job: v2.target?.name?.trim() || v2.courseName?.trim() || '',
 
     // ==================== Ⅱ. 훈련 요구 분석 ====================
-    company_issues: v2.companyIssues ?? '',
+    // 자유서술 ①②③ 등 동그라미 숫자 앞에 자동 줄바꿈 → 양식 셀 paragraph 별
+    // 머리기호(▪)가 항목마다 붙도록 출력 (사용자 보고).
+    company_issues: normalizeListText(v2.companyIssues),
     // Phase E: 조직 및 주요 업무는 로드맵과 동일하게 인터뷰/결과/HWPX 3 계층에서
     // 제거. Python 측 _fill_pbl_organization 은 disabled 상태로 유지되어 빈 객체
     // 송신해도 안전 (양식 P-04 표는 한컴오피스 사용자 작성 영역).
@@ -250,7 +332,7 @@ function buildDataFromV2(
     hrd_report_attachment: v2.hrdReportPdf
       ? v2.hrdReportPdf.url || v2.hrdReportPdf.fileName || ''
       : '',
-    course_necessity: v2.courseNecessity ?? '',
+    course_necessity: normalizeListText(v2.courseNecessity),
 
     // ==================== Ⅲ. AI기반 훈련과제 도출 ====================
     // R8 PBL-자체-03 — 평면 4행 배열. Python 측 _fill_pbl_performance_activities
@@ -316,7 +398,9 @@ function buildDataFromV2(
     subject_total_sum_hours: safeString(trainingPlan?.subject_profile?.total_sum_hours),
     training_contents: (trainingPlan?.subject_profile?.training_contents ?? []).map((c) => ({
       unit_name: c.unit_name,
-      detail: c.detail,
+      // LLM 이 detail 을 다층 구조로 작성하면 \n 으로 줄바꿈하여 양식 셀에
+      // paragraph 별 머리기호가 붙도록 처리. 동그라미 숫자 ①②③ 도 자동 분할.
+      detail: normalizeListText(c.detail),
       training_hours: c.training_hours,
       instructor_hours: {
         external: c.instructor_hours?.external ?? 0,
@@ -363,13 +447,14 @@ function buildDataFromV2(
     training_goals:
       (pblContent?.outcome_analysis?.outcome_metrics?.selected_goals ?? []) as TrainingGoal[],
     training_place_types: [] as TrainingPlaceType[],
-    internal_instructor_used: false,
+    // `internal_instructor_used` 는 buildTrainingEnvP05 가 spread 로 송신 (양식
+    // [4,2]=☑예 / [4,6]=☑아니오 체크박스). 명시 false 덮어쓰기 제거.
 
     // Phase E: V2 trainingEnv → V1 호환 키 11 종 매핑은 buildTrainingEnvP05 가
     // 위 spread (...buildTrainingEnvP05(v2.trainingEnv)) 로 송신. 여기서 중복
     // 빈 문자열 명시는 제거 (덮어쓰기 회피).
     course_development_necessity: v2.courseNecessity ?? '',
-    training_job: '',
+    // `training_job` 은 위 P-02 영역에서 v2.target.name → v2.courseName fallback 으로 채움.
     trainee_count: '',
     // V2 표지 → 라벨 호환
     current_ai_level_label: v2.currentAiLevel?.level
@@ -604,7 +689,9 @@ function buildDataFromV1(
     subject_total_sum_hours: safeString(trainingPlan?.subject_profile?.total_sum_hours),
     training_contents: (trainingPlan?.subject_profile?.training_contents ?? []).map((c) => ({
       unit_name: c.unit_name,
-      detail: c.detail,
+      // LLM 이 detail 을 다층 구조로 작성하면 \n 으로 줄바꿈하여 양식 셀에
+      // paragraph 별 머리기호가 붙도록 처리. 동그라미 숫자 ①②③ 도 자동 분할.
+      detail: normalizeListText(c.detail),
       training_hours: c.training_hours,
       instructor_hours: {
         external: c.instructor_hours?.external ?? 0,
@@ -681,7 +768,7 @@ function buildDataEmpty(
  * PBL 보고서 + 인터뷰 데이터 → Python 함수 payload.
  */
 export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayload {
-  const { pbl, project, interview } = inputs;
+  const { pbl, project, interview, signerMeta } = inputs;
   const pblContent: PBLContent | null = (pbl.pbl_content as PBLContent | null) ?? null;
   const branch = classifyInterview(interview);
 
@@ -713,6 +800,28 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   // — 양식 안내문상 "신청서 기준으로 자동 불러옴" 영역. project 테이블이 단일
   //   진실 원천이며 인터뷰 입력값과 충돌 시 project 가 우선.
   Object.assign(data, buildApplicationMetaP02(project));
+
+  // 사용자 보고 — 양식 표지·결과보고서 표지의 4 서명자 자동 인입.
+  // signerMeta 가 있을 때만 해당 키 덮어쓰기. 부분 전달 시 미명시 키는 기존
+  // fallback 유지 (예: internal_expert_affiliation = companyName).
+  if (signerMeta) {
+    if (signerMeta.pm) {
+      data.pm_affiliation = signerMeta.pm.affiliation;
+      data.pm_name = signerMeta.pm.name;
+    }
+    if (signerMeta.external_expert) {
+      data.external_expert_affiliation = signerMeta.external_expert.affiliation;
+      data.external_expert_name = signerMeta.external_expert.name;
+    }
+    if (signerMeta.internal_expert) {
+      data.internal_expert_affiliation = signerMeta.internal_expert.affiliation;
+      data.internal_expert_name = signerMeta.internal_expert.name;
+    }
+    if (signerMeta.doctor) {
+      data.doctor_affiliation = signerMeta.doctor.affiliation;
+      data.doctor_name = signerMeta.doctor.name;
+    }
+  }
 
   // 표지·결과보고서 표지에 들어가는 company_name 은 항상 채움
   const finalCompanyName = (data.company_name as string) || companyName;
