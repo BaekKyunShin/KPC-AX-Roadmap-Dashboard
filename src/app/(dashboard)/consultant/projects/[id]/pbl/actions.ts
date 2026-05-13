@@ -629,11 +629,45 @@ export async function exportPBLAsHwpxAction(
       .eq('project_id', access.data.projectId)
       .maybeSingle();
 
+    // 사용자 보고 — 양식 표지 4 서명자 자동 인입.
+    // PM (컨설팅 책임자): 프로젝트 배정 컨설턴트 → users.name + consultant_profiles.affiliation
+    // internal_expert (내부전문가): 프로젝트 contact_name / company_name
+    // external_expert / doctor: 별도 메타 없음 → 빈 채 (한컴오피스 직접 작성 영역)
+    let signerMeta: Parameters<typeof buildPBLHwpxPayload>[0]['signerMeta'];
+    const pmId = (projectRow as unknown as { assigned_consultant_id: string | null })
+      .assigned_consultant_id;
+    if (pmId) {
+      const { data: pmUser } = await admin
+        .from('users')
+        .select('name')
+        .eq('id', pmId)
+        .maybeSingle();
+      const { data: pmProfile } = await admin
+        .from('consultant_profiles')
+        .select('affiliation')
+        .eq('user_id', pmId)
+        .maybeSingle();
+      const pmName = pmUser?.name ?? '';
+      const pmAffiliation = pmProfile?.affiliation ?? '';
+      if (pmName || pmAffiliation) {
+        signerMeta = { ...(signerMeta ?? {}), pm: { affiliation: pmAffiliation, name: pmName } };
+      }
+    }
+    const internalName = (projectRow as unknown as { contact_name: string | null }).contact_name;
+    const companyName = (projectRow as unknown as { company_name: string }).company_name;
+    if (internalName) {
+      signerMeta = {
+        ...(signerMeta ?? {}),
+        internal_expert: { affiliation: companyName ?? '', name: internalName },
+      };
+    }
+
     // 5) payload 변환 + Python 함수 호출
     const payload = buildPBLHwpxPayload({
       pbl: pblRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['pbl'],
       project: projectRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['project'],
       interview: (interviewRow ?? null) as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['interview'],
+      signerMeta,
     });
 
     // Server Action 요청 host 기반으로 현재 deployment Python 함수 호출
@@ -1033,6 +1067,22 @@ export async function editPBLV2(
               expectationToBe:
                 patch.trainingEnv.expectationToBe ??
                 current.trainingEnv?.expectationToBe ??
+                '',
+              targetTraineeCount:
+                patch.trainingEnv.targetTraineeCount ??
+                current.trainingEnv?.targetTraineeCount ??
+                0,
+              internalInstructorUsage:
+                patch.trainingEnv.internalInstructorUsage ??
+                current.trainingEnv?.internalInstructorUsage ??
+                'NO',
+              internalInstructorPrimary:
+                patch.trainingEnv.internalInstructorPrimary ??
+                current.trainingEnv?.internalInstructorPrimary ??
+                { name: '', position: '' },
+              otherEquipment:
+                patch.trainingEnv.otherEquipment ??
+                current.trainingEnv?.otherEquipment ??
                 '',
             },
           }

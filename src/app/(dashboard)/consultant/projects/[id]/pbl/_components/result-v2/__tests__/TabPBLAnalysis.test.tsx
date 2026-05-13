@@ -39,6 +39,10 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
+      targetTraineeCount: 0,
+      internalInstructorUsage: 'NO' as const,
+      internalInstructorPrimary: { name: '', position: '' },
+      otherEquipment: '',
     },
     hrdReportPdf: {
       fileName: 'hrd_consulting.pdf',

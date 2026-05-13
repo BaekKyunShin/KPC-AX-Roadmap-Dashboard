@@ -199,8 +199,8 @@ describe('PBLInterviewClient', () => {
   it('Ⅱ-3-나 courseNecessity 편집 시 저장 payload 에 포함된다', async () => {
     savePBLInterviewV2.mockResolvedValue({ success: true });
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    // Stepper 는 단축 라벨 "과정 필요성" 으로 클릭
-    fireEvent.click(screen.getAllByText('과정 필요성')[0]);
+    // Stepper 는 단축 라벨 "과정 개발 필요성" 으로 클릭 (사용자 보고 — 말줄임 사라지도록)
+    fireEvent.click(screen.getAllByText('과정 개발 필요성')[0]);
     fireEvent.change(screen.getByLabelText('AI훈련과정 개발 필요성'), {
       target: { value: '현장 AI 리터러시 확보 필요' },
     });
@@ -362,6 +362,10 @@ describe('PBLInterviewClient', () => {
         trainingNeedsAnalysis: '',
         expectationAsIs: '',
         expectationToBe: '',
+        targetTraineeCount: 0,
+        internalInstructorUsage: 'NO' as const,
+        internalInstructorPrimary: { name: '', position: '' },
+        otherEquipment: '',
       },
       hrdReportPdf: null,
       courseNecessity: 'AI 리터러시 확보 필요',

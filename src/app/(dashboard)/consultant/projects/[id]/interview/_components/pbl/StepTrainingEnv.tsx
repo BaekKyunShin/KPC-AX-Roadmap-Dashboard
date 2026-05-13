@@ -46,6 +46,12 @@ function ensureValue(value: PBLTrainingEnv | undefined): PBLTrainingEnv {
     trainingNeedsAnalysis: value?.trainingNeedsAnalysis ?? '',
     expectationAsIs: value?.expectationAsIs ?? '',
     expectationToBe: value?.expectationToBe ?? '',
+    // 양식 P-05 누락 3행 보강 — 사용자 보고 (대상 인원·사내강사 활용·기타 장비)
+    targetTraineeCount: value?.targetTraineeCount ?? 0,
+    internalInstructorUsage: value?.internalInstructorUsage ?? 'NO',
+    internalInstructorPrimary:
+      value?.internalInstructorPrimary ?? { name: '', position: '' },
+    otherEquipment: value?.otherEquipment ?? '',
   };
 }
 
@@ -236,6 +242,33 @@ export function StepTrainingEnv({
         />
       </div>
 
+      {/* 1-b. 대상 인원 (양식 P-05 누락 보강) */}
+      <div className="space-y-1">
+        <label
+          htmlFor="pbl-training-env-trainee-count"
+          className="text-sm font-medium"
+        >
+          대상 인원
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="pbl-training-env-trainee-count"
+            type="number"
+            min={0}
+            step={1}
+            value={v.targetTraineeCount}
+            onChange={(e) => {
+              const parsed = Number.parseInt(e.target.value, 10);
+              emit({ targetTraineeCount: Number.isFinite(parsed) ? Math.max(0, parsed) : 0 });
+            }}
+            disabled={readOnly}
+            aria-label="대상 인원"
+            className="w-32 rounded border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <span className="text-sm text-muted-foreground">명</span>
+        </div>
+      </div>
+
       {/* 2·3. 훈련장소 사내·사외 (2 컬럼) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -268,6 +301,106 @@ export function StepTrainingEnv({
         </div>
       </div>
 
+      {/* 3-b. 사내강사 활용 여부 (양식 P-05 누락 보강) */}
+      <fieldset className="space-y-2" disabled={readOnly}>
+        <legend className="text-sm font-medium">사내강사 활용 여부</legend>
+        <div className="flex items-center gap-4">
+          <label
+            htmlFor="pbl-training-env-internal-usage-yes"
+            className="flex items-center gap-1.5 text-sm"
+          >
+            <input
+              id="pbl-training-env-internal-usage-yes"
+              type="radio"
+              name="pbl-training-env-internal-usage"
+              value="YES"
+              checked={v.internalInstructorUsage === 'YES'}
+              onChange={() => emit({ internalInstructorUsage: 'YES' })}
+              disabled={readOnly}
+              aria-label="사내강사 활용 여부 있음"
+              className="size-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            있음
+          </label>
+          <label
+            htmlFor="pbl-training-env-internal-usage-no"
+            className="flex items-center gap-1.5 text-sm"
+          >
+            <input
+              id="pbl-training-env-internal-usage-no"
+              type="radio"
+              name="pbl-training-env-internal-usage"
+              value="NO"
+              checked={v.internalInstructorUsage === 'NO'}
+              onChange={() =>
+                emit({
+                  internalInstructorUsage: 'NO',
+                  internalInstructorPrimary: { name: '', position: '' },
+                })
+              }
+              disabled={readOnly}
+              aria-label="사내강사 활용 여부 없음"
+              className="size-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            없음
+          </label>
+        </div>
+        {v.internalInstructorUsage === 'YES' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-1">
+            <div className="space-y-1">
+              <label
+                htmlFor="pbl-training-env-internal-primary-name"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                대표 강사 이름
+              </label>
+              <input
+                id="pbl-training-env-internal-primary-name"
+                type="text"
+                value={v.internalInstructorPrimary.name}
+                onChange={(e) =>
+                  emit({
+                    internalInstructorPrimary: {
+                      ...v.internalInstructorPrimary,
+                      name: e.target.value,
+                    },
+                  })
+                }
+                disabled={readOnly}
+                aria-label="사내강사 대표 이름"
+                placeholder="예: 홍길동"
+                className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="pbl-training-env-internal-primary-position"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                대표 강사 직책
+              </label>
+              <input
+                id="pbl-training-env-internal-primary-position"
+                type="text"
+                value={v.internalInstructorPrimary.position}
+                onChange={(e) =>
+                  emit({
+                    internalInstructorPrimary: {
+                      ...v.internalInstructorPrimary,
+                      position: e.target.value,
+                    },
+                  })
+                }
+                disabled={readOnly}
+                aria-label="사내강사 대표 직책"
+                placeholder="예: 생산팀장"
+                className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </div>
+        ) : null}
+      </fieldset>
+
       {/* 4. 사내강사 표 */}
       {renderInstructorTable('internal')}
 
@@ -287,6 +420,22 @@ export function StepTrainingEnv({
           disabled={readOnly}
           aria-label="AI 인프라"
           minHeightClassName="min-h-[80px]"
+        />
+      </div>
+
+      {/* 6-b. AI인프라 기타 장비 보유 (양식 P-05 누락 보강) */}
+      <div className="space-y-1">
+        <label htmlFor="pbl-training-env-other-equipment" className="text-sm font-medium">
+          AI인프라 기타 장비 보유
+        </label>
+        <LargeTextBox
+          id="pbl-training-env-other-equipment"
+          value={v.otherEquipment}
+          onChange={(e) => emit({ otherEquipment: e.target.value })}
+          placeholder="예: 프로젝터 2대, 디지털 화이트보드 1대, 스마트 TV 1대"
+          disabled={readOnly}
+          aria-label="AI인프라 기타 장비 보유"
+          minHeightClassName="min-h-[60px]"
         />
       </div>
 

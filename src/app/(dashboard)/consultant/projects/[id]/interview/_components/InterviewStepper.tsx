@@ -81,8 +81,9 @@ export default function InterviewStepper({
 
   return (
     <nav aria-label="Progress">
-      {/* 데스크톱: 가로 스테퍼 */}
-      <div className="hidden md:block relative">
+      {/* 데스크톱: 가로 스테퍼 — 단계 수가 많을 때(PBL 8~10단계) 가시 폭 초과 시
+          자연 가로 스크롤로 폴백. 로드맵은 단계 수 적어 스크롤 발생 안 함. */}
+      <div className="hidden md:block relative overflow-x-auto">
         {/* 연결선 */}
         <div
           className="absolute top-4 h-0.5 bg-blue-200"
@@ -110,7 +111,7 @@ export default function InterviewStepper({
                     {showCheckIcon ? <CheckIcon /> : step.id}
                   </span>
                   <span
-                    className={`mt-2 text-xs max-w-[80px] lg:max-w-[96px] truncate text-center ${TEXT_STYLES[state]}`}
+                    className={`mt-2 text-xs max-w-[88px] lg:max-w-[112px] truncate text-center ${TEXT_STYLES[state]}`}
                   >
                     {step.stepperLabel ?? step.name}
                   </span>

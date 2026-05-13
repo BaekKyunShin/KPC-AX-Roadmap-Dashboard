@@ -693,6 +693,9 @@ export const PBL_AI_TOOL_CAPACITY = z.enum(['AVAILABLE', 'LIMITED', 'UNAVAILABLE
 export type PBLAIToolCapacity = z.infer<typeof PBL_AI_TOOL_CAPACITY>;
 export const PBL_NETWORK_STATUS = z.enum(['GOOD', 'NORMAL', 'IMPROVEMENT_NEEDED']);
 export type PBLNetworkStatus = z.infer<typeof PBL_NETWORK_STATUS>;
+// 양식 Ⅱ-2 "사내 강사 활용 여부" yes/no enum (신규 4 필드 중 하나)
+export const PBL_INTERNAL_INSTRUCTOR_USAGE = z.enum(['YES', 'NO']);
+export type PBLInternalInstructorUsage = z.infer<typeof PBL_INTERNAL_INSTRUCTOR_USAGE>;
 
 export const PBLTrainingEnvSchema = z.object({
   properTrainingHours: z.string().default(''),    // 적정 훈련시간
@@ -719,6 +722,22 @@ export const PBLTrainingEnvSchema = z.object({
   trainingNeedsAnalysis: z.string().default(''),  // AI훈련 요구분석
   expectationAsIs: z.string().default(''),        // 기대효과 As-is (현재)
   expectationToBe: z.string().default(''),        // 기대효과 To-be (개선)
+  // 양식 P-05 누락 3행 (사용자 보고 보강) — 모두 default 안전 fallback. 기존 DB 호환.
+  // 양식 "대상 인원" 행 — 자연수(0 포함). 0 일 때는 HWPX 출력에서 빈 문자열 처리.
+  targetTraineeCount: z.number().int().min(0).default(0),
+  // 양식 "사내 강사 활용 여부" yes/no — 기존 internalInstructors 배열(자격증·경력) 과는
+  // 독립 필드 (양식 P-05 에는 활용여부 단일 행이 별도 존재).
+  internalInstructorUsage: PBL_INTERNAL_INSTRUCTOR_USAGE.default('NO'),
+  // YES 일 때 사내 대표 강사 1명의 이름·직책 (양식 표 옆 셀 출력용).
+  // NO 일 때는 빈 객체로 직렬화.
+  internalInstructorPrimary: z
+    .object({
+      name: z.string().default(''),
+      position: z.string().default(''),
+    })
+    .default({ name: '', position: '' }),
+  // 양식 "AI인프라 기타 장비 보유" 자유서술 (프로젝터·디지털 화이트보드 등).
+  otherEquipment: z.string().default(''),
 });
 export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 

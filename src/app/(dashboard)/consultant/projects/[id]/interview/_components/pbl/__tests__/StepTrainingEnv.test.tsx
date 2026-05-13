@@ -17,6 +17,11 @@ function emptyEnv(): PBLTrainingEnv {
     trainingNeedsAnalysis: '',
     expectationAsIs: '',
     expectationToBe: '',
+    // 양식 P-05 누락 3행 보강 (사용자 보고)
+    targetTraineeCount: 0,
+    internalInstructorUsage: 'NO' as const,
+    internalInstructorPrimary: { name: '', position: '' },
+    otherEquipment: '',
   };
 }
 
@@ -139,5 +144,74 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     expect((calls[0][0] as PBLTrainingEnv).internalPlace).toBe('본사 3층');
     expect((calls[1][0] as PBLTrainingEnv).externalPlace).toBe('외부센터');
     expect((calls[2][0] as PBLTrainingEnv).aiInfrastructure).toBe('PC 30대');
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 양식 P-05 누락 3행 보강 — 사용자 보고 (대상 인원 / 사내강사 활용 / 기타 장비)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('신규 3 영역 라벨이 모두 노출된다 (대상 인원 / 사내강사 활용 여부 / AI인프라 기타 장비)', () => {
+    render(<StepTrainingEnv value={emptyEnv()} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('대상 인원')).toBeInTheDocument();
+    expect(screen.getByText('사내강사 활용 여부')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI인프라 기타 장비 보유')).toBeInTheDocument();
+  });
+
+  it('대상 인원 편집 시 onChange 가 targetTraineeCount 숫자로 호출', () => {
+    const onChange = vi.fn();
+    render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('대상 인원'), { target: { value: '15' } });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ targetTraineeCount: 15 }),
+    );
+  });
+
+  it('사내강사 활용 여부 라디오 = "있음" 선택 시 onChange 가 YES 로 호출', () => {
+    const onChange = vi.fn();
+    render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
+    fireEvent.click(screen.getByLabelText('사내강사 활용 여부 있음'));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ internalInstructorUsage: 'YES' }),
+    );
+  });
+
+  it('사내강사 활용 여부 = YES 일 때 대표 이름·직책 입력이 노출', () => {
+    const withYes: PBLTrainingEnv = {
+      ...emptyEnv(),
+      internalInstructorUsage: 'YES' as const,
+    };
+    render(<StepTrainingEnv value={withYes} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('사내강사 대표 이름')).toBeInTheDocument();
+    expect(screen.getByLabelText('사내강사 대표 직책')).toBeInTheDocument();
+  });
+
+  it('사내강사 활용 여부 = NO 일 때 대표 이름·직책 입력은 비노출', () => {
+    render(<StepTrainingEnv value={emptyEnv()} onChange={vi.fn()} />);
+    expect(screen.queryByLabelText('사내강사 대표 이름')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('사내강사 대표 직책')).not.toBeInTheDocument();
+  });
+
+  it('AI인프라 기타 장비 보유 편집 시 onChange 가 otherEquipment 로 호출', () => {
+    const onChange = vi.fn();
+    render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('AI인프라 기타 장비 보유'), {
+      target: { value: '프로젝터 2대, 디지털 화이트보드 1대' },
+    });
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대' }),
+    );
+  });
+
+  it('readOnly 이면 신규 3 영역도 disabled', () => {
+    const withYes: PBLTrainingEnv = {
+      ...emptyEnv(),
+      internalInstructorUsage: 'YES' as const,
+    };
+    render(<StepTrainingEnv value={withYes} onChange={vi.fn()} readOnly />);
+    expect(screen.getByLabelText('대상 인원')).toBeDisabled();
+    expect(screen.getByLabelText('사내강사 활용 여부 있음')).toBeDisabled();
+    expect(screen.getByLabelText('사내강사 활용 여부 없음')).toBeDisabled();
+    expect(screen.getByLabelText('사내강사 대표 이름')).toBeDisabled();
+    expect(screen.getByLabelText('AI인프라 기타 장비 보유')).toBeDisabled();
   });
 });

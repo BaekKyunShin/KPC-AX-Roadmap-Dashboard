@@ -232,7 +232,7 @@ describe('InterviewStepper', () => {
   // 5. 데스크톱 라벨 폭 제약 (9~10 Step 확장 시 겹침 방어)
   // -------------------------------------------------------------------------
   describe('데스크톱 라벨 폭 제약', () => {
-    it('데스크톱 라벨 span 에 truncate · max-w-[80px] 클래스가 적용된다', () => {
+    it('데스크톱 라벨 span 에 truncate · max-w-[88px] 클래스가 적용된다 (PBL 10단계 라벨 가시성 확보)', () => {
       const { container } = render(
         <InterviewStepper
           steps={STEPS}
@@ -249,7 +249,8 @@ describe('InterviewStepper', () => {
       expect(labelSpans.length).toBeGreaterThan(0);
       const labelSpan = labelSpans[0];
       expect(labelSpan.className).toMatch(/truncate/);
-      expect(labelSpan.className).toMatch(/max-w-\[80px\]/);
+      expect(labelSpan.className).toMatch(/max-w-\[88px\]/);
+      expect(labelSpan.className).toMatch(/lg:max-w-\[112px\]/);
     });
 
     it('각 데스크톱 스텝 버튼에 title 속성으로 step.name 풀텍스트가 노출된다 (truncate 시 hover 접근성)', () => {

@@ -54,6 +54,11 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
       '수동 검사 92% 정확도, 보고서 작성 평균 4시간, 불량 원인 추적은 숙련 인력 의존.',
     expectationToBe:
       'AI 자동검사 정확도 96%+, 보고서 자동 생성 1시간, 신규 인력도 동일 수준 분석 가능.',
+    // 양식 P-05 누락 3행 보강 (사용자 보고)
+    targetTraineeCount: 16,
+    internalInstructorUsage: 'YES',
+    internalInstructorPrimary: { name: '김품질', position: '품질관리 파트장' },
+    otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대, 검사용 카메라 2대',
   },
 
   // ── Ⅱ-3-가 HRD이음 PDF (테스트 모드에서는 첨부 없음) ──────────────────────
