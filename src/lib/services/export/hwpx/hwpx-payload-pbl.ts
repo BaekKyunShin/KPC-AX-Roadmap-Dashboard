@@ -65,19 +65,26 @@ function safeString(value: unknown): string {
 }
 
 /**
- * 자유서술 텍스트에서 동그라미 숫자 패턴(① ② ③ … ⑳) 앞에 자동 줄바꿈 삽입.
- * 양식 셀(예: P-03 company_issues, P-07 course_necessity)이 paragraph 별로
- * 머리기호(▪)를 자동 표시하므로 \n 으로 분할하면 항목마다 머리기호가 자연스럽게
- * 붙는다. 사용자가 한 줄로 "① 완제품 ... ② 품질 ..." 입력해도 다음과 같이 출력:
- *   ▪ ① 완제품 ...
- *   ▪ ② 품질 ...
+ * 자유서술 텍스트의 양식 셀 출력을 정규화한다.
  *
- * Look-behind \S 로 string 시작 직후 번호는 줄바꿈 추가 안 함 (중복 빈 줄 방지).
- * 동일 효과를 LLM 출력 detail 필드에도 적용 (subject_profile training_contents).
+ *  1) **동그라미 숫자 자동 줄바꿈** — ①②③…⑳ 앞 (string 시작 외) 에 \n 삽입.
+ *     양식 셀이 paragraph 별로 머리기호(▪)를 자동 부여하므로 \n 분할 시 항목마다
+ *     머리기호가 자연스럽게 붙는다.
+ *  2) **각 라인 시작 머리기호 제거** — ▪ ● ◆ ■ □ - * + 같은 사용자/LLM 이 직접
+ *     붙인 머리기호는 양식 셀의 자동 머리기호와 중복돼 "▪ ▪ 학습목표:" 처럼
+ *     보이는 회귀가 있어 항상 strip 한다 (사용자 보고).
+ *
+ * 적용 대상: company_issues, course_necessity, training_contents[].detail.
  */
 function normalizeListText(text: string | undefined | null): string {
   if (!text) return '';
-  return text.replace(/(?<=\S)\s*(?=[①-⑳])/g, '\n');
+  // (1) 동그라미 숫자 앞 강제 줄바꿈
+  const withBreaks = text.replace(/(?<=\S)\s*(?=[①-⑳])/g, '\n');
+  // (2) 각 라인 시작 머리기호 (▪ ● ◆ ■ □ - * +) + 공백 제거
+  return withBreaks
+    .split('\n')
+    .map((line) => line.replace(/^\s*[▪●◆■□\-*+•·]+\s*/u, ''))
+    .join('\n');
 }
 
 /** R8 PBL-자체-05 — outcome_analysis → P-25/P-26 4 키 매핑.

@@ -730,6 +730,9 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
             id: s.id,
             name: s.name,
             shortName: s.shortName,
+            // BUG FIX: stepperLabel 누락으로 InterviewStepper 가 항상 풀텍스트 name
+            // 만 사용해 '과정 개발 필요성' 단축이 안 보였음 (사용자 보고). 명시 전달.
+            stepperLabel: s.stepperLabel,
           }))}
           currentStep={currentStep}
           onStepClick={(idx) => setCurrentStep(idx)}
