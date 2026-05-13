@@ -1,18 +1,23 @@
 'use client';
 
 /**
- * HWPX 다운로드 훅 (Step 7 Task 9).
+ * HWPX 다운로드 훅.
  *
- * Server Action이 반환한 base64 문자열을 atob → Uint8Array → Blob → a.download로
- * 복원하여 파일을 저장한다. Next.js Server Action은 Buffer/Blob 직접 반환이 불가능하므로
+ * Server Action 이 반환한 base64 문자열을 atob → Uint8Array → Blob → a.download 로
+ * 복원하여 파일을 저장한다. Next.js Server Action 은 Buffer/Blob 직접 반환이 불가능하므로
  * 문자열 직렬화가 필수.
  *
- * Step 10에서 PBL DownloadButton이 동일 훅을 재사용한다 (신규 작성 금지).
+ * HWPX 다운로드는 Vercel Python Function (`/api/hwpx/generate`) 호출로 수~수십 초가 걸리므로
+ * `showProgressToast` 로 단계 라벨·점 애니메이션·취소 버튼을 제공한다.
+ * 외부 시그니처(`download / isLoading / error`)는 PDF/XLSX 훅과 일관성을 위해 유지.
+ *
+ * 알려진 한계: 취소 버튼은 UI 측 결과 무시만 수행한다. Vercel Python Function 호출은 백엔드에서
+ * 계속 진행되며, 본 프로젝트의 다운로드는 멱등하고 부수효과가 없으므로 안전하다.
  */
 import { useCallback, useRef, useState } from 'react';
 
 import type { ActionResult } from '@/lib/types/action-result';
-import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
+import { type ProgressStage, showProgressToast } from '@/lib/utils/toast';
 
 export interface HwpxDownloadPayload {
   fileName: string;
@@ -32,6 +37,13 @@ export interface UseHwpxDownloadResult {
   error: string | null;
 }
 
+const PROGRESS_TITLE = 'HWPX 문서를 만들고 있어요';
+const PROGRESS_STAGES: ProgressStage[] = [
+  { label: '정보 취합 중', durationMs: 20_000 },
+  { label: '문서 작성 중', durationMs: 20_000 },
+  { label: 'HWPX 생성 중' }, // 마지막 stage — 완료/실패/취소까지 유지
+];
+
 function base64ToBlob(base64: string, mimeType: string): Blob {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -50,17 +62,29 @@ export function useHwpxDownload({
   const [error, setError] = useState<string | null>(null);
 
   // 실패 토스트의 "다시 시도" 액션이 동일 download 함수를 재호출할 수 있도록 self-ref 유지.
-  // useCallback 본문에서 자기 자신을 참조하기 위해 ref 패턴 사용.
   const downloadRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const download = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    let cancelled = false;
+    const progress = showProgressToast({
+      title: PROGRESS_TITLE,
+      stages: PROGRESS_STAGES,
+      onCancel: () => {
+        cancelled = true;
+        progress.dismiss();
+      },
+    });
+
     try {
       const result = await action();
+      if (cancelled) return;
+
       if (!result.success) {
         setError(result.error);
-        showErrorToast(errorTitle, result.error, {
+        progress.error(errorTitle, result.error, {
           label: '다시 시도',
           onClick: () => {
             void downloadRef.current();
@@ -68,6 +92,7 @@ export function useHwpxDownload({
         });
         return;
       }
+
       const { fileName, contentBase64, mimeType } = result.data;
       const blob = base64ToBlob(contentBase64, mimeType);
       const url = URL.createObjectURL(blob);
@@ -81,11 +106,12 @@ export function useHwpxDownload({
       } finally {
         URL.revokeObjectURL(url);
       }
-      showSuccessToast(successMessage);
+      progress.success(successMessage);
     } catch (err) {
+      if (cancelled) return;
       const message = err instanceof Error ? err.message : 'HWPX 다운로드 중 오류가 발생했습니다.';
       setError(message);
-      showErrorToast(errorTitle, message, {
+      progress.error(errorTitle, message, {
         label: '다시 시도',
         onClick: () => {
           void downloadRef.current();
@@ -96,7 +122,7 @@ export function useHwpxDownload({
     }
   }, [action, errorTitle, successMessage]);
 
-  // 매 렌더마다 최신 download 를 ref 에 저장 — 자기 참조 시 무한 루프 없음
+  // 매 렌더마다 최신 download 를 ref 에 저장 — 자기 참조 시 무한 루프 없음.
   downloadRef.current = download;
 
   return { download, isLoading, error };
