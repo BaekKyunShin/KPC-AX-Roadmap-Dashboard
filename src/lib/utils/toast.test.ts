@@ -235,7 +235,9 @@ describe('showProgressToast', () => {
     handle.dismiss();
   });
 
-  it('handle.success 호출 시 toast.success 가 같은 id 로 호출되고 타이머가 정지된다', () => {
+  it('handle.success 호출 시 진행 토스트를 dismiss 한 뒤 toast.success 를 새 토스트로 띄우고 타이머가 정지된다', () => {
+    // 진행 토스트의 duration: Infinity 가 success 갱신 시 잔존해 토스트가 사라지지 않거나
+    // 이전 description ("HWPX 생성 중·") 이 그대로 남는 sonner 옵션 merge 문제를 회피한다.
     vi.useFakeTimers();
 
     const handle = showProgressToast({
@@ -248,12 +250,51 @@ describe('showProgressToast', () => {
 
     handle.success('완료!', 'file.hwpx');
 
-    expect(toast.success).toHaveBeenCalledWith('완료!', {
-      id: initialId,
-      description: 'file.hwpx',
-    });
+    // 1) 진행 토스트(같은 id) 가 명시적으로 dismiss 되어야 한다
+    expect(toast.dismiss).toHaveBeenCalledWith(initialId);
+    // 2) success 토스트는 새 토스트로 띄워진다 (이전 id 미사용 → sonner 기본 duration·정상 description 적용)
+    expect(toast.success).toHaveBeenCalledWith('완료!', { description: 'file.hwpx' });
 
     // success 호출 후 타이머가 정지되어야 함 — 추가 시간 경과 시 toast.loading 추가 호출 없음
+    const callsBeforeAdvance = vi.mocked(toast.loading).mock.calls.length;
+    vi.advanceTimersByTime(5_000);
+    expect(vi.mocked(toast.loading).mock.calls.length).toBe(callsBeforeAdvance);
+  });
+
+  it('handle.success description 미전달 시 toast.success 에 description 없이 호출된다', () => {
+    vi.useFakeTimers();
+
+    const handle = showProgressToast({
+      title: '진행',
+      stages: [{ label: '정보 취합 중' }],
+    });
+
+    const initialId = latestId();
+    handle.success('완료!');
+
+    expect(toast.dismiss).toHaveBeenCalledWith(initialId);
+    expect(toast.success).toHaveBeenCalledWith('완료!', undefined);
+  });
+
+  it('handle.error 호출 시 진행 토스트를 dismiss 한 뒤 toast.error 를 새 토스트로 띄운다', () => {
+    vi.useFakeTimers();
+
+    const handle = showProgressToast({
+      title: '진행',
+      stages: [{ label: '정보 취합 중' }],
+    });
+
+    const initialId = latestId();
+    handle.error('실패!', '네트워크 오류', { label: '다시 시도', onClick: vi.fn() });
+
+    expect(toast.dismiss).toHaveBeenCalledWith(initialId);
+    expect(toast.error).toHaveBeenCalledWith('실패!', {
+      description: '네트워크 오류',
+      action: { label: '다시 시도', onClick: expect.any(Function) },
+      duration: Infinity,
+    });
+
+    // error 후 타이머 정지 — 추가 시간 경과해도 toast.loading 추가 호출 없음
     const callsBeforeAdvance = vi.mocked(toast.loading).mock.calls.length;
     vi.advanceTimersByTime(5_000);
     expect(vi.mocked(toast.loading).mock.calls.length).toBe(callsBeforeAdvance);
