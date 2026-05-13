@@ -63,6 +63,7 @@ import {
 } from './actions';
 import type { RoadmapResult, ValidationResult } from '@/lib/services/roadmap';
 import { isCancelledError } from '@/lib/services/llm';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 
 // ─── 8 스텝 정의 (V2 인터뷰 Client 와 동일 구성) ─────────────────────────────
 
@@ -240,6 +241,32 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
   const [isRevising, setIsRevising] = useState(false);
   const [isRevisionComplete, setIsRevisionComplete] = useState(false);
   const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
+
+  // HWPX 다운로드 진행 토스트 (실제 결과 페이지와 동일 흐름).
+  // action 클로저는 호출 시점의 최신 testResult/data/companyName 을 참조하고
+  // 인터뷰 검증 실패 시 ActionResult 실패로 변환해 진행 토스트가 자동으로 error 갱신되도록 한다.
+  const { download: downloadHwpx } = useHwpxDownload({
+    action: () => {
+      if (!testResult) {
+        return Promise.resolve({
+          success: false as const,
+          error: '결과 데이터가 없습니다.',
+        });
+      }
+      const parsedInterview = RoadmapInterviewStrictSchema.safeParse(data);
+      if (!parsedInterview.success) {
+        return Promise.resolve({
+          success: false as const,
+          error: '인터뷰 검증에 실패했습니다.',
+        });
+      }
+      return exportTestRoadmapHwpx({
+        result: testResult.result,
+        interview: parsedInterview.data,
+        companyName,
+      });
+    },
+  });
 
   const currentStepDef = STEPS[currentStep - 1];
   const isFirstStep = currentStep === 1;
@@ -476,44 +503,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
                 return;
               }
               if (type === 'HWPX') {
-                const parsedInterview =
-                  RoadmapInterviewStrictSchema.safeParse(data);
-                if (!parsedInterview.success) {
-                  showErrorToast(
-                    'HWPX 다운로드 실패',
-                    '인터뷰 검증에 실패했습니다.',
-                  );
-                  return;
-                }
-                const result = await exportTestRoadmapHwpx({
-                  result: testResult.result,
-                  interview: parsedInterview.data,
-                  companyName,
-                });
-                if (!result.success) {
-                  // 실패 시 영구 토스트 + 콘솔 풀 로그 (요청 ID 추적용)
-                  console.error('[TestRoadmap HWPX] result.success=false', result);
-                  showErrorToast('HWPX 다운로드 실패', result.error, {
-                    duration: Infinity,
-                  });
-                  return;
-                }
-                const { fileName, contentBase64, mimeType } = result.data;
-                const binary = atob(contentBase64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                  bytes[i] = binary.charCodeAt(i);
-                }
-                const blob = new Blob([bytes], { type: mimeType });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showSuccessToast('HWPX 다운로드 완료');
+                // 인터뷰 검증·진행 토스트·점 애니메이션·취소·완료 갱신은 useHwpxDownload 가 일괄 처리.
+                await downloadHwpx();
                 return;
               }
             } catch (err) {

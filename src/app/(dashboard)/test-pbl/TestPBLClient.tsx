@@ -59,6 +59,7 @@ import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 import type { PBLExportPayload } from '@/lib/actions/pbl-export';
 import type { DownloadType } from '@/components/result/DownloadButtonGroup';
 import { showSuccessToast } from '@/lib/utils/toast';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
 
 import {
   generateTestPBL,
@@ -303,6 +304,24 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
 
+  // HWPX 다운로드 진행 토스트 (실제 결과 페이지와 동일 흐름).
+  // action 클로저는 호출 시점의 최신 testResult/companyName 을 참조한다.
+  const { download: downloadHwpx } = useHwpxDownload({
+    action: () => {
+      if (!testResult) {
+        return Promise.resolve({
+          success: false as const,
+          error: '결과 데이터가 없습니다.',
+        });
+      }
+      return exportTestPBLHwpx({
+        content: testResult.content,
+        interview: testResult.interview,
+        companyName,
+      });
+    },
+  });
+
   const currentStepDef = STEPS[currentStep - 1];
   const isFirstStep = currentStep === 1;
   const isLastStep = currentStep === STEPS.length;
@@ -486,37 +505,8 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
                 return;
               }
               if (type === 'HWPX') {
-                // in-memory 인터뷰·결과를 신규 server action 으로 HWPX 생성
-                const result = await exportTestPBLHwpx({
-                  content: testResult.content,
-                  interview: testResult.interview,
-                  companyName,
-                });
-                if (!result.success) {
-                  // 실패 시 즉시 dismiss 되지 않도록 영구 토스트 + 콘솔에도 풀 로그.
-                  // (요청 ID + 원인 메시지가 토스트에 포함됨 — Vercel 로그 매칭용)
-                  console.error('[TestPBL HWPX] result.success=false', result);
-                  showErrorToast('HWPX 다운로드 실패', result.error, {
-                    duration: Infinity,
-                  });
-                  return;
-                }
-                const { fileName, contentBase64, mimeType } = result.data;
-                const binary = atob(contentBase64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                  bytes[i] = binary.charCodeAt(i);
-                }
-                const blob = new Blob([bytes], { type: mimeType });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showSuccessToast('HWPX 다운로드 완료');
+                // 진행 토스트·점 애니메이션·취소·완료 갱신은 useHwpxDownload 가 일괄 처리.
+                await downloadHwpx();
                 return;
               }
             } catch (err) {

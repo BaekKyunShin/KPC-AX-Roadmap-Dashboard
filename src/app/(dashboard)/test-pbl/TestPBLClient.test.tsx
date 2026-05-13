@@ -28,7 +28,23 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+vi.mock('@/hooks/useHwpxDownload', () => ({
+  useHwpxDownload: vi.fn(() => ({
+    download: vi.fn(),
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+vi.mock('./actions', () => ({
+  generateTestPBL: vi.fn(),
+  cancelTestPBLGeneration: vi.fn(),
+  exportTestPBLHwpx: vi.fn(),
+}));
+
 import TestPBLClient, { buildTestPBLExportPayload } from './TestPBLClient';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
+import { exportTestPBLHwpx } from './actions';
 import { PBL_INTERVIEW_SAMPLE } from '@/lib/fixtures/pbl-interview-sample';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 
@@ -256,5 +272,40 @@ describe('buildTestPBLExportPayload', () => {
     expect(payload.finalizedAt).toBeNull();
     expect(typeof payload.createdAt).toBe('string');
     expect(payload.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+// ─── HWPX 다운로드 흐름 — useHwpxDownload 훅 통합 ───────────────────────
+//
+// 본 페이지는 PR #95 이전까지 inline 으로 exportTestPBLHwpx 를 호출했기 때문에
+// HWPX 진행 토스트가 자동 전파되지 않았다. 이제 useHwpxDownload 훅을 사용해
+// 4개 실제 결과 페이지와 동일한 진행 토스트·점 애니메이션·취소 동작을 획득한다.
+
+describe('TestPBLClient — HWPX 다운로드 (useHwpxDownload 통합)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('컴포넌트 렌더 시 useHwpxDownload 가 action 옵션과 함께 호출된다', async () => {
+    render(<TestPBLClient user={baseUser} canAccess={true} />);
+
+    const useHwpxMock = vi.mocked(useHwpxDownload);
+    expect(useHwpxMock).toHaveBeenCalled();
+    const opts = useHwpxMock.mock.calls[0]?.[0];
+    expect(typeof opts?.action).toBe('function');
+  });
+
+  it('testResult 가 null 인 초기 상태에서 action() 호출 시 exportTestPBLHwpx 가 호출되지 않고 실패 결과를 반환한다', async () => {
+    render(<TestPBLClient user={baseUser} canAccess={true} />);
+
+    const useHwpxMock = vi.mocked(useHwpxDownload);
+    const opts = useHwpxMock.mock.calls[0]?.[0];
+    expect(opts?.action).toBeDefined();
+
+    const exportMock = vi.mocked(exportTestPBLHwpx);
+    const result = await opts!.action();
+
+    expect(result.success).toBe(false);
+    expect(exportMock).not.toHaveBeenCalled();
   });
 });

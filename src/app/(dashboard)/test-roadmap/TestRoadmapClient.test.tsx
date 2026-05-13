@@ -30,7 +30,24 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+vi.mock('@/hooks/useHwpxDownload', () => ({
+  useHwpxDownload: vi.fn(() => ({
+    download: vi.fn(),
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+vi.mock('./actions', () => ({
+  createTestRoadmap: vi.fn(),
+  cancelTestRoadmapGeneration: vi.fn(),
+  reviseTestRoadmap: vi.fn(),
+  exportTestRoadmapHwpx: vi.fn(),
+}));
+
 import TestRoadmapClient from './TestRoadmapClient';
+import { useHwpxDownload } from '@/hooks/useHwpxDownload';
+import { exportTestRoadmapHwpx } from './actions';
 
 // V2 Step 컴포넌트 경로로 모킹 (Task 2.11-e rename 이후 경로)
 vi.mock(
@@ -195,5 +212,40 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     expect(screen.getByTestId('establishment-display')).toHaveTextContent(
       /샘플정밀공업|자동차 부품/,
     );
+  });
+});
+
+// ─── HWPX 다운로드 흐름 — useHwpxDownload 훅 통합 ───────────────────────
+//
+// 본 페이지는 PR #95 이전까지 inline 으로 exportTestRoadmapHwpx 를 호출했기 때문에
+// HWPX 진행 토스트가 자동 전파되지 않았다. 이제 useHwpxDownload 훅을 사용해
+// 4개 실제 결과 페이지와 동일한 진행 토스트·점 애니메이션·취소 동작을 획득한다.
+
+describe('TestRoadmapClient — HWPX 다운로드 (useHwpxDownload 통합)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('컴포넌트 렌더 시 useHwpxDownload 가 action 옵션과 함께 호출된다', async () => {
+    render(<TestRoadmapClient user={baseUser} canAccess={true} hasProfile={true} />);
+
+    const useHwpxMock = vi.mocked(useHwpxDownload);
+    expect(useHwpxMock).toHaveBeenCalled();
+    const opts = useHwpxMock.mock.calls[0]?.[0];
+    expect(typeof opts?.action).toBe('function');
+  });
+
+  it('testResult 가 null 인 초기 상태에서 action() 호출 시 exportTestRoadmapHwpx 가 호출되지 않고 실패 결과를 반환한다', async () => {
+    render(<TestRoadmapClient user={baseUser} canAccess={true} hasProfile={true} />);
+
+    const useHwpxMock = vi.mocked(useHwpxDownload);
+    const opts = useHwpxMock.mock.calls[0]?.[0];
+    expect(opts?.action).toBeDefined();
+
+    const exportMock = vi.mocked(exportTestRoadmapHwpx);
+    const result = await opts!.action();
+
+    expect(result.success).toBe(false);
+    expect(exportMock).not.toHaveBeenCalled();
   });
 });
