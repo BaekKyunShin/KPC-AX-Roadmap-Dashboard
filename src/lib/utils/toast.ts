@@ -167,16 +167,28 @@ export function showProgressToast(opts: ProgressToastOptions): ProgressToastHand
   scheduleNextStage();
 
   return {
+    // success / error 는 진행 토스트(duration: Infinity·점 description) 를 같은 id 로 갱신하지 않고,
+    // dismiss 한 뒤 새 토스트를 띄운다. sonner 의 옵션 merge 가 duration·description 을
+    // 잔존시켜 결과 토스트가 사라지지 않거나 옛 라벨이 남는 문제를 회피.
     success(successTitle, description) {
       stopTimers();
-      toast.success(successTitle, description ? { id, description } : { id });
+      toast.dismiss(id);
+      toast.success(successTitle, description ? { description } : undefined);
     },
     error(errorTitle, description, errorAction) {
       stopTimers();
-      const errorOpts: { id: string; description?: string; action?: ToastAction } = { id };
+      toast.dismiss(id);
+      const errorOpts: { description?: string; action?: ToastAction; duration?: number } = {};
       if (description) errorOpts.description = description;
-      if (errorAction) errorOpts.action = errorAction;
-      toast.error(errorTitle, errorOpts);
+      if (errorAction) {
+        errorOpts.action = errorAction;
+        // 사용자가 "다시 시도" 를 누를 시간을 보장 — 다른 action 없는 일반 에러는 sonner 기본 4초.
+        errorOpts.duration = Infinity;
+      }
+      toast.error(
+        errorTitle,
+        Object.keys(errorOpts).length > 0 ? errorOpts : undefined,
+      );
     },
     dismiss() {
       stopTimers();
