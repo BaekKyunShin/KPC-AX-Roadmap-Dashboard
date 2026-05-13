@@ -128,9 +128,13 @@ export function InlineEditField({
     ) : null;
 
   if (mode === 'edit') {
+    // multiline 은 테스트 페이지(LargeTextBox)와 시각 일관성을 위해 동일 스타일 적용.
+    // 단일행 input 은 인라인 편집용 컴팩트 스타일 유지.
     const commonInputClass = cn(
-      'flex-1 rounded border border-input bg-background px-2 py-1 text-sm',
-      multiline && 'min-h-[160px] resize-y',
+      'flex-1 border border-input bg-background text-sm',
+      multiline
+        ? 'min-h-[160px] resize-y rounded-md px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        : 'rounded px-2 py-1',
     );
 
     return (
