@@ -84,11 +84,11 @@ export default function InterviewStepper({
       {/* 데스크톱: 가로 스테퍼 — 단계 수가 많을 때(PBL 8~10단계) 가시 폭 초과 시
           자연 가로 스크롤로 폴백. 로드맵은 단계 수 적어 스크롤 발생 안 함. */}
       <div className="hidden md:block relative overflow-x-auto">
-        {/* 연결선 */}
-        <div
-          className="absolute top-4 h-0.5 bg-blue-200"
-          style={{ left: '1rem', right: '1rem' }}
-        />
+        {/* 연결선 — left/right 를 라벨 max-w 의 절반에 맞춰 첫·마지막 step
+            circle 중심에서 정확히 시작·종료. flex justify-between 이 li 를 양 끝에
+            붙이므로, connector 가 컨테이너 끝까지 뻗으면 마지막 circle 보다 우측
+            (라벨 절반 폭만큼) 으로 삐져나오는 회귀가 있었음 (사용자 보고). */}
+        <div className="absolute top-4 h-0.5 bg-blue-200 left-11 right-11 lg:left-14 lg:right-14" />
 
         <ol className="flex justify-between relative">
           {steps.map((step) => {
