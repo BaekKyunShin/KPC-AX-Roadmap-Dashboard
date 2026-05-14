@@ -5,7 +5,8 @@
 export function translateAuthError(message: string): string {
   const errorMap: Record<string, string> = {
     // 이메일 관련
-    'Email rate limit exceeded': '이메일 전송 한도를 초과했습니다. 5분 후 다시 시도해주세요.',
+    'Email rate limit exceeded':
+      '이메일 전송 한도를 초과했습니다. Supabase 정책상 시간당 발송 가능 횟수가 제한되어 있으니 약 1시간 후 다시 시도해주세요.',
     'User already registered': '이미 등록된 이메일입니다. 로그인 페이지에서 로그인해주세요.',
     'Email not confirmed': '이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.',
     'Unable to validate email address: invalid format': '유효하지 않은 이메일 형식입니다.',
