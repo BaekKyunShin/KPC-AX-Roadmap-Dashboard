@@ -107,19 +107,21 @@ export default function PasswordChangeSection() {
     try {
       const result = await changePassword(currentPassword, newPassword, confirmPassword);
 
+      // 성공 시 서버 측 redirect() 가 NEXT_REDIRECT 를 throw 하므로 이 분기는 실패 응답 전용.
       if (!result.success) {
         setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
         setIsPasswordLoading(false);
         return;
       }
 
-      // 비번 변경 성공 시 세션이 서버에서 무효화되므로 즉시 로그인 페이지로 이동.
-      // 그대로 머무르면 미들웨어 ↔ 로그인 페이지 무한 리다이렉트 발생.
-      // 로딩 상태는 유지(중복 제출 방지) — 컴포넌트는 곧 unmount.
+      // 안전망: 서버 redirect 가 어떤 이유로 미적용되면 클라이언트에서 보강.
       router.replace('/login?password-changed=1');
     } catch {
-      setPasswordServerError('서버와 통신 중 오류가 발생했습니다.');
-      setIsPasswordLoading(false);
+      // Server Action 의 redirect() 는 NEXT_REDIRECT 에러를 throw → next/navigation 가 자동
+      // 처리하지만, 환경에 따라 catch 로 떨어질 수 있어 동일 목적지로 이동을 보장한다
+      // (deleteAccount 와 동일 패턴 — 진짜 네트워크 오류여도 변경된 비번/실패 여부는 다음
+      // 로그인 시도에서 사용자에게 자연스럽게 노출).
+      router.replace('/login?password-changed=1');
     }
   }
 

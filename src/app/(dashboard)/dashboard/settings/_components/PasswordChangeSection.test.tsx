@@ -244,8 +244,12 @@ describe('PasswordChangeSection', () => {
       });
     });
 
-    it('네트워크 오류 시 일반 에러 메시지가 표시된다', async () => {
-      mockChangePassword.mockRejectedValue(new Error('Network Error'));
+    it('Server Action 의 redirect throw (NEXT_REDIRECT) → catch fallback 으로 router.replace 보장', async () => {
+      // 서버 측 redirect() 가 NEXT_REDIRECT 에러를 throw 할 때 (또는 진짜 네트워크 오류)
+      // 클라이언트는 동일하게 로그인 페이지로 이동해야 함 (deleteAccount 패턴).
+      mockChangePassword.mockRejectedValue(
+        Object.assign(new Error('NEXT_REDIRECT'), { digest: 'NEXT_REDIRECT;...' })
+      );
       const user = userEvent.setup();
       render(<PasswordChangeSection />);
       await user.type(screen.getByLabelText('현재 비밀번호'), 'current123');
@@ -253,9 +257,7 @@ describe('PasswordChangeSection', () => {
       await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPass123');
       await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
       await waitFor(() => {
-        expect(
-          screen.getByText('서버와 통신 중 오류가 발생했습니다.')
-        ).toBeInTheDocument();
+        expect(mockReplace).toHaveBeenCalledWith('/login?password-changed=1');
       });
     });
   });

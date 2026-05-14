@@ -191,31 +191,23 @@ describe('changePassword', () => {
     });
   });
 
-  it('전체 성공: admin.updateUserById 로 새 비밀번호 적용', async () => {
+  it('전체 성공: admin.updateUserById 로 새 비밀번호 적용 + signOut + redirect', async () => {
     setupPasswordVerified();
     mockAdminUpdateUserById.mockResolvedValue({ error: null });
     mockSignOut.mockResolvedValue(undefined);
 
-    const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
+    await expect(
+      changePassword('OldPass1!', 'NewPass1!', 'NewPass1!')
+    ).rejects.toThrow('NEXT_REDIRECT');
 
-    expect(result).toEqual({ success: true });
     expect(mockAdminUpdateUserById).toHaveBeenCalledWith(TEST_USER_ID, {
       password: 'NewPass1!',
     });
-  });
-
-  it('전체 성공 시 signOut 호출 → 세션 무효화 동기화 (무한 리다이렉트 방지)', async () => {
-    setupPasswordVerified();
-    mockAdminUpdateUserById.mockResolvedValue({ error: null });
-    mockSignOut.mockResolvedValue(undefined);
-
-    const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
-
-    expect(result).toEqual({ success: true });
     expect(mockSignOut).toHaveBeenCalledTimes(1);
+    expect(mockRedirect).toHaveBeenCalledWith('/login?password-changed=1');
   });
 
-  it('updateUserById 실패 시 signOut 호출하지 않음', async () => {
+  it('updateUserById 실패 시 signOut · redirect 호출하지 않음', async () => {
     setupPasswordVerified();
     mockAdminUpdateUserById.mockResolvedValue({
       error: { message: 'update failed' },
@@ -225,6 +217,7 @@ describe('changePassword', () => {
 
     expect(result.success).toBe(false);
     expect(mockSignOut).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });
 

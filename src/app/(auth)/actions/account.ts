@@ -94,13 +94,16 @@ export async function changePassword(
     return { success: false, error: translateAuthError(updateError.message) };
   }
 
-  // 비번 변경 성공 직후 명시적 signOut.
-  // Why: Supabase 가 비번 변경 시 기존 세션을 무효화하지만 클라이언트 쿠키는 stale 상태로 남아
-  //   미들웨어 ↔ 로그인 페이지 무한 리다이렉트(ERR_TOO_MANY_REDIRECTS)를 유발한다.
-  //   서버에서 쿠키를 즉시 정리하면 클라이언트의 router.replace('/login') 이 깔끔하게 동작한다.
+  // 비번 변경 성공 직후 명시적 signOut + redirect.
+  // Why: ① 비번 변경 시 Supabase 는 서버 측 세션을 무효화하지만 클라이언트 쿠키는 stale 토큰으로
+  //   남는다. ② 미들웨어(src/lib/supabase/middleware.ts)는 getSession() 으로 로컬 JWT 디코딩만
+  //   수행하므로 만료 전 stale 토큰을 "유효 인증" 으로 잘못 판단해 /login 진입 시 /dashboard 로
+  //   재리다이렉트 → 무한 핑퐁(ERR_TOO_MANY_REDIRECTS) 또는 빈 화면이 발생한다.
+  //   redirect() 는 Set-Cookie(빈 토큰) + Location 헤더를 한 응답으로 묶어 cookie 정리를
+  //   응답 commit 에 강제 포함시키므로 브라우저가 새 cookie 를 받자마자 /login 으로 이동.
+  //   다음 미들웨어 호출 시 cookie 가 없어 정상 처리된다 (deleteAccount 와 동일 패턴).
   await auth.supabase.auth.signOut();
-
-  return { success: true };
+  redirect('/login?password-changed=1');
 }
 
 /**
