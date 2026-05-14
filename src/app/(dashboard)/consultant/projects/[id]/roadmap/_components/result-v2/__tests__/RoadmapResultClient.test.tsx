@@ -951,6 +951,27 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
     vi.clearAllMocks();
   });
 
+  // 토글은 인터뷰/자가진단/status 가드와 무관하게 평소 활성. 다운로드 중에만 비활성.
+  // (인터뷰 미완료 시의 silent fail 차단은 EmptyState 큰 버튼이 담당.)
+  it('자가진단/status 부재 상태에서도 + 새 버전 생성 토글이 enabled', () => {
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        selfAssessmentExists={false}
+        projectStatus="ASSIGNED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled();
+  });
+
   it('HWPX 다운로드 진행 중에는 + 새 버전 생성 토글이 disabled 상태가 된다', async () => {
     let resolveDownload: () => void = () => {};
     const slowDownload = vi.fn(
