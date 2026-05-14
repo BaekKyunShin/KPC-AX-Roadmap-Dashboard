@@ -543,3 +543,82 @@ describe('PBLResultClient — OPS role', () => {
   });
 });
 
+// 다운로드 진행 중 '+ 새 버전 생성' 토글 비활성화 회귀 가드 (RoadmapResultClient 와 동일).
+describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글 비활성화', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('HWPX 다운로드 진행 중에는 + 새 버전 생성 토글이 disabled 상태가 된다', async () => {
+    let resolveDownload: () => void = () => {};
+    const slowDownload = vi.fn(
+      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+    );
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        hasInterview={true}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={slowDownload}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('HWPX 다운로드'));
+    });
+
+    expect(slowDownload).toHaveBeenCalledWith('HWPX');
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
+
+    await act(async () => {
+      resolveDownload();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
+    );
+  });
+
+  it('PDF·XLSX 다운로드 진행 중에도 + 새 버전 생성 토글이 disabled 가 된다', async () => {
+    let resolveDownload: () => void = () => {};
+    const slowDownload = vi.fn(
+      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+    );
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        hasInterview={true}
+        projectStatus="INTERVIEWED"
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={slowDownload}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Excel 다운로드'));
+    });
+    expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeDisabled();
+
+    await act(async () => {
+      resolveDownload();
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
+    );
+  });
+});
+
