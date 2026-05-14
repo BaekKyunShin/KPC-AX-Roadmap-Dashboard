@@ -29,12 +29,24 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 세션 쿠키 갱신 (getSession은 로컬 JWT 디코딩 — 네트워크 호출 없음)
-  // 실제 사용자 검증은 레이아웃의 getCachedUser()에서 getUser()로 수행
+  // 실서버 검증 + stale token 정리.
+  // Why: 과거에는 getSession() 으로 로컬 JWT 디코딩만 수행했으나, 서버 측에서 무효화된
+  //   토큰(비번 변경·관리자 ban·강제 종료)을 감지하지 못해 layout 의 getCachedUser()
+  //   가 null 반환 → redirect('/login') → 미들웨어가 stale JWT 로 user 존재 판단 →
+  //   redirect('/dashboard') → 무한 핑퐁(ERR_TOO_MANY_REDIRECTS·흰 화면) 이 발생했다.
+  //   getUser() 는 매 호출 Supabase Auth API 에 검증을 요청해 stale token 을 즉시
+  //   감지한다 (Supabase 2024+ 공식 가이드). error 시 signOut 으로 cookie 를 정리해
+  //   다음 요청부터 정상 미인증 흐름이 동작한다.
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error && !user) {
+    // stale token cleanup — supabase signOut 의 setAll 콜백이 빈 토큰 cookie 를
+    // supabaseResponse 에 포함시켜 브라우저 쿠키가 정리된다.
+    await supabase.auth.signOut();
+  }
 
   // Server Action 요청은 세션 갱신만 수행하고 리다이렉트하지 않음
   const isServerAction =
