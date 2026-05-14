@@ -131,11 +131,17 @@ function ResetPasswordContent() {
           <CardDescription>{PAGE_DESCRIPTION_DONE}</CardDescription>
         </CardHeader>
         <CardContent>
+          {/*
+           * hard navigation (<a>) 사용 — Next.js Link 의 SPA navigation 은 setSession
+           * recovery cookie 의 메모리 캐시 잔존으로 미들웨어가 stale token 으로 잘못 판단해
+           * 403 + Chrome `Throttling navigation` (흰 화면) 을 유발한다. 전체 페이지 reload
+           * 로 cookie·메모리 상태를 모두 재평가시켜 깨끗한 미인증 상태로 /login 진입한다.
+           */}
           <Button asChild className="w-full h-11">
-            <Link href="/login">
+            <a href="/login">
               로그인 페이지로
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
+            </a>
           </Button>
         </CardContent>
       </Card>
