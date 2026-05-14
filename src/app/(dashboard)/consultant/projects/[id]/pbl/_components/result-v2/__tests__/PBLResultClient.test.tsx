@@ -324,8 +324,9 @@ describe('PBLResultClient — CONSULTANT role', () => {
     expect(onGenerate).toHaveBeenCalled();
   });
 
-  // #013 회귀 방지 — 인터뷰/status 가드. RegenerateAccordion disabled.
-  it('hasInterview=false 일 때 RegenerateAccordion 가 disabled', () => {
+  // 토글은 인터뷰/status 가드와 무관하게 평소 활성. 다운로드 중에만 비활성.
+  // (인터뷰 미완료 시의 silent fail 차단은 EmptyState 큰 버튼이 담당.)
+  it('hasInterview=false / status 미충족 상태에서도 + 새 버전 생성 토글이 enabled', () => {
     render(
       <PBLResultClient
         role="CONSULTANT"
@@ -342,7 +343,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
       />,
     );
     const accordionTrigger = screen.getByRole('button', { name: /새 버전 생성/ });
-    expect(accordionTrigger).toBeDisabled();
+    expect(accordionTrigger).toBeEnabled();
   });
 
   it('isGenerating=true 시 RoadmapLoadingOverlay 표시', () => {

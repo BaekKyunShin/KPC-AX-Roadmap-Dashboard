@@ -310,7 +310,7 @@ export function RoadmapResultClient({
               onChange={setRevisionPrompt}
               onSubmit={handleRegenerate}
               isLoading={isGenerating}
-              disabled={!canGenerateRoadmap || downloadLoading !== null}
+              disabled={downloadLoading !== null}
               defaultOpen={isRegenerateRequested}
               autoFocus={isRegenerateRequested}
             />
