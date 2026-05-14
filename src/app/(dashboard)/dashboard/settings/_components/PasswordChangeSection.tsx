@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { changePassword } from '@/app/(auth)/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,19 +72,18 @@ type PasswordErrors = {
 };
 
 export default function PasswordChangeSection() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [passwordServerError, setPasswordServerError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     setPasswordErrors({});
     setPasswordServerError(null);
-    setPasswordSuccess(false);
 
     // 클라이언트 기본 검증
     const errors: PasswordErrors = {};
@@ -109,16 +109,16 @@ export default function PasswordChangeSection() {
 
       if (!result.success) {
         setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
+        setIsPasswordLoading(false);
         return;
       }
 
-      setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      // 비번 변경 성공 시 세션이 서버에서 무효화되므로 즉시 로그인 페이지로 이동.
+      // 그대로 머무르면 미들웨어 ↔ 로그인 페이지 무한 리다이렉트 발생.
+      // 로딩 상태는 유지(중복 제출 방지) — 컴포넌트는 곧 unmount.
+      router.replace('/login?password-changed=1');
     } catch {
       setPasswordServerError('서버와 통신 중 오류가 발생했습니다.');
-    } finally {
       setIsPasswordLoading(false);
     }
   }
@@ -134,13 +134,6 @@ export default function PasswordChangeSection() {
           {passwordServerError && (
             <Alert variant="destructive">
               <AlertDescription>{passwordServerError}</AlertDescription>
-            </Alert>
-          )}
-
-          {passwordSuccess && (
-            <Alert className="border-green-200 bg-green-50 text-green-800">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>비밀번호가 변경되었습니다.</AlertDescription>
             </Alert>
           )}
 

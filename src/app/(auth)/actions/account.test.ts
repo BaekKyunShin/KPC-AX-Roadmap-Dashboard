@@ -104,6 +104,7 @@ function setupPasswordVerified() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.clearAllMocks();
   // 기본 반환값 설정 (개별 테스트에서 오버라이드 가능)
   adminUpdateReturnValue = { error: null };
 });
@@ -193,6 +194,7 @@ describe('changePassword', () => {
   it('전체 성공: admin.updateUserById 로 새 비밀번호 적용', async () => {
     setupPasswordVerified();
     mockAdminUpdateUserById.mockResolvedValue({ error: null });
+    mockSignOut.mockResolvedValue(undefined);
 
     const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
 
@@ -200,6 +202,29 @@ describe('changePassword', () => {
     expect(mockAdminUpdateUserById).toHaveBeenCalledWith(TEST_USER_ID, {
       password: 'NewPass1!',
     });
+  });
+
+  it('전체 성공 시 signOut 호출 → 세션 무효화 동기화 (무한 리다이렉트 방지)', async () => {
+    setupPasswordVerified();
+    mockAdminUpdateUserById.mockResolvedValue({ error: null });
+    mockSignOut.mockResolvedValue(undefined);
+
+    const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
+
+    expect(result).toEqual({ success: true });
+    expect(mockSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('updateUserById 실패 시 signOut 호출하지 않음', async () => {
+    setupPasswordVerified();
+    mockAdminUpdateUserById.mockResolvedValue({
+      error: { message: 'update failed' },
+    });
+
+    const result = await changePassword('OldPass1!', 'NewPass1!', 'NewPass1!');
+
+    expect(result.success).toBe(false);
+    expect(mockSignOut).not.toHaveBeenCalled();
   });
 });
 

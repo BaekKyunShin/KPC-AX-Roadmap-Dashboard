@@ -14,6 +14,7 @@ import { redirect } from 'next/navigation';
 import { translateAuthError } from './auth-utils';
 import { PG_UNIQUE_VIOLATION, PG_TABLE_NOT_FOUND } from '@/lib/constants/database';
 import { getDefaultRouteForRole } from '@/lib/utils/role-routes';
+import { getAppBaseUrl } from '@/lib/utils/app-url';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /**
@@ -465,11 +466,20 @@ export async function requestPasswordReset(email: string): Promise<SimpleActionR
     return { success: false, error: validation.error.errors[0].message };
   }
 
-  // 2. 메일 발송 (계정 존재 여부와 무관하게 항상 성공 응답)
-  const supabase = await createClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  const redirectTo = `${appUrl}/reset-password`;
+  // 2. base URL 생성 (env 누락·이중 슬래시 사고 방지)
+  let redirectTo: string;
+  try {
+    redirectTo = `${getAppBaseUrl()}/reset-password`;
+  } catch (e) {
+    console.error('[requestPasswordReset Error] getAppBaseUrl:', e);
+    return {
+      success: false,
+      error: '서버 설정 오류입니다. 관리자에게 문의해주세요.',
+    };
+  }
 
+  // 3. 메일 발송 (계정 존재 여부와 무관하게 항상 성공 응답)
+  const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(validation.data.email, {
     redirectTo,
   });

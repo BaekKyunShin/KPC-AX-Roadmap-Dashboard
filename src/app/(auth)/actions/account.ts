@@ -94,6 +94,12 @@ export async function changePassword(
     return { success: false, error: translateAuthError(updateError.message) };
   }
 
+  // 비번 변경 성공 직후 명시적 signOut.
+  // Why: Supabase 가 비번 변경 시 기존 세션을 무효화하지만 클라이언트 쿠키는 stale 상태로 남아
+  //   미들웨어 ↔ 로그인 페이지 무한 리다이렉트(ERR_TOO_MANY_REDIRECTS)를 유발한다.
+  //   서버에서 쿠키를 즉시 정리하면 클라이언트의 router.replace('/login') 이 깔끔하게 동작한다.
+  await auth.supabase.auth.signOut();
+
   return { success: true };
 }
 
