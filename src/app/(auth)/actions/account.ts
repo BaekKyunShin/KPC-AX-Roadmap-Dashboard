@@ -94,7 +94,12 @@ export async function changePassword(
     return { success: false, error: translateAuthError(updateError.message) };
   }
 
-  return { success: true };
+  // 비번 변경 성공 직후 명시적 signOut + 로그인 페이지 redirect.
+  // Why: Supabase 가 비번 변경으로 서버 측 세션을 무효화하므로 사용자가 새 비번으로 다시
+  //   로그인하도록 유도하는 것이 자연스럽다. signOut 으로 클라이언트 cookie 도 정리.
+  //   (deleteAccount 와 동일 패턴 — 무한 리다이렉트 자체 방지는 미들웨어 fix 가 담당)
+  await auth.supabase.auth.signOut();
+  redirect('/login?password-changed=1');
 }
 
 /**

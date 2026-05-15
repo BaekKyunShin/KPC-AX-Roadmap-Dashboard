@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { changePassword } from '@/app/(auth)/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,19 +72,18 @@ type PasswordErrors = {
 };
 
 export default function PasswordChangeSection() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
   const [passwordServerError, setPasswordServerError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     setPasswordErrors({});
     setPasswordServerError(null);
-    setPasswordSuccess(false);
 
     // 클라이언트 기본 검증
     const errors: PasswordErrors = {};
@@ -107,19 +107,21 @@ export default function PasswordChangeSection() {
     try {
       const result = await changePassword(currentPassword, newPassword, confirmPassword);
 
+      // 성공 시 서버 측 redirect() 가 NEXT_REDIRECT 를 throw 하므로 이 분기는 실패 응답 전용.
       if (!result.success) {
         setPasswordServerError(result.error || '비밀번호 변경에 실패했습니다.');
+        setIsPasswordLoading(false);
         return;
       }
 
-      setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      // 안전망: 서버 redirect 가 어떤 이유로 미적용되면 클라이언트에서 보강.
+      router.replace('/login?password-changed=1');
     } catch {
-      setPasswordServerError('서버와 통신 중 오류가 발생했습니다.');
-    } finally {
-      setIsPasswordLoading(false);
+      // Server Action 의 redirect() 는 NEXT_REDIRECT 에러를 throw → next/navigation 가 자동
+      // 처리하지만, 환경에 따라 catch 로 떨어질 수 있어 동일 목적지로 이동을 보장한다
+      // (deleteAccount 와 동일 패턴 — 진짜 네트워크 오류여도 변경된 비번/실패 여부는 다음
+      // 로그인 시도에서 사용자에게 자연스럽게 노출).
+      router.replace('/login?password-changed=1');
     }
   }
 
@@ -134,13 +136,6 @@ export default function PasswordChangeSection() {
           {passwordServerError && (
             <Alert variant="destructive">
               <AlertDescription>{passwordServerError}</AlertDescription>
-            </Alert>
-          )}
-
-          {passwordSuccess && (
-            <Alert className="border-green-200 bg-green-50 text-green-800">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>비밀번호가 변경되었습니다.</AlertDescription>
             </Alert>
           )}
 

@@ -780,6 +780,46 @@ describe('requestPasswordReset', () => {
     });
   });
 
+  it('트레일링 슬래시 정규화: NEXT_PUBLIC_APP_URL 끝 / 있어도 redirectTo 는 이중 슬래시 없음', async () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com/';
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    const result = await requestPasswordReset('user@example.com');
+
+    expect(result).toEqual({ success: true });
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'https://app.example.com/reset-password',
+    });
+  });
+
+  it('NEXT_PUBLIC_APP_URL 미설정 → 명시적 서버 설정 오류 응답 (메일 발송 시도하지 않음)', async () => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await requestPasswordReset('user@example.com');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('서버 설정');
+    }
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('NEXT_PUBLIC_APP_URL 잘못된 URL → 명시적 서버 설정 오류 응답', async () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'not-a-url';
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await requestPasswordReset('user@example.com');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('서버 설정');
+    }
+    expect(mockResetPasswordForEmail).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
   it('일반 에러 → silent success (계정 존재 여부 노출 방지)', async () => {
     mockResetPasswordForEmail.mockResolvedValueOnce({
       error: { message: 'User not found' },

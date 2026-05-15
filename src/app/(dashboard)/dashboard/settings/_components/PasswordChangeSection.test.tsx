@@ -6,9 +6,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockChangePassword = vi.fn();
 const mockShowErrorToast = vi.fn();
+const mockReplace = vi.fn();
+const mockPush = vi.fn();
 
 vi.mock('@/app/(auth)/actions', () => ({
   changePassword: (...args: unknown[]) => mockChangePassword(...args),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+    push: mockPush,
+  }),
 }));
 
 vi.mock('@/lib/utils', () => ({
@@ -172,7 +181,7 @@ describe('PasswordChangeSection', () => {
   });
 
   describe('성공 처리', () => {
-    it('비밀번호 변경 성공 시 성공 메시지가 표시된다', async () => {
+    it('비밀번호 변경 성공 시 로그인 페이지로 이동 (router.replace) — 세션 무효화 대응', async () => {
       const user = userEvent.setup();
       render(<PasswordChangeSection />);
       await user.type(screen.getByLabelText('현재 비밀번호'), 'current123');
@@ -180,21 +189,7 @@ describe('PasswordChangeSection', () => {
       await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPass123');
       await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
       await waitFor(() => {
-        expect(screen.getByText('비밀번호가 변경되었습니다.')).toBeInTheDocument();
-      });
-    });
-
-    it('비밀번호 변경 성공 후 입력 필드가 초기화된다', async () => {
-      const user = userEvent.setup();
-      render(<PasswordChangeSection />);
-      await user.type(screen.getByLabelText('현재 비밀번호'), 'current123');
-      await user.type(screen.getByLabelText('새 비밀번호'), 'newPass123');
-      await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPass123');
-      await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
-      await waitFor(() => {
-        expect(screen.getByLabelText('현재 비밀번호')).toHaveValue('');
-        expect(screen.getByLabelText('새 비밀번호')).toHaveValue('');
-        expect(screen.getByLabelText('새 비밀번호 확인')).toHaveValue('');
+        expect(mockReplace).toHaveBeenCalledWith('/login?password-changed=1');
       });
     });
 
@@ -208,6 +203,25 @@ describe('PasswordChangeSection', () => {
       await waitFor(() => {
         expect(mockChangePassword).toHaveBeenCalledWith('current123', 'newPass123', 'newPass123');
       });
+    });
+
+    it('실패 응답 시 router.replace 호출되지 않는다', async () => {
+      mockChangePassword.mockResolvedValue({
+        success: false,
+        error: '현재 비밀번호가 올바르지 않습니다.',
+      });
+      const user = userEvent.setup();
+      render(<PasswordChangeSection />);
+      await user.type(screen.getByLabelText('현재 비밀번호'), 'wrongPass123');
+      await user.type(screen.getByLabelText('새 비밀번호'), 'newPass123');
+      await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPass123');
+      await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
+      await waitFor(() => {
+        expect(
+          screen.getByText('현재 비밀번호가 올바르지 않습니다.')
+        ).toBeInTheDocument();
+      });
+      expect(mockReplace).not.toHaveBeenCalled();
     });
   });
 
@@ -230,8 +244,12 @@ describe('PasswordChangeSection', () => {
       });
     });
 
-    it('네트워크 오류 시 일반 에러 메시지가 표시된다', async () => {
-      mockChangePassword.mockRejectedValue(new Error('Network Error'));
+    it('Server Action 의 redirect throw (NEXT_REDIRECT) → catch fallback 으로 router.replace 보장', async () => {
+      // 서버 측 redirect() 가 NEXT_REDIRECT 에러를 throw 할 때 (또는 진짜 네트워크 오류)
+      // 클라이언트는 동일하게 로그인 페이지로 이동해야 함 (deleteAccount 패턴).
+      mockChangePassword.mockRejectedValue(
+        Object.assign(new Error('NEXT_REDIRECT'), { digest: 'NEXT_REDIRECT;...' })
+      );
       const user = userEvent.setup();
       render(<PasswordChangeSection />);
       await user.type(screen.getByLabelText('현재 비밀번호'), 'current123');
@@ -239,9 +257,7 @@ describe('PasswordChangeSection', () => {
       await user.type(screen.getByLabelText('새 비밀번호 확인'), 'newPass123');
       await user.click(screen.getByRole('button', { name: '비밀번호 변경' }));
       await waitFor(() => {
-        expect(
-          screen.getByText('서버와 통신 중 오류가 발생했습니다.')
-        ).toBeInTheDocument();
+        expect(mockReplace).toHaveBeenCalledWith('/login?password-changed=1');
       });
     });
   });

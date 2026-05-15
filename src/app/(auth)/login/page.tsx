@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { showErrorToast } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -20,6 +20,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const passwordChanged = searchParams.get('password-changed') === '1';
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,6 +72,15 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      {passwordChanged && !error && (
+        <Alert className="border-green-200 bg-green-50 text-green-800">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>
+            비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -9,6 +9,7 @@
  * - 인증 + /login → /dashboard 리다이렉트
  * - 인증 + /register → 리다이렉트 없음 (회원가입은 인증 사용자도 접근 가능)
  * - 인증 + 보호 라우트 → 정상 통과
+ * - **stale token (server 측 무효화) → signOut 으로 cookie 정리 + 미인증 처리**
  *
  * 감사 이슈 검증:
  * - #19 protectedRoutes: /dashboard, /consultant, /ops, /gallery, /notifications, /test-roadmap 모두 보호
@@ -20,12 +21,14 @@ import { updateSession } from './middleware';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
-const mockGetSession = vi.fn();
+const mockGetUser = vi.fn();
+const mockSignOut = vi.fn();
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
     auth: {
-      getSession: mockGetSession,
+      getUser: mockGetUser,
+      signOut: mockSignOut,
     },
   })),
 }));
@@ -89,10 +92,21 @@ function createMockRequest(options: {
 }
 
 function setupUser(user: { id: string; email: string } | null) {
-  mockGetSession.mockResolvedValue({
-    data: { session: user ? { user } : null },
-    error: user ? null : { message: 'not authenticated' },
+  // 기본: 정상 인증 사용자 또는 cookie 없는 미인증 사용자 (둘 다 error null)
+  mockGetUser.mockResolvedValue({
+    data: { user: user ?? null },
+    error: null,
   });
+}
+
+function setupStaleToken() {
+  // server 측에서 세션 무효화된 stale token (비번 변경·관리자 ban·강제 종료 후)
+  // getUser() 가 error 반환 + user null
+  mockGetUser.mockResolvedValue({
+    data: { user: null },
+    error: { message: 'JWT expired or invalid' },
+  });
+  mockSignOut.mockResolvedValue({ error: null });
 }
 
 beforeEach(() => {
@@ -232,6 +246,59 @@ describe('인증 + 라우트 접근', () => {
     await updateSession(request as never);
 
     expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// stale token 처리 — server 측 세션 무효화 후 무한 리다이렉트 차단
+// =============================================================================
+
+describe('stale token (server 측 무효화) 처리', () => {
+  it('보호 라우트 + stale token → signOut 호출 + /login 리다이렉트', async () => {
+    setupStaleToken();
+    const request = createMockRequest({ pathname: '/dashboard' });
+
+    const { NextResponse } = await import('next/server');
+    await updateSession(request as never);
+
+    // stale token 정리
+    expect(mockSignOut).toHaveBeenCalled();
+    // user 없는 것으로 처리 → 보호 라우트는 /login 으로
+    expect(NextResponse.redirect).toHaveBeenCalled();
+    const redirectUrl = vi.mocked(NextResponse.redirect).mock.calls[0][0] as unknown as {
+      pathname: string;
+    };
+    expect(redirectUrl.pathname).toBe('/login');
+  });
+
+  it('/login + stale token → signOut 호출 + 로그인 페이지 정상 통과 (무한 리다이렉트 차단)', async () => {
+    setupStaleToken();
+    const request = createMockRequest({ pathname: '/login' });
+
+    const { NextResponse } = await import('next/server');
+    await updateSession(request as never);
+
+    expect(mockSignOut).toHaveBeenCalled();
+    // user 없는 것으로 처리 → /login 에서 /dashboard 로 재리다이렉트하지 않음
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it('정상 인증 사용자 → signOut 호출하지 않음 (회귀 방지)', async () => {
+    setupUser({ id: 'user-1', email: 'test@test.com' });
+    const request = createMockRequest({ pathname: '/dashboard' });
+
+    await updateSession(request as never);
+
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
+  it('미인증 사용자 (cookie 없음) → signOut 호출하지 않음 (불필요한 호출 방지)', async () => {
+    setupUser(null);
+    const request = createMockRequest({ pathname: '/' });
+
+    await updateSession(request as never);
+
+    expect(mockSignOut).not.toHaveBeenCalled();
   });
 });
 
