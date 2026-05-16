@@ -287,7 +287,7 @@ export function CompanyInfoEditableCard({
           <div className="flex items-center gap-2 mb-1.5">
             <StickyNote className="h-3.5 w-3.5 text-amber-500" />
             <span className="text-xs font-medium text-gray-500">
-              내부 메모 (훈련코치 전용)
+              훈련코치 전용 메모 (AI 자동 생성에 미반영)
             </span>
           </div>
           {committed.consultant_internal_note ? (
@@ -545,7 +545,7 @@ export function CompanyInfoEditableCard({
             htmlFor="consultant_internal_note"
             className="text-xs font-medium text-gray-500"
           >
-            내부 메모 (훈련코치 전용 · 컨설팅 진행 시 참고용)
+            훈련코치 전용 메모 (AI 자동 생성에 미반영)
           </label>
         </div>
         <Textarea
@@ -558,7 +558,7 @@ export function CompanyInfoEditableCard({
           maxLength={4000}
           rows={4}
           placeholder="의사결정자 정보, 진행 시 주의사항 등 (최대 4000자)"
-          aria-label="컨설턴트 내부 메모"
+          aria-label="훈련코치 전용 메모"
           className="bg-amber-50/30"
         />
       </div>

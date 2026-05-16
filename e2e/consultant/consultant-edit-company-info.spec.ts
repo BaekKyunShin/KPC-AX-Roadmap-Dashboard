@@ -35,7 +35,7 @@ test.describe('컨설턴트 — 기업 정보 직접 편집', () => {
     await editBtn.click();
 
     // edit 모드 — 내부 메모 textarea
-    const noteTextarea = page.getByLabel('컨설턴트 내부 메모');
+    const noteTextarea = page.getByLabel('훈련코치 전용 메모');
     await expect(noteTextarea).toBeVisible();
     await noteTextarea.fill(ORIGINAL_NOTE);
 
@@ -62,7 +62,7 @@ test.describe('컨설턴트 — 기업 정보 직접 편집', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByTestId('company-info-edit-button').click();
-    await page.getByLabel('컨설턴트 내부 메모').fill('임시 변경 — 폐기 예정');
+    await page.getByLabel('훈련코치 전용 메모').fill('임시 변경 — 폐기 예정');
 
     await page.getByRole('button', { name: '취소' }).click();
 
@@ -101,7 +101,7 @@ test.describe('컨설턴트 — 기업 정보 직접 편집', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByTestId('company-info-edit-button').click();
-    await page.getByLabel('컨설턴트 내부 메모').fill(UPDATED_NOTE);
+    await page.getByLabel('훈련코치 전용 메모').fill(UPDATED_NOTE);
     await page.getByTestId('company-info-save-button').click();
     await expect(page.getByTestId('company-info-edit-button')).toBeVisible({
       timeout: 10_000,
