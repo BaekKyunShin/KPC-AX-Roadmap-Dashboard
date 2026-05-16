@@ -5,17 +5,15 @@ import { SESSION_COOKIE_OPTIONS } from '@/lib/constants/session';
 /**
  * Server-side Supabase client.
  *
- * `flowType: 'implicit'` — 비번 재설정 메일 발송(`resetPasswordForEmail`) 흐름을
- * PKCE 가 아닌 implicit grant 로 강제한다. 본 server 클라이언트가 메일 링크 형식을
- * 결정한다 (브라우저 client.ts 만 implicit 로 두는 것으로는 효과가 없다).
+ * 인증 세션 관리(getUser·signInWithPassword·signOut·signUp) 전용. cookie 기반 SSR
+ * 세션을 자동 동기화한다.
  *
- * PKCE(default) 는 code_verifier 를 요청자 디바이스 cookie 에 저장하므로 메일
- * 요청은 PC 에서 했는데 링크는 모바일/시크릿창/다른 브라우저에서 클릭하면 verifier
- * 부재로 "링크가 유효하지 않습니다" 가 일관되게 발생. implicit 는 fragment URL
- * (#access_token=...&refresh_token=...&type=recovery) 로 토큰을 직접 전달해 어떤
- * 디바이스에서든 동작한다.
- *
- * client.ts 와 반드시 동일 flowType 유지.
+ * ⚠ `auth.flowType` 옵션을 여기서 전달해도 적용되지 않는다. @supabase/ssr 의
+ *   createServerClient 가 내부에서 `flowType: "pkce"` 를 hardcode 로 덮어쓰기
+ *   때문이다(`@supabase/ssr/dist/main/createServerClient.js:29`). 비번 재설정 메일
+ *   발송은 implicit grant 가 필요하므로 [src/app/(auth)/actions/auth.ts](../app/(auth)/actions/auth.ts)
+ *   의 `requestPasswordReset` 에서 @supabase/supabase-js 의 createClient 를 직접
+ *   사용해 ssr 을 우회한다.
  */
 export async function createClient() {
   const cookieStore = await cookies();
@@ -39,9 +37,6 @@ export async function createClient() {
         },
       },
       cookieOptions: SESSION_COOKIE_OPTIONS,
-      auth: {
-        flowType: 'implicit',
-      },
     }
   );
 }

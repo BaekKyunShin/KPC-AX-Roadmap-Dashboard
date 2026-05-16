@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -456,8 +457,14 @@ export async function registerConsultantWithProfile(
  * 비밀번호 재설정 메일 발송
  *
  * 보안상 등록되지 않은 이메일이라도 동일하게 성공 응답을 반환한다 (계정 존재 여부 노출 방지).
- * Supabase 가 redirectTo 로 지정된 URL 에 access/refresh 토큰을 fragment 로 붙여 메일을
- * 전송한다. 사용자는 메일 링크를 눌러 /reset-password 로 이동 후 새 비밀번호를 설정한다.
+ * 메일 링크는 implicit grant 형식(`#access_token=...&type=recovery`) 으로 발송되어
+ * 사용자가 어떤 디바이스/브라우저에서 클릭하더라도 동작한다.
+ *
+ * ⚠ @supabase/ssr 의 createServerClient 는 내부적으로 flowType: "pkce" 를 hardcode 로
+ *   덮어쓰기 때문에(`createServerClient.js:29`), `@/lib/supabase/server` 의 client 로는
+ *   implicit 흐름이 불가능하다. 본 함수만 @supabase/supabase-js 의 createClient 를 직접
+ *   사용해 우회한다. 이 호출은 anonymous API 이므로 cookie/세션 관리가 필요 없고,
+ *   `persistSession: false` 등으로 명시적으로 격리해 기존 ssr cookie 와 충돌하지 않는다.
  */
 export async function requestPasswordReset(email: string): Promise<SimpleActionResult> {
   // 1. Zod 검증
@@ -478,11 +485,25 @@ export async function requestPasswordReset(email: string): Promise<SimpleActionR
     };
   }
 
-  // 3. 메일 발송 (계정 존재 여부와 무관하게 항상 성공 응답)
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(validation.data.email, {
-    redirectTo,
-  });
+  // 3. 메일 발송 — @supabase/ssr 우회용 implicit-mode 일회성 client
+  //   (다른 인증 흐름과 cookie/세션 격리)
+  const supabaseForReset = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        flowType: 'implicit',
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    }
+  );
+
+  const { error } = await supabaseForReset.auth.resetPasswordForEmail(
+    validation.data.email,
+    { redirectTo }
+  );
 
   // rate limit 등 보안성 노출 위험이 적은 사례는 사용자에게 안내, 그 외엔 silent 성공
   if (error) {
