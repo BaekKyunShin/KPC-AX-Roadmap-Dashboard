@@ -37,7 +37,6 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 const mockSignInWithPassword = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
-const mockResetPasswordForEmail = vi.fn();
 const mockFromChain = {
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
@@ -51,10 +50,26 @@ vi.mock('@/lib/supabase/server', () => ({
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
       signOut: () => mockSignOut(),
       getUser: () => mockGetUser(),
-      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
     },
     from: () => mockFromChain,
   }),
+}));
+
+// requestPasswordReset 은 @supabase/ssr 의 PKCE 강제(`createServerClient.js:29`)를 피해야
+// 메일 링크가 implicit grant(fragment) 형식으로 발송된다. 그래서 @supabase/supabase-js
+// 의 createClient 를 직접 사용한다 — 테스트에서도 이 모듈을 별도 mock.
+const mockResetPasswordForEmail = vi.fn();
+const mockCreateSupabaseClient = vi.fn();
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: (...args: unknown[]) => {
+    mockCreateSupabaseClient(...args);
+    return {
+      auth: {
+        resetPasswordForEmail: (...resetArgs: unknown[]) =>
+          mockResetPasswordForEmail(...resetArgs),
+      },
+    };
+  },
 }));
 
 const mockAdminCreateUser = vi.fn();
@@ -778,6 +793,28 @@ describe('requestPasswordReset', () => {
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
       redirectTo: 'https://app.example.com/reset-password',
     });
+  });
+
+  it('@supabase/supabase-js 의 createClient 를 flowType: implicit 로 호출한다 (@supabase/ssr PKCE 강제 우회)', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    await requestPasswordReset('user@example.com');
+
+    expect(mockCreateSupabaseClient).toHaveBeenCalled();
+    const callArgs = mockCreateSupabaseClient.mock.calls.at(-1)!;
+    const options = callArgs[2] as {
+      auth?: {
+        flowType?: string;
+        autoRefreshToken?: boolean;
+        persistSession?: boolean;
+        detectSessionInUrl?: boolean;
+      };
+    };
+    expect(options.auth?.flowType).toBe('implicit');
+    // cookie/세션 격리 — ssr 의 cookie 와 충돌 방지
+    expect(options.auth?.persistSession).toBe(false);
+    expect(options.auth?.autoRefreshToken).toBe(false);
+    expect(options.auth?.detectSessionInUrl).toBe(false);
   });
 
   it('트레일링 슬래시 정규화: NEXT_PUBLIC_APP_URL 끝 / 있어도 redirectTo 는 이중 슬래시 없음', async () => {
