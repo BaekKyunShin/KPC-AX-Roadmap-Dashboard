@@ -45,6 +45,28 @@ describe('galleryFiltersSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  describe('scope 필드 (내 산출물 토글)', () => {
+    it('기본값: scope=all', () => {
+      const result = galleryFiltersSchema.parse({});
+      expect(result.scope).toBe('all');
+    });
+
+    it('scope=mine 파싱 성공', () => {
+      const result = galleryFiltersSchema.parse({ scope: 'mine' });
+      expect(result.scope).toBe('mine');
+    });
+
+    it('scope=all 파싱 성공', () => {
+      const result = galleryFiltersSchema.parse({ scope: 'all' });
+      expect(result.scope).toBe('all');
+    });
+
+    it('잘못된 scope 값 거부', () => {
+      const result = galleryFiltersSchema.safeParse({ scope: 'others' });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('page/limit 필드', () => {
     it('기본값: page=1, limit=12', () => {
       const result = galleryFiltersSchema.parse({});
