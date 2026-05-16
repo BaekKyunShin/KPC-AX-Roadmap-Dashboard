@@ -19,6 +19,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { GalleryCard } from '@/components/gallery/GalleryCard';
 import { AdminFilters } from '@/components/gallery/AdminFilters';
 import { TrackFilter, type TrackFilterValue } from '@/components/gallery/TrackFilter';
+import { ScopeFilter } from '@/components/gallery/ScopeFilter';
 import { PROJECT_INDUSTRIES } from '@/lib/constants/industry';
 import { useDebounce } from '@/hooks/useDebounce';
 import { fetchGalleryItems } from '../actions';
@@ -177,9 +178,11 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
       {/* 검색 및 필터 */}
       <Card>
         <CardContent className="p-4">
-          {/* 트랙 필터 (토글형) */}
-          <div className="mb-3">
+          {/* 트랙 필터 + 본인 산출물 필터 (나란히 노출) */}
+          {/* ScopeFilter 는 컨설턴트 전용 — 운영관리자·시스템관리자는 산출물 작성자가 아니므로 미렌더 */}
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <TrackFilter value={track} onChange={handleTrackChange} />
+            {!isAdmin && <ScopeFilter />}
           </div>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center">

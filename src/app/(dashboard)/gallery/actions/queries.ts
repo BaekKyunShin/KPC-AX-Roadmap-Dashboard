@@ -148,7 +148,7 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     return errorResult('잘못된 필터 값입니다.');
   }
 
-  const { search, industry, sort, status, isShared, consultantId, page, limit } = parsed.data;
+  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } = parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
@@ -196,6 +196,11 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     if (consultantId) {
       query = query.eq('created_by', consultantId);
     }
+  }
+
+  // 본인 산출물 필터 — scope=mine 일 때 현재 사용자가 작성한 항목만 (H2 — 갤러리 「내 산출물」)
+  if (scope === 'mine') {
+    query = query.eq('created_by', user.id);
   }
 
   // 업종 필터
@@ -430,7 +435,7 @@ export async function fetchGalleryPBLReports(
     return errorResult('잘못된 필터 값입니다.');
   }
 
-  const { search, industry, sort, status, isShared, consultantId, page, limit } = parsed.data;
+  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } = parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   const adminClient = createAdminClient();
@@ -471,6 +476,11 @@ export async function fetchGalleryPBLReports(
     if (consultantId) {
       query = query.eq('created_by', consultantId);
     }
+  }
+
+  // 본인 산출물 필터 — scope=mine 일 때 현재 사용자가 작성한 항목만 (H2 — 갤러리 「내 산출물」)
+  if (scope === 'mine') {
+    query = query.eq('created_by', user.id);
   }
 
   if (industry) {

@@ -254,6 +254,20 @@ describe('GalleryContent', () => {
         expect(screen.queryByTestId('admin-filters')).not.toBeInTheDocument();
       });
     });
+
+    it('isAdmin이 false (컨설턴트)면 ScopeFilter「내 산출물」 토글이 표시된다', async () => {
+      render(<GalleryContent isAdmin={false} searchParams={{}} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('scope-filter')).toBeInTheDocument();
+      });
+    });
+
+    it('isAdmin이 true이면 ScopeFilter「내 산출물」 토글이 표시되지 않는다 (운영관리자·시스템관리자는 산출물 작성자가 아님)', async () => {
+      render(<GalleryContent isAdmin={true} searchParams={{}} />);
+      await waitFor(() => {
+        expect(screen.queryByTestId('scope-filter')).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('검색 기능', () => {

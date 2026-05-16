@@ -304,6 +304,133 @@ describe('SelectableCard', () => {
     });
   });
 
+  describe('컨설턴트 프로필 정보 노출 (H6)', () => {
+    function withProfile(profile: Record<string, unknown>): ValidRecommendation {
+      return makeRecommendation({
+        candidate: {
+          id: 'consultant-1',
+          name: '김컨설턴트',
+          email: 'kim@test.com',
+          consultant_profile: profile,
+        },
+      });
+    }
+
+    it('available_industries 가 있으면 산업 칩이 렌더된다 (최대 3개)', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ available_industries: ['제조', '금융', 'IT'] })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.getByText('제조')).toBeInTheDocument();
+      expect(screen.getByText('금융')).toBeInTheDocument();
+      expect(screen.getByText('IT')).toBeInTheDocument();
+    });
+
+    it('available_industries 가 4개 이상이어도 최대 3개만 렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ available_industries: ['제조', '금융', 'IT', '의료'] })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.getByText('제조')).toBeInTheDocument();
+      expect(screen.getByText('금융')).toBeInTheDocument();
+      expect(screen.getByText('IT')).toBeInTheDocument();
+      expect(screen.queryByText('의료')).not.toBeInTheDocument();
+    });
+
+    it('available_industries 가 비어있고 expertise_domains 가 있으면 expertise_domains 칩이 렌더된다', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ available_industries: [], expertise_domains: ['AI 컨설팅', '데이터 분석'] })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.getByText('AI 컨설팅')).toBeInTheDocument();
+      expect(screen.getByText('데이터 분석')).toBeInTheDocument();
+    });
+
+    it('available_industries / expertise_domains 둘 다 비어있으면 산업 칩 영역 미렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ available_industries: [], expertise_domains: [] })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.queryByTestId('consultant-industries')).not.toBeInTheDocument();
+    });
+
+    it('years_of_experience 가 양수면 「경력 N년」 표시', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ years_of_experience: 20 })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.getByText('경력 20년')).toBeInTheDocument();
+    });
+
+    it('years_of_experience 가 0 이면 「경력 N년」 미렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({ years_of_experience: 0 })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
+    });
+
+    it('years_of_experience 가 undefined 면 「경력 N년」 미렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={withProfile({})}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
+    });
+
+    it('consultant_profile 이 배열로 도착해도 첫 요소를 사용해 렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={makeRecommendation({
+            candidate: {
+              id: 'c1',
+              name: '박위원',
+              email: 'park@test.com',
+              consultant_profile: [{ available_industries: ['공공'], years_of_experience: 15 }],
+            },
+          })}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.getByText('공공')).toBeInTheDocument();
+      expect(screen.getByText('경력 15년')).toBeInTheDocument();
+    });
+
+    it('consultant_profile 자체가 없으면 칩·연차 모두 미렌더', () => {
+      render(
+        <SelectableCard
+          recommendation={makeRecommendation()}
+          isSelected={false}
+          onSelect={mockOnSelect}
+        />,
+      );
+      expect(screen.queryByTestId('consultant-industries')).not.toBeInTheDocument();
+      expect(screen.queryByText(/경력/)).not.toBeInTheDocument();
+    });
+  });
+
   describe('onClick 콜백', () => {
     it('버튼 클릭 시 onSelect가 호출된다', () => {
       render(

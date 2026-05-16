@@ -9,6 +9,8 @@ export const galleryFiltersSchema = z.object({
   sort: z.enum(['latest', 'popular']).optional().default('latest'),
   // 트랙 필터 (ALL/ROADMAP/PBL) — 기본 ALL
   track: z.enum(['ALL', 'ROADMAP', 'PBL']).optional().default('ALL'),
+  // 본인 산출물 필터 (all/mine) — 기본 all. mine 일 때 created_by = currentUser.id 만 노출
+  scope: z.enum(['all', 'mine']).optional().default('all'),
   // 관리자 전용 필터
   status: z.enum(['DRAFT', 'FINAL', 'ARCHIVED']).optional(),
   isShared: z.enum(['true', 'false']).optional(),
