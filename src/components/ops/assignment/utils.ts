@@ -92,6 +92,29 @@ export interface ParsedRationale {
 // 유틸리티 함수
 // ============================================================================
 
+/**
+ * 추천에 포함된 컨설턴트 프로필을 안전하게 정규화.
+ *
+ * `recommendation.candidate.consultant_profile` 은 Supabase 조인 결과에 따라
+ * `ConsultantProfile[]` (배열 형식) 또는 `Record<string, unknown>` (단일 객체) 으로
+ * 도착할 수 있다 (`ValidRecommendation['candidate']['consultant_profile']`).
+ *
+ * - undefined → null
+ * - 빈 배열 → null
+ * - 배열 → 첫 요소
+ * - 객체 → 그대로 (빈 객체도 그대로 — 비어있는지 판단은 호출자 책임)
+ */
+export function getConsultantProfile(
+  candidate: ValidRecommendation['candidate'],
+): ConsultantProfile | null {
+  const raw = candidate.consultant_profile;
+  if (raw === undefined || raw === null) return null;
+  if (Array.isArray(raw)) {
+    return raw.length > 0 ? (raw[0] as ConsultantProfile) : null;
+  }
+  return raw as ConsultantProfile;
+}
+
 /** 점수에 따른 색상 반환 */
 export function getScoreColorClass(score: number): string {
   if (score >= SCORE_THRESHOLDS.HIGH) return 'text-emerald-600';

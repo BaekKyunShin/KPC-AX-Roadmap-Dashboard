@@ -2,11 +2,24 @@
 
 import { cn } from '@/lib/utils';
 import {
+  getConsultantProfile,
   getScoreColorClass,
   getScoreGaugeColor,
   parseRationale,
 } from './utils';
 import type { ValidRecommendation } from './utils';
+
+/** 산업 칩 최대 노출 개수 (H6 — 한눈에 비교 가능한 범위 유지) */
+const MAX_INDUSTRY_CHIPS = 3;
+
+/** 컨설턴트 프로필에서 산업/도메인 칩을 추출. available_industries 우선, fallback expertise_domains. */
+function pickIndustryChips(profile: ReturnType<typeof getConsultantProfile>): string[] {
+  if (!profile) return [];
+  const industries = Array.isArray(profile.available_industries) ? profile.available_industries : [];
+  if (industries.length > 0) return industries.slice(0, MAX_INDUSTRY_CHIPS);
+  const expertise = Array.isArray(profile.expertise_domains) ? profile.expertise_domains : [];
+  return expertise.slice(0, MAX_INDUSTRY_CHIPS);
+}
 
 interface SelectableCardProps {
   recommendation: ValidRecommendation;
@@ -22,6 +35,14 @@ export default function SelectableCard({ recommendation, isSelected, onSelect }:
   const parsedRationale = recommendation.rationale ? parseRationale(recommendation.rationale) : null;
   const scoreColor = getScoreColorClass(score);
   const gaugeColor = getScoreGaugeColor(score);
+
+  // 컨설턴트 프로필 (H6 — 운영자가 추천 카드에서 핵심 객관 정보를 한눈에 비교)
+  const consultantProfile = getConsultantProfile(recommendation.candidate);
+  const industryChips = pickIndustryChips(consultantProfile);
+  const yearsOfExperience = typeof consultantProfile?.years_of_experience === 'number' && consultantProfile.years_of_experience > 0
+    ? consultantProfile.years_of_experience
+    : null;
+  const hasProfileInfo = industryChips.length > 0 || yearsOfExperience !== null;
 
   return (
     <button
@@ -73,6 +94,27 @@ export default function SelectableCard({ recommendation, isSelected, onSelect }:
           <span className="text-[10px] text-gray-400 mt-0.5">점</span>
         </div>
       </div>
+
+      {/* 컨설턴트 프로필 요약 (H6 — 산업 칩 + 연차) */}
+      {hasProfileInfo && (
+        <div className="mb-3 space-y-1.5">
+          {industryChips.length > 0 && (
+            <div className="flex flex-wrap gap-1" data-testid="consultant-industries">
+              {industryChips.map((industry) => (
+                <span
+                  key={industry}
+                  className="inline-flex items-center text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md font-medium"
+                >
+                  {industry}
+                </span>
+              ))}
+            </div>
+          )}
+          {yearsOfExperience !== null && (
+            <p className="text-xs text-gray-500">경력 {yearsOfExperience}년</p>
+          )}
+        </div>
+      )}
 
       {/* AI 분석 텍스트 */}
       {parsedRationale?.analysis && (
