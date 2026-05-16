@@ -70,4 +70,34 @@ describe('ScopeFilter', () => {
     expect(onChange).toHaveBeenCalledWith('all');
     expect(routerPush).not.toHaveBeenCalled();
   });
+
+  describe('freeze 방지: 낙관적 active + useTransition', () => {
+    it('클릭 즉시 aria-selected 가 갱신된다 (URL 변경 대기 없이)', () => {
+      render(<ScopeFilter />);
+      // 클릭 전: 전체 갤러리 active
+      expect(screen.getByTestId('scope-filter-all').getAttribute('aria-selected')).toBe('true');
+      expect(screen.getByTestId('scope-filter-mine').getAttribute('aria-selected')).toBe('false');
+
+      // 클릭 직후: 내 산출물 active (URL 변경 완료를 기다리지 않음)
+      fireEvent.click(screen.getByTestId('scope-filter-mine'));
+      expect(screen.getByTestId('scope-filter-mine').getAttribute('aria-selected')).toBe('true');
+      expect(screen.getByTestId('scope-filter-all').getAttribute('aria-selected')).toBe('false');
+    });
+
+    it('같은 토글을 다시 클릭해도 router.push 가 호출되지 않는다 (중복 navigation 방지)', () => {
+      render(<ScopeFilter />);
+      fireEvent.click(screen.getByTestId('scope-filter-all'));
+      expect(routerPush).not.toHaveBeenCalled();
+    });
+
+    it('외부에서 URL 이 변경되면 토글 active 상태가 따라온다', () => {
+      const { rerender } = render(<ScopeFilter />);
+      expect(screen.getByTestId('scope-filter-all').getAttribute('aria-selected')).toBe('true');
+
+      // 외부에서 URL 이 ?scope=mine 으로 변경 (예: 다른 컴포넌트에서 navigate)
+      mockSearchParams = new URLSearchParams('scope=mine');
+      rerender(<ScopeFilter />);
+      expect(screen.getByTestId('scope-filter-mine').getAttribute('aria-selected')).toBe('true');
+    });
+  });
 });
