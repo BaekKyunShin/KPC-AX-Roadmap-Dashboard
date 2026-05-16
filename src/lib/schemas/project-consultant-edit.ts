@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { COMPANY_SIZE_VALUES } from '@/lib/constants/company-size';
 import { SUB_INDUSTRY_CONSTRAINTS } from '@/lib/constants/industry';
 
 // 컨설턴트가 담당 프로젝트의 기업 정보를 편집할 때 허용되는 필드 화이트리스트.
@@ -17,9 +16,9 @@ export const updateProjectByConsultantSchema = z
       .array(z.string().max(SUB_INDUSTRY_CONSTRAINTS.maxLength))
       .max(SUB_INDUSTRY_CONSTRAINTS.maxTags)
       .optional(),
-    company_size: z.enum(COMPANY_SIZE_VALUES, {
-      errorMap: () => ({ message: '기업 규모를 선택하세요.' }),
-    }),
+    // company_size — 운영 historical 데이터에 enum 외 값(예: '10-50명')이
+    // 존재할 수 있어 string 으로 완화. 신규 입력 시는 UI Select 가 enum 강제.
+    company_size: z.string().min(1, '기업 규모를 선택하세요.').max(30),
     company_address: z.string().max(300).optional().nullable(),
     // 담당자
     contact_name: z.string().min(2, '담당자명을 2자 이상 입력하세요.').max(50),

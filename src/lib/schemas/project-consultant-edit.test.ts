@@ -112,10 +112,20 @@ describe('updateProjectByConsultantSchema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('company_size 가 정의된 값 외이면 거부한다', () => {
+    it('company_size 가 enum 외 historical 값이어도 통과한다 (운영 호환)', () => {
+      // 운영 데이터에 '10-50명' 같은 historical 값이 있을 수 있어 string 허용.
+      // UI Select 는 enum 강제, Zod 는 type 정합성만 검증.
       const result = updateProjectByConsultantSchema.safeParse({
         ...validBaseInput,
-        company_size: '99999',
+        company_size: '10-50명',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('company_size 가 빈 문자열이면 거부한다', () => {
+      const result = updateProjectByConsultantSchema.safeParse({
+        ...validBaseInput,
+        company_size: '',
       });
       expect(result.success).toBe(false);
     });

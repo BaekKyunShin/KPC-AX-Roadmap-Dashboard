@@ -365,7 +365,7 @@ export function CompanyInfoEditableCard({
         <EditRow icon={Users} label="규모" required error={errors.company_size}>
           <Select
             value={draft.company_size}
-            onValueChange={(v) => setField('company_size', v as CompanySizeValue)}
+            onValueChange={(v) => setField('company_size', v)}
             disabled={isPending}
           >
             <SelectTrigger aria-label="기업 규모">
@@ -377,6 +377,14 @@ export function CompanyInfoEditableCard({
                   {COMPANY_SIZE_LABELS[opt]}
                 </SelectItem>
               ))}
+              {/* 운영 historical 값 보존 — enum 외 값이라도 표시 */}
+              {!(COMPANY_SIZE_VALUES as readonly string[]).includes(
+                draft.company_size,
+              ) && draft.company_size && (
+                <SelectItem value={draft.company_size}>
+                  {draft.company_size}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </EditRow>

@@ -154,7 +154,7 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
                 company_name: projectData.company_name,
                 industry: projectData.industry,
                 sub_industries: projectData.sub_industries ?? undefined,
-                company_size: projectData.company_size as CompanySizeValue,
+                company_size: projectData.company_size,
                 company_address: projectData.company_address ?? null,
                 contact_name: projectData.contact_name,
                 contact_email: projectData.contact_email,
