@@ -14,6 +14,13 @@ import {
   type GuideData,
   type GuideQuestion,
 } from '@/lib/schemas/interview-guide';
+import {
+  updateProjectByConsultantSchema,
+  CONSULTANT_EDITABLE_PROJECT_FIELDS,
+  CONSULTANT_EDITABLE_SENSITIVE_FIELDS,
+  type UpdateProjectByConsultantInput,
+} from '@/lib/schemas/project-consultant-edit';
+import { createAuditLog } from '@/lib/services/audit';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import {
   ACTIVITY_LOG_PAGE_SIZE,
@@ -439,6 +446,137 @@ export async function updateInterviewGuideQuestions(
     return { success: true };
   } catch (error) {
     console.error('[updateInterviewGuideQuestions Error]', error);
+    return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
+  }
+}
+
+// ============================================================================
+// 기업 정보 수정 (컨설턴트 본인 담당 프로젝트 — 마이그 073)
+// ============================================================================
+
+export interface UpdateProjectCompanyInfoResult {
+  updated_at: string;
+}
+
+/**
+ * 컨설턴트가 본인 담당 프로젝트의 기업·담당자·PBL 행정·내부 메모를 수정한다.
+ *
+ * 가드:
+ *   1) verifyConsultantProjectAccess — 세션·역할·배정 여부
+ *   2) updateProjectByConsultantSchema (.strict()) — 시스템 필드 키 차단
+ *   3) Optimistic lock — updated_at 일치 시에만 UPDATE 적용
+ *   4) DB 레이어 RLS + 시스템 필드 불변 트리거 (mig 073) 3중 방어
+ *
+ * audit_logs:
+ *   action='PROJECT_UPDATE', meta={ changed_fields, before, after,
+ *   source: 'consultant_edit', sensitive_change } 기록.
+ */
+export async function updateProjectCompanyInfo(
+  projectId: string,
+  input: UpdateProjectByConsultantInput,
+  expectedUpdatedAt: string,
+): Promise<ActionResult<UpdateProjectCompanyInfoResult>> {
+  try {
+    // ① 세션 + ② 역할 + ③ 배정 검증
+    const auth = await verifyConsultantProjectAccess(projectId);
+    if ('error' in auth) return { success: false, error: auth.error };
+
+    // ④ Zod strict 검증
+    const validation = updateProjectByConsultantSchema.safeParse(input);
+    if (!validation.success) {
+      return { success: false, error: validation.error.errors[0].message };
+    }
+
+    // ⑤ 비즈니스 로직 — before 조회 후 변경 필드 추출
+    const adminSupabase = createAdminClient();
+    const beforeSelect = [
+      ...CONSULTANT_EDITABLE_PROJECT_FIELDS,
+      'updated_at',
+    ].join(', ');
+
+    const { data: before, error: beforeError } = await adminSupabase
+      .from('projects')
+      .select(beforeSelect)
+      .eq('id', projectId)
+      .single();
+
+    if (beforeError || !before) {
+      console.error('[updateProjectCompanyInfo Error] before fetch', beforeError);
+      return { success: false, error: '프로젝트 정보를 조회할 수 없습니다.' };
+    }
+
+    const beforeRow = before as unknown as Record<string, unknown> & { updated_at: string };
+
+    // Optimistic lock — 사용자가 보던 시점 이후 변경 감지
+    if (expectedUpdatedAt && beforeRow.updated_at !== expectedUpdatedAt) {
+      return {
+        success: false,
+        error: '다른 사용자가 먼저 수정했습니다. 새로고침 후 다시 시도해주세요.',
+      };
+    }
+
+    // 변경 필드 추출 — undefined(미입력) 와 null(명시 비움) 을 동일로 정규화
+    const after = validation.data as Record<string, unknown>;
+    const normalize = (v: unknown) => (v === undefined ? null : v);
+    const changedFields = CONSULTANT_EDITABLE_PROJECT_FIELDS.filter(
+      (field) =>
+        JSON.stringify(normalize(beforeRow[field]))
+          !== JSON.stringify(normalize(after[field])),
+    );
+
+    if (changedFields.length === 0) {
+      // 변경 없음 — 토스트만 안내, audit 기록 없이 통과
+      return { success: true, data: { updated_at: beforeRow.updated_at } };
+    }
+
+    // UPDATE (optimistic lock with updated_at)
+    const updateQuery = adminSupabase
+      .from('projects')
+      .update(validation.data)
+      .eq('id', projectId);
+
+    const { data: updatedRows, error: updateError } = await (expectedUpdatedAt
+      ? updateQuery.eq('updated_at', expectedUpdatedAt)
+      : updateQuery
+    ).select('updated_at');
+
+    if (updateError) {
+      console.error('[updateProjectCompanyInfo Error] update', updateError);
+      return { success: false, error: '기업 정보 저장에 실패했습니다.' };
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      return {
+        success: false,
+        error: '다른 사용자가 먼저 수정했습니다. 새로고침 후 다시 시도해주세요.',
+      };
+    }
+
+    const newUpdatedAt = (updatedRows[0] as { updated_at: string }).updated_at;
+
+    // audit_logs 기록 (PBL 행정 필드 변경 시 sensitive 플래그)
+    const sensitiveChange = changedFields.some((f) =>
+      (CONSULTANT_EDITABLE_SENSITIVE_FIELDS as readonly string[]).includes(f),
+    );
+
+    await createAuditLog({
+      actorUserId: auth.user.id,
+      action: 'PROJECT_UPDATE',
+      targetType: 'project',
+      targetId: projectId,
+      meta: {
+        source: 'consultant_edit',
+        changed_fields: changedFields,
+        before: Object.fromEntries(changedFields.map((f) => [f, beforeRow[f] ?? null])),
+        after: Object.fromEntries(changedFields.map((f) => [f, after[f] ?? null])),
+        sensitive_change: sensitiveChange,
+      },
+    });
+
+    revalidatePath(`/consultant/projects/${projectId}`);
+    return { success: true, data: { updated_at: newUpdatedAt } };
+  } catch (error) {
+    console.error('[updateProjectCompanyInfo Error]', error);
     return { success: false, error: '알 수 없는 오류가 발생했습니다.' };
   }
 }

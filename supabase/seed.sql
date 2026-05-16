@@ -178,7 +178,7 @@ INSERT INTO projects (
   assigned_consultant_id, created_by
 ) VALUES (
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-  '시드기업B', 'IT/SW', '10-50명',
+  '시드기업B', 'IT/SW', '10-49',
   '김철수', 'kim@test.com', 'ASSIGNED',
   '22222222-2222-2222-2222-222222222222',
   '11111111-1111-1111-1111-111111111111'

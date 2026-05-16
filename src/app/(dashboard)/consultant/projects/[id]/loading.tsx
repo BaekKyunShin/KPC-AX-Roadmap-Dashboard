@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
  * - PageHeader: backLink + 제목(회사명) + description(업종·규모) + actions(인터뷰/로드맵 버튼 최대 2개)
  * - ProjectDetailTabs: 4개 탭 (기업 정보·사전 분석·인터뷰 기록·활동 일지)
  * - 기본 탭(기업 정보) 컨텐츠: 2-컬럼 그리드 (lg:grid-cols-5)
- *   - CompanyInfoCard (lg:col-span-2): h2 + 기본정보 3행 + divider + 담당자 3행 (아이콘 포함)
+ *   - CompanyInfoEditableCard (lg:col-span-2): h2 + 수정 버튼 + 기본정보 3행 + divider
+ *     + 담당자 3행 (아이콘 포함) + 내부 메모 자리 (마이그 073)
  *   - 자가진단 결과 카드 (lg:col-span-3): h2 + 날짜 + 레이더 차트 + 설문 상세 아코디언
  */
 export default function ConsultantProjectDetailLoading() {
@@ -48,9 +49,12 @@ export default function ConsultantProjectDetailLoading() {
 
       {/* 기본 탭(기업 정보) 컨텐츠 */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-6">
-        {/* 기업 정보 카드 */}
+        {/* 기업 정보 카드 — 편집 가능 (제목 + 수정 버튼 + 정보 + 내부 메모) */}
         <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
-          <Skeleton className="h-5 w-20 mb-3" />
+          <div className="flex items-center justify-between mb-3">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-7 w-16 rounded-md opacity-70" />
+          </div>
           <div className="space-y-1">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 py-2.5">
@@ -69,6 +73,11 @@ export default function ConsultantProjectDetailLoading() {
                 <Skeleton className={`h-4 ${i === 2 ? 'w-40' : 'w-28'}`} />
               </div>
             ))}
+          </div>
+          {/* 내부 메모 자리 (마이그 073) */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <Skeleton className="h-3 w-32 mb-1.5 opacity-70" />
+            <Skeleton className="h-10 w-full rounded-md opacity-50" />
           </div>
         </div>
 

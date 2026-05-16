@@ -98,6 +98,8 @@ export interface Project {
   track: ProjectTrack;
   // OPS 입력 추가 정보
   customer_comment?: string; // 고객 코멘트/요청사항
+  // 컨설턴트 내부 메모 (마이그 073) — 본인이 편집하는 지속 메모
+  consultant_internal_note?: string;
   // 테스트 모드 (컨설턴트 연습용)
   is_test_mode: boolean;
   test_created_by?: string; // 테스트 프로젝트 생성자 (컨설턴트 user_id)

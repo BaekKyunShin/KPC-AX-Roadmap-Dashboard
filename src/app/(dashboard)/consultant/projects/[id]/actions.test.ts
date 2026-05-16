@@ -18,10 +18,12 @@ import {
   deleteActivityLog,
   generateInterviewGuide,
   updateInterviewGuideQuestions,
+  updateProjectCompanyInfo,
 } from './actions';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
+import { createAuditLog } from '@/lib/services/audit';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -43,6 +45,10 @@ vi.mock('@/lib/services/interview-guide', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
+}));
+
+vi.mock('@/lib/services/audit', () => ({
+  createAuditLog: vi.fn(),
 }));
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────────────────
@@ -1084,5 +1090,225 @@ describe('updateInterviewGuideQuestions — 추가 에지 케이스', () => {
     expect(updatedData.guide_data.company_summary).toBe('기존 요약 보존됨');
     expect(updatedData.guide_data.cautions).toEqual(['기존 주의사항']);
     expect(updatedData.guide_data.questions).toEqual(validQuestions);
+  });
+});
+
+// ─── updateProjectCompanyInfo ───────────────────────────────────────────────
+
+describe('updateProjectCompanyInfo', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  const VALID_INPUT = {
+    company_name: '㈜KPC인재개발센터',
+    industry: '교육서비스업',
+    company_size: '50-299' as const,
+    contact_name: '홍길동',
+    contact_email: 'hong@kpc.or.kr',
+  };
+
+  const BEFORE_ROW = {
+    company_name: '㈜이전회사',
+    industry: '교육서비스업',
+    sub_industries: null,
+    company_size: '50-299',
+    company_address: null,
+    contact_name: '이전담당자',
+    contact_email: 'old@kpc.or.kr',
+    contact_phone: null,
+    contact_position: null,
+    business_reg_no: null,
+    industry_code: null,
+    training_address: null,
+    jurisdiction_branch: null,
+    customer_comment: null,
+    consultant_internal_note: null,
+    updated_at: '2026-05-15T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A_ID } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+    vi.mocked(createAuditLog).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function setupAuthOk() {
+    // requireAuthWithRole → users select.single (role/status)
+    serverMock.addResult({
+      data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+      error: null,
+    });
+    // requireConsultantProjectAccess → projects select.single
+    serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
+  }
+
+  it('비로그인 → 권한 오류 반환', async () => {
+    serverMock = createMockSupabase({ authUser: null });
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('타 컨설턴트 프로젝트 → requireConsultantProjectAccess 차단', async () => {
+    serverMock.addResult({
+      data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' },
+      error: null,
+    });
+    // assigned 체크 실패
+    serverMock.addResult({ data: null, error: null });
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('Zod strict 거부 — status 같은 시스템 필드 포함', async () => {
+    setupAuthOk();
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      // @ts-expect-error — 의도적 잘못된 입력
+      { ...VALID_INPUT, status: 'FINALIZED' },
+      BEFORE_ROW.updated_at,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('Zod 실패 — 잘못된 이메일', async () => {
+    setupAuthOk();
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      { ...VALID_INPUT, contact_email: 'invalid' },
+      BEFORE_ROW.updated_at,
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('Optimistic lock 충돌 — expectedUpdatedAt 불일치', async () => {
+    setupAuthOk();
+    // before 조회 — updated_at 이 다름
+    adminMock.addResult({
+      data: { ...BEFORE_ROW, updated_at: '2026-05-16T11:11:11.111Z' },
+      error: null,
+    });
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at, // 클라이언트가 본 시점
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('다른 사용자');
+  });
+
+  it('변경 없음 → audit 기록 없이 통과', async () => {
+    setupAuthOk();
+    // before 조회 — VALID_INPUT 과 정확히 동일
+    adminMock.addResult({
+      data: {
+        ...BEFORE_ROW,
+        ...VALID_INPUT, // 모든 필드를 입력값과 동일하게
+        sub_industries: null,
+        company_address: null,
+        contact_phone: null,
+        contact_position: null,
+        business_reg_no: null,
+        industry_code: null,
+        training_address: null,
+        jurisdiction_branch: null,
+        customer_comment: null,
+        consultant_internal_note: null,
+      },
+      error: null,
+    });
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at,
+    );
+    expect(result.success).toBe(true);
+    expect(createAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('정상 저장 → audit_logs 기록 + sensitive_change=false', async () => {
+    setupAuthOk();
+    adminMock.addResult({ data: BEFORE_ROW, error: null }); // before
+    adminMock.addResult({
+      data: [{ updated_at: '2026-05-16T12:34:56.789Z' }],
+      error: null,
+    }); // update + select
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at,
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.updated_at).toBe('2026-05-16T12:34:56.789Z');
+    }
+    expect(createAuditLog).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(createAuditLog).mock.calls[0][0];
+    expect(call.action).toBe('PROJECT_UPDATE');
+    expect(call.actorUserId).toBe(USER_A_ID);
+    expect(call.targetType).toBe('project');
+    expect(call.targetId).toBe(PROJECT_ID);
+    expect(call.meta).toMatchObject({
+      source: 'consultant_edit',
+      sensitive_change: false,
+    });
+    expect((call.meta as { changed_fields: string[] }).changed_fields).toEqual(
+      expect.arrayContaining(['company_name', 'contact_name', 'contact_email']),
+    );
+  });
+
+  it('PBL 행정 필드 변경 → sensitive_change=true 플래그', async () => {
+    setupAuthOk();
+    adminMock.addResult({ data: BEFORE_ROW, error: null });
+    adminMock.addResult({
+      data: [{ updated_at: '2026-05-16T13:00:00.000Z' }],
+      error: null,
+    });
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      { ...VALID_INPUT, business_reg_no: '123-45-67890' },
+      BEFORE_ROW.updated_at,
+    );
+
+    expect(result.success).toBe(true);
+    const call = vi.mocked(createAuditLog).mock.calls[0][0];
+    expect((call.meta as { sensitive_change: boolean }).sensitive_change).toBe(true);
+  });
+
+  it('DB update 오류 → 실패 반환', async () => {
+    setupAuthOk();
+    adminMock.addResult({ data: BEFORE_ROW, error: null });
+    adminMock.addResult({ data: null, error: { message: 'DB error' } });
+
+    const result = await updateProjectCompanyInfo(
+      PROJECT_ID,
+      VALID_INPUT,
+      BEFORE_ROW.updated_at,
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain('저장');
   });
 });

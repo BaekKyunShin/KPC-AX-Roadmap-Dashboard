@@ -15,7 +15,7 @@ import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadm
 import type { PBLInterview } from '@/lib/schemas/interview-pbl';
 import type { ProjectTrack } from '@/lib/constants/tracks';
 import { AssessmentDetailAccordion, type AssessmentAnswer, type AssessmentQuestion } from './_components/AssessmentDetailAccordion';
-import { CompanyInfoCard } from './_components/CompanyInfoCard';
+import { CompanyInfoEditableCard } from './_components/CompanyInfoEditableCard';
 import { ProjectDetailTabs } from './_components/ProjectDetailTabs';
 import { InterviewGuide } from './_components/InterviewGuide';
 import ActivityLog from './_components/ActivityLog';
@@ -147,15 +147,26 @@ export default async function ConsultantProjectDetailPage({ params }: PageProps)
       <ProjectDetailTabs
         companyInfoContent={
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <CompanyInfoCard
-              companyName={projectData.company_name}
-              industry={projectData.industry}
-              companySizeLabel={companySizeLabel}
-              contactName={projectData.contact_name}
-              contactEmail={projectData.contact_email}
-              contactPhone={projectData.contact_phone}
-              companyAddress={projectData.company_address}
-              customerComment={projectData.customer_comment}
+            <CompanyInfoEditableCard
+              projectId={projectId}
+              updatedAt={projectData.updated_at}
+              initial={{
+                company_name: projectData.company_name,
+                industry: projectData.industry,
+                sub_industries: projectData.sub_industries ?? undefined,
+                company_size: projectData.company_size,
+                company_address: projectData.company_address ?? null,
+                contact_name: projectData.contact_name,
+                contact_email: projectData.contact_email,
+                contact_phone: projectData.contact_phone ?? null,
+                contact_position: projectData.contact_position ?? null,
+                business_reg_no: projectData.business_reg_no ?? null,
+                industry_code: projectData.industry_code ?? null,
+                training_address: projectData.training_address ?? null,
+                jurisdiction_branch: projectData.jurisdiction_branch ?? null,
+                customer_comment: projectData.customer_comment ?? null,
+                consultant_internal_note: projectData.consultant_internal_note ?? null,
+              }}
             />
             <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
