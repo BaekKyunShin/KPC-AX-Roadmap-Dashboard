@@ -258,7 +258,7 @@ describe('CompanyInfoEditableCard', () => {
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
-      const noteInput = screen.getByLabelText('컨설턴트 내부 메모');
+      const noteInput = screen.getByLabelText('훈련코치 전용 메모');
       // textarea 의 onChange 가 명시적으로 트리거되도록 fireEvent 사용
       fireEvent.change(noteInput, { target: { value: '변경된 메모' } });
 
@@ -280,7 +280,7 @@ describe('CompanyInfoEditableCard', () => {
       );
 
       await user.click(screen.getByTestId('company-info-edit-button'));
-      const noteInput = screen.getByLabelText('컨설턴트 내부 메모');
+      const noteInput = screen.getByLabelText('훈련코치 전용 메모');
       fireEvent.change(noteInput, { target: { value: '변경된 메모' } });
 
       await user.click(screen.getByRole('button', { name: '취소' }));
