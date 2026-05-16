@@ -20,7 +20,7 @@ import {
   Building,
   type LucideIcon,
 } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -128,13 +128,25 @@ export function CompanyInfoEditableCard({
 }: CompanyInfoEditableCardProps) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('view');
+  // committed: 마지막 저장 성공값 (낙관적 UI 갱신용). view 모드 표시 데이터.
+  const [committed, setCommitted] = useState<UpdateProjectByConsultantInput>(initial);
+  // currentUpdatedAt: optimistic lock 비교용. 저장 성공 시 새 값으로 갱신.
+  const [currentUpdatedAt, setCurrentUpdatedAt] = useState<string>(updatedAt);
   const [draft, setDraft] = useState<UpdateProjectByConsultantInput>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // 서버 RSC 가 새 prop 을 내려보내면 committed 도 동기화 (외부 변경 반영)
+  useEffect(() => {
+    setCommitted(initial);
+  }, [initial]);
+  useEffect(() => {
+    setCurrentUpdatedAt(updatedAt);
+  }, [updatedAt]);
+
   const isDirty =
-    mode === 'edit' && JSON.stringify(draft) !== JSON.stringify(initial);
+    mode === 'edit' && JSON.stringify(draft) !== JSON.stringify(committed);
 
   useBeforeUnloadGuard(isDirty);
 
@@ -159,7 +171,7 @@ export function CompanyInfoEditableCard({
   }
 
   function handleEdit() {
-    setDraft(initial);
+    setDraft(committed);
     setErrors({});
     setMode('edit');
   }
@@ -174,7 +186,7 @@ export function CompanyInfoEditableCard({
 
   function confirmCancel() {
     setShowCancelDialog(false);
-    setDraft(initial);
+    setDraft(committed);
     setErrors({});
     setMode('view');
   }
@@ -182,11 +194,15 @@ export function CompanyInfoEditableCard({
   function handleSave() {
     if (!validateClient()) return;
     startTransition(async () => {
-      const result = await updateProjectCompanyInfo(projectId, draft, updatedAt);
+      const result = await updateProjectCompanyInfo(projectId, draft, currentUpdatedAt);
       if (result.success) {
-        toast.success('기업 정보가 저장되었습니다.');
+        // 낙관적 UI — 화면을 즉시 새 값으로 갱신
+        setCommitted(draft);
+        setCurrentUpdatedAt(result.data.updated_at);
         setMode('view');
         setErrors({});
+        toast.success('기업 정보가 저장되었습니다.');
+        // 백그라운드 동기화 — 다른 컴포넌트(목록·OPS 뷰 등)가 최신값 반영
         router.refresh();
       } else {
         toast.error(result.error ?? '저장에 실패했습니다.');
@@ -214,55 +230,55 @@ export function CompanyInfoEditableCard({
         </div>
 
         <dl>
-          <InfoRow icon={Building2} label="회사명" value={initial.company_name} />
-          <InfoRow icon={Factory} label="업종" value={initial.industry} />
-          {initial.sub_industries && initial.sub_industries.length > 0 && (
+          <InfoRow icon={Building2} label="회사명" value={committed.company_name} />
+          <InfoRow icon={Factory} label="업종" value={committed.industry} />
+          {committed.sub_industries && committed.sub_industries.length > 0 && (
             <InfoRow
               icon={Factory}
               label="세부 업종"
-              value={initial.sub_industries.join(' · ')}
+              value={committed.sub_industries.join(' · ')}
             />
           )}
           <InfoRow
             icon={Users}
             label="규모"
-            value={COMPANY_SIZE_LABELS[initial.company_size as CompanySizeValue] ?? initial.company_size}
+            value={COMPANY_SIZE_LABELS[committed.company_size as CompanySizeValue] ?? committed.company_size}
           />
-          <InfoRow icon={MapPin} label="주소" value={initial.company_address} />
+          <InfoRow icon={MapPin} label="주소" value={committed.company_address} />
         </dl>
 
         <hr className="my-2 border-gray-100" />
 
         <dl>
-          <InfoRow icon={User} label="담당자" value={initial.contact_name} />
-          <InfoRow icon={Briefcase} label="직위" value={initial.contact_position} />
-          <InfoRow icon={Mail} label="연락처" value={initial.contact_email} />
-          <InfoRow icon={Phone} label="전화" value={initial.contact_phone} />
+          <InfoRow icon={User} label="담당자" value={committed.contact_name} />
+          <InfoRow icon={Briefcase} label="직위" value={committed.contact_position} />
+          <InfoRow icon={Mail} label="연락처" value={committed.contact_email} />
+          <InfoRow icon={Phone} label="전화" value={committed.contact_phone} />
         </dl>
 
-        {(initial.business_reg_no ||
-          initial.industry_code ||
-          initial.training_address ||
-          initial.jurisdiction_branch) && (
+        {(committed.business_reg_no ||
+          committed.industry_code ||
+          committed.training_address ||
+          committed.jurisdiction_branch) && (
           <>
             <hr className="my-2 border-gray-100" />
             <dl>
-              <InfoRow icon={FileText} label="사업장관리" value={initial.business_reg_no} />
-              <InfoRow icon={Hash} label="업종 코드" value={initial.industry_code} />
-              <InfoRow icon={MapPin} label="훈련 주소" value={initial.training_address} />
-              <InfoRow icon={Building} label="관할 지부" value={initial.jurisdiction_branch} />
+              <InfoRow icon={FileText} label="사업장관리" value={committed.business_reg_no} />
+              <InfoRow icon={Hash} label="업종 코드" value={committed.industry_code} />
+              <InfoRow icon={MapPin} label="훈련 주소" value={committed.training_address} />
+              <InfoRow icon={Building} label="관할 지부" value={committed.jurisdiction_branch} />
             </dl>
           </>
         )}
 
-        {initial.customer_comment && (
+        {committed.customer_comment && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex items-center gap-2 mb-1.5">
               <MessageSquareText className="h-3.5 w-3.5 text-gray-400" />
               <span className="text-xs font-medium text-gray-500">고객 요청사항</span>
             </div>
             <p className="text-sm text-gray-700 whitespace-pre-wrap rounded-md bg-gray-50 px-3 py-2">
-              {initial.customer_comment}
+              {committed.customer_comment}
             </p>
           </div>
         )}
@@ -274,9 +290,9 @@ export function CompanyInfoEditableCard({
               내부 메모 (훈련코치 전용)
             </span>
           </div>
-          {initial.consultant_internal_note ? (
+          {committed.consultant_internal_note ? (
             <p className="text-sm text-gray-700 whitespace-pre-wrap rounded-md bg-amber-50 px-3 py-2">
-              {initial.consultant_internal_note}
+              {committed.consultant_internal_note}
             </p>
           ) : (
             <p className="text-sm text-gray-400 italic px-3 py-2">
