@@ -42,12 +42,12 @@ function ResetPasswordContent() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // recovery 토큰 처리: Supabase 의 두 가지 flow 모두 지원
-  //  ① PKCE flow (현재 default): /reset-password?code=<uuid>
-  //     → exchangeCodeForSession(code) 로 cookie/session 교환
-  //  ② implicit grant (legacy): /reset-password#access_token=...&refresh_token=...&type=recovery
-  //     → setSession 으로 임시 세션화
-  // 둘 다 끝나면 cookie 가 설정되어 Server Action 의 getUser 가 본인을 식별할 수 있다.
+  // recovery 토큰 처리: Supabase 메일 링크는 implicit grant 형식.
+  // 서버·브라우저 supabase 클라이언트 모두 flowType: 'implicit' 로 통일되어 있으므로
+  // 메일 링크는 /reset-password#access_token=...&refresh_token=...&type=recovery
+  // 형식으로 발송된다 (PKCE `?code=` 형식은 발생하지 않음).
+  // setSession 으로 임시 세션화하면 cookie 가 설정되어 Server Action 의 getUser 가
+  // 본인을 식별할 수 있다.
   useEffect(() => {
     if (isDone) {
       // done 화면에서는 토큰 부트스트랩이 불필요
@@ -59,23 +59,7 @@ function ResetPasswordContent() {
 
     async function bootstrap() {
       try {
-        // ① PKCE flow — ?code=<uuid> 처리
-        const currentUrl = new URL(window.location.href);
-        const code = currentUrl.searchParams.get('code');
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          // ?code 제거 (브라우저 히스토리에 코드 잔류 방지)
-          currentUrl.searchParams.delete('code');
-          window.history.replaceState({}, '', currentUrl.toString());
-          if (exchangeError) {
-            setSessionStatus('invalid');
-            return;
-          }
-          setSessionStatus('ready');
-          return;
-        }
-
-        // ② implicit grant — fragment(#access_token=...) 처리
+        // implicit grant — fragment(#access_token=...) 처리
         if (hash && hash.includes('access_token')) {
           const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
           const accessToken = params.get('access_token');
@@ -98,7 +82,7 @@ function ResetPasswordContent() {
           }
         }
 
-        // 둘 다 없으면 이미 setSession 된 상태인지 확인
+        // fragment 가 없으면 이미 setSession 된 상태인지 확인
         const {
           data: { user },
         } = await supabase.auth.getUser();
