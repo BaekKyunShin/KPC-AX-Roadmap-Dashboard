@@ -157,21 +157,70 @@ describe('resolveAuthorNames', () => {
 
 // ─── 순수 헬퍼 ─────────────────────────────────────────────────────────────
 
+// Supabase Storage 의 isValidKey 정규식 (ASCII-only).
+// 우리가 만든 storage_path 가 이 정규식을 통과해야 InvalidKey 400 을 피할 수 있다.
+// 출처: https://github.com/supabase/storage/blob/master/src/storage/limits.ts
+const SUPABASE_VALID_KEY = /^(\w|\/|!|-|\.|\*|'|\(|\)| |&|\$|@|=|;|:|\+|,|\?)*$/;
+
 describe('sanitizeFileName', () => {
-  it('공백·특수문자를 _로 치환', () => {
-    expect(sanitizeFileName('my file (1).pdf')).toBe('my_file__1_.pdf');
+  it('ASCII 영숫자·_·-·점은 보존', () => {
+    expect(sanitizeFileName('report-v2.pdf')).toBe('report-v2.pdf');
   });
 
-  it('한글·영숫자·점·하이픈 유지', () => {
-    expect(sanitizeFileName('요청서-v2.pdf')).toBe('요청서-v2.pdf');
+  it('한글(NFC)은 underscore로 치환 → fallback', () => {
+    expect(sanitizeFileName('사업홍보_브로슈어.pdf')).toBe('file.pdf');
+  });
+
+  it('한글(NFD 자모)도 underscore로 치환 → fallback', () => {
+    const nfd = '사업홍보_브로슈어.pdf'.normalize('NFD');
+    expect(sanitizeFileName(nfd)).toBe('file.pdf');
+  });
+
+  it('공백·괄호·특수문자는 _로 치환 후 연속 _는 1개로 축약', () => {
+    expect(sanitizeFileName('my file (1).pdf')).toBe('my_file_1.pdf');
+  });
+
+  it('한글 + ASCII 혼용 시 ASCII 부분만 보존', () => {
+    expect(sanitizeFileName('한글_file.pdf')).toBe('file.pdf');
+  });
+
+  it('확장자 없는 파일도 처리', () => {
+    expect(sanitizeFileName('Makefile')).toBe('Makefile');
+  });
+
+  it('결과는 항상 Supabase isValidKey 정규식 통과', () => {
+    const samples = [
+      '사업홍보 브로슈어.pdf',
+      '인공지능보안기술_중간과제.pdf',
+      '한글파일!@#$%^&*().hwpx',
+      '   .pdf',
+      'normal-file.docx',
+      '사업홍보 브로슈어.pdf'.normalize('NFD'),
+    ];
+    for (const s of samples) {
+      expect(SUPABASE_VALID_KEY.test(sanitizeFileName(s))).toBe(true);
+    }
   });
 });
 
 describe('buildStoragePath', () => {
-  it('noticeId 폴더 + uuid + 안전화된 파일명 구조', () => {
-    const path = buildStoragePath('abc-123', '요청서 (1).pdf');
+  it('noticeId 폴더 + uuid + 안전화된 파일명 구조 (한글 입력은 fallback)', () => {
+    const path = buildStoragePath('abc-123', '요청서.pdf');
     expect(path.startsWith('abc-123/')).toBe(true);
-    expect(path.endsWith('요청서__1_.pdf')).toBe(true);
+    // 전부 한글이면 fallback 'file' 로 치환
+    expect(path.endsWith('-file.pdf')).toBe(true);
+  });
+
+  it('ASCII 입력은 그대로 보존', () => {
+    const path = buildStoragePath('abc-123', 'report-v2.pdf');
+    expect(path.startsWith('abc-123/')).toBe(true);
+    expect(path.endsWith('-report-v2.pdf')).toBe(true);
+  });
+
+  it('생성된 storage_path 도 Supabase isValidKey 정규식 통과', () => {
+    expect(
+      SUPABASE_VALID_KEY.test(buildStoragePath('abc-123', '사업홍보 브로슈어.pdf')),
+    ).toBe(true);
   });
 });
 

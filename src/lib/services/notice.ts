@@ -322,11 +322,30 @@ export async function deleteNotice(
 // ============================================================================
 
 /**
- * 첨부 파일명 안전화.
- * 공백·특수문자 → _, 한글·영숫자·점·하이픈만 유지
+ * Storage 키용 ASCII-only 파일명 안전화.
+ *
+ * Supabase Storage 의 isValidKey 정규식이 ASCII 만 허용하므로
+ * (한글·CJK 모두 InvalidKey 400 으로 거부), base 부분의 비-ASCII 와
+ * 특수문자를 `_` 로 치환한다. 원본 한글 파일명은
+ * notice_attachments.file_name 컬럼에 보존되며 다운로드 시
+ * Content-Disposition 헤더로 사용자에게 그대로 노출되므로 UX 영향 없다.
+ *
+ * buildStoragePath 가 UUID prefix 를 붙이므로 같은 fallback 결과가
+ * 여러 번 만들어져도 키 충돌은 발생하지 않는다.
  */
 export function sanitizeFileName(name: string): string {
-  return name.replace(/[^\w.\-가-힣]/g, '_');
+  const lastDot = name.lastIndexOf('.');
+  const base = lastDot > 0 ? name.slice(0, lastDot) : name;
+  const ext = lastDot > 0 ? name.slice(lastDot) : '';
+
+  const safeBase = base
+    .replace(/[^A-Za-z0-9_\-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const safeExt = ext.replace(/[^A-Za-z0-9.]/g, '');
+
+  return (safeBase || 'file') + safeExt;
 }
 
 /**
