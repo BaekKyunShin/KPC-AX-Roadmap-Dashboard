@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, CheckCircle2, FileText } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
@@ -132,6 +132,9 @@ export function RoadmapResultClient({
   const [revisionPrompt, setRevisionPrompt] = useState('');
   // #2 — 최종 확정 AlertDialog 노출 상태. window.confirm 대체.
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  // 확정 진행 중 대기 스피너 표시용. onFinalize 가 RPC + refresh 까지 await 하므로
+  // 클릭 후 응답이 올 때까지 사용자에게 시각적 피드백을 준다.
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // #5 H2·H4·H7 — 검토 페이지 「새 버전 생성」 클릭 시 ?regenerate=open 으로 진입.
   // 결과 페이지가 쿼리를 감지해 RegenerateAccordion 자동 펼침 + textarea 포커스 + 부드러운 스크롤.
@@ -193,7 +196,12 @@ export function RoadmapResultClient({
   async function confirmFinalize() {
     if (!selectedVersion || !onFinalize) return;
     setIsConfirmOpen(false);
-    await onFinalize(selectedVersion.id);
+    setIsFinalizing(true);
+    try {
+      await onFinalize(selectedVersion.id);
+    } finally {
+      setIsFinalizing(false);
+    }
   }
 
   async function handleEmptyStateGenerate() {
@@ -278,10 +286,15 @@ export function RoadmapResultClient({
                   size="sm"
                   variant="default"
                   onClick={() => void handleFinalize()}
+                  disabled={isFinalizing}
                   data-testid="finalize-roadmap-button"
                 >
-                  <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
-                  최종 확정
+                  {isFinalizing ? (
+                    <Loader2 className="mr-1 size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
+                  )}
+                  {isFinalizing ? '확정 중...' : '최종 확정'}
                 </Button>
               )}
             {/* Ops 전용: FINAL 상태에서만 ShareToggle 노출 (갤러리 공유 감사 목적) */}

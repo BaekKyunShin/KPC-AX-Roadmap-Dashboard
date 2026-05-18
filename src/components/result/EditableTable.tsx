@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { showSuccessToast } from '@/lib/utils/toast';
 import { InlineEditField } from './InlineEditField';
 
 /**
@@ -103,10 +104,13 @@ export function EditableTable<T extends Record<string, unknown>>({
     setIsMutating(true);
     try {
       await onChange([...rows, emptyRow()]);
+      // 새 빈 행은 placeholder 만 표시되어 시각적 변화가 작음. 사용자가 추가
+      // 완료를 명확히 인식할 수 있도록 토스트로 보조 피드백 제공.
+      showSuccessToast(`${addLabel} 완료`, '표 하단에 새 행이 추가됐습니다.');
     } finally {
       setIsMutating(false);
     }
-  }, [readOnly, maxRows, rows, emptyRow, onChange]);
+  }, [readOnly, maxRows, rows, emptyRow, onChange, addLabel]);
 
   const removeRow = useCallback(
     async (index: number) => {

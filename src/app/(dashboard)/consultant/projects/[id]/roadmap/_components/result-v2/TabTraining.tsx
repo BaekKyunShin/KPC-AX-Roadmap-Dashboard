@@ -1,11 +1,13 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, Plus, Sparkles } from 'lucide-react';
 
 import { SectionCard } from '@/components/result/SectionCard';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { EditableTable, type EditableTableColumn } from '@/components/result/EditableTable';
 import { FormTable } from '@/components/forms/FormTable';
+import { showSuccessToast } from '@/lib/utils/toast';
 import type {
   RoadmapAnnualPlanItem,
   RoadmapCompetency as LLMCompetency,
@@ -67,6 +69,9 @@ export function TabTraining({
   readOnly,
   onEdit,
 }: TabCommonProps) {
+  // "+ 훈련과정 추가" 버튼은 EditableTable 가 아니라서 자체 isMutating 상태가
+  // 없다. 사용자가 클릭 후 진행 여부를 알 수 있도록 별도 state 로 스피너 표시.
+  const [isAddingCourseSpec, setIsAddingCourseSpec] = useState(false);
   // Ⅲ-1 역량 모델링: 인터뷰 값 우선 → version.competencies fallback.
   //   인터뷰 스키마는 knowledge/skill/attitude (단수 string), LLM 서비스는 knowledge/skills/attitudes (배열).
   //   아래 normalizeCompetency 가 두 형태를 동일한 뷰 형태(string[]) 로 맞춘다.
@@ -408,26 +413,42 @@ export function TabTraining({
             {!readOnly && (
               <button
                 type="button"
+                disabled={isAddingCourseSpec}
                 onClick={async () => {
-                  await onEdit({
-                    course_specs: [
-                      ...courseSpecs,
-                      {
-                        course_name: '',
-                        format: '집체',
-                        recommended_program: '',
-                        goal: '',
-                        main_content: '',
-                        target_audience: '',
-                        subjects: [],
-                      },
-                    ],
-                  });
+                  if (isAddingCourseSpec) return;
+                  setIsAddingCourseSpec(true);
+                  try {
+                    await onEdit({
+                      course_specs: [
+                        ...courseSpecs,
+                        {
+                          course_name: '',
+                          format: '집체',
+                          recommended_program: '',
+                          goal: '',
+                          main_content: '',
+                          target_audience: '',
+                          subjects: [],
+                        },
+                      ],
+                    });
+                    showSuccessToast(
+                      '훈련과정 추가 완료',
+                      '목록 하단에 새 훈련과정이 추가됐습니다.',
+                    );
+                  } finally {
+                    setIsAddingCourseSpec(false);
+                  }
                 }}
-                className="rounded border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground hover:bg-muted"
+                className="flex w-full items-center justify-center gap-1 rounded border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
                 data-testid="course-specs-add"
               >
-                + 훈련과정 추가
+                {isAddingCourseSpec ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Plus className="size-4" aria-hidden="true" />
+                )}
+                {isAddingCourseSpec ? '훈련과정 추가 중...' : '훈련과정 추가'}
               </button>
             )}
           </div>

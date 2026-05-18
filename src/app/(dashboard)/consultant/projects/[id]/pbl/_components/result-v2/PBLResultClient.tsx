@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, Loader2, Plus } from 'lucide-react';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
@@ -128,6 +128,8 @@ export function PBLResultClient({
   const [revisionPrompt, setRevisionPrompt] = useState('');
   // 최종 확정 AlertDialog 노출 상태 (window.confirm 대체). 로드맵 패턴과 일치.
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  // 확정 진행 중 대기 스피너 표시. RPC + refresh 까지 await 하는 동안 시각적 피드백.
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // #5 H2·H4·H7 — 검토 페이지 「새 버전 생성」 클릭 시 ?regenerate=open 으로 진입.
   // RegenerateAccordion 자동 펼침 + textarea 포커스 + 부드러운 스크롤. ROADMAP 트랙과 동일 패턴.
@@ -182,7 +184,12 @@ export function PBLResultClient({
   async function confirmFinalize() {
     if (!selectedVersion || !onFinalize) return;
     setIsConfirmOpen(false);
-    await onFinalize(selectedVersion.id);
+    setIsFinalizing(true);
+    try {
+      await onFinalize(selectedVersion.id);
+    } finally {
+      setIsFinalizing(false);
+    }
   }
 
   // #13 fix — 매 렌더 새 객체/배열 생성 차단 (RoadmapResultClient 와 동일 패턴).
@@ -257,10 +264,15 @@ export function PBLResultClient({
                 size="sm"
                 variant="default"
                 onClick={() => handleFinalize()}
+                disabled={isFinalizing}
                 data-testid="finalize-pbl-button"
               >
-                <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
-                최종 확정
+                {isFinalizing ? (
+                  <Loader2 className="mr-1 size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
+                )}
+                {isFinalizing ? '확정 중...' : '최종 확정'}
               </Button>
             )}
           </div>
