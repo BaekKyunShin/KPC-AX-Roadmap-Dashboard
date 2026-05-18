@@ -40,6 +40,36 @@ export async function finalizeRoadmap(
 ): Promise<void> {
   const supabase = createAdminClient();
 
+  // 정책 이전 (2026-05-18): 확정 시점에 1회 sanitize.
+  // DRAFT 편집 중에는 빈 행을 그대로 보존하므로, 여기서 정리 후 RPC 호출.
+  // 조회 실패해도 RPC 는 정상 호출되도록 best-effort 처리.
+  try {
+    const { data: currentRow } = await supabase
+      .from('roadmap_versions')
+      .select(ROADMAP_VERSION_COLUMNS)
+      .eq('id', roadmapId)
+      .single();
+
+    if (currentRow) {
+      const current = fromRoadmapVersionColumns(
+        currentRow as Parameters<typeof fromRoadmapVersionColumns>[0],
+      );
+      const sanitized = sanitizeRoadmapResult(current);
+      const cols = toRoadmapVersionColumns(sanitized);
+      await supabase
+        .from('roadmap_versions')
+        .update({
+          diagnosis_summary: cols.diagnosis_summary,
+          roadmap_matrix: cols.roadmap_matrix,
+          pbl_course: cols.pbl_course,
+          courses: cols.courses,
+        })
+        .eq('id', roadmapId);
+    }
+  } catch (e) {
+    console.error('[finalizeRoadmap] 확정 전 sanitize 실패 (RPC 계속 진행):', e);
+  }
+
   const { data, error } = await supabase.rpc('finalize_roadmap', {
     p_roadmap_id: roadmapId,
     p_actor_user_id: actorUserId,
@@ -218,8 +248,10 @@ export async function updateRoadmapManually(
     course_specs: updates.course_specs ?? current.course_specs,
   };
 
-  // 빈 행 자동 정리 — "역량/훈련과정/명세서/교과목 추가" 후 미입력 저장 시 제거.
-  const merged = sanitizeRoadmapResult(mergedRaw);
+  // 정책 이전 (2026-05-18): DRAFT 편집 중에는 빈 행을 sanitize 하지 않는다.
+  // "행 추가" 직후 자동 정리되어 사용자가 입력할 행이 사라지는 문제 해결.
+  // 빈 행 정리는 finalizeRoadmap / 내보내기 시점에 1회만 수행.
+  const merged = mergedRaw;
 
   // 검증 실행
   const validation = validateRoadmap(merged);

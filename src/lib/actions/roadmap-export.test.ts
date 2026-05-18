@@ -231,6 +231,71 @@ describe('prepareExportData', () => {
 
     expect(result.success).toBe(true);
   });
+
+  // 정책 이전 (2026-05-18) — 내보내기 시점 sanitize 보호.
+  // DRAFT 편집 중 sanitize 가 해제되어 DB 에 빈 행이 남을 수 있으므로,
+  // 내보내기 직전에 1회 정리해 결과물에 빈 행이 노출되지 않게 한다.
+  it('DB row 에 빈 행 포함 시 내보내기 데이터에서 자동 제거', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    const rowWithEmptyRows = {
+      ...ROADMAP_DATA,
+      roadmap_matrix: [],
+      pbl_course: {
+        ...ROADMAP_DATA.pbl_course,
+        competencies: [
+          { name: '역량A', definition: '정의', knowledge: [], skills: [], attitudes: [] },
+          // 빈 competency
+          { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
+        ],
+        annual_plan: {
+          items: [
+            { competency_name: '역량A', course_name: '과정1', format: '집체', hours: 8, notes: '' },
+            // 빈 annual_plan 항목
+            { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
+          ],
+          usage_plan: '활용',
+        },
+      },
+      courses: [
+        {
+          course_name: '과정1',
+          format: '집체',
+          recommended_program: '',
+          goal: '',
+          main_content: '',
+          target_audience: '',
+          subjects: [
+            { name: '과목1', details: 'd', hours: 8 },
+            // 빈 subject
+            { name: '', details: '', hours: 0 },
+          ],
+        },
+        // 빈 course_spec 카드
+        {
+          course_name: '',
+          format: '집체',
+          recommended_program: '',
+          goal: '',
+          main_content: '',
+          target_audience: '',
+          subjects: [],
+        },
+      ],
+    };
+    mock.addResult({ data: rowWithEmptyRows, error: null });
+    mock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await prepareExportData(ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.competencies).toHaveLength(1);
+      expect(result.data.annualPlan.items).toHaveLength(1);
+      expect(result.data.courseSpecs).toHaveLength(1);
+      expect(result.data.courseSpecs[0].subjects).toHaveLength(1);
+    }
+  });
 });
 
 describe('logDownload', () => {

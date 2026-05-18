@@ -54,6 +54,15 @@ vi.mock('@/lib/services/roadmap', () => ({
     annual_plan: { items: [], usage_plan: '' },
     course_specs: [],
   })),
+  /** 신규 4섹션 → DB legacy 컬럼 매퍼. identity-ish 변환. */
+  toRoadmapVersionColumns: vi.fn((result: Record<string, unknown>) => ({
+    diagnosis_summary: result.diagnosis_summary,
+    roadmap_matrix: result.training_structure ?? [],
+    pbl_course: { competencies: result.competencies ?? [], annual_plan: result.annual_plan ?? {} },
+    courses: result.course_specs ?? [],
+  })),
+  /** sanitize 동작. 테스트에서는 identity 통과 (실제 sanitize 검증은 roadmap-sanitize.test.ts 담당). */
+  sanitizeRoadmapResult: vi.fn((r: unknown) => r),
 }));
 
 vi.mock('@/lib/services/activity-log', () => ({

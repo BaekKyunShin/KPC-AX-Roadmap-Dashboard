@@ -2,11 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { CheckCircle2, Plus } from 'lucide-react';
 
 import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
 import {
@@ -75,6 +85,11 @@ export interface PBLResultClientProps {
   onEdit?: (patch: PBLResultEditPayload) => Promise<void>;
   /** 새 버전 생성. OPS role 에서는 호출되지 않음. */
   onGenerate?: (revisionPrompt?: string) => Promise<void>;
+  /**
+   * DRAFT → FINAL 확정. CONSULTANT + DRAFT 상태일 때만 "최종 확정" 버튼이 노출되고
+   * 클릭 시 호출된다. OPS role 또는 provider 미지정 시 버튼을 숨긴다.
+   */
+  onFinalize?: (versionId: string) => Promise<void>;
   /** 다운로드 (PDF/XLSX/HWPX). */
   onDownload: (type: DownloadType) => Promise<void>;
   isGenerating?: boolean;
@@ -101,6 +116,7 @@ export function PBLResultClient({
   onSelectVersion,
   onEdit,
   onGenerate,
+  onFinalize,
   onDownload,
   isGenerating = false,
   isGenerationComplete = false,
@@ -110,6 +126,8 @@ export function PBLResultClient({
 }: PBLResultClientProps) {
   const [downloadLoading, setDownloadLoading] = useState<DownloadType | null>(null);
   const [revisionPrompt, setRevisionPrompt] = useState('');
+  // 최종 확정 AlertDialog 노출 상태 (window.confirm 대체). 로드맵 패턴과 일치.
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // #5 H2·H4·H7 — 검토 페이지 「새 버전 생성」 클릭 시 ?regenerate=open 으로 진입.
   // RegenerateAccordion 자동 펼침 + textarea 포커스 + 부드러운 스크롤. ROADMAP 트랙과 동일 패턴.
@@ -127,6 +145,7 @@ export function PBLResultClient({
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);
 
+  const isDraft = selectedVersion?.status === 'DRAFT';
   const isFinal = selectedVersion?.status === 'FINAL';
   const isArchived = selectedVersion?.status === 'ARCHIVED';
   const hasVersions = versions.length > 0;
@@ -152,6 +171,18 @@ export function PBLResultClient({
   async function handleRegenerate() {
     await (onGenerate ?? NOOP_GENERATE)(revisionPrompt || undefined);
     setRevisionPrompt('');
+  }
+
+  function handleFinalize() {
+    // window.confirm 대신 shadcn AlertDialog 노출. 실제 onFinalize 는 confirmFinalize() 에서 호출.
+    if (!selectedVersion || !onFinalize) return;
+    setIsConfirmOpen(true);
+  }
+
+  async function confirmFinalize() {
+    if (!selectedVersion || !onFinalize) return;
+    setIsConfirmOpen(false);
+    await onFinalize(selectedVersion.id);
   }
 
   // #13 fix — 매 렌더 새 객체/배열 생성 차단 (RoadmapResultClient 와 동일 패턴).
@@ -219,6 +250,19 @@ export function PBLResultClient({
                 versionNumber={selectedVersion.version_number}
               />
             )}
+            {/* Consultant 전용: DRAFT 선택 시 "최종 확정" 버튼 노출 (로드맵 패턴 동일) */}
+            {capabilities.canEdit && isDraft && selectedVersion && onFinalize && (
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={() => handleFinalize()}
+                data-testid="finalize-pbl-button"
+              >
+                <CheckCircle2 className="mr-1 size-4" aria-hidden="true" />
+                최종 확정
+              </Button>
+            )}
           </div>
           <DownloadButtonGroup
             onDownload={handleDownload}
@@ -280,6 +324,27 @@ export function PBLResultClient({
           isCompleted={isGenerationComplete}
         />
       )}
+
+      {/* 최종 확정 확인 AlertDialog (window.confirm 대체). 로드맵 패턴 동일. */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>PBL 보고서를 최종 확정하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              확정하면 프로젝트 상태가 &lsquo;최종 확정&rsquo;으로 바뀌고, 이전 확정본은 자동
+              아카이브됩니다.
+              <br />
+              확정 후에도 항목을 직접 수정할 수 있습니다(같은 버전에 반영).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmFinalize}>
+              최종 확정
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

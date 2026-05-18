@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
 import { EXPORT_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
-import { fromRoadmapVersionColumns } from '@/lib/services/roadmap';
+import { fromRoadmapVersionColumns, sanitizeRoadmapResult } from '@/lib/services/roadmap';
 import type { ProjectStatus, UserRole } from '@/types/database';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -68,12 +68,16 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
     }
 
     // DB legacy 컬럼(roadmap_matrix / pbl_course / courses) → 신규 4섹션 매핑
-    const mapped = fromRoadmapVersionColumns({
+    const mappedRaw = fromRoadmapVersionColumns({
       diagnosis_summary: roadmap.diagnosis_summary,
       roadmap_matrix: roadmap.roadmap_matrix,
       pbl_course: roadmap.pbl_course,
       courses: roadmap.courses,
     });
+
+    // 정책 이전 (2026-05-18) — 내보내기 직전 1회 sanitize.
+    // DRAFT 편집 중 sanitize 가 해제되어 DB 에 빈 행이 남을 수 있어 보호.
+    const mapped = sanitizeRoadmapResult(mappedRaw);
 
     const exportData: RoadmapExportData = {
       companyName: projectData.company_name,

@@ -43,22 +43,36 @@ vi.mock('./roadmap-validator', () => ({
 // ─── finalizeRoadmap 전용 Supabase 모킹 ───────────────────────────────────
 
 function createFinalizeMockSupabase() {
-  const singleFn = vi.fn();
+  // single() 응답 큐 — sanitize-select(roadmap row) → project select 순서로 소비.
+  // 사용자가 setRoadmapRowQueryResult / setProjectQueryResult 호출 순서대로 큐에 push.
+  const singleQueue: Array<{ data: unknown; error: unknown }> = [];
+  const singleFn = vi.fn(async () => {
+    if (singleQueue.length > 0) return singleQueue.shift()!;
+    return { data: null, error: null };
+  });
   const eqFn = vi.fn().mockReturnValue({ single: singleFn });
   const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
+  const updateEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
+  const updateFn = vi.fn().mockReturnValue({ eq: updateEqFn });
 
   const mockClient = {
     rpc: vi.fn(),
-    from: vi.fn().mockReturnValue({ select: selectFn }),
+    from: vi.fn().mockReturnValue({ select: selectFn, update: updateFn }),
   };
 
   return {
     mockClient,
+    updateFn,
     setRpcResult: (r: { data: unknown; error: unknown }) => {
       mockClient.rpc.mockResolvedValue(r);
     },
+    /** sanitize 단계의 roadmap row select 응답 */
+    setRoadmapRowQueryResult: (r: { data: unknown; error: unknown }) => {
+      singleQueue.push(r);
+    },
+    /** 알림 단계의 project 행 single 응답 */
     setProjectQueryResult: (r: { data: unknown; error: unknown }) => {
-      singleFn.mockResolvedValue(r);
+      singleQueue.push(r);
     },
   };
 }
@@ -77,7 +91,20 @@ describe('finalizeRoadmap', () => {
 
   afterEach(() => vi.clearAllMocks());
 
+  // sanitize-select 단계용 최소 row stub (정책 이전 후 매 finalize 호출이 select 수행)
+  const minimalRoadmapRow = {
+    id: 'rv',
+    project_id: 'p',
+    version_number: 1,
+    status: 'DRAFT',
+    diagnosis_summary: '',
+    roadmap_matrix: [],
+    pbl_course: {},
+    courses: [],
+  };
+
   it('RPC를 올바른 파라미터로 호출한다', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: true, project_id: 'proj-1', version_number: 2 },
       error: null,
@@ -96,6 +123,7 @@ describe('finalizeRoadmap', () => {
   });
 
   it('성공 시 감사로그를 기록한다', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: true, project_id: 'proj-1', version_number: 3 },
       error: null,
@@ -117,6 +145,7 @@ describe('finalizeRoadmap', () => {
   });
 
   it('성공 시 알림을 보낸다 (비테스트 모드)', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: true, project_id: 'proj-1', version_number: 1 },
       error: null,
@@ -137,6 +166,7 @@ describe('finalizeRoadmap', () => {
   });
 
   it('테스트 모드 프로젝트는 알림 미발송', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: true, project_id: 'proj-test', version_number: 1 },
       error: null,
@@ -152,6 +182,7 @@ describe('finalizeRoadmap', () => {
   });
 
   it('success: false → error 메시지로 throw', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: false, error: '배정된 컨설턴트만 최종 확정할 수 있습니다.' },
       error: null,
@@ -163,16 +194,19 @@ describe('finalizeRoadmap', () => {
   });
 
   it('RPC error → 기본 메시지로 throw', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({ data: null, error: { message: 'DB error' } });
     await expect(finalizeRoadmap('r', 'u')).rejects.toThrow('로드맵 확정에 실패했습니다.');
   });
 
   it('RPC data=null → 기본 메시지로 throw', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({ data: null, error: null });
     await expect(finalizeRoadmap('r', 'u')).rejects.toThrow('로드맵 확정에 실패했습니다.');
   });
 
   it('감사로그 실패 시에도 정상 완료 (throw하지 않음)', async () => {
+    mock.setRoadmapRowQueryResult({ data: minimalRoadmapRow, error: null });
     mock.setRpcResult({
       data: { success: true, project_id: 'proj-1', version_number: 1 },
       error: null,
@@ -184,6 +218,99 @@ describe('finalizeRoadmap', () => {
     vi.mocked(createAuditLog).mockRejectedValue(new Error('audit 실패'));
 
     await expect(finalizeRoadmap('r', 'u')).resolves.toBeUndefined();
+  });
+});
+
+// ─── finalizeRoadmap — sanitize 통합 (정책 이전) ─────────────────────────
+// 정책 이전 (2026-05-18): DRAFT 편집 중 sanitize 가 빈 행을 즉시 제거하는
+// 동작을 제거하고, FINAL 확정 시점에 1회 정리하도록 옮김.
+
+describe('finalizeRoadmap — sanitize 통합', () => {
+  beforeEach(() => {
+    vi.mocked(createAuditLog).mockResolvedValue(undefined);
+    vi.mocked(createNotificationForAdmins).mockResolvedValue(undefined);
+  });
+  afterEach(() => vi.clearAllMocks());
+
+  it('빈 행 포함 row → sanitize 후 정리된 결과를 update → RPC 호출', async () => {
+    const sharedMock = createMockSupabase();
+    vi.mocked(createAdminClient).mockReturnValue(sharedMock.client as never);
+
+    // 1. SELECT: 빈 행 1개 포함된 DRAFT row
+    sharedMock.addResult({
+      data: {
+        id: 'rv-final',
+        status: 'DRAFT',
+        project_id: 'p-1',
+        version_number: 1,
+        diagnosis_summary: '확정 전',
+        roadmap_matrix: [],
+        pbl_course: {
+          competencies: [
+            { name: '역량1', definition: '정의', knowledge: [], skills: [], attitudes: [] },
+            // 빈 competency
+            { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
+          ],
+          annual_plan: {
+            items: [
+              { competency_name: '역량1', course_name: '과정1', format: '집체', hours: 8, notes: '' },
+              // 빈 항목
+              { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
+            ],
+            usage_plan: '활용',
+          },
+        },
+        courses: [
+          {
+            course_name: '과정1',
+            format: '집체',
+            recommended_program: '',
+            goal: '',
+            main_content: '',
+            target_audience: '',
+            subjects: [{ name: '과목1', details: 'd', hours: 8 }],
+          },
+          // 빈 course_spec 카드
+          {
+            course_name: '',
+            format: '집체',
+            recommended_program: '',
+            goal: '',
+            main_content: '',
+            target_audience: '',
+            subjects: [],
+          },
+        ],
+      },
+      error: null,
+    });
+    // 2. UPDATE 결과
+    sharedMock.addResult({ data: null, error: null });
+    // 3. RPC: finalize_roadmap 성공
+    sharedMock.addRpcResult({
+      data: { success: true, project_id: 'p-1', version_number: 1 },
+      error: null,
+    });
+    // 4. 알림용 project 조회
+    sharedMock.addResult({
+      data: { company_name: 'X', is_test_mode: true },
+      error: null,
+    });
+
+    await finalizeRoadmap('rv-final', 'consultant-1');
+
+    // update 호출 — 빈 행 제거된 결과로 저장
+    const updateCall = sharedMock.chainable.update.mock.calls[0];
+    expect(updateCall).toBeDefined();
+    expect(updateCall[0].pbl_course.competencies).toHaveLength(1);
+    expect(updateCall[0].pbl_course.annual_plan.items).toHaveLength(1);
+    expect(updateCall[0].courses).toHaveLength(1);
+
+    // RPC 호출 검증
+    expect(sharedMock.client.rpc).toHaveBeenCalledWith('finalize_roadmap', {
+      p_roadmap_id: 'rv-final',
+      p_actor_user_id: 'consultant-1',
+    });
   });
 });
 
@@ -486,6 +613,115 @@ describe('updateRoadmapManually', () => {
           competencies: [newComp],
           training_structure: [newStruct],
         }),
+      );
+    });
+  });
+
+  // ─── 빈 행 보존 (DRAFT 편집 중 sanitize 해제) ─────────────────────────────
+  // 정책 이전 (2026-05-18): "행 추가" 직후 sanitize 가 빈 행을 즉시 제거해
+  // 클라이언트가 입력을 시작하기도 전에 행이 사라지는 문제 해결.
+  // sanitize 는 finalizeRoadmap / export 시점에만 수행하도록 옮김.
+
+  describe('빈 행 보존 (DRAFT 편집)', () => {
+    it('빈 annual_plan 항목 추가 시 DB 저장 시 그대로 보존', async () => {
+      const planWithEmpty: RoadmapAnnualPlan = {
+        items: [
+          ...legacyAnnualPlan.items,
+          { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
+        ],
+        usage_plan: '활용',
+      };
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { annual_plan: planWithEmpty });
+
+      expect(sharedMock.chainable.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pbl_course: expect.objectContaining({
+            annual_plan: expect.objectContaining({
+              items: expect.arrayContaining([
+                expect.objectContaining({ competency_name: '', course_name: '' }),
+              ]),
+            }),
+          }),
+        }),
+      );
+      const updateCall = sharedMock.chainable.update.mock.calls.find(
+        (c: unknown[]) => (c[0] as Record<string, { annual_plan?: unknown }>).pbl_course?.annual_plan,
+      );
+      expect(updateCall?.[0].pbl_course.annual_plan.items).toHaveLength(2);
+    });
+
+    it('빈 course_spec 카드 추가 시 DB 저장 시 그대로 보존', async () => {
+      const specsWithEmpty: RoadmapCourseSpec[] = [
+        legacyCourseSpec,
+        {
+          course_name: '',
+          format: '집체',
+          recommended_program: '',
+          goal: '',
+          main_content: '',
+          target_audience: '',
+          subjects: [],
+        },
+      ];
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { course_specs: specsWithEmpty });
+
+      const updateCall = sharedMock.chainable.update.mock.calls.find(
+        (c: unknown[]) => (c[0] as Record<string, unknown>).courses,
+      );
+      expect(updateCall?.[0].courses).toHaveLength(2);
+      expect(updateCall?.[0].courses[1]).toEqual(
+        expect.objectContaining({ course_name: '' }),
+      );
+    });
+
+    it('빈 subject(교과목) 추가 시 DB 저장 시 그대로 보존', async () => {
+      const specsWithEmptySubject: RoadmapCourseSpec[] = [
+        {
+          ...legacyCourseSpec,
+          subjects: [
+            ...legacyCourseSpec.subjects,
+            { name: '', details: '', hours: 0 },
+          ],
+        },
+      ];
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', {
+        course_specs: specsWithEmptySubject,
+      });
+
+      const updateCall = sharedMock.chainable.update.mock.calls.find(
+        (c: unknown[]) => (c[0] as Record<string, unknown>).courses,
+      );
+      expect(updateCall?.[0].courses[0].subjects).toHaveLength(2);
+      expect(updateCall?.[0].courses[0].subjects[1]).toEqual(
+        expect.objectContaining({ name: '', details: '' }),
+      );
+    });
+
+    it('빈 competency 추가 시 DB 저장 시 그대로 보존', async () => {
+      const compsWithEmpty: RoadmapCompetency[] = [
+        legacyCompetency,
+        { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
+      ];
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { competencies: compsWithEmpty });
+
+      const updateCall = sharedMock.chainable.update.mock.calls.find(
+        (c: unknown[]) => (c[0] as Record<string, { competencies?: unknown }>).pbl_course?.competencies,
+      );
+      expect(updateCall?.[0].pbl_course.competencies).toHaveLength(2);
+      expect(updateCall?.[0].pbl_course.competencies[1]).toEqual(
+        expect.objectContaining({ name: '', definition: '' }),
       );
     });
   });

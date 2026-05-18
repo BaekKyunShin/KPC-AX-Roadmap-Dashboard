@@ -18,9 +18,10 @@ import { InlineEditField } from './InlineEditField';
  * onChange 는 매 변경 시 전체 배열 통째로 전달한다 (delta 가 아님).
  * 호출부 Server Action 이 jsonb 컬럼을 통째로 교체하는 패턴과 일치.
  *
- * 빈 행 정리 정책:
+ * 빈 행 정리 정책 (2026-05-18 변경):
  * - 클라이언트는 빈 행을 그대로 보내 사용자가 입력 시작할 수 있게 한다.
- * - 서버 측 `sanitizeRoadmapResult()` 가 모든 필드 빈 행을 제거 (저장 시점).
+ * - DRAFT 편집 중에는 sanitize 미적용 — 빈 행이 DB에 보존되어 다음 세션에도 표시.
+ * - 서버 측 `sanitizeRoadmapResult()` 는 `finalizeRoadmap` / 내보내기 직전에만 1회 호출.
  *
  * 셀렉트(enum) 컬럼은 본 컴포넌트 범위 밖. `InlineSelectField` 를 별도 영역에서
  * 사용하거나, 호출부에서 행별 행을 SectionCard 등으로 전개해 처리.

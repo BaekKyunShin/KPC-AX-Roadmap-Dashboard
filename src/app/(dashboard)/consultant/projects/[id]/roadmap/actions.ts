@@ -11,6 +11,8 @@ import {
   fetchRoadmapVersion as fetchRoadmapVersionService,
   updateRoadmapManually,
   fromRoadmapVersionColumns,
+  toRoadmapVersionColumns,
+  sanitizeRoadmapResult,
   type RoadmapCompetency,
   type RoadmapOutcomeSummary,
   type RoadmapTrainingStructureItem,
@@ -418,6 +420,25 @@ export async function exportRoadmapAsHwpxAction(
       return { success: false, error: '로드맵을 찾을 수 없습니다.' };
     }
 
+    // 정책 이전 (2026-05-18) — 내보내기 직전 1회 sanitize.
+    // DRAFT 편집 중 sanitize 가 해제되어 DB 에 빈 행이 남을 수 있어 보호.
+    const sanitizedResult = sanitizeRoadmapResult(
+      fromRoadmapVersionColumns({
+        diagnosis_summary: roadmapRow.diagnosis_summary as string | null | undefined,
+        roadmap_matrix: roadmapRow.roadmap_matrix,
+        pbl_course: roadmapRow.pbl_course,
+        courses: roadmapRow.courses,
+      }),
+    );
+    const sanitizedCols = toRoadmapVersionColumns(sanitizedResult);
+    const sanitizedRoadmapRow = {
+      ...roadmapRow,
+      diagnosis_summary: sanitizedCols.diagnosis_summary,
+      roadmap_matrix: sanitizedCols.roadmap_matrix,
+      pbl_course: sanitizedCols.pbl_course,
+      courses: sanitizedCols.courses,
+    };
+
     const { data: projectRow } = await supabase
       .from('projects')
       .select('id, company_name')
@@ -436,7 +457,7 @@ export async function exportRoadmapAsHwpxAction(
     // 5) payload 변환 + Python 함수 호출
     const payload = buildRoadmapHwpxPayload({
       // TypeScript 타입 호환: roadmapRow는 raw DB row이므로 RoadmapVersion으로 단언
-      roadmap: roadmapRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['roadmap'],
+      roadmap: sanitizedRoadmapRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['roadmap'],
       project: projectRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['project'],
       interview: (interviewRow ?? null) as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['interview'],
     });
