@@ -389,6 +389,72 @@ describe('editRoadmapV2', () => {
     });
     expect(call[2].competencies).toHaveLength(1);
   });
+
+  // 회귀 가드 (2026-05-18) — Ⅲ-2 "행 추가" / Ⅲ-3 "행 추가" 가 동작하지 않던 버그.
+  // 원인: extractRoadmapFieldsFromPayload 가 training_structure 와 annual_plan 을
+  // 빠뜨려, EditableTable.onChange → onEdit({training_structure: [...]}) 가 호출되어도
+  // updateRoadmapManually 에 전달되지 않고 사라졌다.
+  it('Ⅲ-2 training_structure patch → updateRoadmapManually 에 그대로 전달', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
+      error: null,
+    });
+    vi.mocked(updateRoadmapManually).mockResolvedValue({
+      success: true,
+      validation: { is_valid: true, errors: [] },
+    } as never);
+
+    const newStructure = [
+      {
+        competency_name: '역량1',
+        level: 'BEGINNER' as const,
+        content: '내용',
+        target_audience: '대상',
+        method: '집체',
+        goal: '목표',
+      },
+    ];
+    const r = await editRoadmapV2(VERSION_ID, { training_structure: newStructure });
+
+    expect(r.success).toBe(true);
+    const call = vi.mocked(updateRoadmapManually).mock.calls[0];
+    expect(call[2]).toHaveProperty('training_structure');
+    expect(call[2].training_structure).toEqual(newStructure);
+  });
+
+  it('Ⅲ-3 annual_plan patch → updateRoadmapManually 에 그대로 전달', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
+      error: null,
+    });
+    vi.mocked(updateRoadmapManually).mockResolvedValue({
+      success: true,
+      validation: { is_valid: true, errors: [] },
+    } as never);
+
+    const newAnnualPlan = {
+      items: [
+        {
+          competency_name: '역량1',
+          course_name: '과정1',
+          format: '집체',
+          hours: 16,
+          notes: '',
+        },
+      ],
+      usage_plan: '활용',
+    };
+    const r = await editRoadmapV2(VERSION_ID, { annual_plan: newAnnualPlan });
+
+    expect(r.success).toBe(true);
+    const call = vi.mocked(updateRoadmapManually).mock.calls[0];
+    expect(call[2]).toHaveProperty('annual_plan');
+    expect(call[2].annual_plan).toEqual(newAnnualPlan);
+  });
 });
 
 // ============================================================================

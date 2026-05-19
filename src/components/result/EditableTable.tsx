@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { showSuccessToast } from '@/lib/utils/toast';
 import { InlineEditField } from './InlineEditField';
 
 /**
@@ -18,9 +19,10 @@ import { InlineEditField } from './InlineEditField';
  * onChange 는 매 변경 시 전체 배열 통째로 전달한다 (delta 가 아님).
  * 호출부 Server Action 이 jsonb 컬럼을 통째로 교체하는 패턴과 일치.
  *
- * 빈 행 정리 정책:
+ * 빈 행 정리 정책 (2026-05-18 변경):
  * - 클라이언트는 빈 행을 그대로 보내 사용자가 입력 시작할 수 있게 한다.
- * - 서버 측 `sanitizeRoadmapResult()` 가 모든 필드 빈 행을 제거 (저장 시점).
+ * - DRAFT 편집 중에는 sanitize 미적용 — 빈 행이 DB에 보존되어 다음 세션에도 표시.
+ * - 서버 측 `sanitizeRoadmapResult()` 는 `finalizeRoadmap` / 내보내기 직전에만 1회 호출.
  *
  * 셀렉트(enum) 컬럼은 본 컴포넌트 범위 밖. `InlineSelectField` 를 별도 영역에서
  * 사용하거나, 호출부에서 행별 행을 SectionCard 등으로 전개해 처리.
@@ -102,10 +104,13 @@ export function EditableTable<T extends Record<string, unknown>>({
     setIsMutating(true);
     try {
       await onChange([...rows, emptyRow()]);
+      // 새 빈 행은 placeholder 만 표시되어 시각적 변화가 작음. 사용자가 추가
+      // 완료를 명확히 인식할 수 있도록 토스트로 보조 피드백 제공.
+      showSuccessToast(`${addLabel} 완료`, '표 하단에 새 행이 추가됐습니다.');
     } finally {
       setIsMutating(false);
     }
-  }, [readOnly, maxRows, rows, emptyRow, onChange]);
+  }, [readOnly, maxRows, rows, emptyRow, onChange, addLabel]);
 
   const removeRow = useCallback(
     async (index: number) => {

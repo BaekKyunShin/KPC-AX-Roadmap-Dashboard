@@ -623,3 +623,156 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
   });
 });
 
+// PBL 결과 페이지 "최종 확정" 버튼 — 로드맵 RoadmapResultClient 패턴 이식.
+// DRAFT 상태 + CONSULTANT + onFinalize 제공 시에만 노출. 클릭 → AlertDialog → 확정.
+describe('PBLResultClient — 최종 확정 버튼', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('CONSULTANT + DRAFT + onFinalize 제공 시 "최종 확정" 버튼 노출', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('finalize-pbl-button')).toBeInTheDocument();
+  });
+
+  it('CONSULTANT + FINAL 상태 → 최종 확정 버튼 미노출', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'FINAL' })]}
+        selectedVersion={makeVersion({ status: 'FINAL' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
+  });
+
+  it('CONSULTANT + ARCHIVED 상태 → 최종 확정 버튼 미노출', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'ARCHIVED' })]}
+        selectedVersion={makeVersion({ status: 'ARCHIVED' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
+  });
+
+  it('onFinalize 미제공 시 최종 확정 버튼 미노출 (옵셔널 prop 안전성)', () => {
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
+  });
+
+  it('OPS 역할 + DRAFT → 최종 확정 버튼 미노출 (canEdit=false)', () => {
+    render(
+      <PBLResultClient
+        role="OPS"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onFinalize={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
+  });
+
+  it('최종 확정 버튼 클릭 → AlertDialog 노출 → "최종 확정" Action 클릭 시 onFinalize(versionId) 호출', async () => {
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    const version = makeVersion({ status: 'DRAFT', id: 'pbl-99' });
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[version]}
+        selectedVersion={version}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={onFinalize}
+        onDownload={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('finalize-pbl-button'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.textContent).toMatch(/최종 확정/);
+
+    await act(async () => {
+      // AlertDialog 안 "최종 확정" 버튼 (외부 트리거 testid 와 구분되는 dialog 내부 액션)
+      fireEvent.click(screen.getByRole('button', { name: '최종 확정' }));
+    });
+
+    expect(onFinalize).toHaveBeenCalledWith('pbl-99');
+  });
+
+  it('최종 확정 버튼 클릭 → "취소" 클릭 시 onFinalize 미호출', async () => {
+    const onFinalize = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion({ status: 'DRAFT' })]}
+        selectedVersion={makeVersion({ status: 'DRAFT' })}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onFinalize={onFinalize}
+        onDownload={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('finalize-pbl-button'));
+    await screen.findByRole('alertdialog');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    });
+
+    expect(onFinalize).not.toHaveBeenCalled();
+  });
+});
+

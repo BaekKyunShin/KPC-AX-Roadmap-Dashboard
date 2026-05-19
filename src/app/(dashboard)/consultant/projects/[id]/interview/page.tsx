@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import {
   fetchPBLInterviewV2,
   fetchRoadmapInterviewV2,
@@ -18,11 +18,12 @@ import { PBLInterviewClient } from './_components/pbl/PBLInterviewClient';
 const HRD_BUCKET = 'interview-attachments';
 
 /**
- * Client 에 전달하기 전에 `hrdReportPdf.url` 을 signed URL 로 교체한다.
+ * Client 에 전달하기 전에 `hrdReportPdf.url` 을 새 signed URL 로 정규화한다.
  *
- * 현재 DB 에는 `storage_path` 가 `url` 자리에 담겨 저장되는 경로가 있으므로
- * (StepHrdReportPdf 가 storage_path 를 url 자리에 둔 채 저장함), `url` 이
- * `http` 로 시작하지 않으면 storage_path 로 간주하고 signed URL 을 생성한다.
+ * 공통 헬퍼 `resolveHrdSignedUrl` 위임 — storage_path 든 만료된 signed URL 이든
+ * 항상 새 URL 발급. 2026-05-18 회귀 수정: 기존 구현이 `url.startsWith('http')`
+ * 시 재발급을 건너뛰어 만료된 JWT 가 iframe 에서 InvalidJWT JSON 으로 노출되는
+ * 버그가 있었다.
  */
 async function hydrateHrdReportSignedUrl(
   initial: Record<string, unknown>,
@@ -39,25 +40,16 @@ async function hydrateHrdReportSignedUrl(
     | undefined;
 
   if (!hrd || !hrd.url) return initial;
-  if (hrd.url.startsWith('http')) return initial;
+  const fresh = await resolveHrdSignedUrl(hrd.url, HRD_BUCKET);
+  if (!fresh || fresh === hrd.url) return initial;
 
-  try {
-    const supabase = createAdminClient();
-    const { data, error } = await supabase.storage
-      .from(HRD_BUCKET)
-      .createSignedUrl(hrd.url, 3600);
-    if (error || !data) return initial;
-
-    return {
-      ...initial,
-      hrdReportPdf: {
-        ...hrd,
-        url: data.signedUrl,
-      },
-    };
-  } catch {
-    return initial;
-  }
+  return {
+    ...initial,
+    hrdReportPdf: {
+      ...hrd,
+      url: fresh,
+    },
+  };
 }
 
 export default async function InterviewPage({

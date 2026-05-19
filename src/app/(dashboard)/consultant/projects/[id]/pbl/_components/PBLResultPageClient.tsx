@@ -15,6 +15,7 @@ import { VersionSwitchOverlay } from '@/components/common/VersionSwitchOverlay';
 
 import {
   cancelPBLGeneration,
+  confirmFinalPBLV2,
   createPBLV2,
   editPBLV2,
   exportPBLHwpxV2,
@@ -130,6 +131,18 @@ export default function PBLResultPageClient({
     }
   }
 
+  async function handleFinalize(versionId: string) {
+    const result = await confirmFinalPBLV2(versionId);
+    const ok = await handleSimpleActionResult(result, {
+      successMessage: { title: 'PBL이 최종 확정되었습니다.' },
+      errorTitle: '최종 확정 실패',
+      errorFallback: 'PBL 최종 확정에 실패했습니다.',
+    });
+    if (ok) {
+      await refreshPageData(versionId);
+    }
+  }
+
   async function handleDownload(type: DownloadType) {
     if (!selectedVersion) return;
     if (type === 'PDF') {
@@ -157,6 +170,7 @@ export default function PBLResultPageClient({
         onSelectVersion={handleSelectVersion}
         onEdit={handleEdit}
         onGenerate={handleGenerate}
+        onFinalize={handleFinalize}
         onDownload={handleDownload}
         isGenerating={isGenerating}
         onCancelGenerate={handleCancelGenerate}
