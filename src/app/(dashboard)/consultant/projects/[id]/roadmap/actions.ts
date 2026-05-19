@@ -593,7 +593,9 @@ function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
   ncs_used?: boolean;
   ncs_methodology?: string;
   ncs_derivation_method?: string;
+  training_structure?: RoadmapTrainingStructureItem[];
   training_structure_method?: string;
+  annual_plan?: RoadmapAnnualPlan;
   course_specs?: RoadmapCourseSpec[];
 } {
   const out: {
@@ -602,7 +604,9 @@ function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
     ncs_used?: boolean;
     ncs_methodology?: string;
     ncs_derivation_method?: string;
+    training_structure?: RoadmapTrainingStructureItem[];
     training_structure_method?: string;
+    annual_plan?: RoadmapAnnualPlan;
     course_specs?: RoadmapCourseSpec[];
   } = {};
   if (patch.setup_necessity !== undefined) out.setup_necessity = patch.setup_necessity;
@@ -612,9 +616,13 @@ function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
   if (patch.ncs_derivation_method !== undefined) {
     out.ncs_derivation_method = patch.ncs_derivation_method;
   }
+  // Ⅲ-2 훈련체계도 — 누락 시 EditableTable.onChange 가 전달한 행이 사라진다 (2026-05-18 회귀 수정)
+  if (patch.training_structure !== undefined) out.training_structure = patch.training_structure;
   if (patch.training_structure_method !== undefined) {
     out.training_structure_method = patch.training_structure_method;
   }
+  // Ⅲ-3 연간 훈련계획 — 동일 (2026-05-18 회귀 수정)
+  if (patch.annual_plan !== undefined) out.annual_plan = patch.annual_plan;
   if (patch.course_specs !== undefined) out.course_specs = patch.course_specs;
   return out;
 }
