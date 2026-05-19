@@ -102,6 +102,7 @@ PBL 보고서에서 가장 중요한 섹션. **각 단원(unit_name)별로 핵�
 - 각 행: unit_name(업무/단원명), detail(세부 내용), training_hours(훈련시간), instructor_hours({ external, internal }).
 - **필수 제약: instructor_hours.external + instructor_hours.internal === training_hours** (양식 가이드 #9). 합계 불일치 시 검증 오류.
 - total_sum_hours = training_contents의 training_hours 합계와 정확히 일치해야 한다.
+- **total_hours 권장 상한: 30시간 이내**. 공단 훈련코치 강사료 지원 한도가 30시간이므로 AI 초안은 가급적 30시간 이내로 구성하라. 단, 인터뷰의 "적정 훈련시간" 입력이 30시간을 초과하거나 기업이 제시한 문제·프로젝트의 범위가 30시간 안에 담기 어려우면 그에 맞춰 자연스럽게 확장하라(강제 상한 아님).
 - analysis_method: "LLM 기반 데이터 분석, RAG 등" 형식으로 기술하라.
 
 **🔑 detail 필드 작성 규칙 (커리큘럼)**
@@ -240,7 +241,7 @@ Label Studio 로 자사 이미지 200장 결함 유형별 라벨링 실습
       },
       "subject_profile": {
         "course_name": "string",
-        "total_hours": "integer > 0",
+        "total_hours": "integer > 0 (권장 30시간 이내, 적정 훈련시간이 초과하면 그에 맞춰 확장)",
         "training_goals": ["string (bullet)"],
         "ai_tools": ["string (도구명)"],
         "utilized_data": "string",
