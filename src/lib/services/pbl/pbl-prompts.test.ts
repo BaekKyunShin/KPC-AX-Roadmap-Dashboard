@@ -35,6 +35,17 @@ describe('buildPBLSystemPrompt', () => {
     const prompt = buildPBLSystemPrompt();
     expect(prompt).toContain('예정');
   });
+
+  // 공단 훈련코치 강사료 지원 상한이 30시간이므로, AI 초안은 가급적 30시간 이내로
+  // 구성하도록 권고한다. 단, 기업이 제시한 적정 훈련시간이 30시간을 초과하면 그에
+  // 맞춰 확장한다. 강제 상한은 두지 않고 권고만 한다.
+  it('total_hours 권장 상한 30시간 가이드가 명시된다', () => {
+    const prompt = buildPBLSystemPrompt();
+    expect(prompt).toContain('30시간');
+    const hasRecommendationWord =
+      prompt.includes('권장') || prompt.includes('권고');
+    expect(hasRecommendationWord).toBe(true);
+  });
 });
 
 describe('buildPBLUserPrompt', () => {
