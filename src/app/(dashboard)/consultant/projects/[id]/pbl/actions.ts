@@ -9,6 +9,7 @@ import {
 } from '@/lib/actions/auth-helpers';
 import { PBL_ELIGIBLE_STATUSES, validateStatusTransition } from '@/lib/constants/status';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
@@ -749,29 +750,23 @@ export async function exportPBLAsHwpxAction(
 const HRD_BUCKET_PBL_V2 = 'interview-attachments';
 
 /**
- * PBL 인터뷰 camelCase snapshot 의 `hrdReportPdf.url` 이 storage_path 인 경우
- * 1시간 signed URL 로 교체. 로드맵 쪽 동명 헬퍼와 동일한 패턴.
+ * PBL 인터뷰 hrdReportPdf url 을 항상 새 signed URL 로 정규화.
+ *
+ * 공통 헬퍼 `resolveHrdSignedUrl` 위임 — 회귀 수정 (2026-05-18):
+ * 이전 구현은 `url.startsWith('http')` 면 재발급을 건너뛰어 만료된 JWT 로
+ * iframe.src 에 InvalidJWT JSON 이 노출되는 버그가 있었다.
  */
 async function hydratePBLHrdSignedUrl(
   interview: Partial<PBLInterviewStrict>,
 ): Promise<Partial<PBLInterviewStrict>> {
   const hrd = interview.hrdReportPdf;
   if (!hrd || !hrd.url) return interview;
-  if (hrd.url.startsWith('http')) return interview;
-
-  try {
-    const supabase = createAdminClient();
-    const { data, error } = await supabase.storage
-      .from(HRD_BUCKET_PBL_V2)
-      .createSignedUrl(hrd.url, 3600);
-    if (error || !data) return interview;
-    return {
-      ...interview,
-      hrdReportPdf: { ...hrd, url: data.signedUrl },
-    };
-  } catch {
-    return interview;
-  }
+  const fresh = await resolveHrdSignedUrl(hrd.url, HRD_BUCKET_PBL_V2);
+  if (!fresh || fresh === hrd.url) return interview;
+  return {
+    ...interview,
+    hrdReportPdf: { ...hrd, url: fresh },
+  };
 }
 
 /**

@@ -26,6 +26,7 @@ import { createRoadmapInputSchema, editRoadmapUpdatesSchema } from '@/lib/schema
 import { buildRoadmapHwpxPayload, generateRoadmapHwpx } from '@/lib/services/export/hwpx';
 import { createAuditLog } from '@/lib/services/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import { fetchRoadmapInterviewV2, saveRoadmapInterviewV2 } from '../interview/actions';
 import { createClient } from '@/lib/supabase/server';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
@@ -547,32 +548,23 @@ export async function exportRoadmapAsHwpxAction(
 const HRD_BUCKET_V2 = 'interview-attachments';
 
 /**
- * HRD PDF storage_path 를 1시간 signed URL 로 교체한다.
+ * HRD PDF url 을 항상 새 signed URL 로 정규화 (storage_path / 만료 signed URL 모두 처리).
  *
- * 인터뷰 V2 에서 `hrdReportPdf.url` 에는 storage_path 가 저장되어 있으므로
- * (StepHrdReportPdf 의 저장 경로), URL 이 http 로 시작하지 않으면
- * `createSignedUrl` 로 변환해 Client 가 iframe 렌더에 바로 쓸 수 있게 한다.
+ * 공통 헬퍼 `resolveHrdSignedUrl` 위임 — 회귀 수정 (2026-05-18):
+ * 이전 구현은 `url.startsWith('http')` 면 재발급을 건너뛰어 만료된 JWT 로
+ * iframe.src 에 InvalidJWT JSON 이 노출되는 버그가 있었다.
  */
 async function hydrateRoadmapHrdSignedUrl(
   interview: Partial<RoadmapInterviewStrict>,
 ): Promise<Partial<RoadmapInterviewStrict>> {
   const hrd = interview.hrdReportPdf;
   if (!hrd || !hrd.url) return interview;
-  if (hrd.url.startsWith('http')) return interview;
-
-  try {
-    const supabase = createAdminClient();
-    const { data, error } = await supabase.storage
-      .from(HRD_BUCKET_V2)
-      .createSignedUrl(hrd.url, 3600);
-    if (error || !data) return interview;
-    return {
-      ...interview,
-      hrdReportPdf: { ...hrd, url: data.signedUrl },
-    };
-  } catch {
-    return interview;
-  }
+  const fresh = await resolveHrdSignedUrl(hrd.url, HRD_BUCKET_V2);
+  if (!fresh || fresh === hrd.url) return interview;
+  return {
+    ...interview,
+    hrdReportPdf: { ...hrd, url: fresh },
+  };
 }
 
 /**
