@@ -202,6 +202,7 @@ export default function RegisterPage() {
         phone: data.phone,
       });
       setStep(2);
+      scrollToPageTop();
       setIsLoading(false);
     } catch {
       setServerError('회원가입에 실패했습니다.');

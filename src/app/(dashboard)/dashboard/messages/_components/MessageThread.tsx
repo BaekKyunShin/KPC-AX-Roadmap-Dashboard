@@ -5,7 +5,7 @@ import { ArrowLeft, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, isNearBottom } from '@/lib/utils';
 import { ROLE_LABELS, ROLE_BADGE_STYLES, ROLE_AVATAR_COLORS, MESSAGE_MAX_LENGTH, getInitials } from '@/lib/constants/message';
 import type { ConversationWithPreview, Message } from '@/types/database';
 
@@ -18,6 +18,12 @@ const SCROLL_TOP_THRESHOLD_PX = 100;
 
 /** textarea 자동 높이 조절 최대값 (px) */
 const TEXTAREA_MAX_HEIGHT_PX = 120;
+
+/** 새 메시지 자동 스크롤 가드 임계값 (px) — H-2 */
+const APPEND_AUTOSCROLL_THRESHOLD_PX = 150;
+
+/** 하단 진입 판정 임계값 (px) — unread 카운트 리셋용 */
+const NEAR_BOTTOM_RESET_THRESHOLD_PX = 50;
 
 // =============================================================================
 // Types
@@ -94,6 +100,8 @@ export default function MessageThread({
   const { other_user } = conversation;
   const [inputValue, setInputValue] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // H-2: 위로 스크롤한 동안 도착한 상대 메시지 개수 (자동 하단 스크롤 가드와 함께 동작)
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -141,19 +149,52 @@ export default function MessageThread({
     const currentFirstId = messages[0]?.id ?? null;
     const currentLastId = messages[messages.length - 1]?.id ?? null;
 
-    // append (새 메시지) → 부드러운 하단 스크롤
+    // append (새 메시지) → 가드 동반 하단 스크롤 (H-2)
+    // - 본인이 보낸 메시지이거나 사용자가 하단 근처이면 자동 스크롤.
+    // - 사용자가 위로 스크롤해 과거 메시지를 읽고 있고 상대가 메시지를 보내면
+    //   자동 스크롤하지 않고 unreadCount 만 증가 (floating 배지로 안내).
     if (!prevLoadingRef.current
         && currentFirstId === prevFirstMsgIdRef.current
         && currentLastId !== prevLastMsgIdRef.current) {
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      });
+      const container = scrollContainerRef.current;
+      const lastSenderId = messages[messages.length - 1]?.sender_id;
+      const isFromOther = lastSenderId === other_user.id;
+      const userAwayFromBottom =
+        container !== null && !isNearBottom(container, APPEND_AUTOSCROLL_THRESHOLD_PX);
+
+      if (isFromOther && userAwayFromBottom) {
+        // 새로 도착한 상대 메시지 개수만 카운트에 더함 (본인 발신 메시지는 제외)
+        const prevLastIdx = messages.findIndex((m) => m.id === prevLastMsgIdRef.current);
+        const newOtherMsgs = messages
+          .slice(prevLastIdx + 1)
+          .filter((m) => m.sender_id === other_user.id).length;
+        if (newOtherMsgs > 0) {
+          setUnreadCount((c) => c + newOtherMsgs);
+        }
+      } else {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
     }
 
     prevLoadingRef.current = false;
     prevFirstMsgIdRef.current = currentFirstId;
     prevLastMsgIdRef.current = currentLastId;
-  }, [messages, isLoading]);
+  }, [messages, isLoading, other_user.id]);
+
+  // 사용자가 다시 하단 근처로 스크롤하면 unread 카운트 리셋 (H-2)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handle = () => {
+      if (isNearBottom(container, NEAR_BOTTOM_RESET_THRESHOLD_PX)) {
+        setUnreadCount(0);
+      }
+    };
+    container.addEventListener('scroll', handle, { passive: true });
+    return () => container.removeEventListener('scroll', handle);
+  }, []);
 
   // 스크롤 이벤트: 상단 근처(100px 이내)에서 이전 메시지 로드
   // isLoading 가드: 초기 로드 중에는 scrollTop=0이므로 onLoadMore 잘못 호출 방지
@@ -231,8 +272,9 @@ export default function MessageThread({
         </div>
       </div>
 
-      {/* 메시지 영역 */}
-      <div ref={scrollContainerRef} data-testid="message-thread-area" className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
+      {/* 메시지 영역 + floating unread 배지 wrapper (H-2) */}
+      <div className="flex-1 relative min-h-0">
+        <div ref={scrollContainerRef} data-testid="message-thread-area" className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50">
         {isLoading ? (
           <MessagesSkeleton />
         ) : messages.length === 0 ? (
@@ -270,6 +312,23 @@ export default function MessageThread({
             })}
             <div ref={messagesEndRef} />
           </>
+        )}
+        </div>
+
+        {/* 새 메시지 floating 배지 (H-2) — 사용자가 위로 스크롤한 동안 도착한 상대 메시지를 안내 */}
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            data-testid="new-messages-badge"
+            onClick={() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              setUnreadCount(0);
+            }}
+            aria-label={`새 메시지 ${unreadCount}개 - 클릭하여 최신 메시지 보기`}
+            className="absolute bottom-4 right-4 z-10 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
+          >
+            새 메시지 {unreadCount}개 ↓
+          </button>
         )}
       </div>
 

@@ -11,8 +11,8 @@
 | PR | 우선순위 | 범위 | 상태 | 비고 |
 | --- | --- | --- | --- | --- |
 | **PR1** | P0 | C-1 (`{ scroll: false }` 23건) + C-2 (`location.reload` → `router.refresh` 1건) | **✅ 완료 (2026-05-21)** | 보고서 18건 + 동일 패턴 추가 발견 5건. 헬퍼 함수 단위 19곳 패치. E2E 17개 신규 추가 (`e2e/scroll-ux/`). |
-| PR2 | P1 | H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock) | 대기 | — |
-| PR3 | P2 | H-2 (채팅 append 가드) + M-1·M-2 | 대기 | — |
+| **PR2** | P1 | H-2 (채팅 append 가드) + H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock) | **✅ 완료 (2026-05-21)** | `scroll.ts` 에 `isNearBottom` 신규. `MessageThread` 에 unread 배지 도입. 3 auth 페이지 `scrollToPageTop()` 호출. `Navigation` body lock useEffect. E2E 3개 + 단위 테스트 보강. |
+| PR3 | P2 | M-1 (인터뷰 깜빡임) + M-2 (RoadmapResult 타이밍) | 대기 | H-2 는 PR2 로 흡수 |
 | PR4 | P3 (선택) | M-4·M-5·L-2 | 대기 | — |
 
 ---
@@ -165,7 +165,7 @@
 
 ---
 
-### H-2. 메시지 채팅창 — 새 메시지 append 시 사용자 스크롤 위치 미고려
+### H-2. 메시지 채팅창 — 새 메시지 append 시 사용자 스크롤 위치 미고려 ✅ 해결 (PR2, 2026-05-21)
 
 **위치:** [src/app/(dashboard)/dashboard/messages/_components/MessageThread.tsx:133-156](src/app/(dashboard)/dashboard/messages/_components/MessageThread.tsx#L133-L156)
 
@@ -185,7 +185,7 @@
 
 ---
 
-### H-3. 인증 폼 상태 전환 시 스크롤 리셋 누락
+### H-3. 인증 폼 상태 전환 시 스크롤 리셋 누락 ✅ 해결 (PR2, 2026-05-21)
 
 **위치:**
 
@@ -211,7 +211,7 @@
 
 ---
 
-### H-4. 모바일 햄버거 메뉴 — body scroll lock 부재
+### H-4. 모바일 햄버거 메뉴 — body scroll lock 부재 ✅ 해결 (PR2, 2026-05-21)
 
 **위치:** [src/components/Navigation.tsx](src/components/Navigation.tsx) (`isMobileMenuOpen` state 변경 영역)
 
@@ -504,9 +504,9 @@ useEffect(() => {
 |---|---|---|---|
 | ~~**P0**~~ ✅ | C-1: 같은 페이지 쿼리 변경 **18건**에 `{ scroll: false }` 일괄 추가 — **PR1 (2026-05-21) 완료**. 실제 패치: 헬퍼 함수 단위 18곳 + 동일 패턴 추가 발견 5곳 = 19곳. E2E 17개 신규. | 40분 | **매우 큼** — 사용자 호소 직접 해결 |
 | ~~**P0**~~ ✅ | C-2: `window.location.reload()` → `router.refresh()` 1건 — **PR1 (2026-05-21) 완료**. | 5분 | 작음 (드물게 발생) |
-| **P1** | H-4: 모바일 햄버거 메뉴 body scroll lock | 10분 | 모바일에서 큼 |
-| **P1** | H-3: 회원가입 Step1 → Step2 / 비밀번호 페이지 popstate 후 scroll reset | 20분 | 중간 |
-| **P2** | H-2: 메시지 채팅 — append 시 사용자 위치 고려 가드 추가 | 1시간 | 일부 사용자에게 큼 |
+| ~~**P1**~~ | ~~H-4: 모바일 햄버거 메뉴 body scroll lock~~ | ~~10분~~ | ✅ 해결 (PR2, 2026-05-21) |
+| ~~**P1**~~ | ~~H-3: 회원가입 Step1 → Step2 / 비밀번호 페이지 popstate 후 scroll reset~~ | ~~20분~~ | ✅ 해결 (PR2, 2026-05-21) |
+| ~~**P2**~~ | ~~H-2: 메시지 채팅 — append 시 사용자 위치 고려 가드 추가~~ | ~~1시간~~ | ✅ 해결 (PR2, 2026-05-21) |
 | **P2** | M-1: 인터뷰 제출 깜빡임 (토스트 후 지연 또는 로딩 오버레이) | 30분 | 중간 |
 | **P2** | M-2: RoadmapResultClient 자동 스크롤 타이밍 (`requestAnimationFrame`) | 15분 | 작음 (느린 기기에서만 두드러짐) |
 | **P3** | M-4: UseRoadmapDialog 토스트 → 라우팅 지연 | 10분 | 작음 |

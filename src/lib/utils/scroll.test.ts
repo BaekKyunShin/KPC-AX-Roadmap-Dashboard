@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { RefObject } from 'react';
-import { scrollToPageTop, scrollToElement, scrollToFirstError } from './scroll';
+import { scrollToPageTop, scrollToElement, scrollToFirstError, isNearBottom } from './scroll';
 
 // ─── DOM 모킹 ─────────────────────────────────────────────────────────────
 
@@ -232,5 +232,43 @@ describe('scrollToFirstError', () => {
     vi.advanceTimersByTime(100);
 
     expect(mockTextarea.focus).toHaveBeenCalledOnce();
+  });
+});
+
+// ─── isNearBottom ─────────────────────────────────────────────────────────
+
+describe('isNearBottom', () => {
+  function makeEl(scrollHeight: number, clientHeight: number, scrollTop: number): HTMLElement {
+    return { scrollHeight, clientHeight, scrollTop } as HTMLElement;
+  }
+
+  it('컨테이너가 정확히 하단이면 true (남은 거리 0 < 임계 150)', () => {
+    const el = makeEl(1000, 400, 600); // 1000 - 600 - 400 = 0
+    expect(isNearBottom(el)).toBe(true);
+  });
+
+  it('컨테이너가 위로 200px 떨어져 있으면 false (기본 임계 150)', () => {
+    const el = makeEl(1000, 400, 400); // 1000 - 400 - 400 = 200
+    expect(isNearBottom(el)).toBe(false);
+  });
+
+  it('컨테이너가 100px 떨어져 있으면 true (100 < 150)', () => {
+    const el = makeEl(1000, 400, 500); // 1000 - 500 - 400 = 100
+    expect(isNearBottom(el)).toBe(true);
+  });
+
+  it('임계값을 50 으로 낮추면 100px 떨어진 경우 false', () => {
+    const el = makeEl(1000, 400, 500); // remaining = 100
+    expect(isNearBottom(el, 50)).toBe(false);
+  });
+
+  it('임계값을 50, 거리 30 이면 true', () => {
+    const el = makeEl(1000, 400, 570); // 1000 - 570 - 400 = 30
+    expect(isNearBottom(el, 50)).toBe(true);
+  });
+
+  it('정확히 임계값과 같은 거리는 false (strict less-than)', () => {
+    const el = makeEl(1000, 400, 450); // 1000 - 450 - 400 = 150
+    expect(isNearBottom(el, 150)).toBe(false);
   });
 });

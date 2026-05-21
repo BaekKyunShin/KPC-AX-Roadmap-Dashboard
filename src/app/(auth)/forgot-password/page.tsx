@@ -4,7 +4,7 @@ import { Suspense, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ function ForgotPasswordContent() {
         url.searchParams.set('sent', '1');
         window.history.pushState({}, '', url.toString());
         window.dispatchEvent(new PopStateEvent('popstate'));
+        scrollToPageTop();
       } catch {
         setError('요청 처리 중 오류가 발생했습니다.');
         showErrorToast('재설정 메일 요청 실패', TOAST_ERROR.NETWORK);
@@ -69,6 +70,7 @@ function ForgotPasswordContent() {
       url.searchParams.delete('sent');
       window.history.pushState({}, '', url.toString());
       window.dispatchEvent(new PopStateEvent('popstate'));
+      scrollToPageTop();
     }
   }
 
