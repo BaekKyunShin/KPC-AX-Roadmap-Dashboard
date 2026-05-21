@@ -211,6 +211,8 @@ button:not(:disabled),
 /* Smooth scroll for anchor links */
 html {
   scroll-behavior: smooth;
+  /* Navigation sticky 헤더(h-16) 만큼 앵커 점프·scrollIntoView 시 자동 오프셋 */
+  scroll-padding-top: var(--sticky-top);
 }
 
 /* Typing cursor blink animation */

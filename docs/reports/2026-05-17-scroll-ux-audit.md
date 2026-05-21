@@ -15,7 +15,7 @@
 |**PR1** ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|P0|C-1 (`{ scroll: false }` 23건) + C-2 (`location.reload` → `router.refresh` 1건)|**✅ 완료 (2026-05-21)**|보고서 18건 + 동일 패턴 추가 발견 5건. 헬퍼 함수 단위 19곳 패치. E2E 17개 신규 추가 (`e2e/scroll-ux/`).|
 |**PR2** ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|P1|H-2 (채팅 append 가드) + H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock)|**✅ 완료 (2026-05-21)**|`scroll.ts` 에 `isNearBottom` 신규. `MessageThread` 에 unread 배지 도입. 3 auth 페이지 `scrollToPageTop()` 호출. `Navigation` body lock useEffect. E2E 3개 + 단위 테스트 보강.|
 |**PR3**|P2|M-2 (RoadmapResult/PBLResult `scrollIntoView` 타이밍)|**✅ 완료 (2026-05-21)**|2 ResultClient 의 `?regenerate=open` useEffect 를 `requestAnimationFrame` 으로 감싸 페인트 직후 정확한 위치에 `scrollIntoView`. 단위 테스트 2 보강 (rAF 콜백 안에서 호출됨 검증). M-1 은 본 PR 진행 중 사용자 의향 + 업계 표준 (Linear/Notion/GitHub 의 즉시 라우팅) 검토 후 ❌ 결함 아님 재판정.|
-|PR4|P3 (선택)|L-2·L-3|대기|M-1·M-4·M-5 는 결함 아님 재판정 (아래 매트릭스 참고)|
+|**PR4**|P3|L-2 (`scroll-padding-top`) + L-3 (Dialog 키보드 포커스 복원 회귀 차단)|**✅ 완료 (2026-05-21)**|`globals.css` 의 `html` 셀렉터에 `scroll-padding-top: var(--sticky-top)` 한 줄 추가 — 기존 디자인 토큰 `--sticky-top: 4rem` 재사용. L-3 은 Radix UI 자동 동작으로 이미 정상 → 코드 변경 0, E2E 회귀 차단 spec 1개 신규 (`dialog-keyboard-focus-restore.spec.ts`). M-1·M-4·M-5 는 결함 아님 재판정 (아래 매트릭스 참고).|
 
 ### 이슈별 상세 매트릭스 (2026-05-21 기준)
 
@@ -34,15 +34,15 @@
 |~~M-4~~|Medium|❌ 결함 아님|—|`UseRoadmapDialog` — 토스트 후 라우팅 지연은 사용자 답답함 유발 (Linear/Notion 의 즉시 라우팅 패턴이 더 합리적). 사용자 의향 반영 결정|
 |~~M-5~~|Medium|❌ 결함 아님|—|전역 `scroll-behavior: smooth` — PR1 의 `{ scroll: false }` 18건 일괄 패치로 사실상 자연 해소. 추가 변경 효용 없음|
 |~~L-1~~|Low|✅ 해결 (PR1 로 흡수)|PR1 ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|UserManagement 의 `router.replace` 가 C-1 패치로 자연 해결|
-|**L-2**|Low|⏳ 잔여|PR4 (선택)|`html { scroll-padding-top: 4rem }` 추가|
-|**L-3**|Low|⏳ 잔여|(별도 시점)|Radix UI Dialog 닫은 뒤 키보드 사용자 포커스/스크롤 복원 — 키보드 E2E 보강|
+|**L-2**|Low|✅ 해결|PR4|`globals.css` 의 `html` 셀렉터에 `scroll-padding-top: var(--sticky-top)` 추가. 기존 디자인 토큰 재사용으로 일관성 확보. 앵커 점프·`scrollIntoView({block:'start'\|'nearest'})` 시 헤더(4rem) 자동 오프셋|
+|**L-3**|Low|✅ 회귀 차단|PR4|Radix UI 가 default behavior 로 포커스 복원을 자동 처리하므로 코드 변경 없음. `e2e/scroll-ux/dialog-keyboard-focus-restore.spec.ts` 신규 — 운영관리 > 프로젝트 삭제 다이얼로그를 Enter 로 열고 Escape 로 닫은 후 포커스가 원래 트리거 버튼으로 복원됨을 명시 검증. 미래 Radix 교체·직접 dialog 작성 시 회귀 즉시 감지|
 |~~L-4~~|Low|❌ 결함 아님|—|비밀번호 변경 후 `/login` 으로 이동 — 의도된 동작|
 
 ### 한눈에 보는 상태
 
-- **해결 완료**: C-1, C-2, H-2, H-3, H-4, L-1, M-2 (7건, PR #110·#111·PR3)
+- **해결 완료**: C-1, C-2, H-2, H-3, H-4, L-1, M-2, L-2, L-3 (9건, PR #110·#111·PR3·PR4)
 - **결함 아님 확인 (수정 불필요)**: H-1, H-5, M-1, M-3, M-4, M-5, L-4 (7건)
-- **잔여 (PR4 선택 — 접근성 보강)**: L-2, L-3 (2건)
+- **잔여**: 0건 — 보고서의 결함 확정 이슈 전부 해소
 
 ---
 
@@ -401,40 +401,39 @@ useEffect(() => {
 
 ---
 
-### L-2. `Sticky` 헤더의 `scroll-padding-top` 누락
+### L-2. `Sticky` 헤더의 `scroll-padding-top` 누락 ─ ✅ 해결 (PR4, 2026-05-21)
 
-**위치:** [src/app/globals.css](src/app/globals.css), [src/components/Navigation.tsx:265](src/components/Navigation.tsx#L265) (sticky `top-0`, h-16)
+**위치:** [src/app/globals.css](src/app/globals.css), [src/components/Navigation.tsx](src/components/Navigation.tsx) (sticky `top-0`, h-16)
 
-**현상:** `<a href="#section">` 앵커 점프 시 sticky 헤더(4rem)가 콘텐츠를 가림.
+**현상 (해결 전):** `<a href="#section">` 앵커 점프 또는 `scrollIntoView()` 호출 시 sticky 헤더(4rem) 가 대상 요소를 가림.
 
-**재현 방법:**
-
-- 현재 프로젝트는 페이지 내 앵커 링크(`#섹션ID`)가 거의 없어 일반 사용 흐름으로는 재현이 어려움
-- 강제 확인: DevTools Console에서 `document.querySelector('h2')?.scrollIntoView()` 같은 명령으로 임의 요소로 스크롤
-- 결과: 대상 요소의 윗부분이 sticky 상단 헤더에 가려져 잘려 보임
-
-**권장:**
+**해결 (PR4):** `globals.css` 의 `html` 셀렉터에 `scroll-padding-top: var(--sticky-top)` 한 줄 추가. 기존 미사용 디자인 토큰 `--sticky-top: 4rem` 재사용으로 일관성 확보. `scrollIntoView({block:'start'|'nearest'})` · 앵커 점프 시 브라우저가 자동으로 헤더 높이만큼 오프셋 보정.
 
 ```css
-html { scroll-padding-top: 4rem; }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--sticky-top);
+}
 ```
+
+`scrollIntoView({block:'center'})` 호출처는 영향 없음 (M-2 의 `RegenerateAccordion` 등).
 
 ---
 
-### L-3. 다이얼로그 닫은 뒤 트리거 포커스/스크롤 복원
+### L-3. 다이얼로그 닫은 뒤 트리거 포커스/스크롤 복원 ─ ✅ 회귀 차단 (PR4, 2026-05-21)
 
 **위치:** Radix UI 기반 Dialog/AlertDialog 사용 전반
 
-**현상:** Radix UI가 대부분 자동 처리하지만 명시적 검증은 없음. 트리거 위치로 포커스 복원이 누락되면 사용자가 어디서 액션을 시작했는지 헤맬 수 있음.
+**판정:** Radix UI 가 default behavior 로 포커스 복원을 자동 처리 (Radix UI 1.1.15 공식 동작). 현재 동작 정상 → 코드 변경 불필요.
 
-**재현 방법 (키보드만 사용):**
+**해결 (PR4):** E2E 회귀 차단 spec 신규 — [e2e/scroll-ux/dialog-keyboard-focus-restore.spec.ts](e2e/scroll-ux/dialog-keyboard-focus-restore.spec.ts). 운영관리 > 프로젝트 관리의 삭제 다이얼로그를 대상으로 다음 시나리오 검증:
 
-- 마우스를 사용하지 않고 운영관리 > 프로젝트 관리 또는 공지사항 관리 진입
-- Tab 키로 리스트 행의 "삭제" 또는 "편집" 버튼까지 포커스 이동
-- Enter로 확인 다이얼로그 열기 → Esc 또는 "취소"로 닫기
-- 결과 확인: 포커스가 원래 트리거 버튼으로 돌아오는지 / body 첫 요소로 가는지 / 사라지는지 관찰 (키보드 사용자에게 중요)
+1. 트리거 버튼에 키보드 포커스 → 활성 element 확인
+2. `Enter` 로 다이얼로그 열기 → `alertdialog` role 노출 확인
+3. `Escape` 로 닫기 → 다이얼로그 사라짐 확인
+4. 활성 element 가 **원래 트리거 버튼과 동일** 임을 명시 검증
 
-**권장:** 키보드 사용자 시나리오로 Cypress/Playwright E2E 보강.
+미래에 Radix 를 다른 라이브러리로 교체하거나 직접 dialog 를 작성할 때 포커스 복원이 깨지면 CI 에서 즉시 fail.
 
 ---
 
@@ -541,7 +540,8 @@ useEffect(() => {
 | ~~**P1**~~ | ~~H-3: 회원가입 Step1 → Step2 / 비밀번호 페이지 popstate 후 scroll reset~~ | ~~20분~~ | ✅ 해결 (PR2, 2026-05-21) |
 | ~~**P2**~~ | ~~H-2: 메시지 채팅 — append 시 사용자 위치 고려 가드 추가~~ | ~~1시간~~ | ✅ 해결 (PR2, 2026-05-21) |
 | ~~**P2**~~ | ~~M-2: RoadmapResultClient/PBLResultClient 자동 스크롤 타이밍 (`requestAnimationFrame`)~~ | ~~15분~~ | ✅ 해결 (PR3, 2026-05-21) |
-| **P3** | L-2: `scroll-padding-top: 4rem` 추가 | 5분 | 작음 (앵커 사용 시) |
+| ~~**P3**~~ | ~~L-2: `scroll-padding-top: var(--sticky-top)` 추가~~ | ~~5분~~ | ✅ 해결 (PR4, 2026-05-21) |
+| ~~**P3**~~ | ~~L-3: Radix UI Dialog 키보드 포커스 복원 회귀 차단 E2E~~ | ~~30분~~ | ✅ 회귀 차단 (PR4, 2026-05-21) |
 | ~~H-1~~ | 갤러리 뒤로가기 — **현 상태 유지 결정** | — | — |
 | ~~H-5~~ | `router.refresh()` 14건 — **재검증 결과 결함 아님** | — | — |
 | ~~M-1~~ | 인터뷰 제출 깜빡임 — **결함 아님 재판정 (PR3, sonner Toaster 가 페이지 전환 후에도 토스트 유지 + 업계 표준 즉시 라우팅)** | — | — |
