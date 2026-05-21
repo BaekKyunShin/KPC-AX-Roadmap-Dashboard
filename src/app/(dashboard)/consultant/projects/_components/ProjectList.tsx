@@ -281,7 +281,7 @@ export default function ProjectList({ initialData = null, initialFilters = null 
       }
     });
     const search = params.toString();
-    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+    router.replace(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
   };
 
   // 필터 옵션 로드 — initialFilters가 없을 때만 fetch
@@ -331,7 +331,7 @@ export default function ProjectList({ initialData = null, initialFilters = null 
   const handleResetFilters = () => {
     setSearchInput('');
     setStatus(ALL_STATUS_VALUE);
-    router.replace(pathname);
+    router.replace(pathname, { scroll: false });
   };
 
   const handleClearSearch = () => setSearchInput('');

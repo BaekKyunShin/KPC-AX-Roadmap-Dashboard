@@ -49,7 +49,7 @@ export function TrackFilter({ value, onChange }: TrackFilterProps) {
     // 필터 변경 시 첫 페이지로 이동 (기존 GalleryContent 패턴과 일치)
     params.delete('page');
     const search = params.toString();
-    router.push(`${pathname}${search ? `?${search}` : ''}`);
+    router.push(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
   };
 
   return (

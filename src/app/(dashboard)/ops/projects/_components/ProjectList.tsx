@@ -181,7 +181,7 @@ export default function ProjectList({
     // page=1은 기본값이므로 URL에서 제거
     if (params.get('page') === '1') params.delete('page');
     const search = params.toString();
-    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+    router.replace(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
   };
 
   // 업종 옵션만 비동기 로드 (statuses는 이미 동기 초기화됨)
@@ -288,7 +288,7 @@ export default function ProjectList({
     setInternalStatus(DEFAULT_FILTER_VALUE);
     setIndustry(DEFAULT_FILTER_VALUE);
     setPage(1);
-    router.replace(pathname);
+    router.replace(pathname, { scroll: false });
     onResetCardFilter?.();
   };
 

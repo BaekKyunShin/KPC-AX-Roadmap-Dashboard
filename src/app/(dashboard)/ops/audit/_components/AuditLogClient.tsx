@@ -158,7 +158,7 @@ export default function AuditLogClient({
     });
     if (params.get('page') === '1') params.delete('page');
     const qs = params.toString();
-    router.replace(`${pathname}${qs ? `?${qs}` : ''}`);
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
   }
 
   // 필터 변경 공통 처리: 페이지 리셋 + URL 동기화
@@ -221,7 +221,7 @@ export default function AuditLogClient({
     setSearchKeyword('');
     setPage(1);
     setFilters({ page: 1, limit: AUDIT_PAGE_SIZE });
-    router.replace(pathname);
+    router.replace(pathname, { scroll: false });
   }
 
   // 검색어 필터링 (클라이언트)

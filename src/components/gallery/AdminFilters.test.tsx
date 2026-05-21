@@ -385,7 +385,10 @@ describe('AdminFilters', () => {
       fireEvent.change(nativeSelects[0], { target: { value: 'DRAFT' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('status=DRAFT'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('status=DRAFT'),
+          { scroll: false },
+        );
       });
     });
 
@@ -415,7 +418,10 @@ describe('AdminFilters', () => {
       fireEvent.change(nativeSelects[1], { target: { value: 'true' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('isShared=true'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('isShared=true'),
+          { scroll: false },
+        );
       });
     });
 
@@ -433,7 +439,10 @@ describe('AdminFilters', () => {
       fireEvent.change(nativeSelects[2], { target: { value: 'c-123' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('consultantId=c-123'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('consultantId=c-123'),
+          { scroll: false },
+        );
       });
     });
   });
@@ -469,7 +478,10 @@ describe('AdminFilters', () => {
       fireEvent.change(nativeSelects[1], { target: { value: 'false' } });
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('isShared=false'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('isShared=false'),
+          { scroll: false },
+        );
       });
     });
   });
@@ -594,7 +606,7 @@ describe('AdminFilters', () => {
       fireEvent.click(screen.getByLabelText('필터 초기화'));
       await waitFor(() => {
         // status, isShared, consultantId, page 모두 삭제 후 나머지 없으면 pathname만
-        expect(mockPush).toHaveBeenCalledWith('/gallery');
+        expect(mockPush).toHaveBeenCalledWith('/gallery', { scroll: false });
       });
     });
 
@@ -608,7 +620,10 @@ describe('AdminFilters', () => {
       fireEvent.click(screen.getByLabelText('필터 초기화'));
       await waitFor(() => {
         // keyword가 남아 /gallery?keyword=test 형태로 push
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('keyword=test'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('keyword=test'),
+          { scroll: false },
+        );
       });
     });
   });

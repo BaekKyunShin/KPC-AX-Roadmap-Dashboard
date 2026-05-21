@@ -22,7 +22,7 @@ export function NoticePagination({
   function handlePageChange(page: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(page));
-    router.push(`/notices?${params.toString()}`);
+    router.push(`/notices?${params.toString()}`, { scroll: false });
   }
 
   return (

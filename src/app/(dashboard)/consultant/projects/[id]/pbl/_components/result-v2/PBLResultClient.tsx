@@ -141,7 +141,8 @@ export function PBLResultClient({
   useEffect(() => {
     if (isRegenerateRequested && accordionRef.current) {
       accordionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      router.replace(pathname);
+      // URL cleanup. scrollIntoView 가 잡은 위치를 보존하기 위해 scroll: false 명시.
+      router.replace(pathname, { scroll: false });
     }
   }, [isRegenerateRequested, router, pathname]);
 

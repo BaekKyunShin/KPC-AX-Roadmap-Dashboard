@@ -168,7 +168,10 @@ describe('NoticeSearchBar', () => {
       await user.type(input, '안녕');
       await user.click(screen.getByRole('button', { name: /검색/ }));
 
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('q=%EC%95%88%EB%85%95'));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining('q=%EC%95%88%EB%85%95'),
+        { scroll: false },
+      );
     });
 
     it('"작성자" 탭 클릭 시 filter_by=author로 router.push가 호출된다', async () => {
@@ -177,7 +180,10 @@ describe('NoticeSearchBar', () => {
 
       await user.click(screen.getByRole('tab', { name: '작성자' }));
 
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('filter_by=author'));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining('filter_by=author'),
+        { scroll: false },
+      );
     });
 
     it('"제목" 탭 클릭 시 filter_by=title로 router.push가 호출된다', async () => {
@@ -192,7 +198,10 @@ describe('NoticeSearchBar', () => {
 
       await user.click(screen.getByRole('tab', { name: '제목' }));
 
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('filter_by=title'));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining('filter_by=title'),
+        { scroll: false },
+      );
     });
 
     it('초기화 버튼 클릭 시 /notices로 router.push가 호출된다', async () => {
@@ -206,7 +215,7 @@ describe('NoticeSearchBar', () => {
 
       await user.click(screen.getByLabelText('필터 초기화'));
 
-      expect(mockPush).toHaveBeenCalledWith('/notices');
+      expect(mockPush).toHaveBeenCalledWith('/notices', { scroll: false });
     });
 
     it('검색 시 page=1이 파라미터에 포함된다', async () => {
@@ -217,7 +226,10 @@ describe('NoticeSearchBar', () => {
       await user.type(input, '테스트');
       await user.click(screen.getByRole('button', { name: /검색/ }));
 
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('page=1'));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining('page=1'),
+        { scroll: false },
+      );
     });
 
     it('빈 q로 검색하면 q 파라미터가 포함되지 않는다', async () => {
