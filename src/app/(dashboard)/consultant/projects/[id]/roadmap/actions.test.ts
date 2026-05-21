@@ -118,6 +118,10 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}));
+
 // --- 테스트 헬퍼 -------------------------------------------------------------
 
 const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -346,6 +350,28 @@ describe('createRoadmap', () => {
     }
   });
 
+  it('정상 생성 시 운영관리 경로 캐시 무효화 (#003)', async () => {
+    const { generateRoadmap: generateRoadmapMock } = await import('@/lib/services/roadmap');
+    const { revalidatePath } = await import('next/cache');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { assigned_consultant_id: USER_A_ID, status: 'INTERVIEWED' },
+      error: null,
+    });
+
+    vi.mocked(generateRoadmapMock).mockResolvedValueOnce({
+      roadmapId: 'new-roadmap-id',
+      result: { diagnosis_summary: '진단 요약' } as never,
+      validation: { isValid: true, errors: [], warnings: [] },
+    });
+
+    await createRoadmap(PROJECT_ID);
+
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/projects');
+    expect(revalidatePath).toHaveBeenCalledWith(`/ops/projects/${PROJECT_ID}`);
+  });
+
   it('정상 생성 시 after() 콜백으로 활동 일지 기록', async () => {
     const { generateRoadmap: generateRoadmapMock } = await import('@/lib/services/roadmap');
     const { insertSystemActivityLog } = await import('@/lib/services/activity-log');
@@ -435,6 +461,21 @@ describe('confirmFinalRoadmap', () => {
     const result = await confirmFinalRoadmap(ROADMAP_ID);
 
     expect(result.success).toBe(true);
+  });
+
+  it('정상 확정 시 운영관리 경로 캐시 무효화 (#002)', async () => {
+    const { revalidatePath } = await import('next/cache');
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A_ID } },
+      error: null,
+    });
+
+    await confirmFinalRoadmap(ROADMAP_ID);
+
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/projects');
+    expect(revalidatePath).toHaveBeenCalledWith(`/ops/projects/${PROJECT_ID}`);
   });
 
   it('서비스 에러 (finalizeRoadmap 실패) → error 반환', async () => {
