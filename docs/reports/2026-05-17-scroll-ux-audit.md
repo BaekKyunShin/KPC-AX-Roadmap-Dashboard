@@ -8,12 +8,42 @@
 
 ## 진행 현황
 
-| PR | 우선순위 | 범위 | 상태 | 비고 |
-| --- | --- | --- | --- | --- |
-| **PR1** | P0 | C-1 (`{ scroll: false }` 23건) + C-2 (`location.reload` → `router.refresh` 1건) | **✅ 완료 (2026-05-21)** | 보고서 18건 + 동일 패턴 추가 발견 5건. 헬퍼 함수 단위 19곳 패치. E2E 17개 신규 추가 (`e2e/scroll-ux/`). |
-| **PR2** | P1 | H-2 (채팅 append 가드) + H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock) | **✅ 완료 (2026-05-21)** | `scroll.ts` 에 `isNearBottom` 신규. `MessageThread` 에 unread 배지 도입. 3 auth 페이지 `scrollToPageTop()` 호출. `Navigation` body lock useEffect. E2E 3개 + 단위 테스트 보강. |
-| PR3 | P2 | M-1 (인터뷰 깜빡임) + M-2 (RoadmapResult 타이밍) | 대기 | H-2 는 PR2 로 흡수 |
-| PR4 | P3 (선택) | M-4·M-5·L-2 | 대기 | — |
+### PR 단위 진행
+
+|PR|우선순위|범위|상태|비고|
+|---|---|---|---|---|
+|**PR1** ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|P0|C-1 (`{ scroll: false }` 23건) + C-2 (`location.reload` → `router.refresh` 1건)|**✅ 완료 (2026-05-21)**|보고서 18건 + 동일 패턴 추가 발견 5건. 헬퍼 함수 단위 19곳 패치. E2E 17개 신규 추가 (`e2e/scroll-ux/`).|
+|**PR2** ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|P1|H-2 (채팅 append 가드) + H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock)|**✅ 완료 (2026-05-21)**|`scroll.ts` 에 `isNearBottom` 신규. `MessageThread` 에 unread 배지 도입. 3 auth 페이지 `scrollToPageTop()` 호출. `Navigation` body lock useEffect. E2E 3개 + 단위 테스트 보강.|
+|PR3|P2|M-1 (인터뷰 깜빡임) + M-2 (RoadmapResult 타이밍)|대기|H-2 는 PR2 로 흡수|
+|PR4|P3 (선택)|M-4·M-5·L-2·L-3|대기|—|
+
+### 이슈별 상세 매트릭스 (2026-05-21 기준)
+
+|이슈|분류|상태|처리 PR|비고|
+|---|---|---|---|---|
+|**C-1**|Critical|✅ 해결|PR1 ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|같은 페이지 쿼리 변경 시 `{ scroll: false }` 누락 23건 일괄 패치|
+|**C-2**|Critical|✅ 해결|PR1 ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|`window.location.reload()` → `router.refresh()`|
+|~~H-1~~|High|❌ 결함 아님|—|갤러리 뒤로가기 — 두 단계 전환은 트레이드오프, 현 상태 유지 결정|
+|**H-2**|High|✅ 해결|PR2 ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|append 가드 + "새 메시지 N개" 배지 도입|
+|**H-3**|High|✅ 해결|PR2 ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|인증 폼 상태 전환 후 `scrollToPageTop()`|
+|**H-4**|High|✅ 해결|PR2 ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|모바일 햄버거 body lock|
+|~~H-5~~|High|❌ 결함 아님|—|`router.refresh()` 는 공식적으로 스크롤 유지 (Next.js v16 공식 동작)|
+|**M-1**|Medium|⏳ 잔여|PR3 (예정)|인터뷰 제출 직후 토스트와 라우팅 겹침 — 로딩 오버레이 + 지연|
+|**M-2**|Medium|⏳ 잔여|PR3 (예정)|`RoadmapResultClient` 의 `scrollIntoView` 타이밍 — `requestAnimationFrame` 적용|
+|~~M-3~~|Medium|❌ 결함 아님|—|`revalidatePath` 는 공식적으로 스크롤 유지|
+|**M-4**|Medium|⏳ 잔여|PR4 (선택)|`UseRoadmapDialog` 토스트 후 라우팅 지연|
+|**M-5**|Medium|⏳ 잔여|PR4 (선택)|전역 `scroll-behavior: smooth` 정책 재검토|
+|~~L-1~~|Low|✅ 해결 (PR1 로 흡수)|PR1 ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|UserManagement 의 `router.replace` 가 C-1 패치로 자연 해결|
+|**L-2**|Low|⏳ 잔여|PR4 (선택)|`html { scroll-padding-top: 4rem }` 추가|
+|**L-3**|Low|⏳ 잔여|(별도 시점)|Radix UI Dialog 닫은 뒤 키보드 사용자 포커스/스크롤 복원 — 키보드 E2E 보강|
+|~~L-4~~|Low|❌ 결함 아님|—|비밀번호 변경 후 `/login` 으로 이동 — 의도된 동작|
+
+### 한눈에 보는 상태
+
+- **해결 완료**: C-1, C-2, H-2, H-3, H-4, L-1 (6건, PR #110·#111)
+- **결함 아님 확인 (수정 불필요)**: H-1, H-5, M-3, L-4 (4건)
+- **잔여 (PR3 예정)**: M-1, M-2 (P2 — 인터뷰 / RoadmapResult 타이밍)
+- **잔여 (PR4 선택 — 효용 낮음)**: M-4, M-5, L-2, L-3 (P3·접근성 보강)
 
 ---
 
