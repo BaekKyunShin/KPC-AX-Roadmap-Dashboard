@@ -29,6 +29,7 @@ import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { createNotificationForAdmins } from '@/lib/services/notification';
 import { extractInsightsFromStt, validateSttTextSize } from '@/lib/services/stt';
+import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { validateStatusTransition } from '@/lib/constants/status';
 import { deepMerge } from '@/lib/utils/deep-merge';
 import { after } from 'next/server';
@@ -733,7 +734,7 @@ export async function processSttFile(
     console.error('[processSttFile Error]', error);
     return {
       success: false,
-      error: 'STT 처리 중 오류가 발생했습니다.',
+      error: getLLMUserFriendlyError(error),
     };
   }
 }
@@ -778,7 +779,7 @@ export async function extractSttInsights(
     console.error('[extractSttInsights Error]', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'STT 추출 중 오류가 발생했습니다.',
+      error: getLLMUserFriendlyError(error),
     };
   }
 }

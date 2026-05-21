@@ -197,18 +197,102 @@ describe('POST /api/matching/generate', () => {
 
   // ─── 에러 처리 ──────────────────────────────────────────────────────────
 
-  it('LLM 서비스 호출 실패 시 500 응답', async () => {
+  it('LLM 서비스 호출 실패 시 500 응답 (#005 INTERNAL_ERROR)', async () => {
     setupAuthenticatedUser();
     vi.mocked(generateLLMMatchingRecommendations).mockRejectedValue(
       new Error('LLM API 호출 실패'),
     );
 
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const req = makeRequest({ projectId: TEST_PROJECT_ID });
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(body.success).toBe(false);
-    expect(body.error).toBe('매칭 추천 생성 중 오류가 발생했습니다.');
+    expect(body.error).toBe(
+      '매칭 추천 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    );
+    expect(body.code).toBe('INTERNAL_ERROR');
+    consoleSpy.mockRestore();
+  });
+
+  // ─── #005: LLM 에러 4분기 ────────────────────────────────────────────────
+
+  it('사용 한도 초과 → 429 + QUOTA_EXCEEDED + Retry-After (#005)', async () => {
+    setupAuthenticatedUser();
+    vi.mocked(generateLLMMatchingRecommendations).mockRejectedValue(
+      new Error('일별 사용량 한도를 초과했습니다.'),
+    );
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const req = makeRequest({ projectId: TEST_PROJECT_ID });
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe(
+      '오늘 사용 한도를 초과했습니다. 한국 시간 자정에 초기화됩니다.',
+    );
+    expect(body.code).toBe('QUOTA_EXCEEDED');
+    expect(response.headers.get('Retry-After')).toBe('3600');
+    consoleSpy.mockRestore();
+  });
+
+  it('LLM 타임아웃 → 504 + LLM_TIMEOUT (#005)', async () => {
+    setupAuthenticatedUser();
+    vi.mocked(generateLLMMatchingRecommendations).mockRejectedValue(
+      new Error('LLM 요청 타임아웃'),
+    );
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const req = makeRequest({ projectId: TEST_PROJECT_ID });
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(504);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe(
+      'AI 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
+    );
+    expect(body.code).toBe('LLM_TIMEOUT');
+    consoleSpy.mockRestore();
+  });
+
+  it('AbortError → 504 + LLM_TIMEOUT (#005)', async () => {
+    setupAuthenticatedUser();
+    const abortError = new Error('aborted');
+    abortError.name = 'AbortError';
+    vi.mocked(generateLLMMatchingRecommendations).mockRejectedValue(abortError);
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const req = makeRequest({ projectId: TEST_PROJECT_ID });
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(504);
+    expect(body.code).toBe('LLM_TIMEOUT');
+    consoleSpy.mockRestore();
+  });
+
+  it('입력 길이 초과 → 413 + INPUT_TOO_LARGE (#005)', async () => {
+    setupAuthenticatedUser();
+    vi.mocked(generateLLMMatchingRecommendations).mockRejectedValue(
+      new Error('context length exceeded'),
+    );
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const req = makeRequest({ projectId: TEST_PROJECT_ID });
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(413);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe(
+      '분석할 내용이 너무 깁니다. 텍스트 길이를 줄여주세요.',
+    );
+    expect(body.code).toBe('INPUT_TOO_LARGE');
+    consoleSpy.mockRestore();
   });
 });
