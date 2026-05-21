@@ -11,11 +11,15 @@ import {
   MAX_STT_FILE_SIZE_KB,
   STT_EXTRACTION_TEMPERATURE,
 } from '@/lib/constants/stt';
-import { callLLMForJSON } from './llm';
+import { callLLMForJSON, LLMResponseInvalidError } from './llm';
 
-vi.mock('./llm', () => ({
-  callLLMForJSON: vi.fn(),
-}));
+vi.mock('./llm', async () => {
+  const actual = await vi.importActual<typeof import('./llm')>('./llm');
+  return {
+    ...actual,
+    callLLMForJSON: vi.fn(),
+  };
+});
 
 // ─── validateSttTextSize ────────────────────────────────────────────────────
 
@@ -118,13 +122,43 @@ describe('extractInsightsFromStt', () => {
     expect(options).toEqual({ temperature: STT_EXTRACTION_TEMPERATURE });
   });
 
-  it('LLM이 스키마에 맞지 않는 데이터 반환 시 Zod parse 에러 throw', async () => {
-    // sttInsightsSchema는 optional 필드가 많아 빈 객체도 통과
-    // 타입이 완전히 잘못된 데이터로 테스트 (배열이어야 할 곳에 숫자)
+  it('callLLMForJSON 에 validator 인자를 전달해 자동 재시도 활용 (#004)', async () => {
     mockedCallLLM.mockResolvedValue({
-      추가_업무: 12345, // z.array(z.string())에 숫자 전달
+      추가_업무: [],
+      추가_페인포인트: [],
+      숨은_니즈: [],
+      조직_맥락: '',
+      AI_태도: '',
+      주요_인용: [],
     });
 
-    await expect(extractInsightsFromStt('내용')).rejects.toThrow();
+    await extractInsightsFromStt('내용');
+
+    const call = mockedCallLLM.mock.calls[0];
+    // 5번째 인자(validator)가 함수여야 한다
+    expect(call[4]).toBeTypeOf('function');
+
+    // validator 자체가 sttInsightsSchema 를 검증해야 한다 (잘못된 데이터 → success: false)
+    const validator = call[4] as (raw: unknown) => { success: boolean };
+    expect(validator({ 추가_업무: 12345 }).success).toBe(false);
+    // 적법한 데이터 → success: true
+    expect(
+      validator({
+        추가_업무: [],
+        추가_페인포인트: [],
+        숨은_니즈: [],
+        조직_맥락: '',
+        AI_태도: '',
+        주요_인용: [],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('callLLMForJSON 이 LLMResponseInvalidError throw → 그대로 전파 (#004)', async () => {
+    mockedCallLLM.mockRejectedValue(
+      new LLMResponseInvalidError('LLM 응답이 스키마를 충족하지 못했습니다: x'),
+    );
+
+    await expect(extractInsightsFromStt('내용')).rejects.toThrow(LLMResponseInvalidError);
   });
 });

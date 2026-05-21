@@ -100,13 +100,19 @@ ${sttText}
 위 녹취록에서 AI 교육 로드맵 수립에 필요한 정보를 추출해주세요.
 반드시 JSON 형식으로만 응답하세요.`;
 
-  const raw = await callLLMForJSON<unknown>(
+  return await callLLMForJSON<SttInsights>(
     [
       { role: 'system', content: STT_EXTRACTION_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
-    { temperature: STT_EXTRACTION_TEMPERATURE }
+    { temperature: STT_EXTRACTION_TEMPERATURE },
+    2,
+    undefined,
+    (raw) => {
+      const result = sttInsightsSchema.safeParse(raw);
+      return result.success
+        ? { success: true, data: result.data }
+        : { success: false, error: result.error };
+    },
   );
-
-  return sttInsightsSchema.parse(raw);
 }

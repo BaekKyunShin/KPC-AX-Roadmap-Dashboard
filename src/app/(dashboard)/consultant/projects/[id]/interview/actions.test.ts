@@ -374,19 +374,26 @@ describe('processSttFile — 에러/엣지 케이스', () => {
     vi.clearAllMocks();
   });
 
-  it('LLM 호출 예외 → catch 블록에서 에러 반환', async () => {
+  it('LLM 호출 예외 → catch 블록에서 도메인 친화 메시지 반환 (#004)', async () => {
     const { validateSttTextSize, extractInsightsFromStt } = await import('@/lib/services/stt');
+    const { LLMResponseInvalidError } = await import('@/lib/services/llm');
 
     serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
     serverMock.addResult({ data: { id: PROJECT_ID }, error: null });
     vi.mocked(validateSttTextSize).mockReturnValue({ valid: true });
-    vi.mocked(extractInsightsFromStt).mockRejectedValue(new Error('LLM timeout'));
+    vi.mocked(extractInsightsFromStt).mockRejectedValue(
+      new LLMResponseInvalidError('LLM 응답이 스키마를 충족하지 못했습니다: x'),
+    );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await processSttFile(PROJECT_ID, '텍스트');
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain('STT 처리');
+    if (!result.success) {
+      expect(result.error).toBe(
+        'AI 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    }
     consoleSpy.mockRestore();
   });
 
