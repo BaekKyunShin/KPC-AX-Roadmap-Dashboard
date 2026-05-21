@@ -14,8 +14,8 @@
 |---|---|---|---|---|
 |**PR1** ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|P0|C-1 (`{ scroll: false }` 23건) + C-2 (`location.reload` → `router.refresh` 1건)|**✅ 완료 (2026-05-21)**|보고서 18건 + 동일 패턴 추가 발견 5건. 헬퍼 함수 단위 19곳 패치. E2E 17개 신규 추가 (`e2e/scroll-ux/`).|
 |**PR2** ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|P1|H-2 (채팅 append 가드) + H-3 (인증 폼 scroll reset) + H-4 (모바일 메뉴 body lock)|**✅ 완료 (2026-05-21)**|`scroll.ts` 에 `isNearBottom` 신규. `MessageThread` 에 unread 배지 도입. 3 auth 페이지 `scrollToPageTop()` 호출. `Navigation` body lock useEffect. E2E 3개 + 단위 테스트 보강.|
-|PR3|P2|M-1 (인터뷰 깜빡임) + M-2 (RoadmapResult 타이밍)|대기|H-2 는 PR2 로 흡수|
-|PR4|P3 (선택)|M-4·M-5·L-2·L-3|대기|—|
+|**PR3**|P2|M-2 (RoadmapResult/PBLResult `scrollIntoView` 타이밍)|**✅ 완료 (2026-05-21)**|2 ResultClient 의 `?regenerate=open` useEffect 를 `requestAnimationFrame` 으로 감싸 페인트 직후 정확한 위치에 `scrollIntoView`. 단위 테스트 2 보강 (rAF 콜백 안에서 호출됨 검증). M-1 은 본 PR 진행 중 사용자 의향 + 업계 표준 (Linear/Notion/GitHub 의 즉시 라우팅) 검토 후 ❌ 결함 아님 재판정.|
+|PR4|P3 (선택)|L-2·L-3|대기|M-1·M-4·M-5 는 결함 아님 재판정 (아래 매트릭스 참고)|
 
 ### 이슈별 상세 매트릭스 (2026-05-21 기준)
 
@@ -28,11 +28,11 @@
 |**H-3**|High|✅ 해결|PR2 ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|인증 폼 상태 전환 후 `scrollToPageTop()`|
 |**H-4**|High|✅ 해결|PR2 ([#111](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/111))|모바일 햄버거 body lock|
 |~~H-5~~|High|❌ 결함 아님|—|`router.refresh()` 는 공식적으로 스크롤 유지 (Next.js v16 공식 동작)|
-|**M-1**|Medium|⏳ 잔여|PR3 (예정)|인터뷰 제출 직후 토스트와 라우팅 겹침 — 로딩 오버레이 + 지연|
-|**M-2**|Medium|⏳ 잔여|PR3 (예정)|`RoadmapResultClient` 의 `scrollIntoView` 타이밍 — `requestAnimationFrame` 적용|
+|~~M-1~~|Medium|❌ 결함 아님|—|인터뷰 제출 직후 250ms 지연은 사용자 답답함 유발. sonner Toaster 가 root layout 에 있어 페이지 전환 후에도 토스트가 살아남으므로 가독성 확보 불필요. 업계 표준 (Linear/Notion/GitHub) 도 즉시 라우팅 + 토스트 지속 패턴. M-4 와 일관 판정|
+|**M-2**|Medium|✅ 해결|PR3|2 ResultClient 의 `?regenerate=open` `scrollIntoView` 를 `requestAnimationFrame` 으로 한 프레임(~16ms) 지연 → 페인트 직후 정확한 위치 보장|
 |~~M-3~~|Medium|❌ 결함 아님|—|`revalidatePath` 는 공식적으로 스크롤 유지|
-|**M-4**|Medium|⏳ 잔여|PR4 (선택)|`UseRoadmapDialog` 토스트 후 라우팅 지연|
-|**M-5**|Medium|⏳ 잔여|PR4 (선택)|전역 `scroll-behavior: smooth` 정책 재검토|
+|~~M-4~~|Medium|❌ 결함 아님|—|`UseRoadmapDialog` — 토스트 후 라우팅 지연은 사용자 답답함 유발 (Linear/Notion 의 즉시 라우팅 패턴이 더 합리적). 사용자 의향 반영 결정|
+|~~M-5~~|Medium|❌ 결함 아님|—|전역 `scroll-behavior: smooth` — PR1 의 `{ scroll: false }` 18건 일괄 패치로 사실상 자연 해소. 추가 변경 효용 없음|
 |~~L-1~~|Low|✅ 해결 (PR1 로 흡수)|PR1 ([#110](https://github.com/BaekKyunShin/KPC-AX-Roadmap-Dashboard/pull/110))|UserManagement 의 `router.replace` 가 C-1 패치로 자연 해결|
 |**L-2**|Low|⏳ 잔여|PR4 (선택)|`html { scroll-padding-top: 4rem }` 추가|
 |**L-3**|Low|⏳ 잔여|(별도 시점)|Radix UI Dialog 닫은 뒤 키보드 사용자 포커스/스크롤 복원 — 키보드 E2E 보강|
@@ -40,10 +40,9 @@
 
 ### 한눈에 보는 상태
 
-- **해결 완료**: C-1, C-2, H-2, H-3, H-4, L-1 (6건, PR #110·#111)
-- **결함 아님 확인 (수정 불필요)**: H-1, H-5, M-3, L-4 (4건)
-- **잔여 (PR3 예정)**: M-1, M-2 (P2 — 인터뷰 / RoadmapResult 타이밍)
-- **잔여 (PR4 선택 — 효용 낮음)**: M-4, M-5, L-2, L-3 (P3·접근성 보강)
+- **해결 완료**: C-1, C-2, H-2, H-3, H-4, L-1, M-2 (7건, PR #110·#111·PR3)
+- **결함 아님 확인 (수정 불필요)**: H-1, H-5, M-1, M-3, M-4, M-5, L-4 (7건)
+- **잔여 (PR4 선택 — 접근성 보강)**: L-2, L-3 (2건)
 
 ---
 
@@ -86,7 +85,7 @@
 | `router.refresh` | 14 | — | 0 (재검증 결과 공식 동작 = 스크롤 유지) |
 | `router.back` | 1 | — | 1 (폴백 push 시) |
 | `window.scrollTo` | 2 | — | 0 (의도적, 올바름) |
-| `scrollIntoView` | 7 | — | 1 (RoadmapResultClient 타이밍) |
+| `scrollIntoView` | 7 | — | 1 (RoadmapResultClient·PBLResultClient `?regenerate=open` 타이밍 — PR3 에서 rAF 적용으로 해결) |
 | `window.location.reload` | 1 | — | 1 (Critical) |
 | `history.pushState/replaceState` | 5 | — | 4 (스크롤 리셋 누락) |
 | `<Link>` (47개 파일, 150+ 사용처) | — | 0 | 정상 (기본값 `scroll: true` 적정) |
@@ -289,38 +288,42 @@ useEffect(() => {
 
 ## 4. Medium 이슈
 
-### M-1. 인터뷰 제출 후 `router.push()` 깜빡임
+### ~~M-1. 인터뷰 제출 후 `router.push()` 깜빡임~~ — **결함 아님 재판정 (2026-05-21, PR3)**
 
-**위치:**
-- [src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/RoadmapInterviewClient.tsx:393](src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/RoadmapInterviewClient.tsx#L393)
-- [src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/PBLInterviewClient.tsx:320](src/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/PBLInterviewClient.tsx#L320)
+**판정:** PR3 진행 중 사용자 의향 + 업계 표준 검토 결과 **결함 아님**.
 
-**현상:** 마지막 Step 하단 "제출" 클릭 → 토스트 + 로딩 → `router.push('.../review')` 즉시 호출 → 토스트와 페이지 전환이 겹쳐 깜빡임. 모바일에서 두드러짐.
+**판정 근거:**
 
-**재현 방법:**
+- sonner 의 Toaster Provider 는 root layout 에 등록되어 페이지 전환 후에도 토스트가 fade-out 까지 자연 표시됨 → "토스트 미인지" 위험 자체가 실재하지 않음
+- Linear · Notion · GitHub · Stripe · Slack 등 모던 SaaS 의 표준은 **즉시 라우팅 + 토스트 지속** (Optimistic UI)
+- 250~300ms `setTimeout` 지연은 사용자 인지 가능한 답답함만 추가하며 실효 없음
+- M-4 와 동일 논리로 결함 아님 판정
 
-- 컨설턴트 계정 로그인 → 담당 프로젝트 > 인터뷰 시작 (Roadmap 또는 PBL 트랙)
-- 모든 Step 입력 완료 후 마지막 Step 하단의 "제출" 버튼 클릭
-- 결과: 토스트가 짧게 떠오르려는 순간 페이지가 리뷰 페이지로 전환되며 화면이 한 번 깜빡임 (모바일 에뮬레이션에서 더 두드러짐)
-
-**권장:** 로딩 오버레이(`RoadmapLoadingOverlay`) 활용 + 토스트 표시 직후 짧은 지연(150~300ms) 후 `router.push`.
+**유사 사례 참고:** M-4 (UseRoadmapDialog) 도 같은 논리로 ❌ 결함 아님.
 
 ---
 
-### M-2. `RoadmapResultClient` 쿼리 기반 자동 스크롤 타이밍 레이스
+### M-2. `RoadmapResultClient` 쿼리 기반 자동 스크롤 타이밍 레이스 ─ ✅ 해결 (PR3, 2026-05-21)
 
-**위치:** [src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient.tsx:143-148](src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient.tsx#L143-L148)
+**위치:**
 
-**현상:** `?regenerate=open` 진입 시 아코디언 펼침 + `scrollIntoView` 호출. **DOM 마운트와 펼침 애니메이션 완료 전에 스크롤이 실행**될 수 있어 부정확한 위치로 스크롤.
+- [src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient.tsx](src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient.tsx)
+- [src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient.tsx](src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient.tsx)
 
-**재현 방법:**
+**현상 (해결 전):** `?regenerate=open` 진입 시 아코디언 펼침 + `scrollIntoView` 호출. **DOM 마운트와 펼침 애니메이션 완료 전에 스크롤이 실행**될 수 있어 부정확한 위치로 스크롤.
 
-- 컨설턴트 영역 > 담당 프로젝트 > 로드맵이 이미 생성된 프로젝트 진입
-- 로드맵 결과 화면에서 "새 버전 생성"으로 이어지는 진입점(예: 상단 메뉴/배너 링크) 클릭 — URL 끝에 `?regenerate=open`이 붙음
-- 또는 주소창에 직접 `?regenerate=open` 붙여 새로고침
-- 결과: 페이지 로드 직후 아코디언이 펼쳐지지만 스크롤이 펼침 완료 전에 실행되어 아코디언 헤더가 화면 중앙이 아닌 위쪽에 잘려 표시되는 경우가 있음 (느린 기기/네트워크에서 두드러짐)
+**해결 (PR3):** `useEffect` 본문을 `requestAnimationFrame` 으로 감싸 페인트 직후(약 1 프레임 ~16ms 후) `scrollIntoView` 가 실행되도록 보정. `cancelAnimationFrame` cleanup 으로 unmount 안전. 사용자 체감 지연 없음 (1 프레임은 60fps 화면의 인지 불가 단위).
 
-**권장:** `requestAnimationFrame` 또는 애니메이션 duration 후 `setTimeout`으로 스크롤 호출.
+```tsx
+useEffect(() => {
+  if (!isRegenerateRequested || !accordionRef.current) return;
+  const rafId = requestAnimationFrame(() => {
+    accordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    router.replace(pathname, { scroll: false });
+  });
+  return () => cancelAnimationFrame(rafId);
+}, [isRegenerateRequested, router, pathname]);
+```
 
 ---
 
@@ -537,14 +540,14 @@ useEffect(() => {
 | ~~**P1**~~ | ~~H-4: 모바일 햄버거 메뉴 body scroll lock~~ | ~~10분~~ | ✅ 해결 (PR2, 2026-05-21) |
 | ~~**P1**~~ | ~~H-3: 회원가입 Step1 → Step2 / 비밀번호 페이지 popstate 후 scroll reset~~ | ~~20분~~ | ✅ 해결 (PR2, 2026-05-21) |
 | ~~**P2**~~ | ~~H-2: 메시지 채팅 — append 시 사용자 위치 고려 가드 추가~~ | ~~1시간~~ | ✅ 해결 (PR2, 2026-05-21) |
-| **P2** | M-1: 인터뷰 제출 깜빡임 (토스트 후 지연 또는 로딩 오버레이) | 30분 | 중간 |
-| **P2** | M-2: RoadmapResultClient 자동 스크롤 타이밍 (`requestAnimationFrame`) | 15분 | 작음 (느린 기기에서만 두드러짐) |
-| **P3** | M-4: UseRoadmapDialog 토스트 → 라우팅 지연 | 10분 | 작음 |
-| **P3** | M-5: 전역 `scroll-behavior: smooth` 정책 재검토 | 30분 + 회귀 테스트 | 미세 |
+| ~~**P2**~~ | ~~M-2: RoadmapResultClient/PBLResultClient 자동 스크롤 타이밍 (`requestAnimationFrame`)~~ | ~~15분~~ | ✅ 해결 (PR3, 2026-05-21) |
 | **P3** | L-2: `scroll-padding-top: 4rem` 추가 | 5분 | 작음 (앵커 사용 시) |
 | ~~H-1~~ | 갤러리 뒤로가기 — **현 상태 유지 결정** | — | — |
 | ~~H-5~~ | `router.refresh()` 14건 — **재검증 결과 결함 아님** | — | — |
+| ~~M-1~~ | 인터뷰 제출 깜빡임 — **결함 아님 재판정 (PR3, sonner Toaster 가 페이지 전환 후에도 토스트 유지 + 업계 표준 즉시 라우팅)** | — | — |
 | ~~M-3~~ | `revalidatePath()` 시 폼 스크롤 손실 — **재검증 결과 결함 아님** | — | — |
+| ~~M-4~~ | UseRoadmapDialog 토스트 → 라우팅 지연 — **결함 아님 재판정 (즉시 라우팅이 표준)** | — | — |
+| ~~M-5~~ | 전역 `scroll-behavior: smooth` — **C-1 패치(PR1)로 사실상 자연 해소** | — | — |
 | ~~L-1~~ | 사용자 관리 스크롤 복원 — **router.refresh에는 잘 동작, C-1로 흡수** | — | — |
 
 ---

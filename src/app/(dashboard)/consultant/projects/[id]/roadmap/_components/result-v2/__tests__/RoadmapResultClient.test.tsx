@@ -1,17 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // next/navigation — ResultTabs / RoadmapResultClient 가 useSearchParams / useRouter / usePathname 사용
+const { searchParamsMock, routerReplaceMock } = vi.hoisted(() => ({
+  searchParamsMock: vi.fn(() => new URLSearchParams()),
+  routerReplaceMock: vi.fn(),
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace: routerReplaceMock,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
     prefetch: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsMock(),
   usePathname: () => '/consultant/projects/p1/roadmap',
 }));
 
@@ -1044,6 +1048,90 @@ describe('RoadmapResultClient — 다운로드 진행 중 + 새 버전 생성 �
     });
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
+    );
+  });
+});
+
+// M-2 (PR3) — ?regenerate=open 진입 시 scrollIntoView 가 페인트 직후 실행되도록
+// requestAnimationFrame 콜백 안에서 호출됨을 검증.
+describe('RoadmapResultClient — ?regenerate=open scroll timing (M-2)', () => {
+  let scrollIntoViewSpy: ReturnType<typeof vi.fn>;
+  let originalScrollIntoView: PropertyDescriptor | undefined;
+  let originalRAF: typeof window.requestAnimationFrame;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsMock.mockReturnValue(new URLSearchParams('regenerate=open'));
+
+    // JSDOM 은 scrollIntoView 미정의 → Element.prototype 에 직접 정의.
+    scrollIntoViewSpy = vi.fn();
+    originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      'scrollIntoView',
+    );
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewSpy,
+    });
+
+    // rAF 콜백을 동기 즉시 실행으로 대체 (테스트 timing 결정성 확보).
+    originalRAF = window.requestAnimationFrame;
+  });
+
+  afterEach(() => {
+    searchParamsMock.mockReturnValue(new URLSearchParams());
+    if (originalScrollIntoView) {
+      Object.defineProperty(
+        Element.prototype,
+        'scrollIntoView',
+        originalScrollIntoView,
+      );
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (Element.prototype as any).scrollIntoView;
+    }
+    window.requestAnimationFrame = originalRAF;
+  });
+
+  it('rAF 콜백이 실행되기 전에는 scrollIntoView 가 호출되지 않는다', () => {
+    // rAF 를 호출 큐에 잡아두기만 하고 즉시 실행하지 않음.
+    const rafCalls: FrameRequestCallback[] = [];
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      rafCalls.push(cb);
+      return rafCalls.length;
+    }) as typeof window.requestAnimationFrame;
+
+    render(
+      <RoadmapResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+
+    // rAF 콜백 보류 상태 → scrollIntoView · router.replace 모두 미호출.
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+    expect(rafCalls.length).toBeGreaterThan(0);
+
+    // rAF 콜백 실행 → scrollIntoView 호출됨.
+    act(() => {
+      rafCalls.forEach((cb) => cb(performance.now()));
+    });
+    expect(scrollIntoViewSpy).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    });
+    expect(routerReplaceMock).toHaveBeenCalledWith(
+      '/consultant/projects/p1/roadmap',
+      { scroll: false },
     );
   });
 });
