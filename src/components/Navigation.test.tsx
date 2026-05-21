@@ -439,6 +439,37 @@ describe('Navigation', () => {
       // 모바일 메뉴 닫힘
       expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
     });
+
+    // ─── H-4: 모바일 메뉴 body scroll lock ─────────────────────────────────
+
+    it('모바일 메뉴 열림 동안 document.body.overflow=hidden 적용 (H-4)', async () => {
+      const user = userEvent.setup();
+      document.body.style.overflow = '';
+      renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
+
+      expect(document.body.style.overflow).toBe('');
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      expect(document.body.style.overflow).toBe('hidden');
+
+      await user.click(screen.getByLabelText('메뉴 닫기'));
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('이전 body.overflow 값을 보존하고 닫을 때 복원 (H-4)', async () => {
+      const user = userEvent.setup();
+      document.body.style.overflow = 'auto';
+      renderNavigation({ user: createUser({ role: 'CONSULTANT_APPROVED' }) });
+
+      await user.click(screen.getByLabelText('메뉴 열기'));
+      expect(document.body.style.overflow).toBe('hidden');
+
+      await user.click(screen.getByLabelText('메뉴 닫기'));
+      expect(document.body.style.overflow).toBe('auto');
+
+      // cleanup
+      document.body.style.overflow = '';
+    });
   });
 
   // ─── 사용자 드롭다운 ────────────────────────────────────────────────────

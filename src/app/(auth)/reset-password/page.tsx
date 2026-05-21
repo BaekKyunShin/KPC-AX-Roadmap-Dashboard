@@ -12,7 +12,7 @@ import {
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
-import { showErrorToast, showSuccessToast } from '@/lib/utils';
+import { showErrorToast, showSuccessToast, scrollToPageTop } from '@/lib/utils';
 import { TOAST_ERROR } from '@/lib/constants/toast-messages';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -116,6 +116,7 @@ function ResetPasswordContent() {
         url.searchParams.set('done', '1');
         window.history.pushState({}, '', url.toString());
         window.dispatchEvent(new PopStateEvent('popstate'));
+        scrollToPageTop();
       } catch {
         setError('처리 중 오류가 발생했습니다.');
         showErrorToast('비밀번호 재설정 실패', TOAST_ERROR.NETWORK);

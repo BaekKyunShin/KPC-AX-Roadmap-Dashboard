@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // =============================================================================
 // 모킹
@@ -337,6 +337,172 @@ describe('MessageThread', () => {
       renderThread({ messages: [msg], hasMore: false, isLoading: false, onLoadMore });
       // scrollTop=0이지만 hasMore=false이므로 호출 안됨
       expect(onLoadMore).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── H-2: append 자동 스크롤 가드 ─────────────────────────────────────
+
+  describe('append 가드 (H-2)', () => {
+    let scrollIntoViewSpy: ReturnType<typeof vi.fn>;
+    const originalScrollIntoView = (Element.prototype as { scrollIntoView?: unknown })
+      .scrollIntoView;
+
+    beforeEach(() => {
+      // jsdom 에는 Element.prototype.scrollIntoView 가 없어 spyOn 대신 직접 정의
+      scrollIntoViewSpy = vi.fn();
+      Object.defineProperty(Element.prototype, 'scrollIntoView', {
+        configurable: true,
+        writable: true,
+        value: scrollIntoViewSpy,
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(Element.prototype, 'scrollIntoView', {
+        configurable: true,
+        writable: true,
+        value: originalScrollIntoView,
+      });
+    });
+
+    function setContainerScroll(
+      container: HTMLElement,
+      values: { scrollHeight: number; clientHeight: number; scrollTop: number },
+    ) {
+      Object.defineProperty(container, 'scrollHeight', {
+        configurable: true,
+        value: values.scrollHeight,
+      });
+      Object.defineProperty(container, 'clientHeight', {
+        configurable: true,
+        value: values.clientHeight,
+      });
+      Object.defineProperty(container, 'scrollTop', {
+        configurable: true,
+        writable: true,
+        value: values.scrollTop,
+      });
+    }
+
+    function rerenderProps(messages: Message[]) {
+      return {
+        conversation: createConversation(),
+        messages,
+        isLoading: false,
+        hasMore: false,
+        isLoadingMore: false,
+        onSendMessage: vi.fn().mockResolvedValue({ success: true }),
+        onLoadMore: vi.fn(),
+        onMobileBack: vi.fn(),
+      };
+    }
+
+    it('사용자가 위로 스크롤된 상태에서 상대 메시지 도착 시 자동 스크롤 발생 안 함 + 배지 노출', async () => {
+      const initial = [
+        createMessage({ id: 'm1', sender_id: 'me-user', content: '내가 보낸 메시지' }),
+        createMessage({ id: 'm2', sender_id: 'other-user-1', content: '상대 메시지' }),
+      ];
+      const { rerender } = render(<MessageThread {...rerenderProps(initial)} />);
+
+      const container = screen.getByTestId('message-thread-area');
+      setContainerScroll(container, { scrollHeight: 1000, clientHeight: 400, scrollTop: 100 });
+
+      scrollIntoViewSpy.mockClear();
+
+      rerender(
+        <MessageThread
+          {...rerenderProps([
+            ...initial,
+            createMessage({ id: 'm3', sender_id: 'other-user-1', content: '새 상대 메시지' }),
+          ])}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('new-messages-badge')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('new-messages-badge')).toHaveTextContent('새 메시지 1개');
+      expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    });
+
+    it('사용자가 하단 근처일 때는 상대 메시지 도착 시 자동 하단 스크롤', async () => {
+      const initial = [
+        createMessage({ id: 'm1', sender_id: 'other-user-1', content: '첫 메시지' }),
+      ];
+      const { rerender } = render(<MessageThread {...rerenderProps(initial)} />);
+
+      const container = screen.getByTestId('message-thread-area');
+      // 하단 거리 10px (<150 임계) → 가드 미적용
+      setContainerScroll(container, { scrollHeight: 1000, clientHeight: 400, scrollTop: 590 });
+
+      scrollIntoViewSpy.mockClear();
+
+      rerender(
+        <MessageThread
+          {...rerenderProps([
+            ...initial,
+            createMessage({ id: 'm2', sender_id: 'other-user-1', content: '두 번째' }),
+          ])}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(scrollIntoViewSpy).toHaveBeenCalled();
+      });
+      expect(screen.queryByTestId('new-messages-badge')).not.toBeInTheDocument();
+    });
+
+    it('본인 발신 메시지는 위로 스크롤된 상태여도 자동 하단 스크롤 (가드 무시)', async () => {
+      const initial = [
+        createMessage({ id: 'm1', sender_id: 'other-user-1' }),
+      ];
+      const { rerender } = render(<MessageThread {...rerenderProps(initial)} />);
+
+      const container = screen.getByTestId('message-thread-area');
+      setContainerScroll(container, { scrollHeight: 1000, clientHeight: 400, scrollTop: 50 });
+
+      scrollIntoViewSpy.mockClear();
+
+      rerender(
+        <MessageThread
+          {...rerenderProps([
+            ...initial,
+            createMessage({ id: 'm2', sender_id: 'me-user', content: '내가 방금 보냄' }),
+          ])}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(scrollIntoViewSpy).toHaveBeenCalled();
+      });
+      expect(screen.queryByTestId('new-messages-badge')).not.toBeInTheDocument();
+    });
+
+    it('배지 클릭 시 하단 스크롤 + 카운트 0 리셋', async () => {
+      const initial = [
+        createMessage({ id: 'm1', sender_id: 'other-user-1' }),
+      ];
+      const { rerender } = render(<MessageThread {...rerenderProps(initial)} />);
+
+      const container = screen.getByTestId('message-thread-area');
+      setContainerScroll(container, { scrollHeight: 1000, clientHeight: 400, scrollTop: 100 });
+
+      rerender(
+        <MessageThread
+          {...rerenderProps([
+            ...initial,
+            createMessage({ id: 'm2', sender_id: 'other-user-1', content: '새' }),
+          ])}
+        />,
+      );
+
+      const badge = await screen.findByTestId('new-messages-badge');
+      scrollIntoViewSpy.mockClear();
+      const user = userEvent.setup();
+      await user.click(badge);
+
+      expect(scrollIntoViewSpy).toHaveBeenCalledWith({ behavior: 'smooth' });
+      expect(screen.queryByTestId('new-messages-badge')).not.toBeInTheDocument();
     });
   });
 });

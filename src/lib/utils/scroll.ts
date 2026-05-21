@@ -27,6 +27,17 @@ export function scrollToElement(
 }
 
 /**
+ * 스크롤 컨테이너가 하단 근처에 있는지 확인.
+ * 채팅·로그 같은 무한 스크롤 컨테이너의 자동 하단 스크롤 가드에 사용.
+ *
+ * @param el - 스크롤 컨테이너 요소
+ * @param threshold - 하단으로 간주할 임계값 (px, 기본 150)
+ */
+export function isNearBottom(el: HTMLElement, threshold = 150): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+}
+
+/**
  * 첫 번째 에러 필드로 스크롤 및 포커스
  * @param containerRef - 폼 컨테이너 ref
  * @param errorSelector - 에러 요소 선택자 (기본값: '[data-error="true"]')

@@ -218,6 +218,18 @@ export default function Navigation({ user, unreadCount = 0, unreadMessageCount =
   const commandPalette = useCommandPalette();
   const { recentVisits } = useRecentVisits();
 
+  // 모바일 햄버거 메뉴 열림 동안 body 스크롤 잠금 (H-4)
+  // - Sheet/Dialog 없이 plain <div> 로 메뉴를 구현하므로 자동 body lock 이 없음.
+  // - 이전 overflow 값을 보존했다가 복원해 다른 코드의 스타일 조작과 충돌 회피.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isMobileMenuOpen]);
+
   // 바깥 클릭 + Escape 키 시 드롭다운 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
