@@ -378,6 +378,26 @@ describe('toggleShare', () => {
 // ─── toggleLike 추가 에지 케이스 ────────────────────────────────────────────
 
 describe('toggleLike — 추가 에지 케이스', () => {
+  it('좋아요 삭제 실패 → error 반환 (#001)', async () => {
+    setupAuth();
+
+    // 1. maybeSingle: 기존 좋아요 존재
+    serverMock.addResult({ data: { id: 'like-1' }, error: null });
+    // 2. delete → then: 에러
+    serverMock.addResult({ data: null, error: { message: 'delete failed' } });
+    // 3. silent fail 회귀 안전망: count 조회까지 진행하면 큐가 비어 의도와 다른 실패 발생
+    serverMock.addResult({ data: null, error: null, count: 99 });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await toggleLike(TEST_ROADMAP_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '좋아요 취소에 실패했습니다.',
+    });
+    consoleSpy.mockRestore();
+  });
+
   it('좋아요 삭제 후 count 조회 시 null → 0 반환', async () => {
     setupAuth();
 
@@ -512,6 +532,26 @@ describe('togglePBLLike', () => {
     if (result.success) {
       expect(result.data.count).toBe(0);
     }
+  });
+
+  it('좋아요 삭제 실패 → error 반환 (#001)', async () => {
+    setupAuth();
+
+    // 1. maybeSingle: 기존 PBL 좋아요 존재
+    serverMock.addResult({ data: { id: 'pbl-like-1' }, error: null });
+    // 2. delete → then: 에러
+    serverMock.addResult({ data: null, error: { message: 'delete failed' } });
+    // 3. silent fail 회귀 안전망: count 조회까지 진행하면 큐가 비어 의도와 다른 실패 발생
+    serverMock.addResult({ data: null, error: null, count: 99 });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await togglePBLLike(TEST_PBL_ID);
+
+    expect(result).toEqual({
+      success: false,
+      error: '좋아요 취소에 실패했습니다.',
+    });
+    consoleSpy.mockRestore();
   });
 
   it('빈 문자열 ID → UUID 검증 실패', async () => {

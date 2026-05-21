@@ -39,10 +39,15 @@ export async function toggleLike(
 
   if (existing) {
     // 좋아요 제거
-    await supabase
+    const { error } = await supabase
       .from('roadmap_likes')
       .delete()
       .eq('id', existing.id);
+
+    if (error) {
+      console.error('[toggleLike Error]', error);
+      return errorResult('좋아요 취소에 실패했습니다.');
+    }
   } else {
     // 좋아요 추가
     const { error } = await supabase
@@ -161,7 +166,15 @@ export async function togglePBLLike(
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('pbl_likes').delete().eq('id', existing.id);
+    const { error } = await supabase
+      .from('pbl_likes')
+      .delete()
+      .eq('id', existing.id);
+
+    if (error) {
+      console.error('[togglePBLLike Error]', error);
+      return errorResult('좋아요 취소에 실패했습니다.');
+    }
   } else {
     const { error } = await supabase
       .from('pbl_likes')
