@@ -10,6 +10,7 @@ import {
   getNotice,
   incrementNoticeViewCount,
 } from '@/lib/services/notice';
+import { formatDateTimeKR } from '@/lib/utils/date';
 import { NoticeAttachmentDownloader } from './_components/NoticeAttachmentDownloader';
 import { NoticeDetailActions } from './_components/NoticeDetailActions';
 
@@ -21,20 +22,6 @@ const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
 
 interface Props {
   params: Promise<{ id: string }>;
-}
-
-function formatDateTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 /**
@@ -109,14 +96,14 @@ export default async function NoticeDetailPage({ params }: Props) {
           </span>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <Calendar className="h-3.5 w-3.5" />
-            {formatDateTime(notice.created_at)}
+            {formatDateTimeKR(notice.created_at)}
           </span>
           {wasEdited(notice.created_at, notice.updated_at) && (
             <span
               className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs"
-              title={`최종 수정: ${formatDateTime(notice.updated_at)}`}
+              title={`최종 수정: ${formatDateTimeKR(notice.updated_at)}`}
             >
-              (수정됨 · {formatDateTime(notice.updated_at)})
+              (수정됨 · {formatDateTimeKR(notice.updated_at)})
             </span>
           )}
           <span className="inline-flex items-center gap-1.5">

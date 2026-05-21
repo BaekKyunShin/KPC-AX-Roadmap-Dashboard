@@ -20,6 +20,7 @@ import { noticeSearchSchema } from '@/lib/schemas/notice';
 import { NoticeSearchBar } from './_components/NoticeSearchBar';
 import { NoticePagination } from './_components/NoticePagination';
 import { cn } from '@/lib/utils';
+import { formatDateKR } from '@/lib/utils/date';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
 
 export const metadata = {
@@ -27,18 +28,6 @@ export const metadata = {
 };
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'];
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  } catch {
-    return iso;
-  }
-}
 
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -160,7 +149,7 @@ export default async function NoticesPage({ searchParams }: Props) {
                       </span>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums whitespace-nowrap">
-                      {formatDate(notice.created_at)}
+                      {formatDateKR(notice.created_at)}
                     </TableCell>
                   </TableRow>
                 ))}

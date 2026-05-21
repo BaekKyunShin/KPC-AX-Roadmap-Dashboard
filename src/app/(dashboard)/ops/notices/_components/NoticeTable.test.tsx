@@ -115,12 +115,23 @@ describe('NoticeTable', () => {
       expect(link).toHaveAttribute('href', '/notices/notice-1');
     });
 
-    it('공지 작성일이 YYYY-MM-DD 형식으로 표시된다', () => {
+    it('공지 작성일이 한국식 점 포맷(KST)으로 표시된다', () => {
+      // 2024-03-15T09:00:00Z == KST 2024-03-15 18:00 — 같은 날
       const notices = [makeNotice({ created_at: '2024-03-15T09:00:00Z' })];
       render(
         <NoticeTable title="공지" notices={notices} emptyMessage="-" />,
       );
-      expect(screen.getByText('2024-03-15')).toBeInTheDocument();
+      expect(screen.getByText('2024. 3. 15.')).toBeInTheDocument();
+    });
+
+    it('UTC 자정 경계 ISO를 KST 일자로 표시한다 (regression: timezone)', () => {
+      // 2026-05-20T16:00:00Z == KST 2026-05-21 01:00
+      // 서버(UTC) 환경에서 timezone 미적용 시 "2026-05-20"으로 잘못 표시되는 회귀를 잡는다.
+      const notices = [makeNotice({ created_at: '2026-05-20T16:00:00Z' })];
+      render(
+        <NoticeTable title="공지" notices={notices} emptyMessage="-" />,
+      );
+      expect(screen.getByText('2026. 5. 21.')).toBeInTheDocument();
     });
 
     it('author.name이 있으면 작성자 셀에 표시된다', () => {

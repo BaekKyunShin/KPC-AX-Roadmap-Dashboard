@@ -11,23 +11,12 @@ import {
 } from '@/components/ui/table';
 import { NoticeRowActions } from './NoticeRowActions';
 import type { NoticeWithMeta } from '@/lib/services/notice';
+import { formatDateKR } from '@/lib/utils/date';
 
 interface NoticeTableProps {
   title: string;
   notices: NoticeWithMeta[];
   emptyMessage: string;
-}
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  } catch {
-    return iso;
-  }
 }
 
 export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) {
@@ -97,7 +86,7 @@ export function NoticeTable({ title, notices, emptyMessage }: NoticeTableProps) 
                     {notice.view_count.toLocaleString()}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-sm text-muted-foreground tabular-nums whitespace-nowrap">
-                    {formatDate(notice.created_at)}
+                    {formatDateKR(notice.created_at)}
                   </TableCell>
                   <TableCell>
                     <NoticeRowActions
