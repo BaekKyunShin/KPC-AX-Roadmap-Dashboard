@@ -42,24 +42,24 @@ describe('ScopeFilter', () => {
     expect(screen.getByTestId('scope-filter-all').getAttribute('aria-selected')).toBe('true');
   });
 
-  it('내 산출물 클릭 시 URL에 scope=mine 설정', () => {
+  it('내 산출물 클릭 시 URL에 scope=mine 설정 (scroll: false)', () => {
     render(<ScopeFilter />);
     fireEvent.click(screen.getByTestId('scope-filter-mine'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?scope=mine');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?scope=mine', { scroll: false });
   });
 
-  it('전체 갤러리 클릭 시 URL에서 scope 제거', () => {
+  it('전체 갤러리 클릭 시 URL에서 scope 제거 (scroll: false)', () => {
     mockSearchParams = new URLSearchParams('scope=mine&search=foo');
     render(<ScopeFilter />);
     fireEvent.click(screen.getByTestId('scope-filter-all'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?search=foo');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?search=foo', { scroll: false });
   });
 
-  it('필터 변경 시 기존 page 파라미터 제거', () => {
+  it('필터 변경 시 기존 page 파라미터 제거 (scroll: false)', () => {
     mockSearchParams = new URLSearchParams('page=3');
     render(<ScopeFilter />);
     fireEvent.click(screen.getByTestId('scope-filter-mine'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?scope=mine');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?scope=mine', { scroll: false });
   });
 
   it('제어형: value/onChange 사용 시 URL 직접 변경 없음', () => {

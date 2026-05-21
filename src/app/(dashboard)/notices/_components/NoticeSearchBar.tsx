@@ -37,7 +37,7 @@ export function NoticeSearchBar() {
     params.set('filter_by', filter_by);
     params.set('page', '1');
     startTransition(() => {
-      router.push(`/notices?${params.toString()}`);
+      router.push(`/notices?${params.toString()}`, { scroll: false });
     });
   }
 
@@ -50,7 +50,7 @@ export function NoticeSearchBar() {
 
   function handleReset() {
     startTransition(() => {
-      router.push('/notices');
+      router.push('/notices', { scroll: false });
     });
   }
 

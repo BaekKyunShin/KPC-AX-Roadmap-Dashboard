@@ -49,30 +49,30 @@ describe('TrackFilter', () => {
     expect(screen.getByTestId('track-filter-ALL').getAttribute('aria-selected')).toBe('true');
   });
 
-  it('로드맵 클릭 시 URL에 track=ROADMAP 설정', () => {
+  it('로드맵 클릭 시 URL에 track=ROADMAP 설정 (scroll: false)', () => {
     render(<TrackFilter />);
     fireEvent.click(screen.getByTestId('track-filter-ROADMAP'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?track=ROADMAP');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?track=ROADMAP', { scroll: false });
   });
 
-  it('PBL 클릭 시 URL에 track=PBL 설정', () => {
+  it('PBL 클릭 시 URL에 track=PBL 설정 (scroll: false)', () => {
     render(<TrackFilter />);
     fireEvent.click(screen.getByTestId('track-filter-PBL'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?track=PBL');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?track=PBL', { scroll: false });
   });
 
-  it('전체 클릭 시 URL에서 track 제거', () => {
+  it('전체 클릭 시 URL에서 track 제거 (scroll: false)', () => {
     mockSearchParams = new URLSearchParams('track=PBL&search=foo');
     render(<TrackFilter />);
     fireEvent.click(screen.getByTestId('track-filter-ALL'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?search=foo');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?search=foo', { scroll: false });
   });
 
-  it('필터 변경 시 기존 page 파라미터 제거 (첫 페이지로 이동)', () => {
+  it('필터 변경 시 기존 page 파라미터 제거 (첫 페이지로 이동, scroll: false)', () => {
     mockSearchParams = new URLSearchParams('page=3');
     render(<TrackFilter />);
     fireEvent.click(screen.getByTestId('track-filter-PBL'));
-    expect(routerPush).toHaveBeenCalledWith('/gallery?track=PBL');
+    expect(routerPush).toHaveBeenCalledWith('/gallery?track=PBL', { scroll: false });
   });
 
   it('제어형: value/onChange 사용 시 URL 직접 변경 없음', () => {

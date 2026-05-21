@@ -243,7 +243,7 @@ export default function UserManagementTable({ users, currentUserId }: UserManage
     });
     if (params.get('page') === '1') params.delete('page');
     const search = params.toString();
-    router.replace(`${pathname}${search ? `?${search}` : ''}`);
+    router.replace(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
   };
 
   // 디바운스 검색·필터 변경 시 URL 동기화 + 첫 페이지로 리셋

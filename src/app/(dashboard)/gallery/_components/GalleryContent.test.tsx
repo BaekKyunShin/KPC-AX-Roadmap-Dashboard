@@ -342,7 +342,10 @@ describe('GalleryContent', () => {
       });
       await user.click(screen.getByTestId('pagination-next'));
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('page=2'));
+        expect(mockPush).toHaveBeenCalledWith(
+          expect.stringContaining('page=2'),
+          { scroll: false },
+        );
       });
     });
   });

@@ -67,7 +67,7 @@ export function ScopeFilter({ value, onChange }: ScopeFilterProps) {
     params.delete('page');
     const search = params.toString();
     startTransition(() => {
-      router.push(`${pathname}${search ? `?${search}` : ''}`);
+      router.push(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
     });
   };
 

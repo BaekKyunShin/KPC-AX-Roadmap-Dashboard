@@ -147,7 +147,8 @@ export function RoadmapResultClient({
     if (isRegenerateRequested && accordionRef.current) {
       accordionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       // URL cleanup — 새로고침 시 또 펼치지 않게 쿼리 제거 (히스토리 누적 방지).
-      router.replace(pathname);
+      // scrollIntoView 가 잡은 위치를 보존하기 위해 scroll: false 명시.
+      router.replace(pathname, { scroll: false });
     }
   }, [isRegenerateRequested, router, pathname]);
 

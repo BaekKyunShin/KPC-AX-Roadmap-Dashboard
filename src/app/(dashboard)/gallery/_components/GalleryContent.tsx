@@ -129,7 +129,7 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
         params.delete(key);
       }
     });
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   // 디바운스된 검색어 변경 시 URL 업데이트 + page 리셋
@@ -163,7 +163,7 @@ export function GalleryContent({ isAdmin, searchParams, initialData }: GalleryCo
     setIndustry(DEFAULT_FILTER_VALUE);
     setSort('latest');
     setTrack('ALL');
-    router.push(pathname);
+    router.push(pathname, { scroll: false });
     setTimeout(() => { isResettingRef.current = false; }, 500);
   };
 
