@@ -144,12 +144,16 @@ export function RoadmapResultClient({
   const isRegenerateRequested = searchParams?.get('regenerate') === 'open';
   const accordionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (isRegenerateRequested && accordionRef.current) {
-      accordionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // URL cleanup — 새로고침 시 또 펼치지 않게 쿼리 제거 (히스토리 누적 방지).
-      // scrollIntoView 가 잡은 위치를 보존하기 위해 scroll: false 명시.
+    if (!isRegenerateRequested || !accordionRef.current) return;
+    // RegenerateAccordion DOM 추가 + 레이아웃 계산이 완료된 다음 페인트에
+    // scrollIntoView 가 실행되도록 rAF 로 한 프레임 지연 — 부정확한 위치 점프 방지.
+    const rafId = requestAnimationFrame(() => {
+      accordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // URL cleanup — 새로고침 시 재펼침/히스토리 누적 방지. scrollIntoView 위치
+      // 보존을 위해 scroll: false 명시.
       router.replace(pathname, { scroll: false });
-    }
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [isRegenerateRequested, router, pathname]);
 
   const capabilities = useMemo(() => ROLE_CAPABILITIES[role], [role]);

@@ -1,17 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // next/navigation — ResultTabs / PBLResultClient 가 useSearchParams / useRouter / usePathname 사용
+const { searchParamsMock, routerReplaceMock } = vi.hoisted(() => ({
+  searchParamsMock: vi.fn(() => new URLSearchParams()),
+  routerReplaceMock: vi.fn(),
+}));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace: routerReplaceMock,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
     prefetch: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsMock(),
   usePathname: () => '/consultant/projects/p1/pbl',
 }));
 
@@ -773,6 +777,85 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
     });
 
     expect(onFinalize).not.toHaveBeenCalled();
+  });
+});
+
+// M-2 (PR3) — ?regenerate=open 진입 시 scrollIntoView 가 페인트 직후 실행되도록
+// requestAnimationFrame 콜백 안에서 호출됨을 검증.
+describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
+  let scrollIntoViewSpy: ReturnType<typeof vi.fn>;
+  let originalScrollIntoView: PropertyDescriptor | undefined;
+  let originalRAF: typeof window.requestAnimationFrame;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsMock.mockReturnValue(new URLSearchParams('regenerate=open'));
+
+    scrollIntoViewSpy = vi.fn();
+    originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      'scrollIntoView',
+    );
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewSpy,
+    });
+
+    originalRAF = window.requestAnimationFrame;
+  });
+
+  afterEach(() => {
+    searchParamsMock.mockReturnValue(new URLSearchParams());
+    if (originalScrollIntoView) {
+      Object.defineProperty(
+        Element.prototype,
+        'scrollIntoView',
+        originalScrollIntoView,
+      );
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (Element.prototype as any).scrollIntoView;
+    }
+    window.requestAnimationFrame = originalRAF;
+  });
+
+  it('rAF 콜백이 실행되기 전에는 scrollIntoView 가 호출되지 않는다', () => {
+    const rafCalls: FrameRequestCallback[] = [];
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      rafCalls.push(cb);
+      return rafCalls.length;
+    }) as typeof window.requestAnimationFrame;
+
+    render(
+      <PBLResultClient
+        role="CONSULTANT"
+        projectId="p1"
+        versions={[makeVersion()]}
+        selectedVersion={makeVersion()}
+        interview={baseInterview}
+        onSelectVersion={vi.fn()}
+        onEdit={vi.fn()}
+        onGenerate={vi.fn()}
+        onDownload={vi.fn()}
+      />,
+    );
+
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+    expect(rafCalls.length).toBeGreaterThan(0);
+
+    act(() => {
+      rafCalls.forEach((cb) => cb(performance.now()));
+    });
+    expect(scrollIntoViewSpy).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    });
+    expect(routerReplaceMock).toHaveBeenCalledWith(
+      '/consultant/projects/p1/pbl',
+      { scroll: false },
+    );
   });
 });
 
