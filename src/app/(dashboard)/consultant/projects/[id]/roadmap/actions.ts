@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers';
 import { after } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
 import {
@@ -125,6 +126,10 @@ export async function createRoadmap(
         await insertSystemActivityLog(parsed.data.projectId, user.id, logContent);
       });
 
+      // 운영관리 페이지가 컨설턴트의 DRAFT 생성을 즉시 반영하도록 캐시 무효화
+      revalidatePath('/ops/projects');
+      revalidatePath(`/ops/projects/${parsed.data.projectId}`);
+
       return {
         success: true,
         data: {
@@ -169,6 +174,10 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
         '로드맵이 최종 확정되었습니다.',
       );
     });
+
+    // 운영관리 페이지가 FINAL 전환을 즉시 반영하도록 캐시 무효화
+    revalidatePath('/ops/projects');
+    revalidatePath(`/ops/projects/${access.projectId}`);
 
     return { success: true };
   } catch (error) {

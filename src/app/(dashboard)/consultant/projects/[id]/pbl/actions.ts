@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers';
 import { after } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import {
   requireAuth,
   requireAuthWithRole,
@@ -381,6 +382,10 @@ export async function generatePBLAction(
         await insertSystemActivityLog(projectId, user.id, logContent);
       });
 
+      // 운영관리 페이지가 PBL DRAFT 생성을 즉시 반영하도록 캐시 무효화
+      revalidatePath('/ops/projects');
+      revalidatePath(`/ops/projects/${projectId}`);
+
       return { success: true, data: { pblId: draft.id } };
     } finally {
       cleanupAbort(abortKey(user.id));
@@ -468,6 +473,10 @@ export async function finalizePBLAction(pblId: string): Promise<SimpleActionResu
         'PBL 보고서가 최종 확정되었습니다.',
       );
     });
+
+    // 운영관리 페이지가 PBL FINAL 전환을 즉시 반영하도록 캐시 무효화
+    revalidatePath('/ops/projects');
+    revalidatePath(`/ops/projects/${access.data.projectId}`);
 
     return { success: true };
   } catch (error) {

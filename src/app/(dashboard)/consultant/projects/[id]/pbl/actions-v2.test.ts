@@ -83,6 +83,7 @@ vi.mock('next/headers', () => ({
     get: (key: string) => (key === 'host' ? 'localhost:3000' : null),
   }),
 }));
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 afterEach(() => {
   pendingCallbacks.length = 0;

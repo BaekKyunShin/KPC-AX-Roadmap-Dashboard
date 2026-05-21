@@ -116,6 +116,10 @@ vi.mock('next/headers', () => ({
   })),
 }));
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}));
+
 // ─── 테스트 상수 ──────────────────────────────────────────────────────────────
 
 const USER_A_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -652,6 +656,33 @@ describe('generatePBLAction', () => {
     );
   });
 
+  it('성공 시 운영관리 경로 캐시 무효화 (#003)', async () => {
+    const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
+    const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
+    const { revalidatePath } = await import('next/cache');
+    vi.mocked(createDraftVersion).mockResolvedValueOnce({ id: 'draft-id', version_number: 1 } as never);
+    vi.mocked(generatePBLContent).mockResolvedValueOnce({ content: VALID_PBL_CONTENT } as never);
+
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    serverMock.addResult({
+      data: {
+        id: PROJECT_ID, status: 'INTERVIEWED', track: 'PBL',
+        assigned_consultant_id: USER_A_ID, company_name: '테스트기업', is_test_mode: false,
+        industry: '제조업', sub_industries: [], company_size: 'medium', customer_comment: null,
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: { pbl_data: VALID_PBL_INTERVIEW_DATA }, error: null });
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: null, error: null });
+    adminMock.addResult({ data: null, error: null });
+
+    await generatePBLAction(PROJECT_ID);
+
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/projects');
+    expect(revalidatePath).toHaveBeenCalledWith(`/ops/projects/${PROJECT_ID}`);
+  });
+
   it('revisionPrompt 있을 때 → "새 PBL 보고서 버전" 활동 일지 기록', async () => {
     const { generatePBLContent } = await import('@/lib/services/pbl/pbl-generator');
     const { createDraftVersion } = await import('@/lib/services/pbl/pbl-crud');
@@ -886,6 +917,17 @@ describe('finalizePBLAction', () => {
       USER_A_ID,
       'PBL 보고서가 최종 확정되었습니다.',
     );
+  });
+
+  it('성공 시 운영관리 경로 캐시 무효화 (#002)', async () => {
+    const { revalidatePath } = await import('next/cache');
+    serverMock.addResult({ data: { role: 'CONSULTANT_APPROVED', status: 'ACTIVE' }, error: null });
+    adminMock.addResult({ data: PBL_ACCESS_SUCCESS_ROW, error: null });
+
+    await finalizePBLAction(PBL_ID);
+
+    expect(revalidatePath).toHaveBeenCalledWith('/ops/projects');
+    expect(revalidatePath).toHaveBeenCalledWith(`/ops/projects/${PROJECT_ID}`);
   });
 
   it('finalizePBL 예외 발생 → catch error 반환', async () => {
