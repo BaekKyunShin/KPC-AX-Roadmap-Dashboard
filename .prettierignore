@@ -1,0 +1,20 @@
+# 의존성·잠금 파일 (재포맷 시 대규모 diff·손상 방지)
+package-lock.json
+node_modules/
+
+# 빌드 산출물
+.next/
+out/
+build/
+coverage/
+
+# husky 내부 (자동 생성)
+.husky/_/
+
+# 테스트 리포트 (로컬 생성)
+playwright-report/
+test-results/
+
+# 참조 파일·워크트리 아티팩트
+_reference/
+.worktrees/
