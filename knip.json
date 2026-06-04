@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["scripts/*.{ts,mjs}", "lighthouserc.js"],
+  "ignore": ["src/components/ui/**"],
+  "ignoreBinaries": ["vercel", "python3", "supabase"],
+  "ignoreExportsUsedInFile": true
+}

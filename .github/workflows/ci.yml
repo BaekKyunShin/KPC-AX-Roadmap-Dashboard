@@ -31,6 +31,24 @@ jobs:
 
       - run: npm run lint
 
+  knip:
+    name: Knip (dead code, informational)
+    runs-on: ubuntu-latest
+    # 정보성 잡: 미사용 파일·export·의존성을 PR 에 노출하되 머지는 막지 않는다.
+    # 베이스라인 정리(삭제 PR) 후 아래 continue-on-error 를 제거하면 차단 게이트로 승격된다.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run knip
+
   unit-test:
     name: Unit Test
     runs-on: ubuntu-latest

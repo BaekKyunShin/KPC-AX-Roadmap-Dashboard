@@ -19,6 +19,7 @@ npm run dev:with-hwpx    # HWPX 브리지 서버 + Next.js 프록시 (권장)
 npm run build            # 프로덕션 빌드
 npm run lint:fix         # ESLint 자동 수정
 npm run format           # Prettier 포맷팅
+npm run knip             # 미사용 파일·export·의존성 탐지 (dead code, 정보성)
 npm run validate         # typecheck + lint + test 통합 검증 (CI와 동일)
 npm run test             # Vitest 단위 테스트
 npm run test:watch       # Vitest 워치 모드
@@ -52,16 +53,16 @@ npm run db:reset         # 로컬 Supabase 리셋 (마이그레이션 재적용)
 
 UI 라벨·플로우·Server Action 시그니처·Helper 시맨틱·Component prop·라우트·환경변수·Enum 값을 변경한 직후, 푸쉬 전에 다음 한 줄 그렙으로 사용처 전수를 확인한다. CI 안전망에 의존하기 전에 30초로 막아야 한다.
 
-| 변경 종류 | 그렙 키워드 |
-|---|---|
-| UI 버튼·라벨 텍스트 | 새 라벨 + 옛 라벨 (예: `"배정하기"`, `"확인"`) |
-| Server Action 시그니처·반환 타입 | 함수명 (예: `assignConsultant`) |
-| Helper/훅 시맨틱 변경 | helper 이름 + 의존 키워드 (예: `window.location.reload`, `router.refresh`) |
-| Component prop 추가·이름 변경 | 컴포넌트명 (예: `ManualAssignmentForm`) |
-| URL 라우트 변경 | 옛 path |
-| 토스트·다이얼로그 워딩 | 워딩 일부 문자열 |
-| Enum/타입 값 | enum 값명 |
-| 환경변수 | ENV 변수명 |
+| 변경 종류                        | 그렙 키워드                                                                |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| UI 버튼·라벨 텍스트              | 새 라벨 + 옛 라벨 (예: `"배정하기"`, `"확인"`)                             |
+| Server Action 시그니처·반환 타입 | 함수명 (예: `assignConsultant`)                                            |
+| Helper/훅 시맨틱 변경            | helper 이름 + 의존 키워드 (예: `window.location.reload`, `router.refresh`) |
+| Component prop 추가·이름 변경    | 컴포넌트명 (예: `ManualAssignmentForm`)                                    |
+| URL 라우트 변경                  | 옛 path                                                                    |
+| 토스트·다이얼로그 워딩           | 워딩 일부 문자열                                                           |
+| Enum/타입 값                     | enum 값명                                                                  |
+| 환경변수                         | ENV 변수명                                                                 |
 
 검색 범위: `src/` + `e2e/`. 의심 spec 발견 시 `npx playwright test e2e/<path>.spec.ts`로 부분 실행. 단위 테스트(`npm run validate`) 통과해도 통합 흐름 결함은 못 잡으므로 그렙은 별도로 필수.
 
@@ -193,27 +194,27 @@ IMPORTANT: Superpowers 플러그인 설치됨. 작업 전 관련 superpowers 스
 
 **해당 영역 코드 수정 시 반드시 호출:**
 
-| 조건 | 스킬 | 범위 |
-|------|------|------|
-| UI 컴포넌트·페이지 작성 | `frontend-guide` | 프로젝트 |
-| UI 검수 (접근성·UX 감사) | `web-design-guidelines` | 전역 |
-| React/Next.js 작성·리뷰·성능 | `react-best-practices` | 전역 |
-| 컴포넌트 구조 설계·리팩토링 | `composition-patterns` | 전역 |
-| Server Action (`actions.ts`) 수정 | `check-server-action` | 프로젝트 |
-| 마이그레이션·RLS·DB 함수 작성 | `supabase-dev` | 프로젝트 |
-| 리팩터링·코드 정리 | `refactoring` | 전역 |
+| 조건                              | 스킬                    | 범위     |
+| --------------------------------- | ----------------------- | -------- |
+| UI 컴포넌트·페이지 작성           | `frontend-guide`        | 프로젝트 |
+| UI 검수 (접근성·UX 감사)          | `web-design-guidelines` | 전역     |
+| React/Next.js 작성·리뷰·성능      | `react-best-practices`  | 전역     |
+| 컴포넌트 구조 설계·리팩토링       | `composition-patterns`  | 전역     |
+| Server Action (`actions.ts`) 수정 | `check-server-action`   | 프로젝트 |
+| 마이그레이션·RLS·DB 함수 작성     | `supabase-dev`          | 프로젝트 |
+| 리팩터링·코드 정리                | `refactoring`           | 전역     |
 
 여러 스킬 해당 시 모두 호출. 스킬 호출 후 작업 컨텍스트에 맞게 적용.
 
 ## 문서
 
-| 문서 | 용도 |
-|------|------|
-| `docs/ARCHITECTURE.md` | 시스템 다이어그램·데이터 흐름 |
-| `docs/RLS.md` | Row-Level Security 정책 |
-| `docs/DECISIONS.md` | 아키텍처 결정 기록 (ADR) |
-| `docs/CONSULTANT_PROFILE_SPEC.md` | 컨설턴트 프로필 명세 |
-| `docs/PERFORMANCE_BUDGET.md` | 성능 예산·측정 기준 |
-| `docs/PROJECT_OUTLINE.md` | 초기 기획서 (아카이브) |
+| 문서                              | 용도                          |
+| --------------------------------- | ----------------------------- |
+| `docs/ARCHITECTURE.md`            | 시스템 다이어그램·데이터 흐름 |
+| `docs/RLS.md`                     | Row-Level Security 정책       |
+| `docs/DECISIONS.md`               | 아키텍처 결정 기록 (ADR)      |
+| `docs/CONSULTANT_PROFILE_SPEC.md` | 컨설턴트 프로필 명세          |
+| `docs/PERFORMANCE_BUDGET.md`      | 성능 예산·측정 기준           |
+| `docs/PROJECT_OUTLINE.md`         | 초기 기획서 (아카이브)        |
 
 **네이밍:** 상시 참조는 `UPPER_SNAKE_CASE.md` (예: `ARCHITECTURE.md`), 시점 기반 기획·설계는 `YYYY-MM-DD-kebab-case.md`.
