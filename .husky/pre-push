@@ -1,2 +1,3 @@
-echo "pre-push: 타입 검사(tsc --noEmit)를 실행합니다..."
+echo "pre-push: 타입 검사(tsc --noEmit) + 단위 테스트를 실행합니다..."
 npm run typecheck
+npm run test
