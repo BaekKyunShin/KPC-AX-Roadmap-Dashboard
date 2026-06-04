@@ -85,13 +85,6 @@ export const TRAINING_GOAL_OPTIONS = [
 ] as const;
 export type TrainingGoal = (typeof TRAINING_GOAL_OPTIONS)[number];
 
-export const AI_LEVEL_GRADE: Record<AILevel, '기초' | '초급' | '중급' | '고급'> = {
-  AI기초형: '기초',
-  AI탐구형: '초급',
-  AI활용형: '중급',
-  AI선도형: '고급',
-};
-
 export const AI_LEVEL_OPTIONS: ReadonlyArray<{
   value: AILevel;
   grade: '기초' | '초급' | '중급' | '고급';
@@ -149,9 +142,7 @@ export const courseOverviewSchema = z.object({
   trainee_count: z.number().int().positive('훈련생 수는 1 이상이어야 합니다.'),
   training_job: z.string().min(1, '훈련 직무를 입력하세요.'),
   ai_level: AI_LEVEL,
-  training_goals: z
-    .array(z.enum(TRAINING_GOAL_OPTIONS))
-    .min(1, '훈련 목표를 최소 1개 선택하세요.'),
+  training_goals: z.array(z.enum(TRAINING_GOAL_OPTIONS)).min(1, '훈련 목표를 최소 1개 선택하세요.'),
 });
 export type PBLCourseOverview = z.infer<typeof courseOverviewSchema>;
 
@@ -306,9 +297,7 @@ export const problemPrioritySchema = z.object({
 
 export const problemDefinitionSchema = z.object({
   problem_definition: problemDefinitionDetailSchema,
-  problem_priorities: z
-    .array(problemPrioritySchema)
-    .min(1, '최소 1개의 문제를 입력하세요.'),
+  problem_priorities: z.array(problemPrioritySchema).min(1, '최소 1개의 문제를 입력하세요.'),
 });
 export type PBLProblemDefinition = z.infer<typeof problemDefinitionSchema>;
 
@@ -392,7 +381,6 @@ export const pblInterviewAutoSaveSchema = z
   })
   .passthrough();
 export type PBLInterviewAutoSaveInput = z.input<typeof pblInterviewAutoSaveSchema>;
-
 
 // ----------------------------------------------------------------------------
 // 빈 항목 생성 헬퍼
@@ -490,74 +478,7 @@ export function createEmptyRecommendation() {
 // 최초 빈 인터뷰 (PBLInterviewClient 초기값)
 // ----------------------------------------------------------------------------
 
-export function createEmptyPBLInterviewDraft(): PBLInterviewAutoSaveInput {
-  return {
-    courseOverview: {
-      company_name: '',
-      business_registration_no: '',
-      industry_code: '',
-      industry_main: '',
-      address: '',
-      training_address: '',
-      jurisdiction_office: '',
-      contact: { position: '', name: '', phone: '', email: '' },
-      course_name: '',
-      ncs_code: '',
-      training_hours: 0,
-      trainee_count: 0,
-      training_job: '',
-      ai_level: 'AI기초형',
-      training_goals: [],
-    },
-    companyStatus: {
-      business_issues: '',
-      organization: [],
-    },
-    trainingEnvironment: {
-      proper_training_hours: 0,
-      training_place: { types: [], location: '', special_notes: '' },
-      internal_instructor: { used: false, name: '', position: '' },
-      target_count: 0,
-      target_characteristics: { career: '', level: '' },
-      ai_infrastructure: {
-        ai_tools: '가능',
-        network: '양호',
-        pc_count: 0,
-        etc_equipment: '',
-      },
-      training_needs_analysis: '',
-      expectation: { as_is: '', to_be: '' },
-    },
-    hrdNecessity: {
-      training_history: [],
-      support_history: [],
-      recommendations: [],
-      course_development_necessity: '',
-    },
-    performanceActivities: {
-      performance_activities: [],
-    },
-    problemDefinition: {
-      problem_definition: {
-        background: '',
-        core_problem: '',
-        scope: '',
-        constraints: '',
-      },
-      problem_priorities: [],
-    },
-    targetTasks: {
-      target_tasks: [],
-      selection_reason: '',
-      target_task_details: [],
-    },
-    aiLevelDiagnosis: {
-      current_ai_level: 'AI기초형',
-      expected_ai_level: 'AI활용형',
-      improvement_reason: '',
-    },
-  };
-}
+// (createEmptyPBLInterviewDraft 제거됨 — 미사용 dead code, knip 2026-06 베이스라인)
 
 // ============================================================================
 // PR #2 Task 2.2 — 양식 1:1 정합 신규 스키마 (camelCase)
@@ -623,7 +544,7 @@ export const PBLOrgTreeNodeSchema: z.ZodType<PBLOrgTreeNode> = z.lazy(() =>
     id: z.string().min(1),
     name: z.string().min(1, '조직 노드 이름을 입력하세요.'),
     children: z.array(PBLOrgTreeNodeSchema),
-  }),
+  })
 );
 
 // -- Ⅱ-1-나 주요 업무 행 ------------------------------------------------------
@@ -682,8 +603,8 @@ export type PBLHrdReportPdf = z.infer<typeof PBLHrdReportPdfSchema>;
 //   - external_facility  ← (외부 인프라 — 현재는 빈 문자열 fallback)
 export const PBLInstructorRowSchema = z.object({
   position: z.string().default(''), // 직위
-  name: z.string().default(''),     // 이름
-  career: z.string().default(''),   // 직무경력
+  name: z.string().default(''), // 이름
+  career: z.string().default(''), // 직무경력
   personalTraits: z.string().default(''), // 인적특성
 });
 export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
@@ -698,18 +619,18 @@ export const PBL_INTERNAL_INSTRUCTOR_USAGE = z.enum(['YES', 'NO']);
 export type PBLInternalInstructorUsage = z.infer<typeof PBL_INTERNAL_INSTRUCTOR_USAGE>;
 
 export const PBLTrainingEnvSchema = z.object({
-  properTrainingHours: z.string().default(''),    // 적정 훈련시간
-  internalPlace: z.string().default(''),          // 훈련장소 — 사내
-  externalPlace: z.string().default(''),          // 훈련장소 — 사외
+  properTrainingHours: z.string().default(''), // 적정 훈련시간
+  internalPlace: z.string().default(''), // 훈련장소 — 사내
+  externalPlace: z.string().default(''), // 훈련장소 — 사외
   internalInstructors: z.array(PBLInstructorRowSchema).default([]), // 사내강사
   externalInstructors: z.array(PBLInstructorRowSchema).default([]), // 외부강사
-  aiInfrastructure: z.string().default(''),       // AI 인프라 (사내)
+  aiInfrastructure: z.string().default(''), // AI 인프라 (사내)
   // Phase E (Step 4b 기대효과·요구분석) — 양식 P-05 의 row 6/7/8/9/11 정합 5 신규 필드.
   // 모두 default 안전 fallback — 기존 DB 인터뷰 데이터 호환.
   targetCharacteristics: z
     .object({
-      career: z.string().default(''),  // 업무 경력 (자유 텍스트)
-      level: z.string().default(''),   // 수준/직급 (자유 텍스트)
+      career: z.string().default(''), // 업무 경력 (자유 텍스트)
+      level: z.string().default(''), // 수준/직급 (자유 텍스트)
     })
     .default({ career: '', level: '' }),
   aiInfraDetail: z
@@ -719,9 +640,9 @@ export const PBLTrainingEnvSchema = z.object({
       pcCount: z.number().int().min(0).default(0),
     })
     .default({ toolCapacity: 'AVAILABLE', networkStatus: 'GOOD', pcCount: 0 }),
-  trainingNeedsAnalysis: z.string().default(''),  // AI훈련 요구분석
-  expectationAsIs: z.string().default(''),        // 기대효과 As-is (현재)
-  expectationToBe: z.string().default(''),        // 기대효과 To-be (개선)
+  trainingNeedsAnalysis: z.string().default(''), // AI훈련 요구분석
+  expectationAsIs: z.string().default(''), // 기대효과 As-is (현재)
+  expectationToBe: z.string().default(''), // 기대효과 To-be (개선)
   // 양식 P-05 누락 3행 (사용자 보고 보강) — 모두 default 안전 fallback. 기존 DB 호환.
   // 양식 "대상 인원" 행 — 자연수(0 포함). 0 일 때는 HWPX 출력에서 빈 문자열 처리.
   targetTraineeCount: z.number().int().min(0).default(0),
@@ -819,30 +740,28 @@ export const PBLActivityRowSchema = z.object({
 });
 export type PBLActivityRow = z.infer<typeof PBLActivityRowSchema>;
 
-export const PBLActivitiesSchema = z
-  .array(PBLActivityRowSchema)
-  .superRefine((rows, ctx) => {
-    if (rows.length === 0) return;
-    // round 별 그룹핑 → 각 round 마다 정확히 4 role 행이 있어야 한다.
-    const byRound = new Map<number, Set<PBLActivityRole>>();
-    rows.forEach((r) => {
-      const set = byRound.get(r.round) ?? new Set<PBLActivityRole>();
-      set.add(r.role);
-      byRound.set(r.round, set);
-    });
-    byRound.forEach((roleSet, round) => {
-      const missing = PBL_ACTIVITY_ROLES_ORDERED.filter((r) => !roleSet.has(r));
-      if (missing.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${round}차의 ${missing
-            .map((r) => PBL_ACTIVITY_ROLE_LABEL[r])
-            .join('/')} 행이 누락되었습니다.`,
-          path: [],
-        });
-      }
-    });
+export const PBLActivitiesSchema = z.array(PBLActivityRowSchema).superRefine((rows, ctx) => {
+  if (rows.length === 0) return;
+  // round 별 그룹핑 → 각 round 마다 정확히 4 role 행이 있어야 한다.
+  const byRound = new Map<number, Set<PBLActivityRole>>();
+  rows.forEach((r) => {
+    const set = byRound.get(r.round) ?? new Set<PBLActivityRole>();
+    set.add(r.role);
+    byRound.set(r.round, set);
   });
+  byRound.forEach((roleSet, round) => {
+    const missing = PBL_ACTIVITY_ROLES_ORDERED.filter((r) => !roleSet.has(r));
+    if (missing.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${round}차의 ${missing
+          .map((r) => PBL_ACTIVITY_ROLE_LABEL[r])
+          .join('/')} 행이 누락되었습니다.`,
+        path: [],
+      });
+    }
+  });
+});
 export type PBLActivities = z.infer<typeof PBLActivitiesSchema>;
 
 // -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
@@ -857,9 +776,9 @@ export type PBLActivities = z.infer<typeof PBLActivitiesSchema>;
 // problem_priorities}) 가 있어 충돌 회피 위해 V2 에서는 `PBLProblemDefinitionSheet`
 // 로 명명. 양식 표(시트) 단일 세트 의미.
 export const PBLProblemDefinitionSheetSchema = z.object({
-  background: z.string().default(''),  // 문제 배경
-  core: z.string().default(''),        // 핵심 문제
-  scope: z.string().default(''),       // 문제 범위
+  background: z.string().default(''), // 문제 배경
+  core: z.string().default(''), // 핵심 문제
+  scope: z.string().default(''), // 문제 범위
   constraints: z.string().default(''), // 제약 조건
 });
 export type PBLProblemDefinitionSheet = z.infer<typeof PBLProblemDefinitionSheetSchema>;
@@ -881,9 +800,7 @@ export type PBLPriorityItem = z.infer<typeof PBLPriorityItemSchema>;
 
 // -- Ⅲ-2-나 문제 우선순위 결정 -----------------------------------------------
 export const PBLPrioritySchema = z.object({
-  items: z
-    .array(PBLPriorityItemSchema)
-    .min(1, '문제 우선순위 행을 최소 1개 입력하세요.'),
+  items: z.array(PBLPriorityItemSchema).min(1, '문제 우선순위 행을 최소 1개 입력하세요.'),
   method: z.string().min(1, '우선순위 결정 방법(AHP·협의 등)을 입력하세요.'),
 });
 export type PBLPriority = z.infer<typeof PBLPrioritySchema>;

@@ -99,16 +99,6 @@ export const AI_COMPETENCY_LEVEL_SUBTITLE: Record<AiCompetencyLevel, string> = {
   ADVANCED: 'AI활용형·선도형',
 };
 
-export const AI_COMPETENCY_LEVEL_OPTIONS: ReadonlyArray<{
-  value: AiCompetencyLevel;
-  label: string;
-  subtitle: string;
-}> = [
-  { value: 'BEGINNER', label: '초급', subtitle: 'AI기초형' },
-  { value: 'INTERMEDIATE', label: '중급', subtitle: 'AI탐구형' },
-  { value: 'ADVANCED', label: '고급', subtitle: 'AI활용형·선도형' },
-];
-
 // HRD이음 진단 보고서 / 분석노트 첨부 메타 (Storage 'interview-attachments' 버킷)
 // extracted_text: file-parser 모듈로 업로드 직후 동기 추출한 본문 (5000자 truncate)
 // parse_error  : 파싱 실패 시 사유 (텍스트 미추출 사유를 LLM 프롬프트에 노출)
@@ -200,7 +190,7 @@ export const ncsUsageSchema = z
     {
       message: 'NCS 활용 여부에 맞는 내용을 입력하세요.',
       path: ['ncs_usage_method'],
-    },
+    }
   );
 
 // 참석자 (interview.ts와 호환 유지)
@@ -225,9 +215,7 @@ export const roadmapInterviewSchema = z.object({
   task_workflow_items: z.array(taskWorkflowItemSchema).min(1, '최소 1개의 과업을 분석하세요.'),
   analysis_notes: analysisNotesSchema.default({ text: '', attachment_files: [] }),
   training_targets: z.array(trainingTargetSchema).min(1, '최소 1개의 훈련대상 과업을 선정하세요.'),
-  competency_models: z
-    .array(competencyModelSchema)
-    .min(1, '최소 1개의 역량 모델을 입력하세요.'),
+  competency_models: z.array(competencyModelSchema).min(1, '최소 1개의 역량 모델을 입력하세요.'),
   ncs_usage: ncsUsageSchema,
   notes: z.string().default(''),
   stt_insights: sttInsightsSchema.optional(),
@@ -249,37 +237,53 @@ export const roadmapInterviewAutoSaveSchema = z.object({
   interview_start_time: z.string().optional(),
   interview_end_time: z.string().optional(),
   interview_method: interviewMethodEnum.optional(),
-  participants: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    position: z.string().optional(),
-  })).optional(),
-  company_requirements: z.object({
-    company_status: z.string(),
-    main_problems: z.string(),
-    push_willingness: z.string(),
-    expected_outcomes: z.string(),
-  }).optional(),
-  task_workflow_items: z.array(z.object({
-    id: z.string(),
-    job: z.string(),
-    task_name: z.string(),
-    as_is: z.string(),
-    problems: z.string(),
-    data_availability: z.string(),
-    ai_necessity: z.number().int().min(1).max(5),
-  })).optional(),
-  analysis_notes: z.object({
-    text: z.string().default(''),
-    attachment_files: z.array(hrdReportAttachmentSchema).default([]),
-  }).optional(),
-  training_targets: z.array(z.object({
-    id: z.string(),
-    task_name: z.string(),
-    selection_reason: z.string(),
-    as_is: z.string(),
-    to_be: z.string(),
-  })).optional(),
+  participants: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        position: z.string().optional(),
+      })
+    )
+    .optional(),
+  company_requirements: z
+    .object({
+      company_status: z.string(),
+      main_problems: z.string(),
+      push_willingness: z.string(),
+      expected_outcomes: z.string(),
+    })
+    .optional(),
+  task_workflow_items: z
+    .array(
+      z.object({
+        id: z.string(),
+        job: z.string(),
+        task_name: z.string(),
+        as_is: z.string(),
+        problems: z.string(),
+        data_availability: z.string(),
+        ai_necessity: z.number().int().min(1).max(5),
+      })
+    )
+    .optional(),
+  analysis_notes: z
+    .object({
+      text: z.string().default(''),
+      attachment_files: z.array(hrdReportAttachmentSchema).default([]),
+    })
+    .optional(),
+  training_targets: z
+    .array(
+      z.object({
+        id: z.string(),
+        task_name: z.string(),
+        selection_reason: z.string(),
+        as_is: z.string(),
+        to_be: z.string(),
+      })
+    )
+    .optional(),
   // 자동저장 중간 상태 허용: 역량 필드 일부가 비어 있어도 통과
   competency_models: z
     .array(
@@ -290,7 +294,7 @@ export const roadmapInterviewAutoSaveSchema = z.object({
         knowledge: z.string().optional(),
         skill: z.string().optional(),
         attitude: z.string().optional(),
-      }),
+      })
     )
     .optional(),
   // 자동저장 중간 상태 허용: refine 없이 느슨하게
@@ -331,14 +335,6 @@ export function createEmptyOverview(): Overview {
     establishment_necessity: '',
     ai_competency_level: 'BEGINNER',
     selected_tasks_summary: '',
-  };
-}
-
-export function createEmptyRoadmapParticipant(): RoadmapParticipant {
-  return {
-    id: crypto.randomUUID(),
-    name: '',
-    position: '',
   };
 }
 
@@ -524,9 +520,10 @@ export function mapInterviewRowToRoadmapInterview(
   // 수행 방법 복원 — 미보유 시 기본값 ONSITE
   const savedMethod = row.company_details?.roadmap_interview_method;
   const validMethods: InterviewMethod[] = ['ONSITE', 'VIDEO', 'WORKSHOP', 'OTHER'];
-  partial.interview_method = (savedMethod && validMethods.includes(savedMethod as InterviewMethod))
-    ? (savedMethod as InterviewMethod)
-    : 'ONSITE';
+  partial.interview_method =
+    savedMethod && validMethods.includes(savedMethod as InterviewMethod)
+      ? (savedMethod as InterviewMethod)
+      : 'ONSITE';
 
   if (Array.isArray(row.participants)) {
     partial.participants = row.participants as RoadmapParticipant[];
@@ -540,8 +537,17 @@ export function mapInterviewRowToRoadmapInterview(
     const rawFiles = Array.isArray(savedAn.attachment_files) ? savedAn.attachment_files : [];
     const attachmentFiles: HrdReportAttachment[] = rawFiles
       .filter(
-        (f): f is { storage_path: string; file_name: string; mime_type?: string; size?: number; uploaded_at?: string; extracted_text?: string; parse_error?: string } =>
-          !!f && typeof f.storage_path === 'string' && typeof f.file_name === 'string',
+        (
+          f
+        ): f is {
+          storage_path: string;
+          file_name: string;
+          mime_type?: string;
+          size?: number;
+          uploaded_at?: string;
+          extracted_text?: string;
+          parse_error?: string;
+        } => !!f && typeof f.storage_path === 'string' && typeof f.file_name === 'string'
       )
       .map((f) => ({
         storage_path: f.storage_path,
@@ -782,9 +788,7 @@ export const RoadmapRequirementsSchema = z.object({
   // 미첨부 시 키를 omit 해 저장하므로 nullable 만으로는 Required 오류 발생).
   hrdReportPdf: RoadmapHrdReportPdfSchema.nullish(),
   companyRequirements: RoadmapCompanyRequirementsSchema,
-  taskAnalysis: z
-    .array(RoadmapTaskAnalysisItemSchema)
-    .min(1, '최소 1개 이상의 과업을 분석하세요.'),
+  taskAnalysis: z.array(RoadmapTaskAnalysisItemSchema).min(1, '최소 1개 이상의 과업을 분석하세요.'),
   taskAnalysisNote: z.string().min(1, '분석내용을 입력하세요.'),
   taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.nullable().optional(),
   targetTask: RoadmapTargetTaskSchema,
@@ -806,9 +810,7 @@ export type RoadmapCompetency = z.infer<typeof RoadmapCompetencySchema>;
 // 단일화되어 있다. 본 스키마는 ZodObject 형태를 유지해 `.partial()`·`.merge()`
 // 파생이 가능하도록 하고, refine 은 부착하지 않는다.
 export const RoadmapTrainingInterviewSchema = z.object({
-  competencies: z
-    .array(RoadmapCompetencySchema)
-    .min(1, '최소 1개 이상의 역량을 입력하세요.'),
+  competencies: z.array(RoadmapCompetencySchema).min(1, '최소 1개 이상의 역량을 입력하세요.'),
   ncsUsed: z.boolean(),
   ncsMethodology: z.string().optional(),
   ncsDerivationMethod: z.string().optional(),

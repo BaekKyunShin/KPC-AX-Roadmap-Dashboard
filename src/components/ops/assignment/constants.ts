@@ -2,9 +2,6 @@
  * 컨설턴트 배정 관련 상수
  */
 
-// API 요청 타임아웃 (30초)
-export const API_TIMEOUT_MS = 30000;
-
 // 매칭 추천 개수
 export const DEFAULT_TOP_N = 3;
 

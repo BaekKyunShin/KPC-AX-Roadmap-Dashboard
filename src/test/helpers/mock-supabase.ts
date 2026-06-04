@@ -57,10 +57,26 @@ interface MockSupabaseReturn {
 // ─── 체이너블 메서드 목록 (전체 합집합) ──────────────────────────────────────
 
 const CHAINABLE_METHODS = [
-  'select', 'eq', 'neq', 'in', 'not', 'or', 'is',
-  'gte', 'lte', 'gt', 'lt',
-  'ilike', 'overlaps', 'order', 'range', 'limit',
-  'insert', 'update', 'delete', 'upsert',
+  'select',
+  'eq',
+  'neq',
+  'in',
+  'not',
+  'or',
+  'is',
+  'gte',
+  'lte',
+  'gt',
+  'lt',
+  'ilike',
+  'overlaps',
+  'order',
+  'range',
+  'limit',
+  'insert',
+  'update',
+  'delete',
+  'upsert',
   'returns',
 ] as const;
 
@@ -85,9 +101,7 @@ function buildChainable(nextFn: () => unknown): Chainable {
 
 // ─── 팩토리 함수 ─────────────────────────────────────────────────────────────
 
-export function createMockSupabase(
-  options: MockSupabaseOptions = {},
-): MockSupabaseReturn {
+export function createMockSupabase(options: MockSupabaseOptions = {}): MockSupabaseReturn {
   const results: MockResult[] = [];
   let resultIndex = 0;
 
@@ -100,7 +114,7 @@ export function createMockSupabase(
       return { data: r.data, error: r.error, count: r.count ?? null };
     }
     throw new Error(
-      `mock-supabase: 결과 큐 소진 (${resultIndex}번째 호출). addResult()로 충분한 결과를 추가하세요.`,
+      `mock-supabase: 결과 큐 소진 (${resultIndex}번째 호출). addResult()로 충분한 결과를 추가하세요.`
     );
   }
 
@@ -109,7 +123,7 @@ export function createMockSupabase(
       return rpcResults[rpcIndex++];
     }
     throw new Error(
-      `mock-supabase: RPC 결과 큐 소진 (${rpcIndex}번째 호출). addRpcResult()로 충분한 결과를 추가하세요.`,
+      `mock-supabase: RPC 결과 큐 소진 (${rpcIndex}번째 호출). addRpcResult()로 충분한 결과를 추가하세요.`
     );
   }
 
@@ -172,32 +186,4 @@ export function createMockSupabase(
       rpcIndex = 0;
     },
   };
-}
-
-// ─── after() 콜백 추적 헬퍼 ─────────────────────────────────────────────────
-
-/**
- * next/server의 after() 콜백을 추적하기 위한 헬퍼.
- *
- * 사용 예:
- *   const { pendingCallbacks, flush, mockAfter } = createAfterTracker();
- *   vi.mock('next/server', () => ({ after: mockAfter }));
- *   afterEach(() => { pendingCallbacks.length = 0; });
- */
-export function createAfterTracker() {
-  const pendingCallbacks: Promise<unknown>[] = [];
-
-  const mockAfter = vi.fn((fn: () => void | Promise<unknown>) => {
-    const result = fn();
-    if (result && typeof (result as Promise<unknown>).then === 'function') {
-      pendingCallbacks.push(result as Promise<unknown>);
-    }
-  });
-
-  async function flush() {
-    await Promise.all(pendingCallbacks);
-    pendingCallbacks.length = 0;
-  }
-
-  return { pendingCallbacks, flush, mockAfter };
 }

@@ -6,8 +6,6 @@
  * 공유하기 위해 공용 상수 모듈로 추출.
  */
 
-export const AI_NECESSITY_OPTIONS = [1, 2, 3, 4, 5] as const;
-
 export const AI_NECESSITY_LABELS: Record<number, string> = {
   1: '매우 낮음',
   2: '낮음',
@@ -15,9 +13,3 @@ export const AI_NECESSITY_LABELS: Record<number, string> = {
   4: '높음',
   5: '매우 높음',
 };
-
-/** 등록되지 않은 점수가 들어와도 안전하게 라벨을 반환한다. */
-export function aiNecessityLabel(score: number | null | undefined): string {
-  if (score == null) return '-';
-  return AI_NECESSITY_LABELS[score] ?? '-';
-}
