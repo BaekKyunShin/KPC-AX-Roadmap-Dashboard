@@ -5,12 +5,7 @@
  *   import { TableTextCell, SyncedTableRow } from '@/components/roadmap/shared';
  */
 
-export {
-  TABLE_CELL_TEXT_CLASS,
-  TABLE_CELL_INLINE_CLASS,
-  READ_ONLY_TEXT_CLASS,
-  CARD_HEADER_CLASS,
-} from './table-styles';
+export { TABLE_CELL_TEXT_CLASS, READ_ONLY_TEXT_CLASS, CARD_HEADER_CLASS } from './table-styles';
 
 export { TableTextCell, type TableTextCellProps } from './TableTextCell';
 export { TableInlineCell, type TableInlineCellProps } from './TableInlineCell';

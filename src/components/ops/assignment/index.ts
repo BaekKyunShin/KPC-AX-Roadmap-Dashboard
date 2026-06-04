@@ -35,7 +35,6 @@ export type {
 
 // 상수 및 유틸리티
 export {
-  API_TIMEOUT_MS,
   DEFAULT_TOP_N,
   TEACHING_LEVEL_LABELS,
   getLevelLabel,

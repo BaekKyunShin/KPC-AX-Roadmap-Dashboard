@@ -15,7 +15,6 @@
  */
 
 import type {
-  PBLAILevel,
   PBLActivityRow,
   PBLAiLevelAssessment,
   PBLAnalysis,
@@ -27,10 +26,7 @@ import type {
   PBLTarget,
 } from '@/lib/schemas/interview-pbl';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
-import type {
-  PBLTrainingContent,
-  PBLTrainingInstructor,
-} from '@/lib/services/pbl/pbl-types';
+import type { PBLTrainingContent, PBLTrainingInstructor } from '@/lib/services/pbl/pbl-types';
 
 /**
  * 결과 페이지 인라인 편집 patch. Task 2.8 에서 Server Action 과 병합 시
@@ -135,11 +131,3 @@ export interface TabPBLCommonProps {
   /** 섹션 편집 콜백. 상위가 Server Action 호출을 담당. */
   onEdit: (patch: PBLResultEditPayload) => Promise<void>;
 }
-
-/** 4등급 AI 역량 표시 라벨 맵 (UI 표출용). */
-export const PBL_AI_LEVEL_LABEL_MAP: Record<PBLAILevel, { label: string; grade: string }> = {
-  BASIC: { label: 'AI기초형', grade: '기초' },
-  EXPLORER: { label: 'AI탐구형', grade: '초급' },
-  USER: { label: 'AI활용형', grade: '중급' },
-  LEADER: { label: 'AI선도형', grade: '고급' },
-};

@@ -21,4 +21,3 @@ export const ROADMAP_INTERVIEW_STEPS: readonly InterviewStep[] = [
 ] as const;
 
 export const ROADMAP_REQUIRED_STEP_IDS = [1, 2, 3, 4, 5, 6] as const;
-export const ROADMAP_TOTAL_STEPS = ROADMAP_INTERVIEW_STEPS.length;

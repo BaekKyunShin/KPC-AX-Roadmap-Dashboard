@@ -10,13 +10,8 @@
 export const TABLE_CELL_TEXT_CLASS =
   'px-3 py-3 align-top whitespace-pre-wrap break-words [overflow-wrap:anywhere]';
 
-/** 한줄·숫자 셀 td. 박스 stretch + 상단 정렬 + 중앙 정렬. */
-export const TABLE_CELL_INLINE_CLASS = 'h-0 px-3 py-3 align-top text-center';
-
 /** 읽기 모드 span 내부 텍스트 자동 줄바꿈. */
-export const READ_ONLY_TEXT_CLASS =
-  'whitespace-pre-wrap break-words [overflow-wrap:anywhere]';
+export const READ_ONLY_TEXT_CLASS = 'whitespace-pre-wrap break-words [overflow-wrap:anywhere]';
 
 /** 섹션 Card의 CardHeader 공통 스타일. */
-export const CARD_HEADER_CLASS =
-  'pt-5 pb-3 bg-gradient-to-r from-gray-50 to-white';
+export const CARD_HEADER_CLASS = 'pt-5 pb-3 bg-gradient-to-r from-gray-50 to-white';

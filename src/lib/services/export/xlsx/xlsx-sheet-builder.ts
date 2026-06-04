@@ -11,7 +11,10 @@ import { calcRowHeight } from './xlsx-formatter';
 // 셀 참조 유틸
 // ============================================================================
 
-interface CellPos { r: number; c: number }
+interface CellPos {
+  r: number;
+  c: number;
+}
 
 /** 셀 좌표 → 참조 문자열 (e.g. {r:0, c:0} → "A1") */
 function encodeCell(cell: CellPos): string {
@@ -60,13 +63,25 @@ export function sumColWidths(ctx: SheetCtx, cStart: number, cEnd: number): numbe
 // ============================================================================
 
 /** 셀에 값+스타일 적용 */
-export function setCell(ws: XLSX.WorkSheet, r: number, c: number, value: string | number, style: XLSX.CellStyle): void {
+export function setCell(
+  ws: XLSX.WorkSheet,
+  r: number,
+  c: number,
+  value: string | number,
+  style: XLSX.CellStyle
+): void {
   const ref = encodeCell({ r, c });
   ws[ref] = { v: value, t: typeof value === 'number' ? 'n' : 's', s: style };
 }
 
 /** 행 전체에 스타일 적용 (빈 셀 생성) */
-export function fillRow(ws: XLSX.WorkSheet, r: number, cStart: number, cEnd: number, style: XLSX.CellStyle): void {
+export function fillRow(
+  ws: XLSX.WorkSheet,
+  r: number,
+  cStart: number,
+  cEnd: number,
+  style: XLSX.CellStyle
+): void {
   for (let c = cStart; c <= cEnd; c++) {
     const ref = encodeCell({ r, c });
     if (!ws[ref]) ws[ref] = { v: '', t: 's' };
@@ -82,7 +97,12 @@ export function addBlankRow(ctx: SheetCtx, height: number): void {
 }
 
 /** 병합 행 추가 (전체 열 병합). height를 지정하지 않으면 자동 계산 */
-export function addMergedRow(ctx: SheetCtx, text: string, style: XLSX.CellStyle, height?: number): void {
+export function addMergedRow(
+  ctx: SheetCtx,
+  text: string,
+  style: XLSX.CellStyle,
+  height?: number
+): void {
   const mergedWidth = sumColWidths(ctx, 0, ctx.lastCol);
   const h = height ?? calcRowHeight(text, mergedWidth);
   setCell(ctx.ws, ctx.r, 0, text, style);
@@ -103,7 +123,12 @@ export function addSubSection(ctx: SheetCtx, title: string): void {
 }
 
 /** 레이블-값 행 (A=레이블, B~lastCol=값 병합) */
-export function addLabelValueRow(ctx: SheetCtx, label: string, value: string, height?: number): void {
+export function addLabelValueRow(
+  ctx: SheetCtx,
+  label: string,
+  value: string,
+  height?: number
+): void {
   const mergedWidth = sumColWidths(ctx, 1, ctx.lastCol);
   const h = height ?? calcRowHeight(value, mergedWidth);
   setCell(ctx.ws, ctx.r, 0, label, STYLE.label);
@@ -115,22 +140,14 @@ export function addLabelValueRow(ctx: SheetCtx, label: string, value: string, he
 }
 
 /** 레이블-값 쌍 배열 일괄 추가 */
-export function addLabelValueRows(ctx: SheetCtx, pairs: [string, string][], fixedHeight?: number): void {
+export function addLabelValueRows(
+  ctx: SheetCtx,
+  pairs: [string, string][],
+  fixedHeight?: number
+): void {
   for (const [label, value] of pairs) {
     addLabelValueRow(ctx, label, value, fixedHeight);
   }
-}
-
-/** 번호 매기기 리스트 섹션 (PBL용) */
-export function addListSection(ctx: SheetCtx, title: string, items: string[] | undefined): void {
-  if (!items || items.length === 0) return;
-  addSubSection(ctx, title);
-  const mergedWidth = sumColWidths(ctx, 0, ctx.lastCol);
-  items.forEach((item, i) => {
-    const text = `${i + 1}. ${item}`;
-    addMergedRow(ctx, text, STYLE.value, calcRowHeight(text, mergedWidth));
-  });
-  addBlankRow(ctx, 10);
 }
 
 /** 텍스트 블록 섹션 (PBL용) */
@@ -147,6 +164,6 @@ export function finalizeSheet(ctx: SheetCtx): XLSX.WorkSheet {
   ctx.ws['!ref'] = encodeRange({ s: { r: 0, c: 0 }, e: { r: ctx.r - 1, c: ctx.lastCol } });
   ctx.ws['!merges'] = ctx.merges;
   ctx.ws['!rows'] = ctx.rows;
-  ctx.ws['!cols'] = ctx.colWidths.map(w => ({ wch: w }));
+  ctx.ws['!cols'] = ctx.colWidths.map((w) => ({ wch: w }));
   return ctx.ws;
 }
