@@ -20,8 +20,6 @@ export const galleryFiltersSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(12),
 });
 
-export type GalleryFilters = z.infer<typeof galleryFiltersSchema>;
-
 /** 좋아요 토글 스키마 */
 export const toggleLikeSchema = z.object({
   roadmapVersionId: z.string().uuid('유효하지 않은 로드맵 ID입니다.'),
@@ -47,9 +45,3 @@ export const copyRoadmapSchema = z.object({
   sourceRoadmapVersionId: z.string().uuid('유효하지 않은 원본 로드맵 ID입니다.'),
   targetProjectId: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
 });
-
-export type ToggleLikeInput = z.infer<typeof toggleLikeSchema>;
-export type ToggleShareInput = z.infer<typeof toggleShareSchema>;
-export type TogglePBLLikeInput = z.infer<typeof togglePBLLikeSchema>;
-export type TogglePBLShareInput = z.infer<typeof togglePBLShareSchema>;
-export type CopyRoadmapInput = z.infer<typeof copyRoadmapSchema>;

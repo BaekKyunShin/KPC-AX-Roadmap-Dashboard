@@ -26,15 +26,5 @@ export const publicSelfAssessmentSchema = z.object({
     .max(50, '직책은 50자 이하로 입력하세요.'),
   submitted_by_email: z.string().email('유효한 이메일 주소를 입력하세요.'),
   template_id: z.string().uuid('유효하지 않은 템플릿 ID입니다.'),
-  answers: z
-    .array(selfAssessmentAnswerSchema)
-    .min(1, '최소 1개 이상의 응답이 필요합니다.'),
+  answers: z.array(selfAssessmentAnswerSchema).min(1, '최소 1개 이상의 응답이 필요합니다.'),
 });
-
-// 타입 추출
-export type CreateAssessmentTokenInput = z.infer<
-  typeof createAssessmentTokenSchema
->;
-export type PublicSelfAssessmentInput = z.infer<
-  typeof publicSelfAssessmentSchema
->;

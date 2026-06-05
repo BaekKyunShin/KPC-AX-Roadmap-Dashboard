@@ -8,13 +8,6 @@ import type {
 // 훈련체계도 매트릭스 생성 — Ⅲ-2. 훈련체계도 (역량 × 수준) 테이블 구조
 // ============================================================================
 
-/** 매트릭스 셀: 특정 (역량, 수준) 조합에 대응하는 훈련 항목들 */
-export interface TrainingStructureMatrixCell {
-  competency_name: string;
-  level: TrainingLevel;
-  items: RoadmapTrainingStructureItem[];
-}
-
 /** 매트릭스 행: 한 역량의 3수준(초/중/고) 셀 묶음 */
 export interface TrainingStructureMatrixRow {
   competency_name: string;
@@ -34,10 +27,7 @@ function emptyRow(competency_name: string): TrainingStructureMatrixRow {
 }
 
 /** 한 셀에 항목 추가 (level 분배) */
-function pushItem(
-  row: TrainingStructureMatrixRow,
-  item: RoadmapTrainingStructureItem,
-): void {
+function pushItem(row: TrainingStructureMatrixRow, item: RoadmapTrainingStructureItem): void {
   switch (item.level) {
     case 'BEGINNER':
       row.beginner.push(item);
@@ -63,7 +53,7 @@ function pushItem(
  */
 export function buildTrainingStructureMatrix(
   competencies: RoadmapCompetency[],
-  structure: RoadmapTrainingStructureItem[],
+  structure: RoadmapTrainingStructureItem[]
 ): TrainingStructureMatrixRow[] {
   const rowMap = new Map<string, TrainingStructureMatrixRow>();
   const orderedNames: string[] = [];
@@ -125,7 +115,7 @@ export interface TrainingStructureTableRow {
  */
 export function buildTrainingStructureTable(
   competencies: RoadmapCompetency[],
-  structure: RoadmapTrainingStructureItem[],
+  structure: RoadmapTrainingStructureItem[]
 ): TrainingStructureTableRow[] {
   if (!structure || structure.length === 0) return [];
 
@@ -143,7 +133,8 @@ export function buildTrainingStructureTable(
 
   return [...structure]
     .sort((a, b) => {
-      const order = (competencyOrder.get(a.competency_name) ?? 0) -
+      const order =
+        (competencyOrder.get(a.competency_name) ?? 0) -
         (competencyOrder.get(b.competency_name) ?? 0);
       if (order !== 0) return order;
       return LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];

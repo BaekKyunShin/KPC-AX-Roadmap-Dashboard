@@ -25,5 +25,3 @@ export const updateQuotaSchema = z
   .refine((data) => data.dailyLimit !== undefined || data.monthlyLimit !== undefined, {
     message: '일별 한도 또는 월별 한도 중 하나 이상을 입력해야 합니다.',
   });
-
-export type UpdateQuotaInput = z.infer<typeof updateQuotaSchema>;

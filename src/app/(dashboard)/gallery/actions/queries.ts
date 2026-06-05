@@ -67,9 +67,6 @@ export interface GalleryRoadmapItem {
   createdAt: string;
 }
 
-/** 통합 갤러리 아이템 — roadmap 또는 pbl 공용 표시 타입 */
-export type GalleryItem = GalleryRoadmapItem;
-
 export interface RoadmapDetailView {
   id: string;
   track: 'ROADMAP';
@@ -132,9 +129,9 @@ export interface GalleryPaginatedResult {
   page: number;
 }
 
-export async function fetchGalleryRoadmaps(params: Record<string, string | undefined> = {}): Promise<
-  ActionResult<GalleryPaginatedResult>
-> {
+export async function fetchGalleryRoadmaps(
+  params: Record<string, string | undefined> = {}
+): Promise<ActionResult<GalleryPaginatedResult>> {
   const auth = await requireAuth();
   if ('error' in auth) return errorResult(auth.error);
   const { user, role } = auth;
@@ -148,7 +145,8 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
     return errorResult('잘못된 필터 값입니다.');
   }
 
-  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } = parsed.data;
+  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } =
+    parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
@@ -156,9 +154,8 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
   const adminClient = createAdminClient();
 
   // 기본 쿼리: roadmap_versions + projects + users (created_by)
-  let query = adminClient
-    .from('roadmap_versions')
-    .select(`
+  let query = adminClient.from('roadmap_versions').select(
+    `
       id,
       status,
       is_shared,
@@ -178,7 +175,9 @@ export async function fetchGalleryRoadmaps(params: Record<string, string | undef
         name
       ),
       roadmap_likes(count)
-    `, { count: 'exact' });
+    `,
+    { count: 'exact' }
+  );
 
   // 컨설턴트: 공유된 FINAL만
   if (!isAdmin) {
@@ -323,7 +322,8 @@ export async function fetchRoadmapDetail(
   const [mainResult, likeResult] = await Promise.all([
     adminClient
       .from('roadmap_versions')
-      .select(`
+      .select(
+        `
         id,
         status,
         is_shared,
@@ -343,7 +343,8 @@ export async function fetchRoadmapDetail(
           name
         ),
         roadmap_likes(count)
-      `)
+      `
+      )
       .eq('id', roadmapVersionId)
       .returns<RoadmapDetailRow[]>()
       .single(),
@@ -435,14 +436,14 @@ export async function fetchGalleryPBLReports(
     return errorResult('잘못된 필터 값입니다.');
   }
 
-  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } = parsed.data;
+  const { search, industry, sort, status, isShared, consultantId, scope, page, limit } =
+    parsed.data;
   const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
 
   const adminClient = createAdminClient();
 
-  let query = adminClient
-    .from('pbl_reports')
-    .select(`
+  let query = adminClient.from('pbl_reports').select(
+    `
       id,
       status,
       is_shared,
@@ -460,7 +461,9 @@ export async function fetchGalleryPBLReports(
       users!pbl_reports_created_by_fkey (
         name
       )
-    `, { count: 'exact' });
+    `,
+    { count: 'exact' }
+  );
 
   if (!isAdmin) {
     query = query.eq('is_shared', true).eq('status', 'FINAL');
@@ -551,7 +554,9 @@ export async function fetchGalleryPBLReports(
     if (industryShort) tags.push(industryShort);
     for (const goal of trainingGoals) {
       if (tags.length >= 3) break;
-      const words = goal.replace(/[()（）]/g, ' ').split(/[\s,+/·]+/)
+      const words = goal
+        .replace(/[()（）]/g, ' ')
+        .split(/[\s,+/·]+/)
         .filter((w) => /^[가-힣]{2,6}$/.test(w));
       for (const w of words) {
         if (tags.length >= 3) break;
@@ -562,9 +567,7 @@ export async function fetchGalleryPBLReports(
     return {
       id: item.id,
       track: 'PBL' as const,
-      title: courseName
-        ? `${project.company_name} — ${courseName}`
-        : `${project.company_name} PBL`,
+      title: courseName ? `${project.company_name} — ${courseName}` : `${project.company_name} PBL`,
       industry: project.industry || '',
       companySize: project.company_size || '',
       companyName: project.company_name || '',
@@ -676,7 +679,8 @@ export async function fetchPBLReportDetail(
   const [mainResult, likeResult] = await Promise.all([
     adminClient
       .from('pbl_reports')
-      .select(`
+      .select(
+        `
         id,
         status,
         is_shared,
@@ -694,7 +698,8 @@ export async function fetchPBLReportDetail(
         users!pbl_reports_created_by_fkey (
           name
         )
-      `)
+      `
+      )
       .eq('id', pblReportId)
       .returns<PBLReportDetailRow[]>()
       .single(),
@@ -729,9 +734,7 @@ export async function fetchPBLReportDetail(
   return successResult({
     id: data.id,
     track: 'PBL' as const,
-    title: courseName
-      ? `${project.company_name} — ${courseName}`
-      : `${project.company_name} PBL`,
+    title: courseName ? `${project.company_name} — ${courseName}` : `${project.company_name} PBL`,
     industry: project.industry || '',
     companySize: project.company_size || '',
     companyName: project.company_name || '',

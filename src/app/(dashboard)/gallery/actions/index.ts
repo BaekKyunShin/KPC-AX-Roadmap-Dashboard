@@ -10,7 +10,6 @@ export {
 } from './queries';
 export type {
   GalleryRoadmapItem,
-  GalleryItem,
   GalleryPaginatedResult,
   RoadmapDetailView,
   PBLReportDetailView,

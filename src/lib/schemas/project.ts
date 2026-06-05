@@ -54,9 +54,7 @@ export const selfAssessmentAnswerSchema = z.object({
 export const createSelfAssessmentSchema = z.object({
   project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   template_id: z.string().uuid('유효하지 않은 템플릿 ID입니다.'),
-  answers: z
-    .array(selfAssessmentAnswerSchema)
-    .min(1, '최소 1개 이상의 응답이 필요합니다.'),
+  answers: z.array(selfAssessmentAnswerSchema).min(1, '최소 1개 이상의 응답이 필요합니다.'),
 });
 
 // 자가진단 수정 스키마
@@ -68,24 +66,15 @@ export const updateSelfAssessmentSchema = z.object({
 export const assignConsultantSchema = z.object({
   project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   consultant_id: z.string().uuid('유효하지 않은 컨설턴트 ID입니다.'),
-  assignment_reason: z
-    .string()
-    .min(10, '배정 사유를 10자 이상 입력하세요.')
-    .max(500),
+  assignment_reason: z.string().min(10, '배정 사유를 10자 이상 입력하세요.').max(500),
 });
 
 // 배정 변경 스키마
 export const reassignConsultantSchema = z.object({
   project_id: z.string().uuid('유효하지 않은 프로젝트 ID입니다.'),
   new_consultant_id: z.string().uuid('유효하지 않은 컨설턴트 ID입니다.'),
-  unassignment_reason: z
-    .string()
-    .min(10, '변경 사유를 10자 이상 입력하세요.')
-    .max(500),
-  assignment_reason: z
-    .string()
-    .min(10, '배정 사유를 10자 이상 입력하세요.')
-    .max(500),
+  unassignment_reason: z.string().min(10, '변경 사유를 10자 이상 입력하세요.').max(500),
+  assignment_reason: z.string().min(10, '배정 사유를 10자 이상 입력하세요.').max(500),
 });
 
 // 프로젝트 삭제 — 회사명 직접 입력으로 안전 가드
@@ -95,10 +84,4 @@ export const deleteProjectSchema = z.object({
 });
 
 // 타입 추출
-export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type DeleteProjectInput = z.infer<typeof deleteProjectSchema>;
-export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
-export type CreateSelfAssessmentInput = z.infer<typeof createSelfAssessmentSchema>;
-export type UpdateSelfAssessmentInput = z.infer<typeof updateSelfAssessmentSchema>;
-export type AssignConsultantInput = z.infer<typeof assignConsultantSchema>;
-export type ReassignConsultantInput = z.infer<typeof reassignConsultantSchema>;
