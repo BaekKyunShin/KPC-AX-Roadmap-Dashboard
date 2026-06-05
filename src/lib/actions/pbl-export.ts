@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
-import { EXPORT_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
+import { EXPORT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import { canAccessProjectArtifact } from '@/lib/actions/auth-helpers';
 import type { ProjectStatus, UserRole } from '@/types/database';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -74,7 +75,7 @@ function classifyPblData(raw: unknown): PblDataBranch {
 }
 
 function buildOverviewFromV2(
-  v2: Partial<PBLInterviewStrict>,
+  v2: Partial<PBLInterviewStrict>
 ): PBLExportPayload['interviewOverview'] {
   const level = v2.currentAiLevel?.level as PBLAILevel | undefined;
   return {
@@ -89,7 +90,7 @@ function buildOverviewFromV2(
 }
 
 function buildRequirementsFromV2(
-  v2: Partial<PBLInterviewStrict>,
+  v2: Partial<PBLInterviewStrict>
 ): PBLExportPayload['requirements'] {
   const env = v2.trainingEnv;
   const target = v2.target;
@@ -127,7 +128,7 @@ function buildRequirementsFromV2(
 }
 
 function buildOverviewFromV1(
-  overview: Record<string, unknown> | undefined,
+  overview: Record<string, unknown> | undefined
 ): PBLExportPayload['interviewOverview'] {
   if (!overview) return undefined;
   return {
@@ -136,19 +137,17 @@ function buildOverviewFromV1(
     traineeCount: (overview.trainee_count as number | undefined) ?? 0,
     trainingJob: (overview.training_job as string | undefined) ?? '',
     aiLevel: ((overview.ai_level as AILevel | undefined) ?? '') as string,
-    trainingGoals:
-      ((overview.training_goals as TrainingGoal[] | undefined) ?? []) as string[],
+    trainingGoals: ((overview.training_goals as TrainingGoal[] | undefined) ?? []) as string[],
   };
 }
 
 function buildRequirementsFromV1(
   env: Record<string, unknown> | undefined,
-  targets: Record<string, unknown> | undefined,
+  targets: Record<string, unknown> | undefined
 ): PBLExportPayload['requirements'] {
   if (!env && !targets) return undefined;
   return {
-    trainingNeedsAnalysis:
-      (env?.training_needs_analysis as string | undefined) ?? undefined,
+    trainingNeedsAnalysis: (env?.training_needs_analysis as string | undefined) ?? undefined,
     selectionReason: (targets?.selection_reason as string | undefined) ?? undefined,
     targetTaskDetails:
       (targets?.target_task_details as PBLExportPayload['requirements'] extends
@@ -163,9 +162,7 @@ function buildRequirementsFromV1(
  * PBL 내보내기용 데이터 준비 (컨설턴트·운영자 공통).
  * RLS는 pbl_reports 조회에서 이미 자동 차단하므로 역할별 화이트리스트만 추가 확인.
  */
-export async function preparePBLExportData(
-  pblId: string,
-): Promise<ActionResult<PBLExportPayload>> {
+export async function preparePBLExportData(pblId: string): Promise<ActionResult<PBLExportPayload>> {
   try {
     const supabase = await createClient();
     const {
@@ -175,9 +172,7 @@ export async function preparePBLExportData(
 
     const { data: row } = await supabase
       .from('pbl_reports')
-      .select(
-        '*, projects!inner(company_name, assigned_consultant_id, status, track)',
-      )
+      .select('*, projects!inner(company_name, assigned_consultant_id, status, track)')
       .eq('id', pblId)
       .single();
 
@@ -204,11 +199,9 @@ export async function preparePBLExportData(
       .single();
 
     if (!profile) return { success: false, error: '사용자 정보를 찾을 수 없습니다.' };
-    if (profile.role === 'CONSULTANT_APPROVED') {
-      if (project.assigned_consultant_id !== user.id) {
-        return { success: false, error: '접근 권한이 없습니다.' };
-      }
-    } else if (!isOpsManager(profile.role as UserRole)) {
+    if (
+      !canAccessProjectArtifact(profile.role as UserRole, project.assigned_consultant_id, user.id)
+    ) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
@@ -230,11 +223,11 @@ export async function preparePBLExportData(
     } else if (branch.kind === 'v1') {
       const v1 = branch.data;
       interviewOverview = buildOverviewFromV1(
-        v1.courseOverview as Record<string, unknown> | undefined,
+        v1.courseOverview as Record<string, unknown> | undefined
       );
       requirements = buildRequirementsFromV1(
         v1.trainingEnvironment as Record<string, unknown> | undefined,
-        v1.targetTasks as Record<string, unknown> | undefined,
+        v1.targetTasks as Record<string, unknown> | undefined
       );
     }
 
@@ -261,7 +254,7 @@ export async function preparePBLExportData(
 /** 다운로드 감사로그 */
 export async function logPBLDownload(
   pblId: string,
-  format: 'PDF' | 'XLSX',
+  format: 'PDF' | 'XLSX'
 ): Promise<SimpleActionResult> {
   try {
     const supabase = await createClient();

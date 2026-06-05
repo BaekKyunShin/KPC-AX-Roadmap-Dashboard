@@ -7,6 +7,7 @@ import {
   requireAuth,
   requireAuthWithRole,
   requireConsultantProjectAccess,
+  canAccessProjectArtifact,
 } from '@/lib/actions/auth-helpers';
 import {
   PBL_ELIGIBLE_STATUSES,
@@ -153,11 +154,7 @@ export async function fetchPBLProjectInfo(
 
     if (!project) return { success: false, error: '프로젝트를 찾을 수 없습니다.' };
 
-    if (role === 'CONSULTANT_APPROVED') {
-      if (project.assigned_consultant_id !== user.id) {
-        return { success: false, error: '접근 권한이 없습니다.' };
-      }
-    } else if (!isOpsManager(role)) {
+    if (!canAccessProjectArtifact(role, project.assigned_consultant_id, user.id)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 

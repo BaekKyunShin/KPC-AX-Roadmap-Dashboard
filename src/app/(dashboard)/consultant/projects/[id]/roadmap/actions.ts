@@ -8,6 +8,7 @@ import {
   requireAuthWithRole,
   requireConsultantProjectAccess,
   requireConsultantRoadmapAccess,
+  canAccessProjectArtifact,
 } from '@/lib/actions/auth-helpers';
 import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
 import {
@@ -346,11 +347,7 @@ export async function fetchProjectInfo(
     }
 
     // 접근 권한 확인
-    if (role === 'CONSULTANT_APPROVED') {
-      if (project.assigned_consultant_id !== user.id) {
-        return { success: false, error: '접근 권한이 없습니다.' };
-      }
-    } else if (!isOpsManager(role)) {
+    if (!canAccessProjectArtifact(role, project.assigned_consultant_id, user.id)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 

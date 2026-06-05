@@ -18,13 +18,14 @@ import {
   requireAuthWithRole,
   requireConsultantRoadmapAccess,
   requireConsultantProjectAccess,
+  canAccessProjectArtifact,
 } from './auth-helpers';
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function setupAuth(
   user: { id: string; email?: string } | null,
-  profile: Record<string, unknown> | null,
+  profile: Record<string, unknown> | null
 ) {
   vi.mocked(getCachedUser).mockResolvedValue(user as never);
   vi.mocked(getCachedProfile).mockResolvedValue(profile as never);
@@ -64,7 +65,7 @@ describe('requireAuth', () => {
   it('user와 profile이 정상이면 AuthSuccess를 반환한다', async () => {
     const mock = setupAuth(
       { id: 'user-1', email: 'test@example.com' },
-      { role: 'OPS_ADMIN', status: 'ACTIVE' },
+      { role: 'OPS_ADMIN', status: 'ACTIVE' }
     );
 
     const result = await requireAuth();
@@ -141,7 +142,7 @@ describe('requireAuthWithRole', () => {
   it('정상 조건이면 RoleSuccess를 반환한다', async () => {
     const mock = setupAuth(
       { id: 'user-1', email: 'admin@test.com' },
-      { role: 'OPS_ADMIN', status: 'ACTIVE' },
+      { role: 'OPS_ADMIN', status: 'ACTIVE' }
     );
 
     const result = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
@@ -167,7 +168,7 @@ describe('requireConsultantRoadmapAccess', () => {
     const result = await requireConsultantRoadmapAccess(
       mock.client as never,
       'user-1',
-      'roadmap-999',
+      'roadmap-999'
     );
 
     expect(result).toEqual({ error: '로드맵을 찾을 수 없습니다.' });
@@ -183,7 +184,7 @@ describe('requireConsultantRoadmapAccess', () => {
     const result = await requireConsultantRoadmapAccess(
       mock.client as never,
       'user-1',
-      'roadmap-1',
+      'roadmap-1'
     );
 
     expect(result).toEqual({ error: '해당 프로젝트에 대한 접근 권한이 없습니다.' });
@@ -199,7 +200,7 @@ describe('requireConsultantRoadmapAccess', () => {
     const result = await requireConsultantRoadmapAccess(
       mock.client as never,
       'user-1',
-      'roadmap-1',
+      'roadmap-1'
     );
 
     expect(result).toEqual({ projectId: 'proj-1' });
@@ -215,11 +216,7 @@ describe('requireConsultantProjectAccess', () => {
     const mock = createMockSupabase();
     mock.addResult({ data: null, error: null });
 
-    const result = await requireConsultantProjectAccess(
-      mock.client as never,
-      'user-1',
-      'proj-999',
-    );
+    const result = await requireConsultantProjectAccess(mock.client as never, 'user-1', 'proj-999');
 
     expect(result).toEqual({ error: '배정되지 않은 프로젝트입니다.' });
   });
@@ -228,12 +225,56 @@ describe('requireConsultantProjectAccess', () => {
     const mock = createMockSupabase();
     mock.addResult({ data: { id: 'proj-1' }, error: null });
 
-    const result = await requireConsultantProjectAccess(
-      mock.client as never,
-      'user-1',
-      'proj-1',
-    );
+    const result = await requireConsultantProjectAccess(mock.client as never, 'user-1', 'proj-1');
 
     expect(result).toBe(true);
+  });
+});
+
+// ============================================================================
+// canAccessProjectArtifact (순수 판정 — DB 조회 없음)
+// ============================================================================
+
+describe('canAccessProjectArtifact', () => {
+  const USER_ID = 'user-1';
+
+  it('CONSULTANT_APPROVED + 본인 배정 → true', () => {
+    expect(canAccessProjectArtifact('CONSULTANT_APPROVED', USER_ID, USER_ID)).toBe(true);
+  });
+
+  it('CONSULTANT_APPROVED + 타인 배정 → false', () => {
+    expect(canAccessProjectArtifact('CONSULTANT_APPROVED', 'other-user', USER_ID)).toBe(false);
+  });
+
+  it('CONSULTANT_APPROVED + 배정 없음(null) → false', () => {
+    expect(canAccessProjectArtifact('CONSULTANT_APPROVED', null, USER_ID)).toBe(false);
+  });
+
+  it('CONSULTANT_APPROVED + 배정 없음(undefined) → false', () => {
+    expect(canAccessProjectArtifact('CONSULTANT_APPROVED', undefined, USER_ID)).toBe(false);
+  });
+
+  it('OPS_ADMIN → true (배정 무관: null이어도 통과)', () => {
+    expect(canAccessProjectArtifact('OPS_ADMIN', null, USER_ID)).toBe(true);
+  });
+
+  it('SYSTEM_ADMIN → true', () => {
+    expect(canAccessProjectArtifact('SYSTEM_ADMIN', null, USER_ID)).toBe(true);
+  });
+
+  it('OPS_ADMIN + 타인 배정이어도 → true (관리자는 배정 무관 우회)', () => {
+    expect(canAccessProjectArtifact('OPS_ADMIN', 'other-user', USER_ID)).toBe(true);
+  });
+
+  it('USER_PENDING → false', () => {
+    expect(canAccessProjectArtifact('USER_PENDING', USER_ID, USER_ID)).toBe(false);
+  });
+
+  it('OPS_ADMIN_PENDING → false', () => {
+    expect(canAccessProjectArtifact('OPS_ADMIN_PENDING', null, USER_ID)).toBe(false);
+  });
+
+  it('PUBLIC → false', () => {
+    expect(canAccessProjectArtifact('PUBLIC', null, USER_ID)).toBe(false);
   });
 });
