@@ -314,10 +314,8 @@ export const roadmapInterviewAutoSaveSchema = z.object({
 // ============================================================================
 
 export type Overview = z.infer<typeof overviewSchema>;
-export type CompanyRequirements = z.infer<typeof companyRequirementsSchema>;
 export type TaskWorkflowItem = z.infer<typeof taskWorkflowItemSchema>;
 export type TrainingTarget = z.infer<typeof trainingTargetSchema>;
-export type AnalysisNotes = z.infer<typeof analysisNotesSchema>;
 export type RoadmapParticipant = z.infer<typeof roadmapParticipantSchema>;
 export type CompetencyModel = z.infer<typeof competencyModelSchema>;
 export type NcsUsage = z.infer<typeof ncsUsageSchema>;
@@ -700,7 +698,6 @@ export const RoadmapOverviewSchema = z.object({
   aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
   selectedTask: z.string().min(1, '선정 과업을 입력하세요.'),
 });
-export type RoadmapOverview = z.infer<typeof RoadmapOverviewSchema>;
 
 // -- Ⅱ-1 HRD이음 진단 보고서 PDF ---------------------------------------------
 // 파일 업로드 후 Storage (interview-attachments 버킷) 에서 반환된 메타를 보관.
@@ -793,7 +790,6 @@ export const RoadmapRequirementsSchema = z.object({
   taskAnalysisAttachment: RoadmapTaskAnalysisAttachmentSchema.nullable().optional(),
   targetTask: RoadmapTargetTaskSchema,
 });
-export type RoadmapRequirements = z.infer<typeof RoadmapRequirementsSchema>;
 
 // -- Ⅲ-1 역량 모델링 표 -----------------------------------------------------
 export const RoadmapCompetencySchema = z.object({
@@ -815,7 +811,6 @@ export const RoadmapTrainingInterviewSchema = z.object({
   ncsMethodology: z.string().optional(),
   ncsDerivationMethod: z.string().optional(),
 });
-export type RoadmapTrainingInterview = z.infer<typeof RoadmapTrainingInterviewSchema>;
 
 // -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ-1 ------------------------------------------------
 // RoadmapInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해
@@ -913,7 +908,6 @@ export const RoadmapInterviewAutoSaveSchema = z.object({
   // STT 인사이트(선택) — 9번째 Step. 자동저장 경로에서 sttInsights JSON 보존.
   sttInsights: sttInsightsSchema.optional(),
 });
-export type RoadmapInterviewAutoSave = z.infer<typeof RoadmapInterviewAutoSaveSchema>;
 
 // NCS XOR 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
 // ncsUsed=true  → ncsMethodology 필수

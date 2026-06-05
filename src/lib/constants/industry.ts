@@ -19,7 +19,6 @@ export const PROJECT_INDUSTRIES = [
 ] as const;
 
 /** 업종 타입 */
-export type ProjectIndustry = (typeof PROJECT_INDUSTRIES)[number];
 
 /** 세부 업종 입력 제한 */
 export const SUB_INDUSTRY_CONSTRAINTS = {

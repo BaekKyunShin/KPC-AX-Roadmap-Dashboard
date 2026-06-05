@@ -143,14 +143,3 @@ export const resetPasswordSchema = z
     message: '비밀번호가 일치하지 않습니다.',
     path: ['confirmPassword'],
   });
-
-// 타입 추출
-export type RegisterType = z.infer<typeof registerTypeSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
-export type ConsultantProfileInput = z.infer<typeof consultantProfileSchema>;
-export type UserApprovalInput = z.infer<typeof userApprovalSchema>;
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
-export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
-export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

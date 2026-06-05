@@ -41,7 +41,6 @@ export {
   buildTrainingStructureTable,
 } from './roadmap-matrix-builder';
 export type {
-  TrainingStructureMatrixCell,
   TrainingStructureMatrixRow,
   TrainingStructureTableRow,
 } from './roadmap-matrix-builder';
@@ -67,10 +66,7 @@ export {
 } from './roadmap-crud';
 
 // Storage Mapper (DB legacy 컬럼 ↔ 신규 4섹션)
-export {
-  toRoadmapVersionColumns,
-  fromRoadmapVersionColumns,
-} from './roadmap-storage-mapper';
+export { toRoadmapVersionColumns, fromRoadmapVersionColumns } from './roadmap-storage-mapper';
 export type { RoadmapVersionColumns } from './roadmap-storage-mapper';
 
 // STT 포맷터

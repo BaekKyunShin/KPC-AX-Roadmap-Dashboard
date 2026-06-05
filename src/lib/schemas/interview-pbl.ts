@@ -68,10 +68,8 @@ export const TRAINING_PLACE = z.enum(['사내', '사외']);
 export type TrainingPlaceType = z.infer<typeof TRAINING_PLACE>;
 
 export const AI_TOOL_CAPACITY = z.enum(['가능', '제한적', '불가능']);
-export type AIToolCapacity = z.infer<typeof AI_TOOL_CAPACITY>;
 
 export const NETWORK_LEVEL = z.enum(['양호', '보통', '개선필요']);
-export type NetworkLevel = z.infer<typeof NETWORK_LEVEL>;
 
 export const OPERATION_MODE = z.enum(['대면', '비대면']);
 export type OperationMode = z.infer<typeof OPERATION_MODE>;
@@ -144,7 +142,6 @@ export const courseOverviewSchema = z.object({
   ai_level: AI_LEVEL,
   training_goals: z.array(z.enum(TRAINING_GOAL_OPTIONS)).min(1, '훈련 목표를 최소 1개 선택하세요.'),
 });
-export type PBLCourseOverview = z.infer<typeof courseOverviewSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅱ-1. 기업 현황 분석 (4p)
@@ -161,7 +158,6 @@ export const companyStatusSchema = z.object({
   business_issues: z.string().min(1, '경영 이슈를 입력하세요.'),
   organization: z.array(orgUnitSchema).min(1, '조직도에 최소 1개 부서를 추가하세요.'),
 });
-export type PBLCompanyStatus = z.infer<typeof companyStatusSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅱ-2. 훈련환경 분석 (5p)
@@ -209,7 +205,6 @@ export const trainingEnvironmentSchema = z.object({
   training_needs_analysis: z.string().min(1, 'AI훈련 요구분석 결과를 입력하세요.'),
   expectation: expectationSchema,
 });
-export type PBLTrainingEnvironment = z.infer<typeof trainingEnvironmentSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅱ-3. HRD 제안·과정개발 필요성 (6p)
@@ -247,7 +242,6 @@ export const hrdNecessitySchema = z.object({
   // Ⅱ-3-가. 기업HRD이음컨설팅 결과 (전산 자동 표출) — PDF 단일 첨부 · 선택
   hrd_report_attachment: hrdReportAttachmentSchema.optional(),
 });
-export type PBLHrdNecessity = z.infer<typeof hrdNecessitySchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅲ-1. 훈련과제 도출 수행활동 (7p)
@@ -275,7 +269,6 @@ export const performanceActivitiesSchema = z.object({
     .array(performanceActivityItemSchema)
     .min(1, '최소 1차시의 수행활동을 입력하세요.'),
 });
-export type PBLPerformanceActivities = z.infer<typeof performanceActivitiesSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅲ-2. 문제 도출·우선순위 (8p)
@@ -299,7 +292,6 @@ export const problemDefinitionSchema = z.object({
   problem_definition: problemDefinitionDetailSchema,
   problem_priorities: z.array(problemPrioritySchema).min(1, '최소 1개의 문제를 입력하세요.'),
 });
-export type PBLProblemDefinition = z.infer<typeof problemDefinitionSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅲ-3. 훈련대상 업무 선정 (9~10p)
@@ -328,7 +320,6 @@ export const targetTasksSchema = z.object({
     .array(targetTaskDetailSchema)
     .min(1, '선정 업무 세부내용을 최소 1개 입력하세요.'),
 });
-export type PBLTargetTasks = z.infer<typeof targetTasksSchema>;
 
 // ----------------------------------------------------------------------------
 // Ⅲ-4. AI수준 진단 (11p)
@@ -339,7 +330,6 @@ export const aiLevelDiagnosisSchema = z.object({
   expected_ai_level: AI_LEVEL,
   improvement_reason: z.string().min(1, '향상 사유를 입력하세요.'),
 });
-export type PBLAILevelDiagnosis = z.infer<typeof aiLevelDiagnosisSchema>;
 
 // ----------------------------------------------------------------------------
 // 전체 통합 (엄격)
@@ -380,7 +370,6 @@ export const pblInterviewAutoSaveSchema = z
     aiLevelDiagnosis: z.any().optional(),
   })
   .passthrough();
-export type PBLInterviewAutoSaveInput = z.input<typeof pblInterviewAutoSaveSchema>;
 
 // ----------------------------------------------------------------------------
 // 빈 항목 생성 헬퍼
@@ -563,7 +552,6 @@ export const PBLOrganizationSchema = z.object({
   orgTree: z.array(PBLOrgTreeNodeSchema),
   mainWork: z.array(PBLMainWorkItemSchema),
 });
-export type PBLOrganization = z.infer<typeof PBLOrganizationSchema>;
 
 // -- Ⅱ-3-가 HRD이음 보고서 PDF ----------------------------------------------
 // Storage (interview-attachments 버킷) 에서 반환된 메타를 보관. 신규 명명
@@ -611,12 +599,9 @@ export type PBLInstructorRow = z.infer<typeof PBLInstructorRowSchema>;
 
 // Phase E — 양식 P-05 Ⅱ-2 훈련환경(12×7) 의 11 행 정합을 위한 enum
 export const PBL_AI_TOOL_CAPACITY = z.enum(['AVAILABLE', 'LIMITED', 'UNAVAILABLE']);
-export type PBLAIToolCapacity = z.infer<typeof PBL_AI_TOOL_CAPACITY>;
 export const PBL_NETWORK_STATUS = z.enum(['GOOD', 'NORMAL', 'IMPROVEMENT_NEEDED']);
-export type PBLNetworkStatus = z.infer<typeof PBL_NETWORK_STATUS>;
 // 양식 Ⅱ-2 "사내 강사 활용 여부" yes/no enum (신규 4 필드 중 하나)
 export const PBL_INTERNAL_INSTRUCTOR_USAGE = z.enum(['YES', 'NO']);
-export type PBLInternalInstructorUsage = z.infer<typeof PBL_INTERNAL_INSTRUCTOR_USAGE>;
 
 export const PBLTrainingEnvSchema = z.object({
   properTrainingHours: z.string().default(''), // 적정 훈련시간
@@ -762,7 +747,6 @@ export const PBLActivitiesSchema = z.array(PBLActivityRowSchema).superRefine((ro
     }
   });
 });
-export type PBLActivities = z.infer<typeof PBLActivitiesSchema>;
 
 // -- Ⅲ-2-가 문제 정의서 V2 (R8 PBL-자체-04) ----------------------------------
 // 양식 Ⅲ-2-가 의 5×2 "문제 정의서" 표 — 4 정형 항목 (구분/내용) 단일 세트.
@@ -868,7 +852,6 @@ export const PBLTasksSchema = z.object({
   // Ⅲ-4-나 예상 AI역량 수준
   expectedAiLevel: PBLAiLevelAssessmentSchema,
 });
-export type PBLTasks = z.infer<typeof PBLTasksSchema>;
 
 // -- 통합 스키마: Ⅰ + Ⅱ + Ⅲ --------------------------------------------------
 // PBLInterviewSchema 는 plain `z.object()` (ZodObject) 형태로 유지해 최종 제출/
@@ -895,7 +878,6 @@ export type PBLInterviewStrict = z.infer<typeof PBLInterviewSchema>;
 // type 신뢰 + converters.ts 의 mapPBLInterviewToDb 가 모든 필드에 fallback 기본값
 // 주입). 최종 제출은 PBLInterviewStrictSchema 가 책임.
 export const PBLInterviewAutoSaveSchema = z.object({}).passthrough();
-export type PBLInterviewAutoSave = z.infer<typeof PBLInterviewAutoSaveSchema>;
 
 // 조건부 검증까지 포함한 엄격 스키마 (최종 제출 경계에서 사용).
 // Ⅱ-3 양식 작성 안내 상 "HRD이음 보고서 PDF 또는 AI훈련과정 개발 필요성 중

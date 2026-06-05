@@ -12,11 +12,7 @@ import { handleSimpleActionResult } from '@/lib/utils/action-result-toast';
 import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
 import { PBL_FIELD_LABELS } from '@/lib/schemas/interview-pbl-labels';
 
-import {
-  savePBLInterviewV2,
-  submitPBLInterviewV2,
-  extractSttInsights,
-} from '../../actions';
+import { savePBLInterviewV2, submitPBLInterviewV2, extractSttInsights } from '../../actions';
 import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
@@ -39,10 +35,7 @@ import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
 import { StepActivities } from './StepActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
-import {
-  StepTargetAndLevel,
-  type StepTargetAndLevelValue,
-} from './StepTargetAndLevel';
+import { StepTargetAndLevel, type StepTargetAndLevelValue } from './StepTargetAndLevel';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
@@ -79,37 +72,61 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
   { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
   // Phase E: Step 3a 훈련환경 (기본 6 영역) — stepperLabel 5자 단축
-  { id: 3, stepId: 'trainingEnv', shortName: 'Ⅱ-2-a', name: '훈련환경 분석', stepperLabel: '훈련환경', required: true },
+  {
+    id: 3,
+    stepId: 'trainingEnv',
+    shortName: 'Ⅱ-2-a',
+    name: '훈련환경 분석',
+    stepperLabel: '훈련환경',
+    required: true,
+  },
   // Phase E: Step 3b 기대효과·요구분석 (5 신규 영역, 양식 P-05 row 6~11 정합)
   { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
   // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
-  { id: 5, stepId: 'hrdReport', shortName: 'Ⅱ-3-가', name: '기업HRD이음컨설팅 결과 (PDF 첨부)', stepperLabel: 'HRD이음 결과', required: false },
+  {
+    id: 5,
+    stepId: 'hrdReport',
+    shortName: 'Ⅱ-3-가',
+    name: '기업HRD이음컨설팅 결과 (PDF 첨부)',
+    stepperLabel: 'HRD이음 결과',
+    required: false,
+  },
   // Stepper 라벨 13자 → 8자 단축 (사용자 보고 — '과정 개발 필요성', 말줄임 사라지도록)
-  { id: 6, stepId: 'courseNecessity', shortName: 'Ⅱ-3-나', name: 'AI훈련과정 개발 필요성', stepperLabel: '과정 개발 필요성', required: true },
+  {
+    id: 6,
+    stepId: 'courseNecessity',
+    shortName: 'Ⅱ-3-나',
+    name: 'AI훈련과정 개발 필요성',
+    stepperLabel: '과정 개발 필요성',
+    required: true,
+  },
   { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
   // Stepper 라벨 10자 → 7자 단축
-  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 도출·우선순위', stepperLabel: '문제·우선순위', required: true },
-  { id: 9, stepId: 'targetAndLevel', shortName: 'Ⅲ-3·Ⅲ-4', name: '훈련대상·AI수준', required: true },
+  {
+    id: 8,
+    stepId: 'problems',
+    shortName: 'Ⅲ-2',
+    name: '문제 도출·우선순위',
+    stepperLabel: '문제·우선순위',
+    required: true,
+  },
+  {
+    id: 9,
+    stepId: 'targetAndLevel',
+    shortName: 'Ⅲ-3·Ⅲ-4',
+    name: '훈련대상·AI수준',
+    required: true,
+  },
   // Stepper 라벨 10자 → 6자 단축
-  { id: 10, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
+  {
+    id: 10,
+    stepId: 'sttAttach',
+    shortName: '선택',
+    name: '인터뷰 녹취 STT 첨부',
+    stepperLabel: '인터뷰 STT',
+    required: false,
+  },
 ];
-
-// ============================================================================
-// 빈 슬라이스 헬퍼 — Step 진입 시 undefined 슬라이스를 합리적 기본값으로 채운다.
-// ============================================================================
-
-function emptyOverview(): PBLOverview {
-  return {
-    companyName: '',
-    courseName: '',
-    ncsCode: '',
-    trainingHours: 0,
-    trainingTarget: '',
-    trainingForm: '',
-    trainingPeriod: '',
-    businessIssues: '',
-  };
-}
 
 // ============================================================================
 // Props
@@ -124,17 +141,12 @@ export interface PBLInterviewClientProps {
 // 본 컴포넌트
 // ============================================================================
 
-export function PBLInterviewClient({
-  projectId,
-  initial,
-}: PBLInterviewClientProps) {
+export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<PBLInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isPending, startTransition] = useTransition();
-  const [saveState, setSaveState] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const currentStepDef = PBL_STEPS[currentStep - 1];
@@ -147,24 +159,21 @@ export function PBLInterviewClient({
   // 평탄화되어 PBLInterviewStrict 단일 객체에 합쳐져 있다. 각 Step 은 자신의
   // 영역(키 묶음)만 patch 로 갱신한다.
 
-  const updateOverview = useCallback(
-    (patch: Partial<PBLOverview>) => {
-      setData((prev) => {
-        const base: PBLOverview = {
-          companyName: prev.companyName ?? '',
-          courseName: prev.courseName ?? '',
-          ncsCode: prev.ncsCode ?? '',
-          trainingHours: prev.trainingHours ?? 0,
-          trainingTarget: prev.trainingTarget ?? '',
-          trainingForm: prev.trainingForm ?? '',
-          trainingPeriod: prev.trainingPeriod ?? '',
-          businessIssues: prev.businessIssues ?? '',
-        };
-        return { ...prev, ...base, ...patch };
-      });
-    },
-    [],
-  );
+  const updateOverview = useCallback((patch: Partial<PBLOverview>) => {
+    setData((prev) => {
+      const base: PBLOverview = {
+        companyName: prev.companyName ?? '',
+        courseName: prev.courseName ?? '',
+        ncsCode: prev.ncsCode ?? '',
+        trainingHours: prev.trainingHours ?? 0,
+        trainingTarget: prev.trainingTarget ?? '',
+        trainingForm: prev.trainingForm ?? '',
+        trainingPeriod: prev.trainingPeriod ?? '',
+        businessIssues: prev.businessIssues ?? '',
+      };
+      return { ...prev, ...base, ...patch };
+    });
+  }, []);
 
   const updateAnalysis = useCallback(
     (patch: {
@@ -176,7 +185,7 @@ export function PBLInterviewClient({
     }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
-    [],
+    []
   );
 
   const updateTasks = useCallback(
@@ -190,17 +199,14 @@ export function PBLInterviewClient({
     }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
-    [],
+    []
   );
 
   // STT 인사이트(선택) — 10번째 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
   // 에 저장되므로 별도 converter 매핑 불필요. mapPBLInterviewToDb 가 통째 보존.
-  const updateSttInsights = useCallback(
-    (next: SttInsights | undefined) => {
-      setData((prev) => ({ ...prev, sttInsights: next }));
-    },
-    [],
-  );
+  const updateSttInsights = useCallback((next: SttInsights | undefined) => {
+    setData((prev) => ({ ...prev, sttInsights: next }));
+  }, []);
 
   // ---- 저장 / 제출 --------------------------------------------------------
 
@@ -256,9 +262,7 @@ export function PBLInterviewClient({
           console.error('[PBLInterviewClient] auto-save error:', error);
           setSaveState('error');
           showErrorToast(
-            error instanceof Error
-              ? error.message
-              : '자동 저장 중 오류가 발생했습니다.',
+            error instanceof Error ? error.message : '자동 저장 중 오류가 발생했습니다.'
           );
         }
       })();
@@ -297,10 +301,7 @@ export function PBLInterviewClient({
     if (!parsed.success) {
       // 누락된 필드 모두 노출 + path → 사용자 라벨 매핑으로 Step·항목 명시
       const message = formatZodIssuesForToast(parsed.error, PBL_FIELD_LABELS);
-      showErrorToast(
-        '제출 검증 실패',
-        message || '필수 입력 항목을 확인해주세요.',
-      );
+      showErrorToast('제출 검증 실패', message || '필수 입력 항목을 확인해주세요.');
       return;
     }
 
@@ -312,8 +313,7 @@ export function PBLInterviewClient({
         const ok = await handleSimpleActionResult(result, {
           successMessage: { title: '인터뷰가 제출되었습니다.' },
           errorTitle: '인터뷰 제출 실패',
-          errorFallback:
-            '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          errorFallback: '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         });
         if (ok) {
           // PR5 (R6 spec) — 제출 직후 검토 페이지로 redirect.
@@ -326,9 +326,7 @@ export function PBLInterviewClient({
         console.error('[PBLInterviewClient] submit error:', error);
         showErrorToast(
           '인터뷰 제출 실패',
-          error instanceof Error
-            ? error.message
-            : '인터뷰 제출 중 오류가 발생했습니다.',
+          error instanceof Error ? error.message : '인터뷰 제출 중 오류가 발생했습니다.'
         );
       }
     });
@@ -351,12 +349,7 @@ export function PBLInterviewClient({
           trainingPeriod: data.trainingPeriod ?? '',
           businessIssues: data.businessIssues ?? '',
         };
-        return (
-          <StepOverview
-            value={overviewValue}
-            onChange={(next) => updateOverview(next)}
-          />
-        );
+        return <StepOverview value={overviewValue} onChange={(next) => updateOverview(next)} />;
       }
       case 'companyIssues':
         return (
@@ -439,13 +432,12 @@ export function PBLInterviewClient({
         );
       case 'problems': {
         const problemsValue: StepProblemsValue = {
-          problemDefinitionSheet:
-            data.problemDefinitionSheet ?? {
-              background: '',
-              core: '',
-              scope: '',
-              constraints: '',
-            },
+          problemDefinitionSheet: data.problemDefinitionSheet ?? {
+            background: '',
+            core: '',
+            scope: '',
+            constraints: '',
+          },
           priority: data.priority ?? { items: [], method: '' },
         };
         return (
@@ -571,7 +563,3 @@ export function PBLInterviewClient({
     </PageContainer>
   );
 }
-
-export const __testing = {
-  emptyOverview,
-};
