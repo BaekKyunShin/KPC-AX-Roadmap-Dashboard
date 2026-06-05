@@ -3,6 +3,7 @@
 import { fetchAuditLogs as fetchAuditLogsService } from '@/lib/services/audit';
 import type { AuditAction } from '@/types/database';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 
 /** 전체 로그 내보내기 시 최대 건수 */
 const AUDIT_LOG_EXPORT_MAX = 10000;
@@ -43,7 +44,7 @@ export interface AuditLogEntry {
  * RLS 정책(`audit_logs SELECT: OPS_ADMIN 이상`) 의도와 일치.
  */
 export async function fetchAuditLogs(filters: AuditLogFilters = {}) {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return { logs: [], total: 0, page: 1, limit: 50, totalPages: 0 };
 
   return await fetchAuditLogsService(filters);
@@ -117,7 +118,7 @@ export async function getTargetTypes(): Promise<{ value: string; label: string }
  * 전체 로그 내보내기용 조회 (최대 10000건) — OPS_ADMIN+ 모두 전체 로그 조회
  */
 export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 'limit'> = {}) {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return { logs: [] as AuditLogEntry[] };
 
   try {
@@ -155,13 +156,10 @@ export async function fetchAllAuditLogs(filters: Omit<AuditLogFilters, 'page' | 
  * 감사로그가 모든 actor 의 활동을 보여주므로 actor 드롭다운도 동일 범위.
  */
 export async function fetchUsers(): Promise<{ id: string; name: string; email: string }[]> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return [];
 
-  const { data: users } = await auth.supabase
-    .from('users')
-    .select('id, name, email')
-    .order('name');
+  const { data: users } = await auth.supabase.from('users').select('id, name, email').order('name');
 
   return users || [];
 }

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
+import { isOpsManager } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
 import { fetchUsageStats } from './actions';
 import QuotaClient from './_components/QuotaClient';
@@ -25,7 +26,7 @@ export default async function QuotaManagementPage() {
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) redirect('/dashboard');
+  if (!profile || !isOpsManager(profile.role)) redirect('/dashboard');
 
   // 서버에서 월 옵션 계산 + 초기 데이터 프리페치 — 클라이언트 useEffect 워터폴 제거
   const monthOptions = getMonthOptions();
@@ -34,10 +35,7 @@ export default async function QuotaManagementPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="쿼터 관리"
-        description="사용자별 LLM 호출 한도를 관리합니다."
-      />
+      <PageHeader title="쿼터 관리" description="사용자별 LLM 호출 한도를 관리합니다." />
 
       <QuotaClient
         initialData={initialData}

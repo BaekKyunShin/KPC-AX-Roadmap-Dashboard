@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createNotificationSchema } from '@/lib/schemas/notification';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import type { NotificationType } from '@/types/database';
 
 interface CreateNotificationParams {
@@ -60,15 +61,13 @@ interface AdminNotificationParams {
  * 프로젝트 진행 상태 알림에 사용한다.
  * 실패해도 메인 로직에 영향을 주지 않도록 에러를 로깅만 한다.
  */
-export async function createNotificationForAdmins(
-  params: AdminNotificationParams,
-): Promise<void> {
+export async function createNotificationForAdmins(params: AdminNotificationParams): Promise<void> {
   try {
     const adminSupabase = createAdminClient();
     const { data: admins, error } = await adminSupabase
       .from('users')
       .select('id')
-      .in('role', ['OPS_ADMIN', 'SYSTEM_ADMIN'])
+      .in('role', [...OPS_MANAGER_ROLES])
       .eq('status', 'ACTIVE');
 
     if (error || !admins || admins.length === 0) {
@@ -85,9 +84,7 @@ export async function createNotificationForAdmins(
       link: params.link,
     }));
 
-    const { error: insertError } = await adminSupabase
-      .from('notifications')
-      .insert(rows);
+    const { error: insertError } = await adminSupabase.from('notifications').insert(rows);
 
     if (insertError) {
       console.error('[createNotificationForAdmins Error]', insertError);

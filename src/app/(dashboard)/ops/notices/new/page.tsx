@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { NoticeForm } from '@/components/notices/NoticeForm';
+import { isOpsManager } from '@/lib/constants/status';
 
 export const metadata = {
   title: '새 공지 작성',
@@ -12,7 +13,7 @@ export default async function NewNoticePage() {
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 

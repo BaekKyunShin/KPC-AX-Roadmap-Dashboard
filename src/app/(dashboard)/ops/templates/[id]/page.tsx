@@ -2,14 +2,14 @@ import { redirect, notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
+import { isOpsManager } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
 import { TemplateFormSkeleton } from '@/components/ui/Skeleton';
 import TemplatePreview from '../_components/TemplatePreview';
 
-const TemplateForm = dynamic(
-  () => import('../_components/TemplateForm'),
-  { loading: () => <TemplateFormSkeleton questionCount={3} /> }
-);
+const TemplateForm = dynamic(() => import('../_components/TemplateForm'), {
+  loading: () => <TemplateFormSkeleton questionCount={3} />,
+});
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -21,7 +21,7 @@ export default async function TemplateDetailPage({ params }: PageProps) {
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 
@@ -67,11 +67,7 @@ export default async function TemplateDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-medium text-gray-900 mb-4">템플릿 편집</h2>
-          <TemplateForm
-            mode="edit"
-            template={template}
-            isInUse={(usageCount || 0) > 0}
-          />
+          <TemplateForm mode="edit" template={template} isInUse={(usageCount || 0) > 0} />
         </div>
         <div>
           <h2 className="text-lg font-medium text-gray-900 mb-4">미리보기</h2>

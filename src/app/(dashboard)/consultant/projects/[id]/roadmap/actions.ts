@@ -3,8 +3,13 @@
 import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { requireAuth, requireAuthWithRole, requireConsultantProjectAccess, requireConsultantRoadmapAccess } from '@/lib/actions/auth-helpers';
-import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import {
+  requireAuth,
+  requireAuthWithRole,
+  requireConsultantProjectAccess,
+  requireConsultantRoadmapAccess,
+} from '@/lib/actions/auth-helpers';
+import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
 import {
   generateRoadmap,
   finalizeRoadmap,
@@ -32,11 +37,16 @@ import { fetchRoadmapInterviewV2, saveRoadmapInterviewV2 } from '../interview/ac
 import { createClient } from '@/lib/supabase/server';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
-import type { RoadmapResultEditPayload, ResultInterviewSnapshot } from './_components/result-v2/types';
+import type {
+  RoadmapResultEditPayload,
+  ResultInterviewSnapshot,
+} from './_components/result-v2/types';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /** abort 레지스트리 키 생성 */
-function abortKey(userId: string) { return `roadmap:${userId}`; }
+function abortKey(userId: string) {
+  return `roadmap:${userId}`;
+}
 
 /**
  * raw row → RoadmapVersionUI 호환 형태로 변환.
@@ -168,11 +178,7 @@ export async function confirmFinalRoadmap(roadmapId: string): Promise<SimpleActi
 
     // 활동 일지 자동 기록 (응답 차단 방지를 위해 after()로 지연)
     after(async () => {
-      await insertSystemActivityLog(
-        access.projectId,
-        user.id,
-        '로드맵이 최종 확정되었습니다.',
-      );
+      await insertSystemActivityLog(access.projectId, user.id, '로드맵이 최종 확정되었습니다.');
     });
 
     // 운영관리 페이지가 FINAL 전환을 즉시 반영하도록 캐시 무효화
@@ -211,7 +217,7 @@ export async function fetchRoadmapVersions(projectId: string) {
       if (!projectData || projectData.assigned_consultant_id !== user.id) {
         return [];
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return [];
     }
 
@@ -247,7 +253,7 @@ export async function fetchRoadmapVersion(roadmapId: string) {
       if (!projectData || projectData.assigned_consultant_id !== user.id) {
         return null;
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return null;
     }
 
@@ -344,7 +350,7 @@ export async function fetchProjectInfo(
       if (project.assigned_consultant_id !== user.id) {
         return { success: false, error: '접근 권한이 없습니다.' };
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
@@ -390,14 +396,13 @@ export async function cancelRoadmapGeneration(): Promise<SimpleActionResult> {
  *   클라이언트(useHwpxDownload 훅)가 atob로 복원 후 Blob → a.download 처리.
  */
 export async function exportRoadmapAsHwpxAction(
-  roadmapId: string,
+  roadmapId: string
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   try {
     // 1) 인증 + 역할 — 컨설턴트 + 운영·시스템관리자
-    const auth = await requireAuthWithRole(
-      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
-      { roleError: '로드맵 HWPX를 내보낼 권한이 없습니다.' },
-    );
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'], {
+      roleError: '로드맵 HWPX를 내보낼 권한이 없습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, role, supabase } = auth;
 
@@ -438,7 +443,7 @@ export async function exportRoadmapAsHwpxAction(
         roadmap_matrix: roadmapRow.roadmap_matrix,
         pbl_course: roadmapRow.pbl_course,
         courses: roadmapRow.courses,
-      }),
+      })
     );
     const sanitizedCols = toRoadmapVersionColumns(sanitizedResult);
     const sanitizedRoadmapRow = {
@@ -467,9 +472,13 @@ export async function exportRoadmapAsHwpxAction(
     // 5) payload 변환 + Python 함수 호출
     const payload = buildRoadmapHwpxPayload({
       // TypeScript 타입 호환: roadmapRow는 raw DB row이므로 RoadmapVersion으로 단언
-      roadmap: sanitizedRoadmapRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['roadmap'],
+      roadmap: sanitizedRoadmapRow as unknown as Parameters<
+        typeof buildRoadmapHwpxPayload
+      >[0]['roadmap'],
       project: projectRow as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['project'],
-      interview: (interviewRow ?? null) as unknown as Parameters<typeof buildRoadmapHwpxPayload>[0]['interview'],
+      interview: (interviewRow ?? null) as unknown as Parameters<
+        typeof buildRoadmapHwpxPayload
+      >[0]['interview'],
     });
 
     // 요청 host에서 현재 deployment URL 추출 — 같은 배포의 Python 함수를 찌른다.
@@ -505,7 +514,7 @@ export async function exportRoadmapAsHwpxAction(
     console.log('[exportRoadmapAsHwpxAction] payload ready', {
       bufferLength: buffer.length,
       base64Length: contentBase64.length,
-      firstMagic: buffer.subarray(0, 4).toString('hex'),  // ZIP: 504b0304
+      firstMagic: buffer.subarray(0, 4).toString('hex'), // ZIP: 504b0304
     });
 
     // 7) 감사로그
@@ -564,7 +573,7 @@ const HRD_BUCKET_V2 = 'interview-attachments';
  * iframe.src 에 InvalidJWT JSON 이 노출되는 버그가 있었다.
  */
 async function hydrateRoadmapHrdSignedUrl(
-  interview: Partial<RoadmapInterviewStrict>,
+  interview: Partial<RoadmapInterviewStrict>
 ): Promise<Partial<RoadmapInterviewStrict>> {
   const hrd = interview.hrdReportPdf;
   if (!hrd || !hrd.url) return interview;
@@ -636,7 +645,7 @@ function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
  */
 export async function createRoadmapV2(
   projectId: string,
-  revisionPrompt?: string,
+  revisionPrompt?: string
 ): Promise<ActionResult<Record<string, unknown>>> {
   return createRoadmap(projectId, revisionPrompt);
 }
@@ -646,9 +655,7 @@ export async function createRoadmapV2(
  *
  * 5단계 패턴 유지: Legacy `confirmFinalRoadmap` 위임.
  */
-export async function confirmFinalRoadmapV2(
-  versionId: string,
-): Promise<SimpleActionResult> {
+export async function confirmFinalRoadmapV2(versionId: string): Promise<SimpleActionResult> {
   return confirmFinalRoadmap(versionId);
 }
 
@@ -660,7 +667,7 @@ export async function confirmFinalRoadmapV2(
  * `saveRoadmapInterviewV2(autoSave: true)` 가 deepMerge 로 patch 적용.
  */
 function extractInterviewFieldsFromPayload(
-  patch: RoadmapResultEditPayload,
+  patch: RoadmapResultEditPayload
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (patch.company_requirements !== undefined) {
@@ -691,7 +698,7 @@ function extractInterviewFieldsFromPayload(
  */
 export async function editRoadmapV2(
   versionId: string,
-  patch: RoadmapResultEditPayload,
+  patch: RoadmapResultEditPayload
 ): Promise<ActionResult<Record<string, unknown>>> {
   const roadmapFields = extractRoadmapFieldsFromPayload(patch);
   const interviewFields = extractInterviewFieldsFromPayload(patch);
@@ -737,7 +744,7 @@ export async function editRoadmapV2(
  * 5단계 패턴 유지: Legacy `exportRoadmapAsHwpxAction` 위임.
  */
 export async function exportRoadmapHwpxV2(
-  versionId: string,
+  versionId: string
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   return exportRoadmapAsHwpxAction(versionId);
 }
@@ -767,14 +774,13 @@ export interface RoadmapPageDataV2 {
 
 export async function fetchRoadmapPageDataV2(
   projectId: string,
-  versionId?: string,
+  versionId?: string
 ): Promise<ActionResult<RoadmapPageDataV2>> {
   try {
     // (1)+(2) 세션 + 역할 — 컨설턴트 + 운영·시스템관리자 (결과 열람 권한)
-    const auth = await requireAuthWithRole(
-      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
-      { roleError: '로드맵 결과를 조회할 권한이 없습니다.' },
-    );
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'], {
+      roleError: '로드맵 결과를 조회할 권한이 없습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, role, supabase } = auth;
 
@@ -784,7 +790,7 @@ export async function fetchRoadmapPageDataV2(
         supabase,
         user.id,
         projectId,
-        '해당 프로젝트에 대한 접근 권한이 없습니다.',
+        '해당 프로젝트에 대한 접근 권한이 없습니다.'
       );
       if (access !== true) return { success: false, error: access.error };
     }
@@ -839,16 +845,8 @@ export async function fetchRoadmapPageDataV2(
     // 가드에 prop drill. 사전 차단으로 server-side 검증 fail 후 silent fail 방지.
     const admin = createAdminClient();
     const [{ data: selfAssessmentRow }, { data: projectRow }] = await Promise.all([
-      admin
-        .from('self_assessments')
-        .select('id')
-        .eq('project_id', projectId)
-        .maybeSingle(),
-      admin
-        .from('projects')
-        .select('status')
-        .eq('id', projectId)
-        .maybeSingle(),
+      admin.from('self_assessments').select('id').eq('project_id', projectId).maybeSingle(),
+      admin.from('projects').select('status').eq('id', projectId).maybeSingle(),
     ]);
 
     return {

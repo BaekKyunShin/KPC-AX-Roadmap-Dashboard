@@ -4,11 +4,8 @@ import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import { PageHeader } from '@/components/ui/page-header';
 import { GalleryContent } from './_components/GalleryContent';
 import { fetchGalleryItems } from './actions';
-import {
-  PAGE_TITLE,
-  PAGE_DESCRIPTION_ADMIN,
-  PAGE_DESCRIPTION_CONSULTANT,
-} from './_meta';
+import { isOpsManager } from '@/lib/constants/status';
+import { PAGE_TITLE, PAGE_DESCRIPTION_ADMIN, PAGE_DESCRIPTION_CONSULTANT } from './_meta';
 
 interface GalleryPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -25,7 +22,7 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
     redirect('/login');
   }
 
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role);
+  const isAdmin = isOpsManager(profile.role);
   const params = await searchParams;
 
   return (

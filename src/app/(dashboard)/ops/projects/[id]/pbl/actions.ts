@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { getPBLReport, listVersions, type PBLReportRow } from '@/lib/services/pbl/pbl-crud';
 
 // ============================================================================
@@ -10,7 +11,7 @@ import { getPBLReport, listVersions, type PBLReportRow } from '@/lib/services/pb
 // ============================================================================
 
 export async function fetchPBLForOps(pblId: string): Promise<PBLReportRow | null> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     roleError: '운영자만 접근 가능합니다.',
   });
   if ('error' in auth) return null;
@@ -19,7 +20,7 @@ export async function fetchPBLForOps(pblId: string): Promise<PBLReportRow | null
 }
 
 export async function listPBLVersionsForOps(projectId: string): Promise<PBLReportRow[]> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     roleError: '운영자만 접근 가능합니다.',
   });
   if ('error' in auth) return [];

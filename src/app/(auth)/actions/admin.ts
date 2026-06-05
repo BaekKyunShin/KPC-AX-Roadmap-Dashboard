@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { createAuditLog } from '@/lib/services/audit';
 import type { SimpleActionResult } from '@/lib/types/action-result';
 
@@ -15,7 +16,7 @@ export async function updateUserStatus(
   action: 'approve' | 'suspend' | 'reactivate',
   reason?: string
 ): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -72,10 +73,7 @@ export async function updateUserStatus(
       break;
   }
 
-  const { error } = await adminSupabase
-    .from('users')
-    .update(updateData)
-    .eq('id', targetUserId);
+  const { error } = await adminSupabase.from('users').update(updateData).eq('id', targetUserId);
 
   if (error) {
     await createAuditLog({

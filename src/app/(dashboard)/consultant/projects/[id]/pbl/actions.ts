@@ -8,17 +8,18 @@ import {
   requireAuthWithRole,
   requireConsultantProjectAccess,
 } from '@/lib/actions/auth-helpers';
-import { PBL_ELIGIBLE_STATUSES, validateStatusTransition } from '@/lib/constants/status';
+import {
+  PBL_ELIGIBLE_STATUSES,
+  validateStatusTransition,
+  isOpsManager,
+} from '@/lib/constants/status';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveHrdSignedUrl } from '@/lib/services/storage/hrd-signed-url';
 import { createAuditLog } from '@/lib/services/audit';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { registerAbort, cleanupAbort } from '@/lib/services/abort-registry';
-import {
-  PBLInterviewSchema,
-  PBLInterviewStrictSchema,
-} from '@/lib/schemas/interview-pbl';
+import { PBLInterviewSchema, PBLInterviewStrictSchema } from '@/lib/schemas/interview-pbl';
 import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import {
   createDraftVersion,
@@ -64,13 +65,13 @@ interface PBLAccessResult {
  */
 async function requireConsultantPBLReportAccess(
   userId: string,
-  pblId: string,
+  pblId: string
 ): Promise<ActionResult<PBLAccessResult>> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('pbl_reports')
     .select(
-      'project_id, projects!inner(status, track, assigned_consultant_id, is_test_mode, company_name)',
+      'project_id, projects!inner(status, track, assigned_consultant_id, is_test_mode, company_name)'
     )
     .eq('id', pblId)
     .returns<
@@ -134,7 +135,7 @@ export interface PBLProjectMeta {
 }
 
 export async function fetchPBLProjectInfo(
-  projectId: string,
+  projectId: string
 ): Promise<ActionResult<PBLProjectMeta>> {
   try {
     const auth = await requireAuth();
@@ -145,7 +146,7 @@ export async function fetchPBLProjectInfo(
     const { data: project } = await supabase
       .from('projects')
       .select(
-        'company_name, track, status, assigned_consultant_id, industry, company_address, contact_name, contact_email, contact_phone, business_reg_no, industry_code, training_address, jurisdiction_branch, contact_position',
+        'company_name, track, status, assigned_consultant_id, industry, company_address, contact_name, contact_email, contact_phone, business_reg_no, industry_code, training_address, jurisdiction_branch, contact_position'
       )
       .eq('id', projectId)
       .single();
@@ -156,7 +157,7 @@ export async function fetchPBLProjectInfo(
       if (project.assigned_consultant_id !== user.id) {
         return { success: false, error: '접근 권한이 없습니다.' };
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
@@ -203,7 +204,7 @@ export async function fetchPBLReport(pblId: string): Promise<PBLReportRow | null
       if (!project || project.assigned_consultant_id !== user.id || project.track !== 'PBL') {
         return null;
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return null;
     }
 
@@ -229,7 +230,7 @@ export async function fetchPBLVersions(projectId: string): Promise<PBLReportRow[
       if (!project || project.assigned_consultant_id !== user.id || project.track !== 'PBL') {
         return [];
       }
-    } else if (!['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    } else if (!isOpsManager(role)) {
       return [];
     }
 
@@ -245,7 +246,7 @@ export async function fetchPBLVersions(projectId: string): Promise<PBLReportRow[
 
 export async function generatePBLAction(
   projectId: string,
-  revisionPrompt?: string,
+  revisionPrompt?: string
 ): Promise<ActionResult<{ pblId: string }>> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -257,7 +258,9 @@ export async function generatePBLAction(
     // 프로젝트 조회 + 트랙/배정/상태 가드
     const { data: project } = await supabase
       .from('projects')
-      .select('id, status, track, assigned_consultant_id, company_name, is_test_mode, industry, sub_industries, company_size, customer_comment')
+      .select(
+        'id, status, track, assigned_consultant_id, company_name, is_test_mode, industry, sub_industries, company_size, customer_comment'
+      )
       .eq('id', projectId)
       .single();
 
@@ -317,8 +320,7 @@ export async function generatePBLAction(
       .select('scores')
       .eq('project_id', projectId)
       .maybeSingle();
-    const selfAssessment =
-      (selfAssessmentRow as { scores?: unknown } | null) ?? null;
+    const selfAssessment = (selfAssessmentRow as { scores?: unknown } | null) ?? null;
 
     // 진단 요약 구성 (인터뷰 기반 간단 요약). V2 (flat camelCase) 키 직접 접근.
     const { courseName, trainingTarget } = pblDataValidation.data;
@@ -351,15 +353,12 @@ export async function generatePBLAction(
         content,
         user.id,
         diagnosisSummary,
-        revisionPrompt ?? null,
+        revisionPrompt ?? null
       );
 
       // 프로젝트 상태 전이 (INTERVIEWED → PBL_DRAFTED)
       if (validateStatusTransition(project.status, 'PBL_DRAFTED')) {
-        await adminSupabase
-          .from('projects')
-          .update({ status: 'PBL_DRAFTED' })
-          .eq('id', projectId);
+        await adminSupabase.from('projects').update({ status: 'PBL_DRAFTED' }).eq('id', projectId);
       }
 
       // 감사로그 + 활동 일지
@@ -408,7 +407,7 @@ export async function generatePBLAction(
 
 export async function savePBLDraftAction(
   pblId: string,
-  patch: { pbl_content?: unknown; diagnosis_summary?: string },
+  patch: { pbl_content?: unknown; diagnosis_summary?: string }
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -470,7 +469,7 @@ export async function finalizePBLAction(pblId: string): Promise<SimpleActionResu
       await insertSystemActivityLog(
         access.data.projectId,
         user.id,
-        'PBL 보고서가 최종 확정되었습니다.',
+        'PBL 보고서가 최종 확정되었습니다.'
       );
     });
 
@@ -516,7 +515,7 @@ export async function deletePBLAction(pblId: string): Promise<SimpleActionResult
 
 export async function togglePBLShareAction(
   pblId: string,
-  isShared: boolean,
+  isShared: boolean
 ): Promise<SimpleActionResult> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -580,14 +579,13 @@ export async function cancelPBLGeneration(): Promise<SimpleActionResult> {
  * 반환값은 Buffer가 아닌 base64 문자열 — Next.js Server Action 직렬화 제약.
  */
 export async function exportPBLAsHwpxAction(
-  pblId: string,
+  pblId: string
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   try {
     // 1) 인증 + 역할 — 컨설턴트 + 운영·시스템관리자
-    const auth = await requireAuthWithRole(
-      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
-      { roleError: 'PBL HWPX를 내보낼 권한이 없습니다.' },
-    );
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'], {
+      roleError: 'PBL HWPX를 내보낼 권한이 없습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, role } = auth;
 
@@ -676,7 +674,9 @@ export async function exportPBLAsHwpxAction(
     const payload = buildPBLHwpxPayload({
       pbl: pblRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['pbl'],
       project: projectRow as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['project'],
-      interview: (interviewRow ?? null) as unknown as Parameters<typeof buildPBLHwpxPayload>[0]['interview'],
+      interview: (interviewRow ?? null) as unknown as Parameters<
+        typeof buildPBLHwpxPayload
+      >[0]['interview'],
       signerMeta,
     });
 
@@ -766,7 +766,7 @@ const HRD_BUCKET_PBL_V2 = 'interview-attachments';
  * iframe.src 에 InvalidJWT JSON 이 노출되는 버그가 있었다.
  */
 async function hydratePBLHrdSignedUrl(
-  interview: Partial<PBLInterviewStrict>,
+  interview: Partial<PBLInterviewStrict>
 ): Promise<Partial<PBLInterviewStrict>> {
   const hrd = interview.hrdReportPdf;
   if (!hrd || !hrd.url) return interview;
@@ -788,7 +788,7 @@ async function hydratePBLHrdSignedUrl(
  * 기대한다. 본 함수가 그 간격을 메운다.
  */
 function toPBLInterviewSnapshot(
-  interview: Partial<PBLInterviewStrict>,
+  interview: Partial<PBLInterviewStrict>
 ): Partial<ResultPBLInterviewSnapshot> {
   const out: Partial<ResultPBLInterviewSnapshot> = {};
 
@@ -839,7 +839,7 @@ function toPBLInterviewSnapshot(
  */
 export async function createPBLV2(
   projectId: string,
-  revisionPrompt?: string,
+  revisionPrompt?: string
 ): Promise<ActionResult<{ pblId: string }>> {
   return generatePBLAction(projectId, revisionPrompt);
 }
@@ -848,9 +848,7 @@ export async function createPBLV2(
  * PBL 결과 페이지 V2 — DRAFT 를 FINAL 로 확정.
  * Legacy `finalizePBLAction` 위임.
  */
-export async function confirmFinalPBLV2(
-  versionId: string,
-): Promise<SimpleActionResult> {
+export async function confirmFinalPBLV2(versionId: string): Promise<SimpleActionResult> {
   return finalizePBLAction(versionId);
 }
 
@@ -865,7 +863,7 @@ export async function confirmFinalPBLV2(
  */
 export async function editPBLV2(
   versionId: string,
-  patch: PBLResultEditPayload,
+  patch: PBLResultEditPayload
 ): Promise<SimpleActionResult> {
   try {
     // (1)+(2) 세션 + 역할
@@ -1012,7 +1010,7 @@ export async function editPBLV2(
     }
 
     const current = mapDbToPBLInterview(
-      (existing as { pbl_data: Record<string, unknown> | null } | null) ?? null,
+      (existing as { pbl_data: Record<string, unknown> | null } | null) ?? null
     );
 
     // camelCase flat 병합 — patch.overview 는 partial 이므로 spread 로 덮어씀
@@ -1032,13 +1030,9 @@ export async function editPBLV2(
                 current.trainingEnv?.properTrainingHours ??
                 '',
               internalPlace:
-                patch.trainingEnv.internalPlace ??
-                current.trainingEnv?.internalPlace ??
-                '',
+                patch.trainingEnv.internalPlace ?? current.trainingEnv?.internalPlace ?? '',
               externalPlace:
-                patch.trainingEnv.externalPlace ??
-                current.trainingEnv?.externalPlace ??
-                '',
+                patch.trainingEnv.externalPlace ?? current.trainingEnv?.externalPlace ?? '',
               internalInstructors:
                 patch.trainingEnv.internalInstructors ??
                 current.trainingEnv?.internalInstructors ??
@@ -1048,30 +1042,24 @@ export async function editPBLV2(
                 current.trainingEnv?.externalInstructors ??
                 [],
               aiInfrastructure:
-                patch.trainingEnv.aiInfrastructure ??
-                current.trainingEnv?.aiInfrastructure ??
-                '',
+                patch.trainingEnv.aiInfrastructure ?? current.trainingEnv?.aiInfrastructure ?? '',
               // Phase E — Step 4b (기대효과·요구분석) 5 신규 필드
-              targetCharacteristics:
-                patch.trainingEnv.targetCharacteristics ??
-                current.trainingEnv?.targetCharacteristics ??
-                { career: '', level: '' },
-              aiInfraDetail:
-                patch.trainingEnv.aiInfraDetail ??
-                current.trainingEnv?.aiInfraDetail ??
-                { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+              targetCharacteristics: patch.trainingEnv.targetCharacteristics ??
+                current.trainingEnv?.targetCharacteristics ?? { career: '', level: '' },
+              aiInfraDetail: patch.trainingEnv.aiInfraDetail ??
+                current.trainingEnv?.aiInfraDetail ?? {
+                  toolCapacity: 'AVAILABLE' as const,
+                  networkStatus: 'GOOD' as const,
+                  pcCount: 0,
+                },
               trainingNeedsAnalysis:
                 patch.trainingEnv.trainingNeedsAnalysis ??
                 current.trainingEnv?.trainingNeedsAnalysis ??
                 '',
               expectationAsIs:
-                patch.trainingEnv.expectationAsIs ??
-                current.trainingEnv?.expectationAsIs ??
-                '',
+                patch.trainingEnv.expectationAsIs ?? current.trainingEnv?.expectationAsIs ?? '',
               expectationToBe:
-                patch.trainingEnv.expectationToBe ??
-                current.trainingEnv?.expectationToBe ??
-                '',
+                patch.trainingEnv.expectationToBe ?? current.trainingEnv?.expectationToBe ?? '',
               targetTraineeCount:
                 patch.trainingEnv.targetTraineeCount ??
                 current.trainingEnv?.targetTraineeCount ??
@@ -1080,14 +1068,10 @@ export async function editPBLV2(
                 patch.trainingEnv.internalInstructorUsage ??
                 current.trainingEnv?.internalInstructorUsage ??
                 'NO',
-              internalInstructorPrimary:
-                patch.trainingEnv.internalInstructorPrimary ??
-                current.trainingEnv?.internalInstructorPrimary ??
-                { name: '', position: '' },
+              internalInstructorPrimary: patch.trainingEnv.internalInstructorPrimary ??
+                current.trainingEnv?.internalInstructorPrimary ?? { name: '', position: '' },
               otherEquipment:
-                patch.trainingEnv.otherEquipment ??
-                current.trainingEnv?.otherEquipment ??
-                '',
+                patch.trainingEnv.otherEquipment ?? current.trainingEnv?.otherEquipment ?? '',
             },
           }
         : {}),
@@ -1101,14 +1085,9 @@ export async function editPBLV2(
                 patch.problemDefinitionSheet.background ??
                 current.problemDefinitionSheet?.background ??
                 '',
-              core:
-                patch.problemDefinitionSheet.core ??
-                current.problemDefinitionSheet?.core ??
-                '',
+              core: patch.problemDefinitionSheet.core ?? current.problemDefinitionSheet?.core ?? '',
               scope:
-                patch.problemDefinitionSheet.scope ??
-                current.problemDefinitionSheet?.scope ??
-                '',
+                patch.problemDefinitionSheet.scope ?? current.problemDefinitionSheet?.scope ?? '',
               constraints:
                 patch.problemDefinitionSheet.constraints ??
                 current.problemDefinitionSheet?.constraints ??
@@ -1196,7 +1175,7 @@ export async function editPBLV2(
  * Legacy `exportPBLAsHwpxAction` 위임.
  */
 export async function exportPBLHwpxV2(
-  versionId: string,
+  versionId: string
 ): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   return exportPBLAsHwpxAction(versionId);
 }
@@ -1224,14 +1203,13 @@ export interface PBLPageDataV2 {
 
 export async function fetchPBLPageDataV2(
   projectId: string,
-  versionId?: string,
+  versionId?: string
 ): Promise<ActionResult<PBLPageDataV2>> {
   try {
     // (1)+(2) 세션 + 역할 — 컨설턴트 + 운영·시스템관리자
-    const auth = await requireAuthWithRole(
-      ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'],
-      { roleError: 'PBL 결과를 조회할 권한이 없습니다.' },
-    );
+    const auth = await requireAuthWithRole(['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'], {
+      roleError: 'PBL 결과를 조회할 권한이 없습니다.',
+    });
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, role, supabase } = auth;
 
@@ -1241,7 +1219,7 @@ export async function fetchPBLPageDataV2(
         supabase,
         user.id,
         projectId,
-        '해당 프로젝트에 대한 접근 권한이 없습니다.',
+        '해당 프로젝트에 대한 접근 권한이 없습니다.'
       );
       if (access !== true) return { success: false, error: access.error };
     }
@@ -1274,9 +1252,7 @@ export async function fetchPBLPageDataV2(
         .eq('project_id', projectId)
         .maybeSingle();
       if (row) {
-        rawInterview = mapDbToPBLInterview(
-          row as { pbl_data: Record<string, unknown> | null },
-        );
+        rawInterview = mapDbToPBLInterview(row as { pbl_data: Record<string, unknown> | null });
       }
     }
 
@@ -1288,16 +1264,8 @@ export async function fetchPBLPageDataV2(
     // 가드용) 를 server-side 에서 추가 조회해 클라이언트 EmptyState 가드에 prop drill.
     const admin = createAdminClient();
     const [{ data: interviewRow }, { data: projectRow }] = await Promise.all([
-      admin
-        .from('interviews')
-        .select('id')
-        .eq('project_id', projectId)
-        .maybeSingle(),
-      admin
-        .from('projects')
-        .select('status')
-        .eq('id', projectId)
-        .maybeSingle(),
+      admin.from('interviews').select('id').eq('project_id', projectId).maybeSingle(),
+      admin.from('projects').select('status').eq('id', projectId).maybeSingle(),
     ]);
 
     return {

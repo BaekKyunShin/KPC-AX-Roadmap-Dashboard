@@ -8,16 +8,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import {
   OPS_ADMIN_MANAGEABLE_ROLES,
   SYSTEM_ADMIN_MANAGEABLE_ROLES,
+  isOpsManager,
 } from '@/lib/constants/status';
 import { RefreshButton } from './_components/RefreshButton';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/** 이 페이지에 접근 가능한 역할 */
-const ALLOWED_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
 // =============================================================================
 // Page Component
@@ -30,8 +24,7 @@ export default async function UsersPage() {
   }
 
   const profile = await getCachedProfile();
-  const isAllowedRole =
-    profile && ALLOWED_ROLES.includes(profile.role as (typeof ALLOWED_ROLES)[number]);
+  const isAllowedRole = profile && isOpsManager(profile.role);
 
   if (!isAllowedRole) {
     redirect('/dashboard');
@@ -44,19 +37,19 @@ export default async function UsersPage() {
   const adminSupabase = createAdminClient();
 
   // 사용자 + 프로필 병렬 조회
-  const [
-    { data: usersData, error: usersError },
-    { data: profilesData, error: profilesError },
-  ] = await Promise.all([
-    adminSupabase
-      .from('users')
-      .select('id, email, name, role, status, phone, created_at, updated_at')
-      .in('role', targetRoles)
-      .order('created_at', { ascending: false }),
-    adminSupabase
-      .from('consultant_profiles')
-      .select('id, user_id, expertise_domains, available_industries, sub_industries, teaching_levels, coaching_methods, skill_tags, years_of_experience, affiliation, representative_experience, portfolio, strengths_constraints, created_at, updated_at'),
-  ]);
+  const [{ data: usersData, error: usersError }, { data: profilesData, error: profilesError }] =
+    await Promise.all([
+      adminSupabase
+        .from('users')
+        .select('id, email, name, role, status, phone, created_at, updated_at')
+        .in('role', targetRoles)
+        .order('created_at', { ascending: false }),
+      adminSupabase
+        .from('consultant_profiles')
+        .select(
+          'id, user_id, expertise_domains, available_industries, sub_industries, teaching_levels, coaching_methods, skill_tags, years_of_experience, affiliation, representative_experience, portfolio, strengths_constraints, created_at, updated_at'
+        ),
+    ]);
 
   if (usersError || profilesError) {
     // 운영팀 추적용 로깅 — 기존 동작 유지
@@ -77,9 +70,7 @@ export default async function UsersPage() {
   }
 
   // 프로필을 user_id로 매핑
-  const profileMap = new Map(
-    profilesData?.map((profile) => [profile.user_id, profile]) || []
-  );
+  const profileMap = new Map(profilesData?.map((profile) => [profile.user_id, profile]) || []);
 
   // 사용자 데이터에 프로필 병합
   const managedUsers = (usersData ?? []).map((u) => ({

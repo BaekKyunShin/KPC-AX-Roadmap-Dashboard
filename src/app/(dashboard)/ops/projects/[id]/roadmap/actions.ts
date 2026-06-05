@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import {
   fetchRoadmapVersions,
   fetchRoadmapVersion,
@@ -43,7 +44,7 @@ function toRoadmapVersionUI<
  */
 export async function fetchRoadmapVersionsForOps(projectId: string) {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return [];
 
     const rawVersions = await fetchRoadmapVersions(projectId);
@@ -58,7 +59,7 @@ export async function fetchRoadmapVersionsForOps(projectId: string) {
  */
 export async function fetchRoadmapVersionForOps(roadmapId: string) {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return null;
 
     const roadmap = await fetchRoadmapVersion(roadmapId);

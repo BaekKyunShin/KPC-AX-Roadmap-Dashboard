@@ -14,11 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  fetchUsageStats,
-  updateQuota,
-  fetchMyUsage,
-} from './actions';
+import { fetchUsageStats, updateQuota, fetchMyUsage } from './actions';
 
 // ─── 외부 모듈 모킹 ────────────────────────────────────────────────────────
 
@@ -50,6 +46,7 @@ const mockCanManageUser = vi.fn();
 
 vi.mock('@/lib/constants/status', () => ({
   canManageUser: (...args: unknown[]) => mockCanManageUser(...args),
+  OPS_MANAGER_ROLES: ['OPS_ADMIN', 'SYSTEM_ADMIN'],
 }));
 
 // admin client mock for user lookup in updateQuota
@@ -274,7 +271,7 @@ describe('updateQuota', () => {
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: { dailyLimit: 50 },
-      }),
+      })
     );
   });
 

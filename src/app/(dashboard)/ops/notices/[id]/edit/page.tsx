@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui/page-header';
 import { NoticeForm } from '@/components/notices/NoticeForm';
 import { getNotice } from '@/lib/services/notice';
+import { isOpsManager } from '@/lib/constants/status';
 
 export const metadata = {
   title: '공지 수정',
@@ -18,7 +19,7 @@ export default async function EditNoticePage({ params }: Props) {
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 

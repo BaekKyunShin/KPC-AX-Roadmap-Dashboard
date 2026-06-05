@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateLLMMatchingRecommendations } from '@/lib/services/matching';
 import { matchingGenerateSchema } from '@/lib/schemas/matching';
+import { isOpsManager } from '@/lib/constants/status';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,10 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ success: false, error: '인증되지 않은 사용자입니다.' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: '인증되지 않은 사용자입니다.' },
+        { status: 401 }
+      );
     }
 
     // 역할 확인
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+    if (!currentUser || !isOpsManager(currentUser.role)) {
       return NextResponse.json({ success: false, error: '권한이 없습니다.' }, { status: 403 });
     }
 
@@ -32,7 +36,10 @@ export async function POST(request: NextRequest) {
     const parsed = matchingGenerateSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: '입력 데이터가 올바르지 않습니다.' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: '입력 데이터가 올바르지 않습니다.' },
+        { status: 400 }
+      );
     }
 
     const { projectId, topN, preserveStatus } = parsed.data;
@@ -65,23 +72,19 @@ export async function POST(request: NextRequest) {
           error: '오늘 사용 한도를 초과했습니다. 한국 시간 자정에 초기화됩니다.',
           code: 'QUOTA_EXCEEDED',
         },
-        { status: 429, headers: { 'Retry-After': '3600' } },
+        { status: 429, headers: { 'Retry-After': '3600' } }
       );
     }
 
     // 업스트림(LLM) 타임아웃 또는 사용자/시스템 abort
-    if (
-      message.includes('타임아웃') ||
-      message.includes('abort') ||
-      errorName === 'AbortError'
-    ) {
+    if (message.includes('타임아웃') || message.includes('abort') || errorName === 'AbortError') {
       return NextResponse.json(
         {
           success: false,
           error: 'AI 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.',
           code: 'LLM_TIMEOUT',
         },
-        { status: 504 },
+        { status: 504 }
       );
     }
 
@@ -97,7 +100,7 @@ export async function POST(request: NextRequest) {
           error: '분석할 내용이 너무 깁니다. 텍스트 길이를 줄여주세요.',
           code: 'INPUT_TOO_LARGE',
         },
-        { status: 413 },
+        { status: 413 }
       );
     }
 
@@ -107,7 +110,7 @@ export async function POST(request: NextRequest) {
         error: '매칭 추천 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         code: 'INTERNAL_ERROR',
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

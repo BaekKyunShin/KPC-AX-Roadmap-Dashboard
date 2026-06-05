@@ -36,7 +36,8 @@ const mockRequireConsultantProjectAccess = vi.fn();
 vi.mock('@/lib/actions/auth-helpers', () => ({
   requireAuth: (...args: unknown[]) => mockRequireAuth(...args),
   requireAuthWithRole: (...args: unknown[]) => mockRequireAuthWithRole(...args),
-  requireConsultantProjectAccess: (...args: unknown[]) => mockRequireConsultantProjectAccess(...args),
+  requireConsultantProjectAccess: (...args: unknown[]) =>
+    mockRequireConsultantProjectAccess(...args),
 }));
 
 // supabase
@@ -126,6 +127,7 @@ vi.mock('@/lib/constants/status', () => ({
   validateStatusTransition: vi.fn(),
   canManageUser: vi.fn(),
   ROADMAP_ELIGIBLE_STATUSES: ['INTERVIEWED', 'ROADMAP_DRAFTED'],
+  OPS_MANAGER_ROLES: ['OPS_ADMIN', 'SYSTEM_ADMIN'],
 }));
 
 vi.mock('@/lib/constants/cache', () => ({
@@ -181,9 +183,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createTemplate } = await import(
-        '@/app/(dashboard)/ops/templates/actions'
-      );
+      const { createTemplate } = await import('@/app/(dashboard)/ops/templates/actions');
 
       // 잘못된 FormData: name 1자 (min 2), questions 빈 배열
       const formData = createInvalidFormData({
@@ -206,9 +206,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { updateTemplate } = await import(
-        '@/app/(dashboard)/ops/templates/actions'
-      );
+      const { updateTemplate } = await import('@/app/(dashboard)/ops/templates/actions');
 
       // 잘못된 FormData: id가 UUID가 아님, name 1자
       const formData = createInvalidFormData({
@@ -236,9 +234,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createProject } = await import(
-        '@/app/(dashboard)/ops/projects/actions/crud'
-      );
+      const { createProject } = await import('@/app/(dashboard)/ops/projects/actions/crud');
 
       // 필수 필드 누락 + 잘못된 값
       const formData = createInvalidFormData({
@@ -263,9 +259,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createSelfAssessment } = await import(
-        '@/app/(dashboard)/ops/projects/actions/crud'
-      );
+      const { createSelfAssessment } = await import('@/app/(dashboard)/ops/projects/actions/crud');
 
       // 잘못된 FormData: answers가 유효하지 않은 JSON
       const formData = createInvalidFormData({
@@ -288,9 +282,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { assignConsultant } = await import(
-        '@/app/(dashboard)/ops/projects/actions/crud'
-      );
+      const { assignConsultant } = await import('@/app/(dashboard)/ops/projects/actions/crud');
 
       // 잘못된 FormData
       const formData = createInvalidFormData({
@@ -317,9 +309,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { updateQuota } = await import(
-        '@/app/(dashboard)/ops/quota/actions'
-      );
+      const { updateQuota } = await import('@/app/(dashboard)/ops/quota/actions');
 
       // 둘 다 undefined → Zod 실패 (최소 하나는 필요)
       const result = await updateQuota('not-uuid', undefined, undefined);
@@ -340,15 +330,14 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createActivityLog } = await import(
-        '@/app/(dashboard)/consultant/projects/[id]/actions'
-      );
+      const { createActivityLog } =
+        await import('@/app/(dashboard)/consultant/projects/[id]/actions');
 
       // type과 content가 잘못됨 (Zod 실패 확실)
       const result = await createActivityLog(
         'some-project-id',
         '' as never, // 빈 type
-        '',          // 빈 content
+        '' // 빈 content
       );
 
       expect(result.success).toBe(false);
@@ -363,16 +352,11 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { updateActivityLog } = await import(
-        '@/app/(dashboard)/consultant/projects/[id]/actions'
-      );
+      const { updateActivityLog } =
+        await import('@/app/(dashboard)/consultant/projects/[id]/actions');
 
       // content가 빈 문자열 (Zod 실패 확실)
-      const result = await updateActivityLog(
-        'some-log-id',
-        'some-project-id',
-        '',
-      );
+      const result = await updateActivityLog('some-log-id', 'some-project-id', '');
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -390,9 +374,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupAuthFailure();
 
-      const { sendMessage } = await import(
-        '@/app/(dashboard)/dashboard/messages/actions'
-      );
+      const { sendMessage } = await import('@/app/(dashboard)/dashboard/messages/actions');
 
       // 빈 conversation_id + 빈 content (Zod 실패 확실)
       const result = await sendMessage('', '');
@@ -409,9 +391,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupAuthFailure();
 
-      const { createConversation } = await import(
-        '@/app/(dashboard)/dashboard/messages/actions'
-      );
+      const { createConversation } = await import('@/app/(dashboard)/dashboard/messages/actions');
 
       // 빈 recipientId (Zod 실패 확실)
       const result = await createConversation('');
@@ -432,9 +412,7 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createTestRoadmap } = await import(
-        '@/app/(dashboard)/test-roadmap/actions'
-      );
+      const { createTestRoadmap } = await import('@/app/(dashboard)/test-roadmap/actions');
 
       // 완전히 잘못된 입력 (Zod 실패 확실)
       const invalidInput = {
@@ -465,9 +443,8 @@ describe('인증 체크 → Zod 검증 순서 보장', () => {
     it('미인증 + 잘못된 입력 → 인증 에러 우선 반환 (Zod 에러 아님)', async () => {
       setupRoleAuthFailure();
 
-      const { createRoadmap } = await import(
-        '@/app/(dashboard)/consultant/projects/[id]/roadmap/actions'
-      );
+      const { createRoadmap } =
+        await import('@/app/(dashboard)/consultant/projects/[id]/roadmap/actions');
 
       // projectId를 빈 문자열로 전달 (Zod 실패 확실)
       const result = await createRoadmap('');

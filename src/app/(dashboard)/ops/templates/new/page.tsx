@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
+import { isOpsManager } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
 import { TemplateFormSkeleton } from '@/components/ui/Skeleton';
 
-const TemplateForm = dynamic(
-  () => import('../_components/TemplateForm'),
-  { loading: () => <TemplateFormSkeleton questionCount={1} /> }
-);
+const TemplateForm = dynamic(() => import('../_components/TemplateForm'), {
+  loading: () => <TemplateFormSkeleton questionCount={1} />,
+});
 
 export default async function NewTemplatePage() {
   const supabase = await createClient();
@@ -27,7 +27,7 @@ export default async function NewTemplatePage() {
     .eq('id', user.id)
     .single();
 
-  if (!currentUser || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(currentUser.role)) {
+  if (!currentUser || !isOpsManager(currentUser.role)) {
     redirect('/dashboard');
   }
 
