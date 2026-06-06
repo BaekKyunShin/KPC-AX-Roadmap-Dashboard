@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
+import { isOpsManager } from '@/lib/constants/status';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import TemplateList from './_components/TemplateList';
@@ -15,7 +16,7 @@ export default async function TemplatesPage() {
   }
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 
@@ -31,8 +32,7 @@ export default async function TemplatesPage() {
         actions={
           <Button asChild>
             <Link href="/ops/templates/new">
-              <Plus className="mr-2 h-4 w-4" />
-              새 템플릿 생성
+              <Plus className="mr-2 h-4 w-4" />새 템플릿 생성
             </Link>
           </Button>
         }

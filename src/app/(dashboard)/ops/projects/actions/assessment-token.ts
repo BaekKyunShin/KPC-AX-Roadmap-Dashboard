@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { createAssessmentTokenSchema } from '@/lib/schemas/assessment-token';
 import { createAuditLog } from '@/lib/services/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -27,7 +28,7 @@ interface AssessmentTokenResult {
 export async function createAssessmentToken(
   formData: FormData
 ): Promise<ActionResult<AssessmentTokenResult>> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -73,29 +74,24 @@ export async function createAssessmentToken(
 
   // 새 토큰 생성
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(
-    Date.now() + expires_in_days * MS_PER_DAY
-  ).toISOString();
+  const expiresAt = new Date(Date.now() + expires_in_days * MS_PER_DAY).toISOString();
 
-  const { error: insertError } = await adminSupabase
-    .from('assessment_tokens')
-    .insert({
-      token,
-      project_id,
-      expires_at: expiresAt,
-      created_by: user.id,
-    });
+  const { error: insertError } = await adminSupabase.from('assessment_tokens').insert({
+    token,
+    project_id,
+    expires_at: expiresAt,
+    created_by: user.id,
+  });
 
   if (insertError) {
-    console.error(
-      '[createAssessmentToken] Supabase error:',
-      insertError.message
-    );
-    return { success: false, error: '진단 링크 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
+    console.error('[createAssessmentToken] Supabase error:', insertError.message);
+    return {
+      success: false,
+      error: '진단 링크 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    };
   }
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const url = `${appUrl}/assessment/${token}`;
 
   after(async () => {
@@ -128,10 +124,8 @@ export interface LatestTokenInfo {
 /**
  * 프로젝트의 최신 토큰 조회 (OPS_ADMIN용)
  */
-export async function getLatestToken(
-  projectId: string
-): Promise<LatestTokenInfo | null> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+export async function getLatestToken(projectId: string): Promise<LatestTokenInfo | null> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
   if ('error' in auth) return null;
 
   const adminSupabase = createAdminClient();

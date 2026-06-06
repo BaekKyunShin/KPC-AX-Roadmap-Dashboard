@@ -20,11 +20,15 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { PageHeader } from '@/components/ui/page-header';
 import { StickyFormNav } from '@/components/forms/StickyFormNav';
 import PendingApprovalCard from '@/components/PendingApprovalCard';
-import RoadmapLoadingOverlay, { COMPLETION_DELAY_MS } from '@/components/roadmap/RoadmapLoadingOverlay';
+import RoadmapLoadingOverlay, {
+  COMPLETION_DELAY_MS,
+} from '@/components/roadmap/RoadmapLoadingOverlay';
 import { showErrorToast, showSuccessToast } from '@/lib/utils';
 import { formatZodIssuesForToast } from '@/lib/utils/zod-error-format';
 import { ROADMAP_FIELD_LABELS } from '@/lib/schemas/interview-roadmap-labels';
 import { PAGE_TITLE, PAGE_DESCRIPTION } from './_meta';
+import { isOpsManager } from '@/lib/constants/status';
+import type { UserRole } from '@/types/database';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
 import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity';
@@ -93,9 +97,8 @@ const STEPS: ReadonlyArray<{
   { id: 7, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링' },
 ];
 
-const ADMIN_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 function isAdminRole(role: string): boolean {
-  return ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]);
+  return isOpsManager(role as UserRole);
 }
 
 function getBackLink(isOpsAdmin: boolean) {
@@ -165,7 +168,7 @@ function toRoadmapVersionUI(result: RoadmapResult): RoadmapVersionUI {
  */
 export function buildTestRoadmapExportData(
   result: RoadmapResult,
-  companyName: string,
+  companyName: string
 ): import('@/lib/services/export-pdf').RoadmapExportData {
   return {
     companyName,
@@ -188,9 +191,7 @@ export function buildTestRoadmapExportData(
 
 // ─── 인터뷰(camelCase) → 결과 페이지 snapshot ────────────────────────────────
 
-function toInterviewSnapshot(
-  interview: RoadmapInterviewStrict,
-): ResultInterviewSnapshot {
+function toInterviewSnapshot(interview: RoadmapInterviewStrict): ResultInterviewSnapshot {
   return {
     establishmentNecessity: interview.establishmentNecessity,
     performanceActivities: interview.performanceActivities,
@@ -274,14 +275,12 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
 
   // ── 슬라이스 업데이트 ─────────────────────────────────────────────────────
   const update = <K extends keyof RoadmapInterviewStrict>(
-    patch: Partial<Pick<RoadmapInterviewStrict, K>>,
+    patch: Partial<Pick<RoadmapInterviewStrict, K>>
   ) => setData((prev) => ({ ...prev, ...patch }));
 
   // ── 샘플 데이터 채우기 ───────────────────────────────────────────────────
   const applySample = () => {
-    const sample = JSON.parse(
-      JSON.stringify(ROADMAP_INTERVIEW_SAMPLE),
-    ) as RoadmapInterviewStrict;
+    const sample = JSON.parse(JSON.stringify(ROADMAP_INTERVIEW_SAMPLE)) as RoadmapInterviewStrict;
     setData(sample);
     setCurrentStep(1);
   };
@@ -312,10 +311,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     const parsed = RoadmapInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
       const message = formatZodIssuesForToast(parsed.error, ROADMAP_FIELD_LABELS);
-      showErrorToast(
-        '제출 검증 실패',
-        message || '필수 입력 항목을 확인해주세요.',
-      );
+      showErrorToast('제출 검증 실패', message || '필수 입력 항목을 확인해주세요.');
       return;
     }
 
@@ -360,10 +356,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
     const parsed = RoadmapInterviewStrictSchema.safeParse(data);
     if (!parsed.success) {
       const message = formatZodIssuesForToast(parsed.error, ROADMAP_FIELD_LABELS);
-      showErrorToast(
-        '수정 검증 실패',
-        message || '인터뷰 입력을 확인해주세요.',
-      );
+      showErrorToast('수정 검증 실패', message || '인터뷰 입력을 확인해주세요.');
       return;
     }
     setIsRevising(true);
@@ -372,7 +365,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
       const result = await reviseTestRoadmap(
         buildActionInput(parsed.data),
         testResult.result,
-        revisionPrompt ?? '',
+        revisionPrompt ?? ''
       );
       if (result.success) {
         setIsRevisionComplete(true);
@@ -440,17 +433,11 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             <FlaskConical className="h-4 w-4 text-amber-600" />
             <AlertTitle>테스트 결과 — DB 저장되지 않음</AlertTitle>
             <AlertDescription>
-              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 로드맵을 생성하려면
-              담당 프로젝트의 인터뷰 화면을 이용하세요.
+              페이지 이탈 시 결과는 휘발됩니다. 실제 프로젝트에서 로드맵을 생성하려면 담당
+              프로젝트의 인터뷰 화면을 이용하세요.
             </AlertDescription>
           </Alert>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="ml-4"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleReset} className="ml-4">
             처음으로
           </Button>
         </div>
@@ -468,13 +455,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           onDownload={async (type) => {
             try {
               if (type === 'PDF') {
-                const exportData = buildTestRoadmapExportData(
-                  testResult.result,
-                  companyName,
-                );
-                const { generatePDF } = await import(
-                  '@/lib/services/export-pdf'
-                );
+                const exportData = buildTestRoadmapExportData(testResult.result, companyName);
+                const { generatePDF } = await import('@/lib/services/export-pdf');
                 const blob = await generatePDF(exportData);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -488,17 +470,9 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
                 return;
               }
               if (type === 'XLSX') {
-                const exportData = buildTestRoadmapExportData(
-                  testResult.result,
-                  companyName,
-                );
-                const { downloadXLSX } = await import(
-                  '@/lib/services/export-xlsx'
-                );
-                await downloadXLSX(
-                  exportData,
-                  `roadmap_test_${companyName}_v1.xlsx`,
-                );
+                const exportData = buildTestRoadmapExportData(testResult.result, companyName);
+                const { downloadXLSX } = await import('@/lib/services/export-xlsx');
+                await downloadXLSX(exportData, `roadmap_test_${companyName}_v1.xlsx`);
                 showSuccessToast('Excel 다운로드 완료');
                 return;
               }
@@ -509,9 +483,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
               }
             } catch (err) {
               const message =
-                err instanceof Error
-                  ? err.message
-                  : '다운로드 중 오류가 발생했습니다.';
+                err instanceof Error ? err.message : '다운로드 중 오류가 발생했습니다.';
               console.error('[TestRoadmapClient] 다운로드 예외:', err);
               showErrorToast('다운로드 실패', message);
             }
@@ -554,9 +526,7 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
         return (
           <StepMainResult
             value={value}
-            onChange={(next) =>
-              update({ aiLevel: next.aiLevel, selectedTask: next.selectedTask })
-            }
+            onChange={(next) => update({ aiLevel: next.aiLevel, selectedTask: next.selectedTask })}
           />
         );
       }
@@ -645,8 +615,8 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
           <Info className="h-4 w-4" />
           <AlertTitle>테스트 모드 안내</AlertTitle>
           <AlertDescription>
-            이 화면의 UI/UX는 실제 현장 인터뷰(로드맵)와 동일합니다. Ⅱ-1 HRD이음 PDF 첨부는
-            테스트 모드에서 지원되지 않습니다.
+            이 화면의 UI/UX는 실제 현장 인터뷰(로드맵)와 동일합니다. Ⅱ-1 HRD이음 PDF 첨부는 테스트
+            모드에서 지원되지 않습니다.
             <strong className="block mt-2 text-amber-700">
               입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.
             </strong>

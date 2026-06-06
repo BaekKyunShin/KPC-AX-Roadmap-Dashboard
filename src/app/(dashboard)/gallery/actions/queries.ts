@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAuth } from '@/lib/actions/auth-helpers';
-import { ROADMAP_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import { ROADMAP_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
 import { ilikePattern, sanitizePostgrestFilter } from '@/lib/utils/postgrest-sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { galleryFiltersSchema } from '@/lib/schemas/gallery';
@@ -147,7 +147,7 @@ export async function fetchGalleryRoadmaps(
 
   const { search, industry, sort, status, isShared, consultantId, scope, page, limit } =
     parsed.data;
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
+  const isAdmin = isOpsManager(role);
 
   // 갤러리 조회는 admin client 사용 (projects RLS가 다른 컨설턴트 프로젝트를 차단하므로)
   // 역할 기반 필터링은 아래 코드에서 수행
@@ -364,7 +364,7 @@ export async function fetchRoadmapDetail(
   }
 
   // 권한 체크: 컨설턴트는 공유된 FINAL만 열람 가능
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
+  const isAdmin = isOpsManager(role);
   if (!isAdmin && (!data.is_shared || data.status !== 'FINAL')) {
     return errorResult('접근 권한이 없습니다.');
   }
@@ -438,7 +438,7 @@ export async function fetchGalleryPBLReports(
 
   const { search, industry, sort, status, isShared, consultantId, scope, page, limit } =
     parsed.data;
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
+  const isAdmin = isOpsManager(role);
 
   const adminClient = createAdminClient();
 
@@ -718,7 +718,7 @@ export async function fetchPBLReportDetail(
     return errorResult('PBL 보고서를 찾을 수 없습니다.');
   }
 
-  const isAdmin = ['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role);
+  const isAdmin = isOpsManager(role);
   if (!isAdmin && (!data.is_shared || data.status !== 'FINAL')) {
     return errorResult('접근 권한이 없습니다.');
   }
@@ -789,7 +789,7 @@ export async function fetchConsultantOptions(): Promise<ActionResult<ConsultantO
   if ('error' in auth) return errorResult(auth.error);
   const { supabase, role } = auth;
 
-  if (!role || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+  if (!role || !isOpsManager(role)) {
     return errorResult('관리자만 접근할 수 있습니다.');
   }
 

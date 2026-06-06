@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { createAuditLog } from '@/lib/services/audit';
 import { deleteProjectSchema, type DeleteProjectInput } from '@/lib/schemas/project';
 import type { SimpleActionResult } from '@/lib/types/action-result';
@@ -21,11 +22,9 @@ import type { SimpleActionResult } from '@/lib/types/action-result';
  * 6. DB delete — 9개 자식 테이블은 ON DELETE CASCADE 로 자동 정리
  * 7. 감사로그 + revalidate
  */
-export async function deleteProject(
-  input: DeleteProjectInput,
-): Promise<SimpleActionResult> {
+export async function deleteProject(input: DeleteProjectInput): Promise<SimpleActionResult> {
   // 1. 인증 + 역할 가드
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -77,15 +76,12 @@ export async function deleteProject(
   } catch (e) {
     console.error(
       '[deleteProject] Storage 정리 실패 (DB 삭제는 진행):',
-      e instanceof Error ? e.message : String(e),
+      e instanceof Error ? e.message : String(e)
     );
   }
 
   // 6. DB 삭제 (CASCADE)
-  const { error: deleteError } = await adminSupabase
-    .from('projects')
-    .delete()
-    .eq('id', project_id);
+  const { error: deleteError } = await adminSupabase.from('projects').delete().eq('id', project_id);
 
   if (deleteError) {
     await createAuditLog({

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
+import { isOpsManager } from '@/lib/constants/status';
 import type { UserRole, UserStatus } from '@/types/database';
 
 // ============================================================================
@@ -36,7 +37,7 @@ export type AuthFailure = { error: string };
  * role/status는 캐시된 프로필에서 가져오며, 행이 없으면 null입니다.
  */
 export async function requireAuth(
-  errorMessage = '로그인이 필요합니다.',
+  errorMessage = '로그인이 필요합니다.'
 ): Promise<AuthSuccess | AuthFailure> {
   const user = await getCachedUser();
   if (!user) {
@@ -60,16 +61,12 @@ export async function requireAuth(
  */
 export async function requireAuthWithRole(
   allowedRoles: readonly UserRole[],
-  options?: { authError?: string; roleError?: string },
+  options?: { authError?: string; roleError?: string }
 ): Promise<RoleSuccess | AuthFailure> {
   const auth = await requireAuth(options?.authError);
   if ('error' in auth) return auth;
 
-  if (
-    !auth.role ||
-    !allowedRoles.includes(auth.role) ||
-    auth.status !== 'ACTIVE'
-  ) {
+  if (!auth.role || !allowedRoles.includes(auth.role) || auth.status !== 'ACTIVE') {
     return { error: options?.roleError ?? '권한이 없습니다.' };
   }
 
@@ -89,7 +86,7 @@ interface RoadmapAccessRow {
 export async function requireConsultantRoadmapAccess(
   supabase: SupabaseServerClient,
   userId: string,
-  roadmapId: string,
+  roadmapId: string
 ): Promise<{ projectId: string } | AuthFailure> {
   const { data } = await supabase
     .from('roadmap_versions')
@@ -116,7 +113,7 @@ export async function requireConsultantProjectAccess(
   supabase: SupabaseServerClient,
   userId: string,
   projectId: string,
-  errorMessage = '배정되지 않은 프로젝트입니다.',
+  errorMessage = '배정되지 않은 프로젝트입니다.'
 ): Promise<true | AuthFailure> {
   const { data: projectData } = await supabase
     .from('projects')
@@ -130,4 +127,26 @@ export async function requireConsultantProjectAccess(
   }
 
   return true;
+}
+
+/**
+ * 프로젝트 산출물(로드맵·PBL) 접근 인가 판정 — 순수 함수(DB 조회 없음).
+ *
+ * - 컨설턴트(CONSULTANT_APPROVED): 본인에게 배정된 프로젝트만 접근 가능
+ * - 운영/시스템관리자(OPS_ADMIN/SYSTEM_ADMIN): 배정 무관 전체 접근
+ * - 그 외 역할: 불가
+ *
+ * track('PBL'/'ROADMAP')·프로젝트 상태(EXPORT_ELIGIBLE 등) 같은 부가 조건은
+ * 이 함수가 다루지 않는다 — '누가 접근하는가'만 판정하므로 호출부에서 별도 검사한다.
+ * `assignedConsultantId`는 호출부가 이미 조회한 projects.assigned_consultant_id 값을 전달한다.
+ */
+export function canAccessProjectArtifact(
+  role: UserRole,
+  assignedConsultantId: string | null | undefined,
+  userId: string
+): boolean {
+  if (role === 'CONSULTANT_APPROVED') {
+    return assignedConsultantId === userId;
+  }
+  return isOpsManager(role);
 }

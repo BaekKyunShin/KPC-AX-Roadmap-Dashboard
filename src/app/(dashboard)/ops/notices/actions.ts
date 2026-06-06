@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import {
@@ -23,21 +24,19 @@ import {
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import type { NoticeAttachment } from '@/types/database';
 
-const OPS_ROLES = ['OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
-
 // ============================================================================
 // 공지 생성
 // ============================================================================
 
 export async function createNoticeAction(
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionResult<{ noticeId: string }>> {
   // 본 흐름의 unknown throw 가 Server Action 응답 직렬화를 손상시켜
   // 클라이언트에 "An unexpected response was received from the server"
   // (Next.js E394) 가 발생하지 않도록 outer try-catch 로 모든 throw 를
   // ActionResult 로 변환한다. (이슈 1-C 재발 차단)
   try {
-    const auth = await requireAuthWithRole(OPS_ROLES, {
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
       authError: '로그인이 필요합니다.',
       roleError: '공지 작성 권한이 없습니다.',
     });
@@ -47,9 +46,7 @@ export async function createNoticeAction(
     const raw = {
       title: String(formData.get('title') ?? ''),
       body: String(formData.get('body') ?? ''),
-      is_pinned:
-        formData.get('is_pinned') === 'on' ||
-        formData.get('is_pinned') === 'true',
+      is_pinned: formData.get('is_pinned') === 'on' || formData.get('is_pinned') === 'true',
     };
 
     const validation = noticeInputSchema.safeParse(raw);
@@ -101,9 +98,9 @@ export async function createNoticeAction(
 
 export async function updateNoticeAction(
   id: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '로그인이 필요합니다.',
     roleError: '공지 수정 권한이 없습니다.',
   });
@@ -149,7 +146,7 @@ export async function updateNoticeAction(
 // ============================================================================
 
 export async function deleteNoticeAction(id: string): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '로그인이 필요합니다.',
     roleError: '공지 삭제 권한이 없습니다.',
   });
@@ -181,11 +178,8 @@ export async function deleteNoticeAction(id: string): Promise<SimpleActionResult
 // 상단 고정 토글
 // ============================================================================
 
-export async function togglePinAction(
-  id: string,
-  pinned: boolean,
-): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
+export async function togglePinAction(id: string, pinned: boolean): Promise<SimpleActionResult> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '로그인이 필요합니다.',
     roleError: '상단 고정 권한이 없습니다.',
   });
@@ -219,14 +213,14 @@ export async function togglePinAction(
 
 export async function uploadAttachmentAction(
   noticeId: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionResult<{ attachment: NoticeAttachment }>> {
   // 본 흐름의 unknown throw 가 Server Action 응답 직렬화를 손상시켜
   // 클라이언트에 "An unexpected response was received from the server"
   // (Next.js E394) 가 발생하지 않도록 outer try-catch 로 모든 throw 를
   // ActionResult 로 변환한다. (이슈 1-C 재발 차단)
   try {
-    const auth = await requireAuthWithRole(OPS_ROLES, {
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
       authError: '로그인이 필요합니다.',
       roleError: '첨부 업로드 권한이 없습니다.',
     });
@@ -327,10 +321,10 @@ export async function createUploadUrlAction(
   noticeId: string,
   fileName: string,
   mimeType: string,
-  fileSize: number,
+  fileSize: number
 ): Promise<ActionResult<CreateUploadUrlResult>> {
   try {
-    const auth = await requireAuthWithRole(OPS_ROLES, {
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
       authError: '로그인이 필요합니다.',
       roleError: '첨부 업로드 권한이 없습니다.',
     });
@@ -366,7 +360,7 @@ export async function createUploadUrlAction(
       fileName,
       mimeType,
       fileSize,
-      adminClient,
+      adminClient
     );
 
     if ('error' in result) {
@@ -403,10 +397,10 @@ export async function registerAttachmentAction(
     mime_type: string;
     file_size: number;
     storage_path: string;
-  },
+  }
 ): Promise<ActionResult<{ attachment: NoticeAttachment }>> {
   try {
-    const auth = await requireAuthWithRole(OPS_ROLES, {
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
       authError: '로그인이 필요합니다.',
       roleError: '첨부 등록 권한이 없습니다.',
     });
@@ -423,11 +417,7 @@ export async function registerAttachmentAction(
     }
 
     const adminClient = createAdminClient();
-    const result = await registerNoticeAttachment(
-      noticeId,
-      validation.data,
-      adminClient,
-    );
+    const result = await registerNoticeAttachment(noticeId, validation.data, adminClient);
 
     if ('error' in result) {
       return { success: false, error: result.error };
@@ -473,10 +463,8 @@ export async function registerAttachmentAction(
 // 첨부 삭제
 // ============================================================================
 
-export async function deleteAttachmentAction(
-  attachmentId: string,
-): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(OPS_ROLES, {
+export async function deleteAttachmentAction(attachmentId: string): Promise<SimpleActionResult> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '로그인이 필요합니다.',
     roleError: '첨부 삭제 권한이 없습니다.',
   });

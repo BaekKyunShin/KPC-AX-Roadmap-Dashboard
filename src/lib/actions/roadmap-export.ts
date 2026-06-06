@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/services/audit';
-import { EXPORT_ELIGIBLE_STATUSES, isOpsManager } from '@/lib/constants/status';
+import { EXPORT_ELIGIBLE_STATUSES } from '@/lib/constants/status';
+import { canAccessProjectArtifact } from '@/lib/actions/auth-helpers';
 import { fromRoadmapVersionColumns, sanitizeRoadmapResult } from '@/lib/services/roadmap';
 import type { ProjectStatus, UserRole } from '@/types/database';
 import type { RoadmapExportData } from '@/lib/services/export-pdf';
@@ -20,11 +21,15 @@ interface ProjectJoinData {
  * - CONSULTANT_APPROVED: 자신이 담당한 프로젝트만 접근 가능
  * - OPS_ADMIN, SYSTEM_ADMIN: 모든 프로젝트 접근 가능
  */
-export async function prepareExportData(roadmapId: string): Promise<ActionResult<RoadmapExportData>> {
+export async function prepareExportData(
+  roadmapId: string
+): Promise<ActionResult<RoadmapExportData>> {
   try {
     const supabase = await createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { success: false, error: '로그인이 필요합니다.' };
     }
@@ -59,11 +64,13 @@ export async function prepareExportData(roadmapId: string): Promise<ActionResult
     }
 
     // 역할별 접근 권한 검증
-    if (profile.role === 'CONSULTANT_APPROVED') {
-      if (projectData.assigned_consultant_id !== user.id) {
-        return { success: false, error: '접근 권한이 없습니다.' };
-      }
-    } else if (!isOpsManager(profile.role as UserRole)) {
+    if (
+      !canAccessProjectArtifact(
+        profile.role as UserRole,
+        projectData.assigned_consultant_id,
+        user.id
+      )
+    ) {
       return { success: false, error: '접근 권한이 없습니다.' };
     }
 
@@ -113,7 +120,9 @@ export async function logDownload(
   try {
     const supabase = await createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { success: false, error: '로그인이 필요합니다.' };
     }

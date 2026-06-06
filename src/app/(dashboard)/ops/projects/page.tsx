@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import ProjectManagementTabs from './_components/ProjectManagementTabs';
 import { fetchProjectStats } from './actions/dashboard';
 import { fetchProjectsWithTimeline } from './actions/queries';
+import { isOpsManager } from '@/lib/constants/status';
 
 export default async function OPSProjectsPage({
   searchParams,
@@ -19,7 +20,7 @@ export default async function OPSProjectsPage({
   }
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 
@@ -40,18 +41,14 @@ export default async function OPSProjectsPage({
         actions={
           <Button asChild>
             <Link href="/ops/projects/new">
-              <Plus className="mr-2 h-4 w-4" />
-              새 프로젝트 생성
+              <Plus className="mr-2 h-4 w-4" />새 프로젝트 생성
             </Link>
           </Button>
         }
       />
 
       {/* Stats + Tabs */}
-      <ProjectManagementTabs
-        initialStats={initialStats}
-        initialProjects={initialProjectsResult}
-      />
+      <ProjectManagementTabs initialStats={initialStats} initialProjects={initialProjectsResult} />
     </div>
   );
 }

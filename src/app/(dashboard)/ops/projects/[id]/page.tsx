@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SelfAssessmentResult } from '@/components/ui/SelfAssessmentResult';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getProjectStatusBadge } from '@/lib/constants/status';
+import { getProjectStatusBadge, isOpsManager } from '@/lib/constants/status';
 import type { ProjectStatus } from '@/types/database';
 import { COMPANY_SIZE_LABELS, type CompanySizeValue } from '@/lib/constants/company-size';
 import { RoadmapInterviewSummary } from '@/components/interview/RoadmapInterviewSummary';
@@ -137,17 +137,15 @@ async function SelfAssessmentSection({ projectId }: { projectId: string }) {
       </CardHeader>
       <CardContent>
         {selfAssessment ? (
-          <SelfAssessmentResult scores={selfAssessment.scores} createdAt={selfAssessment.created_at} />
+          <SelfAssessmentResult
+            scores={selfAssessment.scores}
+            createdAt={selfAssessment.created_at}
+          />
         ) : template ? (
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                고객사 자가진단 링크
-              </h3>
-              <AssessmentTokenSection
-                projectId={projectId}
-                latestToken={latestTokenData}
-              />
+              <h3 className="text-sm font-medium text-gray-700 mb-3">고객사 자가진단 링크</h3>
+              <AssessmentTokenSection projectId={projectId} latestToken={latestTokenData} />
             </div>
             <CollapsibleDirectInput projectId={projectId} template={template} />
           </div>
@@ -170,43 +168,45 @@ async function AssignmentSection({
 
   const [{ data: selfAssessment }, { data: matchingRecommendations }, { data: assignments }] =
     await Promise.all([
-      supabase
-        .from('self_assessments')
-        .select('scores')
-        .eq('project_id', projectId)
-        .single(),
+      supabase.from('self_assessments').select('scores').eq('project_id', projectId).single(),
       supabase
         .from('matching_recommendations')
-        .select(`
+        .select(
+          `
           id, project_id, candidate_user_id, total_score, score_breakdown, rationale, rank, created_at,
           candidate:users!matching_recommendations_candidate_user_id_fkey(
             id, name, email,
             consultant_profile:consultant_profiles(expertise_domains, available_industries, sub_industries, teaching_levels, skill_tags, years_of_experience, strengths_constraints)
           )
-        `)
+        `
+        )
         .eq('project_id', projectId)
         .order('rank', { ascending: true })
         .returns<Recommendation[]>(),
       supabase
         .from('project_assignments')
-        .select(`
+        .select(
+          `
           id, project_id, consultant_id, assigned_by, assignment_reason, is_current, assigned_at,
           consultant:users!project_assignments_consultant_id_fkey(id, name, email),
           assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
-        `)
+        `
+        )
         .eq('project_id', projectId)
         .order('assigned_at', { ascending: false })
-        .returns<{
-          id: string;
-          project_id: string;
-          consultant_id: string;
-          assigned_by: string;
-          assignment_reason: string;
-          is_current: boolean;
-          assigned_at: string;
-          consultant: { id: string; name: string; email: string } | null;
-          assigned_by_user: { id: string; name: string } | null;
-        }[]>(),
+        .returns<
+          {
+            id: string;
+            project_id: string;
+            consultant_id: string;
+            assigned_by: string;
+            assignment_reason: string;
+            is_current: boolean;
+            assigned_at: string;
+            consultant: { id: string; name: string; email: string } | null;
+            assigned_by_user: { id: string; name: string } | null;
+          }[]
+        >(),
     ]);
 
   return (
@@ -236,7 +236,7 @@ async function InterviewSection({
   const { data: interview } = await supabase
     .from('interviews')
     .select(
-      'id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights, pbl_data',
+      'id, interview_date, interview_round, interview_time, participants, company_details, job_tasks, pain_points, constraints, improvement_goals, notes, customer_requirements, stt_insights, pbl_data'
     )
     .eq('project_id', projectId)
     .maybeSingle();
@@ -260,13 +260,9 @@ async function InterviewSection({
       </CardHeader>
       <CardContent>
         {track === 'PBL' ? (
-          <PblInterviewSummary
-            interview={(interview.pbl_data ?? {}) as Partial<PBLInterview>}
-          />
+          <PblInterviewSummary interview={(interview.pbl_data ?? {}) as Partial<PBLInterview>} />
         ) : (
-          <RoadmapInterviewSummary
-            interview={mapInterviewRowToRoadmapInterview(interview)}
-          />
+          <RoadmapInterviewSummary interview={mapInterviewRowToRoadmapInterview(interview)} />
         )}
       </CardContent>
     </Card>
@@ -283,7 +279,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 
@@ -292,13 +288,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // 프로젝트 조회 (헤더 즉시 렌더링에 필요)
   const { data: projectData } = await supabase
     .from('projects')
-    .select(`
+    .select(
+      `
       id, company_name, industry, company_size, status, track,
       contact_name, contact_email, contact_phone,
       customer_comment, assigned_consultant_id, is_test_mode,
       created_by, created_at, updated_at,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
-    `)
+    `
+    )
     .eq('id', id)
     .returns<ProjectRow[]>()
     .single();
@@ -309,10 +307,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const statusInfo = getProjectStatusBadge(projectData.status as ProjectStatus);
 
   // 기업 규모 라벨 변환
-  const companySizeLabel = COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
-    ?.replace(/\d+[~,]?\d*명\s*/, '')
-    ?.replace(/[()]/g, '')
-    || projectData.company_size;
+  const companySizeLabel =
+    COMPANY_SIZE_LABELS[projectData.company_size as CompanySizeValue]
+      ?.replace(/\d+[~,]?\d*명\s*/, '')
+      ?.replace(/[()]/g, '') || projectData.company_size;
 
   return (
     <div className="space-y-6">
@@ -359,14 +357,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xs text-gray-500 w-12 flex-shrink-0">이메일</span>
-                <a href={`mailto:${projectData.contact_email}`} className="text-sm text-gray-600 hover:text-blue-600">
+                <a
+                  href={`mailto:${projectData.contact_email}`}
+                  className="text-sm text-gray-600 hover:text-blue-600"
+                >
                   {projectData.contact_email}
                 </a>
               </div>
               {projectData.contact_phone && (
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs text-gray-500 w-12 flex-shrink-0">연락처</span>
-                  <a href={`tel:${projectData.contact_phone}`} className="text-sm text-gray-600 hover:text-blue-600">
+                  <a
+                    href={`tel:${projectData.contact_phone}`}
+                    className="text-sm text-gray-600 hover:text-blue-600"
+                  >
                     {projectData.contact_phone}
                   </a>
                 </div>
@@ -378,8 +382,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           {projectData.customer_comment && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <div className="flex items-start gap-2">
-                <span className="text-xs text-gray-500 flex-shrink-0 pt-0.5">고객 코멘트/요청사항</span>
-                <p className="text-sm text-gray-700 break-keep break-words">{projectData.customer_comment}</p>
+                <span className="text-xs text-gray-500 flex-shrink-0 pt-0.5">
+                  고객 코멘트/요청사항
+                </span>
+                <p className="text-sm text-gray-700 break-keep break-words">
+                  {projectData.customer_comment}
+                </p>
               </div>
             </div>
           )}
@@ -419,13 +427,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <div className="flex items-center justify-between">
                 <p className="text-gray-600">
                   {projectData.status === 'FINALIZED'
-                    ? (projectData.track === 'PBL' ? '최종 확정된 PBL 보고서가 있습니다.' : '최종 확정된 로드맵이 있습니다.')
-                    : (projectData.track === 'PBL' ? 'PBL 보고서 초안이 생성되었습니다.' : '로드맵 초안이 생성되었습니다.')}
+                    ? projectData.track === 'PBL'
+                      ? '최종 확정된 PBL 보고서가 있습니다.'
+                      : '최종 확정된 로드맵이 있습니다.'
+                    : projectData.track === 'PBL'
+                      ? 'PBL 보고서 초안이 생성되었습니다.'
+                      : '로드맵 초안이 생성되었습니다.'}
                 </p>
                 <Link
-                  href={projectData.track === 'PBL'
-                    ? `/ops/projects/${id}/pbl`
-                    : `/ops/projects/${id}/roadmap`}
+                  href={
+                    projectData.track === 'PBL'
+                      ? `/ops/projects/${id}/pbl`
+                      : `/ops/projects/${id}/roadmap`
+                  }
                   className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-colors"
                 >
                   {projectData.track === 'PBL' ? 'PBL 보고서 보기' : '로드맵 보기'}

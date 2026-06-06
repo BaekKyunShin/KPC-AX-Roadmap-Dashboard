@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '@/lib/services/audit';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import type { SelfAssessmentQuestion } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 import { hasQuestionsChanged } from './utils';
@@ -35,11 +36,7 @@ const updateTemplateSchema = z.object({
 
 // 내부 헬퍼: 단일 템플릿 조회
 async function getTemplateById(supabase: SupabaseClient, templateId: string) {
-  return supabase
-    .from('self_assessment_templates')
-    .select('*')
-    .eq('id', templateId)
-    .single();
+  return supabase.from('self_assessment_templates').select('*').eq('id', templateId).single();
 }
 
 // 내부 헬퍼: 템플릿 사용 횟수 조회
@@ -65,7 +62,7 @@ async function getNextTemplateVersion(supabase: SupabaseClient) {
 // 템플릿 목록 조회
 export async function fetchTemplates(): Promise<ActionResult<unknown>> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { supabase } = auth;
 
@@ -85,18 +82,18 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
     }
 
     // 전체 템플릿의 사용 현황을 한 번에 조회 (N+1 방지)
-    const templateIds = (templates || []).map(t => t.id);
+    const templateIds = (templates || []).map((t) => t.id);
     const { data: usageCounts } = await supabase
       .from('self_assessments')
       .select('template_id')
       .in('template_id', templateIds);
 
     const usageMap = new Map<string, number>();
-    usageCounts?.forEach(row => {
+    usageCounts?.forEach((row) => {
       usageMap.set(row.template_id, (usageMap.get(row.template_id) || 0) + 1);
     });
 
-    const templatesWithUsage = (templates || []).map(template => ({
+    const templatesWithUsage = (templates || []).map((template) => ({
       ...template,
       usage_count: usageMap.get(template.id) || 0,
     }));
@@ -111,7 +108,7 @@ export async function fetchTemplates(): Promise<ActionResult<unknown>> {
 // 단일 템플릿 조회
 export async function fetchTemplate(templateId: string): Promise<ActionResult<unknown>> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { supabase } = auth;
 
@@ -135,7 +132,7 @@ export async function fetchTemplate(templateId: string): Promise<ActionResult<un
 // 새 템플릿 생성
 export async function createTemplate(formData: FormData): Promise<ActionResult<unknown>> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
@@ -197,7 +194,7 @@ export async function createTemplate(formData: FormData): Promise<ActionResult<u
 // 템플릿 수정 (새 버전 생성)
 export async function updateTemplate(formData: FormData): Promise<ActionResult<unknown>> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
@@ -217,7 +214,10 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
     }
 
     // 기존 템플릿 조회
-    const { data: existingTemplate, error: fetchError } = await getTemplateById(supabase, validation.data.id);
+    const { data: existingTemplate, error: fetchError } = await getTemplateById(
+      supabase,
+      validation.data.id
+    );
 
     if (fetchError || !existingTemplate) {
       return { success: false, error: '템플릿을 찾을 수 없습니다.' };
@@ -231,7 +231,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
     if (isInUse) {
       const questionsChanged = hasQuestionsChanged(
         existingTemplate.questions as SelfAssessmentQuestion[],
-        validation.data.questions,
+        validation.data.questions
       );
 
       if (questionsChanged) {
@@ -322,7 +322,7 @@ export async function updateTemplate(formData: FormData): Promise<ActionResult<u
 // 활성 템플릿 변경 (P1-DB-05: 원자적 RPC로 변경)
 export async function setActiveTemplate(templateId: string): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { user } = auth;
 
@@ -330,10 +330,9 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
     const adminSupabase = createAdminClient();
 
     // 원자적 활성 템플릿 변경 (단일 트랜잭션)
-    const { data: rpcResult, error: rpcError } = await adminSupabase.rpc(
-      'set_active_template',
-      { p_template_id: templateId },
-    );
+    const { data: rpcResult, error: rpcError } = await adminSupabase.rpc('set_active_template', {
+      p_template_id: templateId,
+    });
 
     if (rpcError) {
       console.error('[setActiveTemplate] RPC error:', rpcError.message);
@@ -366,7 +365,7 @@ export async function setActiveTemplate(templateId: string): Promise<SimpleActio
 // 템플릿 복제
 export async function duplicateTemplate(templateId: string): Promise<ActionResult<unknown>> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
@@ -427,7 +426,7 @@ export async function duplicateTemplate(templateId: string): Promise<ActionResul
 // 템플릿 삭제 (미사용 + 비활성 템플릿만)
 export async function deleteTemplate(templateId: string): Promise<SimpleActionResult> {
   try {
-    const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN']);
+    const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
     if ('error' in auth) return { success: false, error: auth.error };
     const { user, supabase } = auth;
     const adminSupabase = createAdminClient();
@@ -448,7 +447,10 @@ export async function deleteTemplate(templateId: string): Promise<SimpleActionRe
     const usageCount = await getTemplateUsageCount(supabase, templateId);
 
     if (usageCount > 0) {
-      return { success: false, error: `이 템플릿으로 진행된 자가진단이 ${usageCount}건 있어 삭제할 수 없습니다.` };
+      return {
+        success: false,
+        error: `이 템플릿으로 진행된 자가진단이 ${usageCount}건 있어 삭제할 수 없습니다.`,
+      };
     }
 
     // 소프트 삭제 (감사 추적을 위해 물리 삭제 대신 deleted_at 설정)

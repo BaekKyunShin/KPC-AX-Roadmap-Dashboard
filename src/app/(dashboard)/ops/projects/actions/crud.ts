@@ -1,13 +1,18 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createProjectSchema, createSelfAssessmentSchema, assignConsultantSchema } from '@/lib/schemas/project';
+import {
+  createProjectSchema,
+  createSelfAssessmentSchema,
+  assignConsultantSchema,
+} from '@/lib/schemas/project';
 import { createAuditLog } from '@/lib/services/audit';
 import { createNotification } from '@/lib/services/notification';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { CACHE_TAG_PROJECT_FILTERS, FILTER_CACHE_TTL_SECONDS } from '@/lib/constants/cache';
 import { after } from 'next/server';
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { NULL_UUID } from '@/lib/constants/database';
 import { calculateScores } from '@/lib/services/calculate-scores';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
@@ -22,8 +27,10 @@ interface AssignConsultantResult {
 /**
  * 프로젝트 생성 (OPS_ADMIN)
  */
-export async function createProject(formData: FormData): Promise<ActionResult<{ projectId: string }>> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+export async function createProject(
+  formData: FormData
+): Promise<ActionResult<{ projectId: string }>> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -48,15 +55,15 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
     company_size: formData.get('company_size') as string,
     contact_name: formData.get('contact_name') as string,
     contact_email: formData.get('contact_email') as string,
-    contact_phone: formData.get('contact_phone') as string || undefined,
-    company_address: formData.get('company_address') as string || undefined,
+    contact_phone: (formData.get('contact_phone') as string) || undefined,
+    company_address: (formData.get('company_address') as string) || undefined,
     // PBL 양식 Ⅰ. 신청서 자동표출 5필드 (마이그 071) — 모두 선택 입력
-    business_reg_no: formData.get('business_reg_no') as string || undefined,
-    industry_code: formData.get('industry_code') as string || undefined,
-    training_address: formData.get('training_address') as string || undefined,
-    jurisdiction_branch: formData.get('jurisdiction_branch') as string || undefined,
-    contact_position: formData.get('contact_position') as string || undefined,
-    customer_comment: formData.get('customer_comment') as string || undefined,
+    business_reg_no: (formData.get('business_reg_no') as string) || undefined,
+    industry_code: (formData.get('industry_code') as string) || undefined,
+    training_address: (formData.get('training_address') as string) || undefined,
+    jurisdiction_branch: (formData.get('jurisdiction_branch') as string) || undefined,
+    contact_position: (formData.get('contact_position') as string) || undefined,
+    customer_comment: (formData.get('customer_comment') as string) || undefined,
     // track 미지정(null/빈 문자열) → 스키마 default(ROADMAP) 적용. 명시 시 스키마에서 검증.
     ...(trackValue ? { track: trackValue } : {}),
   };
@@ -114,7 +121,7 @@ export async function createProject(formData: FormData): Promise<ActionResult<{ 
  * 자가진단 입력 (OPS_ADMIN)
  */
 export async function createSelfAssessment(formData: FormData): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -209,7 +216,7 @@ export async function createSelfAssessment(formData: FormData): Promise<SimpleAc
  * 컨설턴트 배정 (OPS_ADMIN)
  */
 export async function assignConsultant(formData: FormData): Promise<SimpleActionResult> {
-  const auth = await requireAuthWithRole(['OPS_ADMIN', 'SYSTEM_ADMIN'], {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES, {
     authError: '인증되지 않은 사용자입니다.',
   });
   if ('error' in auth) return { success: false, error: auth.error };
@@ -240,9 +247,8 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
     p_assignment_reason: assignment_reason || null,
   });
 
-  const result: AssignConsultantResult = (rpcError || !rpcResult)
-    ? { success: false }
-    : (rpcResult as AssignConsultantResult);
+  const result: AssignConsultantResult =
+    rpcError || !rpcResult ? { success: false } : (rpcResult as AssignConsultantResult);
 
   if (!result.success) {
     const errorDetail = rpcError?.message || result.error || '배정 실패';
@@ -303,4 +309,3 @@ export async function assignConsultant(formData: FormData): Promise<SimpleAction
 
   return { success: true };
 }
-

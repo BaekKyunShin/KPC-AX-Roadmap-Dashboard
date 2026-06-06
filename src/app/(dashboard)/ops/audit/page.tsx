@@ -8,13 +8,14 @@ import {
   type AuditLogEntry,
 } from './actions';
 import AuditLogClient from './_components/AuditLogClient';
+import { isOpsManager } from '@/lib/constants/status';
 
 export default async function AuditLogPage() {
   const user = await getCachedUser();
   if (!user) redirect('/login');
 
   const profile = await getCachedProfile();
-  if (!profile || !['OPS_ADMIN', 'SYSTEM_ADMIN'].includes(profile.role)) {
+  if (!profile || !isOpsManager(profile.role)) {
     redirect('/dashboard');
   }
 
