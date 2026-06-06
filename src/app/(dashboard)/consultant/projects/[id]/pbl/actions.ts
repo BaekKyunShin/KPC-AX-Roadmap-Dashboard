@@ -37,7 +37,12 @@ import { pblContentSchema } from '@/lib/services/pbl/pbl-validator';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { buildPBLHwpxPayload, generatePBLHwpx } from '@/lib/services/export/hwpx';
 import { fetchPBLInterviewV2 } from '../interview/actions';
-import { mapDbToPBLInterview, mapPBLInterviewToDb } from '@/lib/services/interview/converters';
+import {
+  mapDbToPBLInterview,
+  mapPBLInterviewToDb,
+  mergeTrainingEnv,
+  mergeProblemDefinitionSheet,
+} from '@/lib/services/interview/converters';
 import type { ConsultantProfile } from '@/types/database';
 import type {
   PBLResultEditPayload,
@@ -1018,78 +1023,27 @@ export async function editPBLV2(
       ...(patch.organization !== undefined
         ? { organization: patch.organization as PBLInterviewStrict['organization'] }
         : {}),
-      // R8 PBL-자체-02 — Partial<PBLTrainingEnv> 를 기존 객체와 병합
+      // R8 PBL-자체-02 — Partial<PBLTrainingEnv> 를 기존 객체와 병합.
+      // 16 필드 default 는 스키마(.default()) 단일 출처 — 부분 병합 결과(Partial)는
+      // 아래 PBLInterviewSchema.partial().safeParse 가 누락 필드를 충전·검증한다.
       ...(patch.trainingEnv !== undefined
         ? {
-            trainingEnv: {
-              properTrainingHours:
-                patch.trainingEnv.properTrainingHours ??
-                current.trainingEnv?.properTrainingHours ??
-                '',
-              internalPlace:
-                patch.trainingEnv.internalPlace ?? current.trainingEnv?.internalPlace ?? '',
-              externalPlace:
-                patch.trainingEnv.externalPlace ?? current.trainingEnv?.externalPlace ?? '',
-              internalInstructors:
-                patch.trainingEnv.internalInstructors ??
-                current.trainingEnv?.internalInstructors ??
-                [],
-              externalInstructors:
-                patch.trainingEnv.externalInstructors ??
-                current.trainingEnv?.externalInstructors ??
-                [],
-              aiInfrastructure:
-                patch.trainingEnv.aiInfrastructure ?? current.trainingEnv?.aiInfrastructure ?? '',
-              // Phase E — Step 4b (기대효과·요구분석) 5 신규 필드
-              targetCharacteristics: patch.trainingEnv.targetCharacteristics ??
-                current.trainingEnv?.targetCharacteristics ?? { career: '', level: '' },
-              aiInfraDetail: patch.trainingEnv.aiInfraDetail ??
-                current.trainingEnv?.aiInfraDetail ?? {
-                  toolCapacity: 'AVAILABLE' as const,
-                  networkStatus: 'GOOD' as const,
-                  pcCount: 0,
-                },
-              trainingNeedsAnalysis:
-                patch.trainingEnv.trainingNeedsAnalysis ??
-                current.trainingEnv?.trainingNeedsAnalysis ??
-                '',
-              expectationAsIs:
-                patch.trainingEnv.expectationAsIs ?? current.trainingEnv?.expectationAsIs ?? '',
-              expectationToBe:
-                patch.trainingEnv.expectationToBe ?? current.trainingEnv?.expectationToBe ?? '',
-              targetTraineeCount:
-                patch.trainingEnv.targetTraineeCount ??
-                current.trainingEnv?.targetTraineeCount ??
-                0,
-              internalInstructorUsage:
-                patch.trainingEnv.internalInstructorUsage ??
-                current.trainingEnv?.internalInstructorUsage ??
-                'NO',
-              internalInstructorPrimary: patch.trainingEnv.internalInstructorPrimary ??
-                current.trainingEnv?.internalInstructorPrimary ?? { name: '', position: '' },
-              otherEquipment:
-                patch.trainingEnv.otherEquipment ?? current.trainingEnv?.otherEquipment ?? '',
-            },
+            trainingEnv: mergeTrainingEnv(
+              current.trainingEnv,
+              patch.trainingEnv
+            ) as PBLInterviewStrict['trainingEnv'],
           }
         : {}),
       ...(patch.courseNecessity !== undefined ? { courseNecessity: patch.courseNecessity } : {}),
       ...(patch.activities !== undefined ? { activities: patch.activities } : {}),
-      // R8 PBL-자체-04 — Partial<PBLProblemDefinitionSheet> 를 기존 시트와 병합
+      // R8 PBL-자체-04 — Partial<PBLProblemDefinitionSheet> 를 기존 시트와 병합.
+      // 4 필드 default('') 충전·검증은 아래 partial().safeParse 가 담당.
       ...(patch.problemDefinitionSheet !== undefined
         ? {
-            problemDefinitionSheet: {
-              background:
-                patch.problemDefinitionSheet.background ??
-                current.problemDefinitionSheet?.background ??
-                '',
-              core: patch.problemDefinitionSheet.core ?? current.problemDefinitionSheet?.core ?? '',
-              scope:
-                patch.problemDefinitionSheet.scope ?? current.problemDefinitionSheet?.scope ?? '',
-              constraints:
-                patch.problemDefinitionSheet.constraints ??
-                current.problemDefinitionSheet?.constraints ??
-                '',
-            },
+            problemDefinitionSheet: mergeProblemDefinitionSheet(
+              current.problemDefinitionSheet,
+              patch.problemDefinitionSheet
+            ) as PBLInterviewStrict['problemDefinitionSheet'],
           }
         : {}),
       ...(patch.priority !== undefined

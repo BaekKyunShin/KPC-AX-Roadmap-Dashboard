@@ -63,7 +63,11 @@ import type {
   RoadmapTargetTask,
   SttInsights,
 } from '@/lib/schemas/interview-roadmap';
-import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
+import type {
+  PBLInterviewStrict,
+  PBLTrainingEnv,
+  PBLProblemDefinitionSheet,
+} from '@/lib/schemas/interview-pbl';
 
 // ============================================================================
 // 내부 DB 타입 (interviews 테이블 JSONB 경로 — snake_case)
@@ -186,7 +190,7 @@ function hrdPdfToDb(pdf: RoadmapHrdReportPdf | null): DbHrdReportAttachment | nu
 }
 
 function attachmentToDb(
-  a: RoadmapTaskAnalysisAttachment | null | undefined,
+  a: RoadmapTaskAnalysisAttachment | null | undefined
 ): DbHrdReportAttachment | null {
   if (!a) return null;
   const base: DbHrdReportAttachment = {
@@ -238,9 +242,7 @@ function taskAnalysisItemToDb(t: RoadmapTaskAnalysisItem): {
   };
 }
 
-function companyRequirementsToDb(
-  cr: RoadmapCompanyRequirements,
-): DbRoadmapCompanyRequirements {
+function companyRequirementsToDb(cr: RoadmapCompanyRequirements): DbRoadmapCompanyRequirements {
   const result: DbRoadmapCompanyRequirements = {
     company_status: cr.status,
     main_problems: cr.problem,
@@ -296,7 +298,7 @@ function ncsToDb(data: {
  * 누락된 필드는 DB 기본값(빈 문자열/빈 배열)으로 채운다.
  */
 export function mapRoadmapInterviewToDb(
-  data: Partial<RoadmapInterviewStrict>,
+  data: Partial<RoadmapInterviewStrict>
 ): RoadmapInterviewDbUpdate {
   const attachment = attachmentToDb(data.taskAnalysisAttachment ?? null);
   const attachmentFiles: DbHrdReportAttachment[] = attachment ? [attachment] : [];
@@ -311,7 +313,7 @@ export function mapRoadmapInterviewToDb(
         hrd_report_attachment: hrdPdfToDb(data.hrdReportPdf ?? null),
       },
       roadmap_company_requirements: companyRequirementsToDb(
-        data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' },
+        data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }
       ),
       roadmap_analysis_notes: {
         text: data.taskAnalysisNote ?? '',
@@ -427,15 +429,18 @@ function coerceAiScore(v: number | string | undefined): number {
 }
 
 function dbHrdToPdf(
-  att: {
-    file_name?: string;
-    storage_path?: string;
-    mime_type?: string;
-    size?: number;
-    uploaded_at?: string;
-    extracted_text?: string;
-    parse_error?: string;
-  } | null | undefined,
+  att:
+    | {
+        file_name?: string;
+        storage_path?: string;
+        mime_type?: string;
+        size?: number;
+        uploaded_at?: string;
+        extracted_text?: string;
+        parse_error?: string;
+      }
+    | null
+    | undefined
 ): RoadmapHrdReportPdf | null {
   if (!att || typeof att !== 'object') return null;
   if (!att.file_name || !att.storage_path) return null;
@@ -458,7 +463,7 @@ function dbToAttachment(
         parse_error?: string;
       }
     | null
-    | undefined,
+    | undefined
 ): RoadmapTaskAnalysisAttachment | undefined {
   if (!row || !row.file_name || !row.storage_path) return undefined;
   const result: RoadmapTaskAnalysisAttachment = {
@@ -478,7 +483,7 @@ function dbToAttachment(
  * 노출하지 않는다.
  */
 export function mapDbToRoadmapInterview(
-  row: DbRoadmapInterviewRow | null,
+  row: DbRoadmapInterviewRow | null
 ): Partial<RoadmapInterviewStrict> {
   if (!row) {
     return {
@@ -605,9 +610,7 @@ export interface PBLInterviewDbUpdate {
  * 기존 snake_case pblInterviewSchema 와 키 충돌이 없고 HWPX/LLM 경로도 camelCase
  * 를 직접 소비할 예정이므로 변환 없이 통째로 저장한다.
  */
-export function mapPBLInterviewToDb(
-  data: Partial<PBLInterviewStrict>,
-): PBLInterviewDbUpdate {
+export function mapPBLInterviewToDb(data: Partial<PBLInterviewStrict>): PBLInterviewDbUpdate {
   return { pbl_data: data as Record<string, unknown> };
 }
 
@@ -617,10 +620,56 @@ export function mapPBLInterviewToDb(
  * pbl_data=null 또는 row=null 이면 빈 객체 반환.
  */
 export function mapDbToPBLInterview(
-  row: { pbl_data?: Record<string, unknown> | null } | null,
+  row: { pbl_data?: Record<string, unknown> | null } | null
 ): Partial<PBLInterviewStrict> {
   if (!row) return {};
   const data = row.pbl_data;
   if (!data || typeof data !== 'object') return {};
   return data as Partial<PBLInterviewStrict>;
+}
+
+/**
+ * 객체에서 값이 undefined/null 인 키를 제거한 얕은 복사본을 반환한다.
+ *
+ * `{ ...current, ...stripNullish(patch) }` 형태로 부분 patch 를 병합할 때,
+ * patch 가 어떤 키를 explicit undefined/null 로 담아도 current 값을 덮어쓰지
+ * 않도록 한다 — `patch.x ?? current.x` 의 nullish 시맨틱과 동일. (키 자체가
+ * 없으면 spread 대상이 아니므로 current 가 자연히 유지된다.)
+ */
+function stripNullish<T extends object>(obj: T): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of Object.keys(obj) as Array<keyof T>) {
+    const value = obj[key];
+    if (value !== undefined && value !== null) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * PBL 훈련환경(trainingEnv) 부분 병합 — `current` 위에 `patch` 의 비-nullish 키만 덮는다.
+ *
+ * 16 필드의 하드코딩 기본값을 두지 않는다(스키마 `.default()` 와의 이중정의 제거).
+ * 누락 필드의 default 충전·값 검증은 호출부의 `PBLInterviewSchema.partial().safeParse`
+ * 가 단일 출처로 담당한다. nested 객체(aiInfraDetail·targetCharacteristics 등)는
+ * 비재귀 통째 교체이며(deepMerge 아님), patch 가 키를 omit/undefined/null 로 두면
+ * current 가 보존된다.
+ */
+export function mergeTrainingEnv(
+  current: Partial<PBLTrainingEnv> | undefined,
+  patch: Partial<PBLTrainingEnv>
+): Partial<PBLTrainingEnv> {
+  return { ...current, ...stripNullish(patch) };
+}
+
+/**
+ * PBL 문제정의서(problemDefinitionSheet) 부분 병합 — `mergeTrainingEnv` 와 동일 시맨틱.
+ * 4 필드 `.default('')` 충전은 호출부 스키마 parse 가 담당한다.
+ */
+export function mergeProblemDefinitionSheet(
+  current: Partial<PBLProblemDefinitionSheet> | undefined,
+  patch: Partial<PBLProblemDefinitionSheet>
+): Partial<PBLProblemDefinitionSheet> {
+  return { ...current, ...stripNullish(patch) };
 }

@@ -19,9 +19,15 @@ import {
   mapDbToRoadmapInterview,
   mapPBLInterviewToDb,
   mapDbToPBLInterview,
+  mergeTrainingEnv,
+  mergeProblemDefinitionSheet,
 } from './converters';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
-import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
+import type {
+  PBLInterviewStrict,
+  PBLTrainingEnv,
+  PBLProblemDefinitionSheet,
+} from '@/lib/schemas/interview-pbl';
 
 // ============================================================================
 // 로드맵 — camelCase → DB
@@ -101,7 +107,7 @@ describe('mapRoadmapInterviewToDb', () => {
     // company_details.roadmap_overview
     const overview = db.company_details.roadmap_overview;
     expect(overview.establishment_necessity).toBe(
-      '공정 품질 편차 개선을 위한 AI 훈련 체계를 수립한다.',
+      '공정 품질 편차 개선을 위한 AI 훈련 체계를 수립한다.'
     );
     expect(overview.performance_activities).toHaveLength(1);
     expect(overview.performance_activities[0]).toMatchObject({
@@ -182,7 +188,7 @@ describe('mapRoadmapInterviewToDb', () => {
   it('taskAnalysisNote 는 company_details.roadmap_analysis_notes.text 에 저장', () => {
     const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
     expect(db.company_details.roadmap_analysis_notes?.text).toBe(
-      '대상 과업: 품질검사 자동화 (AI 도입 필요도 4 이상)',
+      '대상 과업: 품질검사 자동화 (AI 도입 필요도 4 이상)'
     );
   });
 
@@ -540,12 +546,8 @@ function validPBLCamelCase(): PBLInterviewStrict {
     // Ⅱ 훈련 요구 분석
     companyIssues: '제조 공정 전반 품질 편차',
     organization: {
-      orgTree: [
-        { id: 'root', name: '대표이사', children: [] },
-      ],
-      mainWork: [
-        { dept: '생산', role: '품질검사', description: '출하 전 품질검사' },
-      ],
+      orgTree: [{ id: 'root', name: '대표이사', children: [] }],
+      mainWork: [{ dept: '생산', role: '품질검사', description: '출하 전 품질검사' }],
     },
     trainingEnv: {
       properTrainingHours: '',
@@ -555,7 +557,11 @@ function validPBLCamelCase(): PBLInterviewStrict {
       externalInstructors: [],
       aiInfrastructure: 'AI 도구 가능',
       targetCharacteristics: { career: '', level: '' },
-      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      aiInfraDetail: {
+        toolCapacity: 'AVAILABLE' as const,
+        networkStatus: 'GOOD' as const,
+        pcCount: 0,
+      },
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
@@ -574,10 +580,38 @@ function validPBLCamelCase(): PBLInterviewStrict {
     // Ⅲ AI기반 훈련과제 도출
     activities: [
       // R8 PBL-자체-03 — 평면 4행 배열
-      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
-      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
-      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '김철수', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
-      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-15', content: '1차 수행활동', method: '대면' },
+      {
+        round: 1,
+        role: 'PM' as const,
+        personName: '홍길동',
+        date: '2026-05-15',
+        content: '1차 수행활동',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'EXTERNAL_EXPERT' as const,
+        personName: '',
+        date: '2026-05-15',
+        content: '1차 수행활동',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'INTERNAL_EXPERT' as const,
+        personName: '김철수',
+        date: '2026-05-15',
+        content: '1차 수행활동',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'JURISDICTION_MANAGER' as const,
+        personName: '',
+        date: '2026-05-15',
+        content: '1차 수행활동',
+        method: '대면',
+      },
     ],
     problemDefinitionSheet: {
       background: '검사자별 편차 발생, 고객 클레임 증가.',
@@ -654,5 +688,112 @@ describe('mapDbToPBLInterview', () => {
   it('row=null → 빈 객체 반환', () => {
     const restored = mapDbToPBLInterview(null);
     expect(restored).toEqual({});
+  });
+});
+
+// ============================================================================
+// mergeTrainingEnv — P4: trainingEnv 부분 병합 (nullish 시맨틱 보존, default 미충전)
+// ----------------------------------------------------------------------------
+// `{ ...current, ...stripNullish(patch) }` 의 순수 병합 contract 만 검증한다.
+// 누락 필드의 스키마 default 충전·검증은 호출부(editPBLV2)의
+// PBLInterviewSchema.partial().safeParse 책임이므로 여기서는 채우지 않는다.
+// ============================================================================
+
+describe('mergeTrainingEnv', () => {
+  it('patch 의 explicit undefined 키는 무시하고 current 를 보존한다', () => {
+    const result = mergeTrainingEnv(
+      { properTrainingHours: '4시간' },
+      { properTrainingHours: undefined }
+    );
+    expect(result).toEqual({ properTrainingHours: '4시간' });
+  });
+
+  it('patch 의 explicit null 키도 무시하고 current 를 보존한다', () => {
+    const result = mergeTrainingEnv({ properTrainingHours: '4시간' }, {
+      properTrainingHours: null,
+    } as unknown as Partial<PBLTrainingEnv>);
+    expect(result).toEqual({ properTrainingHours: '4시간' });
+  });
+
+  it('patch 의 빈 문자열은 current 를 교체한다 (빈 문자열은 nullish 아님)', () => {
+    const result = mergeTrainingEnv({ properTrainingHours: '4시간' }, { properTrainingHours: '' });
+    expect(result).toEqual({ properTrainingHours: '' });
+  });
+
+  it('patch 의 숫자 0 은 current 를 교체한다 (0 은 nullish 아님)', () => {
+    const result = mergeTrainingEnv({ targetTraineeCount: 5 }, { targetTraineeCount: 0 });
+    expect(result).toEqual({ targetTraineeCount: 0 });
+  });
+
+  it('patch 의 빈 배열은 current 를 교체한다', () => {
+    const result = mergeTrainingEnv(
+      { internalInstructors: [{ position: '팀장', name: '김', career: '', personalTraits: '' }] },
+      { internalInstructors: [] }
+    );
+    expect(result).toEqual({ internalInstructors: [] });
+  });
+
+  it('patch 에 없는 키는 current 값을 그대로 유지한다', () => {
+    const result = mergeTrainingEnv(
+      { properTrainingHours: '4시간', internalPlace: '본사' },
+      { properTrainingHours: '8시간' }
+    );
+    expect(result).toEqual({ properTrainingHours: '8시간', internalPlace: '본사' });
+  });
+
+  it('nested 객체는 통째 교체한다 (deep-merge 아님)', () => {
+    const result = mergeTrainingEnv(
+      { aiInfraDetail: { toolCapacity: 'LIMITED', networkStatus: 'NORMAL', pcCount: 30 } },
+      { aiInfraDetail: { pcCount: 99 } } as unknown as Partial<PBLTrainingEnv>
+    );
+    // 통째 교체 — toolCapacity/networkStatus 는 patch 객체에 없으므로 사라진다
+    // (누락 필드의 default 충전은 호출부 스키마 parse 책임)
+    expect(result).toEqual({ aiInfraDetail: { pcCount: 99 } });
+  });
+
+  it('nested 객체 patch 가 null 이면 current nested 를 보존한다', () => {
+    const result = mergeTrainingEnv(
+      {
+        aiInfraDetail: { toolCapacity: 'LIMITED', networkStatus: 'NORMAL', pcCount: 30 },
+      },
+      { aiInfraDetail: null } as unknown as Partial<PBLTrainingEnv>
+    );
+    expect(result).toEqual({
+      aiInfraDetail: { toolCapacity: 'LIMITED', networkStatus: 'NORMAL', pcCount: 30 },
+    });
+  });
+
+  it('current 가 undefined 면 patch(nullish 제거)만 반환하고 default 는 채우지 않는다', () => {
+    const result = mergeTrainingEnv(undefined, {
+      properTrainingHours: '8시간',
+      internalPlace: undefined,
+    });
+    expect(result).toEqual({ properTrainingHours: '8시간' });
+  });
+});
+
+// ============================================================================
+// mergeProblemDefinitionSheet — P4: 동일 nullish 시맨틱
+// ============================================================================
+
+describe('mergeProblemDefinitionSheet', () => {
+  it('explicit undefined/null 키는 current 보존, 빈 문자열은 교체', () => {
+    const result = mergeProblemDefinitionSheet(
+      { background: '배경', core: '핵심', scope: '범위', constraints: '제약' },
+      {
+        core: undefined,
+        scope: null,
+        constraints: '',
+      } as unknown as Partial<PBLProblemDefinitionSheet>
+    );
+    expect(result).toEqual({ background: '배경', core: '핵심', scope: '범위', constraints: '' });
+  });
+
+  it('current 가 undefined 면 patch(nullish 제거)만 반환한다', () => {
+    const result = mergeProblemDefinitionSheet(undefined, {
+      core: '신규핵심',
+      background: undefined,
+    });
+    expect(result).toEqual({ core: '신규핵심' });
   });
 });
