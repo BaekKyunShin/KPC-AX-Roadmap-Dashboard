@@ -40,9 +40,7 @@ vi.mock('@/lib/supabase/cached', () => ({
 }));
 
 vi.mock('@/lib/services/pbl/pbl-crud', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>(
-    '@/lib/services/pbl/pbl-crud',
-  );
+  const actual = await vi.importActual<Record<string, unknown>>('@/lib/services/pbl/pbl-crud');
   return {
     ...actual,
     listVersions: vi.fn(),
@@ -69,7 +67,8 @@ const { mockAfter, flushAfterCallbacks, pendingCallbacks } = vi.hoisted(() => {
   const pending: Promise<unknown>[] = [];
   const after = vi.fn((fn: () => void | Promise<unknown>) => {
     const r = fn();
-    if (r && typeof (r as Promise<unknown>).then === 'function') pending.push(r as Promise<unknown>);
+    if (r && typeof (r as Promise<unknown>).then === 'function')
+      pending.push(r as Promise<unknown>);
   });
   async function flush() {
     await Promise.all(pending);
@@ -100,10 +99,10 @@ async function mockCachedAuth({
 }: { authed?: boolean; role?: string | null; status?: string | null } = {}) {
   const cached = await import('@/lib/supabase/cached');
   vi.mocked(cached.getCachedUser).mockResolvedValue(
-    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never,
+    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never
   );
   vi.mocked(cached.getCachedProfile).mockResolvedValue(
-    (authed ? { id: USER_A, role, status } : null) as never,
+    (authed ? { id: USER_A, role, status } : null) as never
   );
 }
 
@@ -114,7 +113,7 @@ async function mockCachedAuth({
  */
 function mockPBLReportAccess(
   adminMock: ReturnType<typeof createMockSupabase>,
-  { assigned = true, track = 'PBL' as const, status = 'PBL_DRAFTED' } = {},
+  { assigned = true, track = 'PBL' as const, status = 'PBL_DRAFTED' } = {}
 ) {
   adminMock.addResult({
     data: {
@@ -155,13 +154,46 @@ function validPBLInterview() {
     courseNecessity: 'AI 역량 내재화 필요',
     // R8 PBL-자체-03 — 평면 4행 배열
     activities: [
-      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
-      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
-      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
-      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-01', content: '인터뷰', method: 'ONSITE' },
+      {
+        round: 1,
+        role: 'PM' as const,
+        personName: '홍길동',
+        date: '2026-05-01',
+        content: '인터뷰',
+        method: 'ONSITE',
+      },
+      {
+        round: 1,
+        role: 'EXTERNAL_EXPERT' as const,
+        personName: '',
+        date: '2026-05-01',
+        content: '인터뷰',
+        method: 'ONSITE',
+      },
+      {
+        round: 1,
+        role: 'INTERNAL_EXPERT' as const,
+        personName: '',
+        date: '2026-05-01',
+        content: '인터뷰',
+        method: 'ONSITE',
+      },
+      {
+        round: 1,
+        role: 'JURISDICTION_MANAGER' as const,
+        personName: '',
+        date: '2026-05-01',
+        content: '인터뷰',
+        method: 'ONSITE',
+      },
     ],
     // R8 PBL-자체-04 — 4 정형 항목
-    problemDefinitionSheet: { background: '문제1', core: '핵심', scope: '범위', constraints: '제약' },
+    problemDefinitionSheet: {
+      background: '문제1',
+      core: '핵심',
+      scope: '범위',
+      constraints: '제약',
+    },
     priority: {
       items: [{ problem: '문제1', score: 5, rank: 1 }],
       method: 'AHP 설문 평균',
@@ -429,7 +461,7 @@ describe('editPBLV2', () => {
           source: 'RESULT_PAGE',
           fields_changed: expect.any(Array),
         }),
-      }),
+      })
     );
   });
 
@@ -456,10 +488,9 @@ describe('editPBLV2', () => {
 
     // 사용자 시나리오: detail 만 컨설턴트가 보강, 시간 컬럼은 read-only 유지
     // → 클라이언트가 기존 배열 전체를 송신하되 변경 행의 detail 만 새 값
-    const baseContents =
-      existing.operation_plan.training_plan.subject_profile.training_contents;
+    const baseContents = existing.operation_plan.training_plan.subject_profile.training_contents;
     const newContents: PBLTrainingContent[] = baseContents.map((c, i) =>
-      i === 0 ? { ...c, detail: '컨설턴트가 보강한 단원 세부 내용' } : c,
+      i === 0 ? { ...c, detail: '컨설턴트가 보강한 단원 세부 내용' } : c
     );
     const r = await editPBLV2(VERSION_ID, {
       operations: {
@@ -471,22 +502,19 @@ describe('editPBLV2', () => {
 
     // interviews 테이블은 건드리지 않아야 함
     // (admin 호출은 pbl_reports.select + pbl_reports.update 만 발생)
-    const updateCalls = adminMock.chainable.update.mock.calls as Array<
-      [Record<string, unknown>]
-    >;
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
     expect(updateCalls.length).toBe(1);
     const updated = updateCalls[0][0].pbl_content as PBLContent;
-    const updatedContents =
-      updated.operation_plan.training_plan.subject_profile.training_contents;
+    const updatedContents = updated.operation_plan.training_plan.subject_profile.training_contents;
     expect(updatedContents).toHaveLength(baseContents.length);
     expect(updatedContents[0].detail).toBe('컨설턴트가 보강한 단원 세부 내용');
     expect(updatedContents[0].unit_name).toBe(baseContents[0].unit_name);
     // 나머지 필드는 보존
     expect(updated.operation_plan.training_plan.subject_profile.course_name).toBe(
-      existing.operation_plan.training_plan.subject_profile.course_name,
+      existing.operation_plan.training_plan.subject_profile.course_name
     );
     expect(updated.operation_plan.training_plan.training_instructors).toEqual(
-      existing.operation_plan.training_plan.training_instructors,
+      existing.operation_plan.training_plan.training_instructors
     );
   });
 
@@ -515,18 +543,12 @@ describe('editPBLV2', () => {
     await flushAfterCallbacks();
     expect(r.success).toBe(true);
 
-    const updateCalls = adminMock.chainable.update.mock.calls as Array<
-      [Record<string, unknown>]
-    >;
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
     const updated = updateCalls[0][0].pbl_content as PBLContent;
-    expect(updated.operation_plan.training_plan.training_instructors).toEqual(
-      newInstructors,
-    );
+    expect(updated.operation_plan.training_plan.training_instructors).toEqual(newInstructors);
     // training_contents 는 보존
-    expect(
-      updated.operation_plan.training_plan.subject_profile.training_contents,
-    ).toEqual(
-      existing.operation_plan.training_plan.subject_profile.training_contents,
+    expect(updated.operation_plan.training_plan.subject_profile.training_contents).toEqual(
+      existing.operation_plan.training_plan.subject_profile.training_contents
     );
   });
 
@@ -567,7 +589,7 @@ describe('editPBLV2', () => {
           target: 'llm_generated',
           slice: 'operations',
         }),
-      }),
+      })
     );
   });
 
@@ -602,6 +624,263 @@ describe('editPBLV2', () => {
     expect(r.success).toBe(false);
     // pbl_reports update 는 호출되지 않아야 함
     expect(adminMock.chainable.update.mock.calls).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// editPBLV2 병합 특성화 — P4 리팩터 동작 보존 안전망
+// ----------------------------------------------------------------------------
+// trainingEnv(16필드)·problemDefinitionSheet(4필드) 인라인 병합부를 순수 헬퍼로
+// 추출하기 전에 "현재 동작"을 박제한다. 기존 editPBLV2 테스트가 다루지 않는
+// 발산 케이스 — nullish 시맨틱(explicit undefined/null vs 키 부재 vs 빈 문자열),
+// nested 객체 통째교체 후 스키마 default 리셋, 하류 safeParse 의 구체 에러 메시지
+// 경로 — 를 고정한다. 추출 후에도 이 박제가 1:1 green 이면 동작 불변이 증명된다.
+// (deepMerge 직접 채택 · .parse(throw) · 순진한 {...current,...patch} 는 이 박제와
+//  발산하므로 회귀로 잡힌다.)
+// ============================================================================
+
+describe('editPBLV2 병합 특성화 — P4 동작 보존 안전망', () => {
+  let serverMock: ReturnType<typeof createMockSupabase>;
+  let adminMock: ReturnType<typeof createMockSupabase>;
+
+  beforeEach(() => {
+    serverMock = createMockSupabase({ authUser: { id: USER_A } });
+    adminMock = createMockSupabase();
+    vi.mocked(createClient).mockResolvedValue(serverMock.client as never);
+    vi.mocked(createAdminClient).mockReturnValue(adminMock.client as never);
+  });
+  afterEach(() => vi.clearAllMocks());
+
+  type EditPatch = Parameters<typeof editPBLV2>[1];
+
+  // 기존 interviews.pbl_data 를 심고 patch 를 적용 → update 에 기록된 pbl_data 를 반환.
+  async function runEdit(currentPblData: Record<string, unknown> | null, patch: EditPatch) {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({ data: { id: 'interview-1', pbl_data: currentPblData }, error: null });
+    adminMock.addResult({ data: null, error: null }); // update 결과
+    const r = await editPBLV2(VERSION_ID, patch);
+    await flushAfterCallbacks();
+    const calls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const written = calls[0]?.[0]?.pbl_data as Record<string, unknown> | undefined;
+    return { r, written };
+  }
+
+  // Phase E 이전 6 필드 레거시 trainingEnv (기존 DB 호환) — 기존 테스트와 동일 형태
+  function envWith(overrides: Record<string, unknown> = {}) {
+    return {
+      properTrainingHours: '4시간',
+      internalPlace: '본사',
+      externalPlace: '',
+      internalInstructors: [],
+      externalInstructors: [],
+      aiInfrastructure: 'PC 30대',
+      ...overrides,
+    };
+  }
+
+  // ── trainingEnv 평면 필드: nullish 시맨틱(??) ──────────────────────────────
+  it('trainingEnv: explicit undefined 키는 current 값을 보존한다', async () => {
+    const { r, written } = await runEdit(
+      { trainingEnv: envWith() },
+      { trainingEnv: { properTrainingHours: undefined } }
+    );
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe('4시간'); // undefined ?? '4시간' → 보존
+    expect(env.internalPlace).toBe('본사');
+  });
+
+  it('trainingEnv: explicit null 키도 current 값을 보존한다(throw 아님)', async () => {
+    const { r, written } = await runEdit({ trainingEnv: envWith() }, {
+      trainingEnv: { properTrainingHours: null },
+    } as unknown as EditPatch);
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe('4시간'); // null ?? '4시간' → 보존
+  });
+
+  it('trainingEnv: explicit 빈 문자열은 current 를 빈 문자열로 교체한다(빈 문자열은 nullish 아님)', async () => {
+    const { r, written } = await runEdit(
+      { trainingEnv: envWith() },
+      { trainingEnv: { properTrainingHours: '' } }
+    );
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe(''); // '' ?? '4시간' → '' (교체)
+  });
+
+  it('trainingEnv: 빈 객체 patch({})는 모든 current 값을 보존한다', async () => {
+    const { r, written } = await runEdit({ trainingEnv: envWith() }, { trainingEnv: {} });
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe('4시간');
+    expect(env.internalPlace).toBe('본사');
+    expect(env.aiInfrastructure).toBe('PC 30대');
+  });
+
+  it('trainingEnv: current 가 비면 미제공 필드를 스키마 하드코딩 default 로 채운다', async () => {
+    const { r, written } = await runEdit({}, { trainingEnv: { properTrainingHours: '8시간' } });
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe('8시간');
+    expect(env.internalPlace).toBe('');
+    expect(env.internalInstructors).toEqual([]);
+    expect(env.aiInfrastructure).toBe('');
+    expect(env.targetTraineeCount).toBe(0);
+    expect(env.internalInstructorUsage).toBe('NO');
+    expect(env.otherEquipment).toBe('');
+    expect(env.targetCharacteristics).toEqual({ career: '', level: '' });
+    expect(env.aiInfraDetail).toEqual({
+      toolCapacity: 'AVAILABLE',
+      networkStatus: 'GOOD',
+      pcCount: 0,
+    });
+    expect(env.internalInstructorPrimary).toEqual({ name: '', position: '' });
+  });
+
+  // ── trainingEnv nested 객체: 통째 교체 + 스키마 default 충전 ────────────────
+  it('trainingEnv.aiInfraDetail 부분 patch 는 통째 교체 후 누락 필드를 스키마 default 로 리셋한다', async () => {
+    const { r, written } = await runEdit(
+      {
+        trainingEnv: envWith({
+          aiInfraDetail: { toolCapacity: 'LIMITED', networkStatus: 'NORMAL', pcCount: 30 },
+        }),
+      },
+      { trainingEnv: { aiInfraDetail: { pcCount: 99 } } } as unknown as EditPatch
+    );
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    // 핵심: 통째 교체 → {pcCount:99} → 스키마가 toolCapacity/networkStatus 를 default 로 충전
+    expect(env.aiInfraDetail).toEqual({
+      toolCapacity: 'AVAILABLE',
+      networkStatus: 'GOOD',
+      pcCount: 99,
+    });
+  });
+
+  it('trainingEnv.aiInfraDetail 를 patch 하지 않으면 current nested 객체 전체를 보존한다', async () => {
+    const { r, written } = await runEdit(
+      {
+        trainingEnv: envWith({
+          aiInfraDetail: { toolCapacity: 'LIMITED', networkStatus: 'NORMAL', pcCount: 30 },
+        }),
+      },
+      { trainingEnv: { properTrainingHours: '8시간' } }
+    );
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.aiInfraDetail).toEqual({
+      toolCapacity: 'LIMITED',
+      networkStatus: 'NORMAL',
+      pcCount: 30,
+    });
+  });
+
+  it('trainingEnv.targetCharacteristics 부분 patch 도 통째 교체 후 누락 필드를 default 로 리셋한다', async () => {
+    const { r, written } = await runEdit(
+      { trainingEnv: envWith({ targetCharacteristics: { career: '5년', level: '대리' } }) },
+      { trainingEnv: { targetCharacteristics: { career: '10년' } } } as unknown as EditPatch
+    );
+    expect(r.success).toBe(true);
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.targetCharacteristics).toEqual({ career: '10년', level: '' });
+  });
+
+  // ── trainingEnv 배열 필드 ───────────────────────────────────────────────────
+  it('trainingEnv 배열(internalInstructors): patch 부재 시 current 배열을 보존한다', async () => {
+    const row = { position: '팀장', name: '김강사', career: '10년', personalTraits: '성실' };
+    const { r, written } = await runEdit(
+      { trainingEnv: envWith({ internalInstructors: [row] }) },
+      { trainingEnv: { properTrainingHours: '8시간' } }
+    );
+    expect(r.success).toBe(true);
+    expect((written!.trainingEnv as Record<string, unknown>).internalInstructors).toEqual([row]);
+  });
+
+  it('trainingEnv 배열(internalInstructors): explicit 빈 배열은 current 를 교체한다(빈 배열은 nullish 아님)', async () => {
+    const row = { position: '팀장', name: '김강사', career: '10년', personalTraits: '성실' };
+    const { r, written } = await runEdit(
+      { trainingEnv: envWith({ internalInstructors: [row] }) },
+      { trainingEnv: { internalInstructors: [] } }
+    );
+    expect(r.success).toBe(true);
+    expect((written!.trainingEnv as Record<string, unknown>).internalInstructors).toEqual([]);
+  });
+
+  // ── problemDefinitionSheet: 동일 nullish 시맨틱 ────────────────────────────
+  it('problemDefinitionSheet: explicit undefined 키는 current 보존', async () => {
+    const { r, written } = await runEdit(
+      {
+        problemDefinitionSheet: {
+          background: '기존배경',
+          core: '기존핵심',
+          scope: '기존범위',
+          constraints: '기존제약',
+        },
+      },
+      { problemDefinitionSheet: { core: undefined } }
+    );
+    expect(r.success).toBe(true);
+    const sheet = written!.problemDefinitionSheet as Record<string, unknown>;
+    expect(sheet.core).toBe('기존핵심');
+    expect(sheet.background).toBe('기존배경');
+  });
+
+  it('problemDefinitionSheet: explicit null 키도 current 보존(throw 아님)', async () => {
+    const { r, written } = await runEdit(
+      {
+        problemDefinitionSheet: {
+          background: '기존배경',
+          core: '기존핵심',
+          scope: '기존범위',
+          constraints: '기존제약',
+        },
+      },
+      { problemDefinitionSheet: { core: null } } as unknown as EditPatch
+    );
+    expect(r.success).toBe(true);
+    const sheet = written!.problemDefinitionSheet as Record<string, unknown>;
+    expect(sheet.core).toBe('기존핵심');
+  });
+
+  it('problemDefinitionSheet: current 가 비면 미제공 필드를 빈 문자열로 채운다', async () => {
+    const { r, written } = await runEdit({}, { problemDefinitionSheet: { core: '신규핵심' } });
+    expect(r.success).toBe(true);
+    const sheet = written!.problemDefinitionSheet as Record<string, unknown>;
+    expect(sheet.core).toBe('신규핵심');
+    expect(sheet.background).toBe('');
+    expect(sheet.scope).toBe('');
+    expect(sheet.constraints).toBe('');
+  });
+
+  // ── 에러 경로: 하류 partial().safeParse 의 구체 메시지 (outer catch 제네릭 아님) ──
+  it('trainingEnv 스키마 위반(targetTraineeCount 음수)은 구체 메시지로 실패하고 outer-catch 제네릭이 아니다', async () => {
+    const { r } = await runEdit(
+      { trainingEnv: envWith() },
+      { trainingEnv: { targetTraineeCount: -5 } }
+    );
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      // 핵심: mergeTrainingEnv 가 .parse(throw) 면 outer catch 제네릭으로 바뀐다 → 발산 방지
+      expect(r.error).not.toBe('PBL 편집 중 오류가 발생했습니다.');
+      expect(typeof r.error).toBe('string');
+      expect(r.error.length).toBeGreaterThan(0);
+    }
+  });
+
+  // ── 통합: 여러 슬라이스 동시 patch ──────────────────────────────────────────
+  it('companyIssues + trainingEnv 동시 patch — 둘 다 적용되고 기존 필드 보존', async () => {
+    const { r, written } = await runEdit(
+      { companyName: 'ACME', trainingEnv: envWith() },
+      { companyIssues: '신규 이슈', trainingEnv: { properTrainingHours: '8시간' } }
+    );
+    expect(r.success).toBe(true);
+    expect(written!.companyIssues).toBe('신규 이슈');
+    expect(written!.companyName).toBe('ACME');
+    const env = written!.trainingEnv as Record<string, unknown>;
+    expect(env.properTrainingHours).toBe('8시간');
+    expect(env.internalPlace).toBe('본사');
   });
 });
 
@@ -744,9 +1023,7 @@ describe('fetchPBLPageDataV2', () => {
     expect(r.data.interview.overview?.companyName).toBe('ACME');
     expect(r.data.interview.overview?.trainingHours).toBe(40);
     expect(r.data.interview.analysis?.companyIssues).toBe('품질 편차 심각');
-    expect(r.data.interview.analysis?.hrdReportPdf?.url).toBe(
-      'https://signed.example/hrd.pdf',
-    );
+    expect(r.data.interview.analysis?.hrdReportPdf?.url).toBe('https://signed.example/hrd.pdf');
     // Ⅲ flat
     // R8 PBL-자체-03 — 평면 4행 배열로 변경됨 (1차 × 4 역할)
     expect(r.data.interview.activities).toHaveLength(4);
