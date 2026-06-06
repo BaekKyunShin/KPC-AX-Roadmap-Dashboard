@@ -18,7 +18,7 @@ test.describe.configure({ mode: 'serial' });
 async function getConsultantProjectId(): Promise<string | null> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
   // 컨설턴트 계정의 user.id 조회 — 로컬/원격 모두 `public.users` 테이블 사용
@@ -46,7 +46,7 @@ async function getConsultantProjectId(): Promise<string | null> {
 async function getAnyProjectId(): Promise<string | null> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
   const { data: project } = await supabase
@@ -157,9 +157,9 @@ test.describe('시나리오 3: OPS 로그인 → 프로젝트 생성 화면', ()
     });
 
     // 제출 버튼 존재
-    await expect(
-      page.getByRole('button', { name: /프로젝트 생성/ }),
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /프로젝트 생성/ })).toBeVisible({
+      timeout: 5_000,
+    });
   });
 });
 
@@ -192,8 +192,9 @@ test.describe('시나리오 4: OPS 프로젝트 상세 3경로', () => {
 
     await expect(page).toHaveURL(new RegExp(`/ops/projects/${opsProjectId!}`));
     await expect(page.locator('main')).toBeVisible();
-    // 에러 페이지 아님
-    await expect(page.getByText(/404|페이지를 찾을 수 없/i)).not.toBeVisible();
+    // 에러 페이지(not-found) 아님 — not-found.tsx 의 <h1>페이지를 찾을 수 없습니다</h1> heading 으로 특정.
+    // getByText(/404/) 는 활동로그 마커 타임스탬프(…251404 등) 본문의 "404" 부분문자열에 오매칭되어 flaky 했음.
+    await expect(page.getByRole('heading', { name: /페이지를 찾을 수 없/i })).not.toBeVisible();
   });
 
   test('/ops/projects/[id]/roadmap 로드맵 서브페이지 도달', async ({ opsPage: page }) => {
@@ -205,7 +206,7 @@ test.describe('시나리오 4: OPS 프로젝트 상세 3경로', () => {
 
     await expect(page).toHaveURL(new RegExp(`/ops/projects/${opsProjectId!}/roadmap`));
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.getByText(/404|페이지를 찾을 수 없/i)).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /페이지를 찾을 수 없/i })).not.toBeVisible();
   });
 
   test('/ops/projects/[id]/pbl PBL 서브페이지 도달', async ({ opsPage: page }) => {
@@ -217,7 +218,7 @@ test.describe('시나리오 4: OPS 프로젝트 상세 3경로', () => {
 
     await expect(page).toHaveURL(new RegExp(`/ops/projects/${opsProjectId!}/pbl`));
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.getByText(/404|페이지를 찾을 수 없/i)).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /페이지를 찾을 수 없/i })).not.toBeVisible();
   });
 });
 
@@ -229,9 +230,7 @@ test.describe('시나리오 5: 컨설턴트 프로젝트 상세 4경로', () => 
       // 프로젝트 목록에서 동적으로 추출
       await page.goto('/consultant/projects');
       await page.waitForLoadState('networkidle');
-      const firstLink = page
-        .locator('main a[href*="/consultant/projects/"]')
-        .first();
+      const firstLink = page.locator('main a[href*="/consultant/projects/"]').first();
       const hasLink = await firstLink.isVisible().catch(() => false);
       test.skip(!hasLink, '테스트 데이터 없음: 컨설턴트에게 배정된 프로젝트가 없습니다');
       const href = await firstLink.getAttribute('href');
@@ -241,18 +240,16 @@ test.describe('시나리오 5: 컨설턴트 프로젝트 상세 4경로', () => 
 
     test.skip(
       !consultantProjectId,
-      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다',
+      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다'
     );
 
     await page.goto(`/consultant/projects/${consultantProjectId!}`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500); // 렌더링 안정화 여유
 
-    await expect(page).toHaveURL(
-      new RegExp(`/consultant/projects/${consultantProjectId!}`),
-    );
+    await expect(page).toHaveURL(new RegExp(`/consultant/projects/${consultantProjectId!}`));
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.getByText(/404|페이지를 찾을 수 없/i)).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /페이지를 찾을 수 없/i })).not.toBeVisible();
   });
 
   test('/consultant/projects/[id]/interview 인터뷰 서브페이지 도달', async ({
@@ -260,7 +257,7 @@ test.describe('시나리오 5: 컨설턴트 프로젝트 상세 4경로', () => 
   }) => {
     test.skip(
       !consultantProjectId,
-      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다',
+      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다'
     );
 
     await page.goto(`/consultant/projects/${consultantProjectId!}/interview`);
@@ -279,7 +276,7 @@ test.describe('시나리오 5: 컨설턴트 프로젝트 상세 4경로', () => 
   }) => {
     test.skip(
       !consultantProjectId,
-      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다',
+      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다'
     );
 
     await page.goto(`/consultant/projects/${consultantProjectId!}/roadmap`);
@@ -291,12 +288,10 @@ test.describe('시나리오 5: 컨설턴트 프로젝트 상세 4경로', () => 
     expect(bodyText).not.toMatch(/500.*Internal Server/i);
   });
 
-  test('/consultant/projects/[id]/pbl PBL 서브페이지 도달', async ({
-    consultantPage: page,
-  }) => {
+  test('/consultant/projects/[id]/pbl PBL 서브페이지 도달', async ({ consultantPage: page }) => {
     test.skip(
       !consultantProjectId,
-      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다',
+      '테스트 데이터 없음: 컨설턴트 프로젝트 ID를 획득하지 못했습니다'
     );
 
     await page.goto(`/consultant/projects/${consultantProjectId!}/pbl`);
