@@ -14,11 +14,11 @@
 
 사용자가 "결과 페이지"라고 부른 두 페이지가 다르므로, 이 계획서에서는 다음 명칭을 고정 사용한다.
 
-| 명칭 | 라우트 | 파일 | 비고 |
-|------|--------|------|------|
-| 인터뷰 입력 페이지 | `/consultant/projects/[id]/interview` | `[id]/interview/_components/roadmap/StepTaskAnalysis.tsx` 외 | 8/9 Step 폼 입력 |
-| **검토 페이지** | `/consultant/projects/[id]/interview/review` | `interview/review/InterviewReviewClient.tsx`, `_components/ReviewActions.tsx` | 인터뷰 최종 제출 직후 진입. CollapsibleSection 다수 + 하단 CTA |
-| **결과 페이지(LLM)** | `/consultant/projects/[id]/roadmap` `/pbl` | `roadmap/_components/result-v2/TabRequirements.tsx` 외, `pbl/_components/result-v2/PBL*.tsx` | LLM 도출 결과를 탭별 표로 표시 |
+| 명칭                 | 라우트                                       | 파일                                                                                         | 비고                                                           |
+| -------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 인터뷰 입력 페이지   | `/consultant/projects/[id]/interview`        | `[id]/interview/_components/roadmap/StepTaskAnalysis.tsx` 외                                 | 8/9 Step 폼 입력                                               |
+| **검토 페이지**      | `/consultant/projects/[id]/interview/review` | `interview/review/InterviewReviewClient.tsx`, `_components/ReviewActions.tsx`                | 인터뷰 최종 제출 직후 진입. CollapsibleSection 다수 + 하단 CTA |
+| **결과 페이지(LLM)** | `/consultant/projects/[id]/roadmap` `/pbl`   | `roadmap/_components/result-v2/TabRequirements.tsx` 외, `pbl/_components/result-v2/PBL*.tsx` | LLM 도출 결과를 탭별 표로 표시                                 |
 
 사용자 보고 #1은 **인터뷰 입력 페이지**, 보고 #2는 **결과 페이지(LLM)**, 보고 #3·#4는 **검토 페이지**에 해당한다.
 
@@ -29,23 +29,27 @@
 작업 직전·중간에 다음을 호출한다(생략 금지).
 
 **Superpowers 스킬 (TDD 강제)**
+
 - `superpowers:test-driven-development` — 모든 코드 변경의 RED → GREEN → REFACTOR 사이클 강제
 - `superpowers:verification-before-completion` — Phase 5 최종 검증 단계 진입 시
 - `superpowers:requesting-code-review` / `superpowers:receiving-code-review` — Phase 4 완료 후 1회
 
 **프로젝트·전역 스킬**
+
 - `frontend-guide` (프로젝트) — UI 작성 시 항상
 - `web-design-guidelines` (전역) — Phase 3·4의 레이아웃 검수
 - `composition-patterns` / `react-best-practices` (전역) — InlineEditField 재사용·렌더 패턴 점검
 - `check-server-action` (프로젝트) — Phase 4에서 결과 페이지 편집 Server Action 수정 시
 
 **MCP**
+
 - `serena` — 심볼 단위 탐색·편집 (`find_symbol`, `replace_symbol_body`)
 - `context7` — Tailwind 4·shadcn 신기능 확인 시
 - `supabase` — Phase 4에서 RLS·정책 확인 필요 시 `list_tables`, `execute_sql`
 - `puppeteer` — Phase 5 수동 시각 검증(컨설턴트 로그인 → 4 화면 캡처)
 
 **서브에이전트(`.claude/agents/`)**
+
 - `test-automator` — Vitest/Playwright 시나리오 작성 보조 (Phase 1~4 각 RED 단계)
 - `security-auditor` — Phase 4 서버 액션 변경 시 RLS·역할 검증 점검 (선택)
 
@@ -55,17 +59,17 @@
 
 ## File Structure
 
-| 파일 | 변경 종류 | 책임 |
-|------|----------|------|
-| `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis.tsx` | Modify (line 196·206·216·226·238) | Ⅱ-3 표 셀 5개의 `minHeightClassName` 1.5배 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/review/InterviewReviewClient.tsx` | Modify (line 147·259) | `defaultOpen` prop 제거 — 모두 닫힘 default |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/ReviewActions.tsx` | Modify (전체 JSX 재구성) | CTA 영역 레이아웃 개선 |
-| `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/TabRequirements.tsx` | Modify (line 167-197) | Ⅱ-3 표 셀 4개 `<span>` → `InlineEditField` |
-| `src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/Tab*.tsx` | Modify(승인 후 결정) | PBL 결과 페이지 read-only 셀 → 편집 가능 |
-| `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/__tests__/TabRequirements.test.tsx` | Create (없으면) | InlineEditField 셀 RTL 검증 |
-| `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/__tests__/ReviewActions.test.tsx` | Create | 레이아웃·CTA 클릭 RTL 검증 |
-| `e2e/consultant-result-edit.spec.ts` | Create | 컨설턴트 로그인 → 결과 페이지 셀 편집 E2E |
-| `e2e/consultant-review-collapsed.spec.ts` | Create | 검토 페이지 모두 접힘 default E2E |
+| 파일                                                                                                            | 변경 종류                         | 책임                                        |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------- |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis.tsx`               | Modify (line 196·206·216·226·238) | Ⅱ-3 표 셀 5개의 `minHeightClassName` 1.5배  |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/review/InterviewReviewClient.tsx`                       | Modify (line 147·259)             | `defaultOpen` prop 제거 — 모두 닫힘 default |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/ReviewActions.tsx`                   | Modify (전체 JSX 재구성)          | CTA 영역 레이아웃 개선                      |
+| `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/TabRequirements.tsx`                | Modify (line 167-197)             | Ⅱ-3 표 셀 4개 `<span>` → `InlineEditField`  |
+| `src/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/Tab*.tsx`                               | Modify(승인 후 결정)              | PBL 결과 페이지 read-only 셀 → 편집 가능    |
+| `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/__tests__/TabRequirements.test.tsx` | Create (없으면)                   | InlineEditField 셀 RTL 검증                 |
+| `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/__tests__/ReviewActions.test.tsx`    | Create                            | 레이아웃·CTA 클릭 RTL 검증                  |
+| `e2e/consultant-result-edit.spec.ts`                                                                            | Create                            | 컨설턴트 로그인 → 결과 페이지 셀 편집 E2E   |
+| `e2e/consultant-review-collapsed.spec.ts`                                                                       | Create                            | 검토 페이지 모두 접힘 default E2E           |
 
 신규 컴포넌트·라이브러리 추가 없음.
 
@@ -90,14 +94,14 @@
 
 - [ ] **Step 2: PBL 동등 적용 범위 매핑**
 
-`Grep`/`serena__find_symbol`로 다음 4가지의 PBL 측 위치를 확정한다(현재 보고서에는 PBL Tab*.tsx 위치까지만 식별됨, 셀별 read-only 여부는 미확정).
+`Grep`/`serena__find_symbol`로 다음 4가지의 PBL 측 위치를 확정한다(현재 보고서에는 PBL Tab\*.tsx 위치까지만 식별됨, 셀별 read-only 여부는 미확정).
 
-| 보고 | 로드맵 위치 | PBL 위치(확정 필요) |
-|------|------------|---------------------|
+| 보고              | 로드맵 위치                                                | PBL 위치(확정 필요)                                             |
+| ----------------- | ---------------------------------------------------------- | --------------------------------------------------------------- |
 | #1 텍스트 폼 높이 | `StepTaskAnalysis.tsx:196,206,216,226,238` `min-h-[150px]` | PBL 인터뷰 입력 9 Step 中 표 형태 Step의 `LargeTextBox`(있으면) |
-| #2 결과 셀 편집 | `TabRequirements.tsx:167-197` Ⅱ-3 표 4 셀 | `pbl/_components/result-v2/Tab*.tsx` 中 read-only `<span>` 셀 |
-| #3 모두 접힘 | `InterviewReviewClient.tsx:147` `defaultOpen` | 같은 파일 line 259 (PBL 영역) |
-| #4 ReviewActions | `_components/ReviewActions.tsx` 단일 — 로드맵·PBL 공유 | (공유 컴포넌트 → 동시 적용) |
+| #2 결과 셀 편집   | `TabRequirements.tsx:167-197` Ⅱ-3 표 4 셀                  | `pbl/_components/result-v2/Tab*.tsx` 中 read-only `<span>` 셀   |
+| #3 모두 접힘      | `InterviewReviewClient.tsx:147` `defaultOpen`              | 같은 파일 line 259 (PBL 영역)                                   |
+| #4 ReviewActions  | `_components/ReviewActions.tsx` 단일 — 로드맵·PBL 공유     | (공유 컴포넌트 → 동시 적용)                                     |
 
 ### Task 0.2: 사용자 승인 질문(`AskUserQuestion`)
 
@@ -116,6 +120,7 @@ PBL 인터뷰 동일 표가 있으면 함께 적용 여부?: Y/N
 - [ ] **Step 2: #2 결과 페이지 편집 가능 셀 옵션 제시**
 
 `TabRequirements.tsx`의 Ⅱ-3 표 6 셀 중:
+
 - 직무/과업/AI필요도(line 169·170·195) — 현재 `String(...)` 또는 일반 텍스트
 - As-Is/문제점/데이터 발생(line 171-194) — 현재 `<span class="whitespace-pre-wrap">`
 
@@ -138,10 +143,12 @@ PBL 결과 페이지의 read-only 셀 목록(Task 0.1 Step 2에서 확정)도 �
 - [ ] **Step 4: #4 ReviewActions 레이아웃 옵션 제시**
 
 현재 구조:
+
 ```
 sm:flex-row sm:items-center
 [--------- 안내문(긴 한 줄) ---------] [outline btn] [primary btn]
 ```
+
 사용자 보고: "디스플레이가 이상함" — 추정 원인은 안내문이 길어 좁은 viewport에서 버튼이 줄바꿈되며 정렬이 어색해지는 것.
 
 ```
@@ -158,7 +165,7 @@ sm:flex-row sm:items-center
 [안내문 max-w-prose]            [버튼 그룹 shrink-0]
 * 모바일에서만 stack, 데스크톱은 1줄
 
-옵션 C — 토글 패널형: 
+옵션 C — 토글 패널형:
 "다음 액션 ▾" 버튼 + 펼치면 옵션 A 형태
 ```
 
@@ -186,6 +193,7 @@ sm:flex-row sm:items-center
 ### Task 1.1: RED — 단위 테스트 작성
 
 **Files:**
+
 - Test: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/__tests__/StepTaskAnalysis.minheight.test.tsx` (신규)
 
 - [ ] **Step 1: 실패하는 테스트 작성**
@@ -202,11 +210,11 @@ describe('StepTaskAnalysis Ⅱ-3 표 셀 텍스트 폼 높이', () => {
         rows={[{ domain: '', task: '', asIs: '', problem: '', dataTiming: '', aiScore: 3 }]}
         onChange={() => {}}
         readOnly={false}
-      />,
+      />
     );
     const textareas = screen.getAllByRole('textbox');
-    const taskAnalysisTextareas = textareas.filter(
-      (t) => /직무|과업|현행 방식|문제점|데이터 발생/.test(t.getAttribute('aria-label') ?? ''),
+    const taskAnalysisTextareas = textareas.filter((t) =>
+      /직무|과업|현행 방식|문제점|데이터 발생/.test(t.getAttribute('aria-label') ?? '')
     );
     expect(taskAnalysisTextareas).toHaveLength(5);
     for (const t of taskAnalysisTextareas) {
@@ -221,20 +229,22 @@ describe('StepTaskAnalysis Ⅱ-3 표 셀 텍스트 폼 높이', () => {
 ```bash
 npm run test -- StepTaskAnalysis.minheight
 ```
+
 Expected: FAIL — 현재는 `min-h-[150px]`.
 
 ### Task 1.2: GREEN — 클래스 교체
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis.tsx:196,206,216,226,238`
 
 - [ ] **Step 3: 5곳 일괄 교체**
 
 ```tsx
 // 변경 전
-minHeightClassName="min-h-[150px]"
+minHeightClassName = 'min-h-[150px]';
 // 변경 후
-minHeightClassName="min-h-[225px]"
+minHeightClassName = 'min-h-[225px]';
 ```
 
 `Edit` 도구의 `replace_all=true`를 같은 파일 내에서만 사용한다.
@@ -244,6 +254,7 @@ minHeightClassName="min-h-[225px]"
 ```bash
 npm run test -- StepTaskAnalysis.minheight
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: 커밋**
@@ -266,6 +277,7 @@ Phase 0에서 PBL 동일 표 위치가 확인되고 승인됐으면 동일 패�
 ### Task 2.1: RED — 단위 테스트
 
 **Files:**
+
 - Test: `src/app/(dashboard)/consultant/projects/[id]/interview/review/__tests__/InterviewReviewClient.collapsed.test.tsx`
 
 - [ ] **Step 1: 실패하는 테스트 작성**
@@ -287,7 +299,7 @@ describe('검토 페이지 — default 모두 접힘', () => {
         interviewData={minimalRoadmap}
         interviewUpdatedAt={null}
         latestResult={{ createdAt: null, status: null, versionId: null }}
-      />,
+      />
     );
     const buttons = screen.getAllByRole('button', { expanded: false });
     expect(buttons.length).toBeGreaterThanOrEqual(8); // 로드맵 검토 8 섹션
@@ -302,7 +314,7 @@ describe('검토 페이지 — default 모두 접힘', () => {
         interviewData={minimalPbl}
         interviewUpdatedAt={null}
         latestResult={{ createdAt: null, status: null, versionId: null }}
-      />,
+      />
     );
     expect(screen.queryAllByRole('button', { expanded: true })).toHaveLength(0);
   });
@@ -314,11 +326,13 @@ describe('검토 페이지 — default 모두 접힘', () => {
 ```bash
 npm run test -- InterviewReviewClient.collapsed
 ```
+
 Expected: FAIL — Ⅱ-2(line 147)·Ⅰ-1(line 259)에 `defaultOpen` 존재.
 
 ### Task 2.2: GREEN — `defaultOpen` 제거
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/consultant/projects/[id]/interview/review/InterviewReviewClient.tsx:147,259`
 
 - [ ] **Step 3: 두 곳에서 `defaultOpen` prop 제거**
@@ -340,6 +354,7 @@ Expected: FAIL — Ⅱ-2(line 147)·Ⅰ-1(line 259)에 `defaultOpen` 존재.
 ```bash
 npm run test -- InterviewReviewClient.collapsed
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: 커밋**
@@ -358,6 +373,7 @@ git commit -m "feat(review): 검토 페이지 모든 섹션 default 접힘 (로�
 ### Task 3.1: RED — 레이아웃 단위 테스트
 
 **Files:**
+
 - Test: `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/__tests__/ReviewActions.test.tsx`
 
 - [ ] **Step 1: 실패하는 테스트**
@@ -371,8 +387,12 @@ import { ReviewActions } from '../ReviewActions';
 describe('ReviewActions', () => {
   it('헤딩·설명·버튼 그룹이 분리되어 있고 두 버튼이 우측 정렬 컨테이너에 묶여 있다', () => {
     render(<ReviewActions projectId="p1" track="ROADMAP" />);
-    expect(screen.getByRole('heading', { level: 3, name: /검토를 마치셨나요/ })).toBeInTheDocument();
-    expect(screen.getByText(/표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: /검토를 마치셨나요/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서/)
+    ).toBeInTheDocument();
     const ctaGroup = screen.getByTestId('review-cta-group');
     expect(ctaGroup).toHaveClass('justify-end');
     expect(ctaGroup).toContainElement(screen.getByTestId('review-cta-back-to-interview'));
@@ -392,11 +412,13 @@ describe('ReviewActions', () => {
 ```bash
 npm run test -- ReviewActions
 ```
+
 Expected: FAIL — 현재 `<p>` 한 줄 + flex-row, heading·`data-testid="review-cta-group"` 없음.
 
 ### Task 3.2: GREEN — 옵션 A 구조로 재구성
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/consultant/projects/[id]/interview/review/_components/ReviewActions.tsx`
 
 - [ ] **Step 3: JSX 재작성**
@@ -427,14 +449,21 @@ export function ReviewActions({ projectId, track }: ReviewActionsProps) {
       <div className="space-y-1">
         <h3 className="text-base font-semibold">검토를 마치셨나요?</h3>
         <p className="text-sm text-muted-foreground">
-          표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서, 결과 확인은 결과 페이지에서 진행할 수 있습니다.
+          표 행 추가·삭제 등 본격 편집은 인터뷰 페이지에서, 결과 확인은 결과 페이지에서 진행할 수
+          있습니다.
         </p>
       </div>
       <div
         data-testid="review-cta-group"
         className="flex flex-col gap-2 sm:flex-row sm:justify-end"
       >
-        <Button asChild type="button" variant="outline" size="sm" data-testid="review-cta-back-to-interview">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="review-cta-back-to-interview"
+        >
           <Link href={`/consultant/projects/${projectId}/interview`}>
             <ArrowLeft className="mr-1 size-4" />
             인터뷰 페이지로 돌아가기
@@ -457,6 +486,7 @@ export function ReviewActions({ projectId, track }: ReviewActionsProps) {
 ```bash
 npm run test -- ReviewActions
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: 커밋**
@@ -485,6 +515,7 @@ mcp__serena__search_for_pattern: "whitespace-pre-wrap text-sm" (in result-v2/)
 ### Task 4.2: RED — 결과 페이지 편집 단위 테스트
 
 **Files:**
+
 - Test: `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/__tests__/TabRequirements.editable.test.tsx`
 
 - [ ] **Step 1: 실패하는 테스트**
@@ -497,7 +528,14 @@ import { TabRequirements } from '../TabRequirements';
 
 const interviewWithTask = {
   taskAnalysis: [
-    { domain: '영업', task: '제안서 작성', asIs: '수기', problem: '시간', dataTiming: '월말', aiScore: 4 },
+    {
+      domain: '영업',
+      task: '제안서 작성',
+      asIs: '수기',
+      problem: '시간',
+      dataTiming: '월말',
+      aiScore: 4,
+    },
   ],
 } as any;
 
@@ -525,10 +563,8 @@ describe('TabRequirements Ⅱ-3 표 — 자유 텍스트 셀 편집 가능', () 
     await userEvent.tab(); // blur 저장
     expect(onEdit).toHaveBeenCalledWith(
       expect.objectContaining({
-        task_analysis: expect.arrayContaining([
-          expect.objectContaining({ asIs: '엑셀 매크로' }),
-        ]),
-      }),
+        task_analysis: expect.arrayContaining([expect.objectContaining({ asIs: '엑셀 매크로' })]),
+      })
     );
   });
 });
@@ -539,11 +575,13 @@ describe('TabRequirements Ⅱ-3 표 — 자유 텍스트 셀 편집 가능', () 
 ```bash
 npm run test -- TabRequirements.editable
 ```
+
 Expected: FAIL — 현재 셀은 `<span>`이라 textbox 가 없다.
 
 ### Task 4.3: GREEN — 셀 3 종을 InlineEditField 로
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/TabRequirements.tsx:167-197`
 
 - [ ] **Step 3: bodyRows 셀 교체**
@@ -614,6 +652,7 @@ bodyRows={tasks.map((t, idx) => ({
 ```bash
 npm run test -- TabRequirements.editable
 ```
+
 Expected: PASS.
 
 - [ ] **Step 6: 커밋**
@@ -628,10 +667,12 @@ git commit -m "feat(result): 로드맵 결과 Ⅱ-3 표 자유 텍스트 셀 편
 Phase 0 Task 0.1 Step 2 에서 식별된 PBL 측 read-only 셀에 대해 Task 4.2 ~ 4.3 패턴 반복.
 
 대상 후보(0.1 단계에서 확정):
+
 - `pbl/_components/result-v2/TabPBLOps.tsx` 5 섹션 표 (이미 표 변환 완료된 상태 #14·#17·#18 — read-only 여부 재확인)
 - `pbl/_components/result-v2/TabPBLAnalysis.tsx` / `TabPBLTasks.tsx` 등
 
 각 파일별로:
+
 - [ ] RED 테스트 → GREEN → 커밋(파일당 1 커밋)
 
 ### Task 4.5: 서버측 deepMerge 보강(필요 시)
@@ -639,17 +680,19 @@ Phase 0 Task 0.1 Step 2 에서 식별된 PBL 측 read-only 셀에 대해 Task 4.
 Task 4.3 Step 4 에서 deepMerge 충돌이 식별되면:
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/consultant/projects/[id]/interview/review/actions.ts` 또는 RPC 함수
 - Migration: `supabase/migrations/NNN_interview_array_patch.sql` (필요 시)
 
 - [ ] **Step 1: `supabase-dev` 스킬 호출** → 마이그 작성
-- [ ] **Step 2: `mcp__supabase__apply_migration` 으로 적용 + `list_migrations` 검증
+- [ ] \*\*Step 2: `mcp__supabase__apply_migration` 으로 적용 + `list_migrations` 검증
 - [ ] **Step 3: RED 테스트로 lost update 시나리오 회귀 방지** (행 동시 편집 시 마지막 저장이 다른 행을 덮지 않는지)
 - [ ] **Step 4: 커밋**
 
 ### Task 4.6: E2E 시나리오
 
 **Files:**
+
 - Create: `e2e/consultant-result-edit.spec.ts`
 
 - [ ] **Step 1: 테스트 작성 — `test-automator` 서브에이전트 호출 보조**
@@ -695,6 +738,7 @@ git commit -m "test(e2e): 컨설턴트 결과 페이지 Ⅱ-3 셀 인라인 편�
 ```bash
 npm run validate
 ```
+
 Expected: PASS.
 
 - [ ] **Step 2: `npm run build`**
@@ -702,6 +746,7 @@ Expected: PASS.
 ```bash
 npm run build
 ```
+
 Expected: 빌드 성공, 신규 경고 없음.
 
 - [ ] **Step 3: `npm run test:e2e`**
@@ -709,6 +754,7 @@ Expected: 빌드 성공, 신규 경고 없음.
 ```bash
 npm run test:e2e
 ```
+
 Expected: 신규 2 spec 포함 모든 E2E PASS.
 
 ### Task 5.2: 수동 시각 검증(`puppeteer` MCP)
@@ -739,13 +785,13 @@ Expected: 신규 2 spec 포함 모든 E2E PASS.
 
 - [ ] **Step 1: `superpowers:requesting-code-review` 스킬 호출**
   - 4 Phase 통합 diff 요약 + 검증 결과 첨부
-- [ ] **Step 2: 수정 사항이 있으면 `superpowers:receiving-code-review` 로 처리
+- [ ] \*\*Step 2: 수정 사항이 있으면 `superpowers:receiving-code-review` 로 처리
 
 ### Task 5.5: PR 생성 (사용자 명시 시)
 
 - [ ] **Step 1: PR 본문 — Phase 별 변경·테스트·검증 결과·캡처 첨부**
 - [ ] **Step 2: PR 제목 한국어 규칙(예: `feat(consultant): 인터뷰·결과 페이지 UX 4건 일괄 개선`)**
-- [ ] **Step 3: `gh pr checks <PR>` 모든 check (Lint & Typecheck · Unit Test · Build · E2E Test · Vercel) 가 PASS 일 때만 "✅ 통과" 결정. Unit Test 만 보고 단정 금지.
+- [ ] \*\*Step 3: `gh pr checks <PR>` 모든 check (Lint & Typecheck · Unit Test · Build · E2E Test · Vercel) 가 PASS 일 때만 "✅ 통과" 결정. Unit Test 만 보고 단정 금지.
 
 ---
 

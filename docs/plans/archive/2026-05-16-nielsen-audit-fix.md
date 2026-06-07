@@ -12,11 +12,11 @@
 
 ## 구현 순서 (의존 없음 — 독립 이슈 3건)
 
-| 순서 | 이슈 | 추정 | 핵심 변경 |
-|------|------|------|-----------|
-| 1 | #2 미승인 사용자 안내 | 30분 | 대시보드 page.tsx 배너 + Navigation 헤더 칩 |
-| 2 | #4 갤러리 「내 산출물」 토글 | 60분 | Server Action scope 파라미터 + TrackFilter 패턴 토글 |
-| 3 | #1 추천 카드 프로필 정보 | 60분 | SelectableCard 헤더 아래 칩+연차 |
+| 순서 | 이슈                         | 추정 | 핵심 변경                                            |
+| ---- | ---------------------------- | ---- | ---------------------------------------------------- |
+| 1    | #2 미승인 사용자 안내        | 30분 | 대시보드 page.tsx 배너 + Navigation 헤더 칩          |
+| 2    | #4 갤러리 「내 산출물」 토글 | 60분 | Server Action scope 파라미터 + TrackFilter 패턴 토글 |
+| 3    | #1 추천 카드 프로필 정보     | 60분 | SelectableCard 헤더 아래 칩+연차                     |
 
 #2 → #4 → #1 순서 권장 (단순한 것부터). 의존 없으므로 순서 자유.
 
@@ -24,7 +24,7 @@
 
 ### 변경 파일
 
-- [src/app/(dashboard)/dashboard/page.tsx](src/app/(dashboard)/dashboard/page.tsx) — 인사말 아래 조건부 배너 추가
+- [src/app/(dashboard)/dashboard/page.tsx](<src/app/(dashboard)/dashboard/page.tsx>) — 인사말 아래 조건부 배너 추가
 - [src/components/Navigation.tsx:247-258](src/components/Navigation.tsx#L247-L258) — 미승인 역할일 때 `⏳` prefix 추가 (`renderRoleBadge`)
 - 신규: `src/app/(dashboard)/dashboard/_components/PendingApprovalBanner.tsx` (또는 page.tsx 인라인 — 단순성 우선 인라인)
 
@@ -49,8 +49,8 @@
 ### 변경 파일
 
 - [src/lib/schemas/gallery.ts:6-19](src/lib/schemas/gallery.ts#L6-L19) — `galleryFiltersSchema` 에 `scope: z.enum(['all', 'mine']).optional().default('all')` 추가
-- [src/app/(dashboard)/gallery/actions/queries.ts](src/app/(dashboard)/gallery/actions/queries.ts) — `fetchGalleryRoadmaps`·`fetchGalleryPBLReports` 두 함수에 `scope === 'mine'` 시 `.eq('created_by', user.id)` 분기 추가 (라인 184 부근 컨설턴트 분기에 합류)
-- [src/app/(dashboard)/gallery/_components/GalleryContent.tsx](src/app/(dashboard)/gallery/_components/GalleryContent.tsx) — `scope` URL state + 토글 UI (TrackFilter 패턴 차용)
+- [src/app/(dashboard)/gallery/actions/queries.ts](<src/app/(dashboard)/gallery/actions/queries.ts>) — `fetchGalleryRoadmaps`·`fetchGalleryPBLReports` 두 함수에 `scope === 'mine'` 시 `.eq('created_by', user.id)` 분기 추가 (라인 184 부근 컨설턴트 분기에 합류)
+- [src/app/(dashboard)/gallery/\_components/GalleryContent.tsx](<src/app/(dashboard)/gallery/_components/GalleryContent.tsx>) — `scope` URL state + 토글 UI (TrackFilter 패턴 차용)
 - 신규: `src/components/gallery/ScopeFilter.tsx` — TrackFilter 와 동일 구조의 토글 컴포넌트 (`all`/`mine`)
 
 ### 재사용 자산
@@ -86,6 +86,7 @@
 ### 데이터 모델
 
 `Recommendation.candidate.consultant_profile` 가 `ConsultantProfile[] | Record<string, unknown>` 두 형태로 도착 가능 (`utils.ts:73`):
+
 - 배열인 경우 첫 요소 사용
 - 객체인 경우 그대로 사용
 - 신규 헬퍼 `getConsultantProfile()` 가 정규화 책임
@@ -111,6 +112,7 @@
 ## 롤백 시나리오
 
 각 이슈가 독립이므로 단독 revert 가능. 커밋 단위:
+
 - `fix: H10·H1 미승인 사용자 대시보드 안내 배너·승인 대기 칩 추가`
 - `fix: H2 갤러리 「내 산출물」 토글 + Server Action scope 파라미터 추가`
 - `fix: H6 컨설턴트 배정 추천 카드 프로필 핵심 정보 노출`

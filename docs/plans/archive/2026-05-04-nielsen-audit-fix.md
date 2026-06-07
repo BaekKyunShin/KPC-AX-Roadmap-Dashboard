@@ -5,6 +5,7 @@
 **Goal:** `docs/reports/2026-05-04-nielsen-heuristics-audit.md` 의 #1~#4 4건(★★★★ 2건 + ★★★ 2건)을 TDD로 해결한다 (#5 사용자 요청으로 제외).
 
 **Architecture:**
+
 - 모든 변경은 기존 자산 재사용 위주 (보고서 자산 표 6개 + `src/components/ui/` shadcn). 신규 컴포넌트 0건.
 - #2 의 prop drill 4단계(`InlineEditField → EditableTable → Tab* → RoadmapResultClient`)는 DOM 마커 패턴으로 회피 — `InlineEditField` 가 root `<span>` 에 `data-saving-state` 속성을 추가하고, `ResultTabs` 가 자체 ref 로 `querySelector` 한 줄 검사. Context·prop drill 모두 0.
 - #3 은 `ManualAssignmentForm` 의 검증된 패턴(`AlertDialog` + `showSuccessToast` + `useRouter().refresh`)을 그대로 차용.
@@ -17,13 +18,13 @@
 
 ## File Structure
 
-| 작업 | 변경 위치 |
-|---|---|
-| #1 InlineEdit 재시도 | `src/components/result/InlineEditField.tsx` (3-4 spots) + `src/components/result/__tests__/InlineEditField.test.tsx` |
-| #2 탭 전환 차단 | `src/components/result/InlineEditField.tsx` (data 속성 1줄) + `src/components/result/ResultTabs.tsx` (handleValueChange 보강 + AlertDialog) + `src/components/result/__tests__/ResultTabs.test.tsx` |
-| #3 AssignmentForm 동기화 | `src/components/ops/AssignmentForm.tsx` (전체 리팩터 ≈ 50줄) + 신규 `src/components/ops/AssignmentForm.test.tsx` (테스트 부재 확인됨) |
-| #4 쿼터 Tooltip+라벨 | `src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx` (helper 통합 + 헤더 ⓘ + 라벨) + `src/app/(dashboard)/ops/quota/_components/__tests__/QuotaClient.test.tsx` (있는 경우 보강 / 없으면 단위 helper 테스트만) |
-| 보고서 archive | `git mv docs/reports/2026-05-04-nielsen-heuristics-audit.md docs/reports/archive/` |
+| 작업                     | 변경 위치                                                                                                                                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1 InlineEdit 재시도     | `src/components/result/InlineEditField.tsx` (3-4 spots) + `src/components/result/__tests__/InlineEditField.test.tsx`                                                                                                  |
+| #2 탭 전환 차단          | `src/components/result/InlineEditField.tsx` (data 속성 1줄) + `src/components/result/ResultTabs.tsx` (handleValueChange 보강 + AlertDialog) + `src/components/result/__tests__/ResultTabs.test.tsx`                   |
+| #3 AssignmentForm 동기화 | `src/components/ops/AssignmentForm.tsx` (전체 리팩터 ≈ 50줄) + 신규 `src/components/ops/AssignmentForm.test.tsx` (테스트 부재 확인됨)                                                                                 |
+| #4 쿼터 Tooltip+라벨     | `src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx` (helper 통합 + 헤더 ⓘ + 라벨) + `src/app/(dashboard)/ops/quota/_components/__tests__/QuotaClient.test.tsx` (있는 경우 보강 / 없으면 단위 helper 테스트만) |
+| 보고서 archive           | `git mv docs/reports/2026-05-04-nielsen-heuristics-audit.md docs/reports/archive/`                                                                                                                                    |
 
 ---
 
@@ -43,6 +44,7 @@
 **위배 휴리스틱:** H9 오류 인식·진단·복구, H1 시스템 상태의 가시성
 
 **Files:**
+
 - Modify: `src/components/result/InlineEditField.tsx` (3 spots: import / errorIndicator JSX / startEdit reset)
 - Test: `src/components/result/__tests__/InlineEditField.test.tsx` (기존 파일에 신규 케이스 2건 추가)
 
@@ -175,6 +177,7 @@ EOF
 **전략:** prop drill 4단계 회피 — `InlineEditField` 가 root `<span>` 에 `data-saving-state={savingState}` 속성 부여. `ResultTabs` 는 자체 root ref 의 `querySelector('[data-saving-state="saving"]')` 한 줄로 미저장 셀 검사. 검출 시 `AlertDialog` 노출.
 
 **Files:**
+
 - Modify: `src/components/result/InlineEditField.tsx` (root span 에 data 속성 1줄 추가 — view 모드 + edit 모드 양쪽)
 - Modify: `src/components/result/ResultTabs.tsx` (root ref + handleValueChange 보강 + AlertDialog 추가)
 - Test: `src/components/result/__tests__/ResultTabs.test.tsx` (신규 케이스 2건)
@@ -194,7 +197,7 @@ describe('탭 전환 시 미저장 변경사항 감지', () => {
           저장 중 셀
         </span>
         <ResultTabs items={items} initialValue="a" searchParamName="tab" />
-      </div>,
+      </div>
     );
   }
 
@@ -209,14 +212,9 @@ describe('탭 전환 시 미저장 변경사항 감지', () => {
 
     await user.click(screen.getByRole('tab', { name: '요구분석' }));
 
-    expect(
-      await screen.findByText('저장 중인 변경 사항이 있습니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('저장 중인 변경 사항이 있습니다')).toBeInTheDocument();
     // 다이얼로그 미선택 상태에서는 탭이 전환되지 않는다
-    expect(screen.getByRole('tab', { name: '개요' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    expect(screen.getByRole('tab', { name: '개요' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('"그래도 이동" 클릭 시 탭이 전환되고, "취소" 시 그대로 유지', async () => {
@@ -226,10 +224,7 @@ describe('탭 전환 시 미저장 변경사항 감지', () => {
     await user.click(screen.getByRole('button', { name: '그래도 이동' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('tab', { name: '요구분석' })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      ),
+      expect(screen.getByRole('tab', { name: '요구분석' })).toHaveAttribute('aria-selected', 'true')
     );
   });
 });
@@ -241,7 +236,7 @@ describe('탭 전환 시 미저장 변경사항 감지', () => {
 it('savingState 가 root span 의 data-saving-state 속성으로 노출된다', async () => {
   const user = userEvent.setup();
   const onSave = vi.fn<(next: string) => Promise<void>>(
-    () => new Promise(() => {}), // 영원히 pending
+    () => new Promise(() => {}) // 영원히 pending
   );
 
   const { container } = render(<InlineEditField value="원본" onSave={onSave} />);
@@ -253,9 +248,7 @@ it('savingState 가 root span 의 data-saving-state 속성으로 노출된다', 
   await user.click(screen.getByText('원본'));
   await user.click(screen.getByRole('button', { name: /저장/ }));
 
-  expect(
-    container.querySelector('[data-saving-state="saving"]'),
-  ).toBeInTheDocument();
+  expect(container.querySelector('[data-saving-state="saving"]')).toBeInTheDocument();
 });
 ```
 
@@ -330,21 +323,19 @@ const performTabChange = useCallback(
       router.replace(`?${params.toString()}`, { scroll: false });
     });
   },
-  [router, searchParams, searchParamName],
+  [router, searchParams, searchParamName]
 );
 
 const handleValueChange = useCallback(
   (newValue: string) => {
-    const hasSaving = rootRef.current?.querySelector(
-      '[data-saving-state="saving"]',
-    );
+    const hasSaving = rootRef.current?.querySelector('[data-saving-state="saving"]');
     if (hasSaving) {
       setPendingTab(newValue);
       return;
     }
     performTabChange(newValue);
   },
-  [performTabChange],
+  [performTabChange]
 );
 ```
 
@@ -357,10 +348,7 @@ return (
       ...기존 내용...
     </Tabs>
 
-    <AlertDialog
-      open={pendingTab !== null}
-      onOpenChange={(open) => !open && setPendingTab(null)}
-    >
+    <AlertDialog open={pendingTab !== null} onOpenChange={(open) => !open && setPendingTab(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>저장 중인 변경 사항이 있습니다</AlertDialogTitle>
@@ -425,6 +413,7 @@ EOF
 **전략:** `ManualAssignmentForm.tsx:60-130` 의 검증된 패턴(`requestAssign` → `setIsConfirmOpen` → `confirmAssign` → `showSuccessToast` + `router.refresh()`) 그대로 차용.
 
 **Files:**
+
 - Modify: `src/components/ops/AssignmentForm.tsx` (전체 ≈ 50줄 리팩터)
 - Test: 신규 `src/components/ops/AssignmentForm.test.tsx` (기존 테스트 부재 확인됨)
 
@@ -477,15 +466,12 @@ describe('AssignmentForm 배정 흐름', () => {
 
     // 추천 후보 선택 + 사유 입력 + 배정하기
     await user.click(screen.getByLabelText(/김컨설/));
-    await user.type(
-      screen.getByPlaceholderText(/배정 사유/),
-      '점수 우수, 도메인 적합',
-    );
+    await user.type(screen.getByPlaceholderText(/배정 사유/), '점수 우수, 도메인 적합');
     await user.click(screen.getByRole('button', { name: '배정하기' }));
 
     // AlertDialog 노출 — 아직 assignConsultant 미호출
     expect(
-      await screen.findByText(/김컨설컨설턴트를 이 프로젝트에 배정하시겠습니까\?/),
+      await screen.findByText(/김컨설컨설턴트를 이 프로젝트에 배정하시겠습니까\?/)
     ).toBeInTheDocument();
     expect(mockAssignConsultant).not.toHaveBeenCalled();
   });
@@ -493,27 +479,19 @@ describe('AssignmentForm 배정 흐름', () => {
   it('AlertDialog "배정 확인" 후 router.refresh + 성공 토스트 발화 (window.location.reload 미호출)', async () => {
     const user = userEvent.setup();
     mockAssignConsultant.mockResolvedValue({ success: true });
-    const reloadSpy = vi
-      .spyOn(window.location, 'reload')
-      .mockImplementation(() => {});
+    const reloadSpy = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
 
     render(<AssignmentForm projectId="p1" recommendations={recommendations} />);
 
     await user.click(screen.getByLabelText(/김컨설/));
-    await user.type(
-      screen.getByPlaceholderText(/배정 사유/),
-      '점수 우수, 도메인 적합',
-    );
+    await user.type(screen.getByPlaceholderText(/배정 사유/), '점수 우수, 도메인 적합');
     await user.click(screen.getByRole('button', { name: '배정하기' }));
     await user.click(screen.getByRole('button', { name: '배정 확인' }));
 
     await vi.waitFor(() => {
       expect(mockAssignConsultant).toHaveBeenCalledTimes(1);
       expect(mockRefresh).toHaveBeenCalledTimes(1);
-      expect(mockToast).toHaveBeenCalledWith(
-        '배정 완료',
-        expect.stringContaining('김컨설'),
-      );
+      expect(mockToast).toHaveBeenCalledWith('배정 완료', expect.stringContaining('김컨설'));
     });
     expect(reloadSpy).not.toHaveBeenCalled();
 
@@ -589,13 +567,8 @@ const confirmAssign = async () => {
     const result = await assignConsultant(formData);
 
     if (result.success) {
-      const selected = recommendations.find(
-        (r) => r.candidate_user_id === selectedConsultantId,
-      );
-      showSuccessToast(
-        '배정 완료',
-        `${selected?.candidate.name ?? ''}컨설턴트가 배정되었습니다`,
-      );
+      const selected = recommendations.find((r) => r.candidate_user_id === selectedConsultantId);
+      showSuccessToast('배정 완료', `${selected?.candidate.name ?? ''}컨설턴트가 배정되었습니다`);
       router.refresh();
     } else {
       setError(result.error || '배정에 실패했습니다.');
@@ -615,8 +588,7 @@ const confirmAssign = async () => {
 
 ```tsx
 const selectedName =
-  recommendations.find((r) => r.candidate_user_id === selectedConsultantId)
-    ?.candidate.name ?? '';
+  recommendations.find((r) => r.candidate_user_id === selectedConsultantId)?.candidate.name ?? '';
 
 return (
   <>
@@ -688,6 +660,7 @@ EOF
 **전략:** `getUsageColor` (현 27-31라인) + 라벨 산출 + 권장 액션을 단일 helper `getUsageStatus(percent)` 로 통합. 헤더 ⓘ 호버 시 Tooltip 노출. 진행률 바 옆 한 글자 라벨로 색맹 사용자 인지 보장.
 
 **Files:**
+
 - Modify: `src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx` (helper 통합 + 헤더 ⓘ + 라벨 추가)
 - Test: 신규 또는 기존 보강 — `src/app/(dashboard)/ops/quota/_components/__tests__/getUsageStatus.test.ts` (helper 단위 테스트, 컴포넌트 직접 테스트는 사이드 이펙트 큼)
 
@@ -734,18 +707,13 @@ Expected: FAIL — `getUsageStatus` 가 export 되지 않음.
 
 - [ ] **Step 3: QuotaClient.tsx — helper 통합 + 헤더 ⓘ + 라벨**
 
-[src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx](src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx) 변경:
+[src/app/(dashboard)/ops/quota/\_components/QuotaClient.tsx](<src/app/(dashboard)/ops/quota/_components/QuotaClient.tsx>) 변경:
 
 (i) import 추가:
 
 ```tsx
 import { Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 ```
 
 (ii) 기존 `getUsageColor` (27-31라인) 와 `getProgressColor` (33-37라인) 제거하고 단일 helper 추가 (export):
@@ -753,9 +721,9 @@ import {
 ```tsx
 export interface UsageStatus {
   label: '정상' | '주의' | '경고';
-  color: string;        // 텍스트+배경 (사용량 셀)
+  color: string; // 텍스트+배경 (사용량 셀)
   progressColor: string; // 진행률 바
-  action: string;        // 권장 액션
+  action: string; // 권장 액션
 }
 
 export function getUsageStatus(percent: number): UsageStatus {
@@ -799,9 +767,15 @@ export function getUsageStatus(percent: number): UsageStatus {
       </button>
     </TooltipTrigger>
     <TooltipContent className="max-w-xs text-xs leading-relaxed">
-      <p><strong>정상</strong> (70% 미만): 모니터링만</p>
-      <p><strong>주의</strong> (70~89%): 일일 한도 점검·소통 권장</p>
-      <p><strong>경고</strong> (90% 이상): 즉시 한도 조정 또는 사용 가이드 안내</p>
+      <p>
+        <strong>정상</strong> (70% 미만): 모니터링만
+      </p>
+      <p>
+        <strong>주의</strong> (70~89%): 일일 한도 점검·소통 권장
+      </p>
+      <p>
+        <strong>경고</strong> (90% 이상): 즉시 한도 조정 또는 사용 가이드 안내
+      </p>
     </TooltipContent>
   </Tooltip>
 </TooltipProvider>
@@ -812,14 +786,16 @@ export function getUsageStatus(percent: number): UsageStatus {
 기존 진행률 바 JSX 옆(같은 셀 내) 에:
 
 ```tsx
-{(() => {
-  const status = getUsageStatus(percent);
-  return (
-    <span className={cn('ml-2 text-xs font-medium', status.color, 'rounded px-1')}>
-      {status.label}
-    </span>
-  );
-})()}
+{
+  (() => {
+    const status = getUsageStatus(percent);
+    return (
+      <span className={cn('ml-2 text-xs font-medium', status.color, 'rounded px-1')}>
+        {status.label}
+      </span>
+    );
+  })();
+}
 ```
 
 (또는 percent 가 이미 변수라면 status 를 한 번만 계산해서 진행률 바 className 도 같이 처리.)
@@ -897,13 +873,13 @@ git log --oneline main..HEAD        # 5개 커밋 (chore 1 + fix 4 + docs 1 = 6)
 
 ## 구현 순서
 
-| 순서 | Task | 의존 | 병렬 가능? |
-|---|---|---|---|
-| 1 | Task 1 (#1 InlineEdit 재시도) | 없음 | Task 3, 4 와 병렬 가능 |
-| 2 | Task 2 (#2 탭 전환 차단) | Task 1 의 InlineEditField 변경에 의존 (충돌 회피 위해 순차) | 단독 |
-| 3 | Task 3 (#3 AssignmentForm) | 없음 | Task 1, 4 와 병렬 가능 |
-| 4 | Task 4 (#4 쿼터 Tooltip) | 없음 | Task 1, 3 와 병렬 가능 |
-| 5 | Task 5 (검증 + archive) | Task 1~4 모두 완료 | — |
+| 순서 | Task                          | 의존                                                        | 병렬 가능?             |
+| ---- | ----------------------------- | ----------------------------------------------------------- | ---------------------- |
+| 1    | Task 1 (#1 InlineEdit 재시도) | 없음                                                        | Task 3, 4 와 병렬 가능 |
+| 2    | Task 2 (#2 탭 전환 차단)      | Task 1 의 InlineEditField 변경에 의존 (충돌 회피 위해 순차) | 단독                   |
+| 3    | Task 3 (#3 AssignmentForm)    | 없음                                                        | Task 1, 4 와 병렬 가능 |
+| 4    | Task 4 (#4 쿼터 Tooltip)      | 없음                                                        | Task 1, 3 와 병렬 가능 |
+| 5    | Task 5 (검증 + archive)       | Task 1~4 모두 완료                                          | —                      |
 
 **권장:** 순차 실행. InlineEditField 가 Task 1 과 Task 2 양쪽에서 변경되므로 충돌 회피.
 
@@ -913,12 +889,12 @@ git log --oneline main..HEAD        # 5개 커밋 (chore 1 + fix 4 + docs 1 = 6)
 
 각 이슈는 단독 커밋이므로 단독 revert 가능:
 
-| 커밋 | revert 시 영향 |
-|---|---|
-| Task 1 fix | InlineEditField error 표시만 원복 (다른 기능 무관) |
+| 커밋       | revert 시 영향                                                             |
+| ---------- | -------------------------------------------------------------------------- |
+| Task 1 fix | InlineEditField error 표시만 원복 (다른 기능 무관)                         |
 | Task 2 fix | InlineEditField data 속성 + ResultTabs AlertDialog 원복 (Task 1 영향 없음) |
-| Task 3 fix | AssignmentForm 만 영향 (Manual·Recommendation 무관) |
-| Task 4 fix | QuotaClient 만 영향 |
+| Task 3 fix | AssignmentForm 만 영향 (Manual·Recommendation 무관)                        |
+| Task 4 fix | QuotaClient 만 영향                                                        |
 
 main 머지 후 결함 발견 시 단일 commit revert PR 가능.
 
@@ -927,6 +903,7 @@ main 머지 후 결함 발견 시 단일 commit revert PR 가능.
 ## 자체 검증 (Self-Review)
 
 **Spec coverage:**
+
 - [x] #1 → Task 1 (errorIndicator + RefreshCcw + 재시도 onClick)
 - [x] #2 → Task 2 (data-saving-state 마커 + ResultTabs AlertDialog)
 - [x] #3 → Task 3 (AlertDialog + router.refresh + showSuccessToast)
@@ -936,6 +913,7 @@ main 머지 후 결함 발견 시 단일 commit revert PR 가능.
 **Placeholder 스캔:** "TBD"·"TODO"·"적절히"·"필요하면" 등 사용 0건. 모든 코드 블록은 그대로 붙여넣기 가능.
 
 **Type 일관성:**
+
 - `getUsageStatus` 반환 `UsageStatus` 인터페이스 일관 — `label`·`color`·`progressColor`·`action` 4 필드.
 - `data-saving-state` 값은 `SavingState` 타입(`'idle' | 'saving' | 'saved' | 'error'`) 그대로 노출 — string 변환 자동.
 - `pendingTab: string | null` — `setPendingTab(null)` 로 닫고 `pendingTab !== null` 로 open 조건 일관.
