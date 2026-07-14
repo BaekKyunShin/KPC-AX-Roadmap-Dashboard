@@ -22,6 +22,7 @@ track 분기:
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.parse
@@ -144,66 +145,18 @@ PBL_TEMPLATE = os.path.normpath(
 
 
 def _generate_roadmap(data: dict) -> bytes:
+    """로드맵 HWPX 생성 — {{플레이스홀더}} 치환 방식 (산인공 양식 v2).
+
+    **표 순번·셀 좌표를 전혀 참조하지 않는다.** 템플릿에 이미 심겨 있는 마커를
+    값으로 바꿀 뿐이므로, 앞으로 양식에 표가 추가·삭제돼도 이 함수는 깨지지 않는다.
+    좌표는 빌드 타임(`scripts/insert_placeholders.py`)에서만 쓰이며, 템플릿↔SSOT
+    마커 정합은 `scripts/verify_hwpx_placeholders.py` 가 CI 에서 보증한다.
+    """
     from hwpx import HwpxDocument
-    from _placeholders_roadmap import build_placeholder_map, build_table_rows
 
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
+    _apply_markers(doc, _build_roadmap_markers(data))
 
-    # --- 0) 표지 본문 텍스트 직접 치환 (정본 placeholder 미존재 대응) ---
-    # 신규 정본 (84d1e67) 표지 paragraph 3 = "AI훈련로드맵 컨설팅 보고서(기업명)",
-    # paragraph 8 = "202x. 00. 00." 의 raw 텍스트를 회사명·일자로 직접 치환한다.
-    # _replace_in_all_runs 는 표 셀 nested 까지 모두 순회하므로 표지 외 영역도 안전.
-    company_name = data.get("company_name") or ""
-    report_date = data.get("report_date") or ""
-    if company_name:
-        _replace_in_all_runs(doc, "(기업명)", f"({company_name})")
-    if report_date:
-        # 표지 paragraph 8 일자 placeholder 본문 치환.
-        # 사용자 정본 변천: PR #4 "202x. 00. 00." → PR #5 Phase F "2026. 00. 00."
-        # 두 패턴 모두 처리 (정본 재수정 호환).
-        _replace_in_all_runs(doc, "202x. 00. 00.", report_date)
-        _replace_in_all_runs(doc, "2026. 00. 00.", report_date)
-
-    # --- 1) 본문 + 표 셀 내부 플레이스홀더 치환 ---
-    # replace_text_in_runs는 표 셀 내부를 탐색하지 않으므로 zip_replace_all.py의
-    # 공식 패턴(모든 표 셀의 paragraphs→runs 순회)을 함께 사용한다.
-    placeholders = build_placeholder_map(data)
-    for key, value in placeholders.items():
-        _replace_in_all_runs(doc, key, str(value or ""))
-
-    # --- 2) AI 역량 수준 체크박스 토글 (Table 7) ---
-    level = (data.get("ai_competency_level") or "").upper()
-    level_map = {
-        "BEGINNER": ("□ 초급", "☑ 초급"),
-        "INTERMEDIATE": ("□ 중급", "☑ 중급"),
-        "ADVANCED": ("□ 고급", "☑ 고급"),
-    }
-    if level in level_map:
-        src, dst = level_map[level]
-        _replace_in_all_runs(doc, src, dst)
-
-    # --- 3) 표 셀 데이터 채우기 (공식 API만 사용) ---
-    # 인덱스는 shallow traversal 기준 (중첩 참고자료 표 제외).
-    tables = _collect_tables(doc)
-    _fill_table_cover(tables, data, idx=1)                          # 표지 PM 표 (3x3)
-    _fill_simple_cell(tables, idx=3, row=0, col=0, text=data.get("establishment_necessity"))  # Ⅰ-1
-    _fill_table_performance_activities(tables, data, build_table_rows, idx=5)  # Ⅰ-2 (7x6)
-    _fill_table_outcome(tables, data, idx=7)                        # Ⅰ-3 (3x4)
-    _fill_table_hrd_report(tables, data, idx=11)                    # Ⅱ-1 (1x1)
-    _fill_table_company_requirements(tables, data, idx=13)          # Ⅱ-2 (5x3)
-    _fill_table_task_workflow(tables, data, build_table_rows, idx=15)  # Ⅱ-3 (6x6)
-    _fill_simple_box(tables, 17, data.get("analysis_notes_text"))   # 분석내용
-    _fill_table_training_target(tables, data, idx=19)               # Ⅱ-4 (4x3)
-    _fill_table_competencies(tables, data, build_table_rows, idx=22)  # Ⅲ-1 (6x5)
-    _fill_ncs_boxes(tables, data, methodology_idx=23, derivation_idx=24)
-    _fill_table_training_structure(tables, data, build_table_rows, idx=26)  # Ⅲ-2 (5x6)
-    _fill_simple_box(tables, 28, data.get("training_structure_method"))
-    _fill_table_annual_plan(tables, data, build_table_rows, idx=30)  # Ⅲ-3 (4x5)
-    _fill_simple_box(tables, 32, data.get("annual_plan_usage"))
-    _fill_course_spec_tables(tables, data, build_table_rows, indices=(34, 35, 36))
-    _fill_table_journal(tables, data, build_table_rows, idx=38)     # [별첨] (13x5)
-
-    # --- 4) 저장 ---
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hwpx") as tmp:
         path = tmp.name
     try:
@@ -213,6 +166,176 @@ def _generate_roadmap(data: dict) -> bytes:
     finally:
         if os.path.exists(path):
             os.unlink(path)
+
+
+_MARKER_RE = re.compile(r"\{\{[^}]*\}\}")
+
+# 양식 구조 상수 (SSOT: docs/references/hwpx-placeholders.json)
+_RM_MAX_ACTIVITIES = 3   # Ⅰ-2 수행활동 차수
+_RM_MAX_TASKS = 6        # Ⅱ-3 과업 분석표 행
+_RM_MAX_COURSES = 6      # Ⅲ  훈련과정 명세서 표
+_RM_MAX_SUBJECTS = 3     # Ⅲ  명세서당 교과목 행
+# Ⅱ-3 직무 열의 (1,0) 셀은 rowSpan=2 병합 → 과업 0·1 이 같은 셀을 공유한다.
+# 과업 1 의 직무 마커는 템플릿에 존재하지 않으므로 값도 만들지 않는다.
+_RM_TASK_JOB_SKIP = {1}
+
+
+def _s(v) -> str:
+    """None-safe 문자열 변환."""
+    return "" if v is None else str(v)
+
+
+def _build_roadmap_markers(data: dict) -> dict:
+    """payload → {{마커}}: 값 매핑."""
+    m: dict = {}
+
+    # ── 표지
+    m["{{roadmap_cover_company_name}}"] = _s(data.get("company_name"))
+    m["{{roadmap_cover_target_task}}"] = _s(data.get("cover_target_task"))
+    m["{{roadmap_cover_report_date}}"] = _s(data.get("report_date"))
+    m["{{roadmap_cover_pm_affiliation}}"] = _s(data.get("pm_affiliation"))
+    m["{{roadmap_cover_pm_name}}"] = _s(data.get("pm_name"))
+    m["{{roadmap_cover_internal_expert_affiliation}}"] = _s(
+        data.get("internal_expert_affiliation")
+    )
+    m["{{roadmap_cover_internal_expert_name}}"] = _s(data.get("internal_expert_name"))
+
+    # ── Ⅰ-1 수립 배경
+    m["{{roadmap_overview_establishment_necessity}}"] = _s(
+        data.get("establishment_necessity")
+    )
+
+    # ── Ⅰ-2 주요 활동 (차수당 PM·내부전문가 2행)
+    acts = data.get("performance_activities") or []
+    for i in range(_RM_MAX_ACTIVITIES):
+        a = acts[i] if i < len(acts) else {}
+        m[f"{{{{roadmap_overview_performance_{i}_date}}}}"] = _s(a.get("date"))
+        m[f"{{{{roadmap_overview_performance_{i}_content}}}}"] = _s(a.get("content"))
+        m[f"{{{{roadmap_overview_performance_{i}_method}}}}"] = _s(a.get("method"))
+        parts = a.get("participants") or []
+        pm = next((p.get("name") for p in parts if "PM" in _s(p.get("role"))), "")
+        expert = next(
+            (p.get("name") for p in parts if "내부" in _s(p.get("role"))), ""
+        )
+        m[f"{{{{roadmap_overview_performance_{i}_pm_name}}}}"] = _s(pm)
+        m[f"{{{{roadmap_overview_performance_{i}_expert_name}}}}"] = _s(expert)
+
+    # ── Ⅰ-3 수립 주요 결과 (체크박스 + 선정 과업 + 요약)
+    level = _s(data.get("ai_competency_level")).upper()
+    for key, want in (
+        ("beginner", "BEGINNER"),
+        ("intermediate", "INTERMEDIATE"),
+        ("advanced", "ADVANCED"),
+    ):
+        m[f"{{{{cb_roadmap_level_{key}}}}}"] = "☑" if level == want else "□"
+    m["{{roadmap_outcome_selected_tasks}}"] = _s(data.get("selected_tasks_text"))
+    m["{{roadmap_outcome_main_content}}"] = _s(data.get("roadmap_summary"))
+
+    # ── Ⅱ-1 HRD이음 진단 보고서 (URL 은 본문 노출 금지 → 별첨 안내로 대체)
+    hrd = _s(data.get("hrd_report_attachment"))
+    m["{{roadmap_requirements_hrd_report}}"] = (
+        "※ HRD이음 진단 보고서는 별첨 페이지 참조" if hrd.startswith("http") else hrd
+    )
+
+    # ── Ⅱ-2 기업 요구분석
+    for field in (
+        "company_status",
+        "main_problems",
+        "push_willingness",
+        "expected_outcomes",
+    ):
+        m[f"{{{{roadmap_requirements_{field}}}}}"] = _s(data.get(field))
+        m[f"{{{{roadmap_requirements_{field}_remarks}}}}"] = _s(
+            data.get(f"{field}_remarks")
+        )
+
+    # ── Ⅱ-3 과업·워크플로우 분석표
+    tasks = data.get("task_workflow_items") or []
+    for i in range(_RM_MAX_TASKS):
+        t = tasks[i] if i < len(tasks) else {}
+        if i not in _RM_TASK_JOB_SKIP:
+            m[f"{{{{roadmap_task_{i}_job}}}}"] = _s(t.get("job"))
+        m[f"{{{{roadmap_task_{i}_task}}}}"] = _s(t.get("task"))
+        m[f"{{{{roadmap_task_{i}_as_is}}}}"] = _s(t.get("as_is"))
+        m[f"{{{{roadmap_task_{i}_improvement}}}}"] = _s(t.get("improvement"))
+
+    # ── Ⅱ-3 AI 적용 대상 과업 선정
+    tt = data.get("training_target") or {}
+    m["{{roadmap_target_task_name}}"] = _s(tt.get("task_name"))
+    m["{{roadmap_target_selection_reason}}"] = _s(tt.get("selection_reason"))
+    m["{{roadmap_target_as_is}}"] = _s(tt.get("as_is"))
+    m["{{roadmap_target_to_be}}"] = _s(tt.get("to_be"))
+
+    # ── Ⅲ 훈련실시 계획 제안 — 훈련과정 명세서 6개
+    specs = data.get("course_specs") or []
+    for i in range(_RM_MAX_COURSES):
+        s = specs[i] if i < len(specs) else {}
+        for field in (
+            "training_period",
+            "training_level",
+            "course_name",
+            "training_method",
+            "recommended_program",
+            "training_target",
+            "training_goal",
+            "main_content",
+        ):
+            m[f"{{{{roadmap_course_{i}_{field}}}}}"] = _s(s.get(field))
+
+        subjects = s.get("subjects") or []
+        for j in range(_RM_MAX_SUBJECTS):
+            subj = subjects[j] if j < len(subjects) else {}
+            details = subj.get("details")
+            # details 는 리스트(줄 단위) 또는 문자열 — 셀 안에서 줄바꿈으로 분배된다
+            details_text = (
+                "\n".join(_s(d) for d in details)
+                if isinstance(details, list)
+                else _s(details)
+            )
+            base = f"{{{{roadmap_course_{i}_subject_{j}_"
+            m[base + "subject_name}}"] = _s(subj.get("subject_name"))
+            m[base + "details}}"] = details_text
+            m[base + "hours}}"] = _s(subj.get("hours"))
+
+    return m
+
+
+def _apply_markers(doc, markers: dict) -> None:
+    """문서 전체(본문 + 표 셀)의 마커를 값으로 치환.
+
+    표 셀은 `_set_cell_text` 로 기입하여 줄바꿈이 paragraph 로 분배되고
+    lineWrap=BREAK 가 적용되도록 한다(글자 겹침 방지). 값이 매핑되지 않은
+    잔존 마커는 빈 문자열로 지워 산출물에 `{{...}}` 가 남지 않게 한다.
+    """
+    for para in doc.paragraphs:
+        for tbl in para.tables:
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    text = "".join(
+                        run.text or "" for p in cell.paragraphs for run in p.runs
+                    )
+                    if "{{" not in text:
+                        continue
+                    for key, value in markers.items():
+                        if key in text:
+                            text = text.replace(key, value)
+                    text = _MARKER_RE.sub("", text)
+                    _set_cell_text(tbl, ri, ci, text)
+
+    # 본문 단락 (표지 일자 등)
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if not run.text or "{{" not in run.text:
+                continue
+            text = run.text
+            for key, value in markers.items():
+                if key in text:
+                    text = text.replace(key, value)
+            run.text = _MARKER_RE.sub("", text)
 
 
 # ---------------------------------------------------------------

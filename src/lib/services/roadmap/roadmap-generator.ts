@@ -1,17 +1,19 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ConsultantProfile } from '@/types/database';
-import type {
-  SttInsights,
-  CompetencyModel,
-  NcsUsage,
-} from '@/lib/schemas/interview-roadmap';
+import type { SttInsights } from '@/lib/schemas/interview-roadmap';
 import { mapInterviewRowToRoadmapInterview } from '@/lib/schemas/interview-roadmap';
 import { roadmapContentSchema } from '@/lib/schemas/roadmap';
 import { callLLMForJSON, type LLMMessage } from '../llm';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import { checkAndRecordLLMUsage } from '../quota';
-import type { LLMRoadmapResult, RoadmapResult, ValidationResult } from './roadmap-types';
+import type {
+  LLMRoadmapResult,
+  RoadmapResult,
+  TrainingLevel,
+  ValidationResult,
+} from './roadmap-types';
+import { ROADMAP_COURSE_SPEC_COUNT } from './roadmap-types';
 import { normalizeRoadmapHours } from './roadmap-time-utils';
 import { validateRoadmap } from './roadmap-validator';
 import { buildSystemPrompt, buildUserPrompt } from './roadmap-prompts';
@@ -37,25 +39,37 @@ export class RoadmapStorageError extends Error {
   }
 }
 
+const VALID_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
+
+function coerceLevel(v: unknown, fallback: TrainingLevel = 'BEGINNER'): TrainingLevel {
+  return typeof v === 'string' && VALID_LEVELS.includes(v as (typeof VALID_LEVELS)[number])
+    ? (v as TrainingLevel)
+    : fallback;
+}
+
+function asText(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
 /**
- * LLM 응답 신규 필드(OFA-06.5·ISSUE-04) 자동 보정.
- * LLM이 인스트럭션을 빠뜨려도 인터뷰 입력값으로 채워 schema 검증을 통과시키고
- * 콘텐츠 품질을 최대한 보존한다.
+ * LLM 응답의 v2 신규 필드 자동 보정.
  *
- * @param interviewCompetencies 인터뷰 Ⅲ-1 에서 컨설턴트가 직접 입력한 역량 목록.
- *   LLM 이 `competencies=[]` 반환 시 이 값을 학습 설계용 배열로 확장해 채움.
- * @param interviewNcsUsage 인터뷰 Ⅲ-1 의 NCS 활용 블록. LLM 이 ncs_* 누락 시 기준값.
+ * LLM 이 인스트럭션을 빠뜨려도 인터뷰 입력값·기본값으로 채워 schema 검증을
+ * 통과시키고 콘텐츠 품질을 최대한 보존한다.
+ *
+ * v2 보정 대상:
+ *  - Ⅰ장: setup_necessity · outcome_summary (인터뷰 값이 정본이므로 그대로 복원)
+ *  - Ⅲ장: course_specs[*].training_period · training_level (신규 필드),
+ *          training_method (LLM 이 v1 키 `format` 으로 응답한 경우 승격)
  */
 export function fillMissingRoadmapFields(
   raw: Partial<LLMRoadmapResult> & Record<string, unknown>,
   interviewOverview?: {
     establishment_necessity?: string;
-    ai_competency_level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+    ai_competency_level?: TrainingLevel;
     selected_tasks_summary?: string;
     roadmap_summary?: string;
-  },
-  interviewCompetencies?: CompetencyModel[],
-  interviewNcsUsage?: NcsUsage,
+  }
 ): LLMRoadmapResult {
   const overview = interviewOverview ?? {};
   const r = raw as Record<string, unknown>;
@@ -63,116 +77,79 @@ export function fillMissingRoadmapFields(
   const setupNecessity =
     typeof r.setup_necessity === 'string' && r.setup_necessity.trim() !== ''
       ? r.setup_necessity
-      : overview.establishment_necessity ?? '';
+      : (overview.establishment_necessity ?? '');
 
   const rawOutcome = (r.outcome_summary ?? {}) as Record<string, unknown>;
-  const validLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const;
-  const outcomeLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' =
-    typeof rawOutcome.ai_competency_level === 'string' &&
-    validLevels.includes(rawOutcome.ai_competency_level as typeof validLevels[number])
-      ? (rawOutcome.ai_competency_level as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED')
-      : overview.ai_competency_level ?? 'BEGINNER';
   const outcomeSummary = {
-    ai_competency_level: outcomeLevel,
+    ai_competency_level: coerceLevel(
+      rawOutcome.ai_competency_level,
+      overview.ai_competency_level ?? 'BEGINNER'
+    ),
     selected_tasks:
       typeof rawOutcome.selected_tasks === 'string' && rawOutcome.selected_tasks.trim() !== ''
         ? rawOutcome.selected_tasks
-        : overview.selected_tasks_summary ?? '',
+        : (overview.selected_tasks_summary ?? ''),
     main_content:
       typeof rawOutcome.main_content === 'string' && rawOutcome.main_content.trim() !== ''
         ? rawOutcome.main_content
-        : overview.roadmap_summary ?? '',
+        : (overview.roadmap_summary ?? ''),
   };
 
-  // ISSUE-04 연동: competencies 가 비어있으면 인터뷰 Ⅲ-1 입력으로 채움.
-  // 인터뷰 입력은 각 K/S/A 가 문자열이므로 단일 원소 배열로 감싸 LLM 출력 스키마와 맞춘다.
-  const llmCompetencies = (r.competencies as LLMRoadmapResult['competencies']) ?? [];
-  const hasLlmCompetencies = Array.isArray(llmCompetencies) && llmCompetencies.length > 0;
-  const fallbackCompetencies: LLMRoadmapResult['competencies'] = (
-    interviewCompetencies ?? []
-  ).map((c) => ({
-    name: c.competency_name,
-    definition: c.competency_definition,
-    knowledge: [c.knowledge],
-    skills: [c.skill],
-    attitudes: [c.attitude],
-  }));
-  const competencies = hasLlmCompetencies ? llmCompetencies : fallbackCompetencies;
-
-  // NCS 활용 정책: LLM 값 우선, 없으면 인터뷰 ncs_usage, 마지막으로 placeholder
-  const ncsUsed =
-    typeof r.ncs_used === 'boolean'
-      ? r.ncs_used
-      : interviewNcsUsage?.uses_ncs ?? false;
-  const rawNcsMethodology =
-    typeof r.ncs_methodology === 'string' && r.ncs_methodology.trim() !== ''
-      ? r.ncs_methodology
-      : interviewNcsUsage?.ncs_usage_method ?? '';
-  const rawNcsDerivation =
-    typeof r.ncs_derivation_method === 'string' && r.ncs_derivation_method.trim() !== ''
-      ? r.ncs_derivation_method
-      : interviewNcsUsage?.competency_derivation_method ?? '';
-
-  // refine 통과를 위한 최종 placeholder: ncs_used 결과에 맞춰 필수 필드만 채움
-  const safeNcsMethodology =
-    ncsUsed && rawNcsMethodology.trim() === ''
-      ? '(생성 시 NCS 활용 방법이 누락되었습니다. 수동 입력 필요.)'
-      : rawNcsMethodology;
-  const safeNcsDerivation =
-    !ncsUsed && rawNcsDerivation.trim() === ''
-      ? '(생성 시 역량별 도출 방법이 누락되었습니다. 수동 입력 필요.)'
-      : rawNcsDerivation;
-
-  const trainingStructureMethod =
-    typeof r.training_structure_method === 'string' && r.training_structure_method.trim() !== ''
-      ? r.training_structure_method
-      : '역량 기준 3수준 체계(초급·중급·고급)로 단계별 선수요건을 설정하여 훈련체계를 수립.';
+  // Ⅲ. 훈련과정 명세서 — v2 신규 필드 보정
+  const rawSpecs = Array.isArray(r.course_specs) ? r.course_specs : [];
+  const courseSpecs: LLMRoadmapResult['course_specs'] = rawSpecs
+    .filter((s): s is Record<string, unknown> => s !== null && typeof s === 'object')
+    .map((spec) => ({
+      training_period: asText(spec.training_period),
+      training_level: coerceLevel(spec.training_level),
+      course_name: asText(spec.course_name),
+      // LLM 이 v1 키(`format`)로 응답한 경우 승격
+      training_method: asText(spec.training_method) || asText(spec.format),
+      recommended_program: asText(spec.recommended_program),
+      goal: asText(spec.goal),
+      main_content: asText(spec.main_content),
+      target_audience: asText(spec.target_audience),
+      subjects: Array.isArray(spec.subjects)
+        ? spec.subjects
+            .filter((s): s is Record<string, unknown> => s !== null && typeof s === 'object')
+            .map((subj) => ({
+              name: asText(subj.name),
+              details: asText(subj.details),
+              hours: typeof subj.hours === 'number' ? subj.hours : 0,
+            }))
+        : [],
+    }));
 
   return {
-    diagnosis_summary: typeof r.diagnosis_summary === 'string' ? r.diagnosis_summary : '',
+    diagnosis_summary: asText(r.diagnosis_summary),
     setup_necessity: setupNecessity,
     outcome_summary: outcomeSummary,
-    competencies,
-    ncs_used: ncsUsed,
-    ncs_methodology: safeNcsMethodology,
-    ncs_derivation_method: safeNcsDerivation,
-    training_structure: (r.training_structure as LLMRoadmapResult['training_structure']) ?? [],
-    training_structure_method: trainingStructureMethod,
-    annual_plan:
-      (r.annual_plan as LLMRoadmapResult['annual_plan']) ?? { items: [], usage_plan: '' },
-    course_specs: (r.course_specs as LLMRoadmapResult['course_specs']) ?? [],
+    course_specs: courseSpecs,
   };
 }
 
 /**
  * LLM 호출 + 신규 필드 자동 보정 + 스키마 검증 + 시간 안전 보정 + validateRoadmap 실행.
  *
- * 로드맵 경로는 `fillMissingRoadmapFields` 가 인터뷰 Ⅲ-1 입력(competency_models·
- * ncs_usage) 을 fallback 으로 충분히 회복시키므로, Critical 3건 중 매칭·사전분석과
- * 달리 callLLMForJSON 의 validator 재시도 경로를 별도로 두지 않는다. 대신 스키마
- * 검증 실패 시에만 `RoadmapStorageError` 로 변환해 UI 에 "수동 편집 필요" 를 안내한다.
+ * 로드맵 경로는 `fillMissingRoadmapFields` 가 인터뷰 Ⅰ장 입력(overview)을 fallback
+ * 으로 회복시키므로, callLLMForJSON 의 validator 재시도 경로를 별도로 두지 않는다.
+ * 대신 스키마 검증 실패 시에만 `RoadmapStorageError` 로 변환해 UI 에
+ * "수동 편집 필요" 를 안내한다.
  */
 async function callLLMAndBuildRoadmap(
   messages: LLMMessage[],
   signal?: AbortSignal,
-  interviewOverview?: Parameters<typeof fillMissingRoadmapFields>[1],
-  interviewCompetencies?: CompetencyModel[],
-  interviewNcsUsage?: NcsUsage,
+  interviewOverview?: Parameters<typeof fillMissingRoadmapFields>[1]
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   const rawLlmResult = await callLLMForJSON<Partial<LLMRoadmapResult>>(
     messages,
     { temperature: LLM_TEMPERATURE },
     2,
-    signal,
+    signal
   );
 
-  // OFA-06.5·ISSUE-04 신규 필드 누락 시 인터뷰 입력값/기본값으로 자동 보정
-  const filled = fillMissingRoadmapFields(
-    rawLlmResult,
-    interviewOverview,
-    interviewCompetencies,
-    interviewNcsUsage,
-  );
+  // v2 신규 필드 누락 시 인터뷰 입력값/기본값으로 자동 보정
+  const filled = fillMissingRoadmapFields(rawLlmResult, interviewOverview);
 
   // Zod 스키마 검증 — 실패 시 수동편집 유도
   const parsed = roadmapContentSchema.safeParse(filled);
@@ -180,7 +157,7 @@ async function callLLMAndBuildRoadmap(
     console.error('[callLLMAndBuildRoadmap] schema fail:', JSON.stringify(parsed.error.errors));
     throw new RoadmapStorageError(
       'LLM이 산인공 양식에 맞지 않는 결과를 반환했습니다. 수동 편집이 필요합니다.',
-      { cause: parsed.error },
+      { cause: parsed.error }
     );
   }
 
@@ -197,23 +174,22 @@ async function callLLMAndBuildRoadmap(
 async function persistRoadmapSummaryToInterview(
   supabase: ReturnType<typeof createAdminClient>,
   interviewRow: Record<string, unknown>,
-  mainContent: string,
+  mainContent: string
 ): Promise<void> {
   if (!mainContent || mainContent.trim() === '') return;
 
   // 단일 interview row id 기반으로 업데이트 — project_id 로만 좁히면 동일 프로젝트에
   // 중복 row 가 존재할 때 의도치 않게 일괄 덮어쓰기 위험이 있음. row.id 로 정확히 한정.
   const interviewId =
-    typeof interviewRow.id === 'string' && interviewRow.id.length > 0
-      ? interviewRow.id
-      : null;
+    typeof interviewRow.id === 'string' && interviewRow.id.length > 0 ? interviewRow.id : null;
   if (!interviewId) return;
 
   const details = (interviewRow.company_details as Record<string, unknown> | null) ?? {};
   const currentOverview = (details.roadmap_overview as Record<string, unknown> | null) ?? {};
-  const existingSummary = typeof currentOverview.roadmap_summary === 'string'
-    ? currentOverview.roadmap_summary.trim()
-    : '';
+  const existingSummary =
+    typeof currentOverview.roadmap_summary === 'string'
+      ? currentOverview.roadmap_summary.trim()
+      : '';
   // 사용자가 수동 편집한 요약은 존중한다 — 비어있을 때만 LLM 결과로 채움
   if (existingSummary !== '') return;
 
@@ -233,7 +209,7 @@ async function persistRoadmapSummaryToInterview(
   if (error) {
     console.warn(
       '[persistRoadmapSummaryToInterview] 요약 역반영 실패 (생성은 완료됨):',
-      error.message,
+      error.message
     );
   }
 }
@@ -254,7 +230,7 @@ export async function generateRoadmap(
   actorUserId: string,
   revisionPrompt?: string,
   isTestMode: boolean = false,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<{ roadmapId: string; result: RoadmapResult; validation: ValidationResult }> {
   const supabase = createAdminClient();
 
@@ -317,7 +293,7 @@ export async function generateRoadmap(
     promptInterview,
     consultantSnapshot,
     revisionPrompt,
-    isTestMode,
+    isTestMode
   );
 
   // LLM 호출 + 버전 번호 조회 병렬 실행
@@ -328,9 +304,7 @@ export async function generateRoadmap(
         { role: 'user', content: userPrompt },
       ],
       signal,
-      promptInterview.overview,
-      roadmapInterview.competency_models,
-      roadmapInterview.ncs_usage,
+      promptInterview.overview
     ),
     supabase
       .from('roadmap_versions')
@@ -377,18 +351,11 @@ export async function generateRoadmap(
   // ISSUE-04: LLM 이 생성한 Ⅰ-3 요약(outcome_summary.main_content)을
   // interviews.company_details.roadmap_overview.roadmap_summary 에 역반영한다.
   // 다음 로드맵 재생성·Export 시 이 요약이 일관되게 재사용된다.
-  await persistRoadmapSummaryToInterview(
-    supabase,
-    interview,
-    result.outcome_summary.main_content,
-  );
+  await persistRoadmapSummaryToInterview(supabase, interview, result.outcome_summary.main_content);
 
   // 프로젝트 상태 업데이트 (중앙 전이 검증 — FINALIZED 역방향 전이 방지 포함)
   if (validateStatusTransition(projectData.status, 'ROADMAP_DRAFTED')) {
-    await supabase
-      .from('projects')
-      .update({ status: 'ROADMAP_DRAFTED' })
-      .eq('id', projectId);
+    await supabase.from('projects').update({ status: 'ROADMAP_DRAFTED' }).eq('id', projectId);
   }
 
   // 감사로그
@@ -479,10 +446,6 @@ export interface TestRoadmapInput {
     to_be: string;
   }[];
 
-  // Ⅲ-1 역량 모델링 + NCS 활용 (ISSUE-04 신규, 2026-04-21)
-  competency_models?: CompetencyModel[];
-  ncs_usage?: NcsUsage;
-
   notes?: string;
   // ISSUE-14: 첨부 파일 URL 배열 → 파일 객체 배열로 교체. Step C-5 가 LLM 통합 정식 구현.
   analysis_notes?: {
@@ -525,8 +488,6 @@ function buildTestInterviewData(input: TestRoadmapInput, sttInsights?: SttInsigh
     company_requirements: input.company_requirements,
     task_workflow_items: input.task_workflow_items,
     training_targets: input.training_targets,
-    competency_models: input.competency_models ?? [],
-    ncs_usage: input.ncs_usage,
     analysis_notes: input.analysis_notes ?? { text: '', attachment_files: [] },
     notes: input.notes || '',
     customer_requirements: input.customer_requirements || '',
@@ -542,7 +503,7 @@ export async function generateTestRoadmap(
   actorUserId: string,
   consultantProfile: ConsultantProfile | null,
   sttInsights?: SttInsights,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
   if (quotaCheck.exceeded) {
@@ -553,7 +514,14 @@ export async function generateTestRoadmap(
   const interview = buildTestInterviewData(input, sttInsights);
 
   const systemPrompt = buildSystemPrompt();
-  const userPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
+  const userPrompt = buildUserPrompt(
+    projectData,
+    null,
+    interview,
+    consultantProfile,
+    undefined,
+    true
+  );
 
   return callLLMAndBuildRoadmap(
     [
@@ -561,15 +529,13 @@ export async function generateTestRoadmap(
       { role: 'user', content: userPrompt },
     ],
     signal,
-    input.overview,
-    input.competency_models,
-    input.ncs_usage,
+    input.overview
   );
 }
 
 /**
  * 로드맵 테스트 수정 (DB 저장 없이 LLM 결과만 반환).
- * previousResult의 4섹션(competencies / training_structure / annual_plan / course_specs)을
+ * previousResult(진단 요약 / Ⅰ-3 수립 주요 결과 / Ⅲ 훈련과정 명세서)를
  * 프롬프트에 포함하여 재생성.
  */
 export async function reviseTestRoadmap(
@@ -578,7 +544,7 @@ export async function reviseTestRoadmap(
   revisionPrompt: string,
   actorUserId: string,
   consultantProfile: ConsultantProfile | null,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<{ result: RoadmapResult; validation: ValidationResult }> {
   const quotaCheck = await checkAndRecordLLMUsage(actorUserId);
   if (quotaCheck.exceeded) {
@@ -589,7 +555,14 @@ export async function reviseTestRoadmap(
   const interview = buildTestInterviewData(input);
 
   const systemPrompt = buildSystemPrompt();
-  const baseUserPrompt = buildUserPrompt(projectData, null, interview, consultantProfile, undefined, true);
+  const baseUserPrompt = buildUserPrompt(
+    projectData,
+    null,
+    interview,
+    consultantProfile,
+    undefined,
+    true
+  );
 
   const revisionUserPrompt = `${baseUserPrompt}
 
@@ -600,16 +573,10 @@ export async function reviseTestRoadmap(
 ### 진단 요약
 ${previousResult.diagnosis_summary}
 
-### 기존 역량 모델링 (Ⅲ-1)
-${JSON.stringify(previousResult.competencies, null, 2)}
+### 기존 수립 주요 결과 (Ⅰ-3)
+${JSON.stringify(previousResult.outcome_summary, null, 2)}
 
-### 기존 훈련체계도 (Ⅲ-2)
-${JSON.stringify(previousResult.training_structure, null, 2)}
-
-### 기존 연간 훈련계획 (Ⅲ-3)
-${JSON.stringify(previousResult.annual_plan, null, 2)}
-
-### 기존 훈련과정 명세서 (Ⅲ-4)
+### 기존 훈련과정 명세서 (Ⅲ)
 ${JSON.stringify(previousResult.course_specs, null, 2)}
 
 ## 수정 요청
@@ -618,7 +585,8 @@ ${JSON.stringify(previousResult.course_specs, null, 2)}
 ${revisionPrompt}
 
 위 수정 요청을 반영하여 로드맵을 재생성해주세요. 수정 요청에 언급되지 않은 부분은 기존 내용을 유지해도 됩니다.
-단, 최종 출력은 반드시 산인공 4섹션(diagnosis_summary / competencies / training_structure / annual_plan / course_specs) 완전한 JSON 형식이어야 합니다.`;
+단, 최종 출력은 반드시 산인공 양식(diagnosis_summary / setup_necessity / outcome_summary / course_specs) 완전한 JSON 형식이어야 합니다.
+course_specs 는 ${ROADMAP_COURSE_SPEC_COUNT}개를 유지하세요.`;
 
   return callLLMAndBuildRoadmap(
     [
@@ -626,8 +594,6 @@ ${revisionPrompt}
       { role: 'user', content: revisionUserPrompt },
     ],
     signal,
-    input.overview,
-    input.competency_models,
-    input.ncs_usage,
+    input.overview
   );
 }

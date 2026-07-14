@@ -1,19 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { editRoadmapUpdatesSchema, createRoadmapInputSchema, roadmapContentSchema } from './roadmap';
+import {
+  editRoadmapUpdatesSchema,
+  createRoadmapInputSchema,
+  roadmapContentSchema,
+} from './roadmap';
+import { ROADMAP_COURSE_SPEC_COUNT } from '@/lib/services/roadmap/roadmap-types';
 
 // ============================================================================
-// 신규 산인공 양식 기반 스키마 테스트
-// 구조: competencies, ncs_*, training_structure, training_structure_method,
-//       annual_plan, course_specs, setup_necessity, outcome_summary
+// 로드맵 스키마 테스트 — 산인공 공식 양식 v2 (2026-07-13 개정)
+// ----------------------------------------------------------------------------
+// 구조: diagnosis_summary · setup_necessity · outcome_summary · course_specs[6]
+//
+// v1 대비 삭제 (양식에서 해당 표가 전부 제거됨):
+//   competencies · ncs_*(+ 루트 refine) · training_structure(+method) · annual_plan
+// v2 신규: course_specs[*].training_period(훈련시기) · training_level(훈련수준)
+//          + 명세서 최소 개수 3 → 6 (ROADMAP_COURSE_SPEC_COUNT)
 // ============================================================================
-
-const validCompetency = {
-  name: '데이터분석',
-  definition: '데이터를 수집·가공·분석하여 의사결정에 활용하는 역량',
-  knowledge: ['통계학', 'SQL'],
-  skills: ['Python', 'Excel'],
-  attitudes: ['객관성', '호기심'],
-};
 
 const validOutcomeSummary = {
   ai_competency_level: 'INTERMEDIATE' as const,
@@ -21,98 +23,86 @@ const validOutcomeSummary = {
   main_content: '3단계 AI 인력 양성',
 };
 
-const validTrainingStructureItem = {
-  competency_name: '데이터분석',
-  level: 'BEGINNER' as const,
-  content: 'Python 기초 및 데이터 전처리',
-  target_audience: '신입 사원',
-  method: '집체 훈련',
-  goal: '기본 데이터 전처리 수행 가능',
-};
-
-const validAnnualPlanItem = {
-  competency_name: '데이터분석',
-  course_name: '데이터분석 입문',
-  format: '집체',
-  hours: 16,
-  notes: '1분기 실시',
-};
-
-const validCourseSpec = {
-  course_name: '데이터분석 입문',
-  format: '집체',
-  recommended_program: '일반직무훈련',
-  goal: '데이터 분석 기초 역량 확보',
-  main_content: 'Python 기초, 데이터 전처리, 시각화',
-  target_audience: '전 직원',
-  subjects: [
-    { name: 'Python 기초', details: '변수, 자료형, 제어문', hours: 4 },
-    { name: '데이터 전처리', details: 'Pandas 활용', hours: 8 },
-  ],
-};
-
-function buildValidRoadmap(overrides: Record<string, unknown> = {}) {
+function makeSubject(overrides: Record<string, unknown> = {}) {
   return {
-    diagnosis_summary: '진단 요약',
-    setup_necessity: '수립 필요성',
-    outcome_summary: validOutcomeSummary,
-    competencies: [validCompetency],
-    ncs_used: true,
-    ncs_methodology: 'NCS 빅데이터분석 세분류 활용',
-    ncs_derivation_method: '',
-    training_structure: [validTrainingStructureItem],
-    training_structure_method: '역량 기준 3수준 체계로 훈련 로드맵 수립',
-    annual_plan: {
-      items: [validAnnualPlanItem],
-      usage_plan: '현업 프로젝트에 바로 적용',
-    },
-    course_specs: [
-      { ...validCourseSpec, course_name: '과정1' },
-      { ...validCourseSpec, course_name: '과정2' },
-      { ...validCourseSpec, course_name: '과정3' },
-    ],
+    name: 'Python 기초',
+    details: '1단원: 변수와 자료형\n2단원: 제어문',
+    hours: 4,
     ...overrides,
   };
 }
 
-describe('roadmapContentSchema — 루트 NCS 일관성', () => {
-  it('완전한 로드맵 → 통과', () => {
+/** v2 훈련과정 명세서 1개 (훈련시기·훈련수준 신규 필드 포함) */
+function makeCourseSpec(overrides: Record<string, unknown> = {}) {
+  return {
+    training_period: '2026년 상반기',
+    training_level: 'INTERMEDIATE' as const,
+    course_name: '데이터분석 입문',
+    training_method: '집체', // v1 `format` 의 후신
+    recommended_program: '일반직무훈련',
+    goal: '데이터 분석 기초 역량 확보',
+    main_content: 'Python 기초, 데이터 전처리, 시각화',
+    target_audience: '전 직원',
+    subjects: [makeSubject()],
+    ...overrides,
+  };
+}
+
+/** 명세서 N개 (기본 = 양식이 요구하는 6개) */
+function makeCourseSpecs(count: number = ROADMAP_COURSE_SPEC_COUNT) {
+  return Array.from({ length: count }, (_, i) => makeCourseSpec({ course_name: `과정${i + 1}` }));
+}
+
+function buildValidRoadmap(overrides: Record<string, unknown> = {}) {
+  return {
+    diagnosis_summary: '진단 요약',
+    setup_necessity: '수립 배경',
+    outcome_summary: validOutcomeSummary,
+    course_specs: makeCourseSpecs(),
+    ...overrides,
+  };
+}
+
+describe('roadmapContentSchema — v2 루트 구조', () => {
+  it('완전한 v2 로드맵 → 통과', () => {
     const result = roadmapContentSchema.safeParse(buildValidRoadmap());
     expect(result.success).toBe(true);
   });
 
-  it('ncs_used=true 이지만 ncs_methodology 공백 → 실패', () => {
-    const result = roadmapContentSchema.safeParse(
-      buildValidRoadmap({ ncs_used: true, ncs_methodology: '' }),
-    );
-    expect(result.success).toBe(false);
-  });
-
-  it('ncs_used=false + ncs_derivation_method 제공 → 통과', () => {
+  it('v1 잔여 키(competencies·ncs_*·annual_plan)가 섞여 있어도 통과하고 parse 결과에서 제거된다 (NCS 루트 refine 삭제 확인)', () => {
+    // v1 이라면 ncs_used=true + ncs_methodology='' 조합에서 루트 refine 이 실패시켰다.
+    // v2 에는 해당 refine 이 없고, 미지원 키는 zod 기본 동작으로 strip 된다.
     const result = roadmapContentSchema.safeParse(
       buildValidRoadmap({
-        ncs_used: false,
+        competencies: [{ name: '데이터분석' }],
+        ncs_used: true,
         ncs_methodology: '',
-        ncs_derivation_method: '현업 인터뷰 기반 도출',
-      }),
+        training_structure: [{ competency_name: '데이터분석' }],
+        training_structure_method: '',
+        annual_plan: { items: [], usage_plan: '' },
+      })
     );
     expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const parsed = result.data as unknown as Record<string, unknown>;
+    expect(parsed).not.toHaveProperty('competencies');
+    expect(parsed).not.toHaveProperty('ncs_used');
+    expect(parsed).not.toHaveProperty('ncs_methodology');
+    expect(parsed).not.toHaveProperty('training_structure');
+    expect(parsed).not.toHaveProperty('training_structure_method');
+    expect(parsed).not.toHaveProperty('annual_plan');
+    expect(Object.keys(parsed).sort()).toEqual([
+      'course_specs',
+      'diagnosis_summary',
+      'outcome_summary',
+      'setup_necessity',
+    ]);
   });
 
-  it('ncs_used=false + ncs_derivation_method 누락 → 실패', () => {
+  it('outcome_summary 누락 → 실패', () => {
     const result = roadmapContentSchema.safeParse(
-      buildValidRoadmap({
-        ncs_used: false,
-        ncs_methodology: '',
-        ncs_derivation_method: '',
-      }),
-    );
-    expect(result.success).toBe(false);
-  });
-
-  it('training_structure_method 누락 → 실패', () => {
-    const result = roadmapContentSchema.safeParse(
-      buildValidRoadmap({ training_structure_method: '' }),
+      buildValidRoadmap({ outcome_summary: undefined })
     );
     expect(result.success).toBe(false);
   });
@@ -121,13 +111,136 @@ describe('roadmapContentSchema — 루트 NCS 일관성', () => {
     const result = roadmapContentSchema.safeParse(
       buildValidRoadmap({
         outcome_summary: { ...validOutcomeSummary, ai_competency_level: 'EXPERT' },
-      }),
+      })
     );
     expect(result.success).toBe(false);
   });
 });
 
-describe('editRoadmapUpdatesSchema — 공통', () => {
+describe('roadmapContentSchema — course_specs 개수 (v2: 6개)', () => {
+  it(`명세서 ${ROADMAP_COURSE_SPEC_COUNT}개 → 통과`, () => {
+    const result = roadmapContentSchema.safeParse(
+      buildValidRoadmap({ course_specs: makeCourseSpecs(ROADMAP_COURSE_SPEC_COUNT) })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it(`명세서 ${ROADMAP_COURSE_SPEC_COUNT - 1}개 → 실패 (v1 기준 3개는 더 이상 통과하지 않음)`, () => {
+    const result = roadmapContentSchema.safeParse(
+      buildValidRoadmap({ course_specs: makeCourseSpecs(ROADMAP_COURSE_SPEC_COUNT - 1) })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('명세서 3개(v1 최소 개수) → 실패', () => {
+    const result = roadmapContentSchema.safeParse(
+      buildValidRoadmap({ course_specs: makeCourseSpecs(3) })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it(`명세서 ${ROADMAP_COURSE_SPEC_COUNT + 1}개 → 통과 (최소 개수 규칙이므로 초과 허용)`, () => {
+    const result = roadmapContentSchema.safeParse(
+      buildValidRoadmap({ course_specs: makeCourseSpecs(ROADMAP_COURSE_SPEC_COUNT + 1) })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('course_specs 빈 배열 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(buildValidRoadmap({ course_specs: [] }));
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('roadmapContentSchema — course_specs 신규 필드 (훈련시기·훈련수준)', () => {
+  /** 첫 명세서만 교체하고 나머지는 유효한 값으로 채운 6개 배열 */
+  function withFirstSpec(overrides: Record<string, unknown>) {
+    const specs = makeCourseSpecs();
+    specs[0] = makeCourseSpec(overrides);
+    return buildValidRoadmap({ course_specs: specs });
+  }
+
+  it('training_period 가 빈 문자열 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ training_period: '' }));
+    expect(result.success).toBe(false);
+  });
+
+  it('training_period 누락 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ training_period: undefined }));
+    expect(result.success).toBe(false);
+  });
+
+  it('training_level 이 enum 외 값 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ training_level: 'EXPERT' }));
+    expect(result.success).toBe(false);
+  });
+
+  it('training_level 누락 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ training_level: undefined }));
+    expect(result.success).toBe(false);
+  });
+
+  it.each(['BEGINNER', 'INTERMEDIATE', 'ADVANCED'])('training_level=%s → 통과', (level) => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ training_level: level }));
+    expect(result.success).toBe(true);
+  });
+
+  it('v1 `format` 키만 있고 training_method 가 없으면 → 실패 (필드 rename 강제)', () => {
+    const result = roadmapContentSchema.safeParse(
+      withFirstSpec({ training_method: undefined, format: '집체' })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('course_name 이 빈 문자열 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSpec({ course_name: '' }));
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('roadmapContentSchema — course_specs.subjects', () => {
+  function withFirstSubjects(subjects: unknown) {
+    const specs = makeCourseSpecs();
+    specs[0] = makeCourseSpec({ subjects });
+    return buildValidRoadmap({ course_specs: specs });
+  }
+
+  it('subjects 빈 배열 → 실패 (최소 1개)', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSubjects([]));
+    expect(result.success).toBe(false);
+  });
+
+  it('subject.hours 가 0 → 실패 (positive)', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSubjects([makeSubject({ hours: 0 })]));
+    expect(result.success).toBe(false);
+  });
+
+  it('subject.hours 가 음수 → 실패', () => {
+    const result = roadmapContentSchema.safeParse(withFirstSubjects([makeSubject({ hours: -1 })]));
+    expect(result.success).toBe(false);
+  });
+
+  it('subject.details 가 빈 문자열 → 실패 (줄바꿈 구분 1~5개 항목)', () => {
+    const result = roadmapContentSchema.safeParse(
+      withFirstSubjects([makeSubject({ details: '' })])
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it('subject.details 항목이 5개 → 통과 (상한)', () => {
+    const details = ['1단원', '2단원', '3단원', '4단원', '5단원'].join('\n');
+    const result = roadmapContentSchema.safeParse(withFirstSubjects([makeSubject({ details })]));
+    expect(result.success).toBe(true);
+  });
+
+  it('subject.details 항목이 6개 → 실패 (상한 초과)', () => {
+    const details = ['1단원', '2단원', '3단원', '4단원', '5단원', '6단원'].join('\n');
+    const result = roadmapContentSchema.safeParse(withFirstSubjects([makeSubject({ details })]));
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('editRoadmapUpdatesSchema — 공통 (DRAFT loose)', () => {
   it('diagnosis_summary만 포함된 유효한 데이터 → 통과', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
       diagnosis_summary: '진단 요약입니다.',
@@ -154,151 +267,90 @@ describe('editRoadmapUpdatesSchema — 공통', () => {
     expect(result.success).toBe(false);
   });
 
-  it('신규 setup_necessity만 포함 → 통과', () => {
+  it('setup_necessity만 포함 → 통과', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      setup_necessity: '수립 필요성 수정',
+      setup_necessity: '수립 배경 수정',
     });
     expect(result.success).toBe(true);
   });
 
-  it('training_structure_method만 포함 → 통과', () => {
+  it('outcome_summary만 포함 → 통과', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      training_structure_method: '체계 수립 방법 수정',
-    });
-    expect(result.success).toBe(true);
-  });
-});
-
-describe('editRoadmapUpdatesSchema — competencies', () => {
-  it('유효한 competencies 배열 → 통과', () => {
-    const result = editRoadmapUpdatesSchema.safeParse({
-      competencies: [validCompetency],
+      outcome_summary: validOutcomeSummary,
     });
     expect(result.success).toBe(true);
   });
 
-  it('NCS 필드는 competency에서 사용 금지 (unknown key → stripped, 여전히 통과)', () => {
+  it('outcome_summary.ai_competency_level 이 enum 외 값 → 실패 (loose 여도 enum 은 유지)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      competencies: [{ ...validCompetency, ncs_used: true, ncs_methodology: 'X' }],
+      outcome_summary: { ...validOutcomeSummary, ai_competency_level: 'EXPERT' },
     });
-    // zod 기본 동작: unknown key는 제거되고 통과
-    expect(result.success).toBe(true);
-  });
-});
-
-describe('editRoadmapUpdatesSchema — training_structure', () => {
-  it('유효한 training_structure → 통과', () => {
-    const result = editRoadmapUpdatesSchema.safeParse({
-      training_structure: [validTrainingStructureItem],
-    });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
-  it('잘못된 level 값 → 실패', () => {
+  it('삭제된 v1 필드(competencies·training_structure_method·annual_plan)만 보내면 → 실패 (strip 후 수정 항목 없음)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      training_structure: [
-        { ...validTrainingStructureItem, level: 'INVALID' },
-      ],
+      competencies: [{ name: '데이터분석' }],
+      training_structure_method: '체계 수립 방법',
+      annual_plan: { items: [], usage_plan: '활용방안' },
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe('editRoadmapUpdatesSchema — annual_plan', () => {
-  it('유효한 annual_plan → 통과', () => {
+describe('editRoadmapUpdatesSchema — course_specs (DRAFT 중간 상태 허용)', () => {
+  it(`명세서가 ${ROADMAP_COURSE_SPEC_COUNT}개 미만이어도 편집 저장은 통과 (최소 개수는 FINAL 확정 시 validateRoadmap이 검증)`, () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      annual_plan: {
-        items: [validAnnualPlanItem],
-        usage_plan: '활용방안',
-      },
+      course_specs: makeCourseSpecs(2),
     });
     expect(result.success).toBe(true);
   });
 
-  it('items의 hours가 음수 → 실패', () => {
+  it('training_period 가 빈 문자열이어도 편집 저장은 통과 (사용자가 채우는 중)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      annual_plan: {
-        items: [{ ...validAnnualPlanItem, hours: -1 }],
-        usage_plan: '활용방안',
-      },
+      course_specs: [makeCourseSpec({ training_period: '' })],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('training_level 이 enum 외 값이면 여전히 실패 (loose 여도 enum 은 유지)', () => {
+    const result = editRoadmapUpdatesSchema.safeParse({
+      course_specs: [makeCourseSpec({ training_level: 'EXPERT' })],
     });
     expect(result.success).toBe(false);
   });
-});
 
-describe('editRoadmapUpdatesSchema — course_specs', () => {
-  it('course_specs 3개 이상 → 통과', () => {
+  it('course_name 이 빈 문자열이어도 편집 저장은 통과 (DRAFT 중간 상태)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      course_specs: [
-        { ...validCourseSpec, course_name: '과정1' },
-        { ...validCourseSpec, course_name: '과정2' },
-        { ...validCourseSpec, course_name: '과정3' },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('course_specs가 2개여도 편집 저장은 통과 (DRAFT 중간 상태, 최소 3개는 FINAL 확정 시 validateRoadmap에서 검증)', () => {
-    const result = editRoadmapUpdatesSchema.safeParse({
-      course_specs: [
-        { ...validCourseSpec, course_name: '과정1' },
-        { ...validCourseSpec, course_name: '과정2' },
-      ],
+      course_specs: [makeCourseSpec({ course_name: '' })],
     });
     expect(result.success).toBe(true);
   });
 
   it('subjects 배열이 비어있어도 편집 저장은 통과 (DRAFT 중간 상태)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      course_specs: [
-        { ...validCourseSpec, course_name: '과정1', subjects: [] },
-        { ...validCourseSpec, course_name: '과정2' },
-        { ...validCourseSpec, course_name: '과정3' },
-      ],
+      course_specs: [makeCourseSpec({ subjects: [] })],
     });
     expect(result.success).toBe(true);
   });
 
   it('subject.hours가 0이어도 편집 저장은 통과 (nonnegative — 사용자가 채우는 중)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      course_specs: [
-        {
-          ...validCourseSpec,
-          course_name: '과정1',
-          subjects: [{ name: '과목', details: '세부', hours: 0 }],
-        },
-        { ...validCourseSpec, course_name: '과정2' },
-        { ...validCourseSpec, course_name: '과정3' },
-      ],
+      course_specs: [makeCourseSpec({ subjects: [{ name: '과목', details: '세부', hours: 0 }] })],
     });
     expect(result.success).toBe(true);
   });
 
   it('subject.hours가 음수면 여전히 실패 (nonnegative)', () => {
     const result = editRoadmapUpdatesSchema.safeParse({
-      course_specs: [
-        {
-          ...validCourseSpec,
-          course_name: '과정1',
-          subjects: [{ name: '과목', details: '세부', hours: -1 }],
-        },
-      ],
+      course_specs: [makeCourseSpec({ subjects: [{ name: '과목', details: '세부', hours: -1 }] })],
     });
     expect(result.success).toBe(false);
   });
-
-  it('빈 역량 추가 저장 → 통과 (사용자가 역량 추가 버튼으로 새로 만든 직후)', () => {
-    const result = editRoadmapUpdatesSchema.safeParse({
-      competencies: [
-        { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
 });
 
-describe('editRoadmapUpdatesSchema — 전체 로드맵 구조', () => {
-  it('신규 구조 전체 → 통과', () => {
+describe('editRoadmapUpdatesSchema — 전체 v2 구조', () => {
+  it('v2 전체 구조 → 통과', () => {
     const result = editRoadmapUpdatesSchema.safeParse(buildValidRoadmap());
     expect(result.success).toBe(true);
   });

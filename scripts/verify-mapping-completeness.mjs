@@ -7,15 +7,15 @@
 //
 // exit 0 = 누락 0건, exit 1 = 검출
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "..");
+const ROOT = resolve(__dirname, '..');
 
-const jsonPath = resolve(ROOT, "docs/references/hwpx-placeholders.json");
-const data = JSON.parse(readFileSync(jsonPath, "utf-8"));
+const jsonPath = resolve(ROOT, 'docs/references/hwpx-placeholders.json');
+const data = JSON.parse(readFileSync(jsonPath, 'utf-8'));
 
 let errors = 0;
 
@@ -33,25 +33,25 @@ function isMeaningfulId(id) {
 const ids = new Set();
 const placeholders = new Set();
 
-for (const track of ["roadmap", "pbl"]) {
+for (const track of ['roadmap', 'pbl']) {
   const entries = data[track] || [];
   console.error(`[${track}] ${entries.length} entries`);
 
   for (const e of entries) {
-    check(typeof e.id === "string" && e.id.length > 0, `${track}: entry without id`);
+    check(typeof e.id === 'string' && e.id.length > 0, `${track}: entry without id`);
     check(!ids.has(e.id), `${track}: duplicate id ${e.id}`);
     ids.add(e.id);
 
-    check(typeof e.section === "string", `${track}/${e.id}: missing section`);
-    check(typeof e.strategy === "string", `${track}/${e.id}: missing strategy`);
+    check(typeof e.section === 'string', `${track}/${e.id}: missing section`);
+    check(typeof e.strategy === 'string', `${track}/${e.id}: missing strategy`);
 
-    if (e.strategy !== "static") {
+    if (e.strategy !== 'static') {
       check(
         e.placeholders || e.placeholder_template,
-        `${track}/${e.id}: non-static strategy must have placeholders or placeholder_template`,
+        `${track}/${e.id}: non-static strategy must have placeholders or placeholder_template`
       );
-      check(typeof e.py_key === "string", `${track}/${e.id}: non-static must have py_key`);
-      check(typeof e.ts_key === "string", `${track}/${e.id}: non-static must have ts_key`);
+      check(typeof e.py_key === 'string', `${track}/${e.id}: non-static must have py_key`);
+      check(typeof e.ts_key === 'string', `${track}/${e.id}: non-static must have ts_key`);
     }
 
     if (Array.isArray(e.placeholders)) {
@@ -64,16 +64,20 @@ for (const track of ["roadmap", "pbl"]) {
   }
 }
 
-// 47 섹션 cross-check (inventory 라벨 합 — R-01..R-23 + 보조 + P-01..P-29)
-// §6 표는 R-01..R-23 (23) + P-01..P-29 (29) = 52 라벨, 보조 -static entries 추가
+// 섹션 cross-check
+//   roadmap: 양식 v2 (2026-07-13 개정) 로 Ⅲ장이 축소되어 R-01..R-13 (13 섹션)
+//   pbl:     아직 v1 — P-01..P-29 (29 섹션)
 const meaningfulRoadmap = (data.roadmap || []).filter((e) => isMeaningfulId(e.id));
 const meaningfulPbl = (data.pbl || []).filter((e) => isMeaningfulId(e.id));
 const totalMeaningful = meaningfulRoadmap.length + meaningfulPbl.length;
 
 console.error(
-  `[cross-check] roadmap meaningful=${meaningfulRoadmap.length}, pbl meaningful=${meaningfulPbl.length}, total=${totalMeaningful}`,
+  `[cross-check] roadmap meaningful=${meaningfulRoadmap.length}, pbl meaningful=${meaningfulPbl.length}, total=${totalMeaningful}`
 );
-check(meaningfulRoadmap.length >= 23, `roadmap meaningful entries < 23 (got ${meaningfulRoadmap.length})`);
+check(
+  meaningfulRoadmap.length >= 13,
+  `roadmap meaningful entries < 13 (got ${meaningfulRoadmap.length})`
+);
 check(meaningfulPbl.length >= 29, `pbl meaningful entries < 29 (got ${meaningfulPbl.length})`);
 
 // strategy taxonomy 등록된 값만 사용
@@ -82,13 +86,13 @@ const allowedStrategies = new Set([
   // 결합 전략 (예: "single + pdf_attach", "checkbox_toggle + single")
 ]);
 
-for (const track of ["roadmap", "pbl"]) {
+for (const track of ['roadmap', 'pbl']) {
   for (const e of data[track] || []) {
     const parts = e.strategy.split(/\s*\+\s*/);
     for (const p of parts) {
       check(
         allowedStrategies.has(p),
-        `${track}/${e.id}: unknown strategy '${p}' (taxonomy: ${[...allowedStrategies].join(", ")})`,
+        `${track}/${e.id}: unknown strategy '${p}' (taxonomy: ${[...allowedStrategies].join(', ')})`
       );
     }
   }
@@ -101,5 +105,5 @@ if (errors > 0) {
   process.exit(1);
 }
 
-console.error("\nPASS: SSOT JSON 누락 0건 + 유효성 검증 통과");
+console.error('\nPASS: SSOT JSON 누락 0건 + 유효성 검증 통과');
 process.exit(0);

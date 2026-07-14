@@ -1,59 +1,28 @@
 import { describe, it, expect } from 'vitest';
 import { validateRoadmap } from './roadmap-validator';
-import type {
-  RoadmapResult,
-  RoadmapCompetency,
-  RoadmapTrainingStructureItem,
-  RoadmapAnnualPlanItem,
-  RoadmapCourseSpec,
-} from './roadmap-types';
+import type { RoadmapResult, RoadmapCourseSpec } from './roadmap-types';
 
 // ============================================================================
-// validateRoadmap — 신규 산인공 양식 기반 검증 정책 테스트
+// validateRoadmap — 신규 양식(v2) 검증 정책
+// ----------------------------------------------------------------------------
+// Ⅲ장이 "훈련체계 수립"에서 "훈련실시 계획 제안"으로 재설계되어
+// 역량 모델링·NCS·훈련체계도·연간 훈련계획이 양식에서 삭제되었다.
+// 남은 생성물은 훈련과정 명세서 6개뿐이며, 각 명세서에 훈련시기·훈련수준이 추가됐다.
+//
+// 정책:
+//  1. course_specs.length >= 6              (error)
+//  2. course_specs[*].subjects.length >= 1  (error)
+//  3. course_specs[*].course_name 공백       (error)
+//  4. course_specs[*].training_period 공백   (warning)
+//  5. diagnosis_summary 공백                 (warning)
 // ============================================================================
-
-function makeCompetency(overrides: Partial<RoadmapCompetency> = {}): RoadmapCompetency {
-  return {
-    name: '데이터분석',
-    definition: '정의',
-    knowledge: ['K1'],
-    skills: ['S1'],
-    attitudes: ['A1'],
-    ...overrides,
-  };
-}
-
-function makeStructureItem(
-  overrides: Partial<RoadmapTrainingStructureItem> = {},
-): RoadmapTrainingStructureItem {
-  return {
-    competency_name: '데이터분석',
-    level: 'BEGINNER',
-    content: '내용',
-    target_audience: '대상',
-    method: '집체',
-    goal: '목표',
-    ...overrides,
-  };
-}
-
-function makeAnnualItem(
-  overrides: Partial<RoadmapAnnualPlanItem> = {},
-): RoadmapAnnualPlanItem {
-  return {
-    competency_name: '데이터분석',
-    course_name: '데이터분석 입문',
-    format: '집체',
-    hours: 8,
-    notes: '',
-    ...overrides,
-  };
-}
 
 function makeCourseSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec {
   return {
+    training_period: '2026년 상반기',
+    training_level: 'BEGINNER',
     course_name: '데이터분석 입문',
-    format: '집체',
+    training_method: '집체',
     recommended_program: '일반직무훈련',
     goal: '목표',
     main_content: '내용',
@@ -61,6 +30,10 @@ function makeCourseSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCour
     subjects: [{ name: '과목1', details: '세부', hours: 4 }],
     ...overrides,
   };
+}
+
+function makeSixSpecs(): RoadmapCourseSpec[] {
+  return ['A', 'B', 'C', 'D', 'E', 'F'].map((n) => makeCourseSpec({ course_name: `과정${n}` }));
 }
 
 function makeValidRoadmap(overrides: Partial<RoadmapResult> = {}): RoadmapResult {
@@ -72,234 +45,69 @@ function makeValidRoadmap(overrides: Partial<RoadmapResult> = {}): RoadmapResult
       selected_tasks: '선정 과업',
       main_content: '수립 주요내용',
     },
-    competencies: [makeCompetency()],
-    ncs_used: true,
-    ncs_methodology: 'NCS 빅데이터분석 세분류 활용',
-    ncs_derivation_method: '',
-    training_structure: [makeStructureItem()],
-    training_structure_method: '역량 기준 3수준 체계 수립',
-    annual_plan: {
-      items: [makeAnnualItem({ course_name: '과정A' })],
-      usage_plan: '활용방안',
-    },
-    course_specs: [
-      makeCourseSpec({ course_name: '과정A' }),
-      makeCourseSpec({ course_name: '과정B' }),
-      makeCourseSpec({ course_name: '과정C' }),
-    ],
+    course_specs: makeSixSpecs(),
     ...overrides,
   };
 }
 
 describe('validateRoadmap — 정상 케이스', () => {
-  it('완전한 로드맵 → isValid=true, errors=[]', () => {
-    const roadmap = makeValidRoadmap({
-      annual_plan: {
-        items: [
-          makeAnnualItem({ course_name: '과정A' }),
-          makeAnnualItem({ course_name: '과정B' }),
-          makeAnnualItem({ course_name: '과정C' }),
-        ],
-        usage_plan: '활용방안',
-      },
-    });
-    const result = validateRoadmap(roadmap);
+  it('명세서 6개를 갖춘 로드맵 → isValid=true, errors=[]', () => {
+    const result = validateRoadmap(makeValidRoadmap());
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual([]);
   });
 });
 
-describe('validateRoadmap — 필수 필드 검증', () => {
-  it('competencies가 비어있으면 error', () => {
-    const result = validateRoadmap(makeValidRoadmap({ competencies: [] }));
+describe('validateRoadmap — 훈련과정 명세서 개수 (신규 양식: 6개)', () => {
+  it('course_specs가 6개 미만이면 error', () => {
+    const result = validateRoadmap(makeValidRoadmap({ course_specs: makeSixSpecs().slice(0, 5) }));
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('역량'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('명세서') && e.includes('6'))).toBe(true);
   });
 
-  it('training_structure가 비어있으면 error', () => {
-    const result = validateRoadmap(makeValidRoadmap({ training_structure: [] }));
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('훈련체계'))).toBe(true);
-  });
-
-  it('annual_plan.items가 비어있으면 error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        annual_plan: { items: [], usage_plan: '' },
-      }),
-    );
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('연간'))).toBe(true);
-  });
-
-  it('course_specs가 3개 미만이면 error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        course_specs: [
-          makeCourseSpec({ course_name: '과정A' }),
-          makeCourseSpec({ course_name: '과정B' }),
-        ],
-      }),
-    );
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('명세서') && e.includes('3'))).toBe(true);
-  });
-
-  it('diagnosis_summary가 비어있으면 warning', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        diagnosis_summary: '',
-        annual_plan: {
-          items: [
-            makeAnnualItem({ course_name: '과정A' }),
-            makeAnnualItem({ course_name: '과정B' }),
-            makeAnnualItem({ course_name: '과정C' }),
-          ],
-          usage_plan: '활용',
-        },
-      }),
-    );
-    expect(result.warnings.some((w) => w.includes('진단'))).toBe(true);
-  });
-
-  it('training_structure_method가 비어있으면 warning', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        training_structure_method: '',
-        annual_plan: {
-          items: [
-            makeAnnualItem({ course_name: '과정A' }),
-            makeAnnualItem({ course_name: '과정B' }),
-            makeAnnualItem({ course_name: '과정C' }),
-          ],
-          usage_plan: '활용',
-        },
-      }),
-    );
-    expect(result.warnings.some((w) => w.includes('훈련체계 수립 방법'))).toBe(true);
+  it('course_specs가 정확히 6개면 개수 error 없음', () => {
+    const result = validateRoadmap(makeValidRoadmap());
+    expect(result.errors.filter((e) => e.includes('명세서'))).toEqual([]);
   });
 });
 
-describe('validateRoadmap — 명세서 subjects 검증', () => {
+describe('validateRoadmap — 명세서 신규 필드 (훈련시기·훈련수준)', () => {
+  it('training_period가 비어있으면 warning', () => {
+    const specs = makeSixSpecs();
+    specs[0] = makeCourseSpec({ course_name: '과정A', training_period: '' });
+    const result = validateRoadmap(makeValidRoadmap({ course_specs: specs }));
+    expect(result.warnings.some((w) => w.includes('훈련시기'))).toBe(true);
+  });
+
+  it('training_level 이 ADVANCED 여도 정상 통과한다 (3단계 유니온)', () => {
+    const specs = makeSixSpecs();
+    specs[0] = makeCourseSpec({ course_name: '과정A', training_level: 'ADVANCED' });
+    const result = validateRoadmap(makeValidRoadmap({ course_specs: specs }));
+    expect(result.isValid).toBe(true);
+  });
+});
+
+describe('validateRoadmap — 명세서 필수 항목', () => {
   it('course_specs[*].subjects가 비어있으면 error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        course_specs: [
-          makeCourseSpec({ course_name: '과정A', subjects: [] }),
-          makeCourseSpec({ course_name: '과정B' }),
-          makeCourseSpec({ course_name: '과정C' }),
-        ],
-      }),
-    );
+    const specs = makeSixSpecs();
+    specs[0] = makeCourseSpec({ course_name: '과정A', subjects: [] });
+    const result = validateRoadmap(makeValidRoadmap({ course_specs: specs }));
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('교과목'))).toBe(true);
   });
-});
 
-describe('validateRoadmap — 루트 NCS 일관성 (표 전체 단위)', () => {
-  it('ncs_used=true 이지만 ncs_methodology 공백 → error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({ ncs_used: true, ncs_methodology: '' }),
-    );
+  it('course_specs[*].course_name이 공백이면 error', () => {
+    const specs = makeSixSpecs();
+    specs[0] = makeCourseSpec({ course_name: '' });
+    const result = validateRoadmap(makeValidRoadmap({ course_specs: specs }));
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('NCS 활용'))).toBe(true);
-  });
-
-  it('ncs_used=false 이지만 ncs_derivation_method 공백 → error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        ncs_used: false,
-        ncs_methodology: '',
-        ncs_derivation_method: '',
-      }),
-    );
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('NCS 도출'))).toBe(true);
-  });
-
-  it('ncs_used=false + ncs_derivation_method 제공 → error 없음', () => {
-    const roadmap = makeValidRoadmap({
-      ncs_used: false,
-      ncs_methodology: '',
-      ncs_derivation_method: '현업 인터뷰 기반',
-      annual_plan: {
-        items: [
-          makeAnnualItem({ course_name: '과정A' }),
-          makeAnnualItem({ course_name: '과정B' }),
-          makeAnnualItem({ course_name: '과정C' }),
-        ],
-        usage_plan: '활용',
-      },
-    });
-    const result = validateRoadmap(roadmap);
-    expect(result.errors.filter((e) => e.includes('NCS'))).toEqual([]);
+    expect(result.errors.some((e) => e.includes('과정명'))).toBe(true);
   });
 });
 
-describe('validateRoadmap — 역량 참조 정합성', () => {
-  it('training_structure의 competency_name이 competencies에 없으면 error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        training_structure: [makeStructureItem({ competency_name: '미존재역량' })],
-      }),
-    );
-    expect(result.isValid).toBe(false);
-    expect(
-      result.errors.some((e) => e.includes('미존재역량') && e.includes('훈련체계')),
-    ).toBe(true);
-  });
-
-  it('annual_plan.items의 competency_name이 competencies에 없으면 error', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        annual_plan: {
-          items: [
-            makeAnnualItem({ competency_name: '미존재역량', course_name: '과정A' }),
-            makeAnnualItem({ course_name: '과정B' }),
-            makeAnnualItem({ course_name: '과정C' }),
-          ],
-          usage_plan: '활용',
-        },
-      }),
-    );
-    expect(result.isValid).toBe(false);
-    expect(
-      result.errors.some((e) => e.includes('미존재역량') && e.includes('연간')),
-    ).toBe(true);
-  });
-});
-
-describe('validateRoadmap — 명세서/연간계획 과정명 정합성', () => {
-  it('course_specs의 course_name이 annual_plan.items에 없으면 warning', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        annual_plan: {
-          items: [makeAnnualItem({ course_name: '과정X' })],
-          usage_plan: '활용',
-        },
-        course_specs: [
-          makeCourseSpec({ course_name: '과정A' }),
-          makeCourseSpec({ course_name: '과정B' }),
-          makeCourseSpec({ course_name: '과정C' }),
-        ],
-      }),
-    );
-    expect(result.warnings.some((w) => w.includes('과정A'))).toBe(true);
-  });
-
-  it('annual_plan.items와 course_specs의 course_name이 일치하면 warning 없음', () => {
-    const result = validateRoadmap(
-      makeValidRoadmap({
-        annual_plan: {
-          items: [
-            makeAnnualItem({ course_name: '과정A' }),
-            makeAnnualItem({ course_name: '과정B' }),
-            makeAnnualItem({ course_name: '과정C' }),
-          ],
-          usage_plan: '활용',
-        },
-      }),
-    );
-    expect(result.warnings.filter((w) => w.includes('명세서'))).toEqual([]);
+describe('validateRoadmap — 진단 요약', () => {
+  it('diagnosis_summary가 비어있으면 warning', () => {
+    const result = validateRoadmap(makeValidRoadmap({ diagnosis_summary: '' }));
+    expect(result.warnings.some((w) => w.includes('진단'))).toBe(true);
   });
 });

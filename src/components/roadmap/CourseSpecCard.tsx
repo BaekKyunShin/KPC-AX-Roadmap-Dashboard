@@ -1,10 +1,23 @@
 'use client';
 
-import { Trash2, Plus, BookOpen, FileText, Target, Users, Wrench, ClipboardList } from 'lucide-react';
+import {
+  Trash2,
+  Plus,
+  BookOpen,
+  FileText,
+  Target,
+  Users,
+  Wrench,
+  ClipboardList,
+  CalendarDays,
+  GraduationCap,
+} from 'lucide-react';
 import type {
   RoadmapCourseSpec,
   RoadmapCourseSubject,
+  TrainingLevel,
 } from '@/lib/services/roadmap/roadmap-types';
+import { TRAINING_LEVEL_LABEL } from '@/lib/services/roadmap/roadmap-types';
 import {
   Accordion,
   AccordionContent,
@@ -21,11 +34,12 @@ import {
   TableNumericCell,
   SectionNumberBadge,
   CARD_HEADER_CLASS,
+  TABLE_CELL_TEXT_CLASS,
 } from '@/components/roadmap/shared';
 import { splitByUnit } from '@/lib/utils/list-format';
 
 // ============================================================================
-// 타입
+// 타입 & 상수
 // ============================================================================
 
 interface CourseSpecCardProps {
@@ -43,6 +57,37 @@ const EMPTY_SUBJECT: RoadmapCourseSubject = {
 };
 
 const DEFAULT_ACCORDION_VALUES = ['profile', 'subjects'];
+
+/** 프로파일 표에서 자유 텍스트로 편집하는 필드 (과정명은 카드 헤더에서 편집). */
+type ProfileTextKey =
+  | 'training_period'
+  | 'training_method'
+  | 'recommended_program'
+  | 'goal'
+  | 'main_content'
+  | 'target_audience';
+
+interface ProfileRow {
+  key: ProfileTextKey | 'training_level';
+  label: string;
+  icon: typeof BookOpen;
+}
+
+/**
+ * 과정 프로파일 표 행 — 산인공 양식 v2 명세서 순서.
+ * 훈련시기·훈련수준이 v2에서 신규 추가되었고, v1 `format`은 `training_method`(훈련방법)로 대체.
+ */
+const PROFILE_ROWS: ProfileRow[] = [
+  { key: 'training_period', label: '훈련시기', icon: CalendarDays },
+  { key: 'training_level', label: '훈련수준', icon: GraduationCap },
+  { key: 'training_method', label: '훈련방법', icon: BookOpen },
+  { key: 'recommended_program', label: '추천 훈련사업', icon: Wrench },
+  { key: 'goal', label: '훈련 목표', icon: Target },
+  { key: 'main_content', label: '주요 훈련 내용', icon: FileText },
+  { key: 'target_audience', label: '훈련 대상', icon: Users },
+];
+
+const TRAINING_LEVEL_OPTIONS: TrainingLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
 
 // ============================================================================
 // 메인 컴포넌트
@@ -183,50 +228,94 @@ interface ProfileSectionProps {
 }
 
 function ProfileSection({ spec, index, canEdit, onUpdate }: ProfileSectionProps) {
-  const fields: {
-    key: keyof RoadmapCourseSpec;
-    label: string;
-    icon: typeof BookOpen;
-  }[] = [
-    { key: 'format', label: '훈련형태', icon: BookOpen },
-    { key: 'recommended_program', label: '추천 훈련사업', icon: Wrench },
-    { key: 'goal', label: '훈련 목표', icon: Target },
-    { key: 'main_content', label: '주요 훈련 내용', icon: FileText },
-    { key: 'target_audience', label: '훈련 대상', icon: Users },
-  ];
-
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       <table className="w-full text-sm">
         <tbody className="divide-y divide-border">
-          {fields.map((f) => {
-            const Icon = f.icon;
-            const value = (spec[f.key] ?? '') as string;
-            const inputId = `course-${index}-${f.key}`;
+          {PROFILE_ROWS.map((row) => {
+            const Icon = row.icon;
+            const inputId = `course-${index}-${row.key}`;
+            const ariaLabel = `명세서 ${index + 1} ${row.label}`;
+
             return (
-              <tr key={f.key} className="align-top">
+              <tr key={row.key} className="align-top">
                 <td className="min-w-[140px] bg-muted/50 px-3 py-3 text-left font-medium text-muted-foreground whitespace-normal break-keep">
                   <Label htmlFor={inputId} className="flex items-center gap-2 cursor-pointer">
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    {f.label}
+                    {row.label}
                   </Label>
                 </td>
-                <TableTextCell
-                  canEdit={canEdit}
-                  value={value}
-                  onChange={(v) =>
-                    onUpdate({ [f.key]: v } as Partial<RoadmapCourseSpec>)
-                  }
-                  placeholder={f.label}
-                  ariaLabel={`명세서 ${index + 1} ${f.label}`}
-                  readOnlyClassName="break-keep"
-                />
+
+                {row.key === 'training_level' ? (
+                  <TrainingLevelCell
+                    canEdit={canEdit}
+                    value={spec.training_level}
+                    inputId={inputId}
+                    ariaLabel={ariaLabel}
+                    onChange={(v) => onUpdate({ training_level: v })}
+                  />
+                ) : (
+                  <TableTextCell
+                    canEdit={canEdit}
+                    value={spec[row.key] ?? ''}
+                    onChange={(v) => onUpdate({ [row.key]: v } as Partial<RoadmapCourseSpec>)}
+                    placeholder={row.label}
+                    ariaLabel={ariaLabel}
+                    readOnlyClassName="break-keep"
+                  />
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ============================================================================
+// 훈련수준 셀 (enum) — 읽기: 뱃지 / 편집: 네이티브 select
+// ----------------------------------------------------------------------------
+// 자유 텍스트가 아닌 3지선다 enum 이므로 TableTextCell 대신 select 를 쓴다.
+// (InlineSelectField 와 동일하게 네이티브 select — 표 셀 안에서 가볍고 접근성이 좋다)
+// ============================================================================
+
+interface TrainingLevelCellProps {
+  canEdit: boolean;
+  value: TrainingLevel;
+  inputId: string;
+  ariaLabel: string;
+  onChange: (value: TrainingLevel) => void;
+}
+
+function TrainingLevelCell({
+  canEdit,
+  value,
+  inputId,
+  ariaLabel,
+  onChange,
+}: TrainingLevelCellProps) {
+  return (
+    <td className={TABLE_CELL_TEXT_CLASS}>
+      {canEdit ? (
+        <select
+          id={inputId}
+          value={value}
+          onChange={(e) => onChange(e.target.value as TrainingLevel)}
+          aria-label={ariaLabel}
+          className="h-9 w-full max-w-[180px] rounded-md border border-input bg-background px-2 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {TRAINING_LEVEL_OPTIONS.map((level) => (
+            <option key={level} value={level}>
+              {TRAINING_LEVEL_LABEL[level]}
+            </option>
+          ))}
+        </select>
+      ) : (
+        // 매핑되지 않은 legacy 값이 들어와도 빈 뱃지가 되지 않도록 원본값 fallback
+        <Badge variant="secondary">{TRAINING_LEVEL_LABEL[value] ?? value}</Badge>
+      )}
+    </td>
   );
 }
 

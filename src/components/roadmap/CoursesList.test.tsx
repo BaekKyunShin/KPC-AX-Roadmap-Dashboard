@@ -5,13 +5,15 @@ import { CoursesList } from './CoursesList';
 import type { RoadmapCourseSpec } from '@/lib/services/roadmap/roadmap-types';
 
 // ============================================================================
-// 테스트 데이터
+// 테스트 데이터 (산인공 양식 v2 — 명세서 6개 기준)
 // ============================================================================
 
 function makeSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec {
   return {
+    training_period: '2026년 1분기',
+    training_level: 'BEGINNER',
     course_name: '과정 A',
-    format: '집체',
+    training_method: '집체',
     recommended_program: '내일배움카드',
     goal: '기본 역량 확보',
     main_content: '이론 + 실습',
@@ -22,9 +24,7 @@ function makeSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec
 }
 
 function makeSpecs(count: number): RoadmapCourseSpec[] {
-  return Array.from({ length: count }, (_, i) =>
-    makeSpec({ course_name: `과정 ${i + 1}` }),
-  );
+  return Array.from({ length: count }, (_, i) => makeSpec({ course_name: `과정 ${i + 1}` }));
 }
 
 // ============================================================================
@@ -45,37 +45,31 @@ describe('CoursesList', () => {
     });
   });
 
-  describe('최소 개수 경고', () => {
-    it('canEdit=true && specs.length < 3이면 경고 Alert가 표시된다', () => {
-      render(
-        <CoursesList specs={makeSpecs(2)} canEdit={true} onChange={vi.fn()} />,
-      );
-      expect(screen.getByText(/최소 3개 필요/)).toBeInTheDocument();
+  describe('최소 개수 경고 (v2: 6개)', () => {
+    it('canEdit=true && specs.length < 6이면 경고 Alert가 표시된다', () => {
+      render(<CoursesList specs={makeSpecs(5)} canEdit={true} onChange={vi.fn()} />);
+      expect(screen.getByText(/최소 6개 필요/)).toBeInTheDocument();
       expect(
-        screen.getByText(/산인공 양식은 최소 3개의 훈련과정 명세서를 요구합니다/),
+        screen.getByText(/산인공 양식은 최소 6개의 훈련과정 명세서를 요구합니다/)
       ).toBeInTheDocument();
     });
 
-    it('canEdit=true && specs.length >= 3이면 경고가 표시되지 않는다', () => {
-      render(
-        <CoursesList specs={makeSpecs(3)} canEdit={true} onChange={vi.fn()} />,
-      );
-      expect(screen.queryByText(/최소 3개 필요/)).not.toBeInTheDocument();
+    it('canEdit=true && specs.length >= 6이면 경고가 표시되지 않는다', () => {
+      render(<CoursesList specs={makeSpecs(6)} canEdit={true} onChange={vi.fn()} />);
+      expect(screen.queryByText(/최소 6개 필요/)).not.toBeInTheDocument();
     });
 
     it('canEdit=false이면 경고가 표시되지 않는다 (표시 전용)', () => {
       render(<CoursesList specs={makeSpecs(1)} canEdit={false} />);
-      expect(screen.queryByText(/최소 3개 필요/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/최소 6개 필요/)).not.toBeInTheDocument();
     });
   });
 
   describe('편집 동작', () => {
-    it('명세서 추가 버튼 클릭 시 onChange가 specs.length+1로 호출된다', async () => {
+    it('명세서 추가 버튼 클릭 시 onChange가 specs.length+1로 호출된다 (v2 기본값 포함)', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      render(
-        <CoursesList specs={makeSpecs(3)} canEdit={true} onChange={onChange} />,
-      );
+      render(<CoursesList specs={makeSpecs(3)} canEdit={true} onChange={onChange} />);
 
       await user.click(screen.getByRole('button', { name: /명세서 추가/ }));
 
@@ -84,14 +78,16 @@ describe('CoursesList', () => {
       expect(arg).toHaveLength(4);
       expect(arg[3].course_name).toBe('');
       expect(arg[3].subjects).toEqual([]);
+      // v2 신규 필드 기본값
+      expect(arg[3].training_period).toBe('');
+      expect(arg[3].training_level).toBe('BEGINNER');
+      expect(arg[3].training_method).toBe('');
     });
 
     it('카드의 onDelete 호출 시 onChange가 specs.length-1로 호출된다', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      render(
-        <CoursesList specs={makeSpecs(3)} canEdit={true} onChange={onChange} />,
-      );
+      render(<CoursesList specs={makeSpecs(3)} canEdit={true} onChange={onChange} />);
 
       const deleteBtn = screen.getByRole('button', { name: /명세서 1 삭제/ });
       await user.click(deleteBtn);
@@ -108,20 +104,20 @@ describe('CoursesList', () => {
       const onChange = vi.fn();
       render(
         <CoursesList
-          specs={makeSpecs(3).map((s) => ({ ...s, format: '' }))}
+          specs={makeSpecs(3).map((s) => ({ ...s, training_method: '' }))}
           canEdit={true}
           onChange={onChange}
-        />,
+        />
       );
 
-      const formatInput = screen.getByLabelText(/명세서 1 훈련형태/);
-      await user.type(formatInput, '집');
+      const methodInput = screen.getByLabelText(/명세서 1 훈련방법/);
+      await user.type(methodInput, '집');
 
       expect(onChange).toHaveBeenCalled();
       const lastArg = onChange.mock.calls[onChange.mock.calls.length - 1][0] as RoadmapCourseSpec[];
       expect(lastArg).toHaveLength(3);
-      expect(lastArg[0].format).toBe('집');
-      expect(lastArg[1].format).toBe('');
+      expect(lastArg[0].training_method).toBe('집');
+      expect(lastArg[1].training_method).toBe('');
     });
   });
 
@@ -132,6 +128,12 @@ describe('CoursesList', () => {
       expect(screen.getByText('명세서 #2')).toBeInTheDocument();
       expect(screen.getByText('과정 1')).toBeInTheDocument();
       expect(screen.getByText('과정 2')).toBeInTheDocument();
+    });
+
+    it('6개 명세서를 모두 렌더링한다 (v2 양식 기준)', () => {
+      render(<CoursesList specs={makeSpecs(6)} canEdit={false} />);
+      expect(screen.getByText('명세서 #6')).toBeInTheDocument();
+      expect(screen.getByText('과정 6')).toBeInTheDocument();
     });
   });
 });

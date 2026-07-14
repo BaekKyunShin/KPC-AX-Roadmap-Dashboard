@@ -22,6 +22,7 @@ import {
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
+import type { RoadmapCourseSpec } from '@/lib/services/roadmap';
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
@@ -65,7 +66,8 @@ const { mockAfter, flushAfterCallbacks, pendingCallbacks } = vi.hoisted(() => {
   const pending: Promise<unknown>[] = [];
   const after = vi.fn((fn: () => void | Promise<unknown>) => {
     const r = fn();
-    if (r && typeof (r as Promise<unknown>).then === 'function') pending.push(r as Promise<unknown>);
+    if (r && typeof (r as Promise<unknown>).then === 'function')
+      pending.push(r as Promise<unknown>);
   });
   async function flush() {
     await Promise.all(pending);
@@ -89,6 +91,22 @@ const USER_A = '550e8400-e29b-41d4-a716-446655440001';
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440020';
 const VERSION_ID = '550e8400-e29b-41d4-a716-446655440030';
 
+/** Ⅲ 훈련과정 명세서 (양식 v2 — 훈련시기·훈련수준·훈련방법). */
+function makeCourseSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec {
+  return {
+    training_period: '2026년 1분기',
+    training_level: 'INTERMEDIATE',
+    course_name: 'ML 기초 과정',
+    training_method: '집체',
+    recommended_program: 'S-OJT',
+    goal: '기초 지식 확보',
+    main_content: '지도학습 / 비지도학습',
+    target_audience: '현업 담당자',
+    subjects: [{ name: 'Python 기초', details: '문법·라이브러리', hours: 8 }],
+    ...overrides,
+  };
+}
+
 async function mockCachedAuth({
   authed = true,
   role = 'CONSULTANT_APPROVED',
@@ -96,10 +114,10 @@ async function mockCachedAuth({
 }: { authed?: boolean; role?: string | null; status?: string | null } = {}) {
   const cached = await import('@/lib/supabase/cached');
   vi.mocked(cached.getCachedUser).mockResolvedValue(
-    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never,
+    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never
   );
   vi.mocked(cached.getCachedProfile).mockResolvedValue(
-    (authed ? { id: USER_A, role, status } : null) as never,
+    (authed ? { id: USER_A, role, status } : null) as never
   );
 }
 
@@ -237,7 +255,7 @@ describe('editRoadmapV2', () => {
       expect.objectContaining({
         companyRequirements: { status: '갱신' },
       }),
-      { autoSave: true },
+      { autoSave: true }
     );
   });
 
@@ -266,7 +284,7 @@ describe('editRoadmapV2', () => {
     expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
       PROJECT_ID,
       { taskAnalysis: draft },
-      { autoSave: true },
+      { autoSave: true }
     );
   });
 
@@ -291,7 +309,7 @@ describe('editRoadmapV2', () => {
         taskAnalysisNote: '신규 메모',
         targetTask: { name: '결산 자동화', reason: '효율' },
       },
-      { autoSave: true },
+      { autoSave: true }
     );
   });
 
@@ -334,7 +352,7 @@ describe('editRoadmapV2', () => {
     expect(updateRoadmapManually).toHaveBeenCalledWith(
       VERSION_ID,
       USER_A,
-      expect.objectContaining({ setup_necessity: '변경된 필요성' }),
+      expect.objectContaining({ setup_necessity: '변경된 필요성' })
     );
     const call = vi.mocked(updateRoadmapManually).mock.calls[0];
     expect(call[2]).not.toHaveProperty('company_requirements');
@@ -346,18 +364,39 @@ describe('editRoadmapV2', () => {
         companyRequirements: { status: '갱신' },
         taskAnalysisNote: '메모 갱신',
       },
-      { autoSave: true },
+      { autoSave: true }
     );
   });
 
-  it('Ⅲ-1 역량 + NCS + Ⅲ-4 course_specs 혼합 → 전체 전달', async () => {
+  // 회귀 가드 (2026-05-18 이력) — extractRoadmapFieldsFromPayload 가 키를 빠뜨리면
+  // 클라이언트가 보낸 편집이 updateRoadmapManually 까지 도달하지 못하고 조용히 사라진다.
+  // 양식 v2 의 Ⅲ장은 훈련과정 명세서 하나뿐이므로 course_specs 누락은 곧 Ⅲ장 전체 유실.
+  it('Ⅲ course_specs patch → updateRoadmapManually 에 그대로 전달 (회귀 가드)', async () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
     await mockCachedAuth();
     serverMock.addResult({
-      data: {
-        project_id: PROJECT_ID,
-        projects: { assigned_consultant_id: USER_A },
-      },
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
+      error: null,
+    });
+    vi.mocked(updateRoadmapManually).mockResolvedValue({
+      success: true,
+      validation: { is_valid: true, errors: [] },
+    } as never);
+
+    const newSpecs = [makeCourseSpec(), makeCourseSpec({ course_name: 'ML 심화 과정' })];
+    const r = await editRoadmapV2(VERSION_ID, { course_specs: newSpecs });
+
+    expect(r.success).toBe(true);
+    const call = vi.mocked(updateRoadmapManually).mock.calls[0];
+    expect(call[2]).toHaveProperty('course_specs');
+    expect(call[2].course_specs).toEqual(newSpecs);
+  });
+
+  it('Ⅰ-1 setup_necessity + Ⅲ course_specs 혼합 → 두 필드 모두 전달', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+    await mockCachedAuth();
+    serverMock.addResult({
+      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
       error: null,
     });
     vi.mocked(updateRoadmapManually).mockResolvedValue({
@@ -366,68 +405,37 @@ describe('editRoadmapV2', () => {
     } as never);
 
     const r = await editRoadmapV2(VERSION_ID, {
-      competencies: [
-        {
-          name: '역량1',
-          definition: '정의',
-          knowledge: ['k1'],
-          skills: ['s1'],
-          attitudes: ['a1'],
-        },
-      ],
-      ncs_used: false,
-      ncs_derivation_method: '인터뷰 기반',
-      training_structure_method: '방법',
-      course_specs: [],
+      setup_necessity: '변경된 수립 배경',
+      course_specs: [makeCourseSpec()],
     });
 
     expect(r.success).toBe(true);
     const call = vi.mocked(updateRoadmapManually).mock.calls[0];
-    expect(call[2]).toMatchObject({
-      ncs_used: false,
-      ncs_derivation_method: '인터뷰 기반',
-      training_structure_method: '방법',
-    });
-    expect(call[2].competencies).toHaveLength(1);
+    expect(call[2].setup_necessity).toBe('변경된 수립 배경');
+    expect(call[2].course_specs).toHaveLength(1);
   });
 
-  // 회귀 가드 (2026-05-18) — Ⅲ-2 "행 추가" / Ⅲ-3 "행 추가" 가 동작하지 않던 버그.
-  // 원인: extractRoadmapFieldsFromPayload 가 training_structure 와 annual_plan 을
-  // 빠뜨려, EditableTable.onChange → onEdit({training_structure: [...]}) 가 호출되어도
-  // updateRoadmapManually 에 전달되지 않고 사라졌다.
-  it('Ⅲ-2 training_structure patch → updateRoadmapManually 에 그대로 전달', async () => {
+  // Ⅰ-3 요약(main_content) 은 outcome_summary 하위 필드다. updateRoadmapManually 가
+  // outcome_summary 를 통째로 교체하므로, 현재 값을 읽어 병합한 완전한 객체를 보내야
+  // 나머지 두 필드(역량수준·선정과업) 가 날아가지 않는다.
+  it('Ⅰ-3 main_content patch → 현재 outcome_summary 와 병합해 전달', async () => {
     const { updateRoadmapManually } = await import('@/lib/services/roadmap');
     await mockCachedAuth();
+    // buildOutcomeSummaryPatch — 현재 버전의 pbl_course(legacy 컬럼) 조회
     serverMock.addResult({
-      data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
-      error: null,
-    });
-    vi.mocked(updateRoadmapManually).mockResolvedValue({
-      success: true,
-      validation: { is_valid: true, errors: [] },
-    } as never);
-
-    const newStructure = [
-      {
-        competency_name: '역량1',
-        level: 'BEGINNER' as const,
-        content: '내용',
-        target_audience: '대상',
-        method: '집체',
-        goal: '목표',
+      data: {
+        pbl_course: {
+          setup_necessity: '기존 배경',
+          outcome_summary: {
+            ai_competency_level: 'ADVANCED',
+            selected_tasks: '결산 자동화',
+            main_content: '기존 요약',
+          },
+        },
       },
-    ];
-    const r = await editRoadmapV2(VERSION_ID, { training_structure: newStructure });
-
-    expect(r.success).toBe(true);
-    const call = vi.mocked(updateRoadmapManually).mock.calls[0];
-    expect(call[2]).toHaveProperty('training_structure');
-    expect(call[2].training_structure).toEqual(newStructure);
-  });
-
-  it('Ⅲ-3 annual_plan patch → updateRoadmapManually 에 그대로 전달', async () => {
-    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
-    await mockCachedAuth();
+      error: null,
+    });
+    // requireConsultantRoadmapAccess (editRoadmapManually 내부)
     serverMock.addResult({
       data: { project_id: PROJECT_ID, projects: { assigned_consultant_id: USER_A } },
       error: null,
@@ -437,24 +445,26 @@ describe('editRoadmapV2', () => {
       validation: { is_valid: true, errors: [] },
     } as never);
 
-    const newAnnualPlan = {
-      items: [
-        {
-          competency_name: '역량1',
-          course_name: '과정1',
-          format: '집체',
-          hours: 16,
-          notes: '',
-        },
-      ],
-      usage_plan: '활용',
-    };
-    const r = await editRoadmapV2(VERSION_ID, { annual_plan: newAnnualPlan });
+    const r = await editRoadmapV2(VERSION_ID, { main_content: '수정된 요약' });
 
     expect(r.success).toBe(true);
     const call = vi.mocked(updateRoadmapManually).mock.calls[0];
-    expect(call[2]).toHaveProperty('annual_plan');
-    expect(call[2].annual_plan).toEqual(newAnnualPlan);
+    expect(call[2].outcome_summary).toEqual({
+      ai_competency_level: 'ADVANCED',
+      selected_tasks: '결산 자동화',
+      main_content: '수정된 요약',
+    });
+  });
+
+  it('main_content patch + 버전 조회 실패 → error (updateRoadmapManually 미호출)', async () => {
+    const { updateRoadmapManually } = await import('@/lib/services/roadmap');
+    await mockCachedAuth();
+    serverMock.addResult({ data: null, error: null });
+
+    const r = await editRoadmapV2(VERSION_ID, { main_content: '수정된 요약' });
+
+    expect(r.success).toBe(false);
+    expect(updateRoadmapManually).not.toHaveBeenCalled();
   });
 });
 

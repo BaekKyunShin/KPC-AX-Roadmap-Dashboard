@@ -1,111 +1,17 @@
 {
-  "diagnosis_summary": "제조업 중견기업으로 AI 도입 초기 단계이며, 품질검사 자동화 과업을 중심으로 단계별 AI 역량 강화가 필요한 상황입니다.",
-  "setup_necessity": "현재 품질검사 업무는 전량 수작업으로 진행되어 불량률 감지에 많은 시간이 소요되고 있습니다. AI 비전 검사 도입을 통해 불량 감지율을 향상시키고 생산성을 높이기 위해 AI 훈련 로드맵 수립이 필요합니다.",
+  "diagnosis_summary": "제조업 중견기업으로 ERP는 운영 중이나 생산 실적 집계·불량 판정이 수기 중심이라 입력 오류와 리드타임 지연이 반복되고 있습니다. 데이터는 축적되어 있으나 정제·라벨링 체계가 없어 AI 적용의 선행 조건이 미비하며, 노코드 도구 기반의 단계적 역량 향상이 필요한 상황입니다.",
+  "setup_necessity": "현재 품질검사 업무는 전량 수작업으로 진행되어 검사자 숙련도에 따라 불량 판정 편차가 발생하고 있으며, 생산 실적 집계에 일 2시간 이상이 소요되고 있습니다. AI 비전 검사 도입을 통해 불량 감지율을 향상시키고 생산성을 높이기 위해 AI 훈련 로드맵 수립이 필요합니다.",
   "outcome_summary": {
-    "ai_competency_level": "BEGINNER",
-    "selected_tasks": "AI 비전 검사 시스템 도입을 위한 데이터 수집·전처리 및 모델 운영 역량을 핵심 훈련 과업으로 선정하였습니다.",
-    "main_content": "초급·중급·고급 3단계 AI 역량 체계를 수립하여 데이터 분석, AI 모델 활용, AI 솔루션 운영 총 3개 과정을 설계하였습니다. 훈련 기간은 연간 48시간 내외로 구성되며, 집체·혼합 형태로 운영됩니다."
-  },
-  "competencies": [
-    {
-      "name": "AI 데이터 분석",
-      "definition": "업무 데이터를 수집·가공·분석하여 AI 모델 학습에 활용할 수 있는 역량",
-      "knowledge": ["통계 기초 (기술통계, 분포)", "데이터 품질 기준", "CSV·Excel 데이터 구조"],
-      "skills": ["Excel 피벗 테이블 활용 (무료: 기본 제공)", "Google Sheets 데이터 정제 (무료: 전체)", "데이터 라벨링 도구 조작"],
-      "attitudes": ["데이터 정확성에 대한 꼼꼼한 태도", "반복 작업에서의 일관성 유지"]
-    },
-    {
-      "name": "AI 모델 활용",
-      "definition": "노코드 AI 플랫폼을 통해 이미지 분류·불량 감지 모델을 학습·배포·운영하는 역량",
-      "knowledge": ["머신러닝 기본 개념", "이미지 분류 원리", "모델 성능 지표 (정확도, 재현율)"],
-      "skills": ["Teachable Machine 모델 학습 (무료: 전체)", "CLOVA AI API 연동 (무료: 월 1000건)", "모델 예측 결과 해석"],
-      "attitudes": ["결과 검증에 대한 비판적 사고", "지속적인 모델 개선 의지"]
-    }
-  ],
-  "ncs_used": false,
-  "ncs_methodology": "",
-  "ncs_derivation_method": "현장 인터뷰 및 과업 분석(Ⅱ-3)을 통해 품질검사 업무에서 AI 도입·활용에 필요한 핵심 지식·기술·태도를 도출하였습니다.",
-  "training_structure": [
-    {
-      "competency_name": "AI 데이터 분석",
-      "level": "BEGINNER",
-      "content": "데이터 수집 방법, Excel·Sheets 기초 정제, 데이터 품질 기준 이해",
-      "target_audience": "품질검사 실무자 (전원)",
-      "method": "집체",
-      "goal": "업무 데이터를 스스로 수집·정제하여 AI 학습 데이터셋을 구성할 수 있다"
-    },
-    {
-      "competency_name": "AI 데이터 분석",
-      "level": "INTERMEDIATE",
-      "content": "통계 기초 분석, 데이터 시각화, 라벨링 가이드라인 작성",
-      "target_audience": "품질팀 중간관리자",
-      "method": "혼합",
-      "goal": "데이터 분포 분석 및 라벨링 품질 검증 기준을 수립할 수 있다"
-    },
-    {
-      "competency_name": "AI 데이터 분석",
-      "level": "ADVANCED",
-      "content": "대용량 데이터 파이프라인 설계, 자동 라벨링 도구 운영",
-      "target_audience": "AI 담당 파트장",
-      "method": "혼합",
-      "goal": "지속적 데이터 수집·관리 체계를 자립적으로 운영할 수 있다"
-    },
-    {
-      "competency_name": "AI 모델 활용",
-      "level": "BEGINNER",
-      "content": "Teachable Machine 기초 실습, 이미지 분류 모델 학습·내보내기",
-      "target_audience": "품질검사 실무자 (선발)",
-      "method": "집체",
-      "goal": "노코드 도구로 이미지 분류 모델을 스스로 학습·테스트할 수 있다"
-    },
-    {
-      "competency_name": "AI 모델 활용",
-      "level": "INTERMEDIATE",
-      "content": "CLOVA AI API 연동, 모델 성능 평가 및 임계값 조정",
-      "target_audience": "품질팀 AI 리더",
-      "method": "혼합",
-      "goal": "실 생산라인에 AI 비전 검사 API를 연동하여 시범 운영할 수 있다"
-    },
-    {
-      "competency_name": "AI 모델 활용",
-      "level": "ADVANCED",
-      "content": "모델 재학습 주기 설계, 성능 저하 모니터링, 운영 매뉴얼 작성",
-      "target_audience": "AI 담당 파트장",
-      "method": "현장",
-      "goal": "AI 모델 운영 체계를 자립적으로 구축하고 지속 개선할 수 있다"
-    }
-  ],
-  "training_structure_method": "Ⅲ-1 역량 모델링에서 도출된 'AI 데이터 분석'과 'AI 모델 활용' 두 역량을 기준으로 BEGINNER·INTERMEDIATE·ADVANCED 3수준 훈련체계를 수립하였습니다. 각 수준은 선수요건(이전 수준 이수)을 전제로 설계되며, 실무 현장 적용 가능성을 최우선으로 고려하였습니다. 훈련 방법은 이론 중심은 집체, 현장 적용 단계는 혼합·현장 훈련으로 구분하였습니다.",
-  "annual_plan": {
-    "items": [
-      {
-        "competency_name": "AI 데이터 분석",
-        "course_name": "AI 데이터 수집·정제 입문",
-        "format": "집체",
-        "hours": 16,
-        "notes": ""
-      },
-      {
-        "competency_name": "AI 모델 활용",
-        "course_name": "노코드 AI 비전검사 실무",
-        "format": "집체",
-        "hours": 24,
-        "notes": ""
-      },
-      {
-        "competency_name": "AI 모델 활용",
-        "course_name": "AI 비전검사 현장 적용 심화",
-        "format": "혼합",
-        "hours": 16,
-        "notes": "1·2 과정 이수자 대상"
-      }
-    ],
-    "usage_plan": "1분기에 데이터 수집·정제 입문 과정을 통해 전 실무자의 기초 역량을 확보합니다. 2분기 노코드 AI 비전검사 과정에서 선발 인원이 모델 학습·배포를 실습하며, 4분기 심화 과정에서 생산라인 시범 적용 결과를 분석합니다. 훈련 결과는 매 분기 사내 발표회에서 공유하고, K-Digital Training 등 정부 지원 훈련사업을 적극 활용하여 교육 비용을 절감합니다."
+    "ai_competency_level": "INTERMEDIATE",
+    "selected_tasks": "생산 실적 집계 자동화 / 외관 불량 탐지",
+    "main_content": "초급(데이터 수집·정제) → 중급(노코드 AI 모델링·비전검사) → 고급(공정 데이터 분석·현장 적용 PBL)의 3단계 성장 경로로 총 6개 훈련과정을 구성하였습니다. 전 과정은 무료 노코드 도구를 기반으로 하며, 품질검사·생산관리 실무자를 우선 대상으로 2026년 연중 분기별로 운영합니다."
   },
   "course_specs": [
     {
+      "training_period": "2026년 1분기",
+      "training_level": "BEGINNER",
       "course_name": "AI 데이터 수집·정제 입문",
-      "format": "집체",
+      "training_method": "집체",
       "recommended_program": "사업주 직업능력개발훈련",
       "goal": "업무 현장에서 AI 학습용 데이터를 직접 수집·정제하여 데이터셋을 구성할 수 있다",
       "main_content": "데이터 수집 방법론, Excel·Google Sheets 활용 데이터 정제, AI 학습 데이터 품질 기준, 라벨링 실습",
@@ -129,51 +35,121 @@
       ]
     },
     {
-      "course_name": "노코드 AI 비전검사 실무",
-      "format": "집체",
-      "recommended_program": "K-Digital Training",
-      "goal": "Teachable Machine 및 CLOVA AI API를 활용하여 불량 감지 모델을 학습·배포하고 생산라인에 시범 적용할 수 있다",
-      "main_content": "Teachable Machine 이미지 분류 모델 학습, 모델 성능 평가, CLOVA AI Vision API 연동, 현장 시범 운영",
-      "target_audience": "품질검사 실무자 중 AI 리더 선발 (사전 이수: AI 데이터 수집·정제 입문)",
+      "training_period": "2026년 1분기",
+      "training_level": "BEGINNER",
+      "course_name": "생성형 AI 업무 활용 기초",
+      "training_method": "원격",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "goal": "생성형 AI 도구를 활용해 반복 문서·보고 업무를 자동화할 수 있다",
+      "main_content": "프롬프트 작성 원칙, 업무 문서 초안 생성, 회의록 요약 자동화, 사내 데이터 보안 유의사항",
+      "target_audience": "생산관리·사무직 실무자",
       "subjects": [
         {
-          "name": "Teachable Machine 기초",
-          "details": "Teachable Machine 인터페이스 탐색 (무료: 전체)\n이미지 업로드 및 클래스 분류 실습\n학습 모델 내보내기·재학습 워크플로",
+          "name": "프롬프트 작성 기초",
+          "details": "역할·맥락·제약 조건 구조화 프롬프트 작성\n업무 문서 초안 생성 실습 (무료: ChatGPT 무료 티어)\n출력 검증 및 사실 확인 체크리스트",
+          "hours": 4
+        },
+        {
+          "name": "업무 자동화 실습",
+          "details": "생산 일보 요약 템플릿 제작\nCLOVA API 활용 회의록 자동 요약 (무료: 월 1000건)\n사내 정보 입력 시 보안 준수 사항 점검",
+          "hours": 6
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 2분기",
+      "training_level": "INTERMEDIATE",
+      "course_name": "노코드 AI 비전검사 실무",
+      "training_method": "집체",
+      "recommended_program": "K-Digital Training",
+      "goal": "노코드 도구로 외관 불량 탐지 모델을 학습시키고 검사 공정에 시범 적용할 수 있다",
+      "main_content": "이미지 분류 모델 개념, Teachable Machine 모델 학습, 정확도 평가, 현장 시범 적용",
+      "target_audience": "품질검사 실무자 (AI 데이터 수집·정제 입문 이수자)",
+      "subjects": [
+        {
+          "name": "이미지 분류 모델 학습",
+          "details": "Teachable Machine 프로젝트 생성 및 클래스 정의 (무료: 전체)\n불량 유형별 학습 데이터 업로드\n학습 파라미터 조정 및 재학습 반복",
           "hours": 8
         },
         {
           "name": "모델 성능 평가",
-          "details": "정확도·재현율·F1 점수 해석\n혼동행렬(Confusion Matrix) 분석 실습\n임계값 조정·Precision-Recall 트레이드오프 토론",
+          "details": "정확도·정밀도·재현율 지표 해석\n오탐·미탐 사례 분석 워크숍\n임계값 조정을 통한 성능 개선",
           "hours": 6
         },
         {
-          "name": "CLOVA AI API 연동 실습",
-          "details": "CLOVA Vision OCR API 호출 (무료: 월 1000건)\nImage Recognition API 결과 해석 실습\n검사 결과 Excel 리포팅 자동화",
+          "name": "현장 시범 적용",
+          "details": "검사 공정 내 모델 배치 시나리오 설계\n실시간 판정 결과 기록·검증\n현업 피드백 수집 및 개선안 도출",
+          "hours": 6
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 3분기",
+      "training_level": "INTERMEDIATE",
+      "course_name": "노코드 업무 자동화 워크플로우",
+      "training_method": "혼합",
+      "recommended_program": "K-Digital Training",
+      "goal": "노코드 자동화 도구로 생산 실적 집계 워크플로우를 구축할 수 있다",
+      "main_content": "워크플로우 설계, 데이터 소스 연동, 자동 집계·알림 구성, 예외 처리",
+      "target_audience": "생산관리 실무자",
+      "subjects": [
+        {
+          "name": "자동화 워크플로우 설계",
+          "details": "현행 집계 프로세스 As-Is 매핑\n자동화 대상 구간 선정 및 To-Be 설계\n예외 처리 분기 정의",
+          "hours": 6
+        },
+        {
+          "name": "노코드 도구 구현 실습",
+          "details": "n8n 워크플로우 구축 (무료: 셀프호스팅)\nGoogle Sheets 연동 자동 집계 구성\n이상값 발생 시 알림 자동 발송",
           "hours": 10
         }
       ]
     },
     {
-      "course_name": "AI 비전검사 현장 적용 심화",
-      "format": "혼합",
-      "recommended_program": "사업주 직업능력개발훈련",
-      "goal": "AI 비전검사 시스템의 재학습 주기를 설계하고 운영 매뉴얼을 수립하여 자립적 운영 체계를 구축할 수 있다",
-      "main_content": "모델 성능 저하 모니터링, 재학습 데이터 수집 자동화, 운영 매뉴얼 작성, 현장 발표회",
-      "target_audience": "1·2 과정 이수자 (AI 담당 파트장 포함)",
+      "training_period": "2026년 3분기",
+      "training_level": "ADVANCED",
+      "course_name": "공정 데이터 분석·시각화 심화",
+      "training_method": "집체",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "goal": "공정 데이터를 분석해 불량 발생 요인을 규명하고 개선 과제를 도출할 수 있다",
+      "main_content": "탐색적 데이터 분석, 불량 요인 상관관계 분석, 대시보드 구축, 개선 과제 제안",
+      "target_audience": "품질·생산관리 리더급 (중급 과정 이수자)",
       "subjects": [
         {
-          "name": "모델 재학습 설계",
-          "details": "성능 저하 탐지 기준 수립\nWeights & Biases 무료 티어 모니터링 (무료: 개인 프로젝트)\n재학습 트리거 조건 설정 워크숍",
+          "name": "탐색적 데이터 분석",
+          "details": "공정 변수 분포·이상치 탐색\n불량률과 공정 변수 간 상관관계 분석\n가설 수립 및 검증 절차 실습",
+          "hours": 8
+        },
+        {
+          "name": "대시보드 구축",
+          "details": "Looker Studio 데이터 소스 연결 (무료: 전체)\n불량률·가동률 실시간 모니터링 대시보드 제작\n경영진 보고용 리포트 자동화",
+          "hours": 8
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 4분기",
+      "training_level": "ADVANCED",
+      "course_name": "AI 현장 적용 PBL 프로젝트",
+      "training_method": "현장",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "goal": "자사 과업에 AI를 실제 적용해 성과를 정량적으로 입증하는 프로젝트를 완수할 수 있다",
+      "main_content": "과제 정의, 데이터 확보·모델 적용, 성과 측정, 사내 확산 계획 수립 및 최종 발표",
+      "target_audience": "전 과정 이수자 중 사내 AI 확산 담당 예정자",
+      "subjects": [
+        {
+          "name": "프로젝트 기획·설계",
+          "details": "자사 과업 기반 AI 적용 과제 정의\n성과 지표(KPI) 및 목표 수준 설정\n데이터 확보 계획 수립",
           "hours": 6
         },
         {
-          "name": "운영 매뉴얼 작성 실습",
-          "details": "Notion 기반 운영 절차서 작성 (무료: 무제한 페이지)\n이슈 대응 시나리오 정의\n담당자 역할 분배 RACI 작성",
-          "hours": 4
+          "name": "모델 적용·성과 측정",
+          "details": "기존 학습 모델의 현장 데이터 재학습\n적용 전후 불량률·처리시간 비교 측정\n한계점 및 리스크 분석",
+          "hours": 10
         },
         {
-          "name": "현장 적용 발표 및 회고",
-          "details": "분기별 AI 적용 성과 지표(불량 감지율 변화) 분석\n팀 발표 및 동료 피드백\n차기 분기 개선 과제 도출",
+          "name": "확산 계획 및 최종 발표",
+          "details": "사내 확산 로드맵 및 교육 계획 수립\n경영진 대상 성과 발표 자료 작성\n최종 발표 및 상호 피드백",
           "hours": 6
         }
       ]

@@ -2,6 +2,7 @@
 
 import { BookOpen, Plus, AlertTriangle } from 'lucide-react';
 import type { RoadmapCourseSpec } from '@/lib/services/roadmap/roadmap-types';
+import { ROADMAP_COURSE_SPEC_COUNT } from '@/lib/services/roadmap/roadmap-types';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -17,9 +18,12 @@ interface CoursesListProps {
   onChange?: (next: RoadmapCourseSpec[]) => void;
 }
 
+/** 신규 명세서 기본값 (v2: 훈련시기·훈련수준 추가, format → training_method). */
 const EMPTY_SPEC: RoadmapCourseSpec = {
+  training_period: '',
+  training_level: 'BEGINNER',
   course_name: '',
-  format: '',
+  training_method: '',
   recommended_program: '',
   goal: '',
   main_content: '',
@@ -27,7 +31,8 @@ const EMPTY_SPEC: RoadmapCourseSpec = {
   subjects: [],
 };
 
-const MINIMUM_REQUIRED = 3;
+/** 양식 Ⅲ장의 명세서 표 개수 (v2: 6개) — 검증기(validateRoadmap)와 동일 기준. */
+const MINIMUM_REQUIRED = ROADMAP_COURSE_SPEC_COUNT;
 
 // ============================================================================
 // 메인 컴포넌트
@@ -73,7 +78,8 @@ export function CoursesList({ specs, canEdit = false, onChange }: CoursesListPro
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>최소 {MINIMUM_REQUIRED}개 필요</AlertTitle>
           <AlertDescription>
-            산인공 양식은 최소 {MINIMUM_REQUIRED}개의 훈련과정 명세서를 요구합니다. (현재 {list.length}개)
+            산인공 양식은 최소 {MINIMUM_REQUIRED}개의 훈련과정 명세서를 요구합니다. (현재{' '}
+            {list.length}개)
           </AlertDescription>
         </Alert>
       )}

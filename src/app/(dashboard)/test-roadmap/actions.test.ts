@@ -20,9 +20,8 @@ vi.mock('@/lib/services/abort-registry', () => ({
 }));
 
 vi.mock('@/lib/services/roadmap', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/services/roadmap')>(
-    '@/lib/services/roadmap',
-  );
+  const actual =
+    await vi.importActual<typeof import('@/lib/services/roadmap')>('@/lib/services/roadmap');
   return {
     ...actual,
     generateTestRoadmap: vi.fn(),
@@ -45,9 +44,7 @@ import {
 
 const TEST_USER_ID = 'test-user-1';
 
-function makeValidInput(
-  overrides: Partial<TestRoadmapActionInput> = {},
-): TestRoadmapActionInput {
+function makeValidInput(overrides: Partial<TestRoadmapActionInput> = {}): TestRoadmapActionInput {
   return {
     interview: ROADMAP_INTERVIEW_SAMPLE,
     companyName: '테스트 기업',
@@ -98,7 +95,7 @@ describe('createTestRoadmap', () => {
     const result = await createTestRoadmap(
       makeValidInput({
         interview: { ...ROADMAP_INTERVIEW_SAMPLE, establishmentNecessity: '' },
-      }),
+      })
     );
     expect(result.success).toBe(false);
   });
@@ -111,6 +108,23 @@ describe('createTestRoadmap', () => {
     const result = await createTestRoadmap(makeValidInput());
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.validation.isValid).toBe(true);
+  });
+
+  // 양식 v2 — 역량 모델링·NCS 는 인터뷰·LLM 입력에서 모두 제거됐다.
+  // 어댑터가 삭제 필드를 계속 넘기면 LLM 프롬프트에 유령 데이터가 섞인다.
+  it('LLM 입력(TestRoadmapInput) 에 삭제된 competency_models·ncs_usage 를 넘기지 않는다', async () => {
+    vi.mocked(generateTestRoadmap).mockResolvedValue({
+      result: {} as never,
+      validation: { isValid: true, errors: [], warnings: [] },
+    });
+    await createTestRoadmap(makeValidInput());
+
+    const llmInput = vi.mocked(generateTestRoadmap).mock.calls[0][0];
+    expect(llmInput).not.toHaveProperty('competency_models');
+    expect(llmInput).not.toHaveProperty('ncs_usage');
+    // Ⅱ장 입력(요구분석·과업)은 그대로 유지되어야 한다
+    expect(llmInput.company_requirements).toBeDefined();
+    expect(llmInput.task_workflow_items.length).toBeGreaterThan(0);
   });
 
   it('LLM 실패 → error', async () => {
@@ -159,8 +173,7 @@ const mockGenerateRoadmapHwpx = vi.fn();
 const mockBuildRoadmapHwpxPayload = vi.fn();
 
 vi.mock('@/lib/services/export/hwpx', () => ({
-  buildRoadmapHwpxPayload: (...args: unknown[]) =>
-    mockBuildRoadmapHwpxPayload(...args),
+  buildRoadmapHwpxPayload: (...args: unknown[]) => mockBuildRoadmapHwpxPayload(...args),
   generateRoadmapHwpx: (...args: unknown[]) => mockGenerateRoadmapHwpx(...args),
 }));
 
@@ -174,13 +187,6 @@ describe('exportTestRoadmapHwpx', () => {
         selected_tasks: '',
         main_content: '',
       },
-      competencies: [],
-      ncs_used: false,
-      ncs_methodology: '',
-      ncs_derivation_method: '',
-      training_structure: [],
-      training_structure_method: '',
-      annual_plan: { items: [], usage_plan: '' },
       course_specs: [],
     } as never,
     interview: ROADMAP_INTERVIEW_SAMPLE,
@@ -191,9 +197,7 @@ describe('exportTestRoadmapHwpx', () => {
     mockBuildRoadmapHwpxPayload.mockReturnValue({
       fileName: '테스트기업_로드맵_v1.hwpx',
     });
-    mockGenerateRoadmapHwpx.mockResolvedValue(
-      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
-    );
+    mockGenerateRoadmapHwpx.mockResolvedValue(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
   });
 
   it('미인증 → error 반환', async () => {
@@ -229,16 +233,14 @@ describe('exportTestRoadmapHwpx', () => {
     expect(mockBuildRoadmapHwpxPayload).toHaveBeenCalledWith(
       expect.objectContaining({
         project: expect.objectContaining({ company_name: '테스트기업' }),
-      }),
+      })
     );
     consoleSpy.mockRestore();
   });
 
   it('generateRoadmapHwpx throw → 로컬 dev fallback 메시지 전달', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGenerateRoadmapHwpx.mockRejectedValueOnce(
-      new Error('Vercel Python 런타임 미동작'),
-    );
+    mockGenerateRoadmapHwpx.mockRejectedValueOnce(new Error('Vercel Python 런타임 미동작'));
     const result = await exportTestRoadmapHwpx(validInput());
     expect(result.success).toBe(false);
     if (!result.success) {

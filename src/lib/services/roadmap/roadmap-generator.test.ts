@@ -1,8 +1,9 @@
 /**
- * roadmap-generator.ts 테스트 (산인공 4섹션 구조)
+ * roadmap-generator.ts 테스트 — 산인공 공식 양식 v2 (2026-07-13 개정)
  * - generateRoadmap: 쿼터·조회·LLM·저장·부수효과
  * - generateTestRoadmap / reviseTestRoadmap
  * - LLM 결과 스키마 불일치 시 RoadmapStorageError throw
+ * - fillMissingRoadmapFields: v2 신규 필드 자동 보정 (2인자 시그니처)
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -42,7 +43,8 @@ import {
   fillMissingRoadmapFields,
 } from './roadmap-generator';
 import type { TestRoadmapInput } from './roadmap-generator';
-import type { RoadmapResult } from './roadmap-types';
+import type { RoadmapCourseSpec, RoadmapResult, TrainingLevel } from './roadmap-types';
+import { ROADMAP_COURSE_SPEC_COUNT } from './roadmap-types';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { callLLMForJSON } from '../llm';
 import { createAuditLog } from '../audit';
@@ -50,80 +52,60 @@ import { createNotificationForAdmins } from '../notification';
 import { checkAndRecordLLMUsage } from '../quota';
 import { buildUserPrompt } from './roadmap-prompts';
 
-// ─── 산인공 4섹션 유효 LLM 응답 ─────────────────────────────────────────
+// ─── 산인공 v2 유효 LLM 응답 (명세서 6개) ───────────────────────────────
+// roadmapContentSchema 를 통과해야 하므로 training_period 공백 금지,
+// subjects 최소 1개 · hours 양수를 지킨다.
+
+const PERIODS = [
+  '2026년 1분기',
+  '2026년 1분기',
+  '2026년 2분기',
+  '2026년 3분기',
+  '2026년 3분기',
+  '2026년 4분기',
+];
+const LEVELS: TrainingLevel[] = [
+  'BEGINNER',
+  'BEGINNER',
+  'INTERMEDIATE',
+  'INTERMEDIATE',
+  'ADVANCED',
+  'ADVANCED',
+];
+
+function makeCourseSpec(
+  index: number,
+  overrides: Partial<RoadmapCourseSpec> = {}
+): RoadmapCourseSpec {
+  return {
+    training_period: PERIODS[index],
+    training_level: LEVELS[index],
+    course_name: `AI 훈련과정 ${index + 1}`,
+    training_method: index % 2 === 0 ? '집체' : '혼합',
+    recommended_program: 'K-Digital Training',
+    goal: `훈련목표 ${index + 1}`,
+    main_content: `주요 훈련 내용 ${index + 1}`,
+    target_audience: '실무자',
+    subjects: [{ name: `교과목 ${index + 1}`, details: '실습 활동', hours: 8 }],
+    ...overrides,
+  };
+}
+
+/** 양식 Ⅲ장 명세서 6개 (ROADMAP_COURSE_SPEC_COUNT) */
+const MOCK_COURSE_SPECS: RoadmapCourseSpec[] = Array.from(
+  { length: ROADMAP_COURSE_SPEC_COUNT },
+  (_, i) => makeCourseSpec(i)
+);
 
 const MOCK_LLM_RESULT: RoadmapResult = {
   diagnosis_summary: '테스트 진단 요약',
-  setup_necessity: '수립 필요성 복사본',
+  setup_necessity: '수립 배경 복사본',
   outcome_summary: {
     ai_competency_level: 'INTERMEDIATE',
     selected_tasks: '데이터 분석 자동화',
-    main_content: '3단계 역량 체계 구축',
+    main_content: '초급→중급→고급 6개 과정 구성',
   },
-  competencies: [
-    {
-      name: '데이터 분석 역량',
-      definition: '업무 데이터를 분석해 의사결정에 활용하는 역량',
-      knowledge: ['통계 기초'],
-      skills: ['엑셀 피벗'],
-      attitudes: ['객관성'],
-    },
-  ],
-  ncs_used: false,
-  ncs_methodology: '',
-  ncs_derivation_method: '현장 인터뷰 기반 도출',
-  training_structure: [
-    {
-      competency_name: '데이터 분석 역량',
-      level: 'BEGINNER',
-      content: '엑셀 기초 분석',
-      target_audience: '실무자',
-      method: '집체',
-      goal: '기초 통계 이해',
-    },
-  ],
-  training_structure_method: '역량 기준 3수준 체계 수립',
-  annual_plan: {
-    items: [
-      {
-        competency_name: '데이터 분석 역량',
-        course_name: '엑셀 데이터 분석 입문',
-        format: '집체',
-        hours: 16,
-        notes: '',
-      },
-    ],
-    usage_plan: '훈련 결과를 실제 업무에 활용한다.',
-  },
-  course_specs: [
-    {
-      course_name: '엑셀 데이터 분석 입문',
-      format: '집체',
-      recommended_program: 'K-Digital Training',
-      goal: '기초 통계',
-      main_content: '엑셀 분석',
-      target_audience: '실무자',
-      subjects: [{ name: '피벗 테이블', details: '실습', hours: 8 }],
-    },
-    {
-      course_name: '엑셀 데이터 분석 심화',
-      format: '집체',
-      recommended_program: 'K-Digital Training',
-      goal: '고급 분석',
-      main_content: '함수 활용',
-      target_audience: '실무자',
-      subjects: [{ name: '함수', details: '실습', hours: 8 }],
-    },
-    {
-      course_name: 'AI 분석 실무',
-      format: '혼합',
-      recommended_program: 'K-Digital Training',
-      goal: 'AI 활용',
-      main_content: '코파일럿',
-      target_audience: '전 직원',
-      subjects: [{ name: 'Copilot', details: '실습', hours: 8 }],
-    },
-  ],
+  course_specs: MOCK_COURSE_SPECS,
 };
 
 // ─── 헬퍼: Supabase 체인 모킹 ─────────────────────────────────────────────
@@ -142,7 +124,7 @@ interface MockOverrides {
 function createProjectsChain(
   projectStatus: string,
   overrides: MockOverrides,
-  updateFn: ReturnType<typeof vi.fn>,
+  updateFn: ReturnType<typeof vi.fn>
 ) {
   const assignedConsultantId =
     overrides.assignedConsultantId !== undefined ? overrides.assignedConsultantId : 'consultant-1';
@@ -203,13 +185,17 @@ function createConsultantProfilesChain(overrides: MockOverrides) {
   const data =
     overrides.consultantProfileData !== undefined
       ? overrides.consultantProfileData
-      : { expertise_domains: ['AI'], available_industries: ['IT'], teaching_levels: ['BEGINNER'], coaching_methods: ['1:1'], skill_tags: ['tag'] };
+      : {
+          expertise_domains: ['AI'],
+          available_industries: ['IT'],
+          teaching_levels: ['BEGINNER'],
+          coaching_methods: ['1:1'],
+          skill_tags: ['tag'],
+        };
   return {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
-        single: vi
-          .fn()
-          .mockResolvedValue({ data, error: data ? null : { message: 'not found' } }),
+        single: vi.fn().mockResolvedValue({ data, error: data ? null : { message: 'not found' } }),
       }),
     }),
   };
@@ -217,9 +203,7 @@ function createConsultantProfilesChain(overrides: MockOverrides) {
 
 function createRoadmapVersionsChain(overrides: MockOverrides) {
   const latestData =
-    overrides.latestVersionData !== undefined
-      ? overrides.latestVersionData
-      : { version_number: 1 };
+    overrides.latestVersionData !== undefined ? overrides.latestVersionData : { version_number: 1 };
   const insertRes = overrides.insertResult || { data: { id: 'roadmap-1' }, error: null };
   return {
     select: vi.fn().mockReturnValue({
@@ -332,7 +316,7 @@ describe('generateRoadmap — 프로젝트 상태 업데이트', () => {
       'project-1',
       'user-1',
       status === 'INTERVIEWED' ? undefined : '수정 요청',
-      false,
+      false
     );
 
     if (shouldUpdate) {
@@ -358,7 +342,9 @@ describe('generateRoadmap — 쿼터 검증', () => {
 
   it('exceeded=true + message 없음 → 기본 메시지로 throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: true } as never);
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('사용량 한도를 초과했습니다.');
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
+      '사용량 한도를 초과했습니다.'
+    );
   });
 });
 
@@ -371,13 +357,15 @@ describe('generateRoadmap — 데이터 조회', () => {
     setupDefaultMocks('INTERVIEWED', {
       projectResult: { data: null, error: { message: 'DB error' } },
     });
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('프로젝트를 찾을 수 없습니다.');
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
+      '프로젝트를 찾을 수 없습니다.'
+    );
   });
 
   it('자가진단 없음 + testMode=false → throw', async () => {
     setupDefaultMocks('INTERVIEWED', { selfAssessmentData: [] });
     await expect(generateRoadmap('project-1', 'user-1', undefined, false)).rejects.toThrow(
-      '자가진단 결과가 없습니다.',
+      '자가진단 결과가 없습니다.'
     );
   });
 
@@ -389,11 +377,13 @@ describe('generateRoadmap — 데이터 조회', () => {
 
   it('인터뷰 없음 → throw', async () => {
     setupDefaultMocks('INTERVIEWED', { interviewData: [] });
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('인터뷰 데이터가 없습니다.');
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
+      '인터뷰 데이터가 없습니다.'
+    );
   });
 });
 
-// ─── LLM 호출 및 스키마 검증 ──────────────────────────────────────────────
+// ─── LLM 호출 및 스키마 검증 (v2) ─────────────────────────────────────────
 
 describe('generateRoadmap — LLM 호출 및 스키마', () => {
   afterEach(() => vi.clearAllMocks());
@@ -409,36 +399,69 @@ describe('generateRoadmap — LLM 호출 및 스키마', () => {
       ],
       { temperature: 0.7 },
       2,
-      undefined,
+      undefined
     );
+  });
+
+  it('명세서 6개 정상 응답 → 저장 성공', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    const { result } = await generateRoadmap('project-1', 'user-1');
+
+    expect(result.course_specs).toHaveLength(ROADMAP_COURSE_SPEC_COUNT);
   });
 
   it('로드맵 insert 실패 → throw', async () => {
     setupDefaultMocks('INTERVIEWED', {
       insertResult: { data: null, error: { message: 'insert failed' } },
     });
-    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow('로드맵 저장 실패: insert failed');
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(
+      '로드맵 저장 실패: insert failed'
+    );
   });
 
-  it('LLM 결과 스키마 불일치 → RoadmapStorageError throw', async () => {
+  it('course_specs가 5개(< 6) → RoadmapStorageError throw', async () => {
     setupDefaultMocks('INTERVIEWED');
-    // competencies가 빈 배열 → min(1) 위반
     vi.mocked(callLLMForJSON).mockResolvedValue({
       ...MOCK_LLM_RESULT,
-      competencies: [],
+      course_specs: MOCK_COURSE_SPECS.slice(0, ROADMAP_COURSE_SPEC_COUNT - 1),
     });
 
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapStorageError);
   });
 
-  it('LLM 결과 course_specs가 2개(< 3) → RoadmapStorageError throw', async () => {
+  it('training_period 공백 → RoadmapStorageError throw (스키마 min(1))', async () => {
     setupDefaultMocks('INTERVIEWED');
     vi.mocked(callLLMForJSON).mockResolvedValue({
       ...MOCK_LLM_RESULT,
-      course_specs: MOCK_LLM_RESULT.course_specs.slice(0, 2),
+      course_specs: MOCK_COURSE_SPECS.map((s, i) => (i === 0 ? { ...s, training_period: '' } : s)),
     });
 
     await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapStorageError);
+  });
+
+  it('subjects 빈 배열 → RoadmapStorageError throw (스키마 min(1))', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      course_specs: MOCK_COURSE_SPECS.map((s, i) => (i === 0 ? { ...s, subjects: [] } : s)),
+    });
+
+    await expect(generateRoadmap('project-1', 'user-1')).rejects.toThrow(RoadmapStorageError);
+  });
+
+  it('LLM 이 v1 잔여 키(competencies·annual_plan)를 함께 반환해도 무시하고 저장 성공', async () => {
+    setupDefaultMocks('INTERVIEWED');
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      competencies: [{ name: '역량', definition: '정의' }],
+      annual_plan: { items: [], usage_plan: '활용' },
+    } as never);
+
+    const { result } = await generateRoadmap('project-1', 'user-1');
+
+    expect(result.course_specs).toHaveLength(ROADMAP_COURSE_SPEC_COUNT);
+    expect(result).not.toHaveProperty('competencies');
+    expect(result).not.toHaveProperty('annual_plan');
   });
 });
 
@@ -454,7 +477,7 @@ describe('generateRoadmap — 버전 번호', () => {
     expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: expect.objectContaining({ version_number: 2 }),
-      }),
+      })
     );
   });
 
@@ -465,7 +488,7 @@ describe('generateRoadmap — 버전 번호', () => {
     expect(vi.mocked(createAuditLog)).toHaveBeenCalledWith(
       expect.objectContaining({
         meta: expect.objectContaining({ version_number: 1 }),
-      }),
+      })
     );
   });
 });
@@ -480,7 +503,7 @@ describe('generateRoadmap — 부수 효과', () => {
     await generateRoadmap('project-1', 'user-1', undefined, false);
 
     expect(vi.mocked(createNotificationForAdmins)).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'roadmap_draft', link: '/ops/projects/project-1' }),
+      expect.objectContaining({ type: 'roadmap_draft', link: '/ops/projects/project-1' })
     );
   });
 
@@ -503,29 +526,36 @@ describe('generateTestRoadmap', () => {
       message: '일별 한도 초과',
     } as never);
 
-    await expect(generateTestRoadmap(createTestInput(), 'user-1', null)).rejects.toThrow('일별 한도 초과');
+    await expect(generateTestRoadmap(createTestInput(), 'user-1', null)).rejects.toThrow(
+      '일별 한도 초과'
+    );
   });
 
-  it('정상 호출 → 신규 4섹션 결과 + validation 반환', async () => {
+  it('정상 호출 → v2 결과(명세서 6개) + validation 반환', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
     const { result, validation } = await generateTestRoadmap(createTestInput(), 'user-1', null);
 
     expect(result.diagnosis_summary).toBe('테스트 진단 요약');
-    expect(result.competencies).toHaveLength(1);
-    expect(result.training_structure).toHaveLength(1);
-    expect(result.annual_plan.items).toHaveLength(1);
-    expect(result.course_specs).toHaveLength(3);
+    expect(result.setup_necessity).toBe('수립 배경 복사본');
+    expect(result.outcome_summary.ai_competency_level).toBe('INTERMEDIATE');
+    expect(result.course_specs).toHaveLength(ROADMAP_COURSE_SPEC_COUNT);
+    expect(result.course_specs[0].training_period).toBe('2026년 1분기');
+    expect(result.course_specs[0].training_level).toBe('BEGINNER');
+    expect(result.course_specs[0].training_method).toBe('집체');
     expect(validation).toHaveProperty('isValid');
   });
 
-  it('스키마 불일치 → RoadmapStorageError throw', async () => {
+  it('스키마 불일치(명세서 5개) → RoadmapStorageError throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
-    vi.mocked(callLLMForJSON).mockResolvedValue({ ...MOCK_LLM_RESULT, competencies: [] });
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      course_specs: MOCK_COURSE_SPECS.slice(0, ROADMAP_COURSE_SPEC_COUNT - 1),
+    });
 
     await expect(generateTestRoadmap(createTestInput(), 'user-1', null)).rejects.toThrow(
-      RoadmapStorageError,
+      RoadmapStorageError
     );
   });
 
@@ -540,7 +570,7 @@ describe('generateTestRoadmap', () => {
         sub_industries: ['반도체'],
       }),
       'user-1',
-      null,
+      null
     );
 
     expect(vi.mocked(buildUserPrompt)).toHaveBeenCalledWith(
@@ -565,7 +595,7 @@ describe('generateTestRoadmap', () => {
       }),
       null,
       undefined,
-      true,
+      true
     );
   });
 
@@ -582,8 +612,40 @@ describe('generateTestRoadmap', () => {
       expect.objectContaining({ stt_insights: sttInsights }),
       null,
       undefined,
-      true,
+      true
     );
+  });
+
+  it('input.overview 가 Ⅰ장 fallback 으로 전달되어 LLM 누락 시 복원된다', async () => {
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
+    // LLM 이 Ⅰ장 필드를 누락/공백으로 응답한 상황
+    // (ai_competency_level 은 enum 이므로 "누락" 이어야 fallback 이 발동한다)
+    vi.mocked(callLLMForJSON).mockResolvedValue({
+      ...MOCK_LLM_RESULT,
+      setup_necessity: '',
+      outcome_summary: {
+        selected_tasks: '',
+        main_content: '',
+      },
+    } as never);
+
+    const { result } = await generateTestRoadmap(
+      createTestInput({
+        overview: {
+          establishment_necessity: '인터뷰에 적힌 수립 배경',
+          ai_competency_level: 'ADVANCED',
+          selected_tasks_summary: '인터뷰 선정 과업',
+          roadmap_summary: '인터뷰 요약',
+        },
+      }),
+      'user-1',
+      null
+    );
+
+    expect(result.setup_necessity).toBe('인터뷰에 적힌 수립 배경');
+    expect(result.outcome_summary.ai_competency_level).toBe('ADVANCED');
+    expect(result.outcome_summary.selected_tasks).toBe('인터뷰 선정 과업');
+    expect(result.outcome_summary.main_content).toBe('인터뷰 요약');
   });
 });
 
@@ -594,6 +656,14 @@ describe('reviseTestRoadmap', () => {
 
   afterEach(() => vi.clearAllMocks());
 
+  function getUserMessage(): string {
+    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{
+      role: string;
+      content: string;
+    }>;
+    return messages.find((m) => m.role === 'user')!.content;
+  }
+
   it('쿼터 초과 → throw', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({
       exceeded: true,
@@ -601,11 +671,11 @@ describe('reviseTestRoadmap', () => {
     } as never);
 
     await expect(
-      reviseTestRoadmap(createTestInput(), MOCK_PREVIOUS_RESULT, '수정해주세요', 'user-1', null),
+      reviseTestRoadmap(createTestInput(), MOCK_PREVIOUS_RESULT, '수정해주세요', 'user-1', null)
     ).rejects.toThrow('쿼터 초과');
   });
 
-  it('previousResult의 4섹션이 프롬프트에 포함', async () => {
+  it('previousResult의 v2 섹션(Ⅰ-3 · Ⅲ)이 프롬프트에 포함', async () => {
     vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
     vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
 
@@ -614,20 +684,32 @@ describe('reviseTestRoadmap', () => {
       MOCK_PREVIOUS_RESULT,
       '시간을 줄여주세요',
       'user-1',
-      null,
+      null
     );
 
-    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{
-      role: string;
-      content: string;
-    }>;
-    const userMessage = messages.find((m) => m.role === 'user')!.content;
+    const userMessage = getUserMessage();
 
     expect(userMessage).toContain('기존 로드맵 결과');
-    expect(userMessage).toContain('기존 역량 모델링');
-    expect(userMessage).toContain('기존 훈련체계도');
-    expect(userMessage).toContain('기존 연간 훈련계획');
-    expect(userMessage).toContain('기존 훈련과정 명세서');
+    expect(userMessage).toContain('진단 요약');
+    expect(userMessage).toContain('기존 수립 주요 결과 (Ⅰ-3)');
+    expect(userMessage).toContain('기존 훈련과정 명세서 (Ⅲ)');
+    // 이전 명세서의 v2 신규 필드가 JSON 으로 직렬화되어 포함
+    expect(userMessage).toContain('training_period');
+    expect(userMessage).toContain('training_level');
+    expect(userMessage).toContain('training_method');
+  });
+
+  it('삭제된 v1 섹션(역량 모델링·훈련체계도·연간 훈련계획)은 프롬프트에 포함되지 않는다', async () => {
+    vi.mocked(checkAndRecordLLMUsage).mockResolvedValue({ exceeded: false } as never);
+    vi.mocked(callLLMForJSON).mockResolvedValue(MOCK_LLM_RESULT);
+
+    await reviseTestRoadmap(createTestInput(), MOCK_PREVIOUS_RESULT, '수정', 'user-1', null);
+
+    const userMessage = getUserMessage();
+
+    expect(userMessage).not.toContain('기존 역량 모델링');
+    expect(userMessage).not.toContain('기존 훈련체계도');
+    expect(userMessage).not.toContain('기존 연간 훈련계획');
   });
 
   it('revisionPrompt가 메시지 후반부에 포함', async () => {
@@ -639,14 +721,10 @@ describe('reviseTestRoadmap', () => {
       MOCK_PREVIOUS_RESULT,
       '초급 과정을 추가해주세요',
       'user-1',
-      null,
+      null
     );
 
-    const messages = vi.mocked(callLLMForJSON).mock.calls[0][0] as Array<{
-      role: string;
-      content: string;
-    }>;
-    const userMessage = messages.find((m) => m.role === 'user')!.content;
+    const userMessage = getUserMessage();
 
     expect(userMessage).toContain('수정 요청');
     expect(userMessage).toContain('초급 과정을 추가해주세요');
@@ -677,7 +755,7 @@ describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
 
     // interviews 테이블의 update chain 이 호출되지 않아야 함
     const interviewsUpdateCalls = (mockClient.from.mock.calls as string[][]).filter(
-      (c) => c[0] === 'interviews',
+      (c) => c[0] === 'interviews'
     );
     // 'interviews' from 호출 자체는 select 로 한 번 쓰였으므로, update 가 발동 안 했는지는 chain 으로 확인
     expect(interviewsUpdateCalls.length).toBeGreaterThan(0);
@@ -697,8 +775,8 @@ describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
       expect(result.roadmapId).toBe('roadmap-1');
       expect(
         warnSpy.mock.calls.some((args) =>
-          (args[0] as string | undefined)?.includes('요약 역반영 실패'),
-        ),
+          (args[0] as string | undefined)?.includes('요약 역반영 실패')
+        )
       ).toBe(true);
     } finally {
       warnSpy.mockRestore();
@@ -713,105 +791,253 @@ describe('generateRoadmap — AbortSignal 및 LLM 에러', () => {
     controller.abort();
 
     await expect(
-      generateRoadmap('project-1', 'user-1', undefined, false, controller.signal),
+      generateRoadmap('project-1', 'user-1', undefined, false, controller.signal)
     ).rejects.toThrow('LLM 호출이 취소되었습니다.');
   });
 });
 
-// ─── fillMissingRoadmapFields — ISSUE-04 자동 채움 분기 ──────────────────
+// ─── fillMissingRoadmapFields — v2 자동 보정 (2인자) ─────────────────────
 
-describe('fillMissingRoadmapFields (ISSUE-04 자동 채움)', () => {
+describe('fillMissingRoadmapFields (v2 자동 보정)', () => {
   const baseRaw = {
     diagnosis_summary: '요약',
-    setup_necessity: '필요성',
+    setup_necessity: '수립 배경',
     outcome_summary: {
       ai_competency_level: 'INTERMEDIATE' as const,
       selected_tasks: '과업',
       main_content: '내용',
     },
-    training_structure: [] as RoadmapResult['training_structure'],
-    training_structure_method: '방법',
-    annual_plan: { items: [], usage_plan: '' },
-    course_specs: [] as RoadmapResult['course_specs'],
+    course_specs: [] as RoadmapCourseSpec[],
   };
 
-  it('LLM 이 competencies=[] 를 반환해도 인터뷰 competency_models 로 자동 채운다', () => {
-    const result = fillMissingRoadmapFields(
-      { ...baseRaw, competencies: [] },
-      undefined,
-      [
+  // ─── Ⅲ장 신규 필드 보정 ─────────────────────────────────────────────
+
+  it('LLM 이 v1 키 `format` 으로 응답해도 training_method 로 승격된다', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [
         {
-          id: 'cm1',
-          competency_name: '데이터 해석',
-          competency_definition: '정의',
-          knowledge: '통계',
-          skill: '엑셀',
-          attitude: '객관성',
+          course_name: '엑셀 데이터 분석 입문',
+          format: '집체', // v1 키
+          recommended_program: 'K-Digital',
+          goal: 'g',
+          main_content: 'm',
+          target_audience: 't',
+          subjects: [{ name: 'S', details: 'd', hours: 8 }],
         },
       ],
-      { uses_ncs: false, competency_derivation_method: '인터뷰 도출' },
-    );
-    expect(result.competencies).toHaveLength(1);
-    expect(result.competencies[0]).toEqual({
-      name: '데이터 해석',
-      definition: '정의',
-      knowledge: ['통계'],
-      skills: ['엑셀'],
-      attitudes: ['객관성'],
-    });
+    } as never);
+
+    expect(result.course_specs[0].training_method).toBe('집체');
+    // v1 orphan 키는 결과 객체에 남지 않는다
+    expect(result.course_specs[0]).not.toHaveProperty('format');
   });
 
-  it('인터뷰 ncs_usage 의 uses_ncs=true 를 기준값으로 채운다', () => {
+  it('training_method 와 format 이 모두 있으면 training_method 가 우선한다', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [
+        {
+          course_name: 'C',
+          training_method: '원격',
+          format: '집체',
+          subjects: [],
+        },
+      ],
+    } as never);
+
+    expect(result.course_specs[0].training_method).toBe('원격');
+  });
+
+  it('training_period 누락 → 빈 문자열로 backfill', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [{ course_name: 'C', training_method: '집체', subjects: [] }],
+    } as never);
+
+    expect(result.course_specs[0].training_period).toBe('');
+  });
+
+  it('training_level 누락 → BEGINNER 로 backfill', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [{ course_name: 'C', training_method: '집체', subjects: [] }],
+    } as never);
+
+    expect(result.course_specs[0].training_level).toBe('BEGINNER');
+  });
+
+  it('training_level 이 허용되지 않는 값 → BEGINNER 로 보정', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [{ course_name: 'C', training_level: '초급', subjects: [] }],
+    } as never);
+
+    expect(result.course_specs[0].training_level).toBe('BEGINNER');
+  });
+
+  it('training_period · training_level 이 정상이면 그대로 보존', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [
+        {
+          training_period: '2026년 3분기',
+          training_level: 'ADVANCED',
+          course_name: 'C',
+          training_method: '혼합',
+          subjects: [{ name: 'S', details: 'd', hours: 4 }],
+        },
+      ],
+    } as never);
+
+    expect(result.course_specs[0].training_period).toBe('2026년 3분기');
+    expect(result.course_specs[0].training_level).toBe('ADVANCED');
+    expect(result.course_specs[0].training_method).toBe('혼합');
+  });
+
+  it('subjects 가 배열이 아니거나 hours 가 숫자가 아니면 안전 보정', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [
+        { course_name: 'A', subjects: null },
+        { course_name: 'B', subjects: [{ name: 'S', details: 'd', hours: '8' }] },
+      ],
+    } as never);
+
+    expect(result.course_specs[0].subjects).toEqual([]);
+    expect(result.course_specs[1].subjects[0].hours).toBe(0);
+  });
+
+  it('course_specs 가 배열이 아니거나 항목이 객체가 아니면 걸러낸다', () => {
+    const notArray = fillMissingRoadmapFields({ ...baseRaw, course_specs: 'nope' } as never);
+    expect(notArray.course_specs).toEqual([]);
+
+    const withJunk = fillMissingRoadmapFields({
+      ...baseRaw,
+      course_specs: [null, 'x', { course_name: 'C', subjects: [] }],
+    } as never);
+    expect(withJunk.course_specs).toHaveLength(1);
+    expect(withJunk.course_specs[0].course_name).toBe('C');
+  });
+
+  // ─── Ⅰ장 인터뷰 fallback ────────────────────────────────────────────
+
+  it('LLM 이 Ⅰ장을 비우면 interviewOverview 값으로 복원한다', () => {
     const result = fillMissingRoadmapFields(
-      { ...baseRaw, competencies: [{ name: 'c', definition: 'd', knowledge: [], skills: [], attitudes: [] }] },
-      undefined,
-      undefined,
-      { uses_ncs: true, ncs_usage_method: 'NCS 20.02.01 차용' },
+      {
+        ...baseRaw,
+        setup_necessity: '',
+        // ai_competency_level 은 enum 이므로 "누락" 이어야 fallback 이 발동한다
+        outcome_summary: {
+          selected_tasks: '',
+          main_content: '',
+        },
+      } as never,
+      {
+        establishment_necessity: '인터뷰 수립 배경',
+        ai_competency_level: 'ADVANCED',
+        selected_tasks_summary: '인터뷰 과업',
+        roadmap_summary: '인터뷰 요약',
+      }
     );
-    expect(result.ncs_used).toBe(true);
-    expect(result.ncs_methodology).toBe('NCS 20.02.01 차용');
+
+    expect(result.setup_necessity).toBe('인터뷰 수립 배경');
+    expect(result.outcome_summary.ai_competency_level).toBe('ADVANCED');
+    expect(result.outcome_summary.selected_tasks).toBe('인터뷰 과업');
+    expect(result.outcome_summary.main_content).toBe('인터뷰 요약');
   });
 
-  it('interviewOverview · interviewCompetencies · interviewNcsUsage 전부 undefined 여도 기본값으로 채운다', () => {
-    // 외부 fallback 없이 raw 만 있는 경로 (기존 OFA 테스트 모드) 커버
-    const result = fillMissingRoadmapFields({
-      ...baseRaw,
-      competencies: [{ name: 'c', definition: 'd', knowledge: [], skills: [], attitudes: [] }],
+  it('ai_competency_level 이 허용되지 않는 값이면 interviewOverview 값으로 보정한다', () => {
+    const result = fillMissingRoadmapFields(
+      {
+        ...baseRaw,
+        outcome_summary: {
+          ai_competency_level: '중급',
+          selected_tasks: '과업',
+          main_content: '내용',
+        },
+      } as never,
+      {
+        establishment_necessity: '인터뷰 수립 배경',
+        ai_competency_level: 'ADVANCED',
+        selected_tasks_summary: '인터뷰 과업',
+        roadmap_summary: '인터뷰 요약',
+      }
+    );
+
+    expect(result.outcome_summary.ai_competency_level).toBe('ADVANCED');
+  });
+
+  it('LLM 이 유효한 ai_competency_level 을 반환하면 interviewOverview 보다 우선한다', () => {
+    // enum 필드는 공백 개념이 없으므로, 유효한 값이면 LLM 값을 신뢰한다.
+    const result = fillMissingRoadmapFields(
+      {
+        ...baseRaw,
+        outcome_summary: {
+          ai_competency_level: 'BEGINNER',
+          selected_tasks: '과업',
+          main_content: '내용',
+        },
+      },
+      {
+        establishment_necessity: '인터뷰 수립 배경',
+        ai_competency_level: 'ADVANCED',
+        selected_tasks_summary: '인터뷰 과업',
+        roadmap_summary: '인터뷰 요약',
+      }
+    );
+
+    expect(result.outcome_summary.ai_competency_level).toBe('BEGINNER');
+  });
+
+  it('LLM 이 Ⅰ장을 채웠으면 interviewOverview 를 덮어쓰지 않는다', () => {
+    const result = fillMissingRoadmapFields(baseRaw, {
+      establishment_necessity: '인터뷰 수립 배경',
+      ai_competency_level: 'ADVANCED',
+      selected_tasks_summary: '인터뷰 과업',
+      roadmap_summary: '인터뷰 요약',
     });
-    expect(result.ncs_used).toBe(false);
-    // derivation placeholder
-    expect(result.ncs_derivation_method).toContain('누락');
+
+    expect(result.setup_necessity).toBe('수립 배경');
+    expect(result.outcome_summary.ai_competency_level).toBe('INTERMEDIATE');
+    expect(result.outcome_summary.selected_tasks).toBe('과업');
+    expect(result.outcome_summary.main_content).toBe('내용');
   });
 
-  it('LLM ncs_used=true · methodology 빈 값 + 인터뷰 ncs_usage 없음 → methodology placeholder', () => {
+  it('interviewOverview 가 undefined 여도 기본값으로 채운다 (2인자 시그니처)', () => {
     const result = fillMissingRoadmapFields({
       ...baseRaw,
-      competencies: [{ name: 'c', definition: 'd', knowledge: [], skills: [], attitudes: [] }],
+      setup_necessity: '',
+      outcome_summary: undefined,
+    } as never);
+
+    expect(result.setup_necessity).toBe('');
+    expect(result.outcome_summary).toEqual({
+      ai_competency_level: 'BEGINNER',
+      selected_tasks: '',
+      main_content: '',
+    });
+  });
+
+  // ─── v1 삭제 필드는 결과에 포함되지 않음 ────────────────────────────
+
+  it('raw 에 v1 삭제 필드가 섞여 있어도 v2 4필드만 반환한다', () => {
+    const result = fillMissingRoadmapFields({
+      ...baseRaw,
+      competencies: [{ name: '역량', definition: '정의' }],
       ncs_used: true,
-      ncs_methodology: '',
-    });
-    expect(result.ncs_used).toBe(true);
-    expect(result.ncs_methodology).toContain('누락');
-  });
+      ncs_methodology: 'NCS 차용',
+      ncs_derivation_method: '도출',
+      training_structure: [{ competency_name: '역량', level: 'BEGINNER' }],
+      training_structure_method: '방법',
+      annual_plan: { items: [], usage_plan: '활용' },
+    } as never);
 
-  it('LLM 이 competencies 를 반환하면 인터뷰 fallback 을 사용하지 않는다', () => {
-    const llmCompetencies = [
-      { name: 'LLM 역량', definition: 'd', knowledge: ['k1', 'k2'], skills: ['s1'], attitudes: ['a1'] },
-    ];
-    const result = fillMissingRoadmapFields(
-      { ...baseRaw, competencies: llmCompetencies },
-      undefined,
-      [
-        {
-          id: 'cm1',
-          competency_name: '인터뷰 역량',
-          competency_definition: '정의',
-          knowledge: 'k',
-          skill: 's',
-          attitude: 'a',
-        },
-      ],
-    );
-    expect(result.competencies).toEqual(llmCompetencies);
+    expect(Object.keys(result).sort()).toEqual([
+      'course_specs',
+      'diagnosis_summary',
+      'outcome_summary',
+      'setup_necessity',
+    ]);
   });
 });

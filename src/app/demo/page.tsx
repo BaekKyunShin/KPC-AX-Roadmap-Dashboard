@@ -8,26 +8,13 @@ import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
 import { SAMPLE_COMPANY, SAMPLE_ROADMAP_RESULT } from '@/lib/data/demo-sample';
 
-// 신규 4섹션 컴포넌트 — 코드 분할 (초기 번들에서 제외)
-const CompetencyModelingTable = dynamic(() =>
-  import('@/components/roadmap/CompetencyModelingTable').then((m) => ({
-    default: m.CompetencyModelingTable,
-  })),
-);
-const RoadmapMatrix = dynamic(() =>
-  import('@/components/roadmap/RoadmapMatrix').then((m) => ({ default: m.RoadmapMatrix })),
-);
-const AnnualTrainingPlanTable = dynamic(() =>
-  import('@/components/roadmap/AnnualTrainingPlanTable').then((m) => ({
-    default: m.AnnualTrainingPlanTable,
-  })),
-);
+// 로드맵 Ⅲ장 훈련과정 명세서 — 코드 분할 (초기 번들에서 제외)
 const CoursesList = dynamic(() =>
-  import('@/components/roadmap/CoursesList').then((m) => ({ default: m.CoursesList })),
+  import('@/components/roadmap/CoursesList').then((m) => ({ default: m.CoursesList }))
 );
 
 export default function DemoPage() {
-  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('competencies');
+  const [activeTab, setActiveTab] = useState<RoadmapTabKey>('specs');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,7 +31,10 @@ export default function DemoPage() {
               </span>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <Link href="/login" className="text-sm sm:text-base text-gray-600 hover:text-gray-900">
+              <Link
+                href="/login"
+                className="text-sm sm:text-base text-gray-600 hover:text-gray-900"
+              >
                 로그인
               </Link>
               <Link
@@ -64,15 +54,18 @@ export default function DemoPage() {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
-                데모 화면입니다
-              </h3>
+              <h3 className="text-sm font-medium text-yellow-800">데모 화면입니다</h3>
               <p className="mt-1 text-sm text-yellow-700">
-                실제 AI 생성 결과가 아닌 샘플 데이터입니다. 실제 서비스를 이용하려면 회원가입 후 관리자 승인이 필요합니다.
+                실제 AI 생성 결과가 아닌 샘플 데이터입니다. 실제 서비스를 이용하려면 회원가입 후
+                관리자 승인이 필요합니다.
               </p>
             </div>
           </div>
@@ -105,7 +98,7 @@ export default function DemoPage() {
           </p>
         </div>
 
-        {/* 로드맵 4섹션 */}
+        {/* 로드맵 Ⅲ장 (v2: 훈련과정 명세서) */}
         <div className="bg-white shadow rounded-lg">
           {/* 탭 */}
           <div className="border-b border-gray-200">
@@ -128,26 +121,6 @@ export default function DemoPage() {
 
           {/* 탭 내용 */}
           <div className="p-6">
-            {activeTab === 'competencies' && (
-              <CompetencyModelingTable
-                competencies={SAMPLE_ROADMAP_RESULT.competencies}
-                canEdit={false}
-              />
-            )}
-            {activeTab === 'structure' && (
-              <RoadmapMatrix
-                competencies={SAMPLE_ROADMAP_RESULT.competencies}
-                trainingStructure={SAMPLE_ROADMAP_RESULT.training_structure}
-                canEdit={false}
-              />
-            )}
-            {activeTab === 'plan' && (
-              <AnnualTrainingPlanTable
-                plan={SAMPLE_ROADMAP_RESULT.annual_plan}
-                competencies={SAMPLE_ROADMAP_RESULT.competencies}
-                canEdit={false}
-              />
-            )}
             {activeTab === 'specs' && (
               <CoursesList specs={SAMPLE_ROADMAP_RESULT.course_specs} canEdit={false} />
             )}

@@ -1,5 +1,11 @@
 /**
- * roadmap-crud.ts 테스트 (산인공 4섹션 구조)
+ * roadmap-crud.ts 테스트 — 산인공 공식 양식 v2 (2026-07-13 개정)
+ *
+ * DB legacy 컬럼 ↔ v2 구조 매핑 (roadmap-storage-mapper):
+ *   diagnosis_summary txt│ diagnosis_summary
+ *   roadmap_matrix jsonb │ (미사용 — 항상 [])
+ *   pbl_course     jsonb │ { setup_necessity, outcome_summary }
+ *   courses        jsonb │ course_specs: RoadmapCourseSpec[]
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -14,13 +20,7 @@ import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
 import { validateRoadmap } from './roadmap-validator';
 import { createMockSupabase } from '@/test/helpers/mock-supabase';
-import type {
-  RoadmapAnnualPlan,
-  RoadmapCompetency,
-  RoadmapCourseSpec,
-  RoadmapTrainingStructureItem,
-  ValidationResult,
-} from './roadmap-types';
+import type { RoadmapCourseSpec, RoadmapOutcomeSummary, ValidationResult } from './roadmap-types';
 
 // ─── 모킹 ─────────────────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ describe('finalizeRoadmap', () => {
     });
 
     await expect(finalizeRoadmap('roadmap-5', 'user-5')).rejects.toThrow(
-      '배정된 컨설턴트만 최종 확정할 수 있습니다.',
+      '배정된 컨설턴트만 최종 확정할 수 있습니다.'
     );
   });
 
@@ -224,6 +224,7 @@ describe('finalizeRoadmap', () => {
 // ─── finalizeRoadmap — sanitize 통합 (정책 이전) ─────────────────────────
 // 정책 이전 (2026-05-18): DRAFT 편집 중 sanitize 가 빈 행을 즉시 제거하는
 // 동작을 제거하고, FINAL 확정 시점에 1회 정리하도록 옮김.
+// v2 의 정리 대상은 훈련과정 명세서(courses)와 교과목(subjects)뿐이다.
 
 describe('finalizeRoadmap — sanitize 통합', () => {
   beforeEach(() => {
@@ -232,11 +233,11 @@ describe('finalizeRoadmap — sanitize 통합', () => {
   });
   afterEach(() => vi.clearAllMocks());
 
-  it('빈 행 포함 row → sanitize 후 정리된 결과를 update → RPC 호출', async () => {
+  it('빈 명세서·빈 교과목 포함 row → sanitize 후 정리된 결과를 update → RPC 호출', async () => {
     const sharedMock = createMockSupabase();
     vi.mocked(createAdminClient).mockReturnValue(sharedMock.client as never);
 
-    // 1. SELECT: 빈 행 1개 포함된 DRAFT row
+    // 1. SELECT: 빈 명세서 카드 1개 + 빈 교과목 1개가 섞인 DRAFT row
     sharedMock.addResult({
       data: {
         id: 'rv-final',
@@ -246,34 +247,35 @@ describe('finalizeRoadmap — sanitize 통합', () => {
         diagnosis_summary: '확정 전',
         roadmap_matrix: [],
         pbl_course: {
-          competencies: [
-            { name: '역량1', definition: '정의', knowledge: [], skills: [], attitudes: [] },
-            // 빈 competency
-            { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
-          ],
-          annual_plan: {
-            items: [
-              { competency_name: '역량1', course_name: '과정1', format: '집체', hours: 8, notes: '' },
-              // 빈 항목
-              { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
-            ],
-            usage_plan: '활용',
+          setup_necessity: '수립 배경',
+          outcome_summary: {
+            ai_competency_level: 'INTERMEDIATE',
+            selected_tasks: '과업',
+            main_content: '요약',
           },
         },
         courses: [
           {
+            training_period: '2026년 1분기',
+            training_level: 'BEGINNER',
             course_name: '과정1',
-            format: '집체',
+            training_method: '집체',
             recommended_program: '',
             goal: '',
             main_content: '',
             target_audience: '',
-            subjects: [{ name: '과목1', details: 'd', hours: 8 }],
+            subjects: [
+              { name: '과목1', details: 'd', hours: 8 },
+              // 빈 교과목
+              { name: '', details: '', hours: 0 },
+            ],
           },
-          // 빈 course_spec 카드
+          // 빈 명세서 카드
           {
+            training_period: '',
+            training_level: 'BEGINNER',
             course_name: '',
-            format: '집체',
+            training_method: '집체',
             recommended_program: '',
             goal: '',
             main_content: '',
@@ -302,9 +304,17 @@ describe('finalizeRoadmap — sanitize 통합', () => {
     // update 호출 — 빈 행 제거된 결과로 저장
     const updateCall = sharedMock.chainable.update.mock.calls[0];
     expect(updateCall).toBeDefined();
-    expect(updateCall[0].pbl_course.competencies).toHaveLength(1);
-    expect(updateCall[0].pbl_course.annual_plan.items).toHaveLength(1);
     expect(updateCall[0].courses).toHaveLength(1);
+    expect(updateCall[0].courses[0].subjects).toHaveLength(1);
+    // Ⅰ장은 pbl_course 컬럼에 그대로 보존
+    expect(updateCall[0].pbl_course).toEqual({
+      setup_necessity: '수립 배경',
+      outcome_summary: {
+        ai_competency_level: 'INTERMEDIATE',
+        selected_tasks: '과업',
+        main_content: '요약',
+      },
+    });
 
     // RPC 호출 검증
     expect(sharedMock.client.rpc).toHaveBeenCalledWith('finalize_roadmap', {
@@ -372,37 +382,18 @@ describe('fetchRoadmapVersion', () => {
 // ─── updateRoadmapManually ────────────────────────────────────────────────
 
 describe('updateRoadmapManually', () => {
-  // 산인공 4섹션 legacy 컬럼 구조 샘플 (DB row 모양)
-  const legacyCompetency: RoadmapCompetency = {
-    name: '역량1',
-    definition: '정의',
-    knowledge: ['K'],
-    skills: ['S'],
-    attitudes: ['A'],
+  // v2 구조 샘플
+  const legacyOutcomeSummary: RoadmapOutcomeSummary = {
+    ai_competency_level: 'INTERMEDIATE',
+    selected_tasks: '기존 선정 과업',
+    main_content: '기존 수립 주요내용',
   };
-  const legacyTraining: RoadmapTrainingStructureItem = {
-    competency_name: '역량1',
-    level: 'BEGINNER',
-    content: 'c',
-    target_audience: 't',
-    method: '집체',
-    goal: 'g',
-  };
-  const legacyAnnualPlan: RoadmapAnnualPlan = {
-    items: [
-      {
-        competency_name: '역량1',
-        course_name: '과정1',
-        format: '집체',
-        hours: 16,
-        notes: '',
-      },
-    ],
-    usage_plan: '활용',
-  };
+
   const legacyCourseSpec: RoadmapCourseSpec = {
+    training_period: '2026년 1분기',
+    training_level: 'BEGINNER',
     course_name: '과정1',
-    format: '집체',
+    training_method: '집체',
     recommended_program: 'K-Digital',
     goal: 'g',
     main_content: 'm',
@@ -410,17 +401,17 @@ describe('updateRoadmapManually', () => {
     subjects: [{ name: '과목', details: 'd', hours: 8 }],
   };
 
-  // DB row (legacy 컬럼 구조)
+  // DB row (legacy 컬럼 구조 — pbl_course 는 Ⅰ장, courses 는 Ⅲ장)
   const baseDraftRow = {
     id: 'rv-1',
     status: 'DRAFT',
     project_id: 'p-1',
     version_number: 1,
     diagnosis_summary: '기존 진단',
-    roadmap_matrix: [legacyTraining],
+    roadmap_matrix: [],
     pbl_course: {
-      competencies: [legacyCompetency],
-      annual_plan: legacyAnnualPlan,
+      setup_necessity: '기존 수립 배경',
+      outcome_summary: legacyOutcomeSummary,
     },
     courses: [legacyCourseSpec, legacyCourseSpec, legacyCourseSpec],
     projects: { assigned_consultant_id: 'consultant-1' },
@@ -488,10 +479,10 @@ describe('updateRoadmapManually', () => {
     });
   });
 
-  // ─── 데이터 업데이트 (신규 4섹션 부분 업데이트) ────────────────────────
+  // ─── 데이터 업데이트 (v2 축소된 updates 병합) ──────────────────────────
 
   describe('데이터 업데이트', () => {
-    it('diagnosis_summary만 변경 → 기존 4섹션 유지', async () => {
+    it('diagnosis_summary만 변경 → 나머지 v2 섹션 유지', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
@@ -500,120 +491,167 @@ describe('updateRoadmapManually', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(validateRoadmap).toHaveBeenCalledWith(
-        expect.objectContaining({
-          diagnosis_summary: '새 진단',
-          competencies: [legacyCompetency],
-          training_structure: [legacyTraining],
-          annual_plan: legacyAnnualPlan,
-          course_specs: baseDraftRow.courses,
-        }),
-      );
+      expect(validateRoadmap).toHaveBeenCalledWith({
+        diagnosis_summary: '새 진단',
+        setup_necessity: '기존 수립 배경',
+        outcome_summary: legacyOutcomeSummary,
+        course_specs: baseDraftRow.courses,
+      });
     });
 
-    it('competencies만 변경 → 다른 섹션 유지', async () => {
-      const newComp: RoadmapCompetency = {
-        ...legacyCompetency,
-        name: '역량2',
-        definition: '새 정의',
-      };
+    it('setup_necessity만 변경 → pbl_course 컬럼에 매핑되어 저장', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
       await updateRoadmapManually('rv-1', 'consultant-1', {
-        competencies: [newComp],
+        setup_necessity: '새 수립 배경',
       });
-
-      expect(validateRoadmap).toHaveBeenCalledWith(
-        expect.objectContaining({
-          competencies: [newComp],
-          training_structure: [legacyTraining],
-        }),
-      );
-    });
-
-    it('training_structure만 변경 → DB의 roadmap_matrix 컬럼에 매핑되어 저장', async () => {
-      const newStruct: RoadmapTrainingStructureItem = {
-        ...legacyTraining,
-        content: '새 훈련 내용',
-      };
-      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
-      sharedMock.addResult({ data: null, error: null });
-
-      await updateRoadmapManually('rv-1', 'consultant-1', {
-        training_structure: [newStruct],
-      });
-
-      expect(sharedMock.chainable.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          roadmap_matrix: [newStruct],
-        }),
-      );
-    });
-
-    it('annual_plan만 변경 → pbl_course 컬럼 안에 annual_plan으로 저장', async () => {
-      const newPlan: RoadmapAnnualPlan = {
-        items: [
-          {
-            competency_name: '역량1',
-            course_name: '새 과정',
-            format: '혼합',
-            hours: 24,
-            notes: '',
-          },
-        ],
-        usage_plan: '새 활용',
-      };
-      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
-      sharedMock.addResult({ data: null, error: null });
-
-      await updateRoadmapManually('rv-1', 'consultant-1', { annual_plan: newPlan });
 
       expect(sharedMock.chainable.update).toHaveBeenCalledWith(
         expect.objectContaining({
           pbl_course: expect.objectContaining({
-            annual_plan: newPlan,
-            competencies: [legacyCompetency],
+            setup_necessity: '새 수립 배경',
+            outcome_summary: legacyOutcomeSummary,
           }),
-        }),
+        })
+      );
+    });
+
+    it('outcome_summary만 변경 → pbl_course 컬럼 안에 outcome_summary로 저장', async () => {
+      const newOutcome: RoadmapOutcomeSummary = {
+        ai_competency_level: 'ADVANCED',
+        selected_tasks: '새 선정 과업',
+        main_content: '새 수립 주요내용',
+      };
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { outcome_summary: newOutcome });
+
+      expect(sharedMock.chainable.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pbl_course: expect.objectContaining({
+            outcome_summary: newOutcome,
+            setup_necessity: '기존 수립 배경',
+          }),
+        })
       );
     });
 
     it('course_specs만 변경 → courses 컬럼에 저장', async () => {
-      const newSpecs = [legacyCourseSpec];
+      const newSpecs = [{ ...legacyCourseSpec, course_name: '새 과정' }];
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
-      await updateRoadmapManually('rv-1', 'consultant-1', {
-        course_specs: newSpecs,
-      });
+      await updateRoadmapManually('rv-1', 'consultant-1', { course_specs: newSpecs });
 
       expect(sharedMock.chainable.update).toHaveBeenCalledWith(
-        expect.objectContaining({ courses: newSpecs }),
+        expect.objectContaining({ courses: newSpecs })
+      );
+    });
+
+    it('v2 신규 필드(훈련시기·훈련수준·훈련방법) 변경이 courses 컬럼에 반영된다', async () => {
+      const newSpecs: RoadmapCourseSpec[] = [
+        {
+          ...legacyCourseSpec,
+          training_period: '2026년 4분기',
+          training_level: 'ADVANCED',
+          training_method: '원격',
+        },
+      ];
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { course_specs: newSpecs });
+
+      const updateCall = sharedMock.chainable.update.mock.calls.find(
+        (c: unknown[]) => (c[0] as Record<string, unknown>).courses
+      );
+      expect(updateCall?.[0].courses[0]).toEqual(
+        expect.objectContaining({
+          training_period: '2026년 4분기',
+          training_level: 'ADVANCED',
+          training_method: '원격',
+        })
+      );
+    });
+
+    it('roadmap_matrix 컬럼은 v2 에서 미사용이므로 항상 빈 배열로 저장된다', async () => {
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { diagnosis_summary: '수정' });
+
+      expect(sharedMock.chainable.update).toHaveBeenCalledWith(
+        expect.objectContaining({ roadmap_matrix: [] })
       );
     });
 
     it('복합 업데이트 (여러 섹션 동시 변경) 시 모두 반영', async () => {
-      const newComp: RoadmapCompetency = { ...legacyCompetency, name: '신규역량' };
-      const newStruct: RoadmapTrainingStructureItem = { ...legacyTraining, content: '신규' };
+      const newOutcome: RoadmapOutcomeSummary = {
+        ai_competency_level: 'ADVANCED',
+        selected_tasks: '신규 과업',
+        main_content: '신규 요약',
+      };
+      const newSpecs = [{ ...legacyCourseSpec, course_name: '신규 과정' }];
 
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
       const result = await updateRoadmapManually('rv-1', 'consultant-1', {
         diagnosis_summary: '복합',
-        competencies: [newComp],
-        training_structure: [newStruct],
+        setup_necessity: '복합 배경',
+        outcome_summary: newOutcome,
+        course_specs: newSpecs,
       });
 
       expect(result.success).toBe(true);
-      expect(validateRoadmap).toHaveBeenCalledWith(
-        expect.objectContaining({
-          diagnosis_summary: '복합',
-          competencies: [newComp],
-          training_structure: [newStruct],
-        }),
-      );
+      expect(validateRoadmap).toHaveBeenCalledWith({
+        diagnosis_summary: '복합',
+        setup_necessity: '복합 배경',
+        outcome_summary: newOutcome,
+        course_specs: newSpecs,
+      });
+    });
+
+    // 하위호환: 운영 DB 에 v1 FINAL 확정본이 실재한다.
+    it('v1 legacy row(courses[*].format + orphan 키) → v2 구조로 승격되어 병합된다', async () => {
+      const v1Row = {
+        ...baseDraftRow,
+        pbl_course: {
+          // v1 orphan 키 (읽기 시 무시되어야 함)
+          competencies: [{ name: '역량1', definition: '정의' }],
+          annual_plan: { items: [], usage_plan: '활용' },
+          setup_necessity: '기존 수립 배경',
+          outcome_summary: legacyOutcomeSummary,
+        },
+        courses: [
+          {
+            course_name: 'v1 과정',
+            format: '집체', // v1 키 → training_method 로 승격
+            recommended_program: 'K-Digital',
+            goal: 'g',
+            main_content: 'm',
+            target_audience: 't',
+            subjects: [{ name: '과목', details: 'd', hours: 8 }],
+          },
+        ],
+      };
+      sharedMock.addResult({ data: v1Row, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', { diagnosis_summary: '수정' });
+
+      const merged = vi.mocked(validateRoadmap).mock.calls[0][0];
+
+      // v1 format → v2 training_method 승격 + 신규 필드 backfill
+      expect(merged.course_specs[0].training_method).toBe('집체');
+      expect(merged.course_specs[0].training_period).toBe('');
+      expect(merged.course_specs[0].training_level).toBe('BEGINNER');
+      expect(merged.course_specs[0]).not.toHaveProperty('format');
+      // v1 orphan 키는 병합 결과에 포함되지 않는다
+      expect(merged).not.toHaveProperty('competencies');
+      expect(merged).not.toHaveProperty('annual_plan');
     });
   });
 
@@ -623,42 +661,14 @@ describe('updateRoadmapManually', () => {
   // sanitize 는 finalizeRoadmap / export 시점에만 수행하도록 옮김.
 
   describe('빈 행 보존 (DRAFT 편집)', () => {
-    it('빈 annual_plan 항목 추가 시 DB 저장 시 그대로 보존', async () => {
-      const planWithEmpty: RoadmapAnnualPlan = {
-        items: [
-          ...legacyAnnualPlan.items,
-          { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
-        ],
-        usage_plan: '활용',
-      };
-      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
-      sharedMock.addResult({ data: null, error: null });
-
-      await updateRoadmapManually('rv-1', 'consultant-1', { annual_plan: planWithEmpty });
-
-      expect(sharedMock.chainable.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pbl_course: expect.objectContaining({
-            annual_plan: expect.objectContaining({
-              items: expect.arrayContaining([
-                expect.objectContaining({ competency_name: '', course_name: '' }),
-              ]),
-            }),
-          }),
-        }),
-      );
-      const updateCall = sharedMock.chainable.update.mock.calls.find(
-        (c: unknown[]) => (c[0] as Record<string, { annual_plan?: unknown }>).pbl_course?.annual_plan,
-      );
-      expect(updateCall?.[0].pbl_course.annual_plan.items).toHaveLength(2);
-    });
-
-    it('빈 course_spec 카드 추가 시 DB 저장 시 그대로 보존', async () => {
+    it('빈 명세서 카드 추가 시 DB 저장 시 그대로 보존', async () => {
       const specsWithEmpty: RoadmapCourseSpec[] = [
         legacyCourseSpec,
         {
+          training_period: '',
+          training_level: 'BEGINNER',
           course_name: '',
-          format: '집체',
+          training_method: '',
           recommended_program: '',
           goal: '',
           main_content: '',
@@ -672,22 +682,17 @@ describe('updateRoadmapManually', () => {
       await updateRoadmapManually('rv-1', 'consultant-1', { course_specs: specsWithEmpty });
 
       const updateCall = sharedMock.chainable.update.mock.calls.find(
-        (c: unknown[]) => (c[0] as Record<string, unknown>).courses,
+        (c: unknown[]) => (c[0] as Record<string, unknown>).courses
       );
       expect(updateCall?.[0].courses).toHaveLength(2);
-      expect(updateCall?.[0].courses[1]).toEqual(
-        expect.objectContaining({ course_name: '' }),
-      );
+      expect(updateCall?.[0].courses[1]).toEqual(expect.objectContaining({ course_name: '' }));
     });
 
     it('빈 subject(교과목) 추가 시 DB 저장 시 그대로 보존', async () => {
       const specsWithEmptySubject: RoadmapCourseSpec[] = [
         {
           ...legacyCourseSpec,
-          subjects: [
-            ...legacyCourseSpec.subjects,
-            { name: '', details: '', hours: 0 },
-          ],
+          subjects: [...legacyCourseSpec.subjects, { name: '', details: '', hours: 0 }],
         },
       ];
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
@@ -698,30 +703,11 @@ describe('updateRoadmapManually', () => {
       });
 
       const updateCall = sharedMock.chainable.update.mock.calls.find(
-        (c: unknown[]) => (c[0] as Record<string, unknown>).courses,
+        (c: unknown[]) => (c[0] as Record<string, unknown>).courses
       );
       expect(updateCall?.[0].courses[0].subjects).toHaveLength(2);
       expect(updateCall?.[0].courses[0].subjects[1]).toEqual(
-        expect.objectContaining({ name: '', details: '' }),
-      );
-    });
-
-    it('빈 competency 추가 시 DB 저장 시 그대로 보존', async () => {
-      const compsWithEmpty: RoadmapCompetency[] = [
-        legacyCompetency,
-        { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
-      ];
-      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
-      sharedMock.addResult({ data: null, error: null });
-
-      await updateRoadmapManually('rv-1', 'consultant-1', { competencies: compsWithEmpty });
-
-      const updateCall = sharedMock.chainable.update.mock.calls.find(
-        (c: unknown[]) => (c[0] as Record<string, { competencies?: unknown }>).pbl_course?.competencies,
-      );
-      expect(updateCall?.[0].pbl_course.competencies).toHaveLength(2);
-      expect(updateCall?.[0].pbl_course.competencies[1]).toEqual(
-        expect.objectContaining({ name: '', definition: '' }),
+        expect.objectContaining({ name: '', details: '' })
       );
     });
   });
@@ -751,7 +737,7 @@ describe('updateRoadmapManually', () => {
     it('free_tool_validated / time_limit_validated는 항상 true (legacy 컬럼)', async () => {
       vi.mocked(validateRoadmap).mockReturnValue({
         isValid: false,
-        errors: ['무료 도구 오류'],
+        errors: ['명세서 개수 부족'],
         warnings: [],
       });
 
@@ -766,7 +752,7 @@ describe('updateRoadmapManually', () => {
         expect.objectContaining({
           free_tool_validated: true,
           time_limit_validated: true,
-        }),
+        })
       );
     });
 
@@ -805,7 +791,7 @@ describe('updateRoadmapManually', () => {
 
       await updateRoadmapManually('rv-1', 'consultant-1', {
         diagnosis_summary: '변경',
-        competencies: [legacyCompetency],
+        course_specs: [legacyCourseSpec],
       });
 
       expect(createAuditLog).toHaveBeenCalledWith(
@@ -819,9 +805,9 @@ describe('updateRoadmapManually', () => {
             version_id: 'rv-1',
             version_number: 1,
             status: 'DRAFT',
-            fields_changed: ['diagnosis_summary', 'competencies'],
+            fields_changed: ['diagnosis_summary', 'course_specs'],
           }),
-        }),
+        })
       );
     });
 
@@ -840,17 +826,23 @@ describe('updateRoadmapManually', () => {
             status: 'FINAL',
             fields_changed: ['diagnosis_summary'],
           }),
-        }),
+        })
       );
     });
 
-    it('diff 페이로드 — 짧은 텍스트 필드 원문 포함, 배열 필드는 length 비교', async () => {
+    it('diff 페이로드 — 짧은 텍스트 필드 원문 포함, 배열 필드(course_specs)는 length 비교', async () => {
       sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
       sharedMock.addResult({ data: null, error: null });
 
+      // 기존 courses 3개 → 4개로 증가
       await updateRoadmapManually('rv-1', 'consultant-1', {
         diagnosis_summary: '새 진단',
-        competencies: [legacyCompetency, { ...legacyCompetency, name: '추가역량' }],
+        course_specs: [
+          legacyCourseSpec,
+          legacyCourseSpec,
+          legacyCourseSpec,
+          { ...legacyCourseSpec, course_name: '추가 과정' },
+        ],
       });
 
       expect(createAuditLog).toHaveBeenCalledWith(
@@ -858,14 +850,35 @@ describe('updateRoadmapManually', () => {
           meta: expect.objectContaining({
             diff: expect.objectContaining({
               diagnosis_summary: expect.objectContaining({ after: '새 진단' }),
-              competencies: expect.objectContaining({
-                before_length: 1,
-                after_length: 2,
+              course_specs: expect.objectContaining({
+                before_length: 3,
+                after_length: 4,
               }),
             }),
           }),
-        }),
+        })
       );
+    });
+
+    it('diff 페이로드 — 객체 필드(outcome_summary)는 JSON 길이 비교', async () => {
+      sharedMock.addResult({ data: { ...baseDraftRow }, error: null });
+      sharedMock.addResult({ data: null, error: null });
+
+      await updateRoadmapManually('rv-1', 'consultant-1', {
+        outcome_summary: {
+          ai_competency_level: 'ADVANCED',
+          selected_tasks: '새 과업',
+          main_content: '새 요약',
+        },
+      });
+
+      const auditCall = vi.mocked(createAuditLog).mock.calls[0][0];
+      const diff = (auditCall.meta as Record<string, Record<string, unknown>>).diff;
+
+      expect(diff.outcome_summary).toEqual({
+        before_length: expect.any(Number),
+        after_length: expect.any(Number),
+      });
     });
 
     it('validation_result 메타가 포함', async () => {
@@ -891,7 +904,7 @@ describe('updateRoadmapManually', () => {
               warningCount: 1,
             },
           }),
-        }),
+        })
       );
     });
   });

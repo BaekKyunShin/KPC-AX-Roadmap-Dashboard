@@ -20,10 +20,7 @@ import {
   fromRoadmapVersionColumns,
   toRoadmapVersionColumns,
   sanitizeRoadmapResult,
-  type RoadmapCompetency,
   type RoadmapOutcomeSummary,
-  type RoadmapTrainingStructureItem,
-  type RoadmapAnnualPlan,
   type RoadmapCourseSpec,
 } from '@/lib/services/roadmap';
 import { insertSystemActivityLog } from '@/lib/services/activity-log';
@@ -52,7 +49,7 @@ function abortKey(userId: string) {
 /**
  * raw row → RoadmapVersionUI 호환 형태로 변환.
  * legacy 컬럼(roadmap_matrix/pbl_course/courses)을 fromRoadmapVersionColumns로
- * 신규 4섹션 구조(competencies/training_structure/annual_plan/course_specs)로 매핑.
+ * 양식 v2 구조(setup_necessity/outcome_summary/course_specs)로 매핑.
  */
 function toRoadmapVersionUI<
   R extends {
@@ -265,23 +262,24 @@ export async function fetchRoadmapVersion(roadmapId: string) {
 }
 
 /**
- * 로드맵 수동 편집 (산인공 4섹션 신규 구조)
+ * roadmap_versions 행이 소유한 편집 가능 필드 (양식 v2).
+ *
+ * v1 대비 삭제: competencies · ncs_* · training_structure(+_method) · annual_plan
+ * (신규 양식에서 해당 표가 전부 제거됨). `editRoadmapUpdatesSchema` 와 1:1 대응.
+ */
+type RoadmapEditableFields = {
+  diagnosis_summary?: string;
+  setup_necessity?: string;
+  outcome_summary?: RoadmapOutcomeSummary;
+  course_specs?: RoadmapCourseSpec[];
+};
+
+/**
+ * 로드맵 수동 편집 (산인공 공식 양식 v2 구조)
  */
 export async function editRoadmapManually(
   roadmapId: string,
-  updates: {
-    diagnosis_summary?: string;
-    setup_necessity?: string;
-    outcome_summary?: RoadmapOutcomeSummary;
-    competencies?: RoadmapCompetency[];
-    ncs_used?: boolean;
-    ncs_methodology?: string;
-    ncs_derivation_method?: string;
-    training_structure?: RoadmapTrainingStructureItem[];
-    training_structure_method?: string;
-    annual_plan?: RoadmapAnnualPlan;
-    course_specs?: RoadmapCourseSpec[];
-  }
+  updates: RoadmapEditableFields
 ): Promise<ActionResult<Record<string, unknown>>> {
   try {
     const auth = await requireAuthWithRole(['CONSULTANT_APPROVED'], {
@@ -583,55 +581,50 @@ async function hydrateRoadmapHrdSignedUrl(
 }
 
 /**
- * camelCase `RoadmapResultEditPayload` 중에서 Legacy `editRoadmapManually` 가
- * 수용하는 Roadmap 소유 필드만 추려낸다.
+ * camelCase `RoadmapResultEditPayload` 중에서 `editRoadmapManually` 가 수용하는
+ * Roadmap 소유 필드만 추려낸다 (payload 키와 1:1 대응하는 것만).
  *
- * 본 함수는 payload 의 Roadmap 슬라이스만 Legacy 시그니처로 매핑하며,
- * `company_requirements` / `task_analysis_note` / `target_task` 등
- * interview 원본 편집 필드는 제외한다 (Task 2.11 이월).
+ * ⚠️ 여기서 키가 빠지면 클라이언트가 보낸 편집이 서버까지 도달하지 못하고
+ *    **조용히 유실**된다 (2026-05-18 회귀 이력: Ⅲ 표의 "행 추가" 미저장).
+ *    양식 v2 의 Roadmap 소유 편집 필드는 Ⅰ-1 `setup_necessity` ·
+ *    Ⅰ-3 `main_content` · Ⅲ `course_specs` 3종이며, `main_content` 만
+ *    outcome_summary 병합이 필요해 `hydrateOutcomeSummary` 가 따로 처리한다.
  *
- * Note: `main_content` (Ⅰ-3 LLM 요약) 는 현행 Legacy 스키마에 별도 키가 없고
- *   `outcome_summary.performance_summary` 로 저장되지 않는 자유서술이라,
- *   Task 2.11 에서 Legacy 스키마 확장과 함께 지원. 현 Task 에서는 무시.
+ * interview 원본 편집 필드(company_requirements / task_analysis* / target_task)는
+ * `extractInterviewFieldsFromPayload` 가 담당한다.
  */
-function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): {
-  setup_necessity?: string;
-  competencies?: RoadmapCompetency[];
-  ncs_used?: boolean;
-  ncs_methodology?: string;
-  ncs_derivation_method?: string;
-  training_structure?: RoadmapTrainingStructureItem[];
-  training_structure_method?: string;
-  annual_plan?: RoadmapAnnualPlan;
-  course_specs?: RoadmapCourseSpec[];
-} {
-  const out: {
-    setup_necessity?: string;
-    competencies?: RoadmapCompetency[];
-    ncs_used?: boolean;
-    ncs_methodology?: string;
-    ncs_derivation_method?: string;
-    training_structure?: RoadmapTrainingStructureItem[];
-    training_structure_method?: string;
-    annual_plan?: RoadmapAnnualPlan;
-    course_specs?: RoadmapCourseSpec[];
-  } = {};
+function extractRoadmapFieldsFromPayload(patch: RoadmapResultEditPayload): RoadmapEditableFields {
+  const out: RoadmapEditableFields = {};
   if (patch.setup_necessity !== undefined) out.setup_necessity = patch.setup_necessity;
-  if (patch.competencies !== undefined) out.competencies = patch.competencies;
-  if (patch.ncs_used !== undefined) out.ncs_used = patch.ncs_used;
-  if (patch.ncs_methodology !== undefined) out.ncs_methodology = patch.ncs_methodology;
-  if (patch.ncs_derivation_method !== undefined) {
-    out.ncs_derivation_method = patch.ncs_derivation_method;
-  }
-  // Ⅲ-2 훈련체계도 — 누락 시 EditableTable.onChange 가 전달한 행이 사라진다 (2026-05-18 회귀 수정)
-  if (patch.training_structure !== undefined) out.training_structure = patch.training_structure;
-  if (patch.training_structure_method !== undefined) {
-    out.training_structure_method = patch.training_structure_method;
-  }
-  // Ⅲ-3 연간 훈련계획 — 동일 (2026-05-18 회귀 수정)
-  if (patch.annual_plan !== undefined) out.annual_plan = patch.annual_plan;
+  // Ⅲ 훈련실시 계획 제안 — 누락 시 명세서 편집(6개 과정) 이 통째로 사라진다
   if (patch.course_specs !== undefined) out.course_specs = patch.course_specs;
   return out;
+}
+
+/**
+ * Ⅰ-3 요약(`main_content`) → `outcome_summary` 완전체로 승격.
+ *
+ * `updateRoadmapManually` 는 outcome_summary 를 통째로 교체하므로, 현재 값을 읽어
+ * main_content 만 갈아끼운 3필드 객체를 만들어야 나머지 두 필드(기업 AI 역량 수준·
+ * 선정 과업) 가 초기화되지 않는다.
+ *
+ * 읽기는 세션 클라이언트(RLS 적용) 로 수행하고, 실제 쓰기 권한은 위임 대상인
+ * `editRoadmapManually` 가 다시 검증한다.
+ */
+async function hydrateOutcomeSummary(
+  versionId: string,
+  mainContent: string
+): Promise<RoadmapOutcomeSummary | null> {
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from('roadmap_versions')
+    .select('pbl_course')
+    .eq('id', versionId)
+    .maybeSingle();
+  if (error || !row) return null;
+
+  const current = fromRoadmapVersionColumns(row as { pbl_course?: unknown });
+  return { ...current.outcome_summary, main_content: mainContent };
 }
 
 /**
@@ -699,6 +692,15 @@ export async function editRoadmapV2(
 ): Promise<ActionResult<Record<string, unknown>>> {
   const roadmapFields = extractRoadmapFieldsFromPayload(patch);
   const interviewFields = extractInterviewFieldsFromPayload(patch);
+
+  // Ⅰ-3 요약은 outcome_summary 하위 필드 — 현재 값과 병합해야 나머지 필드가 보존된다
+  if (patch.main_content !== undefined) {
+    const outcomeSummary = await hydrateOutcomeSummary(versionId, patch.main_content);
+    if (!outcomeSummary) {
+      return { success: false, error: '로드맵 버전을 찾을 수 없습니다.' };
+    }
+    roadmapFields.outcome_summary = outcomeSummary;
+  }
 
   const hasRoadmap = Object.keys(roadmapFields).length > 0;
   const hasInterview = Object.keys(interviewFields).length > 0;

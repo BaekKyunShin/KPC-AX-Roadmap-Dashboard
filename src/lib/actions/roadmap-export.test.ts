@@ -44,6 +44,7 @@ const OTHER_USER_ID = 'user-2';
 const ROADMAP_ID = 'roadmap-1';
 const PROJECT_ID = 'proj-1';
 
+// DB legacy 컬럼 구조 (양식 v2) — pbl_course 에 Ⅰ장, courses 에 명세서가 저장된다.
 const ROADMAP_DATA = {
   id: ROADMAP_ID,
   project_id: PROJECT_ID,
@@ -52,25 +53,12 @@ const ROADMAP_DATA = {
   diagnosis_summary: '진단 요약',
   roadmap_matrix: [],
   pbl_course: {
-    selected_course_name: 'AI 기초',
-    selected_course_level: 'BEGINNER',
-    selected_course_task: '데이터 분석',
-    selection_rationale: {
-      consultant_expertise_fit: '적합',
-      pain_point_alignment: '일치',
-      feasibility_assessment: '가능',
-      summary: '요약',
+    setup_necessity: '수립 배경',
+    outcome_summary: {
+      ai_competency_level: 'BEGINNER',
+      selected_tasks: '데이터 분석',
+      main_content: '주요 내용',
     },
-    course_name: 'PBL 과정',
-    total_hours: 16,
-    target_tasks: ['분석'],
-    target_audience: '직원',
-    curriculum: [],
-    final_deliverables: [],
-    expected_outcomes: [],
-    business_impact: '',
-    measurement_methods: [],
-    prerequisites: [],
   },
   courses: [],
   created_at: '2026-02-01T00:00:00Z',
@@ -166,6 +154,28 @@ describe('prepareExportData', () => {
     }
   });
 
+  // 양식 v2 — Ⅲ-1 역량 모델링 / Ⅲ-2 훈련체계도 / Ⅲ-3 연간 훈련계획 표가 삭제되어
+  // 내보내기 payload 에서도 해당 필드를 넘기지 않는다 (회귀 방지).
+  it('v1 삭제 필드(competencies·trainingStructure·annualPlan)를 payload 에 포함하지 않는다', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    mock.addResult({ data: ROADMAP_DATA, error: null });
+    mock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await prepareExportData(ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty('competencies');
+      expect(result.data).not.toHaveProperty('trainingStructure');
+      expect(result.data).not.toHaveProperty('annualPlan');
+      expect(result.data).not.toHaveProperty('ncsUsed');
+      expect(result.data).not.toHaveProperty('ncsMethodology');
+      expect(result.data).not.toHaveProperty('ncsDerivationMethod');
+      expect(result.data).not.toHaveProperty('trainingStructureMethod');
+    }
+  });
+
   it('OPS_ADMIN은 모든 프로젝트에 접근할 수 있다', async () => {
     const mock = createMockSupabase({ authUser: { id: OTHER_USER_ID } });
     // 1) 로드맵 조회 → 성공 (assigned_consultant_id는 USER_ID, 다른 사용자)
@@ -239,27 +249,12 @@ describe('prepareExportData', () => {
     const mock = createMockSupabase({ authUser: { id: USER_ID } });
     const rowWithEmptyRows = {
       ...ROADMAP_DATA,
-      roadmap_matrix: [],
-      pbl_course: {
-        ...ROADMAP_DATA.pbl_course,
-        competencies: [
-          { name: '역량A', definition: '정의', knowledge: [], skills: [], attitudes: [] },
-          // 빈 competency
-          { name: '', definition: '', knowledge: [], skills: [], attitudes: [] },
-        ],
-        annual_plan: {
-          items: [
-            { competency_name: '역량A', course_name: '과정1', format: '집체', hours: 8, notes: '' },
-            // 빈 annual_plan 항목
-            { competency_name: '', course_name: '', format: '집체', hours: 0, notes: '' },
-          ],
-          usage_plan: '활용',
-        },
-      },
       courses: [
         {
+          training_period: '2026년 상반기',
+          training_level: 'BEGINNER',
           course_name: '과정1',
-          format: '집체',
+          training_method: '집체',
           recommended_program: '',
           goal: '',
           main_content: '',
@@ -272,8 +267,10 @@ describe('prepareExportData', () => {
         },
         // 빈 course_spec 카드
         {
+          training_period: '',
+          training_level: 'BEGINNER',
           course_name: '',
-          format: '집체',
+          training_method: '집체',
           recommended_program: '',
           goal: '',
           main_content: '',
@@ -290,10 +287,43 @@ describe('prepareExportData', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.competencies).toHaveLength(1);
-      expect(result.data.annualPlan.items).toHaveLength(1);
       expect(result.data.courseSpecs).toHaveLength(1);
       expect(result.data.courseSpecs[0].subjects).toHaveLength(1);
+    }
+  });
+
+  // 양식 v2 — 명세서 신규 필드(훈련시기·훈련수준)와 `format` → `training_method`
+  // 승격 결과가 내보내기 payload 에 그대로 전달되는지 확인.
+  it('명세서의 v2 필드(training_period·training_level·training_method)를 전달한다', async () => {
+    const mock = createMockSupabase({ authUser: { id: USER_ID } });
+    const rowWithV2Course = {
+      ...ROADMAP_DATA,
+      courses: [
+        {
+          training_period: '2026년 3분기',
+          training_level: 'ADVANCED',
+          course_name: 'AI 활용 심화',
+          training_method: '혼합',
+          recommended_program: 'S-OJT',
+          goal: '목표',
+          main_content: '내용',
+          target_audience: '팀장급',
+          subjects: [{ name: '과목1', details: 'd', hours: 8 }],
+        },
+      ],
+    };
+    mock.addResult({ data: rowWithV2Course, error: null });
+    mock.addResult({ data: { role: 'OPS_ADMIN' }, error: null });
+    vi.mocked(createClient).mockResolvedValue(mock.client as never);
+
+    const result = await prepareExportData(ROADMAP_ID);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const spec = result.data.courseSpecs[0];
+      expect(spec.training_period).toBe('2026년 3분기');
+      expect(spec.training_level).toBe('ADVANCED');
+      expect(spec.training_method).toBe('혼합');
     }
   });
 });

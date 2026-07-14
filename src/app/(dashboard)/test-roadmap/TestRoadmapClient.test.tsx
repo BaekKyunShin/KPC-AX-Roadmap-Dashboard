@@ -56,35 +56,44 @@ vi.mock(
     StepNecessity: ({ value }: { value: string }) => (
       <div data-testid="establishment-display">{value}</div>
     ),
-  }),
+  })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult',
-  () => ({ StepMainResult: () => <div>StepMainResult</div> }),
+  () => ({ StepMainResult: () => <div>StepMainResult</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements',
-  () => ({ StepCompanyRequirements: () => <div>StepCompanyRequirements</div> }),
+  () => ({ StepCompanyRequirements: () => <div>StepCompanyRequirements</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis',
-  () => ({ StepTaskAnalysis: () => <div>StepTaskAnalysis</div> }),
+  () => ({ StepTaskAnalysis: () => <div>StepTaskAnalysis</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask',
-  () => ({ StepTargetTask: () => <div>StepTargetTask</div> }),
+  () => ({ StepTargetTask: () => <div>StepTargetTask</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities',
-  () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> }),
+  () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> })
 );
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompetencyModeling',
-  () => ({ StepCompetencyModeling: () => <div>StepCompetencyModeling</div> }),
-);
+// 스텝 구성 검증을 위해 steps prop 을 그대로 노출하는 mock
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper',
-  () => ({ default: () => <nav aria-label="Progress">stepper</nav> }),
+  () => ({
+    default: ({ steps }: { steps: Array<{ id: number; name: string }> }) => (
+      <nav aria-label="Progress">
+        <ul>
+          {steps.map((s) => (
+            <li key={s.id} data-testid="stepper-step">
+              {s.name}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    ),
+  })
 );
 vi.mock('@/components/roadmap/RoadmapLoadingOverlay', () => ({
   default: () => null,
@@ -92,7 +101,7 @@ vi.mock('@/components/roadmap/RoadmapLoadingOverlay', () => ({
 }));
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/roadmap/_components/result-v2/RoadmapResultClient',
-  () => ({ RoadmapResultClient: () => <div>RoadmapResultClient</div> }),
+  () => ({ RoadmapResultClient: () => <div>RoadmapResultClient</div> })
 );
 
 const baseUser = {
@@ -121,6 +130,23 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     expect(display).toHaveTextContent('');
   });
 
+  // 양식 v2 — 인터뷰 Ⅲ-1 역량 모델링 스텝이 통째로 삭제됐다 (역량·NCS 전부).
+  it('역량 모델링(Ⅲ-1) 스텝이 제거된 6개 스텝만 표시한다', async () => {
+    render(<TestRoadmapClient user={baseUser} canAccess={true} hasProfile={true} />);
+    const steps = await screen.findAllByTestId('stepper-step');
+    const names = steps.map((s) => s.textContent);
+
+    expect(names).toEqual([
+      '수립 필요성',
+      '주요 활동',
+      '수립 주요 결과',
+      '기업 요구분석',
+      '과업·워크플로우 분석',
+      '훈련대상 과업',
+    ]);
+    expect(names).not.toContain('역량 모델링');
+  });
+
   it('빈 상태에서 버튼 클릭 시 ConfirmDialog 없이 fixture 값이 주입된다', async () => {
     render(<TestRoadmapClient user={baseUser} canAccess={true} hasProfile={true} />);
     const btn = await screen.findByTestId('test-roadmap-fill-sample');
@@ -131,13 +157,11 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('establishment-display')).toHaveTextContent(
-        /샘플정밀공업|자동차 부품/,
+        /샘플정밀공업|자동차 부품/
       );
     });
     // ConfirmDialog 가 열리지 않아야 한다
-    expect(
-      screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
   });
 
   it('이미 입력값이 있을 때 ConfirmDialog "취소" 시 state 가 유지된다', async () => {
@@ -150,7 +174,7 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('establishment-display')).toHaveTextContent(
-        /샘플정밀공업|자동차 부품/,
+        /샘플정밀공업|자동차 부품/
       );
     });
 
@@ -158,9 +182,7 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "취소" 클릭
     await act(async () => {
@@ -169,12 +191,10 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
 
     // 다이얼로그가 닫히고 기존 state 가 유지되어야 한다
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('establishment-display')).toHaveTextContent(
-      /샘플정밀공업|자동차 부품/,
+      /샘플정밀공업|자동차 부품/
     );
   });
 
@@ -188,7 +208,7 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('establishment-display')).toHaveTextContent(
-        /샘플정밀공업|자동차 부품/,
+        /샘플정밀공업|자동차 부품/
       );
     });
 
@@ -196,21 +216,17 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "덮어쓰기" 클릭 → 다이얼로그 닫히고 샘플 값 유지 (재적용)
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: '덮어쓰기' }));
     });
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('establishment-display')).toHaveTextContent(
-      /샘플정밀공업|자동차 부품/,
+      /샘플정밀공업|자동차 부품/
     );
   });
 });

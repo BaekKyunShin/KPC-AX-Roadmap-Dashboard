@@ -5,13 +5,15 @@ import { CourseSpecCard } from './CourseSpecCard';
 import type { RoadmapCourseSpec } from '@/lib/services/roadmap/roadmap-types';
 
 // ============================================================================
-// 테스트 데이터
+// 테스트 데이터 (산인공 양식 v2 — 훈련시기·훈련수준 추가, format → training_method)
 // ============================================================================
 
 function makeSpec(overrides: Partial<RoadmapCourseSpec> = {}): RoadmapCourseSpec {
   return {
+    training_period: '2026년 1분기',
+    training_level: 'BEGINNER',
     course_name: '생성형 AI 입문',
-    format: '혼합',
+    training_method: '혼합',
     recommended_program: '국민내일배움카드',
     goal: '생성형 AI 도구 활용 역량 확보',
     main_content: 'ChatGPT 기초, 프롬프트 엔지니어링',
@@ -42,6 +44,35 @@ describe('CourseSpecCard', () => {
       expect(screen.getByText('실습')).toBeInTheDocument();
     });
 
+    // --- v2 신규 필드 ---
+    it('훈련시기 라벨과 값을 표시한다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} />);
+      expect(screen.getByText('훈련시기')).toBeInTheDocument();
+      expect(screen.getByText('2026년 1분기')).toBeInTheDocument();
+    });
+
+    it('훈련수준 라벨과 한국어 라벨(초급)을 표시한다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} />);
+      expect(screen.getByText('훈련수준')).toBeInTheDocument();
+      expect(screen.getByText('초급')).toBeInTheDocument();
+    });
+
+    it('훈련수준 INTERMEDIATE는 "중급"으로 표시된다', () => {
+      render(<CourseSpecCard spec={makeSpec({ training_level: 'INTERMEDIATE' })} index={0} />);
+      expect(screen.getByText('중급')).toBeInTheDocument();
+    });
+
+    it('훈련수준 ADVANCED는 "고급"으로 표시된다', () => {
+      render(<CourseSpecCard spec={makeSpec({ training_level: 'ADVANCED' })} index={0} />);
+      expect(screen.getByText('고급')).toBeInTheDocument();
+    });
+
+    it('훈련방법(구 훈련형태) 라벨을 표시한다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} />);
+      expect(screen.getByText('훈련방법')).toBeInTheDocument();
+      expect(screen.queryByText('훈련형태')).not.toBeInTheDocument();
+    });
+
     it('명세서 인덱스 배지를 렌더링한다', () => {
       render(<CourseSpecCard spec={makeSpec()} index={2} />);
       expect(screen.getByText('명세서 #3')).toBeInTheDocument();
@@ -53,47 +84,30 @@ describe('CourseSpecCard', () => {
       expect(screen.getAllByText(/10H/).length).toBeGreaterThanOrEqual(1);
     });
 
-    it('canEdit=false면 Input/Textarea/삭제 버튼이 없다', () => {
+    it('canEdit=false면 Input/Textarea/Select/삭제 버튼이 없다', () => {
       render(<CourseSpecCard spec={makeSpec()} index={0} onDelete={vi.fn()} />);
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /삭제/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /교과목 추가/ })).not.toBeInTheDocument();
     });
 
     it('빈 subjects이면 "(교과목 없음)" 안내가 표시된다', () => {
-      render(
-        <CourseSpecCard spec={makeSpec({ subjects: [] })} index={0} />,
-      );
+      render(<CourseSpecCard spec={makeSpec({ subjects: [] })} index={0} />);
       expect(screen.getByText('(교과목 없음)')).toBeInTheDocument();
     });
   });
 
   describe('편집 모드', () => {
     it('canEdit=true이면 교과목 추가 버튼이 표시된다', () => {
-      render(
-        <CourseSpecCard
-          spec={makeSpec()}
-          index={0}
-          canEdit={true}
-          onChange={vi.fn()}
-        />,
-      );
-      expect(
-        screen.getByRole('button', { name: /명세서 1 교과목 추가/ }),
-      ).toBeInTheDocument();
+      render(<CourseSpecCard spec={makeSpec()} index={0} canEdit={true} onChange={vi.fn()} />);
+      expect(screen.getByRole('button', { name: /명세서 1 교과목 추가/ })).toBeInTheDocument();
     });
 
     it('교과목 추가 버튼 클릭 시 onChange가 subjects.length+1로 호출된다', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      render(
-        <CourseSpecCard
-          spec={makeSpec()}
-          index={0}
-          canEdit={true}
-          onChange={onChange}
-        />,
-      );
+      render(<CourseSpecCard spec={makeSpec()} index={0} canEdit={true} onChange={onChange} />);
 
       await user.click(screen.getByRole('button', { name: /명세서 1 교과목 추가/ }));
 
@@ -107,14 +121,7 @@ describe('CourseSpecCard', () => {
     it('교과목 삭제 버튼 클릭 시 onChange가 subjects.length-1로 호출된다', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
-      render(
-        <CourseSpecCard
-          spec={makeSpec()}
-          index={0}
-          canEdit={true}
-          onChange={onChange}
-        />,
-      );
+      render(<CourseSpecCard spec={makeSpec()} index={0} canEdit={true} onChange={onChange} />);
 
       const deleteBtn = screen.getByRole('button', {
         name: /명세서 1 교과목 1 삭제/,
@@ -127,25 +134,67 @@ describe('CourseSpecCard', () => {
       expect(arg.subjects[0].name).toBe('실습');
     });
 
-    it('프로파일 필드(훈련형태) 변경 시 onChange 호출된다', async () => {
+    it('프로파일 필드(훈련방법) 변경 시 onChange 호출된다', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
       render(
         <CourseSpecCard
-          spec={makeSpec({ format: '' })}
+          spec={makeSpec({ training_method: '' })}
           index={0}
           canEdit={true}
           onChange={onChange}
-        />,
+        />
       );
 
-      const input = screen.getByLabelText(/명세서 1 훈련형태/);
+      const input = screen.getByLabelText(/명세서 1 훈련방법/);
       // controlled component: 단일 문자 입력으로 onChange 및 값 전달 확인
       await user.type(input, '집');
 
       expect(onChange).toHaveBeenCalled();
       const lastArg = onChange.mock.calls[onChange.mock.calls.length - 1][0] as RoadmapCourseSpec;
-      expect(lastArg.format).toBe('집');
+      expect(lastArg.training_method).toBe('집');
+    });
+
+    // --- v2 신규 필드 편집 ---
+    it('훈련시기 변경 시 onChange가 호출된다', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <CourseSpecCard
+          spec={makeSpec({ training_period: '' })}
+          index={0}
+          canEdit={true}
+          onChange={onChange}
+        />
+      );
+
+      const input = screen.getByLabelText(/명세서 1 훈련시기/);
+      await user.type(input, '3');
+
+      expect(onChange).toHaveBeenCalled();
+      const lastArg = onChange.mock.calls[onChange.mock.calls.length - 1][0] as RoadmapCourseSpec;
+      expect(lastArg.training_period).toBe('3');
+    });
+
+    it('훈련수준은 select로 편집하며 선택 시 onChange가 호출된다', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<CourseSpecCard spec={makeSpec()} index={0} canEdit={true} onChange={onChange} />);
+
+      const select = screen.getByLabelText(/명세서 1 훈련수준/);
+      await user.selectOptions(select, 'ADVANCED');
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      const arg = onChange.mock.calls[0][0] as RoadmapCourseSpec;
+      expect(arg.training_level).toBe('ADVANCED');
+    });
+
+    it('훈련수준 select에 초급·중급·고급 3개 옵션이 있다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} canEdit={true} onChange={vi.fn()} />);
+
+      const select = screen.getByLabelText(/명세서 1 훈련수준/);
+      const options = Array.from(select.querySelectorAll('option')).map((o) => o.textContent);
+      expect(options).toEqual(['초급', '중급', '고급']);
     });
 
     it('canEdit=true && onDelete가 주어지면 카드 삭제 버튼이 표시되고 클릭 시 onDelete 호출', async () => {
@@ -158,7 +207,7 @@ describe('CourseSpecCard', () => {
           canEdit={true}
           onChange={vi.fn()}
           onDelete={onDelete}
-        />,
+        />
       );
 
       const deleteBtn = screen.getByRole('button', { name: /명세서 1 삭제/ });
@@ -176,7 +225,7 @@ describe('CourseSpecCard', () => {
           index={0}
           canEdit={true}
           onChange={onChange}
-        />,
+        />
       );
 
       const input = screen.getByLabelText(/명세서 1 과정명/);

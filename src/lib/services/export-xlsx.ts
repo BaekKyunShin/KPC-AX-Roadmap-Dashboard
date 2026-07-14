@@ -9,9 +9,6 @@ export {
   generateXLSX,
   downloadXLSX,
   buildOverviewSheet,
-  buildCompetencySheet,
-  buildStructureSheet,
-  buildAnnualPlanSheet,
   buildCourseSpecSheet,
 } from './export/xlsx/xlsx-generator';
 

@@ -14,22 +14,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { RoadmapVersionUI } from '@/types/roadmap-ui';
 
 // ── Server Action 모킹 ────────────────────────────────────────────────
-const fetchRoadmapPageDataV2Mock = vi.fn(
-  (_projectId: string, _versionId?: string) =>
-    Promise.resolve({
-      success: true as const,
-      data: {
-        versions: [] as RoadmapVersionUI[],
-        selectedVersion: null,
-        interview: {},
-      },
-    }),
+const fetchRoadmapPageDataV2Mock = vi.fn((_projectId: string, _versionId?: string) =>
+  Promise.resolve({
+    success: true as const,
+    data: {
+      versions: [] as RoadmapVersionUI[],
+      selectedVersion: null,
+      interview: {},
+    },
+  })
 );
 const exportRoadmapHwpxV2Mock = vi.fn((_versionId: string) =>
   Promise.resolve({
     success: true as const,
     data: { fileName: 'test.hwpx', contentBase64: '', mimeType: 'application/octet-stream' },
-  }),
+  })
 );
 
 vi.mock('@/app/(dashboard)/consultant/projects/[id]/roadmap/actions', () => ({
@@ -69,14 +68,18 @@ vi.mock(
       onSelectVersion: (id: string) => void;
       onDownload: (type: 'PDF' | 'XLSX' | 'HWPX') => void;
     }) => (
-      <div data-testid="roadmap-result-client" data-role={props.role} data-project-id={props.projectId}>
+      <div
+        data-testid="roadmap-result-client"
+        data-role={props.role}
+        data-project-id={props.projectId}
+      >
         <button onClick={() => props.onSelectVersion('v-other')}>select</button>
         <button onClick={() => props.onDownload('PDF')}>download-pdf</button>
         <button onClick={() => props.onDownload('XLSX')}>download-xlsx</button>
         <button onClick={() => props.onDownload('HWPX')}>download-hwpx</button>
       </div>
     ),
-  }),
+  })
 );
 
 import OpsRoadmapResultPageClient from './OpsRoadmapResultPageClient';
@@ -93,13 +96,6 @@ function makeVersion(overrides: Partial<RoadmapVersionUI> = {}): RoadmapVersionU
       selected_tasks: '',
       main_content: '',
     },
-    competencies: [],
-    ncs_used: false,
-    ncs_methodology: '',
-    ncs_derivation_method: '',
-    training_structure: [],
-    training_structure_method: '',
-    annual_plan: { items: [], usage_plan: '' },
     course_specs: [],
     revision_prompt: null,
     is_shared: false,
@@ -121,7 +117,7 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
-      />,
+      />
     );
     const root = screen.getByTestId('roadmap-result-client');
     expect(root.getAttribute('data-role')).toBe('OPS');
@@ -135,11 +131,11 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion()}
         initialInterview={{}}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('select'));
     await waitFor(() =>
-      expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalledWith('p-ops', 'v-other'),
+      expect(fetchRoadmapPageDataV2Mock).toHaveBeenCalledWith('p-ops', 'v-other')
     );
   });
 
@@ -150,7 +146,7 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('download-pdf'));
     await waitFor(() => expect(downloadPDFMock).toHaveBeenCalledWith('v-selected'));
@@ -163,7 +159,7 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('download-xlsx'));
     await waitFor(() => expect(downloadXLSXMock).toHaveBeenCalledWith('v-selected'));
@@ -176,7 +172,7 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[makeVersion()]}
         initialSelected={makeVersion({ id: 'v-selected' })}
         initialInterview={{}}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('download-hwpx'));
     await waitFor(() => expect(downloadHwpxMock).toHaveBeenCalled());
@@ -189,7 +185,7 @@ describe('OpsRoadmapResultPageClient', () => {
         initialVersions={[]}
         initialSelected={null}
         initialInterview={{}}
-      />,
+      />
     );
     fireEvent.click(screen.getByText('download-pdf'));
     fireEvent.click(screen.getByText('download-xlsx'));

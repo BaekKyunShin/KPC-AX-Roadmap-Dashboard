@@ -3,9 +3,6 @@
 import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Pause, Play } from 'lucide-react';
-import { CompetencyModelingTable } from '@/components/roadmap/CompetencyModelingTable';
-import { RoadmapMatrix } from '@/components/roadmap/RoadmapMatrix';
-import { AnnualTrainingPlanTable } from '@/components/roadmap/AnnualTrainingPlanTable';
 import { CoursesList } from '@/components/roadmap/CoursesList';
 import { ROADMAP_TABS } from '@/types/roadmap-ui';
 import type { RoadmapTabKey } from '@/types/roadmap-ui';
@@ -33,37 +30,16 @@ const CONTENT_HEIGHT = 340; // px
 const DEMO_URL = 'kpc-ax-roadmap-dashboard.vercel.app';
 
 /**
- * 데모 슬라이드 설정 (산인공 4섹션 구조와 1:1 매핑)
- *   역량 모델링 → 훈련체계도 → 연간 훈련계획 → 훈련과정 명세서
+ * 데모 슬라이드 설정 (산인공 양식 v2 Ⅲ장과 1:1 매핑)
+ *
+ * ⚠️ v2 양식 개정으로 Ⅲ장이 4섹션 → "훈련과정 명세서" 1섹션으로 축소되면서
+ *    슬라이드도 1개만 남았다. 캐러셀 UX(자동 전환·좌우 화살표·진행 인디케이터)는
+ *    다중 슬라이드를 전제로 설계된 구조이므로 재설계가 필요하다 (사용자 승인 대기).
  */
 const DEMO_SLIDES: DemoSlideConfig[] = [
   {
-    key: 'competencies',
-    description: 'NCS 기반 역량 모델링 — 지식·기술·태도(KSA) 정의',
-    duration: 5000,
-    scrollStartPercent: 10,
-    scrollEndPercent: 90,
-    enableScroll: true,
-  },
-  {
-    key: 'structure',
-    description: '역량 × 수준(초/중/고급) 훈련체계도',
-    duration: 4000,
-    scrollStartPercent: 0,
-    scrollEndPercent: 100,
-    enableScroll: false,
-  },
-  {
-    key: 'plan',
-    description: '연간 훈련계획 및 활용방안',
-    duration: 4500,
-    scrollStartPercent: 10,
-    scrollEndPercent: 90,
-    enableScroll: true,
-  },
-  {
     key: 'specs',
-    description: '훈련과정별 상세 명세서 (과정·교과목·시간)',
+    description: '훈련시기·훈련수준별 훈련과정 명세서 6종 (과정·교과목·시간)',
     duration: 8000,
     scrollStartPercent: 10,
     scrollEndPercent: 90,
@@ -149,13 +125,7 @@ function SlideCounter({ current, total }: { current: number; total: number }) {
  * 호버 시 일시정지는 이미 동작하지만(`onMouseEnter/Leave`), 사용자가 표·문구가
  * 긴 슬라이드를 끝까지 읽도록 명시적 컨트롤 추가.
  */
-function PlayPauseToggle({
-  isPaused,
-  onToggle,
-}: {
-  isPaused: boolean;
-  onToggle: () => void;
-}) {
+function PlayPauseToggle({ isPaused, onToggle }: { isPaused: boolean; onToggle: () => void }) {
   return (
     <div className="absolute top-4 right-20 z-10">
       <button
@@ -357,34 +327,11 @@ export default function DemoSection() {
   }, []);
 
   // ============================================================================
-  // 슬라이드 컨텐츠 렌더링 (4섹션)
+  // 슬라이드 컨텐츠 렌더링 (v2: 훈련과정 명세서 1섹션)
   // ============================================================================
 
   const renderSlideContent = (slideKey: RoadmapTabKey) => {
     switch (slideKey) {
-      case 'competencies':
-        return (
-          <CompetencyModelingTable
-            competencies={SAMPLE_ROADMAP_RESULT.competencies}
-            canEdit={false}
-          />
-        );
-      case 'structure':
-        return (
-          <RoadmapMatrix
-            competencies={SAMPLE_ROADMAP_RESULT.competencies}
-            trainingStructure={SAMPLE_ROADMAP_RESULT.training_structure}
-            canEdit={false}
-          />
-        );
-      case 'plan':
-        return (
-          <AnnualTrainingPlanTable
-            plan={SAMPLE_ROADMAP_RESULT.annual_plan}
-            competencies={SAMPLE_ROADMAP_RESULT.competencies}
-            canEdit={false}
-          />
-        );
       case 'specs':
         return <CoursesList specs={SAMPLE_ROADMAP_RESULT.course_specs} canEdit={false} />;
       default:
@@ -432,10 +379,7 @@ export default function DemoSection() {
           <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
             <BrowserHeader />
 
-            <div
-              className="relative bg-white overflow-hidden"
-              style={{ height: CONTENT_HEIGHT }}
-            >
+            <div className="relative bg-white overflow-hidden" style={{ height: CONTENT_HEIGHT }}>
               <NavigationArrow direction="prev" onClick={goToPrev} />
               <NavigationArrow direction="next" onClick={goToNext} />
 
@@ -456,10 +400,7 @@ export default function DemoSection() {
               ))}
 
               <SlideCounter current={currentIndex + 1} total={DEMO_SLIDES.length} />
-              <PlayPauseToggle
-                isPaused={isPaused}
-                onToggle={() => setIsPaused((prev) => !prev)}
-              />
+              <PlayPauseToggle isPaused={isPaused} onToggle={() => setIsPaused((prev) => !prev)} />
 
               <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none" />
             </div>
@@ -495,8 +436,18 @@ export default function DemoSection() {
             data-cursor-hover
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+              />
             </svg>
             샘플 데모 보기
           </Link>

@@ -5,7 +5,7 @@
  *   xlsx-styles.ts         — 색상/테두리/폰트 스타일 상수
  *   xlsx-formatter.ts      — 포맷 유틸 (상태/날짜/레벨/시간/불릿/NCS/합계)
  *   xlsx-sheet-builder.ts  — SheetCtx + 시트 구성 헬퍼
- *   xlsx-generator.ts      — 5개 시트 빌더 + generateXLSX/downloadXLSX
+ *   xlsx-generator.ts      — 2개 시트 빌더(개요·명세서) + generateXLSX/downloadXLSX
  */
 
 // 메인 함수
@@ -13,9 +13,6 @@ export {
   generateXLSX,
   downloadXLSX,
   buildOverviewSheet,
-  buildCompetencySheet,
-  buildStructureSheet,
-  buildAnnualPlanSheet,
   buildCourseSpecSheet,
 } from './xlsx-generator';
 
