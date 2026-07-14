@@ -10,6 +10,7 @@ import {
   noticeUpdateSchema,
   attachmentInputSchema,
   MAX_ATTACHMENT_BYTES,
+  ATTACHMENT_TOO_LARGE_MESSAGE,
 } from '@/lib/schemas/notice';
 import {
   createNotice,
@@ -239,7 +240,7 @@ export async function uploadAttachmentAction(
       return { success: false, error: '빈 파일은 업로드할 수 없습니다.' };
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+      return { success: false, error: ATTACHMENT_TOO_LARGE_MESSAGE };
     }
 
     // 서버 측 Zod 검증 — storage_path는 실제 업로드 성공 후 확정되므로
@@ -338,7 +339,7 @@ export async function createUploadUrlAction(
       return { success: false, error: '파일 크기가 올바르지 않습니다.' };
     }
     if (fileSize > MAX_ATTACHMENT_BYTES) {
-      return { success: false, error: '파일은 30MB 이하여야 합니다.' };
+      return { success: false, error: ATTACHMENT_TOO_LARGE_MESSAGE };
     }
 
     // Zod 사전 검증 — storage_path 는 service 에서 buildStoragePath 로 생성되므로

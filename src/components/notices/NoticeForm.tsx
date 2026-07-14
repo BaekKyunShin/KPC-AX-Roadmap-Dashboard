@@ -11,6 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FieldError } from '@/components/ui/field-error';
 import { AttachmentUploader } from '@/components/notices/AttachmentUploader';
 import { AttachmentList } from '@/components/notices/AttachmentList';
+import { UploadProgress } from '@/components/notices/UploadProgress';
+import { formatBytes } from '@/lib/utils/format-bytes';
 import { showErrorToast, showSuccessToast } from '@/lib/utils/toast';
 import {
   createNoticeAction,
@@ -34,10 +36,11 @@ interface NoticeFormProps {
   };
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+/** 업로드 중인 pendingFiles 항목의 진행률 (index = pendingFiles 내 위치) */
+interface UploadProgressState {
+  index: number;
+  loaded: number;
+  total: number;
 }
 
 export function NoticeForm({ mode, initial }: NoticeFormProps) {
@@ -45,10 +48,9 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
   const [uploadIndex, setUploadIndex] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [attachments, setAttachments] = useState<NoticeAttachment[]>(
-    initial?.attachments ?? [],
-  );
+  const [attachments, setAttachments] = useState<NoticeAttachment[]>(initial?.attachments ?? []);
   /** 지연 업로드 모드(create)에서 선택된 파일들 */
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
@@ -59,9 +61,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
     return result.success ? result.data.url : null;
   }
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>,
-  ): Promise<void> {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     setErrors({});
 
@@ -71,8 +71,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
     const nextErrors: Record<string, string> = {};
     if (title.length === 0) nextErrors.title = '제목을 입력하세요.';
     if (title.length > 200) nextErrors.title = '제목은 200자 이하로 입력하세요.';
-    if (body.length > 50000)
-      nextErrors.body = '본문은 50,000자 이하로 입력하세요.';
+    if (body.length > 50000) nextErrors.body = '본문은 50,000자 이하로 입력하세요.';
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -100,8 +99,11 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         for (let i = 0; i < pendingFiles.length; i += 1) {
           const file = pendingFiles[i];
           setUploadIndex(i + 1);
+          setUploadProgress({ index: i, loaded: 0, total: file.size });
           try {
-            const uploadRes = await uploadNoticeAttachmentDirect(noticeId, file);
+            const uploadRes = await uploadNoticeAttachmentDirect(noticeId, file, (loaded, total) =>
+              setUploadProgress({ index: i, loaded, total })
+            );
             if (uploadRes.success) {
               uploadedCount += 1;
             } else if (firstError === null) {
@@ -122,18 +124,12 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
           try {
             const rollbackRes = await deleteNoticeAction(noticeId);
             if (!rollbackRes.success) {
-              console.error(
-                '[NoticeForm] 보상 트랜잭션 실패:',
-                rollbackRes.error,
-              );
+              console.error('[NoticeForm] 보상 트랜잭션 실패:', rollbackRes.error);
             }
           } catch (rollbackErr) {
             console.error('[NoticeForm] 보상 트랜잭션 예외:', rollbackErr);
           }
-          showErrorToast(
-            '공지 등록 실패',
-            `첨부 업로드 오류: ${firstError}. 다시 시도해 주세요.`,
-          );
+          showErrorToast('공지 등록 실패', `첨부 업로드 오류: ${firstError}. 다시 시도해 주세요.`);
           // 작성 페이지에 머무름 — 폼 state(title/body/pendingFiles) 자동 보존
           return;
         }
@@ -141,7 +137,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         showSuccessToast(
           pendingFiles.length > 0
             ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
-            : '공지가 작성되었습니다.',
+            : '공지가 작성되었습니다.'
         );
         router.push('/ops/notices');
         router.refresh();
@@ -161,15 +157,13 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
       // 진단 강화 — Server Action throw 시 원본 에러를 콘솔에 남기고
       // 토스트에는 메시지를 그대로 노출해 다음 시도 시 원인 파악을 돕는다.
       console.error('[NoticeForm] submit 예외:', err);
-      const message =
-        err instanceof Error
-          ? err.message || err.toString()
-          : '알 수 없는 오류';
+      const message = err instanceof Error ? err.message || err.toString() : '알 수 없는 오류';
       showErrorToast('저장 실패', message);
     } finally {
       setSubmitPhase('idle');
       setUploadIndex(0);
       setUploadTotal(0);
+      setUploadProgress(null);
     }
   }
 
@@ -242,9 +236,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
             </p>
           </div>
           <AttachmentUploader
-            onFileSelected={(file) =>
-              setPendingFiles((prev) => [...prev, file])
-            }
+            onFileSelected={(file) => setPendingFiles((prev) => [...prev, file])}
           />
           {pendingFiles.length > 0 && (
             <ul
@@ -252,32 +244,37 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
               data-testid="pending-attachments"
             >
               {pendingFiles.map((file, idx) => (
-                <li
-                  key={`${file.name}-${idx}`}
-                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="truncate">{file.name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {formatBytes(file.size)}
-                    </span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() =>
-                      setPendingFiles((prev) =>
-                        prev.filter((_, i) => i !== idx),
-                      )
-                    }
-                    aria-label={`${file.name} 제거`}
-                    disabled={isSubmitting}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <li key={`${file.name}-${idx}`} className="px-3 py-2 text-sm">
+                  {uploadProgress && uploadProgress.index === idx ? (
+                    // 업로드 중인 파일은 진행률로 대체한다 (파일명·전송량이 포함되므로
+                    // 기본 행과 중복되지 않는다)
+                    <UploadProgress
+                      fileName={file.name}
+                      loaded={uploadProgress.loaded}
+                      total={uploadProgress.total}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatBytes(file.size)}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        aria-label={`${file.name} 제거`}
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -289,9 +286,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
         <div className="space-y-3">
           <div>
             <Label>첨부 파일</Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              파일을 선택하면 즉시 업로드됩니다.
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">파일을 선택하면 즉시 업로드됩니다.</p>
           </div>
           <AttachmentUploader
             noticeId={initial.id}
@@ -301,9 +296,7 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
             attachments={attachments}
             editable
             onDownload={handleDownload}
-            onDeleted={(id) =>
-              setAttachments((prev) => prev.filter((a) => a.id !== id))
-            }
+            onDeleted={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
           />
         </div>
       )}

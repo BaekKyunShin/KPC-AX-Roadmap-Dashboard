@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Server Actions 모킹 ───────────────────────────────────────────────────
 const mockCreateUploadUrlAction = vi.fn();
@@ -12,9 +12,67 @@ vi.mock('@/app/(dashboard)/ops/notices/actions', () => ({
 // ─── 대상 함수 import ───────────────────────────────────────────────────
 import { uploadNoticeAttachmentDirect } from './upload-notice-attachment';
 
-// ─── fetch 모킹 ─────────────────────────────────────────────────────────
-const mockFetch = vi.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
+// ─── XMLHttpRequest 모킹 ─────────────────────────────────────────────────
+// 배경: 업로드 진행률(%)을 얻으려면 fetch 로는 불가능하다 (요청 body 스트림
+//       진행 이벤트가 표준에 없음). XHR 의 upload.onprogress 만이 유일한 수단.
+//       100MB 첨부는 회선에 따라 수 분이 걸리므로 진행률 노출이 필수다.
+interface ProgressEventLike {
+  lengthComputable: boolean;
+  loaded: number;
+  total: number;
+}
+
+interface NextResponse {
+  status: number;
+  body: string;
+  /** true 면 load 대신 error 이벤트를 발생시킨다 (네트워크 단절 재현) */
+  networkError?: boolean;
+}
+
+let nextResponse: NextResponse = { status: 200, body: '' };
+let xhrInstances: MockXHR[] = [];
+
+class MockXHR {
+  status = 0;
+  responseText = '';
+  open = vi.fn();
+  setRequestHeader = vi.fn();
+
+  private listeners: Record<string, Array<() => void>> = {};
+  private progressCb?: (ev: ProgressEventLike) => void;
+
+  upload = {
+    addEventListener: (type: string, cb: (ev: ProgressEventLike) => void) => {
+      if (type === 'progress') this.progressCb = cb;
+    },
+  };
+
+  constructor() {
+    xhrInstances.push(this);
+  }
+
+  addEventListener(type: string, cb: () => void) {
+    (this.listeners[type] ??= []).push(cb);
+  }
+
+  send = vi.fn((body: unknown) => {
+    const total = (body as { size?: number })?.size ?? 0;
+    // 실제 XHR 과 동일하게 비동기로 이벤트를 발생시킨다
+    queueMicrotask(() => {
+      if (nextResponse.networkError) {
+        this.listeners['error']?.forEach((cb) => cb());
+        return;
+      }
+      // 진행률 이벤트: 절반 → 완료
+      this.progressCb?.({ lengthComputable: true, loaded: Math.floor(total / 2), total });
+      this.progressCb?.({ lengthComputable: true, loaded: total, total });
+
+      this.status = nextResponse.status;
+      this.responseText = nextResponse.body;
+      this.listeners['load']?.forEach((cb) => cb());
+    });
+  });
+}
 
 // 헬퍼 — 가짜 File 생성
 function makeFile(name: string, size: number, mime: string): File {
@@ -25,22 +83,30 @@ function makeFile(name: string, size: number, mime: string): File {
   } as unknown as File;
 }
 
+const UPLOAD_URL_OK = {
+  success: true,
+  data: {
+    signedUrl: 'https://upload.example/path?token=abc',
+    token: 'abc',
+    storagePath: 'n-1/uuid-a.pdf',
+    resolvedMime: 'application/pdf',
+  },
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  xhrInstances = [];
+  nextResponse = { status: 200, body: '' };
+  vi.stubGlobal('XMLHttpRequest', MockXHR);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('uploadNoticeAttachmentDirect', () => {
   it('3단계 모두 성공 시 attachment 반환', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-a.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
     const attachment = {
       id: 'att-1',
       notice_id: 'n-1',
@@ -57,23 +123,19 @@ describe('uploadNoticeAttachmentDirect', () => {
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.attachment.id).toBe('att-1');
     }
-    // 3단계 순서대로 호출되었는지
-    expect(mockCreateUploadUrlAction).toHaveBeenCalledWith(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://upload.example/path?token=abc',
-      expect.objectContaining({ method: 'PUT' }),
+    expect(mockCreateUploadUrlAction).toHaveBeenCalledWith('n-1', 'a.pdf', 'application/pdf', 100);
+    // XHR 로 signedUrl 에 PUT
+    expect(xhrInstances).toHaveLength(1);
+    expect(xhrInstances[0].open).toHaveBeenCalledWith(
+      'PUT',
+      'https://upload.example/path?token=abc'
     );
     expect(mockRegisterAttachmentAction).toHaveBeenCalledWith('n-1', {
       file_name: 'a.pdf',
@@ -83,7 +145,43 @@ describe('uploadNoticeAttachmentDirect', () => {
     });
   });
 
-  it('createUploadUrlAction 실패 시 그 error 전달, fetch·register 미호출', async () => {
+  // ─── 업로드 진행률 ────────────────────────────────────────────────────
+  // 100MB 첨부는 수 분이 걸린다. 진행률이 없으면 사용자는 멈춘 것으로 오해한다.
+
+  it('onProgress 콜백에 (loaded, total) 이 전달된다', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    mockRegisterAttachmentAction.mockResolvedValue({
+      success: true,
+      data: { attachment: { id: 'att-1' } },
+    });
+    const onProgress = vi.fn();
+
+    await uploadNoticeAttachmentDirect(
+      'n-1',
+      makeFile('a.pdf', 1000, 'application/pdf'),
+      onProgress
+    );
+
+    expect(onProgress).toHaveBeenCalledWith(500, 1000);
+    expect(onProgress).toHaveBeenLastCalledWith(1000, 1000);
+  });
+
+  it('onProgress 를 넘기지 않아도 정상 동작한다 (선택 인자)', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    mockRegisterAttachmentAction.mockResolvedValue({
+      success: true,
+      data: { attachment: { id: 'att-1' } },
+    });
+
+    const result = await uploadNoticeAttachmentDirect(
+      'n-1',
+      makeFile('a.pdf', 1000, 'application/pdf')
+    );
+
+    expect(result.success).toBe(true);
+  });
+
+  it('createUploadUrlAction 실패 시 그 error 전달, XHR·register 미호출', async () => {
     mockCreateUploadUrlAction.mockResolvedValue({
       success: false,
       error: '권한 없음',
@@ -91,36 +189,24 @@ describe('uploadNoticeAttachmentDirect', () => {
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toBe('권한 없음');
     }
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(xhrInstances).toHaveLength(0);
     expect(mockRegisterAttachmentAction).not.toHaveBeenCalled();
   });
 
-  it('fetch PUT status 400 응답 시 error 반환, register 미호출', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-a.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 400,
-      text: () => Promise.resolve('bad request'),
-    });
+  it('PUT status 400 응답 시 error 반환, register 미호출', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    nextResponse = { status: 400, body: 'bad request' };
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
@@ -137,32 +223,20 @@ describe('uploadNoticeAttachmentDirect', () => {
   //       파악할 수 없으므로 한국어 친화 메시지로 치환한다.
 
   it('Supabase Storage 413 응답(outer 400 + inner statusCode 413) 시 친화 메시지로 변환', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-large.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({
-      ok: false,
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    nextResponse = {
       status: 400,
-      text: () =>
-        Promise.resolve(
-          '{"statusCode":"413","error":"Payload too large","message":"The object exceeded the maximum allowed size"}',
-        ),
-    });
+      body: '{"statusCode":"413","error":"Payload too large","message":"The object exceeded the maximum allowed size"}',
+    };
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('large.pdf', 25 * 1024 * 1024, 'application/pdf'),
+      makeFile('large.pdf', 90 * 1024 * 1024, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain('30MB');
+      expect(result.error).toContain('100MB');
       expect(result.error).not.toContain('statusCode');
       expect(result.error).not.toContain('Payload too large');
     }
@@ -170,78 +244,46 @@ describe('uploadNoticeAttachmentDirect', () => {
   });
 
   it('직접 status 413 응답 시에도 친화 메시지로 변환', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-large.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 413,
-      text: () => Promise.resolve('Payload Too Large'),
-    });
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    nextResponse = { status: 413, body: 'Payload Too Large' };
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('large.pdf', 25 * 1024 * 1024, 'application/pdf'),
+      makeFile('large.pdf', 90 * 1024 * 1024, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain('30MB');
+      expect(result.error).toContain('100MB');
     }
     expect(mockRegisterAttachmentAction).not.toHaveBeenCalled();
   });
 
   it('status 500 등 413과 무관한 에러는 raw 메시지 유지 (회귀 방지)', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-a.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: () => Promise.resolve('Internal Server Error'),
-    });
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    nextResponse = { status: 500, body: 'Internal Server Error' };
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toContain('500');
       expect(result.error).toContain('Internal Server Error');
-      expect(result.error).not.toContain('30MB');
+      expect(result.error).not.toContain('100MB');
     }
   });
 
-  it('fetch PUT throw 해도 error 반환', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-a.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockRejectedValue(new Error('network down'));
+  it('네트워크 오류(XHR error 이벤트) 시 error 반환, register 미호출', async () => {
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
+    nextResponse = { status: 0, body: '', networkError: true };
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
@@ -254,16 +296,7 @@ describe('uploadNoticeAttachmentDirect', () => {
   });
 
   it('registerAttachmentAction 실패 시 그 error 전달', async () => {
-    mockCreateUploadUrlAction.mockResolvedValue({
-      success: true,
-      data: {
-        signedUrl: 'https://upload.example/path?token=abc',
-        token: 'abc',
-        storagePath: 'n-1/uuid-a.pdf',
-        resolvedMime: 'application/pdf',
-      },
-    });
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    mockCreateUploadUrlAction.mockResolvedValue(UPLOAD_URL_OK);
     mockRegisterAttachmentAction.mockResolvedValue({
       success: false,
       error: 'DB 에러',
@@ -271,7 +304,7 @@ describe('uploadNoticeAttachmentDirect', () => {
 
     const result = await uploadNoticeAttachmentDirect(
       'n-1',
-      makeFile('a.pdf', 100, 'application/pdf'),
+      makeFile('a.pdf', 100, 'application/pdf')
     );
 
     expect(result.success).toBe(false);
@@ -280,7 +313,7 @@ describe('uploadNoticeAttachmentDirect', () => {
     }
   });
 
-  it('fetch 시 Content-Type 헤더는 createUploadUrlAction 가 보정한 resolvedMime 사용', async () => {
+  it('PUT 시 Content-Type 헤더는 createUploadUrlAction 가 보정한 resolvedMime 사용', async () => {
     // .hwp 파일은 클라이언트 file.type 이 비어있고 resolvedMime 가 보정됨
     mockCreateUploadUrlAction.mockResolvedValue({
       success: true,
@@ -291,25 +324,16 @@ describe('uploadNoticeAttachmentDirect', () => {
         resolvedMime: 'application/x-hwp',
       },
     });
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
     mockRegisterAttachmentAction.mockResolvedValue({
       success: true,
       data: { attachment: { id: 'att-1' } },
     });
 
-    await uploadNoticeAttachmentDirect(
-      'n-1',
-      makeFile('report.hwp', 100, ''),
-    );
+    await uploadNoticeAttachmentDirect('n-1', makeFile('report.hwp', 100, ''));
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        method: 'PUT',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/x-hwp',
-        }),
-      }),
+    expect(xhrInstances[0].setRequestHeader).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/x-hwp'
     );
     // registerAttachmentAction 도 보정된 mime_type 으로 호출
     expect(mockRegisterAttachmentAction).toHaveBeenCalledWith('n-1', {

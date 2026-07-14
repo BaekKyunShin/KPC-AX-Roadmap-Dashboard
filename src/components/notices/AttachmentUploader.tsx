@@ -9,9 +9,18 @@ import { cn } from '@/lib/utils';
 import {
   ALLOWED_ATTACHMENT_EXT,
   MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_LABEL,
+  ATTACHMENT_TOO_LARGE_MESSAGE,
 } from '@/lib/schemas/notice';
 import { uploadNoticeAttachmentDirect } from '@/lib/utils/upload-notice-attachment';
+import { UploadProgress } from '@/components/notices/UploadProgress';
 import type { NoticeAttachment } from '@/types/database';
+
+interface ProgressState {
+  fileName: string;
+  loaded: number;
+  total: number;
+}
 
 interface AttachmentUploaderProps {
   /**
@@ -43,10 +52,9 @@ export function AttachmentUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
 
-  async function handleFileChange(
-    e: React.ChangeEvent<HTMLInputElement>,
-  ): Promise<void> {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -58,7 +66,7 @@ export function AttachmentUploader({
       return;
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setError('파일은 30MB 이하여야 합니다.');
+      setError(ATTACHMENT_TOO_LARGE_MESSAGE);
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
@@ -74,9 +82,12 @@ export function AttachmentUploader({
 
     // 즉시 업로드 모드 (수정 페이지) — Storage 직접 업로드 패턴
     setIsUploading(true);
+    setProgress({ fileName: file.name, loaded: 0, total: file.size });
 
     try {
-      const result = await uploadNoticeAttachmentDirect(noticeId, file);
+      const result = await uploadNoticeAttachmentDirect(noticeId, file, (loaded, total) =>
+        setProgress({ fileName: file.name, loaded, total })
+      );
       if (result.success) {
         showSuccessToast('첨부 파일이 업로드되었습니다.');
         onUploaded?.(result.data.attachment);
@@ -90,6 +101,7 @@ export function AttachmentUploader({
       setError(message);
     } finally {
       setIsUploading(false);
+      setProgress(null);
       if (inputRef.current) inputRef.current.value = '';
     }
   }
@@ -120,9 +132,16 @@ export function AttachmentUploader({
         )}
         {isUploading ? '업로드 중…' : '파일 선택'}
       </Button>
+      {progress && (
+        <UploadProgress
+          fileName={progress.fileName}
+          loaded={progress.loaded}
+          total={progress.total}
+        />
+      )}
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Paperclip className="h-3.5 w-3.5" />
-        허용 형식: {ALLOWED_ATTACHMENT_EXT.join(', ')} · 최대 30MB
+        허용 형식: {ALLOWED_ATTACHMENT_EXT.join(', ')} · 최대 {MAX_ATTACHMENT_LABEL}
       </p>
       <FieldError message={error ?? undefined} />
     </div>

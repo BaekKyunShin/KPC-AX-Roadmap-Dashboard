@@ -47,6 +47,7 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import * as noticeService from '@/lib/services/notice';
 import { createAuditLog } from '@/lib/services/audit';
 import { revalidatePath } from 'next/cache';
+import { ATTACHMENT_TOO_LARGE_MESSAGE } from '@/lib/schemas/notice';
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────
 
@@ -86,9 +87,7 @@ afterEach(() => {
 describe('createNoticeAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure('공지 작성 권한이 없습니다.');
-    const result = await createNoticeAction(
-      makeFormData({ title: 't', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: 't', body: 'b' }));
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toContain('권한');
@@ -97,9 +96,7 @@ describe('createNoticeAction', () => {
 
   it('제목 누락 시 Zod 검증 실패', async () => {
     setAuthSuccess();
-    const result = await createNoticeAction(
-      makeFormData({ title: '', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
@@ -107,7 +104,7 @@ describe('createNoticeAction', () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
     const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문', is_pinned: 'on' }),
+      makeFormData({ title: '공지', body: '본문', is_pinned: 'on' })
     );
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.noticeId).toBe('n-1');
@@ -116,9 +113,7 @@ describe('createNoticeAction', () => {
   it('서비스 실패 시 error 반환', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce(null);
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: 'b' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
@@ -128,9 +123,7 @@ describe('createNoticeAction', () => {
     vi.mocked(createAuditLog).mockRejectedValueOnce(new Error('audit 테이블 에러'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.noticeId).toBe('n-1');
@@ -145,9 +138,7 @@ describe('createNoticeAction', () => {
     });
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(true);
     consoleSpy.mockRestore();
@@ -162,14 +153,10 @@ describe('createNoticeAction', () => {
 
   it('createNotice 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
     setAuthSuccess();
-    vi.mocked(noticeService.createNotice).mockRejectedValueOnce(
-      new Error('DB 네트워크 에러'),
-    );
+    vi.mocked(noticeService.createNotice).mockRejectedValueOnce(new Error('DB 네트워크 에러'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createNoticeAction(
-      makeFormData({ title: '공지', body: '본문' }),
-    );
+    const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -185,20 +172,14 @@ describe('createNoticeAction', () => {
 describe('updateNoticeAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure();
-    const result = await updateNoticeAction(
-      'n-1',
-      makeFormData({ title: 't', body: 'b' }),
-    );
+    const result = await updateNoticeAction('n-1', makeFormData({ title: 't', body: 'b' }));
     expect(result.success).toBe(false);
   });
 
   it('성공 시 simpleSuccess', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.updateNotice).mockResolvedValueOnce(true);
-    const result = await updateNoticeAction(
-      'n-1',
-      makeFormData({ title: '수정', body: 'b' }),
-    );
+    const result = await updateNoticeAction('n-1', makeFormData({ title: '수정', body: 'b' }));
     expect(result.success).toBe(true);
   });
 
@@ -250,7 +231,7 @@ describe('togglePinAction', () => {
     expect(noticeService.updateNotice).toHaveBeenCalledWith(
       'n-1',
       { is_pinned: true },
-      expect.anything(),
+      expect.anything()
     );
   });
 });
@@ -262,7 +243,7 @@ describe('uploadAttachmentAction', () => {
     setAuthFailure();
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
     expect(result.success).toBe(false);
   });
@@ -273,14 +254,29 @@ describe('uploadAttachmentAction', () => {
     expect(result.success).toBe(false);
   });
 
-  it('30MB 초과 거부', async () => {
+  it('100MB 초과 거부', async () => {
     setAuthSuccess();
-    const huge = makeFile('a.pdf', 31 * 1024 * 1024, 'application/pdf');
-    const result = await uploadAttachmentAction(
-      'n-1',
-      makeFormData({ file: huge }),
-    );
+    const huge = makeFile('a.pdf', 100 * 1024 * 1024 + 1, 'application/pdf');
+    const result = await uploadAttachmentAction('n-1', makeFormData({ file: huge }));
     expect(result.success).toBe(false);
+  });
+
+  it('100MB 이하(90MB)는 통과 — 상향된 한도가 실제로 적용된다', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.uploadAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-90',
+        notice_id: 'n-1',
+        file_name: 'big.pdf',
+        mime_type: 'application/pdf',
+        file_size: 90 * 1024 * 1024,
+        storage_path: 'n-1/big.pdf',
+        uploaded_at: '2026-01-01',
+      },
+    });
+    const big = makeFile('big.pdf', 90 * 1024 * 1024, 'application/pdf');
+    const result = await uploadAttachmentAction('n-1', makeFormData({ file: big }));
+    expect(result.success).toBe(true);
   });
 
   it('허용 확장자·크기면 서비스 호출 후 성공', async () => {
@@ -299,7 +295,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
     expect(result.success).toBe(true);
   });
@@ -310,7 +306,7 @@ describe('uploadAttachmentAction', () => {
       'n-1',
       makeFormData({
         file: makeFile('mal.exe', 10, 'application/octet-stream'),
-      }),
+      })
     );
     expect(result.success).toBe(false);
   });
@@ -333,7 +329,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(true);
@@ -360,7 +356,7 @@ describe('uploadAttachmentAction', () => {
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(true);
@@ -377,13 +373,13 @@ describe('uploadAttachmentAction', () => {
   it('uploadAttachment 서비스가 throw해도 ActionResult 반환 (회귀 #이슈1-C)', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.uploadAttachment).mockRejectedValueOnce(
-      new Error('storage 네트워크 에러'),
+      new Error('storage 네트워크 에러')
     );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await uploadAttachmentAction(
       'n-1',
-      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') }),
+      makeFormData({ file: makeFile('a.pdf', 10, 'application/pdf') })
     );
 
     expect(result.success).toBe(false);
@@ -417,56 +413,50 @@ describe('deleteAttachmentAction', () => {
 describe('createUploadUrlAction', () => {
   it('권한 없으면 실패', async () => {
     setAuthFailure();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
     expect(result.success).toBe(false);
   });
 
   it('빈 noticeId 거부', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      '',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('', 'a.pdf', 'application/pdf', 100);
     expect(result.success).toBe(false);
   });
 
-  it('30MB 초과 거부', async () => {
+  it('100MB 초과 거부', async () => {
     setAuthSuccess();
     const result = await createUploadUrlAction(
       'n-1',
       'a.pdf',
       'application/pdf',
-      31 * 1024 * 1024,
+      100 * 1024 * 1024 + 1
     );
     expect(result.success).toBe(false);
+  });
+
+  it('100MB 초과 거부 메시지는 ATTACHMENT_TOO_LARGE_MESSAGE 와 동일 (문구 drift 방지)', async () => {
+    setAuthSuccess();
+    const result = await createUploadUrlAction(
+      'n-1',
+      'a.pdf',
+      'application/pdf',
+      100 * 1024 * 1024 + 1
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(ATTACHMENT_TOO_LARGE_MESSAGE);
+    }
   });
 
   it('빈 파일(0바이트) 거부', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      0,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 0);
     expect(result.success).toBe(false);
   });
 
   it('허용되지 않은 확장자 거부 (.exe)', async () => {
     setAuthSuccess();
-    const result = await createUploadUrlAction(
-      'n-1',
-      'mal.exe',
-      'application/octet-stream',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'mal.exe', 'application/octet-stream', 100);
     expect(result.success).toBe(false);
   });
 
@@ -479,12 +469,7 @@ describe('createUploadUrlAction', () => {
       resolvedMime: 'application/pdf',
     });
 
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -497,16 +482,11 @@ describe('createUploadUrlAction', () => {
   it('서비스 throw 해도 ActionResult 반환', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNoticeAttachmentUploadUrl).mockRejectedValueOnce(
-      new Error('network down'),
+      new Error('network down')
     );
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await createUploadUrlAction(
-      'n-1',
-      'a.pdf',
-      'application/pdf',
-      100,
-    );
+    const result = await createUploadUrlAction('n-1', 'a.pdf', 'application/pdf', 100);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -590,9 +570,7 @@ describe('registerAttachmentAction', () => {
 
   it('서비스 throw 해도 ActionResult 반환', async () => {
     setAuthSuccess();
-    vi.mocked(noticeService.registerNoticeAttachment).mockRejectedValueOnce(
-      new Error('db down'),
-    );
+    vi.mocked(noticeService.registerNoticeAttachment).mockRejectedValueOnce(new Error('db down'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await registerAttachmentAction('n-1', {
