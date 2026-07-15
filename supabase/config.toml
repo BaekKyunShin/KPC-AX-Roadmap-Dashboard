@@ -42,7 +42,9 @@ port = 54324
 
 [storage]
 enabled = true
-file_size_limit = "50MiB"
+# 로컬 스택 전역 업로드 한도. 공지 첨부 상한(100MB)보다 커야 로컬에서
+# 100MB 업로드를 재현할 수 있다 (운영은 대시보드 Storage 설정에서 별도 관리).
+file_size_limit = "120MiB"
 
 [storage.s3_protocol]
 enabled = true

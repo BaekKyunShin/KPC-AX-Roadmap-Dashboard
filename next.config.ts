@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import bundleAnalyzer from "@next/bundle-analyzer";
+import type { NextConfig } from 'next';
+import bundleAnalyzer from '@next/bundle-analyzer';
 
 // ─── 환경변수 검증 (빌드 타임) ──────────────────────────────────────────
 const REQUIRED_SERVER_ENV = ['SUPABASE_SERVICE_ROLE_KEY', 'LLM_API_KEY'] as const;
@@ -20,7 +20,7 @@ if (missingVars.length > 0) {
 // ─────────────────────────────────────────────────────────────────────────
 
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
+  enabled: process.env.ANALYZE === 'true',
 });
 
 const nextConfig: NextConfig = {
@@ -42,7 +42,9 @@ const nextConfig: NextConfig = {
     return [];
   },
   experimental: {
-    // 공지 첨부(최대 30MB) + 인터뷰 첨부(최대 10MB) + 멀티파트 헤더 오버헤드 여유까지 32MB 허용
+    // 인터뷰 첨부는 Server Action 에 FormData 로 전송된다 (버킷 한도 20MB
+    // + 멀티파트 오버헤드 여유). 공지 첨부(100MB)는 Storage signed URL 로
+    // 브라우저가 직접 PUT 하므로 이 한도를 타지 않는다.
     serverActions: {
       bodySizeLimit: '32mb',
     },

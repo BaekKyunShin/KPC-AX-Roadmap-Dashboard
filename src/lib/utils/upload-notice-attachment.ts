@@ -2,8 +2,52 @@ import {
   createUploadUrlAction,
   registerAttachmentAction,
 } from '@/app/(dashboard)/ops/notices/actions';
+import { MAX_ATTACHMENT_LABEL } from '@/lib/schemas/notice';
 import type { ActionResult } from '@/lib/types/action-result';
 import type { NoticeAttachment } from '@/types/database';
+
+/** 업로드 진행률 콜백 — (전송 완료 바이트, 전체 바이트) */
+export type UploadProgressCallback = (loaded: number, total: number) => void;
+
+interface PutResponse {
+  status: number;
+  body: string;
+}
+
+/**
+ * Storage signed URL 로 파일을 직접 PUT 한다.
+ *
+ * fetch 가 아니라 XHR 를 쓰는 이유: 요청 body 의 업로드 진행률 이벤트는
+ * XHR(`upload.onprogress`) 에만 존재한다. 100MB 첨부는 회선에 따라 수 분이
+ * 걸리므로 진행률 없이는 사용자가 멈춘 것으로 오해한다.
+ */
+function putWithProgress(
+  signedUrl: string,
+  file: File,
+  contentType: string,
+  onProgress?: UploadProgressCallback
+): Promise<PutResponse> {
+  return new Promise<PutResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl);
+    xhr.setRequestHeader('Content-Type', contentType);
+
+    xhr.upload.addEventListener('progress', (e: ProgressEvent) => {
+      if (e.lengthComputable) onProgress?.(e.loaded, e.total);
+    });
+    xhr.addEventListener('load', () => {
+      resolve({ status: xhr.status, body: xhr.responseText ?? '' });
+    });
+    xhr.addEventListener('error', () => {
+      reject(new Error('네트워크 오류로 업로드에 실패했습니다.'));
+    });
+    xhr.addEventListener('abort', () => {
+      reject(new Error('업로드가 취소되었습니다.'));
+    });
+
+    xhr.send(file);
+  });
+}
 
 /**
  * 공지 첨부 파일을 Supabase Storage 로 클라이언트에서 직접 업로드한다.
@@ -11,7 +55,7 @@ import type { NoticeAttachment } from '@/types/database';
  * Server Action 의 multipart body 한도(Vercel Functions platform 제약)를
  * 우회하기 위해, 3단계로 분리한다:
  *   1) createUploadUrlAction — admin 이 발급한 signed upload URL + token 수신
- *   2) fetch PUT — 브라우저가 Storage 에 파일을 직접 PUT
+ *   2) XHR PUT — 브라우저가 Storage 에 파일을 직접 전송 (진행률 이벤트 포함)
  *   3) registerAttachmentAction — 업로드 성공 후 DB row 등록
  *
  * 어느 단계든 실패하면 그 시점의 error 를 그대로 ActionResult 로 반환한다.
@@ -20,14 +64,10 @@ import type { NoticeAttachment } from '@/types/database';
 export async function uploadNoticeAttachmentDirect(
   noticeId: string,
   file: File,
+  onProgress?: UploadProgressCallback
 ): Promise<ActionResult<{ attachment: NoticeAttachment }>> {
   // 1) signed upload URL 발급
-  const urlResult = await createUploadUrlAction(
-    noticeId,
-    file.name,
-    file.type,
-    file.size,
-  );
+  const urlResult = await createUploadUrlAction(noticeId, file.name, file.type, file.size);
   if (!urlResult.success) {
     return { success: false, error: urlResult.error };
   }
@@ -35,18 +75,9 @@ export async function uploadNoticeAttachmentDirect(
 
   // 2) Supabase Storage 로 직접 PUT
   try {
-    const res = await fetch(signedUrl, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': resolvedMime },
-    });
-    if (!res.ok) {
-      let detail = '';
-      try {
-        detail = await res.text();
-      } catch {
-        // 응답 본문 파싱 실패는 무시
-      }
+    const res = await putWithProgress(signedUrl, file, resolvedMime, onProgress);
+    if (res.status < 200 || res.status >= 300) {
+      const detail = res.body;
       // Supabase Storage 413 (버킷 file_size_limit 초과): outer status 400 +
       // body JSON 의 statusCode==="413"/error==="Payload too large" 형태로 응답.
       // 직접 413을 받는 경로도 함께 감지해 사용자 친화 메시지로 치환한다.
@@ -57,7 +88,7 @@ export async function uploadNoticeAttachmentDirect(
       if (isPayloadTooLarge) {
         return {
           success: false,
-          error: '파일이 너무 큽니다 (최대 30MB). 파일 크기를 줄여 다시 시도해 주세요.',
+          error: `파일이 너무 큽니다 (최대 ${MAX_ATTACHMENT_LABEL}). 파일 크기를 줄여 다시 시도해 주세요.`,
         };
       }
       return {
@@ -66,7 +97,7 @@ export async function uploadNoticeAttachmentDirect(
       };
     }
   } catch (e) {
-    console.error('[uploadNoticeAttachmentDirect] fetch PUT throw:', e);
+    console.error('[uploadNoticeAttachmentDirect] PUT 실패:', e);
     const msg = e instanceof Error ? e.message : String(e);
     return { success: false, error: `파일 업로드 실패: ${msg}` };
   }

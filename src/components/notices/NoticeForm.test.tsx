@@ -107,7 +107,11 @@ vi.mock('@/components/notices/AttachmentList', () => ({
     editable?: boolean;
     onDeleted?: (id: string) => void;
   }) => (
-    <div data-testid="attachment-list" data-count={attachments.length} data-editable={String(editable)}>
+    <div
+      data-testid="attachment-list"
+      data-count={attachments.length}
+      data-editable={String(editable)}
+    >
       {attachments.map((a: unknown) => {
         const att = a as { id: string; file_name: string };
         return (
@@ -131,7 +135,11 @@ vi.mock('@/components/notices/AttachmentList', () => ({
 
 vi.mock('@/components/ui/field-error', () => ({
   FieldError: ({ message }: { message?: string }) =>
-    message ? <p role="alert" data-testid="field-error">{message}</p> : null,
+    message ? (
+      <p role="alert" data-testid="field-error">
+        {message}
+      </p>
+    ) : null,
 }));
 
 // =============================================================================
@@ -345,9 +353,74 @@ describe('NoticeForm', () => {
 
       await waitFor(() => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith(
-          expect.stringContaining('첨부 1건 업로드 완료'),
+          expect.stringContaining('첨부 1건 업로드 완료')
         );
       });
+    });
+
+    // 100MB 첨부는 회선에 따라 수 분이 걸린다. 작성 페이지는 저장 버튼을 누른 뒤
+    // 업로드가 시작되므로, 진행률이 없으면 사용자가 멈춘 것으로 오해한다.
+    it('첨부 업로드 중 해당 파일의 진행률(%)이 표시된다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-3' },
+      });
+
+      let finishUpload!: (v: unknown) => void;
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        (_noticeId: string, _file: File, onProgress?: (loaded: number, total: number) => void) => {
+          onProgress?.(30 * 1024 * 1024, 100 * 1024 * 1024);
+          return new Promise((resolve) => {
+            finishUpload = resolve;
+          });
+        }
+      );
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
+        expect(screen.getByText('30%')).toBeInTheDocument();
+        expect(screen.getByText('30.0 MB / 100.0 MB')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        finishUpload({ success: true });
+      });
+    });
+
+    it('업로드 완료 후에는 진행률이 사라진다', async () => {
+      const user = userEvent.setup();
+      mockCreateNoticeAction.mockResolvedValue({
+        success: true,
+        data: { noticeId: 'new-notice-4' },
+      });
+      mockUploadNoticeAttachmentDirect.mockImplementation(
+        async (
+          _noticeId: string,
+          _file: File,
+          onProgress?: (loaded: number, total: number) => void
+        ) => {
+          onProgress?.(100 * 1024 * 1024, 100 * 1024 * 1024);
+          return { success: true };
+        }
+      );
+
+      render(<NoticeForm mode="create" />);
+
+      await user.click(screen.getByTestId('mock-select-file'));
+      await user.type(screen.getByRole('textbox', { name: /제목/ }), '공지');
+      await user.click(screen.getByRole('button', { name: '작성' }));
+
+      await waitFor(() => {
+        expect(mockShowSuccessToast).toHaveBeenCalled();
+      });
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
 
     // 회귀 #이슈1-C: 첨부 포함 정상 흐름에서 "저장 실패" 토스트가 발생해선 안 됨.
@@ -372,9 +445,7 @@ describe('NoticeForm', () => {
       });
 
       // "저장 실패" 토스트는 단 한 번도 호출되어서는 안 됨
-      const errorCalls = mockShowErrorToast.mock.calls.filter(
-        (call) => call[0] === '저장 실패',
-      );
+      const errorCalls = mockShowErrorToast.mock.calls.filter((call) => call[0] === '저장 실패');
       expect(errorCalls).toHaveLength(0);
     });
   });
@@ -496,7 +567,7 @@ describe('NoticeForm', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
           '공지 등록 실패',
-          expect.stringContaining('첨부 업로드 오류'),
+          expect.stringContaining('첨부 업로드 오류')
         );
       });
       // 성공 토스트는 호출되지 않아야 함
@@ -579,7 +650,7 @@ describe('NoticeForm', () => {
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
           '공지 등록 실패',
-          expect.stringContaining('첨부 업로드 오류'),
+          expect.stringContaining('첨부 업로드 오류')
         );
       });
 
