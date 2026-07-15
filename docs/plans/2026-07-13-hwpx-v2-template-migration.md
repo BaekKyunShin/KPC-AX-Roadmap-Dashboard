@@ -304,6 +304,37 @@ PBL 기존 `'BASIC'|'EXPLORER'|'USER'|'LEADER'` → 병합 규칙: `BASIC→BEGI
 
 ---
 
+## 실행 진행 상황 (2026-07-15 기준 — 재개 지점)
+
+> **작업 위치:** 워크트리 `.worktrees/hwpx-v2-roadmap` / 브랜치 `feat/hwpx-v2-roadmap` (main 직접 작업 금지, 다른 세션이 main·notice-attachment 워크트리 사용 중)
+> **HWPX venv:** `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard/.venv-hwpx/bin/python3` (main 것 재사용)
+> **빌드 시:** main 의 `.env.local` 을 워크트리로 복사 후 build, 커밋 전 제거 (secret-guard 훅이 `.env` 있으면 `git add -A` 차단)
+
+| PR                                        | 상태             | 커밋                                                          |
+| ----------------------------------------- | ---------------- | ------------------------------------------------------------- |
+| PR 0 준비                                 | ✅ 완료          | `ebe12f1`                                                     |
+| PR 1 로드맵 전 계층 + 플레이스홀더 인프라 | ✅ 완료          | `48dc9e6` (양식·HWPX·화면·내보내기) + `94a6ca6` (인터뷰 계층) |
+| **PR 2 로드맵→PBL 연계 인프라**           | ⬜ **다음 차례** | —                                                             |
+| PR 3 PBL 전 계층                          | ⬜               | —                                                             |
+| PR 4 최종 검증·정리                       | ⬜               | —                                                             |
+
+**PR 1 최종 검증 통과:** validate 6,406건 · build 통과 · pytest 로드맵 27 / PBL 30 · 마커정합 166=166 · 실물 HWPX end-to-end(과업 개선점 열 출력).
+
+**착수 전 DB 조사 결과 (재확인 불필요):** 운영 DB 에 `roadmap_versions` FINAL **9건** 실재, **PBL 프로젝트·pbl_reports 0건** (PBL 미사용). → PBL AI등급 4→3 병합 마이그레이션·기존 PBL 연결 보정 **불필요**. 로드맵 쪽만 방어적 파싱 필수(이미 반영).
+
+**PR 2 재개 방법:**
+
+1. `cd .worktrees/hwpx-v2-roadmap` (같은 브랜치에서 이어서. 계획서 PR 2 는 별도 `feat/pbl-roadmap-link` 브랜치를 제안했으나, PR 1 이 아직 머지 전이고 조회 헬퍼가 v2 로드맵 구조에 의존하므로 **이 브랜치에서 이어가는 편이 안전**)
+2. `superpowers:test-driven-development` + `supabase-dev` 스킬 호출
+3. 마이그레이션 `projects.roadmap_project_id` FK 작성 → **같은 작업 내 DB 적용까지** (`mcp__supabase__apply_migration` → `list_migrations` 검증, project_id `axflsiffdbkitptgpavv`) → `src/types/database.ts` 의 `Project` 에 `roadmap_project_id?: string` 수동 추가
+4. 조회 헬퍼 `src/lib/services/pbl/pbl-roadmap-link.ts` + 운영관리자 선행 로드맵 선택 UI (자동 추천: business_reg_no→company_name, 후보: track='ROADMAP' AND FINAL 존재)
+   상세는 아래 "★ 로드맵 → PBL 자동 연계" 섹션 참조.
+
+**PR 1 에서 발견·기록한 것:** 아래 "구현 중 확인된 사실" 섹션 (양식 세로병합 제약, PBL 43초 성능 원인, 부수 수정 버그).
+**미해결 승인 대기:** 랜딩 데모 캐러셀(`DemoSection.tsx`) — 로드맵 탭 1개만 남아 캐러셀 껍데기화. 현재 최소 수정만. mockup 승인 후 재설계 (아래 "별도 승인이 필요한 UI 변경").
+
+---
+
 ## 실행 계획
 
 ### PR 분할 원칙 — **계층별이 아니라 트랙별 수직 완결**
