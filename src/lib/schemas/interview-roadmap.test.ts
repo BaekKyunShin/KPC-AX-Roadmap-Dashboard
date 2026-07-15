@@ -11,15 +11,10 @@ import {
   roadmapInterviewAutoSaveSchema,
   createEmptyTaskWorkflowItem,
   createEmptyTrainingTarget,
-  competencyModelSchema,
-  ncsUsageSchema,
-  createEmptyCompetencyModel,
-  createEmptyNcsUsage,
   mapInterviewRowToRoadmapInterview,
   // PR #2 Task 2.1 — 양식 1:1 정합 신규 스키마 (camelCase)
   RoadmapOverviewSchema,
   RoadmapRequirementsSchema,
-  RoadmapTrainingInterviewSchema,
   RoadmapInterviewSchema,
   RoadmapInterviewStrictSchema,
   RoadmapInterviewAutoSaveSchema,
@@ -29,20 +24,6 @@ const baseOverview = {
   establishment_necessity: 'AI 훈련 로드맵 수립 필요성',
   ai_competency_level: 'INTERMEDIATE' as const,
   selected_tasks_summary: '품질검사 자동화',
-};
-
-const baseCompetencyModel = {
-  id: 'cm1',
-  competency_name: '데이터 해석 역량',
-  competency_definition: '수집된 데이터를 바탕으로 품질 이슈를 식별하고 의사결정한다.',
-  knowledge: '기초 통계, 엑셀 함수, QMS 지표 체계',
-  skill: '피벗 테이블 구축, 시각화 도구 활용, 지표 분석',
-  attitude: '데이터 기반 의사결정을 선호하고 지속 학습한다.',
-};
-
-const baseNcsUsage = {
-  uses_ncs: false as const,
-  competency_derivation_method: '현장 인터뷰 + 업계 벤치마킹으로 역량을 도출함.',
 };
 
 describe('companyRequirementsSchema', () => {
@@ -55,7 +36,12 @@ describe('companyRequirementsSchema', () => {
     };
     expect(companyRequirementsSchema.safeParse(valid).success).toBe(true);
 
-    for (const key of ['company_status', 'main_problems', 'push_willingness', 'expected_outcomes'] as const) {
+    for (const key of [
+      'company_status',
+      'main_problems',
+      'push_willingness',
+      'expected_outcomes',
+    ] as const) {
       const invalid = { ...valid, [key]: '' };
       const result = companyRequirementsSchema.safeParse(invalid);
       expect(result.success).toBe(false);
@@ -63,31 +49,27 @@ describe('companyRequirementsSchema', () => {
   });
 });
 
-describe('taskWorkflowItemSchema', () => {
+describe('taskWorkflowItemSchema (양식 v2: 6열 → 4열)', () => {
   const base = {
     id: 'a',
     job: '생산',
     task_name: '품질검사',
     as_is: '육안 검사',
-    problems: '개인 역량 의존',
-    data_availability: '검사 이미지 2년치 보유',
-    ai_necessity: 5,
+    roadmap_improvement: '검사 이미지 2년치를 학습해 Vision AI 로 1차 선별, 개인 역량 의존 해소',
   };
 
   it('유효한 항목은 통과', () => {
     expect(taskWorkflowItemSchema.safeParse(base).success).toBe(true);
   });
 
-  it('AI 필요도는 1~5 정수만 허용', () => {
-    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 0 }).success).toBe(false);
-    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 6 }).success).toBe(false);
-    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 3.5 }).success).toBe(false);
-    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 1 }).success).toBe(true);
-    expect(taskWorkflowItemSchema.safeParse({ ...base, ai_necessity: 5 }).success).toBe(true);
+  it('v1 필드(problems·data_availability·ai_necessity)는 더 이상 존재하지 않는다', () => {
+    // roadmap_improvement 하나로 통합됐다. improvement 누락 시 거부.
+    const { roadmap_improvement: _omit, ...withoutImprovement } = base;
+    expect(taskWorkflowItemSchema.safeParse(withoutImprovement).success).toBe(false);
   });
 
   it('모든 텍스트 필드는 필수', () => {
-    for (const key of ['job', 'task_name', 'as_is', 'problems', 'data_availability'] as const) {
+    for (const key of ['job', 'task_name', 'as_is', 'roadmap_improvement'] as const) {
       expect(taskWorkflowItemSchema.safeParse({ ...base, [key]: '' }).success).toBe(false);
     }
   });
@@ -125,7 +107,7 @@ describe('analysisNotesSchema (ISSUE-14: URL → 파일 객체)', () => {
       analysisNotesSchema.safeParse({
         text: '',
         attachment_files: ['https://example.com/a.pdf'],
-      }).success,
+      }).success
     ).toBe(false);
 
     // 유효한 첨부 객체는 통과
@@ -140,7 +122,7 @@ describe('analysisNotesSchema (ISSUE-14: URL → 파일 객체)', () => {
             size: 10240,
           },
         ],
-      }).success,
+      }).success
     ).toBe(true);
 
     // storage_path 비어 있으면 거부 (hrdReportAttachmentSchema 재사용)
@@ -148,7 +130,7 @@ describe('analysisNotesSchema (ISSUE-14: URL → 파일 객체)', () => {
       analysisNotesSchema.safeParse({
         text: '',
         attachment_files: [{ storage_path: '', file_name: 'a.pdf' }],
-      }).success,
+      }).success
     ).toBe(false);
   });
 
@@ -189,12 +171,10 @@ describe('overviewSchema', () => {
     // 없어도 통과
     expect(overviewSchema.safeParse(baseOverview).success).toBe(true);
     // 빈 문자열도 통과 (자동저장 중간 상태)
-    expect(
-      overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '' }).success,
-    ).toBe(true);
+    expect(overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '' }).success).toBe(true);
     // 있어도 통과 (로드맵 생성 후 자동 채워진 값)
     expect(
-      overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '자동 생성 요약' }).success,
+      overviewSchema.safeParse({ ...baseOverview, roadmap_summary: '자동 생성 요약' }).success
     ).toBe(true);
   });
 
@@ -239,70 +219,6 @@ describe('createEmptyOverview', () => {
   });
 });
 
-describe('competencyModelSchema (ISSUE-04 Ⅲ-1)', () => {
-  it('유효한 역량 모델은 통과', () => {
-    expect(competencyModelSchema.safeParse(baseCompetencyModel).success).toBe(true);
-  });
-
-  it('역량명·정의·지식·기술·태도 5필드 모두 필수', () => {
-    for (const key of [
-      'competency_name',
-      'competency_definition',
-      'knowledge',
-      'skill',
-      'attitude',
-    ] as const) {
-      expect(
-        competencyModelSchema.safeParse({ ...baseCompetencyModel, [key]: '' }).success,
-      ).toBe(false);
-    }
-  });
-});
-
-describe('ncsUsageSchema (ISSUE-04 Ⅲ-1)', () => {
-  it('uses_ncs=true 이면 ncs_usage_method 필수', () => {
-    expect(ncsUsageSchema.safeParse({ uses_ncs: true }).success).toBe(false);
-    expect(
-      ncsUsageSchema.safeParse({ uses_ncs: true, ncs_usage_method: '' }).success,
-    ).toBe(false);
-    expect(
-      ncsUsageSchema.safeParse({
-        uses_ncs: true,
-        ncs_usage_method: 'NCS 20.02.01 빅데이터분석 세분류 능력단위 차용',
-      }).success,
-    ).toBe(true);
-  });
-
-  it('uses_ncs=false 이면 competency_derivation_method 필수', () => {
-    expect(ncsUsageSchema.safeParse({ uses_ncs: false }).success).toBe(false);
-    expect(
-      ncsUsageSchema.safeParse({ uses_ncs: false, competency_derivation_method: '' }).success,
-    ).toBe(false);
-    expect(ncsUsageSchema.safeParse(baseNcsUsage).success).toBe(true);
-  });
-});
-
-describe('createEmptyCompetencyModel', () => {
-  it('UUID id + 빈 5필드', () => {
-    const empty = createEmptyCompetencyModel();
-    expect(empty.id).toBeTruthy();
-    expect(empty.competency_name).toBe('');
-    expect(empty.competency_definition).toBe('');
-    expect(empty.knowledge).toBe('');
-    expect(empty.skill).toBe('');
-    expect(empty.attitude).toBe('');
-  });
-});
-
-describe('createEmptyNcsUsage', () => {
-  it('uses_ncs=false + 빈 competency_derivation_method', () => {
-    const empty = createEmptyNcsUsage();
-    expect(empty.uses_ncs).toBe(false);
-    expect(empty.competency_derivation_method).toBe('');
-    expect(empty.ncs_usage_method).toBeUndefined();
-  });
-});
-
 describe('roadmapInterviewSchema', () => {
   const baseValid = {
     overview: baseOverview,
@@ -324,9 +240,7 @@ describe('roadmapInterviewSchema', () => {
         job: '생산',
         task_name: '검사',
         as_is: '육안',
-        problems: '편차 큼',
-        data_availability: '2년치',
-        ai_necessity: 4,
+        roadmap_improvement: '편차 큼 → 2년치 데이터로 Vision AI 도입 (필요도 높음)',
       },
     ],
     analysis_notes: { text: '', attachment_files: [] },
@@ -339,8 +253,6 @@ describe('roadmapInterviewSchema', () => {
         to_be: 'AI',
       },
     ],
-    competency_models: [baseCompetencyModel],
-    ncs_usage: baseNcsUsage,
     notes: '',
   };
 
@@ -357,12 +269,12 @@ describe('roadmapInterviewSchema', () => {
     expect(roadmapInterviewSchema.safeParse(withoutEnd).success).toBe(false);
     // start_time 빈 문자열
     expect(
-      roadmapInterviewSchema.safeParse({ ...baseValid, interview_start_time: '' }).success,
+      roadmapInterviewSchema.safeParse({ ...baseValid, interview_start_time: '' }).success
     ).toBe(false);
     // end_time 빈 문자열
-    expect(
-      roadmapInterviewSchema.safeParse({ ...baseValid, interview_end_time: '' }).success,
-    ).toBe(false);
+    expect(roadmapInterviewSchema.safeParse({ ...baseValid, interview_end_time: '' }).success).toBe(
+      false
+    );
   });
 
   it('레거시 단일 interview_time 필드는 더 이상 지원하지 않는다 (ISSUE-10)', () => {
@@ -409,16 +321,6 @@ describe('roadmapInterviewSchema', () => {
     expect(roadmapInterviewSchema.safeParse(withoutOverview).success).toBe(false);
   });
 
-  it('역량 모델 최소 1개 필요 (ISSUE-04 Ⅲ-1)', () => {
-    const invalid = { ...baseValid, competency_models: [] };
-    expect(roadmapInterviewSchema.safeParse(invalid).success).toBe(false);
-  });
-
-  it('ncs_usage 섹션 필수 (ISSUE-04 Ⅲ-1)', () => {
-    const { ncs_usage: _ncs, ...withoutNcs } = baseValid;
-    expect(roadmapInterviewSchema.safeParse(withoutNcs).success).toBe(false);
-  });
-
   it('overview.roadmap_summary 는 없어도 통과 (LLM 자동생성 예정)', () => {
     const { overview, ...rest } = baseValid;
     const { roadmap_summary: _s, ...overviewWithoutSummary } = overview as typeof overview & {
@@ -440,28 +342,23 @@ describe('roadmapInterviewAutoSaveSchema', () => {
     ).toBe(true);
   });
 
-  it('competency_models·ncs_usage 는 optional 이며 부분 입력 허용 (ISSUE-04)', () => {
-    // 역량 모델 입력 중 일부 필드 비어 있어도 통과
+  it('task_workflow_items 부분 입력(roadmap_improvement 통합 필드) 허용', () => {
     expect(
       roadmapInterviewAutoSaveSchema.safeParse({
-        competency_models: [{ id: 'cm1', competency_name: '데이터 해석' }],
-      }).success,
-    ).toBe(true);
-    // NCS 활용 토글만 저장된 상태도 허용
-    expect(
-      roadmapInterviewAutoSaveSchema.safeParse({
-        ncs_usage: { uses_ncs: true },
-      }).success,
+        task_workflow_items: [
+          { id: 't1', job: '생산', task_name: '검사', as_is: '육안', roadmap_improvement: '' },
+        ],
+      }).success
     ).toBe(true);
   });
 
   it('interview_start_time / interview_end_time 단독 저장 허용 (ISSUE-10 자동저장)', () => {
     expect(
-      roadmapInterviewAutoSaveSchema.safeParse({ interview_start_time: '10:00' }).success,
+      roadmapInterviewAutoSaveSchema.safeParse({ interview_start_time: '10:00' }).success
     ).toBe(true);
-    expect(
-      roadmapInterviewAutoSaveSchema.safeParse({ interview_end_time: '12:00' }).success,
-    ).toBe(true);
+    expect(roadmapInterviewAutoSaveSchema.safeParse({ interview_end_time: '12:00' }).success).toBe(
+      true
+    );
   });
 
   it('analysis_notes.attachment_files 부분 입력 허용 (ISSUE-14 자동저장)', () => {
@@ -469,21 +366,19 @@ describe('roadmapInterviewAutoSaveSchema', () => {
       roadmapInterviewAutoSaveSchema.safeParse({
         analysis_notes: {
           text: '메모',
-          attachment_files: [
-            { storage_path: 'a.pdf', file_name: 'a.pdf' },
-          ],
+          attachment_files: [{ storage_path: 'a.pdf', file_name: 'a.pdf' }],
         },
-      }).success,
+      }).success
     ).toBe(true);
   });
 });
 
 describe('createEmptyTaskWorkflowItem', () => {
-  it('UUID id 및 기본값 포함', () => {
+  it('UUID id 및 기본값 포함 (v2: roadmap_improvement 통합 필드)', () => {
     const item = createEmptyTaskWorkflowItem();
     expect(item.id).toBeTruthy();
     expect(item.job).toBe('');
-    expect(item.ai_necessity).toBe(3);
+    expect(item.roadmap_improvement).toBe('');
   });
 });
 
@@ -575,59 +470,89 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     });
   });
 
-  it('job_tasks의 roadmap_* 필드 복원 (직무/문제점/데이터/AI필요도)', () => {
+  it('신규 roadmap_improvement 가 있으면 그대로 복원', () => {
     const row = {
-      interview_date: '', interview_round: 1, interview_time: '',
-      participants: [], company_details: { ai_experience: '' },
-      job_tasks: [{
-        id: 'j1',
-        task_name: '검사',
-        task_description: '육안',
-        roadmap_job: '생산',
-        roadmap_problems: '편차',
-        roadmap_data_availability: '2년치',
-        roadmap_ai_necessity: 5,
-      }],
-      pain_points: [], improvement_goals: [],
-      notes: '', customer_requirements: '', stt_insights: null,
+      interview_date: '',
+      interview_round: 1,
+      interview_time: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [
+        {
+          id: 'j1',
+          task_name: '검사',
+          task_description: '육안',
+          roadmap_job: '생산',
+          roadmap_improvement: '2년치 데이터로 Vision AI 1차 선별',
+        },
+      ],
+      pain_points: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.task_workflow_items?.[0]).toMatchObject({
       job: '생산',
       task_name: '검사',
       as_is: '육안',
-      problems: '편차',
-      data_availability: '2년치',
-      ai_necessity: 5,
+      roadmap_improvement: '2년치 데이터로 Vision AI 1차 선별',
     });
   });
 
-  it('roadmap_ai_necessity가 문자열이면 숫자로 clamp', () => {
+  it('v1 3필드(문제점·데이터·AI필요도)는 roadmap_improvement 로 합성 승격', () => {
     const row = {
-      interview_date: '', interview_round: 1, interview_time: '',
-      participants: [], company_details: null,
-      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: '4' }],
-      pain_points: [], improvement_goals: [],
-      notes: '', customer_requirements: '', stt_insights: null,
+      interview_date: '',
+      interview_round: 1,
+      interview_time: '',
+      participants: [],
+      company_details: { ai_experience: '' },
+      job_tasks: [
+        {
+          id: 'j1',
+          task_name: '검사',
+          task_description: '육안',
+          roadmap_job: '생산',
+          roadmap_problems: '편차',
+          roadmap_data_availability: '2년치',
+          roadmap_ai_necessity: 5,
+        },
+      ],
+      pain_points: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.task_workflow_items?.[0].ai_necessity).toBe(4);
+    const improvement = result.task_workflow_items?.[0].roadmap_improvement ?? '';
+    expect(improvement).toContain('문제점: 편차');
+    expect(improvement).toContain('데이터 발생 시점/보유현황: 2년치');
+    expect(improvement).toContain('AI 도입·활용 필요도: 5');
   });
 
   it('improvement_goals의 roadmap_as_is/to_be 복원', () => {
     const row = {
-      interview_date: '', interview_round: 1, interview_time: '',
-      participants: [], company_details: null,
+      interview_date: '',
+      interview_round: 1,
+      interview_time: '',
+      participants: [],
+      company_details: null,
       job_tasks: [],
       pain_points: [],
-      improvement_goals: [{
-        id: 'g1',
-        goal_description: '선정 사유',
-        kpi: '과업명',
-        roadmap_as_is: '육안',
-        roadmap_to_be: 'AI',
-      }],
-      notes: '', customer_requirements: '', stt_insights: null,
+      improvement_goals: [
+        {
+          id: 'g1',
+          goal_description: '선정 사유',
+          kpi: '과업명',
+          roadmap_as_is: '육안',
+          roadmap_to_be: 'AI',
+        },
+      ],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.training_targets?.[0]).toMatchObject({
@@ -640,11 +565,17 @@ describe('mapInterviewRowToRoadmapInterview', () => {
 
   it('roadmap_interview_method 복원 (enum 유효성 체크)', () => {
     const row = {
-      interview_date: '', interview_round: 1, interview_time: '',
+      interview_date: '',
+      interview_round: 1,
+      interview_time: '',
       participants: [],
       company_details: { ai_experience: '', roadmap_interview_method: 'VIDEO' },
-      job_tasks: [], pain_points: [], improvement_goals: [],
-      notes: '', customer_requirements: '', stt_insights: null,
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
+      notes: '',
+      customer_requirements: '',
+      stt_insights: null,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     expect(mapInterviewRowToRoadmapInterview(row).interview_method).toBe('VIDEO');
   });
@@ -653,7 +584,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       participants: [],
       company_details: { ai_experience: '', roadmap_interview_method: 'INVALID' },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     expect(mapInterviewRowToRoadmapInterview(row).interview_method).toBe('ONSITE');
   });
@@ -675,10 +608,13 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           ],
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const r = mapInterviewRowToRoadmapInterview(row);
-    expect(r.analysis_notes?.text).toBe('그룹 인터뷰로 도출');
+    // v2: 분석내용(text) 은 양식에서 삭제되어 레거시 text 를 더 이상 승격하지 않는다.
+    expect(r.analysis_notes?.text).toBe('');
     expect(r.analysis_notes?.attachment_files).toHaveLength(1);
     expect(r.analysis_notes?.attachment_files?.[0]).toMatchObject({
       storage_path: 'interview-attachments/p1/공정.pdf',
@@ -697,10 +633,13 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           attachment_urls: ['https://example.com/legacy.pdf'],
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const r = mapInterviewRowToRoadmapInterview(row);
-    expect(r.analysis_notes?.text).toBe('레거시 메모');
+    // v2: 레거시 text 는 승격하지 않으므로 빈 문자열, attachment_urls 는 무시.
+    expect(r.analysis_notes?.text).toBe('');
     expect(r.analysis_notes?.attachment_files).toEqual([]);
   });
 
@@ -724,40 +663,17 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.training_targets?.[0].selection_reason).toContain('생산성 20% 향상');
   });
 
-  it('roadmap_ai_necessity가 범위 밖 값(0)이면 3으로 clamp된다', () => {
-    // clampAiNecessity: int < 1 → 3 반환 분기 커버
+  it('v1 3필드가 모두 비어 있으면 roadmap_improvement 는 빈 문자열', () => {
+    // promoteLegacyTaskImprovement: 빈 값은 skip → parts 없음 → ''
     const row = {
       participants: [],
       company_details: null,
-      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: 0 }],
-      pain_points: [], improvement_goals: [],
+      job_tasks: [{ id: 'j1', task_name: '검사', task_description: '육안' }],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
-  });
-
-  it('roadmap_ai_necessity가 범위 밖 값(6)이면 3으로 clamp된다', () => {
-    // clampAiNecessity: int > 5 → 3 반환 분기 커버
-    const row = {
-      participants: [],
-      company_details: null,
-      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: 6 }],
-      pain_points: [], improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
-  });
-
-  it('roadmap_ai_necessity가 NaN/undefined이면 3으로 clamp된다', () => {
-    // clampAiNecessity: !Number.isFinite → 3 반환 분기 (id: 12 우측 피연산자 커버)
-    const row = {
-      participants: [],
-      company_details: null,
-      job_tasks: [{ id: 'j1', task_name: '', task_description: '', roadmap_ai_necessity: undefined }],
-      pain_points: [], improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.task_workflow_items?.[0].ai_necessity).toBe(3);
+    expect(result.task_workflow_items?.[0].roadmap_improvement).toBe('');
   });
 
   it('roadmap_overview가 있으면 overview를 복원한다 (Ⅰ장)', () => {
@@ -773,7 +689,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           roadmap_summary: '3단계 로드맵',
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.overview).toMatchObject({
@@ -797,7 +715,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           roadmap_summary: '',
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.overview?.ai_competency_level).toBe('BEGINNER');
@@ -823,7 +743,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           },
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.overview?.hrd_report_attachment).toMatchObject({
@@ -846,7 +768,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           hrd_report_attachment: { mime_type: 'application/pdf' }, // storage_path 없음
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.overview?.hrd_report_attachment).toBeUndefined();
@@ -857,7 +781,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
       customer_requirements: '',
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
@@ -869,7 +795,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
       customer_requirements: '고객 요구사항',
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
@@ -882,7 +810,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
       stt_insights: sttData,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
@@ -894,7 +824,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
       stt_insights: null,
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
@@ -912,7 +844,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
           attachment_files: null, // 배열이 아님
         },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.analysis_notes?.attachment_files).toEqual([]);
@@ -924,7 +858,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       interview_time: '14:00',
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.interview_start_time).toBe('14:00');
@@ -937,7 +873,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       interview_end_time: '12:00',
       participants: [],
       company_details: null,
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.interview_start_time).toBe('10:00');
@@ -952,7 +890,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       company_details: {
         roadmap_interview_time: { start: '14:00', end: '16:00' },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.interview_start_time).toBe('14:00');
@@ -965,7 +905,9 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       company_details: {
         roadmap_interview_time: { start: '14:00' },
       },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.interview_start_time).toBe('14:00');
@@ -977,8 +919,17 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     const row = {
       interview_time: '14:00',
       participants: [],
-      company_details: { roadmap_company_requirements: { company_status: 'X', main_problems: '', push_willingness: '', expected_outcomes: '' } },
-      job_tasks: [], pain_points: [], improvement_goals: [],
+      company_details: {
+        roadmap_company_requirements: {
+          company_status: 'X',
+          main_problems: '',
+          push_willingness: '',
+          expected_outcomes: '',
+        },
+      },
+      job_tasks: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.interview_start_time).toBe('14:00');
@@ -991,7 +942,8 @@ describe('mapInterviewRowToRoadmapInterview', () => {
       participants: [],
       company_details: null,
       job_tasks: [{ task_name: '검사', task_description: '육안' }], // id 없음
-      pain_points: [], improvement_goals: [],
+      pain_points: [],
+      improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
     const result = mapInterviewRowToRoadmapInterview(row);
     expect(result.task_workflow_items?.[0].id).toBeTruthy();
@@ -1010,110 +962,22 @@ describe('mapInterviewRowToRoadmapInterview', () => {
     expect(result.training_targets?.[0].id).toBeTruthy();
   });
 
-  it('roadmap_competency_models 복원 (ISSUE-04 Ⅲ-1)', () => {
+  it('양식 v2: 레거시 competency_models·ncs_usage 는 더 이상 복원하지 않는다', () => {
+    // Ⅲ-1 역량 모델링·NCS 표가 양식에서 삭제됨. row 에 값이 남아 있어도 반환 안 함.
     const row = {
       participants: [],
       company_details: {
         ai_experience: '',
         roadmap_competency_models: [
-          {
-            id: 'cm1',
-            competency_name: '데이터 해석',
-            competency_definition: '정의',
-            knowledge: '지식',
-            skill: '기술',
-            attitude: '태도',
-          },
+          { id: 'cm1', competency_name: '데이터 해석', knowledge: '지식' },
         ],
+        roadmap_ncs_usage: { uses_ncs: true, ncs_usage_method: 'NCS 능력단위' },
       },
       job_tasks: [],
       pain_points: [],
       improvement_goals: [],
     } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.competency_models).toHaveLength(1);
-    expect(result.competency_models?.[0]).toMatchObject({
-      competency_name: '데이터 해석',
-      knowledge: '지식',
-      skill: '기술',
-      attitude: '태도',
-    });
-  });
-
-  it('roadmap_competency_models 원소에 id 없으면 UUID 자동 생성', () => {
-    const row = {
-      participants: [],
-      company_details: {
-        ai_experience: '',
-        roadmap_competency_models: [
-          {
-            competency_name: '역량',
-            competency_definition: '정의',
-            knowledge: 'K',
-            skill: 'S',
-            attitude: 'A',
-          },
-        ],
-      },
-      job_tasks: [],
-      pain_points: [],
-      improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.competency_models?.[0].id).toBeTruthy();
-  });
-
-  it('roadmap_ncs_usage 복원 (uses_ncs=true + ncs_usage_method)', () => {
-    const row = {
-      participants: [],
-      company_details: {
-        ai_experience: '',
-        roadmap_ncs_usage: {
-          uses_ncs: true,
-          ncs_usage_method: 'NCS 20.02.01 능력단위 차용',
-        },
-      },
-      job_tasks: [],
-      pain_points: [],
-      improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.ncs_usage).toEqual({
-      uses_ncs: true,
-      ncs_usage_method: 'NCS 20.02.01 능력단위 차용',
-    });
-  });
-
-  it('roadmap_ncs_usage 복원 (uses_ncs=false + competency_derivation_method)', () => {
-    const row = {
-      participants: [],
-      company_details: {
-        ai_experience: '',
-        roadmap_ncs_usage: {
-          uses_ncs: false,
-          competency_derivation_method: '인터뷰 + 벤치마킹으로 도출',
-        },
-      },
-      job_tasks: [],
-      pain_points: [],
-      improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
-    expect(result.ncs_usage).toEqual({
-      uses_ncs: false,
-      competency_derivation_method: '인터뷰 + 벤치마킹으로 도출',
-    });
-  });
-
-  it('roadmap_competency_models 과 roadmap_ncs_usage 가 없으면 해당 필드 미설정 (legacy 호환)', () => {
-    const row = {
-      participants: [],
-      company_details: { ai_experience: '' },
-      job_tasks: [],
-      pain_points: [],
-      improvement_goals: [],
-    } as unknown as Parameters<typeof mapInterviewRowToRoadmapInterview>[0];
-    const result = mapInterviewRowToRoadmapInterview(row);
+    const result = mapInterviewRowToRoadmapInterview(row) as Record<string, unknown>;
     expect(result.competency_models).toBeUndefined();
     expect(result.ncs_usage).toBeUndefined();
   });
@@ -1152,27 +1016,25 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
   });
 
   it('aiLevel enum 은 BEGINNER/INTERMEDIATE/ADVANCED 만 허용', () => {
-    expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'BEGINNER' }).success,
-    ).toBe(true);
-    expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'ADVANCED' }).success,
-    ).toBe(true);
-    expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'EXPERT' }).success,
-    ).toBe(false);
-    expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: '' }).success,
-    ).toBe(false);
+    expect(RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'BEGINNER' }).success).toBe(
+      true
+    );
+    expect(RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'ADVANCED' }).success).toBe(
+      true
+    );
+    expect(RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: 'EXPERT' }).success).toBe(
+      false
+    );
+    expect(RoadmapOverviewSchema.safeParse({ ...validOverview, aiLevel: '' }).success).toBe(false);
   });
 
   it('establishmentNecessity 와 selectedTask 는 필수 (빈 문자열 거부)', () => {
     expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, establishmentNecessity: '' }).success,
+      RoadmapOverviewSchema.safeParse({ ...validOverview, establishmentNecessity: '' }).success
     ).toBe(false);
-    expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, selectedTask: '' }).success,
-    ).toBe(false);
+    expect(RoadmapOverviewSchema.safeParse({ ...validOverview, selectedTask: '' }).success).toBe(
+      false
+    );
   });
 
   it('performanceActivities 는 최대 5차까지 허용 (Ⅰ-2 양식 3행 prefill, 5차 한계)', () => {
@@ -1189,7 +1051,7 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
         performanceActivities: fiveRounds,
-      }).success,
+      }).success
     ).toBe(true);
 
     const sixRounds = [...fiveRounds, { ...fiveRounds[0], round: 6 }];
@@ -1197,14 +1059,14 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
         performanceActivities: sixRounds,
-      }).success,
+      }).success
     ).toBe(false);
   });
 
   it('performanceActivities 는 빈 배열도 허용 (자동저장 중간 상태는 loose 쪽에서 처리)', () => {
     // strict 본체에서는 빈 배열 허용 (다른 스텝만 먼저 작성하는 경우)
     expect(
-      RoadmapOverviewSchema.safeParse({ ...validOverview, performanceActivities: [] }).success,
+      RoadmapOverviewSchema.safeParse({ ...validOverview, performanceActivities: [] }).success
     ).toBe(true);
   });
 });
@@ -1227,12 +1089,9 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
         domain: '생산',
         task: '품질검사',
         asIs: '육안 검사',
-        problem: '개인 역량 의존',
-        dataTiming: '검사 이미지 2년치 보유',
-        aiScore: 5,
+        improvement: '검사 이미지 2년치를 학습해 Vision AI 로 1차 선별, 개인 역량 의존 해소',
       },
     ],
-    taskAnalysisNote: '그룹 인터뷰로 과업 분석.',
     targetTask: {
       name: '품질검사 자동화',
       reason: 'AI 필요도 5점, 데이터 충분',
@@ -1247,9 +1106,7 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
 
   it('companyRequirements.remarks 는 옵셔널이며 parse 후 보존된다 (#6)', () => {
     // remarks 누락 OK
-    expect(
-      RoadmapRequirementsSchema.safeParse(validRequirements).success,
-    ).toBe(true);
+    expect(RoadmapRequirementsSchema.safeParse(validRequirements).success).toBe(true);
     // remarks 4 키 채우면 parse 결과에 그대로 보존
     const result = RoadmapRequirementsSchema.safeParse({
       ...validRequirements,
@@ -1276,7 +1133,7 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
 
   it('hrdReportPdf 는 null 허용 (미첨부 상태, Ⅱ-1)', () => {
     expect(
-      RoadmapRequirementsSchema.safeParse({ ...validRequirements, hrdReportPdf: null }).success,
+      RoadmapRequirementsSchema.safeParse({ ...validRequirements, hrdReportPdf: null }).success
     ).toBe(true);
   });
 
@@ -1287,43 +1144,16 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
     expect(RoadmapRequirementsSchema.safeParse(withoutKey).success).toBe(true);
   });
 
-  it('taskAnalysis[].aiScore 는 1-5 정수만 허용 (0, 6, 3.5 거부)', () => {
-    const makeWithScore = (score: number) => ({
+  it('taskAnalysis[].improvement 는 필수 (v2: problem·dataTiming·aiScore 통합 필드)', () => {
+    const withoutImprovement = {
       ...validRequirements,
-      taskAnalysis: [{ ...validRequirements.taskAnalysis[0], aiScore: score }],
-    });
-    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(0)).success).toBe(false);
-    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(6)).success).toBe(false);
-    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(3.5)).success).toBe(false);
-    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(1)).success).toBe(true);
-    expect(RoadmapRequirementsSchema.safeParse(makeWithScore(5)).success).toBe(true);
-  });
-
-  it('taskAnalysis[].aiScore 는 제약별 특화 에러 메시지를 반환 (Important 3)', () => {
-    const makeWithScore = (score: unknown) => ({
-      ...validRequirements,
-      taskAnalysis: [{ ...validRequirements.taskAnalysis[0], aiScore: score }],
-    });
-    // 소수 → "정수여야" 메시지
-    const decimalRes = RoadmapRequirementsSchema.safeParse(makeWithScore(3.5));
-    expect(decimalRes.success).toBe(false);
-    if (!decimalRes.success) {
-      const messages = decimalRes.error.issues.map((i) => i.message).join(' | ');
-      expect(messages).toContain('정수');
-    }
-    // 0 → "1 이상" 메시지
-    const lowRes = RoadmapRequirementsSchema.safeParse(makeWithScore(0));
-    expect(lowRes.success).toBe(false);
-    if (!lowRes.success) {
-      const messages = lowRes.error.issues.map((i) => i.message).join(' | ');
-      expect(messages).toContain('1 이상');
-    }
-    // 6 → "5 이하" 메시지
-    const highRes = RoadmapRequirementsSchema.safeParse(makeWithScore(6));
-    expect(highRes.success).toBe(false);
-    if (!highRes.success) {
-      const messages = highRes.error.issues.map((i) => i.message).join(' | ');
-      expect(messages).toContain('5 이하');
+      taskAnalysis: [{ domain: '생산', task: '품질검사', asIs: '육안 검사', improvement: '' }],
+    };
+    const res = RoadmapRequirementsSchema.safeParse(withoutImprovement);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      const messages = res.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('개선점');
     }
   });
 
@@ -1353,7 +1183,7 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
     // null 도 허용
     expect(
       RoadmapRequirementsSchema.safeParse({ ...validRequirements, taskAnalysisAttachment: null })
-        .success,
+        .success
     ).toBe(true);
     // 유효 객체도 허용
     expect(
@@ -1363,68 +1193,8 @@ describe('RoadmapRequirementsSchema (Ⅱ AI 도입·활용 요구분석)', () =>
           fileName: '공정도.pdf',
           url: 'interview-attachments/project-1/process.pdf',
         },
-      }).success,
+      }).success
     ).toBe(true);
-  });
-});
-
-describe('RoadmapTrainingInterviewSchema (Ⅲ-1 역량 모델링 [인터뷰→결과])', () => {
-  const baseCompetency = {
-    name: '데이터 해석 역량',
-    definition: '수집된 데이터를 바탕으로 품질 이슈를 식별하고 의사결정한다.',
-    knowledge: '기초 통계, 엑셀 함수, QMS 지표',
-    skill: '피벗 테이블, 시각화, 지표 분석',
-    attitude: '데이터 기반 의사결정 선호',
-  };
-
-  it('유효한 Ⅲ-1 구조는 통과 (NCS 미활용 경로)', () => {
-    const valid = {
-      competencies: [baseCompetency],
-      ncsUsed: false,
-      ncsDerivationMethod: '현장 인터뷰 + 업계 벤치마킹으로 도출.',
-    };
-    expect(RoadmapTrainingInterviewSchema.safeParse(valid).success).toBe(true);
-  });
-
-  it('유효한 Ⅲ-1 구조는 통과 (NCS 활용 경로)', () => {
-    const valid = {
-      competencies: [baseCompetency],
-      ncsUsed: true,
-      ncsMethodology: 'NCS 20.02.01 빅데이터분석 능력단위 차용 후 기업 특성 반영.',
-    };
-    expect(RoadmapTrainingInterviewSchema.safeParse(valid).success).toBe(true);
-  });
-
-  // NCS XOR 검증은 통합본 RoadmapInterviewStrictSchema 로 단일화되었으므로
-  // (Task 2.1 code review Important 1), 본 스키마 단독에서는 XOR 을 검증하지
-  // 않는다. XOR 검증 케이스는 "RoadmapInterviewSchema (strict / loose 이중 검증)"
-  // describe 블록의 StrictSchema 테스트에서 수행한다.
-  it('RoadmapTrainingInterviewSchema 는 NCS XOR 을 직접 검증하지 않는다 (ZodObject 유지)', () => {
-    // ncsUsed=true 인데 ncsMethodology 가 없어도 본 스키마 단독으로는 통과.
-    // 통합본(RoadmapInterviewStrictSchema) 에서만 XOR 검증.
-    expect(
-      RoadmapTrainingInterviewSchema.safeParse({
-        competencies: [baseCompetency],
-        ncsUsed: true,
-      }).success,
-    ).toBe(true);
-    expect(
-      RoadmapTrainingInterviewSchema.safeParse({
-        competencies: [baseCompetency],
-        ncsUsed: false,
-      }).success,
-    ).toBe(true);
-  });
-
-  it('competencies[] 항목 5필드 모두 필수', () => {
-    for (const key of ['name', 'definition', 'knowledge', 'skill', 'attitude'] as const) {
-      const invalid = {
-        competencies: [{ ...baseCompetency, [key]: '' }],
-        ncsUsed: false,
-        ncsDerivationMethod: '도출 방법',
-      };
-      expect(RoadmapTrainingInterviewSchema.safeParse(invalid).success).toBe(false);
-    }
   });
 });
 
@@ -1462,30 +1232,15 @@ describe('RoadmapInterviewSchema (strict / loose 이중 검증)', () => {
         domain: '생산',
         task: '품질검사',
         asIs: '육안',
-        problem: '편차',
-        dataTiming: '2년치',
-        aiScore: 4,
+        improvement: '편차 → 2년치 데이터로 Vision AI (필요도 높음)',
       },
     ],
-    taskAnalysisNote: '현장 분석.',
     targetTask: {
       name: '품질검사 자동화',
       reason: 'AI 필요도 5점',
       expectedAsIs: '육안',
       expectedToBe: 'AI 1차 스크리닝',
     },
-    // Ⅲ-1
-    competencies: [
-      {
-        name: '데이터 해석',
-        definition: '품질 이슈 식별 및 의사결정',
-        knowledge: '통계, QMS',
-        skill: '피벗, 시각화',
-        attitude: '데이터 기반 의사결정',
-      },
-    ],
-    ncsUsed: false,
-    ncsDerivationMethod: '현장 인터뷰.',
   };
 
   it('strict: 전체 유효 구조는 통과', () => {
@@ -1507,7 +1262,7 @@ describe('RoadmapInterviewSchema (strict / loose 이중 검증)', () => {
       loose.safeParse({
         establishmentNecessity: '일부만',
         aiLevel: 'BEGINNER',
-      }).success,
+      }).success
     ).toBe(true);
   });
 
@@ -1521,25 +1276,11 @@ describe('RoadmapInterviewSchema (strict / loose 이중 검증)', () => {
     }
   });
 
-  it('RoadmapInterviewStrictSchema: NCS XOR refine 동작 (ncsUsed=true 인데 ncsMethodology 없음)', () => {
-    // 최종 제출 경계에서는 RoadmapInterviewStrictSchema 를 사용해 XOR 검증까지 수행.
-    const invalid = {
-      ...fullValid,
-      ncsUsed: true,
-      ncsMethodology: undefined,
-      ncsDerivationMethod: undefined,
-    };
-    expect(RoadmapInterviewStrictSchema.safeParse(invalid).success).toBe(false);
-    // 반대 케이스: ncsUsed=false + ncsDerivationMethod 누락도 실패
-    const invalid2 = {
-      ...fullValid,
-      ncsUsed: false,
-      ncsMethodology: undefined,
-      ncsDerivationMethod: undefined,
-    };
-    expect(RoadmapInterviewStrictSchema.safeParse(invalid2).success).toBe(false);
-    // 정상 케이스는 통과
+  it('RoadmapInterviewStrictSchema: v2 에서 NCS XOR 이 삭제되어 통합본과 동일하게 동작', () => {
+    // 양식 v2 — Ⅲ-1 역량 모델링·NCS 삭제로 XOR refine 이 제거됐다.
+    // StrictSchema 는 통합본과 동일하게 필수 필드만 검증한다.
     expect(RoadmapInterviewStrictSchema.safeParse(fullValid).success).toBe(true);
+    expect(RoadmapInterviewStrictSchema.safeParse({}).success).toBe(false);
   });
 });
 
@@ -1559,7 +1300,7 @@ describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
       RoadmapInterviewAutoSaveSchema.safeParse({
         establishmentNecessity: '일부 입력',
         aiLevel: 'BEGINNER',
-      }).success,
+      }).success
     ).toBe(true);
   });
 
@@ -1573,13 +1314,8 @@ describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
       hrdReportPdf: null,
       companyRequirements: { status: '', problem: '', will: '', outcomes: '' },
       taskAnalysis: [],
-      taskAnalysisNote: '',
       taskAnalysisAttachment: null,
       targetTask: { name: '', reason: '', expectedAsIs: '', expectedToBe: '' },
-      competencies: [],
-      ncsUsed: false,
-      ncsMethodology: undefined,
-      ncsDerivationMethod: undefined,
     };
     expect(RoadmapInterviewAutoSaveSchema.safeParse(prefilledState).success).toBe(true);
   });
@@ -1588,7 +1324,7 @@ describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
     expect(
       RoadmapInterviewAutoSaveSchema.safeParse({
         companyRequirements: { status: '제조업' }, // problem/will/outcomes 미입력
-      }).success,
+      }).success
     ).toBe(true);
   });
 
@@ -1596,8 +1332,8 @@ describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
     // 사용자가 빈 행을 추가했지만 아직 입력 안 한 상태도 통과해야 한다.
     expect(
       RoadmapInterviewAutoSaveSchema.safeParse({
-        taskAnalysis: [{ domain: '', task: '', asIs: '', problem: '', dataTiming: '' }],
-      }).success,
+        taskAnalysis: [{ domain: '', task: '', asIs: '', improvement: '' }],
+      }).success
     ).toBe(true);
   });
 
@@ -1606,7 +1342,7 @@ describe('RoadmapInterviewAutoSaveSchema (#011 fix)', () => {
     expect(
       RoadmapInterviewAutoSaveSchema.safeParse({
         aiLevel: 'WRONG_LEVEL',
-      }).success,
+      }).success
     ).toBe(false);
   });
 

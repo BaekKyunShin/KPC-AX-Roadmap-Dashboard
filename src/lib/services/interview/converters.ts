@@ -54,7 +54,6 @@
 
 import type {
   RoadmapInterviewStrict,
-  RoadmapCompetency,
   RoadmapTaskAnalysisItem,
   RoadmapPerformanceActivity,
   RoadmapCompanyRequirements,
@@ -126,35 +125,17 @@ interface DbRoadmapAnalysisNotes {
   attachment_files: DbHrdReportAttachment[];
 }
 
-interface DbRoadmapCompetencyModel {
-  competency_name: string;
-  competency_definition: string;
-  knowledge: string;
-  skill: string;
-  attitude: string;
-}
-
-interface DbRoadmapNcsUsage {
-  uses_ncs: boolean;
-  ncs_usage_method?: string;
-  competency_derivation_method?: string;
-}
-
 export interface RoadmapInterviewDbUpdate {
   company_details: {
     roadmap_overview: DbRoadmapOverview;
     roadmap_company_requirements: DbRoadmapCompanyRequirements;
     roadmap_analysis_notes: DbRoadmapAnalysisNotes;
-    roadmap_competency_models: DbRoadmapCompetencyModel[];
-    roadmap_ncs_usage: DbRoadmapNcsUsage;
   };
   job_tasks: Array<{
     roadmap_job: string;
     task_name: string;
     task_description: string;
-    roadmap_problems: string;
-    roadmap_data_availability: string;
-    roadmap_ai_necessity: number;
+    roadmap_improvement: string;
   }>;
   improvement_goals: Array<{
     kpi: string;
@@ -214,31 +195,18 @@ function performanceActivityToDb(a: RoadmapPerformanceActivity): DbPerformanceAc
   };
 }
 
-function competencyToDb(c: RoadmapCompetency): DbRoadmapCompetencyModel {
-  return {
-    competency_name: c.name,
-    competency_definition: c.definition,
-    knowledge: c.knowledge,
-    skill: c.skill,
-    attitude: c.attitude,
-  };
-}
-
 function taskAnalysisItemToDb(t: RoadmapTaskAnalysisItem): {
   roadmap_job: string;
   task_name: string;
   task_description: string;
-  roadmap_problems: string;
-  roadmap_data_availability: string;
-  roadmap_ai_necessity: number;
+  roadmap_improvement: string;
 } {
   return {
     roadmap_job: t.domain,
     task_name: t.task,
     task_description: t.asIs,
-    roadmap_problems: t.problem,
-    roadmap_data_availability: t.dataTiming,
-    roadmap_ai_necessity: t.aiScore,
+    // v2: 문제점·데이터발생시점·AI필요도 3필드가 개선점 1필드로 통합됨
+    roadmap_improvement: t.improvement,
   };
 }
 
@@ -274,23 +242,6 @@ function targetTaskToDb(t: RoadmapTargetTask): {
   };
 }
 
-function ncsToDb(data: {
-  ncsUsed: boolean;
-  ncsMethodology?: string;
-  ncsDerivationMethod?: string;
-}): DbRoadmapNcsUsage {
-  if (data.ncsUsed) {
-    return {
-      uses_ncs: true,
-      ncs_usage_method: data.ncsMethodology ?? '',
-    };
-  }
-  return {
-    uses_ncs: false,
-    competency_derivation_method: data.ncsDerivationMethod ?? '',
-  };
-}
-
 /**
  * camelCase 로드맵 인터뷰 (신규 Zod) → DB interviews 행 update payload.
  *
@@ -315,16 +266,12 @@ export function mapRoadmapInterviewToDb(
       roadmap_company_requirements: companyRequirementsToDb(
         data.companyRequirements ?? { status: '', problem: '', will: '', outcomes: '' }
       ),
+      // v2: "분석내용" 표는 양식에서 삭제되었으나, 추가 업로드 자료 첨부는 유지된다.
+      // text 는 더 이상 입력받지 않으므로 빈 문자열로 저장한다.
       roadmap_analysis_notes: {
-        text: data.taskAnalysisNote ?? '',
+        text: '',
         attachment_files: attachmentFiles,
       },
-      roadmap_competency_models: (data.competencies ?? []).map(competencyToDb),
-      roadmap_ncs_usage: ncsToDb({
-        ncsUsed: data.ncsUsed ?? false,
-        ncsMethodology: data.ncsMethodology,
-        ncsDerivationMethod: data.ncsDerivationMethod,
-      }),
     },
     job_tasks: (data.taskAnalysis ?? []).map(taskAnalysisItemToDb),
     improvement_goals: data.targetTask ? [targetTaskToDb(data.targetTask)] : [],
@@ -403,6 +350,9 @@ interface DbRoadmapInterviewRow {
     roadmap_job?: string;
     task_name?: string;
     task_description?: string;
+    // v2 신규 통합 필드
+    roadmap_improvement?: string;
+    // v1 하위호환 (읽기 시 roadmap_improvement 로 승격)
     roadmap_problems?: string;
     roadmap_data_availability?: string;
     roadmap_ai_necessity?: number | string;
@@ -416,16 +366,37 @@ interface DbRoadmapInterviewRow {
   stt_insights?: SttInsights | null;
 }
 
+/**
+ * v1 과업 3필드(문제점·데이터발생시점·AI필요도) → v2 improvement 1필드 승격.
+ *
+ * 운영 DB 에 v1 데이터가 실재하므로, roadmap_improvement 가 없으면 구 3필드를
+ * 라벨과 함께 합성한다. 빈 값은 건너뛴다. (roadmap-storage-mapper 의
+ * promoteLegacyNcs 와 동일한 "구 키 → 신 키 승격" 패턴)
+ */
+function promoteLegacyTaskImprovement(t: {
+  roadmap_improvement?: string;
+  roadmap_problems?: string;
+  roadmap_data_availability?: string;
+  roadmap_ai_necessity?: number | string;
+}): string {
+  if (typeof t.roadmap_improvement === 'string' && t.roadmap_improvement.trim() !== '') {
+    return t.roadmap_improvement;
+  }
+  const parts: string[] = [];
+  if (t.roadmap_problems?.trim()) parts.push(`문제점: ${t.roadmap_problems.trim()}`);
+  if (t.roadmap_data_availability?.trim()) {
+    parts.push(`데이터 발생 시점/보유현황: ${t.roadmap_data_availability.trim()}`);
+  }
+  const score = t.roadmap_ai_necessity;
+  if (score !== undefined && score !== null && `${score}`.trim() !== '') {
+    parts.push(`AI 도입·활용 필요도: ${score}`);
+  }
+  return parts.join('\n');
+}
+
 function coerceAiLevel(v: string | undefined): RoadmapInterviewStrict['aiLevel'] {
   if (v === 'INTERMEDIATE' || v === 'ADVANCED' || v === 'BEGINNER') return v;
   return 'BEGINNER';
-}
-
-function coerceAiScore(v: number | string | undefined): number {
-  const n = typeof v === 'string' ? Number(v) : v;
-  if (!Number.isFinite(n as number)) return 3;
-  const int = Math.trunc(n as number);
-  return int < 1 || int > 5 ? 3 : int;
 }
 
 function dbHrdToPdf(
@@ -494,9 +465,6 @@ export function mapDbToRoadmapInterview(
       hrdReportPdf: null,
       companyRequirements: { status: '', problem: '', will: '', outcomes: '' },
       taskAnalysis: [],
-      taskAnalysisNote: '',
-      competencies: [],
-      ncsUsed: false,
     };
   }
 
@@ -504,8 +472,6 @@ export function mapDbToRoadmapInterview(
   const ov = cd.roadmap_overview ?? {};
   const cr = cd.roadmap_company_requirements ?? {};
   const an = cd.roadmap_analysis_notes ?? {};
-  const comps = cd.roadmap_competency_models ?? [];
-  const ncs = cd.roadmap_ncs_usage ?? {};
 
   const performanceActivities: RoadmapPerformanceActivity[] = (ov.performance_activities ?? [])
     .filter((a) => !!a)
@@ -525,9 +491,8 @@ export function mapDbToRoadmapInterview(
       domain: t.roadmap_job ?? '',
       task: t.task_name ?? '',
       asIs: t.task_description ?? '',
-      problem: t.roadmap_problems ?? '',
-      dataTiming: t.roadmap_data_availability ?? '',
-      aiScore: coerceAiScore(t.roadmap_ai_necessity),
+      // v2 improvement 우선, 없으면 v1 3필드 승격 (운영 DB 호환)
+      improvement: promoteLegacyTaskImprovement(t),
     }));
 
   const attachmentFiles = Array.isArray(an.attachment_files) ? an.attachment_files : [];
@@ -543,18 +508,6 @@ export function mapDbToRoadmapInterview(
       }
     : undefined;
 
-  const competencies: RoadmapCompetency[] = comps
-    .filter((c) => !!c)
-    .map((c) => ({
-      name: c.competency_name ?? '',
-      definition: c.competency_definition ?? '',
-      knowledge: c.knowledge ?? '',
-      skill: c.skill ?? '',
-      attitude: c.attitude ?? '',
-    }));
-
-  const ncsUsed = ncs.uses_ncs === true;
-
   const result: Partial<RoadmapInterviewStrict> = {
     establishmentNecessity: ov.establishment_necessity ?? '',
     performanceActivities,
@@ -569,9 +522,6 @@ export function mapDbToRoadmapInterview(
       ...(cr.remarks ? { remarks: { ...cr.remarks } } : {}),
     },
     taskAnalysis,
-    taskAnalysisNote: an.text ?? '',
-    competencies,
-    ncsUsed,
   };
 
   if (taskAnalysisAttachment) {
@@ -579,11 +529,6 @@ export function mapDbToRoadmapInterview(
   }
   if (targetTask) {
     result.targetTask = targetTask;
-  }
-  if (ncsUsed) {
-    result.ncsMethodology = ncs.ncs_usage_method ?? '';
-  } else {
-    result.ncsDerivationMethod = ncs.competency_derivation_method ?? '';
   }
 
   // STT 인사이트 — interviews.stt_insights 컬럼이 채워져 있을 때만 camelCase

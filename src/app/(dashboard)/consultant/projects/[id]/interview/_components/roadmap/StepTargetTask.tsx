@@ -8,7 +8,7 @@ import type { RoadmapStepProps } from './types';
 import type { RoadmapTargetTask } from '@/lib/schemas/interview-roadmap';
 
 /**
- * Ⅱ-4 훈련대상 과업 선정 — [인터뷰 입력]
+ * Ⅱ-4 AI 적용 대상 과업 선정 — [인터뷰 입력]
  *
  * 양식 기준 블록 구조 표:
  *  - 훈련대상 과업 (1행)
@@ -27,8 +27,7 @@ export function StepTargetTask({
   onChange,
   readOnly = false,
 }: RoadmapStepProps<TargetTask>) {
-  const v: TargetTask =
-    value ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
+  const v: TargetTask = value ?? { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
 
   function update<K extends keyof TargetTask>(key: K, val: TargetTask[K]) {
     onChange({ ...v, [key]: val });
@@ -37,9 +36,9 @@ export function StepTargetTask({
   return (
     <FormSection
       number="Ⅱ-4"
-      title="훈련대상 과업(Task)·워크플로우 선정"
+      title="AI 적용 대상 과업(Task)·워크플로우 선정"
       label="[인터뷰 입력]"
-      description="Ⅱ-3 분석표에서 식별한 과업 중 AI훈련로드맵 수립 대상 과업을 선정하고, 선정 사유와 기대 효과를 기술합니다."
+      description="Ⅱ-3 분석표에서 식별한 과업 중 AI 적용 대상 과업을 선정하고, 선정 사유와 기대 효과를 기술합니다."
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-border text-sm">
@@ -50,15 +49,15 @@ export function StepTargetTask({
                 scope="row"
                 className="w-[180px] border border-border bg-muted px-3 py-2 text-left align-top font-medium"
               >
-                훈련대상 과업
+                AI 적용 대상 과업
               </th>
               <td className="border border-border p-2 align-top" colSpan={2}>
                 <LargeTextBox
                   value={v.name}
                   onChange={(e) => update('name', e.target.value)}
-                  placeholder="훈련대상 과업명"
+                  placeholder="AI 적용 대상 과업명"
                   disabled={readOnly}
-                  aria-label="훈련대상 과업"
+                  aria-label="AI 적용 대상 과업"
                   minHeightClassName="min-h-[120px]"
                 />
               </td>
@@ -131,10 +130,12 @@ export function StepTargetTask({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              위 분석표에서 제시한 과업 중 AI훈련로드맵을 수립하기 위한 훈련대상 과업을 선정하고 선정사유를 작성합니다.
+              위 분석표에서 제시한 과업 중 AI훈련로드맵을 수립하기 위한 AI 적용 대상 과업을 선정하고
+              선정사유를 작성합니다.
             </li>
             <li>
-              해당 과업의 현행 수행방식(As-Is)과 AI 도입·활용을 위한 훈련 실시 후 개선(To-Be)되는 사항을 제시합니다.
+              해당 과업의 현행 수행방식(As-Is)과 AI 도입·활용을 위한 훈련 실시 후 개선(To-Be)되는
+              사항을 제시합니다.
             </li>
           </ul>
         }

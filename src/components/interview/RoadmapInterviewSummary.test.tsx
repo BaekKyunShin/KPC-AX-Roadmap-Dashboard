@@ -42,31 +42,16 @@ function makeFullInterview(): Partial<RoadmapInterview> {
         job: '품질관리',
         task_name: '제품 외관 검사',
         as_is: '검사원이 육안으로 분류',
-        problems: '집중도 저하 시 누락',
-        data_availability: '이미지 데이터 5만건 보유',
-        ai_necessity: 5,
+        roadmap_improvement: '이미지 데이터 5만건으로 Vision AI 1차 선별, 집중도 저하 누락 해소',
       },
       {
         id: 't-2',
         job: '운영',
         task_name: '일일 리포트 작성',
         as_is: '엑셀 수기',
-        problems: '수작업 부담',
-        data_availability: 'ERP 연동 가능',
-        ai_necessity: 3,
+        roadmap_improvement: 'ERP 연동 데이터로 리포트 자동 생성, 수작업 부담 경감',
       },
     ],
-    analysis_notes: {
-      text: '경영진과의 합의가 빨라 도입 속도 빠를 것',
-      attachment_files: [
-        {
-          storage_path: 'projects/p1/notes/process.pdf',
-          file_name: '공정분석.pdf',
-          size: 2048,
-          extracted_text: '공정 분석 본문 미리보기',
-        },
-      ],
-    },
     training_targets: [
       {
         id: 'g-1',
@@ -76,20 +61,6 @@ function makeFullInterview(): Partial<RoadmapInterview> {
         to_be: 'AI Vision',
       },
     ],
-    competency_models: [
-      {
-        id: 'c-1',
-        competency_name: 'AI Vision 활용',
-        competency_definition: '검사 모델을 이해하고 운영',
-        knowledge: '이미지 분류 원리',
-        skill: '모델 호출 + 결과 해석',
-        attitude: '데이터 품질을 중시',
-      },
-    ],
-    ncs_usage: {
-      uses_ncs: true,
-      ncs_usage_method: 'NCS 1502070101 능력단위 응용',
-    },
     notes: '추가 메모 — 향후 2차 인터뷰 필요',
     stt_insights: {
       추가_업무: ['주간 회의 정리'],
@@ -112,7 +83,7 @@ describe('RoadmapInterviewSummary', () => {
       render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
       expect(screen.getByText('Ⅰ. 개요')).toBeInTheDocument();
       expect(
-        screen.getByText('제조 현장의 데이터 누락을 줄이기 위해 AI 도입이 필요합니다.'),
+        screen.getByText('제조 현장의 데이터 누락을 줄이기 위해 AI 도입이 필요합니다.')
       ).toBeInTheDocument();
       expect(screen.getByText('품질검사 자동화 + 일일 리포트 작성')).toBeInTheDocument();
     });
@@ -151,38 +122,32 @@ describe('RoadmapInterviewSummary', () => {
       expect(screen.getByText('연간 1억 절감')).toBeInTheDocument();
     });
 
-    it('Ⅱ-3. 과업·워크플로우 분석표 + AI 필요도 라벨을 표시한다', () => {
+    it('Ⅱ-3. 과업·워크플로우 분석표 + 개선점(improvement) 을 표시한다', () => {
       render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
       expect(screen.getByText('Ⅱ-3. 과업·워크플로우 분석')).toBeInTheDocument();
       expect(screen.getByText('제품 외관 검사')).toBeInTheDocument();
       expect(screen.getByText('일일 리포트 작성')).toBeInTheDocument();
-      // AI_NECESSITY_LABELS 매핑 — 5 → 매우 높음, 3 → 보통
-      expect(screen.getByText(/5 · 매우 높음/)).toBeInTheDocument();
-      expect(screen.getByText(/3 · 보통/)).toBeInTheDocument();
+      // v2: 개선점 및 AI 적용 가능성 (roadmap_improvement) 컬럼
+      expect(
+        screen.getByText('이미지 데이터 5만건으로 Vision AI 1차 선별, 집중도 저하 누락 해소')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('ERP 연동 데이터로 리포트 자동 생성, 수작업 부담 경감')
+      ).toBeInTheDocument();
     });
 
-    it('분석 노트의 텍스트와 첨부 파일을 표시한다', () => {
+    it('Ⅱ-4. AI 적용 대상 과업표를 표시한다', () => {
       render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
-      expect(screen.getByText('분석 노트')).toBeInTheDocument();
-      expect(screen.getByText('경영진과의 합의가 빨라 도입 속도 빠를 것')).toBeInTheDocument();
-      expect(screen.getByText('공정분석.pdf')).toBeInTheDocument();
-      expect(screen.getByText('공정 분석 본문 미리보기')).toBeInTheDocument();
-    });
-
-    it('Ⅱ-4. 훈련대상 과업표를 표시한다', () => {
-      render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
-      expect(screen.getByText('Ⅱ-4. 훈련대상 과업')).toBeInTheDocument();
+      expect(screen.getByText('Ⅱ-4. AI 적용 대상 과업')).toBeInTheDocument();
       expect(screen.getByText('검사 AI 분류')).toBeInTheDocument();
       expect(screen.getByText('품질 영향 가장 큼')).toBeInTheDocument();
     });
 
-    it('Ⅲ-1. 역량 모델링 + NCS 활용 박스를 표시한다', () => {
+    it('양식 v2: 역량 모델링·NCS·분석 노트 섹션은 표시하지 않는다', () => {
       render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
-      expect(screen.getByText('Ⅲ-1. 역량 모델링')).toBeInTheDocument();
-      expect(screen.getByText('AI Vision 활용')).toBeInTheDocument();
-      expect(screen.getByText('검사 모델을 이해하고 운영')).toBeInTheDocument();
-      expect(screen.getByText('NCS 활용: 예')).toBeInTheDocument();
-      expect(screen.getByText('NCS 1502070101 능력단위 응용')).toBeInTheDocument();
+      expect(screen.queryByText('Ⅲ-1. 역량 모델링')).not.toBeInTheDocument();
+      expect(screen.queryByText(/NCS 활용/)).not.toBeInTheDocument();
+      expect(screen.queryByText('분석 노트')).not.toBeInTheDocument();
     });
 
     it('메모 섹션을 표시한다', () => {
@@ -228,7 +193,7 @@ describe('RoadmapInterviewSummary', () => {
               selected_tasks_summary: '',
             },
           }}
-        />,
+        />
       );
       expect(screen.getByText('필요성만 입력')).toBeInTheDocument();
       expect(screen.getByText(/초급/)).toBeInTheDocument();
@@ -243,7 +208,7 @@ describe('RoadmapInterviewSummary', () => {
             interview_date: '2026-04-22',
             participants: [],
           }}
-        />,
+        />
       );
       expect(screen.getByText('Ⅰ-2. 주요 활동')).toBeInTheDocument();
       expect(screen.getAllByText('(미입력)').length).toBeGreaterThan(0);
@@ -256,25 +221,9 @@ describe('RoadmapInterviewSummary', () => {
             interview_start_time: '10:00',
             interview_end_time: '',
           }}
-        />,
+        />
       );
       expect(screen.getByText('10:00')).toBeInTheDocument();
-    });
-
-    it('NCS 활용=false 일 때 competency_derivation_method 를 표시한다', () => {
-      render(
-        <RoadmapInterviewSummary
-          interview={{
-            ncs_usage: {
-              uses_ncs: false,
-              competency_derivation_method: 'NCS 없이 사내 모범 사례에서 도출',
-            },
-          }}
-        />,
-      );
-      expect(screen.getByText('Ⅲ-1. 역량 모델링')).toBeInTheDocument();
-      expect(screen.getByText('NCS 활용: 아니오')).toBeInTheDocument();
-      expect(screen.getByText('NCS 없이 사내 모범 사례에서 도출')).toBeInTheDocument();
     });
 
     it('STT 인사이트가 모두 비어있으면 STT 섹션을 숨긴다', () => {
@@ -290,30 +239,9 @@ describe('RoadmapInterviewSummary', () => {
               주요_인용: [],
             },
           }}
-        />,
+        />
       );
       expect(screen.queryByText('STT 인사이트')).not.toBeInTheDocument();
-    });
-
-    it('analysis_notes 첨부만 있고 텍스트 비어있으면 (메모 미입력) 라벨로 표시한다', () => {
-      render(
-        <RoadmapInterviewSummary
-          interview={{
-            analysis_notes: {
-              text: '',
-              attachment_files: [
-                {
-                  storage_path: 'projects/p1/notes/a.pdf',
-                  file_name: 'a.pdf',
-                },
-              ],
-            },
-          }}
-        />,
-      );
-      expect(screen.getByText('분석 노트')).toBeInTheDocument();
-      expect(screen.getByText('(메모 미입력)')).toBeInTheDocument();
-      expect(screen.getByText('a.pdf')).toBeInTheDocument();
     });
   });
 });

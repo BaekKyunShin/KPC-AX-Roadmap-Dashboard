@@ -68,12 +68,9 @@ function validRoadmapCamelCase(): RoadmapInterviewStrict {
         domain: '생산',
         task: '완제품 품질 검사',
         asIs: '육안 검사 중심',
-        problem: '검사자별 편차',
-        dataTiming: '출하 직전, 이미지 2년치',
-        aiScore: 4,
+        improvement: '검사자별 편차 → AI 이미지 분류로 1차 자동 검사 (출하 직전 이미지 2년치 보유)',
       },
     ],
-    taskAnalysisNote: '대상 과업: 품질검사 자동화 (AI 도입 필요도 4 이상)',
     taskAnalysisAttachment: {
       fileName: 'note-attach.pdf',
       url: 'projects/xxx/note-def.pdf',
@@ -84,19 +81,6 @@ function validRoadmapCamelCase(): RoadmapInterviewStrict {
       expectedAsIs: '육안 검사 중심 / 편차 존재',
       expectedToBe: 'AI 1차 검사 + 사람 최종 확인',
     },
-
-    // Ⅲ-1 역량 모델링
-    competencies: [
-      {
-        name: '품질 검사 데이터 해석',
-        definition: '불량 이미지 데이터에서 패턴을 식별한다.',
-        knowledge: '이미지 분류 기초',
-        skill: '이미지 레이블링',
-        attitude: '데이터 기반 의사결정',
-      },
-    ],
-    ncsUsed: false,
-    ncsDerivationMethod: '현장 인터뷰 + 업계 벤치마킹',
   };
 }
 
@@ -172,26 +156,6 @@ describe('mapRoadmapInterviewToDb', () => {
     expect(remarks === undefined || Object.keys(remarks).length === 0).toBe(true);
   });
 
-  it('taskAnalysis[] 를 job_tasks[] 로 변환 (legacy 필드명 매핑)', () => {
-    const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
-    expect(db.job_tasks).toHaveLength(1);
-    expect(db.job_tasks[0]).toMatchObject({
-      roadmap_job: '생산',
-      task_name: '완제품 품질 검사',
-      task_description: '육안 검사 중심',
-      roadmap_problems: '검사자별 편차',
-      roadmap_data_availability: '출하 직전, 이미지 2년치',
-      roadmap_ai_necessity: 4,
-    });
-  });
-
-  it('taskAnalysisNote 는 company_details.roadmap_analysis_notes.text 에 저장', () => {
-    const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
-    expect(db.company_details.roadmap_analysis_notes?.text).toBe(
-      '대상 과업: 품질검사 자동화 (AI 도입 필요도 4 이상)'
-    );
-  });
-
   it('taskAnalysisAttachment 는 analysis_notes.attachment_files[0] 에 단일 객체로 저장', () => {
     const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
     const files = db.company_details.roadmap_analysis_notes?.attachment_files ?? [];
@@ -213,34 +177,21 @@ describe('mapRoadmapInterviewToDb', () => {
     });
   });
 
-  it('competencies[] 를 roadmap_competency_models 로 변환 (legacy 필드명)', () => {
+  it('taskAnalysis 를 job_tasks 로 변환하며 improvement 를 roadmap_improvement 로 저장 (v2 4열)', () => {
     const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
-    const models = db.company_details.roadmap_competency_models;
-    expect(models).toHaveLength(1);
-    expect(models[0]).toMatchObject({
-      competency_name: '품질 검사 데이터 해석',
-      competency_definition: '불량 이미지 데이터에서 패턴을 식별한다.',
-      knowledge: '이미지 분류 기초',
-      skill: '이미지 레이블링',
-      attitude: '데이터 기반 의사결정',
+    expect(db.job_tasks).toHaveLength(1);
+    expect(db.job_tasks[0]).toEqual({
+      roadmap_job: '생산',
+      task_name: '완제품 품질 검사',
+      task_description: '육안 검사 중심',
+      roadmap_improvement:
+        '검사자별 편차 → AI 이미지 분류로 1차 자동 검사 (출하 직전 이미지 2년치 보유)',
     });
   });
 
-  it('ncsUsed=false + ncsDerivationMethod → roadmap_ncs_usage 키명 변환', () => {
+  it('roadmap_analysis_notes.text 는 v2 에서 빈 문자열로 저장 (분석내용 표 삭제)', () => {
     const db = mapRoadmapInterviewToDb(validRoadmapCamelCase());
-    expect(db.company_details.roadmap_ncs_usage).toEqual({
-      uses_ncs: false,
-      competency_derivation_method: '현장 인터뷰 + 업계 벤치마킹',
-    });
-  });
-
-  it('ncsUsed=true + ncsMethodology → ncs_usage_method 로 저장', () => {
-    const data = { ...validRoadmapCamelCase(), ncsUsed: true, ncsMethodology: 'NCS 200107 활용' };
-    const db = mapRoadmapInterviewToDb(data);
-    expect(db.company_details.roadmap_ncs_usage).toEqual({
-      uses_ncs: true,
-      ncs_usage_method: 'NCS 200107 활용',
-    });
+    expect(db.company_details.roadmap_analysis_notes.text).toBe('');
   });
 
   it('hrdReportPdf=null → overview.hrd_report_attachment=null', () => {
@@ -311,18 +262,12 @@ describe('mapDbToRoadmapInterview', () => {
     // 기업 요구분석
     expect(restored.companyRequirements).toEqual(original.companyRequirements);
 
-    // 과업 분석 표
+    // 과업 분석 표 (v2: improvement 통합, taskAnalysisNote 삭제)
     expect(restored.taskAnalysis).toEqual(original.taskAnalysis);
-    expect(restored.taskAnalysisNote).toBe(original.taskAnalysisNote);
     expect(restored.taskAnalysisAttachment).toEqual(original.taskAnalysisAttachment);
 
-    // 훈련대상 과업
+    // AI 적용 대상 과업
     expect(restored.targetTask).toEqual(original.targetTask);
-
-    // Ⅲ-1 역량
-    expect(restored.competencies).toEqual(original.competencies);
-    expect(restored.ncsUsed).toBe(original.ncsUsed);
-    expect(restored.ncsDerivationMethod).toBe(original.ncsDerivationMethod);
   });
 
   it('companyRequirements.remarks 4 키가 round-trip 에서 보존된다 (#6)', () => {
@@ -468,22 +413,42 @@ describe('mapDbToRoadmapInterview', () => {
     expect(restored.establishmentNecessity).toBe('');
     expect(restored.performanceActivities).toEqual([]);
     expect(restored.taskAnalysis).toEqual([]);
-    expect(restored.competencies).toEqual([]);
-    expect(restored.ncsUsed).toBe(false);
   });
 
-  it('ncsUsed=true → ncsMethodology 복원', () => {
+  it('v1 과업 3필드(problems·data_availability·ai_necessity) → improvement 로 승격 복원', () => {
     const row = {
-      company_details: {
-        roadmap_ncs_usage: {
-          uses_ncs: true,
-          ncs_usage_method: 'NCS 200107 활용',
+      job_tasks: [
+        {
+          roadmap_job: '생산',
+          task_name: '품질 검사',
+          task_description: '육안 검사',
+          // v1 데이터 — roadmap_improvement 없음
+          roadmap_problems: '검사자별 편차',
+          roadmap_data_availability: '이미지 2년치',
+          roadmap_ai_necessity: 4,
         },
-      },
+      ],
     };
     const restored = mapDbToRoadmapInterview(row);
-    expect(restored.ncsUsed).toBe(true);
-    expect(restored.ncsMethodology).toBe('NCS 200107 활용');
+    expect(restored.taskAnalysis?.[0].improvement).toBe(
+      '문제점: 검사자별 편차\n데이터 발생 시점/보유현황: 이미지 2년치\nAI 도입·활용 필요도: 4'
+    );
+  });
+
+  it('v2 roadmap_improvement 가 있으면 v1 승격보다 우선한다', () => {
+    const row = {
+      job_tasks: [
+        {
+          roadmap_job: '생산',
+          task_name: '품질 검사',
+          task_description: '육안 검사',
+          roadmap_improvement: 'AI 이미지 분류로 자동화',
+          roadmap_problems: '무시되어야 함',
+        },
+      ],
+    };
+    const restored = mapDbToRoadmapInterview(row);
+    expect(restored.taskAnalysis?.[0].improvement).toBe('AI 이미지 분류로 자동화');
   });
 
   it('targetTask — improvement_goals[0] 배열 원소를 단일 객체로 복원', () => {

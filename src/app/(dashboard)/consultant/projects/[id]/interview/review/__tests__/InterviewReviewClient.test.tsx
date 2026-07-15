@@ -56,31 +56,18 @@ describe('InterviewReviewClient', () => {
           domain: '재무',
           task: '결산',
           asIs: '수기',
-          problem: '오류',
-          dataTiming: '월말',
-          aiScore: 4,
+          improvement: '월말 데이터로 결산 자동화, 수기 오류 해소',
         },
       ],
-      taskAnalysisNote: '메모',
       targetTask: {
         name: '결산 자동화',
         reason: '효율',
         expectedAsIs: '수기',
         expectedToBe: '자동',
       },
-      competencies: [
-        {
-          name: '데이터 분석',
-          definition: '정의',
-          knowledge: '지식',
-          skill: '기술',
-          attitude: '태도',
-        },
-      ],
-      ncsUsed: false,
     };
 
-    it('헤더 + 8 Step 양식 카드 + CTA 영역 렌더 (STT 섹션은 데이터 있을 때만)', () => {
+    it('헤더 + 7 Step 양식 카드 + CTA 영역 렌더 (STT 섹션은 데이터 있을 때만)', () => {
       render(
         <InterviewReviewClient
           projectId="p-1"
@@ -88,16 +75,17 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt="2026-04-30T14:00:00Z"
           latestResult={baseLatestResult}
-        />,
+        />
       );
       expect(
-        screen.getByRole('heading', { name: 'AI훈련로드맵 인터뷰 검토', level: 1 }),
+        screen.getByRole('heading', { name: 'AI훈련로드맵 인터뷰 검토', level: 1 })
       ).toBeInTheDocument();
-      // 8 Step heading 일부
+      // Step heading 일부
       expect(screen.getByText(/Ⅰ-1. 수립 필요성/)).toBeInTheDocument();
       expect(screen.getByText(/Ⅰ-2. 주요 활동/)).toBeInTheDocument();
       expect(screen.getByText(/Ⅱ-2. 기업 요구분석/)).toBeInTheDocument();
-      expect(screen.getByText(/Ⅲ-1. 역량 모델링/)).toBeInTheDocument();
+      // 양식 v2: Ⅲ-1 역량 모델링 스텝은 삭제됨
+      expect(screen.queryByText(/Ⅲ-1. 역량 모델링/)).not.toBeInTheDocument();
       // CTA
       expect(screen.getByTestId('review-cta-back-to-interview')).toBeInTheDocument();
       expect(screen.getByTestId('review-cta-go-to-result')).toBeInTheDocument();
@@ -111,7 +99,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt="2026-04-30T14:00:00Z"
           latestResult={baseLatestResult}
-        />,
+        />
       );
       expect(screen.queryByTestId('stale-result-banner')).not.toBeInTheDocument();
     });
@@ -128,7 +116,7 @@ describe('InterviewReviewClient', () => {
             status: 'DRAFT',
             versionId: 'rv-1',
           }}
-        />,
+        />
       );
       expect(screen.getByTestId('stale-result-banner')).toBeInTheDocument();
     });
@@ -146,13 +134,11 @@ describe('InterviewReviewClient', () => {
           interviewData={empty}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // 카드 헤더 (차수 0개 라벨) 클릭으로 펼침
       await user.click(screen.getByText(/Ⅰ-2\. 주요 활동/));
-      expect(
-        screen.getByText(/주요 활동이 입력되지 않았습니다/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/주요 활동이 입력되지 않았습니다/)).toBeInTheDocument();
     });
 
     it('Ⅱ-2 카드를 펼치면 InlineEditField 4행 노출 + 편집 시 editInterviewFieldRoadmap 호출', async () => {
@@ -165,7 +151,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // #3 이후: 카드 default 닫힘 → 카드 헤더 먼저 클릭하여 펼친 후 첫 행 값 편집
       await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));
@@ -198,7 +184,7 @@ describe('InterviewReviewClient', () => {
           interviewData={dataWithStt}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // 섹션 헤더 — "선택" 표기로 양식 절·장과 구분
       const sttHeader = screen.getByText(/STT 인사이트 \(선택\)/);
@@ -219,7 +205,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       expect(screen.queryByText(/STT 인사이트 \(선택\)/)).toBeNull();
     });
@@ -241,7 +227,11 @@ describe('InterviewReviewClient', () => {
         externalInstructors: [],
         aiInfrastructure: '환경',
         targetCharacteristics: { career: '', level: '' },
-        aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+        aiInfraDetail: {
+          toolCapacity: 'AVAILABLE' as const,
+          networkStatus: 'GOOD' as const,
+          pcCount: 0,
+        },
         trainingNeedsAnalysis: '',
         expectationAsIs: '',
         expectationToBe: '',
@@ -263,10 +253,10 @@ describe('InterviewReviewClient', () => {
           interviewData={pblData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       expect(
-        screen.getByRole('heading', { name: 'AI PBL 인터뷰 검토', level: 1 }),
+        screen.getByRole('heading', { name: 'AI PBL 인터뷰 검토', level: 1 })
       ).toBeInTheDocument();
       expect(screen.getByText(/Ⅰ-1. 훈련과정 개요/)).toBeInTheDocument();
       expect(screen.getByText(/Ⅱ-1. 기업 이슈/)).toBeInTheDocument();
@@ -283,7 +273,7 @@ describe('InterviewReviewClient', () => {
           interviewData={pblData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // #3 이후: PBL Ⅰ-1 카드도 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
       await user.click(screen.getByText(/Ⅰ-1\. 훈련과정 개요/));
@@ -304,7 +294,7 @@ describe('InterviewReviewClient', () => {
           interviewData={pblData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       await user.click(screen.getByText(/Ⅱ-2\. 훈련 환경/));
       // 환경 텍스트가 노출됨
@@ -320,18 +310,14 @@ describe('InterviewReviewClient', () => {
           interviewData={pblData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       await user.click(screen.getByText(/Ⅲ-1\. 수행 활동/));
-      expect(
-        screen.getByText(/수행 활동이 입력되지 않았습니다/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/수행 활동이 입력되지 않았습니다/)).toBeInTheDocument();
 
       // R8 PBL-자체-04 — problemDefinitionSheet 가 undefined 면 안내 문구 표시
       await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
-      expect(
-        screen.getByText(/문제 정의서가 입력되지 않았습니다/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/문제 정의서가 입력되지 않았습니다/)).toBeInTheDocument();
     });
 
     it('Ⅲ-1 활동 / Ⅲ-2 문제 — 데이터 있을 때 차수·제목 렌더', async () => {
@@ -360,7 +346,7 @@ describe('InterviewReviewClient', () => {
           interviewData={filledPbl}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       await user.click(screen.getByText(/Ⅲ-1\. 수행 활동/));
       expect(screen.getByText(/PBL 활동 내용/)).toBeInTheDocument();
@@ -385,7 +371,7 @@ describe('InterviewReviewClient', () => {
           interviewData={pblWithStt}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       const sttHeader = screen.getByText(/STT 인사이트 \(선택\)/);
       expect(sttHeader).toBeInTheDocument();
@@ -403,7 +389,7 @@ describe('InterviewReviewClient', () => {
           interviewData={pblData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       expect(screen.queryByText(/STT 인사이트 \(선택\)/)).toBeNull();
     });
@@ -418,10 +404,7 @@ describe('InterviewReviewClient', () => {
       selectedTask: '과업',
       companyRequirements: { status: '현황', problem: '문제', will: '의지', outcomes: '성과' },
       taskAnalysis: [],
-      taskAnalysisNote: '메모',
       targetTask: { name: '명', reason: '사유', expectedAsIs: 'A', expectedToBe: 'B' },
-      competencies: [],
-      ncsUsed: false,
     };
 
     const minimalPbl: Partial<PBLInterviewStrict> = {
@@ -438,7 +421,11 @@ describe('InterviewReviewClient', () => {
         externalInstructors: [],
         aiInfrastructure: '',
         targetCharacteristics: { career: '', level: '' },
-        aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+        aiInfraDetail: {
+          toolCapacity: 'AVAILABLE' as const,
+          networkStatus: 'GOOD' as const,
+          pcCount: 0,
+        },
         trainingNeedsAnalysis: '',
         expectationAsIs: '',
         expectationToBe: '',
@@ -460,7 +447,7 @@ describe('InterviewReviewClient', () => {
           interviewData={minimalRoadmap}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       const expanded = screen
         .queryAllByRole('button')
@@ -476,7 +463,7 @@ describe('InterviewReviewClient', () => {
           interviewData={minimalPbl}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       const expanded = screen
         .queryAllByRole('button')
@@ -484,7 +471,7 @@ describe('InterviewReviewClient', () => {
       expect(expanded).toHaveLength(0);
     });
 
-    it('[전체 펼치기] 클릭 시 모든 섹션이 펼쳐진다 (로드맵 8개)', async () => {
+    it('[전체 펼치기] 클릭 시 모든 섹션이 펼쳐진다 (양식 v2 로드맵 7개)', async () => {
       const user = userEvent.setup();
       render(
         <InterviewReviewClient
@@ -493,12 +480,12 @@ describe('InterviewReviewClient', () => {
           interviewData={minimalRoadmap}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       await user.click(screen.getByRole('button', { name: '전체 펼치기' }));
       const expanded = screen.getAllByRole('button', { expanded: true });
-      // 토글 버튼 자체는 expanded 속성이 없고, 8개 CollapsibleSection 헤더만 expanded=true
-      expect(expanded.length).toBeGreaterThanOrEqual(8);
+      // 토글 버튼 자체는 expanded 속성이 없고, v2 에서 Ⅲ-1 삭제로 7개 CollapsibleSection 헤더만 expanded=true
+      expect(expanded.length).toBeGreaterThanOrEqual(7);
     });
 
     it('[전체 접기] 클릭 시 펼쳐진 섹션이 모두 접힌다', async () => {
@@ -510,7 +497,7 @@ describe('InterviewReviewClient', () => {
           interviewData={minimalRoadmap}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       await user.click(screen.getByRole('button', { name: '전체 펼치기' }));
       await user.click(screen.getByRole('button', { name: '전체 접기' }));
@@ -538,15 +525,12 @@ describe('InterviewReviewClient', () => {
         outcomes: '성과',
       },
       taskAnalysis: [],
-      taskAnalysisNote: '메모',
       targetTask: {
         name: '결산 자동화',
         reason: '효율',
         expectedAsIs: '수기',
         expectedToBe: '자동',
       },
-      competencies: [],
-      ncsUsed: false,
     };
 
     beforeEach(async () => {
@@ -565,7 +549,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // Ⅰ-3 카드 펼치기 (selectedTask = '데이터 분석' 노출)
       await user.click(screen.getByText(/Ⅰ-3\. 수립 주요 결과/));
@@ -589,7 +573,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // #3 이후: Ⅱ-2 카드 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
       await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));
@@ -613,10 +597,10 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // Ⅱ-4 카드 펼치기 → '결산 자동화' (targetTask.name)
-      await user.click(screen.getByText(/Ⅱ-4\. 훈련대상 과업/));
+      await user.click(screen.getByText(/Ⅱ-4\. AI 적용 대상 과업/));
       await user.click(screen.getByText('결산 자동화'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);
@@ -643,7 +627,7 @@ describe('InterviewReviewClient', () => {
           interviewData={roadmapData}
           interviewUpdatedAt={null}
           latestResult={baseLatestResult}
-        />,
+        />
       );
       // #3 이후: 카드 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
       await user.click(screen.getByText(/Ⅱ-2\. 기업 요구분석/));

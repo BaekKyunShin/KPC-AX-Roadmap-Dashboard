@@ -112,9 +112,13 @@ function toLegacyTestInput(
       job: t.domain,
       task_name: t.task,
       as_is: t.asIs,
-      problems: t.problem,
-      data_availability: t.dataTiming,
-      ai_necessity: t.aiScore,
+      // 양식 v2 — problem·dataTiming·aiScore 3필드가 improvement(개선점 및 AI 적용
+      // 가능성) 1필드로 통합됐다. 레거시 프롬프트 빌더(TestRoadmapInput snake_case)는
+      // 아직 개별 3필드를 받으므로, 통합 텍스트를 대표 서술 슬롯(problems)에 싣고
+      // 나머지 두 필드는 중립값으로 둔다.
+      problems: t.improvement,
+      data_availability: '',
+      ai_necessity: 3,
     })),
     training_targets: [
       {
@@ -125,8 +129,9 @@ function toLegacyTestInput(
         to_be: interview.targetTask.expectedToBe,
       },
     ],
+    // 양식 v2 — "분석내용"(taskAnalysisNote) 표가 삭제되어 분석 메모 텍스트는 비운다.
     analysis_notes: {
-      text: interview.taskAnalysisNote,
+      text: '',
       attachment_files: [],
     },
     // 양식 v2 — 역량 모델링(competency_models)·NCS(ncs_usage) 는 인터뷰·LLM 입력에서

@@ -18,16 +18,14 @@ describe('StepTargetTask', () => {
   it('섹션 번호 / 제목 / 라벨을 표시한다', () => {
     render(<StepTargetTask value={makeValue()} onChange={() => {}} />);
     expect(screen.getByText('Ⅱ-4')).toBeInTheDocument();
-    // R3 #12 — 양식 정확 명칭으로 정정
-    expect(
-      screen.getByText('훈련대상 과업(Task)·워크플로우 선정'),
-    ).toBeInTheDocument();
+    // v2 — 양식 개정으로 "훈련대상" → "AI 적용 대상" 명칭 변경
+    expect(screen.getByText('AI 적용 대상 과업(Task)·워크플로우 선정')).toBeInTheDocument();
     expect(screen.getByText('[인터뷰 입력]')).toBeInTheDocument();
   });
 
-  it('4개 셀(훈련대상 과업·선정 사유·현행·개선)을 모두 렌더한다', () => {
+  it('4개 셀(AI 적용 대상 과업·선정 사유·현행·개선)을 모두 렌더한다', () => {
     render(<StepTargetTask value={makeValue()} onChange={() => {}} />);
-    expect(screen.getByLabelText('훈련대상 과업')).toBeInTheDocument();
+    expect(screen.getByLabelText('AI 적용 대상 과업')).toBeInTheDocument();
     expect(screen.getByLabelText('선정 사유')).toBeInTheDocument();
     expect(screen.getByLabelText('기대 효과 현행')).toBeInTheDocument();
     expect(screen.getByLabelText('기대 효과 개선')).toBeInTheDocument();
@@ -51,9 +49,9 @@ describe('StepTargetTask', () => {
           expectedToBe: '자동 이상 탐지',
         })}
         onChange={() => {}}
-      />,
+      />
     );
-    expect(screen.getByLabelText('훈련대상 과업')).toHaveValue('설비 진단');
+    expect(screen.getByLabelText('AI 적용 대상 과업')).toHaveValue('설비 진단');
     expect(screen.getByLabelText('선정 사유')).toHaveValue('가동률 저하');
     expect(screen.getByLabelText('기대 효과 현행')).toHaveValue('수기 점검');
     expect(screen.getByLabelText('기대 효과 개선')).toHaveValue('자동 이상 탐지');
@@ -65,9 +63,9 @@ describe('StepTargetTask', () => {
       <StepTargetTask
         value={makeValue({ reason: 'R', expectedAsIs: 'A', expectedToBe: 'B' })}
         onChange={onChange}
-      />,
+      />
     );
-    fireEvent.change(screen.getByLabelText('훈련대상 과업'), {
+    fireEvent.change(screen.getByLabelText('AI 적용 대상 과업'), {
       target: { value: '새 과업' },
     });
     expect(onChange).toHaveBeenCalledWith({
@@ -84,7 +82,7 @@ describe('StepTargetTask', () => {
       <StepTargetTask
         value={makeValue({ name: 'N', reason: 'R', expectedAsIs: 'A' })}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.change(screen.getByLabelText('기대 효과 개선'), {
       target: { value: 'To-Be' },
@@ -98,10 +96,8 @@ describe('StepTargetTask', () => {
   });
 
   it('readOnly 이면 4개 textarea 가 모두 비활성화된다', () => {
-    render(
-      <StepTargetTask value={makeValue()} onChange={() => {}} readOnly />,
-    );
-    expect(screen.getByLabelText('훈련대상 과업')).toBeDisabled();
+    render(<StepTargetTask value={makeValue()} onChange={() => {}} readOnly />);
+    expect(screen.getByLabelText('AI 적용 대상 과업')).toBeDisabled();
     expect(screen.getByLabelText('선정 사유')).toBeDisabled();
     expect(screen.getByLabelText('기대 효과 현행')).toBeDisabled();
     expect(screen.getByLabelText('기대 효과 개선')).toBeDisabled();

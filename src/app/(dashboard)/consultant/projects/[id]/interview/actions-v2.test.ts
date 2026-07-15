@@ -42,13 +42,21 @@ vi.mock('@/lib/supabase/cached', () => ({
   getCachedProfile: vi.fn(),
 }));
 
-const { pendingCallbacks, flush: flushAfterCallbacks, mockAfter } = vi.hoisted(() => {
+const {
+  pendingCallbacks,
+  flush: flushAfterCallbacks,
+  mockAfter,
+} = vi.hoisted(() => {
   const pending: Promise<unknown>[] = [];
   const after = vi.fn((fn: () => void | Promise<unknown>) => {
     const r = fn();
-    if (r && typeof (r as Promise<unknown>).then === 'function') pending.push(r as Promise<unknown>);
+    if (r && typeof (r as Promise<unknown>).then === 'function')
+      pending.push(r as Promise<unknown>);
   });
-  async function flush() { await Promise.all(pending); pending.length = 0; }
+  async function flush() {
+    await Promise.all(pending);
+    pending.length = 0;
+  }
   return { pendingCallbacks: pending, flush, mockAfter: after };
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
@@ -70,17 +78,17 @@ async function mockCachedAuth({
 }: { authed?: boolean; role?: string | null; status?: string | null } = {}) {
   const cached = await import('@/lib/supabase/cached');
   vi.mocked(cached.getCachedUser).mockResolvedValue(
-    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never,
+    (authed ? { id: USER_A, email: 'consultant@example.com' } : null) as never
   );
   vi.mocked(cached.getCachedProfile).mockResolvedValue(
-    (authed ? { id: USER_A, role, status } : null) as never,
+    (authed ? { id: USER_A, role, status } : null) as never
   );
 }
 
 // requireConsultantProjectAccess 가 서버 클라이언트로 수행하는 projects select.
 function mockProjectAssignmentCheck(
   serverMock: ReturnType<typeof createMockSupabase>,
-  { assigned = true }: { assigned?: boolean } = {},
+  { assigned = true }: { assigned?: boolean } = {}
 ) {
   serverMock.addResult({
     data: assigned ? { id: PROJECT_ID } : null,
@@ -96,7 +104,7 @@ function mockProjectMeta(
     status?: string;
     company_name?: string;
     is_test_mode?: boolean;
-  } = {},
+  } = {}
 ) {
   adminMock.addResult({
     data: {
@@ -142,29 +150,15 @@ function validRoadmapV2(): RoadmapInterviewStrict {
         domain: '생산',
         task: '검사',
         asIs: '육안',
-        problem: '편차',
-        dataTiming: '2년치',
-        aiScore: 4,
+        improvement: '편차 → 2년치 검사 데이터로 Vision AI 1차 선별 (필요도 높음)',
       },
     ],
-    taskAnalysisNote: '분석 메모',
     targetTask: {
       name: '품질검사 자동화',
       reason: 'AI 도입 필요도 4',
       expectedAsIs: '육안',
       expectedToBe: 'AI 1차 + 사람 확인',
     },
-    competencies: [
-      {
-        name: '품질 검사 데이터 해석',
-        definition: '불량 이미지 데이터에서 패턴 식별',
-        knowledge: '이미지 분류 기초',
-        skill: '이미지 레이블링',
-        attitude: '데이터 기반 의사결정',
-      },
-    ],
-    ncsUsed: false,
-    ncsDerivationMethod: '현장 인터뷰 + 벤치마킹',
   };
 }
 
@@ -190,7 +184,11 @@ function validPBLV2(): PBLInterviewStrict {
       externalInstructors: [],
       aiInfrastructure: '',
       targetCharacteristics: { career: '', level: '' },
-      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      aiInfraDetail: {
+        toolCapacity: 'AVAILABLE' as const,
+        networkStatus: 'GOOD' as const,
+        pcCount: 0,
+      },
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
@@ -203,10 +201,38 @@ function validPBLV2(): PBLInterviewStrict {
     courseNecessity: 'AI 도입 필요',
     activities: [
       // R8 PBL-자체-03 — 평면 4행 배열
-      { round: 1, role: 'PM' as const, personName: '홍길동', date: '2026-05-15', content: '1차', method: '대면' },
-      { round: 1, role: 'EXTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
-      { round: 1, role: 'INTERNAL_EXPERT' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
-      { round: 1, role: 'JURISDICTION_MANAGER' as const, personName: '', date: '2026-05-15', content: '1차', method: '대면' },
+      {
+        round: 1,
+        role: 'PM' as const,
+        personName: '홍길동',
+        date: '2026-05-15',
+        content: '1차',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'EXTERNAL_EXPERT' as const,
+        personName: '',
+        date: '2026-05-15',
+        content: '1차',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'INTERNAL_EXPERT' as const,
+        personName: '',
+        date: '2026-05-15',
+        content: '1차',
+        method: '대면',
+      },
+      {
+        round: 1,
+        role: 'JURISDICTION_MANAGER' as const,
+        personName: '',
+        date: '2026-05-15',
+        content: '1차',
+        method: '대면',
+      },
     ],
     problemDefinitionSheet: {
       background: '검사자별 편차로 클레임 증가.',
@@ -341,7 +367,7 @@ describe('saveRoadmapInterviewV2', () => {
       expect.objectContaining({
         action: 'INTERVIEW_CREATE',
         meta: expect.objectContaining({ schema_version: 'v2_camelCase' }),
-      }),
+      })
     );
   });
 
@@ -352,8 +378,8 @@ describe('saveRoadmapInterviewV2', () => {
     mockProjectAssignmentCheck(serverMock);
     mockProjectMeta(adminMock, { track: 'ROADMAP' });
 
-    // 기존 DB row 시뮬레이션 — companyRequirements 4개 필드 모두 채워져 있고
-    // taskAnalysisNote 도 기존 값 보유.
+    // 기존 DB row 시뮬레이션 — companyRequirements 4개 필드 + overview 가 채워진 상태.
+    // (양식 v2: 분석내용 text·역량 모델링·NCS 는 삭제되어 보존 대상이 아니다.)
     adminMock.addResult({
       data: {
         id: 'existing-interview-id',
@@ -370,9 +396,6 @@ describe('saveRoadmapInterviewV2', () => {
             push_willingness: '기존 의지',
             expected_outcomes: '기존 성과',
           },
-          roadmap_analysis_notes: { text: '기존 메모', attachment_files: [] },
-          roadmap_competency_models: [],
-          roadmap_ncs_usage: { uses_ncs: false },
         },
         job_tasks: [],
         improvement_goals: [],
@@ -385,7 +408,7 @@ describe('saveRoadmapInterviewV2', () => {
     const r = await saveRoadmapInterviewV2(
       PROJECT_ID,
       { companyRequirements: { problem: '새 문제' } },
-      { autoSave: true },
+      { autoSave: true }
     );
     expect(r.success).toBe(true);
 
@@ -405,8 +428,6 @@ describe('saveRoadmapInterviewV2', () => {
     const overview = cd.roadmap_overview as Record<string, unknown>;
     expect(overview.establishment_necessity).toBe('기존 필요성');
     expect(overview.selected_tasks_summary).toBe('기존 과업');
-    const an = cd.roadmap_analysis_notes as Record<string, unknown>;
-    expect(an.text).toBe('기존 메모');
   });
 
   it('HRD PDF extractedText 가 DB 의 extracted_text 로 save 된다 (Critical 리뷰 수정)', async () => {
@@ -469,16 +490,7 @@ describe('submitRoadmapInterviewV2', () => {
     expect(r.success).toBe(true);
   });
 
-  it('NCS XOR 검증 실패 (ncsUsed=true 이나 ncsMethodology 빈값) → error', async () => {
-    await mockCachedAuth();
-    mockProjectAssignmentCheck(serverMock);
-    mockProjectMeta(adminMock, { track: 'ROADMAP' });
-
-    const invalid = { ...validRoadmapV2(), ncsUsed: true, ncsMethodology: '', ncsDerivationMethod: undefined };
-    const r = await submitRoadmapInterviewV2(PROJECT_ID, invalid);
-    expect(r.success).toBe(false);
-    if (!r.success) expect(r.error).toMatch(/NCS/);
-  });
+  // 양식 v2 — Ⅲ-1 역량 모델링·NCS 삭제로 NCS XOR 검증 테스트는 제거됨.
 });
 
 // ============================================================================
@@ -657,7 +669,7 @@ describe('savePBLInterviewV2', () => {
       expect.objectContaining({
         action: 'PBL_INTERVIEW_SAVED',
         meta: expect.objectContaining({ schema_version: 'v2_camelCase' }),
-      }),
+      })
     );
   });
 
@@ -683,11 +695,7 @@ describe('savePBLInterviewV2', () => {
     adminMock.addResult({ data: null, error: null }); // update
 
     // 사용자가 courseName 만 변경
-    const r = await savePBLInterviewV2(
-      PROJECT_ID,
-      { courseName: '새 과정' },
-      { autoSave: true },
-    );
+    const r = await savePBLInterviewV2(PROJECT_ID, { courseName: '새 과정' }, { autoSave: true });
     expect(r.success).toBe(true);
 
     const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;

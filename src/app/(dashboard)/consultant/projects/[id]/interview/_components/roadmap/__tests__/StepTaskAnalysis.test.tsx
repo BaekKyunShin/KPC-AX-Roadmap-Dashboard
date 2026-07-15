@@ -14,34 +14,26 @@ vi.mock('@/lib/utils', async (importOriginal) => {
 // uploadInterviewAttachment Server Action mock
 const uploadInterviewAttachment = vi.fn();
 vi.mock('../../../actions', () => ({
-  uploadInterviewAttachment: (...args: unknown[]) =>
-    uploadInterviewAttachment(...args),
+  uploadInterviewAttachment: (...args: unknown[]) => uploadInterviewAttachment(...args),
 }));
 
-import {
-  StepTaskAnalysis,
-  type StepTaskAnalysisValue,
-} from '../StepTaskAnalysis';
+import { StepTaskAnalysis, type StepTaskAnalysisValue } from '../StepTaskAnalysis';
 import type { RoadmapTaskAnalysisItem } from '@/lib/schemas/interview-roadmap';
 
+// v2: 과업 분석 항목은 4필드 {domain, task, asIs, improvement}
 function emptyItem(over: Partial<RoadmapTaskAnalysisItem> = {}): RoadmapTaskAnalysisItem {
   return {
     domain: '',
     task: '',
     asIs: '',
-    problem: '',
-    dataTiming: '',
-    aiScore: 3,
+    improvement: '',
     ...over,
   };
 }
 
-function makeValue(
-  over: Partial<StepTaskAnalysisValue> = {},
-): StepTaskAnalysisValue {
+function makeValue(over: Partial<StepTaskAnalysisValue> = {}): StepTaskAnalysisValue {
   return {
     taskAnalysis: [],
-    taskAnalysisNote: '',
     taskAnalysisAttachment: null,
     ...over,
   };
@@ -53,29 +45,51 @@ describe('StepTaskAnalysis', () => {
   });
 
   it('섹션 머리글(Ⅱ-3 · [인터뷰 입력])을 표시한다', () => {
-    render(
-      <StepTaskAnalysis
-        projectId="p1"
-        value={makeValue()}
-        onChange={() => {}}
-      />,
-    );
+    render(<StepTaskAnalysis projectId="p1" value={makeValue()} onChange={() => {}} />);
     expect(screen.getByText('Ⅱ-3')).toBeInTheDocument();
     expect(screen.getByText('과업·워크플로우 분석')).toBeInTheDocument();
     expect(screen.getByText('[인터뷰 입력]')).toBeInTheDocument();
   });
 
-  it('taskAnalysis 가 빈 배열이면 기본 5행을 렌더한다', () => {
+  it('v2 표는 4열(직무·과업·현행 방식·개선점 및 AI 적용 가능성) 머리글을 표시한다', () => {
     render(
       <StepTaskAnalysis
         projectId="p1"
-        value={makeValue()}
+        value={makeValue({ taskAnalysis: [emptyItem()] })}
         onChange={() => {}}
-      />,
+      />
     );
-    // 각 행마다 "직무 N" aria-label 이 존재
+    const table = screen.getByRole('table');
+    const headers = Array.from(table.querySelectorAll('thead th')).map((th) =>
+      th.textContent?.replace(/\s+/g, ' ').trim()
+    );
+    expect(headers[0]).toBe('직무');
+    expect(headers[1]).toBe('과업(Task)');
+    expect(headers[2]).toContain('현행 방식');
+    expect(headers[3]).toContain('개선점 및 AI 적용 가능성');
+  });
+
+  it('v1 잔재 컬럼(문제점·데이터 발생 시점·AI 필요도)은 표시하지 않는다', () => {
+    render(
+      <StepTaskAnalysis
+        projectId="p1"
+        value={makeValue({ taskAnalysis: [emptyItem()] })}
+        onChange={() => {}}
+      />
+    );
+    expect(screen.queryByLabelText('문제점 1')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('데이터 발생 시점 1')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('AI 도입·활용 필요도 1')).not.toBeInTheDocument();
+    // 분석내용(taskAnalysisNote) 입력 필드도 제거됨
+    expect(screen.queryByLabelText('분석내용')).not.toBeInTheDocument();
+  });
+
+  it('taskAnalysis 가 빈 배열이면 기본 5행을 렌더한다', () => {
+    render(<StepTaskAnalysis projectId="p1" value={makeValue()} onChange={() => {}} />);
+    // 각 행마다 "직무 N" · "개선점 N" aria-label 이 존재
     for (let i = 1; i <= 5; i += 1) {
       expect(screen.getByLabelText(`직무 ${i}`)).toBeInTheDocument();
+      expect(screen.getByLabelText(`개선점 ${i}`)).toBeInTheDocument();
     }
   });
 
@@ -90,7 +104,7 @@ describe('StepTaskAnalysis', () => {
           ],
         })}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByLabelText('직무 1')).toHaveValue('품질관리');
     expect(screen.getByLabelText('과업 1')).toHaveValue('검사');
@@ -107,7 +121,7 @@ describe('StepTaskAnalysis', () => {
           taskAnalysis: [emptyItem({ domain: 'A' })],
         })}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('행 추가'));
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -129,7 +143,7 @@ describe('StepTaskAnalysis', () => {
           ],
         })}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('행 삭제 2'));
     // #1 H5·H3 — AlertDialog 노출 검증 후 삭제 확인
@@ -148,7 +162,7 @@ describe('StepTaskAnalysis', () => {
           taskAnalysis: [emptyItem({ domain: '유일' })],
         })}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByLabelText('행 삭제 1')).toBeDisabled();
   });
@@ -162,7 +176,7 @@ describe('StepTaskAnalysis', () => {
           taskAnalysis: [emptyItem(), emptyItem()],
         })}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.change(screen.getByLabelText('직무 2'), {
       target: { value: '생산관리' },
@@ -172,74 +186,25 @@ describe('StepTaskAnalysis', () => {
     expect(call.taskAnalysis[1].domain).toBe('생산관리');
   });
 
-  it('AI 필요도 input 은 type=number, min=1, max=5, step=1 이다 (정수 전용)', () => {
-    render(
-      <StepTaskAnalysis
-        projectId="p1"
-        value={makeValue({ taskAnalysis: [emptyItem()] })}
-        onChange={() => {}}
-      />,
-    );
-    const input = screen.getByLabelText(
-      'AI 도입·활용 필요도 1',
-    ) as HTMLInputElement;
-    expect(input.type).toBe('number');
-    expect(input.min).toBe('1');
-    expect(input.max).toBe('5');
-    expect(input.step).toBe('1');
-  });
-
-  it('AI 필요도에 소수(3.5) 를 입력하면 onChange 가 호출되지 않는다 (정수 전용)', () => {
-    const onChange = vi.fn();
-    render(
-      <StepTaskAnalysis
-        projectId="p1"
-        value={makeValue({ taskAnalysis: [emptyItem({ aiScore: 3 })] })}
-        onChange={onChange}
-      />,
-    );
-    fireEvent.change(screen.getByLabelText('AI 도입·활용 필요도 1'), {
-      target: { value: '3.5' },
-    });
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it('AI 필요도에 정수(5) 입력 시 onChange 가 해당 값으로 호출된다', () => {
-    const onChange = vi.fn();
-    render(
-      <StepTaskAnalysis
-        projectId="p1"
-        value={makeValue({ taskAnalysis: [emptyItem({ aiScore: 3 })] })}
-        onChange={onChange}
-      />,
-    );
-    fireEvent.change(screen.getByLabelText('AI 도입·활용 필요도 1'), {
-      target: { value: '5' },
-    });
-    const call = onChange.mock.calls[0][0] as StepTaskAnalysisValue;
-    expect(call.taskAnalysis[0].aiScore).toBe(5);
-  });
-
-  it('분석내용 textarea 입력 시 onChange 가 taskAnalysisNote 를 갱신한다', () => {
+  it('개선점 입력 시 해당 행의 improvement 만 갱신한 상태로 onChange 가 호출된다', () => {
     const onChange = vi.fn();
     render(
       <StepTaskAnalysis
         projectId="p1"
         value={makeValue({
-          taskAnalysis: [emptyItem({ domain: 'A' })],
-          taskAnalysisNote: '',
+          taskAnalysis: [emptyItem({ domain: 'A' }), emptyItem()],
         })}
         onChange={onChange}
-      />,
+      />
     );
-    fireEvent.change(screen.getByLabelText('분석내용'), {
-      target: { value: '종합 분석 결과' },
+    fireEvent.change(screen.getByLabelText('개선점 1'), {
+      target: { value: '데이터 기반 자동 판정 도입 가능' },
     });
     const call = onChange.mock.calls[0][0] as StepTaskAnalysisValue;
-    expect(call.taskAnalysisNote).toBe('종합 분석 결과');
+    expect(call.taskAnalysis[0].improvement).toBe('데이터 기반 자동 판정 도입 가능');
     // 다른 필드는 보존
-    expect(call.taskAnalysis).toHaveLength(1);
     expect(call.taskAnalysis[0].domain).toBe('A');
+    expect(call.taskAnalysis[1].improvement).toBe('');
   });
 
   it('분석 노트 PDF 업로드 시 uploadInterviewAttachment 호출 후 camelCase 로 onChange 한다', async () => {
@@ -256,21 +221,13 @@ describe('StepTaskAnalysis', () => {
     });
     const onChange = vi.fn();
     const { container } = render(
-      <StepTaskAnalysis
-        projectId="proj-7"
-        value={makeValue()}
-        onChange={onChange}
-      />,
+      <StepTaskAnalysis projectId="proj-7" value={makeValue()} onChange={onChange} />
     );
-    const input = container.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement;
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], 'note.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
 
-    await waitFor(() =>
-      expect(uploadInterviewAttachment).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(uploadInterviewAttachment).toHaveBeenCalledTimes(1));
     expect(uploadInterviewAttachment.mock.calls[0][0]).toBe('proj-7');
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const call = onChange.mock.calls[0][0] as StepTaskAnalysisValue;
@@ -293,7 +250,7 @@ describe('StepTaskAnalysis', () => {
           },
         })}
         onChange={onChange}
-      />,
+      />
     );
     expect(screen.getByText('note.pdf')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('첨부 제거'));
@@ -301,30 +258,30 @@ describe('StepTaskAnalysis', () => {
     expect(call.taskAnalysisAttachment).toBeNull();
   });
 
-  it('readOnly 이면 행 추가·삭제 버튼이 비활성화되고 textarea 도 disabled 된다', () => {
+  it('readOnly 이면 행 추가·삭제 버튼이 비활성화되고 셀 textarea 도 disabled 된다', () => {
     render(
       <StepTaskAnalysis
         projectId="p1"
         value={makeValue({ taskAnalysis: [emptyItem()] })}
         onChange={() => {}}
         readOnly
-      />,
+      />
     );
     expect(screen.getByLabelText('행 추가')).toBeDisabled();
     expect(screen.getByLabelText('행 삭제 1')).toBeDisabled();
-    expect(screen.getByLabelText('분석내용')).toBeDisabled();
     expect(screen.getByLabelText('직무 1')).toBeDisabled();
+    expect(screen.getByLabelText('개선점 1')).toBeDisabled();
   });
 
-  it('Ⅱ-3 표 5개 셀 LargeTextBox 모두 min-h-[225px] 클래스를 가진다 (사용자 보고 #1 — 150px의 1.5배)', () => {
+  it('Ⅱ-3 표 4개 셀 LargeTextBox 모두 min-h-[225px] 클래스를 가진다 (사용자 보고 #1 — 150px의 1.5배)', () => {
     render(
       <StepTaskAnalysis
         projectId="p1"
         value={makeValue({ taskAnalysis: [emptyItem()] })}
         onChange={() => {}}
-      />,
+      />
     );
-    const labels = ['직무 1', '과업 1', '현행 방식 1', '문제점 1', '데이터 발생 시점 1'];
+    const labels = ['직무 1', '과업 1', '현행 방식 1', '개선점 1'];
     for (const label of labels) {
       const textarea = screen.getByLabelText(label);
       expect(textarea.className).toMatch(/min-h-\[225px\]/);

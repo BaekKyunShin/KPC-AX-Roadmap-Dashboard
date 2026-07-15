@@ -83,19 +83,17 @@ interface InterviewLike {
   };
   job_tasks?: Array<{
     id?: string;
-    // V2 DB 키 (mapRoadmapInterviewToDb 출력)
+    // v2 DB 키 (mapRoadmapInterviewToDb 출력)
     roadmap_job?: string;
     task_name?: string;
     task_description?: string;
+    roadmap_improvement?: string;
+    // v1 legacy 키 (읽기 하위호환 — improvement 로 승격)
+    job?: string;
+    as_is?: string;
     roadmap_problems?: string;
     roadmap_data_availability?: string;
     roadmap_ai_necessity?: number | string;
-    // V1 legacy 키 (fallback)
-    job?: string;
-    as_is?: string;
-    problems?: string;
-    data_availability?: string;
-    ai_necessity?: number;
   }>;
   improvement_goals?: Array<{
     id?: string;
@@ -272,16 +270,29 @@ export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): Roadm
     })),
   }));
 
-  // 11) task_workflow items — V2 DB 키(roadmap_job·task_description·roadmap_problems·
-  // roadmap_data_availability·roadmap_ai_necessity) 우선, V1 legacy 키 fallback. (#20·#22)
-  const taskWorkflowItems = jobTasks.map((t) => ({
-    job: t.roadmap_job ?? t.job ?? '',
-    task: t.task_name ?? '',
-    as_is: t.task_description ?? t.as_is ?? '',
-    problem: t.roadmap_problems ?? t.problems ?? '',
-    data_availability: t.roadmap_data_availability ?? t.data_availability ?? '',
-    ai_necessity_score: t.roadmap_ai_necessity ?? t.ai_necessity ?? '',
-  }));
+  // 11) 과업·워크플로우 분석표 (Ⅱ-3) — v2 4열: 직무·과업·현행방식·개선점.
+  // v1 의 problem·dataTiming·aiScore 3필드는 improvement 로 승격한다 (운영 DB 호환).
+  const taskWorkflowItems = jobTasks.map((t) => {
+    const improvement =
+      t.roadmap_improvement ??
+      [
+        t.roadmap_problems ? `문제점: ${t.roadmap_problems}` : '',
+        t.roadmap_data_availability
+          ? `데이터 발생 시점/보유현황: ${t.roadmap_data_availability}`
+          : '',
+        t.roadmap_ai_necessity !== undefined && `${t.roadmap_ai_necessity}` !== ''
+          ? `AI 도입·활용 필요도: ${t.roadmap_ai_necessity}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+    return {
+      job: t.roadmap_job ?? t.job ?? '',
+      task: t.task_name ?? '',
+      as_is: t.task_description ?? t.as_is ?? '',
+      improvement,
+    };
+  });
 
   // 12) 보고서 날짜 (최종화 시점 우선, 없으면 updated_at)
   const reportDate = roadmap.finalized_at || roadmap.updated_at;

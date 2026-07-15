@@ -250,7 +250,6 @@ const baseInterview: Partial<ResultInterviewSnapshot> = {
     outcomes: '',
   },
   taskAnalysis: [],
-  taskAnalysisNote: '',
   targetTask: {
     name: '',
     reason: '',

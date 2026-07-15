@@ -3,10 +3,10 @@
  *
  * Step D-1 (ISSUE-17): 기존 InterviewSummary 는 7개 레거시 필드(systems_and_tools,
  * ai_experience, jobTasks, painPoints, improvementGoals, constraints, notes) 만
- * 노출했다. Batch 1 신규 필드(roadmap_overview·task_workflow_items·training_targets·
- * competency_models·ncs_usage·hrd_report_attachment·attachment_files·
- * interview_start_time/end_time·stt_insights) 를 모두 노출해 컨설턴트가 입력한
- * 데이터가 프로젝트 상세 인터뷰 기록 탭에서 누락 없이 보이도록 한다.
+ * 노출했다. 신규 필드(roadmap_overview·task_workflow_items(roadmap_improvement)·
+ * training_targets·hrd_report_attachment·interview_start_time/end_time·stt_insights)
+ * 를 노출해 컨설턴트가 입력한 데이터가 프로젝트 상세 인터뷰 기록 탭에서 누락 없이
+ * 보이도록 한다. (양식 v2: Ⅲ-1 역량 모델링·NCS·분석내용 섹션은 삭제됨.)
  *
  * 데이터 입력 형식: `mapInterviewRowToRoadmapInterview()` 결과(Partial)
  *   - 인터뷰 row 가 없거나 일부 필드가 비어 있을 수 있어 모두 optional 로 처리.
@@ -21,7 +21,6 @@ import {
   type HrdReportAttachment,
 } from '@/lib/schemas/interview-roadmap';
 import { formatTimeRange } from '@/lib/utils/time';
-import { AI_NECESSITY_LABELS } from '@/lib/constants/interview';
 import { SttInsightsCards } from './SttInsightsCards';
 
 export interface RoadmapInterviewSummaryProps {
@@ -96,16 +95,10 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
   const cr = interview.company_requirements;
   const tasks = interview.task_workflow_items ?? [];
   const targets = interview.training_targets ?? [];
-  const competencies = interview.competency_models ?? [];
-  const ncs = interview.ncs_usage;
-  const an = interview.analysis_notes;
   const stt = interview.stt_insights;
   const participants = interview.participants ?? [];
 
-  const timeRange = formatTimeRange(
-    interview.interview_start_time,
-    interview.interview_end_time,
-  );
+  const timeRange = formatTimeRange(interview.interview_start_time, interview.interview_end_time);
   const methodLabel = interview.interview_method
     ? INTERVIEW_METHOD_LABEL[interview.interview_method]
     : null;
@@ -130,15 +123,6 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
       isNonEmpty(cr.main_problems) ||
       isNonEmpty(cr.push_willingness) ||
       isNonEmpty(cr.expected_outcomes));
-
-  const hasAnalysisNotes =
-    !!an && (isNonEmpty(an.text) || (an.attachment_files?.length ?? 0) > 0);
-
-  const hasNcs =
-    !!ncs &&
-    (ncs.uses_ncs
-      ? isNonEmpty(ncs.ncs_usage_method)
-      : isNonEmpty(ncs.competency_derivation_method));
 
   const hasStt =
     !!stt &&
@@ -174,7 +158,10 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
             </div>
             <FieldRow label="선정 과업" value={overview.selected_tasks_summary} />
             {isNonEmpty(overview.roadmap_summary) && (
-              <FieldRow label="수립 주요내용 요약 (LLM 자동생성)" value={overview.roadmap_summary} />
+              <FieldRow
+                label="수립 주요내용 요약 (LLM 자동생성)"
+                value={overview.roadmap_summary}
+              />
             )}
             {overview.hrd_report_attachment && (
               <div>
@@ -206,10 +193,7 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
             {participants.length > 0 ? (
               <ul className="mt-1.5 flex flex-wrap gap-1.5">
                 {participants.map((p) => (
-                  <li
-                    key={p.id}
-                    className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
-                  >
+                  <li key={p.id} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
                     {p.name}
                     {isNonEmpty(p.position) && (
                       <span className="ml-1 text-gray-500">({p.position})</span>
@@ -248,29 +232,23 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
                   <th className="px-3 py-2 text-left font-medium">직무</th>
                   <th className="px-3 py-2 text-left font-medium">과업명</th>
                   <th className="px-3 py-2 text-left font-medium">현행 방식 (As-Is)</th>
-                  <th className="px-3 py-2 text-left font-medium">문제점</th>
-                  <th className="px-3 py-2 text-left font-medium">데이터</th>
-                  <th className="px-3 py-2 text-left font-medium">AI 필요도</th>
+                  <th className="px-3 py-2 text-left font-medium">개선점 및 AI 적용 가능성</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-gray-700">
                 {tasks.map((t) => (
                   <tr key={t.id} className="align-top">
-                    <td className="px-3 py-2 whitespace-pre-line break-keep break-words">{t.job}</td>
+                    <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
+                      {t.job}
+                    </td>
                     <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
                       {t.task_name}
                     </td>
-                    <td className="px-3 py-2 whitespace-pre-line break-keep break-words">{t.as_is}</td>
                     <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                      {t.problems}
+                      {t.as_is}
                     </td>
                     <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                      {t.data_availability}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                        {t.ai_necessity} · {AI_NECESSITY_LABELS[t.ai_necessity] ?? '-'}
-                      </span>
+                      {t.roadmap_improvement}
                     </td>
                   </tr>
                 ))}
@@ -280,32 +258,10 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
         </section>
       )}
 
-      {/* 분석 노트 */}
-      {hasAnalysisNotes && an && (
-        <section>
-          <SectionTitle>분석 노트</SectionTitle>
-          {isNonEmpty(an.text) ? (
-            <p className="text-sm text-gray-700 whitespace-pre-line break-keep break-words">
-              {an.text}
-            </p>
-          ) : (
-            <p className="text-sm text-gray-500">(메모 미입력)</p>
-          )}
-          {(an.attachment_files?.length ?? 0) > 0 && (
-            <div className="mt-3 space-y-2">
-              <span className="text-xs text-gray-500">첨부 파일</span>
-              {an.attachment_files.map((f) => (
-                <AttachmentCard key={f.storage_path} file={f} />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Ⅱ-4. 훈련대상 과업 */}
+      {/* Ⅱ-4. AI 적용 대상 과업 */}
       {targets.length > 0 && (
         <section>
-          <SectionTitle>Ⅱ-4. 훈련대상 과업</SectionTitle>
+          <SectionTitle>Ⅱ-4. AI 적용 대상 과업</SectionTitle>
           <div className="overflow-x-auto rounded-md border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500">
@@ -336,61 +292,6 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
               </tbody>
             </table>
           </div>
-        </section>
-      )}
-
-      {/* Ⅲ-1. 역량 모델링 */}
-      {(competencies.length > 0 || hasNcs) && (
-        <section>
-          <SectionTitle>Ⅲ-1. 역량 모델링</SectionTitle>
-          {competencies.length > 0 && (
-            <div className="overflow-x-auto rounded-md border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">역량명</th>
-                    <th className="px-3 py-2 text-left font-medium">정의(수행준거)</th>
-                    <th className="px-3 py-2 text-left font-medium">지식 (K)</th>
-                    <th className="px-3 py-2 text-left font-medium">기술 (S)</th>
-                    <th className="px-3 py-2 text-left font-medium">태도 (A)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 text-gray-700">
-                  {competencies.map((c) => (
-                    <tr key={c.id} className="align-top">
-                      <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                        {c.competency_name}
-                      </td>
-                      <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                        {c.competency_definition}
-                      </td>
-                      <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                        {c.knowledge}
-                      </td>
-                      <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                        {c.skill}
-                      </td>
-                      <td className="px-3 py-2 whitespace-pre-line break-keep break-words">
-                        {c.attitude}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {hasNcs && ncs && (
-            <div className="mt-3 rounded-md border border-blue-200 bg-blue-50/60 p-3">
-              <p className="text-xs font-medium text-blue-900">
-                NCS 활용: {ncs.uses_ncs ? '예' : '아니오'}
-              </p>
-              <p className="mt-1 text-sm text-gray-700 whitespace-pre-line break-keep break-words">
-                {ncs.uses_ncs
-                  ? (ncs.ncs_usage_method ?? '')
-                  : (ncs.competency_derivation_method ?? '')}
-              </p>
-            </div>
-          )}
         </section>
       )}
 

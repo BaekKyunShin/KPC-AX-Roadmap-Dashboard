@@ -120,7 +120,6 @@ function emptyInitial(): Partial<RoadmapInterviewStrict> {
     hrdReportPdf: null,
     companyRequirements: emptyCompanyRequirements(),
     taskAnalysis: [],
-    taskAnalysisNote: '',
     taskAnalysisAttachment: null,
     targetTask: emptyTargetTask(),
   };
@@ -520,7 +519,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
       case 'taskAnalysis': {
         const value: StepTaskAnalysisValue = {
           taskAnalysis: data.taskAnalysis ?? [],
-          taskAnalysisNote: data.taskAnalysisNote ?? '',
           taskAnalysisAttachment: data.taskAnalysisAttachment ?? null,
         };
         return (
@@ -530,7 +528,6 @@ export default function TestRoadmapClient({ user, canAccess, hasProfile }: TestR
             onChange={(next) =>
               update({
                 taskAnalysis: next.taskAnalysis,
-                taskAnalysisNote: next.taskAnalysisNote,
                 taskAnalysisAttachment: next.taskAnalysisAttachment,
               })
             }

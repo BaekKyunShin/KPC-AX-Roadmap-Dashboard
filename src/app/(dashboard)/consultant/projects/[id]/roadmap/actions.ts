@@ -652,9 +652,10 @@ export async function confirmFinalRoadmapV2(versionId: string): Promise<SimpleAc
 /**
  * `RoadmapResultEditPayload` 중 interview 원본 편집 슬라이스(camelCase 매핑) 추출.
  *
- * 결과 페이지에서 편집된 Ⅱ-2(기업 요구분석) · Ⅱ-3 표·분석 메모 · Ⅱ-4 훈련대상 과업
- * 은 모두 `interviews` 행에 저장된다. snake_case 키 → camelCase 키 매핑 후
+ * 결과 페이지에서 편집된 Ⅱ-2(기업 요구분석) · Ⅱ-3 과업 분석표 · Ⅱ-4 AI 적용 대상
+ * 과업은 모두 `interviews` 행에 저장된다. snake_case 키 → camelCase 키 매핑 후
  * `saveRoadmapInterviewV2(autoSave: true)` 가 deepMerge 로 patch 적용.
+ * (v2: 분석내용(task_analysis_note) 은 양식에서 삭제되어 편집 대상에서 제외.)
  */
 function extractInterviewFieldsFromPayload(
   patch: RoadmapResultEditPayload
@@ -665,9 +666,6 @@ function extractInterviewFieldsFromPayload(
   }
   if (patch.task_analysis !== undefined) {
     out.taskAnalysis = patch.task_analysis;
-  }
-  if (patch.task_analysis_note !== undefined) {
-    out.taskAnalysisNote = patch.task_analysis_note;
   }
   if (patch.target_task !== undefined) {
     out.targetTask = patch.target_task;

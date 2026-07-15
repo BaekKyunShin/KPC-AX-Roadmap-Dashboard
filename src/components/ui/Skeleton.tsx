@@ -499,7 +499,9 @@ export function TemplateTableSkeleton({ rows = 5 }: TableSkeletonProps) {
         <thead className={TABLE_STYLES.thead}>
           <tr>
             <th className={`${TABLE_STYLES.th} ${columns[0].width} pl-8`}>{columns[0].header}</th>
-            <th className={`${TABLE_STYLES.th} ${columns[1].width} text-left`}>{columns[1].header}</th>
+            <th className={`${TABLE_STYLES.th} ${columns[1].width} text-left`}>
+              {columns[1].header}
+            </th>
             {columns.slice(2).map((col) => (
               <th key={col.header || 'actions'} className={`${TABLE_STYLES.th} ${col.width}`}>
                 {col.header}
@@ -1055,9 +1057,7 @@ function ResultTabsSkeleton({
             {renderItems(tabCount, (i) => (
               <div
                 key={i}
-                className={`px-3 py-1.5 rounded-md ${
-                  i === 0 ? 'bg-muted' : ''
-                } flex-shrink-0`}
+                className={`px-3 py-1.5 rounded-md ${i === 0 ? 'bg-muted' : ''} flex-shrink-0`}
               >
                 <SkeletonBar
                   height="h-4"
@@ -1173,13 +1173,11 @@ export function OpsPBLPageSkeleton() {
 /**
  * 인터뷰 폼 스켈레톤 (스테퍼 + 폼 카드 + 네비게이션).
  *
- * Roadmap 트랙은 9 스텝 (`ROADMAP_STEPS`), PBL 트랙은 10 스텝 (`PBL_STEPS`).
+ * Roadmap 트랙은 8 스텝 (`ROADMAP_STEPS`, v2 개정), PBL 트랙은 10 스텝 (`PBL_STEPS`).
  * `interview/loading.tsx` 가 `searchParams.track` 으로 분기해 적절한 stepCount 를 전달한다.
- * default 9 는 Roadmap 트랙 기본값.
+ * default 8 은 Roadmap 트랙 기본값.
  */
-export function InterviewFormSkeleton({
-  stepCount = 9,
-}: { stepCount?: number } = {}) {
+export function InterviewFormSkeleton({ stepCount = 8 }: { stepCount?: number } = {}) {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       {/* PageHeader 미러 (제목 + description, 우측 actions 없음) */}

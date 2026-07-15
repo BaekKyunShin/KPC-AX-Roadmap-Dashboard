@@ -29,31 +29,21 @@ export const ROADMAP_FIELD_LABELS: Record<string, string> = {
   'companyRequirements.outcomes': 'Step Ⅱ-2. 기업 요구분석 - 기대 성과',
 
   // ── Step Ⅱ-3. 과업·워크플로우 분석 ─────────────────────────
+  // 양식 v2: problem·dataTiming·aiScore·분석내용(taskAnalysisNote) 이
+  // improvement(개선점 및 AI 적용 가능성) 1필드로 통합됐다.
   taskAnalysis: 'Step Ⅱ-3. 과업·워크플로우 분석 - 항목 (최소 1개)',
   'taskAnalysis.*': 'Step Ⅱ-3. 과업·워크플로우 분석 - 행',
   'taskAnalysis.*.domain': 'Step Ⅱ-3. 과업·워크플로우 분석 - 직무',
   'taskAnalysis.*.task': 'Step Ⅱ-3. 과업·워크플로우 분석 - 과업',
   'taskAnalysis.*.asIs': 'Step Ⅱ-3. 과업·워크플로우 분석 - 현행 방식(As-Is)',
-  'taskAnalysis.*.problem': 'Step Ⅱ-3. 과업·워크플로우 분석 - 문제점',
-  'taskAnalysis.*.dataTiming': 'Step Ⅱ-3. 과업·워크플로우 분석 - 데이터 발생/보유',
-  'taskAnalysis.*.aiScore': 'Step Ⅱ-3. 과업·워크플로우 분석 - AI 도입 필요도',
-  taskAnalysisNote: 'Step Ⅱ-3. 과업·워크플로우 분석 - 분석내용',
+  'taskAnalysis.*.improvement': 'Step Ⅱ-3. 과업·워크플로우 분석 - 개선점 및 AI 적용 가능성',
 
-  // ── Step Ⅱ-4. 훈련대상 과업 선정 ────────────────────────────
-  'targetTask.name': 'Step Ⅱ-4. 훈련대상 과업 - 과업명',
-  'targetTask.reason': 'Step Ⅱ-4. 훈련대상 과업 - 선정 사유',
-  'targetTask.expectedAsIs': 'Step Ⅱ-4. 훈련대상 과업 - 기대효과 As-Is',
-  'targetTask.expectedToBe': 'Step Ⅱ-4. 훈련대상 과업 - 기대효과 To-Be',
+  // ── Step Ⅱ-4. AI 적용 대상 과업 선정 ────────────────────────
+  'targetTask.name': 'Step Ⅱ-4. AI 적용 대상 과업 - 과업명',
+  'targetTask.reason': 'Step Ⅱ-4. AI 적용 대상 과업 - 선정 사유',
+  'targetTask.expectedAsIs': 'Step Ⅱ-4. AI 적용 대상 과업 - 기대효과 As-Is',
+  'targetTask.expectedToBe': 'Step Ⅱ-4. AI 적용 대상 과업 - 기대효과 To-Be',
 
-  // ── Step Ⅲ-1. 역량 모델링 ──────────────────────────────────
-  competencies: 'Step Ⅲ-1. 역량 모델링 - 항목 (최소 1개)',
-  'competencies.*': 'Step Ⅲ-1. 역량 모델링 - 행',
-  'competencies.*.name': 'Step Ⅲ-1. 역량 모델링 - 역량명',
-  'competencies.*.definition': 'Step Ⅲ-1. 역량 모델링 - 정의/수행준거',
-  'competencies.*.knowledge': 'Step Ⅲ-1. 역량 모델링 - 필요 지식',
-  'competencies.*.skill': 'Step Ⅲ-1. 역량 모델링 - 필요 기술',
-  'competencies.*.attitude': 'Step Ⅲ-1. 역량 모델링 - 필요 태도',
-  ncsUsed: 'Step Ⅲ-1. 역량 모델링 - NCS 사용 여부',
-  ncsMethodology: 'Step Ⅲ-1. 역량 모델링 - NCS 방법론',
-  ncsDerivationMethod: 'Step Ⅲ-1. 역량 모델링 - NCS 도출 방법',
+  // 양식 v2: Ⅲ-1 역량 모델링·NCS 스텝이 삭제되어 관련 라벨(competencies·ncsUsed·
+  // ncsMethodology·ncsDerivationMethod)도 제거됐다.
 };

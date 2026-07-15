@@ -22,38 +22,37 @@ import type {
 /**
  * Ⅱ-3 과업·워크플로우 분석 — [인터뷰 입력]
  *
- * 양식 기준 입력 항목:
- *  - 동적 행 표 (직무·과업·As-Is·문제점·데이터 발생시점·AI 도입·활용 필요도 1~5)
- *  - 분석내용 (자유 서술)
- *  - 선택: 분석 노트 추가 첨부 (PDF)
+ * 양식 v2 개정: 표가 6열 → 4열로 축소됐다.
+ *  - 동적 행 표 (직무 · 과업(Task) · 현행 방식(As-Is) · 개선점 및 AI 적용 가능성)
+ *    → v1 의 문제점·데이터 발생시점·AI 필요도(1~5) 3열이 "개선점 및 AI 적용 가능성"
+ *      1열로 통합됐다 (데이터 발생 여부/보유현황도 이 칸에 함께 기술).
+ *  - "분석내용"(taskAnalysisNote) 입력란은 양식에서 삭제됨.
+ *  - 선택: 추가 내부 자료 첨부 (PDF) — 유지.
  *
- * 데이터 슬라이스 3개를 composite value 로 함께 편집한다.
+ * 데이터 슬라이스 2개(taskAnalysis · taskAnalysisAttachment)를 함께 편집한다.
  */
 
 export interface StepTaskAnalysisValue {
   taskAnalysis: RoadmapInterviewStrict['taskAnalysis'];
-  taskAnalysisNote: RoadmapInterviewStrict['taskAnalysisNote'];
   taskAnalysisAttachment?: RoadmapInterviewStrict['taskAnalysisAttachment'];
 }
 
 interface StepTaskAnalysisProps extends RoadmapStepProps<StepTaskAnalysisValue> {
-  /** 업로드 대상 프로젝트 ID — 분석 노트 PDF 첨부 시 uploadInterviewAttachment 호출에 사용 */
+  /** 업로드 대상 프로젝트 ID — 추가 자료 PDF 첨부 시 uploadInterviewAttachment 호출에 사용 */
   projectId: string;
 }
 
-/** 빈 과업 행 */
+/** 빈 과업 행 (v2 4필드) */
 function emptyItem(): RoadmapTaskAnalysisItem {
   return {
     domain: '',
     task: '',
     asIs: '',
-    problem: '',
-    dataTiming: '',
-    aiScore: 3,
+    improvement: '',
   };
 }
 
-/** 초기 5행 기본 (양식 L279 준수) */
+/** 초기 5행 기본 (양식 준수 — 핵심 과업 5개 내외) */
 function defaultRows(): RoadmapTaskAnalysisItem[] {
   return Array.from({ length: 5 }, () => emptyItem());
 }
@@ -67,17 +66,12 @@ export function StepTaskAnalysis({
   const [isUploading, setIsUploading] = useState(false);
 
   const rows: RoadmapTaskAnalysisItem[] =
-    value.taskAnalysis && value.taskAnalysis.length > 0
-      ? value.taskAnalysis
-      : defaultRows();
-  const note = value.taskAnalysisNote ?? '';
-  const attachment: RoadmapTaskAnalysisAttachment | null =
-    value.taskAnalysisAttachment ?? null;
+    value.taskAnalysis && value.taskAnalysis.length > 0 ? value.taskAnalysis : defaultRows();
+  const attachment: RoadmapTaskAnalysisAttachment | null = value.taskAnalysisAttachment ?? null;
 
   function emit(patch: Partial<StepTaskAnalysisValue>) {
     onChange({
       taskAnalysis: rows,
-      taskAnalysisNote: note,
       taskAnalysisAttachment: attachment,
       ...patch,
     });
@@ -98,19 +92,6 @@ export function StepTaskAnalysis({
     emit({ taskAnalysis: next.length > 0 ? next : [emptyItem()] });
   }
 
-  function onScoreChange(idx: number, raw: string) {
-    // 빈 입력은 그대로 유지 (타이핑 중 UX 고려) — 저장 시 Zod 가 검증
-    if (raw === '') {
-      updateRow(idx, { aiScore: Number.NaN });
-      return;
-    }
-    const parsed = Number(raw);
-    if (Number.isNaN(parsed)) return;
-    // 정수만 허용 (소수 입력 차단)
-    if (!Number.isInteger(parsed)) return;
-    updateRow(idx, { aiScore: parsed });
-  }
-
   async function handleFileSelect(file: File) {
     if (readOnly || isUploading) return;
     setIsUploading(true);
@@ -126,9 +107,7 @@ export function StepTaskAnalysis({
       const next: RoadmapTaskAnalysisAttachment = {
         fileName: att.file_name,
         url: att.storage_path,
-        ...(att.extracted_text != null
-          ? { extractedText: att.extracted_text }
-          : {}),
+        ...(att.extracted_text != null ? { extractedText: att.extracted_text } : {}),
         ...(att.parse_error ? { parseError: att.parse_error } : {}),
       };
       emit({ taskAnalysisAttachment: next });
@@ -150,36 +129,45 @@ export function StepTaskAnalysis({
       number="Ⅱ-3"
       title="과업·워크플로우 분석"
       label="[인터뷰 입력]"
-      description="직무별 주요 과업을 식별하고 현행 수행방식·문제점·AI 도입 필요도를 구조적으로 분석합니다."
+      description="직무별 주요 과업을 식별하고 현행 수행방식(As-Is)과 개선점·AI 적용 가능성을 구조적으로 분석합니다."
     >
-      {/* 분석 표 ---------------------------------------------------------- */}
+      {/* 분석 표 (v2 4열) ------------------------------------------------- */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-border text-sm">
           <caption className="sr-only">과업·워크플로우 분석 표</caption>
           <thead>
             <tr>
-              <th scope="col" className="w-[120px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+              <th
+                scope="col"
+                className="w-[120px] border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
                 직무
               </th>
-              <th scope="col" className="w-[140px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+              <th
+                scope="col"
+                className="w-[150px] border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
                 과업(Task)
               </th>
-              <th scope="col" className="border border-border bg-muted px-2 py-2 text-center font-semibold">
+              <th
+                scope="col"
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
                 현행 방식 (As-Is)
               </th>
-              <th scope="col" className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                문제점
-              </th>
-              <th scope="col" className="border border-border bg-muted px-2 py-2 text-center font-semibold">
-                데이터 발생 시점 / 보유 현황
-              </th>
-              <th scope="col" className="w-[90px] border border-border bg-muted px-2 py-2 text-center font-semibold">
-                AI 필요도
+              <th
+                scope="col"
+                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
+                개선점 및 AI 적용 가능성
                 <span className="block text-xs font-normal text-muted-foreground">
-                  (1~5)
+                  (데이터 발생 여부/보유현황 포함)
                 </span>
               </th>
-              <th scope="col" className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold">
+              <th
+                scope="col"
+                className="w-[56px] border border-border bg-muted px-2 py-2 text-center font-semibold"
+              >
                 <span className="sr-only">삭제</span>
               </th>
             </tr>
@@ -219,41 +207,12 @@ export function StepTaskAnalysis({
                 </td>
                 <td className="border border-border p-1 align-top">
                   <LargeTextBox
-                    value={row.problem}
-                    onChange={(e) => updateRow(idx, { problem: e.target.value })}
-                    placeholder="문제점"
+                    value={row.improvement}
+                    onChange={(e) => updateRow(idx, { improvement: e.target.value })}
+                    placeholder="개선점 및 AI 적용 가능성 (데이터 발생 여부/보유현황 포함)"
                     disabled={readOnly}
-                    aria-label={`문제점 ${idx + 1}`}
+                    aria-label={`개선점 ${idx + 1}`}
                     minHeightClassName="min-h-[225px]"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <LargeTextBox
-                    value={row.dataTiming}
-                    onChange={(e) =>
-                      updateRow(idx, { dataTiming: e.target.value })
-                    }
-                    placeholder="데이터 발생 시점/보유 현황"
-                    disabled={readOnly}
-                    aria-label={`데이터 발생 시점 ${idx + 1}`}
-                    minHeightClassName="min-h-[225px]"
-                  />
-                </td>
-                <td className="border border-border p-1 align-top">
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={
-                      Number.isNaN(row.aiScore) || row.aiScore == null
-                        ? ''
-                        : row.aiScore
-                    }
-                    onChange={(e) => onScoreChange(idx, e.target.value)}
-                    disabled={readOnly}
-                    aria-label={`AI 도입·활용 필요도 ${idx + 1}`}
-                    className="h-10 w-full rounded-md border border-input bg-background px-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </td>
                 <td className="border border-border p-1 text-center align-top">
@@ -283,25 +242,11 @@ export function StepTaskAnalysis({
         </Button>
       </div>
 
-      {/* 분석내용 ---------------------------------------------------------- */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">분석내용</h3>
-        <LargeTextBox
-          value={note}
-          onChange={(e) => emit({ taskAnalysisNote: e.target.value })}
-          placeholder="과업·워크플로우 분석 결과에 대한 총평 및 시사점을 자유롭게 서술하세요..."
-          disabled={readOnly}
-          aria-label="분석내용"
-        />
-      </div>
-
       {/* 선택 첨부 --------------------------------------------------------- */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">
           추가 내부 자료
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            (선택 · PDF)
-          </span>
+          <span className="ml-2 text-xs font-normal text-muted-foreground">(선택 · PDF)</span>
         </h3>
         <PdfUploadField
           file={
@@ -309,9 +254,7 @@ export function StepTaskAnalysis({
               ? {
                   name: attachment.fileName,
                   size: 0,
-                  url: attachment.url.startsWith('http')
-                    ? attachment.url
-                    : undefined,
+                  url: attachment.url.startsWith('http') ? attachment.url : undefined,
                 }
               : null
           }
@@ -328,26 +271,22 @@ export function StepTaskAnalysis({
       </div>
 
       <ExampleAccordion
-        example={
-          <p className="text-xs text-muted-foreground">
-            (추가 업로드 자료 예시) 공정 분석
-          </p>
-        }
+        example={<p className="text-xs text-muted-foreground">(추가 업로드 자료 예시) 공정 분석</p>}
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              기업 내부전문가와의 인터뷰를 통해 AI 도입·활용이 필요하다고 판단되는 과업 분석 (전체 과업을 모두 분석할 필요 없음 — 핵심 과업 중심)
+              기업 내부전문가와의 인터뷰를 통해 AI 도입·활용이 필요하다고 판단되는 과업 분석 (전체
+              과업을 모두 분석할 필요 없음 — 핵심 과업 중심)
             </li>
             <li>
-              현행 수행방식(As-Is)과 문제점을 파악하고, AI 도입·활용이 가능한 데이터 발생(또는 보유) 여부 등을 감안하여 AI도입·활용 필요도를 1점(낮음)~5점(높음) 척도로 점수 부여
+              직무별 주요 과업을 5개 내외로 식별하고, 각 과업의 현행 수행방식(As-Is)을 구체적으로
+              기술합니다.
             </li>
             <li>
-              분석 노트 영역에는 과업·워크플로우 분석 과정 및 방법에 대한 내용을 기술합니다.
+              &lsquo;개선점 및 AI 적용 가능성&rsquo; 칸에는 현행 방식의 개선 방향과 함께, AI
+              도입·활용이 가능한 데이터의 발생 여부 또는 보유 현황을 감안한 적용 가능성을
+              기술합니다.
             </li>
-            <li>
-              직무별 주요 과업을 5개 내외로 식별하고, 각 과업의 현행 수행방식(As-Is)·문제점·관련 데이터 발생 시점/보유 현황을 구체적으로 기술합니다.
-            </li>
-            <li>AI 도입·활용 필요도는 1(낮음) ~ 5(높음) 정수로 평가합니다.</li>
             <li>분석 과정에서 참고한 내부 자료가 있으면 PDF 로 첨부할 수 있습니다 (선택).</li>
           </ul>
         }

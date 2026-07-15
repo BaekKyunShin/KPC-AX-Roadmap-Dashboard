@@ -26,8 +26,8 @@ export interface ConfirmRemoveRowButtonProps {
  * #1 H5·H3 — 인터뷰 차수/행의 휴지통 버튼.
  *
  * 자동저장 환경에서 행을 즉시 삭제하면 3초 후 영구 손실되므로,
- * AlertDialog 로 사전 확인을 받는다. 4개 Step 컴포넌트(StepPerformanceActivities,
- * StepCompetencyModeling, StepTaskAnalysis, StepActivities)에서 동일하게 재사용.
+ * AlertDialog 로 사전 확인을 받는다. 여러 Step 컴포넌트(StepPerformanceActivities,
+ * StepTaskAnalysis 등)에서 동일하게 재사용.
  */
 export function ConfirmRemoveRowButton({
   title,

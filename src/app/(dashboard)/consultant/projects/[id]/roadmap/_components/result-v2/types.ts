@@ -46,10 +46,9 @@ export interface RoadmapResultEditPayload {
   // Ⅱ-3 과업·워크플로우 분석표 (행 단위 patch — 전체 배열 교체).
   // 행에 stable id 가 없으므로 클라이언트는 항상 전체 배열을 보내고 서버는
   // saveRoadmapInterviewV2 의 deepMerge 에서 taskAnalysis 키를 통째로 교체한다.
+  // v2: problem·dataTiming·aiScore·분석내용(task_analysis_note) 이 improvement 로 통합됨.
   task_analysis?: RoadmapTaskAnalysisItem[];
-  // Ⅱ-3 분석 메모 텍스트
-  task_analysis_note?: string;
-  // Ⅱ-4 훈련대상 과업 선정
+  // Ⅱ-4 AI 적용 대상 과업 선정
   target_task?: {
     name?: string;
     reason?: string;
@@ -122,11 +121,9 @@ export interface ResultInterviewSnapshot {
     domain: string;
     task: string;
     asIs: string;
-    problem: string;
-    dataTiming: string;
-    aiScore: number;
+    // v2: problem·dataTiming·aiScore 3필드가 improvement 1필드로 통합됨
+    improvement: string;
   }>;
-  taskAnalysisNote: string;
   taskAnalysisAttachment: {
     fileName: string;
     url: string;

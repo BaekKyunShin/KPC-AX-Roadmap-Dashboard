@@ -273,9 +273,7 @@ describe('editRoadmapV2', () => {
         domain: '재무',
         task: '결산',
         asIs: '엑셀 매크로',
-        problem: '오류',
-        dataTiming: '월말',
-        aiScore: 5,
+        improvement: '월말 데이터로 결산 자동화, 수기 오류 해소 (필요도 높음)',
       },
     ];
     const r = await editRoadmapV2(VERSION_ID, { task_analysis: draft });
@@ -288,7 +286,7 @@ describe('editRoadmapV2', () => {
     );
   });
 
-  it('task_analysis_note + target_task patch → saveRoadmapInterviewV2 에 camelCase 변환되어 전달', async () => {
+  it('target_task patch → saveRoadmapInterviewV2 에 camelCase 변환되어 전달 (v2: 분석내용 삭제)', async () => {
     const { saveRoadmapInterviewV2 } = await import('../interview/actions');
     await mockCachedAuth();
     serverMock.addResult({
@@ -298,7 +296,6 @@ describe('editRoadmapV2', () => {
     vi.mocked(saveRoadmapInterviewV2).mockResolvedValue({ success: true });
 
     const r = await editRoadmapV2(VERSION_ID, {
-      task_analysis_note: '신규 메모',
       target_task: { name: '결산 자동화', reason: '효율' },
     });
 
@@ -306,7 +303,6 @@ describe('editRoadmapV2', () => {
     expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
       PROJECT_ID,
       {
-        taskAnalysisNote: '신규 메모',
         targetTask: { name: '결산 자동화', reason: '효율' },
       },
       { autoSave: true }
@@ -344,7 +340,6 @@ describe('editRoadmapV2', () => {
       setup_necessity: '변경된 필요성',
       // interview 슬라이스 — 더 이상 무시되지 않고 saveRoadmapInterviewV2 로 위임
       company_requirements: { status: '갱신' },
-      task_analysis_note: '메모 갱신',
     });
 
     expect(r.success).toBe(true);
@@ -356,13 +351,11 @@ describe('editRoadmapV2', () => {
     );
     const call = vi.mocked(updateRoadmapManually).mock.calls[0];
     expect(call[2]).not.toHaveProperty('company_requirements');
-    expect(call[2]).not.toHaveProperty('task_analysis_note');
     // Interview 슬라이스 → saveRoadmapInterviewV2 (camelCase)
     expect(saveRoadmapInterviewV2).toHaveBeenCalledWith(
       PROJECT_ID,
       {
         companyRequirements: { status: '갱신' },
-        taskAnalysisNote: '메모 갱신',
       },
       { autoSave: true }
     );

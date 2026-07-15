@@ -26,7 +26,6 @@ import {
   type RoadmapTaskAnalysisItem,
   type RoadmapTaskAnalysisAttachment,
   type RoadmapTargetTask,
-  type RoadmapCompetency,
   type SttInsights,
 } from '@/lib/schemas/interview-roadmap';
 
@@ -36,21 +35,15 @@ import { StepNecessity } from './StepNecessity';
 import { StepMainResult, type StepMainResultValue } from './StepMainResult';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
 import { StepCompanyRequirements } from './StepCompanyRequirements';
-import {
-  StepTaskAnalysis,
-  type StepTaskAnalysisValue,
-} from './StepTaskAnalysis';
+import { StepTaskAnalysis, type StepTaskAnalysisValue } from './StepTaskAnalysis';
 import { StepTargetTask } from './StepTargetTask';
 import { StepPerformanceActivities } from './StepPerformanceActivities';
-import {
-  StepCompetencyModeling,
-  type StepCompetencyModelingValue,
-} from './StepCompetencyModeling';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
-// 9 스텝 정의 — 양식 1:1 정합 8개 + STT 첨부 1개 (선택)
+// 8 스텝 정의 — 양식 1:1 정합 7개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
+// v2: 산인공 양식 개정으로 Ⅲ-1 역량 모델링 스텝이 삭제되어 9 → 8 스텝.
 // id 는 양식 섹션 의미를 그대로 노출 (snake_case 단일 단어). UI 상의 표시 텍스트는
 // shortName / name 을 사용한다. shortName 은 양식 번호(선택 항목은 "선택"),
 // name 은 절 제목 또는 보조 단계명.
@@ -64,7 +57,6 @@ export type RoadmapStepId =
   | 'companyReq'
   | 'taskAnalysis'
   | 'targetTask'
-  | 'competencyModeling'
   | 'sttAttach';
 
 interface StepDef {
@@ -88,11 +80,25 @@ export const ROADMAP_STEPS: ReadonlyArray<StepDef> = [
   { id: 4, stepId: 'hrdReport', shortName: 'Ⅱ-1', name: 'HRD이음 PDF', required: false },
   { id: 5, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석', required: true },
   // Stepper 라벨은 11자 → 7자로 단축 (페이지 헤더는 풀텍스트 유지)
-  { id: 6, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석', stepperLabel: '과업·워크플로우', required: true },
-  { id: 7, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업', required: true },
-  { id: 8, stepId: 'competencyModeling', shortName: 'Ⅲ-1', name: '역량 모델링', required: true },
+  {
+    id: 6,
+    stepId: 'taskAnalysis',
+    shortName: 'Ⅱ-3',
+    name: '과업·워크플로우 분석',
+    stepperLabel: '과업·워크플로우',
+    required: true,
+  },
+  // v2: 양식 개정으로 "훈련대상" → "AI 적용 대상" 명칭 변경 (StepTargetTask 제목과 동기화)
+  { id: 7, stepId: 'targetTask', shortName: 'Ⅱ-4', name: 'AI 적용 대상 과업', required: true },
   // Stepper 라벨은 10자 → 6자로 단축 (페이지 헤더는 풀텍스트 유지)
-  { id: 9, stepId: 'sttAttach', shortName: '선택', name: '인터뷰 녹취 STT 첨부', stepperLabel: '인터뷰 STT', required: false },
+  {
+    id: 8,
+    stepId: 'sttAttach',
+    shortName: '선택',
+    name: '인터뷰 녹취 STT 첨부',
+    stepperLabel: '인터뷰 STT',
+    required: false,
+  },
 ];
 
 // ============================================================================
@@ -121,13 +127,6 @@ function emptyTargetTask(): RoadmapTargetTask {
   return { name: '', reason: '', expectedAsIs: '', expectedToBe: '' };
 }
 
-function emptyTraining(): {
-  competencies: RoadmapCompetency[];
-  ncsUsed: boolean;
-} {
-  return { competencies: [], ncsUsed: false };
-}
-
 // ============================================================================
 // Props
 // ============================================================================
@@ -141,17 +140,12 @@ export interface RoadmapInterviewClientProps {
 // 본 컴포넌트
 // ============================================================================
 
-export function RoadmapInterviewClient({
-  projectId,
-  initial,
-}: RoadmapInterviewClientProps) {
+export function RoadmapInterviewClient({ projectId, initial }: RoadmapInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<RoadmapInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isPending, startTransition] = useTransition();
-  const [saveState, setSaveState] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const currentStepDef = ROADMAP_STEPS[currentStep - 1];
@@ -160,16 +154,19 @@ export function RoadmapInterviewClient({
   const isLastStep = currentStep === ROADMAP_STEPS.length;
 
   // ---- 슬라이스 업데이트 헬퍼 -------------------------------------------------
-  // V2 스키마는 Ⅰ(overview) · Ⅱ(requirements) · Ⅲ-1(training) 3개 슬라이스가 평탄화되어
+  // V2 스키마는 Ⅰ(overview) · Ⅱ(requirements) 2개 슬라이스가 평탄화되어
   // RoadmapInterviewStrict 단일 객체에 합쳐져 있다. 각 Step 은 자신의 영역만 갱신한다.
+  // (v2 에서 Ⅲ-1 역량 모델링/NCS 슬라이스는 양식 개정으로 삭제됨)
 
   const updateOverview = useCallback(
-    (patch: Partial<{
-      establishmentNecessity: string;
-      performanceActivities: RoadmapPerformanceActivity[];
-      aiLevel: RoadmapInterviewStrict['aiLevel'];
-      selectedTask: string;
-    }>) => {
+    (
+      patch: Partial<{
+        establishmentNecessity: string;
+        performanceActivities: RoadmapPerformanceActivity[];
+        aiLevel: RoadmapInterviewStrict['aiLevel'];
+        selectedTask: string;
+      }>
+    ) => {
       setData((prev) => {
         const base = {
           establishmentNecessity: prev.establishmentNecessity ?? '',
@@ -180,43 +177,29 @@ export function RoadmapInterviewClient({
         return { ...prev, ...base, ...patch };
       });
     },
-    [],
+    []
   );
 
   const updateRequirements = useCallback(
-    (patch: Partial<{
-      hrdReportPdf: RoadmapHrdReportPdf | null;
-      companyRequirements: RoadmapCompanyRequirements;
-      taskAnalysis: RoadmapTaskAnalysisItem[];
-      taskAnalysisNote: string;
-      taskAnalysisAttachment: RoadmapTaskAnalysisAttachment | null | undefined;
-      targetTask: RoadmapTargetTask;
-    }>) => {
+    (
+      patch: Partial<{
+        hrdReportPdf: RoadmapHrdReportPdf | null;
+        companyRequirements: RoadmapCompanyRequirements;
+        taskAnalysis: RoadmapTaskAnalysisItem[];
+        taskAnalysisAttachment: RoadmapTaskAnalysisAttachment | null | undefined;
+        targetTask: RoadmapTargetTask;
+      }>
+    ) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
-    [],
+    []
   );
 
-  const updateTraining = useCallback(
-    (patch: Partial<{
-      competencies: RoadmapCompetency[];
-      ncsUsed: boolean;
-      ncsMethodology: string | undefined;
-      ncsDerivationMethod: string | undefined;
-    }>) => {
-      setData((prev) => ({ ...prev, ...patch }));
-    },
-    [],
-  );
-
-  // STT 인사이트(선택) — 9번째 Step. undefined 로 초기화/초기화 시 키를 빼지 않고
+  // STT 인사이트(선택) — 마지막(8번째) Step. undefined 로 초기화/초기화 시 키를 빼지 않고
   // sttInsights:undefined 로 두면 자동저장 페이로드에 키가 빠지므로 set 으로 처리.
-  const updateSttInsights = useCallback(
-    (next: SttInsights | undefined) => {
-      setData((prev) => ({ ...prev, sttInsights: next }));
-    },
-    [],
-  );
+  const updateSttInsights = useCallback((next: SttInsights | undefined) => {
+    setData((prev) => ({ ...prev, sttInsights: next }));
+  }, []);
 
   // ---- 저장 / 제출 ----------------------------------------------------------
 
@@ -278,9 +261,7 @@ export function RoadmapInterviewClient({
           console.error('[RoadmapInterviewClient] auto-save error:', error);
           setSaveState('error');
           showErrorToast(
-            error instanceof Error
-              ? error.message
-              : '자동 저장 중 오류가 발생했습니다.',
+            error instanceof Error ? error.message : '자동 저장 중 오류가 발생했습니다.'
           );
         }
       })();
@@ -315,14 +296,13 @@ export function RoadmapInterviewClient({
 
   const handleSubmit = useCallback(() => {
     // 제출 직전 cleanup — 편집 중 빈 행/슬롯을 strict 검증에 영향 없도록 정리한다.
-    //   ① competencies: 기본 4행 프리필되므로 비어 있는 행 제거 (name.min(1) 실패 방지)
-    //   ② performanceActivities: 차수별 기본 3행 프리필 — 1·2·3 차 모두 빈 string 으로
+    //   ① performanceActivities: 차수별 기본 3행 프리필 — 1·2·3 차 모두 빈 string 으로
     //      들어가도 round.min(1) 외 string 필드들은 통과(스키마가 min(1) 강제하지 않음).
     //      그래도 의미 없는 행을 DB 로 보내는 건 부적절하므로 모든 텍스트 필드가 비어
     //      있는 행은 drop 한다.
-    //   ③ taskAnalysis: 사용자가 빈 행을 남겨두면 row-level 필드가 empty 로 fail 한다.
-    //      모든 텍스트 필드가 비어 있는 행은 drop 한다 (aiScore 기본값 3 만 남는 경우).
-    //   ④ hrdReportPdf: optional Step 이라 미입력 시 키 자체가 객체에 없을 수 있다.
+    //   ② taskAnalysis: 사용자가 빈 행을 남겨두면 row-level 필드가 empty 로 fail 한다.
+    //      v2 4필드(직무·과업·현행·개선점)가 모두 비어 있는 행은 drop 한다.
+    //   ③ hrdReportPdf: optional Step 이라 미입력 시 키 자체가 객체에 없을 수 있다.
     //      스키마는 `.nullable()` 만 허용 → undefined 면 "Required" 토스트 발생.
     //      초기에 키가 없으면 null 로 명시 주입해 검증을 통과시킨다.
     const cleanedData: Partial<RoadmapInterviewStrict> = {
@@ -336,7 +316,7 @@ export function RoadmapInterviewClient({
                 (a.timeRange?.trim() ?? '') !== '' ||
                 (a.content?.trim() ?? '') !== '' ||
                 (a.pmName?.trim() ?? '') !== '' ||
-                (a.expertName?.trim() ?? '') !== '',
+                (a.expertName?.trim() ?? '') !== ''
             ),
           }
         : {}),
@@ -347,32 +327,18 @@ export function RoadmapInterviewClient({
                 (t.domain?.trim() ?? '') !== '' ||
                 (t.task?.trim() ?? '') !== '' ||
                 (t.asIs?.trim() ?? '') !== '' ||
-                (t.problem?.trim() ?? '') !== '' ||
-                (t.dataTiming?.trim() ?? '') !== '',
-            ),
-          }
-        : {}),
-      ...(data.competencies
-        ? {
-            competencies: data.competencies.filter(
-              (c) => c.name.trim() !== '',
+                (t.improvement?.trim() ?? '') !== ''
             ),
           }
         : {}),
     };
 
-    // 2) Strict 검증 (safeParse) — NCS XOR + 필수 필드 검증
+    // 2) Strict 검증 (safeParse) — 필수 필드 검증
     const parsed = RoadmapInterviewStrictSchema.safeParse(cleanedData);
     if (!parsed.success) {
       // 누락된 필드 모두 노출 + path → 사용자 라벨 매핑으로 Step·항목 명시
-      const message = formatZodIssuesForToast(
-        parsed.error,
-        ROADMAP_FIELD_LABELS,
-      );
-      showErrorToast(
-        '제출 검증 실패',
-        message || '필수 입력 항목을 확인해주세요.',
-      );
+      const message = formatZodIssuesForToast(parsed.error, ROADMAP_FIELD_LABELS);
+      showErrorToast('제출 검증 실패', message || '필수 입력 항목을 확인해주세요.');
       return;
     }
 
@@ -384,8 +350,7 @@ export function RoadmapInterviewClient({
         const ok = await handleSimpleActionResult(result, {
           successMessage: { title: '인터뷰가 제출되었습니다.' },
           errorTitle: '인터뷰 제출 실패',
-          errorFallback:
-            '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          errorFallback: '인터뷰 제출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         });
         if (ok) {
           // PR5 (R6 spec) — 제출 직후 검토 페이지로 redirect.
@@ -399,9 +364,7 @@ export function RoadmapInterviewClient({
         console.error('[RoadmapInterviewClient] submit error:', error);
         showErrorToast(
           '인터뷰 제출 실패',
-          error instanceof Error
-            ? error.message
-            : '인터뷰 제출 중 오류가 발생했습니다.',
+          error instanceof Error ? error.message : '인터뷰 제출 중 오류가 발생했습니다.'
         );
       }
     });
@@ -447,15 +410,12 @@ export function RoadmapInterviewClient({
         return (
           <StepCompanyRequirements
             value={data.companyRequirements ?? emptyCompanyRequirements()}
-            onChange={(next) =>
-              updateRequirements({ companyRequirements: next })
-            }
+            onChange={(next) => updateRequirements({ companyRequirements: next })}
           />
         );
       case 'taskAnalysis': {
         const taskAnalysisValue: StepTaskAnalysisValue = {
           taskAnalysis: data.taskAnalysis ?? [],
-          taskAnalysisNote: data.taskAnalysisNote ?? '',
           taskAnalysisAttachment: data.taskAnalysisAttachment ?? null,
         };
         return (
@@ -465,7 +425,6 @@ export function RoadmapInterviewClient({
             onChange={(next) =>
               updateRequirements({
                 taskAnalysis: next.taskAnalysis,
-                taskAnalysisNote: next.taskAnalysisNote,
                 taskAnalysisAttachment: next.taskAnalysisAttachment,
               })
             }
@@ -483,32 +442,9 @@ export function RoadmapInterviewClient({
         return (
           <StepPerformanceActivities
             value={data.performanceActivities ?? []}
-            onChange={(next) =>
-              updateOverview({ performanceActivities: next })
-            }
+            onChange={(next) => updateOverview({ performanceActivities: next })}
           />
         );
-      case 'competencyModeling': {
-        const trainingValue: StepCompetencyModelingValue = {
-          competencies: data.competencies ?? [],
-          ncsUsed: data.ncsUsed ?? false,
-          ncsMethodology: data.ncsMethodology,
-          ncsDerivationMethod: data.ncsDerivationMethod,
-        };
-        return (
-          <StepCompetencyModeling
-            value={trainingValue}
-            onChange={(next) =>
-              updateTraining({
-                competencies: next.competencies,
-                ncsUsed: next.ncsUsed,
-                ncsMethodology: next.ncsMethodology,
-                ncsDerivationMethod: next.ncsDerivationMethod,
-              })
-            }
-          />
-        );
-      }
       case 'sttAttach':
         return (
           <StepSttAttach
@@ -526,7 +462,7 @@ export function RoadmapInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI훈련로드맵 인터뷰"
-        description="산인공 양식 8개 절과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
+        description="산인공 양식 7개 절과 선택 항목인 STT 첨부를 포함해 총 8개 스텝으로 진행합니다."
       />
 
       <InterviewStepper
@@ -594,5 +530,4 @@ export const __testing = {
   emptyOverviewBase,
   emptyCompanyRequirements,
   emptyTargetTask,
-  emptyTraining,
 };

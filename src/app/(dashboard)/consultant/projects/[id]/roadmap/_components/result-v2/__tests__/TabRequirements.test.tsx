@@ -21,20 +21,15 @@ const interview: Partial<ResultInterviewSnapshot> = {
       domain: '품질관리',
       task: '외관 검사',
       asIs: '육안 검사',
-      problem: '편차',
-      dataTiming: '실시간 카메라',
-      aiScore: 5,
+      improvement: '편차 → 실시간 카메라 데이터로 Vision AI 검사 (필요도 높음)',
     },
     {
       domain: '생산관리',
       task: '공정 모니터링',
       asIs: '수작업 집계',
-      problem: '반영 지연',
-      dataTiming: 'PLC 로그',
-      aiScore: 4,
+      improvement: '반영 지연 → PLC 로그로 실시간 모니터링',
     },
   ],
-  taskAnalysisNote: '핵심 과업 2건 병목 확인',
   taskAnalysisAttachment: {
     fileName: '분석노트.pdf',
     url: 'https://example.com/note.pdf',
@@ -50,30 +45,18 @@ const interview: Partial<ResultInterviewSnapshot> = {
 describe('TabRequirements (Ⅱ. 요구분석)', () => {
   it('섹션 4개 — Ⅱ-1 · Ⅱ-2 · Ⅱ-3 · Ⅱ-4 — 모두 렌더', () => {
     render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly={false}
-        onEdit={vi.fn()}
-      />,
+      <TabRequirements version={null} interview={interview} readOnly={false} onEdit={vi.fn()} />
     );
     expect(screen.getByText(/Ⅱ-1\. HRD이음 진단 보고서/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-2\. 기업 요구분석/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-3\. 과업·워크플로우 분석/)).toBeInTheDocument();
-    // R3 #12 — 양식 정확 명칭 "훈련대상 과업(Task)·워크플로우 선정"
-    expect(
-      screen.getByText(/Ⅱ-4\. 훈련대상 과업\(Task\)·워크플로우 선정/),
-    ).toBeInTheDocument();
+    // 양식 v2 — Ⅱ-4 명칭 "AI 적용 대상 과업(Task)·워크플로우 선정"
+    expect(screen.getByText(/Ⅱ-4\. AI 적용 대상 과업\(Task\)·워크플로우 선정/)).toBeInTheDocument();
   });
 
   it('Ⅱ-1 HRD PDF 파일명 + iframe + 열기 링크 표시', () => {
     const { container } = render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
+      <TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />
     );
     expect(screen.getByText('HRD이음_진단보고서.pdf')).toBeInTheDocument();
     const iframe = container.querySelector('iframe');
@@ -82,47 +65,29 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
   });
 
   it('Ⅱ-2 기업 요구분석 4필드 값 표시', () => {
-    render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByText('제조 공정 자동화 일부 진행 중'),
-    ).toBeInTheDocument();
+    render(<TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />);
+    expect(screen.getByText('제조 공정 자동화 일부 진행 중')).toBeInTheDocument();
     expect(screen.getByText('품질 검사 편차 큼')).toBeInTheDocument();
     expect(screen.getByText('전사 AI 전환 드라이브')).toBeInTheDocument();
     expect(screen.getByText('불량률 30% 감소')).toBeInTheDocument();
   });
 
-  it('Ⅱ-3 과업 분석 표 2행 + 분석 메모 + 첨부 파일 표시', () => {
-    render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
+  it('Ⅱ-3 과업 분석 표 2행 + 개선점 + 첨부 파일 표시 (v2: 분석 메모 삭제)', () => {
+    render(<TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />);
     expect(screen.getByText('품질관리')).toBeInTheDocument();
     expect(screen.getByText('생산관리')).toBeInTheDocument();
     expect(screen.getByText('외관 검사')).toBeInTheDocument();
-    expect(screen.getByText('핵심 과업 2건 병목 확인')).toBeInTheDocument();
+    // v2: 개선점 및 AI 적용 가능성 (improvement) 컬럼
+    expect(
+      screen.getByText('편차 → 실시간 카메라 데이터로 Vision AI 검사 (필요도 높음)')
+    ).toBeInTheDocument();
+    // 분석 내용(메모) 섹션은 v2 에서 삭제됨
+    expect(screen.queryByText('분석 내용')).not.toBeInTheDocument();
     expect(screen.getByText('분석노트.pdf')).toBeInTheDocument();
   });
 
-  it('Ⅱ-4 훈련대상 과업 4필드 값 표시', () => {
-    render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
-    );
+  it('Ⅱ-4 AI 적용 대상 과업 4필드 값 표시', () => {
+    render(<TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />);
     expect(screen.getByText('품질 검사 자동화')).toBeInTheDocument();
     expect(screen.getByText('가장 큰 불량 원인')).toBeInTheDocument();
     expect(screen.getByText('수작업 3인 2시간')).toBeInTheDocument();
@@ -136,22 +101,15 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
         interview={{ ...interview, hrdReportPdf: null }}
         readOnly
         onEdit={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/HRD이음 진단 보고서 PDF 가 첨부되지 않았습니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/HRD이음 진단 보고서 PDF 가 첨부되지 않았습니다/)).toBeInTheDocument();
     expect(container.querySelector('iframe')).toBeNull();
   });
 
   it('제외 라벨 3종 (결과물 표지 / 고정 참고자료 / 고정 양식·결과 화면 제외) 를 렌더하지 않음', () => {
     const { container } = render(
-      <TabRequirements
-        version={null}
-        interview={interview}
-        readOnly
-        onEdit={vi.fn()}
-      />,
+      <TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />
     );
     const text = container.textContent ?? '';
     expect(text).not.toContain('결과물 표지');
@@ -159,71 +117,43 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
     expect(text).not.toContain('고정 양식·결과 화면 제외');
   });
 
-  // #2 (사용자 보고): Ⅱ-3 표 6셀 모두 편집 가능
-  describe('Ⅱ-3 표 셀 편집 (#2)', () => {
+  // v2: Ⅱ-3 표는 4셀(직무·과업·현행·개선점) 모두 InlineEditField 로 편집 가능
+  describe('Ⅱ-3 표 셀 편집 (v2 4열)', () => {
     it('readOnly=false 일 때 As-Is 셀이 InlineEditField 의 button role 로 렌더된다', () => {
       render(
-        <TabRequirements
-          version={null}
-          interview={interview}
-          readOnly={false}
-          onEdit={vi.fn()}
-        />,
+        <TabRequirements version={null} interview={interview} readOnly={false} onEdit={vi.fn()} />
       );
       // InlineEditField 는 readOnly=false 일 때 role='button' 으로 렌더 (편집 트리거).
       // '육안 검사' 텍스트를 가진 button 요소가 존재해야 한다.
-      const editTriggers = screen.getAllByRole('button').filter((b) =>
-        b.textContent?.includes('육안 검사'),
-      );
+      const editTriggers = screen
+        .getAllByRole('button')
+        .filter((b) => b.textContent?.includes('육안 검사'));
       expect(editTriggers.length).toBeGreaterThan(0);
     });
 
-    it('readOnly=false 일 때 AI 필요도 셀이 Select(combobox) 로 렌더된다', () => {
+    it('v2: 개선점 셀이 InlineEditField 로 렌더되고 AI 필요도 Select(combobox) 는 없다', () => {
       render(
-        <TabRequirements
-          version={null}
-          interview={interview}
-          readOnly={false}
-          onEdit={vi.fn()}
-        />,
+        <TabRequirements version={null} interview={interview} readOnly={false} onEdit={vi.fn()} />
       );
-      // shadcn Select 는 role='combobox' 의 trigger button 으로 렌더된다.
-      const aiSelects = screen.getAllByRole('combobox').filter((c) =>
-        /AI 필요도/.test(c.getAttribute('aria-label') ?? ''),
-      );
-      expect(aiSelects.length).toBe(2); // taskAnalysis 2행
-    });
-
-    it('readOnly=true 일 때 AI 필요도가 단순 텍스트로 렌더된다 (Select 미노출)', () => {
-      render(
-        <TabRequirements
-          version={null}
-          interview={interview}
-          readOnly
-          onEdit={vi.fn()}
-        />,
-      );
-      const aiSelects = screen.queryAllByRole('combobox').filter((c) =>
-        /AI 필요도/.test(c.getAttribute('aria-label') ?? ''),
-      );
-      expect(aiSelects).toHaveLength(0);
+      // 개선점 셀 편집 트리거 존재
+      const improvementTriggers = screen
+        .getAllByRole('button')
+        .filter((b) => b.textContent?.includes('실시간 카메라 데이터로 Vision AI'));
+      expect(improvementTriggers.length).toBeGreaterThan(0);
+      // v2: AI 필요도 Select 는 삭제됨
+      expect(screen.queryAllByRole('combobox')).toHaveLength(0);
     });
 
     it('Ⅱ-3 표 As-Is 편집 → onEdit 가 task_analysis 전체 배열 patch 로 호출된다', async () => {
       const user = (await import('@testing-library/user-event')).default.setup();
       const onEdit = vi.fn().mockResolvedValue(undefined);
       render(
-        <TabRequirements
-          version={null}
-          interview={interview}
-          readOnly={false}
-          onEdit={onEdit}
-        />,
+        <TabRequirements version={null} interview={interview} readOnly={false} onEdit={onEdit} />
       );
       // 첫 행 As-Is '육안 검사' 셀 클릭 → 편집 모드 진입
-      const trigger = screen.getAllByRole('button').find((b) =>
-        b.textContent?.includes('육안 검사'),
-      );
+      const trigger = screen
+        .getAllByRole('button')
+        .find((b) => b.textContent?.includes('육안 검사'));
       expect(trigger).toBeDefined();
       await user.click(trigger!);
       const editor = screen.getByRole('textbox');
@@ -233,10 +163,8 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
 
       expect(onEdit).toHaveBeenCalledWith(
         expect.objectContaining({
-          task_analysis: expect.arrayContaining([
-            expect.objectContaining({ asIs: '엑셀 매크로' }),
-          ]),
-        }),
+          task_analysis: expect.arrayContaining([expect.objectContaining({ asIs: '엑셀 매크로' })]),
+        })
       );
       // 다른 행은 보존
       const call = onEdit.mock.calls[0][0];

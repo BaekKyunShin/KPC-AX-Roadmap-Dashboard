@@ -61,7 +61,7 @@ describe('Skeleton', () => {
           <tbody>
             <TableRowSkeleton />
           </tbody>
-        </table>,
+        </table>
       );
       const row = container.querySelector('tr');
       expect(row).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('Skeleton', () => {
           <tbody>
             <TableRowSkeleton />
           </tbody>
-        </table>,
+        </table>
       );
       const cells = container.querySelectorAll('td');
       expect(cells).toHaveLength(5);
@@ -85,7 +85,7 @@ describe('Skeleton', () => {
           <tbody>
             <TableRowSkeleton columns={3} />
           </tbody>
-        </table>,
+        </table>
       );
       const cells = container.querySelectorAll('td');
       expect(cells).toHaveLength(3);
@@ -332,7 +332,9 @@ describe('Skeleton', () => {
       const mobileContainer = container.querySelector('.md\\:hidden');
       expect(mobileContainer).toBeInTheDocument();
       // 이메일 라벨이 보이는 등 그리드 구조를 추측할 수 있어야 함
-      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
+      expect(
+        mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0
+      ).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -341,7 +343,9 @@ describe('Skeleton', () => {
       const { container } = render(<AuditLogTableSkeleton />);
       const mobileContainer = container.querySelector('.md\\:hidden');
       expect(mobileContainer).toBeInTheDocument();
-      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
+      expect(
+        mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0
+      ).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -350,7 +354,9 @@ describe('Skeleton', () => {
       const { container } = render(<ConsultantProjectTableSkeleton />);
       const mobileContainer = container.querySelector('.md\\:hidden');
       expect(mobileContainer).toBeInTheDocument();
-      expect(mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0).toBeGreaterThanOrEqual(6);
+      expect(
+        mobileContainer?.querySelectorAll('.animate-shimmer').length ?? 0
+      ).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -461,10 +467,10 @@ describe('Skeleton', () => {
       expect(container.querySelector('.animate-shimmer')).toBeInTheDocument();
     });
 
-    it('default 호출 시 9개 step 원형이 렌더된다 (Roadmap 기본)', () => {
+    it('default 호출 시 8개 step 원형이 렌더된다 (Roadmap 기본, v2: 9→8스텝)', () => {
       const { container } = render(<InterviewFormSkeleton />);
       const stepperDesktop = container.querySelector('[data-testid="skeleton-stepper-desktop"]');
-      expect(stepperDesktop?.querySelectorAll('.h-8.w-8.rounded-full').length).toBe(9);
+      expect(stepperDesktop?.querySelectorAll('.h-8.w-8.rounded-full').length).toBe(8);
     });
 
     it('stepCount=10 (PBL) 시 10개 step 원형이 렌더된다', () => {
