@@ -15,6 +15,7 @@ import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
 import { OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { NULL_UUID } from '@/lib/constants/database';
 import { calculateScores } from '@/lib/services/calculate-scores';
+import { getLatestFinalRoadmap } from '@/lib/services/roadmap/roadmap-crud';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
 
 /** RPC assign_consultant 함수의 반환 타입 */
@@ -66,6 +67,10 @@ export async function createProject(
     customer_comment: (formData.get('customer_comment') as string) || undefined,
     // track 미지정(null/빈 문자열) → 스키마 default(ROADMAP) 적용. 명시 시 스키마에서 검증.
     ...(trackValue ? { track: trackValue } : {}),
+    // 선행 로드맵 연계는 PBL 트랙에서만 파싱 (ROADMAP 이면 자연 제외 → 컬럼 null)
+    ...(trackValue === 'PBL' && formData.get('roadmap_project_id')
+      ? { roadmap_project_id: formData.get('roadmap_project_id') as string }
+      : {}),
   };
 
   // 서버 검증
@@ -76,6 +81,22 @@ export async function createProject(
 
   // admin 클라이언트로 프로젝트 생성
   const adminSupabase = createAdminClient();
+
+  // 선행 로드맵 링크 참조 검증: 대상은 FINAL 로드맵을 보유(=로드맵을 실시)한 프로젝트여야 한다.
+  // (PBL 트랙에서만 rawData 에 포함되므로 여기서 검증)
+  if (validation.data.roadmap_project_id) {
+    const linkedFinal = await getLatestFinalRoadmap(
+      validation.data.roadmap_project_id,
+      adminSupabase
+    );
+    if (!linkedFinal) {
+      return {
+        success: false,
+        error: '선택한 선행 로드맵 프로젝트에 확정(FINAL) 로드맵이 없습니다.',
+      };
+    }
+  }
+
   const { data: newProject, error: insertError } = await adminSupabase
     .from('projects')
     .insert({

@@ -7,7 +7,12 @@ export { createAssessmentToken, getLatestToken } from './assessment-token';
 export type { LatestTokenInfo } from './assessment-token';
 
 // 조회 함수
-export { fetchProjects, fetchProjectTimeline, fetchProjectsWithTimeline } from './queries';
+export {
+  fetchProjects,
+  fetchProjectTimeline,
+  fetchProjectsWithTimeline,
+  fetchRoadmapProjectsForLink,
+} from './queries';
 export type {
   ProjectListParams,
   ProjectListResult,
@@ -15,14 +20,29 @@ export type {
   ProjectAssignmentHistory,
   ProjectTimeline,
   ProjectWithTimeline,
+  RoadmapLinkCandidate,
 } from './queries';
 
 // 대시보드 통계
-export { fetchProjectStats, fetchMonthlyCompletions, fetchConsultantProgress, fetchStalledProjects } from './dashboard';
-export type { ProjectStats, MonthlyCompletion, ConsultantProgress, StalledProject } from './dashboard';
+export {
+  fetchProjectStats,
+  fetchMonthlyCompletions,
+  fetchConsultantProgress,
+  fetchStalledProjects,
+} from './dashboard';
+export type {
+  ProjectStats,
+  MonthlyCompletion,
+  ConsultantProgress,
+  StalledProject,
+} from './dashboard';
 
 // 필터
-export { fetchProjectFilters, fetchConsultantCandidates, fetchConsultantFilterOptions } from './filters';
+export {
+  fetchProjectFilters,
+  fetchConsultantCandidates,
+  fetchConsultantFilterOptions,
+} from './filters';
 export type {
   ProjectFilterOptions,
   ConsultantCandidateParams,

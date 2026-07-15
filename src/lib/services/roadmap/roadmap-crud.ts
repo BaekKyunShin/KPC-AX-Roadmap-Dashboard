@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createAuditLog } from '../audit';
 import { createNotificationForAdmins } from '../notification';
@@ -138,8 +139,31 @@ export async function fetchRoadmapVersion(roadmapId: string) {
   return data;
 }
 
-/** projects JOIN 포함 로드맵 조회 결과 타입 (legacy 컬럼은 unknown으로 두고 매퍼로 변환) */
-interface RoadmapWithProject {
+/**
+ * 프로젝트의 최신 FINAL 로드맵 버전 조회 (raw row 반환).
+ * pbl-crud.ts:getLatestFinal 과 동일 패턴 — 프로젝트당 FINAL은 최대 1개이나
+ * 방어적으로 version_number DESC LIMIT 1. 선택적 client 주입으로 테스트/연계 조회에서 재사용.
+ */
+export async function getLatestFinalRoadmap(
+  projectId: string,
+  supabase?: SupabaseClient
+): Promise<RoadmapVersionRow | null> {
+  const client = supabase ?? createAdminClient();
+
+  const { data } = await client
+    .from('roadmap_versions')
+    .select(ROADMAP_VERSION_COLUMNS)
+    .eq('project_id', projectId)
+    .eq('status', 'FINAL')
+    .order('version_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as RoadmapVersionRow) ?? null;
+}
+
+/** roadmap_versions 원시 행 타입 (legacy 컬럼은 unknown으로 두고 fromRoadmapVersionColumns로 변환) */
+export interface RoadmapVersionRow {
   id: string;
   project_id: string;
   version_number: number;
@@ -159,6 +183,10 @@ interface RoadmapWithProject {
   finalized_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** projects JOIN 포함 로드맵 조회 결과 타입 */
+interface RoadmapWithProject extends RoadmapVersionRow {
   projects: { assigned_consultant_id: string };
 }
 

@@ -39,6 +39,8 @@ export const createProjectSchema = z.object({
   contact_position: z.string().max(50).optional(),
   customer_comment: z.string().max(2000).optional(),
   track: z.enum(PROJECT_TRACKS).default('ROADMAP'),
+  // 선행 로드맵 프로젝트 연계 (마이그 074) — track=PBL 에서만 파싱·저장. 대상은 FINAL 로드맵 보유 프로젝트.
+  roadmap_project_id: z.string().uuid('유효하지 않은 로드맵 프로젝트 ID입니다.').optional(),
 });
 
 // 프로젝트 수정 스키마

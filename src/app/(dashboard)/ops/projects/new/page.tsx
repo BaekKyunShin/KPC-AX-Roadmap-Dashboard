@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createProject } from '../actions';
+import { createProject, fetchRoadmapProjectsForLink, type RoadmapLinkCandidate } from '../actions';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -29,18 +29,68 @@ export default function NewProjectPage() {
   const [companySize, setCompanySize] = useState<string>('');
   const [industry, setIndustry] = useState<string>('');
   const [track, setTrack] = useState<ProjectTrack>('ROADMAP');
+  // 자동 추천 정렬에 쓰기 위해 제어 입력으로 관리
+  const [companyName, setCompanyName] = useState('');
+  const [businessRegNo, setBusinessRegNo] = useState('');
+  // 선행 로드맵 연계 (PBL 트랙에서만)
+  const [roadmapProjectId, setRoadmapProjectId] = useState('');
+  const [candidates, setCandidates] = useState<RoadmapLinkCandidate[]>([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesFetched, setCandidatesFetched] = useState(false);
+
+  // track=PBL 진입 시 FINAL 로드맵 보유 프로젝트를 1회 지연 로드
+  useEffect(() => {
+    if (track !== 'PBL' || candidatesFetched) return;
+    let cancelled = false;
+    const loadCandidates = async () => {
+      setCandidatesLoading(true);
+      try {
+        const list = await fetchRoadmapProjectsForLink();
+        if (!cancelled) {
+          setCandidates(list);
+          setCandidatesFetched(true);
+        }
+      } catch {
+        /* 실패 시 빈 목록 유지 — 연결은 선택 사항 */
+      } finally {
+        if (!cancelled) setCandidatesLoading(false);
+      }
+    };
+    void loadCandidates();
+    return () => {
+      cancelled = true;
+    };
+  }, [track, candidatesFetched]);
+
+  // 입력한 사업장관리번호 → 회사명 일치 후보를 상단 정렬 + 동일 기업 표시
+  const sortedCandidates = useMemo(() => {
+    const brn = businessRegNo.trim();
+    const cn = companyName.trim();
+    const score = (c: RoadmapLinkCandidate) => {
+      if (brn && c.business_reg_no?.trim() === brn) return 2;
+      if (cn && c.company_name.trim() === cn) return 1;
+      return 0;
+    };
+    return [...candidates]
+      .sort((a, b) => score(b) - score(a) || a.company_name.localeCompare(b.company_name, 'ko'))
+      .map((c) => ({ ...c, isSameCompany: score(c) > 0 }));
+  }, [candidates, businessRegNo, companyName]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
     const form = e.currentTarget;
-    const companyName = (form.elements.namedItem('company_name') as HTMLInputElement)?.value?.trim();
-    const contactName = (form.elements.namedItem('contact_name') as HTMLInputElement)?.value?.trim();
-    const contactEmail = (form.elements.namedItem('contact_email') as HTMLInputElement)?.value?.trim();
+    const trimmedCompanyName = companyName.trim();
+    const contactName = (
+      form.elements.namedItem('contact_name') as HTMLInputElement
+    )?.value?.trim();
+    const contactEmail = (
+      form.elements.namedItem('contact_email') as HTMLInputElement
+    )?.value?.trim();
 
     // 필수 필드 검증
-    if (!companyName || !contactName || !contactEmail || !companySize || !industry) {
+    if (!trimmedCompanyName || !contactName || !contactEmail || !companySize || !industry) {
       const msg = '필수 항목을 모두 입력해주세요.';
       setError(msg);
       showErrorToast('입력 확인 필요', msg);
@@ -56,6 +106,9 @@ export default function NewProjectPage() {
       formData.set('industry', industry);
       formData.set('sub_industries', JSON.stringify(subIndustries));
       formData.set('track', track);
+      if (track === 'PBL' && roadmapProjectId) {
+        formData.set('roadmap_project_id', roadmapProjectId);
+      }
       const result = await createProject(formData);
 
       if (result.success) {
@@ -100,11 +153,7 @@ export default function NewProjectPage() {
           <p className="text-xs text-gray-500 mt-1 mb-2">
             생성 후 변경할 수 없습니다. 기업당 트랙별로 별도 프로젝트를 생성하세요.
           </p>
-          <div
-            role="radiogroup"
-            aria-label="프로젝트 트랙"
-            className="grid gap-3 sm:grid-cols-2"
-          >
+          <div role="radiogroup" aria-label="프로젝트 트랙" className="grid gap-3 sm:grid-cols-2">
             {PROJECT_TRACKS.map((t) => (
               <label
                 key={t}
@@ -119,7 +168,10 @@ export default function NewProjectPage() {
                   name="track"
                   value={t}
                   checked={track === t}
-                  onChange={() => setTrack(t)}
+                  onChange={() => {
+                    setTrack(t);
+                    if (t !== 'PBL') setRoadmapProjectId('');
+                  }}
                   className="mt-0.5"
                 />
                 <span className="font-medium text-gray-900">{TRACK_LABELS[t]}</span>
@@ -127,6 +179,48 @@ export default function NewProjectPage() {
             ))}
           </div>
         </div>
+
+        {/* 선행 로드맵 연계 (PBL 트랙에서만) */}
+        {track === 'PBL' && (
+          <div>
+            <label
+              htmlFor="roadmap_project_link"
+              className="block text-sm font-medium text-gray-700"
+            >
+              선행 로드맵 프로젝트 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 mb-2">
+              이 PBL의 기반이 되는 로드맵(FINAL 확정) 프로젝트를 연결합니다. 미선택 시 보고서 Ⅱ장은
+              빈 양식으로 출력됩니다.
+            </p>
+            <Select
+              value={roadmapProjectId || '__none__'}
+              onValueChange={(v) => setRoadmapProjectId(v === '__none__' ? '' : v)}
+              disabled={candidatesLoading}
+            >
+              <SelectTrigger id="roadmap_project_link" className="mt-1 w-full">
+                <SelectValue
+                  placeholder={candidatesLoading ? '불러오는 중…' : '선행 로드맵 선택'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">연결 안 함</SelectItem>
+                {sortedCandidates.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.company_name}
+                    {c.business_reg_no ? ` — ${c.business_reg_no}` : ''}
+                    {c.isSameCompany ? '  ★ 동일 기업' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!candidatesLoading && candidates.length === 0 && (
+              <p className="text-xs text-amber-600 mt-2">
+                FINAL 확정된 로드맵 프로젝트가 없어 연결할 대상이 없습니다.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 회사명, 기업 규모 */}
         <div className="grid gap-4 md:grid-cols-2">
@@ -139,6 +233,8 @@ export default function NewProjectPage() {
               name="company_name"
               type="text"
               required
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
               className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -270,6 +366,8 @@ export default function NewProjectPage() {
                 id="business_reg_no"
                 name="business_reg_no"
                 type="text"
+                value={businessRegNo}
+                onChange={(e) => setBusinessRegNo(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -298,7 +396,10 @@ export default function NewProjectPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="jurisdiction_branch" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="jurisdiction_branch"
+                className="block text-sm font-medium text-gray-700"
+              >
                 관할 지부·지사
               </label>
               <input

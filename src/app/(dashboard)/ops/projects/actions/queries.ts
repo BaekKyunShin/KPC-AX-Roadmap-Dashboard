@@ -1,6 +1,7 @@
 'use server';
 
 import { requireAuthWithRole } from '@/lib/actions/auth-helpers';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getWorkflowStepIndex, OPS_MANAGER_ROLES } from '@/lib/constants/status';
 import { MILLISECONDS_PER_DAY } from '@/lib/constants/time';
 import { ilikePattern } from '@/lib/utils/postgrest-sanitize';
@@ -49,9 +50,8 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
   const offset = (page - 1) * limit;
 
   // 기본 쿼리
-  let query = auth.supabase
-    .from('projects')
-    .select(`
+  let query = auth.supabase.from('projects').select(
+    `
       id,
       company_name,
       industry,
@@ -61,7 +61,9 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
       contact_email,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email),
       created_by_user:users!projects_created_by_fkey(id, name)
-    `, { count: 'exact' });
+    `,
+    { count: 'exact' }
+  );
 
   // 검색 조건
   if (search) {
@@ -80,9 +82,11 @@ export async function fetchProjects(params: ProjectListParams = {}): Promise<Pro
   }
 
   // 정렬 및 페이지네이션
-  const { data: projects, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  const {
+    data: projects,
+    count,
+    error,
+  } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
   if (error) {
     console.error('[fetchProjects Error]', error);
@@ -188,7 +192,8 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
     // 전체 배정 이력 (타임라인 상세 + 현재 배정 정보 모두 포함)
     auth.supabase
       .from('project_assignments')
-      .select(`
+      .select(
+        `
         id,
         assignment_reason,
         is_current,
@@ -197,7 +202,8 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
         unassignment_reason,
         consultant:users!project_assignments_consultant_id_fkey(id, name, email),
         assigned_by_user:users!project_assignments_assigned_by_fkey(id, name)
-      `)
+      `
+      )
       .eq('project_id', projectId)
       .order('assigned_at', { ascending: false }),
     // 인터뷰 정보
@@ -283,9 +289,7 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
       step: 'ROADMAP_DRAFTED',
       label: draftStepLabel,
       date: roadmapDraft?.created_at || null,
-      detail: roadmapDraft?.version_number
-        ? `버전 ${roadmapDraft.version_number}`
-        : undefined,
+      detail: roadmapDraft?.version_number ? `버전 ${roadmapDraft.version_number}` : undefined,
       isCompleted: currentStepIndex >= 4,
       isCurrent: currentStepIndex + 1 === 4, // INTERVIEWED(3)일 때 current
     },
@@ -301,7 +305,11 @@ export async function fetchProjectTimeline(projectId: string): Promise<ProjectTi
   // 배정 이력 데이터 변환
   const assignments: ProjectAssignmentHistory[] = (allAssignments || []).map((a) => ({
     id: a.id,
-    consultant: unwrapJoinResult(a.consultant) as { id: string; name: string; email: string } | null,
+    consultant: unwrapJoinResult(a.consultant) as {
+      id: string;
+      name: string;
+      email: string;
+    } | null,
     assigned_by_user: unwrapJoinResult(a.assigned_by_user) as { id: string; name: string } | null,
     assignment_reason: a.assignment_reason,
     is_current: a.is_current,
@@ -347,9 +355,8 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
   const { page = 1, limit = 10, search = '', status = '', statuses, industry = '' } = params;
   const offset = (page - 1) * limit;
 
-  let query = auth.supabase
-    .from('projects')
-    .select(`
+  let query = auth.supabase.from('projects').select(
+    `
       id,
       company_name,
       industry,
@@ -359,7 +366,9 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
       updated_at,
       contact_email,
       assigned_consultant:users!projects_assigned_consultant_id_fkey(id, name, email)
-    `, { count: 'exact' });
+    `,
+    { count: 'exact' }
+  );
 
   if (search) {
     const p = ilikePattern(search);
@@ -377,9 +386,11 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
     query = query.eq('industry', industry);
   }
 
-  const { data: projects, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  const {
+    data: projects,
+    count,
+    error,
+  } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
   if (error) {
     console.error('[fetchProjectsWithTimeline Error]', error);
@@ -390,7 +401,9 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
 
   const formattedProjects: ProjectWithTimeline[] = (projects || []).map((p) => {
     const updatedAt = new Date(p.updated_at);
-    const daysInCurrentStatus = Math.floor((now.getTime() - updatedAt.getTime()) / MILLISECONDS_PER_DAY);
+    const daysInCurrentStatus = Math.floor(
+      (now.getTime() - updatedAt.getTime()) / MILLISECONDS_PER_DAY
+    );
 
     return {
       id: p.id,
@@ -412,4 +425,51 @@ export async function fetchProjectsWithTimeline(params: ProjectListParams = {}):
     totalPages: Math.ceil((count || 0) / limit),
     page,
   };
+}
+
+/**
+ * PBL 생성 폼의 "선행 로드맵 프로젝트" 드롭다운 후보 조회.
+ * FINAL 로드맵을 보유한 ROADMAP 트랙 프로젝트만 반환한다(로드맵을 실시한 기업).
+ * OPS 게이트로 인가하고 admin 클라이언트로 전 프로젝트를 집계(RLS 조인 영향 배제).
+ */
+export interface RoadmapLinkCandidate {
+  id: string;
+  company_name: string;
+  business_reg_no: string | null;
+}
+
+export async function fetchRoadmapProjectsForLink(): Promise<RoadmapLinkCandidate[]> {
+  const auth = await requireAuthWithRole(OPS_MANAGER_ROLES);
+  if ('error' in auth) return [];
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('projects')
+    .select('id, company_name, business_reg_no, roadmap_versions!inner(status)')
+    .eq('track', 'ROADMAP')
+    .eq('roadmap_versions.status', 'FINAL')
+    .order('company_name', { ascending: true });
+
+  if (error) {
+    console.error('[fetchRoadmapProjectsForLink Error]', error);
+    return [];
+  }
+
+  // 프로젝트당 FINAL은 최대 1개이나, 인너 조인 결과 중복을 방어적으로 제거
+  const seen = new Set<string>();
+  const candidates: RoadmapLinkCandidate[] = [];
+  for (const p of (data ?? []) as Array<{
+    id: string;
+    company_name: string;
+    business_reg_no: string | null;
+  }>) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    candidates.push({
+      id: p.id,
+      company_name: p.company_name,
+      business_reg_no: p.business_reg_no ?? null,
+    });
+  }
+  return candidates;
 }

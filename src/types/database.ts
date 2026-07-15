@@ -96,6 +96,9 @@ export interface Project {
   assigned_consultant_id?: string;
   // OFA 트랙 (마이그 060) — ROADMAP/PBL
   track: ProjectTrack;
+  // 선행 로드맵 프로젝트 연계 (마이그 074) — track=PBL 행만 값을 가지며,
+  // 대상은 FINAL 로드맵 보유 track=ROADMAP 프로젝트. NULL이면 PBL 보고서 Ⅱ장 빈 양식 폴백.
+  roadmap_project_id?: string;
   // OPS 입력 추가 정보
   customer_comment?: string; // 고객 코멘트/요청사항
   // 컨설턴트 내부 메모 (마이그 073) — 본인이 편집하는 지속 메모

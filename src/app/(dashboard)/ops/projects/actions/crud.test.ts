@@ -22,7 +22,10 @@ const { pendingCallbacks, flush, mockAfter } = vi.hoisted(() => {
   });
   return {
     pendingCallbacks,
-    flush: async () => { await Promise.all(pendingCallbacks); pendingCallbacks.length = 0; },
+    flush: async () => {
+      await Promise.all(pendingCallbacks);
+      pendingCallbacks.length = 0;
+    },
     mockAfter,
   };
 });
@@ -47,7 +50,9 @@ vi.mock('@/lib/services/notification', () => ({
 }));
 
 vi.mock('@/lib/services/calculate-scores', () => ({
-  calculateScores: vi.fn().mockReturnValue({ data: 3, process: 4, culture: 2, technology: 3, total_score: 60 }),
+  calculateScores: vi
+    .fn()
+    .mockReturnValue({ data: 3, process: 4, culture: 2, technology: 3, total_score: 60 }),
 }));
 
 vi.mock('next/cache', () => ({
@@ -72,10 +77,17 @@ const TEST_USER_ID = '550e8400-e29b-41d4-a716-446655440001';
 const TEST_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440010';
 const TEST_CONSULTANT_ID = '550e8400-e29b-41d4-a716-446655440020';
 const TEST_TEMPLATE_ID = '550e8400-e29b-41d4-a716-446655440030';
+const TEST_ROADMAP_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440050';
 
 function createAuthSuccess() {
   const mock = createMockSupabase({ authUser: { id: TEST_USER_ID } });
-  return { user: { id: TEST_USER_ID, email: 'ops@test.com' }, supabase: mock.client, role: 'OPS_ADMIN', status: 'ACTIVE', _mock: mock };
+  return {
+    user: { id: TEST_USER_ID, email: 'ops@test.com' },
+    supabase: mock.client,
+    role: 'OPS_ADMIN',
+    status: 'ACTIVE',
+    _mock: mock,
+  };
 }
 
 function makeProjectFormData(overrides: Record<string, string> = {}) {
@@ -90,6 +102,8 @@ function makeProjectFormData(overrides: Record<string, string> = {}) {
   if (overrides.company_address) data.set('company_address', overrides.company_address);
   if (overrides.customer_comment) data.set('customer_comment', overrides.customer_comment);
   if (overrides.track !== undefined) data.set('track', overrides.track);
+  if (overrides.roadmap_project_id !== undefined)
+    data.set('roadmap_project_id', overrides.roadmap_project_id);
   return data;
 }
 
@@ -132,7 +146,7 @@ describe('createProject', () => {
         company_name: '테스트 주식회사',
         status: 'NEW',
         created_by: TEST_USER_ID,
-      }),
+      })
     );
   });
 
@@ -168,7 +182,7 @@ describe('createProject', () => {
     expect(adminMock.chainable.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         sub_industries: ['자동차', '전자'],
-      }),
+      })
     );
   });
 
@@ -184,7 +198,7 @@ describe('createProject', () => {
       expect.objectContaining({
         action: 'PROJECT_CREATE',
         success: false,
-      }),
+      })
     );
   });
 
@@ -197,7 +211,7 @@ describe('createProject', () => {
     const result = await createProject(makeProjectFormData());
     expect(result.success).toBe(true);
     expect(adminMock.chainable.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ track: 'ROADMAP' }),
+      expect.objectContaining({ track: 'ROADMAP' })
     );
   });
 
@@ -210,7 +224,7 @@ describe('createProject', () => {
     const result = await createProject(makeProjectFormData({ track: 'PBL' }));
     expect(result.success).toBe(true);
     expect(adminMock.chainable.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ track: 'PBL' }),
+      expect.objectContaining({ track: 'PBL' })
     );
   });
 
@@ -235,8 +249,71 @@ describe('createProject', () => {
       expect.objectContaining({
         action: 'PROJECT_CREATE',
         targetId: TEST_PROJECT_ID,
-      }),
+      })
     );
+  });
+
+  // ── 선행 로드맵 연계 (PR2) ──────────────────────────────────────────────────
+
+  it('PBL + 유효한 선행 로드맵(FINAL 보유) 링크 시 roadmap_project_id를 저장', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    // 1) getLatestFinalRoadmap → FINAL 존재  2) projects insert
+    adminMock.addResult({ data: { id: 'rv-1', status: 'FINAL' }, error: null });
+    adminMock.addResult({ data: { id: TEST_PROJECT_ID }, error: null });
+
+    const result = await createProject(
+      makeProjectFormData({ track: 'PBL', roadmap_project_id: TEST_ROADMAP_PROJECT_ID })
+    );
+
+    expect(result).toEqual({ success: true, data: { projectId: TEST_PROJECT_ID } });
+    expect(adminMock.chainable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ track: 'PBL', roadmap_project_id: TEST_ROADMAP_PROJECT_ID })
+    );
+  });
+
+  it('PBL + FINAL 로드맵이 없는 링크는 검증 에러 (insert 안 함)', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    // getLatestFinalRoadmap → null (FINAL 없음)
+    adminMock.addResult({ data: null, error: null });
+
+    const result = await createProject(
+      makeProjectFormData({ track: 'PBL', roadmap_project_id: TEST_ROADMAP_PROJECT_ID })
+    );
+
+    expect(result.success).toBe(false);
+    expect(adminMock.chainable.insert).not.toHaveBeenCalled();
+  });
+
+  it('ROADMAP 트랙에 roadmap_project_id가 와도 저장하지 않는다(스트립)', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addResult({ data: { id: TEST_PROJECT_ID }, error: null });
+
+    const result = await createProject(
+      makeProjectFormData({ track: 'ROADMAP', roadmap_project_id: TEST_ROADMAP_PROJECT_ID })
+    );
+
+    expect(result.success).toBe(true);
+    const payload = adminMock.chainable.insert.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('roadmap_project_id');
+  });
+
+  it('PBL + 링크 미선택 시 roadmap_project_id 없이 정상 생성', async () => {
+    const auth = createAuthSuccess();
+    mockAuthResult.mockResolvedValue(auth);
+
+    adminMock.addResult({ data: { id: TEST_PROJECT_ID }, error: null });
+
+    const result = await createProject(makeProjectFormData({ track: 'PBL' }));
+
+    expect(result.success).toBe(true);
+    const payload = adminMock.chainable.insert.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('roadmap_project_id');
   });
 });
 
@@ -249,10 +326,13 @@ describe('createSelfAssessment', () => {
     const data = new FormData();
     data.set('project_id', TEST_PROJECT_ID);
     data.set('template_id', TEST_TEMPLATE_ID);
-    data.set('answers', JSON.stringify([
-      { question_id: 'q1', answer_value: 3 },
-      { question_id: 'q2', answer_value: 4 },
-    ]));
+    data.set(
+      'answers',
+      JSON.stringify([
+        { question_id: 'q1', answer_value: 3 },
+        { question_id: 'q2', answer_value: 4 },
+      ])
+    );
     return data;
   }
 
@@ -405,7 +485,7 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
         success: false,
-      }),
+      })
     );
   });
 
@@ -413,7 +493,10 @@ describe('assignConsultant', () => {
     const auth = createAuthSuccess();
     mockAuthResult.mockResolvedValue(auth);
 
-    adminMock.addRpcResult({ data: { success: false, error: '이미 배정된 프로젝트' }, error: null });
+    adminMock.addRpcResult({
+      data: { success: false, error: '이미 배정된 프로젝트' },
+      error: null,
+    });
 
     const result = await assignConsultant(makeAssignFormData());
     expect(result).toEqual({ success: false, error: '이미 배정된 프로젝트' });
@@ -434,7 +517,7 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         action: 'PROJECT_ASSIGN',
         targetId: TEST_PROJECT_ID,
-      }),
+      })
     );
   });
 
@@ -459,7 +542,7 @@ describe('assignConsultant', () => {
         userId: TEST_CONSULTANT_ID,
         type: 'assignment',
         title: '새 프로젝트 배정',
-      }),
+      })
     );
     // 이전 컨설턴트 해제 알림
     expect(createNotification).toHaveBeenCalledWith(
@@ -468,7 +551,7 @@ describe('assignConsultant', () => {
         type: 'assignment',
         title: '프로젝트 배정 해제',
         message: '재배정사 프로젝트 담당이 변경되었습니다.',
-      }),
+      })
     );
   });
 
@@ -489,7 +572,7 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         userId: TEST_CONSULTANT_ID,
         title: '새 프로젝트 배정',
-      }),
+      })
     );
   });
 
@@ -513,7 +596,7 @@ describe('assignConsultant', () => {
       expect.objectContaining({
         userId: TEST_CONSULTANT_ID,
         title: '새 프로젝트 배정',
-      }),
+      })
     );
   });
 });

@@ -310,25 +310,27 @@ PBL 기존 `'BASIC'|'EXPLORER'|'USER'|'LEADER'` → 병합 규칙: `BASIC→BEGI
 > **HWPX venv:** `/Users/baekkyunshin/Desktop/AI-roadmap-dashboard/.venv-hwpx/bin/python3` (main 것 재사용)
 > **빌드 시:** main 의 `.env.local` 을 워크트리로 복사 후 build, 커밋 전 제거 (secret-guard 훅이 `.env` 있으면 `git add -A` 차단)
 
-| PR                                        | 상태             | 커밋                                                          |
-| ----------------------------------------- | ---------------- | ------------------------------------------------------------- |
-| PR 0 준비                                 | ✅ 완료          | `ebe12f1`                                                     |
-| PR 1 로드맵 전 계층 + 플레이스홀더 인프라 | ✅ 완료          | `48dc9e6` (양식·HWPX·화면·내보내기) + `94a6ca6` (인터뷰 계층) |
-| **PR 2 로드맵→PBL 연계 인프라**           | ⬜ **다음 차례** | —                                                             |
-| PR 3 PBL 전 계층                          | ⬜               | —                                                             |
-| PR 4 최종 검증·정리                       | ⬜               | —                                                             |
+| PR                                        | 상태             | 커밋                                                                                         |
+| ----------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------- |
+| PR 0 준비                                 | ✅ 완료          | `ebe12f1`                                                                                    |
+| PR 1 로드맵 전 계층 + 플레이스홀더 인프라 | ✅ 완료          | `48dc9e6` (양식·HWPX·화면·내보내기) + `94a6ca6` (인터뷰 계층)                                |
+| PR 2 로드맵→PBL 연계 인프라               | ✅ 완료          | FK 074 + `getLatestFinalRoadmap`/`fetchLinkedRoadmapData` 헬퍼 + 생성 폼 선행 로드맵 선택 UI |
+| **PR 3 PBL 전 계층**                      | ⬜ **다음 차례** | —                                                                                            |
+| PR 4 최종 검증·정리                       | ⬜               | —                                                                                            |
 
 **PR 1 최종 검증 통과:** validate 6,406건 · build 통과 · pytest 로드맵 27 / PBL 30 · 마커정합 166=166 · 실물 HWPX end-to-end(과업 개선점 열 출력).
 
 **착수 전 DB 조사 결과 (재확인 불필요):** 운영 DB 에 `roadmap_versions` FINAL **9건** 실재, **PBL 프로젝트·pbl_reports 0건** (PBL 미사용). → PBL AI등급 4→3 병합 마이그레이션·기존 PBL 연결 보정 **불필요**. 로드맵 쪽만 방어적 파싱 필수(이미 반영).
 
-**PR 2 재개 방법:**
+**PR 2 완료 내역 (2026-07-15):**
 
-1. `cd .worktrees/hwpx-v2-roadmap` (같은 브랜치에서 이어서. 계획서 PR 2 는 별도 `feat/pbl-roadmap-link` 브랜치를 제안했으나, PR 1 이 아직 머지 전이고 조회 헬퍼가 v2 로드맵 구조에 의존하므로 **이 브랜치에서 이어가는 편이 안전**)
-2. `superpowers:test-driven-development` + `supabase-dev` 스킬 호출
-3. 마이그레이션 `projects.roadmap_project_id` FK 작성 → **같은 작업 내 DB 적용까지** (`mcp__supabase__apply_migration` → `list_migrations` 검증, project_id `axflsiffdbkitptgpavv`) → `src/types/database.ts` 의 `Project` 에 `roadmap_project_id?: string` 수동 추가
-4. 조회 헬퍼 `src/lib/services/pbl/pbl-roadmap-link.ts` + 운영관리자 선행 로드맵 선택 UI (자동 추천: business_reg_no→company_name, 후보: track='ROADMAP' AND FINAL 존재)
-   상세는 아래 "★ 로드맵 → PBL 자동 연계" 섹션 참조.
+- 마이그 `074_add_roadmap_project_link.sql` — `projects.roadmap_project_id` 자기참조 FK(nullable, `ON DELETE SET NULL`) + 부분 인덱스. **DB 적용·검증 완료**(remote version `20260715144410`). `database.ts` `Project` 필드 수동 추가.
+- `roadmap-crud.ts:getLatestFinalRoadmap`(+`RoadmapVersionRow`) + `pbl-roadmap-link.ts:fetchLinkedRoadmapData`(미연계·자기참조·FINAL 부재 → `{null,null}` 폴백). `pbl-roadmap-link.test.ts` 6건.
+- `queries.ts:fetchRoadmapProjectsForLink`(FINAL 로드맵 보유 ROADMAP만) + `createProject` 참조 검증(PBL+링크 시 FINAL 보유 확인, ROADMAP 트랙은 필드 스트립). crud/queries 테스트 추가.
+- 생성 폼(`ops/projects/new/page.tsx`): track=PBL 시 조건부 로드맵 Select(**선택 사항**, business_reg_no→company_name 자동추천 정렬 + "★ 동일 기업", 미선택 시 빈 양식 안내). **보정 UI 미도입**(현재 PBL 0건).
+- 검증: `validate` 6,420건 · `build` exit 0 · 사전 grep 완료.
+
+**PR 3 재개 방법:** 같은 브랜치(`feat/hwpx-v2-roadmap`)에서 이어서. PR 2 산출물 `fetchLinkedRoadmapData`(서버 전용, `index.ts` 미노출 → Server Action에서 직접 import)를 PBL Ⅱ장 읽기 전용 렌더 + `hwpx-payload-pbl.ts` 의 `linkedRoadmap` 키에 연결. `_components/roadmap/` 6개 Step 을 `_components/shared/` 로 승격(로드맵 회귀 테스트 필수). 상세는 위 "실행 계획 > PR 3" 참조.
 
 **PR 1 에서 발견·기록한 것:** 아래 "구현 중 확인된 사실" 섹션 (양식 세로병합 제약, PBL 43초 성능 원인, 부수 수정 버그).
 **미해결 승인 대기:** 랜딩 데모 캐러셀(`DemoSection.tsx`) — 로드맵 탭 1개만 남아 캐러셀 껍데기화. 현재 최소 수정만. mockup 승인 후 재설계 (아래 "별도 승인이 필요한 UI 변경").
