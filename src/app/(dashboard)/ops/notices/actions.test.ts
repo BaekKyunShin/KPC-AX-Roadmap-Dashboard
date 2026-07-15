@@ -130,18 +130,19 @@ describe('createNoticeAction', () => {
     consoleSpy.mockRestore();
   });
 
-  it('revalidatePath throw 해도 noticeId 반환 (회귀 #이슈1)', async () => {
+  // ─── 작성 중 스크롤 최상단 점프 방지 가드 ───────────────────────────────
+  // createNoticeAction 은 revalidatePath 를 호출하지 않아야 한다. 공지 페이지는
+  // 모두 동적 렌더링이고 작성 완료 시 목적지로 push+refresh 하므로 revalidate 는
+  // 신선도에 불필요하며, 제출 도중의 revalidatePath 는 현재 페이지(/ops/notices/new)
+  // 를 refresh 시켜 window 스크롤을 최상단으로 리셋한다(사용자 보고 UX 버그).
+  it('revalidatePath 를 호출하지 않는다 (작성 중 스크롤 점프 방지)', async () => {
     setAuthSuccess();
     vi.mocked(noticeService.createNotice).mockResolvedValueOnce({ id: 'n-1' });
-    vi.mocked(revalidatePath).mockImplementationOnce(() => {
-      throw new Error('cache 무효화 실패');
-    });
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const result = await createNoticeAction(makeFormData({ title: '공지', body: '본문' }));
 
     expect(result.success).toBe(true);
-    consoleSpy.mockRestore();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   // ─── 본 흐름 unknown throw 방어 (이슈 1-C 재발 차단) ─────────────────────
@@ -547,6 +548,37 @@ describe('registerAttachmentAction', () => {
     if (result.success) {
       expect(result.data.attachment.id).toBe('att-1');
     }
+  });
+
+  // ─── 작성 중 스크롤 최상단 점프 방지 가드 ───────────────────────────────
+  // registerAttachmentAction 은 작성 흐름의 첨부 업로드 루프에서 첨부마다 호출된다.
+  // revalidatePath 를 호출하면 현재 페이지(/ops/notices/new)가 refresh 되어 window
+  // 스크롤이 최상단으로 리셋되므로(사용자 보고 UX 버그) 호출하지 않아야 한다. 수정 모드
+  // 즉시 업로드는 onUploaded 낙관적 상태로 UI 를 갱신하고, 공지 페이지는 동적 렌더링이라
+  // 신선도에도 문제 없다.
+  it('revalidatePath 를 호출하지 않는다 (작성 중 스크롤 점프 방지)', async () => {
+    setAuthSuccess();
+    vi.mocked(noticeService.registerNoticeAttachment).mockResolvedValueOnce({
+      attachment: {
+        id: 'att-1',
+        notice_id: 'n-1',
+        file_name: 'a.pdf',
+        mime_type: 'application/pdf',
+        file_size: 100,
+        storage_path: 'n-1/uuid-a.pdf',
+        uploaded_at: '2026-01-01',
+      },
+    } as never);
+
+    const result = await registerAttachmentAction('n-1', {
+      file_name: 'a.pdf',
+      mime_type: 'application/pdf',
+      file_size: 100,
+      storage_path: 'n-1/uuid-a.pdf',
+    });
+
+    expect(result.success).toBe(true);
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it('서비스 실패 시 error 반환', async () => {
