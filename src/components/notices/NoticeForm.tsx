@@ -139,16 +139,20 @@ export function NoticeForm({ mode, initial }: NoticeFormProps) {
             ? `공지가 작성되었습니다. 첨부 ${uploadedCount}건 업로드 완료.`
             : '공지가 작성되었습니다.'
         );
+        // router.push 만 호출한다(router.refresh 미사용). push 직후 refresh 를 부르면
+        // 아직 커밋되지 않은 push 네비게이션을 refresh 가 취소해 작성 페이지에 머무는
+        // 레이스가 생긴다(E2E notices.spec.ts:42). 공지 목록은 동적 렌더링이라 push 만으로
+        // 새로 fetch 되므로 refresh 는 불필요하다.
         router.push('/ops/notices');
-        router.refresh();
       } else if (initial) {
         setSubmitPhase('creating');
         const result = await updateNoticeAction(initial.id, formData);
         if (result.success) {
           showSuccessToast('공지가 수정되었습니다.');
-          // 수정 후 상세 페이지로 이동해 변경된 내용을 즉시 확인하도록 함
+          // 수정 후 상세 페이지로 이동. 작성 경로와 동일하게 router.refresh 는 호출하지
+          // 않는다(push 네비게이션을 취소하는 레이스 방지). 상세도 동적 렌더링이라
+          // push 만으로 변경 내용이 반영된다.
           router.push(`/notices/${initial.id}`);
-          router.refresh();
         } else {
           showErrorToast('수정 실패', result.error);
         }

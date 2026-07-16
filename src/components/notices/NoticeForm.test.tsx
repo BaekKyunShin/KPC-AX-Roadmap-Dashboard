@@ -289,6 +289,11 @@ describe('NoticeForm', () => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('공지가 작성되었습니다.');
         expect(mockPush).toHaveBeenCalledWith('/ops/notices');
       });
+      // 네비게이션 레이스 방지 가드: push 직후 router.refresh 를 호출하면 아직 커밋되지
+      // 않은 push 를 취소해 작성 페이지(/ops/notices/new)에 머무는 버그가 있었다
+      // (E2E notices.spec.ts:42 실패). 공지 목록은 동적 렌더링이라 push 만으로 새로
+      // fetch 되므로 refresh 는 불필요하다.
+      expect(mockRefresh).not.toHaveBeenCalled();
     });
 
     it('실패 시 에러 토스트가 표시된다', async () => {
@@ -466,6 +471,10 @@ describe('NoticeForm', () => {
         expect(mockShowSuccessToast).toHaveBeenCalledWith('공지가 수정되었습니다.');
         expect(mockPush).toHaveBeenCalledWith('/notices/notice-1');
       });
+      // 네비게이션 레이스 방지 가드: 작성 경로와 동일하게, push 직후 refresh 는
+      // 네비게이션을 취소할 수 있으므로 호출하지 않는다. 상세 페이지도 동적 렌더링이라
+      // push 만으로 수정 내용이 반영된다.
+      expect(mockRefresh).not.toHaveBeenCalled();
     });
 
     it('수정 실패 시 에러 토스트가 표시된다', async () => {
