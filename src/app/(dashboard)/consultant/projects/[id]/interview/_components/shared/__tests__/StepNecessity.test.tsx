@@ -14,9 +14,7 @@ describe('StepNecessity', () => {
     expect(screen.getByText('Ⅰ-1')).toBeInTheDocument();
     expect(screen.getByText('수립 필요성')).toBeInTheDocument();
     expect(screen.getByText('[인터뷰 입력]')).toBeInTheDocument();
-    expect(
-      screen.getByText(/AI 훈련로드맵 수립을 위해/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/AI 훈련로드맵 수립을 위해/)).toBeInTheDocument();
   });
 
   it('textarea 입력 시 onChange 가 새 값으로 호출된다', () => {

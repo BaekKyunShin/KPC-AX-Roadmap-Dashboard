@@ -4,9 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { StepCompanyRequirements } from '../StepCompanyRequirements';
 import type { RoadmapCompanyRequirements } from '@/lib/schemas/interview-roadmap';
 
-function makeValue(
-  over: Partial<RoadmapCompanyRequirements> = {},
-): RoadmapCompanyRequirements {
+function makeValue(over: Partial<RoadmapCompanyRequirements> = {}): RoadmapCompanyRequirements {
   return { status: '', problem: '', will: '', outcomes: '', ...over };
 }
 
@@ -31,9 +29,7 @@ describe('StepCompanyRequirements', () => {
     render(<StepCompanyRequirements value={makeValue()} onChange={() => {}} />);
     expect(screen.getByRole('columnheader', { name: '구분' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: '확인 내용' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: /비고/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /비고/ })).toBeInTheDocument();
   });
 
   it('value 의 각 필드가 해당 aria-label 의 textarea 에 반영된다', () => {
@@ -46,7 +42,7 @@ describe('StepCompanyRequirements', () => {
           outcomes: '불량률 감소',
         })}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByLabelText('기업 현황')).toHaveValue('제조업');
     expect(screen.getByLabelText('주요 문제')).toHaveValue('검사 지연');
@@ -56,9 +52,7 @@ describe('StepCompanyRequirements', () => {
 
   it('기업 현황 입력 시 onChange 가 status 필드만 갱신한 객체로 호출된다', () => {
     const onChange = vi.fn();
-    render(
-      <StepCompanyRequirements value={makeValue()} onChange={onChange} />,
-    );
+    render(<StepCompanyRequirements value={makeValue()} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('기업 현황'), {
       target: { value: '반도체 제조' },
     });
@@ -76,7 +70,7 @@ describe('StepCompanyRequirements', () => {
       <StepCompanyRequirements
         value={makeValue({ status: 'A', problem: 'B', will: 'C' })}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.change(screen.getByLabelText('기대 성과'), {
       target: { value: 'D' },
@@ -90,9 +84,7 @@ describe('StepCompanyRequirements', () => {
   });
 
   it('readOnly 이면 4개 textarea 가 모두 비활성화된다', () => {
-    render(
-      <StepCompanyRequirements value={makeValue()} onChange={() => {}} readOnly />,
-    );
+    render(<StepCompanyRequirements value={makeValue()} onChange={() => {}} readOnly />);
     expect(screen.getByLabelText('기업 현황')).toBeDisabled();
     expect(screen.getByLabelText('주요 문제')).toBeDisabled();
     expect(screen.getByLabelText('추진 의지')).toBeDisabled();
@@ -101,9 +93,7 @@ describe('StepCompanyRequirements', () => {
 
   it('비고 입력란 4개를 렌더하고 입력 시 onChange.remarks 가 갱신된다 (#6 RED)', () => {
     const onChange = vi.fn();
-    render(
-      <StepCompanyRequirements value={makeValue()} onChange={onChange} />,
-    );
+    render(<StepCompanyRequirements value={makeValue()} onChange={onChange} />);
     // 양식 비고 칼럼 = 사용자 입력란. 행마다 1개씩 총 4개.
     const statusRemarks = screen.getByLabelText('기업 현황 비고');
     expect(statusRemarks).toHaveValue('');
@@ -112,7 +102,7 @@ describe('StepCompanyRequirements', () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         remarks: expect.objectContaining({ status: '특이사항-A' }),
-      }),
+      })
     );
 
     expect(screen.getByLabelText('주요 문제 비고')).toBeInTheDocument();
@@ -132,7 +122,7 @@ describe('StepCompanyRequirements', () => {
           },
         })}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByLabelText('기업 현황 비고')).toHaveValue('r-status');
     expect(screen.getByLabelText('주요 문제 비고')).toHaveValue('r-problem');
@@ -141,9 +131,7 @@ describe('StepCompanyRequirements', () => {
   });
 
   it('readOnly 이면 비고 textarea 4개도 비활성화된다', () => {
-    render(
-      <StepCompanyRequirements value={makeValue()} onChange={() => {}} readOnly />,
-    );
+    render(<StepCompanyRequirements value={makeValue()} onChange={() => {}} readOnly />);
     expect(screen.getByLabelText('기업 현황 비고')).toBeDisabled();
     expect(screen.getByLabelText('주요 문제 비고')).toBeDisabled();
     expect(screen.getByLabelText('추진 의지 비고')).toBeDisabled();

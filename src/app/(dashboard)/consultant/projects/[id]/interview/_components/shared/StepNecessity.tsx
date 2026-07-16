@@ -12,11 +12,7 @@ import type { RoadmapStepProps } from './types';
  * 양식 기준: 5줄 내외 자유 서술. AI 훈련로드맵 수립 이유 + AI 적용 필요성.
  * 데이터 슬라이스: `RoadmapOverview.establishmentNecessity` (string).
  */
-export function StepNecessity({
-  value,
-  onChange,
-  readOnly = false,
-}: RoadmapStepProps<string>) {
+export function StepNecessity({ value, onChange, readOnly = false }: RoadmapStepProps<string>) {
   return (
     <FormSection
       number="Ⅰ-1"
@@ -35,8 +31,8 @@ export function StepNecessity({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              컨설팅 대상 기업의 경영진 또는 담당자(내부전문가) 와 인터뷰 등을 통해 파악한
-              AI 훈련 로드맵 수립 이유.
+              컨설팅 대상 기업의 경영진 또는 담당자(내부전문가) 와 인터뷰 등을 통해 파악한 AI 훈련
+              로드맵 수립 이유.
             </li>
             <li>5줄 내외로 간단히 기술.</li>
           </ul>

@@ -4,9 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { StepPerformanceActivities } from '../StepPerformanceActivities';
 import type { RoadmapPerformanceActivity } from '@/lib/schemas/interview-roadmap';
 
-function emptyActivity(
-  over: Partial<RoadmapPerformanceActivity> = {},
-): RoadmapPerformanceActivity {
+function emptyActivity(over: Partial<RoadmapPerformanceActivity> = {}): RoadmapPerformanceActivity {
   return {
     round: 1,
     date: '',
@@ -56,7 +54,7 @@ describe('StepPerformanceActivities', () => {
           emptyActivity({ round: 2, pmName: '김철수' }),
         ]}
         onChange={() => {}}
-      />,
+      />
     );
     expect(screen.getByText('1차')).toBeInTheDocument();
     expect(screen.getByText('2차')).toBeInTheDocument();
@@ -67,12 +65,7 @@ describe('StepPerformanceActivities', () => {
 
   it('"차수 추가" 클릭 시 +1 차수 append 된 상태로 onChange 가 호출된다', () => {
     const onChange = vi.fn();
-    render(
-      <StepPerformanceActivities
-        value={[emptyActivity({ round: 1 })]}
-        onChange={onChange}
-      />,
-    );
+    render(<StepPerformanceActivities value={[emptyActivity({ round: 1 })]} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText('차수 추가'));
     expect(onChange).toHaveBeenCalledTimes(1);
     const call = onChange.mock.calls[0][0] as RoadmapPerformanceActivity[];
@@ -94,17 +87,13 @@ describe('StepPerformanceActivities', () => {
 
   it('4차 상태에서는 "차수 추가" 버튼이 여전히 활성화된다 (5차 한계)', () => {
     const fourRounds = [1, 2, 3, 4].map((r) => emptyActivity({ round: r }));
-    render(
-      <StepPerformanceActivities value={fourRounds} onChange={() => {}} />,
-    );
+    render(<StepPerformanceActivities value={fourRounds} onChange={() => {}} />);
     expect(screen.getByLabelText('차수 추가')).not.toBeDisabled();
   });
 
   it('5차까지 찼으면 "차수 추가" 버튼이 비활성화된다 (스키마 max(5))', () => {
     const fiveRounds = [1, 2, 3, 4, 5].map((r) => emptyActivity({ round: r }));
-    render(
-      <StepPerformanceActivities value={fiveRounds} onChange={() => {}} />,
-    );
+    render(<StepPerformanceActivities value={fiveRounds} onChange={() => {}} />);
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
   });
 
@@ -118,7 +107,7 @@ describe('StepPerformanceActivities', () => {
           emptyActivity({ round: 3, pmName: 'C' }),
         ]}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('차수 삭제 2'));
     // AlertDialog 노출 검증 + 삭제 확인
@@ -133,12 +122,9 @@ describe('StepPerformanceActivities', () => {
     const onChange = vi.fn();
     render(
       <StepPerformanceActivities
-        value={[
-          emptyActivity({ round: 1, pmName: 'A' }),
-          emptyActivity({ round: 2, pmName: 'B' }),
-        ]}
+        value={[emptyActivity({ round: 1, pmName: 'A' }), emptyActivity({ round: 2, pmName: 'B' })]}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('차수 삭제 2'));
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
@@ -146,12 +132,7 @@ describe('StepPerformanceActivities', () => {
   });
 
   it('마지막 1차수만 남으면 "차수 삭제" 버튼이 비활성화된다', () => {
-    render(
-      <StepPerformanceActivities
-        value={[emptyActivity({ round: 1 })]}
-        onChange={() => {}}
-      />,
-    );
+    render(<StepPerformanceActivities value={[emptyActivity({ round: 1 })]} onChange={() => {}} />);
     expect(screen.getByLabelText('차수 삭제 1')).toBeDisabled();
   });
 
@@ -159,12 +140,9 @@ describe('StepPerformanceActivities', () => {
     const onChange = vi.fn();
     render(
       <StepPerformanceActivities
-        value={[
-          emptyActivity({ round: 1 }),
-          emptyActivity({ round: 2 }),
-        ]}
+        value={[emptyActivity({ round: 1 }), emptyActivity({ round: 2 })]}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.change(screen.getByLabelText('2차 PM 성명'), {
       target: { value: '이영희' },
@@ -175,12 +153,7 @@ describe('StepPerformanceActivities', () => {
   });
 
   it('수행 방법 select 는 4개 옵션(ONSITE/VIDEO/WORKSHOP/OTHER) 을 제공한다', () => {
-    render(
-      <StepPerformanceActivities
-        value={[emptyActivity({ round: 1 })]}
-        onChange={() => {}}
-      />,
-    );
+    render(<StepPerformanceActivities value={[emptyActivity({ round: 1 })]} onChange={() => {}} />);
     const select = screen.getByLabelText('1차 수행 방법') as HTMLSelectElement;
     expect(select.tagName).toBe('SELECT');
     const values = Array.from(select.options).map((o) => o.value);
@@ -193,7 +166,7 @@ describe('StepPerformanceActivities', () => {
       <StepPerformanceActivities
         value={[emptyActivity({ round: 1, method: 'ONSITE' })]}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.change(screen.getByLabelText('1차 수행 방법'), {
       target: { value: 'VIDEO' },
@@ -208,7 +181,7 @@ describe('StepPerformanceActivities', () => {
         value={[emptyActivity({ round: 1 })]}
         onChange={() => {}}
         readOnly
-      />,
+      />
     );
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
     expect(screen.getByLabelText('차수 삭제 1')).toBeDisabled();

@@ -31,18 +31,18 @@ import { isOpsManager } from '@/lib/constants/status';
 import type { UserRole } from '@/types/database';
 
 import InterviewStepper from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper';
-import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity';
+import { StepNecessity } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepNecessity';
 import {
   StepMainResult,
   type StepMainResultValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult';
-import { StepCompanyRequirements } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements';
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepMainResult';
+import { StepCompanyRequirements } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepCompanyRequirements';
 import {
   StepTaskAnalysis,
   type StepTaskAnalysisValue,
-} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis';
-import { StepTargetTask } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask';
-import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities';
+} from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTaskAnalysis';
+import { StepTargetTask } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTargetTask';
+import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepPerformanceActivities';
 
 import {
   RoadmapInterviewStrictSchema,

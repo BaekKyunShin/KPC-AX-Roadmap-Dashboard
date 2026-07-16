@@ -51,7 +51,7 @@ import { exportTestRoadmapHwpx } from './actions';
 
 // V2 Step 컴포넌트 경로로 모킹 (Task 2.11-e rename 이후 경로)
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepNecessity',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepNecessity',
   () => ({
     StepNecessity: ({ value }: { value: string }) => (
       <div data-testid="establishment-display">{value}</div>
@@ -59,23 +59,23 @@ vi.mock(
   })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepMainResult',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepMainResult',
   () => ({ StepMainResult: () => <div>StepMainResult</div> })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepCompanyRequirements',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepCompanyRequirements',
   () => ({ StepCompanyRequirements: () => <div>StepCompanyRequirements</div> })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTaskAnalysis',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTaskAnalysis',
   () => ({ StepTaskAnalysis: () => <div>StepTaskAnalysis</div> })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepTargetTask',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepTargetTask',
   () => ({ StepTargetTask: () => <div>StepTargetTask</div> })
 );
 vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/roadmap/StepPerformanceActivities',
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/shared/StepPerformanceActivities',
   () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> })
 );
 // 스텝 구성 검증을 위해 steps prop 을 그대로 노출하는 mock

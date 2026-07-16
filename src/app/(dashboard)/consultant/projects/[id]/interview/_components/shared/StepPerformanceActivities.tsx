@@ -10,10 +10,7 @@ import { Button } from '@/components/ui/button';
 
 import type { RoadmapStepProps } from './types';
 import type { RoadmapPerformanceActivity } from '@/lib/schemas/interview-roadmap';
-import {
-  INTERVIEW_METHOD_OPTIONS,
-  type InterviewMethod,
-} from '@/lib/schemas/interview-roadmap';
+import { INTERVIEW_METHOD_OPTIONS, type InterviewMethod } from '@/lib/schemas/interview-roadmap';
 
 /**
  * Ⅰ-2 주요 활동 — [인터뷰 입력]
@@ -57,17 +54,13 @@ export function StepPerformanceActivities({
   onChange,
   readOnly = false,
 }: RoadmapStepProps<RoadmapPerformanceActivity[]>) {
-  const rows: RoadmapPerformanceActivity[] =
-    value && value.length > 0 ? value : defaultRows();
+  const rows: RoadmapPerformanceActivity[] = value && value.length > 0 ? value : defaultRows();
 
   function emit(next: RoadmapPerformanceActivity[]) {
     onChange(next);
   }
 
-  function updateRow(
-    idx: number,
-    patch: Partial<RoadmapPerformanceActivity>,
-  ) {
+  function updateRow(idx: number, patch: Partial<RoadmapPerformanceActivity>) {
     const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
     emit(next);
   }
@@ -201,19 +194,17 @@ export function StepPerformanceActivities({
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              (양식 안내) 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정 — 별도 작성 불요
+              (양식 안내) 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정 — 별도 작성
+              불요
             </li>
             <li>
-              컨설팅 수행 차수별(최대 3차)로 수행 일시·내용·방법과 참석자
-              (컨설팅책임자 PM · 기업 내부전문가) 성명을 입력합니다.
+              컨설팅 수행 차수별(최대 3차)로 수행 일시·내용·방법과 참석자 (컨설팅책임자 PM · 기업
+              내부전문가) 성명을 입력합니다.
             </li>
+            <li>수행 방법은 대면(인터뷰·워크숍) / 비대면(화상회의) / 기타 중에서 선택합니다.</li>
             <li>
-              수행 방법은 대면(인터뷰·워크숍) / 비대면(화상회의) / 기타 중에서
-              선택합니다.
-            </li>
-            <li>
-              수립 필요성·주요내용 요약은 본 차수별 활동 결과를 반영하여 결과
-              페이지에서 자동 요약됩니다.
+              수립 필요성·주요내용 요약은 본 차수별 활동 결과를 반영하여 결과 페이지에서 자동
+              요약됩니다.
             </li>
           </ul>
         }
@@ -283,9 +274,7 @@ function RoundRows({
         <td rowSpan={2} className="border border-border p-1 align-top">
           <select
             value={(row.method as InterviewMethod) ?? 'ONSITE'}
-            onChange={(e) =>
-              onUpdate({ method: e.target.value as InterviewMethod })
-            }
+            onChange={(e) => onUpdate({ method: e.target.value as InterviewMethod })}
             disabled={readOnly}
             aria-label={`${label} 수행 방법`}
             className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -314,10 +303,7 @@ function RoundRows({
             className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           />
         </td>
-        <td
-          rowSpan={2}
-          className="border border-border p-1 text-center align-middle"
-        >
+        <td rowSpan={2} className="border border-border p-1 text-center align-middle">
           <ConfirmRemoveRowButton
             title={`${label} 행을 삭제하시겠습니까?`}
             ariaLabel={`차수 삭제 ${idx + 1}`}

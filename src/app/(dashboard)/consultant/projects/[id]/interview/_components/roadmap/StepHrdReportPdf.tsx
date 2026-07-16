@@ -8,7 +8,7 @@ import { ExampleAccordion } from '@/components/forms/ExampleAccordion';
 import { showErrorToast } from '@/lib/utils';
 
 import { uploadInterviewAttachment } from '../../actions';
-import type { RoadmapStepProps } from './types';
+import type { RoadmapStepProps } from '../shared/types';
 import type { RoadmapHrdReportPdf } from '@/lib/schemas/interview-roadmap';
 
 interface StepHrdReportPdfProps extends RoadmapStepProps<RoadmapHrdReportPdf | null> {
@@ -93,10 +93,7 @@ export function StepHrdReportPdf({
         accept=".pdf"
       />
       {value?.parseError && (
-        <p
-          role="alert"
-          className="text-xs text-amber-600"
-        >
+        <p role="alert" className="text-xs text-amber-600">
           PDF 본문 자동 추출 실패: {value.parseError}. LLM 분석은 제한적으로 수행됩니다.
         </p>
       )}
@@ -106,9 +103,7 @@ export function StepHrdReportPdf({
             <li>
               (양식 안내) 기업HRD이음컨설팅 보고서의 AI역량 진단 결과 내용 첨부 — 별도 작성 불요
             </li>
-            <li>
-              등급 매핑: (초급) AI기초형 · (중급) AI탐구형 · (고급) AI활용형·AI선도형
-            </li>
+            <li>등급 매핑: (초급) AI기초형 · (중급) AI탐구형 · (고급) AI활용형·AI선도형</li>
             <li>HRD이음 진단 보고서 (PDF) 1건만 업로드합니다.</li>
             <li>업로드 즉시 본문 텍스트가 자동 추출되어 LLM 프롬프트에 함께 전달됩니다.</li>
             <li>최대 10MB. PDF 외 형식은 허용되지 않습니다.</li>

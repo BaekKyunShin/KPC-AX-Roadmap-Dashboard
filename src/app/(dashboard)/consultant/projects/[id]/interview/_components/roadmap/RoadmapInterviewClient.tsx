@@ -31,13 +31,13 @@ import {
 
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
-import { StepNecessity } from './StepNecessity';
-import { StepMainResult, type StepMainResultValue } from './StepMainResult';
+import { StepNecessity } from '../shared/StepNecessity';
+import { StepMainResult, type StepMainResultValue } from '../shared/StepMainResult';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
-import { StepCompanyRequirements } from './StepCompanyRequirements';
-import { StepTaskAnalysis, type StepTaskAnalysisValue } from './StepTaskAnalysis';
-import { StepTargetTask } from './StepTargetTask';
-import { StepPerformanceActivities } from './StepPerformanceActivities';
+import { StepCompanyRequirements } from '../shared/StepCompanyRequirements';
+import { StepTaskAnalysis, type StepTaskAnalysisValue } from '../shared/StepTaskAnalysis';
+import { StepTargetTask } from '../shared/StepTargetTask';
+import { StepPerformanceActivities } from '../shared/StepPerformanceActivities';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
