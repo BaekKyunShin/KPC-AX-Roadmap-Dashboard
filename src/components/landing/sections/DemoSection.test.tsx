@@ -42,7 +42,9 @@ vi.mock('@/components/roadmap/CoursesList', () => ({
   CoursesList: () => <div data-testid="courses-list">훈련과정 명세서 컴포넌트</div>,
 }));
 
-// demo-sample 데이터 모킹 (v2 구조)
+// demo-sample 데이터 모킹 (2-트랙: 로드맵 + PBL)
+// CoursesList 는 별도 모킹하지만 DemoPblOperation 은 실제 렌더되므로,
+// SAMPLE_PBL_OPERATION 은 렌더가 참조하는 필드를 실제 shape 로 제공한다.
 vi.mock('@/lib/data/demo-sample', () => ({
   SAMPLE_ROADMAP_RESULT: {
     diagnosis_summary: '샘플 진단 요약',
@@ -53,6 +55,33 @@ vi.mock('@/lib/data/demo-sample', () => ({
       main_content: '샘플 주요 내용',
     },
     course_specs: [],
+  },
+  SAMPLE_PBL_OPERATION: {
+    training_goal: '샘플 PBL 훈련 목표',
+    outcome_metrics: {
+      selected_goals: ['불량률 감소', '공정 최적화'],
+      quantitative: '샘플 정량 지표',
+      qualitative: '샘플 정성 지표',
+    },
+    ai_tool_usage_plan: [
+      {
+        stage: '1단계',
+        main_activity: '데이터 수집',
+        ai_tools: ['ChatGPT'],
+        utilized_data: '샘플 데이터',
+        purpose: '샘플 활용 목적',
+        specific_method: '샘플 활용 방법',
+      },
+    ],
+    training_plan: {
+      subject_profile: {
+        course_name: 'AI 품질관리 실무',
+        total_hours: 24,
+        training_contents: [
+          { unit_name: '데이터 수집·정제', detail: '샘플 세부 내용', training_hours: 8 },
+        ],
+      },
+    },
   },
 }));
 
@@ -132,12 +161,17 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 2. 슬라이드 렌더링 (v2: 훈련과정 명세서 1개 — 양식 개정으로 Ⅲ장 4섹션 → 1섹션)
+  // 2. 슬라이드 렌더링 (2-트랙: ① 로드맵 훈련과정 명세서 · ② PBL 운영계획)
   // --------------------------------------------------------------------------
   describe('슬라이드 네비게이션 탭 렌더링', () => {
-    it('"훈련과정 명세서" 슬라이드 탭 라벨이 표시된다', () => {
+    it('"[로드맵] 훈련과정 명세서" 슬라이드 탭 라벨이 표시된다', () => {
       render(<DemoSection />);
-      expect(screen.getAllByText('훈련과정 명세서').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/훈련과정 명세서/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('"[PBL] 운영계획" 슬라이드 탭 라벨이 표시된다', () => {
+      render(<DemoSection />);
+      expect(screen.getAllByText(/운영계획/).length).toBeGreaterThanOrEqual(1);
     });
 
     it('삭제된 v1 탭 라벨(역량 모델링·훈련체계도·연간 훈련계획)은 표시되지 않는다', () => {
@@ -147,14 +181,19 @@ describe('DemoSection', () => {
       expect(screen.queryByText('연간 훈련계획')).not.toBeInTheDocument();
     });
 
-    it('슬라이드 카운터가 "1 / 1"을 표시한다', () => {
+    it('슬라이드 카운터가 "1 / 2"를 표시한다', () => {
       render(<DemoSection />);
-      expect(screen.getByText('1 / 1')).toBeInTheDocument();
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
     });
 
-    it('CoursesList 콘텐츠가 렌더링된다', () => {
+    it('CoursesList(로드맵) 콘텐츠가 렌더링된다', () => {
       render(<DemoSection />);
       expect(screen.getByTestId('courses-list')).toBeInTheDocument();
+    });
+
+    it('PBL 운영계획 콘텐츠(AI 도구 활용 계획)가 렌더링된다', () => {
+      render(<DemoSection />);
+      expect(screen.getByText('AI 도구 활용 계획')).toBeInTheDocument();
     });
 
     it('이전/다음 슬라이드 화살표 버튼이 표시된다', () => {
@@ -165,19 +204,19 @@ describe('DemoSection', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 3. 화살표 네비게이션 (슬라이드 1개 → 순환해도 항상 "1 / 1")
+  // 3. 화살표 네비게이션 (슬라이드 2개 → 1↔2 순환)
   // --------------------------------------------------------------------------
   describe('화살표 네비게이션', () => {
-    it('다음 슬라이드 버튼 클릭 시 단일 슬라이드로 순환한다', () => {
+    it('다음 슬라이드 버튼 클릭 시 두 번째 슬라이드("2 / 2")로 이동한다', () => {
       render(<DemoSection />);
       fireEvent.click(screen.getByRole('button', { name: '다음 슬라이드' }));
-      expect(screen.getByText('1 / 1')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
     });
 
-    it('이전 슬라이드 버튼 클릭 시 단일 슬라이드로 순환한다', () => {
+    it('이전 슬라이드 버튼 클릭 시 마지막 슬라이드("2 / 2")로 순환한다', () => {
       render(<DemoSection />);
       fireEvent.click(screen.getByRole('button', { name: '이전 슬라이드' }));
-      expect(screen.getByText('1 / 1')).toBeInTheDocument();
+      expect(screen.getByText('2 / 2')).toBeInTheDocument();
     });
   });
 
@@ -223,7 +262,9 @@ describe('DemoSection', () => {
           await vi.advanceTimersByTimeAsync(10000);
         });
 
-        expect(screen.getByText('1 / 1')).toBeInTheDocument();
+        // 일시정지가 없다면 8s(슬라이드1 duration) 경과 시 "2 / 2"로 넘어감.
+        // 여전히 "1 / 2"라면 자동 전환이 멈춘 것.
+        expect(screen.getByText('1 / 2')).toBeInTheDocument();
       }
 
       teardownFakeTimers();
@@ -241,7 +282,7 @@ describe('DemoSection', () => {
 
     it('현재 슬라이드 라벨 뱃지가 표시된다', () => {
       render(<DemoSection />);
-      expect(screen.getAllByText('훈련과정 명세서').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/훈련과정 명세서/).length).toBeGreaterThanOrEqual(1);
     });
   });
 });

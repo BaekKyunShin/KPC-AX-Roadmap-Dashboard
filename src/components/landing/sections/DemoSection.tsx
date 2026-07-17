@@ -4,16 +4,19 @@ import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Pause, Play } from 'lucide-react';
 import { CoursesList } from '@/components/roadmap/CoursesList';
-import { ROADMAP_TABS } from '@/types/roadmap-ui';
-import type { RoadmapTabKey } from '@/types/roadmap-ui';
-import { SAMPLE_ROADMAP_RESULT } from '@/lib/data/demo-sample';
+import { SAMPLE_ROADMAP_RESULT, SAMPLE_PBL_OPERATION } from '@/lib/data/demo-sample';
+import { DemoPblOperation } from './DemoPblOperation';
 
 // ============================================================================
 // 타입 정의
 // ============================================================================
 
+type DemoSlideId = 'roadmap-specs' | 'pbl-ops';
+
 interface DemoSlideConfig {
-  key: RoadmapTabKey;
+  id: DemoSlideId;
+  /** 탭·뱃지 라벨 (트랙 프리픽스 포함). */
+  label: string;
   description: string;
   duration: number;
   scrollStartPercent: number;
@@ -30,17 +33,29 @@ const CONTENT_HEIGHT = 340; // px
 const DEMO_URL = 'kpc-ax-roadmap-dashboard.vercel.app';
 
 /**
- * 데모 슬라이드 설정 (산인공 양식 v2 Ⅲ장과 1:1 매핑)
+ * 데모 슬라이드 설정 — 2-트랙 데모(로드맵 + PBL).
  *
- * ⚠️ v2 양식 개정으로 Ⅲ장이 4섹션 → "훈련과정 명세서" 1섹션으로 축소되면서
- *    슬라이드도 1개만 남았다. 캐러셀 UX(자동 전환·좌우 화살표·진행 인디케이터)는
- *    다중 슬라이드를 전제로 설계된 구조이므로 재설계가 필요하다 (사용자 승인 대기).
+ * 산인공 양식 v2 개정으로 로드맵 Ⅲ장이 "훈련과정 명세서" 1섹션으로 축소되어
+ * 로드맵 단일 슬라이드만으로는 캐러셀이 빈 껍데기였다. 이를 두 산출물 트랙
+ * (① 로드맵 훈련과정 명세서 · ② PBL 운영계획)을 각 1슬라이드로 보여주는 구조로
+ * 재설계했다(2026-07, 사용자 승인 완료). 슬라이드는 트랙-불가지(track-agnostic)하게
+ * id·label·description 만 갖고, 콘텐츠는 renderSlideContent 가 id 로 분기한다.
  */
 const DEMO_SLIDES: DemoSlideConfig[] = [
   {
-    key: 'specs',
+    id: 'roadmap-specs',
+    label: '[로드맵] 훈련과정 명세서',
     description: '훈련시기·훈련수준별 훈련과정 명세서 6종 (과정·교과목·시간)',
     duration: 8000,
+    scrollStartPercent: 10,
+    scrollEndPercent: 90,
+    enableScroll: true,
+  },
+  {
+    id: 'pbl-ops',
+    label: '[PBL] 운영계획',
+    description: '제조업 PBL 운영계획 — 훈련 목표·AI 도구 활용 계획·성과지표',
+    duration: 9000,
     scrollStartPercent: 10,
     scrollEndPercent: 90,
     enableScroll: true,
@@ -159,13 +174,12 @@ function ProgressIndicator({
   return (
     <div className="flex justify-center items-center gap-4 sm:gap-6 mt-6 flex-wrap">
       {slides.map((slide, index) => {
-        const tab = ROADMAP_TABS.find((t) => t.key === slide.key);
         const isActive = index === currentIndex;
         const isPast = index < currentIndex;
 
         return (
           <button
-            key={slide.key}
+            key={slide.id}
             onClick={() => onSlideSelect(index)}
             className="group flex flex-col items-center gap-2"
             data-cursor-hover
@@ -175,7 +189,7 @@ function ProgressIndicator({
                 isActive ? 'text-purple-400' : 'text-gray-500 group-hover:text-gray-300'
               }`}
             >
-              {tab?.label}
+              {slide.label}
             </span>
             <div className="w-16 sm:w-20 h-1 rounded-full bg-gray-700 overflow-hidden">
               <div
@@ -208,8 +222,7 @@ export default function DemoSection() {
   const [progress, setProgress] = useState(0);
 
   const currentSlide = DEMO_SLIDES[currentIndex];
-  const currentTab = ROADMAP_TABS.find((tab) => tab.key === currentSlide.key);
-  const currentLabel = currentTab?.label ?? '';
+  const currentLabel = currentSlide.label;
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
@@ -327,13 +340,15 @@ export default function DemoSection() {
   }, []);
 
   // ============================================================================
-  // 슬라이드 컨텐츠 렌더링 (v2: 훈련과정 명세서 1섹션)
+  // 슬라이드 컨텐츠 렌더링 (2-트랙: 로드맵 명세서 · PBL 운영계획)
   // ============================================================================
 
-  const renderSlideContent = (slideKey: RoadmapTabKey) => {
-    switch (slideKey) {
-      case 'specs':
+  const renderSlideContent = (slideId: DemoSlideId) => {
+    switch (slideId) {
+      case 'roadmap-specs':
         return <CoursesList specs={SAMPLE_ROADMAP_RESULT.course_specs} canEdit={false} />;
+      case 'pbl-ops':
+        return <DemoPblOperation operation={SAMPLE_PBL_OPERATION} />;
       default:
         return null;
     }
@@ -385,7 +400,7 @@ export default function DemoSection() {
 
               {DEMO_SLIDES.map((slide, index) => (
                 <div
-                  key={slide.key}
+                  key={slide.id}
                   className={`absolute inset-0 transition-all duration-500 ease-out ${getSlideClassName(index)}`}
                 >
                   <div
@@ -394,7 +409,7 @@ export default function DemoSection() {
                     }}
                     className="w-full h-full overflow-y-auto p-4 sm:p-6"
                   >
-                    {renderSlideContent(slide.key)}
+                    {renderSlideContent(slide.id)}
                   </div>
                 </div>
               ))}

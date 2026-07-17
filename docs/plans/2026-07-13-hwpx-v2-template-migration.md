@@ -315,8 +315,8 @@ PBL 기존 `'BASIC'|'EXPLORER'|'USER'|'LEADER'` → 병합 규칙: `BASIC→BEGI
 | PR 0 준비                                 | ✅ 완료          | `ebe12f1`                                                                                    |
 | PR 1 로드맵 전 계층 + 플레이스홀더 인프라 | ✅ 완료          | `48dc9e6` (양식·HWPX·화면·내보내기) + `94a6ca6` (인터뷰 계층)                                |
 | PR 2 로드맵→PBL 연계 인프라               | ✅ 완료          | FK 074 + `getLatestFinalRoadmap`/`fetchLinkedRoadmapData` 헬퍼 + 생성 폼 선행 로드맵 선택 UI |
-| **PR 3 PBL 전 계층**                      | ⬜ **다음 차례** | —                                                                                            |
-| PR 4 최종 검증·정리                       | ⬜               | —                                                                                            |
+| PR 3 PBL 전 계층                          | ✅ 완료          | `c0a30c1` 공유 컴포넌트 승격 + `d8d65d6` 데이터·연계·HWPX·UI 수직 완결 + 랜딩 캐러셀 2트랙   |
+| **PR 4 최종 검증·정리**                   | ⬜ **다음 차례** | —                                                                                            |
 
 **PR 1 최종 검증 통과:** validate 6,406건 · build 통과 · pytest 로드맵 27 / PBL 30 · 마커정합 166=166 · 실물 HWPX end-to-end(과업 개선점 열 출력).
 
@@ -330,10 +330,20 @@ PBL 기존 `'BASIC'|'EXPLORER'|'USER'|'LEADER'` → 병합 규칙: `BASIC→BEGI
 - 생성 폼(`ops/projects/new/page.tsx`): track=PBL 시 조건부 로드맵 Select(**선택 사항**, business_reg_no→company_name 자동추천 정렬 + "★ 동일 기업", 미선택 시 빈 양식 안내). **보정 UI 미도입**(현재 PBL 0건).
 - 검증: `validate` 6,420건 · `build` exit 0 · 사전 grep 완료.
 
-**PR 3 재개 방법:** 같은 브랜치(`feat/hwpx-v2-roadmap`)에서 이어서. PR 2 산출물 `fetchLinkedRoadmapData`(서버 전용, `index.ts` 미노출 → Server Action에서 직접 import)를 PBL Ⅱ장 읽기 전용 렌더 + `hwpx-payload-pbl.ts` 의 `linkedRoadmap` 키에 연결. `_components/roadmap/` 6개 Step 을 `_components/shared/` 로 승격(로드맵 회귀 테스트 필수). 상세는 위 "실행 계획 > PR 3" 참조.
+**PR 3 완료 내역 (2026-07-17):**
+
+- **공유 컴포넌트 승격**(`c0a30c1`): `_components/roadmap/` 6개 Step → `_components/shared/`, `RoadmapStepProps`→`StepProps` 통합(별칭 하위호환). 로드맵 회귀 98건 그린.
+- **데이터**(`d8d65d6`): `outcome_analysis` 제거·`outcome_metrics`를 `operation_plan`으로 이동. 인터뷰 AI역량 진단·문제 우선순위·수행활동 자체입력 제거(로드맵 연계로 대체). `z.preprocess 4→3`은 필드 소멸로 불필요.
+- **로드맵 자동 연계**: `hydrateRoadmapInterview`(camelCase 복원, `mapDbToRoadmapInterview` 재사용) + `fetchLinkedRoadmapData`를 인터뷰·결과 페이지 로더·HWPX 액션에 주입 → Ⅱ장 수립·요구분석·Ⅲ-1 수행활동·Ⅲ-3-가 과업목록 자동 표출. 미연계 시 빈 양식 + 안내 배너.
+- **인터뷰 9스텝**(Ⅲ-3 로드맵 과업 읽기전용 + AI필요도·훈련선정 2컬럼), **결과 5탭→4탭**(Ⅴ 성과분석 삭제, Ⅱ탭 연계 읽기전용 + 미연결 배너), `AiLevel4Check` 삭제.
+- **HWPX**: SSOT PBL v2 전면 재작성 + `generate.py` `_generate_pbl` 좌표 코드 삭제·마커 전환. **PBL 생성 43초→0.6초**. verify 스크립트 PBL 포함(마커 280 완전 일치).
+- **랜딩 캐러셀**: `DemoSection` 2트랙(로드맵 명세서 + PBL 운영계획) 재설계 — 로드맵 탭 축소 잔재 해소(방향 A 승인).
+- **검증**: validate 6,380건 · build exit 0 · pytest 120 · 마커정합 PBL 280 / roadmap 166 · 사전 grep(AiLevel4Check·diffusion 0).
+
+> ⚠️ **미실물 검증**: 한컴오피스 시각 검증(8×5 서명란·로드맵 연계 Ⅱ장·6×6 과업선정표·셀 줄바꿈)은 **PR 4에서 사용자 로컬 수행 필요**. 자동 테스트로는 셀 정렬·글자 겹침을 못 잡는다.
 
 **PR 1 에서 발견·기록한 것:** 아래 "구현 중 확인된 사실" 섹션 (양식 세로병합 제약, PBL 43초 성능 원인, 부수 수정 버그).
-**미해결 승인 대기:** 랜딩 데모 캐러셀(`DemoSection.tsx`) — 로드맵 탭 1개만 남아 캐러셀 껍데기화. 현재 최소 수정만. mockup 승인 후 재설계 (아래 "별도 승인이 필요한 UI 변경").
+**미해결 승인 대기:** 없음 — 랜딩 데모 캐러셀은 PR 3 에서 2트랙(로드맵/PBL) 재설계로 해소(방향 A 승인).
 
 ---
 

@@ -1,4 +1,6 @@
 import type { RoadmapResult } from '@/lib/services/roadmap';
+import type { PBLOperationPlan } from '@/lib/services/pbl/pbl-types';
+import { PBL_EVALUATION_SCALE_DESCRIPTION } from '@/lib/services/pbl/pbl-types';
 
 // =============================================================================
 // 데모용 샘플 데이터 — 산인공 공식 양식 v2 (2026-07-13 개정)
@@ -206,4 +208,185 @@ export const SAMPLE_ROADMAP_RESULT: RoadmapResult = {
       '초급은 전 직원 공통 소양, 중급은 CS·마케팅 실무자, 고급은 리더·경영진 대상 PBL로 구성.',
   },
   course_specs: SAMPLE_COURSE_SPECS,
+};
+
+// =============================================================================
+// PBL 데모 샘플 — 산인공 PBL 양식 2번 Ⅳ장 (제조업 케이스)
+// -----------------------------------------------------------------------------
+// 로드맵 샘플((주)샘플유통·유통서비스업)과 별개의 독립 예시로, PBL 트랙을 보여주기
+// 위한 제조업 현장 케이스다. 랜딩 데모(DemoSection)의 [PBL] 운영계획 슬라이드에서
+// training_goal · outcome_metrics · ai_tool_usage_plan · 교과목 요약만 렌더링하며,
+// training_plan/evaluation_plan 은 PBLOperationPlan 타입을 만족시키기 위한 값이다.
+// =============================================================================
+export const SAMPLE_PBL_OPERATION: PBLOperationPlan = {
+  training_goal:
+    '생산 현장의 설비·품질 데이터를 AI로 분석해 불량 원인을 조기에 진단하고, ' +
+    '숙련 기술자의 노하우를 표준 작업 매뉴얼로 형식지화하여 불량률과 설비 비가동 시간을 함께 줄인다.',
+  outcome_metrics: {
+    selected_goals: ['불량률 감소', '공정 최적화', '기술 매뉴얼 개발'],
+    quantitative:
+      '훈련 후 3개월 내 공정 불량률 12% → 7% 이하로 감소, 설비 이상 대응 리드타임 30% 단축',
+    qualitative:
+      '현장 작업자가 AI 분석 리포트를 스스로 해석·활용하는 데이터 기반 문제해결 문화 정착, 숙련 노하우의 매뉴얼화',
+  },
+  ai_tool_usage_plan: [
+    {
+      stage: '1단계',
+      main_activity: '데이터 수집·전처리',
+      ai_tools: ['ChatGPT', 'Claude', 'Python(Pandas)'],
+      utilized_data: '설비 센서 로그, 일별 생산·불량 집계표, 품질 검사 기록',
+      purpose: '흩어진 현장 데이터를 분석 가능한 형태로 통합하고 결측·이상치를 식별한다.',
+      specific_method:
+        'AI에 데이터 스키마와 표본을 제시해 전처리 스크립트 초안을 생성하고, ' +
+        '불량 코드 체계를 표준화한 뒤 분석용 데이터셋으로 통합한다.',
+    },
+    {
+      stage: '2단계',
+      main_activity: '불량 원인 분석',
+      ai_tools: ['Claude', 'Julius AI', 'Google Sheets'],
+      utilized_data: '통합 불량 데이터셋, 공정 조건(온도·압력·속도) 이력',
+      purpose: '불량 유형별 핵심 원인 변수를 도출하고 공정 조건과의 상관관계를 파악한다.',
+      specific_method:
+        '자연어로 분석을 요청해 불량 유형별 상관·회귀 결과를 얻고, ' +
+        'AI가 제안한 가설을 현장 엔지니어가 검증해 핵심 관리 변수를 선정한다.',
+    },
+    {
+      stage: '3단계',
+      main_activity: '개선안 도출·표준화',
+      ai_tools: ['ChatGPT', 'Gamma', 'Notion AI'],
+      utilized_data: '원인 분석 결과, 기존 작업표준서(SOP)',
+      purpose: '분석 결과를 현장 개선안과 표준 작업 매뉴얼로 전환한다.',
+      specific_method:
+        '개선안을 AI와 함께 SOP 문서·교육 자료로 구조화하고, ' +
+        'Gamma로 현장 공유용 요약 리포트를 자동 생성해 전 작업조에 배포한다.',
+    },
+  ],
+  training_plan: {
+    overview: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      training_period: { start: '2026-03-02', end: '2026-03-27' },
+    },
+    learning_group: {
+      instructors: [
+        {
+          type: '외부',
+          role: '팀장',
+          affiliation: 'KPC AI 컨설팅',
+          position: '수석 컨설턴트',
+          name: '김현우',
+        },
+        {
+          type: '내부',
+          role: '팀원',
+          affiliation: '생산기술팀',
+          position: '팀장',
+          name: '이정민',
+        },
+      ],
+      trainees: [
+        { role: '팀원', affiliation: '품질관리팀', position: '주임', name: '박서준' },
+        { role: '팀원', affiliation: '생산1팀', position: '반장', name: '최유진' },
+      ],
+    },
+    subject_profile: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      total_hours: 24,
+      training_goals: [
+        'AI로 생산 데이터를 분석해 불량 원인을 진단할 수 있다',
+        '공정 조건과 불량의 상관관계를 해석해 개선안을 도출할 수 있다',
+        '숙련 노하우를 표준 작업 매뉴얼로 형식지화할 수 있다',
+      ],
+      ai_tools: ['ChatGPT', 'Claude', 'Julius AI', 'Gamma'],
+      utilized_data: '설비 센서 로그, 생산·불량 집계표, 품질 검사 기록, 작업표준서(SOP)',
+      analysis_method: 'LLM, 상관·회귀 분석, RAG',
+      training_contents: [
+        {
+          unit_name: '생산 데이터 수집·정제',
+          detail:
+            '설비 로그·품질 기록을 통합하고 AI로 전처리 스크립트를 작성해 분석용 데이터셋 구축',
+          training_hours: 8,
+          instructor_hours: { external: 6, internal: 2 },
+        },
+        {
+          unit_name: '불량 원인 AI 분석',
+          detail: '공정 조건과 불량 데이터의 상관관계를 AI로 분석하고 핵심 관리 변수 도출',
+          training_hours: 8,
+          instructor_hours: { external: 6, internal: 2 },
+        },
+        {
+          unit_name: '개선안 표준화·매뉴얼화',
+          detail: '분석 결과 기반 개선안을 SOP·교육자료로 문서화하고 현장에 적용',
+          training_hours: 8,
+          instructor_hours: { external: 5, internal: 3 },
+        },
+      ],
+      total_sum_hours: 24,
+    },
+    facilities: [
+      {
+        seq: 1,
+        category: '시설',
+        name: '스마트팩토리 교육장',
+        spec: '20인 수용, 실습용 PC 20대',
+        location: '본사 3층',
+      },
+      {
+        seq: 2,
+        category: '장비',
+        name: '데이터 분석용 노트북',
+        spec: 'RAM 16GB, Python 분석 환경 사전 구성',
+        location: '교육장',
+      },
+    ],
+    training_instructors: [
+      {
+        name: '김현우',
+        internal_external: '외부',
+        career_years: 12,
+        work_name: 'AI 기반 스마트 품질관리 실무',
+        detailed_training_content: [
+          '생산 데이터 수집·정제',
+          '불량 원인 AI 분석',
+          '개선안 표준화·매뉴얼화',
+        ],
+      },
+    ],
+  },
+  evaluation_plan: {
+    course_evaluation: {
+      course_name: 'AI 기반 스마트 품질관리 실무',
+      evaluation_methods: ['포트폴리오', '문제해결시나리오'],
+      evaluation_target: '품질관리팀·생산팀 재직자 12명',
+      evaluation_date: '2026-03-27',
+      evaluation_criteria: '3개 업무(단원) 중 수행 수준 4 이상 2개(60%) 이상 시 PASS',
+      evaluation_result: '예정',
+      performance_checklist: [
+        {
+          unit_name: '생산 데이터 수집·정제',
+          evaluation_criteria: 'AI로 전처리 스크립트를 작성해 분석용 데이터셋을 구축한다',
+          performance_level: 4,
+        },
+        {
+          unit_name: '불량 원인 AI 분석',
+          evaluation_criteria: '공정 조건과 불량의 상관관계를 해석해 핵심 관리 변수를 도출한다',
+          performance_level: 4,
+        },
+        {
+          unit_name: '개선안 표준화·매뉴얼화',
+          evaluation_criteria: '분석 결과를 SOP·교육자료로 문서화한다',
+          performance_level: 3,
+        },
+      ],
+      overall_comment: '현장 데이터 기반 문제해결 역량이 전반적으로 향상됨. 후속 심화 과정 권장.',
+      evaluation_scale: PBL_EVALUATION_SCALE_DESCRIPTION,
+    },
+    result_evaluation: {
+      satisfaction_survey: [5, 4, 5, 4, 4],
+      achievement_survey: [4, 4, 5],
+      external_expert_survey: [5, 4, 4, 5, 4],
+      practical_application_survey: [4, 4, 5, 4],
+      respondent_name: '이정민',
+      evaluation_date: '2026-03-27',
+    },
+  },
 };
