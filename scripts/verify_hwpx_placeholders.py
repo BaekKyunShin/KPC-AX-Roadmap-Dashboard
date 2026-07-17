@@ -110,8 +110,6 @@ def main() -> int:
     args = ap.parse_args()
 
     tracks = sorted(TEMPLATES) if args.all else [args.track or "roadmap"]
-    # PBL 은 아직 v1 (좌표 방식) — 마커가 없으므로 검증 대상에서 제외
-    tracks = [t for t in tracks if t != "pbl"]
 
     rc = 0
     for t in tracks:

@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { FormTable, type FormTableRow } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
+import { Badge } from '@/components/ui/badge';
 import { bulletize, bulletizeText, parseBullets, splitByUnit } from '@/lib/utils/list-format';
 import type {
   PBLInstructor,
@@ -19,30 +20,31 @@ import type { PBLResultEditPayload, TabPBLCommonProps } from './types';
 /**
  * Ⅳ. AI 기반 운영계획 탭 — PBL 결과 V2.
  *
- * 섹션:
- *  - P-16 Ⅳ-1 훈련 목표                — LLM placeholder (Task 2.10)
- *  - P-17 Ⅳ-2 AI 도구 활용 계획        — LLM placeholder
- *  - P-18 Ⅳ-3-가 훈련과정 개요          — LLM placeholder
- *  - P-19 Ⅳ-3-나 학습그룹 구성          — LLM placeholder
- *  - P-20 Ⅳ-3-다 훈련 교과목 프로파일   — LLM placeholder
- *  - P-21 Ⅳ-3-라 시설·장비              — LLM placeholder
- *  - P-22 Ⅳ-3-마 훈련강사               — LLM placeholder
- *  - P-23 Ⅳ-4-가 과정평가 계획          — LLM placeholder
+ * 섹션 (양식 v2 — 성과분석 측정지표가 Ⅳ-2 로 이동, 이후 섹션 번호 한 칸씩 밀림):
+ *  - Ⅳ-1 훈련 목표                — LLM 생성
+ *  - Ⅳ-2 성과분석 측정지표        — LLM 생성 (v1 Ⅴ장에서 이동, operation_plan.outcome_metrics)
+ *  - Ⅳ-3 AI 도구 활용 계획        — LLM 생성
+ *  - Ⅳ-4-가 훈련과정 개요          — LLM 생성
+ *  - Ⅳ-4-나 학습그룹 구성          — LLM 생성
+ *  - Ⅳ-4-다 훈련 교과목 프로파일   — LLM 생성
+ *  - Ⅳ-4-라 시설·장비              — LLM 생성
+ *  - Ⅳ-4-마 훈련강사               — LLM 생성
+ *  - Ⅳ-5-가 과정평가 계획          — LLM 생성
  *
  * 제외 (양식·결과 화면 제외 항목):
- *  - **Ⅳ-4-나 결과평가 계획** [고정 양식·결과 화면 제외] — 렌더 금지.
+ *  - **Ⅳ-5-나 결과평가 계획** [고정 양식·결과 화면 제외] — 렌더 금지.
  *    양식에 고정 설문(만족도 · 성취도 · 외부전문가 · 현업적용도) 이 포함되어 있지만
  *    계획서 §1.2 기준 결과 화면에서는 노출하지 않는다.
  */
 export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
   const ops = version?.pbl_content?.operation_plan;
-  const trainingContents =
-    ops?.training_plan?.subject_profile?.training_contents ?? [];
+  const outcomeMetrics = ops?.outcome_metrics;
+  const trainingContents = ops?.training_plan?.subject_profile?.training_contents ?? [];
   const trainingInstructors = ops?.training_plan?.training_instructors ?? [];
 
   const saveTrainingContent = async (index: number, nextDetail: string) => {
     const next: PBLTrainingContent[] = trainingContents.map((c, i) =>
-      i === index ? { ...c, detail: nextDetail } : c,
+      i === index ? { ...c, detail: nextDetail } : c
     );
     const payload: PBLResultEditPayload = {
       operations: {
@@ -59,7 +61,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
       throw new Error('세부 훈련 내용은 최소 1개 항목이 필요합니다.');
     }
     const next: PBLTrainingInstructor[] = trainingInstructors.map((it, i) =>
-      i === index ? { ...it, detailed_training_content: list } : it,
+      i === index ? { ...it, detailed_training_content: list } : it
     );
     const payload: PBLResultEditPayload = {
       operations: { training_plan: { training_instructors: next } },
@@ -69,6 +71,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
 
   // 각 하위 섹션별로 LLM 결과 존재 여부를 판정. Task 2.10 이후 실제 렌더 확장.
   const hasTrainingGoal = Boolean(ops?.training_goal && ops.training_goal.trim().length > 0);
+  // Ⅳ-2 성과분석 측정지표 (v1 Ⅴ장에서 이동) — selected_goals·정량·정성 중 하나라도 있으면 표출.
+  const hasOutcomeMetrics = Boolean(
+    outcomeMetrics &&
+    ((outcomeMetrics.selected_goals?.length ?? 0) > 0 ||
+      outcomeMetrics.quantitative?.trim() ||
+      outcomeMetrics.qualitative?.trim())
+  );
   const hasAIToolUsage = (ops?.ai_tool_usage_plan?.length ?? 0) > 0;
   const hasCourseOverview = Boolean(ops?.training_plan?.overview?.course_name);
   const hasLearningGroup =
@@ -76,20 +85,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
     (ops?.training_plan?.learning_group?.trainees?.length ?? 0) > 0;
   const hasSubjectProfile = Boolean(ops?.training_plan?.subject_profile?.course_name);
   const hasFacilities = (ops?.training_plan?.facilities?.length ?? 0) > 0;
-  const hasTrainingInstructors =
-    (ops?.training_plan?.training_instructors?.length ?? 0) > 0;
-  const hasCourseEvaluation = Boolean(
-    ops?.evaluation_plan?.course_evaluation?.course_name,
-  );
+  const hasTrainingInstructors = (ops?.training_plan?.training_instructors?.length ?? 0) > 0;
+  const hasCourseEvaluation = Boolean(ops?.evaluation_plan?.course_evaluation?.course_name);
 
   return (
     <div className="space-y-6">
       {/* Ⅳ-1 훈련 목표 */}
-      <SectionCard
-        title="Ⅳ-1. 훈련 목표"
-        description="LLM 생성 (Task 2.10)"
-        dataSource="ai"
-      >
+      <SectionCard title="Ⅳ-1. 훈련 목표" description="LLM 생성 (Task 2.10)" dataSource="ai">
         {hasTrainingGoal ? (
           <p className="whitespace-pre-wrap text-sm">{ops?.training_goal}</p>
         ) : (
@@ -97,9 +99,69 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
         )}
       </SectionCard>
 
-      {/* Ⅳ-2 AI 도구 활용 계획 */}
+      {/* Ⅳ-2 성과분석 측정지표 (v1 Ⅴ장에서 이동 — operation_plan.outcome_metrics) */}
       <SectionCard
-        title="Ⅳ-2. AI 도구 활용 계획"
+        title="Ⅳ-2. 성과분석 측정지표"
+        description="선택 훈련 목표 + 정량·정성 측정 지표 (LLM 생성, v1 Ⅴ장에서 이동)"
+        dataSource="ai"
+      >
+        {hasOutcomeMetrics ? (
+          <div className="space-y-3">
+            {(outcomeMetrics?.selected_goals?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">선택된 훈련 목표</span>
+                {outcomeMetrics?.selected_goals.map((goal) => (
+                  <Badge key={goal} variant="secondary">
+                    {goal}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <FormTable
+              caption="성과분석 측정 지표"
+              bodyRows={[
+                {
+                  cells: [
+                    {
+                      content: '정량 지표',
+                      header: true,
+                      className: 'w-[160px]',
+                      align: 'center',
+                    },
+                    {
+                      content: (
+                        <span className="whitespace-pre-wrap text-sm">
+                          {outcomeMetrics?.quantitative?.trim() || '-'}
+                        </span>
+                      ),
+                      align: 'left',
+                    },
+                  ],
+                },
+                {
+                  cells: [
+                    { content: '정성 지표', header: true, align: 'center' },
+                    {
+                      content: (
+                        <span className="whitespace-pre-wrap text-sm">
+                          {outcomeMetrics?.qualitative?.trim() || '-'}
+                        </span>
+                      ),
+                      align: 'left',
+                    },
+                  ],
+                },
+              ]}
+            />
+          </div>
+        ) : (
+          <RegeneratePlaceholder section="Ⅳ-2 성과분석 측정지표" />
+        )}
+      </SectionCard>
+
+      {/* Ⅳ-3 AI 도구 활용 계획 */}
+      <SectionCard
+        title="Ⅳ-3. AI 도구 활용 계획"
         description="단계별 주요활동 · AI 도구 · 데이터 · 목적 · 방법 (LLM 생성)"
         dataSource="ai"
       >
@@ -117,13 +179,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             ))}
           </ul>
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-2 AI 도구 활용 계획" />
+          <RegeneratePlaceholder section="Ⅳ-3 AI 도구 활용 계획" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-가 훈련과정 개요 (P-18 양식 2x2 mini-table) */}
+      {/* Ⅳ-4-가 훈련과정 개요 (P-18 양식 2x2 mini-table) */}
       <SectionCard
-        title="Ⅳ-3-가. 훈련과정 개요"
+        title="Ⅳ-4-가. 훈련과정 개요"
         description="과정명 · 훈련기간 (LLM 생성)"
         dataSource="ai"
       >
@@ -144,9 +206,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                 cells: [
                   { content: '훈련기간', header: true },
                   {
-                    content: formatTrainingPeriod(
-                      ops?.training_plan.overview.training_period,
-                    ),
+                    content: formatTrainingPeriod(ops?.training_plan.overview.training_period),
                     align: 'left',
                   },
                 ],
@@ -154,13 +214,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             ]}
           />
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3-가 훈련과정 개요" />
+          <RegeneratePlaceholder section="Ⅳ-4-가 훈련과정 개요" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-나 학습그룹 구성 (P-19 양식 6 컬럼 — instructors + trainees 병합) */}
+      {/* Ⅳ-4-나 학습그룹 구성 (P-19 양식 6 컬럼 — instructors + trainees 병합) */}
       <SectionCard
-        title="Ⅳ-3-나. 학습그룹 구성"
+        title="Ⅳ-4-나. 학습그룹 구성"
         description="강사(외부/내부) + 훈련생 명단 (LLM 생성)"
         dataSource="ai"
       >
@@ -181,27 +241,24 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             ]}
             bodyRows={buildLearningGroupRows(
               ops?.training_plan.learning_group.instructors ?? [],
-              ops?.training_plan.learning_group.trainees ?? [],
+              ops?.training_plan.learning_group.trainees ?? []
             )}
           />
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3-나 학습그룹 구성" />
+          <RegeneratePlaceholder section="Ⅳ-4-나 학습그룹 구성" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-다 훈련 교과목 프로파일 (P-20 양식 15x10 — 메타 표 + training_contents 표 분리) */}
+      {/* Ⅳ-4-다 훈련 교과목 프로파일 (P-20 양식 15x10 — 메타 표 + training_contents 표 분리) */}
       <SectionCard
-        title="Ⅳ-3-다. 훈련 교과목 프로파일"
+        title="Ⅳ-4-다. 훈련 교과목 프로파일"
         description="과정명 · 전체 훈련시간 · 훈련목표 · AI 도구 · 교과목 (LLM 생성)"
         dataSource="ai"
       >
         {hasSubjectProfile ? (
           <div className="space-y-4">
-            <SubjectProfileMetaTable
-              profile={ops!.training_plan.subject_profile}
-            />
-            {(ops?.training_plan.subject_profile.training_contents.length ??
-              0) > 0 ? (
+            <SubjectProfileMetaTable profile={ops!.training_plan.subject_profile} />
+            {(ops?.training_plan.subject_profile.training_contents.length ?? 0) > 0 ? (
               <FormTable
                 caption="훈련 교과목 (단원별)"
                 headerRows={[
@@ -252,10 +309,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                       align: 'left',
                     },
                     {
-                      content:
-                        c.training_hours != null
-                          ? String(c.training_hours)
-                          : '-',
+                      content: c.training_hours != null ? String(c.training_hours) : '-',
                       align: 'center',
                     },
                     {
@@ -276,19 +330,17 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                 }))}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">
-                교과목 행이 아직 입력되지 않았습니다.
-              </p>
+              <p className="text-sm text-muted-foreground">교과목 행이 아직 입력되지 않았습니다.</p>
             )}
           </div>
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3-다 훈련 교과목 프로파일" />
+          <RegeneratePlaceholder section="Ⅳ-4-다 훈련 교과목 프로파일" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-라 시설·장비 (P-21 양식 5 컬럼) */}
+      {/* Ⅳ-4-라 시설·장비 (P-21 양식 5 컬럼) */}
       <SectionCard
-        title="Ⅳ-3-라. 시설·장비"
+        title="Ⅳ-4-라. 시설·장비"
         description="시설 · 장비 목록 (LLM 생성)"
         dataSource="ai"
       >
@@ -317,13 +369,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             }))}
           />
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3-라 시설·장비" />
+          <RegeneratePlaceholder section="Ⅳ-4-라 시설·장비" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-3-마 훈련강사 (P-22 양식 5 컬럼) */}
+      {/* Ⅳ-4-마 훈련강사 (P-22 양식 5 컬럼) */}
       <SectionCard
-        title="Ⅳ-3-마. 훈련강사"
+        title="Ⅳ-4-마. 훈련강사"
         description="강사별 경력 · 담당 교과 (LLM 생성)"
         dataSource="ai"
       >
@@ -346,8 +398,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                 { content: i.name || '-', align: 'left' },
                 { content: i.internal_external || '-', align: 'center' },
                 {
-                  content:
-                    i.career_years != null ? `${i.career_years}년` : '-',
+                  content: i.career_years != null ? `${i.career_years}년` : '-',
                   align: 'center',
                 },
                 { content: i.work_name || '-', align: 'left' },
@@ -371,27 +422,25 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             }))}
           />
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3-마 훈련강사" />
+          <RegeneratePlaceholder section="Ⅳ-4-마 훈련강사" />
         )}
       </SectionCard>
 
-      {/* Ⅳ-4-가 과정평가 계획 */}
+      {/* Ⅳ-5-가 과정평가 계획 */}
       <SectionCard
-        title="Ⅳ-4-가. 과정평가 계획"
+        title="Ⅳ-5-가. 과정평가 계획"
         description="평가방법 · 평가기준 · 수행 수준 체크리스트 (LLM 생성)"
         dataSource="ai"
       >
         {hasCourseEvaluation ? (
-          <p className="text-sm">
-            {ops?.evaluation_plan.course_evaluation.course_name}
-          </p>
+          <p className="text-sm">{ops?.evaluation_plan.course_evaluation.course_name}</p>
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-4-가 과정평가 계획" />
+          <RegeneratePlaceholder section="Ⅳ-5-가 과정평가 계획" />
         )}
       </SectionCard>
 
       {/*
-        Ⅳ-4-나 결과평가 계획
+        Ⅳ-5-나 결과평가 계획
         [고정 양식·결과 화면 제외] — 렌더 금지 (계획서 §1.2)
         만족도 · 성취도 · 외부전문가 · 현업적용도 설문은 양식 고정으로 결과 화면에서
         노출하지 않는다. 본 주석은 의도적 미렌더의 근거를 코드에서 추적 가능하게
@@ -417,10 +466,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
           cells: [
             { content: '전체 훈련시간', header: true },
             {
-              content:
-                profile.total_hours != null
-                  ? `${profile.total_hours} 시간`
-                  : '-',
+              content: profile.total_hours != null ? `${profile.total_hours} 시간` : '-',
               align: 'left',
             },
           ],
@@ -467,10 +513,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
           cells: [
             { content: '합계 (자동 산출)', header: true },
             {
-              content:
-                profile.total_sum_hours != null
-                  ? `${profile.total_sum_hours} 시간`
-                  : '-',
+              content: profile.total_sum_hours != null ? `${profile.total_sum_hours} 시간` : '-',
               align: 'left',
             },
           ],
@@ -489,7 +532,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
  */
 function buildLearningGroupRows(
   instructors: PBLInstructor[],
-  trainees: PBLTrainee[],
+  trainees: PBLTrainee[]
 ): FormTableRow[] {
   const instructorRows: FormTableRow[] = instructors.map((i) => ({
     cells: [
@@ -515,9 +558,7 @@ function buildLearningGroupRows(
 }
 
 /** P-18 훈련기간 셀 — 양 끝값이 모두 있어야 범위 텍스트, 아니면 '-'. */
-function formatTrainingPeriod(
-  period: { start?: string; end?: string } | undefined,
-): string {
+function formatTrainingPeriod(period: { start?: string; end?: string } | undefined): string {
   const start = period?.start?.trim();
   const end = period?.end?.trim();
   return start && end ? `${start} ~ ${end}` : '-';

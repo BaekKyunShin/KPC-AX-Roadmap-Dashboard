@@ -66,7 +66,8 @@ for (const track of ['roadmap', 'pbl']) {
 
 // 섹션 cross-check
 //   roadmap: 양식 v2 (2026-07-13 개정) 로 Ⅲ장이 축소되어 R-01..R-13 (13 섹션)
-//   pbl:     아직 v1 — P-01..P-29 (29 섹션)
+//   pbl:     양식 v2 마커 방식 — P-01..P-28 (28 섹션: 문제우선순위·Ⅲ-4 AI역량 2표·Ⅴ장 삭제,
+//            Ⅱ-1-나 로드맵수립·Ⅱ-2 요구분석·Ⅲ-1 수행활동·Ⅲ-3-가 6×6 선정 로드맵 연계 추가)
 const meaningfulRoadmap = (data.roadmap || []).filter((e) => isMeaningfulId(e.id));
 const meaningfulPbl = (data.pbl || []).filter((e) => isMeaningfulId(e.id));
 const totalMeaningful = meaningfulRoadmap.length + meaningfulPbl.length;
@@ -78,7 +79,7 @@ check(
   meaningfulRoadmap.length >= 13,
   `roadmap meaningful entries < 13 (got ${meaningfulRoadmap.length})`
 );
-check(meaningfulPbl.length >= 29, `pbl meaningful entries < 29 (got ${meaningfulPbl.length})`);
+check(meaningfulPbl.length >= 28, `pbl meaningful entries < 28 (got ${meaningfulPbl.length})`);
 
 // strategy taxonomy 등록된 값만 사용
 const allowedStrategies = new Set([

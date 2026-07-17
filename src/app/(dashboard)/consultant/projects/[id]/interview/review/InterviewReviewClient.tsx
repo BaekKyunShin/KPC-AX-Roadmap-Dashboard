@@ -388,23 +388,6 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection
-        title={`Ⅲ-1. 수행 활동 (${(data.activities ?? []).length}건)`}
-        {...sigProps}
-      >
-        {(data.activities ?? []).length > 0 ? (
-          <ul className="list-decimal space-y-2 pl-5 text-sm">
-            {(data.activities ?? []).map((a, i) => (
-              <li key={i}>
-                {a.round}차 · {a.date || '-'} · {a.content || '-'} · 방법: {a.method || '-'}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">수행 활동이 입력되지 않았습니다.</p>
-        )}
-      </CollapsibleSection>
-
       <CollapsibleSection title="Ⅲ-2-가. 문제 정의서" {...sigProps}>
         {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
             모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}

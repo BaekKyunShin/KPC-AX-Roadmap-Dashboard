@@ -77,6 +77,12 @@ const { mockAfter, flushAfterCallbacks, pendingCallbacks } = vi.hoisted(() => {
   return { mockAfter: after, flushAfterCallbacks: flush, pendingCallbacks: pending };
 });
 vi.mock('next/server', () => ({ after: mockAfter }));
+
+// 선행 로드맵 연계는 pbl-roadmap-link.test.ts 로 별도 검증. 여기서는 미연계(null)로 고정.
+vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
+  fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
+  hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
+}));
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue({
     get: (key: string) => (key === 'host' ? 'localhost:3000' : null),
@@ -152,41 +158,6 @@ function validPBLInterview() {
     },
     hrdReportPdf: null,
     courseNecessity: 'AI 역량 내재화 필요',
-    // R8 PBL-자체-03 — 평면 4행 배열
-    activities: [
-      {
-        round: 1,
-        role: 'PM' as const,
-        personName: '홍길동',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'EXTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'INTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-      {
-        round: 1,
-        role: 'JURISDICTION_MANAGER' as const,
-        personName: '',
-        date: '2026-05-01',
-        content: '인터뷰',
-        method: 'ONSITE',
-      },
-    ],
     // R8 PBL-자체-04 — 4 정형 항목
     problemDefinitionSheet: {
       background: '문제1',
@@ -194,18 +165,23 @@ function validPBLInterview() {
       scope: '범위',
       constraints: '제약',
     },
-    priority: {
-      items: [{ problem: '문제1', score: 5, rank: 1 }],
-      method: 'AHP 설문 평균',
-    },
+    // V2: Ⅲ-3 훈련대상 업무 (로드맵 과업 선정 + 선정 사유 + 세부내용)
     target: {
-      name: '훈련대상 업무',
-      scope: '생산팀 20명',
+      taskSelections: [
+        { ai_necessity: '높음', training_selected: true },
+        { ai_necessity: '중간', training_selected: false },
+      ],
       necessity: '품질 편차 해소',
-      details: [],
+      details: [
+        {
+          title: '품질 검사 자동화',
+          as_is: '육안 검사',
+          to_be: 'AI 비전',
+          required_knowledge: '결함 유형',
+          required_skill: 'CV 모델',
+        },
+      ],
     },
-    currentAiLevel: { level: 'BASIC' as const, note: '' },
-    expectedAiLevel: { level: 'USER' as const, note: '' },
   };
 }
 
@@ -1024,10 +1000,9 @@ describe('fetchPBLPageDataV2', () => {
     expect(r.data.interview.overview?.trainingHours).toBe(40);
     expect(r.data.interview.analysis?.companyIssues).toBe('품질 편차 심각');
     expect(r.data.interview.analysis?.hrdReportPdf?.url).toBe('https://signed.example/hrd.pdf');
-    // Ⅲ flat
-    // R8 PBL-자체-03 — 평면 4행 배열로 변경됨 (1차 × 4 역할)
-    expect(r.data.interview.activities).toHaveLength(4);
-    expect(r.data.interview.priority?.method).toBe('AHP 설문 평균');
+    // Ⅲ flat — V2: 훈련대상 업무 (로드맵 과업 선정 + 선정 사유)
+    expect(r.data.interview.target?.taskSelections).toHaveLength(2);
+    expect(r.data.interview.target?.necessity).toBe('품질 편차 해소');
   });
 
   it('versionId 지정 → 해당 버전 우선 선택', async () => {

@@ -45,7 +45,11 @@ const baseInterview: Partial<ResultPBLInterviewSnapshot> = {
       externalInstructors: [],
       aiInfrastructure: '',
       targetCharacteristics: { career: '', level: '' },
-      aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+      aiInfraDetail: {
+        toolCapacity: 'AVAILABLE' as const,
+        networkStatus: 'GOOD' as const,
+        pcCount: 0,
+      },
       trainingNeedsAnalysis: '',
       expectationAsIs: '',
       expectationToBe: '',
@@ -57,12 +61,8 @@ const baseInterview: Partial<ResultPBLInterviewSnapshot> = {
     hrdReportPdf: null,
     courseNecessity: '',
   },
-  activities: [],
   problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
-  priority: { items: [], method: '' },
-  target: { name: '', scope: '', necessity: '', necessity_score: 3, details: [] },
-  currentAiLevel: { level: 'BASIC', note: '' },
-  expectedAiLevel: { level: 'USER', note: '' },
+  target: { taskSelections: [], necessity: '', details: [] },
 };
 
 function makeVersion(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
@@ -76,6 +76,7 @@ function makeVersion(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
     pbl_content: {
       operation_plan: {
         training_goal: '',
+        outcome_metrics: createEmptyOutcomeAnalysis(),
         ai_tool_usage_plan: [],
         training_plan: {
           overview: { course_name: '', training_period: { start: '', end: '' } },
@@ -113,7 +114,6 @@ function makeVersion(overrides: Partial<PBLReportRow> = {}): PBLReportRow {
           },
         },
       },
-      outcome_analysis: createEmptyOutcomeAnalysis(),
     },
     free_tool_validated: true,
     time_limit_validated: true,
@@ -146,10 +146,10 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(
-      screen.getByRole('heading', { name: /AI PBL 과정개발 결과/, level: 1 }),
+      screen.getByRole('heading', { name: /AI PBL 과정개발 결과/, level: 1 })
     ).toBeInTheDocument();
     expect(screen.getByLabelText('PDF 다운로드')).toBeInTheDocument();
     expect(screen.getByLabelText('Excel 다운로드')).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByLabelText('PDF 다운로드')).toBeEnabled();
     expect(screen.getByLabelText('Excel 다운로드')).toBeEnabled();
@@ -185,7 +185,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         interview={baseInterview}
         onSelectVersion={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByLabelText('PDF 다운로드')).toBeEnabled();
     expect(screen.getByLabelText('Excel 다운로드')).toBeEnabled();
@@ -204,14 +204,14 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByLabelText('PDF 다운로드')).toBeDisabled();
     expect(screen.getByLabelText('Excel 다운로드')).toBeDisabled();
     expect(screen.getByLabelText('HWPX 다운로드')).toBeDisabled();
   });
 
-  it('5탭 (Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획 / Ⅴ 성과분석) 을 ResultTabs 에 전달', () => {
+  it('4탭 (Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획) 을 ResultTabs 에 전달 — Ⅴ 성과분석 탭 삭제', () => {
     render(
       <PBLResultClient
         role="CONSULTANT"
@@ -223,19 +223,16 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByRole('tab', { name: 'Ⅰ. 개요' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('tab', { name: 'Ⅱ. 요구분석' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('tab', { name: 'Ⅲ. 훈련과제 도출' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ⅱ. 요구분석' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ⅲ. 훈련과제 도출' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Ⅳ. 운영계획' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Ⅴ. 성과분석' })).toBeInTheDocument();
-    // 탭은 정확히 5개
-    expect(screen.getAllByRole('tab')).toHaveLength(5);
+    // 구 Ⅴ 성과분석 탭은 삭제 (측정지표는 Ⅳ-2 로 이동)
+    expect(screen.queryByRole('tab', { name: 'Ⅴ. 성과분석' })).toBeNull();
+    // 탭은 정확히 4개
+    expect(screen.getAllByRole('tab')).toHaveLength(4);
   });
 
   it('선택 버전 없으면 EmptyState 렌더 (탭 영역 대신)', () => {
@@ -250,11 +247,9 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/아직 생성된 PBL 보고서가 없습니다/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/아직 생성된 PBL 보고서가 없습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Ⅰ. 개요' })).toBeNull();
   });
 
@@ -275,11 +270,9 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={onGenerate}
         onDownload={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.queryByRole('button', { name: /새 버전 생성/ }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
     const ctaButton = screen.getByTestId('empty-state-generate-pbl');
     expect(ctaButton).toBeEnabled();
     fireEvent.click(ctaButton);
@@ -301,7 +294,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('empty-state-generate-pbl')).toBeDisabled();
   });
@@ -321,7 +314,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={onGenerate}
         onDownload={vi.fn()}
-      />,
+      />
     );
     fireEvent.click(screen.getByRole('button', { name: /새 버전 생성/ }));
     fireEvent.click(screen.getByRole('button', { name: '생성 시작' }));
@@ -344,7 +337,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const accordionTrigger = screen.getByRole('button', { name: /새 버전 생성/ });
     expect(accordionTrigger).toBeEnabled();
@@ -364,11 +357,9 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onDownload={vi.fn()}
         isGenerating
         companyName="테스트기업"
-      />,
+      />
     );
-    expect(
-      screen.getByRole('heading', { name: 'AI 로드맵 생성 중' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'AI 로드맵 생성 중' })).toBeInTheDocument();
   });
 
   it('VersionStatusBadge 가 선택 버전 상태 + 번호를 표시 (DRAFT v3)', () => {
@@ -383,13 +374,13 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const badgeCandidates = screen.getAllByText(/v3/);
     expect(badgeCandidates.length).toBeGreaterThan(0);
   });
 
-  it('제외 라벨 ("결과물 표지" / "결과보고서" / "수행일지" / "고정 양식·결과 화면 제외" / "Ⅳ-4-나" / "결과평가") 를 렌더하지 않음', () => {
+  it('제외 라벨 ("결과물 표지" / "결과보고서" / "수행일지" / "고정 양식·결과 화면 제외" / "Ⅳ-5-나" / "결과평가") 를 렌더하지 않음', () => {
     const { container } = render(
       <PBLResultClient
         role="CONSULTANT"
@@ -401,14 +392,14 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     const text = container.textContent ?? '';
     expect(text).not.toContain('결과물 표지');
     expect(text).not.toContain('결과보고서');
     expect(text).not.toContain('수행일지');
     expect(text).not.toContain('고정 양식·결과 화면 제외');
-    expect(text).not.toContain('Ⅳ-4-나');
+    expect(text).not.toContain('Ⅳ-5-나');
     expect(text).not.toContain('결과평가');
   });
 
@@ -425,7 +416,7 @@ describe('PBLResultClient — CONSULTANT role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={onDownload}
-      />,
+      />
     );
     await act(async () => {
       fireEvent.click(screen.getByLabelText('PDF 다운로드'));
@@ -451,7 +442,7 @@ describe('PBLResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     // "새 버전 생성" 아코디언 트리거 버튼이 존재하지 않아야 함
     expect(screen.queryByRole('button', { name: /새 버전 생성/ })).toBeNull();
@@ -469,7 +460,7 @@ describe('PBLResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     // InlineEditField 의 편집 아이콘(연필 버튼) 이 Ops 에는 전혀 없어야 함
     const editButtons = container.querySelectorAll('button[aria-label*="편집"]');
@@ -490,11 +481,9 @@ describe('PBLResultClient — OPS role', () => {
         onDownload={vi.fn()}
         isGenerating
         companyName="테스트기업"
-      />,
+      />
     );
-    expect(
-      screen.queryByRole('heading', { name: 'AI 로드맵 생성 중' }),
-    ).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'AI 로드맵 생성 중' })).toBeNull();
   });
 
   // PR5 (R6) — FINAL in-place 수정 안내 배너 분기 커버
@@ -510,7 +499,7 @@ describe('PBLResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('pbl-final-edit-warning-banner')).toBeInTheDocument();
   });
@@ -527,7 +516,7 @@ describe('PBLResultClient — OPS role', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('pbl-final-edit-warning-banner')).not.toBeInTheDocument();
   });
@@ -542,7 +531,7 @@ describe('PBLResultClient — OPS role', () => {
         interview={baseInterview}
         onSelectVersion={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('pbl-final-edit-warning-banner')).not.toBeInTheDocument();
   });
@@ -557,7 +546,10 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
   it('HWPX 다운로드 진행 중에는 + 새 버전 생성 토글이 disabled 상태가 된다', async () => {
     let resolveDownload: () => void = () => {};
     const slowDownload = vi.fn(
-      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+      () =>
+        new Promise<void>((r) => {
+          resolveDownload = () => r();
+        })
     );
     render(
       <PBLResultClient
@@ -572,7 +564,7 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={slowDownload}
-      />,
+      />
     );
 
     expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled();
@@ -587,15 +579,16 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
     await act(async () => {
       resolveDownload();
     });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled());
   });
 
   it('PDF·XLSX 다운로드 진행 중에도 + 새 버전 생성 토글이 disabled 가 된다', async () => {
     let resolveDownload: () => void = () => {};
     const slowDownload = vi.fn(
-      () => new Promise<void>((r) => { resolveDownload = () => r(); }),
+      () =>
+        new Promise<void>((r) => {
+          resolveDownload = () => r();
+        })
     );
     render(
       <PBLResultClient
@@ -610,7 +603,7 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={slowDownload}
-      />,
+      />
     );
 
     await act(async () => {
@@ -621,9 +614,7 @@ describe('PBLResultClient — 다운로드 진행 중 + 새 버전 생성 토글
     await act(async () => {
       resolveDownload();
     });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: /새 버전 생성/ })).toBeEnabled());
   });
 });
 
@@ -647,7 +638,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onGenerate={vi.fn()}
         onFinalize={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByTestId('finalize-pbl-button')).toBeInTheDocument();
   });
@@ -665,7 +656,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onGenerate={vi.fn()}
         onFinalize={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
   });
@@ -683,7 +674,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onGenerate={vi.fn()}
         onFinalize={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
   });
@@ -700,7 +691,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
   });
@@ -716,7 +707,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onSelectVersion={vi.fn()}
         onFinalize={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByTestId('finalize-pbl-button')).not.toBeInTheDocument();
   });
@@ -736,7 +727,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onGenerate={vi.fn()}
         onFinalize={onFinalize}
         onDownload={vi.fn()}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByTestId('finalize-pbl-button'));
@@ -766,7 +757,7 @@ describe('PBLResultClient — 최종 확정 버튼', () => {
         onGenerate={vi.fn()}
         onFinalize={onFinalize}
         onDownload={vi.fn()}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByTestId('finalize-pbl-button'));
@@ -792,10 +783,7 @@ describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
     searchParamsMock.mockReturnValue(new URLSearchParams('regenerate=open'));
 
     scrollIntoViewSpy = vi.fn();
-    originalScrollIntoView = Object.getOwnPropertyDescriptor(
-      Element.prototype,
-      'scrollIntoView',
-    );
+    originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
       configurable: true,
       writable: true,
@@ -808,11 +796,7 @@ describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
   afterEach(() => {
     searchParamsMock.mockReturnValue(new URLSearchParams());
     if (originalScrollIntoView) {
-      Object.defineProperty(
-        Element.prototype,
-        'scrollIntoView',
-        originalScrollIntoView,
-      );
+      Object.defineProperty(Element.prototype, 'scrollIntoView', originalScrollIntoView);
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (Element.prototype as any).scrollIntoView;
@@ -838,7 +822,7 @@ describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
         onEdit={vi.fn()}
         onGenerate={vi.fn()}
         onDownload={vi.fn()}
-      />,
+      />
     );
 
     expect(scrollIntoViewSpy).not.toHaveBeenCalled();
@@ -852,10 +836,8 @@ describe('PBLResultClient — ?regenerate=open scroll timing (M-2)', () => {
       behavior: 'smooth',
       block: 'center',
     });
-    expect(routerReplaceMock).toHaveBeenCalledWith(
-      '/consultant/projects/p1/pbl',
-      { scroll: false },
-    );
+    expect(routerReplaceMock).toHaveBeenCalledWith('/consultant/projects/p1/pbl', {
+      scroll: false,
+    });
   });
 });
-

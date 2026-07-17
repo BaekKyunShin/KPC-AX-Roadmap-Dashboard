@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchLinkedRoadmapData } from './pbl-roadmap-link';
+import { fetchLinkedRoadmapData, hydrateRoadmapInterview } from './pbl-roadmap-link';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -133,5 +133,31 @@ describe('fetchLinkedRoadmapData', () => {
 
     expect(createAdminClient).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ roadmap: null, interview: null });
+  });
+});
+
+describe('hydrateRoadmapInterview', () => {
+  it('null 행 → null (미연계 폴백)', () => {
+    expect(hydrateRoadmapInterview(null)).toBeNull();
+  });
+
+  it('로드맵 인터뷰 원시 행을 camelCase 도메인 형태로 복원 (수립 배경)', () => {
+    const row = {
+      id: 'iv-1',
+      project_id: 'rm-9',
+      company_details: {
+        roadmap_overview: {
+          establishment_necessity: '수립 배경 텍스트',
+          performance_activities: [],
+        },
+      },
+      job_tasks: [],
+      improvement_goals: [],
+      stt_insights: null,
+    };
+
+    const result = hydrateRoadmapInterview(row);
+
+    expect(result?.establishmentNecessity).toBe('수립 배경 텍스트');
   });
 });

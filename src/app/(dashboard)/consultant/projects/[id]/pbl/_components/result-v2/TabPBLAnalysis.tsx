@@ -5,17 +5,27 @@ import { ExternalLink, FileText } from 'lucide-react';
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
+import {
+  AI_COMPETENCY_LEVEL_LABEL,
+  AI_COMPETENCY_LEVEL_SUBTITLE,
+  INTERVIEW_METHOD_LABEL,
+  type AiCompetencyLevel,
+  type InterviewMethod,
+  type RoadmapInterviewStrict,
+} from '@/lib/schemas/interview-roadmap';
 
 import type { TabPBLCommonProps } from './types';
 
 /**
  * Ⅱ. 훈련 요구 분석 탭 — PBL 결과 V2.
  *
- * 섹션:
- *  - P-03 Ⅱ-1-가 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
- *  - P-05 Ⅱ-2 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
- *  - P-06 Ⅱ-3-가 HRD이음 결과 PDF — iframe 미리보기 (로드맵 결과 V2 Ⅱ-1 과 동일 UX).
- *  - P-07 Ⅱ-3-나 AI훈련과정 개발 필요성 — 인터뷰 입력. DRAFT 인라인 편집.
+ * 구성:
+ *  - 선행 로드맵 연동 (읽기 전용) — 수립 배경·주요 활동·수립 결과(AI역량 3단계)·
+ *    기업 요구분석·과업분석표·훈련대상 과업. 미연계 시 안내 배너.
+ *  - Ⅱ-1-가 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅱ-2 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
+ *  - Ⅱ-3-가 HRD이음 결과 PDF — iframe 미리보기 (로드맵 결과 V2 Ⅱ-1 과 동일 UX).
+ *  - Ⅱ-3-나 AI훈련과정 개발 필요성 — 인터뷰 입력. DRAFT 인라인 편집.
  *
  * Phase E: Ⅱ-1-나 조직 및 주요 업무 — 로드맵과 동일하게 인터뷰/결과/HWPX
  * 3 계층에서 제거. 양식의 P-04 표는 한컴오피스 사용자가 직접 작성.
@@ -23,16 +33,15 @@ import type { TabPBLCommonProps } from './types';
  * 제외:
  *  - [결과보고서] 섹션 (P-27~P-29) — 렌더 금지
  */
-export function TabPBLAnalysis({
-  interview,
-  readOnly,
-  onEdit,
-}: TabPBLCommonProps) {
+export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: TabPBLCommonProps) {
   const analysis = interview?.analysis;
   const hrdPdf = analysis?.hrdReportPdf ?? null;
 
   return (
     <div className="space-y-6">
+      {/* 선행 로드맵 연동 (읽기 전용) — Ⅱ장 로드맵 수립·요구분석 자동 연계 */}
+      <LinkedRoadmapReadonly linkedRoadmap={linkedRoadmap} />
+
       {/* Ⅱ-1-가 기업 경영 이슈 */}
       <SectionCard
         title="Ⅱ-1-가. 기업 경영 이슈"
@@ -63,9 +72,7 @@ export function TabPBLAnalysis({
           const env = analysis?.trainingEnv;
           if (!env || typeof env === 'string') {
             return (
-              <p className="text-sm text-muted-foreground">
-                훈련환경 분석이 입력되지 않았습니다.
-              </p>
+              <p className="text-sm text-muted-foreground">훈련환경 분석이 입력되지 않았습니다.</p>
             );
           }
           return (
@@ -75,7 +82,12 @@ export function TabPBLAnalysis({
                 bodyRows={[
                   {
                     cells: [
-                      { content: '적정 훈련시간', header: true, className: 'w-[160px]', align: 'center' },
+                      {
+                        content: '적정 훈련시간',
+                        header: true,
+                        className: 'w-[160px]',
+                        align: 'center',
+                      },
                       { content: env.properTrainingHours || '-', align: 'left' },
                     ],
                   },
@@ -107,9 +119,7 @@ export function TabPBLAnalysis({
                   <div key={side} className="space-y-2">
                     <h4 className="text-sm font-semibold">{heading}</h4>
                     {list.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        등록된 {heading}가 없습니다.
-                      </p>
+                      <p className="text-xs text-muted-foreground">등록된 {heading}가 없습니다.</p>
                     ) : (
                       <FormTable
                         caption={`${heading} 표`}
@@ -139,11 +149,12 @@ export function TabPBLAnalysis({
 
               {/* Phase E (Step 4b) — 양식 P-05 row 6~11 정합 5 신규 필드 */}
               {(() => {
-                const target =
-                  env.targetCharacteristics ?? { career: '', level: '' };
-                const infra =
-                  env.aiInfraDetail ??
-                  { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 };
+                const target = env.targetCharacteristics ?? { career: '', level: '' };
+                const infra = env.aiInfraDetail ?? {
+                  toolCapacity: 'AVAILABLE' as const,
+                  networkStatus: 'GOOD' as const,
+                  pcCount: 0,
+                };
                 const toolLabel = {
                   AVAILABLE: '가능',
                   LIMITED: '제한적',
@@ -154,20 +165,26 @@ export function TabPBLAnalysis({
                   NORMAL: '보통',
                   IMPROVEMENT_NEEDED: '개선필요',
                 }[infra.networkStatus];
-                const infraSummary =
-                  `AI 도구: ${toolLabel} · 네트워크: ${networkLabel} · PC ${infra.pcCount}대`;
+                const infraSummary = `AI 도구: ${toolLabel} · 네트워크: ${networkLabel} · PC ${infra.pcCount}대`;
                 return (
                   <FormTable
                     caption="훈련환경 — 대상자·인프라 세부·요구분석·기대효과"
                     bodyRows={[
                       {
                         cells: [
-                          { content: '대상자 특성', header: true, className: 'w-[160px]', align: 'center' },
+                          {
+                            content: '대상자 특성',
+                            header: true,
+                            className: 'w-[160px]',
+                            align: 'center',
+                          },
                           {
                             content: (
                               <div className="space-y-1">
                                 <div>
-                                  <span className="font-medium text-muted-foreground">업무 경력 </span>
+                                  <span className="font-medium text-muted-foreground">
+                                    업무 경력{' '}
+                                  </span>
                                   {target.career || '-'}
                                 </div>
                                 <div>
@@ -310,6 +327,320 @@ export function TabPBLAnalysis({
           readOnly={readOnly}
           multiline
           placeholder="AI훈련과정 개발 필요성이 입력되지 않았습니다."
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+// 선행 로드맵 기업 요구분석 4행 (구분 라벨 ↔ camelCase 키).
+const COMPANY_REQ_ROWS: ReadonlyArray<{
+  key: 'status' | 'problem' | 'will' | 'outcomes';
+  label: string;
+}> = [
+  { key: 'status', label: '기업 현황' },
+  { key: 'problem', label: '주요 문제' },
+  { key: 'will', label: '추진 의지' },
+  { key: 'outcomes', label: '기대 성과' },
+];
+
+/** 수행 방법 enum → 한글 라벨 (미상 값은 원문 그대로). */
+function methodLabel(method: string | undefined): string {
+  if (!method) return '-';
+  return INTERVIEW_METHOD_LABEL[method as InterviewMethod] ?? method;
+}
+
+/** AI 역량 수준 enum → "초급 (AI기초형)" 형태 라벨. */
+function aiLevelLabel(level: AiCompetencyLevel | undefined): string {
+  if (!level) return '-';
+  const label = AI_COMPETENCY_LEVEL_LABEL[level];
+  return label ? `${label} (${AI_COMPETENCY_LEVEL_SUBTITLE[level]})` : '-';
+}
+
+/**
+ * 선행 로드맵 연동 블록 (읽기 전용).
+ *
+ * `hydrateRoadmapInterview` 로 복원한 선행 로드맵 인터뷰(Partial<RoadmapInterviewStrict>)를
+ * 6개 섹션(수립 배경·주요 활동·수립 결과·기업 요구분석·과업분석표·훈련대상 과업)으로
+ * 읽기 전용 표출한다. 미연계(null/undefined) 시 안내 배너만 노출한다.
+ */
+function LinkedRoadmapReadonly({
+  linkedRoadmap,
+}: {
+  linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
+}) {
+  if (!linkedRoadmap) {
+    return (
+      <div
+        role="status"
+        data-testid="linked-roadmap-missing-banner"
+        className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        선행 로드맵 프로젝트가 연결되지 않아 Ⅱ장이 비어 있습니다. 운영관리자에게 연결을 요청하세요.
+      </div>
+    );
+  }
+
+  const performanceActivities = linkedRoadmap.performanceActivities ?? [];
+  const cr = linkedRoadmap.companyRequirements;
+  const taskAnalysis = linkedRoadmap.taskAnalysis ?? [];
+  const target = linkedRoadmap.targetTask;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <span className="font-semibold text-slate-800">선행 로드맵 연동</span> — 아래 6개 항목은
+        선행 AI훈련로드맵 보고서에서 자동 연계된 <strong>읽기 전용</strong> 내용입니다.
+      </div>
+
+      {/* 수립 배경 (로드맵 Ⅰ-1) */}
+      <SectionCard
+        title="수립 배경"
+        description="선행 로드맵 Ⅰ-1 수립 필요성 (자동 연계)"
+        dataSource="user"
+      >
+        <p className="whitespace-pre-wrap text-sm">
+          {linkedRoadmap.establishmentNecessity?.trim() || '수립 배경이 입력되지 않았습니다.'}
+        </p>
+      </SectionCard>
+
+      {/* 주요 활동 (로드맵 Ⅰ-2) */}
+      <SectionCard
+        title="주요 활동"
+        description="선행 로드맵 Ⅰ-2 컨설팅 수행 차수별 활동 (자동 연계)"
+        dataSource="user"
+      >
+        {performanceActivities.length > 0 ? (
+          <div className="overflow-x-auto">
+            <FormTable
+              caption="선행 로드맵 주요 활동"
+              headerRows={[
+                {
+                  cells: [
+                    { content: '차수', header: true, className: 'w-[60px]' },
+                    { content: '수행 일시', header: true, className: 'w-[140px]' },
+                    { content: '수행 내용', header: true },
+                    { content: '수행 방법', header: true, className: 'w-[130px]' },
+                    { content: '컨설팅책임자(PM)', header: true, className: 'w-[130px]' },
+                    { content: '기업 내부전문가', header: true, className: 'w-[130px]' },
+                  ],
+                },
+              ]}
+              bodyRows={performanceActivities.map((a) => ({
+                cells: [
+                  { content: `${a.round}차`, align: 'center' },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">
+                        {[a.date, a.timeRange].filter(Boolean).join('\n') || '-'}
+                      </span>
+                    ),
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">{a.content || '-'}</span>
+                    ),
+                    align: 'left',
+                  },
+                  { content: methodLabel(a.method), align: 'center' },
+                  { content: a.pmName || '-', align: 'center' },
+                  { content: a.expertName || '-', align: 'center' },
+                ],
+              }))}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">등록된 주요 활동이 없습니다.</p>
+        )}
+      </SectionCard>
+
+      {/* 수립 결과 (로드맵 Ⅰ-3 — AI 역량 3단계 + 선정 과업) */}
+      <SectionCard
+        title="수립 결과"
+        description="선행 로드맵 Ⅰ-3 기업 AI 역량 수준 · 선정 과업 (자동 연계)"
+        dataSource="user"
+      >
+        <FormTable
+          caption="선행 로드맵 수립 결과"
+          bodyRows={[
+            {
+              cells: [
+                {
+                  content: '기업 AI 역량 수준',
+                  header: true,
+                  className: 'w-[160px]',
+                  align: 'center',
+                },
+                { content: aiLevelLabel(linkedRoadmap.aiLevel), align: 'left' },
+              ],
+            },
+            {
+              cells: [
+                { content: '선정 과업', header: true, align: 'center' },
+                {
+                  content: (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {linkedRoadmap.selectedTask?.trim() || '-'}
+                    </span>
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+          ]}
+        />
+      </SectionCard>
+
+      {/* 기업 요구분석 (로드맵 Ⅱ-2) */}
+      <SectionCard
+        title="기업 요구분석"
+        description="선행 로드맵 Ⅱ-2 기업 현황·주요 문제·추진 의지·기대 성과 (자동 연계)"
+        dataSource="user"
+      >
+        <FormTable
+          caption="선행 로드맵 기업 요구분석"
+          headerRows={[
+            {
+              cells: [
+                { content: '구분', header: true, className: 'w-[120px]' },
+                { content: '확인 내용', header: true },
+                { content: '비고', header: true, className: 'w-[200px]' },
+              ],
+            },
+          ]}
+          bodyRows={COMPANY_REQ_ROWS.map(({ key, label }) => ({
+            cells: [
+              { content: label, header: true, align: 'center' },
+              {
+                content: (
+                  <span className="whitespace-pre-wrap text-sm">{cr?.[key]?.trim() || '-'}</span>
+                ),
+                align: 'left',
+              },
+              {
+                content: (
+                  <span className="whitespace-pre-wrap text-sm">
+                    {cr?.remarks?.[key]?.trim() || '-'}
+                  </span>
+                ),
+                align: 'left',
+              },
+            ],
+          }))}
+        />
+      </SectionCard>
+
+      {/* 과업분석표 (로드맵 Ⅱ-3) */}
+      <SectionCard
+        title="과업분석표"
+        description="선행 로드맵 Ⅱ-3 직무·과업·현행·개선점 및 AI 적용 가능성 (자동 연계)"
+        dataSource="user"
+      >
+        {taskAnalysis.length > 0 ? (
+          <div className="overflow-x-auto">
+            <FormTable
+              caption="선행 로드맵 과업분석표"
+              headerRows={[
+                {
+                  cells: [
+                    { content: '직무', header: true, className: 'w-[120px]' },
+                    { content: '과업(Task)', header: true, className: 'w-[150px]' },
+                    { content: '현행 방식 (As-Is)', header: true },
+                    { content: '개선점 및 AI 적용 가능성', header: true },
+                  ],
+                },
+              ]}
+              bodyRows={taskAnalysis.map((t) => ({
+                cells: [
+                  { content: t.domain || '-', align: 'left' },
+                  { content: t.task || '-', align: 'left' },
+                  {
+                    content: <span className="whitespace-pre-wrap text-sm">{t.asIs || '-'}</span>,
+                    align: 'left',
+                  },
+                  {
+                    content: (
+                      <span className="whitespace-pre-wrap text-sm">{t.improvement || '-'}</span>
+                    ),
+                    align: 'left',
+                  },
+                ],
+              }))}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">등록된 과업 분석이 없습니다.</p>
+        )}
+      </SectionCard>
+
+      {/* 훈련대상 과업 (로드맵 Ⅱ-4) */}
+      <SectionCard
+        title="훈련대상 과업"
+        description="선행 로드맵 Ⅱ-4 선정 과업명·사유·기대효과 (자동 연계)"
+        dataSource="user"
+      >
+        <FormTable
+          caption="선행 로드맵 훈련대상 과업"
+          bodyRows={[
+            {
+              cells: [
+                {
+                  content: '훈련대상 과업명',
+                  header: true,
+                  className: 'w-[160px]',
+                  align: 'center',
+                },
+                {
+                  content: (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {target?.name?.trim() || '-'}
+                    </span>
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '선정 사유', header: true, align: 'center' },
+                {
+                  content: (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {target?.reason?.trim() || '-'}
+                    </span>
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '기대효과 (현행)', header: true, align: 'center' },
+                {
+                  content: (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {target?.expectedAsIs?.trim() || '-'}
+                    </span>
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+            {
+              cells: [
+                { content: '기대효과 (개선)', header: true, align: 'center' },
+                {
+                  content: (
+                    <span className="whitespace-pre-wrap text-sm">
+                      {target?.expectedToBe?.trim() || '-'}
+                    </span>
+                  ),
+                  align: 'left',
+                },
+              ],
+            },
+          ]}
         />
       </SectionCard>
     </div>

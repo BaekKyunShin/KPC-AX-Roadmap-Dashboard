@@ -63,6 +63,7 @@ function baseResultEvaluation(): PBLResultEvaluation {
 function baseOperationPlan(): PBLOperationPlan {
   return {
     training_goal: 'AI 도구를 통한 업무 생산성 향상',
+    outcome_metrics: { selected_goals: [], quantitative: '', qualitative: '' },
     ai_tool_usage_plan: [
       {
         stage: '1단계',
@@ -88,9 +89,7 @@ function baseOperationPlan(): PBLOperationPlan {
             name: '홍길동',
           },
         ],
-        trainees: [
-          { role: '팀원', affiliation: '제조팀', position: '대리', name: '김철수' },
-        ],
+        trainees: [{ role: '팀원', affiliation: '제조팀', position: '대리', name: '김철수' }],
       },
       subject_profile: {
         course_name: 'AI 실무',
@@ -109,9 +108,7 @@ function baseOperationPlan(): PBLOperationPlan {
         ],
         total_sum_hours: 20,
       },
-      facilities: [
-        { seq: 1, category: '시설', name: '강의실', spec: '40석', location: '2층' },
-      ],
+      facilities: [{ seq: 1, category: '시설', name: '강의실', spec: '40석', location: '2층' }],
       training_instructors: [
         {
           name: '홍길동',
@@ -151,7 +148,7 @@ describe('drawPBLOperationSection', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
     expect(
-      allText.some((t) => typeof t === 'string' && t.includes('Ⅳ. AI 기반 운영계획 수립')),
+      allText.some((t) => typeof t === 'string' && t.includes('Ⅳ. AI 기반 운영계획 수립'))
     ).toBe(true);
   });
 
@@ -166,7 +163,7 @@ describe('drawPBLOperationSection', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
     expect(
-      allText.some((t) => typeof t === 'string' && t.includes('AI 도구를 통한 업무 생산성 향상')),
+      allText.some((t) => typeof t === 'string' && t.includes('AI 도구를 통한 업무 생산성 향상'))
     ).toBe(true);
   });
 
@@ -181,9 +178,9 @@ describe('drawPBLOperationSection', () => {
   it('"Ⅳ-2. AI 도구 활용 계획" 서브섹션을 출력한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
-    expect(
-      allText.some((t) => typeof t === 'string' && t.includes('Ⅳ-2. AI 도구 활용 계획')),
-    ).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('Ⅳ-2. AI 도구 활용 계획'))).toBe(
+      true
+    );
   });
 
   it('AI 도구 활용 계획 autoTable 을 호출한다 (6열 헤더)', () => {
@@ -208,7 +205,7 @@ describe('drawPBLOperationSection', () => {
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
     expect(allText.some((t) => typeof t === 'string' && t.includes('AI 실무 과정'))).toBe(true);
     expect(
-      allText.some((t) => typeof t === 'string' && t.includes('2024-02-01 ~ 2024-02-28')),
+      allText.some((t) => typeof t === 'string' && t.includes('2024-02-01 ~ 2024-02-28'))
     ).toBe(true);
   });
 
@@ -248,7 +245,7 @@ describe('drawPBLOperationSection', () => {
   it('강사 테이블 헤더가 5열(구분·역할·소속·직위·성명)을 포함한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const instructorCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head[0].includes('구분') && c[1].head[0].includes('역할'),
+      (c) => c[1].head[0].includes('구분') && c[1].head[0].includes('역할')
     );
     expect(instructorCall).toBeDefined();
   });
@@ -263,7 +260,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const instructorCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('구분') && c[1].head[0].includes('역할'),
+      (c) => c[1].head?.[0]?.includes('구분') && c[1].head[0].includes('역할')
     );
     expect(instructorCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
@@ -275,7 +272,7 @@ describe('drawPBLOperationSection', () => {
       (c) =>
         c[1].head?.[0]?.length === 4 &&
         c[1].head[0].includes('역할') &&
-        c[1].head[0].includes('소속'),
+        c[1].head[0].includes('소속')
     );
     expect(traineeCall).toBeDefined();
   });
@@ -296,7 +293,7 @@ describe('drawPBLOperationSection', () => {
       (c) =>
         c[1].head?.[0]?.length === 4 &&
         c[1].head[0].includes('역할') &&
-        !c[1].head[0].includes('구분'),
+        !c[1].head[0].includes('구분')
     );
     expect(traineeCall?.[1].body).toEqual([['-', '-', '-', '-']]);
   });
@@ -329,9 +326,7 @@ describe('drawPBLOperationSection', () => {
       },
     };
     // 에러 없이 완료되어야 함
-    expect(() =>
-      drawPBLOperationSection(ctx, plan, autoTable, tableBase),
-    ).not.toThrow();
+    expect(() => drawPBLOperationSection(ctx, plan, autoTable, tableBase)).not.toThrow();
   });
 
   it('ai_tools 배열이 있으면 join 하여 출력한다', () => {
@@ -343,7 +338,7 @@ describe('drawPBLOperationSection', () => {
   it('교과목 프로파일 훈련내용 테이블(5열)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const profileCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)'),
+      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)')
     );
     expect(profileCall).toBeDefined();
   });
@@ -361,7 +356,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const profileCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)'),
+      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)')
     );
     expect(profileCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
@@ -373,7 +368,7 @@ describe('drawPBLOperationSection', () => {
       (c) =>
         c[1].head?.[0]?.includes('연번') &&
         c[1].head[0].includes('구분') &&
-        c[1].head[0].includes('위치'),
+        c[1].head[0].includes('위치')
     );
     expect(facilityCall).toBeDefined();
   });
@@ -388,7 +383,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const facilityCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('연번') && c[1].head[0].includes('위치'),
+      (c) => c[1].head?.[0]?.includes('연번') && c[1].head[0].includes('위치')
     );
     expect(facilityCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
@@ -397,7 +392,7 @@ describe('drawPBLOperationSection', () => {
   it('훈련강사 테이블(5열: 성명·내외부·경력·업무명·세부내용)을 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const instructorTableCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)'),
+      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)')
     );
     expect(instructorTableCall).toBeDefined();
   });
@@ -412,7 +407,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const instTableCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)'),
+      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)')
     );
     expect(instTableCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
@@ -436,9 +431,7 @@ describe('drawPBLOperationSection', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
     expect(allText.some((t) => typeof t === 'string' && t.includes('총평'))).toBe(true);
-    expect(
-      allText.some((t) => typeof t === 'string' && t.includes('전반적으로 우수')),
-    ).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('전반적으로 우수'))).toBe(true);
   });
 
   it('overall_comment 가 없으면 총평을 출력하지 않는다', () => {
@@ -464,7 +457,7 @@ describe('drawPBLOperationSection', () => {
       (c) =>
         c[1].head?.[0]?.length === 3 &&
         c[1].head[0][0] === '업무(단원)명' &&
-        c[1].head[0][2] === '수행 수준 (1~5)',
+        c[1].head[0][2] === '수행 수준 (1~5)'
     );
     expect(checkCall).toBeDefined();
   });
@@ -485,7 +478,7 @@ describe('drawPBLOperationSection', () => {
       (c) =>
         c[1].head?.[0]?.length === 3 &&
         c[1].head[0][0] === '업무(단원)명' &&
-        c[1].head[0][2] === '수행 수준 (1~5)',
+        c[1].head[0][2] === '수행 수준 (1~5)'
     );
     expect(checkCall?.[1].body).toEqual([['-', '-', '-']]);
   });
@@ -495,9 +488,7 @@ describe('drawPBLOperationSection', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
     expect(
-      allText.some(
-        (t) => typeof t === 'string' && t.includes('나. 결과평가 (설문 문항 수 요약)'),
-      ),
+      allText.some((t) => typeof t === 'string' && t.includes('나. 결과평가 (설문 문항 수 요약)'))
     ).toBe(true);
   });
 
@@ -513,9 +504,7 @@ describe('drawPBLOperationSection', () => {
   it('결과평가 하단 설명 텍스트(리커트 5점 척도)를 출력한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
-    expect(
-      allText.some((t) => typeof t === 'string' && t.includes('리커트 5점 척도')),
-    ).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('리커트 5점 척도'))).toBe(true);
   });
 
   // ── y 진행 및 전체 흐름 ───────────────────────────────────────────────
@@ -586,8 +575,6 @@ describe('drawPBLOperationSection', () => {
         ],
       },
     };
-    expect(() =>
-      drawPBLOperationSection(ctx, plan, autoTable, tableBase),
-    ).not.toThrow();
+    expect(() => drawPBLOperationSection(ctx, plan, autoTable, tableBase)).not.toThrow();
   });
 });

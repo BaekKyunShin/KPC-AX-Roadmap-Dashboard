@@ -1,704 +1,391 @@
 """
-PBL HWPX 플레이스홀더 매핑 단위 테스트.
+PBL HWPX 마커 매핑 단위 테스트 (v2 — {{플레이스홀더}} 방식).
 
-data dict → placeholder map / table rows 변환 로직의 핵심 계약:
-- 체크박스 토글 (AI역량 4등급 · 훈련목표 5종 · 사내/사외 · 과정평가 3종)
-- 누락 필드 안전 처리 (None → "")
-- 반복 표 데이터 정규화 (수행활동 · 조직도 · 문제우선순위 · 훈련대상업무 · AI도구5단계 · 교과목내용 · 체크리스트 등)
+payload → {{마커}} 값 변환(`generate._build_pbl_markers`)의 핵심 계약:
+- 표지·개요 단순 키 + 조합 셀(업종·주소·시간)
+- 로드맵 자동 연계(수립 활동·AI역량 3단계 체크박스·요구분석·과업 분석·선정)
+- PBL 인터뷰(문제 정의서·세부내용·HRD fallback)
+- 운영계획 LLM(반복 표·교과목 자동 합산·체크리스트 √)
+- 누락(None/미존재) → 빈 문자열 안전 처리
 """
 import os
 import sys
 
-# generate.py와 동일한 경로 삽입 (상대 임포트 지원)
 _DIR = os.path.dirname(os.path.abspath(__file__))
 if _DIR not in sys.path:
     sys.path.insert(0, _DIR)
 
 import pytest  # noqa: E402
 
+from generate import _build_pbl_markers  # noqa: E402
 from _placeholders_pbl import (  # noqa: E402
-    AI_LEVEL_DESCRIPTIONS,
-    build_pbl_placeholder_map,
-    build_pbl_table_rows,
+    COURSE_EVALUATION_METHODS,
+    TRAINING_GOAL_LABELS,
+    _bulletize,
 )
 
 
 # ---------------------------------------------------------------
-# build_pbl_placeholder_map
+# 상수·헬퍼
 # ---------------------------------------------------------------
 
 
-class TestPlaceholderMap:
-    def test_cover_and_overview_simple_keys(self):
-        data = {
-            "company_name": "㈜테스트",
-            "course_name": "AI 자동화 과정",
-            "report_date": "2026. 04. 18.",
-            "business_registration_no": "123-45-67890",
-            "industry_code": "C26",
-            "industry_main": "전자부품 제조",
-            "address": "서울 강남구",
-            "training_address": "본사 3층",
-            "jurisdiction_office": "서울지부",
-            "contact_position": "부장",
-            "contact_name": "김담당",
-            "contact_phone": "010-1234-5678",
-            "contact_email": "foo@bar.com",
-            "ncs_code": "200107 인공지능",
-            "training_hours": 40,
-            "trainee_count": 10,
-            "training_job": "데이터 분석",
-        }
-        m = build_pbl_placeholder_map(data)
-        assert m["{{company_name}}"] == "㈜테스트"
-        assert m["{{course_name}}"] == "AI 자동화 과정"
-        assert m["{{report_date}}"] == "2026. 04. 18."
-        assert m["{{contact_email}}"] == "foo@bar.com"
-        assert m["{{training_hours}}"] == "40"
-        assert m["{{trainee_count}}"] == "10"
-
-    def test_missing_values_empty_string(self):
-        m = build_pbl_placeholder_map({})
-        assert m["{{company_name}}"] == ""
-        assert m["{{training_hours}}"] == ""
-
-    def test_none_values_empty_string(self):
-        m = build_pbl_placeholder_map({"course_name": None, "ncs_code": None})
-        assert m["{{course_name}}"] == ""
-        assert m["{{ncs_code}}"] == ""
-
-    def test_business_issues_and_core_texts(self):
-        m = build_pbl_placeholder_map(
-            {
-                "business_issues": "수작업 공정 비효율",
-                "course_development_necessity": "AI 도입 필요",
-                "target_tasks_selection_reason": "매출 기여도 높음",
-                "training_goal": "AI 역량 확보",
-            }
+class TestConstantsAndHelpers:
+    def test_training_goal_labels(self):
+        assert TRAINING_GOAL_LABELS == (
+            "기술문제 해결", "공정 최적화", "불량률 감소", "기술 매뉴얼 개발", "기타",
         )
-        assert m["{{business_issues}}"] == "수작업 공정 비효율"
-        assert m["{{course_development_necessity}}"] == "AI 도입 필요"
-        assert m["{{target_tasks_selection_reason}}"] == "매출 기여도 높음"
-        assert m["{{training_goal}}"] == "AI 역량 확보"
 
-    def test_ai_level_description_mapping(self):
-        # 4등급 라벨 → 설명이 양식 원본과 매핑
-        assert AI_LEVEL_DESCRIPTIONS["AI기초형"].startswith("AI 및 디지털 기술 도입에 대한 인식")
-        assert "초급" in AI_LEVEL_DESCRIPTIONS["AI탐구형"] or "AI 및 디지털" in AI_LEVEL_DESCRIPTIONS["AI탐구형"]
-        assert AI_LEVEL_DESCRIPTIONS["AI활용형"]
-        assert AI_LEVEL_DESCRIPTIONS["AI선도형"]
+    def test_course_evaluation_methods(self):
+        assert COURSE_EVALUATION_METHODS == ("포트폴리오", "문제해결시나리오", "작업장 평가")
 
+    def test_bulletize_list(self):
+        assert _bulletize(["a", "b"]) == "• a\n• b"
 
-# ---------------------------------------------------------------
-# 반복 표
-# ---------------------------------------------------------------
+    def test_bulletize_string_passthrough(self):
+        assert _bulletize("이미 문자열") == "이미 문자열"
 
-
-class TestTableRows:
-    def test_organization_rows(self):
-        data = {
-            "organization": [
-                {"department_name": "생산팀", "tasks": ["제품 생산", "품질 관리"]},
-                {"department_name": "영업팀", "tasks": ["고객 응대"]},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "organization")
-        assert len(rows) == 2
-        assert rows[0]["department_name"] == "생산팀"
-        assert "제품 생산" in rows[0]["tasks"]
-        assert "품질 관리" in rows[0]["tasks"]
-
-    def test_performance_activities_rows(self):
-        data = {
-            "performance_activities": [
-                {
-                    "round": 1,
-                    "date": "25/04/10",
-                    "content": "킥오프 회의",
-                    "method": "대면(회의)",
-                    "participants": {
-                        "pm": "이PM",
-                        "external_expert": "박전문가",
-                        "internal_expert": "최내부",
-                        "jurisdiction_manager": "김주치의",
-                    },
-                },
-                {
-                    "round": 2,
-                    "date": "25/04/15",
-                    "content": "문제 정의 워크숍",
-                    "method": "비대면(화상)",
-                    "participants": {
-                        "pm": "이PM",
-                        "external_expert": "",
-                        "internal_expert": "최내부",
-                        "jurisdiction_manager": "",
-                    },
-                },
-            ]
-        }
-        rows = build_pbl_table_rows(data, "performance_activities")
-        assert len(rows) == 2
-        assert rows[0]["round"] == "1차"
-        assert rows[0]["participants"]["pm"] == "이PM"
-        assert rows[1]["participants"]["jurisdiction_manager"] == ""
-
-    def test_problem_priorities_rows(self):
-        data = {
-            "problem_priorities": [
-                {"problem_name": "PLC 데이터 구조 이해", "priority": 5, "selected": True},
-                {"problem_name": "설비 이상 탐지", "priority": 4, "selected": False},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "problem_priorities")
-        assert len(rows) == 2
-        assert rows[0]["priority"] == 5
-        assert rows[0]["selected"] is True
-        assert rows[1]["selected"] is False
-
-    def test_target_tasks_rows(self):
-        data = {
-            "target_tasks": [
-                {"task_name": "센서 데이터 수집", "necessity": 5, "selected": True},
-                {"task_name": "업무B", "necessity": 3, "selected": False},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "target_tasks")
-        assert rows[0]["task_name"] == "센서 데이터 수집"
-        assert rows[0]["necessity"] == 5
-        assert rows[0]["selected"] is True
-
-    def test_target_task_details_rows(self):
-        data = {
-            "target_task_details": [
-                {
-                    "task_name": "센서 데이터 수집",
-                    "as_is": "수작업",
-                    "to_be": "자동화",
-                    "required_knowledge": "데이터베이스",
-                    "required_skill": "Python",
-                }
-            ]
-        }
-        rows = build_pbl_table_rows(data, "target_task_details")
-        assert rows[0]["as_is"] == "수작업"
-        assert rows[0]["to_be"] == "자동화"
-
-    def test_ai_tool_usage_plan_rows(self):
-        data = {
-            "ai_tool_usage_plan": [
-                {
-                    "stage": "1단계",
-                    "main_activity": "훈련실시",
-                    "ai_tools": ["ChatGPT", "Lovable"],
-                    "utilized_data": "제품 데이터",
-                    "purpose": "역량 강화",
-                    "specific_method": "프로토타입 제작",
-                },
-                {
-                    "stage": "2단계",
-                    "main_activity": "피드백",
-                    "ai_tools": ["Google Forms"],
-                    "utilized_data": "설문 데이터",
-                    "purpose": "개선",
-                    "specific_method": "분석",
-                },
-            ]
-        }
-        rows = build_pbl_table_rows(data, "ai_tool_usage_plan")
-        assert len(rows) == 2
-        # ai_tools 배열은 줄바꿈 결합
-        assert "ChatGPT" in rows[0]["ai_tools"] and "Lovable" in rows[0]["ai_tools"]
-
-    def test_training_history_rows(self):
-        data = {
-            "training_history": [
-                {"seq": 1, "program": "직무개발", "course_name": "Python 기초", "method": "집체", "duration_days": 3},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "training_history")
-        assert rows[0]["seq"] == "1"
-        assert rows[0]["program"] == "직무개발"
-
-    def test_recommendations_rows(self):
-        data = {
-            "recommendations": [
-                {"rank": 1, "program": "S-OJT", "proposal": "체계적 현장훈련"},
-                {"rank": 2, "program": "사업주훈련", "proposal": "기업 자체 훈련"},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "recommendations")
-        assert len(rows) == 2
-        assert rows[0]["rank"] == 1
-        assert rows[0]["program"] == "S-OJT"
-
-    def test_learning_group_rows(self):
-        data = {
-            "learning_group": {
-                "instructors": [
-                    {"type": "외부", "role": "팀원", "affiliation": "A컨설팅", "position": "대표", "name": "홍전문"},
-                    {"type": "내부", "role": "팀장", "affiliation": "㈜테스트", "position": "팀장", "name": "이팀장"},
-                ],
-                "trainees": [
-                    {"role": "팀원", "affiliation": "㈜테스트", "position": "사원", "name": "김훈련"},
-                    {"role": "팀원", "affiliation": "㈜테스트", "position": "대리", "name": "박훈련"},
-                ],
-            }
-        }
-        rows = build_pbl_table_rows(data, "learning_group")
-        # instructors(2) + trainees(2) 총 4행
-        assert len(rows) == 4
-        # 강사 먼저, 훈련생 다음 순서
-        assert rows[0]["category"] == "훈련 강사"
-        assert rows[0]["type"] == "외부"
-        assert rows[2]["category"] == "훈련생"
-
-    def test_training_contents_rows(self):
-        data = {
-            "training_contents": [
-                {
-                    "unit_name": "데이터 수집",
-                    "detail": "센서 데이터 정제",
-                    "training_hours": 8,
-                    "instructor_hours": {"external": 5, "internal": 3},
-                }
-            ]
-        }
-        rows = build_pbl_table_rows(data, "training_contents")
-        assert rows[0]["unit_name"] == "데이터 수집"
-        assert rows[0]["training_hours"] == "8"
-        assert rows[0]["external_hours"] == "5"
-        assert rows[0]["internal_hours"] == "3"
-
-    def test_facilities_rows(self):
-        data = {
-            "facilities": [
-                {"seq": 1, "category": "시설", "name": "교육장 A", "spec": "30석", "location": "본사 3층"}
-            ]
-        }
-        rows = build_pbl_table_rows(data, "facilities")
-        assert rows[0]["category"] == "시설"
-        assert rows[0]["location"] == "본사 3층"
-
-    def test_training_instructors_rows(self):
-        data = {
-            "training_instructors": [
-                {
-                    "name": "홍전문",
-                    "internal_external": "외부",
-                    "career_years": 10,
-                    "work_name": "AI 컨설팅",
-                    "detailed_training_content": ["ML 기초", "MLOps 개요"],
-                }
-            ]
-        }
-        rows = build_pbl_table_rows(data, "training_instructors")
-        assert rows[0]["career_years"] == "10"
-        assert "ML 기초" in rows[0]["detailed_training_content"]
-
-    def test_performance_checklist_rows(self):
-        data = {
-            "performance_checklist": [
-                {"unit_name": "데이터 수집", "evaluation_criteria": "10건 이상", "performance_level": 4},
-                {"unit_name": "분석", "evaluation_criteria": "보고서 1건", "performance_level": 5},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "performance_checklist")
-        assert len(rows) == 2
-        assert rows[0]["performance_level"] == 4
-
-    def test_unknown_key_empty_list(self):
-        assert build_pbl_table_rows({}, "unknown_key") == []
+    def test_bulletize_empty(self):
+        assert _bulletize([]) == ""
+        assert _bulletize(None) == ""
 
 
 # ---------------------------------------------------------------
-# V2 — SSOT 단일 키 cover (`{{pbl_*}}` 긴 키)
+# 표지 + 개요
 # ---------------------------------------------------------------
-# Phase D-2: SSOT v2 (`docs/references/hwpx-placeholders.json`) 의 PBL placeholder
-# 명명 규칙 준수 — 옵션 B 채택으로 generate.py 는 V1 키를 사용하지만 (no-op),
-# build_pbl_placeholder_map 출력 dict에 SSOT 의 긴 키들도 함께 포함시킨다.
 
 
-class TestSSOTv2PblKeys:
-    def test_cover_v2_keys(self):
-        data = {
-            "company_name": "㈜테스트",
-            "course_name": "AI 자동화 과정",
-            "report_date": "2026.04.26",
-        }
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_cover_company_name}}"] == "㈜테스트"
-        assert m["{{pbl_cover_course_name}}"] == "AI 자동화 과정"
-        assert m["{{pbl_cover_report_date}}"] == "2026.04.26"
-        # V1 키도 보존
-        assert m["{{company_name}}"] == "㈜테스트"
+class TestCoverAndOverview:
+    def test_cover_signers(self):
+        m = _build_pbl_markers({
+            "pm_affiliation": "KPC", "pm_name": "홍PM",
+            "external_expert_affiliation": "외부소", "external_expert_name": "김외부",
+            "internal_expert_affiliation": "㈜테스트", "internal_expert_name": "박내부",
+            "doctor_affiliation": "센터", "doctor_name": "이주치",
+            "report_date": "2026. 05. 20.",
+        })
+        assert m["{{pbl_cover_pm_affiliation}}"] == "KPC"
+        assert m["{{pbl_cover_pm_name}}"] == "홍PM"
+        assert m["{{pbl_cover_external_expert_name}}"] == "김외부"
+        assert m["{{pbl_cover_internal_expert_affiliation}}"] == "㈜테스트"
+        assert m["{{pbl_cover_doctor_name}}"] == "이주치"
+        assert m["{{pbl_cover_report_date}}"] == "2026. 05. 20."
 
-    def test_overview_v2_keys(self):
-        data = {
-            "company_name": "㈜테스트",
-            "business_registration_no": "123-45-67890",
-            "industry_code": "C26",
-            "industry_main": "전자부품 제조",
-            "address": "서울 강남구",
-            "training_address": "본사 3층",
-            "jurisdiction_office": "서울지부",
-            "contact_position": "부장",
-            "contact_name": "김담당",
-            "contact_phone": "010-1234-5678",
-            "contact_email": "foo@bar.com",
-            "course_name": "AI 자동화 과정",
-            "ncs_code": "200107 인공지능",
-            "training_hours": 40,
-            "training_target_label": "데이터 분석 직무 5명",
-            "training_form": "사내 집체",
-            "training_period": "2026.04.01 ~ 2026.05.31",
-            "business_issues": "수작업 비효율",
-        }
-        m = build_pbl_placeholder_map(data)
+    def test_overview_simple_keys(self):
+        m = _build_pbl_markers({
+            "company_name": "㈜테스트", "business_registration_no": "123-45-67890",
+            "jurisdiction_office": "서울지부", "contact_position": "부장",
+            "contact_name": "최담당", "contact_phone": "010-0000-0000",
+            "contact_email": "a@b.com", "course_name": "AI 과정", "ncs_code": "200107",
+            "training_target_label": "QA 5명", "training_job": "검사 자동화",
+        })
         assert m["{{pbl_overview_company_name}}"] == "㈜테스트"
         assert m["{{pbl_overview_business_no}}"] == "123-45-67890"
-        assert m["{{pbl_overview_industry_code}}"] == "C26"
-        assert m["{{pbl_overview_industry}}"] == "전자부품 제조"
-        assert m["{{pbl_overview_address}}"] == "서울 강남구"
-        assert m["{{pbl_overview_training_address}}"] == "본사 3층"
         assert m["{{pbl_overview_branch}}"] == "서울지부"
-        assert m["{{pbl_overview_contact_position}}"] == "부장"
-        assert m["{{pbl_overview_contact_name}}"] == "김담당"
-        assert m["{{pbl_overview_contact_phone}}"] == "010-1234-5678"
-        assert m["{{pbl_overview_contact_email}}"] == "foo@bar.com"
-        assert m["{{pbl_overview_course_name}}"] == "AI 자동화 과정"
-        assert m["{{pbl_overview_ncs_code}}"] == "200107 인공지능"
-        assert m["{{pbl_overview_training_hours}}"] == "40"
-        assert m["{{pbl_overview_training_target}}"] == "데이터 분석 직무 5명"
-        assert m["{{pbl_overview_training_form}}"] == "사내 집체"
-        assert m["{{pbl_overview_training_period}}"] == "2026.04.01 ~ 2026.05.31"
-        assert m["{{pbl_overview_business_issues}}"] == "수작업 비효율"
+        assert m["{{pbl_overview_contact_email}}"] == "a@b.com"
+        assert m["{{pbl_overview_training_target}}"] == "QA 5명"
+        assert m["{{pbl_overview_training_job}}"] == "검사 자동화"
 
-    def test_analysis_v2_keys(self):
-        from _placeholders_roadmap import HRD_REPORT_URL_FALLBACK
+    def test_overview_industry_composed(self):
+        m = _build_pbl_markers({"industry_code": "C26", "industry_main": "전자부품 제조"})
+        assert m["{{pbl_overview_industry}}"] == "업종코드: C26  주업종: 전자부품 제조"
 
-        data = {
-            "company_issues": "경영 이슈 본문",
-            "course_necessity": "AI 도입 필요성 본문",
-            "hrd_report_attachment": "https://x/y.pdf",
-        }
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_analysis_company_issues}}"] == "경영 이슈 본문"
-        assert m["{{pbl_analysis_course_necessity}}"] == "AI 도입 필요성 본문"
-        # PR #5: URL 형은 fallback 안내문구로 치환
-        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
-        # raw 출력 단일 키도 동일하게 fallback
-        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
+    def test_overview_industry_main_only(self):
+        m = _build_pbl_markers({"industry_main": "전자부품 제조"})
+        assert m["{{pbl_overview_industry}}"] == "전자부품 제조"
 
-    def test_pbl_hrd_report_filename_kept_as_is(self):
-        """파일명·자유텍스트 형 attachment 는 raw 그대로 출력."""
-        m = build_pbl_placeholder_map({"hrd_report_attachment": "hrd-pbl.pdf"})
-        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "hrd-pbl.pdf"
-        assert m["{{hrd_report_attachment}}"] == "hrd-pbl.pdf"
+    def test_overview_address_block_combines_training_address(self):
+        # 주소·훈련실시주소 값 셀은 rowSpan 병합(1 셀) → 조합
+        m = _build_pbl_markers({"address": "서울 강남구", "training_address": "본사 3층"})
+        assert m["{{pbl_overview_address}}"] == "서울 강남구\n(훈련실시: 본사 3층)"
 
-    def test_pbl_hrd_report_empty_uses_empty_fallback(self):
-        """빈 attachment 는 미첨부 안내 fallback."""
-        from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
+    def test_overview_address_no_dup_when_same(self):
+        m = _build_pbl_markers({"address": "서울 강남구", "training_address": "서울 강남구"})
+        assert m["{{pbl_overview_address}}"] == "서울 강남구"
 
-        m = build_pbl_placeholder_map({})
-        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
-        assert m["{{hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
+    def test_overview_hours_suffix(self):
+        assert _build_pbl_markers({"training_hours": 40})["{{pbl_overview_training_hours}}"] == "40 시간"
+        assert _build_pbl_markers({})["{{pbl_overview_training_hours}}"] == ""
 
-    def test_current_ai_level_basic_check(self):
-        data = {"current_ai_level": "BASIC"}
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_tasks_current_ai_level_basic_check}}"] == "☑"
-        assert m["{{pbl_tasks_current_ai_level_explorer_check}}"] == "☐"
-        assert m["{{pbl_tasks_current_ai_level_user_check}}"] == "☐"
-        assert m["{{pbl_tasks_current_ai_level_leader_check}}"] == "☐"
 
-    def test_current_ai_level_user_check(self):
-        data = {"current_ai_level": "USER"}
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_tasks_current_ai_level_basic_check}}"] == "☐"
-        assert m["{{pbl_tasks_current_ai_level_explorer_check}}"] == "☐"
-        assert m["{{pbl_tasks_current_ai_level_user_check}}"] == "☑"
-        assert m["{{pbl_tasks_current_ai_level_leader_check}}"] == "☐"
+# ---------------------------------------------------------------
+# 로드맵 자동 연계
+# ---------------------------------------------------------------
 
-    def test_current_ai_level_unknown_unchecked(self):
-        data = {}
-        m = build_pbl_placeholder_map(data)
-        for k in (
-            "{{pbl_tasks_current_ai_level_basic_check}}",
-            "{{pbl_tasks_current_ai_level_explorer_check}}",
-            "{{pbl_tasks_current_ai_level_user_check}}",
-            "{{pbl_tasks_current_ai_level_leader_check}}",
-        ):
-            assert m[k] == "☐"
 
-    def test_expected_ai_level_v2_cell_fill(self):
-        # P-15 양식 2x3 (현행/향후/사유). 4등급 체크박스가 아닌 cell_fill.
-        data = {
-            "current_ai_level": "BASIC",
-            "expected_ai_level": "USER",
-            "expected_ai_level_note": "AI 도구 도입 후 6개월 내 활용형 진입",
-        }
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_tasks_expected_ai_level_current_label}}"] == "AI기초형(기초)"
-        assert m["{{pbl_tasks_expected_ai_level_expected_label}}"] == "AI활용형(중급)"
-        assert (
-            m["{{pbl_tasks_expected_ai_level_note}}"]
-            == "AI 도구 도입 후 6개월 내 활용형 진입"
+class TestRoadmapLinkage:
+    def test_setup_background_and_selected_task(self):
+        m = _build_pbl_markers({
+            "roadmap_setup_background": "AI 도입 배경",
+            "roadmap_selected_task": "검사 자동화",
+        })
+        assert m["{{pbl_roadmap_setup_background}}"] == "AI 도입 배경"
+        assert m["{{pbl_roadmap_selected_task}}"] == "검사 자동화"
+
+    @pytest.mark.parametrize("level,expected", [
+        ("BEGINNER", ("☑", "□", "□")),
+        ("INTERMEDIATE", ("□", "☑", "□")),
+        ("ADVANCED", ("□", "□", "☑")),
+        ("", ("□", "□", "□")),
+        ("UNKNOWN", ("□", "□", "□")),
+    ])
+    def test_ai_level_3state_checkbox(self, level, expected):
+        m = _build_pbl_markers({"roadmap_ai_level": level})
+        got = (
+            m["{{cb_pbl_roadmap_level_beginner}}"],
+            m["{{cb_pbl_roadmap_level_intermediate}}"],
+            m["{{cb_pbl_roadmap_level_advanced}}"],
         )
+        assert got == expected
 
-    def test_target_necessity_v2_key(self):
-        data = {"target_necessity": "AI 기반 자동화 필요성"}
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_tasks_target_necessity}}"] == "AI 기반 자동화 필요성"
+    def test_setup_activities_pm_and_expert_rows(self):
+        m = _build_pbl_markers({
+            "roadmap_setup_activities": [
+                {"date": "2026-04-01", "content": "킥오프", "method": "대면",
+                 "pm_name": "홍PM", "expert_name": "박내부"},
+            ],
+        })
+        assert m["{{pbl_roadmap_activity_0_date}}"] == "2026-04-01"
+        assert m["{{pbl_roadmap_activity_0_content}}"] == "킥오프"
+        assert m["{{pbl_roadmap_activity_0_pm_name}}"] == "홍PM"
+        assert m["{{pbl_roadmap_activity_0_expert_name}}"] == "박내부"
+        # 미공급 차수는 빈 문자열
+        assert m["{{pbl_roadmap_activity_2_pm_name}}"] == ""
 
-    def test_ops_v2_keys(self):
-        data = {
-            "training_goal": "AI 활용 역량 확보",
-            "training_plan_course_name": "AI 자동화 과정",
-            "training_period": "2026.04.01 ~ 2026.05.31",
-            "subject_profile_course_name": "AI 자동화 과정",
-            "total_training_hours": "40",
-            "subject_training_goals": "기술문제 해결",
-            "subject_ai_tools": "ChatGPT",
-            "subject_utilized_data": "센서 데이터",
-            "subject_analysis_method": "예측 모델",
-            "subject_total_sum_hours": "40",
-            "course_eval_course_name": "AI 자동화 과정",
-            "course_eval_target": "데이터 분석",
-            "course_eval_date": "2026.05.31",
-            "course_eval_criteria": "포트폴리오",
-            "course_eval_result": "Pass",
-            "course_eval_overall_comment": "모두 우수 통과",
-        }
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_ops_training_goal}}"] == "AI 활용 역량 확보"
-        assert m["{{pbl_ops_course_name}}"] == "AI 자동화 과정"
-        assert m["{{pbl_ops_training_period}}"] == "2026.04.01 ~ 2026.05.31"
-        assert m["{{pbl_ops_subject_course_name}}"] == "AI 자동화 과정"
-        assert m["{{pbl_ops_subject_total_hours}}"] == "40"
-        assert m["{{pbl_ops_subject_total_sum_hours}}"] == "40"
-        assert m["{{pbl_ops_eval_course_name}}"] == "AI 자동화 과정"
-        assert m["{{pbl_ops_eval_target}}"] == "데이터 분석"
-        assert m["{{pbl_ops_eval_date}}"] == "2026.05.31"
-        assert m["{{pbl_ops_eval_criteria}}"] == "포트폴리오"
-        assert m["{{pbl_ops_eval_result}}"] == "Pass"
-        assert m["{{pbl_ops_eval_overall_comment}}"] == "모두 우수 통과"
+    def test_requirements(self):
+        m = _build_pbl_markers({
+            "roadmap_req_company_status": "현황", "roadmap_req_main_problems": "문제",
+            "roadmap_req_push_willingness": "의지", "roadmap_req_expected_outcomes": "성과",
+        })
+        assert m["{{pbl_req_company_status}}"] == "현황"
+        assert m["{{pbl_req_main_problems}}"] == "문제"
+        assert m["{{pbl_req_push_willingness}}"] == "의지"
+        assert m["{{pbl_req_expected_outcomes}}"] == "성과"
 
-    def test_result_cover_v2_key(self):
-        data = {"company_name": "㈜테스트"}
-        m = build_pbl_placeholder_map(data)
-        assert m["{{pbl_result_cover_company_name}}"] == "㈜테스트"
+    def test_task_analysis_rows(self):
+        m = _build_pbl_markers({
+            "roadmap_task_analysis": [
+                {"job": "생산", "task": "검사", "as_is": "육안", "improvement": "AI"},
+            ],
+        })
+        assert m["{{pbl_task_0_job}}"] == "생산"
+        assert m["{{pbl_task_0_task}}"] == "검사"
+        assert m["{{pbl_task_0_as_is}}"] == "육안"
+        assert m["{{pbl_task_0_improvement}}"] == "AI"
+        assert m["{{pbl_task_4_job}}"] == ""  # max 5 rows, 미공급 빈 문자열
+
+    def test_target_task(self):
+        m = _build_pbl_markers({
+            "roadmap_target_task": {"name": "검사 자동화", "reason": "불량 감소",
+                                    "as_is": "육안", "to_be": "AI 비전"},
+        })
+        assert m["{{pbl_target_task_name}}"] == "검사 자동화"
+        assert m["{{pbl_target_task_reason}}"] == "불량 감소"
+        assert m["{{pbl_target_task_as_is}}"] == "육안"
+        assert m["{{pbl_target_task_to_be}}"] == "AI 비전"
+
+    def test_perf_activities_pm_expert(self):
+        m = _build_pbl_markers({
+            "roadmap_perf_activities": [
+                {"date": "2026-04-01", "content": "킥오프", "method": "대면",
+                 "pm_name": "홍PM", "expert_name": "박내부"},
+            ],
+        })
+        assert m["{{pbl_perf_0_pm_name}}"] == "홍PM"
+        assert m["{{pbl_perf_0_expert_name}}"] == "박내부"
+        assert m["{{pbl_perf_0_content}}"] == "킥오프"
+
+    def test_task_selections_with_checkbox_and_job_skip(self):
+        m = _build_pbl_markers({
+            "roadmap_task_selections": [
+                {"job": "생산", "task": "검사", "as_is": "육안", "improvement": "AI",
+                 "ai_necessity": "높음", "training_selected": True},
+                {"job": "품질", "task": "분류", "as_is": "수기", "improvement": "자동",
+                 "ai_necessity": "중간", "training_selected": False},
+            ],
+        })
+        assert m["{{pbl_selection_0_job}}"] == "생산"
+        assert m["{{pbl_selection_0_ai_necessity}}"] == "높음"
+        assert m["{{pbl_selection_0_training_selected}}"] == "☑"
+        assert m["{{pbl_selection_1_training_selected}}"] == "☐"
+        # 직무 col 은 i=1 병합 skip → 마커 미생성 (템플릿에도 없음)
+        assert "{{pbl_selection_1_job}}" not in m
+        assert m["{{pbl_selection_1_task}}"] == "분류"
 
 
-class TestSSOTv2PblTableRows:
-    """V2 신규 데이터 구조 (problems/priorities/target/details V2 + activities V2)."""
+# ---------------------------------------------------------------
+# PBL 인터뷰
+# ---------------------------------------------------------------
 
-    def test_problems_v2(self):
-        # R3 #20(PBL): impact 가 description 셀에 결합 출력되어야 한다 (양식 5x2 한계 회피)
-        data = {
-            "problems": [
-                {"title": "문제1", "description": "설명1", "impact": "영향1"},
-                {"title": "문제2", "description": "설명2", "impact": "영향2"},
-                {"title": "문제3", "description": "설명3", "impact": "영향3"},
-                {"title": "문제4", "description": "설명4", "impact": "영향4"},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "problems")
-        assert len(rows) == 4
-        assert rows[0]["title"] == "문제1"
-        assert rows[0]["description"].startswith("설명1")
-        assert "[영향] 영향1" in rows[0]["description"]
-        assert rows[3]["title"] == "문제4"
-        assert "[영향] 영향4" in rows[3]["description"]
 
-    def test_problems_v2_impact_only(self):
-        # impact 만 있고 description 없으면 description 셀에 [영향] 만 출력
-        data = {
-            "problems": [{"title": "문제1", "description": "", "impact": "영향만"}]
-        }
-        rows = build_pbl_table_rows(data, "problems")
-        assert rows[0]["description"] == "[영향] 영향만"
+class TestPblInterview:
+    def test_course_necessity(self):
+        m = _build_pbl_markers({"course_necessity": "AI 내재화 필요"})
+        assert m["{{pbl_analysis_course_necessity}}"] == "AI 내재화 필요"
 
-    def test_problems_v2_no_impact(self):
-        # impact 없으면 description 만 출력 (regression — 기존 동작 유지)
-        data = {
-            "problems": [{"title": "문제1", "description": "설명만", "impact": ""}]
-        }
-        rows = build_pbl_table_rows(data, "problems")
-        assert rows[0]["description"] == "설명만"
+    def test_hrd_url_fallback(self):
+        from _placeholders_roadmap import HRD_REPORT_URL_FALLBACK
+        m = _build_pbl_markers({"hrd_report_attachment": "https://x/y.pdf"})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_URL_FALLBACK
 
-    def test_priorities_v2(self):
-        # V2 priority.items[] (problem/score/rank). rank=1 → selected
-        data = {
-            "priorities": [
-                {"problem": "문제1", "score": 5, "rank": 1},
-                {"problem": "문제2", "score": 3, "rank": 2},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "priorities")
-        assert len(rows) == 2
-        assert rows[0]["problem"] == "문제1"
-        assert rows[0]["score"] == 5
-        assert rows[0]["rank"] == 1
-        assert rows[0]["selected"] is True
-        assert rows[1]["selected"] is False
+    def test_hrd_filename_kept(self):
+        m = _build_pbl_markers({"hrd_report_attachment": "hrd.pdf"})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == "hrd.pdf"
 
-    def test_target_single_v2(self):
-        # V2 단일 target {name, scope, necessity, details[]} → row 1 구성
-        data = {
-            "target": {
-                "name": "센서 데이터 수집",
-                "code": "0204020107",
-                "scope": "생산팀 5명",
-                "necessity": "수동 측정 비효율 개선",
-                "details": [
-                    {"title": "데이터 수집", "description": "PLC에서 자동 수집"},
-                ],
-            }
-        }
-        rows = build_pbl_table_rows(data, "target_single")
-        assert len(rows) == 1
-        assert rows[0]["name"] == "센서 데이터 수집"
-        assert rows[0]["scope"] == "생산팀 5명"
-        assert rows[0]["necessity"] == "수동 측정 비효율 개선"
+    def test_hrd_empty_fallback(self):
+        from _placeholders_roadmap import HRD_REPORT_EMPTY_FALLBACK
+        m = _build_pbl_markers({})
+        assert m["{{pbl_analysis_hrd_report_attachment}}"] == HRD_REPORT_EMPTY_FALLBACK
 
-    def test_target_details_v2(self):
-        # V2 PR #7: details[] 5 필드 (title/as_is/to_be/required_knowledge/required_skill)
-        data = {
+    def test_problem_definition_sheet(self):
+        m = _build_pbl_markers({
+            "problem_definition_sheet": {"background": "배경", "core": "핵심",
+                                         "scope": "범위", "constraints": "제약"},
+        })
+        assert m["{{pbl_problem_background}}"] == "배경"
+        assert m["{{pbl_problem_core}}"] == "핵심"
+        assert m["{{pbl_problem_scope}}"] == "범위"
+        assert m["{{pbl_problem_constraints}}"] == "제약"
+
+    def test_target_necessity(self):
+        m = _build_pbl_markers({"target_necessity": "병목 해소"})
+        assert m["{{pbl_tasks_target_necessity}}"] == "병목 해소"
+
+    def test_target_details_5_columns(self):
+        m = _build_pbl_markers({
             "target_details": [
-                {
-                    "title": "데이터 수집",
-                    "as_is": "수동 측정",
-                    "to_be": "PLC 자동 수집",
-                    "required_knowledge": "센서 데이터 구조",
-                    "required_skill": "Python pandas",
-                },
-                {
-                    "title": "분석",
-                    "as_is": "Excel 수기 집계",
-                    "to_be": "ML 모델 자동 분류",
-                    "required_knowledge": "통계·ML 기초",
-                    "required_skill": "scikit-learn 실습",
-                },
-            ]
-        }
-        rows = build_pbl_table_rows(data, "target_details_v2")
-        assert len(rows) == 2
-        assert rows[0]["title"] == "데이터 수집"
-        assert rows[0]["as_is"] == "수동 측정"
-        assert rows[0]["to_be"] == "PLC 자동 수집"
-        assert rows[0]["required_knowledge"] == "센서 데이터 구조"
-        assert rows[0]["required_skill"] == "Python pandas"
-        assert rows[1]["title"] == "분석"
-        assert rows[1]["as_is"] == "Excel 수기 집계"
+                {"title": "수집", "as_is": "수기", "to_be": "자동",
+                 "required_knowledge": "구조", "required_skill": "Python"},
+            ],
+        })
+        assert m["{{pbl_detail_0_title}}"] == "수집"
+        assert m["{{pbl_detail_0_as_is}}"] == "수기"
+        assert m["{{pbl_detail_0_to_be}}"] == "자동"
+        assert m["{{pbl_detail_0_required_knowledge}}"] == "구조"
+        assert m["{{pbl_detail_0_required_skill}}"] == "Python"
 
-    def test_target_details_v2_v1_fallback(self):
-        # V1 호환: description 만 있는 기존 row → as_is 로 자동 이전, 나머지 빈 문자열
-        data = {
-            "target_details": [
-                {"title": "데이터 수집", "description": "PLC 자동 수집"},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "target_details_v2")
-        assert len(rows) == 1
-        assert rows[0]["title"] == "데이터 수집"
-        assert rows[0]["as_is"] == "PLC 자동 수집"  # description → as_is fallback
-        assert rows[0]["to_be"] == ""
-        assert rows[0]["required_knowledge"] == ""
-        assert rows[0]["required_skill"] == ""
 
-    def test_activities_v2(self):
-        # V2 participants 는 4 person dict (PR #5 Phase F-4 schema 변경).
-        # build_pbl_table_rows 가 dict / string / null 입력을 모두 정규화한다.
-        data = {
-            "activities": [
-                {
-                    "round": 1,
-                    "date": "26.04.10",
-                    "content": "킥오프",
-                    "method": "대면",
-                    "participants": {
-                        "pm": "홍길동",
-                        "external_expert": "김전문",
-                        "internal_expert": "박관리",
-                        "jurisdiction_manager": "이주치",
-                    },
-                },
-                {
-                    "round": 2,
-                    "date": "26.04.17",
-                    "content": "문제 정의",
-                    "method": "대면",
-                    # 기존 string 데이터 호환 — PM 에 통째로 채움
-                    "participants": "PM 홍길동",
-                },
-            ]
-        }
-        rows = build_pbl_table_rows(data, "activities")
-        assert len(rows) == 2
-        assert rows[0]["round"] == "1차"
-        # dict 입력 — 4 person 모두 정상 노출
-        assert rows[0]["participants"]["pm"] == "홍길동"
-        assert rows[0]["participants"]["external_expert"] == "김전문"
-        assert rows[0]["participants"]["internal_expert"] == "박관리"
-        assert rows[0]["participants"]["jurisdiction_manager"] == "이주치"
-        # string 입력 → PM 으로 정규화
-        assert rows[1]["round"] == "2차"
-        assert rows[1]["participants"]["pm"] == "PM 홍길동"
-        assert rows[1]["participants"]["external_expert"] == ""
-        assert rows[1]["participants"]["internal_expert"] == ""
-        assert rows[1]["participants"]["jurisdiction_manager"] == ""
+# ---------------------------------------------------------------
+# 운영계획 (LLM)
+# ---------------------------------------------------------------
 
-    def test_activities_v2_null_participants_normalized(self):
-        # PR #5 Phase F-4: participants 가 null/missing 인 경우 빈 dict 로 정규화.
-        data = {
-            "activities": [
-                {
-                    "round": 1,
-                    "date": "26.04.10",
-                    "content": "킥오프",
-                    "method": "대면",
-                    "participants": None,
-                }
-            ]
-        }
-        rows = build_pbl_table_rows(data, "activities")
-        assert rows[0]["participants"] == {
-            "pm": "",
-            "external_expert": "",
-            "internal_expert": "",
-            "jurisdiction_manager": "",
-        }
 
-    def test_organization_v2_with_main_work(self):
-        # V2 organization 은 V1 의 organization 행 구조와 호환되는 형태로 D-5 가 출력
-        # — orgTree 는 부서명 컬럼에 flatten, mainWork 는 별도 행으로 추가 (output 측 책임)
-        data = {
-            "organization": [
-                {"department_name": "생산팀", "tasks": ["품질 검사", "데이터 수집"]},
-                {"department_name": "영업팀", "tasks": ["고객 응대"]},
-            ]
-        }
-        rows = build_pbl_table_rows(data, "organization")
-        assert len(rows) == 2
-        assert rows[0]["department_name"] == "생산팀"
-        assert "품질 검사" in rows[0]["tasks"]
+class TestOperationPlan:
+    def test_training_goal_and_metrics(self):
+        m = _build_pbl_markers({
+            "training_goal": "역량 확보",
+            "quantitative_metrics": "50% 감소", "qualitative_metrics": "만족도 향상",
+        })
+        assert m["{{pbl_ops_training_goal}}"] == "역량 확보"
+        assert m["{{pbl_ops_quantitative_metrics}}"] == "50% 감소"
+        assert m["{{pbl_ops_qualitative_metrics}}"] == "만족도 향상"
 
-    def test_organization_v2_raw_dict_flatten(self):
-        # V2 raw {orgTree, mainWork} 형태도 처리: dept 별 grouping, role+description 통합.
-        data = {
-            "organization": {
-                "orgTree": [],
-                "mainWork": [
-                    {"dept": "생산팀", "role": "팀장", "description": "공정 관리"},
-                    {"dept": "생산팀", "role": "팀원", "description": "품질 검사"},
-                    {"dept": "영업팀", "role": "팀장", "description": "고객 응대"},
-                ],
-            }
-        }
-        rows = build_pbl_table_rows(data, "organization")
-        assert len(rows) == 2
-        assert rows[0]["department_name"] == "생산팀"
-        assert "팀장 · 공정 관리" in rows[0]["tasks"]
-        assert "팀원 · 품질 검사" in rows[0]["tasks"]
-        assert rows[1]["department_name"] == "영업팀"
+    def test_ai_tool_usage_list_join(self):
+        m = _build_pbl_markers({
+            "ai_tool_usage_plan": [
+                {"stage": "1단계", "main_activity": "수집", "ai_tools": ["Roboflow", "LabelImg"],
+                 "utilized_data": "이미지", "purpose": "구축", "specific_method": "라벨링"},
+            ],
+        })
+        assert m["{{pbl_ops_tool_0_stage}}"] == "1단계"
+        assert m["{{pbl_ops_tool_0_ai_tools}}"] == "Roboflow\nLabelImg"
+        assert m["{{pbl_ops_tool_0_specific_method}}"] == "라벨링"
+
+    def test_course_overview(self):
+        m = _build_pbl_markers({
+            "training_plan_course_name": "AI 과정", "training_period": "05.01 ~ 06.30",
+        })
+        assert m["{{pbl_ops_course_name}}"] == "AI 과정"
+        assert m["{{pbl_ops_training_period}}"] == "05.01 ~ 06.30"
+
+    def test_learning_group_instructors_then_trainees(self):
+        m = _build_pbl_markers({
+            "learning_group": {
+                "instructors": [{"affiliation": "외부소", "position": "책임", "name": "김강사"}],
+                "trainees": [{"affiliation": "㈜테스트", "position": "사원", "name": "훈련A"}],
+            },
+        })
+        # 강사가 먼저(row 0), 훈련생 다음(row 1)
+        assert m["{{pbl_ops_group_0_name}}"] == "김강사"
+        assert m["{{pbl_ops_group_0_affiliation}}"] == "외부소"
+        assert m["{{pbl_ops_group_1_name}}"] == "훈련A"
+
+    def test_subject_profile_and_auto_sum(self):
+        m = _build_pbl_markers({
+            "subject_profile_course_name": "AI 과정", "total_training_hours": 40,
+            "subject_ai_tools": "PyTorch",
+            "training_contents": [
+                {"unit_name": "수집", "detail": "라벨링", "training_hours": 8,
+                 "instructor_hours": {"external": 5, "internal": 3}},
+                {"unit_name": "학습", "detail": "CNN", "training_hours": 16,
+                 "instructor_hours": {"external": 10, "internal": 6}},
+            ],
+        })
+        assert m["{{pbl_ops_subject_course_name}}"] == "AI 과정"
+        assert m["{{pbl_ops_content_0_unit_name}}"] == "수집"
+        assert m["{{pbl_ops_content_0_external_hours}}"] == "5"
+        # 자동 합산: 훈련시간 8+16=24, 외부 5+10=15, 내부 3+6=9
+        assert m["{{pbl_ops_subject_sum_hours}}"] == "24"
+        assert m["{{pbl_ops_subject_sum_external}}"] == "15"
+        assert m["{{pbl_ops_subject_sum_internal}}"] == "9"
+
+    def test_subject_sum_falls_back_when_no_numeric(self):
+        m = _build_pbl_markers({"subject_total_sum_hours": 40, "training_contents": []})
+        assert m["{{pbl_ops_subject_sum_hours}}"] == "40"
+
+    def test_facilities(self):
+        m = _build_pbl_markers({
+            "facilities": [{"seq": 1, "category": "시설", "name": "실습실",
+                            "spec": "20석", "location": "3층"}],
+        })
+        assert m["{{pbl_ops_facility_0_name}}"] == "실습실"
+        assert m["{{pbl_ops_facility_0_location}}"] == "3층"
+
+    def test_training_instructors_bulletize(self):
+        m = _build_pbl_markers({
+            "training_instructors": [{"name": "김강사", "internal_external": "외부",
+                                      "career_years": 10, "work_name": "컨설팅",
+                                      "detailed_training_content": ["기초", "실습"]}],
+        })
+        assert m["{{pbl_ops_instructor_0_name}}"] == "김강사"
+        assert m["{{pbl_ops_instructor_0_career_years}}"] == "10"
+        assert m["{{pbl_ops_instructor_0_detailed_training_content}}"] == "• 기초\n• 실습"
+
+    def test_course_eval(self):
+        m = _build_pbl_markers({
+            "course_eval_course_name": "AI 과정", "course_eval_target": "5명",
+            "course_eval_date": "06.30", "course_eval_criteria": "8개 이상",
+            "course_eval_result": "예정", "course_eval_overall_comment": "우수",
+        })
+        assert m["{{pbl_ops_eval_course_name}}"] == "AI 과정"
+        assert m["{{pbl_ops_eval_result}}"] == "예정"
+        assert m["{{pbl_ops_eval_overall_comment}}"] == "우수"
+
+    def test_performance_checklist_level_check(self):
+        m = _build_pbl_markers({
+            "performance_checklist": [
+                {"unit_name": "수집", "evaluation_criteria": "100건", "performance_level": 4},
+            ],
+        })
+        assert m["{{pbl_ops_checklist_0_unit_name}}"] == "수집"
+        assert m["{{pbl_ops_checklist_0_level_4_check}}"] == "√"
+        assert m["{{pbl_ops_checklist_0_level_3_check}}"] == ""
+        assert m["{{pbl_ops_checklist_0_level_5_check}}"] == ""
+
+
+# ---------------------------------------------------------------
+# 안전 처리
+# ---------------------------------------------------------------
+
+
+class TestSafety:
+    def test_empty_dict_all_str(self):
+        m = _build_pbl_markers({})
+        assert all(isinstance(v, str) for v in m.values())
+        # 280 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증)
+        assert len(m) == 280
+
+    def test_none_values_empty_string(self):
+        m = _build_pbl_markers({"company_name": None, "roadmap_setup_background": None})
+        assert m["{{pbl_overview_company_name}}"] == ""
+        assert m["{{pbl_roadmap_setup_background}}"] == ""

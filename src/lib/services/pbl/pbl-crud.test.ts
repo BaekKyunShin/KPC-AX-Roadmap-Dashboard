@@ -34,10 +34,32 @@ function minimalValidPBLContent(): PBLContent {
   return {
     operation_plan: {
       training_goal: '목표',
+      outcome_metrics: createEmptyOutcomeAnalysis(),
       ai_tool_usage_plan: [
-        { stage: '1단계', main_activity: '훈련실시', ai_tools: ['A'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
-        { stage: '2단계', main_activity: '피드백', ai_tools: ['B'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
-        { stage: '3단계', main_activity: '평가', ai_tools: ['C'], utilized_data: 'd', purpose: 'p', specific_method: 'm' },
+        {
+          stage: '1단계',
+          main_activity: '훈련실시',
+          ai_tools: ['A'],
+          utilized_data: 'd',
+          purpose: 'p',
+          specific_method: 'm',
+        },
+        {
+          stage: '2단계',
+          main_activity: '피드백',
+          ai_tools: ['B'],
+          utilized_data: 'd',
+          purpose: 'p',
+          specific_method: 'm',
+        },
+        {
+          stage: '3단계',
+          main_activity: '평가',
+          ai_tools: ['C'],
+          utilized_data: 'd',
+          purpose: 'p',
+          specific_method: 'm',
+        },
       ],
       training_plan: {
         overview: { course_name: 'C', training_period: { start: '', end: '' } },
@@ -84,7 +106,6 @@ function minimalValidPBLContent(): PBLContent {
         },
       },
     },
-    outcome_analysis: createEmptyOutcomeAnalysis(),
   };
 }
 
@@ -185,7 +206,7 @@ describe('pbl-crud', () => {
         minimalValidPBLContent(),
         'u-1',
         '요약',
-        null,
+        null
       );
 
       expect(result.version_number).toBe(3);
@@ -202,7 +223,9 @@ describe('pbl-crud', () => {
       const inserted = buildRow();
       const insert = vi
         .fn()
-        .mockReturnValue({ select: () => ({ single: vi.fn().mockResolvedValue({ data: inserted, error: null }) }) });
+        .mockReturnValue({
+          select: () => ({ single: vi.fn().mockResolvedValue({ data: inserted, error: null }) }),
+        });
 
       const client = {
         from: vi.fn((table: string) => {
@@ -210,7 +233,9 @@ describe('pbl-crud', () => {
             return {
               select: () => ({
                 eq: () => ({
-                  single: vi.fn().mockResolvedValue({ data: { assigned_consultant_id: null }, error: null }),
+                  single: vi
+                    .fn()
+                    .mockResolvedValue({ data: { assigned_consultant_id: null }, error: null }),
                 }),
               }),
             };
@@ -249,16 +274,18 @@ describe('pbl-crud', () => {
         from: vi.fn(() => ({
           select: () => ({
             eq: () => ({
-              single: vi.fn().mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
+              single: vi
+                .fn()
+                .mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
             }),
           }),
         })),
       };
       vi.mocked(createAdminClient).mockReturnValue(client as never);
 
-      await expect(
-        updateDraft('pbl-1', { pbl_content: minimalValidPBLContent() }),
-      ).rejects.toThrow(/DRAFT 상태/);
+      await expect(updateDraft('pbl-1', { pbl_content: minimalValidPBLContent() })).rejects.toThrow(
+        /DRAFT 상태/
+      );
     });
 
     it('DRAFT일 때 update 호출', async () => {
@@ -269,7 +296,9 @@ describe('pbl-crud', () => {
         from: vi.fn(() => ({
           select: () => ({
             eq: () => ({
-              single: vi.fn().mockResolvedValue({ data: { id: 'pbl-1', status: 'DRAFT' }, error: null }),
+              single: vi
+                .fn()
+                .mockResolvedValue({ data: { id: 'pbl-1', status: 'DRAFT' }, error: null }),
             }),
           }),
           update: vi.fn().mockReturnValue({
@@ -313,14 +342,16 @@ describe('pbl-crud', () => {
         p_actor_user_id: 'user-1',
       });
       expect(createAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'PBL_REPORT_FINALIZED' }),
+        expect.objectContaining({ action: 'PBL_REPORT_FINALIZED' })
       );
       expect(createNotificationForAdmins).toHaveBeenCalled();
     });
 
     it('RPC success=false면 예외', async () => {
       const client = {
-        rpc: vi.fn().mockResolvedValue({ data: { success: false, error: '권한 없음' }, error: null }),
+        rpc: vi
+          .fn()
+          .mockResolvedValue({ data: { success: false, error: '권한 없음' }, error: null }),
         from: vi.fn(),
       };
       vi.mocked(createAdminClient).mockReturnValue(client as never);
@@ -380,7 +411,9 @@ describe('pbl-crud', () => {
             eq: () => ({
               eq: () => ({
                 order: () => ({
-                  limit: () => ({ maybeSingle: vi.fn().mockResolvedValue({ data: row, error: null }) }),
+                  limit: () => ({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: row, error: null }),
+                  }),
                 }),
               }),
             }),
@@ -457,9 +490,7 @@ describe('pbl-crud', () => {
     });
 
     it('delete 에러 응답 시 "삭제 실패" 예외', async () => {
-      const deleteEq = vi
-        .fn()
-        .mockResolvedValue({ error: { message: 'FK 제약 위반' } });
+      const deleteEq = vi.fn().mockResolvedValue({ error: { message: 'FK 제약 위반' } });
       const client = {
         from: vi.fn(() => ({
           select: () => ({
@@ -499,7 +530,9 @@ describe('pbl-crud', () => {
         from: vi.fn(() => ({
           select: () => ({
             eq: () => ({
-              single: vi.fn().mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
+              single: vi
+                .fn()
+                .mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
             }),
           }),
           update: vi.fn().mockReturnValue({ eq: updateEq }),
@@ -528,16 +561,16 @@ describe('pbl-crud', () => {
     it('update 에러 응답 시 "공유 토글 실패" 예외', async () => {
       const updateEq = vi.fn().mockReturnValue({
         select: () => ({
-          single: vi
-            .fn()
-            .mockResolvedValue({ data: null, error: { message: '동시성 충돌' } }),
+          single: vi.fn().mockResolvedValue({ data: null, error: { message: '동시성 충돌' } }),
         }),
       });
       const client = {
         from: vi.fn(() => ({
           select: () => ({
             eq: () => ({
-              single: vi.fn().mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
+              single: vi
+                .fn()
+                .mockResolvedValue({ data: { id: 'pbl-1', status: 'FINAL' }, error: null }),
             }),
           }),
           update: vi.fn().mockReturnValue({ eq: updateEq }),

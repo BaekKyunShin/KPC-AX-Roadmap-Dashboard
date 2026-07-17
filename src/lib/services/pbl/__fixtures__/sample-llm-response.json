@@ -1,6 +1,11 @@
 {
   "operation_plan": {
     "training_goal": "AI 비전검사 시스템을 활용하여 품질검사 업무의 자동화 기반을 구축하고, 불량 감지 정확도를 현재 대비 20% 이상 향상시킨다. 훈련 완료 후 AI활용형(중급) 수준에 도달하여 노코드 AI 도구로 현장 데이터를 자율적으로 분석·활용할 수 있게 한다.",
+    "outcome_metrics": {
+      "selected_goals": ["불량률 감소", "공정 최적화"],
+      "quantitative": "1. 훈련 이후 불량발생률 15% 감소 (월별 측정)\n2. AI 비전검사 자동화로 품질검사 소요시간 40% 단축\n3. 데이터 라벨링 오류율 10% 이하 달성",
+      "qualitative": "1. 문제해결 역량 — AI 도구를 활용한 현장 데이터 분석 및 자율적 문제 해결 능력 향상\n2. 협업 및 소통 — 팀 프로젝트 수행 과정에서 부서 간 데이터 공유 및 협업 역량 발전\n3. 조직문화 — AI 도구 도입에 대한 구성원의 수용성 향상 및 데이터 기반 의사결정 문화 조성"
+    },
     "ai_tool_usage_plan": [
       {
         "stage": "1단계",
@@ -34,7 +39,13 @@
       },
       "learning_group": {
         "instructors": [
-          { "type": "외부", "role": "팀장", "affiliation": "한국AI컨설팅", "position": "수석연구원", "name": "김AI컨설턴트" }
+          {
+            "type": "외부",
+            "role": "팀장",
+            "affiliation": "한국AI컨설팅",
+            "position": "수석연구원",
+            "name": "김AI컨설턴트"
+          }
         ],
         "trainees": [
           { "role": "팀원", "affiliation": "품질검사팀", "position": "사원", "name": "미정" },
@@ -79,8 +90,20 @@
         "total_sum_hours": 32
       },
       "facilities": [
-        { "seq": 1, "category": "시설", "name": "교육장", "spec": "30인 수용 가능", "location": "본사 3층" },
-        { "seq": 2, "category": "장비", "name": "PC", "spec": "Windows 11, RAM 16GB 이상", "location": "본사 3층 교육장" }
+        {
+          "seq": 1,
+          "category": "시설",
+          "name": "교육장",
+          "spec": "30인 수용 가능",
+          "location": "본사 3층"
+        },
+        {
+          "seq": 2,
+          "category": "장비",
+          "name": "PC",
+          "spec": "Windows 11, RAM 16GB 이상",
+          "location": "본사 3층 교육장"
+        }
       ],
       "training_instructors": [
         {
@@ -105,9 +128,21 @@
         "evaluation_criteria": "체크리스트 10개 항목 중 수행 수준 4 이상 6개(60%) 이상 시 PASS",
         "evaluation_result": "예정",
         "performance_checklist": [
-          { "unit_name": "AI 데이터 이해 및 수집", "evaluation_criteria": "AI 학습 데이터셋을 스스로 구성하고 라벨링 가이드라인을 작성할 수 있다", "performance_level": 3 },
-          { "unit_name": "노코드 AI 모델 학습", "evaluation_criteria": "Teachable Machine으로 이미지 분류 모델을 학습·배포하고 정확도를 분석할 수 있다", "performance_level": 3 },
-          { "unit_name": "결과 공유 및 피드백", "evaluation_criteria": "KPI 달성도를 분석하고 경영진 보고용 발표 자료를 작성할 수 있다", "performance_level": 3 }
+          {
+            "unit_name": "AI 데이터 이해 및 수집",
+            "evaluation_criteria": "AI 학습 데이터셋을 스스로 구성하고 라벨링 가이드라인을 작성할 수 있다",
+            "performance_level": 3
+          },
+          {
+            "unit_name": "노코드 AI 모델 학습",
+            "evaluation_criteria": "Teachable Machine으로 이미지 분류 모델을 학습·배포하고 정확도를 분석할 수 있다",
+            "performance_level": 3
+          },
+          {
+            "unit_name": "결과 공유 및 피드백",
+            "evaluation_criteria": "KPI 달성도를 분석하고 경영진 보고용 발표 자료를 작성할 수 있다",
+            "performance_level": 3
+          }
         ],
         "overall_comment": "",
         "evaluation_scale": "1: 업무를 수행하는데 필요한 지식과 기술이 부족함\n2: 업무를 수행할 때 적절한 피드백이 필요한 수행 수준임\n3: 업무를 쉽고 기술적으로 수행할 수 있는 지식과 기술 습득된 수행 수준임\n4: 수행에 필요한 지식과 기술이 충분히 함양되어 있는 수행 수준임\n5: 다른 사람들에게 표준과 기준을 제시해 줄 수 있는 탁월한 수행 수준임"
@@ -118,17 +153,6 @@
         "external_expert_survey": [null, null, null, null, null],
         "practical_application_survey": [null, null, null, null]
       }
-    }
-  },
-  "outcome_analysis": {
-    "outcome_metrics": {
-      "selected_goals": ["불량률 감소", "공정 최적화"],
-      "quantitative": "1. 훈련 이후 불량발생률 15% 감소 (월별 측정)\n2. AI 비전검사 자동화로 품질검사 소요시간 40% 단축\n3. 데이터 라벨링 오류율 10% 이하 달성",
-      "qualitative": "1. 문제해결 역량 — AI 도구를 활용한 현장 데이터 분석 및 자율적 문제 해결 능력 향상\n2. 협업 및 소통 — 팀 프로젝트 수행 과정에서 부서 간 데이터 공유 및 협업 역량 발전\n3. 조직문화 — AI 도구 도입에 대한 구성원의 수용성 향상 및 데이터 기반 의사결정 문화 조성"
-    },
-    "diffusion_strategy": {
-      "internalization": "1. 매뉴얼 및 가이드 제작 — 훈련 과정에서 도출된 AI 비전검사 활용 방법을 표준 업무 매뉴얼로 문서화하여 신규 입사자 OJT에 활용\n2. 멘토-멘티 제도 운영 — 훈련 이수자(품질팀 3명)를 내부 멘토로 지정하여 동료 직원 현장 지도 수행\n3. 주기적 재훈련 체계 마련 — AI 기술 발전에 따른 분기별 업데이트 교육 계획 수립",
-      "company_wide_diffusion": "1. 성과 발표회 개최 — 훈련 완료 후 전 임직원 대상 성과 공유 및 우수 프로젝트 시상식 운영\n2. 타 부서 확대 적용 — 품질팀 파일럿 성공 경험을 생산팀·물류팀으로 단계적 확산 (다음 분기)\n3. 경영진 보고 및 투자 확보 — KPI 달성 데이터를 바탕으로 최고경영진에 AI 훈련 효과 보고, 후속 투자 확보"
     }
   }
 }

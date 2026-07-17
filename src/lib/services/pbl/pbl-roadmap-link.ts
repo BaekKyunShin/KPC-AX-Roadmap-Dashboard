@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getLatestFinalRoadmap, type RoadmapVersionRow } from '../roadmap/roadmap-crud';
+import { mapDbToRoadmapInterview } from '../interview/converters';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /** 로드맵 프로젝트 인터뷰 원시 행 (PBL Ⅱ장 자동 연계에 필요한 컬럼만) */
 export interface RoadmapInterviewRow {
@@ -64,4 +66,19 @@ export async function fetchLinkedRoadmapData(
     .maybeSingle();
 
   return { roadmap, interview: (interview as RoadmapInterviewRow) ?? null };
+}
+
+/**
+ * 선행 로드맵 인터뷰 원시 행을 camelCase 도메인 형태(RoadmapInterview)로 복원한다.
+ *
+ * PBL Ⅱ장(수립 배경·주요 활동·수립 결과·요구분석·과업분석표·훈련대상 과업)·Ⅲ-1 수행활동·
+ * Ⅲ-3-가 과업 목록은 모두 선행 로드맵 인터뷰에서 자동 연계된다. `fetchLinkedRoadmapData`
+ * 의 `interview` 를 그대로 넘기면 `mapDbToRoadmapInterview` 로 복원해 읽기 전용 렌더·
+ * HWPX payload 에 흘려보낼 수 있다. 미연계(null) 시 null 을 반환한다(재조회 없는 순수 함수).
+ */
+export function hydrateRoadmapInterview(
+  row: RoadmapInterviewRow | null
+): Partial<RoadmapInterviewStrict> | null {
+  if (!row) return null;
+  return mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]);
 }

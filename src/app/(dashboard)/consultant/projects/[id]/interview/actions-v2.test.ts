@@ -199,53 +199,16 @@ function validPBLV2(): PBLInterviewStrict {
     },
     hrdReportPdf: { fileName: 'pbl.pdf', url: 'p/pbl.pdf', size: 2048 },
     courseNecessity: 'AI 도입 필요',
-    activities: [
-      // R8 PBL-자체-03 — 평면 4행 배열
-      {
-        round: 1,
-        role: 'PM' as const,
-        personName: '홍길동',
-        date: '2026-05-15',
-        content: '1차',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'EXTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-15',
-        content: '1차',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'INTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-15',
-        content: '1차',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'JURISDICTION_MANAGER' as const,
-        personName: '',
-        date: '2026-05-15',
-        content: '1차',
-        method: '대면',
-      },
-    ],
     problemDefinitionSheet: {
       background: '검사자별 편차로 클레임 증가.',
       core: '품질 편차 — 육안 검사 의존',
       scope: '생산·품질 부서',
       constraints: '예산·일정 한계',
     },
-    priority: { items: [{ problem: '품질 편차', score: 5, rank: 1 }], method: 'AHP' },
+    // V2: Ⅲ-3 훈련대상 업무 (로드맵 과업 선정 + 선정 사유 + 세부내용)
     target: {
-      name: '품질검사 자동화',
-      scope: '생산팀 15명',
+      taskSelections: [{ ai_necessity: '높음 — 전원 공통 수행', training_selected: true }],
       necessity: '검사 편차 해결',
-      necessity_score: 4,
       details: [
         {
           title: '품질 검사 자동화',
@@ -256,8 +219,6 @@ function validPBLV2(): PBLInterviewStrict {
         },
       ],
     },
-    currentAiLevel: { level: 'BASIC', note: 'ChatGPT 일부 활용' },
-    expectedAiLevel: { level: 'USER', note: '부서 단위 AI 활용' },
   };
 }
 

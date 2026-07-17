@@ -543,57 +543,16 @@ function validPBLCamelCase(): PBLInterviewStrict {
     courseNecessity: 'AI 도입을 통한 품질 편차 개선 필요',
 
     // Ⅲ AI기반 훈련과제 도출
-    activities: [
-      // R8 PBL-자체-03 — 평면 4행 배열
-      {
-        round: 1,
-        role: 'PM' as const,
-        personName: '홍길동',
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'EXTERNAL_EXPERT' as const,
-        personName: '',
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'INTERNAL_EXPERT' as const,
-        personName: '김철수',
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-      },
-      {
-        round: 1,
-        role: 'JURISDICTION_MANAGER' as const,
-        personName: '',
-        date: '2026-05-15',
-        content: '1차 수행활동',
-        method: '대면',
-      },
-    ],
     problemDefinitionSheet: {
       background: '검사자별 편차 발생, 고객 클레임 증가.',
       core: '품질 편차',
       scope: '생산·품질 부서',
       constraints: '예산·일정 한계',
     },
-    priority: {
-      items: [{ problem: '품질 편차', score: 5, rank: 1 }],
-      method: 'AHP',
-    },
+    // V2: Ⅲ-3 훈련대상 업무 (로드맵 과업 선정 + 선정 사유 + 세부내용)
     target: {
-      name: '품질검사 자동화',
-      code: '200107',
-      scope: '생산팀 15명',
+      taskSelections: [{ ai_necessity: '높음', training_selected: true }],
       necessity: '검사 편차 해결',
-      necessity_score: 5,
       details: [
         {
           title: '품질 검사 자동화',
@@ -604,8 +563,6 @@ function validPBLCamelCase(): PBLInterviewStrict {
         },
       ],
     },
-    currentAiLevel: { level: 'BASIC', note: '일부 임직원 ChatGPT 활용' },
-    expectedAiLevel: { level: 'USER', note: '부서 단위 AI 도구 활용' },
   };
 }
 
@@ -619,9 +576,10 @@ describe('mapPBLInterviewToDb', () => {
     expect(pbl.companyName).toBe('테스트 기업');
     expect(pbl.courseName).toBe('AI 현장 문제해결 과정');
     expect(pbl.organization?.orgTree[0].name).toBe('대표이사');
-    expect(pbl.target.name).toBe('품질검사 자동화');
-    expect(pbl.currentAiLevel.level).toBe('BASIC');
-    expect(pbl.expectedAiLevel.level).toBe('USER');
+    // V2: target 은 taskSelections/necessity/details 로 재편됨 (name/code/scope/AI역량 제거)
+    expect(pbl.target.necessity).toBe('검사 편차 해결');
+    expect(pbl.target.taskSelections).toHaveLength(1);
+    expect(pbl.target.details[0].title).toBe('품질 검사 자동화');
   });
 
   it('round-trip: DB→camelCase→DB 무손실', () => {

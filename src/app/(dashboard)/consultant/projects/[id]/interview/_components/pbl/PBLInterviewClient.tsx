@@ -17,13 +17,10 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
-  type PBLActivityRow,
   type PBLProblemDefinitionSheet,
-  type PBLPriority,
   type PBLTarget,
-  type PBLAiLevelAssessment,
 } from '@/lib/schemas/interview-pbl';
-import type { SttInsights } from '@/lib/schemas/interview-roadmap';
+import type { SttInsights, RoadmapTaskAnalysisItem } from '@/lib/schemas/interview-roadmap';
 
 import { useBeforeUnloadGuard } from '@/hooks/useBeforeUnloadGuard';
 import InterviewStepper from '../InterviewStepper';
@@ -33,14 +30,14 @@ import { StepCourseNecessity } from './StepCourseNecessity';
 import { StepTrainingEnv } from './StepTrainingEnv';
 import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
-import { StepActivities } from './StepActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
-import { StepTargetAndLevel, type StepTargetAndLevelValue } from './StepTargetAndLevel';
+import { StepTarget } from './StepTarget';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
-// 10 스텝 정의 — 양식 2:1 정합 9개 + STT 첨부 1개 (선택)
+// 9 스텝 정의 — 양식 2:1 정합 8개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
+// V2: Ⅲ-1 수행활동(로드맵 연동)·Ⅲ-2-나 문제 우선순위·Ⅲ-4 AI역량 진단은 제거됐다.
 // id 는 양식 섹션 의미를 그대로 노출 (camelCase 단일 단어). UI 텍스트는 shortName
 // / name. required 는 strict 제출 시 빈 값 금지 여부.
 // ============================================================================
@@ -52,9 +49,8 @@ export type PBLStepId =
   | 'expectations'
   | 'hrdReport'
   | 'courseNecessity'
-  | 'activities'
   | 'problems'
-  | 'targetAndLevel'
+  | 'target'
   | 'sttAttach';
 
 interface StepDef {
@@ -100,26 +96,13 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
     stepperLabel: '과정 개발 필요성',
     required: true,
   },
-  { id: 7, stepId: 'activities', shortName: 'Ⅲ-1', name: '수행활동', required: true },
-  // Stepper 라벨 10자 → 7자 단축
-  {
-    id: 8,
-    stepId: 'problems',
-    shortName: 'Ⅲ-2',
-    name: '문제 도출·우선순위',
-    stepperLabel: '문제·우선순위',
-    required: true,
-  },
-  {
-    id: 9,
-    stepId: 'targetAndLevel',
-    shortName: 'Ⅲ-3·Ⅲ-4',
-    name: '훈련대상·AI수준',
-    required: true,
-  },
+  // V2: Ⅲ-2-나 우선순위 제거 → 문제 정의서 단일 세트만.
+  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서', required: true },
+  // V2: Ⅲ-4 AI역량 제거 → Ⅲ-3 훈련대상 업무(로드맵 과업 연동)만.
+  { id: 8, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무', required: true },
   // Stepper 라벨 10자 → 6자 단축
   {
-    id: 10,
+    id: 9,
     stepId: 'sttAttach',
     shortName: '선택',
     name: '인터뷰 녹취 STT 첨부',
@@ -135,13 +118,22 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
 export interface PBLInterviewClientProps {
   projectId: string;
   initial: Partial<PBLInterviewStrict>;
+  /**
+   * 선행 로드맵 과업 목록 (Ⅲ-3-가 읽기 전용 4열). 미연계 시 빈 배열.
+   * 실제 데이터 로드는 후속 커밋 — 현 커밋은 빈 배열만 plumbing.
+   */
+  roadmapTasks?: RoadmapTaskAnalysisItem[];
 }
 
 // ============================================================================
 // 본 컴포넌트
 // ============================================================================
 
-export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientProps) {
+export function PBLInterviewClient({
+  projectId,
+  initial,
+  roadmapTasks = [],
+}: PBLInterviewClientProps) {
   const router = useRouter();
   const [data, setData] = useState<Partial<PBLInterviewStrict>>(initial);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -189,20 +181,13 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
   );
 
   const updateTasks = useCallback(
-    (patch: {
-      activities?: PBLActivityRow[];
-      problemDefinitionSheet?: PBLProblemDefinitionSheet;
-      priority?: PBLPriority;
-      target?: PBLTarget;
-      currentAiLevel?: PBLAiLevelAssessment;
-      expectedAiLevel?: PBLAiLevelAssessment;
-    }) => {
+    (patch: { problemDefinitionSheet?: PBLProblemDefinitionSheet; target?: PBLTarget }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
     []
   );
 
-  // STT 인사이트(선택) — 10번째 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
+  // STT 인사이트(선택) — 마지막 Step. PBL 스키마는 camelCase 그대로 pbl_data JSONB
   // 에 저장되므로 별도 converter 매핑 불필요. mapPBLInterviewToDb 가 통째 보존.
   const updateSttInsights = useCallback((next: SttInsights | undefined) => {
     setData((prev) => ({ ...prev, sttInsights: next }));
@@ -333,8 +318,6 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
   }, [data, projectId, router]);
 
   // ---- Step 본문 렌더 -----------------------------------------------------
-  // Task 2.4-a: 3 간단 Step (overview / companyIssues / courseNecessity) 만
-  // 실제 컴포넌트 연결. 나머지 6 Step 은 placeholder — Task 2.4-b/c 에서 대체.
 
   function renderStep() {
     switch (currentStepId) {
@@ -423,13 +406,6 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
             onChange={(next) => updateAnalysis({ hrdReportPdf: next })}
           />
         );
-      case 'activities':
-        return (
-          <StepActivities
-            value={data.activities ?? []}
-            onChange={(next) => updateTasks({ activities: next })}
-          />
-        );
       case 'problems': {
         const problemsValue: StepProblemsValue = {
           problemDefinitionSheet: data.problemDefinitionSheet ?? {
@@ -438,52 +414,24 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
             scope: '',
             constraints: '',
           },
-          priority: data.priority ?? { items: [], method: '' },
         };
         return (
           <StepProblems
             value={problemsValue}
             onChange={(next) =>
-              updateTasks({
-                problemDefinitionSheet: next.problemDefinitionSheet,
-                priority: next.priority,
-              })
+              updateTasks({ problemDefinitionSheet: next.problemDefinitionSheet })
             }
           />
         );
       }
-      case 'targetAndLevel': {
-        const targetValue: StepTargetAndLevelValue = {
-          target: data.target ?? {
-            name: '',
-            code: '',
-            scope: '',
-            necessity: '',
-            necessity_score: 3,
-            details: [],
-          },
-          currentAiLevel: data.currentAiLevel ?? {
-            level: 'BASIC',
-            note: '',
-          },
-          expectedAiLevel: data.expectedAiLevel ?? {
-            level: 'USER',
-            note: '',
-          },
-        };
+      case 'target':
         return (
-          <StepTargetAndLevel
-            value={targetValue}
-            onChange={(next) =>
-              updateTasks({
-                target: next.target,
-                currentAiLevel: next.currentAiLevel,
-                expectedAiLevel: next.expectedAiLevel,
-              })
-            }
+          <StepTarget
+            value={data.target ?? { taskSelections: [], necessity: '', details: [] }}
+            onChange={(next) => updateTasks({ target: next })}
+            roadmapTasks={roadmapTasks}
           />
         );
-      }
       case 'sttAttach':
         return (
           <StepSttAttach
@@ -501,7 +449,7 @@ export function PBLInterviewClient({ projectId, initial }: PBLInterviewClientPro
     <PageContainer>
       <PageHeader
         title="AI PBL 인터뷰"
-        description="산인공 양식 2 9개 장과 선택 항목인 STT 첨부를 포함해 총 10개 스텝으로 진행합니다."
+        description="산인공 양식 2 8개 장과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
       />
 
       <InterviewStepper

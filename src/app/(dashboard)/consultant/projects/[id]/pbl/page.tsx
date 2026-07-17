@@ -2,12 +2,12 @@ import { redirect } from 'next/navigation';
 import { getCachedUser, getCachedProfile } from '@/lib/supabase/cached';
 import PBLResultPageClient from './_components/PBLResultPageClient';
 import { fetchPBLPageDataV2, fetchPBLProjectInfo } from './actions';
+import {
+  fetchLinkedRoadmapData,
+  hydrateRoadmapInterview,
+} from '@/lib/services/pbl/pbl-roadmap-link';
 
-export default async function PBLPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function PBLPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCachedUser();
   if (!user) redirect('/login');
 
@@ -18,10 +18,13 @@ export default async function PBLPage({
 
   const { id } = await params;
 
-  const [projectInfoResult, pageDataResult] = await Promise.all([
+  const [projectInfoResult, pageDataResult, linked] = await Promise.all([
     fetchPBLProjectInfo(id),
     fetchPBLPageDataV2(id),
+    fetchLinkedRoadmapData(id),
   ]);
+  // 선행 로드맵 인터뷰 복원 (Ⅱ장 자동 연계 읽기 전용 렌더). 미연계 시 null → 배너.
+  const linkedRoadmap = hydrateRoadmapInterview(linked.interview);
 
   if (!projectInfoResult.success) {
     redirect('/dashboard');
@@ -52,6 +55,7 @@ export default async function PBLPage({
       initialInterview={pageData.interview}
       initialHasInterview={pageData.hasInterview}
       initialProjectStatus={pageData.projectStatus}
+      linkedRoadmap={linkedRoadmap}
     />
   );
 }

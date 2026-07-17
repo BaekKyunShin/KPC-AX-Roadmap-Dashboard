@@ -19,10 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { VersionSelector } from '@/components/common/VersionSelector';
 import { VersionStatusBadge } from '@/components/common/VersionStatusBadge';
-import {
-  DownloadButtonGroup,
-  type DownloadType,
-} from '@/components/result/DownloadButtonGroup';
+import { DownloadButtonGroup, type DownloadType } from '@/components/result/DownloadButtonGroup';
 import { ResultTabs, type ResultTabItem } from '@/components/result/ResultTabs';
 import { RegenerateAccordion } from '@/components/roadmap/RegenerateAccordion';
 import RoadmapLoadingOverlay from '@/components/roadmap/RoadmapLoadingOverlay';
@@ -34,8 +31,8 @@ import { TabPBLOverview } from './TabPBLOverview';
 import { TabPBLAnalysis } from './TabPBLAnalysis';
 import { TabPBLTasks } from './TabPBLTasks';
 import { TabPBLOps } from './TabPBLOps';
-import { TabPBLOutcomes } from './TabPBLOutcomes';
 import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './types';
+import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /**
  * Task 2.11-a — PBL 결과 화면 role-aware 통합 Client.
@@ -43,7 +40,8 @@ import type { PBLResultEditPayload, ResultPBLInterviewSnapshot } from './types';
  * Consultant V2 (편집·재생성·확정) 와 Ops 읽기 전용을 하나의 Client 로 통합.
  * role prop 단일 분기 + capabilities 테이블로 가시성 제어 (boolean prop 증식 회피).
  *
- * 탭 구성(5): Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획 / Ⅴ 성과분석.
+ * 탭 구성(4): Ⅰ 개요 / Ⅱ 요구분석 / Ⅲ 훈련과제 도출 / Ⅳ 운영계획.
+ * (성과분석 측정지표는 Ⅳ-2 로 이동 — 구 Ⅴ 성과분석 탭 삭제.)
  * OPS role: 편집·재생성 차단. ShareToggle 은 PBL 도메인에 노출 않음 (OpsPBLClient 기존 동작과 일치).
  */
 
@@ -75,6 +73,12 @@ export interface PBLResultClientProps {
   selectedVersion: PBLReportRow | null;
   /** 인터뷰 입력값 snapshot (Ⅰ·Ⅱ·Ⅲ 의 읽기 전용 원본). */
   interview?: Partial<ResultPBLInterviewSnapshot>;
+  /**
+   * 선행 로드맵 인터뷰(camelCase 복원본). Ⅱ장 로드맵 자동 연계 + Ⅲ-3 과업 목록을
+   * 읽기 전용으로 렌더한다. 미연계 시 null/undefined → "미연결" 배너.
+   * (실제 로드 연결은 후속 커밋 — 현재는 상위가 undefined 로 넘긴다.)
+   */
+  linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
   /** #013 fix — interviews row 존재 여부. EmptyState/RegenerateAccordion 가드용. */
   hasInterview?: boolean;
   /** #013 fix — 프로젝트 status. PBL_ELIGIBLE_STATUSES 가드용. */
@@ -100,7 +104,7 @@ export interface PBLResultClientProps {
   projectMeta?: import('./types').PBLProjectMetaSnapshot;
 }
 
-type TabValue = 'overview' | 'analysis' | 'tasks' | 'ops' | 'outcomes';
+type TabValue = 'overview' | 'analysis' | 'tasks' | 'ops';
 
 const NOOP_EDIT: (patch: PBLResultEditPayload) => Promise<void> = async () => {};
 const NOOP_GENERATE: (revisionPrompt?: string) => Promise<void> = async () => {};
@@ -111,6 +115,7 @@ export function PBLResultClient({
   versions,
   selectedVersion,
   interview,
+  linkedRoadmap,
   hasInterview = false,
   projectStatus = '',
   onSelectVersion,
@@ -202,11 +207,12 @@ export function PBLResultClient({
     () => ({
       version: selectedVersion,
       interview,
+      linkedRoadmap,
       projectMeta,
       readOnly: tabReadOnly,
       onEdit: onEdit ?? NOOP_EDIT,
     }),
-    [selectedVersion, interview, projectMeta, tabReadOnly, onEdit],
+    [selectedVersion, interview, linkedRoadmap, projectMeta, tabReadOnly, onEdit]
   );
 
   const tabs: ResultTabItem[] = useMemo(
@@ -231,13 +237,8 @@ export function PBLResultClient({
         label: 'Ⅳ. 운영계획',
         content: <TabPBLOps {...commonTabProps} />,
       },
-      {
-        value: 'outcomes' satisfies TabValue,
-        label: 'Ⅴ. 성과분석',
-        content: <TabPBLOutcomes {...commonTabProps} />,
-      },
     ],
-    [commonTabProps],
+    [commonTabProps]
   );
 
   return (
@@ -245,7 +246,7 @@ export function PBLResultClient({
       <PageContainer>
         <PageHeader
           title="AI PBL 과정개발 결과"
-          description="산인공 공식 양식 2번 기반 5섹션 구조 (개요 / 요구분석 / 훈련과제 도출 / 운영계획 / 성과분석)"
+          description="산인공 공식 양식 2번 기반 4섹션 구조 (개요 / 요구분석 / 훈련과제 도출 / 운영계획)"
         />
 
         <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -313,8 +314,8 @@ export function PBLResultClient({
             className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             data-testid="pbl-final-edit-warning-banner"
           >
-            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을
-            직접 편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
+            <strong>최종 확정된 v{selectedVersion.version_number}입니다.</strong> 여기서 항목을 직접
+            편집하면 새 버전 없이 v{selectedVersion.version_number}이 덮어써집니다.
           </div>
         )}
 

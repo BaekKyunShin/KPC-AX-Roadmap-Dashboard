@@ -241,7 +241,6 @@ describe('InterviewReviewClient', () => {
         otherEquipment: '',
       },
       courseNecessity: '필요성',
-      activities: [],
       problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
     };
 
@@ -301,7 +300,7 @@ describe('InterviewReviewClient', () => {
       expect(screen.getByText('환경')).toBeInTheDocument();
     });
 
-    it('Ⅲ-1 활동 / Ⅲ-2 문제 — 비어 있을 때 안내 문구 표시', async () => {
+    it('Ⅲ-2 문제 정의서 — 비어 있을 때 안내 문구 표시', async () => {
       const user = userEvent.setup();
       render(
         <InterviewReviewClient
@@ -312,26 +311,15 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />
       );
-      await user.click(screen.getByText(/Ⅲ-1\. 수행 활동/));
-      expect(screen.getByText(/수행 활동이 입력되지 않았습니다/)).toBeInTheDocument();
-
-      // R8 PBL-자체-04 — problemDefinitionSheet 가 undefined 면 안내 문구 표시
+      // problemDefinitionSheet 가 전부 빈 문자열이면 안내 문구 표시
       await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
       expect(screen.getByText(/문제 정의서가 입력되지 않았습니다/)).toBeInTheDocument();
     });
 
-    it('Ⅲ-1 활동 / Ⅲ-2 문제 — 데이터 있을 때 차수·제목 렌더', async () => {
+    it('Ⅲ-2 문제 정의서 — 데이터 있을 때 항목 렌더', async () => {
       const user = userEvent.setup();
       const filledPbl: Partial<PBLInterviewStrict> = {
         ...pblData,
-        activities: [
-          {
-            round: 1,
-            date: '2026-04-25',
-            content: 'PBL 활동 내용',
-            method: '대면',
-          } as PBLInterviewStrict['activities'][number],
-        ],
         problemDefinitionSheet: {
           background: 'PBL 문제 배경',
           core: 'PBL 핵심 문제',
@@ -348,9 +336,6 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />
       );
-      await user.click(screen.getByText(/Ⅲ-1\. 수행 활동/));
-      expect(screen.getByText(/PBL 활동 내용/)).toBeInTheDocument();
-
       await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
       expect(screen.getByText('PBL 핵심 문제')).toBeInTheDocument();
     });
@@ -435,7 +420,6 @@ describe('InterviewReviewClient', () => {
         otherEquipment: '',
       },
       courseNecessity: '필요',
-      activities: [],
       problemDefinitionSheet: { background: '', core: '', scope: '', constraints: '' },
     };
 

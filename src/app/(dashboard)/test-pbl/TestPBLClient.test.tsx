@@ -55,43 +55,38 @@ vi.mock(
     StepOverview: ({ value }: { value: { courseName: string } }) => (
       <div data-testid="course-name-display">{value.courseName}</div>
     ),
-  }),
+  })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCompanyIssues',
-  () => ({ StepCompanyIssues: () => <div>StepCompanyIssues</div> }),
+  () => ({ StepCompanyIssues: () => <div>StepCompanyIssues</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepOrganization',
-  () => ({ StepOrganization: () => <div>StepOrganization</div> }),
+  () => ({ StepOrganization: () => <div>StepOrganization</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTrainingEnv',
-  () => ({ StepTrainingEnv: () => <div>StepTrainingEnv</div> }),
+  () => ({ StepTrainingEnv: () => <div>StepTrainingEnv</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepCourseNecessity',
-  () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> }),
-);
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepActivities',
-  () => ({ StepActivities: () => <div>StepActivities</div> }),
+  () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems',
-  () => ({ StepProblems: () => <div>StepProblems</div> }),
+  () => ({ StepProblems: () => <div>StepProblems</div> })
 );
-vi.mock(
-  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTargetAndLevel',
-  () => ({ StepTargetAndLevel: () => <div>StepTargetAndLevel</div> }),
-);
+vi.mock('@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTarget', () => ({
+  StepTarget: () => <div>StepTarget</div>,
+}));
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/InterviewStepper',
-  () => ({ default: () => <nav aria-label="Progress">stepper</nav> }),
+  () => ({ default: () => <nav aria-label="Progress">stepper</nav> })
 );
 vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/pbl/_components/result-v2/PBLResultClient',
-  () => ({ PBLResultClient: () => <div>PBLResultClient</div> }),
+  () => ({ PBLResultClient: () => <div>PBLResultClient</div> })
 );
 
 const baseUser = {
@@ -132,9 +127,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
       expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
     });
     // ConfirmDialog 가 열리지 않아야 한다
-    expect(
-      screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
   });
 
   it('이미 입력값이 있을 때 ConfirmDialog "취소" 시 state 가 유지된다', async () => {
@@ -153,9 +146,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "취소" 클릭
     await act(async () => {
@@ -164,9 +155,7 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
 
     // 다이얼로그가 닫히고 기존 state 가 유지되어야 한다
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
   });
@@ -187,18 +176,14 @@ describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
     await act(async () => {
       await userEvent.click(btn);
     });
-    expect(
-      await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('샘플 데이터로 덮어쓰시겠습니까?')).toBeInTheDocument();
 
     // "덮어쓰기" 클릭 → 다이얼로그 닫히고 샘플 값 유지 (재적용)
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: '덮어쓰기' }));
     });
     await waitFor(() => {
-      expect(
-        screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('샘플 데이터로 덮어쓰시겠습니까?')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('course-name-display')).toHaveTextContent(/PBL 과정/);
   });
@@ -255,12 +240,8 @@ describe('buildTestPBLExportPayload', () => {
     expect(payload.versionNumber).toBe(1);
     expect(payload.status).toBe('DRAFT');
     expect(payload.pblContent).toBeDefined();
-    expect(payload.interviewOverview?.courseName).toBe(
-      PBL_INTERVIEW_SAMPLE.courseName,
-    );
-    expect(payload.interviewOverview?.trainingHours).toBe(
-      PBL_INTERVIEW_SAMPLE.trainingHours,
-    );
+    expect(payload.interviewOverview?.courseName).toBe(PBL_INTERVIEW_SAMPLE.courseName);
+    expect(payload.interviewOverview?.trainingHours).toBe(PBL_INTERVIEW_SAMPLE.trainingHours);
   });
 
   it('finalizedAt 은 null, createdAt 은 ISO 문자열', () => {

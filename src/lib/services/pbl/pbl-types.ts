@@ -171,20 +171,17 @@ export interface PBLEvaluationPlan {
 
 export interface PBLOperationPlan {
   training_goal: PBLTrainingGoal;
+  /** Ⅳ-2 성과분석 측정 지표 (양식 v2 Ⅳ장, v1 Ⅴ장에서 이동) */
+  outcome_metrics: PBLOutcomeMetrics;
   ai_tool_usage_plan: PBLAIToolUsagePlanItem[];
   training_plan: PBLTrainingPlan;
   evaluation_plan: PBLEvaluationPlan;
 }
 
 // ============================================================================
-// Ⅴ. 성과분석 및 확산 전략 — LLM 생성 대상
-//   Ⅴ-1. 성과분석 측정 지표         → PBLOutcomeMetrics
-//   Ⅴ-2. 성과 확산 전략              → PBLDiffusionStrategy
+// Ⅳ-2. 성과분석 측정 지표 — LLM 생성 (양식 v2 Ⅳ장, v1 Ⅴ장에서 이동)
+//   ⚠️ 성과 확산 전략(구 Ⅴ-2 PBLDiffusionStrategy)은 v2 양식에서 출력처 소멸 → 삭제
 // ============================================================================
-
-// ----------------------------------------------------------------------------
-// Ⅴ-1. 성과분석 측정 지표
-// ----------------------------------------------------------------------------
 
 /** 훈련 목표 카테고리 체크박스 (양식 원문 5종) */
 export const TRAINING_GOAL_CATEGORIES = [
@@ -206,33 +203,11 @@ export interface PBLOutcomeMetrics {
 }
 
 // ----------------------------------------------------------------------------
-// Ⅴ-2. 성과 확산 전략
-// ----------------------------------------------------------------------------
-
-export interface PBLDiffusionStrategy {
-  /** 내재화 방안 — 매뉴얼·멘토링·재훈련 등 구체 방안 (1문단 이상 또는 bullet 형태) */
-  internalization: string;
-  /** 전사 확산 방안 — 성과 발표·타 부서 적용·경영진 보고 등 */
-  company_wide_diffusion: string;
-}
-
-// ----------------------------------------------------------------------------
-// Ⅴ. 성과분석 및 확산 전략 통합
-// ----------------------------------------------------------------------------
-
-export interface PBLOutcomeAnalysis {
-  outcome_metrics: PBLOutcomeMetrics;
-  diffusion_strategy: PBLDiffusionStrategy;
-}
-
-// ----------------------------------------------------------------------------
 // 최상위 결과물
 // ----------------------------------------------------------------------------
 
 export interface PBLContent {
   operation_plan: PBLOperationPlan;
-  /** Ⅴ장 성과분석 및 확산 전략 (LLM 생성) */
-  outcome_analysis: PBLOutcomeAnalysis;
 }
 
 // ----------------------------------------------------------------------------
@@ -268,9 +243,9 @@ export const PBL_EVALUATION_SCALE_ITEMS: ReadonlyArray<{
 ];
 
 /** LLM 프롬프트·HWPX·DB 호환을 위한 평탄 텍스트 표현. */
-export const PBL_EVALUATION_SCALE_DESCRIPTION = PBL_EVALUATION_SCALE_ITEMS
-  .map((item) => `${item.level}: ${item.description}`)
-  .join('\n');
+export const PBL_EVALUATION_SCALE_DESCRIPTION = PBL_EVALUATION_SCALE_ITEMS.map(
+  (item) => `${item.level}: ${item.description}`
+).join('\n');
 
 export const PBL_COURSE_EVALUATION_METHODS: readonly PBLCourseEvaluationMethod[] = [
   '포트폴리오',

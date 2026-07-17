@@ -1,245 +1,349 @@
 {
-  "company_name": "㈜AI산업자동화",
+  "company_name": "㈜비전테크",
   "course_name": "AI 비전 자동검사 PBL 과정",
-  "report_date": "2026.04.30.",
-  "cover": {
-    "pm": {"affiliation": "한국생산성본부", "name": "홍길동"},
-    "external_experts": [
-      {"affiliation": "AI연구소", "name": "김전문"}
-    ],
-    "internal_experts": [
-      {"affiliation": "㈜AI산업자동화", "name": "박관리"}
-    ],
-    "doctors": [
-      {"affiliation": "능력개발센터", "name": "이주치"}
-    ]
-  },
+  "report_date": "2026. 05. 20.",
+  "pm_affiliation": "KPC컨설팅",
+  "pm_name": "홍PM",
+  "external_expert_affiliation": "외부AI연구소",
+  "external_expert_name": "김외부",
+  "internal_expert_affiliation": "㈜비전테크",
+  "internal_expert_name": "박내부",
+  "doctor_affiliation": "중소기업AI확산센터",
+  "doctor_name": "이주치",
   "business_registration_no": "123-45-67890",
   "industry_code": "C26",
   "industry_main": "전자부품 제조",
-  "address": "서울 강남구 테헤란로 100",
+  "address": "서울 강남구 테헤란로 1",
   "training_address": "본사 3층 교육장",
   "jurisdiction_office": "서울지부",
-  "contact_position": "교육담당 부장",
-  "contact_name": "김담당",
+  "contact_position": "부장",
+  "contact_name": "최담당",
   "contact_phone": "010-1234-5678",
-  "contact_email": "edu@example.com",
+  "contact_email": "contact@vt.co.kr",
   "ncs_code": "200107 인공지능",
   "training_hours": 40,
   "training_target_label": "QA 인력 5명",
   "training_form": "사내 집체",
-  "training_period": "2026.04.01 ~ 2026.05.31",
+  "training_period": "2026.05.01 ~ 2026.06.30",
+  "business_issues": "수작업 검사 비효율",
   "training_job": "AI 비전 기반 QA 검사 자동화",
-  "training_goals": ["기술문제 해결", "공정 최적화"],
-  "business_issues": "수작업 검사 비효율 + 신규 OJT 비용 증가",
+  "company_issues": "검사 정확도 저하로 인한 클레임 증가",
+  "organization": {
+    "orgTree": [],
+    "mainWork": []
+  },
+  "roadmap_setup_background": "수작업 검사 한계로 AI 비전 도입 필요",
+  "roadmap_setup_activities": [
+    {
+      "round": 1,
+      "date": "2026-04-01\n10:00~12:00",
+      "content": "킥오프 회의",
+      "method": "대면(인터뷰)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 2,
+      "date": "2026-04-08\n14:00~16:00",
+      "content": "현황 분석 워크숍",
+      "method": "비대면(화상)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 3,
+      "date": "2026-04-15\n10:00~12:00",
+      "content": "로드맵 초안 검토",
+      "method": "대면(워크숍)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    }
+  ],
+  "roadmap_ai_level": "INTERMEDIATE",
+  "roadmap_selected_task": "AI 비전 검사 자동화",
+  "roadmap_req_company_status": "제조 중견기업, 수작업 QA 운영",
+  "roadmap_req_main_problems": "검사 정확도 편차 및 인력 의존",
+  "roadmap_req_push_willingness": "경영진 강한 도입 의지",
+  "roadmap_req_expected_outcomes": "불량 유출 50% 감소",
+  "roadmap_task_analysis": [
+    {
+      "job": "생산",
+      "task": "외관 검사",
+      "as_is": "육안 검사",
+      "improvement": "AI 비전 검사"
+    },
+    {
+      "job": "품질",
+      "task": "불량 분류",
+      "as_is": "수기 기록",
+      "improvement": "자동 분류"
+    },
+    {
+      "job": "설비",
+      "task": "설비 점검",
+      "as_is": "주기 점검",
+      "improvement": "예지 보전"
+    }
+  ],
+  "roadmap_target_task": {
+    "name": "외관 검사 자동화",
+    "reason": "불량 유출 최소화",
+    "as_is": "육안 100% 전수 검사",
+    "to_be": "AI 비전 1차 선별"
+  },
+  "roadmap_perf_activities": [
+    {
+      "round": 1,
+      "date": "2026-04-01\n10:00~12:00",
+      "content": "킥오프 회의",
+      "method": "대면(인터뷰)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 2,
+      "date": "2026-04-08\n14:00~16:00",
+      "content": "현황 분석 워크숍",
+      "method": "비대면(화상)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    },
+    {
+      "round": 3,
+      "date": "2026-04-15\n10:00~12:00",
+      "content": "로드맵 초안 검토",
+      "method": "대면(워크숍)",
+      "pm_name": "홍PM",
+      "expert_name": "박내부"
+    }
+  ],
+  "roadmap_task_selections": [
+    {
+      "job": "생산",
+      "task": "외관 검사",
+      "as_is": "육안 검사",
+      "improvement": "AI 비전 검사",
+      "ai_necessity": "높음",
+      "training_selected": true
+    },
+    {
+      "job": "품질",
+      "task": "불량 분류",
+      "as_is": "수기 기록",
+      "improvement": "자동 분류",
+      "ai_necessity": "중간",
+      "training_selected": false
+    },
+    {
+      "job": "설비",
+      "task": "설비 점검",
+      "as_is": "주기 점검",
+      "improvement": "예지 보전",
+      "ai_necessity": "낮음",
+      "training_selected": false
+    }
+  ],
+  "hrd_report_attachment": "https://x.example/hrd-report.pdf",
   "proper_training_hours": 40,
-  "training_place_types": ["사내"],
   "training_place_location": "본사 3층 교육장",
-  "training_place_special_notes": "",
-  "internal_instructor_used": true,
-  "internal_instructor_name": "박관리",
-  "internal_instructor_position": "선임연구원",
-  "target_count": 10,
-  "target_career": "평균 5년 (QA·생산기술·기획)",
-  "target_level": "중급 (Python 기초·엑셀 데이터 분석 보유)",
+  "training_place_special_notes": "추가 실습실 필요",
+  "internal_instructor_name": "정강사",
+  "internal_instructor_position": "수석",
   "ai_tools_status": "가능",
   "network_status": "양호",
   "pc_count": 10,
-  "etc_equipment": "Webcam · GPU 워크스테이션",
-  "training_needs_analysis": "수동 검사 자동화 + 데이터 분석 역량 내재화 필요",
-  "expectation_as_is": "수동 검사 92% 정확도, 보고서 작성 평균 4시간",
-  "expectation_to_be": "AI 자동검사 96%+, 보고서 자동 생성 1시간",
-  "company_issues": "Ⅱ-1-가 경영 이슈 본문 — 매출 정체 및 품질 비용 증가 (V2 정본)",
-  "course_necessity": "Ⅱ-3-나 AI훈련과정 개발 필요성 본문 — 자동화로 인력 재배치 필요",
-  "hrd_report_attachment": "https://x.example/hrd-pbl.pdf",
-  "organization": [
-    {"department_name": "생산팀", "tasks": ["제품 생산", "품질 검사"]},
-    {"department_name": "QA팀", "tasks": ["검사 보고서", "이상 분석"]},
-    {"department_name": "영업팀", "tasks": ["고객 응대"]}
-  ],
-  "activities": [
+  "etc_equipment": "고사양 GPU 워크스테이션",
+  "target_count": 5,
+  "target_career": "5년 이상",
+  "target_level": "중급",
+  "training_needs_analysis": "실습 중심 요구",
+  "expectation_as_is": "육안 검사",
+  "expectation_to_be": "AI 검사",
+  "internal_instructor_usage": "YES",
+  "internal_instructor_used": true,
+  "course_necessity": "AI 비전 기술 내재화 필요",
+  "problem_definition_sheet": {
+    "background": "검사 인력 부족",
+    "core": "검사 정확도 편차",
+    "scope": "외관 검사 공정",
+    "constraints": "라인 정지 최소화"
+  },
+  "target_necessity": "핵심 공정 병목 해소",
+  "target_details": [
     {
-      "round": 1, "date": "26.04.10", "content": "킥오프 회의", "method": "대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "김전문",
-        "internal_expert": "박관리",
-        "jurisdiction_manager": "이주치"
-      }
+      "title": "데이터 수집",
+      "as_is": "수기 기록",
+      "to_be": "자동 수집",
+      "required_knowledge": "이미지 데이터 구조",
+      "required_skill": "Python OpenCV"
     },
     {
-      "round": 2, "date": "26.04.17", "content": "문제 정의 워크숍", "method": "대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "",
-        "internal_expert": "박관리",
-        "jurisdiction_manager": ""
-      }
-    },
-    {
-      "round": 3, "date": "26.04.24", "content": "초안 검토", "method": "비대면",
-      "participants": {
-        "pm": "홍길동",
-        "external_expert": "",
-        "internal_expert": "",
-        "jurisdiction_manager": ""
-      }
+      "title": "모델 학습",
+      "as_is": "규칙 기반",
+      "to_be": "CNN 분류",
+      "required_knowledge": "딥러닝 기초",
+      "required_skill": "PyTorch 실습"
     }
   ],
-  "problems": [
-    {"title": "검사 정확도 8% 미달", "description": "수동 검사 → 평균 92% 정확도", "impact": "월 1500만원 손실"},
-    {"title": "리드타임 평균 4시간", "description": "수기 보고서 작성 시간", "impact": "출하 지연"},
-    {"title": "QA 인력 의존도 高", "description": "숙련 의존", "impact": "신규 채용 비용"},
-    {"title": "데이터 미활용", "description": "센서 로그 보존만", "impact": "기회비용"}
-  ],
-  "problem_definition_sheet": {
-    "background": "공정 데이터 수집·전처리 표준이 없어 분석 결과의 신뢰도가 낮다.",
-    "core": "AI 기반 불량 원인 분석이 수작업 통계에 의존한다.",
-    "scope": "품질관리부 12명, 생산 전공정 데이터.",
-    "constraints": "기존 시스템 변경 없이 AI 도구 도입, 6개월 내 적용."
-  },
-  "priorities": [
-    {"problem": "검사 정확도 8% 미달", "score": 5, "rank": 1},
-    {"problem": "리드타임 평균 4시간", "score": 4, "rank": 2},
-    {"problem": "QA 인력 의존도 高", "score": 3, "rank": 3},
-    {"problem": "데이터 미활용", "score": 2, "rank": 4}
-  ],
-  "priority_method": "AHP + 경영진 협의",
-  "target": {
-    "name": "AI 비전 자동검사",
-    "code": "0204020107",
-    "scope": "QA 인력 5명",
-    "necessity": "정확도 96% 이상 + 리드타임 50% 단축",
-    "necessity_score": 5,
-    "details": [
-      {
-        "title": "데이터 수집·전처리",
-        "as_is": "센서 데이터 + 영상 라벨링 수기 검수 (작업자별 편차 발생)",
-        "to_be": "PLC 자동 수집 + AutoLabel 도구 자동 라벨링 + 학습 데이터셋 생성 자동화",
-        "required_knowledge": "센서 데이터 구조·라벨링 가이드라인",
-        "required_skill": "Python pandas + AutoLabel CLI 운영"
-      },
-      {
-        "title": "모델 운영·평가",
-        "as_is": "정확도 KPI 수기 검증 + 결과 보고서 수동 작성",
-        "to_be": "객체 검출 모델 운영 + 정확도 KPI 자동 검증 + 자동 보고서 생성",
-        "required_knowledge": "객체 검출 모델 평가 지표 (mAP·Recall)",
-        "required_skill": "PyTorch 모델 서빙 + 자동 보고서 생성 스크립트"
-      }
-    ]
-  },
-  "target_necessity": "정확도 96% 이상 + 리드타임 50% 단축",
-  "current_ai_level": "EXPLORER",
-  "current_ai_level_note": "ChatGPT 일부 사용, 비전 모델 미경험",
-  "expected_ai_level": "USER",
-  "expected_ai_level_note": "6개월 내 객체 검출 자동화 운영 도달",
-  "training_goal": "AI 활용형 도달 + 비전 검사 자동화 운영",
+  "training_goal": "AI 비전 검사 역량 확보",
+  "training_goals": ["기술문제 해결", "불량률 감소"],
+  "quantitative_metrics": "불량 유출률 50% 감소",
+  "qualitative_metrics": "검사자 업무 만족도 향상",
   "ai_tool_usage_plan": [
-    {"stage": "1단계", "main_activity": "데이터 수집", "ai_tools": ["LabelImg"], "utilized_data": "검사 영상", "purpose": "라벨링", "specific_method": "수동 라벨 → AutoLabel"},
-    {"stage": "2단계", "main_activity": "모델 학습", "ai_tools": ["YOLO"], "utilized_data": "라벨 데이터", "purpose": "객체 검출", "specific_method": "Transfer learning"}
+    {
+      "stage": "1단계",
+      "main_activity": "데이터 수집",
+      "ai_tools": ["Roboflow", "LabelImg"],
+      "utilized_data": "불량 이미지",
+      "purpose": "학습 데이터 구축",
+      "specific_method": "라벨링 실습"
+    },
+    {
+      "stage": "2단계",
+      "main_activity": "모델 학습",
+      "ai_tools": ["PyTorch"],
+      "utilized_data": "라벨 데이터셋",
+      "purpose": "분류 모델 개발",
+      "specific_method": "CNN 학습"
+    },
+    {
+      "stage": "3단계",
+      "main_activity": "현장 적용",
+      "ai_tools": ["ONNX Runtime"],
+      "utilized_data": "실시간 카메라",
+      "purpose": "라인 통합",
+      "specific_method": "엣지 배포"
+    }
   ],
-  "training_plan_course_name": "AI 비전 자동검사 PBL 과정",
-  "subject_profile_course_name": "AI 비전 자동검사 PBL 과정",
-  "total_training_hours": "40",
-  "subject_training_goals": "기술문제 해결\n공정 최적화",
-  "subject_ai_tools": "YOLO\nLabelImg",
-  "subject_utilized_data": "센서·영상 데이터",
-  "subject_analysis_method": "객체 검출 + 분류 모델",
-  "subject_total_sum_hours": "40",
-  "course_eval_course_name": "AI 비전 자동검사 PBL 과정",
-  "course_eval_target": "QA 인력 5명",
-  "course_eval_date": "2026.05.31",
-  "course_eval_criteria": "수행수준 3 이상 60% PASS",
-  "course_eval_result": "예정",
-  "course_eval_overall_comment": "",
-  "course_evaluation_methods": ["포트폴리오"],
+  "training_plan_course_name": "AI 비전 자동검사 과정",
   "learning_group": {
     "instructors": [
       {
         "type": "외부",
-        "role": "팀장",
-        "affiliation": "AI연구소",
-        "position": "수석연구원",
-        "name": "김전문"
+        "role": "팀원",
+        "affiliation": "외부AI연구소",
+        "position": "책임",
+        "name": "김강사"
       },
       {
         "type": "내부",
-        "role": "팀원",
-        "affiliation": "QA팀",
-        "position": "선임연구원",
-        "name": "박관리"
+        "role": "팀장",
+        "affiliation": "㈜비전테크",
+        "position": "수석",
+        "name": "정강사"
       }
     ],
     "trainees": [
       {
         "role": "팀원",
-        "affiliation": "QA팀",
+        "affiliation": "㈜비전테크",
         "position": "사원",
-        "name": "이검사"
+        "name": "훈련생A"
       },
       {
         "role": "팀원",
-        "affiliation": "QA팀",
-        "position": "사원",
-        "name": "박품질"
+        "affiliation": "㈜비전테크",
+        "position": "대리",
+        "name": "훈련생B"
+      },
+      {
+        "role": "팀원",
+        "affiliation": "㈜비전테크",
+        "position": "주임",
+        "name": "훈련생C"
       }
     ]
   },
+  "subject_profile_course_name": "AI 비전 자동검사 과정",
+  "total_training_hours": 40,
+  "subject_training_goals": "외관 검사 자동화\n불량 자동 분류",
+  "subject_ai_tools": "PyTorch\nOpenCV",
+  "subject_utilized_data": "제품 외관 이미지",
+  "subject_analysis_method": "CNN 이미지 분류",
+  "subject_total_sum_hours": 40,
   "training_contents": [
     {
-      "unit_name": "CV 기초",
-      "detail": "1단원: 영상 처리 기본",
-      "training_hours": "4",
-      "instructor_hours": {"external": "4", "internal": "0"}
+      "unit_name": "데이터 수집·라벨링",
+      "detail": "불량 이미지 수집 및 라벨링",
+      "training_hours": 8,
+      "instructor_hours": {
+        "external": 5,
+        "internal": 3
+      }
     },
     {
-      "unit_name": "객체 검출",
-      "detail": "2단원: YOLO 실습",
-      "training_hours": "8",
-      "instructor_hours": {"external": "6", "internal": "2"}
+      "unit_name": "모델 학습",
+      "detail": "CNN 분류 모델 학습",
+      "training_hours": 16,
+      "instructor_hours": {
+        "external": 10,
+        "internal": 6
+      }
+    },
+    {
+      "unit_name": "현장 적용",
+      "detail": "라인 통합 및 검증",
+      "training_hours": 16,
+      "instructor_hours": {
+        "external": 8,
+        "internal": 8
+      }
     }
   ],
   "facilities": [
     {
-      "seq": "1",
-      "category": "AI 인프라",
-      "name": "고사양 PC",
-      "spec": "RTX 4090 × 5",
-      "location": "본사 3층 교육장"
+      "seq": 1,
+      "category": "시설",
+      "name": "AI 실습실",
+      "spec": "20석 GPU PC",
+      "location": "본사 3층"
     },
     {
-      "seq": "2",
-      "category": "AI 도구",
-      "name": "YOLO 라이선스",
-      "spec": "Enterprise",
-      "location": "클라우드"
+      "seq": 2,
+      "category": "장비",
+      "name": "산업용 카메라",
+      "spec": "5MP 라인스캔",
+      "location": "생산 라인"
     }
   ],
   "training_instructors": [
     {
-      "name": "김전문",
+      "name": "김강사",
       "internal_external": "외부",
-      "career_years": "10",
-      "work_name": "비전 모델 강의",
-      "detailed_training_content": ["객체 검출 실습", "Transfer learning 실습"]
+      "career_years": 10,
+      "work_name": "AI 비전 컨설팅",
+      "detailed_training_content": ["딥러닝 기초", "비전 실습"]
     },
     {
-      "name": "박관리",
+      "name": "정강사",
       "internal_external": "내부",
-      "career_years": "5",
-      "work_name": "OJT 멘토링",
-      "detailed_training_content": ["현장 적용 가이드"]
+      "career_years": 7,
+      "work_name": "QA 공정 개선",
+      "detailed_training_content": ["현장 데이터", "라인 통합"]
     }
   ],
-  "quantitative_metrics": "정확도 92% → 98% 향상, 보고서 리드타임 4시간 → 1시간 단축",
-  "qualitative_metrics": "QA 인력 재배치 성공, 사내 AI 챔피언 3명 양성",
-  "internalization_plan": "QA팀 표준 운영 프로세스로 정착, 월 1회 사내 세미나 운영",
-  "dissemination_plan": "전사 AI 센터 설립, 생산기술부·R&D 부서로 6개월 내 확산",
+  "course_eval_course_name": "AI 비전 자동검사 과정",
+  "course_eval_target": "훈련생 5명",
+  "course_eval_date": "2026.06.30",
+  "course_eval_criteria": "14개 중 8개 이상 수행수준 4",
+  "course_eval_result": "예정",
+  "course_eval_overall_comment": "전원 수행수준 우수 예상",
+  "course_evaluation_methods": ["포트폴리오", "작업장 평가"],
   "performance_checklist": [
-    {"unit_name": "CV 기초", "evaluation_criteria": "영상 처리 기본 개념 이해", "performance_level": 4},
-    {"unit_name": "객체 검출", "evaluation_criteria": "YOLO 모델 학습 운영 가능", "performance_level": 3},
-    {"unit_name": "데이터 라벨링", "evaluation_criteria": "AutoLabel 도구 활용 라벨링", "performance_level": 5},
-    {"unit_name": "모델 평가", "evaluation_criteria": "mAP·Recall 지표 산출", "performance_level": 4},
-    {"unit_name": "현장 적용", "evaluation_criteria": "생산 라인 실 데이터 검증", "performance_level": 3}
+    {
+      "unit_name": "데이터 수집",
+      "evaluation_criteria": "100건 이상 라벨링",
+      "performance_level": 4
+    },
+    {
+      "unit_name": "모델 학습",
+      "evaluation_criteria": "정확도 90% 이상",
+      "performance_level": 5
+    },
+    {
+      "unit_name": "현장 적용",
+      "evaluation_criteria": "라인 통합 완료",
+      "performance_level": 3
+    }
   ]
 }

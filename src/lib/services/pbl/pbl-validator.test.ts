@@ -7,6 +7,12 @@ function createValidPBLContent(): PBLContent {
   return {
     operation_plan: {
       training_goal: '생산 공정의 불량률을 감소시키는 AI 활용 역량 확보',
+      // Ⅳ-2 성과분석 측정 지표 (v2에서 operation_plan 하위로 이동)
+      outcome_metrics: {
+        selected_goals: ['불량률 감소'],
+        quantitative: '훈련 후 불량발생률 15% 감소',
+        qualitative: '문제해결 역량 향상 및 협업 문화 개선',
+      },
       ai_tool_usage_plan: [
         {
           stage: '1단계',
@@ -125,18 +131,6 @@ function createValidPBLContent(): PBLContent {
         },
       },
     },
-    // Ⅴ. 성과분석 및 확산 전략 (Task 2.10 추가)
-    outcome_analysis: {
-      outcome_metrics: {
-        selected_goals: ['불량률 감소'],
-        quantitative: '훈련 후 불량발생률 15% 감소',
-        qualitative: '문제해결 역량 향상 및 협업 문화 개선',
-      },
-      diffusion_strategy: {
-        internalization: '업무 매뉴얼 제작 및 멘토-멘티 제도 운영',
-        company_wide_diffusion: '성과 발표회 개최 및 타 부서 확대 적용',
-      },
-    },
   };
 }
 
@@ -153,7 +147,10 @@ describe('pbl-validator - 성공 케이스', () => {
 describe('pbl-validator - AI 도구 활용 계획', () => {
   it('3단계 미만이면 실패', () => {
     const content = createValidPBLContent();
-    content.operation_plan.ai_tool_usage_plan = content.operation_plan.ai_tool_usage_plan.slice(0, 2);
+    content.operation_plan.ai_tool_usage_plan = content.operation_plan.ai_tool_usage_plan.slice(
+      0,
+      2
+    );
     const result = validatePBLContent(content);
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('최소 3단계'))).toBe(true);
@@ -216,7 +213,12 @@ describe('pbl-validator - 결과평가 설문 문항 수 고정', () => {
 
   it('성취도 설문은 정확히 3문항이어야 한다', () => {
     const content = createValidPBLContent();
-    content.operation_plan.evaluation_plan.result_evaluation.achievement_survey = [null, null, null, null];
+    content.operation_plan.evaluation_plan.result_evaluation.achievement_survey = [
+      null,
+      null,
+      null,
+      null,
+    ];
     const result = validatePBLContent(content);
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('성취도'))).toBe(true);
@@ -232,7 +234,10 @@ describe('pbl-validator - 결과평가 설문 문항 수 고정', () => {
 
   it('현업적용도는 정확히 4문항이어야 한다', () => {
     const content = createValidPBLContent();
-    content.operation_plan.evaluation_plan.result_evaluation.practical_application_survey = [null, null];
+    content.operation_plan.evaluation_plan.result_evaluation.practical_application_survey = [
+      null,
+      null,
+    ];
     const result = validatePBLContent(content);
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('현업적용도'))).toBe(true);

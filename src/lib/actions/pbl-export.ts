@@ -8,14 +8,7 @@ import { canAccessProjectArtifact } from '@/lib/actions/auth-helpers';
 import type { ProjectStatus, UserRole } from '@/types/database';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
-import {
-  PBL_AI_LEVEL_LABEL,
-  pblInterviewAutoSaveSchema,
-  type AILevel,
-  type PBLAILevel,
-  type PBLInterviewStrict,
-  type TrainingGoal,
-} from '@/lib/schemas/interview-pbl';
+import type { PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 
 export interface PBLExportPayload {
   companyName: string;
@@ -48,43 +41,32 @@ export interface PBLExportPayload {
 }
 
 /**
- * pbl_data JSONB 분기 — V2 (camelCase, PR #28 정본) vs V1 (snake_case legacy).
- * `hwpx-payload-pbl.ts` 의 `classifyInterview` 와 동일한 키 시그니처·분기 패턴을
- * 사용한다 — strict zod 재검증을 피하고 키 존재 여부만으로 판정해 자동 저장 중간
- * 단계 (Ⅲ-3-다 5 컬럼 일부 누락 등) 의 데이터도 export 가능하게 한다.
+ * pbl_data JSONB → V2 인터뷰(부분). V2 정본만 처리하며 V1 fallback 은 제거했다.
+ * strict zod 재검증을 피하고 키 존재 여부만으로 판정해 자동 저장 중간 단계
+ * (Ⅲ-3-다 5 컬럼 일부 누락 등) 의 데이터도 export 가능하게 한다.
  *  - V2 판정: companyName / courseName / companyIssues 중 하나라도 존재
- *  - V1 판정: courseOverview / companyStatus 중 하나라도 존재 + autoSave schema 통과
- *  - 그 외: empty (export 시 interviewOverview·requirements 누락)
+ *  - 그 외: null (export 시 interviewOverview·requirements 누락)
  */
-type PblDataBranch =
-  | { kind: 'v2'; data: Partial<PBLInterviewStrict> }
-  | { kind: 'v1'; data: Record<string, unknown> }
-  | { kind: 'empty' };
-
-function classifyPblData(raw: unknown): PblDataBranch {
-  if (!raw || typeof raw !== 'object') return { kind: 'empty' };
+function extractV2Interview(raw: unknown): Partial<PBLInterviewStrict> | null {
+  if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   if ('companyName' in r || 'courseName' in r || 'companyIssues' in r) {
-    return { kind: 'v2', data: r as Partial<PBLInterviewStrict> };
+    return r as Partial<PBLInterviewStrict>;
   }
-  if ('courseOverview' in r || 'companyStatus' in r) {
-    const v1 = pblInterviewAutoSaveSchema.safeParse(r);
-    return v1.success ? { kind: 'v1', data: v1.data } : { kind: 'empty' };
-  }
-  return { kind: 'empty' };
+  return null;
 }
 
 function buildOverviewFromV2(
   v2: Partial<PBLInterviewStrict>
 ): PBLExportPayload['interviewOverview'] {
-  const level = v2.currentAiLevel?.level as PBLAILevel | undefined;
   return {
     courseName: v2.courseName ?? '',
     trainingHours: v2.trainingHours ?? 0,
     // V2 schema 에 별도 필드 없음 (Ⅰ 양식의 trainee_count 는 결과 화면에서 채움).
     traineeCount: 0,
     trainingJob: v2.trainingTarget ?? '',
-    aiLevel: level ? PBL_AI_LEVEL_LABEL[level] : '',
+    // v2 양식: AI역량 자체입력 제거(로드맵 연계로만 표시). 결과 화면에서 별도 처리.
+    aiLevel: '',
     trainingGoals: [],
   };
 }
@@ -124,37 +106,6 @@ function buildRequirementsFromV2(
       required_knowledge: d.required_knowledge ?? '',
       required_skill: d.required_skill ?? '',
     })),
-  };
-}
-
-function buildOverviewFromV1(
-  overview: Record<string, unknown> | undefined
-): PBLExportPayload['interviewOverview'] {
-  if (!overview) return undefined;
-  return {
-    courseName: (overview.course_name as string | undefined) ?? '',
-    trainingHours: (overview.training_hours as number | undefined) ?? 0,
-    traineeCount: (overview.trainee_count as number | undefined) ?? 0,
-    trainingJob: (overview.training_job as string | undefined) ?? '',
-    aiLevel: ((overview.ai_level as AILevel | undefined) ?? '') as string,
-    trainingGoals: ((overview.training_goals as TrainingGoal[] | undefined) ?? []) as string[],
-  };
-}
-
-function buildRequirementsFromV1(
-  env: Record<string, unknown> | undefined,
-  targets: Record<string, unknown> | undefined
-): PBLExportPayload['requirements'] {
-  if (!env && !targets) return undefined;
-  return {
-    trainingNeedsAnalysis: (env?.training_needs_analysis as string | undefined) ?? undefined,
-    selectionReason: (targets?.selection_reason as string | undefined) ?? undefined,
-    targetTaskDetails:
-      (targets?.target_task_details as PBLExportPayload['requirements'] extends
-        | { targetTaskDetails: infer T }
-        | undefined
-        ? T
-        : never) ?? undefined,
   };
 }
 
@@ -213,22 +164,13 @@ export async function preparePBLExportData(pblId: string): Promise<ActionResult<
       .eq('project_id', row.project_id)
       .maybeSingle();
 
-    const branch = classifyPblData(interview?.pbl_data);
+    const v2 = extractV2Interview(interview?.pbl_data);
 
     let interviewOverview: PBLExportPayload['interviewOverview'];
     let requirements: PBLExportPayload['requirements'];
-    if (branch.kind === 'v2') {
-      interviewOverview = buildOverviewFromV2(branch.data);
-      requirements = buildRequirementsFromV2(branch.data);
-    } else if (branch.kind === 'v1') {
-      const v1 = branch.data;
-      interviewOverview = buildOverviewFromV1(
-        v1.courseOverview as Record<string, unknown> | undefined
-      );
-      requirements = buildRequirementsFromV1(
-        v1.trainingEnvironment as Record<string, unknown> | undefined,
-        v1.targetTasks as Record<string, unknown> | undefined
-      );
+    if (v2) {
+      interviewOverview = buildOverviewFromV2(v2);
+      requirements = buildRequirementsFromV2(v2);
     }
 
     const payload: PBLExportPayload = {

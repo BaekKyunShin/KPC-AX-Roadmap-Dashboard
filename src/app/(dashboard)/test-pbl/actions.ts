@@ -9,17 +9,10 @@ import { registerAbort, cancelAbort, cleanupAbort } from '@/lib/services/abort-r
 import { getLLMUserFriendlyError } from '@/lib/services/llm';
 import { generatePBLContent, PBLGenerationError } from '@/lib/services/pbl/pbl-generator';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
-import {
-  PBLInterviewStrictSchema,
-  type PBLInterviewStrict,
-  PBL_AI_LEVEL_LABEL,
-} from '@/lib/schemas/interview-pbl';
+import { PBLInterviewStrictSchema, type PBLInterviewStrict } from '@/lib/schemas/interview-pbl';
 import type { ConsultantProfile } from '@/types/database';
 import type { ActionResult, SimpleActionResult } from '@/lib/types/action-result';
-import {
-  buildPBLHwpxPayloadFromInputs,
-  generatePBLHwpx,
-} from '@/lib/services/export/hwpx';
+import { buildPBLHwpxPayloadFromInputs, generatePBLHwpx } from '@/lib/services/export/hwpx';
 
 const ALLOWED_ROLES = ['CONSULTANT_APPROVED', 'OPS_ADMIN', 'SYSTEM_ADMIN'] as const;
 
@@ -47,133 +40,9 @@ export interface TestPBLResult {
   interview: PBLInterviewStrict;
 }
 
-// =============================================================================
-// 헬퍼 — V2 인터뷰 → V1 prompt-expected shape (pbl-prompts.ts 와 정합)
-// =============================================================================
-
-function toLegacyPromptShape(v2: PBLInterviewStrict): Record<string, unknown> {
-  return {
-    courseOverview: {
-      company_name: v2.companyName,
-      course_name: v2.courseName,
-      ncs_code: v2.ncsCode ?? '',
-      training_hours: v2.trainingHours,
-      trainee_count: 0,
-      training_job: v2.trainingTarget,
-      ai_level: PBL_AI_LEVEL_LABEL[v2.currentAiLevel.level],
-      training_goals: [],
-      industry_main: '',
-    },
-    companyStatus: {
-      business_issues: v2.businessIssues,
-      organization: (v2.organization?.orgTree ?? []).map((node, i) => ({
-        id: `org-${i}`,
-        department_name: node.name,
-        tasks: node.children.map((c) => c.name),
-      })),
-    },
-    trainingEnvironment: {
-      proper_training_hours: v2.trainingHours,
-      training_place: {},
-      internal_instructor: {},
-      target_count: 0,
-      target_characteristics: {},
-      ai_infrastructure: {},
-      training_needs_analysis: v2.trainingEnv,
-      expectation: { as_is: '', to_be: '' },
-    },
-    hrdNecessity: {
-      course_development_necessity: v2.courseNecessity,
-      training_history: [],
-      recommendations: [],
-      hrd_report_attachment: v2.hrdReportPdf
-        ? {
-            storage_path: v2.hrdReportPdf.url,
-            file_name: v2.hrdReportPdf.fileName,
-            extracted_text: v2.hrdReportPdf.extractedText,
-            parse_error: v2.hrdReportPdf.parseError,
-          }
-        : undefined,
-    },
-    performanceActivities: {
-      // R8 PBL-자체-03 — 평면 4행을 차수별로 그룹핑해 V1 row 형태로 변환.
-      performance_activities: (() => {
-        const byRound = new Map<number, typeof v2.activities>();
-        v2.activities.forEach((a) => {
-          const list = byRound.get(a.round) ?? [];
-          list.push(a);
-          byRound.set(a.round, list);
-        });
-        return Array.from(byRound.entries())
-          .sort(([a], [b]) => a - b)
-          .map(([round, rows], i) => {
-            const find = (role: typeof rows[number]['role']) =>
-              rows.find((r) => r.role === role)?.personName ?? '';
-            const first = rows[0];
-            return {
-              id: `act-${i}`,
-              round,
-              date: first?.date ?? '',
-              content: first?.content ?? '',
-              method: first?.method ?? '',
-              operation_mode: '대면',
-              participants: {
-                pm: find('PM'),
-                external_expert: find('EXTERNAL_EXPERT'),
-                internal_expert: find('INTERNAL_EXPERT'),
-                jurisdiction_manager: find('JURISDICTION_MANAGER'),
-              },
-            };
-          });
-      })(),
-    },
-    problemDefinition: {
-      problem_definition: {
-        background: v2.problemDefinitionSheet?.background ?? '',
-        core_problem: v2.problemDefinitionSheet?.core ?? '',
-        scope: v2.problemDefinitionSheet?.scope ?? v2.target.scope,
-        constraints: v2.problemDefinitionSheet?.constraints ?? '',
-      },
-      problem_priorities: v2.priority.items.map((it, i) => ({
-        id: `pri-${i}`,
-        problem_name: it.problem,
-        priority: it.score,
-        selected: it.rank === 1,
-      })),
-    },
-    targetTasks: {
-      target_tasks: [
-        {
-          id: 'target-1',
-          task_name: v2.target.name,
-          necessity: 5,
-          selected: true,
-        },
-      ],
-      selection_reason: v2.target.necessity,
-      target_task_details: [
-        {
-          id: 'target-detail-1',
-          task_name: v2.target.name,
-          // V2 PR #7: details[] 5 필드 schema → 첫 번째 row 의 4 필드 그대로 사용
-          as_is: v2.target.details[0]?.as_is ?? '',
-          to_be: v2.target.details[0]?.to_be ?? '',
-          required_knowledge: v2.target.details[0]?.required_knowledge ?? '',
-          required_skill: v2.target.details[0]?.required_skill ?? '',
-        },
-      ],
-    },
-    aiLevelDiagnosis: {
-      current_ai_level: PBL_AI_LEVEL_LABEL[v2.currentAiLevel.level],
-      expected_ai_level: PBL_AI_LEVEL_LABEL[v2.expectedAiLevel.level],
-      improvement_reason: v2.expectedAiLevel.note,
-    },
-  };
-}
-
-function parseInterview(input: TestPBLActionInput):
-  | { ok: true; data: PBLInterviewStrict }
-  | { ok: false; error: string } {
+function parseInterview(
+  input: TestPBLActionInput
+): { ok: true; data: PBLInterviewStrict } | { ok: false; error: string } {
   if (!input.companyName || input.companyName.trim().length < 2) {
     return { ok: false, error: '회사명을 2자 이상 입력하세요.' };
   }
@@ -204,7 +73,7 @@ function parseInterview(input: TestPBLActionInput):
  *  4. in-memory 결과 반환 — DB 저장 없음, 페이지 이탈 시 휘발.
  */
 export async function generateTestPBL(
-  input: TestPBLActionInput,
+  input: TestPBLActionInput
 ): Promise<ActionResult<TestPBLResult>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
@@ -236,7 +105,9 @@ export async function generateTestPBL(
 
   try {
     const { content } = await generatePBLContent({
-      interview: toLegacyPromptShape(validatedInput),
+      // V2 flat camelCase 인터뷰를 그대로 전달 — 실제 PBL 생성 경로
+      // (pbl/actions.ts) 와 동일. 프롬프트 빌더가 V2 정본을 직접 읽는다.
+      interview: validatedInput as unknown as Record<string, unknown>,
       project: {
         company_name: input.companyName,
         industry: input.industry,
@@ -306,9 +177,7 @@ export async function exportTestPBLHwpx(input: {
   content: PBLContent;
   interview: PBLInterviewStrict;
   companyName: string;
-}): Promise<
-  ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>
-> {
+}): Promise<ActionResult<{ fileName: string; contentBase64: string; mimeType: string }>> {
   const auth = await requireAuthWithRole(ALLOWED_ROLES);
   if ('error' in auth) return { success: false, error: auth.error };
 
