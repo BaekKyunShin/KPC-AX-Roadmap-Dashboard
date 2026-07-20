@@ -242,6 +242,34 @@ def _s(v) -> str:
     return "" if v is None else str(v)
 
 
+def _ensure_sentence_period(text: str) -> str:
+    """서술형(종결어미 '다') 줄 끝에 온점(.) 보정 — 줄 단위.
+
+    각 줄을 rstrip 후 '다'로 끝나면 온점을 부가한다. 명사형·개조식
+    (강의/실습/확보/필요/~됨/~함/~음)은 '다'로 끝나지 않아 자동 무변경이며,
+    이미 종결부호(., !, ? 등)로 끝난 줄은 '다' 미종결이라 이중 온점이 생기지 않는다.
+    """
+    out = []
+    for line in text.split("\n"):
+        stripped = line.rstrip()
+        if stripped.endswith("다"):
+            out.append(stripped + ".")
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+def _apply_sentence_periods(m: dict) -> None:
+    """마커 값 전체에 서술형 온점 보정(제자리). 샘플·production 공통 단일 지점.
+
+    체크박스(☑/□)·날짜·라벨·명사형 값은 '다'로 끝나지 않아 무변경이므로
+    화이트리스트 없이 전 값에 적용해도 안전하다(자기조정형).
+    """
+    for k, v in m.items():
+        if isinstance(v, str) and v:
+            m[k] = _ensure_sentence_period(v)
+
+
 def _build_roadmap_markers(data: dict) -> dict:
     """payload → {{마커}}: 값 매핑."""
     m: dict = {}
@@ -355,6 +383,7 @@ def _build_roadmap_markers(data: dict) -> dict:
             m[base + "details}}"] = details_text
             m[base + "hours}}"] = _s(subj.get("hours"))
 
+    _apply_sentence_periods(m)
     return m
 
 
@@ -1344,4 +1373,5 @@ def _build_pbl_markers(data: dict) -> dict:
         for L in range(1, 6):
             m[f"{{{{pbl_ops_checklist_{i}_level_{L}_check}}}}"] = "√" if lvl == L else ""
 
+    _apply_sentence_periods(m)
     return m

@@ -193,3 +193,59 @@ class TestSpecGoalContentLeftAligned:
         t = _tables(doc)[8]  # Ⅰ-3 수립 주요 결과 (3×4)
         p = t.cell(2, 1).paragraphs[0]
         assert p.para_pr_id_ref != "11", f"Ⅰ-3 요약이 잘못 좌측화됨: paraPr={p.para_pr_id_ref}"
+
+
+class TestSentencePeriod:
+    def test_helper_adds_period_to_declarative(self):
+        from generate import _ensure_sentence_period
+        assert _ensure_sentence_period("학습시킬 수 있다") == "학습시킬 수 있다."
+        assert _ensure_sentence_period("역량을 강화한다") == "역량을 강화한다."
+        assert _ensure_sentence_period("데이터가 미비하다") == "데이터가 미비하다."
+
+    def test_helper_skips_noun_and_existing_terminal(self):
+        from generate import _ensure_sentence_period
+        assert _ensure_sentence_period("개념 강의") == "개념 강의"
+        assert _ensure_sentence_period("역량 확보") == "역량 확보"
+        assert _ensure_sentence_period("확인됨") == "확인됨"  # 개조식 무변경
+        assert _ensure_sentence_period("완성한다.") == "완성한다."  # 이중온점 방지
+        assert _ensure_sentence_period("") == ""
+
+    def test_helper_per_line_multiline(self):
+        from generate import _ensure_sentence_period
+        assert (
+            _ensure_sentence_period("배포할 수 있다\n구성할 수 있다")
+            == "배포할 수 있다.\n구성할 수 있다."
+        )
+        # 명사형 줄은 무변경, 서술형 줄만 온점
+        assert (
+            _ensure_sentence_period("▪ 개념 강의\n▪ 모델을 배포한다")
+            == "▪ 개념 강의\n▪ 모델을 배포한다."
+        )
+
+    def test_roadmap_training_goal_gets_period(self):
+        doc = _open_bytes(_generate_roadmap({
+            "course_specs": [{"training_goal": "모델을 스스로 학습시킬 수 있다"}],
+        }))
+        cell = _tables(doc)[22].cell(5, 1)
+        txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+        assert txt.endswith("있다."), f"훈련목표 온점 실패: {txt!r}"
+
+    def test_roadmap_remarks_declarative_period(self):
+        doc = _open_bytes(_generate_roadmap({"company_status_remarks": "인프라가 미비하다"}))
+        assert "미비하다." in _all_text(doc)
+
+    def test_existing_period_not_doubled(self):
+        doc = _open_bytes(_generate_roadmap({
+            "course_specs": [{"main_content": "산출물을 완성한다."}],
+        }))
+        text = _all_text(doc)
+        assert "완성한다." in text
+        assert "완성한다.." not in text
+
+    def test_pbl_subject_goals_each_line_period(self):
+        doc = _open_bytes(_generate_pbl({
+            "subject_training_goals": "모델을 배포할 수 있다\n파이프라인을 구성할 수 있다",
+        }))
+        text = _all_text(doc)
+        assert "배포할 수 있다." in text
+        assert "구성할 수 있다." in text
