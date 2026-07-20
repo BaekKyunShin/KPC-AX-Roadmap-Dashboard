@@ -82,6 +82,7 @@ vi.mock('next/server', () => ({ after: mockAfter }));
 vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
   fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
   hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
+  extractLinkedRoadmapSummary: vi.fn().mockReturnValue(''),
 }));
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue({
