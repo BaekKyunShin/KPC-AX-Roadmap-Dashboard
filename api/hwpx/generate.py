@@ -424,6 +424,21 @@ def _collect_tables(doc):
 _HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
 
 
+def _approx_text_width(s: str) -> int:
+    """텍스트의 렌더 폭 근사(HWPX 단위). CJK/전각 기호 ≈ 1000, ASCII ≈ 550,
+    공백 ≈ 400. 셀 폭(cellSz.width)과 비교해 SQUEEZE 로 한 줄에 담을 수 있는지
+    판정한다(정확한 폰트 메트릭 대신 근사 — lineWrap 결정용으로 충분)."""
+    width = 0
+    for ch in s:
+        if ch in (" ", "\t"):
+            width += 400
+        elif ch.isascii():
+            width += 550
+        else:
+            width += 1000
+    return width
+
+
 def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
     """표 셀의 값을 설정 (multi-line = paragraph 분배).
 
@@ -495,15 +510,28 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         if parent is not None:
             parent.remove(p.element)
 
-    # Step 5: 셀 subList 의 lineWrap 을 BREAK 로 설정 (한컴오피스 자동 단어 wrap)
-    #   양식 원본의 SQUEEZE 또는 누락 상태에서 발생하는 글자 겹침 회피.
-    #   python-hwpx 에 공식 setter 가 없어 OWPML subList element 의 lineWrap
-    #   속성을 직접 set. 실패 시 silent — 양식 의도 보존.
+    # Step 5: 셀 폭 기반 lineWrap 결정.
+    #   양식은 셀마다 lineWrap 을 다르게 설계한다 — 짧은 고정 셀(일시·방법·차수)은
+    #   SQUEEZE(자간 압축해 한 줄), 긴 자유텍스트 셀은 BREAK(줄바꿈). 무조건 BREAK 로
+    #   덮으면 '14:00~17:00' 같은 짧은 값이 셀 폭을 넘겨 마지막 글자가 다음 줄로 깨진다.
+    #   → 내용이 셀 폭(SQUEEZE 압축 여유 25% 포함)에 들어가면 양식 원본 lineWrap 을
+    #     유지하고, 넘칠 때만 BREAK 로 전환해 긴 내용의 글자 겹침을 막는다.
+    #   python-hwpx 에 공식 setter 가 없어 OWPML subList/cellSz element 를 직접 참조.
     try:
         cell._ensure_sublist()
         sublist_elem = cell.element.find(f"{_HP_NS}subList")
-        if sublist_elem is not None and sublist_elem.get("lineWrap") != "BREAK":
-            sublist_elem.set("lineWrap", "BREAK")
+        if sublist_elem is not None:
+            csz = cell.element.find(f"{_HP_NS}cellSz")
+            cw = csz.get("width") if csz is not None else None
+            cell_w = int(cw) if cw and cw.isdigit() else 0
+            max_line_w = max((_approx_text_width(ln) for ln in lines), default=0)
+            overflow = (
+                max_line_w > cell_w * 1.25
+                if cell_w
+                else max((len(ln) for ln in lines), default=0) > 22
+            )
+            if overflow and sublist_elem.get("lineWrap") != "BREAK":
+                sublist_elem.set("lineWrap", "BREAK")
     except Exception:
         pass
 

@@ -248,10 +248,10 @@ def test_set_cell_text_long_single_line_keeps_one_paragraph_with_line_wrap_break
 
 
 def test_set_cell_text_existing_newline_creates_paragraphs_with_line_wrap_break():
-    """\\n 다수 → multi-paragraph 유지 + 모든 paragraph 의 셀 lineWrap=BREAK.
+    """\\n 다수 → multi-paragraph 유지 + 셀 폭 초과 시 lineWrap=BREAK.
 
-    `\\n` 분할은 의도된 줄바꿈이므로 그대로 paragraph 분배. 셀 lineWrap 은
-    BREAK 로 설정하여 각 paragraph 가 셀 폭 초과 시 자연 단어 wrap.
+    `\\n` 분할은 의도된 줄바꿈이므로 그대로 paragraph 분배. tables[22] 명세서
+    세부내용 셀은 긴 내용이 셀 폭을 넘으므로 BREAK 로 자연 단어 wrap.
     """
     doc = _open_template()
     tbl = _gather_tables(doc)[22]
@@ -264,6 +264,40 @@ def test_set_cell_text_existing_newline_creates_paragraphs_with_line_wrap_break(
     texts = [p.runs[0].text if p.runs else "" for p in paragraphs]
     assert texts == ["첫 줄 텍스트", "둘째 줄 텍스트", "셋째 줄 텍스트"]
     assert _cell_line_wrap(tbl, 2, 2) == "BREAK"
+
+
+# ---------------------------------------------------------------
+# 셀 폭 기반 lineWrap (사용자 육안 검증 — 일시·방법 등 짧은 SQUEEZE 셀 줄깨짐)
+#
+# 양식은 셀마다 lineWrap 을 다르게 설계한다: 짧은 고정 셀(일시·방법·차수)은
+# SQUEEZE(자간 압축해 한 줄), 긴 자유텍스트 셀은 BREAK(줄바꿈). 무조건 BREAK 로
+# 덮으면 '14:00~17:00' 같은 값이 셀 폭을 넘겨 마지막 글자가 다음 줄로 깨진다.
+# 해결: 내용이 셀 폭(SQUEEZE 압축 여유 포함)에 들어가면 양식 원본 유지, 넘치면 BREAK.
+# ---------------------------------------------------------------
+
+
+def test_set_cell_text_short_content_preserves_form_squeeze():
+    """짧은 내용은 양식의 SQUEEZE(짧은 고정 셀)를 보존 — 불필요한 줄깨짐 방지."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[6]  # Ⅰ-2 주요활동
+    assert _cell_line_wrap(tbl, 1, 1) == "SQUEEZE", "전제: 양식 일시 셀 SQUEEZE"
+
+    _set_cell_text(tbl, 1, 1, "26.04.10\n14:00~17:00")
+
+    assert _cell_line_wrap(tbl, 1, 1) == "SQUEEZE", (
+        "짧은 내용은 양식 SQUEEZE 유지 (BREAK 로 깨지지 않음)"
+    )
+
+
+def test_set_cell_text_long_content_in_squeeze_cell_switches_to_break():
+    """긴 내용이 SQUEEZE 셀에 들어가면 BREAK 로 전환 (글자 겹침 방지)."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[6]
+    assert _cell_line_wrap(tbl, 1, 2) == "SQUEEZE", "전제: 양식 수행내용 셀 SQUEEZE"
+
+    _set_cell_text(tbl, 1, 2, "1차 인터뷰 — 기업 현황 청취 및 디지털 전환 추진 의지 파악")
+
+    assert _cell_line_wrap(tbl, 1, 2) == "BREAK", "긴 내용은 BREAK 로 전환"
 
 
 # ---------------------------------------------------------------
