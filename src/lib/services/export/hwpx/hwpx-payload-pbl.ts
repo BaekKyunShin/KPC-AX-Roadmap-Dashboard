@@ -54,6 +54,8 @@ export interface PBLHwpxPayloadInputs {
   interview: Interview | null;
   /** 선행 로드맵 인터뷰(camelCase 복원본). 미연계 시 null → Ⅱ장 빈 양식. */
   linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
+  /** 선행 로드맵 결과 요약(outcome_summary.main_content). Ⅱ-1-나 r2 요약 셀. 미연계 시 빈칸. */
+  linkedRoadmapSummary?: string | null;
   signerMeta?: PBLSignerMeta;
 }
 
@@ -283,7 +285,8 @@ function buildDataFromV2(
   pblContent: PBLContent | null,
   linkedRoadmap: Partial<RoadmapInterviewStrict> | null | undefined,
   companyName: string,
-  reportDate: string
+  reportDate: string,
+  linkedRoadmapSummary?: string | null
 ): Record<string, unknown> {
   const opPlan = pblContent?.operation_plan;
   const trainingPlan = opPlan?.training_plan;
@@ -343,6 +346,8 @@ function buildDataFromV2(
 
     // ==================== Ⅱ-1-나 / Ⅱ-2 로드맵 자동 연계 ====================
     ...buildRoadmapLinkageForPBL(linkedRoadmap, v2.target?.taskSelections ?? []),
+    // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content 연계(R-07 과 대칭)
+    roadmap_summary: linkedRoadmapSummary ?? '',
 
     // ==================== Ⅱ-2-가 / Ⅱ-3 훈련환경 (인터뷰) ====================
     hrd_report_attachment: v2.hrdReportPdf
@@ -454,7 +459,14 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
   const reportDate = formatReportDate(rawDate);
 
   const companyName = project.company_name; // Project.company_name 은 필수 string
-  const data = buildDataFromV2(v2, pblContent, linkedRoadmap ?? null, companyName, reportDate);
+  const data = buildDataFromV2(
+    v2,
+    pblContent,
+    linkedRoadmap ?? null,
+    companyName,
+    reportDate,
+    inputs.linkedRoadmapSummary ?? null
+  );
 
   if (v2.companyName) {
     data.company_name = v2.companyName;
@@ -500,6 +512,8 @@ export interface InMemoryPBLPayloadInputs {
   content: PBLContent;
   interview: PBLInterviewStrict;
   linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
+  /** 선행 로드맵 결과 요약(outcome_summary.main_content). Ⅱ-1-나 r2 요약 셀. */
+  linkedRoadmapSummary?: string | null;
   companyName: string;
   versionNumber?: number;
   reportDate?: string;
@@ -518,7 +532,8 @@ export function buildPBLHwpxPayloadFromInputs(inputs: InMemoryPBLPayloadInputs):
     inputs.content,
     inputs.linkedRoadmap ?? null,
     companyName,
-    reportDate
+    reportDate,
+    inputs.linkedRoadmapSummary ?? null
   );
   data.company_name = companyName;
 

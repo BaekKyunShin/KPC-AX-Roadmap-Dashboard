@@ -61,6 +61,7 @@
   ],
   "roadmap_ai_level": "INTERMEDIATE",
   "roadmap_selected_task": "AI 비전 검사 자동화",
+  "roadmap_summary": "본 기업은 제조 QA 공정의 수작업 의존과 검사 정확도 편차 문제를 해소하기 위해 AI 비전 검사 자동화를 핵심 과업으로 선정하였다. 진단 결과 AI 역량 수준은 중급(AI탐구형)으로 평가되었으며, 영상 데이터 기반 결함 분류 모델 구축과 현장 적용 역량 내재화를 우선 목표로 설정하였다. 이를 위해 데이터 수집·라벨링부터 모델 배포·운영까지 전 주기 역량을 단계적으로 확보하도록 훈련 로드맵을 수립하였다",
   "roadmap_req_company_status": "제조 중견기업, 수작업 QA 운영",
   "roadmap_req_main_problems": "검사 정확도 편차 및 인력 의존",
   "roadmap_req_push_willingness": "경영진 강한 도입 의지",

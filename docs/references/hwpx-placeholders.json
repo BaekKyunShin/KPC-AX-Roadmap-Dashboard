@@ -483,16 +483,17 @@
       "strategy": "cell_fill",
       "py_key": "roadmap_ai_level",
       "ts_key": "aiLevel",
-      "data_source": "선행 로드맵 인터뷰 aiLevel(BEGINNER/INTERMEDIATE/ADVANCED) + selectedTask (자동 연계)",
+      "data_source": "선행 로드맵 인터뷰 aiLevel(BEGINNER/INTERMEDIATE/ADVANCED) + selectedTask (자동 연계) + 선행 로드맵 outcome_summary.main_content(요약)",
       "location": {
         "table_index": 10,
         "cells": {
-          "{{pbl_roadmap_selected_task}}": [1, 1]
+          "{{pbl_roadmap_selected_task}}": [1, 1],
+          "{{pbl_roadmap_main_content}}": [2, 1]
         },
-        "notes": "r2 'AI훈련로드맵 수립 주요내용(요약)' 은 payload 미공급 → 양식 원문 유지."
+        "notes": "r2 'AI훈련로드맵 수립 주요내용(요약)' [2,1] 은 선행 로드맵 outcome_summary.main_content(폴백 roadmap_summary) 연계 — 로드맵 R-07 outcome_main_content 와 대칭."
       },
       "notes": "역량수준 체크박스(0,1)~(0,3) 은 양식 '□ 초급'/'(AI기초형)' 2문단 유지(static) — generate.py::_generate_pbl 가 선택 레벨을 in-place 토글(2폰트 보존).",
-      "placeholders": ["{{pbl_roadmap_selected_task}}"]
+      "placeholders": ["{{pbl_roadmap_selected_task}}", "{{pbl_roadmap_main_content}}"]
     },
     {
       "id": "P-07",

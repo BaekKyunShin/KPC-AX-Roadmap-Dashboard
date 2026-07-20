@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getLatestFinalRoadmap, type RoadmapVersionRow } from '../roadmap/roadmap-crud';
+import { fromRoadmapVersionColumns } from '../roadmap/roadmap-storage-mapper';
 import { mapDbToRoadmapInterview } from '../interview/converters';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
@@ -81,4 +82,28 @@ export function hydrateRoadmapInterview(
 ): Partial<RoadmapInterviewStrict> | null {
   if (!row) return null;
   return mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]);
+}
+
+/**
+ * 선행 로드맵 결과의 "수립 주요내용(요약)"을 추출한다 — PBL Ⅱ-1-나 r2 요약 셀.
+ *
+ * 로드맵 보고서 Ⅰ-3(`{{roadmap_outcome_main_content}}`)과 동일 소스:
+ * FINAL 로드맵 버전을 결과 구조로 복원한 `outcome_summary.main_content`
+ * (폴백: 로드맵 인터뷰 overview.roadmap_summary). FINAL 미확정 시 빈 문자열.
+ */
+export function extractLinkedRoadmapSummary(linked: LinkedRoadmapData): string {
+  if (!linked.roadmap) return '';
+  const result = fromRoadmapVersionColumns({
+    diagnosis_summary: linked.roadmap.diagnosis_summary,
+    roadmap_matrix: linked.roadmap.roadmap_matrix as unknown,
+    pbl_course: linked.roadmap.pbl_course as unknown,
+    courses: linked.roadmap.courses as unknown,
+  });
+  const overview = (
+    linked.interview?.company_details as
+      | { roadmap_overview?: { roadmap_summary?: string } }
+      | null
+      | undefined
+  )?.roadmap_overview;
+  return result.outcome_summary.main_content || overview?.roadmap_summary || '';
 }

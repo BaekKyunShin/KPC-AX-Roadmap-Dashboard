@@ -249,3 +249,21 @@ class TestSentencePeriod:
         text = _all_text(doc)
         assert "배포할 수 있다." in text
         assert "구성할 수 있다." in text
+
+
+class TestPblRoadmapSummary:
+    def test_summary_cell_filled_from_roadmap_summary(self):
+        """Ⅱ-1-나 표(10) 요약 셀[2,1]이 roadmap_summary 로 채워짐(+온점)."""
+        doc = _open_bytes(_generate_pbl({
+            "roadmap_summary": "로드맵 수립 결과를 한 장으로 요약하였다",
+        }))
+        cell = _tables(doc)[10].cell(2, 1)
+        txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+        assert "요약하였다." in txt, f"PBL 요약 미채움: {txt!r}"
+
+    def test_summary_cell_empty_when_unlinked(self):
+        """연계 로드맵 없으면(요약 미공급) 요약 셀은 빈 값 유지(폴백)."""
+        doc = _open_bytes(_generate_pbl({}))
+        cell = _tables(doc)[10].cell(2, 1)
+        txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+        assert "{{" not in txt, f"마커 잔존: {txt!r}"

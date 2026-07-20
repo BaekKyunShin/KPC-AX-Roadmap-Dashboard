@@ -1167,6 +1167,8 @@ def _build_pbl_markers(data: dict) -> dict:
     for key, want in (("beginner", "BEGINNER"), ("intermediate", "INTERMEDIATE"), ("advanced", "ADVANCED")):
         m[f"{{{{cb_pbl_roadmap_level_{key}}}}}"] = "☑" if level == want else "□"
     m["{{pbl_roadmap_selected_task}}"] = _s(data.get("roadmap_selected_task"))
+    # 요약(r2) — 선행 로드맵 outcome_summary.main_content 연계 (로드맵 R-07 과 대칭)
+    m["{{pbl_roadmap_main_content}}"] = _s(data.get("roadmap_summary"))
 
     # ── Ⅱ-1-다 AI훈련과정 개발 필요성 (T11)
     m["{{pbl_analysis_course_necessity}}"] = _s(data.get("course_necessity"))

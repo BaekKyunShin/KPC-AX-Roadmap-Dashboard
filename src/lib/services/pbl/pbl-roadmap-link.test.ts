@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchLinkedRoadmapData, hydrateRoadmapInterview } from './pbl-roadmap-link';
+import {
+  extractLinkedRoadmapSummary,
+  fetchLinkedRoadmapData,
+  hydrateRoadmapInterview,
+} from './pbl-roadmap-link';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -159,5 +163,27 @@ describe('hydrateRoadmapInterview', () => {
     const result = hydrateRoadmapInterview(row);
 
     expect(result?.establishmentNecessity).toBe('수립 배경 텍스트');
+  });
+});
+
+describe('extractLinkedRoadmapSummary', () => {
+  it('연계 로드맵 없음(roadmap null) → 빈 문자열', () => {
+    expect(extractLinkedRoadmapSummary({ roadmap: null, interview: null })).toBe('');
+  });
+
+  it('FINAL 로드맵의 outcome_summary.main_content 를 요약으로 추출', () => {
+    const linked = {
+      roadmap: { pbl_course: { outcome_summary: { main_content: '로드맵 수립 결과 요약' } } },
+      interview: null,
+    } as never;
+    expect(extractLinkedRoadmapSummary(linked)).toBe('로드맵 수립 결과 요약');
+  });
+
+  it('main_content 비면 로드맵 인터뷰 overview.roadmap_summary 로 폴백', () => {
+    const linked = {
+      roadmap: { pbl_course: { outcome_summary: {} } },
+      interview: { company_details: { roadmap_overview: { roadmap_summary: '폴백 요약' } } },
+    } as never;
+    expect(extractLinkedRoadmapSummary(linked)).toBe('폴백 요약');
   });
 });

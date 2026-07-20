@@ -37,6 +37,7 @@ import { pblContentSchema } from '@/lib/services/pbl/pbl-validator';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import { buildPBLHwpxPayload, generatePBLHwpx } from '@/lib/services/export/hwpx';
 import {
+  extractLinkedRoadmapSummary,
   fetchLinkedRoadmapData,
   hydrateRoadmapInterview,
 } from '@/lib/services/pbl/pbl-roadmap-link';
@@ -679,6 +680,8 @@ export async function exportPBLAsHwpxAction(
     // 선행 로드맵 연계 데이터 (Ⅱ장 수립·요구분석 · Ⅲ-1 수행활동 · Ⅲ-3-가 과업 목록)
     const linked = await fetchLinkedRoadmapData(access.data.projectId, admin);
     const linkedRoadmap = hydrateRoadmapInterview(linked.interview);
+    // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content (이미 조회된 linked 재사용)
+    const linkedRoadmapSummary = extractLinkedRoadmapSummary(linked);
 
     // 5) payload 변환 + Python 함수 호출
     const payload = buildPBLHwpxPayload({
@@ -688,6 +691,7 @@ export async function exportPBLAsHwpxAction(
         typeof buildPBLHwpxPayload
       >[0]['interview'],
       linkedRoadmap,
+      linkedRoadmapSummary,
       signerMeta,
     });
 

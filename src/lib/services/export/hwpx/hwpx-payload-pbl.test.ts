@@ -576,6 +576,26 @@ describe('buildPBLHwpxPayload', () => {
       expect(payload.data.roadmap_selected_task).toBe('품질 검사 자동화');
     });
 
+    it('Ⅱ-1-나 r2 요약 — linkedRoadmapSummary → roadmap_summary 매핑', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+        linkedRoadmap: makeLinkedRoadmap(),
+        linkedRoadmapSummary: '로드맵 수립 결과를 한 장으로 요약함',
+      });
+      expect(payload.data.roadmap_summary).toBe('로드맵 수립 결과를 한 장으로 요약함');
+    });
+
+    it('요약 미공급(linkedRoadmapSummary 없음) → roadmap_summary 빈 값 폴백', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+      });
+      expect(payload.data.roadmap_summary).toBe('');
+    });
+
     it('Ⅱ-2 요구분석 — company_status/problems/will/outcomes + 과업분석표 + 대상 과업', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
