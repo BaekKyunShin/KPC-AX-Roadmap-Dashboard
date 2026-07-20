@@ -208,7 +208,7 @@
       "py_key": "task_workflow_items",
       "ts_key": "taskAnalysis",
       "data_source": "인터뷰 job_tasks[]",
-      "note": "v2 에서 6열 → 4열 (문제점·데이터발생시점·AI필요도 3열이 '개선점 및 AI 적용 가능성' 1열로 통합). ⚠️ 양식 제약: 직무 열의 (1,0) 셀이 rowSpan=2 로 세로 병합되어 있어 과업 0·1 이 같은 직무 셀을 공유한다. 따라서 과업 1 의 직무는 별도 출력되지 않으며(skip_items), 과업 0 의 직무가 두 행에 걸쳐 표시된다.",
+      "note": "v2 에서 6열 → 4열 (문제점·데이터발생시점·AI필요도 3열이 '개선점 및 AI 적용 가능성' 1열로 통합). 직무 열은 빌드 시 unmerge_rowspan2 로 세로 병합을 해제해(insert_placeholders::unmerge_rowspan2_col) 매 데이터 행이 독립 직무 셀·마커를 갖는다 → 직무별 과업 개수와 무관하게 라벨이 정확.",
       "location": {
         "table_index": 16,
         "data_row_start": 1,
@@ -219,8 +219,7 @@
         {
           "col": 0,
           "field": "job",
-          "skip_items": [1],
-          "merged_rowspan_at_first": 2
+          "unmerge_rowspan2": true
         },
         {
           "col": 1,
@@ -751,13 +750,13 @@
         "data_row_start": 1,
         "rows_per_item": 1,
         "max_items": 5,
-        "notes": "col 0 직무는 첫 두 행(과업 0·1)이 rowSpan=2 세로 병합 → 과업 1 은 skip_items 로 마커 미삽입(과업 0 직무가 두 행에 걸쳐 표시). col 5 훈련선정은 training_selected(boolean) → ☑/☐ 를 generate.py 가 산출."
+        "notes": "col 0 직무는 빌드 시 unmerge_rowspan2 로 세로 병합 해제 → 매 데이터 행이 독립 직무 셀·마커(직무별 과업 개수 무관 정확). col 5 훈련선정은 training_selected(boolean) → ☑/☐ 를 generate.py 가 산출."
       },
       "row_columns": [
         {
           "col": 0,
           "field": "job",
-          "skip_items": [1]
+          "unmerge_rowspan2": true
         },
         {
           "col": 1,

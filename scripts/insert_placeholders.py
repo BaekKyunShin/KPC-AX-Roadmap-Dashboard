@@ -12,6 +12,7 @@
     .venv-hwpx/bin/python3 scripts/insert_placeholders.py --check roadmap   # 삽입 없이 검증만
 """
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
@@ -189,6 +190,80 @@ def expand(template: str, **kw) -> str:
     return out
 
 
+def unmerge_rowspan2_col(tbl, col: int) -> bool:
+    """직무 열의 rowSpan=2 세로 병합을 해제 — 매 데이터 행이 독립 직무 셀을 갖게 한다.
+
+    양식이 첫 직무 셀을 2행 병합(과업 0·1 공유)해 둬, 직무별 과업 개수가 다르면
+    직무 라벨이 어긋나거나 흡수돼 사라지던 것을 근본 해소한다. 병합 앵커의
+    rowSpan 을 1 로 줄이고, 기존 형제(rowSpan=1) 셀을 deepcopy 해 빈 텍스트로
+    다음 행에 삽입한다(borderFill·charPr·paraPr·margin 보존, 문단 id 유일화).
+    python-hwpx 가 lxml 변경을 즉시 반영하므로(실측) 이후 insert 루프가 새 셀에
+    마커를 정상 기입한다. 셀을 추가하지만 형제 구조를 그대로 복제하므로 OWPML 유효.
+    """
+    hp = _HP_NS
+    try:
+        tbl_el = tbl.cell(0, col).element.getparent().getparent()
+    except Exception:
+        return False
+
+    def col_tc(tr):
+        for tc in tr.findall(f"{hp}tc"):
+            a = tc.find(f"{hp}cellAddr")
+            if a is not None and a.get("colAddr") == str(col):
+                return tc
+        return None
+
+    trs = tbl_el.findall(f"{hp}tr")
+    anchor = sibling = None
+    anchor_row = None
+    for tr in trs:
+        tc = col_tc(tr)
+        if tc is None:
+            continue
+        span = tc.find(f"{hp}cellSpan")
+        rs = span.get("rowSpan") if span is not None else "1"
+        if rs == "2" and anchor is None:
+            anchor = tc
+            anchor_row = int(tc.find(f"{hp}cellAddr").get("rowAddr"))
+        elif rs == "1" and sibling is None:
+            sibling = tc
+    if anchor is None or sibling is None or anchor_row is None:
+        return False
+
+    # ① 앵커 rowSpan 2→1, 높이를 형제와 동일하게
+    anchor.find(f"{hp}cellSpan").set("rowSpan", "1")
+    a_sz, s_sz = anchor.find(f"{hp}cellSz"), sibling.find(f"{hp}cellSz")
+    if a_sz is not None and s_sz is not None:
+        a_sz.set("height", s_sz.get("height"))
+
+    # ② 형제 복제 → rowAddr=anchor+1, 텍스트 비움, 문단 id 유일화
+    clone = copy.deepcopy(sibling)
+    clone.find(f"{hp}cellAddr").set("rowAddr", str(anchor_row + 1))
+    for tnode in clone.iter(f"{hp}t"):
+        tnode.text = ""
+    max_pid = 0
+    for p in tbl_el.iter(f"{hp}p"):
+        try:
+            max_pid = max(max_pid, int(p.get("id") or 0))
+        except (TypeError, ValueError):
+            pass
+    for p in clone.iter(f"{hp}p"):
+        max_pid += 1
+        p.set("id", str(max_pid))
+
+    # colAddr 순서 유지: col 보다 큰 첫 tc 앞(없으면 맨 뒤)에 삽입
+    target_tr = trs[anchor_row + 1]
+    tcs = target_tr.findall(f"{hp}tc")
+    insert_at = len(tcs)
+    for idx, tc in enumerate(tcs):
+        a = tc.find(f"{hp}cellAddr")
+        if a is not None and int(a.get("colAddr")) > col:
+            insert_at = idx
+            break
+    target_tr.insert(insert_at, clone)
+    return True
+
+
 def insert_entry(tables, doc, entry, inserted: list[str], warnings: list[str]) -> None:
     strategy = entry.get("strategy", "")
     parts = [s.strip() for s in strategy.split("+")]
@@ -262,6 +337,10 @@ def insert_entry(tables, doc, entry, inserted: list[str], warnings: list[str]) -
         tpl = entry["placeholder_template"]
         start = loc["data_row_start"]
         per = loc.get("rows_per_item", 1)
+        # 직무 열 세로 병합 해제(지정 col) → 데이터 분포와 무관하게 매 행 직무 셀 확보
+        for rc in entry.get("row_columns", []):
+            if rc.get("unmerge_rowspan2"):
+                unmerge_rowspan2_col(tbl, rc["col"])
         for i in range(loc["max_items"]):
             for rc in entry.get("row_columns", []):
                 # skip_items: 세로 병합으로 앞 항목과 셀을 공유하는 인덱스는 건너뛴다.

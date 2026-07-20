@@ -184,7 +184,7 @@ class TestRoadmapLinkage:
         assert m["{{pbl_perf_0_expert_name}}"] == "박내부"
         assert m["{{pbl_perf_0_content}}"] == "킥오프"
 
-    def test_task_selections_with_checkbox_and_job_skip(self):
+    def test_task_selections_with_checkbox_and_per_row_job(self):
         m = _build_pbl_markers({
             "roadmap_task_selections": [
                 {"job": "생산", "task": "검사", "as_is": "육안", "improvement": "AI",
@@ -197,8 +197,8 @@ class TestRoadmapLinkage:
         assert m["{{pbl_selection_0_ai_necessity}}"] == "높음"
         assert m["{{pbl_selection_0_training_selected}}"] == "☑"
         assert m["{{pbl_selection_1_training_selected}}"] == "☐"
-        # 직무 col 은 i=1 병합 skip → 마커 미생성 (템플릿에도 없음)
-        assert "{{pbl_selection_1_job}}" not in m
+        # 직무 col 병합 해제 → 과업 1 직무도 독립 채움(품질 소실 없음)
+        assert m["{{pbl_selection_1_job}}"] == "품질"
         assert m["{{pbl_selection_1_task}}"] == "분류"
 
 
@@ -393,8 +393,8 @@ class TestSafety:
     def test_empty_dict_all_str(self):
         m = _build_pbl_markers({})
         assert all(isinstance(v, str) for v in m.values())
-        # 281 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증)
-        assert len(m) == 281
+        # 282 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증)
+        assert len(m) == 282
 
     def test_none_values_empty_string(self):
         m = _build_pbl_markers({"company_name": None, "roadmap_setup_background": None})

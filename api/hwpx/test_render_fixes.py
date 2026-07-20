@@ -267,3 +267,31 @@ class TestPblRoadmapSummary:
         cell = _tables(doc)[10].cell(2, 1)
         txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
         assert "{{" not in txt, f"마커 잔존: {txt!r}"
+
+
+class TestTaskTableUnmerged:
+    """과업 표 직무 열 병합 해제 — 서로 다른 직무가 각 행에 정확(품질 소실 없음)."""
+
+    def test_roadmap_job_per_row_no_misalign(self):
+        doc = _open_bytes(_generate_roadmap({
+            "task_workflow_items": [
+                {"job": "생산", "task": "외관검사"},
+                {"job": "품질", "task": "불량분류"},
+                {"job": "설비", "task": "설비점검"},
+            ],
+        }))
+        t = _tables(doc)[16]  # Ⅱ-3 과업·워크플로우 분석표
+        jobs = [(t.cell(r, 0).paragraphs[0].runs[0].text or "") for r in (1, 2, 3)]
+        assert jobs == ["생산", "품질", "설비"], f"직무 어긋남: {jobs}"
+
+    def test_pbl_selection_job_per_row_no_misalign(self):
+        doc = _open_bytes(_generate_pbl({
+            "roadmap_task_selections": [
+                {"job": "생산", "task": "외관검사"},
+                {"job": "품질", "task": "불량분류"},
+                {"job": "설비", "task": "설비점검"},
+            ],
+        }))
+        t = _tables(doc)[23]  # Ⅲ-3-가 훈련대상 업무 선정
+        jobs = [(t.cell(r, 0).paragraphs[0].runs[0].text or "") for r in (1, 2, 3)]
+        assert jobs == ["생산", "품질", "설비"], f"직무 어긋남: {jobs}"

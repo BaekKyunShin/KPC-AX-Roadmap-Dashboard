@@ -232,9 +232,9 @@ _RM_MAX_ACTIVITIES = 3   # Ⅰ-2 수행활동 차수
 _RM_MAX_TASKS = 6        # Ⅱ-3 과업 분석표 행
 _RM_MAX_COURSES = 6      # Ⅲ  훈련과정 명세서 표
 _RM_MAX_SUBJECTS = 3     # Ⅲ  명세서당 교과목 행
-# Ⅱ-3 직무 열의 (1,0) 셀은 rowSpan=2 병합 → 과업 0·1 이 같은 셀을 공유한다.
-# 과업 1 의 직무 마커는 템플릿에 존재하지 않으므로 값도 만들지 않는다.
-_RM_TASK_JOB_SKIP = {1}
+# Ⅱ-3 직무 열은 빌드 시 병합 해제(insert_placeholders::unmerge_rowspan2_col) → 매 행이
+# 독립 직무 셀·마커를 가지므로 skip 없이 전 과업의 직무를 채운다.
+_RM_TASK_JOB_SKIP: set[int] = set()
 
 
 def _s(v) -> str:
@@ -1045,9 +1045,8 @@ _PBL_MAX_FACILITIES = 2    # Ⅳ-4-라 시설·장비 행 (T37)
 _PBL_MAX_INSTRUCTORS = 2   # Ⅳ-4-마 훈련강사 행 (T38)
 _PBL_MAX_CHECKLIST = 7     # Ⅳ-5-가 수행 체크리스트 행 (T39 r7~13)
 
-# Ⅲ-3-가 직무 열(col 0)의 (1,0) 셀은 rowSpan=2 병합 → 과업 0·1 이 같은 셀을 공유.
-# 과업 1 의 직무 마커는 템플릿에 없으므로 값도 만들지 않는다(로드맵 R-10 동일).
-_PBL_SELECTION_JOB_SKIP = {1}
+# Ⅲ-3-가 직무 열(col 0)은 빌드 시 병합 해제(로드맵 R-10 동일) → skip 없이 전 과업 직무 채움.
+_PBL_SELECTION_JOB_SKIP: set[int] = set()
 
 
 def _to_int(v):
@@ -1232,7 +1231,7 @@ def _build_pbl_markers(data: dict) -> dict:
     m["{{pbl_problem_scope}}"] = _s(sheet.get("scope"))
     m["{{pbl_problem_constraints}}"] = _s(sheet.get("constraints"))
 
-    # ── Ⅲ-3-가 훈련대상 업무 선정 (T23) — 직무 col 은 i=1 병합 skip
+    # ── Ⅲ-3-가 훈련대상 업무 선정 (T23) — 직무 col 병합 해제로 전 행 채움
     sels = data.get("roadmap_task_selections") or []
     for i in range(_PBL_MAX_SELECTIONS):
         s = sels[i] if i < len(sels) else {}
