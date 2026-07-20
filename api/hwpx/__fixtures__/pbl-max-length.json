@@ -256,15 +256,15 @@
   },
   "subject_profile_course_name": "AI 비전 자동검사 과정",
   "total_training_hours": 40,
-  "subject_training_goals": "외관 검사 자동화\n불량 자동 분류",
-  "subject_ai_tools": "PyTorch\nOpenCV",
-  "subject_utilized_data": "제품 외관 이미지",
-  "subject_analysis_method": "CNN 이미지 분류",
+  "subject_training_goals": "노코드 AI 도구로 제품 외관 이미지의 불량검사 모델을 학습·배포할 수 있다\n품질검사 데이터를 수집·정제하여 AI 학습 데이터셋을 구성할 수 있다\n모델 성능 지표를 해석하고 현장 검사 공정에 시범 적용해 개선점을 도출할 수 있다",
+  "subject_ai_tools": "Teachable Machine (무료: 전체)\nLabel Studio (무료: Community Edition)\nChatGPT (무료 플랜)\nPyTorch·OpenCV (오픈소스)",
+  "subject_utilized_data": "생산라인 제품 외관 이미지 데이터셋(불량·정상 1,000장 이상), 결함 유형별 라벨, 검사 이력 로그",
+  "subject_analysis_method": "노코드 이미지 분류(Teachable Machine) 및 CNN 기반 불량 판정, LLM(ChatGPT)을 활용한 성능 지표 해석·개선점 도출",
   "subject_total_sum_hours": 40,
   "training_contents": [
     {
       "unit_name": "데이터 수집·라벨링",
-      "detail": "불량 이미지 수집 및 라벨링",
+      "detail": "AI/머신러닝 기본 개념 강의 및 자사 품질검사 기준 분석 워크숍\nLabel Studio 환경에 자사 불량·정상 이미지 200장 업로드 및 라벨링 실습\n결함 유형별(스크래치·이물·치수불량) 클래스 정의 및 라벨링 가이드라인 공동 작성\n검사자 간 라벨링 일치율 80% 이상 달성 및 학습 데이터셋(CSV+이미지) 산출",
       "training_hours": 8,
       "instructor_hours": {
         "external": 5,
@@ -273,7 +273,7 @@
     },
     {
       "unit_name": "모델 학습",
-      "detail": "CNN 분류 모델 학습",
+      "detail": "Teachable Machine으로 불량/정상 이미지 분류 모델 학습 시연 및 하이퍼파라미터 튜닝 실습\n학습된 모델을 브라우저 inference 환경으로 export 하여 자사 데이터셋 평가\nChatGPT에 confusion matrix를 붙여넣고 정확도·재현율·정밀도 개선점 질의\n부서별 모델 성능 비교 발표 및 개선 제안서 작성(정확도 90% 이상 목표)",
       "training_hours": 16,
       "instructor_hours": {
         "external": 10,
@@ -282,7 +282,7 @@
     },
     {
       "unit_name": "현장 적용",
-      "detail": "라인 통합 및 검증",
+      "detail": "사내 PC와 산업용 카메라로 실시간 inference 시범 운영 환경 구축(2주)\n매일 검사 결과와 모델 판정을 비교하고 주 단위 정합도 측정(85% 목표)\n경영진 보고용 자료(PPT) 및 6개월 사내 확산 로드맵 공동 작성\n타 라인 적용 가능성 검토 및 사내 표준화 매뉴얼 초안 작성",
       "training_hours": 16,
       "instructor_hours": {
         "external": 8,
@@ -324,7 +324,7 @@
   ],
   "course_eval_course_name": "AI 비전 자동검사 과정",
   "course_eval_target": "훈련생 5명",
-  "course_eval_date": "2026.06.30",
+  "course_eval_date": "2026. 06. 30.",
   "course_eval_criteria": "14개 중 8개 이상 수행수준 4",
   "course_eval_result": "예정",
   "course_eval_overall_comment": "전원 수행수준 우수 예상",

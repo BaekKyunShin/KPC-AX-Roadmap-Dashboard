@@ -18,6 +18,7 @@ import { splitByUnit } from '@/lib/utils/list-format';
 import { formatTimeRange } from '@/lib/utils/time';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
+import { formatReportDate } from './hwpx-date';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
 export interface RoadmapHwpxPayloadInputs {
@@ -295,14 +296,9 @@ export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): Roadm
   });
 
   // 12) 보고서 날짜 (최종화 시점 우선, 없으면 updated_at)
+  //     로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (formatReportDate).
   const reportDate = roadmap.finalized_at || roadmap.updated_at;
-  const reportDateText = reportDate
-    ? new Date(reportDate).toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-    : '';
+  const reportDateText = formatReportDate(reportDate);
 
   return {
     track: 'ROADMAP' as const,

@@ -1,92 +1,317 @@
 {
   "company_name": "㈜AI산업자동화",
-  "report_date": "2026.04.30.",
+  "cover_target_task": "AI 비전 기반 품질 검사 자동화",
+  "report_date": "2026. 04. 30.",
   "pm_affiliation": "한국생산성본부",
   "pm_name": "홍길동",
   "internal_expert_affiliation": "㈜AI산업자동화",
   "internal_expert_name": "김영희",
-  "establishment_necessity": "수동 검사로 인한 불량률 8% 초과, 데이터 기반 자동화 필요. 로드맵 수립으로 분기 내 5% 이하 목표.",
+  "establishment_necessity": "현재 품질검사 업무는 전량 수작업으로 진행되어 검사자 숙련도에 따라 불량 판정 편차가 발생하고 있으며, 생산 실적 집계에 일 2시간 이상이 소요되고 있다. 수동 검사로 인한 불량률은 8%를 초과하고 있고 PLC 센서 로그가 시간당 약 12만 건씩 축적되고 있으나 분석·활용 인프라가 부재해 사실상 사장된 상태다. AI 비전 검사 도입과 데이터 분석 역량 내재화를 통해 불량 감지율을 향상시키고 생산성을 높이기 위해 단계적 AI 훈련 로드맵 수립이 필요하다.",
   "ai_competency_level": "INTERMEDIATE",
-  "selected_tasks_text": "1) 품질 검사 자동화\n2) 생산 데이터 분석",
-  "roadmap_summary": "2026년 4분기 사내 집체 + 외부 연수로 AI 활용 역량 중급 도달. 분기별 KPI 검토.",
+  "selected_tasks_text": "1) 외관 불량 탐지 자동화 — 비전 모델 기반 실시간 판정\n2) 생산 실적 집계 자동화 — 노코드 워크플로우 + 대시보드",
+  "roadmap_summary": "초급(데이터 수집·정제) → 중급(노코드 AI 모델링·비전검사) → 고급(공정 데이터 분석·현장 적용 PBL)의 3단계 성장 경로로 총 6개 훈련과정을 구성하였다. 전 과정은 무료 노코드 도구를 기반으로 하며, 품질검사·생산관리 실무자를 우선 대상으로 2026년 연중 분기별로 운영한다. 분기별 KPI를 정량 검토하고 매 분기 종료 시점에 임원 보고로 다음 분기 우선순위를 재조정한다.",
   "performance_activities": [
     {
       "round": 1,
-      "date": "26.04.10 14:00~17:00",
-      "content": "1차 인터뷰 — 기업 현황 청취",
+      "date": "2026. 04. 10\n14:00~17:00",
+      "content": "1차 인터뷰 — 기업 현황 청취 및 디지털 전환 추진 의지 파악",
       "method": "대면(인터뷰)",
       "participants": [
-        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
-        {"role": "기업 내부전문가", "name": "김영희"}
+        { "role": "컨설팅책임자(PM)", "name": "홍길동" },
+        { "role": "기업 내부전문가", "name": "김영희" }
       ]
     },
     {
       "round": 2,
-      "date": "26.04.17 10:00~12:00",
-      "content": "2차 워크숍 — 과업 분석",
+      "date": "2026. 04. 17\n10:00~12:00",
+      "content": "2차 워크숍 — 과업·워크플로우 분석 및 AI 적용 우선순위 도출",
       "method": "비대면(화상회의)",
       "participants": [
-        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
-        {"role": "기업 내부전문가", "name": "김영희"}
+        { "role": "컨설팅책임자(PM)", "name": "홍길동" },
+        { "role": "기업 내부전문가", "name": "김영희" }
       ]
     },
     {
       "round": 3,
-      "date": "26.04.24 14:00~16:00",
-      "content": "3차 검토 — 로드맵 초안 검수",
+      "date": "2026. 04. 24\n14:00~16:00",
+      "content": "3차 검토 — 로드맵 초안 검수 및 KPI 목표치 합의",
       "method": "대면(인터뷰)",
       "participants": [
-        {"role": "컨설팅책임자(PM)", "name": "홍길동"},
-        {"role": "기업 내부전문가", "name": "김영희"}
+        { "role": "컨설팅책임자(PM)", "name": "홍길동" },
+        { "role": "기업 내부전문가", "name": "김영희" }
       ]
     }
   ],
   "hrd_report_attachment": "https://x.example/hrd-report.pdf",
-  "company_status": "전자부품 제조업, 직원 50명 규모.",
-  "main_problems": "수동 검사 비효율 + 신규 인력 OJT 비용 증가",
-  "push_willingness": "경영진 강한 추진 의지, 분기 예산 확보",
-  "expected_outcomes": "불량률 30% 감소, 검사 인력 2명 재배치",
+  "company_status": "전자부품 제조업(KSIC C26), 직원 50명 규모. 자동차용 센서 모듈을 주력 생산하며 ERP는 운영 중이나 생산 실적 집계·불량 판정이 수기 중심이다.",
+  "main_problems": "수동 검사 비효율로 인한 불량 유출 + 신규 인력 OJT 비용 증가 + 시간당 12만 건 축적되는 센서 데이터의 미활용",
+  "push_willingness": "경영진의 강한 추진 의지 보유. 분기별 디지털 전환 예산을 확보했고 사내 AI 추진 담당자를 지정해 운영 중이다.",
+  "expected_outcomes": "불량률 30% 감소, 검사 인력 2명 재배치, 생산 실적 집계 소요시간 40% 단축, 사내 AI 활용형 인력 비중 확대",
+  "company_status_remarks": "ERP·MES 부분 도입, 데이터 정제·라벨링 체계는 미비",
+  "main_problems_remarks": "검사자 숙련도 의존이 최대 리스크",
+  "push_willingness_remarks": "임원 스폰서십 확보, 현장 참여도 제고 필요",
+  "expected_outcomes_remarks": "분기 단위 KPI 정량 측정 가능 영역 우선",
   "task_workflow_items": [
-    {"job": "생산", "task": "품질 검사", "as_is": "수동 측정", "problem": "오탐 8%", "data_availability": "센서 데이터 보유", "ai_necessity_score": 5},
-    {"job": "생산", "task": "원자재 입고", "as_is": "수동 분류", "problem": "혼류 발생", "data_availability": "바코드 데이터", "ai_necessity_score": 4},
-    {"job": "QA", "task": "검사 보고서 작성", "as_is": "수기 작성", "problem": "리드타임 길음", "data_availability": "검사 이력 보유", "ai_necessity_score": 3}
-  ],
-  "analysis_notes_text": "과업 3종 분석 결과 품질 검사가 ROI 1순위.",
-  "training_target": {
-    "task_name": "품질 검사 자동화",
-    "selection_reason": "불량률 영향 직접적 + 데이터 가용성 높음",
-    "as_is": "수동 측정 + 수기 보고서",
-    "to_be": "AI 비전 자동 검사 + 자동 보고서 생성"
-  },
-  "competencies": [
-    {"name": "AI 비전 활용", "definition_performance_criteria": "객체 검출 모델 운영", "knowledge": "CV 기초", "skill": "추론 도구", "attitude": "지속 학습"},
-    {"name": "데이터 분석", "definition_performance_criteria": "기초 통계", "knowledge": "통계학", "skill": "Python pandas", "attitude": "데이터 검증"}
-  ],
-  "ncs_used": true,
-  "ncs_methodology": "NCS 능력단위 200107 인공지능 참조 후 기업 특성 맞춤화",
-  "ncs_derivation_method": "",
-  "training_structure_rows": [
-    {"competency_name": "AI 비전 활용", "training_level": "중급", "training_content": "비전 모델 활용", "training_target": "QA 인력", "training_method": "사내 집체", "training_goal": "검사 자동화"}
-  ],
-  "training_structure_method": "역량 매트릭스 기반 단계별 설계",
-  "annual_plan_items": [
-    {"competency_name": "AI 비전 활용", "course_name": "AI 비전 실무", "training_type": "사내 집체", "training_hours": "16", "remarks": "2분기 실시"}
-  ],
-  "annual_plan_usage": "분기별 KPI 평가, 리뷰 후 다음 단계 확장.",
-  "course_specs": [
     {
-      "course_name": "AI 비전 실무",
-      "training_type": "사내 집체",
-      "recommended_program": "사업주훈련",
-      "training_goal": "비전 모델 운영 역량 확보",
-      "main_content": "객체 검출 + 분류 모델 실습",
-      "training_target": "QA 인력 5명",
-      "subjects": [
-        {"subject_name": "CV 기초", "details": "1단원: 영상 처리 기본", "hours": "4"},
-        {"subject_name": "객체 검출", "details": "2단원: YOLO 실습", "hours": "8"}
-      ]
+      "job": "생산",
+      "task": "외관 품질 검사",
+      "as_is": "검사자가 육안·수동 측정으로 전수 검사 후 결과를 수기 기록",
+      "improvement": "비전 검사 모델로 실시간 자동 판정 전환 시 오탐률 8%를 3% 이하로 낮추고 검사 리드타임 70% 단축 가능. 센서·영상 데이터 가용성이 높아 즉시 적용 대상으로 적합하다."
+    },
+    {
+      "job": "생산",
+      "task": "원자재 입고 분류",
+      "as_is": "바코드 수동 스캔 후 육안으로 혼류 여부 확인",
+      "improvement": "바코드·RFID 데이터에 영상 인식 보조를 결합하면 혼류를 자동 감지 가능. 규칙 기반 1차 필터 후 이미지 분류로 보완하는 단계적 적용이 현실적이다."
+    },
+    {
+      "job": "QA",
+      "task": "검사 결과 보고서 작성",
+      "as_is": "검사 이력을 수기로 취합해 보고서를 작성하고 결재를 수동 라우팅",
+      "improvement": "LLM 기반 자연어 요약으로 검사 이력에서 보고서 초안을 자동 생성하고 결재 라우팅을 자동화하면 리드타임을 대폭 단축할 수 있다. 5년치 검사 이력이 축적되어 데이터 기반이 충분하다."
     }
   ],
-  "employment_insurance_no": "12345-67890",
-  "journal_attachments": ""
+  "analysis_notes_text": "과업 3종을 분석한 결과 외관 품질 검사가 ROI 측면 1순위로 도출되었다. 데이터 가용성과 즉시 효과 측면에서 가장 우수하며 도입 시 분기 단위 정량 효과 측정이 가능하다.",
+  "training_target": {
+    "task_name": "AI 비전 기반 품질 검사 자동화",
+    "selection_reason": "불량률 영향이 직접적이고 ROI 정량 측정이 가능하며 센서·영상 데이터 가용성이 매우 높음",
+    "as_is": "검사자가 1개당 약 12초 소요 수동 측정, 결과를 수기 일지에 기록 + 결재 라우팅 수동",
+    "to_be": "AI 비전 모델이 1개당 0.5초 내 자동 검사, 결과를 자동 보고서로 생성 + 결재 시스템 통합 자동 라우팅"
+  },
+  "course_specs": [
+    {
+      "training_period": "2026년 1분기",
+      "training_level": "초급",
+      "course_name": "AI 데이터 수집·정제 입문",
+      "training_method": "집체",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "training_target": "품질검사 실무자 전원 (선수 조건 없음)",
+      "training_goal": "업무 현장에서 AI 학습용 데이터를 직접 수집·정제하여 데이터셋을 구성할 수 있다",
+      "main_content": "데이터 수집 방법론, Excel·Google Sheets 활용 데이터 정제, AI 학습 데이터 품질 기준, 라벨링 실습",
+      "subjects": [
+        {
+          "subject_name": "AI 데이터 이해",
+          "details": [
+            "AI 학습 데이터 개념과 머신러닝 학습 흐름 강의",
+            "구조화·비구조화 데이터 구분 실습",
+            "데이터 품질 기준 수립 워크숍"
+          ],
+          "hours": "4"
+        },
+        {
+          "subject_name": "Excel 데이터 정제 실습",
+          "details": [
+            "결측값 처리 및 이상값 검출 (무료: Excel/Sheets 기본 제공)",
+            "중복 제거·표준화 매크로 적용",
+            "피벗 테이블 활용 집계 리포팅"
+          ],
+          "hours": "6"
+        },
+        {
+          "subject_name": "이미지 라벨링 실습",
+          "details": [
+            "Label Studio 설치 및 프로젝트 생성 (무료: Community Edition)",
+            "불량·정상 이미지 라벨링 가이드라인 작성",
+            "팀별 라벨링 결과 교차 검증"
+          ],
+          "hours": "6"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 1분기",
+      "training_level": "초급",
+      "course_name": "생성형 AI 업무 활용 기초",
+      "training_method": "원격",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "training_target": "생산관리·사무직 실무자",
+      "training_goal": "생성형 AI 도구를 활용해 반복 문서·보고 업무를 자동화할 수 있다",
+      "main_content": "프롬프트 작성 원칙, 업무 문서 초안 생성, 회의록 요약 자동화, 사내 데이터 보안 유의사항",
+      "subjects": [
+        {
+          "subject_name": "프롬프트 작성 기초",
+          "details": [
+            "역할·맥락·제약 조건 구조화 프롬프트 작성",
+            "업무 문서 초안 생성 실습 (무료: ChatGPT 무료 티어)",
+            "출력 검증 및 사실 확인 체크리스트 작성"
+          ],
+          "hours": "4"
+        },
+        {
+          "subject_name": "업무 자동화 실습",
+          "details": [
+            "생산 일보 요약 템플릿 제작",
+            "CLOVA API 활용 회의록 자동 요약 (무료: 월 1000건)",
+            "사내 정보 입력 시 보안 준수 사항 점검"
+          ],
+          "hours": "6"
+        },
+        {
+          "subject_name": "생성형 AI 보안·윤리",
+          "details": [
+            "사내 민감정보·개인정보 입력 금지 기준 수립",
+            "생성 결과 편향·환각(hallucination) 검증 절차",
+            "AI 활용 가이드라인 사내 배포 문서 초안 작성"
+          ],
+          "hours": "4"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 2분기",
+      "training_level": "중급",
+      "course_name": "노코드 AI 비전검사 실무",
+      "training_method": "집체",
+      "recommended_program": "K-Digital Training",
+      "training_target": "품질검사 실무자 (AI 데이터 수집·정제 입문 이수자)",
+      "training_goal": "노코드 도구로 외관 불량 탐지 모델을 학습시키고 검사 공정에 시범 적용할 수 있다",
+      "main_content": "이미지 분류 모델 개념, Teachable Machine 모델 학습, 정확도 평가, 현장 시범 적용",
+      "subjects": [
+        {
+          "subject_name": "이미지 분류 모델 학습",
+          "details": [
+            "Teachable Machine 프로젝트 생성 및 클래스 정의 (무료: 전체)",
+            "불량 유형별 학습 데이터 업로드",
+            "학습 파라미터 조정 및 재학습 반복"
+          ],
+          "hours": "8"
+        },
+        {
+          "subject_name": "모델 성능 평가",
+          "details": [
+            "정확도·정밀도·재현율 지표 해석",
+            "오탐·미탐 사례 분석 워크숍",
+            "임계값 조정을 통한 성능 개선"
+          ],
+          "hours": "6"
+        },
+        {
+          "subject_name": "현장 시범 적용",
+          "details": [
+            "검사 공정 내 모델 배치 시나리오 설계",
+            "실시간 판정 결과 기록·검증",
+            "현업 피드백 수집 및 개선안 도출"
+          ],
+          "hours": "6"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 3분기",
+      "training_level": "중급",
+      "course_name": "노코드 업무 자동화 워크플로우",
+      "training_method": "혼합",
+      "recommended_program": "K-Digital Training",
+      "training_target": "생산관리 실무자",
+      "training_goal": "노코드 자동화 도구로 생산 실적 집계 워크플로우를 구축할 수 있다",
+      "main_content": "워크플로우 설계, 데이터 소스 연동, 자동 집계·알림 구성, 예외 처리",
+      "subjects": [
+        {
+          "subject_name": "자동화 워크플로우 설계",
+          "details": [
+            "현행 집계 프로세스 As-Is 매핑",
+            "자동화 대상 구간 선정 및 To-Be 설계",
+            "예외 처리 분기 정의"
+          ],
+          "hours": "6"
+        },
+        {
+          "subject_name": "노코드 도구 구현 실습",
+          "details": [
+            "n8n 워크플로우 구축 (무료: 셀프호스팅)",
+            "Google Sheets 연동 자동 집계 구성",
+            "이상값 발생 시 알림 자동 발송"
+          ],
+          "hours": "10"
+        },
+        {
+          "subject_name": "운영 안정화·모니터링",
+          "details": [
+            "실행 로그 점검 및 오류 재처리 절차 수립",
+            "월간 집계 정확도 검증 리포트 자동화",
+            "현업 인수인계용 운영 매뉴얼 작성"
+          ],
+          "hours": "4"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 3분기",
+      "training_level": "고급",
+      "course_name": "공정 데이터 분석·시각화 심화",
+      "training_method": "집체",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "training_target": "품질·생산관리 리더급 (중급 과정 이수자)",
+      "training_goal": "공정 데이터를 분석해 불량 발생 요인을 규명하고 개선 과제를 도출할 수 있다",
+      "main_content": "탐색적 데이터 분석, 불량 요인 상관관계 분석, 대시보드 구축, 개선 과제 제안",
+      "subjects": [
+        {
+          "subject_name": "탐색적 데이터 분석",
+          "details": [
+            "공정 변수 분포·이상치 탐색",
+            "불량률과 공정 변수 간 상관관계 분석",
+            "가설 수립 및 검증 절차 실습"
+          ],
+          "hours": "8"
+        },
+        {
+          "subject_name": "대시보드 구축",
+          "details": [
+            "Looker Studio 데이터 소스 연결 (무료: 전체)",
+            "불량률·가동률 실시간 모니터링 대시보드 제작",
+            "경영진 보고용 리포트 자동화"
+          ],
+          "hours": "8"
+        },
+        {
+          "subject_name": "개선 과제 도출·제안",
+          "details": [
+            "분석 결과 기반 근본 원인(Root Cause) 정리",
+            "개선 과제 우선순위 매트릭스 작성",
+            "기대효과 정량화 및 실행 제안서 발표"
+          ],
+          "hours": "4"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 4분기",
+      "training_level": "고급",
+      "course_name": "AI 현장 적용 PBL 프로젝트",
+      "training_method": "현장",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "training_target": "전 과정 이수자 중 사내 AI 확산 담당 예정자",
+      "training_goal": "자사 과업에 AI를 실제 적용해 성과를 정량적으로 입증하는 프로젝트를 완수할 수 있다",
+      "main_content": "과제 정의, 데이터 확보·모델 적용, 성과 측정, 사내 확산 계획 수립 및 최종 발표",
+      "subjects": [
+        {
+          "subject_name": "프로젝트 기획·설계",
+          "details": [
+            "자사 과업 기반 AI 적용 과제 정의",
+            "성과 지표(KPI) 및 목표 수준 설정",
+            "데이터 확보 계획 수립"
+          ],
+          "hours": "6"
+        },
+        {
+          "subject_name": "모델 적용·성과 측정",
+          "details": [
+            "기존 학습 모델의 현장 데이터 재학습",
+            "적용 전후 불량률·처리시간 비교 측정",
+            "한계점 및 리스크 분석"
+          ],
+          "hours": "10"
+        },
+        {
+          "subject_name": "확산 계획 및 최종 발표",
+          "details": [
+            "사내 확산 로드맵 및 교육 계획 수립",
+            "경영진 대상 성과 발표 자료 작성",
+            "최종 발표 및 상호 피드백"
+          ],
+          "hours": "6"
+        }
+      ]
+    }
+  ]
 }

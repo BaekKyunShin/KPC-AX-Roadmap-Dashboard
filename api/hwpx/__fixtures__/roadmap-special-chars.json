@@ -1,6 +1,7 @@
 {
   "company_name": "㈜<특수>&\"문자'테스트\\회사",
-  "report_date": "2026.04.30.",
+  "cover_target_task": "AI <자동화> & \"품질 검사\" 대상 과업",
+  "report_date": "2026. 04. 30.",
   "pm_affiliation": "PM<팀> & 컨설팅 \"본부\"",
   "pm_name": "홍길동 😀 김철수",
   "internal_expert_affiliation": "㈜<특수>&\"문자'테스트\\회사",
@@ -10,18 +11,59 @@
   "selected_tasks_text": "1) <품질> 검사 & \"자동화\"\n2) 데이터 'pipeline' 구축\n3) HTML 엔티티 — &amp; &lt; &gt; 처리",
   "roadmap_summary": "특수문자 종합: <>&\"'\\ 줄바꿈\n탭(\t)\t공백 연속    + 이모지 ✅⚠️❌",
   "performance_activities": [
-    {"round": 1, "date": "26.04.10 14:00~17:00", "content": "1차 인터뷰 — <기업> & \"현황\"", "method": "대면(인터뷰)", "participants": [{"role": "PM<책임>", "name": "홍길동 😀"}, {"role": "내부 'expert'", "name": "김영희 & Co."}]},
-    {"round": 2, "date": "26.04.17 10:00~12:00", "content": "2차 워크숍 — <과업> 분석", "method": "비대면(화상)", "participants": [{"role": "PM", "name": "홍길동"}, {"role": "expert", "name": "김영희"}]},
-    {"round": 3, "date": "26.04.24 14:00~16:00", "content": "3차 검토", "method": "대면", "participants": [{"role": "PM", "name": "홍길동"}, {"role": "expert", "name": "김영희"}]}
+    {
+      "round": 1,
+      "date": "2026. 04. 10\n14:00~17:00",
+      "content": "1차 인터뷰 — <기업> & \"현황\"",
+      "method": "대면(인터뷰)",
+      "participants": [
+        { "role": "컨설팅책임자(PM)<책임>", "name": "홍길동 😀" },
+        { "role": "기업 내부 'expert'", "name": "김영희 & Co." }
+      ]
+    },
+    {
+      "round": 2,
+      "date": "2026. 04. 17\n10:00~12:00",
+      "content": "2차 워크숍 — <과업> 분석",
+      "method": "비대면(화상)",
+      "participants": [
+        { "role": "컨설팅책임자(PM)", "name": "홍길동" },
+        { "role": "기업 내부전문가", "name": "김영희" }
+      ]
+    },
+    {
+      "round": 3,
+      "date": "2026. 04. 24\n14:00~16:00",
+      "content": "3차 검토",
+      "method": "대면",
+      "participants": [
+        { "role": "컨설팅책임자(PM)", "name": "홍길동" },
+        { "role": "기업 내부전문가", "name": "김영희" }
+      ]
+    }
   ],
   "hrd_report_attachment": "https://x.example/hrd?type=report&id=42&name=test",
   "company_status": "전자부품 제조업 <C26>, 직원 50명. \"중소기업\" 분류.",
   "main_problems": "수동 검사 비효율 & OJT 비용 증가 + 데이터 'silos'",
   "push_willingness": "경영진 강한 의지 — \"분기별 5억\" 예산 확보",
   "expected_outcomes": "불량률 30% 감소 & 검사 인력 'redeploy' 2명",
+  "company_status_remarks": "<비고> ERP & MES \"부분\" 도입",
+  "main_problems_remarks": "데이터 'silos' 해소 필요 & 표준화 미흡",
+  "push_willingness_remarks": "임원 \"스폰서\" 확보 — 현장 참여 <유인> 설계",
+  "expected_outcomes_remarks": "정량 KPI 우선 — \"분기\" 단위 측정 & 검증",
   "task_workflow_items": [
-    {"job": "생산<팀>", "task": "품질 검사", "as_is": "수동 측정 & 수기 기록", "problem": "오탐 8% — \"불량 누락\"", "data_availability": "센서 데이터 보유 ('PLC')", "ai_necessity_score": 5},
-    {"job": "QA & 분석", "task": "보고서 작성", "as_is": "수기 작성", "problem": "리드타임 길음 \"4시간\"", "data_availability": "이력 보유", "ai_necessity_score": 3}
+    {
+      "job": "생산<팀>",
+      "task": "품질 검사",
+      "as_is": "수동 측정 & 수기 기록",
+      "improvement": "AI 비전 검사로 <자동화> 시 오탐 8% → 3% 개선 & 리드타임 단축. 센서 데이터('PLC') 가용성 높아 즉시 적용 가능."
+    },
+    {
+      "job": "QA & 분석",
+      "task": "보고서 작성",
+      "as_is": "수기 작성",
+      "improvement": "LLM 요약으로 보고서 초안 자동 생성 & 결재 라우팅 <자동화>. 리드타임 \"4시간\" → 1시간 단축 기대."
+    }
   ],
   "analysis_notes_text": "ROI <1순위>는 품질 검사. 'data quality'가 최대 강점.",
   "training_target": {
@@ -30,24 +72,163 @@
     "as_is": "수동 측정 + 수기 보고서 ('manual')",
     "to_be": "AI <자동화> & 자동 보고서 \"end-to-end\""
   },
-  "competencies": [
-    {"name": "AI <비전> 활용", "definition_performance_criteria": "객체 검출 모델 운영 & \"검증\"", "knowledge": "CV 기초 'fundamentals'", "skill": "추론 도구 + Python", "attitude": "지속 학습 \"mindset\""},
-    {"name": "데이터 분석", "definition_performance_criteria": "기초 통계 & 시각화", "knowledge": "통계 'basics'", "skill": "pandas + scikit-learn", "attitude": "검증 자세"}
-  ],
-  "ncs_used": true,
-  "ncs_methodology": "NCS 200107 'AI' 능력단위 참조 후 <기업> 특성 맞춤화. 인용부호 \"\" 처리 검증.",
-  "ncs_derivation_method": "",
-  "training_structure_rows": [
-    {"competency_name": "AI <비전> 활용", "training_level": "중급", "training_content": "비전 모델 활용 & 라벨링", "training_target": "QA 인력 'team'", "training_method": "사내 집체 + \"외부\"", "training_goal": "자동화 운영"}
-  ],
-  "training_structure_method": "역량 매트릭스 <기반>",
-  "annual_plan_items": [
-    {"competency_name": "AI <비전> 활용", "course_name": "AI 비전 \"실무\"", "training_type": "사내 집체", "training_hours": "16", "remarks": "2분기 — 'kickoff'"}
-  ],
-  "annual_plan_usage": "분기별 KPI 평가 & \"리뷰\" 후 다음 단계 확장",
   "course_specs": [
-    {"course_name": "AI 비전 \"실무\"", "training_type": "사내 집체", "recommended_program": "사업주훈련", "training_goal": "비전 모델 운영 & '검증'", "main_content": "객체 검출 + <분류> 모델", "training_target": "QA 인력 5명", "subjects": [{"subject_name": "CV 기초", "details": "<영상> 처리 & 색공간", "hours": "4"}]}
-  ],
-  "employment_insurance_no": "12345-67890-SPECIAL/&",
-  "journal_attachments": ""
+    {
+      "training_period": "2026년 1분기 <Q1>",
+      "training_level": "초급",
+      "course_name": "AI 비전 \"기초\" 과정",
+      "training_method": "집체 & 원격",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "training_target": "QA 인력 5명 <전원>",
+      "training_goal": "비전 모델 운영 & '검증' 기초 역량 확보",
+      "main_content": "객체 검출 + <분류> 모델 & 라벨링 \"실습\"",
+      "subjects": [
+        {
+          "subject_name": "CV 기초 <intro>",
+          "details": [
+            "<영상> 처리 & 색공간 이해",
+            "CNN 원리 'visualize' 실습",
+            "제조 이미지 특성 분석 \"워크숍\""
+          ],
+          "hours": "4"
+        },
+        {
+          "subject_name": "객체 검출 & 실습",
+          "details": [
+            "YOLO 'pretrained' 활용",
+            "자사 데이터 <미세조정> 실습",
+            "오검출 사례 & 개선 분석"
+          ],
+          "hours": "8"
+        },
+        {
+          "subject_name": "라벨링 \"자동화\"",
+          "details": [
+            "Label Studio 반자동 라벨링",
+            "가이드라인 <공동> 작성",
+            "라벨 품질 & 교차 검증"
+          ],
+          "hours": "4"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 2분기 <Q2>",
+      "training_level": "중급",
+      "course_name": "AI 비전 \"심화\" 과정",
+      "training_method": "외부 위탁 & 현장",
+      "recommended_program": "K-Digital Training",
+      "training_target": "선발 5명 <현업 담당>",
+      "training_goal": "모델 <미세조정> & 엣지 배포 'end-to-end' 운영",
+      "main_content": "Transfer Learning + 경량화 & \"배포\"",
+      "subjects": [
+        {
+          "subject_name": "Transfer 'Learning'",
+          "details": [
+            "사전학습 모델 <선택> 기준",
+            "데이터 증강 & 분할 실습",
+            "과적합 방지 \"기법\" 적용"
+          ],
+          "hours": "16"
+        },
+        {
+          "subject_name": "엣지 <배포>",
+          "details": ["ONNX 변환 & 최적화", "카메라 연동 'inference'", "현장 정합도 \"측정\""],
+          "hours": "16"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 2분기 <Q2>",
+      "training_level": "초급",
+      "course_name": "Python 데이터 분석 & '시각화'",
+      "training_method": "집체",
+      "recommended_program": "사업주 직업능력개발훈련",
+      "training_target": "QA & 기획 인력 <7명>",
+      "training_goal": "공정 데이터 정제 & \"분석\" 자체 수행",
+      "main_content": "pandas + 시계열 & <시각화> 실습",
+      "subjects": [
+        {
+          "subject_name": "pandas <처리>",
+          "details": ["결측·이상값 & 정제 실습", "그룹 집계 'pivot' 산출", "다중 소스 <병합> 실습"],
+          "hours": "8"
+        },
+        {
+          "subject_name": "시계열 & 이상탐지",
+          "details": ["추세·계절성 <분해>", "이상 탐지 'anomaly' 실습", "불량 패턴 & 해석"],
+          "hours": "8"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 3분기 <Q3>",
+      "training_level": "중급",
+      "course_name": "노코드 자동화 & \"워크플로우\"",
+      "training_method": "혼합(집체+원격)",
+      "recommended_program": "K-Digital Training",
+      "training_target": "생산관리 <6명>",
+      "training_goal": "집계 워크플로우 <구축> & 'alert' 운영",
+      "main_content": "노코드 설계 + 연동 & 예외 처리",
+      "subjects": [
+        {
+          "subject_name": "설계 <design>",
+          "details": ["As-Is & To-Be 매핑", "자동화 우선순위 'ranking'", "예외 분기 <정의>"],
+          "hours": "6"
+        },
+        {
+          "subject_name": "구현 'n8n'",
+          "details": ["워크플로우 <구축> 실습", "Sheets 연동 & 집계", "알림 자동 \"발송\""],
+          "hours": "10"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 3분기 <Q3>",
+      "training_level": "고급",
+      "course_name": "공정 빅데이터 <분석> 심화",
+      "training_method": "집체 & 외부 위탁",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "training_target": "리더급 <4명>",
+      "training_goal": "불량 요인 <규명> & 개선 과제 'derive'",
+      "main_content": "EDA + 상관분석 & <대시보드>",
+      "subjects": [
+        {
+          "subject_name": "EDA <탐색>",
+          "details": [
+            "분포·이상치 & 프로파일링",
+            "상관관계 'correlation' 분석",
+            "가설 & 검증 실습"
+          ],
+          "hours": "8"
+        },
+        {
+          "subject_name": "대시보드 & 제안",
+          "details": ["Looker Studio <연결>", "실시간 모니터링 'board'", "개선 제안서 & 발표"],
+          "hours": "8"
+        }
+      ]
+    },
+    {
+      "training_period": "2026년 4분기 <Q4>",
+      "training_level": "고급",
+      "course_name": "AI 현장 적용 \"캡스톤\" PBL",
+      "training_method": "현장 프로젝트(PBL)",
+      "recommended_program": "국가기간전략산업직종훈련",
+      "training_target": "확산 담당 <5명>",
+      "training_goal": "자사 과업 AI 적용 & 성과 \"정량\" 입증",
+      "main_content": "과제 정의 + 적용 & 성과 <측정>",
+      "subjects": [
+        {
+          "subject_name": "기획 <plan>",
+          "details": ["AI 적용 과제 <정의>", "KPI & 목표 'target' 설정", "데이터 확보 \"계획\""],
+          "hours": "6"
+        },
+        {
+          "subject_name": "적용 & 측정",
+          "details": ["현장 데이터 <재학습>", "전후 비교 'measure'", "리스크 & 한계 분석"],
+          "hours": "10"
+        }
+      ]
+    }
+  ]
 }

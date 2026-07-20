@@ -28,6 +28,7 @@ import {
 } from '@/lib/schemas/interview-roadmap';
 
 import type { PBLHwpxPayload } from './hwpx-client';
+import { formatReportDate } from './hwpx-date';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
 /**
@@ -443,14 +444,9 @@ export function buildPBLHwpxPayload(inputs: PBLHwpxPayloadInputs): PBLHwpxPayloa
     ?.pbl_data;
   const v2 = (raw && typeof raw === 'object' ? raw : {}) as PBLInterviewStrict;
 
+  // 로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (formatReportDate).
   const rawDate = pbl.finalized_at || pbl.updated_at;
-  const reportDate = rawDate
-    ? new Date(rawDate).toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-    : '';
+  const reportDate = formatReportDate(rawDate);
 
   const companyName = project.company_name; // Project.company_name 은 필수 string
   const data = buildDataFromV2(v2, pblContent, linkedRoadmap ?? null, companyName, reportDate);
@@ -506,13 +502,8 @@ export interface InMemoryPBLPayloadInputs {
 
 export function buildPBLHwpxPayloadFromInputs(inputs: InMemoryPBLPayloadInputs): PBLHwpxPayload {
   const versionNumber = inputs.versionNumber ?? 1;
-  const reportDate =
-    inputs.reportDate ??
-    new Date().toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+  // 로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (formatReportDate).
+  const reportDate = inputs.reportDate ?? formatReportDate(new Date());
 
   const companyName =
     inputs.interview.companyName?.trim() || inputs.companyName.trim() || '테스트기업';

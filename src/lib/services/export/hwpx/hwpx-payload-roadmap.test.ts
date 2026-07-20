@@ -940,8 +940,8 @@ describe('buildRoadmapHwpxPayload — 누락·fallback 분기', () => {
       project: makeProject(),
       interview: makeInterview(),
     });
-    expect(p.data.report_date).toContain('2026');
-    expect(p.data.report_date).toContain('04');
+    // 로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (UTC 기준)
+    expect(p.data.report_date).toBe('2026. 04. 20.');
   });
 
   it('finalized_at + updated_at 둘 다 falsy → report_date 빈 문자열', () => {

@@ -245,7 +245,8 @@ describe('buildPBLHwpxPayload', () => {
     });
     expect(payload.data.company_name).toBe('㈜테스트');
     expect(payload.data.course_name).toBe('AI 자동화 과정');
-    expect(String(payload.data.report_date)).toMatch(/2026/);
+    // 로케일·타임존 비의존 결정론 포맷 `YYYY. MM. DD.` (UTC 기준, finalized_at 2026-04-18Z)
+    expect(String(payload.data.report_date)).toBe('2026. 04. 18.');
   });
 
   it('Ⅰ. 훈련과정 개요 필드 매핑', () => {

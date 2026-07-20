@@ -153,7 +153,7 @@ class TestRoadmapFixtures:
         assert "(기업명)" not in text
         assert "202x. 00. 00." not in text
         assert "㈜AI산업자동화" in text
-        assert "2026.04.30." in text, "일자 fixture 값 미노출"
+        assert "2026. 04. 30." in text, "일자 fixture 값 미노출"
 
 
 # ===============================================================
