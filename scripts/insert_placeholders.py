@@ -106,12 +106,14 @@ def center_signature_columns(doc, table_index: int = 2, columns=(1, 2)) -> int:
 
 
 def left_align_spec_details(doc, left_pid: str = "11") -> int:
-    """훈련과정 명세서 '세부 내용' 셀을 좌측 정렬(LEFT paraPr)로 재지정.
+    """세부 내용 셀을 좌측 정렬(LEFT paraPr)로 재지정 — 로드맵·PBL 공통.
 
-    양식은 세부내용 셀을 CENTER(paraPr 21)로 두지만, 사용자 요구로 좌측 정렬 +
-    항목별 글머리(▪ — generate.py 가 값에 부여)로 표시한다. 세부내용 셀은 마커
-    '{{roadmap_course_i_subject_j_details}}' 로 식별. paraPr 11(LEFT)은 CENTER
-    paraPr 21 과 여백·간격이 동일하고 정렬만 다르므로 시각 변화 최소.
+    로드맵 훈련과정 명세서 세부내용 마커 '{{roadmap_course_i_subject_j_details}}'
+    (양식 CENTER paraPr 21) 와 PBL 교과목 프로파일 세부내용 마커
+    '{{pbl_ops_content_i_detail}}' (양식 LEFT+자동글머리 paraPr) 를 모두 식별해
+    LEFT no-bullet paraPr 로 통일한다. 글머리(▪)는 generate.py 가 값에 부여하므로
+    양식 자동 글머리(중복 방지)를 쓰지 않고 정렬만 LEFT 로 맞춘다. paraPr 11(LEFT)은
+    여백·간격이 동일하고 정렬만 다르므로 시각 변화 최소.
     """
     count = 0
     for para in doc.paragraphs:
@@ -123,7 +125,9 @@ def left_align_spec_details(doc, left_pid: str = "11") -> int:
                     except Exception:
                         continue
                     txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
-                    if "_subject_" in txt and "_details}}" in txt:
+                    is_spec = "_subject_" in txt and "_details}}" in txt
+                    is_profile = "_content_" in txt and "_detail}}" in txt
+                    if is_spec or is_profile:
                         for p in cell.paragraphs:
                             if p.para_pr_id_ref != left_pid:
                                 p.para_pr_id_ref = left_pid

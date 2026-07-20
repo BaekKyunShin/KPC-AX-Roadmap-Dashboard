@@ -1279,7 +1279,10 @@ def _build_pbl_markers(data: dict) -> dict:
         ih = c.get("instructor_hours") or {}
         th, ext, intl = c.get("training_hours"), ih.get("external"), ih.get("internal")
         m[f"{{{{pbl_ops_content_{i}_unit_name}}}}"] = _s(c.get("unit_name"))
-        m[f"{{{{pbl_ops_content_{i}_detail}}}}"] = _s(c.get("detail"))
+        # 세부내용 항목마다 글머리(▪) — 로드맵 명세서 세부내용과 동일 방식.
+        # \n 분리된 항목별로 부착(세부내용 셀은 좌측 정렬 — insert_placeholders 지정).
+        _det_items = [ln for ln in _s(c.get("detail")).split("\n") if ln.strip()]
+        m[f"{{{{pbl_ops_content_{i}_detail}}}}"] = "\n".join(f"▪ {it}" for it in _det_items)
         m[f"{{{{pbl_ops_content_{i}_training_hours}}}}"] = _s(th)
         m[f"{{{{pbl_ops_content_{i}_external_hours}}}}"] = _s(ext)
         m[f"{{{{pbl_ops_content_{i}_internal_hours}}}}"] = _s(intl)
