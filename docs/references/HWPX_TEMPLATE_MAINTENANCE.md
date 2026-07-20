@@ -1,0 +1,331 @@
+# HWPX 템플릿 유지보수 가이드
+
+> **이 문서는 상시 참조 가이드다.** 새 산인공 정본 양식이 주어졌을 때 반복 시행착오
+> 없이 그대로 적용할 수 있도록 파이프라인의 **원리·절차·체크리스트**를 집약한다.
+>
+> **SSOT(단일 진실 공급원)는 코드와 `docs/references/hwpx-placeholders.json` 이다.**
+> 본 문서는 그 위에서 "왜 이렇게 하는가"를 설명할 뿐, 값·좌표의 정본이 아니다.
+> 코드와 본 문서가 어긋나면 **코드가 옳다** — 발견 즉시 본 문서를 갱신한다.
+> 코드 라인 번호는 변하므로 본문은 **함수명**으로 참조한다.
+
+관련 문서: 구현 계획(시점형) `docs/plans/2026-07-13-hwpx-v2-template-migration.md` ·
+양식 구조 인벤토리 `docs/references/hwpx-structure-roadmap.md` /
+`docs/references/hwpx-structure-pbl.md` · SSOT `docs/references/hwpx-placeholders.json`.
+
+## 목차
+
+1. [개요·목적](#1-개요목적)
+2. [파이프라인 흐름](#2-파이프라인-흐름)
+3. [python-hwpx 한계·안전 규칙](#3-python-hwpx-한계안전-규칙)
+4. [셀 서식 원리표](#4-셀-서식-원리표)
+5. [비파괴 치환 패턴](#5-비파괴-치환-패턴)
+6. [글머리·날짜·온점 규칙](#6-글머리날짜온점-규칙)
+7. [정렬 결정표](#7-정렬-결정표)
+8. [insert_placeholders.py 후처리 헬퍼 목록](#8-insert_placeholderspy-후처리-헬퍼-목록)
+9. [새 양식 적용 체크리스트](#9-새-양식-적용-체크리스트)
+10. [육안 검증 체크리스트](#10-육안-검증-체크리스트)
+11. [시행착오 로그(요약)](#11-시행착오-로그요약)
+
+---
+
+## 1. 개요·목적
+
+산인공은 로드맵/PBL 두 보고서 양식을 주기적으로 개정한다. 개정 때마다 표 순번·셀
+좌표·서식이 바뀌므로, 무작정 템플릿 파일만 교체하면 값 주입이 전부 깨진다. 이
+파이프라인은 그 위험을 두 축으로 차단한다.
+
+- **좌표는 빌드 타임에만 산다.** 런타임(`generate.py`)은 표 순번·셀 좌표를 전혀
+  모른 채 `{{마커}}`만 값으로 치환한다. 양식에 표가 추가·삭제돼도 런타임은 안 깨진다.
+- **좌표의 정본은 SSOT JSON 하나다.** 빌드 스크립트가 SSOT를 읽어 정본 양식에
+  마커를 심어 템플릿을 만들고, 두 verify 스크립트가 템플릿↔SSOT 정합을 CI에서 보증한다.
+
+따라서 새 양식 적용은 "코드 여기저기 좌표 고치기"가 아니라 **SSOT 갱신 → 재생성 →
+검증 → 서식 로직 보강**의 정형 절차다. 본 문서는 그 절차와, 실물(한컴 육안)로만
+드러나는 서식 함정들의 원리를 기록한다.
+
+---
+
+## 2. 파이프라인 흐름
+
+```text
+정본 양식.hwpx  ──(빌드)──▶  templates/hwpx/{roadmap,pbl}.hwpx  ──(런타임)──▶  최종 HWPX
+   │                              │                                    │
+docs/references/           scripts/insert_placeholders.py         api/hwpx/generate.py
+1.AI훈련로드맵…(양식).hwpx   (SSOT hwpx-placeholders.json 읽어         (좌표 無, {{마커}}만
+2.문제해결형(PBL)…(양식).hwpx  셀에 {{마커}} 삽입 + 후처리 서식)          payload 값으로 치환)
+```
+
+| 단계      | 파일                                                                                                 | 좌표 인지          | 역할                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------- |
+| 정본 원본 | `docs/references/1.AI훈련로드맵 보고서(양식).hwpx`, `docs/references/2.문제해결형(PBL) …(양식).hwpx` | —                  | 산인공 개정 양식 원문                                 |
+| SSOT      | `docs/references/hwpx-placeholders.json`                                                             | ✅ 유일            | 마커명·셀 좌표·strategy 정본                          |
+| 빌드      | `scripts/insert_placeholders.py`                                                                     | ✅ (SSOT에서 읽음) | 정본에 마커 삽입 + 서식 후처리 → 템플릿 생성          |
+| 템플릿    | `templates/hwpx/roadmap.hwpx`, `templates/hwpx/pbl.hwpx`                                             | 마커 보유          | **수동 편집 금지 — 항상 재생성**                      |
+| 런타임    | `api/hwpx/generate.py`                                                                               | ❌                 | payload → `{{마커}}` 치환, 색상 정규화, 체크박스 토글 |
+
+**재생성 명령** (HWPX 전용 venv `.venv-hwpx` 는 `npm run dev:hwpx:setup` 로 최초 1회 생성):
+
+```bash
+.venv-hwpx/bin/python3 scripts/insert_placeholders.py roadmap   # → templates/hwpx/roadmap.hwpx
+.venv-hwpx/bin/python3 scripts/insert_placeholders.py pbl       # → templates/hwpx/pbl.hwpx
+.venv-hwpx/bin/python3 scripts/insert_placeholders.py --check roadmap  # 저장 없이 검증만
+```
+
+**검증 스크립트 2종** (새 양식 적용 시 반드시 통과):
+
+```bash
+.venv-hwpx/bin/python3 scripts/verify_hwpx_placeholders.py     # 템플릿↔SSOT 마커 정합
+node scripts/verify-mapping-completeness.mjs                    # 매핑 완전성(payload↔마커)
+```
+
+> **shallow 인덱싱 주의:** SSOT의 `table_index` 는 `generate.py::_collect_tables()` /
+> `insert_placeholders.py::collect_tables()` 와 동일한 **shallow traversal**(top-level
+> paragraph의 표만, 중첩 표 제외) 기준이다. python-hwpx `doc.get_table_map()` 의
+> table_index 는 nested 표 포함이라 값이 다르다. **SSOT 인덱스가 정본**이다.
+
+---
+
+## 3. python-hwpx 한계·안전 규칙
+
+python-hwpx로 양식을 편집할 때 **구조 편집과 속성 편집을 엄격히 구분**한다.
+
+| 편집 종류                                                    | 안전성      | 근거                                                                                                                                     |
+| ------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **구조 편집** (XML 노드 추가·삭제·병합, 행/열 복제, 표 생성) | ❌ **금지** | 한컴오피스가 파일을 거부(`알 수 없는 오류`). SSOT `repeat_rows` 도 표를 복제하지 않고 **미리 있는 행에 마커만** 심는다(초과분 truncate). |
+| **속성 편집** (기존 노드의 attribute 값만 변경)              | ✅ 안전     | 노드 개수 불변. 아래 3종이 실사용됨.                                                                                                     |
+
+**안전한 속성 편집 3종:**
+
+1. **문단 정렬 paraPr** — `paragraph.para_pr_id_ref` **setter가 persist**된다.
+   `left_align_spec_details` / `center_signature_columns` 가 이 방식.
+2. **셀 lineWrap** — 셀 `subList` 요소의 `lineWrap` 속성. python-hwpx에 공식 setter가
+   없어 OWPML element를 직접 `.set("lineWrap", "BREAK")`. `_set_cell_text` Step 5.
+3. **charPr 색상** — python-hwpx **API로는 불가**(아래 함정). 저장된 ZIP 안
+   `header.xml` 의 charPr `textColor` 속성을 직접 치환. `_normalize_colors`.
+
+**⚠️ charPr 색상 함정 (반드시 기억):**
+
+- `RunStyle` 은 **읽기 전용** — 색 setter가 없다.
+- `ensure_char_property` / `_char_properties_element` 는 **기존 charPr에 반영되지
+  않는다**(새 정의를 만들 뿐, 이미 렌더되는 run의 charPrIDRef를 바꾸지 못함).
+- → 유일한 방법은 `doc.save_to_path()` 로 저장한 뒤 **ZIP의 `header.xml` 을 lxml로
+  열어 charPr `textColor` 속성만 치환**하는 것(`_normalize_colors`). 노드 추가·삭제가
+  없으므로 `_set_cell_text` 의 `cell.element.set` 과 동일한 안전 범주다.
+
+---
+
+## 4. 셀 서식 원리표
+
+| 서식 축                     | 결정 주체(시점)                        | 규칙                                                                                                           | 관련 코드                                                                        |
+| --------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **lineWrap**                | `generate.py` (런타임)                 | 셀 폭 대비 텍스트 폭 **자동** 판정. 들어가면 양식 원본(대개 SQUEEZE) 유지, overflow일 때만 BREAK.              | `_approx_text_width`, `_set_cell_text` (Step 5)                                  |
+| **문단 정렬 paraPr**        | `insert_placeholders.py` 후처리 (빌드) | `para_pr_id_ref` 재지정. 여백·간격 동일, 정렬만 다른 id 선택.                                                  | `left_align_spec_*`, `center_signature_columns`                                  |
+| **charPr 색상**             | `generate.py` ZIP 후처리 (런타임)      | 파랑 3종→검정 정규화. 표지 기업명 charPr만 파랑 유지.                                                          | `_normalize_colors`, `_BLUE_TEXT_COLORS`, `_ROADMAP_KEEP_BLUE`, `_PBL_KEEP_BLUE` |
+| **폰트 크기 charPr height** | 양식 원본 charPr 보존                  | `_set_cell_text` 가 첫 문단 `charPrIDRef` 를 복제해 줄별 폰트 통일. 2폰트 셀은 in-place 토글로 원 charPr 유지. | `_set_cell_text` (Step 3), `_replace_many_in_all_runs`                           |
+
+### 4-1. lineWrap — SQUEEZE vs BREAK (폭 기반 자동)
+
+양식은 셀마다 lineWrap을 다르게 설계한다. **무조건 BREAK로 덮으면** `14:00~17:00`
+같은 짧은 값이 셀 폭을 넘겨 마지막 글자가 다음 줄로 깨진다. 그래서 `_set_cell_text`
+는 **넘칠 때만** BREAK로 전환하고, 들어가면 양식 원본 lineWrap을 그대로 둔다.
+
+| 값 유형        | 예                                                               | lineWrap                     | 이유                                                  |
+| -------------- | ---------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------- |
+| 짧은 고정 셀   | 수행일시 `26.03.14`, 방법 `대면`, 차수 `1차`, 시간 `14:00~17:00` | **SQUEEZE** (양식 원본 유지) | 폭에 들어감. BREAK 강제 시 끝 글자가 줄바꿈으로 깨짐. |
+| 긴 자유서술 셀 | 수립 배경, 기업 요구분석, 세부내용                               | **BREAK** (overflow 시 전환) | 셀 폭 초과 → 단어 단위 자연 wrap, 글자 겹침 방지.     |
+
+**폭 판정** — `_approx_text_width`: CJK/전각 ≈ **1000**, ASCII ≈ **550**, 공백/탭 ≈ **400**.
+overflow 조건: 셀 폭(`cellSz.width`) 알면 `최대 줄 폭 > 셀 폭 × 1.25`(SQUEEZE 압축
+여유 25% 포함), 셀 폭 모르면 `최대 줄 길이 > 22자`. overflow일 때만 BREAK로 set하고,
+SQUEEZE로 되돌리는 로직은 없다(양식 원본 존중).
+
+### 4-2. paraPr 정렬 id — 양식마다 재부여될 수 있음
+
+로드맵/PBL `header.xml` 기준 대표값: **11 = LEFT(무글머리)**, **21 = CENTER**(로드맵),
+**0~10 = JUSTIFY**. 단, CENTER는 셀마다 다른 id로도 존재한다(예: 로드맵 Ⅰ-3 요약 셀은
+para65 CENTER, PBL 교과목 프로파일 훈련목표는 para111 LEFT).
+
+> **원칙:** paraPr id 는 정본을 다시 export하면 **재부여될 수 있다**. `21` 같은 값을
+> 하드코딩하지 말고, ① LEFT는 안정적인 `11` 사용, ② CENTER는
+> `center_signature_columns` 처럼 **올바르게 정렬된 이웃 셀(헤더행)의 paraPr를 추종**
+> 하는 방식을 우선한다. 새 양식에서 `11`/헤더 정렬이 바뀌면 그때만 조정.
+
+### 4-3. charPr 색상 — 파랑→검정, 기업명만 예외
+
+- 정규화 대상 파랑: `_BLUE_TEXT_COLORS = {#0000FF, #2E74B5, #3057B9}` → `#000000`.
+- **예외(파랑 유지):** 표지 제목 기업명 charPr.
+  - 로드맵: charPr **id 106**(SSOT 표기 cp106) — 부제 `(기업명 – 대상 과업)`. `_ROADMAP_KEEP_BLUE = {"106"}`.
+  - PBL: charPr **id 151**(cp151) — 표지 `㈜기업명`. `_PBL_KEEP_BLUE = {"151"}`.
+- **보존(무변경):** 흰색 `#FFFFFF`(헤더 배경 글자)·빨강·회색 form 스타일.
+- 새 양식에서는 기업명 charPr id 와 파랑 색상값이 달라질 수 있다 → §9 체크리스트로 재확인.
+
+### 4-4. 폰트 크기 — 2폰트 셀 보존
+
+charPr `height` 는 1/100pt 단위. **2폰트 셀**(예: AI역량수준 체크박스 — 레벨명
+`□ 초급`(cp8) vs 유형명 `(AI기초형)`(cp9)가 서로 다른 charPr)은 값을 통째로 덮으면
+폰트가 붕괴된다. → 마커 치환 대신 **in-place 토글**(`_replace_many_in_all_runs`)로
+`□`↔`☑` 글자만 바꿔 원 charPr을 유지한다.
+
+---
+
+## 5. 비파괴 치환 패턴
+
+멀티런·멀티문단으로 짜인 셀(표지 제목, 2폰트 체크박스)은 **run.text만 부분 치환**해
+문단·폰트·색 구조를 보존해야 한다.
+
+| 함수                                    | 방식                                                                                       | 용도                                                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `_replace_many_in_all_runs(doc, pairs)` | 본문+표 셀(중첩 포함) 전체를 **1회 순회**하며 각 run.text에 `pairs` 순서대로 `str.replace` | 표지 제목 2줄, AI역량 레벨 체크박스(2폰트), PBL 표지 제목·훈련목표/평가방법 체크박스. **리셋→토글 순서**로 pairs를 쌓아 한 run에서 순차 적용돼도 정확. |
+| `_replace_in_all_runs(doc, old, new)`   | 단일 (old,new)를 전체 run에 치환                                                           | 단건 문자열 치환.                                                                                                                                      |
+| `_apply_markers(doc, markers)`          | 표 셀은 `_set_cell_text`(줄→문단 분배·lineWrap), 본문은 run.text 치환                      | `{{마커}}` 일괄 치환. 잔존 마커는 빈 문자열로 제거.                                                                                                    |
+
+**지양할 파괴적 방식:** 셀의 모든 run을 비우고 첫 run에 텍스트를 몰아넣으면 문단
+구조·2폰트·자동 서식이 붕괴된다. `_set_cell_text` 는 이를 피해 **첫 문단의
+`paraPrIDRef`·`styleIDRef`·`charPrIDRef` 를 복제**해 부족한 문단을 추가하고 줄별로
+1:1 분배한다(잉여 문단은 트림). 빌드 타임 `set_cell`(마커 삽입용)은 빈 셀에 마커만
+심는 용도라 예외적으로 첫 run 몰기를 쓴다.
+
+**SSOT strategy 조합:** 마커로 표현하기 어려운 셀(표지 제목·체크박스)은 SSOT에서
+`strategy:"static"` 으로 두어 마커를 심지 않고, `generate.py` 가 위 비파괴 치환으로
+직접 처리한다. 값 채우기 셀은 `cell_fill`(좌표:마커 매핑)로 마커를 심는다.
+
+---
+
+## 6. 글머리·날짜·온점 규칙
+
+### 6-1. 글머리 — 리터럴 `▪ ` vs 양식 자동 BULLET (택일)
+
+한 셀에서 두 방식을 섞으면 글머리가 이중으로 찍힌다. 셀마다 **하나만** 쓴다.
+
+| 방식                               | 대상 마커                                                                                                                | 처리                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 리터럴 `▪ ` + LEFT 무글머리 paraPr | 로드맵 명세서 세부내용 `{{roadmap_course_i_subject_j_details}}`, PBL 교과목 훈련내용 세부 `{{pbl_ops_content_i_detail}}` | `generate.py` 가 줄마다 `▪ ` 부착 + `left_align_spec_details` 가 LEFT **무글머리** paraPr로(양식 자동 글머리 중복 방지). |
+| 양식 자동 글머리(BULLET paraPr)    | PBL 훈련강사 세부훈련내용 `{{pbl_ops_instructor_i_detailed_training_content}}`                                           | 값에 리터럴 미부착, 양식 BULLET paraPr에 위임.                                                                           |
+
+### 6-2. 날짜 서식 — 표지 vs 활동 일시
+
+`src/lib/services/export/hwpx/hwpx-date.ts` 의 두 포맷터. 둘 다 로케일·타임존 비의존
+(저장값의 UTC 성분을 문자열 조립 — 운영 서버 UTC 출력과 동일, 자정 경계 하루 밀림 방지).
+
+| 포맷터               | 출력                            | 대상                                  | 이유                                                                        |
+| -------------------- | ------------------------------- | ------------------------------------- | --------------------------------------------------------------------------- |
+| `formatReportDate`   | `YYYY. MM. DD.`                 | 표지 보고서 일자                      | 넓은 셀, 4자리 연도.                                                        |
+| `formatActivityDate` | `YY.MM.DD` (2자리 연도, 컴팩트) | Ⅰ-2 주요활동·Ⅱ-1-나·Ⅲ-1 **수행 일시** | 셀 폭이 좁아 `YYYY. MM. DD.` 를 넣으면 wrap이 깨짐. 파싱 불가 시 원본 반환. |
+
+### 6-3. 서술형 온점 — `_ensure_sentence_period` (v2 라운드 신설)
+
+서술형(`~이다/하다/한다/있다`) 문장 끝 온점(.)이 LLM·인터뷰 입력에 따라 들쭉날쭉해,
+샘플/production 유일 합류점인 `generate.py` 에서 **결정론적으로 보정**한다.
+
+- `_ensure_sentence_period(text)`: **줄 단위**로 `rstrip` 후 종결어미 **'다'로 끝나는
+  줄**에 `.` 부가. 이미 종결부호(`. ! ? … 。`)로 끝나면 무변경.
+- **자기조정형(화이트리스트 불필요):** 명사형·개조식(`강의`/`실습`/`확보`/`필요`/`~됨`
+  /`~함`)은 '다'로 끝나지 않아 자동으로 온점이 붙지 않는다. 체크박스(☑/□)·날짜·라벨도
+  '다' 미종결이라 안전.
+- 적용: 공통 헬퍼 `_apply_sentence_periods(m)` 로 `_build_roadmap_markers` /
+  `_build_pbl_markers` **반환 직전** 마커 값 전체에 일괄 적용 → fixture와 production을
+  단일 지점에서 커버. **프롬프트·fixture의 온점은 건드리지 않는다**(이중 관리·LLM
+  비결정성 회피).
+
+---
+
+## 7. 정렬 결정표
+
+| 위치                               | 대표 마커                                | 정렬                     | 담당                                        |
+| ---------------------------------- | ---------------------------------------- | ------------------------ | ------------------------------------------- |
+| 로드맵 명세서 **훈련목표**         | `{{roadmap_course_i_training_goal}}`     | LEFT (para11)            | `left_align_spec_goal_content` (v2 신설)    |
+| 로드맵 명세서 **주요 훈련내용**    | `{{roadmap_course_i_main_content}}`      | LEFT (para11)            | `left_align_spec_goal_content` (v2 신설)    |
+| 로드맵 명세서 **세부내용**         | `{{roadmap_course_i_subject_j_details}}` | LEFT (para11)            | `left_align_spec_details`                   |
+| 로드맵 **Ⅰ-3 수립 주요 결과 요약** | `{{roadmap_outcome_main_content}}`       | **CENTER 유지**          | 좌측화 대상 아님 — `_course_` 스코프로 제외 |
+| 표지 **서명표 소속/성명**          | 서명표 값 셀([1,1]·[1,2]·[2,1]·[2,2])    | CENTER                   | `center_signature_columns`                  |
+| PBL **교과목 프로파일 훈련목표**   | `{{pbl_ops_subject_training_goals}}`     | LEFT (양식 기본 para111) | 후처리 불필요                               |
+| PBL **교과목 훈련내용 세부**       | `{{pbl_ops_content_i_detail}}`           | LEFT (para11)            | `left_align_spec_details`                   |
+
+> **⚠️ 좌측화 스코프 주의(핵심 회귀 위험):** `left_align_spec_goal_content` 는
+> 셀 텍스트에 `_course_` **AND** (`_training_goal}}` **OR** `_main_content}}`) 가
+> 있을 때만 LEFT로 바꾼다. `_course_` 접두 가드가 없으면 **Ⅰ-3 요약**
+> (`roadmap_outcome_main_content` — `_course_` 없음)과 **PBL** `{{pbl_roadmap_main_content}}`
+> 가 잘못 좌측화된다. 전용 회귀 테스트로 방어할 것.
+
+---
+
+## 8. insert_placeholders.py 후처리 헬퍼 목록
+
+빌드 타임(`insert_placeholders.py`)에서 마커 삽입 **후** 실행되는 서식 후처리.
+모두 속성(paraPr·fwSpace) 편집만 하며 구조는 건드리지 않는다.
+
+| 헬퍼                                                             | 역할                                                                                                                                                                               |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consolidate_checkbox_fwspace(doc)`                              | 체크박스 라벨 run의 `<hp:fwSpace/>` 제거 → 텍스트 단일 노드 통합. 런타임 `□ X`→`☑ X` 치환 시 fwSpace tail이 남아 라벨이 중복 렌더되는 것을 원천 차단(□/☑/☐ 포함 `<hp:t>` 만 대상). |
+| `center_signature_columns(doc, table_index=2, columns=(1,2))`    | 표지 서명표 소속/성명 열 값 셀을 **헤더행(0)의 paraPr**(=CENTER)로 재지정(하드코딩 id 대신 헤더 추종).                                                                             |
+| `left_align_spec_details(doc, left_pid="11")`                    | 세부내용 셀(`_subject_…_details}}`, `_content_…_detail}}`)을 LEFT 무글머리 paraPr로. 글머리 `▪` 는 값에 부여되므로 양식 자동 글머리를 안 씀.                                       |
+| `left_align_spec_goal_content(doc, left_pid="11")` **(v2 신설)** | 명세서 훈련목표/주요내용(`_course_` AND `_training_goal}}`/`_main_content}}`)을 LEFT로. `_course_` 스코프로 Ⅰ-3 요약·PBL 요약 제외(§7 경고).                                       |
+
+**`main()` 호출 순서** (마커 삽입 루프 이후):
+
+```text
+insert_entry 루프 (SSOT 기반 마커 삽입)
+  → consolidate_checkbox_fwspace
+  → center_signature_columns
+  → left_align_spec_details
+  → left_align_spec_goal_content   (v2 신설, 세부내용 정렬 바로 뒤)
+  → doc.save(dst)
+```
+
+---
+
+## 9. 새 양식 적용 체크리스트
+
+새 산인공 정본이 오면 아래 순서를 그대로 따른다(단계마다 검증 통과 확인).
+
+1. **양식 배치·구조 분석** — 정본 `.hwpx` 를 `docs/references/` 에 배치(파일명은
+   `TRACKS` 딕셔너리 경로와 일치시킬 것). 구조를 재분석해
+   `docs/references/hwpx-structure-{roadmap,pbl}.md` 의 표 인벤토리·셀 좌표를 갱신.
+2. **SSOT 갱신** — `hwpx-placeholders.json` 의 마커명·좌표(**shallow** `table_index`
+   — §2 주의)·`strategy` 를 새 구조에 맞춰 수정. 신규 셀은 `cell_fill`/`repeat_rows`
+   등 taxonomy에 따라 추가, 마커 없는 셀은 `static`.
+3. **템플릿 재생성** — `insert_placeholders.py roadmap|pbl` 실행.
+   **`templates/hwpx/*.hwpx` 수동 편집 절대 금지 — 항상 스크립트로 재생성.** 이때
+   서식 예외를 재확인: paraPr **LEFT=11** 유효 여부, `keep_blue` charPr **id**
+   (`_ROADMAP_KEEP_BLUE`/`_PBL_KEEP_BLUE`), 파랑 색상값(`_BLUE_TEXT_COLORS`),
+   `center_signature_columns` 의 `table_index`.
+4. **verify 2종 통과** — `verify_hwpx_placeholders.py`(템플릿↔SSOT 마커 정합) +
+   `verify-mapping-completeness.mjs`(payload↔마커 완전성).
+5. **generate.py 갱신 + pytest** — `_build_roadmap_markers`/`_build_pbl_markers` 에
+   신규 마커 배선, 서식 로직(lineWrap·색상·체크박스·온점) 점검. 신규 값은 payload
+   배선(`src/lib/services/export/hwpx/hwpx-payload-*.ts`)까지 연결. `api/hwpx/` pytest 전건.
+6. **샘플 생성·육안** — fixture(`api/hwpx/__fixtures__/*.json`) 갱신 → 브리지 서버
+   (`npm run dev:hwpx` + `npm run dev:with-hwpx`)로 로드맵·PBL 샘플 생성 → §10 한컴
+   육안. **마커 잔존 0** 확인(`unzip -p *.hwpx | grep '{{'` 결과 없음).
+
+---
+
+## 10. 육안 검증 체크리스트
+
+한컴오피스에서 실물을 열어 항목별로 확인(자동 테스트로 안 잡히는 결함).
+
+- [ ] **정렬** — 명세서 훈련목표/주요내용/세부내용 LEFT, Ⅰ-3 요약 CENTER, 서명표 소속/성명 CENTER.
+- [ ] **폰트** — 2폰트 셀(체크박스 레벨명+유형명) 폰트 유지, 셀 내 줄별 폰트 통일.
+- [ ] **색상** — 본문 파랑 글씨 없음(검정), 표지 기업명만 파랑 유지, 헤더 흰 글자 보존.
+- [ ] **lineWrap 줄바꿈** — 짧은 셀(일시·방법·차수·시간) 한 줄, 긴 셀 단어 단위 자연 wrap, 글자 겹침 없음.
+- [ ] **글머리** — 세부내용 `▪` 이중 글머리 없음.
+- [ ] **온점** — 서술형 문장 끝 온점, 명사형·개조식엔 없음, 이중 온점 없음.
+- [ ] **날짜 서식** — 표지 `YYYY. MM. DD.`, 수행 일시 `YY.MM.DD`.
+- [ ] **빈칸** — 값이 있어야 할 셀이 빈칸이 아님(마커 누락·payload 미배선 점검).
+
+---
+
+## 11. 시행착오 로그(요약)
+
+이번 v2 세션에서 **실물(한컴 육안)로만** 드러난 서식 결함들. 새 양식에서도 같은
+계열의 함정이 재현되므로 원인·해결을 각 한 줄로 남긴다.
+
+| #   | 결함(증상)                  | 근본원인                                                           | 해결                                                                         |
+| --- | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 1   | 표지 제목 2줄 붕괴          | 2문단 제목 셀에 마커 삽입 시 문단·색 구조 붕괴                     | SSOT `static` + `_replace_many_in_all_runs` in-place 치환(비파괴)            |
+| 2   | 본문 파란 글씨              | 양식 charPr가 파랑으로 세팅                                        | `_normalize_colors` 파랑→검정, 기업명 charPr(cp106/cp151)만 예외             |
+| 3   | 활동 일시 날짜 wrap 깨짐    | 좁은 셀에 `YYYY. MM. DD.` 4자리 넣어 폭 초과                       | `formatActivityDate` `YY.MM.DD` 컴팩트                                       |
+| 4   | 짧은 셀 줄바꿈 깨짐         | lineWrap을 무조건 BREAK로 강제                                     | `_set_cell_text` 폭 기반 자동 — overflow일 때만 BREAK, 들어가면 SQUEEZE 유지 |
+| 5   | 서술형 온점 들쭉날쭉        | 온점 강제 로직 전무                                                | `_ensure_sentence_period`(신설) 줄 단위 '다'-종결 온점                       |
+| 6   | 명세서 목표/주요내용 CENTER | 양식 원본 para21(CENTER) 상속, 좌측화 함수 부재                    | `left_align_spec_goal_content`(신설) LEFT 재지정(`_course_` 스코프)          |
+| 7   | PBL Ⅱ-1-나 요약 셀 빈칸     | `{{pbl_roadmap_main_content}}` 마커 자체가 미존재 + payload 미배선 | SSOT 마커 신설 + `_build_pbl_markers` 배선 + TS payload 연계                 |
