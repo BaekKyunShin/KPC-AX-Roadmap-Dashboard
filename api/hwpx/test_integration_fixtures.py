@@ -227,7 +227,7 @@ class TestPblFixtures:
         assert act["content"] in text and act["pm_name"] in text, "주요 활동 미노출"
 
     def test_pbl_ai_level_checkbox_toggle(self):
-        """Ⅱ-1-나 AI역량 3단계 체크박스 — roadmap_ai_level 에 따라 ☑ 토글."""
+        """Ⅱ-1-나 AI역량 3단계 체크박스 — 2문단·2폰트 보존 + roadmap_ai_level 토글."""
         from generate import _collect_tables, _generate_pbl
 
         data = _load_fixture("pbl-full.json")  # INTERMEDIATE
@@ -235,9 +235,16 @@ class TestPblFixtures:
         doc, tmp = _open_doc(_generate_pbl(data))
         try:
             t10 = _collect_tables(doc)[10]
-            assert _cell_text(t10, 0, 2) == "☑ 중급 (AI탐구형)", "중급 ☑ 토글 실패"
-            assert _cell_text(t10, 0, 1) == "□ 초급 (AI기초형)"
-            assert _cell_text(t10, 0, 3) == "□ 고급 (AI활용형·선도형)"
+            # 체크박스 라인(p0)과 유형 라벨(p1)이 별도 문단으로 보존(2폰트), 중급만 ☑
+            for col, cb, label in (
+                (1, "□ 초급", "(AI기초형)"),
+                (2, "☑ 중급", "(AI탐구형)"),
+                (3, "□ 고급", "(AI활용형·선도형)"),
+            ):
+                paras = list(t10.cell(0, col).paragraphs)
+                assert len(paras) == 2, f"col{col} 2문단 유지 실패: {len(paras)}"
+                assert paras[0].runs[0].text == cb
+                assert paras[1].runs[0].text == label
         finally:
             tmp.close()
 

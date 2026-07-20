@@ -34,17 +34,12 @@
     {
       "id": "R-02",
       "section": "[표지] 제목 — AI훈련로드맵 보고서 (기업명 – 대상 과업)",
-      "label": "cover-title",
-      "strategy": "single",
+      "label": "static",
+      "strategy": "static",
       "py_key": "cover_title",
       "ts_key": "coverTitle",
       "data_source": "projects.company_name + 인터뷰 Ⅰ-3 selected_tasks_summary",
-      "location": {
-        "table_index": 1,
-        "cell": [0, 0]
-      },
-      "cell_template": "AI훈련로드맵 보고서 ({{roadmap_cover_company_name}} – {{roadmap_cover_target_task}})",
-      "placeholders": ["{{roadmap_cover_company_name}}", "{{roadmap_cover_target_task}}"]
+      "notes": "양식 T1(0,0) 은 'AI훈련로드맵 보고서'(cp104) / '(기업명 – 대상 과업)'(cp106 파랑) 2문단. 마커 삽입 시 붕괴되므로 static — generate.py::_generate_roadmap 가 '(기업명 – 대상 과업)' 를 in-place 치환(분할 run·색 보존)."
     },
     {
       "id": "R-03",
@@ -143,36 +138,21 @@
     },
     {
       "id": "R-07",
-      "section": "Ⅰ-3 수립 주요 결과 (3×4) — 역량수준 체크박스 + 선정 과업 + 요약",
+      "section": "Ⅰ-3 수립 주요 결과 (3×4) — 역량수준 체크박스(static) + 선정 과업 + 요약",
       "label": "interview-input + llm-generated",
-      "strategy": "checkbox_toggle + cell_fill",
+      "strategy": "cell_fill",
       "py_key": "outcome_summary",
       "ts_key": "outcomeSummary",
       "data_source": "인터뷰 ai_competency_level·selected_tasks_summary + LLM main_content",
       "location": {
         "table_index": 8,
-        "checkbox_cells": {
-          "{{cb_roadmap_level_beginner}}": [0, 1],
-          "{{cb_roadmap_level_intermediate}}": [0, 2],
-          "{{cb_roadmap_level_advanced}}": [0, 3]
-        },
         "cells": {
           "{{roadmap_outcome_selected_tasks}}": [1, 1],
           "{{roadmap_outcome_main_content}}": [2, 1]
         }
       },
-      "checkbox_templates": {
-        "{{cb_roadmap_level_beginner}}": "{{cb_roadmap_level_beginner}} 초급 (AI기초형)",
-        "{{cb_roadmap_level_intermediate}}": "{{cb_roadmap_level_intermediate}} 중급 (AI탐구형)",
-        "{{cb_roadmap_level_advanced}}": "{{cb_roadmap_level_advanced}} 고급 (AI활용형·선도형)"
-      },
-      "placeholders": [
-        "{{cb_roadmap_level_beginner}}",
-        "{{cb_roadmap_level_intermediate}}",
-        "{{cb_roadmap_level_advanced}}",
-        "{{roadmap_outcome_selected_tasks}}",
-        "{{roadmap_outcome_main_content}}"
-      ]
+      "notes": "역량수준 체크박스(0,1)~(0,3) 은 양식 '□ 초급'(cp8)/'(AI기초형)'(cp9) 2문단 유지(static) — generate.py 가 선택 레벨을 '□ X'→'☑ X' in-place 토글(2폰트 보존).",
+      "placeholders": ["{{roadmap_outcome_selected_tasks}}", "{{roadmap_outcome_main_content}}"]
     },
     {
       "id": "R-08",
@@ -498,35 +478,21 @@
     },
     {
       "id": "P-06",
-      "section": "Ⅱ-1-나 로드맵 수립 주요 결과 (3×4) — AI역량 수준(3단계 체크박스) + 선정 과업",
+      "section": "Ⅱ-1-나 로드맵 수립 주요 결과 (3×4) — AI역량 수준(3단계 체크박스 static) + 선정 과업",
       "label": "interview-input",
-      "strategy": "checkbox_toggle + cell_fill",
+      "strategy": "cell_fill",
       "py_key": "roadmap_ai_level",
       "ts_key": "aiLevel",
       "data_source": "선행 로드맵 인터뷰 aiLevel(BEGINNER/INTERMEDIATE/ADVANCED) + selectedTask (자동 연계)",
       "location": {
         "table_index": 10,
-        "checkbox_cells": {
-          "{{cb_pbl_roadmap_level_beginner}}": [0, 1],
-          "{{cb_pbl_roadmap_level_intermediate}}": [0, 2],
-          "{{cb_pbl_roadmap_level_advanced}}": [0, 3]
-        },
         "cells": {
           "{{pbl_roadmap_selected_task}}": [1, 1]
         },
         "notes": "r2 'AI훈련로드맵 수립 주요내용(요약)' 은 payload 미공급 → 양식 원문 유지."
       },
-      "checkbox_templates": {
-        "{{cb_pbl_roadmap_level_beginner}}": "{{cb_pbl_roadmap_level_beginner}} 초급 (AI기초형)",
-        "{{cb_pbl_roadmap_level_intermediate}}": "{{cb_pbl_roadmap_level_intermediate}} 중급 (AI탐구형)",
-        "{{cb_pbl_roadmap_level_advanced}}": "{{cb_pbl_roadmap_level_advanced}} 고급 (AI활용형·선도형)"
-      },
-      "placeholders": [
-        "{{cb_pbl_roadmap_level_beginner}}",
-        "{{cb_pbl_roadmap_level_intermediate}}",
-        "{{cb_pbl_roadmap_level_advanced}}",
-        "{{pbl_roadmap_selected_task}}"
-      ]
+      "notes": "역량수준 체크박스(0,1)~(0,3) 은 양식 '□ 초급'/'(AI기초형)' 2문단 유지(static) — generate.py::_generate_pbl 가 선택 레벨을 in-place 토글(2폰트 보존).",
+      "placeholders": ["{{pbl_roadmap_selected_task}}"]
     },
     {
       "id": "P-07",

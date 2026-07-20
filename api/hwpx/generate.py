@@ -144,6 +144,46 @@ PBL_TEMPLATE = os.path.normpath(
 # ===============================================================
 
 
+_ROADMAP_KEEP_BLUE = {"106"}  # 표지 제목 부제 '(기업명 – 대상 과업)'
+_PBL_KEEP_BLUE = {"151"}      # 표지(과정개발) 제목 '㈜기업명'
+_BLUE_TEXT_COLORS = {"#0000FF", "#2E74B5", "#3057B9"}
+
+
+def _normalize_colors(hwpx_bytes: bytes, keep_blue_ids: set) -> bytes:
+    """생성 HWPX 의 파랑 계열 charPr textColor 를 검정으로 정규화.
+
+    양식이 파랑으로 세팅돼 있어도 채워지는 모든 텍스트를 검정 통일(사용자 요구).
+    단 표지 제목 기업명 charPr(keep_blue_ids)만 파랑 유지. 흰색(헤더 배경)·
+    빨강·회색 form 스타일은 보존.
+
+    python-hwpx 에 charPr 색 setter 가 없어(RunStyle 읽기 전용) 저장된 zip 의
+    header.xml textColor 속성만 직접 치환한다 — 구조 무변경(요소 추가·삭제 없이
+    속성값만 변경)이므로 `_set_cell_text` 의 cell.element.set 과 동일 안전 범주.
+    """
+    import io
+    import zipfile
+
+    from lxml import etree
+
+    head = "{http://www.hancom.co.kr/hwpml/2011/head}"
+    zin = zipfile.ZipFile(io.BytesIO(hwpx_bytes))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename.endswith("header.xml"):
+                root = etree.fromstring(data)
+                for ch in root.iter(f"{head}charPr"):
+                    tc = (ch.get("textColor") or "").upper()
+                    if tc in _BLUE_TEXT_COLORS and ch.get("id") not in keep_blue_ids:
+                        ch.set("textColor", "#000000")
+                data = etree.tostring(
+                    root, xml_declaration=True, encoding="UTF-8", standalone=True
+                )
+            zout.writestr(info, data)
+    return buf.getvalue()
+
+
 def _generate_roadmap(data: dict) -> bytes:
     """로드맵 HWPX 생성 — {{플레이스홀더}} 치환 방식 (산인공 양식 v2).
 
@@ -157,15 +197,32 @@ def _generate_roadmap(data: dict) -> bytes:
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
     _apply_markers(doc, _build_roadmap_markers(data))
 
+    # 마커로 표현하기 어려운 텍스트 치환 (분할 run·문단·색 보존):
+    #   1) 표지 제목 부제 '(기업명 – 대상 과업)' — cp106(파랑) 단일 run in-place
+    #   2) AI 역량수준 3단계 체크박스 — 양식 '□ X'(cp8)/'(...)'(cp9) 2문단, 선택만 토글
+    pairs: list[tuple[str, str]] = []
+    company = _s(data.get("company_name"))
+    target = _s(data.get("cover_target_task"))
+    if company or target:
+        pairs.append(("(기업명 – 대상 과업)", f"({company} – {target})"))
+    level = _s(data.get("ai_competency_level")).upper()
+    for label in ("초급", "중급", "고급"):
+        pairs.append((f"☑ {label}", f"□ {label}"))
+    selected = {"BEGINNER": "초급", "INTERMEDIATE": "중급", "ADVANCED": "고급"}.get(level)
+    if selected:
+        pairs.append((f"□ {selected}", f"☑ {selected}"))
+    _replace_many_in_all_runs(doc, pairs)
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hwpx") as tmp:
         path = tmp.name
     try:
         doc.save_to_path(path)
         with open(path, "rb") as f:
-            return f.read()
+            raw = f.read()
     finally:
         if os.path.exists(path):
             os.unlink(path)
+    return _normalize_colors(raw, _ROADMAP_KEEP_BLUE)
 
 
 _MARKER_RE = re.compile(r"\{\{[^}]*\}\}")
@@ -851,6 +908,15 @@ def _generate_pbl(data: dict) -> bytes:
     for label in set(data.get("course_evaluation_methods") or []):
         if label in COURSE_EVALUATION_METHODS:
             pairs.append((f"□ {label}", f"☑ {label}"))
+    # AI 역량수준 3단계 체크박스 (Ⅱ-1-나 T10) — 양식 '□ X'/'(...)'2문단 보존, 선택만 토글
+    level = _s(data.get("roadmap_ai_level")).upper()
+    for label in ("초급", "중급", "고급"):
+        pairs.append((f"☑ {label}", f"□ {label}"))
+    selected = {"BEGINNER": "초급", "INTERMEDIATE": "중급", "ADVANCED": "고급"}.get(level)
+    if selected:
+        pairs.append((f"□ {selected}", f"☑ {selected}"))
+    # Ⅲ-1 수행차수 3행 양식 리터럴 '...차' → '3차'
+    pairs.append(("...차", "3차"))
     _replace_many_in_all_runs(doc, pairs)
 
     # 3) 저장
@@ -859,10 +925,11 @@ def _generate_pbl(data: dict) -> bytes:
     try:
         doc.save_to_path(path)
         with open(path, "rb") as f:
-            return f.read()
+            raw = f.read()
     finally:
         if os.path.exists(path):
             os.unlink(path)
+    return _normalize_colors(raw, _PBL_KEEP_BLUE)
 
 
 def _replace_many_in_all_runs(doc, pairs) -> None:

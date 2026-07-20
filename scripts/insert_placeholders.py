@@ -42,6 +42,69 @@ def collect_tables(doc):
     return [t for para in doc.paragraphs for t in para.tables]
 
 
+_HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+
+
+def consolidate_checkbox_fwspace(doc) -> int:
+    """체크박스 라벨 run 의 <hp:fwSpace/> 를 제거해 텍스트를 단일 노드로 통합.
+
+    양식 일부 체크박스 라벨(예: 교과목 프로파일 '방법' 셀의 '□ 작업장 평가')은
+    '□ ' + fwSpace + '작업장 평가' 구조라, 런타임 텍스트 치환('□ X'→'☑ X') 시
+    fwSpace tail 이 남아 라벨이 중복 렌더된다. 빌드 단계에서 fwSpace 를 없애고
+    텍스트를 합쳐 원천 차단한다(체크박스 글자 □/☑/☐ 포함 <hp:t> 만 대상).
+    """
+    count = 0
+    for para in doc.paragraphs:
+        for tbl in para.tables:
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    for t in cell.element.iter(f"{_HP_NS}t"):
+                        children = list(t)
+                        if not any(c.tag == f"{_HP_NS}fwSpace" for c in children):
+                            continue
+                        full = (t.text or "") + "".join(c.tail or "" for c in children)
+                        if not any(g in full for g in ("□", "☑", "☐")):
+                            continue
+                        for c in children:
+                            t.remove(c)
+                        t.text = full
+                        count += 1
+    return count
+
+
+def center_signature_columns(doc, table_index: int = 2, columns=(1, 2)) -> int:
+    """표지 서명표의 소속/성명 열 값 셀을 헤더와 동일한 CENTER paraPr 로 재지정.
+
+    값 셀은 기본 JUSTIFY(좌측 정렬처럼 보임)라, 사용자 요구대로 소속·성명 열을
+    가운데 정렬한다. 헤더행(0)의 소속 열 paraPr(=CENTER)를 데이터 행 col1/col2 에
+    재사용한다(트랙 무관: 하드코딩 id 대신 헤더 paraPr 추종).
+    """
+    tables = collect_tables(doc)
+    if table_index >= len(tables):
+        return 0
+    tbl = tables[table_index]
+    try:
+        center_pid = tbl.cell(0, columns[0]).paragraphs[0].para_pr_id_ref
+    except Exception:
+        return 0
+    count = 0
+    for r in range(1, tbl.row_count):
+        for c in columns:
+            try:
+                cell = tbl.cell(r, c)
+            except Exception:
+                continue
+            for p in cell.paragraphs:
+                if p.para_pr_id_ref != center_pid:
+                    p.para_pr_id_ref = center_pid
+                    count += 1
+    return count
+
+
 def set_cell(tbl, row: int, col: int, text: str) -> bool:
     """셀의 모든 run 을 비우고 첫 run 에 마커를 기입."""
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
@@ -196,6 +259,14 @@ def main() -> int:
     warnings: list[str] = []
     for entry in entries:
         insert_entry(tables, doc, entry, inserted, warnings)
+
+    fw_fixed = consolidate_checkbox_fwspace(doc)
+    if fw_fixed:
+        print(f"체크박스 fwSpace 통합: {fw_fixed}개", file=sys.stderr)
+
+    sig_centered = center_signature_columns(doc)
+    if sig_centered:
+        print(f"서명표 소속/성명 가운데정렬: {sig_centered}개", file=sys.stderr)
 
     for w in warnings:
         print(f"  WARN {w}", file=sys.stderr)
