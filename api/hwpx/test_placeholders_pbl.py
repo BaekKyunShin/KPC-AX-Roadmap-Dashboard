@@ -21,7 +21,6 @@ from generate import _build_pbl_markers  # noqa: E402
 from _placeholders_pbl import (  # noqa: E402
     COURSE_EVALUATION_METHODS,
     TRAINING_GOAL_LABELS,
-    _bulletize,
 )
 
 
@@ -38,16 +37,6 @@ class TestConstantsAndHelpers:
 
     def test_course_evaluation_methods(self):
         assert COURSE_EVALUATION_METHODS == ("포트폴리오", "문제해결시나리오", "작업장 평가")
-
-    def test_bulletize_list(self):
-        assert _bulletize(["a", "b"]) == "• a\n• b"
-
-    def test_bulletize_string_passthrough(self):
-        assert _bulletize("이미 문자열") == "이미 문자열"
-
-    def test_bulletize_empty(self):
-        assert _bulletize([]) == ""
-        assert _bulletize(None) == ""
 
 
 # ---------------------------------------------------------------
@@ -341,7 +330,8 @@ class TestOperationPlan:
         assert m["{{pbl_ops_facility_0_name}}"] == "실습실"
         assert m["{{pbl_ops_facility_0_location}}"] == "3층"
 
-    def test_training_instructors_bulletize(self):
+    def test_training_instructors_detail_no_literal_bullet(self):
+        """훈련강사 세부내용 — 양식 자동 글머리가 렌더하므로 값엔 리터럴 '•' 없이 줄바꿈만."""
         m = _build_pbl_markers({
             "training_instructors": [{"name": "김강사", "internal_external": "외부",
                                       "career_years": 10, "work_name": "컨설팅",
@@ -349,7 +339,28 @@ class TestOperationPlan:
         })
         assert m["{{pbl_ops_instructor_0_name}}"] == "김강사"
         assert m["{{pbl_ops_instructor_0_career_years}}"] == "10"
-        assert m["{{pbl_ops_instructor_0_detailed_training_content}}"] == "• 기초\n• 실습"
+        assert m["{{pbl_ops_instructor_0_detailed_training_content}}"] == "기초\n실습"
+        assert "•" not in m["{{pbl_ops_instructor_0_detailed_training_content}}"]
+
+    def test_perf_activity_date_is_date_only(self):
+        """Ⅲ-1 수행활동(T19) date 마커는 일자만 (시간 제거)."""
+        m = _build_pbl_markers({
+            "roadmap_perf_activities": [
+                {"round": 1, "date": "2026-04-01\n10:00~12:00", "content": "킥오프"},
+            ],
+        })
+        assert m["{{pbl_perf_0_date}}"] == "2026-04-01"
+        assert "\n" not in m["{{pbl_perf_0_date}}"]
+        assert ":" not in m["{{pbl_perf_0_date}}"]
+
+    def test_setup_activity_date_keeps_time(self):
+        """Ⅱ-1-나 주요활동(T9) date 마커는 일자+시간 2줄 유지 (Ⅲ-1 과 대비)."""
+        m = _build_pbl_markers({
+            "roadmap_setup_activities": [
+                {"round": 1, "date": "2026-04-01\n10:00~12:00", "content": "킥오프"},
+            ],
+        })
+        assert m["{{pbl_roadmap_activity_0_date}}"] == "2026-04-01\n10:00~12:00"
 
     def test_course_eval(self):
         m = _build_pbl_markers({

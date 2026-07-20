@@ -384,7 +384,8 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
        부족한 paragraph 를 동적 추가 + 첫 paragraph 의 paraPrIDRef·
        styleIDRef·charPrIDRef 를 명시 전달 (한컴오피스 폰트 일관성 보장 —
        python-hwpx Cell.add_paragraph 는 None 전달 시 기본 글꼴로 폴백).
-    4. 줄 수 <= 템플릿 paragraph 수 인 경우 남은 paragraph 는 빈 상태 유지.
+    4. 줄 수 < 템플릿 paragraph 수 인 경우 잉여 paragraph 를 제거(트림)하여
+       하단 빈 문단 여백·자동 글머리(BULLET) 고정 개수를 방지 (최소 1 유지).
     5. (Phase E) 셀의 subList lineWrap 을 BREAK 로 설정. 양식 원본이 SQUEEZE
        또는 누락 상태이면 한컴오피스가 셀 폭 초과 텍스트를 압축 렌더해 글자
        겹침이 발생하므로, 단어 wrap 으로 강제 전환.
@@ -429,6 +430,13 @@ def _set_cell_text(tbl, row: int, col: int, text: str) -> None:
         if not p.runs:
             continue
         p.runs[0].text = lines[i] if i < len(lines) else ""
+
+    # Step 4.5: 잉여 문단 트림 — 내용 줄 수보다 많은 문단 제거 (하단 여백·자동
+    #   글머리 고정 개수 방지). split 결과는 항상 ≥1 이므로 최소 1 문단 유지.
+    for p in list(cell.paragraphs)[len(lines):]:
+        parent = p.element.getparent()
+        if parent is not None:
+            parent.remove(p.element)
 
     # Step 5: 셀 subList 의 lineWrap 을 BREAK 로 설정 (한컴오피스 자동 단어 wrap)
     #   양식 원본의 SQUEEZE 또는 누락 상태에서 발생하는 글자 겹침 회피.
@@ -991,8 +999,6 @@ def _pbl_ai_infra(data: dict) -> str:
 
 def _build_pbl_markers(data: dict) -> dict:
     """payload → {{마커}}: 값 매핑 (로드맵 `_build_roadmap_markers` 미러)."""
-    from _placeholders_pbl import _bulletize
-
     m: dict = {}
 
     # ── 표지 서명표 (T2) + 일자 (본문 앵커)
@@ -1085,7 +1091,8 @@ def _build_pbl_markers(data: dict) -> dict:
     perf = data.get("roadmap_perf_activities") or []
     for i in range(_PBL_MAX_PERF_ACTS):
         a = perf[i] if i < len(perf) else {}
-        m[f"{{{{pbl_perf_{i}_date}}}}"] = _s(a.get("date"))
+        # Ⅲ-1 수행활동은 일자만 표기 (양식) — 로드맵 연계 date 의 시간 줄 제거
+        m[f"{{{{pbl_perf_{i}_date}}}}"] = _s(a.get("date")).split("\n", 1)[0]
         m[f"{{{{pbl_perf_{i}_content}}}}"] = _s(a.get("content"))
         m[f"{{{{pbl_perf_{i}_method}}}}"] = _s(a.get("method"))
         m[f"{{{{pbl_perf_{i}_pm_name}}}}"] = _s(a.get("pm_name"))
@@ -1216,7 +1223,8 @@ def _build_pbl_markers(data: dict) -> dict:
         m[f"{{{{pbl_ops_instructor_{i}_internal_external}}}}"] = _s(ins.get("internal_external"))
         m[f"{{{{pbl_ops_instructor_{i}_career_years}}}}"] = _s(ins.get("career_years"))
         m[f"{{{{pbl_ops_instructor_{i}_work_name}}}}"] = _s(ins.get("work_name"))
-        m[f"{{{{pbl_ops_instructor_{i}_detailed_training_content}}}}"] = _bulletize(
+        # 글머리는 양식 자동 글머리(BULLET paraPr)에 위임 — 값엔 리터럴 '•' 미부착
+        m[f"{{{{pbl_ops_instructor_{i}_detailed_training_content}}}}"] = _join_list(
             ins.get("detailed_training_content")
         )
 

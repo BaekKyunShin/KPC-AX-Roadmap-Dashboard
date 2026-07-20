@@ -264,3 +264,38 @@ def test_set_cell_text_existing_newline_creates_paragraphs_with_line_wrap_break(
     texts = [p.runs[0].text if p.runs else "" for p in paragraphs]
     assert texts == ["첫 줄 텍스트", "둘째 줄 텍스트", "셋째 줄 텍스트"]
     assert _cell_line_wrap(tbl, 2, 2) == "BREAK"
+
+
+# ---------------------------------------------------------------
+# 잉여 문단 트림 (사용자 육안 검증 — 수행방법 하단 여백·글머리 고정 개수)
+#
+# 이전: 내용 줄 수 < 템플릿 문단 수 이면 남은 문단을 빈 채 유지 → 셀 하단에
+# 빈 문단 여백이 남고, 자동 글머리(BULLET) 문단은 항상 고정 개수로 렌더됨.
+# 해결: 내용 줄 수에 맞춰 잉여 문단을 제거(트림). 글머리는 내용 항목 수만큼.
+# ---------------------------------------------------------------
+
+
+def test_set_cell_text_trims_surplus_paragraphs_to_one():
+    """2+ 문단 셀에 1 줄 내용 → 1 문단으로 트림 (잉여 빈 문단 제거)."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[6]  # Ⅰ-2 주요 활동 — 값 셀은 2 paragraph
+    cell = tbl.cell(2, 3)
+    assert len(list(cell.paragraphs)) >= 2, "전제: 2+ paragraph 셀"
+
+    _set_cell_text(tbl, 2, 3, "대면(인터뷰)")
+
+    paragraphs = list(tbl.cell(2, 3).paragraphs)
+    assert len(paragraphs) == 1, (
+        f"1 줄 내용은 1 문단으로 트림돼야 함, 실제={len(paragraphs)}"
+    )
+    assert paragraphs[0].runs[0].text == "대면(인터뷰)"
+
+
+def test_set_cell_text_trim_never_below_one_on_empty():
+    """빈 문자열이어도 최소 1 문단은 유지 (HWPX 셀 문단 ≥1)."""
+    doc = _open_template()
+    tbl = _gather_tables(doc)[6]
+    _set_cell_text(tbl, 2, 3, "")
+    paragraphs = list(tbl.cell(2, 3).paragraphs)
+    assert len(paragraphs) == 1
+    assert (paragraphs[0].runs[0].text if paragraphs[0].runs else "") == ""
