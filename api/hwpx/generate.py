@@ -973,6 +973,15 @@ def _generate_pbl(data: dict) -> bytes:
     selected = {"BEGINNER": "초급", "INTERMEDIATE": "중급", "ADVANCED": "고급"}.get(level)
     if selected:
         pairs.append((f"□ {selected}", f"☑ {selected}"))
+    # 사내 강사 활용 여부 예/아니오 (Ⅱ-3 기업 훈련환경 분석 T17) — 리셋 후 데이터로 토글
+    pairs.append(("☑ 예", "□ 예"))
+    pairs.append(("☑ 아니오", "□ 아니오"))
+    _instr_used = data.get("internal_instructor_used")
+    _instr_usage = _s(data.get("internal_instructor_usage")).upper()
+    if _instr_used or _instr_usage == "YES":
+        pairs.append(("□ 예", "☑ 예"))
+    elif _instr_usage == "NO":
+        pairs.append(("□ 아니오", "☑ 아니오"))
     # Ⅲ-1 수행차수 3행 양식 리터럴 '...차' → '3차'
     pairs.append(("...차", "3차"))
     _replace_many_in_all_runs(doc, pairs)

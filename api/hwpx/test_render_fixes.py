@@ -269,6 +269,26 @@ class TestPblRoadmapSummary:
         assert "{{" not in txt, f"마커 잔존: {txt!r}"
 
 
+class TestInternalInstructorCheckbox:
+    """Ⅱ-3 사내 강사 활용 여부 예/아니오 — 데이터로 체크 토글(기존 미체크 버그)."""
+
+    def test_usage_yes_checks_yes(self):
+        doc = _open_bytes(_generate_pbl({
+            "internal_instructor_usage": "YES", "internal_instructor_used": True,
+        }))
+        text = _all_text(doc)
+        assert "☑ 예" in text
+        assert "☑ 아니오" not in text
+
+    def test_usage_no_checks_no(self):
+        doc = _open_bytes(_generate_pbl({
+            "internal_instructor_usage": "NO", "internal_instructor_used": False,
+        }))
+        text = _all_text(doc)
+        assert "☑ 아니오" in text
+        assert "☑ 예" not in text
+
+
 class TestTaskTableUnmerged:
     """과업 표 직무 열 병합 해제 — 서로 다른 직무가 각 행에 정확(품질 소실 없음)."""
 
