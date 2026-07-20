@@ -38,10 +38,10 @@ export function buildSystemPrompt(): string {
 - training_method (훈련방법): 집체 | 원격 | 혼합 | 현장 중 하나.
 - recommended_program: K-Digital Training / 사업주 직업능력개발훈련 / 국가기간전략산업직종훈련 등 실제 사업명.
 - subjects (교과목): 과정당 **최대 3개** (양식의 교과목 행이 3개다). hours 는 양의 정수.
-- subjects[*].details: 2~5개 구체 활동을 줄바꿈(\\n)으로 구분하여 기술하라. 각 항목은 단원·과제·실습 단위의 활동 1건을 명사구로 쓴다. 여러 활동을 쉼표로 연결한 1줄 형식은 사용하지 마라. 머리기호(•, -)를 붙이지 마라.
+- subjects[*].details: **교과목당 4~5개** 구체 활동을 줄바꿈(\\n)으로 구분하여 기술하라. 각 항목은 "활동유형(강의·실습·워크숍·과제) + 구체 내용 + (가능하면 사용 도구·산출물)"을 담은 25~55자 명사구로 쓴다. 예: "결측·이상치 탐지 규칙 정의 및 검증 실습", "라벨링 스키마 설계와 데이터 명세서 작성 (산출물)". 여러 활동을 쉼표로 연결한 1줄 형식은 사용하지 마라. 머리기호(•, -)를 붙이지 마라.
 - 도구명은 "(무료: 범위)" 형식으로 명시하라. 예: "Teachable Machine (무료: 전체)", "CLOVA API (무료: 월 1000건)".
 
-**Ⅲ few-shot 예시 (1개 과정 — details 는 줄바꿈 분리 다항목)**
+**Ⅲ few-shot 예시 (1개 과정 — details 는 줄바꿈 분리 4~5항목, 활동유형+구체내용+도구·산출물)**
 \`\`\`json
 {
   "training_period": "2026년 1분기",
@@ -50,12 +50,12 @@ export function buildSystemPrompt(): string {
   "training_method": "집체",
   "recommended_program": "사업주 직업능력개발훈련",
   "goal": "업무 현장에서 AI 학습용 데이터를 직접 수집·정제하여 데이터셋을 구성할 수 있다",
-  "main_content": "데이터 수집 방법론, Excel·Google Sheets 활용 데이터 정제, AI 학습 데이터 품질 기준, 라벨링 실습",
+  "main_content": "AI 학습 데이터의 개념과 품질 기준(완전성·정확성·일관성)을 이해하고, Excel·Google Sheets로 결측·이상값을 정제하는 실습을 수행한다. Label Studio로 불량·정상 이미지를 직접 라벨링하고 교차 검증까지 진행하며, 재사용 가능한 데이터 명세서와 라벨링 가이드라인을 산출물로 완성한다.",
   "target_audience": "품질검사 실무자 전원 (선수 조건 없음)",
   "subjects": [
-    { "name": "AI 데이터 이해", "details": "AI 학습 데이터 개념과 머신러닝 학습 흐름\\n구조화·비구조화 데이터 구분 실습\\n데이터 품질 기준 수립 워크숍", "hours": 4 },
-    { "name": "Excel 데이터 정제 실습", "details": "결측값 처리 및 이상값 검출 (무료: Excel/Sheets 기본 제공)\\n중복 제거·표준화 매크로 적용\\n피벗 테이블 활용 집계 리포팅", "hours": 6 },
-    { "name": "이미지 라벨링 실습", "details": "Label Studio 설치 및 프로젝트 생성 (무료: Community Edition)\\n불량·정상 이미지 라벨링 가이드라인 작성\\n팀별 라벨링 결과 교차 검증", "hours": 6 }
+    { "name": "AI 데이터 이해", "details": "AI 학습 데이터의 개념·유형과 머신러닝 학습 파이프라인 이해 (강의)\\n정형·비정형 데이터 구분 및 수집 소스 매핑 실습\\n데이터 품질 기준(완전성·정확성·일관성) 수립 워크숍\\n결측·이상치 탐지 규칙 정의 및 검증 실습\\n라벨링 스키마 설계와 데이터 명세서 작성 (산출물)", "hours": 4 },
+    { "name": "Excel 데이터 정제 실습", "details": "결측값 대치·이상값 검출 함수 실습 (무료: Excel/Sheets 기본 제공)\\n중복 제거·표기 표준화 매크로 작성 및 적용\\n피벗 테이블·조건부 서식으로 집계 리포트 작성\\n정규표현식·텍스트 함수로 비정형 항목 정규화 실습\\n정제 전후 데이터 품질 비교표 작성 (산출물)", "hours": 6 },
+    { "name": "이미지 라벨링 실습", "details": "Label Studio 설치 및 프로젝트 생성 (무료: Community Edition)\\n불량·정상 이미지 라벨링 가이드라인 공동 작성\\n바운딩 박스·분류 라벨 부여 실습 및 단축키 숙달\\n팀별 라벨링 결과 교차 검증 및 불일치 조정\\n라벨 품질 지표 측정과 재작업 기준 수립 (산출물)", "hours": 6 }
   ]
 }
 \`\`\`
@@ -93,7 +93,7 @@ export function buildSystemPrompt(): string {
       "subjects": [
         {
           "name": "string (교과목명)",
-          "details": "string (2~5개 항목. 줄바꿈\\n으로 구분)",
+          "details": "string (4~5개 항목. 줄바꿈\\n으로 구분)",
           "hours": "integer > 0"
         }
       ]

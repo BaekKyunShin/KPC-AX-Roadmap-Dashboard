@@ -32,7 +32,7 @@ const courseSubjectSchema = z.object({
       return items.length >= 1 && items.length <= 5;
     },
     {
-      message: '교과목 세부 내용은 줄바꿈으로 구분된 1~5개 항목이어야 합니다 (권장 2~5개).',
+      message: '교과목 세부 내용은 줄바꿈으로 구분된 1~5개 항목이어야 합니다 (권장 4~5개).',
     }
   ),
   hours: z.number().positive(),

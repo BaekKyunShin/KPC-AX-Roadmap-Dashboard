@@ -192,8 +192,8 @@ describe('buildSystemPrompt — v2 지시', () => {
     expect(prompt).toContain('JSON 외 다른 텍스트를 출력하지 마라');
   });
 
-  it('교과목 details 다항목 정책 — 2~5개 항목 + 줄바꿈 분리 지시가 포함된다', () => {
-    expect(prompt).toContain('2~5개');
+  it('교과목 details 다항목 정책 — 4~5개 항목 + 줄바꿈 분리 지시가 포함된다', () => {
+    expect(prompt).toContain('4~5개');
     expect(prompt).toContain('줄바꿈');
   });
 
