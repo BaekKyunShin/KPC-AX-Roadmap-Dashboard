@@ -25,6 +25,7 @@
 9. [새 양식 적용 체크리스트](#9-새-양식-적용-체크리스트)
 10. [육안 검증 체크리스트](#10-육안-검증-체크리스트)
 11. [시행착오 로그(요약)](#11-시행착오-로그요약)
+12. [작성 가이드 콘텐츠 제약](#12-작성-가이드-콘텐츠-제약)
 
 ---
 
@@ -251,26 +252,22 @@ charPr `height` 는 1/100pt 단위. **2폰트 셀**(예: AI역량수준 체크�
 
 ## 8. insert_placeholders.py 후처리 헬퍼 목록
 
-빌드 타임(`insert_placeholders.py`)에서 마커 삽입 **후** 실행되는 서식 후처리.
-모두 속성(paraPr·fwSpace) 편집만 하며 구조는 건드리지 않는다.
+빌드 타임(`insert_placeholders.py`)의 서식 후처리. 대부분 속성(paraPr·fwSpace)
+편집이나, `unmerge_rowspan2_col` 은 예외적으로 **구조 편집**(셀 병합 해제)이다 —
+단 기존 형제 셀을 deepcopy 해 복제하므로 OWPML 유효(한컴 열림 확인).
 
-| 헬퍼                                                             | 역할                                                                                                                                                                               |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `consolidate_checkbox_fwspace(doc)`                              | 체크박스 라벨 run의 `<hp:fwSpace/>` 제거 → 텍스트 단일 노드 통합. 런타임 `□ X`→`☑ X` 치환 시 fwSpace tail이 남아 라벨이 중복 렌더되는 것을 원천 차단(□/☑/☐ 포함 `<hp:t>` 만 대상). |
-| `center_signature_columns(doc, table_index=2, columns=(1,2))`    | 표지 서명표 소속/성명 열 값 셀을 **헤더행(0)의 paraPr**(=CENTER)로 재지정(하드코딩 id 대신 헤더 추종).                                                                             |
-| `left_align_spec_details(doc, left_pid="11")`                    | 세부내용 셀(`_subject_…_details}}`, `_content_…_detail}}`)을 LEFT 무글머리 paraPr로. 글머리 `▪` 는 값에 부여되므로 양식 자동 글머리를 안 씀.                                       |
-| `left_align_spec_goal_content(doc, left_pid="11")` **(v2 신설)** | 명세서 훈련목표/주요내용(`_course_` AND `_training_goal}}`/`_main_content}}`)을 LEFT로. `_course_` 스코프로 Ⅰ-3 요약·PBL 요약 제외(§7 경고).                                       |
+| 헬퍼                                                             | 역할                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consolidate_checkbox_fwspace(doc)`                              | 체크박스 라벨 run의 `<hp:fwSpace/>` 제거 → 텍스트 단일 노드 통합. 런타임 `□ X`→`☑ X` 치환 시 fwSpace tail이 남아 라벨이 중복 렌더되는 것을 원천 차단(□/☑/☐ 포함 `<hp:t>` 만 대상).                                                                                                                   |
+| `center_signature_columns(doc, table_index=2, columns=(1,2))`    | 표지 서명표 소속/성명 열 값 셀을 **헤더행(0)의 paraPr**(=CENTER)로 재지정(하드코딩 id 대신 헤더 추종).                                                                                                                                                                                               |
+| `left_align_spec_details(doc, left_pid="11")`                    | 세부내용 셀(`_subject_…_details}}`, `_content_…_detail}}`)을 LEFT 무글머리 paraPr로. 글머리 `▪` 는 값에 부여되므로 양식 자동 글머리를 안 씀.                                                                                                                                                         |
+| `left_align_spec_goal_content(doc, left_pid="11")` **(v2 신설)** | 명세서 훈련목표/주요내용(`_course_` AND `_training_goal}}`/`_main_content}}`)을 LEFT로. `_course_` 스코프로 Ⅰ-3 요약·PBL 요약 제외(§7 경고).                                                                                                                                                         |
+| `unmerge_rowspan2_col(tbl, col)` **(v2 신설)**                   | 과업 표 직무 열의 rowSpan=2 세로 병합 해제 — 앵커 rowSpan 2→1 + 형제 셀 deepcopy(빈 텍스트, rowAddr+1, 문단 id 유일화) 삽입. `insert_entry` 의 `repeat_rows` 처리에서 SSOT `unmerge_rowspan2:true` col 에 대해 **채움 루프 직전** 호출. 이후 skip 없이 매 행 직무 채움 → 직무별 과업 개수 무관 정확. |
 
-**`main()` 호출 순서** (마커 삽입 루프 이후):
-
-```text
-insert_entry 루프 (SSOT 기반 마커 삽입)
-  → consolidate_checkbox_fwspace
-  → center_signature_columns
-  → left_align_spec_details
-  → left_align_spec_goal_content   (v2 신설, 세부내용 정렬 바로 뒤)
-  → doc.save(dst)
-```
+**후처리 위치**: `consolidate_checkbox_fwspace`·`center_signature_columns`·
+`left_align_spec_details`·`left_align_spec_goal_content` 는 `main()` 삽입 루프
+**이후** 순서대로 호출(→ `doc.save`). `unmerge_rowspan2_col` 은 삽입 루프 **안**
+(repeat_rows 채움 직전, python-hwpx 가 새 셀을 즉시 인식하므로 곧바로 마커 채움).
 
 ---
 
@@ -320,12 +317,36 @@ insert_entry 루프 (SSOT 기반 마커 삽입)
 이번 v2 세션에서 **실물(한컴 육안)로만** 드러난 서식 결함들. 새 양식에서도 같은
 계열의 함정이 재현되므로 원인·해결을 각 한 줄로 남긴다.
 
-| #   | 결함(증상)                  | 근본원인                                                           | 해결                                                                         |
-| --- | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| 1   | 표지 제목 2줄 붕괴          | 2문단 제목 셀에 마커 삽입 시 문단·색 구조 붕괴                     | SSOT `static` + `_replace_many_in_all_runs` in-place 치환(비파괴)            |
-| 2   | 본문 파란 글씨              | 양식 charPr가 파랑으로 세팅                                        | `_normalize_colors` 파랑→검정, 기업명 charPr(cp106/cp151)만 예외             |
-| 3   | 활동 일시 날짜 wrap 깨짐    | 좁은 셀에 `YYYY. MM. DD.` 4자리 넣어 폭 초과                       | `formatActivityDate` `YY.MM.DD` 컴팩트                                       |
-| 4   | 짧은 셀 줄바꿈 깨짐         | lineWrap을 무조건 BREAK로 강제                                     | `_set_cell_text` 폭 기반 자동 — overflow일 때만 BREAK, 들어가면 SQUEEZE 유지 |
-| 5   | 서술형 온점 들쭉날쭉        | 온점 강제 로직 전무                                                | `_ensure_sentence_period`(신설) 줄 단위 '다'-종결 온점                       |
-| 6   | 명세서 목표/주요내용 CENTER | 양식 원본 para21(CENTER) 상속, 좌측화 함수 부재                    | `left_align_spec_goal_content`(신설) LEFT 재지정(`_course_` 스코프)          |
-| 7   | PBL Ⅱ-1-나 요약 셀 빈칸     | `{{pbl_roadmap_main_content}}` 마커 자체가 미존재 + payload 미배선 | SSOT 마커 신설 + `_build_pbl_markers` 배선 + TS payload 연계                 |
+| #   | 결함(증상)                    | 근본원인                                                               | 해결                                                                         |
+| --- | ----------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | 표지 제목 2줄 붕괴            | 2문단 제목 셀에 마커 삽입 시 문단·색 구조 붕괴                         | SSOT `static` + `_replace_many_in_all_runs` in-place 치환(비파괴)            |
+| 2   | 본문 파란 글씨                | 양식 charPr가 파랑으로 세팅                                            | `_normalize_colors` 파랑→검정, 기업명 charPr(cp106/cp151)만 예외             |
+| 3   | 활동 일시 날짜 wrap 깨짐      | 좁은 셀에 `YYYY. MM. DD.` 4자리 넣어 폭 초과                           | `formatActivityDate` `YY.MM.DD` 컴팩트                                       |
+| 4   | 짧은 셀 줄바꿈 깨짐           | lineWrap을 무조건 BREAK로 강제                                         | `_set_cell_text` 폭 기반 자동 — overflow일 때만 BREAK, 들어가면 SQUEEZE 유지 |
+| 5   | 서술형 온점 들쭉날쭉          | 온점 강제 로직 전무                                                    | `_ensure_sentence_period`(신설) 줄 단위 '다'-종결 온점                       |
+| 6   | 명세서 목표/주요내용 CENTER   | 양식 원본 para21(CENTER) 상속, 좌측화 함수 부재                        | `left_align_spec_goal_content`(신설) LEFT 재지정(`_course_` 스코프)          |
+| 7   | PBL Ⅱ-1-나 요약 셀 빈칸       | `{{pbl_roadmap_main_content}}` 마커 자체가 미존재 + payload 미배선     | SSOT 마커 신설 + `_build_pbl_markers` 배선 + TS payload 연계                 |
+| 8   | 과업 표 직무 라벨 어긋남/소실 | 직무 열 '첫 직무 2행 고정 병합' → 직무별 과업 수 다르면 라벨 흡수·소실 | `unmerge_rowspan2_col`(신설) 병합 해제 + SSOT skip 제거 + generate skip 비움 |
+| 9   | PBL 사내강사 예/아니오 미체크 | 데이터(usage/used)는 있으나 `_generate_pbl` 이 토글 미소비             | `_generate_pbl` 에 `□ 예`→`☑ 예`/`☑ 아니오` 리셋+토글 추가                   |
+| 10  | PBL 성과 '정량' 행 기울임     | 양식 charPr 106 에 `<hh:italic/>` 박힘(유일 사용)                      | `_normalize_colors(strip_italic_ids={"106"})` 로 PBL 경로만 italic 제거      |
+
+---
+
+## 12. 작성 가이드 콘텐츠 제약
+
+양식 각 섹션 '작성 안내/가이드'가 요구하는 콘텐츠 제약. fixture·LLM 프롬프트가 이를
+준수해야 한다(런타임 서식이 아니라 **콘텐츠 품질** 규칙 — 위반 시 육안으로만 드러남).
+
+| 항목                   | 제약                             | 대응 필드/마커                                   | 강제 위치                                     |
+| ---------------------- | -------------------------------- | ------------------------------------------------ | --------------------------------------------- |
+| 로드맵 수립 배경       | 5줄 내외로 간단히                | `establishment_necessity`(인터뷰 복사)           | 입력 폼(사람)                                 |
+| 로드맵 Ⅰ-3 요약        | 1장 이내 요약                    | `roadmap_summary`(=outcome_summary.main_content) | `roadmap-prompts.ts`(1문단 요약)              |
+| 로드맵 훈련과정 명세서 | 최소 3개 과정                    | `course_specs[]`(0~5)                            | 로드맵 결과 구조                              |
+| PBL 교과목 세부내용    | 명사 형태로 끝맺음(예: ~수집)    | `pbl_ops_content_i_detail`                       | `pbl-prompts.ts` + 온점 규칙(명사형=온점없음) |
+| PBL AI도구 활용        | 추상 표현 금지, 구체 도구명·방법 | `pbl_ops_tool_i_*`                               | `pbl-prompts.ts`                              |
+| PBL 시설·장비          | 반드시 기재(seq~location)        | `pbl_ops_facility_i_*`                           | `pbl-prompts.ts`                              |
+| PBL 세부내용 항목      | 30~80자, 3~5개                   | `pbl_ops_content_i_detail`                       | `pbl-prompts.ts`                              |
+
+> **점검 팁:** fixture(`api/hwpx/__fixtures__/*.json`)가 위 제약을 만족하는지 스크립트로
+> 확인(줄수·과정 수·명사형 종결·도구명 유무). '자동 불러옴/수정 불가' 필드(신청서·수행일지
+> 연계)는 콘텐츠 제약 대상이 아니라 원문 유지/치환 대상이다(§9 구분).
