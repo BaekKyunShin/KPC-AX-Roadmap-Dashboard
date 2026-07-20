@@ -135,6 +135,35 @@ def left_align_spec_details(doc, left_pid: str = "11") -> int:
     return count
 
 
+def left_align_spec_goal_content(doc, left_pid: str = "11") -> int:
+    """로드맵 명세서 훈련목표·주요 훈련 내용 셀을 좌측 정렬(LEFT paraPr)로 재지정.
+
+    명세서 마커 '{{roadmap_course_i_training_goal}}'[5,1] 와
+    '{{roadmap_course_i_main_content}}'[6,1] (양식 CENTER paraPr 21) 을 LEFT 로 통일한다.
+    '_course_' 접두를 스코프로 걸어 Ⅰ-3 수립 주요 결과 요약
+    '{{roadmap_outcome_main_content}}' 와 PBL '{{pbl_roadmap_main_content}}'
+    (둘 다 CENTER 유지)를 제외한다. paraPr 11(LEFT)은 여백·간격이 동일하고 정렬만 다르다.
+    """
+    count = 0
+    for para in doc.paragraphs:
+        for tbl in para.tables:
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+                    if "_course_" in txt and (
+                        "_training_goal}}" in txt or "_main_content}}" in txt
+                    ):
+                        for p in cell.paragraphs:
+                            if p.para_pr_id_ref != left_pid:
+                                p.para_pr_id_ref = left_pid
+                                count += 1
+    return count
+
+
 def set_cell(tbl, row: int, col: int, text: str) -> bool:
     """셀의 모든 run 을 비우고 첫 run 에 마커를 기입."""
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
@@ -301,6 +330,10 @@ def main() -> int:
     detail_left = left_align_spec_details(doc)
     if detail_left:
         print(f"명세서 세부내용 좌측정렬: {detail_left}개", file=sys.stderr)
+
+    goal_content_left = left_align_spec_goal_content(doc)
+    if goal_content_left:
+        print(f"명세서 목표·주요내용 좌측정렬: {goal_content_left}개", file=sys.stderr)
 
     for w in warnings:
         print(f"  WARN {w}", file=sys.stderr)

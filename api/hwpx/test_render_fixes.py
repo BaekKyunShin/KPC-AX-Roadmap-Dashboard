@@ -170,3 +170,26 @@ class TestPblPerfRound:
         text = _all_text(doc)
         assert "3차" in text, "수행차수 3행이 '3차' 여야 함"
         assert "...차" not in text, "'...차' 리터럴 잔존"
+
+
+class TestSpecGoalContentLeftAligned:
+    def test_training_goal_and_main_content_left_aligned(self):
+        """명세서 훈련목표[5,1]·주요 훈련 내용[6,1] 좌측정렬(LEFT paraPr 11)."""
+        doc = _open_bytes(_generate_roadmap({
+            "course_specs": [{
+                "training_goal": "학습자가 모델을 스스로 학습시킬 수 있다",
+                "main_content": "실전 프로젝트로 산출물을 완성한다.",
+            }],
+        }))
+        t = _tables(doc)[22]  # 명세서1
+        goal_p = t.cell(5, 1).paragraphs[0]
+        main_p = t.cell(6, 1).paragraphs[0]
+        assert goal_p.para_pr_id_ref == "11", f"훈련목표 LEFT 실패: paraPr={goal_p.para_pr_id_ref}"
+        assert main_p.para_pr_id_ref == "11", f"주요내용 LEFT 실패: paraPr={main_p.para_pr_id_ref}"
+
+    def test_outcome_summary_row_stays_centered(self):
+        """Ⅰ-3 수립 주요 결과 요약[표8, (2,1)]은 CENTER 유지 — 좌측화 오적용 방지."""
+        doc = _open_bytes(_generate_roadmap({"roadmap_summary": "핵심 결과를 도출하였다."}))
+        t = _tables(doc)[8]  # Ⅰ-3 수립 주요 결과 (3×4)
+        p = t.cell(2, 1).paragraphs[0]
+        assert p.para_pr_id_ref != "11", f"Ⅰ-3 요약이 잘못 좌측화됨: paraPr={p.para_pr_id_ref}"
