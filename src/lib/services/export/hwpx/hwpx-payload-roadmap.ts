@@ -18,7 +18,7 @@ import { splitByUnit } from '@/lib/utils/list-format';
 import { formatTimeRange } from '@/lib/utils/time';
 
 import type { RoadmapHwpxPayload } from './hwpx-client';
-import { formatReportDate } from './hwpx-date';
+import { formatActivityDate, formatReportDate } from './hwpx-date';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
 export interface RoadmapHwpxPayloadInputs {
@@ -220,9 +220,11 @@ export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): Roadm
         }
         return {
           round: a.round ?? 1,
-          date: [dateLine, timeLine].filter(Boolean).join('\n'),
+          // 수행 일시: 양식 '26.00.00'(2자리 연도) 폭에 맞춰 날짜 컴팩트화 + 시간 2줄
+          date: [formatActivityDate(dateLine), timeLine].filter(Boolean).join('\n'),
           content: a.content ?? '',
-          method: methodLabelV2,
+          // 수행 방법: 양식 '대면'/'(인터뷰)' 2줄 — 괄호 앞에서 줄바꿈
+          method: methodLabelV2.replace('(', '\n('),
           participants: rowParticipants,
         };
       });
@@ -245,9 +247,11 @@ export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): Roadm
     return [
       {
         round: typedInterview.interview_round ?? 1,
-        date: [typedInterview.interview_date ?? '', interviewTimeText].filter(Boolean).join('\n'),
+        date: [formatActivityDate(typedInterview.interview_date ?? ''), interviewTimeText]
+          .filter(Boolean)
+          .join('\n'),
         content: notes?.text ?? '',
-        method: methodLabel,
+        method: methodLabel.replace('(', '\n('),
         participants: participantsToPython(participants),
       },
     ];

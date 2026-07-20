@@ -28,7 +28,7 @@ import {
 } from '@/lib/schemas/interview-roadmap';
 
 import type { PBLHwpxPayload } from './hwpx-client';
-import { formatReportDate } from './hwpx-date';
+import { formatActivityDate, formatReportDate } from './hwpx-date';
 import { sanitizeFileNamePart } from './hwpx-filename';
 
 /**
@@ -219,9 +219,14 @@ function buildRoadmapLinkageForPBL(
 ): Record<string, unknown> {
   const activities = (linked?.performanceActivities ?? []).map((a) => ({
     round: a.round ?? 1,
-    date: [a.date ?? '', a.timeRange ?? ''].filter(Boolean).join('\n'),
+    // 수행 일시: 양식 '26.00.00'(2자리 연도) 폭에 맞춰 날짜 컴팩트화 + 시간 2줄
+    date: [formatActivityDate(a.date), a.timeRange ?? ''].filter(Boolean).join('\n'),
     content: a.content ?? '',
-    method: INTERVIEW_METHOD_LABEL[a.method as InterviewMethod] ?? a.method ?? '',
+    // 수행 방법: 양식 '대면'/'(인터뷰)' 2줄 — 괄호 앞에서 줄바꿈
+    method: (INTERVIEW_METHOD_LABEL[a.method as InterviewMethod] ?? a.method ?? '').replace(
+      '(',
+      '\n('
+    ),
     pm_name: a.pmName ?? '',
     expert_name: a.expertName ?? '',
   }));

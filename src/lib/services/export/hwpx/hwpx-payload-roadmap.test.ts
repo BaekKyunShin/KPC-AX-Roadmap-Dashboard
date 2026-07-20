@@ -500,13 +500,13 @@ describe('buildRoadmapHwpxPayload — performance_activities', () => {
       interview: iv,
     });
     const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
-    expect(first.date).toBe('2026-04-22\n14:00~16:00');
+    expect(first.date).toBe('26.04.22\n14:00~16:00');
   });
 
   it('date 는 JSONB 가 없으면 legacy interview_time 으로 fallback (Step C-2)', () => {
     const p = buildDefault(); // interview_time: '10:00~12:00'
     const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
-    expect(first.date).toBe('2026-04-01\n10:00~12:00');
+    expect(first.date).toBe('26.04.01\n10:00~12:00');
   });
 
   it('interview_method enum "VIDEO" 이면 method = "비대면(화상회의)"', () => {
@@ -519,7 +519,7 @@ describe('buildRoadmapHwpxPayload — performance_activities', () => {
       interview: iv,
     });
     const first = (p.data.performance_activities as unknown[])[0] as Record<string, unknown>;
-    expect(first.method).toBe('비대면(화상회의)');
+    expect(first.method).toBe('비대면\n(화상회의)');
   });
 
   it('interview_method 가 enum 외 문자열이면 그대로 사용 (legacy fallback)', () => {
@@ -591,7 +591,7 @@ describe('buildRoadmapHwpxPayload — performance_activities', () => {
     const acts = p.data.performance_activities as Array<Record<string, unknown>>;
     expect(acts.length).toBe(2);
     expect(acts[0].round).toBe(1);
-    expect(acts[0].date).toContain('2026-04-29');
+    expect(acts[0].date).toContain('26.04.29');
     expect(acts[0].content).toBe('V2 인터뷰 1차');
     expect(acts[0].method).toBe('대면');
     expect(acts[1].round).toBe(2);

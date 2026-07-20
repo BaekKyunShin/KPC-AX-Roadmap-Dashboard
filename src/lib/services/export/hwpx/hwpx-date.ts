@@ -18,3 +18,21 @@ export function formatReportDate(value: string | number | Date | null | undefine
   const day = String(d.getUTCDate()).padStart(2, '0');
   return `${year}. ${month}. ${day}.`;
 }
+
+/**
+ * 활동(수행) 일시의 날짜 성분을 양식 셀 폭에 맞는 `YY.MM.DD`(2자리 연도) 로 정규화.
+ *
+ * 표지 일자(`formatReportDate` = `YYYY. MM. DD.`)와 달리, Ⅰ-2 주요활동·Ⅱ-1-나·Ⅲ-1
+ * '수행 일시' 셀은 폭이 좁아 양식이 `26.00.00` 포맷을 쓴다. 4자리·공백 포맷을 넣으면
+ * 셀 폭을 넘겨 한컴에서 줄바꿈이 깨진다. 다양한 입력(ISO·점·공백)을 파싱해 통일한다.
+ * 파싱 불가(이미 짧거나 형식 밖)면 원본을 그대로 반환한다.
+ */
+export function formatActivityDate(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const m = String(raw).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return String(raw);
+  const yy = m[1].slice(2);
+  const mm = m[2].padStart(2, '0');
+  const dd = m[3].padStart(2, '0');
+  return `${yy}.${mm}.${dd}`;
+}
