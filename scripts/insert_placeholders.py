@@ -105,6 +105,32 @@ def center_signature_columns(doc, table_index: int = 2, columns=(1, 2)) -> int:
     return count
 
 
+def left_align_spec_details(doc, left_pid: str = "11") -> int:
+    """훈련과정 명세서 '세부 내용' 셀을 좌측 정렬(LEFT paraPr)로 재지정.
+
+    양식은 세부내용 셀을 CENTER(paraPr 21)로 두지만, 사용자 요구로 좌측 정렬 +
+    항목별 글머리(▪ — generate.py 가 값에 부여)로 표시한다. 세부내용 셀은 마커
+    '{{roadmap_course_i_subject_j_details}}' 로 식별. paraPr 11(LEFT)은 CENTER
+    paraPr 21 과 여백·간격이 동일하고 정렬만 다르므로 시각 변화 최소.
+    """
+    count = 0
+    for para in doc.paragraphs:
+        for tbl in para.tables:
+            for ri in range(tbl.row_count):
+                for ci in range(tbl.column_count):
+                    try:
+                        cell = tbl.cell(ri, ci)
+                    except Exception:
+                        continue
+                    txt = "".join(r.text or "" for p in cell.paragraphs for r in p.runs)
+                    if "_subject_" in txt and "_details}}" in txt:
+                        for p in cell.paragraphs:
+                            if p.para_pr_id_ref != left_pid:
+                                p.para_pr_id_ref = left_pid
+                                count += 1
+    return count
+
+
 def set_cell(tbl, row: int, col: int, text: str) -> bool:
     """셀의 모든 run 을 비우고 첫 run 에 마커를 기입."""
     if row < 0 or row >= tbl.row_count or col < 0 or col >= tbl.column_count:
@@ -267,6 +293,10 @@ def main() -> int:
     sig_centered = center_signature_columns(doc)
     if sig_centered:
         print(f"서명표 소속/성명 가운데정렬: {sig_centered}개", file=sys.stderr)
+
+    detail_left = left_align_spec_details(doc)
+    if detail_left:
+        print(f"명세서 세부내용 좌측정렬: {detail_left}개", file=sys.stderr)
 
     for w in warnings:
         print(f"  WARN {w}", file=sys.stderr)

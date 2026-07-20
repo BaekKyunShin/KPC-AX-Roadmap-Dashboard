@@ -146,6 +146,20 @@ class TestSignatureColumnCentered:
                     )
 
 
+class TestSpecSubjectDetails:
+    def test_details_bulleted_per_item(self):
+        """명세서 세부내용: 각 항목에 글머리(▪) 부여."""
+        doc = _open_bytes(_generate_roadmap({
+            "course_specs": [{
+                "subjects": [{"subject_name": "AI 이해", "details": ["개념 강의", "실습 워크숍"]}],
+            }],
+        }))
+        cell = _tables(doc)[22].cell(8, 2)  # 명세서1 subject0 세부내용
+        lines = [("".join(r.text or "" for r in p.runs)).strip() for p in cell.paragraphs]
+        lines = [ln for ln in lines if ln]
+        assert lines == ["▪ 개념 강의", "▪ 실습 워크숍"], f"글머리/항목 불일치: {lines}"
+
+
 class TestPblPerfRound:
     def test_third_round_label_is_3cha(self):
         doc = _open_bytes(_generate_pbl({

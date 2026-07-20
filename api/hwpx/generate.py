@@ -343,12 +343,13 @@ def _build_roadmap_markers(data: dict) -> dict:
         for j in range(_RM_MAX_SUBJECTS):
             subj = subjects[j] if j < len(subjects) else {}
             details = subj.get("details")
-            # details 는 리스트(줄 단위) 또는 문자열 — 셀 안에서 줄바꿈으로 분배된다
-            details_text = (
-                "\n".join(_s(d) for d in details)
-                if isinstance(details, list)
-                else _s(details)
-            )
+            # details 는 리스트(줄 단위) 또는 문자열 — 항목마다 글머리(▪)를 부여하고
+            # 줄바꿈으로 셀에 분배(세부내용 셀은 좌측 정렬 — insert_placeholders 지정).
+            if isinstance(details, list):
+                items = [_s(d) for d in details if _s(d).strip()]
+            else:
+                items = [ln for ln in _s(details).split("\n") if ln.strip()]
+            details_text = "\n".join(f"▪ {it}" for it in items)
             base = f"{{{{roadmap_course_{i}_subject_{j}_"
             m[base + "subject_name}}"] = _s(subj.get("subject_name"))
             m[base + "details}}"] = details_text
