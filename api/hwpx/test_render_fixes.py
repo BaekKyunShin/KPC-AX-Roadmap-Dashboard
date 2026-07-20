@@ -289,6 +289,25 @@ class TestInternalInstructorCheckbox:
         assert "☑ 예" not in text
 
 
+class TestQuantitativeItalicRemoved:
+    """Ⅳ-2 성과분석 '정량' 값 셀(charPr 106) 기울임 제거, 정성(105)은 무변경."""
+
+    def test_charpr_106_no_italic(self):
+        import io
+        import zipfile
+
+        from lxml import etree
+
+        raw = _generate_pbl({})
+        head = "{http://www.hancom.co.kr/hwpml/2011/head}"
+        with zipfile.ZipFile(io.BytesIO(raw)) as z:
+            hx = next(n for n in z.namelist() if n.endswith("header.xml"))
+            root = etree.fromstring(z.read(hx))
+        cps = {c.get("id"): c for c in root.iter(f"{head}charPr")}
+        assert cps["106"].find(f"{head}italic") is None, "정량 charPr 106 italic 잔존"
+        assert cps["105"].find(f"{head}italic") is None, "정성 charPr 105 무변경"
+
+
 class TestTaskTableUnmerged:
     """과업 표 직무 열 병합 해제 — 서로 다른 직무가 각 행에 정확(품질 소실 없음)."""
 

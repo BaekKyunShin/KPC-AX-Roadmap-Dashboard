@@ -149,16 +149,19 @@ _PBL_KEEP_BLUE = {"151"}      # 표지(과정개발) 제목 '㈜기업명'
 _BLUE_TEXT_COLORS = {"#0000FF", "#2E74B5", "#3057B9"}
 
 
-def _normalize_colors(hwpx_bytes: bytes, keep_blue_ids: set) -> bytes:
-    """생성 HWPX 의 파랑 계열 charPr textColor 를 검정으로 정규화.
+def _normalize_colors(
+    hwpx_bytes: bytes, keep_blue_ids: set, strip_italic_ids: set = frozenset()
+) -> bytes:
+    """생성 HWPX 의 파랑 계열 charPr textColor 를 검정으로 정규화 + 지정 charPr italic 제거.
 
     양식이 파랑으로 세팅돼 있어도 채워지는 모든 텍스트를 검정 통일(사용자 요구).
     단 표지 제목 기업명 charPr(keep_blue_ids)만 파랑 유지. 흰색(헤더 배경)·
-    빨강·회색 form 스타일은 보존.
+    빨강·회색 form 스타일은 보존. strip_italic_ids 의 charPr 은 `<hh:italic/>` 를
+    제거해 기울임을 없앤다(양식 원본이 특정 값 셀을 italic 으로 세팅한 경우).
 
-    python-hwpx 에 charPr 색 setter 가 없어(RunStyle 읽기 전용) 저장된 zip 의
-    header.xml textColor 속성만 직접 치환한다 — 구조 무변경(요소 추가·삭제 없이
-    속성값만 변경)이므로 `_set_cell_text` 의 cell.element.set 과 동일 안전 범주.
+    python-hwpx 에 charPr 스타일 setter 가 없어(RunStyle 읽기 전용) 저장된 zip 의
+    header.xml 을 직접 편집한다. textColor 는 속성값 변경, italic 은 요소 제거이나
+    대상 charPr 은 소수(유일 사용) 라 안전.
     """
     import io
     import zipfile
@@ -174,9 +177,14 @@ def _normalize_colors(hwpx_bytes: bytes, keep_blue_ids: set) -> bytes:
             if info.filename.endswith("header.xml"):
                 root = etree.fromstring(data)
                 for ch in root.iter(f"{head}charPr"):
+                    cid = ch.get("id")
                     tc = (ch.get("textColor") or "").upper()
-                    if tc in _BLUE_TEXT_COLORS and ch.get("id") not in keep_blue_ids:
+                    if tc in _BLUE_TEXT_COLORS and cid not in keep_blue_ids:
                         ch.set("textColor", "#000000")
+                    if cid in strip_italic_ids:
+                        it = ch.find(f"{head}italic")
+                        if it is not None:
+                            ch.remove(it)
                 data = etree.tostring(
                     root, xml_declaration=True, encoding="UTF-8", standalone=True
                 )
@@ -996,7 +1004,8 @@ def _generate_pbl(data: dict) -> bytes:
     finally:
         if os.path.exists(path):
             os.unlink(path)
-    return _normalize_colors(raw, _PBL_KEEP_BLUE)
+    # charPr 106 = Ⅳ-2 성과분석 '정량' 값 셀(양식이 italic 세팅, 유일 사용) → 기울임 제거
+    return _normalize_colors(raw, _PBL_KEEP_BLUE, strip_italic_ids={"106"})
 
 
 def _replace_many_in_all_runs(doc, pairs) -> None:
