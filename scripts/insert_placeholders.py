@@ -222,10 +222,13 @@ def unmerge_rowspan2_col(tbl, col: int) -> bool:
             continue
         span = tc.find(f"{hp}cellSpan")
         rs = span.get("rowSpan") if span is not None else "1"
+        row = int(tc.find(f"{hp}cellAddr").get("rowAddr"))
         if rs == "2" and anchor is None:
             anchor = tc
-            anchor_row = int(tc.find(f"{hp}cellAddr").get("rowAddr"))
-        elif rs == "1" and sibling is None:
+            anchor_row = row
+        # 형제는 앵커 '아래'의 내용 셀만 — 헤더행(위·회색 borderFill·헤더 charPr)을
+        # 잘못 복제해 삽입 셀이 회색 음영으로 나오던 것을 방지.
+        elif rs == "1" and anchor is not None and row > anchor_row and sibling is None:
             sibling = tc
     if anchor is None or sibling is None or anchor_row is None:
         return False

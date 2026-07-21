@@ -334,3 +334,21 @@ class TestTaskTableUnmerged:
         t = _tables(doc)[23]  # Ⅲ-3-가 훈련대상 업무 선정
         jobs = [(t.cell(r, 0).paragraphs[0].runs[0].text or "") for r in (1, 2, 3)]
         assert jobs == ["생산", "품질", "설비"], f"직무 어긋남: {jobs}"
+
+
+class TestTaskTableCellShading:
+    """병합해제로 삽입된 직무 셀(row2)은 내용 셀(흰색) borderFill — 헤더(회색) 아님."""
+
+    def _check(self, doc, ti):
+        t = _tables(doc)[ti]
+        header_bf = t.cell(0, 0).element.get("borderFillIDRef")   # 헤더(회색)
+        content_bf = t.cell(3, 0).element.get("borderFillIDRef")  # 내용(흰색)
+        inserted_bf = t.cell(2, 0).element.get("borderFillIDRef")  # 병합해제 삽입 셀
+        assert inserted_bf == content_bf, f"삽입 셀 음영 불일치: {inserted_bf} != 내용 {content_bf}"
+        assert inserted_bf != header_bf, f"삽입 셀이 헤더(회색) borderFill: {inserted_bf}"
+
+    def test_roadmap_inserted_job_cell_white(self):
+        self._check(_open_bytes(_generate_roadmap({})), 16)
+
+    def test_pbl_inserted_job_cell_white(self):
+        self._check(_open_bytes(_generate_pbl({})), 23)
