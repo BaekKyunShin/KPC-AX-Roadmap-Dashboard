@@ -142,7 +142,7 @@ describe('TestRoadmapClient — 샘플 데이터 채우기 (V2)', () => {
       '수립 주요 결과',
       '기업 요구분석',
       '과업·워크플로우 분석',
-      '훈련대상 과업',
+      'AI 적용 대상 과업',
     ]);
     expect(names).not.toContain('역량 모델링');
   });

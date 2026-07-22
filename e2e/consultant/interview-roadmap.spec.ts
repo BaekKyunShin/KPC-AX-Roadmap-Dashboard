@@ -12,9 +12,7 @@ test.describe.configure({ mode: 'serial' });
 let interviewUrl: string | null = null;
 
 test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 + STT 첨부 1)', () => {
-  test('V2 Client 로드 + 첫 스텝(Ⅰ-1 수립 필요성) 렌더', async ({
-    consultantPage: page,
-  }) => {
+  test('V2 Client 로드 + 첫 스텝(Ⅰ-1 수립 필요성) 렌더', async ({ consultantPage: page }) => {
     const getErrors = setupConsoleErrorCheck(page);
 
     await page.goto('/consultant/projects');
@@ -27,10 +25,9 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     await page.goto(interviewUrl);
     await page.waitForLoadState('networkidle');
 
-    await expect(page).toHaveURL(
-      /\/consultant\/projects\/[a-f0-9-]+\/interview/,
-      { timeout: 10_000 },
-    );
+    await expect(page).toHaveURL(/\/consultant\/projects\/[a-f0-9-]+\/interview/, {
+      timeout: 10_000,
+    });
 
     // PBL 트랙이면 skip (로드맵 V2 전용 테스트)
     const isRoadmapV2 = await page
@@ -40,9 +37,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     test.skip(!isRoadmapV2, 'PBL 트랙 프로젝트 — 로드맵 V2 인터뷰 아님');
 
     // Ⅰ-1 StepNecessity 기본 활성화 (FormSection "수립 필요성" h2)
-    await expect(
-      page.getByRole('heading', { name: '수립 필요성', level: 2 }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '수립 필요성', level: 2 })).toBeVisible();
     // 9 스텝 스테퍼 노출 (8 양식 + STT 첨부 선택 1)
     const stepper = page.locator('nav[aria-label="Progress"]');
     await expect(stepper).toBeVisible();
@@ -68,9 +63,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
 
     // Ⅰ-1 → Ⅰ-2 이동
     await page.getByLabel('다음 스텝').click();
-    await expect(
-      page.getByRole('heading', { name: '주요 활동', level: 2 }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '주요 활동', level: 2 })).toBeVisible();
 
     // 기본 3차수 (1차/2차/3차) 프리필
     await expect(page.getByText('1차')).toBeVisible();
@@ -78,9 +71,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     await expect(page.getByText('3차')).toBeVisible();
   });
 
-  test('Ⅰ-3 수립 주요 결과 + AI 역량 체크 + 선정 과업 입력', async ({
-    consultantPage: page,
-  }) => {
+  test('Ⅰ-3 수립 주요 결과 + AI 역량 체크 + 선정 과업 입력', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
@@ -94,14 +85,10 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     // 스테퍼로 Ⅰ-3 '수립 주요 결과' 직접 클릭 이동
     await page.getByText('수립 주요 결과').first().click();
     // FormSection 라벨 "[인터뷰 입력 → 결과 페이지]" 노출
-    await expect(
-      page.getByText('[인터뷰 입력 → 결과 페이지]'),
-    ).toBeVisible();
+    await expect(page.getByText('[인터뷰 입력 → 결과 페이지]')).toBeVisible();
   });
 
-  test('Ⅱ-2 기업 요구분석 — 4 행머리글 노출', async ({
-    consultantPage: page,
-  }) => {
+  test('Ⅱ-2 기업 요구분석 — 4 행머리글 노출', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
@@ -113,17 +100,11 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
     await page.getByText('기업 요구분석').first().click();
-    await expect(
-      page.getByRole('heading', { name: '기업 요구분석', level: 2 }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('rowheader', { name: '기업 현황' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '기업 요구분석', level: 2 })).toBeVisible();
+    await expect(page.getByRole('rowheader', { name: '기업 현황' })).toBeVisible();
   });
 
-  test('Ⅱ-3 과업·워크플로우 분석 — 기본 5행 렌더', async ({
-    consultantPage: page,
-  }) => {
+  test('Ⅱ-3 과업·워크플로우 분석 — 기본 5행 렌더', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
@@ -137,15 +118,13 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     // Stepper 는 PR #77 부터 단축 라벨 "과업·워크플로우" 노출. 페이지 헤더(h2) 는 풀텍스트 유지.
     await page.getByText('과업·워크플로우', { exact: true }).first().click();
     await expect(
-      page.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 }),
+      page.getByRole('heading', { name: '과업(Task)·워크플로우 분석표', level: 2 })
     ).toBeVisible();
     await expect(page.getByLabel('직무 5')).toBeVisible();
     await expect(page.getByLabel('분석내용')).toBeVisible();
   });
 
-  test('Ⅱ-4 훈련대상 과업 — 기대 효과 rowSpan', async ({
-    consultantPage: page,
-  }) => {
+  test('Ⅱ-4 훈련대상 과업 — 기대 효과 rowSpan', async ({ consultantPage: page }) => {
     test.skip(!interviewUrl, '인터뷰 URL 없음');
     await page.goto(interviewUrl!);
     await page.waitForLoadState('networkidle');
@@ -162,7 +141,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
       page.getByRole('heading', {
         name: '훈련대상 과업(Task)·워크플로우 선정',
         level: 2,
-      }),
+      })
     ).toBeVisible();
   });
 
@@ -180,9 +159,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     test.skip(!isRoadmapV2, '로드맵 V2 트랙 아님');
 
     await page.getByText('역량 모델링').first().click();
-    await expect(
-      page.getByRole('heading', { name: '역량 모델링', level: 2 }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '역량 모델링', level: 2 })).toBeVisible();
     await expect(page.getByLabel('역량명 4')).toBeVisible();
     // 기본 ncsUsed=false → 역량별 도출 방법 박스
     await expect(page.getByLabel('역량별 도출 방법')).toBeVisible();
@@ -206,7 +183,7 @@ test.describe('컨설턴트 로드맵 인터뷰 V2 (양식 1:1 정합 8 스텝 +
     // 페이지 헤더(h2) 는 풀텍스트 "인터뷰 녹취 STT 첨부" 유지.
     await page.getByText('인터뷰 STT', { exact: true }).first().click();
     await expect(
-      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 }),
+      page.getByRole('heading', { name: '인터뷰 녹취 STT 첨부', level: 2 })
     ).toBeVisible();
     // 본문에 STT 원문 textarea 노출 (FormSection 헤더는 어댑터 제공, StepSttUpload 본문)
     // exact:true — "STT 파일" (input) 과 "STT 파일 업로드" (button) 가 substring 충돌 → strict mode 위반 방지

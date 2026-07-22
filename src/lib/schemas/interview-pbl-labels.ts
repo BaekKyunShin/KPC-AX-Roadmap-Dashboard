@@ -19,8 +19,8 @@ export const PBL_FIELD_LABELS: Record<string, string> = {
   trainingPeriod: 'Step Ⅰ. 훈련과정 개요 - 훈련기간',
   businessIssues: 'Step Ⅰ. 훈련과정 개요 - 사업적 이슈',
 
-  // ── Step Ⅱ-1-가. 기업 경영 이슈 ────────────────────────────
-  companyIssues: 'Step Ⅱ-1-가. 기업 경영 이슈',
+  // ── Step Ⅱ-1. 기업 경영 이슈 ────────────────────────────
+  companyIssues: 'Step Ⅱ-1. 기업 경영 이슈',
 
   // ── Step Ⅱ-1-나. 조직 및 주요 업무 ─────────────────────────
   organization: 'Step Ⅱ-1-나. 조직 및 주요 업무',
@@ -29,18 +29,18 @@ export const PBL_FIELD_LABELS: Record<string, string> = {
   'organization.orgTree.*': 'Step Ⅱ-1-나. 조직 및 주요 업무 - 조직도 항목',
   'organization.mainWork.*': 'Step Ⅱ-1-나. 조직 및 주요 업무 - 주요 업무 항목',
 
-  // ── Step Ⅱ-2. 훈련환경 분석 ────────────────────────────────
-  trainingEnv: 'Step Ⅱ-2. 훈련환경 분석',
-  'trainingEnv.properTrainingHours': 'Step Ⅱ-2. 훈련환경 - 적정 훈련시간',
-  'trainingEnv.internalPlace': 'Step Ⅱ-2. 훈련환경 - 사내 훈련장소',
-  'trainingEnv.externalPlace': 'Step Ⅱ-2. 훈련환경 - 사외 훈련장소',
-  'trainingEnv.internalInstructors': 'Step Ⅱ-2. 훈련환경 - 사내 강사',
-  'trainingEnv.externalInstructors': 'Step Ⅱ-2. 훈련환경 - 외부 강사',
-  'trainingEnv.aiInfrastructure': 'Step Ⅱ-2. 훈련환경 - AI 인프라',
+  // ── Step Ⅱ-3-a. 훈련환경 분석 ────────────────────────────────
+  trainingEnv: 'Step Ⅱ-3-a. 훈련환경 분석',
+  'trainingEnv.properTrainingHours': 'Step Ⅱ-3-a. 훈련환경 - 적정 훈련시간',
+  'trainingEnv.internalPlace': 'Step Ⅱ-3-a. 훈련환경 - 사내 훈련장소',
+  'trainingEnv.externalPlace': 'Step Ⅱ-3-a. 훈련환경 - 사외 훈련장소',
+  'trainingEnv.internalInstructors': 'Step Ⅱ-3-a. 훈련환경 - 사내 강사',
+  'trainingEnv.externalInstructors': 'Step Ⅱ-3-a. 훈련환경 - 외부 강사',
+  'trainingEnv.aiInfrastructure': 'Step Ⅱ-3-a. 훈련환경 - AI 인프라',
 
-  // ── Step Ⅱ-3. AI훈련과정 개발 필요성 ────────────────────────
-  hrdReportPdf: 'Step Ⅱ-3-가. HRD이음 보고서 PDF',
-  courseNecessity: 'Step Ⅱ-3-나. AI훈련과정 개발 필요성',
+  // ── Step Ⅱ-1. 기업 현황 분석 (HRD이음 결과 · 과정 개발 필요성) ──
+  hrdReportPdf: 'Step Ⅱ-1-가. HRD이음 보고서 PDF',
+  courseNecessity: 'Step Ⅱ-1-다. AI훈련과정 개발 필요성',
 
   // ── Step Ⅲ-1. 수행활동 (V2: 로드맵 연동 — PBL 미입력, 검증 경로 없음) ──
 
@@ -54,10 +54,10 @@ export const PBL_FIELD_LABELS: Record<string, string> = {
 
   // ── Step Ⅲ-3. 훈련대상 업무 ─────────────────────────────────
   // Ⅲ-3-가: 로드맵 과업별 PBL 선정 (4열 로드맵 연동 + 2열 PBL 입력)
-  'target.taskSelections': 'Step Ⅲ-3-가. 훈련대상 과업 선정 (로드맵 과업 1:1)',
-  'target.taskSelections.*': 'Step Ⅲ-3-가. 훈련대상 과업 선정 - 과업 행',
-  'target.taskSelections.*.ai_necessity': 'Step Ⅲ-3-가. 훈련대상 과업 선정 - AI도입·활용 필요도',
-  'target.taskSelections.*.training_selected': 'Step Ⅲ-3-가. 훈련대상 과업 선정 - 훈련 선정',
+  'target.taskSelections': 'Step Ⅲ-3-가. 훈련대상 업무 선정 (로드맵 과업 1:1)',
+  'target.taskSelections.*': 'Step Ⅲ-3-가. 훈련대상 업무 선정 - 과업 행',
+  'target.taskSelections.*.ai_necessity': 'Step Ⅲ-3-가. 훈련대상 업무 선정 - AI도입·활용 필요도',
+  'target.taskSelections.*.training_selected': 'Step Ⅲ-3-가. 훈련대상 업무 선정 - 훈련 선정',
   'target.necessity': 'Step Ⅲ-3-나. 훈련대상 - 선정 사유(AI 필요성)',
   'target.details': 'Step Ⅲ-3-다. 훈련대상 업무 세부내용',
   'target.details.*': 'Step Ⅲ-3-다. 훈련대상 업무 세부내용 - 행',

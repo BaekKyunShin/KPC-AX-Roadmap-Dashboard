@@ -80,23 +80,24 @@ const STEPS: ReadonlyArray<{
   stepperLabel?: string;
 }> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요' },
-  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈' },
-  // PR #92 (main) 의 8단계 + 본 PR 의 5번 stepperLabel '과정 개발 필요성' 단축 결합.
+  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1', name: '기업 경영 이슈' },
+  // b-2 정합: Ⅱ-1 계열(과정 개발 필요성) → Ⅱ-3 계열(훈련환경·기대효과) 순.
+  // HRD PDF(Ⅱ-1-가)·STT 는 테스트 모드 미지원으로 제외.
   {
     id: 3,
-    stepId: 'trainingEnv',
-    shortName: 'Ⅱ-2-a',
-    name: '훈련환경 분석',
-    stepperLabel: '훈련환경',
-  },
-  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석' },
-  {
-    id: 5,
     stepId: 'courseNecessity',
-    shortName: 'Ⅱ-3-나',
+    shortName: 'Ⅱ-1-다',
     name: 'AI훈련과정 개발 필요성',
     stepperLabel: '과정 개발 필요성',
   },
+  {
+    id: 4,
+    stepId: 'trainingEnv',
+    shortName: 'Ⅱ-3-a',
+    name: '훈련환경 분석',
+    stepperLabel: '훈련환경',
+  },
+  { id: 5, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석' },
   // V2: Ⅲ-1 수행활동(로드맵 연동)·Ⅲ-2-나 우선순위·Ⅲ-4 AI역량 진단 제거.
   { id: 6, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서' },
   { id: 7, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무' },
@@ -636,7 +637,7 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           <Info className="h-4 w-4" />
           <AlertTitle>테스트 모드 안내</AlertTitle>
           <AlertDescription>
-            이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. Ⅱ-3-가 HRD이음 PDF 첨부는 테스트
+            이 화면의 UI/UX는 실제 현장 인터뷰(PBL)와 동일합니다. Ⅱ-1-가 HRD이음 PDF 첨부는 테스트
             모드에서 지원되지 않습니다.
             <strong className="block mt-2 text-amber-700">
               입력값은 DB에 저장되지 않으며, 페이지를 떠나면 사라집니다.

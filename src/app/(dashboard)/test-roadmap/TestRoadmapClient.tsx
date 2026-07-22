@@ -90,7 +90,7 @@ const STEPS: ReadonlyArray<{
   { id: 3, stepId: 'mainResult', shortName: 'Ⅰ-3', name: '수립 주요 결과' },
   { id: 4, stepId: 'companyReq', shortName: 'Ⅱ-2', name: '기업 요구분석' },
   { id: 5, stepId: 'taskAnalysis', shortName: 'Ⅱ-3', name: '과업·워크플로우 분석' },
-  { id: 6, stepId: 'targetTask', shortName: 'Ⅱ-4', name: '훈련대상 과업' },
+  { id: 6, stepId: 'targetTask', shortName: 'Ⅱ-4', name: 'AI 적용 대상 과업' },
 ];
 
 function isAdminRole(role: string): boolean {

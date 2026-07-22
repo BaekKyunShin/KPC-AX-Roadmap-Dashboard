@@ -774,7 +774,7 @@ export const PBLInterviewStrictSchema = PBLInterviewSchema.superRefine((d, ctx) 
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'Ⅱ-3-가 HRD이음 보고서 PDF 첨부 또는 Ⅱ-3-나 AI훈련과정 개발 필요성 작성 중 하나는 필수입니다.',
+          'Ⅱ-1-가 HRD이음 보고서 PDF 첨부 또는 Ⅱ-1-다 AI훈련과정 개발 필요성 작성 중 하나는 필수입니다.',
         path: ['courseNecessity'],
       });
     }
