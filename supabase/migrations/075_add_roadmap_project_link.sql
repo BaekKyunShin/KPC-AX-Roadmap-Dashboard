@@ -1,5 +1,8 @@
 -- ============================================================
--- 074_add_roadmap_project_link.sql
+-- 075_add_roadmap_project_link.sql
+-- (원 074 → 075 리네임: main 의 074_raise_notice_attachment_size_100mb 와 파일
+--  prefix 충돌로 CI seed 스크립트가 schema_migrations 074 중복 INSERT 실패.
+--  운영 DB 는 timestamp version 이라 무관 — 이미 적용됨. IF NOT EXISTS 로 멱등화.)
 -- 목적: PBL 프로젝트가 선행 로드맵 프로젝트를 참조하는 자기참조 FK 신설
 -- 배경:
 --   docs/plans/2026-07-13-hwpx-v2-template-migration.md — 신규 PBL 양식이
@@ -17,12 +20,12 @@
 -- ============================================================
 
 ALTER TABLE projects
-  ADD COLUMN roadmap_project_id UUID REFERENCES projects(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS roadmap_project_id UUID REFERENCES projects(id) ON DELETE SET NULL;
 
 COMMENT ON COLUMN projects.roadmap_project_id IS
   'PBL이 참조하는 선행 로드맵 프로젝트(자기참조). track=PBL 행만 설정, 대상은 FINAL 로드맵 보유 track=ROADMAP. NULL이면 Ⅱ장 빈 양식 폴백.';
 
 -- 부분 인덱스: 값이 있는 PBL 행만 인덱싱 (역참조 조회·FK 무결성 검사 최적화)
-CREATE INDEX idx_projects_roadmap_project_id
+CREATE INDEX IF NOT EXISTS idx_projects_roadmap_project_id
   ON projects (roadmap_project_id)
   WHERE roadmap_project_id IS NOT NULL;
