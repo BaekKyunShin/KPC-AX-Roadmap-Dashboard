@@ -19,8 +19,10 @@ function roadmapTasks(): RoadmapTaskAnalysisItem[] {
 describe('StepTarget (Ⅲ-3 훈련대상 업무 — 로드맵 과업 연동)', () => {
   it('Ⅲ-3 가·나·다 heading 이 모두 노출되고 AI역량(Ⅲ-4) 블록은 없다', () => {
     render(<StepTarget value={baseTarget()} onChange={vi.fn()} roadmapTasks={roadmapTasks()} />);
-    expect(screen.getByText('Ⅲ-3-가 훈련대상 과업 선정')).toBeInTheDocument();
-    expect(screen.getByText('Ⅲ-3-나 AI기반 문제해결 필요성 (선정 사유)')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-3-가 훈련대상 업무 선정')).toBeInTheDocument();
+    expect(
+      screen.getByText('Ⅲ-3-나 AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)')
+    ).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-3-다 훈련대상 업무 세부내용')).toBeInTheDocument();
     // Ⅲ-4 AI역량 진단 제거
     expect(screen.queryByText('Ⅲ-4-가 현재 AI역량 수준')).toBeNull();
@@ -119,5 +121,20 @@ describe('StepTarget (Ⅲ-3 훈련대상 업무 — 로드맵 과업 연동)', (
   it('roadmapTasks 기본값([]) — prop 미지정 시에도 안전하게 안내를 노출한다', () => {
     render(<StepTarget value={baseTarget()} onChange={vi.fn()} />);
     expect(screen.getByText('선행 로드맵 과업이 연결되지 않았습니다.')).toBeInTheDocument();
+  });
+
+  it('작성 가이드에 정본 원문(번호·-·☞)을 그대로 표시한다', () => {
+    render(<StepTarget value={baseTarget()} onChange={vi.fn()} roadmapTasks={roadmapTasks()} />);
+    fireEvent.click(screen.getByText('작성 가이드'));
+    expect(
+      screen.getByText(
+        '1. AI훈련 로드맵 컨설팅 보고서에서 작성한 과업(Task) 워크플로우 분석표를 자동으로 불러온 값 중 훈련으로 선정할 과업을 선정한다.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '☞ (목적) 조직, 개인, 업무, 환경의 요구사항을 반영하여 훈련과정 개발 우선순위를 선정'
+      )
+    ).toBeInTheDocument();
   });
 });

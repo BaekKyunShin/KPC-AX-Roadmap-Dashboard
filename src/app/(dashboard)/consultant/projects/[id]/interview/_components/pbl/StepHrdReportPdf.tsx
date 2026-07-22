@@ -11,8 +11,7 @@ import { uploadInterviewAttachment } from '../../actions';
 import type { PBLStepProps } from './types';
 import type { PBLHrdReportPdf } from '@/lib/schemas/interview-pbl';
 
-interface StepHrdReportPdfProps
-  extends PBLStepProps<PBLHrdReportPdf | null> {
+interface StepHrdReportPdfProps extends PBLStepProps<PBLHrdReportPdf | null> {
   projectId: string;
 }
 
@@ -54,9 +53,7 @@ export function StepHrdReportPdf({
         // page.tsx 의 hydration 시 별도 helper 로 부여한다.
         url: att.storage_path,
         size: att.size ?? file.size,
-        ...(att.extracted_text != null
-          ? { extractedText: att.extracted_text }
-          : {}),
+        ...(att.extracted_text != null ? { extractedText: att.extracted_text } : {}),
         ...(att.parse_error ? { parseError: att.parse_error } : {}),
       });
     } catch (error) {
@@ -74,10 +71,10 @@ export function StepHrdReportPdf({
 
   return (
     <FormSection
-      number="Ⅱ-3-가"
+      number="Ⅱ-1-가"
       title="기업HRD이음컨설팅 결과 (PDF 첨부)"
       label="[PDF 첨부]"
-      description="HRD이음 컨설팅 결과 보고서(PDF) 를 업로드하면 본문이 자동 추출되어 LLM 분석에 활용됩니다. (선택 첨부 — 단, 미첨부 시 Ⅱ-3-나 'AI훈련과정 개발 필요성' 작성 필수)"
+      description="HRD이음 컨설팅 결과 보고서(PDF) 를 업로드하면 본문이 자동 추출되어 LLM 분석에 활용됩니다. (선택 첨부 — 단, 미첨부 시 Ⅱ-1-다 'AI훈련과정 개발 필요성' 작성 필수)"
     >
       <PdfUploadField
         file={
@@ -100,13 +97,14 @@ export function StepHrdReportPdf({
         </p>
       )}
       <ExampleAccordion
+        guideLabel="작성 가이드"
         guide={
           <ul className="list-disc space-y-1 pl-4">
             <li>HRD이음 컨설팅 결과 보고서 (PDF) 1건만 업로드합니다.</li>
             <li>업로드 즉시 본문 텍스트가 자동 추출되어 LLM 프롬프트에 함께 전달됩니다.</li>
             <li>최대 10MB · PDF 외 형식은 허용되지 않습니다.</li>
             <li>
-              PDF 를 첨부하지 않으려면 Ⅱ-3-나 &ldquo;AI훈련과정 개발 필요성&rdquo; 을 반드시
+              PDF 를 첨부하지 않으려면 Ⅱ-1-다 &ldquo;AI훈련과정 개발 필요성&rdquo; 을 반드시
               작성해야 합니다 (최종 제출 검증).
             </li>
           </ul>

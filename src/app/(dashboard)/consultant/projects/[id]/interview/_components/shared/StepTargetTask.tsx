@@ -12,8 +12,8 @@ import type { RoadmapTargetTask } from '@/lib/schemas/interview-roadmap';
  *
  * 양식 기준 블록 구조 표:
  *  - 훈련대상 과업 (1행)
- *  - 선정 사유 (1행)
- *  - 기대 효과 (rowspan=2)
+ *  - 선정사유 (1행)
+ *  - 기대효과 (rowspan=2)
  *     ├─ 현행 (As-Is) (1행)
  *     └─ 개선 (To-Be) (1행)
  *
@@ -38,11 +38,11 @@ export function StepTargetTask({
       number="Ⅱ-4"
       title="AI 적용 대상 과업(Task)·워크플로우 선정"
       label="[인터뷰 입력]"
-      description="Ⅱ-3 분석표에서 식별한 과업 중 AI 적용 대상 과업을 선정하고, 선정 사유와 기대 효과를 기술합니다."
+      description="Ⅱ-3 분석표에서 식별한 과업 중 AI 적용 대상 과업을 선정하고, 선정사유와 기대효과를 기술합니다."
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-border text-sm">
-          <caption className="sr-only">훈련대상 과업 선정 표</caption>
+          <caption className="sr-only">AI 적용 대상 과업 선정 표</caption>
           <tbody>
             <tr>
               <th
@@ -67,15 +67,15 @@ export function StepTargetTask({
                 scope="row"
                 className="border border-border bg-muted px-3 py-2 text-left align-top font-medium"
               >
-                선정 사유
+                선정사유
               </th>
               <td className="border border-border p-2 align-top" colSpan={2}>
                 <LargeTextBox
                   value={v.reason}
                   onChange={(e) => update('reason', e.target.value)}
-                  placeholder="Ⅱ-3 과업 분석을 기반으로 한 선정 사유"
+                  placeholder="Ⅱ-3 과업 분석을 기반으로 한 선정사유"
                   disabled={readOnly}
-                  aria-label="선정 사유"
+                  aria-label="선정사유"
                   minHeightClassName="min-h-[200px]"
                 />
               </td>
@@ -86,7 +86,7 @@ export function StepTargetTask({
                 rowSpan={2}
                 className="w-[120px] border border-border bg-muted px-3 py-2 text-left align-top font-medium"
               >
-                기대 효과
+                기대효과
               </th>
               <th
                 scope="row"
@@ -100,7 +100,7 @@ export function StepTargetTask({
                   onChange={(e) => update('expectedAsIs', e.target.value)}
                   placeholder="현행 수행방식 (As-Is)"
                   disabled={readOnly}
-                  aria-label="기대 효과 현행"
+                  aria-label="기대효과 현행"
                   minHeightClassName="min-h-[160px]"
                 />
               </td>
@@ -118,7 +118,7 @@ export function StepTargetTask({
                   onChange={(e) => update('expectedToBe', e.target.value)}
                   placeholder="AI 도입·활용 훈련 후 개선 (To-Be)"
                   disabled={readOnly}
-                  aria-label="기대 효과 개선"
+                  aria-label="기대효과 개선"
                   minHeightClassName="min-h-[160px]"
                 />
               </td>
@@ -128,14 +128,14 @@ export function StepTargetTask({
       </div>
       <ExampleAccordion
         guide={
-          <ul className="list-disc space-y-1 pl-4">
+          <ul className="list-none space-y-1">
             <li>
-              위 분석표에서 제시한 과업 중 AI훈련로드맵을 수립하기 위한 AI 적용 대상 과업을 선정하고
-              선정사유를 작성합니다.
+              □ 기업 담당자와 인터뷰를 통해 위의 분석표에서 제시한 과업 중 AI훈련로드맵을 수립하기
+              위한 훈련대상 과업 선정 및 선정사유 등 작성
             </li>
             <li>
-              해당 과업의 현행 수행방식(As-Is)과 AI 도입·활용을 위한 훈련 실시 후 개선(To-Be)되는
-              사항을 제시합니다.
+              □ 해당 과업의 현행 수행방식(As-Is)과 AI를 도입·활용하기 위한 훈련실시 후
+              개선(To-Be)되는 사항을 기대효과 항목으로 제시
             </li>
           </ul>
         }

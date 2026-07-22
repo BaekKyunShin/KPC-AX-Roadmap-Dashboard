@@ -187,4 +187,14 @@ describe('StepPerformanceActivities', () => {
     expect(screen.getByLabelText('차수 삭제 1')).toBeDisabled();
     expect(screen.getByLabelText('1차 PM 성명')).toBeDisabled();
   });
+
+  it('작성 안내에 정본 원문(□)을 그대로 표시한다', () => {
+    render(<StepPerformanceActivities value={[]} onChange={() => {}} />);
+    fireEvent.click(screen.getByText('작성 안내'));
+    expect(
+      screen.getByText(
+        '□ 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정(별도 작성 불요)'
+      )
+    ).toBeInTheDocument();
+  });
 });

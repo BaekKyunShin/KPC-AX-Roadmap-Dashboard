@@ -127,14 +127,14 @@ export function StepTaskAnalysis({
   return (
     <FormSection
       number="Ⅱ-3"
-      title="과업·워크플로우 분석"
+      title="과업(Task)·워크플로우 분석표"
       label="[인터뷰 입력]"
       description="직무별 주요 과업을 식별하고 현행 수행방식(As-Is)과 개선점·AI 적용 가능성을 구조적으로 분석합니다."
     >
       {/* 분석 표 (v2 4열) ------------------------------------------------- */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-border text-sm">
-          <caption className="sr-only">과업·워크플로우 분석 표</caption>
+          <caption className="sr-only">과업(Task)·워크플로우 분석 표</caption>
           <thead>
             <tr>
               <th
@@ -153,7 +153,7 @@ export function StepTaskAnalysis({
                 scope="col"
                 className="border border-border bg-muted px-2 py-2 text-center font-semibold"
               >
-                현행 방식 (As-Is)
+                현행 방식
               </th>
               <th
                 scope="col"
@@ -161,7 +161,7 @@ export function StepTaskAnalysis({
               >
                 개선점 및 AI 적용 가능성
                 <span className="block text-xs font-normal text-muted-foreground">
-                  (데이터 발생 여부/보유현황 포함)
+                  (데이터 발생 여부 또는 보유현황)
                 </span>
               </th>
               <th
@@ -209,7 +209,7 @@ export function StepTaskAnalysis({
                   <LargeTextBox
                     value={row.improvement}
                     onChange={(e) => updateRow(idx, { improvement: e.target.value })}
-                    placeholder="개선점 및 AI 적용 가능성 (데이터 발생 여부/보유현황 포함)"
+                    placeholder="개선점 및 AI 적용 가능성 (데이터 발생 여부 또는 보유현황)"
                     disabled={readOnly}
                     aria-label={`개선점 ${idx + 1}`}
                     minHeightClassName="min-h-[225px]"
@@ -273,21 +273,19 @@ export function StepTaskAnalysis({
       <ExampleAccordion
         example={<p className="text-xs text-muted-foreground">(추가 업로드 자료 예시) 공정 분석</p>}
         guide={
-          <ul className="list-disc space-y-1 pl-4">
+          <ul className="list-none space-y-1">
             <li>
-              기업 내부전문가와의 인터뷰를 통해 AI 도입·활용이 필요하다고 판단되는 과업 분석 (전체
-              과업을 모두 분석할 필요 없음 — 핵심 과업 중심)
+              □ 기업 내부전문가와의 인터뷰를 통해 현재 기업에서 수행하고 있는 과업(또는 워크플로우)
+              중 AI 도입·활용이 필요하다고 판단되는 과업의 현행 방식 및 문제점 등을 파악하여
+              우선순위 선정을 위함
+            </li>
+            <li className="pl-4">
+              ※ 기업의 전체 과업을 대상으로 분석할 필요는 없으며, 기업 내부전문가와의 인터뷰를 통해
+              필요한 과업을 대상으로만 분석
             </li>
             <li>
-              직무별 주요 과업을 5개 내외로 식별하고, 각 과업의 현행 수행방식(As-Is)을 구체적으로
-              기술합니다.
+              □ 작성한 내용 외에 제시해야 할 자료(ex : 공정분석표 등)가 있는 경우 첨부파일로 업로드
             </li>
-            <li>
-              &lsquo;개선점 및 AI 적용 가능성&rsquo; 칸에는 현행 방식의 개선 방향과 함께, AI
-              도입·활용이 가능한 데이터의 발생 여부 또는 보유 현황을 감안한 적용 가능성을
-              기술합니다.
-            </li>
-            <li>분석 과정에서 참고한 내부 자료가 있으면 PDF 로 첨부할 수 있습니다 (선택).</li>
           </ul>
         }
       />

@@ -72,7 +72,7 @@ export function StepHrdReportPdf({
   return (
     <FormSection
       number="Ⅱ-1"
-      title="HRD이음 진단 보고서 PDF 첨부"
+      title="기업 AI 역량 수준 진단 (PDF 첨부)"
       label="[PDF 첨부]"
       description="훈련수요 진단 보고서(PDF) 를 업로드하면 본문이 자동 추출되어 LLM 분석에 활용됩니다."
     >
@@ -99,11 +99,10 @@ export function StepHrdReportPdf({
       )}
       <ExampleAccordion
         guide={
-          <ul className="list-disc space-y-1 pl-4">
-            <li>
-              (양식 안내) 기업HRD이음컨설팅 보고서의 AI역량 진단 결과 내용 첨부 — 별도 작성 불요
-            </li>
-            <li>등급 매핑: (초급) AI기초형 · (중급) AI탐구형 · (고급) AI활용형·AI선도형</li>
+          <ul className="list-none space-y-1">
+            <li>□ 기업HRD이음컨설팅 보고서의 AI역량 진단 결과 내용 첨부(별도 작성 불요)</li>
+            <li className="pl-4">- (초급) AI기초형 / (중급) AI탐구형 / (고급) AI활용형·AI선도형</li>
+            <li className="pl-4">※ [별첨] 중소기업 AI역량 측정 진단도구 내용 참조</li>
             <li>HRD이음 진단 보고서 (PDF) 1건만 업로드합니다.</li>
             <li>업로드 즉시 본문 텍스트가 자동 추출되어 LLM 프롬프트에 함께 전달됩니다.</li>
             <li>최대 10MB. PDF 외 형식은 허용되지 않습니다.</li>

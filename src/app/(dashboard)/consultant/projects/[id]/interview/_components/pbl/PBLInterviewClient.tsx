@@ -64,38 +64,40 @@ interface StepDef {
   required: boolean;
 }
 
+// b-2 정합: Ⅱ절 번호를 정본 좌표(hrdReport=Ⅱ-1-가·courseNecessity=Ⅱ-1-다·
+// trainingEnv=Ⅱ-3-a·expectations=Ⅱ-3-b)로 맞추고, 스텝 순서를 번호 오름차순으로
+// 재정렬. companyIssues=Ⅱ-1(기업 현황 분석 본체). 번호·순서는 표시 문자열이라
+// 데이터·HWPX 산출물에 영향 없음(stepId 기반 저장).
 export const PBL_STEPS: ReadonlyArray<StepDef> = [
   { id: 1, stepId: 'overview', shortName: 'Ⅰ', name: '훈련과정 개요', required: true },
-  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1-가', name: '기업 경영 이슈', required: true },
-  // Phase E: Step 3a 훈련환경 (기본 6 영역) — stepperLabel 5자 단축
+  { id: 2, stepId: 'companyIssues', shortName: 'Ⅱ-1', name: '기업 경영 이슈', required: true },
+  // Ⅱ-1 계열(기업 현황 분석): HRD이음 결과 → 과정 개발 필요성
   {
     id: 3,
-    stepId: 'trainingEnv',
-    shortName: 'Ⅱ-2-a',
-    name: '훈련환경 분석',
-    stepperLabel: '훈련환경',
-    required: true,
-  },
-  // Phase E: Step 3b 기대효과·요구분석 (5 신규 영역, 양식 P-05 row 6~11 정합)
-  { id: 4, stepId: 'expectations', shortName: 'Ⅱ-2-b', name: '기대효과·요구분석', required: true },
-  // Stepper 라벨 22자 → 8자 단축 (페이지 헤더는 풀텍스트 유지)
-  {
-    id: 5,
     stepId: 'hrdReport',
-    shortName: 'Ⅱ-3-가',
+    shortName: 'Ⅱ-1-가',
     name: '기업HRD이음컨설팅 결과 (PDF 첨부)',
     stepperLabel: 'HRD이음 결과',
     required: false,
   },
-  // Stepper 라벨 13자 → 8자 단축 (사용자 보고 — '과정 개발 필요성', 말줄임 사라지도록)
   {
-    id: 6,
+    id: 4,
     stepId: 'courseNecessity',
-    shortName: 'Ⅱ-3-나',
+    shortName: 'Ⅱ-1-다',
     name: 'AI훈련과정 개발 필요성',
     stepperLabel: '과정 개발 필요성',
     required: true,
   },
+  // Ⅱ-3 계열(기업 훈련환경 분석): 훈련환경(a) → 기대효과·요구분석(b, 표 후반부)
+  {
+    id: 5,
+    stepId: 'trainingEnv',
+    shortName: 'Ⅱ-3-a',
+    name: '훈련환경 분석',
+    stepperLabel: '훈련환경',
+    required: true,
+  },
+  { id: 6, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석', required: true },
   // V2: Ⅲ-2-나 우선순위 제거 → 문제 정의서 단일 세트만.
   { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서', required: true },
   // V2: Ⅲ-4 AI역량 제거 → Ⅲ-3 훈련대상 업무(로드맵 과업 연동)만.

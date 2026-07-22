@@ -40,17 +40,18 @@ function ensureValue(value: PBLTrainingEnv | undefined): PBLTrainingEnv {
     aiInfrastructure: value?.aiInfrastructure ?? '',
     // Phase E (Step 4b) — 5 신규 필드 default fallback
     targetCharacteristics: value?.targetCharacteristics ?? { career: '', level: '' },
-    aiInfraDetail:
-      value?.aiInfraDetail ??
-      { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+    aiInfraDetail: value?.aiInfraDetail ?? {
+      toolCapacity: 'AVAILABLE' as const,
+      networkStatus: 'GOOD' as const,
+      pcCount: 0,
+    },
     trainingNeedsAnalysis: value?.trainingNeedsAnalysis ?? '',
     expectationAsIs: value?.expectationAsIs ?? '',
     expectationToBe: value?.expectationToBe ?? '',
     // 양식 P-05 누락 3행 보강 — 사용자 보고 (대상 인원·사내강사 활용·기타 장비)
     targetTraineeCount: value?.targetTraineeCount ?? 0,
     internalInstructorUsage: value?.internalInstructorUsage ?? 'NO',
-    internalInstructorPrimary:
-      value?.internalInstructorPrimary ?? { name: '', position: '' },
+    internalInstructorPrimary: value?.internalInstructorPrimary ?? { name: '', position: '' },
     otherEquipment: value?.otherEquipment ?? '',
   };
 }
@@ -69,7 +70,7 @@ export function StepTrainingEnv({
   function updateInstructor(
     side: 'internal' | 'external',
     idx: number,
-    patch: Partial<PBLInstructorRow>,
+    patch: Partial<PBLInstructorRow>
   ) {
     const list = side === 'internal' ? v.internalInstructors : v.externalInstructors;
     const next = list.map((r, i) => (i === idx ? { ...r, ...patch } : r));
@@ -126,7 +127,8 @@ export function StepTrainingEnv({
                     colSpan={5}
                     className="border border-border px-3 py-3 text-center text-xs text-muted-foreground"
                   >
-                    {heading} 행이 없습니다. 아래 &quot;+ {heading} 추가&quot; 버튼으로 행을 추가하세요.
+                    {heading} 행이 없습니다. 아래 &quot;+ {heading} 추가&quot; 버튼으로 행을
+                    추가하세요.
                   </td>
                 </tr>
               ) : (
@@ -136,9 +138,7 @@ export function StepTrainingEnv({
                       <input
                         type="text"
                         value={row.position}
-                        onChange={(e) =>
-                          updateInstructor(side, idx, { position: e.target.value })
-                        }
+                        onChange={(e) => updateInstructor(side, idx, { position: e.target.value })}
                         placeholder="예: 팀장"
                         disabled={readOnly}
                         aria-label={`${heading} ${idx + 1} 직위`}
@@ -149,9 +149,7 @@ export function StepTrainingEnv({
                       <input
                         type="text"
                         value={row.name}
-                        onChange={(e) =>
-                          updateInstructor(side, idx, { name: e.target.value })
-                        }
+                        onChange={(e) => updateInstructor(side, idx, { name: e.target.value })}
                         placeholder="예: 홍길동"
                         disabled={readOnly}
                         aria-label={`${heading} ${idx + 1} 이름`}
@@ -161,9 +159,7 @@ export function StepTrainingEnv({
                     <td className="border border-border p-1 align-top">
                       <LargeTextBox
                         value={row.career}
-                        onChange={(e) =>
-                          updateInstructor(side, idx, { career: e.target.value })
-                        }
+                        onChange={(e) => updateInstructor(side, idx, { career: e.target.value })}
                         placeholder="예: 제조 공정 15년 경력 / AI 도입 PoC 3건"
                         disabled={readOnly}
                         aria-label={`${heading} ${idx + 1} 직무경력`}
@@ -218,17 +214,14 @@ export function StepTrainingEnv({
 
   return (
     <FormSection
-      number="Ⅱ-2"
+      number="Ⅱ-3-a"
       title="기업 훈련환경 분석"
       label="[인터뷰 입력]"
       description="양식 12×7 정형 표 — 적정 훈련시간 · 훈련장소(사내/사외) · 사내·외부 강사 · AI 인프라."
     >
       {/* 1. 적정 훈련시간 */}
       <div className="space-y-1">
-        <label
-          htmlFor="pbl-training-env-hours"
-          className="text-sm font-medium"
-        >
+        <label htmlFor="pbl-training-env-hours" className="text-sm font-medium">
           적정 훈련시간
         </label>
         <LargeTextBox
@@ -244,10 +237,7 @@ export function StepTrainingEnv({
 
       {/* 1-b. 대상 인원 (양식 P-05 누락 보강) */}
       <div className="space-y-1">
-        <label
-          htmlFor="pbl-training-env-trainee-count"
-          className="text-sm font-medium"
-        >
+        <label htmlFor="pbl-training-env-trainee-count" className="text-sm font-medium">
           대상 인원
         </label>
         <div className="flex items-center gap-2">
@@ -440,11 +430,12 @@ export function StepTrainingEnv({
       </div>
 
       <ExampleAccordion
+        guideLabel="작성 가이드"
         guide={
-          <ul className="list-disc space-y-1 pl-4">
-            <li>
-              <strong>양식 √ 작성안내:</strong> &quot;훈련 대상자 특성&quot;은 훈련업무를 수행하는 직원들의 특징을 기술하고, &quot;훈련 여건&quot;은 훈련과정 개발·운영을 위해 활용 가능한 사내 자원을 정리합니다.
-            </li>
+          <ul className="list-none space-y-1">
+            <li>1. ‘훈련 대상자 특성’은 훈련업무를 수행하는 직원들의 특징 기술</li>
+            <li>2. ‘훈련 여건’은 훈련과정 개발·운영을 위해 활용 가능한 기업 자원을 파악</li>
+            <li>☞ 과정개발 시 기업의 훈련에 대한 요구사항을 반영하기 위함.</li>
             <li>적정 훈련시간: 회차당 시간·총 시간·집중 가능 시간대.</li>
             <li>훈련장소: 사내(본사/공장)·사외(외부 시설)·특이사항.</li>
             <li>사내·외부강사: 직위·이름·직무경력·인적특성. 강사가 없는 경우 비워두세요.</li>

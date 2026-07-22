@@ -74,4 +74,17 @@ describe('StepProblems (V2 — 문제 정의서 단일 세트, 우선순위 제�
     const next = onChange.mock.calls[0][0] as StepProblemsValue;
     expect(next.problemDefinitionSheet.core).toBe('X');
   });
+
+  it('작성 가이드에 정본 원문(번호·-)을 그대로 표시한다', () => {
+    render(<StepProblems value={base()} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByText('작성 가이드'));
+    expect(
+      screen.getByText(
+        '1. 실제로 직무에 해결해야 할 문제를 선정하기 위한 문제 범위 도출하고 핵심 개념, 문제를 명확히 정의한다.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('- ‘제약 조건’은 시간, 예산, 인력, 기술적 제약 사항을 기술')
+    ).toBeInTheDocument();
+  });
 });

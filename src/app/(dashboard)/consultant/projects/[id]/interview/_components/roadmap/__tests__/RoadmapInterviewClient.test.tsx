@@ -215,12 +215,16 @@ describe('RoadmapInterviewClient', () => {
   });
 
   // R3 공통-A — Ⅱ-3 양식 √ "기업 내부전문가와의 인터뷰" + 양식 ◆ "공정 분석" 예시 노출
-  it('Ⅱ-3 작성 안내 영역에 양식 √ "AI 도입·활용이 필요하다고 판단되는 과업 분석" 안내가 노출된다 (공통-A)', () => {
+  it('Ⅱ-3 작성 안내 영역에 양식 √ "현행 방식 및 문제점 등을 파악하여 우선순위" 안내가 노출된다 (공통-A)', () => {
     render(<RoadmapInterviewClient projectId="p1" initial={{}} />);
     // Stepper 는 단축 라벨 "과업·워크플로우" 로 클릭 (페이지 헤더 풀텍스트는 별도 검증)
     fireEvent.click(screen.getAllByText('과업·워크플로우')[0]);
     fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
-    expect(screen.getByText(/AI 도입·활용이 필요하다고 판단되는 과업 분석/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /AI 도입·활용이 필요하다고 판단되는 과업의 현행 방식 및 문제점 등을 파악하여 우선순위/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Ⅱ-3 taskAnalysis 스텝 진입 시 실제 StepTaskAnalysis 가 렌더된다', () => {
@@ -228,7 +232,7 @@ describe('RoadmapInterviewClient', () => {
     // Stepper 는 단축 라벨 "과업·워크플로우" 로 클릭 (페이지 헤더 풀텍스트는 별도 검증)
     fireEvent.click(screen.getAllByText('과업·워크플로우')[0]);
     expect(
-      screen.getByRole('heading', { name: '과업·워크플로우 분석', level: 2 })
+      screen.getByRole('heading', { name: '과업(Task)·워크플로우 분석표', level: 2 })
     ).toBeInTheDocument();
     // 기본 5행 렌더 확인 (빈 taskAnalysis 배열 → defaultRows)
     expect(screen.getByLabelText('직무 5')).toBeInTheDocument();
@@ -248,7 +252,7 @@ describe('RoadmapInterviewClient', () => {
       })
     ).toBeInTheDocument();
     // 기대 효과 rowSpan=2
-    const 기대효과 = screen.getByText('기대 효과');
+    const 기대효과 = screen.getByText('기대효과');
     expect(기대효과.getAttribute('rowspan')).toBe('2');
   });
 

@@ -192,10 +192,9 @@ export function StepPerformanceActivities({
           </div>
         }
         guide={
-          <ul className="list-disc space-y-1 pl-4">
+          <ul className="list-none space-y-1">
             <li>
-              (양식 안내) 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정 — 별도 작성
-              불요
+              □ 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정(별도 작성 불요)
             </li>
             <li>
               컨설팅 수행 차수별(최대 3차)로 수행 일시·내용·방법과 참석자 (컨설팅책임자 PM · 기업

@@ -124,7 +124,7 @@ describe('RoadmapInterviewSummary', () => {
 
     it('Ⅱ-3. 과업·워크플로우 분석표 + 개선점(improvement) 을 표시한다', () => {
       render(<RoadmapInterviewSummary interview={makeFullInterview()} />);
-      expect(screen.getByText('Ⅱ-3. 과업·워크플로우 분석')).toBeInTheDocument();
+      expect(screen.getByText('Ⅱ-3. 과업(Task)·워크플로우 분석표')).toBeInTheDocument();
       expect(screen.getByText('제품 외관 검사')).toBeInTheDocument();
       expect(screen.getByText('일일 리포트 작성')).toBeInTheDocument();
       // v2: 개선점 및 AI 적용 가능성 (roadmap_improvement) 컬럼

@@ -13,7 +13,11 @@ function emptyEnv(): PBLTrainingEnv {
     externalInstructors: [],
     aiInfrastructure: '',
     targetCharacteristics: { career: '', level: '' },
-    aiInfraDetail: { toolCapacity: 'AVAILABLE' as const, networkStatus: 'GOOD' as const, pcCount: 0 },
+    aiInfraDetail: {
+      toolCapacity: 'AVAILABLE' as const,
+      networkStatus: 'GOOD' as const,
+      pcCount: 0,
+    },
     trainingNeedsAnalysis: '',
     expectationAsIs: '',
     expectationToBe: '',
@@ -29,9 +33,9 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
   it('FormSection 번호·제목이 노출된다', () => {
     render(<StepTrainingEnv value={emptyEnv()} onChange={vi.fn()} />);
     expect(
-      screen.getByRole('heading', { name: '기업 훈련환경 분석', level: 2 }),
+      screen.getByRole('heading', { name: '기업 훈련환경 분석', level: 2 })
     ).toBeInTheDocument();
-    expect(screen.getByText('Ⅱ-2')).toBeInTheDocument();
+    expect(screen.getByText('Ⅱ-3-a')).toBeInTheDocument();
   });
 
   it('6 영역 라벨이 모두 노출된다 (적정 훈련시간 / 사내·사외 장소 / 사내·외부강사 / AI 인프라)', () => {
@@ -51,7 +55,7 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
       target: { value: '회차당 4시간' },
     });
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ properTrainingHours: '회차당 4시간' }),
+      expect.objectContaining({ properTrainingHours: '회차당 4시간' })
     );
   });
 
@@ -77,12 +81,7 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
 
   // R8 분기 cover
   it('value undefined 시 빈 객체로 fallback (ensureValue 분기)', () => {
-    render(
-      <StepTrainingEnv
-        value={undefined as unknown as PBLTrainingEnv}
-        onChange={vi.fn()}
-      />,
-    );
+    render(<StepTrainingEnv value={undefined as unknown as PBLTrainingEnv} onChange={vi.fn()} />);
     expect(screen.getByLabelText('적정 훈련시간')).toBeInTheDocument();
   });
 
@@ -90,29 +89,29 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     const onChange = vi.fn();
     const initial: PBLTrainingEnv = {
       ...emptyEnv(),
-      internalInstructors: [
-        { position: '', name: '', career: '', personalTraits: '' },
-      ],
+      internalInstructors: [{ position: '', name: '', career: '', personalTraits: '' }],
     };
     render(<StepTrainingEnv value={initial} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('사내강사 1 직위'), { target: { value: '팀장' } });
     fireEvent.change(screen.getByLabelText('사내강사 1 이름'), { target: { value: '홍길동' } });
     fireEvent.change(screen.getByLabelText('사내강사 1 직무경력'), { target: { value: '12년' } });
-    fireEvent.change(screen.getByLabelText('사내강사 1 인적특성'), { target: { value: '데이터 친화' } });
+    fireEvent.change(screen.getByLabelText('사내강사 1 인적특성'), {
+      target: { value: '데이터 친화' },
+    });
     const calls = onChange.mock.calls;
     expect((calls[0][0] as PBLTrainingEnv).internalInstructors[0].position).toBe('팀장');
     expect((calls[1][0] as PBLTrainingEnv).internalInstructors[0].name).toBe('홍길동');
     expect((calls[2][0] as PBLTrainingEnv).internalInstructors[0].career).toBe('12년');
-    expect((calls[3][0] as PBLTrainingEnv).internalInstructors[0].personalTraits).toBe('데이터 친화');
+    expect((calls[3][0] as PBLTrainingEnv).internalInstructors[0].personalTraits).toBe(
+      '데이터 친화'
+    );
   });
 
   it('외부강사 추가 + 삭제 분기 cover', () => {
     const onChange = vi.fn();
     const initial: PBLTrainingEnv = {
       ...emptyEnv(),
-      externalInstructors: [
-        { position: '', name: '', career: '', personalTraits: '' },
-      ],
+      externalInstructors: [{ position: '', name: '', career: '', personalTraits: '' }],
     };
     render(<StepTrainingEnv value={initial} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText('외부강사 1 삭제'));
@@ -161,9 +160,7 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     const onChange = vi.fn();
     render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('대상 인원'), { target: { value: '15' } });
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ targetTraineeCount: 15 }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ targetTraineeCount: 15 }));
   });
 
   it('사내강사 활용 여부 라디오 = "있음" 선택 시 onChange 가 YES 로 호출', () => {
@@ -171,7 +168,7 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     render(<StepTrainingEnv value={emptyEnv()} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText('사내강사 활용 여부 있음'));
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ internalInstructorUsage: 'YES' }),
+      expect.objectContaining({ internalInstructorUsage: 'YES' })
     );
   });
 
@@ -198,7 +195,7 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
       target: { value: '프로젝터 2대, 디지털 화이트보드 1대' },
     });
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대' }),
+      expect.objectContaining({ otherEquipment: '프로젝터 2대, 디지털 화이트보드 1대' })
     );
   });
 
@@ -213,5 +210,16 @@ describe('StepTrainingEnv (R8 PBL-자체-02 — 12×7 정형 표 6 영역)', () 
     expect(screen.getByLabelText('사내강사 활용 여부 없음')).toBeDisabled();
     expect(screen.getByLabelText('사내강사 대표 이름')).toBeDisabled();
     expect(screen.getByLabelText('AI인프라 기타 장비 보유')).toBeDisabled();
+  });
+
+  it('작성 가이드에 정본 원문(번호·☞)을 그대로 표시한다', () => {
+    render(<StepTrainingEnv value={emptyEnv()} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByText('작성 가이드'));
+    expect(
+      screen.getByText('1. ‘훈련 대상자 특성’은 훈련업무를 수행하는 직원들의 특징 기술')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('☞ 과정개발 시 기업의 훈련에 대한 요구사항을 반영하기 위함.')
+    ).toBeInTheDocument();
   });
 });

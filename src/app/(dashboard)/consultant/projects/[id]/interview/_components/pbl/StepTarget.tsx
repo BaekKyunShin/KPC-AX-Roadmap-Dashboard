@@ -101,7 +101,7 @@ export function StepTarget({
     >
       {/* Ⅲ-3-가 훈련대상 과업 선정 (로드맵 과업 4열 + PBL 입력 2열) ------------ */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Ⅲ-3-가 훈련대상 과업 선정</h3>
+        <h3 className="text-sm font-semibold">Ⅲ-3-가 훈련대상 업무 선정</h3>
         <p className="text-xs text-muted-foreground">
           선행 로드맵의 과업 분석(직무·과업·현행·개선점)은 읽기 전용으로 표시됩니다. 각 과업에 대해
           AI 도입·활용 필요도와 훈련 선정 여부만 입력하세요.
@@ -206,7 +206,7 @@ export function StepTarget({
       {/* Ⅲ-3-나 AI기반 문제해결 필요성 (선정 사유) ---------------------------- */}
       <div className="space-y-1">
         <label htmlFor="pbl-target-necessity" className="text-sm font-semibold">
-          Ⅲ-3-나 AI기반 문제해결 필요성 (선정 사유)
+          Ⅲ-3-나 AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)
         </label>
         <LargeTextBox
           id="pbl-target-necessity"
@@ -326,9 +326,10 @@ export function StepTarget({
       </div>
 
       <ExampleAccordion
+        guideLabel="작성 가이드"
         example={
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">(양식 작성 예시)</p>
+            <p className="font-medium text-foreground">(작성 예시)</p>
             <p>
               훈련대상 업무는 영상 데이터 수집, 영상 데이터 분석임. 기업 경영 이슈인 &ldquo;사업
               다각화를 위한 신규 서비스 런칭 필요&rdquo; 과 연계하여 AI 기반 영상 분석 역량 확보가
@@ -337,17 +338,36 @@ export function StepTarget({
           </div>
         }
         guide={
-          <ul className="list-disc space-y-1 pl-4">
+          <ul className="list-none space-y-1">
             <li>
-              (양식 안내) 문제 우선순위에서 도출된 결과를 분석하여 AI를 통해 가장 큰 변화가 예상되는
-              핵심업무(Task) 단위로 훈련대상 업무를 선정
+              1. AI훈련 로드맵 컨설팅 보고서에서 작성한 과업(Task) 워크플로우 분석표를 자동으로
+              불러온 값 중 훈련으로 선정할 과업을 선정한다.
+            </li>
+            <li>2. 해당 업무가 왜 AI훈련에 적합한지 ‘업무변화’ 관점에서 기술한다.</li>
+            <li className="pl-4">
+              - ‘AI훈련과정 개발 필요성’은 업무별로 판단하며, △기업 경영 이슈와 연계되는지, △AI가
+              업무에 적용될 경우 중장기 또는 단기 성과가 나올 수 있는지 △AI훈련 및 평가가 가능한
+              업무인지 등을 종합적으로 고려해야 함.
+            </li>
+            <li className="pl-4">
+              - ‘훈련대상 업무 선정 여부’는 최종적으로 기업 담당자와 논의하여 선정함.
             </li>
             <li>
-              Ⅲ-3-가 훈련대상 과업 선정은 선행 로드맵 과업 목록을 기준으로 AI 도입·활용 필요도와
-              훈련 선정 여부만 입력합니다.
+              ☞ (목적) 조직, 개인, 업무, 환경의 요구사항을 반영하여 훈련과정 개발 우선순위를 선정
             </li>
-            <li>Ⅲ-3-나 선정 사유는 문제 정의서(Ⅲ-2) 결과와 정합되도록 기술합니다.</li>
-            <li>Ⅲ-3-다 세부내용은 AS-IS / TO-BE · 요구지식 · 요구기술 최소 1행 이상 작성합니다.</li>
+            <li>
+              1. 훈련대상 업무가 AI활용ㆍ도입 전후로 어떻게 변화하는지, 그에 따른 어떤 역량이
+              필요한지, 특히 현재 업무방식(AS-IS)에서 AI로 인해 변화된 업무방식(TO-BE)을 기술한다.
+            </li>
+            <li className="pl-4">
+              - ‘세부내용/지식/기술’은 해당 업무를 수행하기 위해 어떠한 과업(task)을 수행해야
+              하는지, 어떤 지식과 기술이 요구되는지 인터뷰를 통해 도출함. 2개 이상의 과업으로
+              이루어지는 경우 행 추가하여 작성 필요
+            </li>
+            <li>
+              2. ‘업무명’은 훈련대상 업무 선정 여부에서 선택된 업무를 자동 불러옴 처리하며, 내용
+              수정이 불가함.
+            </li>
           </ul>
         }
       />

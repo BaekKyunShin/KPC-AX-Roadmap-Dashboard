@@ -12,8 +12,7 @@ vi.mock('@/lib/utils', async (importOriginal) => {
 
 const uploadInterviewAttachment = vi.fn();
 vi.mock('../../../actions', () => ({
-  uploadInterviewAttachment: (...args: unknown[]) =>
-    uploadInterviewAttachment(...args),
+  uploadInterviewAttachment: (...args: unknown[]) => uploadInterviewAttachment(...args),
 }));
 
 import { StepHrdReportPdf } from '../StepHrdReportPdf';
@@ -24,17 +23,20 @@ describe('StepHrdReportPdf (PBL V2)', () => {
   });
 
   it('FormSection 번호·제목이 노출된다', () => {
-    render(
-      <StepHrdReportPdf projectId="p1" value={null} onChange={vi.fn()} />,
-    );
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={vi.fn()} />);
     // R3 #10(PBL) — 양식 정확 명칭으로 정정됨
     expect(
       screen.getByRole('heading', {
         name: /기업HRD이음컨설팅 결과 \(PDF 첨부\)/,
         level: 2,
-      }),
+      })
     ).toBeInTheDocument();
-    expect(screen.getByText('Ⅱ-3-가')).toBeInTheDocument();
+    expect(screen.getByText('Ⅱ-1-가')).toBeInTheDocument();
+  });
+
+  it('작성 가이드 헤더(PBL 정본 라벨)를 표시한다', () => {
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={vi.fn()} />);
+    expect(screen.getByText('작성 가이드')).toBeInTheDocument();
   });
 
   it('업로드 성공 시 onChange 에 camelCase 메타가 전달된다', async () => {
@@ -49,12 +51,8 @@ describe('StepHrdReportPdf (PBL V2)', () => {
       },
     });
     const onChange = vi.fn();
-    render(
-      <StepHrdReportPdf projectId="p1" value={null} onChange={onChange} />,
-    );
-    const fileInput = document.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement;
+    render(<StepHrdReportPdf projectId="p1" value={null} onChange={onChange} />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['dummy'], '보고서.pdf', { type: 'application/pdf' });
     fireEvent.change(fileInput, { target: { files: [file] } });
     await waitFor(() => expect(onChange).toHaveBeenCalled());
@@ -76,7 +74,7 @@ describe('StepHrdReportPdf (PBL V2)', () => {
           size: 100,
         }}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByRole('button', { name: /첨부 제거/ }));
     expect(onChange).toHaveBeenCalledWith(null);
@@ -93,10 +91,8 @@ describe('StepHrdReportPdf (PBL V2)', () => {
           parseError: '암호화된 PDF',
         }}
         onChange={vi.fn()}
-      />,
+      />
     );
-    expect(
-      screen.getByText(/PDF 본문 자동 추출 실패: 암호화된 PDF/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/PDF 본문 자동 추출 실패: 암호화된 PDF/)).toBeInTheDocument();
   });
 });

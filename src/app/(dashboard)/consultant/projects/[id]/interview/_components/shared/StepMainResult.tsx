@@ -9,7 +9,7 @@ import type { RoadmapStepProps } from './types';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 /**
- * Ⅰ-3 수립 주요 결과 — [인터뷰 입력 → 결과 페이지]
+ * Ⅰ-3 AI훈련로드맵 수립 주요 결과 — [인터뷰 입력 → 결과 페이지]
  *
  * 양식 기준 입력 항목:
  *  - 기업 AI 역량 수준 체크 (택1): 초급 (AI기초형) / 중급 (AI탐구형) / 고급 (AI활용형·선도형)
@@ -39,7 +39,7 @@ export function StepMainResult({
   return (
     <FormSection
       number="Ⅰ-3"
-      title="수립 주요 결과"
+      title="AI훈련로드맵 수립 주요 결과"
       label="[인터뷰 입력 → 결과 페이지]"
       description="기업의 AI 역량 수준과 컨설팅을 통해 선정된 과업(또는 워크플로우)을 작성합니다."
     >
@@ -67,15 +67,15 @@ export function StepMainResult({
 
       <ExampleAccordion
         guide={
-          <ul className="list-disc space-y-1 pl-4">
+          <ul className="list-none space-y-1">
             <li>
-              뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장
+              □ 뒤쪽에서 작성된 훈련요구 분석 및 로드맵 수립 결과를 한 번에 확인할 수 있도록 1장
               이내로 요약하여 작성
             </li>
             <li>
               AI 역량 수준은 기업의 현재 AI 활용 정도에 맞춰 1개를 선택합니다 (초급 / 중급 / 고급).
             </li>
-            <li>선정 과업은 양식 Ⅱ-4 훈련대상 과업 선정과 일관되게 작성합니다.</li>
+            <li>선정 과업은 양식 Ⅱ-4 AI 적용 대상 과업 선정과 일관되게 작성합니다.</li>
           </ul>
         }
       />

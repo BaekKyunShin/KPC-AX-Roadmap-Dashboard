@@ -89,13 +89,37 @@ describe('PBLInterviewClient', () => {
     expect(screen.getByText(/총 9개 스텝/)).toBeInTheDocument();
   });
 
-  // Phase E: Step 4b "기대효과·요구분석" 신규 검증
-  it('Step 4 (Ⅱ-2-b) 가 expectations stepId 로 정의되어 있고 라벨이 "기대효과·요구분석"', () => {
-    const step = PBL_STEPS[3];
-    expect(step.stepId).toBe('expectations');
+  // "기대효과·요구분석" 스텝 (b-2 정합: 정본 Ⅱ-3 훈련환경 표 후반부 → Ⅱ-3-b)
+  it('expectations 스텝이 Ⅱ-3-b 로 정의되어 있고 라벨이 "기대효과·요구분석"', () => {
+    const step = PBL_STEPS.find((s) => s.stepId === 'expectations')!;
     expect(step.name).toBe('기대효과·요구분석');
-    expect(step.shortName).toBe('Ⅱ-2-b');
+    expect(step.shortName).toBe('Ⅱ-3-b');
     expect(step.required).toBe(true);
+  });
+
+  // b-2: Ⅱ절 번호를 정본 좌표로 정합 + 스텝 순서를 번호 오름차순으로 재정렬
+  it('Ⅱ절 스텝 shortName 이 정본 좌표로 정합된다', () => {
+    const byId = (id: PBLStepId) => PBL_STEPS.find((s) => s.stepId === id)!;
+    expect(byId('companyIssues').shortName).toBe('Ⅱ-1');
+    expect(byId('hrdReport').shortName).toBe('Ⅱ-1-가');
+    expect(byId('courseNecessity').shortName).toBe('Ⅱ-1-다');
+    expect(byId('trainingEnv').shortName).toBe('Ⅱ-3-a');
+    expect(byId('expectations').shortName).toBe('Ⅱ-3-b');
+  });
+
+  it('PBL_STEPS 순서가 번호 오름차순으로 재정렬된다 (b-2, id 1~9)', () => {
+    expect(PBL_STEPS.map((s) => s.stepId)).toEqual([
+      'overview',
+      'companyIssues',
+      'hrdReport',
+      'courseNecessity',
+      'trainingEnv',
+      'expectations',
+      'problems',
+      'target',
+      'sttAttach',
+    ]);
+    expect(PBL_STEPS.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('마지막 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
@@ -132,11 +156,11 @@ describe('PBLInterviewClient', () => {
     ).toBeInTheDocument();
   });
 
-  // R3 #5(PBL) — Ⅱ-1-가 양식 √ "기업담당자와의 인터뷰" 노출
-  it('PBL Ⅱ-1-가 작성 안내 영역에 양식 √ "기업담당자와의 인터뷰" 안내가 노출된다 (#5 PBL)', () => {
+  // R3 #5(PBL) — Ⅱ-1 양식 √ "기업담당자와의 인터뷰" 노출 (PBL 헤더 = '작성 가이드')
+  it('PBL 기업 경영 이슈 작성 가이드 영역에 양식 √ "기업담당자와의 인터뷰" 안내가 노출된다 (#5 PBL)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getByText('기업 경영 이슈'));
-    fireEvent.click(screen.getByRole('button', { name: '작성 안내' }));
+    fireEvent.click(screen.getByRole('button', { name: '작성 가이드' }));
     expect(screen.getByText(/기업담당자와의 인터뷰/)).toBeInTheDocument();
   });
 
@@ -289,8 +313,10 @@ describe('PBLInterviewClient', () => {
   it('Ⅲ-3 target 스텝 진입 시 훈련대상 과업 선정 + 선정 사유 + 세부내용이 렌더된다 (AI역량 제거)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
     fireEvent.click(screen.getAllByText('훈련대상 업무')[0]);
-    expect(screen.getByText('Ⅲ-3-가 훈련대상 과업 선정')).toBeInTheDocument();
-    expect(screen.getByText('Ⅲ-3-나 AI기반 문제해결 필요성 (선정 사유)')).toBeInTheDocument();
+    expect(screen.getByText('Ⅲ-3-가 훈련대상 업무 선정')).toBeInTheDocument();
+    expect(
+      screen.getByText('Ⅲ-3-나 AI기반 문제해결의 필요성(훈련대상 업무 선정 사유)')
+    ).toBeInTheDocument();
     expect(screen.getByText('Ⅲ-3-다 훈련대상 업무 세부내용')).toBeInTheDocument();
     // V2: Ⅲ-4 AI역량 진단 제거
     expect(screen.queryByText('Ⅲ-4-가 현재 AI역량 수준')).toBeNull();

@@ -13,6 +13,12 @@ describe('ExampleAccordion', () => {
     expect(screen.getByText('작성 안내')).toBeInTheDocument();
   });
 
+  it('guideLabel 을 지정하면 해당 라벨로 안내 trigger 를 표시한다', () => {
+    render(<ExampleAccordion guide={<p>안내 본문</p>} guideLabel="작성 가이드" />);
+    expect(screen.getByText('작성 가이드')).toBeInTheDocument();
+    expect(screen.queryByText('작성 안내')).not.toBeInTheDocument();
+  });
+
   it('example/guide 둘 다 없으면 trigger 가 렌더되지 않는다', () => {
     render(<ExampleAccordion />);
     expect(screen.queryByText('(예시) 양식 원문')).not.toBeInTheDocument();
@@ -21,11 +27,7 @@ describe('ExampleAccordion', () => {
 
   it('defaultExpanded=true 이면 내용이 보인다', () => {
     render(
-      <ExampleAccordion
-        example={<p>예시 본문</p>}
-        guide={<p>안내 본문</p>}
-        defaultExpanded
-      />,
+      <ExampleAccordion example={<p>예시 본문</p>} guide={<p>안내 본문</p>} defaultExpanded />
     );
     // Radix Accordion 은 펼침 상태에서 내용을 data-state="open" 으로 렌더
     expect(screen.getByText('예시 본문')).toBeVisible();

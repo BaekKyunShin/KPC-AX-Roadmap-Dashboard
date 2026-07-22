@@ -30,4 +30,14 @@ describe('StepNecessity', () => {
     render(<StepNecessity value="값" onChange={() => {}} readOnly />);
     expect(screen.getByLabelText('수립 필요성')).toBeDisabled();
   });
+
+  it('작성 안내에 정본 원문(□)을 그대로 표시한다', () => {
+    render(<StepNecessity value="" onChange={() => {}} />);
+    fireEvent.click(screen.getByText('작성 안내'));
+    expect(
+      screen.getByText(
+        '□ 컨설팅 대상 기업의 경영진 또는 담당자(내부전문가)와 인터뷰 등을 통해 파악한 AI훈련로드맵 수립을 위해 해당 과업(또는 워크플로우) 선정 이유 및 AI 적용의 필요성 등 작성(5줄 내외로 간단히 기술)'
+      )
+    ).toBeInTheDocument();
+  });
 });

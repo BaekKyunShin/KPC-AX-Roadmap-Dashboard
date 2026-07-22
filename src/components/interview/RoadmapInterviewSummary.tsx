@@ -224,14 +224,14 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
       {/* Ⅱ-3. 과업·워크플로우 분석 */}
       {tasks.length > 0 && (
         <section>
-          <SectionTitle>Ⅱ-3. 과업·워크플로우 분석</SectionTitle>
+          <SectionTitle>Ⅱ-3. 과업(Task)·워크플로우 분석표</SectionTitle>
           <div className="overflow-x-auto rounded-md border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">직무</th>
                   <th className="px-3 py-2 text-left font-medium">과업명</th>
-                  <th className="px-3 py-2 text-left font-medium">현행 방식 (As-Is)</th>
+                  <th className="px-3 py-2 text-left font-medium">현행 방식</th>
                   <th className="px-3 py-2 text-left font-medium">개선점 및 AI 적용 가능성</th>
                 </tr>
               </thead>
@@ -267,7 +267,7 @@ export function RoadmapInterviewSummary({ interview }: RoadmapInterviewSummaryPr
               <thead className="bg-gray-50 text-xs text-gray-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">과업명</th>
-                  <th className="px-3 py-2 text-left font-medium">선정 사유</th>
+                  <th className="px-3 py-2 text-left font-medium">선정사유</th>
                   <th className="px-3 py-2 text-left font-medium">As-Is</th>
                   <th className="px-3 py-2 text-left font-medium">To-Be</th>
                 </tr>

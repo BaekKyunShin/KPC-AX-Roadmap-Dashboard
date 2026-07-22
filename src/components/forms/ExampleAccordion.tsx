@@ -15,6 +15,8 @@ export interface ExampleAccordionProps {
   example?: React.ReactNode;
   /** 작성 안내 블록. 없으면 생략. */
   guide?: React.ReactNode;
+  /** 안내 블록 헤더 라벨 (기본 '작성 안내'). 정본 구분: 로드맵='작성 안내', PBL='작성 가이드'. */
+  guideLabel?: string;
   /** 기본 펼침 여부 (기본 false) */
   defaultExpanded?: boolean;
   className?: string;
@@ -29,6 +31,7 @@ export interface ExampleAccordionProps {
 export function ExampleAccordion({
   example,
   guide,
+  guideLabel = '작성 안내',
   defaultExpanded = false,
   className,
 }: ExampleAccordionProps) {
@@ -36,7 +39,7 @@ export function ExampleAccordion({
 
   const defaultValue = defaultExpanded
     ? (['example', 'guide'] as const).filter(
-        (v) => (v === 'example' && example) || (v === 'guide' && guide),
+        (v) => (v === 'example' && example) || (v === 'guide' && guide)
       )
     : [];
 
@@ -54,7 +57,7 @@ export function ExampleAccordion({
       )}
       {guide && (
         <AccordionItem value="guide" className="border-b-0 px-4">
-          <AccordionTrigger>작성 안내</AccordionTrigger>
+          <AccordionTrigger>{guideLabel}</AccordionTrigger>
           <AccordionContent className="text-sm">{guide}</AccordionContent>
         </AccordionItem>
       )}

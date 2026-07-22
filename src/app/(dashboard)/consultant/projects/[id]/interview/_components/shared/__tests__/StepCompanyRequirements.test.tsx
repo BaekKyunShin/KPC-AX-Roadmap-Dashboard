@@ -137,4 +137,22 @@ describe('StepCompanyRequirements', () => {
     expect(screen.getByLabelText('추진 의지 비고')).toBeDisabled();
     expect(screen.getByLabelText('기대 성과 비고')).toBeDisabled();
   });
+
+  it('작성 안내에 정본 원문(□) 3개 항목을 그대로 표시한다', () => {
+    render(<StepCompanyRequirements value={makeValue()} onChange={() => {}} />);
+    fireEvent.click(screen.getByText('작성 안내'));
+    expect(
+      screen.getByText(
+        '□ 기업의 내부전문가와 면담을 통해 현재 기업의 현황과 AI 도입·활용에 대한 요구를 구조적으로 도출'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '□ 요구분석에서 우선적으로 AI도입·활용이 필요한 과업(또는 워크플로우)은 필수적으로 파악해야 함. 본 내용은 훈련대상 과업 선정의 논리적 근거가 됨'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('□ 추가로 필요한 내용은 별첨의 내부환경 부분에 제시')
+    ).toBeInTheDocument();
+  });
 });
