@@ -12,9 +12,9 @@ import type { TabPBLCommonProps } from './types';
  *
  * 섹션:
  *  - Ⅲ-2-가 문제 정의서 (4 정형 항목 단일 세트) — 인터뷰 입력. DRAFT 인라인 편집.
- *  - Ⅲ-3-가 훈련대상 과업 선정 — 선행 로드맵 과업 4열(읽기 전용) + PBL 2열
+ *  - Ⅲ-3-가 훈련대상 업무 선정 — 선행 로드맵 과업 4열(읽기 전용) + PBL 2열
  *    (AI 도입·활용 필요도 · 훈련 선정)을 로드맵 과업 순서와 1:1 로 zip 하여 표출.
- *  - Ⅲ-3-나 AI기반 문제해결 필요성 (선정 사유) — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅲ-3-나 AI기반 문제해결의 필요성 (선정 사유) — 인터뷰 입력. DRAFT 인라인 편집.
  *  - Ⅲ-3-다 훈련대상 업무 세부내용 (5 컬럼) — 인터뷰 입력. DRAFT 인라인 편집.
  *
  * V2 제거:
@@ -133,10 +133,10 @@ export function TabPBLTasks({ interview, linkedRoadmap, readOnly, onEdit }: TabP
         />
       </SectionCard>
 
-      {/* Ⅲ-3-가 훈련대상 과업 선정 (양식 6열 = 로드맵 4열 자동 연동 + PBL 2열 입력) */}
+      {/* Ⅲ-3-가 훈련대상 업무 선정 (양식 6열 = 로드맵 4열 자동 연동 + PBL 2열 입력) */}
       <SectionCard
-        title="Ⅲ-3-가. 훈련대상 과업 선정"
-        description="선행 로드맵 과업 분석표(직무·과업·현행·개선점, 읽기 전용) + PBL 입력(AI 도입·활용 필요도·훈련 선정)"
+        title="Ⅲ-3-가. 훈련대상 업무 선정"
+        description="선행 로드맵 과업 분석표(직무·과업·현행·개선점, 읽기 전용) + PBL 입력(AI도입·활용 필요도·훈련 선정)"
         dataSource="mixed"
       >
         {roadmapTasks.length > 0 ? (
@@ -148,9 +148,9 @@ export function TabPBLTasks({ interview, linkedRoadmap, readOnly, onEdit }: TabP
                   cells: [
                     { content: '직무', header: true, className: 'w-[110px]' },
                     { content: '과업(Task)', header: true, className: 'w-[140px]' },
-                    { content: '현행 방식 (As-Is)', header: true },
+                    { content: '현행 방식', header: true },
                     { content: '개선점 및 AI 적용 가능성', header: true },
-                    { content: 'AI 도입·활용 필요도', header: true, className: 'w-[180px]' },
+                    { content: 'AI도입·활용 필요도', header: true, className: 'w-[180px]' },
                     { content: '훈련 선정', header: true, className: 'w-[90px]' },
                   ],
                 },
@@ -202,7 +202,7 @@ export function TabPBLTasks({ interview, linkedRoadmap, readOnly, onEdit }: TabP
 
       {/* Ⅲ-3-나 필요성 (선정 사유) */}
       <SectionCard
-        title="Ⅲ-3-나. AI기반 문제해결 필요성 (선정 사유)"
+        title="Ⅲ-3-나. AI기반 문제해결의 필요성 (선정 사유)"
         description="인터뷰 입력 (DRAFT 인라인 편집)"
         dataSource="user"
       >
@@ -213,7 +213,7 @@ export function TabPBLTasks({ interview, linkedRoadmap, readOnly, onEdit }: TabP
           }}
           readOnly={readOnly}
           multiline
-          placeholder="AI기반 문제해결 필요성(선정 사유)이 입력되지 않았습니다."
+          placeholder="AI기반 문제해결의 필요성(선정 사유)이 입력되지 않았습니다."
         />
       </SectionCard>
 

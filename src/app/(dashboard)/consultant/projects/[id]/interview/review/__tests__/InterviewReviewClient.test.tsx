@@ -257,9 +257,9 @@ describe('InterviewReviewClient', () => {
       expect(
         screen.getByRole('heading', { name: 'AI PBL 인터뷰 검토', level: 1 })
       ).toBeInTheDocument();
-      expect(screen.getByText(/Ⅰ-1. 훈련과정 개요/)).toBeInTheDocument();
-      expect(screen.getByText(/Ⅱ-1. 기업 이슈/)).toBeInTheDocument();
-      expect(screen.getByText(/Ⅲ-3·Ⅲ-4/)).toBeInTheDocument();
+      expect(screen.getByText(/Ⅰ\. 훈련과정 개요/)).toBeInTheDocument();
+      expect(screen.getByText(/Ⅱ-1. 기업 경영 이슈/)).toBeInTheDocument();
+      expect(screen.getByText(/Ⅲ-3\. 훈련대상 업무/)).toBeInTheDocument();
     });
 
     it('Ⅰ-1 훈련과정명 인라인 편집 시 editInterviewFieldPbl 호출', async () => {
@@ -275,7 +275,7 @@ describe('InterviewReviewClient', () => {
         />
       );
       // #3 이후: PBL Ⅰ-1 카드도 default 닫힘 → 헤더 클릭으로 펼친 후 첫 행 값 편집
-      await user.click(screen.getByText(/Ⅰ-1\. 훈련과정 개요/));
+      await user.click(screen.getByText(/Ⅰ\. 훈련과정 개요/));
       await user.click(screen.getByText('PBL 과정'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);
@@ -295,7 +295,7 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />
       );
-      await user.click(screen.getByText(/Ⅱ-2\. 훈련 환경/));
+      await user.click(screen.getByText(/Ⅱ-3-a\. 훈련 환경/));
       // 환경 텍스트가 노출됨
       expect(screen.getByText('환경')).toBeInTheDocument();
     });
@@ -312,7 +312,7 @@ describe('InterviewReviewClient', () => {
         />
       );
       // problemDefinitionSheet 가 전부 빈 문자열이면 안내 문구 표시
-      await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
+      await user.click(screen.getByText(/Ⅲ-2\. 문제 정의서/));
       expect(screen.getByText(/문제 정의서가 입력되지 않았습니다/)).toBeInTheDocument();
     });
 
@@ -336,7 +336,7 @@ describe('InterviewReviewClient', () => {
           latestResult={baseLatestResult}
         />
       );
-      await user.click(screen.getByText(/Ⅲ-2-가\. 문제 정의서/));
+      await user.click(screen.getByText(/Ⅲ-2\. 문제 정의서/));
       expect(screen.getByText('PBL 핵심 문제')).toBeInTheDocument();
     });
 
@@ -536,7 +536,7 @@ describe('InterviewReviewClient', () => {
         />
       );
       // Ⅰ-3 카드 펼치기 (selectedTask = '데이터 분석' 노출)
-      await user.click(screen.getByText(/Ⅰ-3\. 수립 주요 결과/));
+      await user.click(screen.getByText(/Ⅰ-3\. AI훈련로드맵 수립 주요 결과/));
       await user.click(screen.getByText('데이터 분석'));
       const inputs = screen.getAllByRole('textbox');
       await user.clear(inputs[0]);

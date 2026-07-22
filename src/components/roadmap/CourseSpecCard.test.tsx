@@ -73,6 +73,20 @@ describe('CourseSpecCard', () => {
       expect(screen.queryByText('훈련형태')).not.toBeInTheDocument();
     });
 
+    // --- 정본 정합: 명세서 행 라벨 붙여쓰기 (roadmap.hwpx 본문) ---
+    it('훈련목표·훈련대상 라벨이 정본 문구(붙여쓰기)와 일치한다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} />);
+      expect(screen.getByText('훈련목표')).toBeInTheDocument();
+      expect(screen.getByText('훈련대상')).toBeInTheDocument();
+      expect(screen.queryByText('훈련 목표')).not.toBeInTheDocument();
+      expect(screen.queryByText('훈련 대상')).not.toBeInTheDocument();
+    });
+
+    it('교과목 표의 시간 컬럼 헤더가 정본 문구 "훈련시간"이다', () => {
+      render(<CourseSpecCard spec={makeSpec()} index={0} />);
+      expect(screen.getByText('훈련시간')).toBeInTheDocument();
+    });
+
     it('명세서 인덱스 배지를 렌더링한다', () => {
       render(<CourseSpecCard spec={makeSpec()} index={2} />);
       expect(screen.getByText('명세서 #3')).toBeInTheDocument();

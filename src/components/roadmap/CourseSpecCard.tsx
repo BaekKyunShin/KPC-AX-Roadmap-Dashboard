@@ -82,9 +82,9 @@ const PROFILE_ROWS: ProfileRow[] = [
   { key: 'training_level', label: '훈련수준', icon: GraduationCap },
   { key: 'training_method', label: '훈련방법', icon: BookOpen },
   { key: 'recommended_program', label: '추천 훈련사업', icon: Wrench },
-  { key: 'goal', label: '훈련 목표', icon: Target },
+  { key: 'goal', label: '훈련목표', icon: Target },
   { key: 'main_content', label: '주요 훈련 내용', icon: FileText },
-  { key: 'target_audience', label: '훈련 대상', icon: Users },
+  { key: 'target_audience', label: '훈련대상', icon: Users },
 ];
 
 const TRAINING_LEVEL_OPTIONS: TrainingLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
@@ -374,7 +374,7 @@ function SubjectsSection({
                   scope="col"
                   className="w-[90px] px-3 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                 >
-                  시간
+                  훈련시간
                 </th>
                 {canEdit && (
                   <th
@@ -476,8 +476,8 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
         canEdit={canEdit}
         value={subject.hours}
         onChange={(v) => onUpdate(sIdx, { hours: v })}
-        placeholder="시간"
-        ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 시간`}
+        placeholder="훈련시간"
+        ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 훈련시간`}
       />
 
       {canEdit && (

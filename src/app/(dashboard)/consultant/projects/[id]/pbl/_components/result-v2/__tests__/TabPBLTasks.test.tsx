@@ -61,8 +61,10 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
       />
     );
     expect(screen.getByText(/Ⅲ-2-가\. 문제 정의서/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-3-가\. 훈련대상 과업 선정/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅲ-3-나\. AI기반 문제해결 필요성/)).toBeInTheDocument();
+    // 정본 정합: 문구 "훈련대상 업무 선정"(구 "과업 선정"), 번호 Ⅲ-3-가 유지
+    expect(screen.getByText(/Ⅲ-3-가\. 훈련대상 업무 선정/)).toBeInTheDocument();
+    // 정본 정합: "AI기반 문제해결의 필요성"(구 "문제해결 필요성")
+    expect(screen.getByText(/Ⅲ-3-나\. AI기반 문제해결의 필요성/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅲ-3-다\. 훈련대상 업무 세부내용/)).toBeInTheDocument();
   });
 
@@ -113,6 +115,9 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
         onEdit={vi.fn()}
       />
     );
+    // 정본 정합 컬럼 헤더: "현행 방식"(구 "현행 방식 (As-Is)"), "AI도입·활용 필요도"(구 공백 포함)
+    expect(screen.getByText('현행 방식')).toBeInTheDocument();
+    expect(screen.getByText('AI도입·활용 필요도')).toBeInTheDocument();
     // 로드맵 과업 4열 (직무·과업·현행·개선점)
     expect(screen.getByText('품질관리')).toBeInTheDocument();
     expect(screen.getByText('외관 검사')).toBeInTheDocument();

@@ -139,7 +139,7 @@ describe('TabTraining (Ⅲ. 훈련실시 계획 제안 — 양식 v2)', () => {
       const onEdit = vi.fn().mockResolvedValue(undefined);
       render(<TabTraining version={makeVersion()} readOnly={false} onEdit={onEdit} />);
 
-      const goalInput = screen.getByLabelText('명세서 1 훈련 목표');
+      const goalInput = screen.getByLabelText('명세서 1 훈련목표');
       fireEvent.change(goalInput, { target: { value: '실무' } });
       fireEvent.change(goalInput, { target: { value: '실무 적용' } });
       fireEvent.change(goalInput, { target: { value: '실무 적용 역량' } });

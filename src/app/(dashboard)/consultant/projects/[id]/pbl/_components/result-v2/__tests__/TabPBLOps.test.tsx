@@ -83,8 +83,8 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
   it('9개 하위 섹션 렌더 (Ⅳ-1 / Ⅳ-2 성과분석 / Ⅳ-3 AI도구 / Ⅳ-4-가 ~ Ⅳ-4-마 / Ⅳ-5-가)', () => {
     render(<TabPBLOps version={makeEmptyVersion()} interview={{}} readOnly onEdit={vi.fn()} />);
     expect(screen.getByText(/Ⅳ-1\. 훈련 목표/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅳ-2\. 성과분석 측정지표/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅳ-3\. AI 도구 활용 계획/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅳ-2\. 성과분석 측정 지표/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅳ-3\. AI도구 활용 계획/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅳ-4-가\. 훈련과정 개요/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅳ-4-나\. 학습그룹 구성/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅳ-4-다\. 훈련 교과목 프로파일/)).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     const v = makeFilledVersion();
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
     // sample fixture: selected_goals ["불량률 감소", "공정 최적화"] + 정량/정성 지표
-    expect(screen.getByText(/Ⅳ-2\. 성과분석 측정지표/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅳ-2\. 성과분석 측정 지표/)).toBeInTheDocument();
     expect(screen.getByText('불량률 감소')).toBeInTheDocument();
     expect(screen.getByText('공정 최적화')).toBeInTheDocument();
     expect(screen.getByText('정량 지표')).toBeInTheDocument();
@@ -107,11 +107,11 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
 
   it('Ⅳ-2 성과분석 — outcome_metrics 가 비어 있으면 placeholder 표출', () => {
     render(<TabPBLOps version={makeEmptyVersion()} interview={{}} readOnly onEdit={vi.fn()} />);
-    const card = screen.getByText('Ⅳ-2. 성과분석 측정지표').closest('div');
+    const card = screen.getByText('Ⅳ-2. 성과분석 측정 지표').closest('div');
     expect(card).not.toBeNull();
     // 빈 지표 → RegeneratePlaceholder 노출
     expect(
-      screen.getByText(/Ⅳ-2 성과분석 측정지표 가 아직 생성되지 않았습니다/)
+      screen.getByText(/Ⅳ-2 성과분석 측정 지표 가 아직 생성되지 않았습니다/)
     ).toBeInTheDocument();
   });
 
@@ -194,13 +194,13 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     expect(within(periodRow as HTMLTableRowElement).getByText('-')).toBeInTheDocument();
   });
 
-  it('Ⅳ-4-라 — 시설·장비 5컬럼 표 렌더 (No / 구분 / 명칭 / 규격 / 위치)', () => {
+  it('Ⅳ-4-라 — 시설·장비 5컬럼 표 렌더 (연번 / 구분 / 시설명 / 규격(사양) / 위치)', () => {
     const v = makeFilledVersion();
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
-    // 헤더 라벨 5개
-    expect(screen.getByText('No')).toBeInTheDocument();
-    expect(screen.getByText('명칭')).toBeInTheDocument();
-    expect(screen.getByText('규격')).toBeInTheDocument();
+    // 헤더 라벨 5개 (정본 정합: 연번 / 시설명 / 규격(사양))
+    expect(screen.getByText('연번')).toBeInTheDocument();
+    expect(screen.getByText('시설명')).toBeInTheDocument();
+    expect(screen.getByText('규격(사양)')).toBeInTheDocument();
     expect(screen.getByText('위치')).toBeInTheDocument();
     // 첫 facility 데이터 (sample fixture: '교육장' / '30인 수용 가능' / '본사 3층')
     expect(screen.getByRole('cell', { name: '교육장' })).toBeInTheDocument();
@@ -213,9 +213,10 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
     // 헤더 라벨 5개 (Ⅳ-3-마 고유 라벨 — '성명'은 Ⅳ-3-나 와 공유)
     expect(screen.getAllByText('성명').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('경력(년)')).toBeInTheDocument();
-    expect(screen.getByText('담당 업무')).toBeInTheDocument();
-    expect(screen.getByText('세부 훈련 내용')).toBeInTheDocument();
+    // 정본 정합: 업무경력 / 업무명 / 세부 교육훈련 내용
+    expect(screen.getByText('업무경력')).toBeInTheDocument();
+    expect(screen.getByText('업무명')).toBeInTheDocument();
+    expect(screen.getByText('세부 교육훈련 내용')).toBeInTheDocument();
     // 첫 강사 데이터 (sample fixture)
     expect(screen.getAllByRole('cell', { name: '김AI컨설턴트' })[0]).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '10년' })).toBeInTheDocument();
@@ -233,7 +234,7 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     // 헤더 라벨 6개 (Ⅳ-3-나 고유 라벨)
     expect(screen.getByText('유형')).toBeInTheDocument();
     expect(screen.getByText('역할')).toBeInTheDocument();
-    expect(screen.getByText('소속')).toBeInTheDocument();
+    expect(screen.getByText('소속(부서)')).toBeInTheDocument();
     expect(screen.getByText('직위')).toBeInTheDocument();
     // 구분 컬럼 라벨 — Python 측 _placeholders_pbl.py:471/482 와 동일 ("훈련 강사" / "훈련생")
     expect(screen.getAllByRole('cell', { name: '훈련 강사' }).length).toBeGreaterThanOrEqual(1);
@@ -277,16 +278,16 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     const v = makeFilledVersion();
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
     // 메타 mini-table 헤더 라벨
-    expect(screen.getByText('전체 훈련시간')).toBeInTheDocument();
-    expect(screen.getByText('훈련 목표')).toBeInTheDocument();
-    expect(screen.getByText('활용 AI 도구')).toBeInTheDocument();
+    expect(screen.getByText('총 훈련시간(h)')).toBeInTheDocument();
+    expect(screen.getByText('훈련목표')).toBeInTheDocument();
+    expect(screen.getByText('활용 AI도구')).toBeInTheDocument();
     expect(screen.getByText('활용 데이터')).toBeInTheDocument();
-    expect(screen.getByText('분석 방법')).toBeInTheDocument();
-    expect(screen.getByText('합계 (자동 산출)')).toBeInTheDocument();
+    expect(screen.getByText('분석방법')).toBeInTheDocument();
+    expect(screen.getByText('전체시간')).toBeInTheDocument();
     // training_contents 표 헤더
     expect(screen.getByText('업무(단원)명')).toBeInTheDocument();
     expect(screen.getByText('세부 내용')).toBeInTheDocument();
-    expect(screen.getByText('훈련시간(H)')).toBeInTheDocument();
+    expect(screen.getByText('훈련 시간(H)')).toBeInTheDocument();
     expect(screen.getByText('외부 강사 (H)')).toBeInTheDocument();
     expect(screen.getByText('내부 강사 (H)')).toBeInTheDocument();
     // 첫 training_content 데이터 (sample fixture)
@@ -296,7 +297,7 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
   it('Ⅳ-4-다 — training_goals 가 bullet "• " 머리기호로 렌더', () => {
     const v = makeFilledVersion();
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
-    const goalsHeader = screen.getByText('훈련 목표');
+    const goalsHeader = screen.getByText('훈련목표');
     const goalsRow = goalsHeader.closest('tr');
     expect(goalsRow).not.toBeNull();
     const goalsCellText =
@@ -318,7 +319,7 @@ describe('TabPBLOps (Ⅳ. AI 기반 운영계획)', () => {
     render(<TabPBLOps version={v} interview={{}} readOnly onEdit={vi.fn()} />);
     expect(screen.getByText('교과목 행이 아직 입력되지 않았습니다.')).toBeInTheDocument();
     // 메타 표는 정상 렌더
-    expect(screen.getByText('전체 훈련시간')).toBeInTheDocument();
+    expect(screen.getByText('총 훈련시간(h)')).toBeInTheDocument();
   });
 
   it('Ⅳ-4 5 영역 모두 <caption> 노드 (sr-only) 를 가진다 — a11y', () => {

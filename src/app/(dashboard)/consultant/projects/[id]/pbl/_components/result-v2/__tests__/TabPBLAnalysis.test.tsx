@@ -95,14 +95,17 @@ const interview: Partial<ResultPBLInterviewSnapshot> = {
 };
 
 describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
-  it('4개 하위 섹션 렌더 — Ⅱ-1-가 / Ⅱ-2 / Ⅱ-3-가 / Ⅱ-3-나 (Phase E: Ⅱ-1-나 조직 섹션 제거)', () => {
+  it('4개 하위 섹션 렌더 — Ⅱ-1 / Ⅱ-3-a / Ⅱ-1-가 / Ⅱ-1-다 (정본 번호 정합, Phase E: 조직 섹션 제거)', () => {
     render(<TabPBLAnalysis version={null} interview={interview} readOnly onEdit={vi.fn()} />);
-    expect(screen.getByText(/Ⅱ-1-가\. 기업 경영 이슈/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-2\. 기업 훈련환경 분석/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-3-가\. HRD이음 컨설팅 결과 보고서/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-3-나\. AI훈련과정 개발 필요성/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-1\. 기업 경영 이슈/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-3-a\. 기업 훈련환경 분석/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-1-가\. HRD이음 컨설팅 결과 보고서/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-1-다\. AI훈련과정 개발 필요성/)).toBeInTheDocument();
+    // 정본 정합: 훈련환경 표 행라벨 (구 AI 인프라 / AI훈련 요구분석)
+    expect(screen.getByText('AI활용 가능 인프라')).toBeInTheDocument();
+    expect(screen.getByText('AI훈련 요구분석 결과')).toBeInTheDocument();
     // Ⅱ-1-나 조직 섹션은 더 이상 렌더되지 않음 (로드맵과 동일 패턴)
-    expect(screen.queryByText(/Ⅱ-1-나\. 조직 및 주요 업무/)).toBeNull();
+    expect(screen.queryByText(/조직 및 주요 업무/)).toBeNull();
   });
 
   it('HRD이음 PDF 링크 + iframe 미리보기 렌더', () => {
@@ -152,7 +155,7 @@ describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
       )
     ).toBeInTheDocument();
     // 기존 PBL 자체 입력 섹션은 여전히 렌더
-    expect(screen.getByText(/Ⅱ-1-가\. 기업 경영 이슈/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-1\. 기업 경영 이슈/)).toBeInTheDocument();
   });
 
   it('linkedRoadmap 연계 시 6개 로드맵 섹션(읽기 전용)을 표출한다', () => {

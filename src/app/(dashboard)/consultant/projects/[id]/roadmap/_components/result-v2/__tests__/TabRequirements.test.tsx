@@ -47,9 +47,9 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
     render(
       <TabRequirements version={null} interview={interview} readOnly={false} onEdit={vi.fn()} />
     );
-    expect(screen.getByText(/Ⅱ-1\. HRD이음 진단 보고서/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-1\. 기업 AI 역량 수준 진단/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅱ-2\. 기업 요구분석/)).toBeInTheDocument();
-    expect(screen.getByText(/Ⅱ-3\. 과업·워크플로우 분석/)).toBeInTheDocument();
+    expect(screen.getByText(/Ⅱ-3\. 과업\(Task\)·워크플로우 분석표/)).toBeInTheDocument();
     // 양식 v2 — Ⅱ-4 명칭 "AI 적용 대상 과업(Task)·워크플로우 선정"
     expect(screen.getByText(/Ⅱ-4\. AI 적용 대상 과업\(Task\)·워크플로우 선정/)).toBeInTheDocument();
   });
@@ -92,6 +92,23 @@ describe('TabRequirements (Ⅱ. 요구분석)', () => {
     expect(screen.getByText('가장 큰 불량 원인')).toBeInTheDocument();
     expect(screen.getByText('수작업 3인 2시간')).toBeInTheDocument();
     expect(screen.getByText('자동 검사 10분')).toBeInTheDocument();
+  });
+
+  // 정본 정합 — Ⅱ-3 표 컬럼 헤더가 roadmap.hwpx 본문 문구와 글자 그대로 일치
+  it('Ⅱ-3 표 컬럼 헤더가 정본 문구(과업(Task)·현행 방식·개선점 부제)와 일치', () => {
+    render(<TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />);
+    expect(screen.getByText('과업(Task)')).toBeInTheDocument();
+    expect(screen.getByText('현행 방식')).toBeInTheDocument();
+    expect(screen.getByText('개선점 및 AI 적용 가능성')).toBeInTheDocument();
+    // 개선점 컬럼 부제 (정본: 데이터 발생 여부 또는 보유현황)
+    expect(screen.getByText('(데이터 발생 여부 또는 보유현황)')).toBeInTheDocument();
+  });
+
+  // 정본 정합 — Ⅱ-4 행 헤더가 roadmap.hwpx 본문 문구와 글자 그대로 일치
+  it('Ⅱ-4 행 헤더가 정본 문구(AI 적용 대상 과업·선정사유)와 일치', () => {
+    render(<TabRequirements version={null} interview={interview} readOnly onEdit={vi.fn()} />);
+    expect(screen.getByText('AI 적용 대상 과업')).toBeInTheDocument();
+    expect(screen.getByText('선정사유')).toBeInTheDocument();
   });
 
   it('HRD PDF 가 null 이면 안내 메시지 표시 + iframe 없음', () => {

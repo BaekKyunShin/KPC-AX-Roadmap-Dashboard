@@ -101,7 +101,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
 
       {/* Ⅳ-2 성과분석 측정지표 (v1 Ⅴ장에서 이동 — operation_plan.outcome_metrics) */}
       <SectionCard
-        title="Ⅳ-2. 성과분석 측정지표"
+        title="Ⅳ-2. 성과분석 측정 지표"
         description="선택 훈련 목표 + 정량·정성 측정 지표 (LLM 생성, v1 Ⅴ장에서 이동)"
         dataSource="ai"
       >
@@ -155,13 +155,13 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             />
           </div>
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-2 성과분석 측정지표" />
+          <RegeneratePlaceholder section="Ⅳ-2 성과분석 측정 지표" />
         )}
       </SectionCard>
 
       {/* Ⅳ-3 AI 도구 활용 계획 */}
       <SectionCard
-        title="Ⅳ-3. AI 도구 활용 계획"
+        title="Ⅳ-3. AI도구 활용 계획"
         description="단계별 주요활동 · AI 도구 · 데이터 · 목적 · 방법 (LLM 생성)"
         dataSource="ai"
       >
@@ -179,7 +179,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             ))}
           </ul>
         ) : (
-          <RegeneratePlaceholder section="Ⅳ-3 AI 도구 활용 계획" />
+          <RegeneratePlaceholder section="Ⅳ-3 AI도구 활용 계획" />
         )}
       </SectionCard>
 
@@ -233,7 +233,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                   { content: '구분', header: true, className: 'w-[100px]' },
                   { content: '유형', header: true, className: 'w-[80px]' },
                   { content: '역할', header: true, className: 'w-[80px]' },
-                  { content: '소속', header: true },
+                  { content: '소속(부서)', header: true },
                   { content: '직위', header: true, className: 'w-[140px]' },
                   { content: '성명', header: true, className: 'w-[120px]' },
                 ],
@@ -271,7 +271,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                       },
                       { content: '세부 내용', header: true },
                       {
-                        content: '훈련시간(H)',
+                        content: '훈련 시간(H)',
                         header: true,
                         className: 'w-[100px]',
                       },
@@ -350,10 +350,10 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
             headerRows={[
               {
                 cells: [
-                  { content: 'No', header: true, className: 'w-[60px]' },
+                  { content: '연번', header: true, className: 'w-[60px]' },
                   { content: '구분', header: true, className: 'w-[100px]' },
-                  { content: '명칭', header: true, className: 'w-[200px]' },
-                  { content: '규격', header: true },
+                  { content: '시설명', header: true, className: 'w-[200px]' },
+                  { content: '규격(사양)', header: true },
                   { content: '위치', header: true, className: 'w-[180px]' },
                 ],
               },
@@ -387,9 +387,9 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                 cells: [
                   { content: '성명', header: true, className: 'w-[120px]' },
                   { content: '구분', header: true, className: 'w-[100px]' },
-                  { content: '경력(년)', header: true, className: 'w-[100px]' },
-                  { content: '담당 업무', header: true, className: 'w-[200px]' },
-                  { content: '세부 훈련 내용', header: true },
+                  { content: '업무경력', header: true, className: 'w-[100px]' },
+                  { content: '업무명', header: true, className: 'w-[200px]' },
+                  { content: '세부 교육훈련 내용', header: true },
                 ],
               },
             ]}
@@ -464,7 +464,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
         },
         {
           cells: [
-            { content: '전체 훈련시간', header: true },
+            { content: '총 훈련시간(h)', header: true },
             {
               content: profile.total_hours != null ? `${profile.total_hours} 시간` : '-',
               align: 'left',
@@ -473,7 +473,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
         },
         {
           cells: [
-            { content: '훈련 목표', header: true },
+            { content: '훈련목표', header: true },
             {
               content: (
                 <span className="whitespace-pre-wrap text-sm">
@@ -486,7 +486,7 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
         },
         {
           cells: [
-            { content: '활용 AI 도구', header: true },
+            { content: '활용 AI도구', header: true },
             {
               content: (
                 <span className="whitespace-pre-wrap text-sm">
@@ -505,13 +505,13 @@ function SubjectProfileMetaTable({ profile }: { profile: PBLSubjectProfile }) {
         },
         {
           cells: [
-            { content: '분석 방법', header: true },
+            { content: '분석방법', header: true },
             { content: profile.analysis_method || '-', align: 'left' },
           ],
         },
         {
           cells: [
-            { content: '합계 (자동 산출)', header: true },
+            { content: '전체시간', header: true },
             {
               content: profile.total_sum_hours != null ? `${profile.total_sum_hours} 시간` : '-',
               align: 'left',

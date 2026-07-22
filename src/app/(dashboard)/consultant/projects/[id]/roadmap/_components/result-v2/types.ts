@@ -24,7 +24,7 @@ import type { RoadmapVersionUI } from '@/types/roadmap-ui';
  *  - Interview 원본 (interviews): `company_requirements` · `task_analysis*` · `target_task`
  */
 export interface RoadmapResultEditPayload {
-  // Ⅰ-1 수립 배경 (인터뷰 입력값 복사본, 편집 가능)
+  // Ⅰ-1 수립 필요성 (인터뷰 입력값 복사본, 편집 가능)
   setup_necessity?: string;
   // Ⅰ-3 수립 주요 결과 요약 (LLM 생성 — outcome_summary.main_content 하위 필드)
   main_content?: string;

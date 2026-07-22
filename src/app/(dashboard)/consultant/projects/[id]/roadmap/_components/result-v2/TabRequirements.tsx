@@ -30,7 +30,7 @@ export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps)
     <div className="space-y-6">
       {/* Ⅱ-1 HRD이음 PDF */}
       <SectionCard
-        title="Ⅱ-1. HRD이음 진단 보고서"
+        title="Ⅱ-1. 기업 AI 역량 수준 진단"
         description="훈련수요 진단 보고서 PDF 첨부 (인터뷰에서 업로드, LLM 내부 분석용)"
         dataSource="user"
       >
@@ -142,21 +142,31 @@ export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps)
 
       {/* Ⅱ-3 과업·워크플로우 분석표 (양식 v2: 6열 → 4열) */}
       <SectionCard
-        title="Ⅱ-3. 과업·워크플로우 분석"
+        title="Ⅱ-3. 과업(Task)·워크플로우 분석표"
         description="직무별 과업 현행(As-Is) / 개선점 및 AI 적용 가능성"
         dataSource="user"
       >
         {tasks.length > 0 ? (
           <div className="overflow-x-auto">
             <FormTable
-              caption="과업·워크플로우 분석표"
+              caption="과업(Task)·워크플로우 분석표"
               headerRows={[
                 {
                   cells: [
                     { content: '직무', header: true },
-                    { content: '과업', header: true },
-                    { content: '현행 (As-Is)', header: true },
-                    { content: '개선점 및 AI 적용 가능성', header: true },
+                    { content: '과업(Task)', header: true },
+                    { content: '현행 방식', header: true },
+                    {
+                      content: (
+                        <>
+                          <span>개선점 및 AI 적용 가능성</span>
+                          <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground/80">
+                            (데이터 발생 여부 또는 보유현황)
+                          </span>
+                        </>
+                      ),
+                      header: true,
+                    },
                   ],
                 },
               ]}
@@ -259,11 +269,11 @@ export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps)
         dataSource="user"
       >
         <FormTable
-          caption="훈련대상 과업 선정"
+          caption="AI 적용 대상 과업(Task)·워크플로우 선정"
           bodyRows={[
             {
               cells: [
-                { content: '훈련대상 과업명', header: true, className: 'w-[160px]' },
+                { content: 'AI 적용 대상 과업', header: true, className: 'w-[160px]' },
                 {
                   content: (
                     <InlineEditField
@@ -274,7 +284,7 @@ export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps)
                         });
                       }}
                       readOnly={readOnly}
-                      placeholder="훈련대상 과업명이 없습니다."
+                      placeholder="AI 적용 대상 과업이 없습니다."
                     />
                   ),
                   align: 'left',
@@ -283,7 +293,7 @@ export function TabRequirements({ interview, readOnly, onEdit }: TabCommonProps)
             },
             {
               cells: [
-                { content: '선정 사유', header: true },
+                { content: '선정사유', header: true },
                 {
                   content: (
                     <InlineEditField

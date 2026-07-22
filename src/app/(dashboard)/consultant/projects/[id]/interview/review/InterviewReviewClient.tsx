@@ -162,7 +162,10 @@ function ReviewSectionRoadmap({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅰ-3. 수립 주요 결과 (AI 수준 · 선정 과업)" {...sigProps}>
+      <CollapsibleSection
+        title="Ⅰ-3. AI훈련로드맵 수립 주요 결과 (AI 수준 · 선정 과업)"
+        {...sigProps}
+      >
         <p className="text-sm">
           AI 수준: <strong>{data.aiLevel ?? '미정'}</strong>
         </p>
@@ -178,7 +181,7 @@ function ReviewSectionRoadmap({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. HRD이음 PDF" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1. 기업 AI 역량 수준 진단" {...sigProps}>
         <p className="text-sm">
           {data.hrdReportPdf?.fileName
             ? `첨부 파일: ${data.hrdReportPdf.fileName}`
@@ -216,7 +219,7 @@ function ReviewSectionRoadmap({
       </CollapsibleSection>
 
       <CollapsibleSection
-        title={`Ⅱ-3. 과업·워크플로우 분석 (${(data.taskAnalysis ?? []).length}건)`}
+        title={`Ⅱ-3. 과업(Task)·워크플로우 분석표 (${(data.taskAnalysis ?? []).length}건)`}
         {...sigProps}
       >
         {(data.taskAnalysis ?? []).length > 0 ? (
@@ -233,7 +236,7 @@ function ReviewSectionRoadmap({
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-4. AI 적용 대상 과업·워크플로우 선정" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-4. AI 적용 대상 과업(Task)·워크플로우 선정" {...sigProps}>
         <div className="space-y-3">
           <TargetTaskRow
             label="과업명"
@@ -242,21 +245,21 @@ function ReviewSectionRoadmap({
             value={data.targetTask?.name ?? ''}
           />
           <TargetTaskRow
-            label="선정 사유"
+            label="선정사유"
             projectId={projectId}
             field="reason"
             value={data.targetTask?.reason ?? ''}
             multiline
           />
           <TargetTaskRow
-            label="기대 효과 As-Is"
+            label="기대효과 As-Is"
             projectId={projectId}
             field="expectedAsIs"
             value={data.targetTask?.expectedAsIs ?? ''}
             multiline
           />
           <TargetTaskRow
-            label="기대 효과 To-Be"
+            label="기대효과 To-Be"
             projectId={projectId}
             field="expectedToBe"
             value={data.targetTask?.expectedToBe ?? ''}
@@ -295,7 +298,7 @@ function ReviewSectionPbl({
   const sigProps = { expandSignal, collapseSignal };
   return (
     <div className="space-y-4">
-      <CollapsibleSection title="Ⅰ-1. 훈련과정 개요" {...sigProps}>
+      <CollapsibleSection title="Ⅰ. 훈련과정 개요" {...sigProps}>
         <div className="space-y-3">
           <PblOverviewRow
             label="훈련과정명"
@@ -310,7 +313,7 @@ function ReviewSectionPbl({
             value={data.companyName ?? ''}
           />
           <PblOverviewRow
-            label="훈련대상"
+            label="훈련생"
             projectId={projectId}
             field="trainingTarget"
             value={data.trainingTarget ?? ''}
@@ -325,9 +328,9 @@ function ReviewSectionPbl({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-1. 기업 이슈" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1. 기업 경영 이슈" {...sigProps}>
         <PblOverviewRow
-          label="기업 이슈"
+          label="기업 경영 이슈"
           projectId={projectId}
           field="companyIssues"
           value={data.companyIssues ?? ''}
@@ -335,7 +338,7 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-2. 훈련 환경" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-3-a. 훈련 환경" {...sigProps}>
         {/* R8 PBL-자체-02 — 정형 객체. 인라인 편집은 인터뷰 페이지에서 (검토는 read-only 요약). */}
         {(() => {
           const env = data.trainingEnv;
@@ -378,7 +381,7 @@ function ReviewSectionPbl({
         </p>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅱ-3. 교과목 필요성" {...sigProps}>
+      <CollapsibleSection title="Ⅱ-1-다. 교과목 필요성" {...sigProps}>
         <PblOverviewRow
           label="교과목 필요성"
           projectId={projectId}
@@ -388,7 +391,7 @@ function ReviewSectionPbl({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅲ-2-가. 문제 정의서" {...sigProps}>
+      <CollapsibleSection title="Ⅲ-2. 문제 정의서" {...sigProps}>
         {/* R8 PBL-자체-04 — 양식 5×2 표 4 정형 항목 (배경/핵심/범위/제약) 단일 세트.
             모든 필드가 빈 문자열이면 안내문 표시, 한 항목이라도 채워지면 4 라벨 노출. */}
         {(() => {
@@ -419,7 +422,7 @@ function ReviewSectionPbl({
         })()}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Ⅲ-3·Ⅲ-4. 훈련대상 업무 · AI 수준" {...sigProps}>
+      <CollapsibleSection title="Ⅲ-3. 훈련대상 업무" {...sigProps}>
         <p className="text-sm text-muted-foreground">
           상세 내용은 인터뷰 페이지에서 확인·수정하세요.
         </p>

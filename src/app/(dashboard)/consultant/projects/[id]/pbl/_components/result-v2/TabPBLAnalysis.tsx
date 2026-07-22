@@ -22,10 +22,10 @@ import type { TabPBLCommonProps } from './types';
  * 구성:
  *  - 선행 로드맵 연동 (읽기 전용) — 수립 배경·주요 활동·수립 결과(AI역량 3단계)·
  *    기업 요구분석·과업분석표·훈련대상 과업. 미연계 시 안내 배너.
- *  - Ⅱ-1-가 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
- *  - Ⅱ-2 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
- *  - Ⅱ-3-가 HRD이음 결과 PDF — iframe 미리보기 (로드맵 결과 V2 Ⅱ-1 과 동일 UX).
- *  - Ⅱ-3-나 AI훈련과정 개발 필요성 — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅱ-1 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
+ *  - Ⅱ-3-a 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
+ *  - Ⅱ-1-가 HRD이음 결과 PDF — iframe 미리보기 (로드맵 결과 V2 Ⅱ-1 과 동일 UX).
+ *  - Ⅱ-1-다 AI훈련과정 개발 필요성 — 인터뷰 입력. DRAFT 인라인 편집.
  *
  * Phase E: Ⅱ-1-나 조직 및 주요 업무 — 로드맵과 동일하게 인터뷰/결과/HWPX
  * 3 계층에서 제거. 양식의 P-04 표는 한컴오피스 사용자가 직접 작성.
@@ -42,9 +42,9 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
       {/* 선행 로드맵 연동 (읽기 전용) — Ⅱ장 로드맵 수립·요구분석 자동 연계 */}
       <LinkedRoadmapReadonly linkedRoadmap={linkedRoadmap} />
 
-      {/* Ⅱ-1-가 기업 경영 이슈 */}
+      {/* Ⅱ-1 기업 경영 이슈 */}
       <SectionCard
-        title="Ⅱ-1-가. 기업 경영 이슈"
+        title="Ⅱ-1. 기업 경영 이슈"
         description="bullet 서술 (인터뷰 입력)"
         dataSource="user"
       >
@@ -62,9 +62,9 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
       {/* Ⅱ-1-나 조직 및 주요 업무 — Phase E: 로드맵과 동일하게 인터뷰/결과/HWPX
           3 계층에서 제거. 양식의 P-04 표는 한컴오피스 사용자가 직접 작성. */}
 
-      {/* Ⅱ-2 기업 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 6 영역) */}
+      {/* Ⅱ-3-a 기업 훈련환경 분석 (R8 PBL-자체-02 — 12×7 정형 6 영역) */}
       <SectionCard
-        title="Ⅱ-2. 기업 훈련환경 분석"
+        title="Ⅱ-3-a. 기업 훈련환경 분석"
         description="양식 12×7 정형 표 — 적정 훈련시간 · 훈련장소(사내/사외) · 사내·외부 강사 · AI 인프라"
         dataSource="user"
       >
@@ -105,7 +105,7 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
                   },
                   {
                     cells: [
-                      { content: 'AI 인프라', header: true, align: 'center' },
+                      { content: 'AI활용 가능 인프라', header: true, align: 'center' },
                       { content: env.aiInfrastructure || '-', align: 'left' },
                     ],
                   },
@@ -205,7 +205,7 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
                       },
                       {
                         cells: [
-                          { content: 'AI훈련 요구분석', header: true, align: 'center' },
+                          { content: 'AI훈련 요구분석 결과', header: true, align: 'center' },
                           {
                             content: (
                               <InlineEditField
@@ -269,9 +269,9 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
         })()}
       </SectionCard>
 
-      {/* Ⅱ-3-가 HRD이음 PDF */}
+      {/* Ⅱ-1-가 HRD이음 PDF */}
       <SectionCard
-        title="Ⅱ-3-가. HRD이음 컨설팅 결과 보고서"
+        title="Ⅱ-1-가. HRD이음 컨설팅 결과 보고서"
         description="HRD이음 컨설팅 결과 PDF 첨부 (인터뷰에서 업로드, LLM 내부 분석용)"
         dataSource="user"
       >
@@ -313,9 +313,9 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
         )}
       </SectionCard>
 
-      {/* Ⅱ-3-나 AI훈련과정 개발 필요성 */}
+      {/* Ⅱ-1-다 AI훈련과정 개발 필요성 */}
       <SectionCard
-        title="Ⅱ-3-나. AI훈련과정 개발 필요성"
+        title="Ⅱ-1-다. AI훈련과정 개발 필요성"
         description="인터뷰 입력 (HRD이음 PDF 미첨부 시 필수)"
         dataSource="user"
       >
