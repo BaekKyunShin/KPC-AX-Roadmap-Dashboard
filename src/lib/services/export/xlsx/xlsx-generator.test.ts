@@ -84,6 +84,17 @@ function findLabelValue(ws: XLSX.WorkSheet, label: string): unknown {
   return undefined;
 }
 
+/** 시트 전체에서 특정 값이 어느 셀에든 존재하는지 검색 */
+function hasCellValue(ws: XLSX.WorkSheet, target: string): boolean {
+  return Object.entries(ws).some(
+    ([key, cell]) =>
+      !key.startsWith('!') &&
+      typeof cell === 'object' &&
+      cell !== null &&
+      (cell as { v?: unknown }).v === target
+  );
+}
+
 // ─── 테스트 ──────────────────────────────────────────────────────────────────
 
 describe('generateXLSX', () => {
@@ -203,6 +214,29 @@ describe('buildCourseSpecSheet (v2 명세서)', () => {
 
     expect(findLabelValue(ws, '훈련방법')).toBe('집체+원격');
     expect(findLabelValue(ws, '훈련형태')).toBeUndefined();
+  });
+
+  it('주요 훈련 내용 행 라벨을 화면(CourseSpecCard "주요 훈련 내용")과 동일하게 렌더한다', async () => {
+    const { buildCourseSpecSheet } = await import('./xlsx-generator');
+
+    const ws = buildCourseSpecSheet([createTestCourseSpec({ main_content: '핵심 실습' })]);
+
+    // 화면 행 라벨은 "주요 훈련 내용"(공백 포함) — 옛 "주요 훈련내용" 은 없어야 한다
+    expect(findLabelValue(ws, '주요 훈련 내용')).toBe('핵심 실습');
+    expect(findLabelValue(ws, '주요 훈련내용')).toBeUndefined();
+  });
+
+  it('교과목 표 헤더를 화면 CourseSpecCard(교과목명/세부 내용/훈련시간)와 동일하게 렌더한다', async () => {
+    const { buildCourseSpecSheet } = await import('./xlsx-generator');
+
+    const ws = buildCourseSpecSheet([createTestCourseSpec()]);
+
+    expect(hasCellValue(ws, '교과목명')).toBe(true);
+    expect(hasCellValue(ws, '세부 내용 (단원, 과제명)')).toBe(true);
+    expect(hasCellValue(ws, '훈련시간')).toBe(true);
+    // 옛 헤더 문자열은 남아있지 않아야 한다
+    expect(hasCellValue(ws, '과목명')).toBe(false);
+    expect(hasCellValue(ws, '세부내용')).toBe(false);
   });
 
   it('빈 specs 는 안내 문구만 렌더한다', async () => {

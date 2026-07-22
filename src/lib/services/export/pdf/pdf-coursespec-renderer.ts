@@ -63,7 +63,7 @@ function drawSingleCourseSpec(
 
   // 본문 라벨-값
   drawLabelValue(ctx, '훈련목표:', spec.goal || '-');
-  drawLabelValue(ctx, '주요 훈련내용:', spec.main_content || '-');
+  drawLabelValue(ctx, '주요 훈련 내용:', spec.main_content || '-');
   drawLabelValue(ctx, '훈련대상:', spec.target_audience || '-');
   ctx.y += 5;
 
@@ -80,7 +80,7 @@ function drawSingleCourseSpec(
 
   autoTable(ctx.doc, {
     startY: ctx.y,
-    head: [['과목명', '세부내용', '시간']],
+    head: [['교과목명', '세부 내용 (단원, 과제명)', '훈련시간']],
     body: rows.length > 0 ? rows : [['-', '-', '-']],
     theme: 'grid',
     ...tableBase,

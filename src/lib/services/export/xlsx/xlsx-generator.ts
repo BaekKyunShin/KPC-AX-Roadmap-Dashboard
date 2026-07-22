@@ -110,7 +110,7 @@ export function buildCourseSpecSheet(specs: RoadmapCourseSpec[]): XLSX.WorkSheet
     addBlankRow(ctx, 6);
 
     // 메타/본문 라벨-값 (양식 v2 행 순서: 훈련시기 → 훈련수준 → 훈련방법 →
-    // 추천 훈련사업 → 훈련대상 → 훈련목표 → 주요 훈련내용)
+    // 추천 훈련사업 → 훈련대상 → 훈련목표 → 주요 훈련 내용)
     addLabelValueRows(ctx, [
       ['훈련시기', spec.training_period || '-'],
       ['훈련수준', getLevelLabel(spec.training_level)],
@@ -118,14 +118,14 @@ export function buildCourseSpecSheet(specs: RoadmapCourseSpec[]): XLSX.WorkSheet
       ['추천 훈련사업', spec.recommended_program || '-'],
       ['훈련대상', spec.target_audience || '-'],
       ['훈련목표', spec.goal || '-'],
-      ['주요 훈련내용', spec.main_content || '-'],
+      ['주요 훈련 내용', spec.main_content || '-'],
     ]);
     addBlankRow(ctx, 8);
 
     // 교과목 테이블
     addSubSection(ctx, '교과목');
 
-    ['과목명', '세부내용', '시간', '', ''].forEach((h, c) => {
+    ['교과목명', '세부 내용 (단원, 과제명)', '훈련시간', '', ''].forEach((h, c) => {
       if (c < 3) {
         setCell(ctx.ws, ctx.r, c, h, STYLE.tableHeader);
       } else {

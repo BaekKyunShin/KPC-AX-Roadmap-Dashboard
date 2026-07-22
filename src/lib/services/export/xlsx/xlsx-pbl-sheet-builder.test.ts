@@ -617,6 +617,54 @@ describe('buildPBLTrainingSheet', () => {
 });
 
 // =============================================================================
+// buildPBLTrainingSheet — 화면(result-v2) 정합 헤더·행 라벨
+// =============================================================================
+
+describe('buildPBLTrainingSheet — 화면 정합 헤더·행 라벨', () => {
+  it('교과목 프로파일 메타 행 라벨을 화면(SubjectProfileMetaTable)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    // 화면 행 라벨: 과정명 · 총 훈련시간(h) · 훈련목표 · 활용 AI도구 · 활용 데이터 · 분석방법 · 전체시간
+    expect(findCellWithValue(ws, '총 훈련시간(h)')).toBe(true);
+    expect(findCellWithValue(ws, '분석방법')).toBe(true);
+    expect(findCellWithValue(ws, '훈련목표')).toBe(true);
+    expect(findCellWithValue(ws, '활용 AI도구')).toBe(true);
+    expect(findCellWithValue(ws, '전체시간')).toBe(true);
+    // 옛 라벨은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '전체 훈련시간(H)')).toBe(false);
+    expect(findCellWithValue(ws, '분석 방법')).toBe(false);
+    expect(findCellWithValue(ws, '훈련 목표')).toBe(false);
+    expect(findCellWithValue(ws, '활용 AI 도구')).toBe(false);
+    expect(findCellWithValue(ws, '전체시간 합계')).toBe(false);
+  });
+
+  it('교과목 표 헤더를 화면(TabPBLOps 교과목 표)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    expect(findCellWithValue(ws, '훈련 시간(H)')).toBe(true);
+    expect(findCellWithValue(ws, '외부 강사 (H)')).toBe(true);
+    expect(findCellWithValue(ws, '내부 강사 (H)')).toBe(true);
+    // 옛 헤더 문자열은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '훈련시간(H)')).toBe(false);
+    expect(findCellWithValue(ws, '외부 투입(H)')).toBe(false);
+    expect(findCellWithValue(ws, '내부 투입(H)')).toBe(false);
+  });
+
+  it('학습그룹 소속 컬럼을 화면(학습그룹 "소속(부서)")과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    expect(findCellWithValue(ws, '소속(부서)')).toBe(true);
+    expect(findCellWithValue(ws, '소속')).toBe(false);
+  });
+
+  it('훈련강사 표 헤더를 화면(TabPBLOps 훈련강사 표: 구분·업무경력)과 동일하게 렌더한다', () => {
+    const ws = buildPBLTrainingSheet(makeOperationPlan());
+    // "구분" 은 학습그룹 헤더와 공유되므로 훈련강사 고유 라벨 "업무경력" 으로 검증
+    expect(findCellWithValue(ws, '업무경력')).toBe(true);
+    // 옛 헤더 문자열은 남아있지 않아야 한다
+    expect(findCellWithValue(ws, '내/외부')).toBe(false);
+    expect(findCellWithValue(ws, '경력(년)')).toBe(false);
+  });
+});
+
+// =============================================================================
 // buildPBLEvaluationSheet (Ⅳ-4)
 // =============================================================================
 

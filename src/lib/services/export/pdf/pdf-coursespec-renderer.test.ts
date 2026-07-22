@@ -96,11 +96,11 @@ describe('drawCourseSpecSection', () => {
     expect(mockDoc.addPage).toHaveBeenCalledTimes(1);
   });
 
-  it('subjects를 테이블 body로 매핑한다 (3열: 과목명/세부내용/시간)', () => {
+  it('subjects를 테이블 body로 매핑한다 (3열: 교과목명/세부 내용/훈련시간 — 화면 CourseSpecCard 정합)', () => {
     drawCourseSpecSection(ctx, [createSpec()], autoTable, getAutoTableStyles(false));
 
     const head = autoTable.mock.calls[0][1].head;
-    expect(head[0]).toEqual(['과목명', '세부내용', '시간']);
+    expect(head[0]).toEqual(['교과목명', '세부 내용 (단원, 과제명)', '훈련시간']);
 
     const body = autoTable.mock.calls[0][1].body;
     expect(body[0]).toEqual(['과목1', '세부1', '4시간']);
@@ -226,7 +226,7 @@ describe('drawCourseSpecSection', () => {
     expect(valueAfterLabel(textCalls, '훈련방법:')).toBe('-');
     expect(valueAfterLabel(textCalls, '추천 훈련사업:')).toBe('-');
     expect(valueAfterLabel(textCalls, '훈련목표:')).toBe('-');
-    expect(valueAfterLabel(textCalls, '주요 훈련내용:')).toBe('-');
+    expect(valueAfterLabel(textCalls, '주요 훈련 내용:')).toBe('-');
     expect(valueAfterLabel(textCalls, '훈련대상:')).toBe('-');
   });
 

@@ -242,12 +242,14 @@ describe('drawPBLOperationSection', () => {
   });
 
   // ── Ⅳ-3-나: 강사 테이블 ─────────────────────────────────────────────
-  it('강사 테이블 헤더가 5열(구분·역할·소속·직위·성명)을 포함한다', () => {
+  it('강사 테이블 헤더 소속 컬럼을 화면(학습그룹 "소속(부서)")과 동일하게 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const instructorCall = autoTableMock.mock.calls.find(
       (c) => c[1].head[0].includes('구분') && c[1].head[0].includes('역할')
     );
     expect(instructorCall).toBeDefined();
+    expect(instructorCall?.[1].head[0]).toContain('소속(부서)');
+    expect(instructorCall?.[1].head[0]).not.toContain('소속');
   });
 
   it('강사 목록이 비어있으면 placeholder ["-","-","-","-","-"] 행을 넣는다', () => {
@@ -266,13 +268,13 @@ describe('drawPBLOperationSection', () => {
   });
 
   // ── Ⅳ-3-나: 훈련생 테이블 ────────────────────────────────────────────
-  it('훈련생 테이블 헤더가 4열(역할·소속·직위·성명)을 포함한다', () => {
+  it('훈련생 테이블 헤더가 4열(역할·소속(부서)·직위·성명)을 포함한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const traineeCall = autoTableMock.mock.calls.find(
       (c) =>
         c[1].head?.[0]?.length === 4 &&
         c[1].head[0].includes('역할') &&
-        c[1].head[0].includes('소속')
+        c[1].head[0].includes('소속(부서)')
     );
     expect(traineeCall).toBeDefined();
   });
@@ -299,12 +301,19 @@ describe('drawPBLOperationSection', () => {
   });
 
   // ── Ⅳ-3-다: 교과목 프로파일 ─────────────────────────────────────────
-  it('교과목명, 전체시간, 분석방법, 활용데이터 레이블을 출력한다', () => {
+  it('교과목 프로파일 메타 레이블을 화면(SubjectProfileMetaTable)과 동일하게 출력한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const allText = mockDoc.text.mock.calls.map((c) => c[0]);
-    expect(allText.some((t) => typeof t === 'string' && t.includes('전체 훈련시간'))).toBe(true);
-    expect(allText.some((t) => typeof t === 'string' && t.includes('분석 방법'))).toBe(true);
+    // 화면 행 라벨: 과정명 · 총 훈련시간(h) · 훈련목표 · 활용 AI도구 · 활용 데이터 · 분석방법 · 전체시간
+    expect(allText.some((t) => typeof t === 'string' && t.includes('총 훈련시간(h)'))).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('분석방법'))).toBe(true);
     expect(allText.some((t) => typeof t === 'string' && t.includes('활용 데이터'))).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('훈련목표'))).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('활용 AI도구'))).toBe(true);
+    expect(allText.some((t) => typeof t === 'string' && t.includes('전체시간'))).toBe(true);
+    // 옛 레이블은 남아있지 않아야 한다
+    expect(allText.some((t) => typeof t === 'string' && t === '전체 훈련시간')).toBe(false);
+    expect(allText.some((t) => typeof t === 'string' && t === '분석 방법')).toBe(false);
   });
 
   it('training_goals 배열이 있으면 bullet 으로 출력한다', () => {
@@ -335,12 +344,19 @@ describe('drawPBLOperationSection', () => {
     expect(allText.some((t) => typeof t === 'string' && t.includes('ChatGPT'))).toBe(true);
   });
 
-  it('교과목 프로파일 훈련내용 테이블(5열)을 렌더한다', () => {
+  it('교과목 프로파일 훈련내용 테이블(5열) 헤더를 화면(업무(단원)명/세부 내용/훈련 시간(H)/외부 강사 (H)/내부 강사 (H))과 동일하게 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const profileCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)')
+      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련 시간(H)')
     );
     expect(profileCall).toBeDefined();
+    expect(profileCall?.[1].head[0]).toEqual([
+      '업무(단원)명',
+      '세부 내용',
+      '훈련 시간(H)',
+      '외부 강사 (H)',
+      '내부 강사 (H)',
+    ]);
   });
 
   it('훈련내용 테이블 body 가 비어있으면 placeholder 행을 넣는다', () => {
@@ -356,7 +372,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const profileCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련시간(H)')
+      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련 시간(H)')
     );
     expect(profileCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
@@ -389,12 +405,19 @@ describe('drawPBLOperationSection', () => {
   });
 
   // ── Ⅳ-3-마: 훈련강사 ────────────────────────────────────────────────
-  it('훈련강사 테이블(5열: 성명·내외부·경력·업무명·세부내용)을 렌더한다', () => {
+  it('훈련강사 테이블(5열) 헤더를 화면(성명/구분/업무경력/업무명/세부 교육훈련 내용)과 동일하게 렌더한다', () => {
     drawPBLOperationSection(ctx, baseOperationPlan(), autoTable, tableBase);
     const instructorTableCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)')
+      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('업무경력')
     );
     expect(instructorTableCall).toBeDefined();
+    expect(instructorTableCall?.[1].head[0]).toEqual([
+      '성명',
+      '구분',
+      '업무경력',
+      '업무명',
+      '세부 교육훈련 내용',
+    ]);
   });
 
   it('훈련강사 목록이 비어있으면 placeholder 행을 넣는다', () => {
@@ -407,7 +430,7 @@ describe('drawPBLOperationSection', () => {
     };
     drawPBLOperationSection(ctx, plan, autoTable, tableBase);
     const instTableCall = autoTableMock.mock.calls.find(
-      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('경력(년)')
+      (c) => c[1].head?.[0]?.includes('성명') && c[1].head[0].includes('업무경력')
     );
     expect(instTableCall?.[1].body).toEqual([['-', '-', '-', '-', '-']]);
   });
