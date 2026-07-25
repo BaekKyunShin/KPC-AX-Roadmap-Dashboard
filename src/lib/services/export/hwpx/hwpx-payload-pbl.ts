@@ -20,7 +20,11 @@
 import type { Interview, Project } from '@/types/database';
 import type { PBLContent } from '@/lib/services/pbl/pbl-types';
 import type { PBLReportRow } from '@/lib/services/pbl/pbl-crud';
-import type { PBLInterviewStrict, PBLTaskSelection } from '@/lib/schemas/interview-pbl';
+import type {
+  PBLInterviewStrict,
+  PBLPerformanceActivity,
+  PBLTaskSelection,
+} from '@/lib/schemas/interview-pbl';
 import {
   INTERVIEW_METHOD_LABEL,
   type InterviewMethod,
@@ -210,8 +214,12 @@ function buildTrainingEnvP05(env: PBLInterviewStrict['trainingEnv'] | undefined)
  * 신규 PBL 양식이 로드맵 보고서에서 자동 연계하도록 지정한 구간:
  *   - Ⅱ-1-나 AI훈련 로드맵 수립 (수립 배경·주요 활동·수립 결과=AI역량·선정 과업)
  *   - Ⅱ-2 AI 도입·활용 요구분석 (기업 요구분석·과업 분석표·훈련대상 과업)
- *   - Ⅲ-1 훈련과제 도출 수행활동 (로드맵 수행활동 2역할 → 양식 4역할 표의 PM·내부전문가 행)
  *   - Ⅲ-3-가 훈련대상 업무 선정 (로드맵 과업 4열 + PBL 입력 2열: AI필요도·훈련선정)
+ *
+ * ⚠️ **Ⅲ-1 훈련과제 도출 수행활동은 여기 없다** — 정본 표(4역할·수행 일자)가 로드맵
+ * Ⅰ-2(2역할·일시)와 다르고, PBL 인터뷰는 로드맵 인터뷰와 별도 일정이므로 로드맵 활동을
+ * 재사용하면 날짜가 틀리고 참석자 2행이 공란이 된다. `buildPBLPerformanceActivities` 로
+ * PBL 인터뷰 값에서 따로 생성한다.
  *
  * `linked` 미연계(null) 시 전 키를 빈 값으로 폴백해 Ⅱ장을 빈 양식으로 출력한다.
  */
@@ -262,8 +270,6 @@ function buildRoadmapLinkageForPBL(
           to_be: target.expectedToBe ?? '',
         }
       : { name: '', reason: '', as_is: '', to_be: '' },
-    // Ⅲ-1 수행활동 (로드맵 수행활동 연계 — Ⅱ-1-나 주요 활동과 동일 소스)
-    roadmap_perf_activities: activities,
     // Ⅲ-3-가 훈련대상 업무 선정 (로드맵 과업 4열 + PBL taskSelections 2열)
     roadmap_task_selections: tasks.map((t, i) => ({
       job: t.job,
@@ -274,6 +280,33 @@ function buildRoadmapLinkageForPBL(
       training_selected: taskSelections[i]?.training_selected ?? false,
     })),
   };
+}
+
+/**
+ * Ⅲ-1 훈련과제 도출 수행활동 (P-13) — **PBL 인터뷰 자체 입력**에서 생성.
+ *
+ * 정본 T19 는 차수당 4행(참석자 4역할) · 수행 **일자**(날짜만) 구조로, 로드맵 Ⅰ-2
+ * (2역할 · 날짜+시간 2줄)와 다른 표다. 과거에는 로드맵 활동을 그대로 복사해
+ * ⓐ 로드맵 인터뷰 날짜가 찍히고 ⓑ 외부전문가·능력개발전담주치의 행이 항상 공란이었다.
+ */
+function buildPBLPerformanceActivities(
+  activities: PBLPerformanceActivity[] | undefined
+): Array<Record<string, unknown>> {
+  return (activities ?? []).map((a) => ({
+    round: a.round ?? 1,
+    // 양식 '25/00/00' 폭 — 날짜만(시간 칸 없음). 줄바꿈을 만들지 않는다.
+    date: a.date ?? '',
+    content: a.content ?? '',
+    // 수행 방법: 양식 '대면'/'(인터뷰)' 2줄 — 괄호 앞에서 줄바꿈
+    method: (INTERVIEW_METHOD_LABEL[a.method as InterviewMethod] ?? a.method ?? '').replace(
+      '(',
+      '\n('
+    ),
+    pm_name: a.participants?.pm ?? '',
+    external_expert_name: a.participants?.external_expert ?? '',
+    internal_expert_name: a.participants?.internal_expert ?? '',
+    jurisdiction_manager_name: a.participants?.jurisdiction_manager ?? '',
+  }));
 }
 
 /**
@@ -348,6 +381,10 @@ function buildDataFromV2(
     ...buildRoadmapLinkageForPBL(linkedRoadmap, v2.target?.taskSelections ?? []),
     // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content 연계(R-07 과 대칭)
     roadmap_summary: linkedRoadmapSummary ?? '',
+
+    // ==================== Ⅲ-1 수행활동 (PBL 자체 입력) ====================
+    // ⚠️ 로드맵 연계 아님 — 정본 4역할·수행 일자. 위 linkage 와 소스가 다르다.
+    pbl_perf_activities: buildPBLPerformanceActivities(v2.performanceActivities),
 
     // ==================== Ⅱ-2-가 / Ⅱ-3 훈련환경 (인터뷰) ====================
     hrd_report_attachment: v2.hrdReportPdf

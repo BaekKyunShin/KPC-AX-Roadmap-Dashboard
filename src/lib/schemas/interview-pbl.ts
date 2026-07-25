@@ -723,10 +723,37 @@ export const PBLTargetSchema = z.object({
 });
 export type PBLTarget = z.infer<typeof PBLTargetSchema>;
 
+// -- Ⅲ-1 훈련과제 도출 수행활동 [PBL 자체 입력] ------------------------------
+// 정본 T19 는 **참석자 4역할**(PM·외부전문가(직무,HRD)·기업내부전문가·능력개발전담
+// 주치의) · **수행 일자(날짜만)** 로, 로드맵 Ⅰ-2(2역할·일시)와 구조가 다른 별개 표다.
+// PBL 인터뷰는 로드맵 인터뷰와 별도 일정이므로 로드맵 활동을 재사용하면 날짜가 틀리고
+// 참석자 2행이 공란으로 출력된다(과거 결함) → PBL 이 직접 입력한다.
+//
+// 4역할 정의는 V1 `performanceParticipantsSchema` 를 그대로 재사용한다(이미 정본 정합).
+export const PBLPerformanceActivitySchema = z.object({
+  round: z.number().int().min(1, '차수는 1 이상이어야 합니다.'),
+  date: z.string().default(''), // 양식 표기 '25/00/00' — 날짜만 (시간 칸 없음)
+  content: z.string().default(''),
+  method: z.string().default('ONSITE'), // ONSITE | VIDEO | WORKSHOP | OTHER
+  participants: performanceParticipantsSchema.default({
+    pm: '',
+    external_expert: '',
+    internal_expert: '',
+    jurisdiction_manager: '',
+  }),
+});
+export type PBLPerformanceActivity = z.infer<typeof PBLPerformanceActivitySchema>;
+
 // -- Ⅲ AI기반 훈련과제 도출 [인터뷰] ---------------------------------------
-// V2: Ⅲ-1 수행활동·Ⅲ-2-나 우선순위·Ⅲ-4 AI역량 은 PBL 자체입력에서 제거
-// (수행활동·AI역량은 로드맵 연동). 문제 정의서 + 훈련대상 두 슬라이스만 보유.
+// V2: Ⅲ-2-나 우선순위·Ⅲ-4 AI역량 은 PBL 자체입력에서 제거(AI역량은 로드맵 연동).
+// Ⅲ-1 수행활동은 정본 표 구조가 로드맵과 달라 **PBL 자체 입력으로 복원**했다.
 export const PBLTasksSchema = z.object({
+  // Ⅲ-1 훈련과제 도출 수행활동 (PBL 자체 입력 — 차수당 4역할).
+  // default([]) — Ⅲ-1 도입 전에 저장된 기존 인터뷰도 strict 검증을 통과해야 한다.
+  performanceActivities: z
+    .array(PBLPerformanceActivitySchema)
+    .max(15, '수행활동은 최대 15차까지 입력할 수 있습니다.')
+    .default([]),
   // Ⅲ-2-가 문제 정의서 (R8 PBL-자체-04 — 4 정형 항목 단일 세트)
   problemDefinitionSheet: PBLProblemDefinitionSheetSchema,
   // Ⅲ-3 훈련대상 업무 (가: 로드맵 과업별 선정 · 나: 선정 사유 · 다: 세부내용)

@@ -2,8 +2,9 @@
  * /test-pbl 페이지용 샘플 PBL 인터뷰 데이터 (V2 · 양식 2:1 정합 camelCase).
  *
  * `src/lib/schemas/interview-pbl.ts` 의 `PBLInterviewStrictSchema` 를 준수.
- * v2 양식 기준: AI역량 진단·문제 우선순위·수행활동 자체입력은 제거되고(로드맵 연계),
+ * v2 양식 기준: AI역량 진단·문제 우선순위는 제거되고(AI역량은 로드맵 연계),
  * Ⅲ-3 훈련대상 업무는 로드맵 과업 목록에 대한 선정 입력(taskSelections)으로 대체됐다.
+ * Ⅲ-1 수행활동은 정본 표가 로드맵 Ⅰ-2 와 달라 **PBL 자체 입력**으로 유지한다.
  * Ⅰ·Ⅱ·Ⅲ 전 섹션을 채운 제조업 사례 — LLM 이 PBL 보고서 초안을 양질로 생성할 수
  * 있는 수준으로 모든 필드를 현실적 문장으로 작성한다.
  */
@@ -67,6 +68,50 @@ export const PBL_INTERVIEW_SAMPLE: PBLInterviewStrict = {
   // ── Ⅱ-1-다 AI훈련과정 개발 필요성 ─────────────────────────────────────────
   courseNecessity:
     '기존 공개과정은 AI 일반론 중심이라 자사 품질 데이터·공정·용어에 직접 적용하기 어려움. 본 PBL 과정은 ① 자사 최근 6개월 불량 이미지 12만 장을 실습 데이터로 사용, ② 품질검사·공정개선·설비보전 3개 직무가 공통으로 겪는 불량 원인 추적 문제를 중심 과제로 설계, ③ ChatGPT/Claude/Notebook 도구로 데이터 분석·보고 자동화 루틴을 조직 내부에 내재화하는 것을 목표로 한다.',
+
+  // ── Ⅲ-1 훈련과제 도출 수행활동 (PBL 자체 입력 — 정본 4역할 · 수행 일자) ─────
+  // 선행 로드맵 컨설팅(Ⅱ-1-나)과 **다른 일정**이다. 날짜만 기입(양식에 시간 칸 없음).
+  performanceActivities: [
+    {
+      round: 1,
+      date: '26/06/03',
+      content:
+        '핵심문제 파악 워크숍 — 경영진·품질/생산/공정개선 실무자 6명 참여. 불량 원인 추적이 지연되는 지점을 공정 순서대로 짚어 병목 3곳 도출.',
+      method: 'WORKSHOP',
+      participants: {
+        pm: '홍길동',
+        external_expert: '이직무',
+        internal_expert: '김품질',
+        jurisdiction_manager: '최주치의',
+      },
+    },
+    {
+      round: 2,
+      date: '26/06/10',
+      content:
+        '문제 정의서 확정 회의 — 체크시트 포맷 상이 문제를 핵심 문제로 합의하고 훈련 범위를 품질검사 라인으로 한정.',
+      method: 'VIDEO',
+      participants: {
+        pm: '홍길동',
+        external_expert: '이직무',
+        internal_expert: '김품질',
+        jurisdiction_manager: '최주치의',
+      },
+    },
+    {
+      round: 3,
+      date: '26/06/17',
+      content:
+        '훈련대상 업무 선정 협의 — 로드맵 과업 분석표 중 AI 적용 효과가 큰 2개 업무를 훈련 대상으로 확정.',
+      method: 'ONSITE',
+      participants: {
+        pm: '홍길동',
+        external_expert: '이직무',
+        internal_expert: '김품질',
+        jurisdiction_manager: '최주치의',
+      },
+    },
+  ],
 
   // ── Ⅲ-2-가 문제 정의서 (4 정형 항목 단일 세트) ────────────────────────────
   problemDefinitionSheet: {

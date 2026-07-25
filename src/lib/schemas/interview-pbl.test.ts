@@ -28,6 +28,7 @@ import {
   PBLOverviewSchema,
   PBLAnalysisSchema,
   PBLTasksSchema,
+  PBLPerformanceActivitySchema,
   PBLTargetDetailSchema,
   PBLInterviewSchema,
   PBLInterviewStrictSchema,
@@ -892,6 +893,142 @@ describe('PBLTasksSchema (Ⅲ AI기반 훈련과제 도출 — V2 로드맵 연�
     const { problemDefinitionSheet: _omit, ...rest } = validTasks;
     void _omit;
     expect(PBLTasksSchema.safeParse(rest).success).toBe(false);
+  });
+});
+
+// ── Ⅲ-1 수행활동 — PBL 자체 입력 (로드맵 연계 폐기) ─────────────────────────
+// 정본 T19 는 참석자 4역할·수행 일자(날짜만) 로, 로드맵 Ⅰ-2(2역할·일시) 와 다른 표다.
+// PBL 인터뷰는 로드맵 인터뷰와 별도 일정이므로 로드맵 활동을 재사용하면 날짜가 틀리고
+// 참석자 2행이 공란으로 출력된다 → PBL 이 직접 입력한다.
+describe('PBLPerformanceActivitySchema (Ⅲ-1 수행활동 — PBL 자체 입력)', () => {
+  const validActivity = {
+    round: 1,
+    date: '25/04/10',
+    content: '핵심문제 파악 워크숍 — 경영진·실무자 5명 참여',
+    method: 'WORKSHOP',
+    participants: {
+      pm: '김책임',
+      external_expert: '이직무',
+      internal_expert: '박내부',
+      jurisdiction_manager: '최주치의',
+    },
+  };
+
+  it('정본 참석자 4역할을 모두 받는다', () => {
+    const result = PBLPerformanceActivitySchema.safeParse(validActivity);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.participants).toEqual({
+        pm: '김책임',
+        external_expert: '이직무',
+        internal_expert: '박내부',
+        jurisdiction_manager: '최주치의',
+      });
+    }
+  });
+
+  it('참석자 4역할은 생략 시 빈 문자열 default (부분 입력 허용)', () => {
+    const result = PBLPerformanceActivitySchema.safeParse({ ...validActivity, participants: {} });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.participants).toEqual({
+        pm: '',
+        external_expert: '',
+        internal_expert: '',
+        jurisdiction_manager: '',
+      });
+    }
+  });
+
+  it('수행 일자만 받는다 — 정본 Ⅲ-1 에 시간 칸이 없어 timeRange 를 두지 않는다', () => {
+    const result = PBLPerformanceActivitySchema.safeParse(validActivity);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty('timeRange');
+    }
+    // 로드맵 활동 형태(timeRange 포함)를 넣어도 timeRange 는 strip 된다.
+    const withTimeRange = PBLPerformanceActivitySchema.safeParse({
+      ...validActivity,
+      timeRange: '14:00~17:00',
+    });
+    expect(withTimeRange.success).toBe(true);
+    if (withTimeRange.success) {
+      expect(withTimeRange.data).not.toHaveProperty('timeRange');
+    }
+  });
+
+  it('차수는 1 이상 정수', () => {
+    expect(PBLPerformanceActivitySchema.safeParse({ ...validActivity, round: 0 }).success).toBe(
+      false
+    );
+    expect(PBLPerformanceActivitySchema.safeParse({ ...validActivity, round: 1.5 }).success).toBe(
+      false
+    );
+  });
+});
+
+describe('PBLTasksSchema.performanceActivities (Ⅲ-1 — 로드맵 연계에서 PBL 자체 입력으로 전환)', () => {
+  const validTasks = {
+    problemDefinitionSheet: {
+      background: '배경',
+      core: '핵심',
+      scope: '범위',
+      constraints: '제약',
+    },
+    target: {
+      taskSelections: [],
+      necessity: 'AI 자동 판정으로 대체 가능',
+      details: [
+        {
+          title: '품질검사 자동화',
+          as_is: '수작업 육안 검사',
+          to_be: 'AI 비전 1차 스크리닝',
+          required_knowledge: '품질 검사 기준',
+          required_skill: 'CNN 모델 운영',
+        },
+      ],
+    },
+  };
+
+  function act(round: number) {
+    return {
+      round,
+      date: `25/04/${String(round).padStart(2, '0')}`,
+      content: `${round}차 활동`,
+      method: 'ONSITE',
+      participants: {
+        pm: 'PM',
+        external_expert: '외부',
+        internal_expert: '내부',
+        jurisdiction_manager: '주치의',
+      },
+    };
+  }
+
+  it('PBLTasksSchema 가 performanceActivities 를 노출한다', () => {
+    expect(PBLTasksSchema.shape).toHaveProperty('performanceActivities');
+  });
+
+  it('생략 시 빈 배열 default — 기존 PBL 인터뷰(Ⅲ-1 미입력) 도 통과해야 한다', () => {
+    const result = PBLTasksSchema.safeParse(validTasks);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.performanceActivities).toEqual([]);
+    }
+  });
+
+  it('최대 15차까지 허용 (로드맵 Ⅰ-2·PBL Ⅱ-1-나 와 동일 상한)', () => {
+    const rounds = Array.from({ length: 15 }, (_, i) => act(i + 1));
+    expect(PBLTasksSchema.safeParse({ ...validTasks, performanceActivities: rounds }).success).toBe(
+      true
+    );
+  });
+
+  it('16차는 거부', () => {
+    const rounds = Array.from({ length: 16 }, (_, i) => act(i + 1));
+    expect(PBLTasksSchema.safeParse({ ...validTasks, performanceActivities: rounds }).success).toBe(
+      false
+    );
   });
 });
 

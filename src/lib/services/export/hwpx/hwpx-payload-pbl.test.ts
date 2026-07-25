@@ -163,6 +163,21 @@ function makeV2Interview(): Interview {
       },
       hrdReportPdf: { fileName: 'hrd.pdf', url: 'https://x/hrd.pdf', size: 1024 },
       courseNecessity: 'AI 도입 필요성 본문',
+      // Ⅲ-1 수행활동 — PBL 자체 입력 (로드맵 인터뷰와 다른 일정·4역할)
+      performanceActivities: [
+        {
+          round: 1,
+          date: '25/04/10',
+          content: '핵심문제 파악 워크숍',
+          method: 'WORKSHOP',
+          participants: {
+            pm: '박PBL',
+            external_expert: '이직무',
+            internal_expert: '박내부전문가',
+            jurisdiction_manager: '최주치의',
+          },
+        },
+      ],
       problemDefinitionSheet: {
         background: '문제 발생 배경',
         core: '핵심 문제',
@@ -649,20 +664,70 @@ describe('buildPBLHwpxPayload', () => {
       expect(selections[1].training_selected).toBe(false);
     });
 
-    it('Ⅲ-1 수행활동 — 로드맵 수행활동 연계(Ⅱ-1-나 주요활동과 동일 소스)', () => {
+    it('Ⅲ-1 수행활동 — PBL 자체 입력을 쓴다 (로드맵 활동 재사용 금지)', () => {
       const payload = buildPBLHwpxPayload({
         pbl: makePBL(),
         project: makeProject(),
         interview: makeV2Interview(),
         linkedRoadmap: makeLinkedRoadmap(),
       });
-      const perf = payload.data.roadmap_perf_activities as Array<{
+      const perf = payload.data.pbl_perf_activities as Array<{
+        round: number;
+        date: string;
+        content: string;
+        method: string;
         pm_name: string;
-        expert_name: string;
+        external_expert_name: string;
+        internal_expert_name: string;
+        jurisdiction_manager_name: string;
       }>;
       expect(perf).toHaveLength(1);
-      expect(perf[0].pm_name).toBe('김PM');
-      expect(perf[0].expert_name).toBe('이내부');
+      // PBL 인터뷰 값 — 로드맵 인터뷰 날짜('26.01.02')가 아니어야 한다.
+      expect(perf[0].date).toBe('25/04/10');
+      expect(perf[0].content).toBe('핵심문제 파악 워크숍');
+      // 정본 4역할 모두 채워진다 (기존 결함: 외부전문가·주치의 행이 항상 공란)
+      expect(perf[0].pm_name).toBe('박PBL');
+      expect(perf[0].external_expert_name).toBe('이직무');
+      expect(perf[0].internal_expert_name).toBe('박내부전문가');
+      expect(perf[0].jurisdiction_manager_name).toBe('최주치의');
+    });
+
+    it('Ⅲ-1 수행활동 — 옛 로드맵 연계 키(roadmap_perf_activities) 는 더 이상 존재하지 않는다', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+        linkedRoadmap: makeLinkedRoadmap(),
+      });
+      expect(payload.data).not.toHaveProperty('roadmap_perf_activities');
+    });
+
+    it('Ⅲ-1 수행활동 — PBL 미입력 시 로드맵 활동으로 폴백하지 않고 빈 배열', () => {
+      const interview = makeV2Interview() as unknown as {
+        pbl_data: Record<string, unknown>;
+      };
+      delete interview.pbl_data.performanceActivities;
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: interview as unknown as Interview,
+        // 로드맵에는 활동이 있으나 Ⅲ-1 에는 흘러들어가면 안 된다.
+        linkedRoadmap: makeLinkedRoadmap(),
+      });
+      expect(payload.data.pbl_perf_activities).toEqual([]);
+      // Ⅱ-1-나(P-05) 는 로드맵 소스라 그대로 채워진다.
+      expect(payload.data.roadmap_setup_activities).toHaveLength(1);
+    });
+
+    it('Ⅲ-1 수행활동 — 수행 방법 코드는 양식 한글 라벨로 변환된다', () => {
+      const payload = buildPBLHwpxPayload({
+        pbl: makePBL(),
+        project: makeProject(),
+        interview: makeV2Interview(),
+        linkedRoadmap: makeLinkedRoadmap(),
+      });
+      const perf = payload.data.pbl_perf_activities as Array<{ method: string }>;
+      expect(perf[0].method).toBe('워크숍');
     });
 
     it('미연계(linkedRoadmap 없음) → Ⅱ장 연계 키 빈 값 폴백', () => {
@@ -678,9 +743,10 @@ describe('buildPBLHwpxPayload', () => {
       expect(payload.data.roadmap_req_company_status).toBe('');
       expect(payload.data.roadmap_task_analysis).toEqual([]);
       expect(payload.data.roadmap_task_selections).toEqual([]);
-      expect(payload.data.roadmap_perf_activities).toEqual([]);
       const target = payload.data.roadmap_target_task as { name: string };
       expect(target.name).toBe('');
+      // Ⅲ-1 은 로드맵 연계가 아니므로 미연계와 무관하게 PBL 인터뷰 값이 유지된다.
+      expect(payload.data.pbl_perf_activities).toHaveLength(1);
     });
 
     it('training_job — 로드맵 선정 과업 우선', () => {
@@ -841,8 +907,9 @@ describe('buildPBLHwpxPayload', () => {
       'roadmap_req_expected_outcomes',
       'roadmap_task_analysis',
       'roadmap_target_task',
-      'roadmap_perf_activities',
       'roadmap_task_selections',
+      // Ⅲ-1 수행활동 (PBL 자체 입력 — 로드맵 연계 아님)
+      'pbl_perf_activities',
       // Ⅳ 운영계획
       'training_goal',
       'training_goals',

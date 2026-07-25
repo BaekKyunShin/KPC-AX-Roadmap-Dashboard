@@ -19,6 +19,7 @@ import type {
   PBLMainWorkItem,
   PBLOrgTreeNode,
   PBLOverview,
+  PBLPerformanceActivity,
   PBLProblemDefinitionSheet,
   PBLTarget,
 } from '@/lib/schemas/interview-pbl';
@@ -82,6 +83,11 @@ export interface ResultPBLInterviewSnapshot {
   analysis: PBLAnalysis;
 
   // Ⅲ 훈련과제 도출
+  /**
+   * Ⅲ-1 훈련과제 도출 수행활동 — **PBL 자체 입력**(정본 4역할 · 수행 일자).
+   * 로드맵 Ⅰ-2 주요 활동과는 별개 표다(참석자·일자 형식이 다름) → 로드맵 연계 금지.
+   */
+  performanceActivities: PBLPerformanceActivity[];
   /** R8 PBL-자체-04 — 4 정형 항목 단일 세트 */
   problemDefinitionSheet: PBLProblemDefinitionSheet;
   /**

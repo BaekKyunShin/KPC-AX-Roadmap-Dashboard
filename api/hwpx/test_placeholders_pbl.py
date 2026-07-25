@@ -173,16 +173,31 @@ class TestRoadmapLinkage:
         assert m["{{pbl_target_task_as_is}}"] == "육안"
         assert m["{{pbl_target_task_to_be}}"] == "AI 비전"
 
-    def test_perf_activities_pm_expert(self):
+    def test_perf_activities_four_roles(self):
+        """Ⅲ-1(T19) 참석자 4역할 전부 채워진다 — PBL 자체 입력."""
         m = _build_pbl_markers({
-            "roadmap_perf_activities": [
-                {"date": "2026-04-01", "content": "킥오프", "method": "대면",
-                 "pm_name": "홍PM", "expert_name": "박내부"},
+            "pbl_perf_activities": [
+                {"date": "25/04/10", "content": "킥오프", "method": "대면",
+                 "pm_name": "홍PM", "external_expert_name": "이직무",
+                 "internal_expert_name": "박내부", "jurisdiction_manager_name": "최주치의"},
             ],
         })
         assert m["{{pbl_perf_0_pm_name}}"] == "홍PM"
-        assert m["{{pbl_perf_0_expert_name}}"] == "박내부"
+        assert m["{{pbl_perf_0_external_expert_name}}"] == "이직무"
+        assert m["{{pbl_perf_0_internal_expert_name}}"] == "박내부"
+        assert m["{{pbl_perf_0_jurisdiction_manager_name}}"] == "최주치의"
         assert m["{{pbl_perf_0_content}}"] == "킥오프"
+
+    def test_perf_activities_ignores_roadmap_key(self):
+        """옛 로드맵 연계 키(roadmap_perf_activities)는 Ⅲ-1 을 채우지 않는다."""
+        m = _build_pbl_markers({
+            "roadmap_perf_activities": [
+                {"date": "26.01.02", "content": "로드맵 인터뷰", "pm_name": "로드맵PM"},
+            ],
+        })
+        assert m["{{pbl_perf_0_pm_name}}"] == ""
+        assert m["{{pbl_perf_0_content}}"] == ""
+        assert m["{{pbl_perf_0_date}}"] == ""
 
     def test_task_selections_with_checkbox_and_per_row_job(self):
         m = _build_pbl_markers({
@@ -343,9 +358,9 @@ class TestOperationPlan:
         assert "•" not in m["{{pbl_ops_instructor_0_detailed_training_content}}"]
 
     def test_perf_activity_date_is_date_only(self):
-        """Ⅲ-1 수행활동(T19) date 마커는 일자만 (시간 제거)."""
+        """Ⅲ-1 수행활동(T19) date 마커는 일자만 (시간이 섞여 들어와도 제거)."""
         m = _build_pbl_markers({
-            "roadmap_perf_activities": [
+            "pbl_perf_activities": [
                 {"round": 1, "date": "2026-04-01\n10:00~12:00", "content": "킥오프"},
             ],
         })
@@ -393,10 +408,11 @@ class TestSafety:
     def test_empty_dict_all_str(self):
         m = _build_pbl_markers({})
         assert all(isinstance(v, str) for v in m.values())
-        # 402 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증).
+        # 432 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증).
         # 수행활동 차수 상한 3→15 확대분 포함(12차 × 5필드 × T9·T19 2표 = +120).
+        # Ⅲ-1(T19) 참석자 4역할 전환분 포함(+2필드 × 15차 = +30).
         # 양식에 행이 없는 차수의 마커는 문서에 존재하지 않으므로 무해하다.
-        assert len(m) == 402
+        assert len(m) == 432
 
     def test_none_values_empty_string(self):
         m = _build_pbl_markers({"company_name": None, "roadmap_setup_background": None})

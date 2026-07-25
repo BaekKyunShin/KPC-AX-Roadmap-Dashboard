@@ -6,6 +6,21 @@ import type { ResultPBLInterviewSnapshot } from '../types';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
 
 const interview: Partial<ResultPBLInterviewSnapshot> = {
+  // Ⅲ-1 수행활동 — PBL 자체 입력 (정본 4역할 · 수행 일자)
+  performanceActivities: [
+    {
+      round: 1,
+      date: '25/04/10',
+      content: '핵심문제 파악 워크숍',
+      method: 'WORKSHOP',
+      participants: {
+        pm: '김책임',
+        external_expert: '이직무',
+        internal_expert: '박내부',
+        jurisdiction_manager: '최주치의',
+      },
+    },
+  ],
   problemDefinitionSheet: {
     background: '야간 교대시 샘플 누락 발생',
     core: '검사 누락',
@@ -50,7 +65,7 @@ const linkedRoadmap: Partial<RoadmapInterviewStrict> = {
 };
 
 describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
-  it('4개 하위 섹션 렌더 — Ⅲ-2-가 / Ⅲ-3-가 / Ⅲ-3-나 / Ⅲ-3-다', () => {
+  it('5개 하위 섹션 렌더 — Ⅲ-1 / Ⅲ-2-가 / Ⅲ-3-가 / Ⅲ-3-나 / Ⅲ-3-다', () => {
     render(
       <TabPBLTasks
         version={null}
@@ -60,6 +75,7 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
         onEdit={vi.fn()}
       />
     );
+    expect(screen.getByText(/Ⅲ-1\. 훈련과제 도출 수행활동/)).toBeInTheDocument();
     expect(screen.getByText(/Ⅲ-2-가\. 문제 정의서/)).toBeInTheDocument();
     // 정본 정합: 문구 "훈련대상 업무 선정"(구 "과업 선정"), 번호 Ⅲ-3-가 유지
     expect(screen.getByText(/Ⅲ-3-가\. 훈련대상 업무 선정/)).toBeInTheDocument();
@@ -68,7 +84,7 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
     expect(screen.getByText(/Ⅲ-3-다\. 훈련대상 업무 세부내용/)).toBeInTheDocument();
   });
 
-  it('제거된 섹션(Ⅲ-1 수행활동 / Ⅲ-2-나 우선순위 / Ⅲ-4 AI역량)은 더 이상 렌더되지 않는다', () => {
+  it('제거된 섹션(Ⅲ-2-나 우선순위 / Ⅲ-4 AI역량)은 더 이상 렌더되지 않는다', () => {
     const { container } = render(
       <TabPBLTasks
         version={null}
@@ -79,12 +95,69 @@ describe('TabPBLTasks (Ⅲ. AI기반 훈련과제 도출)', () => {
       />
     );
     const text = container.textContent ?? '';
-    expect(text).not.toContain('훈련과제 도출 수행활동');
     expect(text).not.toContain('문제 우선순위');
     expect(text).not.toContain('AI 역량 수준');
     // AiLevel4Check radio 위젯 완전 제거
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('group', { name: /AI 역량 수준/ })).toBeNull();
+  });
+
+  // ── Ⅲ-1 수행활동 (PBL 자체 입력 — 로드맵 연계 폐기) ──────────────────────
+  it('Ⅲ-1 — PBL 인터뷰 수행활동의 일자·내용·참석자 4역할을 표출한다', () => {
+    render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedRoadmap}
+        readOnly
+        onEdit={vi.fn()}
+      />
+    );
+    expect(screen.getByText('1차')).toBeInTheDocument();
+    expect(screen.getByText('25/04/10')).toBeInTheDocument();
+    expect(screen.getByText(/핵심문제 파악 워크숍/)).toBeInTheDocument();
+    // 참석자 4역할 — 정본 라벨 + 성명
+    expect(screen.getByText('컨설팅책임자(PM)')).toBeInTheDocument();
+    expect(screen.getByText('외부전문가(직무,HRD)')).toBeInTheDocument();
+    expect(screen.getByText('기업내부전문가')).toBeInTheDocument();
+    expect(screen.getByText('능력개발전담주치의')).toBeInTheDocument();
+    expect(screen.getByText('이직무')).toBeInTheDocument();
+    expect(screen.getByText('최주치의')).toBeInTheDocument();
+  });
+
+  it('Ⅲ-1 — 로드맵 연계가 아니라 PBL 인터뷰 값을 쓴다 (linkedRoadmap 활동은 무시)', () => {
+    const linkedWithActivities: Partial<RoadmapInterviewStrict> = {
+      ...linkedRoadmap,
+      performanceActivities: [
+        {
+          round: 1,
+          date: '26.01.02',
+          timeRange: '10:00~12:00',
+          content: '로드맵 인터뷰 (PBL 과 무관)',
+          method: 'ONSITE',
+          pmName: '로드맵PM',
+          expertName: '로드맵전문가',
+        },
+      ],
+    };
+    const { container } = render(
+      <TabPBLTasks
+        version={null}
+        interview={interview}
+        linkedRoadmap={linkedWithActivities}
+        readOnly
+        onEdit={vi.fn()}
+      />
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('25/04/10');
+    expect(text).not.toContain('26.01.02');
+    expect(text).not.toContain('로드맵 인터뷰 (PBL 과 무관)');
+  });
+
+  it('Ⅲ-1 — 수행활동 미입력 시 안내 문구 표출', () => {
+    render(<TabPBLTasks version={null} interview={{}} readOnly onEdit={vi.fn()} />);
+    expect(screen.getByText(/등록된 수행활동이 없습니다/)).toBeInTheDocument();
   });
 
   it('Ⅲ-2-가 문제 정의서 — 4 정형 라벨 + 입력값이 표 형태로 노출된다', () => {

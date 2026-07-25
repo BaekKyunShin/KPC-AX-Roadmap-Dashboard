@@ -275,21 +275,28 @@ class TestPblFixtures:
         finally:
             tmp.close()
 
-    def test_pbl_perf_activities_4role_pm_and_internal_only(self):
-        """Ⅲ-1 수행활동 (T19 13×6) — 차수당 PM(offset0)·기업내부전문가(offset2) 만 채움."""
+    def test_pbl_perf_activities_fills_all_four_roles(self):
+        """Ⅲ-1 수행활동 (T19 13×6) — PBL 자체 입력이라 참석자 4역할이 모두 채워진다.
+
+        과거에는 로드맵 활동(2역할)을 복사해 외부전문가·주치의 행이 항상 공란이었다.
+        """
         from generate import _collect_tables, _generate_pbl
 
         data = _load_fixture("pbl-full.json")
-        act = data["roadmap_perf_activities"][0]
+        act = data["pbl_perf_activities"][0]
         out = _generate_pbl(data)
         doc, tmp = _open_doc(out)
         try:
             t19 = _collect_tables(doc)[19]
             assert _cell_text(t19, 1, 5) == act["pm_name"], "PM 성명 (row1 col5) 미노출"
-            assert _cell_text(t19, 3, 5) == act["expert_name"], "기업내부전문가 (row3 col5) 미노출"
-            # 외부전문가(row2)·주치의(row4) 는 로드맵 미연계 → 공란
-            assert _cell_text(t19, 2, 5) == "", "외부전문가 행이 채워짐 (공란이어야)"
-            assert _cell_text(t19, 4, 5) == "", "주치의 행이 채워짐 (공란이어야)"
+            assert _cell_text(t19, 2, 5) == act["external_expert_name"], \
+                "외부전문가 (row2 col5) 미노출"
+            assert _cell_text(t19, 3, 5) == act["internal_expert_name"], \
+                "기업내부전문가 (row3 col5) 미노출"
+            assert _cell_text(t19, 4, 5) == act["jurisdiction_manager_name"], \
+                "능력개발전담주치의 (row4 col5) 미노출"
+            # 수행 일자는 날짜만 (양식에 시간 칸 없음)
+            assert "\n" not in _cell_text(t19, 1, 1)
         finally:
             tmp.close()
         # 4 역할 라벨은 양식 원본 유지

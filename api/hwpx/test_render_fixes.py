@@ -164,8 +164,8 @@ class TestSpecSubjectDetails:
 class TestPblPerfRound:
     def test_third_round_label_is_3cha(self):
         doc = _open_bytes(_generate_pbl({
-            "roadmap_perf_activities": [
-                {"date": "26.01.01"}, {"date": "26.02.02"}, {"date": "26.03.03"},
+            "pbl_perf_activities": [
+                {"date": "25/01/01"}, {"date": "25/02/02"}, {"date": "25/03/03"},
             ],
         }))
         text = _all_text(doc)

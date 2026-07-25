@@ -199,6 +199,21 @@ function validPBLV2(): PBLInterviewStrict {
     },
     hrdReportPdf: { fileName: 'pbl.pdf', url: 'p/pbl.pdf', size: 2048 },
     courseNecessity: 'AI 도입 필요',
+    // Ⅲ-1 수행활동 — PBL 자체 입력 (정본 4역할 · 수행 일자)
+    performanceActivities: [
+      {
+        round: 1,
+        date: '25/04/10',
+        content: '핵심문제 파악 워크숍',
+        method: 'WORKSHOP',
+        participants: {
+          pm: '김PM',
+          external_expert: '이직무',
+          internal_expert: '박내부',
+          jurisdiction_manager: '최주치의',
+        },
+      },
+    ],
     problemDefinitionSheet: {
       background: '검사자별 편차로 클레임 증가.',
       core: '품질 편차 — 육안 검사 의존',

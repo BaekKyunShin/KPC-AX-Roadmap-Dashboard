@@ -65,9 +65,9 @@ describe('PBLInterviewClient', () => {
     expect(heading.textContent?.trim()).toBe('AI PBL 인터뷰');
   });
 
-  it('9개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (V2: 수행활동·우선순위·AI역량 제거)', () => {
+  it('10개 스텝이 모두 정의되어 있고 양식 번호를 노출한다 (Ⅲ-1 수행활동 = PBL 자체 입력)', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(PBL_STEPS).toHaveLength(9);
+    expect(PBL_STEPS).toHaveLength(10);
     for (const s of PBL_STEPS) {
       // 스테퍼 노출 텍스트는 stepperLabel(있으면) 또는 name
       const visibleLabel = s.stepperLabel ?? s.name;
@@ -75,18 +75,18 @@ describe('PBLInterviewClient', () => {
     }
   });
 
-  it('9번째 (마지막) Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
+  it('10번째 (마지막) Step 이 sttAttach 이고 required=false 이며 라벨이 "인터뷰 녹취 STT 첨부" 다', () => {
     const last = PBL_STEPS[PBL_STEPS.length - 1];
-    expect(last.id).toBe(9);
+    expect(last.id).toBe(10);
     expect(last.stepId).toBe('sttAttach');
     expect(last.required).toBe(false);
     expect(last.name).toBe('인터뷰 녹취 STT 첨부');
     expect(last.shortName).toBe('선택');
   });
 
-  it('PageHeader description 에 "총 9개 스텝" 문구가 포함된다', () => {
+  it('PageHeader description 에 "총 10개 스텝" 문구가 포함된다', () => {
     render(<PBLInterviewClient projectId="p1" initial={{}} />);
-    expect(screen.getByText(/총 9개 스텝/)).toBeInTheDocument();
+    expect(screen.getByText(/총 10개 스텝/)).toBeInTheDocument();
   });
 
   // "기대효과·요구분석" 스텝 (b-2 정합: 정본 Ⅱ-3 훈련환경 표 후반부 → Ⅱ-3-b)
@@ -107,7 +107,7 @@ describe('PBLInterviewClient', () => {
     expect(byId('expectations').shortName).toBe('Ⅱ-3-b');
   });
 
-  it('PBL_STEPS 순서가 번호 오름차순으로 재정렬된다 (b-2, id 1~9)', () => {
+  it('PBL_STEPS 순서가 번호 오름차순으로 재정렬된다 (b-2 + Ⅲ-1 추가, id 1~10)', () => {
     expect(PBL_STEPS.map((s) => s.stepId)).toEqual([
       'overview',
       'companyIssues',
@@ -115,11 +115,12 @@ describe('PBLInterviewClient', () => {
       'courseNecessity',
       'trainingEnv',
       'expectations',
+      'performanceActivities',
       'problems',
       'target',
       'sttAttach',
     ]);
-    expect(PBL_STEPS.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(PBL_STEPS.map((s) => s.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it('마지막 Step(sttAttach) 진입 시 StepSttAttach 가 렌더된다', () => {
@@ -269,9 +270,35 @@ describe('PBLInterviewClient', () => {
     expect(PBL_STEPS.some((s) => s.stepId === ('organization' as PBLStepId))).toBe(false);
   });
 
-  // V2: Ⅲ-1 수행활동(activities) step 제거 — 로드맵 연동으로 대체.
-  it('Ⅲ-1 수행활동 step 이 제거되어 PBL_STEPS 에 activities 가 없다', () => {
+  // Ⅲ-1 수행활동 — PBL 자체 입력으로 복원. V1 의 옛 키(activities) 는 부활시키지 않는다.
+  it('Ⅲ-1 수행활동 step 이 performanceActivities 로 정의된다 (옛 activities 키는 없음)', () => {
+    const step = PBL_STEPS.find((s) => s.stepId === 'performanceActivities')!;
+    expect(step).toBeDefined();
+    expect(step.shortName).toBe('Ⅲ-1');
+    expect(step.name).toBe('훈련과제 도출 수행활동');
+    expect(step.required).toBe(true);
     expect(PBL_STEPS.some((s) => s.stepId === ('activities' as PBLStepId))).toBe(false);
+  });
+
+  it('Ⅲ-1 스텝 진입 시 4역할 참석자 표가 렌더된다', () => {
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getAllByText('수행활동')[0]);
+    expect(
+      screen.getByRole('heading', { name: /훈련과제 도출 수행활동/, level: 2 })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('능력개발전담주치의').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('Ⅲ-1 수행활동 편집 시 저장 payload 에 performanceActivities 가 포함된다', async () => {
+    savePBLInterviewV2.mockResolvedValue({ success: true });
+    render(<PBLInterviewClient projectId="p1" initial={{}} />);
+    fireEvent.click(screen.getAllByText('수행활동')[0]);
+    fireEvent.change(screen.getByLabelText('1차 수행 일자'), { target: { value: '25/04/10' } });
+    fireEvent.click(screen.getByLabelText('수동 저장'));
+    await waitFor(() => expect(savePBLInterviewV2).toHaveBeenCalledTimes(1));
+    expect(savePBLInterviewV2.mock.calls[0][1].performanceActivities[0]).toEqual(
+      expect.objectContaining({ round: 1, date: '25/04/10' })
+    );
   });
 
   it('Ⅱ-2 trainingEnv 편집 시 저장 payload 에 포함된다 (R8 PBL-자체-02 — 정형 객체)', async () => {

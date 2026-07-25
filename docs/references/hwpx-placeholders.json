@@ -661,16 +661,16 @@
       "section": "Ⅲ-1 훈련과제 도출 수행활동 (13×6, 차수당 4역할)",
       "label": "interview-input",
       "strategy": "repeat_rows",
-      "py_key": "roadmap_perf_activities",
+      "py_key": "pbl_perf_activities",
       "ts_key": "performanceActivities",
-      "data_source": "선행 로드맵 인터뷰 performanceActivities[] (자동 연계 — PM·기업내부전문가 2역할만 채움)",
+      "data_source": "PBL 인터뷰 자체 입력 PBLTasks.performanceActivities[] (Ⅲ-1 스텝). ⚠️ 로드맵 연계 아님 — 정본 표가 4역할·수행 일자로 로드맵 Ⅰ-2(P-05, 2역할·일시)와 다르고 PBL 인터뷰는 별도 일정이다.",
       "location": {
         "table_index": 19,
         "data_row_start": 1,
         "rows_per_item": 4,
         "max_items": 3,
         "merged_first_col": true,
-        "notes": "차수당 4행(PM/외부전문가/기업내부전문가/능력개발전담주치의). 로드맵은 2역할이라 PM(offset0)·기업내부전문가(offset2)만 기입, 외부·주치의 행은 공란. col 0 차수·col 4 역할 라벨 양식 고정."
+        "notes": "차수당 4행 — PM(offset0)/외부전문가(offset1)/기업내부전문가(offset2)/능력개발전담주치의(offset3). PBL 인터뷰가 4역할을 모두 입력한다. col 0 차수·col 4 역할 라벨 양식 고정. date 는 날짜만(시간 칸 없음)."
       },
       "row_columns": [
         {
@@ -695,8 +695,18 @@
         },
         {
           "col": 5,
-          "field": "expert_name",
+          "field": "external_expert_name",
+          "row_offset": 1
+        },
+        {
+          "col": 5,
+          "field": "internal_expert_name",
           "row_offset": 2
+        },
+        {
+          "col": 5,
+          "field": "jurisdiction_manager_name",
+          "row_offset": 3
         }
       ],
       "placeholder_template": "{{pbl_perf_{i}_{field}}}"

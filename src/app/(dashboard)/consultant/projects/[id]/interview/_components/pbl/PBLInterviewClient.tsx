@@ -17,6 +17,7 @@ import {
   PBLInterviewStrictSchema,
   type PBLInterviewStrict,
   type PBLOverview,
+  type PBLPerformanceActivity,
   type PBLProblemDefinitionSheet,
   type PBLTarget,
 } from '@/lib/schemas/interview-pbl';
@@ -30,14 +31,17 @@ import { StepCourseNecessity } from './StepCourseNecessity';
 import { StepTrainingEnv } from './StepTrainingEnv';
 import { StepExpectations } from './StepExpectations';
 import { StepHrdReportPdf } from './StepHrdReportPdf';
+import { StepPerformanceActivities } from './StepPerformanceActivities';
 import { StepProblems, type StepProblemsValue } from './StepProblems';
 import { StepTarget } from './StepTarget';
 import { StepSttAttach } from '@/components/interview/StepSttAttach';
 
 // ============================================================================
-// 9 스텝 정의 — 양식 2:1 정합 8개 + STT 첨부 1개 (선택)
+// 10 스텝 정의 — 양식 2:1 정합 9개 + STT 첨부 1개 (선택)
 // ----------------------------------------------------------------------------
-// V2: Ⅲ-1 수행활동(로드맵 연동)·Ⅲ-2-나 문제 우선순위·Ⅲ-4 AI역량 진단은 제거됐다.
+// V2: Ⅲ-2-나 문제 우선순위·Ⅲ-4 AI역량 진단은 제거됐다(AI역량은 로드맵 연동).
+// Ⅲ-1 수행활동은 정본 표(4역할·날짜만)가 로드맵 Ⅰ-2(2역할·일시)와 달라 로드맵 연동을
+// 폐기하고 **PBL 자체 입력**으로 복원했다.
 // id 는 양식 섹션 의미를 그대로 노출 (camelCase 단일 단어). UI 텍스트는 shortName
 // / name. required 는 strict 제출 시 빈 값 금지 여부.
 // ============================================================================
@@ -49,6 +53,7 @@ export type PBLStepId =
   | 'expectations'
   | 'hrdReport'
   | 'courseNecessity'
+  | 'performanceActivities'
   | 'problems'
   | 'target'
   | 'sttAttach';
@@ -98,13 +103,22 @@ export const PBL_STEPS: ReadonlyArray<StepDef> = [
     required: true,
   },
   { id: 6, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석', required: true },
+  // Ⅲ-1 수행활동 — PBL 자체 입력(정본 4역할·수행 일자). 로드맵 Ⅰ-2 와 별개 표.
+  {
+    id: 7,
+    stepId: 'performanceActivities',
+    shortName: 'Ⅲ-1',
+    name: '훈련과제 도출 수행활동',
+    stepperLabel: '수행활동',
+    required: true,
+  },
   // V2: Ⅲ-2-나 우선순위 제거 → 문제 정의서 단일 세트만.
-  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서', required: true },
+  { id: 8, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서', required: true },
   // V2: Ⅲ-4 AI역량 제거 → Ⅲ-3 훈련대상 업무(로드맵 과업 연동)만.
-  { id: 8, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무', required: true },
+  { id: 9, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무', required: true },
   // Stepper 라벨 10자 → 6자 단축
   {
-    id: 9,
+    id: 10,
     stepId: 'sttAttach',
     shortName: '선택',
     name: '인터뷰 녹취 STT 첨부',
@@ -183,7 +197,11 @@ export function PBLInterviewClient({
   );
 
   const updateTasks = useCallback(
-    (patch: { problemDefinitionSheet?: PBLProblemDefinitionSheet; target?: PBLTarget }) => {
+    (patch: {
+      performanceActivities?: PBLPerformanceActivity[];
+      problemDefinitionSheet?: PBLProblemDefinitionSheet;
+      target?: PBLTarget;
+    }) => {
       setData((prev) => ({ ...prev, ...patch }));
     },
     []
@@ -408,6 +426,13 @@ export function PBLInterviewClient({
             onChange={(next) => updateAnalysis({ hrdReportPdf: next })}
           />
         );
+      case 'performanceActivities':
+        return (
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) => updateTasks({ performanceActivities: next })}
+          />
+        );
       case 'problems': {
         const problemsValue: StepProblemsValue = {
           problemDefinitionSheet: data.problemDefinitionSheet ?? {
@@ -451,7 +476,7 @@ export function PBLInterviewClient({
     <PageContainer>
       <PageHeader
         title="AI PBL 인터뷰"
-        description="산인공 양식 2 8개 장과 선택 항목인 STT 첨부를 포함해 총 9개 스텝으로 진행합니다."
+        description="산인공 양식 2 9개 장과 선택 항목인 STT 첨부를 포함해 총 10개 스텝으로 진행합니다."
       />
 
       <InterviewStepper

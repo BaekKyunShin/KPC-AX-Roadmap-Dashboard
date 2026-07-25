@@ -1079,7 +1079,7 @@ def _generate_pbl(data: dict) -> bytes:
         table_index=19,
         rows_per_item=4,
         base_items=_PBL_BASE_PERF_ACTS,
-        needed=len(data.get("roadmap_perf_activities") or []),
+        needed=len(data.get("pbl_perf_activities") or []),
         marker_prefix="pbl_perf_",
         max_items=_PBL_MAX_PERF_ACTS,
     )
@@ -1380,16 +1380,23 @@ def _build_pbl_markers(data: dict) -> dict:
     m["{{pbl_env_expectation_as_is}}"] = _s(data.get("expectation_as_is"))
     m["{{pbl_env_expectation_to_be}}"] = _s(data.get("expectation_to_be"))
 
-    # ── Ⅲ-1 훈련과제 도출 수행활동 (T19) — 로드맵 PM(offset0)/기업내부전문가(offset2)
-    perf = data.get("roadmap_perf_activities") or []
+    # ── Ⅲ-1 훈련과제 도출 수행활동 (T19) — **PBL 자체 입력**, 참석자 4역할 전부.
+    # offset0 PM / offset1 외부전문가 / offset2 기업내부전문가 / offset3 능력개발전담주치의.
+    # ⚠️ 로드맵 연계(`roadmap_perf_activities`) 아님 — 정본 표가 로드맵 Ⅰ-2 와 다르고
+    # PBL 인터뷰는 별도 일정이라 로드맵 값을 쓰면 날짜가 틀린다.
+    perf = data.get("pbl_perf_activities") or []
     for i in range(_PBL_MAX_PERF_ACTS):
         a = perf[i] if i < len(perf) else {}
-        # Ⅲ-1 수행활동은 일자만 표기 (양식) — 로드맵 연계 date 의 시간 줄 제거
+        # Ⅲ-1 수행활동은 일자만 표기 (양식에 시간 칸 없음) — 시간 줄이 섞여 오면 제거
         m[f"{{{{pbl_perf_{i}_date}}}}"] = _s(a.get("date")).split("\n", 1)[0]
         m[f"{{{{pbl_perf_{i}_content}}}}"] = _s(a.get("content"))
         m[f"{{{{pbl_perf_{i}_method}}}}"] = _s(a.get("method"))
         m[f"{{{{pbl_perf_{i}_pm_name}}}}"] = _s(a.get("pm_name"))
-        m[f"{{{{pbl_perf_{i}_expert_name}}}}"] = _s(a.get("expert_name"))
+        m[f"{{{{pbl_perf_{i}_external_expert_name}}}}"] = _s(a.get("external_expert_name"))
+        m[f"{{{{pbl_perf_{i}_internal_expert_name}}}}"] = _s(a.get("internal_expert_name"))
+        m[f"{{{{pbl_perf_{i}_jurisdiction_manager_name}}}}"] = _s(
+            a.get("jurisdiction_manager_name")
+        )
 
     # ── Ⅲ-2-가 문제 정의서 (T21)
     sheet = data.get("problem_definition_sheet") or {}

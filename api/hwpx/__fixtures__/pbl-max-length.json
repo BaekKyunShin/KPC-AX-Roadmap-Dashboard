@@ -92,30 +92,36 @@
     "as_is": "육안 100% 전수 검사",
     "to_be": "AI 비전 1차 선별"
   },
-  "roadmap_perf_activities": [
+  "pbl_perf_activities": [
     {
       "round": 1,
-      "date": "26.04.01\n10:00~12:00",
-      "content": "킥오프 회의",
-      "method": "대면\n(인터뷰)",
-      "pm_name": "홍PM",
-      "expert_name": "박내부"
+      "date": "26/06/03",
+      "content": "1차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
     },
     {
       "round": 2,
-      "date": "26.04.08\n14:00~16:00",
-      "content": "현황 분석 워크숍",
-      "method": "비대면\n(화상)",
-      "pm_name": "홍PM",
-      "expert_name": "박내부"
+      "date": "26/06/10",
+      "content": "2차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
+      "method": "대면\n(워크숍)",
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
     },
     {
       "round": 3,
-      "date": "26.04.15\n10:00~12:00",
-      "content": "로드맵 초안 검토",
+      "date": "26/06/17",
+      "content": "3차 핵심문제 파악 워크숍 — 경영진·실무자 5명 참여, 공정별 병목 도출 및 문제 정의서 초안 합의까지 진행",
       "method": "대면\n(워크숍)",
-      "pm_name": "홍PM",
-      "expert_name": "박내부"
+      "pm_name": "홍길동컨설팅책임자",
+      "external_expert_name": "이직무외부전문가",
+      "internal_expert_name": "박내부전문가",
+      "jurisdiction_manager_name": "최능력개발전담주치의"
     }
   ],
   "roadmap_task_selections": [

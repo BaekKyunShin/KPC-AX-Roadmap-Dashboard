@@ -259,6 +259,8 @@ function toInterviewSnapshot(interview: PBLInterviewStrict): ResultPBLInterviewS
       hrdReportPdf: interview.hrdReportPdf,
       courseNecessity: interview.courseNecessity,
     },
+    // Ⅲ-1 수행활동 — PBL 자체 입력 (로드맵 연계 아님)
+    performanceActivities: interview.performanceActivities,
     problemDefinitionSheet: interview.problemDefinitionSheet,
     target: interview.target,
   };

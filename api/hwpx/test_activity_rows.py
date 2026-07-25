@@ -67,7 +67,7 @@ def _acts(n: int) -> list:
 
 
 def _pbl_acts(n: int) -> list:
-    """n 차수 분량의 수행활동 payload (PBL — 평면 pm_name/expert_name)."""
+    """n 차수 분량의 Ⅱ-1-나 로드맵 수립 활동 payload (T9 — 평면 pm_name/expert_name)."""
     return [
         {
             "round": f"{i + 1}차",
@@ -76,6 +76,23 @@ def _pbl_acts(n: int) -> list:
             "method": "대면(인터뷰)",
             "pm_name": f"PM{i + 1}",
             "expert_name": f"내부{i + 1}",
+        }
+        for i in range(n)
+    ]
+
+
+def _pbl_perf_acts(n: int) -> list:
+    """n 차수 분량의 Ⅲ-1 수행활동 payload (T19 — PBL 자체 입력, 참석자 4역할)."""
+    return [
+        {
+            "round": f"{i + 1}차",
+            "date": f"25/04/{i + 1:02d}",
+            "content": f"{i + 1}차 수행내용",
+            "method": "대면(인터뷰)",
+            "pm_name": f"PM{i + 1}",
+            "external_expert_name": f"외부{i + 1}",
+            "internal_expert_name": f"내부{i + 1}",
+            "jurisdiction_manager_name": f"주치의{i + 1}",
         }
         for i in range(n)
     ]
@@ -143,13 +160,21 @@ def test_pbl_setup_activity_5rounds_expands_to_11rows():
 
 def test_pbl_perf_3rounds_keeps_original_13rows():
     """PBL Ⅲ-1(T19) 차수당 4행 — 3차는 원형 13행."""
-    doc = _open_bytes(_generate_pbl({"roadmap_perf_activities": _pbl_acts(3)}))
+    doc = _open_bytes(_generate_pbl({"pbl_perf_activities": _pbl_perf_acts(3)}))
     assert _tables(doc)[19].row_count == 13
 
 
 def test_pbl_perf_5rounds_expands_to_21rows():
     """PBL Ⅲ-1(T19) 5차 → 1 + 5×4 = 21행."""
-    doc = _open_bytes(_generate_pbl({"roadmap_perf_activities": _pbl_acts(5)}))
+    doc = _open_bytes(_generate_pbl({"pbl_perf_activities": _pbl_perf_acts(5)}))
     tbl = _tables(doc)[19]
     assert tbl.row_count == 21
     assert "5차 수행내용" in _table_text(tbl)
+
+
+def test_pbl_perf_expanded_rows_fill_all_four_roles():
+    """확장된 차수도 참석자 4역할이 모두 채워진다 (기존 결함: 2역할만 채움)."""
+    doc = _open_bytes(_generate_pbl({"pbl_perf_activities": _pbl_perf_acts(5)}))
+    text = _table_text(_tables(doc)[19])
+    for role in ("PM5", "외부5", "내부5", "주치의5"):
+        assert role in text, f"확장 행에 {role} 누락"
