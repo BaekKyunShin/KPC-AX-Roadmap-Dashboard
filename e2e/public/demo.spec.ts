@@ -32,9 +32,7 @@ test.describe('Phase 1.2: 데모 페이지 (/demo)', () => {
   });
 
   test('샘플 데이터 경고 배너 표시', async ({ page }) => {
-    await expect(
-      page.getByText(/실제 AI 생성 결과가 아닌 샘플 데이터/),
-    ).toBeVisible();
+    await expect(page.getByText(/실제 AI 생성 결과가 아닌 샘플 데이터/)).toBeVisible();
   });
 
   test('기업 정보 카드 — (주)샘플유통 표시', async ({ page }) => {
@@ -42,25 +40,23 @@ test.describe('Phase 1.2: 데모 페이지 (/demo)', () => {
     await expect(page.getByText('(주)샘플유통').first()).toBeVisible();
   });
 
-  test('로드맵 탭 4개 전환 (산인공 양식)', async ({ page }) => {
-    // 데모 페이지 탭은 커스텀 button — OFA 통합 후 산인공 4개 탭 구조
-    // 기본 활성: 역량 모델링
-    const modelingTab = page.getByRole('button', { name: '역량 모델링' });
-    const matrixTab = page.getByRole('button', { name: '훈련체계도' });
-    const planTab = page.getByRole('button', { name: '연간 훈련계획' });
+  test('로드맵 탭 — 산인공 양식 v2 는 "훈련과정 명세서" 1개', async ({ page }) => {
+    // 데모 페이지 탭은 커스텀 button. 양식 v2(2026-07-13 개정)에서 Ⅲ장이
+    // 훈련과정 명세서 1섹션으로 축소됐다 — 단일 출처: src/types/roadmap-ui.ts ROADMAP_TABS
     const specTab = page.getByRole('button', { name: '훈련과정 명세서' });
-
-    // 모든 탭이 렌더되는지 확인
-    await expect(modelingTab).toBeVisible();
-    await expect(matrixTab).toBeVisible();
-    await expect(planTab).toBeVisible();
     await expect(specTab).toBeVisible();
 
-    // 다른 탭으로 전환 시 해당 탭이 활성화되는지 확인 (클릭 가능성)
-    await matrixTab.click();
-    await planTab.click();
+    // 탭 영역에 버튼이 정확히 1개 — 탭이 늘면 즉시 실패해 SSOT 이탈을 잡는다.
+    await expect(page.locator('main nav').getByRole('button')).toHaveCount(1);
+
+    // v1 삭제 탭 역단언 (회귀 감시)
+    await expect(page.getByRole('button', { name: '역량 모델링' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '훈련체계도' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '연간 훈련계획' })).toHaveCount(0);
+
+    // 클릭해도 활성 상태가 유지되고 콘텐츠가 렌더된다
     await specTab.click();
-    await modelingTab.click();
+    await expect(specTab).toBeVisible();
   });
 
   test('"지금 시작하기" CTA → /register 이동', async ({ page }) => {

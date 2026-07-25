@@ -4,7 +4,11 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck, expectToast } from '../helpers/assertions.helper';
 import { switchTab } from '../helpers/navigation.helper';
 import { deleteProject, deleteProjectsByName } from '../helpers/cleanup.helper';
-import { waitForDownload, expectDownloadFilename, expectDownloadSize } from '../helpers/download.helper';
+import {
+  waitForDownload,
+  expectDownloadFilename,
+  expectDownloadSize,
+} from '../helpers/download.helper';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -69,9 +73,7 @@ test.describe('Phase 2.4: 프로젝트 목록', () => {
   });
 
   test('작업 열에 "삭제" 버튼이 노출된다', async ({ opsPage: page }) => {
-    await expect(
-      page.getByRole('button', { name: '삭제' }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: '삭제' }).first()).toBeVisible();
   });
 
   test('"새 프로젝트 생성" 버튼 → /ops/projects/new', async ({ opsPage: page }) => {
@@ -164,7 +166,9 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
     await page.waitForLoadState('networkidle');
 
     // 자가진단 결과 카드 헤더 (data-slot="card-title")
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' })).toBeVisible();
+    await expect(
+      page.locator('[data-slot="card-title"]').filter({ hasText: '자가진단 결과' })
+    ).toBeVisible();
 
     // 활성 템플릿이 없으면 자가진단 폼 자체가 없음 → 스킵
     const directInputBtn = page.getByText('운영자가 직접 입력하기');
@@ -233,7 +237,9 @@ test.describe('Phase 2.7: 자가진단 + 매칭 (새 프로젝트)', () => {
     await page.waitForLoadState('networkidle');
 
     // 컨설턴트 배정 카드 확인 (card-title로 특정)
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: '컨설턴트 배정' })).toBeVisible();
+    await expect(
+      page.locator('[data-slot="card-title"]').filter({ hasText: '컨설턴트 배정' })
+    ).toBeVisible();
 
     // 자동 매칭 탭 확인 (exact로 "컨설턴트 자동 매칭" 버튼과 구분)
     await expect(page.getByRole('button', { name: '자동 매칭', exact: true })).toBeVisible();
@@ -265,9 +271,11 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     for (let i = 0; i < linkCount; i++) {
       const link = allDetailLinks.nth(i);
       // 링크와 같은 행(tr 또는 카드)의 텍스트 확인
-      const row = link.locator('xpath=ancestor::tr[1] | ancestor::div[contains(@class,"border")][1]').first();
+      const row = link
+        .locator('xpath=ancestor::tr[1] | ancestor::div[contains(@class,"border")][1]')
+        .first();
       const rowText = await row.textContent().catch(() => '');
-      if (rowText && (/로드맵 최종 확정|로드맵 초안 완료/).test(rowText)) {
+      if (rowText && /로드맵 최종 확정|로드맵 초안 완료/.test(rowText)) {
         targetHref = await link.getAttribute('href');
         break;
       }
@@ -287,18 +295,22 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     await expect(page).toHaveURL(/\/ops\/projects\/[a-f0-9-]+\/roadmap/);
     roadmapUrl = page.url();
 
-    // 로드맵 페이지 기본 요소 확인
-    await expect(page.getByText('AI 교육 로드맵')).toBeVisible();
-
-    // 뒤로가기 버튼 (BackButton은 <button>으로 렌더링)
-    await expect(page.getByRole('button', { name: /프로젝트로 돌아가기/ })).toBeVisible();
+    // 로드맵 페이지 기본 요소 확인 — v2 result-v2 PageHeader 제목
+    // (OPS 는 consultant 의 RoadmapResultClient 를 그대로 재사용한다.)
+    await expect(page.getByRole('heading', { name: 'AI훈련로드맵 결과', level: 1 })).toBeVisible();
 
     // 버전 선택 — 사이드 패널에서 combobox(Select)로 변경됨
     // "버전 N" 헤더가 우측에 표시되거나 버전 선택 combobox가 존재
     const versionHeader = page.locator('h2').filter({ hasText: /^버전 \d+$/ });
     const versionCombobox = page.getByRole('combobox').filter({ hasText: /버전 \d+/ });
-    const hasVersionHeader = await versionHeader.first().isVisible({ timeout: 5_000 }).catch(() => false);
-    const hasVersionCombobox = await versionCombobox.first().isVisible({ timeout: 3_000 }).catch(() => false);
+    const hasVersionHeader = await versionHeader
+      .first()
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+    const hasVersionCombobox = await versionCombobox
+      .first()
+      .isVisible({ timeout: 3_000 })
+      .catch(() => false);
     expect(hasVersionHeader || hasVersionCombobox).toBeTruthy();
   });
 
@@ -326,30 +338,36 @@ test.describe('Phase 2.8: 로드맵 OPS 뷰', () => {
     await expect(versionHeader).toBeVisible();
   });
 
-  test('탭 — 산인공 4개 탭 렌더 및 전환', async ({ opsPage: page }) => {
+  test('탭 — 산인공 양식 v2 3개 탭 렌더 및 전환', async ({ opsPage: page }) => {
     test.skip(!hasRoadmapLink || !roadmapUrl, '로드맵 데이터 없음');
 
     await page.goto(roadmapUrl!);
     await page.waitForLoadState('networkidle');
 
-    // 산인공 양식 정렬 통합(#14) 이후 로드맵 OPS 탭은 4개로 변경됨:
-    // 역량 모델링 / 훈련체계도 / 연간 훈련계획 / 훈련과정 명세서
-    const modelingTab = page.getByRole('button', { name: '역량 모델링' });
-    const matrixTab = page.getByRole('button', { name: '훈련체계도' });
-    const planTab = page.getByRole('button', { name: '연간 훈련계획' });
-    const specTab = page.getByRole('button', { name: '훈련과정 명세서' });
+    // 양식 v2(2026-07-13 개정) 이후 로드맵 결과는 3섹션 구조.
+    // 단일 출처: roadmap/_components/result-v2/RoadmapResultClient.tsx 의 tabs
+    // Radix Tabs(TabsTrigger) 기반이라 role 은 button 이 아니라 tab.
+    const overviewTab = page.getByRole('tab', { name: 'Ⅰ. 개요' });
+    const requirementsTab = page.getByRole('tab', { name: 'Ⅱ. 요구분석' });
+    const trainingTab = page.getByRole('tab', { name: 'Ⅲ. 훈련체계' });
 
-    // 모든 탭 렌더 확인
-    await expect(modelingTab).toBeVisible();
-    await expect(matrixTab).toBeVisible();
-    await expect(planTab).toBeVisible();
-    await expect(specTab).toBeVisible();
+    await expect(overviewTab).toBeVisible();
+    await expect(requirementsTab).toBeVisible();
+    await expect(trainingTab).toBeVisible();
+    await expect(page.getByRole('tab')).toHaveCount(3);
 
-    // 각 탭 클릭 → 콘텐츠 전환 가능성 확인 (레이아웃 클래스는 리팩토링으로 변경될 수 있어 전환 동작만 검증)
-    await matrixTab.click();
-    await planTab.click();
-    await specTab.click();
-    await modelingTab.click();
+    // v1 삭제 탭 역단언 (회귀 감시)
+    await expect(page.getByRole('tab', { name: '역량 모델링' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: '훈련체계도' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: '연간 훈련계획' })).toHaveCount(0);
+
+    // 각 탭 클릭 → 전환 동작만 검증 (레이아웃 클래스는 리팩토링으로 변경될 수 있음)
+    await requirementsTab.click();
+    await expect(requirementsTab).toHaveAttribute('data-state', 'active');
+    await trainingTab.click();
+    await expect(trainingTab).toHaveAttribute('data-state', 'active');
+    await overviewTab.click();
+    await expect(overviewTab).toHaveAttribute('data-state', 'active');
   });
 
   test('PDF 다운로드 버튼 클릭 → 파일 다운로드', async ({ opsPage: page }) => {

@@ -35,7 +35,8 @@ test.describe('갤러리 상세', () => {
     await expect(page.locator('main').getByText('로드맵·PBL 갤러리')).toBeVisible();
 
     // "갤러리로 돌아가기" 뒤로가기 (BackButton: useBack=true면 <button>, 아니면 <a>)
-    const backNav = page.getByRole('link', { name: /갤러리로 돌아가기/ })
+    const backNav = page
+      .getByRole('link', { name: /갤러리로 돌아가기/ })
       .or(page.getByRole('button', { name: /갤러리로 돌아가기/ }));
     await expect(backNav).toBeVisible();
 
@@ -45,26 +46,40 @@ test.describe('갤러리 상세', () => {
     expect(getErrors()).toEqual([]);
   });
 
-  test('트랙별 탭 네비게이션 렌더 및 전환', async ({
-    consultantPage: page,
-  }) => {
+  test('트랙별 탭 네비게이션 렌더 및 전환', async ({ consultantPage: page }) => {
     // 선행 테스트에서 상세 URL을 추출하지 못하면 탭 전환 테스트 불가
     test.skip(!galleryDetailUrl, '테스트 데이터 없음: 갤러리 상세 URL이 없습니다');
 
     await page.goto(galleryDetailUrl!);
     await page.waitForLoadState('networkidle');
 
-    // 갤러리 상세는 트랙(ROADMAP/PBL)별로 탭 구조가 다름 — 방어적 검증
-    // ROADMAP: 역량 모델링/훈련체계도/연간 훈련계획/훈련과정 명세서 (4개)
-    // PBL: Ⅰ 개요 / Ⅱ·Ⅲ 요구분석·훈련대상 / Ⅳ-2 AI 도구 활용 / Ⅳ-3 훈련 실시 계획 / Ⅳ-4 평가 계획 / Ⅴ 성과분석·확산 (6개)
+    // 갤러리 상세는 트랙(ROADMAP/PBL)별로 탭 구조가 다름 — 트랙을 판별해 정확히 단언한다.
+    //   ROADMAP: 훈련과정 명세서 (1개) — 양식 v2 에서 Ⅲ장이 1섹션으로 축소
+    //            (src/types/roadmap-ui.ts ROADMAP_TABS)
+    //   PBL: Ⅰ 개요 / Ⅱ·Ⅲ 요구분석·훈련대상 / Ⅳ-2 AI 도구 활용 /
+    //        Ⅳ-3 훈련 실시 계획 / Ⅳ-4 평가 계획 (5개)
+    //        (gallery/[id]/_components/GalleryPBLDetailContent.tsx)
     const tabs = page.locator('main nav').getByRole('button');
     await expect(tabs.first()).toBeVisible({ timeout: 10_000 });
-    const tabCount = await tabs.count();
-    expect(tabCount).toBeGreaterThanOrEqual(4);
 
-    // 최소 두 개 탭 전환 동작 확인
-    if (tabCount >= 2) {
+    const isPBL = await page
+      .getByRole('button', { name: 'Ⅰ 개요' })
+      .isVisible()
+      .catch(() => false);
+
+    if (isPBL) {
+      await expect(tabs).toHaveCount(5);
+      await expect(page.getByRole('button', { name: 'Ⅳ-4 평가 계획' })).toBeVisible();
+      // 최소 두 개 탭 전환 동작 확인
       await tabs.nth(1).click();
+      await tabs.first().click();
+    } else {
+      await expect(tabs).toHaveCount(1);
+      await expect(page.getByRole('button', { name: '훈련과정 명세서' })).toBeVisible();
+      // v1 삭제 탭 역단언 (회귀 감시)
+      await expect(page.getByRole('button', { name: '역량 모델링' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: '훈련체계도' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: '연간 훈련계획' })).toHaveCount(0);
       await tabs.first().click();
     }
   });
@@ -109,9 +124,7 @@ test.describe('갤러리 상세', () => {
     likeToggled = false;
   });
 
-  test('"이 로드맵/PBL 사용하기" 버튼 컨설턴트에게 표시', async ({
-    consultantPage: page,
-  }) => {
+  test('"이 로드맵/PBL 사용하기" 버튼 컨설턴트에게 표시', async ({ consultantPage: page }) => {
     // 선행 테스트에서 상세 URL을 추출하지 못하면 버튼 표시 테스트 불가
     test.skip(!galleryDetailUrl, '테스트 데이터 없음: 갤러리 상세 URL이 없습니다');
 
@@ -162,7 +175,9 @@ test.describe('갤러리 상세', () => {
         if (await likeButton.isVisible().catch(() => false)) {
           const countBeforeRestore = await likeButton.locator('span').textContent();
           await likeButton.click();
-          await expect(likeButton.locator('span')).not.toHaveText(countBeforeRestore!, { timeout: 5_000 }).catch(() => {});
+          await expect(likeButton.locator('span'))
+            .not.toHaveText(countBeforeRestore!, { timeout: 5_000 })
+            .catch(() => {});
         }
       } finally {
         await context.close();
