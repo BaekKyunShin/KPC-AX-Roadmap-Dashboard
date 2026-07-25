@@ -105,10 +105,11 @@ class TestColorNormalization:
     def test_pbl_blue_becomes_black_title_stays_blue(self):
         doc = _open_bytes(_generate_pbl({"company_name": "㈜테스트"}))
         cps = doc.char_properties
-        assert (cps["151"].text_color() or "").upper() == "#0000FF", "표지 제목 기업명 파랑 유지 실패"
+        # ver3 에서 charPr id 가 118 이상 -1 이동 → 표지 기업명 파랑은 151→150
+        assert (cps["150"].text_color() or "").upper() == "#0000FF", "표지 제목 기업명 파랑 유지 실패"
         remaining = [
             cid for cid, rs in cps.items()
-            if cid != "151" and (rs.text_color() or "").upper() in _BLUES
+            if cid != "150" and (rs.text_color() or "").upper() in _BLUES
         ]
         assert remaining == [], f"파랑 잔존(검정화 실패): {remaining}"
 

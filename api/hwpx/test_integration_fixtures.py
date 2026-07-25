@@ -379,7 +379,8 @@ class TestPblFixtures:
         try:
             t35 = _collect_tables(doc)[35]
             assert _cell_text(t35, 7, 1) == contents[0]["unit_name"], "훈련내용 row7 미노출"
-            assert _cell_text(t35, 10, 6) == str(exp_total), "전체시간 자동합산 실패"
+            # ver3 열 병합 조정으로 시간 열이 col 6 → col 7 이동 (col 6 은 '전체시간' 라벨)
+            assert _cell_text(t35, 10, 7) == str(exp_total), "전체시간 자동합산 실패"
             assert _cell_text(t35, 10, 8) == str(exp_ext), "외부 강사시간 합산 실패"
             assert _cell_text(t35, 10, 9) == str(exp_int), "내부 강사시간 합산 실패"
         finally:

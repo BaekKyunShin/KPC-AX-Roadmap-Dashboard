@@ -145,7 +145,10 @@ PBL_TEMPLATE = os.path.normpath(
 
 
 _ROADMAP_KEEP_BLUE = {"106"}  # 표지 제목 부제 '(기업명 – 대상 과업)'
-_PBL_KEEP_BLUE = {"151"}      # 표지(과정개발) 제목 '㈜기업명'
+_PBL_KEEP_BLUE = {"150"}      # 표지(과정개발) 제목 '㈜기업명'
+# ⚠️ charPr id 는 양식 개정 시 밀린다 — PBL ver3 에서 118 이상 id 가 전부 -1 이동해
+# 표지 기업명 파랑이 151→150 이 됐다(구 151 은 신규에서 검정). 새 양식 적용 시
+# header.xml 의 textColor="#0000FF" / <hh:italic/> charPr id 를 반드시 재확인할 것.
 _BLUE_TEXT_COLORS = {"#0000FF", "#2E74B5", "#3057B9"}
 
 
