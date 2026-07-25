@@ -10,32 +10,44 @@
 //   ⚠️ v1 의 "Ⅱ-1-나 조직 및 주요 업무" 스텝과 "현재/예상 AI역량 수준" radiogroup 은 삭제됐다.
 import { test, expect } from '../fixtures/auth.fixture';
 import { setupConsoleErrorCheck } from '../helpers/assertions.helper';
-import { findFirstLinkHref } from '../helpers/navigation.helper';
 
 test.describe.configure({ mode: 'serial' });
 
 let interviewUrl: string | null = null;
 let isPblAvailable = false;
 
+/**
+ * 담당 프로젝트 목록에서 **PBL 트랙 프로젝트를 결정적으로** 찾는다.
+ *
+ * 이전 구현은 findFirstLinkHref 로 "목록의 첫 프로젝트"만 보고 PBL 이 아니면 null 을
+ * 반환했다. 목록은 created_at DESC 정렬이라 첫 프로젝트는 사실상 ROADMAP 이었고,
+ * 그 결과 이 spec 전체가 CI 에서 **한 번도 실행되지 않은 채** skip 돼 왔다
+ * (v1 단언이 썩어도 CI 는 초록이었던 원인).
+ *
+ * 이제 목록 전 행을 훑어 TrackBadge(data-track="PBL")가 붙은 행의 상세 링크를 고른다.
+ * 상태 뱃지 문구에도 "PBL" 이 섞이므로 텍스트 대신 data 속성으로 판별한다.
+ * 못 찾으면 종전처럼 null → 호출부에서 test.skip.
+ */
 async function findPBLProjectInterviewUrl(
   page: import('@playwright/test').Page
 ): Promise<string | null> {
   await page.goto('/consultant/projects');
   await page.waitForLoadState('networkidle');
 
-  const href = await findFirstLinkHref(page, '/consultant/projects/');
-  if (!href) return null;
+  const pblRow = page
+    .locator('main tr')
+    .filter({ has: page.locator('[data-testid="track-badge"][data-track="PBL"]') })
+    .first();
 
-  await page.goto(href);
-  await page.waitForLoadState('networkidle');
-  const isPBL =
-    (await page
-      .getByText(/PBL/)
-      .first()
-      .isVisible()
-      .catch(() => false)) ?? false;
-  if (!isPBL) return null;
-  return `${href}/interview`;
+  if (!(await pblRow.isVisible().catch(() => false))) return null;
+
+  const href = await pblRow
+    .locator('a[href*="/consultant/projects/"]')
+    .first()
+    .getAttribute('href')
+    .catch(() => null);
+
+  return href ? `${href}/interview` : null;
 }
 
 test.describe('컨설턴트 PBL 인터뷰 V2 (양식 2:1 정합 9 스텝 + STT 첨부 1)', () => {

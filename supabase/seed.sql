@@ -184,14 +184,110 @@ INSERT INTO projects (
   '11111111-1111-1111-1111-111111111111'
 );
 
+-- ⚠️ 정렬 주의 — 아래 추가 프로젝트는 created_at 을 명시적 과거로 고정한다.
+--    컨설턴트 프로젝트 목록은 created_at DESC 정렬이고(consultant/projects/actions.ts),
+--    다수의 E2E spec 이 helpers/navigation.helper.ts 의 findFirstLinkHref 로
+--    "목록의 첫 프로젝트"를 집어 쓴다. 신규 시드가 최신이 되면 그 spec 들이
+--    통째로 다른 프로젝트를 보게 되어 깨진다. 시드기업B(ROADMAP·ASSIGNED)가
+--    계속 '첫 프로젝트'로 남도록 과거 시각을 박아 둔다.
+
+-- PBL 트랙 프로젝트 (컨설턴트 PBL 인터뷰 E2E용)
+INSERT INTO projects (
+  id, company_name, industry, company_size,
+  contact_name, contact_email, status, track,
+  assigned_consultant_id, created_by, created_at
+) VALUES (
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  '시드기업C', '제조업', '50~299명',
+  '박영희', 'park@test.com', 'ASSIGNED', 'PBL',
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  '2026-01-02 00:00:00+00'
+);
+
+-- FINALIZED ROADMAP 프로젝트 (OPS 로드맵 뷰·갤러리 상세 E2E용)
+INSERT INTO projects (
+  id, company_name, industry, company_size,
+  contact_name, contact_email, status, track,
+  assigned_consultant_id, created_by, created_at
+) VALUES (
+  'dddddddd-dddd-dddd-dddd-dddddddddddd',
+  '시드기업D', 'IT/SW', '50~299명',
+  '최민수', 'choi@test.com', 'FINALIZED', 'ROADMAP',
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  '2026-01-01 00:00:00+00'
+);
+
 -- 프로젝트 배정 이력
 INSERT INTO project_assignments (
   project_id, consultant_id, assigned_by, assignment_reason
-) VALUES (
+) VALUES
+(
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   '22222222-2222-2222-2222-222222222222',
   '11111111-1111-1111-1111-111111111111',
   'E2E 테스트용 시드 배정'
+),
+(
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  'E2E PBL 트랙 시드 배정'
+),
+(
+  'dddddddd-dddd-dddd-dddd-dddddddddddd',
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  'E2E 확정 로드맵 시드 배정'
+);
+
+-- ============================================================
+-- 6. FINAL 로드맵 버전 — OPS 로드맵 뷰·갤러리 상세 E2E 시작점
+-- ============================================================
+-- 컬럼명은 v1 레거시지만 저장 의미는 v2 (roadmap-storage-mapper.ts 계약):
+--   roadmap_matrix → 미사용(항상 [])
+--   pbl_course     → { setup_necessity, outcome_summary }
+--   courses        → course_specs[]
+-- 갤러리 노출 조건: status='FINAL' AND is_shared=true (gallery/actions/queries.ts)
+INSERT INTO roadmap_versions (
+  id, project_id, version_number, status, is_shared,
+  diagnosis_summary, roadmap_matrix, pbl_course, courses,
+  created_by, finalized_by, finalized_at
+) VALUES (
+  'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+  'dddddddd-dddd-dddd-dddd-dddddddddddd',
+  1, 'FINAL', TRUE,
+  'AI 활용 기초 역량은 갖췄으나 업무 적용 사례가 부족하다. 데이터 정제·문서 자동화부터 단계적으로 확산할 것을 권고한다.',
+  '[]'::jsonb,
+  jsonb_build_object(
+    'setup_necessity', '반복 문서 작업이 많아 AI 도구 도입으로 즉시 효과를 볼 수 있는 구간이 넓다.',
+    'outcome_summary', jsonb_build_object(
+      'ai_competency_level', 'BEGINNER',
+      'selected_tasks', '품질 검사 리포트 작성',
+      'main_content', '1단계 AI 도구 활용 기초 → 2단계 업무 적용 실습 → 3단계 사내 확산'
+    )
+  ),
+  jsonb_build_array(
+    jsonb_build_object(
+      'training_period', '2026년 1분기',
+      'training_level', 'BEGINNER',
+      'course_name', 'AI 도구 활용 기초',
+      'training_method', '집체(대면)',
+      'recommended_program', '사업주 직업능력개발훈련',
+      'goal', '생성형 AI 도구로 반복 문서 업무를 자동화할 수 있다.',
+      'main_content', '프롬프트 작성 원리, 문서 요약·초안 생성 실습',
+      'target_audience', '품질관리팀 전 직원',
+      'subjects', jsonb_build_array(
+        jsonb_build_object('name', 'AI 개요', 'details', '생성형 AI 동작 원리', 'hours', 4),
+        jsonb_build_object('name', '프롬프트 실습', 'details', '업무 문서 초안 생성', 'hours', 8),
+        jsonb_build_object('name', '사례 연구', 'details', '제조 현장 적용 사례', 'hours', 4)
+      )
+    )
+  ),
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  '2026-01-05 00:00:00+00'
 );
 
 -- 자가진단 템플릿은 마이그레이션(001, 006)에서 이미 생성됨 — seed 불필요
