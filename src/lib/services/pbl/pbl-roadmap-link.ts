@@ -4,6 +4,7 @@ import { getLatestFinalRoadmap, type RoadmapVersionRow } from '../roadmap/roadma
 import { fromRoadmapVersionColumns } from '../roadmap/roadmap-storage-mapper';
 import { mapDbToRoadmapInterview } from '../interview/converters';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
+import type { PBLRoadmapOverrides } from '@/lib/schemas/interview-pbl';
 
 /** 로드맵 프로젝트 인터뷰 원시 행 (PBL Ⅱ장 자동 연계에 필요한 컬럼만) */
 export interface RoadmapInterviewRow {
@@ -82,6 +83,64 @@ export function hydrateRoadmapInterview(
 ): Partial<RoadmapInterviewStrict> | null {
   if (!row) return null;
   return mapDbToRoadmapInterview(row as Parameters<typeof mapDbToRoadmapInterview>[0]);
+}
+
+/**
+ * 로드맵 연계값 + PBL 측 수정값(override) 을 병합한다 — **Ⅱ장 단일 병합 지점**.
+ *
+ * 정본은 Ⅱ장을 로드맵 보고서에서 자동 연계하도록 지정하지만, 로드맵 확정 후 PBL 착수까지
+ * 기업 현황·과업 범위가 달라질 수 있어 PBL 에서 수정할 수 있게 열어 뒀다. 수정값은
+ * `pbl_data.roadmapOverrides` 에만 저장되므로 **로드맵 원본은 절대 바뀌지 않는다**.
+ *
+ * 병합 규칙: 필드별 `override ?? linked`. `companyRequirements`·`targetTask` 는 필드
+ * 단위, `taskAnalysis` 는 행 index → 셀 단위로 부분 병합한다(미지정은 로드맵 값 유지).
+ *
+ * ⚠️ `performanceActivities`(Ⅱ-1-나 주요 활동)는 병합 대상이 아니다 — 로드맵 컨설팅
+ * 수행 이력이라 PBL 이 고칠 성질이 아니다(로드맵 결과 화면에서도 읽기 전용).
+ *
+ * **호출 지점은 2곳뿐**: PBL 결과 페이지(`pbl/page.tsx`)와 HWPX export(`pbl/actions.ts`).
+ * 같은 함수를 통과하므로 화면과 산출물이 어긋날 수 없다. 순수 함수 — 입력을 변형하지 않는다.
+ */
+export function mergeRoadmapOverrides(
+  linked: Partial<RoadmapInterviewStrict> | null | undefined,
+  overrides: PBLRoadmapOverrides | null | undefined
+): Partial<RoadmapInterviewStrict> | null {
+  if (!linked) return null;
+  if (!overrides) return linked;
+
+  const merged: Partial<RoadmapInterviewStrict> = { ...linked };
+
+  if (overrides.establishmentNecessity !== undefined) {
+    merged.establishmentNecessity = overrides.establishmentNecessity;
+  }
+  if (overrides.aiLevel !== undefined) merged.aiLevel = overrides.aiLevel;
+  if (overrides.selectedTask !== undefined) merged.selectedTask = overrides.selectedTask;
+
+  if (overrides.companyRequirements && linked.companyRequirements) {
+    merged.companyRequirements = {
+      ...linked.companyRequirements,
+      ...stripUndefined(overrides.companyRequirements),
+    };
+  }
+
+  if (overrides.targetTask && linked.targetTask) {
+    merged.targetTask = { ...linked.targetTask, ...stripUndefined(overrides.targetTask) };
+  }
+
+  if (overrides.taskAnalysis && linked.taskAnalysis) {
+    // 행 index 기준 부분 덮어쓰기 — override 배열이 짧으면 나머지 행은 로드맵 값 그대로.
+    merged.taskAnalysis = linked.taskAnalysis.map((row, i) => {
+      const patch = overrides.taskAnalysis?.[i];
+      return patch ? { ...row, ...stripUndefined(patch) } : row;
+    });
+  }
+
+  return merged;
+}
+
+/** `{...a, ...b}` 로 병합할 때 b 의 undefined 값이 a 를 지우지 않도록 걸러낸다. */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
 }
 
 /**

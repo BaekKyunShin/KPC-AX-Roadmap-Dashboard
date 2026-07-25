@@ -4,6 +4,7 @@ import { ExternalLink, FileText } from 'lucide-react';
 
 import { FormTable } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
+import { InlineSelectField } from '@/components/result/InlineSelectField';
 import { SectionCard } from '@/components/result/SectionCard';
 import {
   AI_COMPETENCY_LEVEL_LABEL,
@@ -12,15 +13,17 @@ import {
   type AiCompetencyLevel,
   type InterviewMethod,
   type RoadmapInterviewStrict,
+  type RoadmapTaskAnalysisItem,
 } from '@/lib/schemas/interview-roadmap';
+import type { PBLRoadmapOverrides } from '@/lib/schemas/interview-pbl';
 
-import type { TabPBLCommonProps } from './types';
+import type { PBLResultEditPayload, TabPBLCommonProps } from './types';
 
 /**
  * Ⅱ. 훈련 요구 분석 탭 — PBL 결과 V2.
  *
  * 구성:
- *  - 선행 로드맵 연동 (읽기 전용) — 수립 배경·주요 활동·수립 결과(AI역량 3단계)·
+ *  - 선행 로드맵 연동 (불러옴 · 수정 가능) — 수립 배경·주요 활동·수립 결과(AI역량 3단계)·
  *    기업 요구분석·과업분석표·훈련대상 과업. 미연계 시 안내 배너.
  *  - Ⅱ-1 기업 경영 이슈 (박스) — 인터뷰 입력. DRAFT 인라인 편집.
  *  - Ⅱ-3-a 기업 훈련환경 분석 — 인터뷰 입력 요약/자유서술. DRAFT 인라인 편집.
@@ -39,8 +42,8 @@ export function TabPBLAnalysis({ interview, linkedRoadmap, readOnly, onEdit }: T
 
   return (
     <div className="space-y-6">
-      {/* 선행 로드맵 연동 (읽기 전용) — Ⅱ장 로드맵 수립·요구분석 자동 연계 */}
-      <LinkedRoadmapReadonly linkedRoadmap={linkedRoadmap} />
+      {/* 선행 로드맵 연동 — Ⅱ장 로드맵 수립·요구분석 (불러옴 + PBL 수정 가능) */}
+      <LinkedRoadmapReadonly linkedRoadmap={linkedRoadmap} readOnly={readOnly} onEdit={onEdit} />
 
       {/* Ⅱ-1 기업 경영 이슈 */}
       <SectionCard
@@ -344,6 +347,34 @@ const COMPANY_REQ_ROWS: ReadonlyArray<{
   { key: 'outcomes', label: '기대 성과' },
 ];
 
+// 선행 로드맵 과업분석표 4열 (직무·과업은 짧은 값이라 단일행 입력).
+const TASK_ANALYSIS_COLUMNS: ReadonlyArray<{
+  key: keyof RoadmapTaskAnalysisItem;
+  label: string;
+  multiline: boolean;
+}> = [
+  { key: 'domain', label: '직무', multiline: false },
+  { key: 'task', label: '과업', multiline: false },
+  { key: 'asIs', label: '현행 방식', multiline: true },
+  { key: 'improvement', label: '개선점', multiline: true },
+];
+
+// 선행 로드맵 훈련대상 과업 4행 (정본 Ⅱ-4 라벨 ↔ camelCase 키).
+const TARGET_TASK_ROWS: ReadonlyArray<{
+  key: 'name' | 'reason' | 'expectedAsIs' | 'expectedToBe';
+  label: string;
+}> = [
+  { key: 'name', label: '훈련대상 과업명' },
+  { key: 'reason', label: '선정 사유' },
+  { key: 'expectedAsIs', label: '기대효과 (현행)' },
+  { key: 'expectedToBe', label: '기대효과 (개선)' },
+];
+
+// 기업 AI 역량 수준 3단계 — 정본 Ⅰ-3 체크박스와 동일 (라벨은 부제까지 노출).
+const AI_LEVEL_OPTIONS: ReadonlyArray<{ value: AiCompetencyLevel; label: string }> = (
+  ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] as const
+).map((value) => ({ value, label: aiLevelLabel(value) }));
+
 /** 수행 방법 enum → 한글 라벨 (미상 값은 원문 그대로). */
 function methodLabel(method: string | undefined): string {
   if (!method) return '-';
@@ -358,16 +389,26 @@ function aiLevelLabel(level: AiCompetencyLevel | undefined): string {
 }
 
 /**
- * 선행 로드맵 연동 블록 (읽기 전용).
+ * 선행 로드맵 연동 블록 — **불러오기 + PBL 수정 가능**.
  *
- * `hydrateRoadmapInterview` 로 복원한 선행 로드맵 인터뷰(Partial<RoadmapInterviewStrict>)를
- * 6개 섹션(수립 배경·주요 활동·수립 결과·기업 요구분석·과업분석표·훈련대상 과업)으로
- * 읽기 전용 표출한다. 미연계(null/undefined) 시 안내 배너만 노출한다.
+ * `hydrateRoadmapInterview` + `mergeRoadmapOverrides` 를 통과한 값(= 로드맵 값 위에 PBL
+ * 수정값을 얹은 결과)을 6개 섹션(수립 배경·주요 활동·수립 결과·기업 요구분석·과업분석표·
+ * 훈련대상 과업)으로 표출한다. 미연계(null/undefined) 시 안내 배너만 노출한다.
+ *
+ * 편집은 `roadmapOverrides` patch 로만 저장되므로 **로드맵 보고서 원본은 바뀌지 않는다**.
+ *
+ * ⚠️ "주요 활동" 표는 편집 대상이 아니다 — 로드맵 컨설팅을 어떻게 수행했는지의 이력이라
+ * PBL 이 고칠 성질이 아니고, 로드맵 결과 화면에서도 읽기 전용이다(정책 일관).
+ * PBL 자체 수행활동은 Ⅲ장 탭의 Ⅲ-1 에 따로 있다.
  */
 function LinkedRoadmapReadonly({
   linkedRoadmap,
+  readOnly,
+  onEdit,
 }: {
   linkedRoadmap?: Partial<RoadmapInterviewStrict> | null;
+  readOnly: boolean;
+  onEdit: (patch: PBLResultEditPayload) => Promise<void>;
 }) {
   if (!linkedRoadmap) {
     return (
@@ -386,22 +427,33 @@ function LinkedRoadmapReadonly({
   const taskAnalysis = linkedRoadmap.taskAnalysis ?? [];
   const target = linkedRoadmap.targetTask;
 
+  /** 로드맵 연계 항목 수정 — 지정한 필드만 override 로 저장된다. */
+  async function patchOverride(patch: PBLRoadmapOverrides): Promise<void> {
+    await onEdit({ roadmapOverrides: patch });
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        <span className="font-semibold text-slate-800">선행 로드맵 연동</span> — 아래 6개 항목은
-        선행 AI훈련로드맵 보고서에서 자동 연계된 <strong>읽기 전용</strong> 내용입니다.
+        <span className="font-semibold text-slate-800">선행 로드맵 연동</span> — 아래 항목은 선행
+        AI훈련로드맵 보고서에서 불러온 것이며, 이 보고서에서 수정할 수 있습니다. 수정해도 로드맵
+        보고서는 바뀌지 않습니다.
       </div>
 
       {/* 수립 배경 (로드맵 Ⅰ-1) */}
       <SectionCard
         title="수립 배경"
-        description="선행 로드맵 Ⅰ-1 수립 필요성 (자동 연계)"
+        description="선행 로드맵 Ⅰ-1 수립 필요성 (불러옴 · 수정 가능)"
         dataSource="user"
       >
-        <p className="whitespace-pre-wrap text-sm">
-          {linkedRoadmap.establishmentNecessity?.trim() || '수립 배경이 입력되지 않았습니다.'}
-        </p>
+        <InlineEditField
+          value={linkedRoadmap.establishmentNecessity ?? ''}
+          onSave={(next) => patchOverride({ establishmentNecessity: next })}
+          readOnly={readOnly}
+          multiline
+          ariaLabel="수립 배경 편집"
+          placeholder="수립 배경이 입력되지 않았습니다."
+        />
       </SectionCard>
 
       {/* 주요 활동 (로드맵 Ⅰ-2) */}
@@ -458,7 +510,7 @@ function LinkedRoadmapReadonly({
       {/* 수립 결과 (로드맵 Ⅰ-3 — AI 역량 3단계 + 선정 과업) */}
       <SectionCard
         title="수립 결과"
-        description="선행 로드맵 Ⅰ-3 기업 AI 역량 수준 · 선정 과업 (자동 연계)"
+        description="선행 로드맵 Ⅰ-3 기업 AI 역량 수준 · 선정 과업 (불러옴 · 수정 가능)"
         dataSource="user"
       >
         <FormTable
@@ -472,7 +524,23 @@ function LinkedRoadmapReadonly({
                   className: 'w-[160px]',
                   align: 'center',
                 },
-                { content: aiLevelLabel(linkedRoadmap.aiLevel), align: 'left' },
+                {
+                  // 로드맵 스키마상 aiLevel 은 필수지만, 레거시 인터뷰에 키가 없을 수
+                  // 있다. 그때 특정 등급을 기본값으로 보이게 하면 사실을 왜곡하므로
+                  // 미설정은 '-' 로 남기고 선택 위젯을 띄우지 않는다.
+                  content: linkedRoadmap.aiLevel ? (
+                    <InlineSelectField
+                      value={linkedRoadmap.aiLevel}
+                      options={[...AI_LEVEL_OPTIONS]}
+                      onSave={(next) => patchOverride({ aiLevel: next })}
+                      readOnly={readOnly}
+                      ariaLabel="기업 AI 역량 수준 편집"
+                    />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  ),
+                  align: 'left',
+                },
               ],
             },
             {
@@ -480,9 +548,14 @@ function LinkedRoadmapReadonly({
                 { content: '선정 과업', header: true, align: 'center' },
                 {
                   content: (
-                    <span className="whitespace-pre-wrap text-sm">
-                      {linkedRoadmap.selectedTask?.trim() || '-'}
-                    </span>
+                    <InlineEditField
+                      value={linkedRoadmap.selectedTask ?? ''}
+                      onSave={(next) => patchOverride({ selectedTask: next })}
+                      readOnly={readOnly}
+                      multiline
+                      ariaLabel="선정 과업 편집"
+                      placeholder="선정 과업이 입력되지 않았습니다."
+                    />
                   ),
                   align: 'left',
                 },
@@ -495,7 +568,7 @@ function LinkedRoadmapReadonly({
       {/* 기업 요구분석 (로드맵 Ⅱ-2) */}
       <SectionCard
         title="기업 요구분석"
-        description="선행 로드맵 Ⅱ-2 기업 현황·주요 문제·추진 의지·기대 성과 (자동 연계)"
+        description="선행 로드맵 Ⅱ-2 기업 현황·주요 문제·추진 의지·기대 성과 (불러옴 · 수정 가능)"
         dataSource="user"
       >
         <FormTable
@@ -514,7 +587,14 @@ function LinkedRoadmapReadonly({
               { content: label, header: true, align: 'center' },
               {
                 content: (
-                  <span className="whitespace-pre-wrap text-sm">{cr?.[key]?.trim() || '-'}</span>
+                  <InlineEditField
+                    value={cr?.[key] ?? ''}
+                    onSave={(next) => patchOverride({ companyRequirements: { [key]: next } })}
+                    readOnly={readOnly}
+                    multiline
+                    ariaLabel={`${label} 편집`}
+                    placeholder={`${label}이 입력되지 않았습니다.`}
+                  />
                 ),
                 align: 'left',
               },
@@ -534,7 +614,7 @@ function LinkedRoadmapReadonly({
       {/* 과업분석표 (로드맵 Ⅱ-3) */}
       <SectionCard
         title="과업분석표"
-        description="선행 로드맵 Ⅱ-3 직무·과업·현행·개선점 및 AI 적용 가능성 (자동 연계)"
+        description="선행 로드맵 Ⅱ-3 직무·과업·현행·개선점 및 AI 적용 가능성 (불러옴 · 수정 가능)"
         dataSource="user"
       >
         {taskAnalysis.length > 0 ? (
@@ -551,21 +631,22 @@ function LinkedRoadmapReadonly({
                   ],
                 },
               ]}
-              bodyRows={taskAnalysis.map((t) => ({
-                cells: [
-                  { content: t.domain || '-', align: 'left' },
-                  { content: t.task || '-', align: 'left' },
-                  {
-                    content: <span className="whitespace-pre-wrap text-sm">{t.asIs || '-'}</span>,
-                    align: 'left',
-                  },
-                  {
-                    content: (
-                      <span className="whitespace-pre-wrap text-sm">{t.improvement || '-'}</span>
-                    ),
-                    align: 'left',
-                  },
-                ],
+              bodyRows={taskAnalysis.map((t, rowIdx) => ({
+                cells: TASK_ANALYSIS_COLUMNS.map(({ key, label, multiline }) => ({
+                  content: (
+                    <InlineEditField
+                      value={t[key] ?? ''}
+                      onSave={(next) =>
+                        patchOverride({ taskAnalysis: buildRowPatch(rowIdx, key, next) })
+                      }
+                      readOnly={readOnly}
+                      multiline={multiline}
+                      ariaLabel={`${rowIdx + 1}행 ${label} 편집`}
+                      placeholder="-"
+                    />
+                  ),
+                  align: 'left' as const,
+                })),
               }))}
             />
           </div>
@@ -577,74 +658,58 @@ function LinkedRoadmapReadonly({
       {/* 훈련대상 과업 (로드맵 Ⅱ-4) */}
       <SectionCard
         title="훈련대상 과업"
-        description="선행 로드맵 Ⅱ-4 선정 과업명·사유·기대효과 (자동 연계)"
+        description="선행 로드맵 Ⅱ-4 선정 과업명·사유·기대효과 (불러옴 · 수정 가능)"
         dataSource="user"
       >
         <FormTable
           caption="선행 로드맵 훈련대상 과업"
-          bodyRows={[
-            {
-              cells: [
-                {
-                  content: '훈련대상 과업명',
-                  header: true,
-                  className: 'w-[160px]',
-                  align: 'center',
-                },
-                {
-                  content: (
-                    <span className="whitespace-pre-wrap text-sm">
-                      {target?.name?.trim() || '-'}
-                    </span>
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '선정 사유', header: true, align: 'center' },
-                {
-                  content: (
-                    <span className="whitespace-pre-wrap text-sm">
-                      {target?.reason?.trim() || '-'}
-                    </span>
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '기대효과 (현행)', header: true, align: 'center' },
-                {
-                  content: (
-                    <span className="whitespace-pre-wrap text-sm">
-                      {target?.expectedAsIs?.trim() || '-'}
-                    </span>
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-            {
-              cells: [
-                { content: '기대효과 (개선)', header: true, align: 'center' },
-                {
-                  content: (
-                    <span className="whitespace-pre-wrap text-sm">
-                      {target?.expectedToBe?.trim() || '-'}
-                    </span>
-                  ),
-                  align: 'left',
-                },
-              ],
-            },
-          ]}
+          bodyRows={TARGET_TASK_ROWS.map(({ key, label }, idx) => ({
+            cells: [
+              {
+                content: label,
+                header: true,
+                ...(idx === 0 ? { className: 'w-[160px]' } : {}),
+                align: 'center' as const,
+              },
+              {
+                content: (
+                  <InlineEditField
+                    value={target?.[key] ?? ''}
+                    onSave={(next) => patchOverride({ targetTask: { [key]: next } })}
+                    readOnly={readOnly}
+                    multiline
+                    ariaLabel={`${label} 편집`}
+                    placeholder={`${label}이 입력되지 않았습니다.`}
+                  />
+                ),
+                align: 'left' as const,
+              },
+            ],
+          }))}
         />
       </SectionCard>
     </div>
   );
+}
+
+/**
+ * 과업분석표(로드맵 Ⅱ-3) 셀 하나만 담은 override 배열을 만든다.
+ *
+ * `roadmapOverrides.taskAnalysis` 는 로드맵 표의 **행 index 와 1:1** 이므로, 앞선 행은
+ * 빈 객체로 채워 자리를 맞춘다(빈 객체 = 해당 행은 로드맵 값 유지 — `mergeRoadmapOverrides`
+ * 의 `stripUndefined` 가 아무 필드도 덮지 않는다).
+ */
+function buildRowPatch(
+  rowIdx: number,
+  key: keyof RoadmapTaskAnalysisItem,
+  value: string
+): NonNullable<PBLRoadmapOverrides['taskAnalysis']> {
+  const rows: NonNullable<PBLRoadmapOverrides['taskAnalysis']> = Array.from(
+    { length: rowIdx + 1 },
+    () => ({})
+  );
+  rows[rowIdx] = { [key]: value };
+  return rows;
 }
 
 /** 1024 단위 바이트 변환 (읽기 전용 메타 표시용). */

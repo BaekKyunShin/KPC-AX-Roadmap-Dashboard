@@ -112,6 +112,9 @@ vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
   fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
   hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
   extractLinkedRoadmapSummary: vi.fn().mockReturnValue(''),
+  // Ⅱ장 override 병합 — 병합 로직 자체는 pbl-roadmap-link.test.ts 가 검증한다.
+  // 여기서는 미연계(null) 고정이라 병합 결과도 null 이다.
+  mergeRoadmapOverrides: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('next/headers', () => ({

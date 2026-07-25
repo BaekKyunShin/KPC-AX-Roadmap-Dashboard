@@ -64,6 +64,7 @@ import type {
 } from '@/lib/schemas/interview-roadmap';
 import type {
   PBLInterviewStrict,
+  PBLRoadmapOverrides,
   PBLTrainingEnv,
   PBLProblemDefinitionSheet,
 } from '@/lib/schemas/interview-pbl';
@@ -617,4 +618,29 @@ export function mergeProblemDefinitionSheet(
   patch: Partial<PBLProblemDefinitionSheet>
 ): Partial<PBLProblemDefinitionSheet> {
   return { ...current, ...stripNullish(patch) };
+}
+
+/**
+ * Ⅱ장 로드맵 연계 항목의 PBL 수정값(roadmapOverrides) 부분 병합 — 위 두 헬퍼와 동일 시맨틱.
+ *
+ * nested 객체(`companyRequirements`·`targetTask`)는 필드 단위로 한 겹 더 병합해, 예컨대
+ * `problem` 만 고친 patch 가 이미 저장된 `status` 보정값을 지우지 않게 한다.
+ * `taskAnalysis` 는 행 배열이라 통째 교체한다(행 index 가 로드맵 표와 1:1 이므로
+ * 부분 배열도 그대로 저장되고, 로드맵 값 폴백은 `mergeRoadmapOverrides` 가 담당).
+ */
+export function mergeRoadmapOverridePatch(
+  current: PBLRoadmapOverrides | undefined,
+  patch: PBLRoadmapOverrides
+): PBLRoadmapOverrides {
+  const merged: PBLRoadmapOverrides = { ...current, ...stripNullish(patch) };
+  if (patch.companyRequirements) {
+    merged.companyRequirements = {
+      ...current?.companyRequirements,
+      ...stripNullish(patch.companyRequirements),
+    };
+  }
+  if (patch.targetTask) {
+    merged.targetTask = { ...current?.targetTask, ...stripNullish(patch.targetTask) };
+  }
+  return merged;
 }

@@ -30,6 +30,13 @@ export interface InlineSelectFieldProps<V extends string> {
   readOnly?: boolean;
   /** 추가 className. */
   className?: string;
+  /**
+   * view 모드 버튼의 접근성 이름(예: "기업 AI 역량 수준 편집").
+   *
+   * 미지정 시 접근성 이름은 선택된 옵션 라벨이 된다 — 한 화면에 편집 필드가 여러 개면
+   * 스크린리더가 어느 항목인지 구분할 수 없으므로 표·다항목 섹션에서는 지정할 것.
+   */
+  ariaLabel?: string;
 }
 
 type SavingState = 'idle' | 'saving' | 'saved' | 'error';
@@ -40,6 +47,7 @@ export function InlineSelectField<V extends string>({
   onSave,
   readOnly = false,
   className,
+  ariaLabel,
 }: InlineSelectFieldProps<V>) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [editBuffer, setEditBuffer] = useState<V>(value);
@@ -84,8 +92,7 @@ export function InlineSelectField<V extends string>({
     }
   }, [editBuffer, onSave, value]);
 
-  const currentLabel =
-    options.find((opt) => opt.value === value)?.label ?? String(value);
+  const currentLabel = options.find((opt) => opt.value === value)?.label ?? String(value);
 
   if (mode === 'edit') {
     return (
@@ -153,13 +160,10 @@ export function InlineSelectField<V extends string>({
 
   return (
     <div
-      className={cn(
-        'group flex items-center gap-2',
-        !readOnly && 'cursor-pointer',
-        className,
-      )}
+      className={cn('group flex items-center gap-2', !readOnly && 'cursor-pointer', className)}
       onClick={startEdit}
       role={readOnly ? undefined : 'button'}
+      aria-label={readOnly ? undefined : ariaLabel}
       tabIndex={readOnly ? undefined : 0}
       onKeyDown={(e) => {
         if (!readOnly && (e.key === 'Enter' || e.key === ' ')) {

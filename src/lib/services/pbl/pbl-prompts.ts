@@ -1,6 +1,6 @@
 import type { ConsultantProfile } from '@/types/database';
 import { PBL_EVALUATION_SCALE_DESCRIPTION } from './pbl-types';
-import type { PBLHrdReportPdf } from '@/lib/schemas/interview-pbl';
+import type { PBLHrdReportPdf, PBLPerformanceActivity } from '@/lib/schemas/interview-pbl';
 // STT 인사이트 포맷터 — 두 키(stt_insights/sttInsights) 모두 인식하도록 일반화됨.
 // 로드맵·PBL 양쪽에서 재사용.
 import { buildSttInsightsSection } from '../roadmap/roadmap-stt-formatter';
@@ -21,6 +21,33 @@ function buildPBLHrdAttachmentSection(hrdReportPdf: PBLHrdReportPdf | null | und
   return `\n### Ⅱ-3-가. 기업HRD이음컨설팅 결과 (첨부 보고서)
 - 파일명: ${hrdReportPdf.fileName ?? '-'}
 - 크기: ${sizeLabel}${body}`;
+}
+
+/**
+ * Ⅲ-1 훈련과제 도출 수행활동 — PBL 인터뷰 자체 입력(정본 4역할·수행 일자).
+ *
+ * "본 과정이 어떤 활동을 통해 개발되었는지" 를 LLM 에 제공해 Ⅳ 운영계획의 근거로 삼게 한다.
+ * 선행 로드맵 Ⅰ-2 활동과는 별개 데이터다(참석자·일정이 다름).
+ */
+function buildPBLPerformanceActivitiesSection(
+  activities: PBLPerformanceActivity[] | undefined
+): string {
+  if (!activities?.length) return '';
+  const rows = activities.map((a) => {
+    const p = a.participants;
+    const attendees = [
+      p?.pm && `PM ${p.pm}`,
+      p?.external_expert && `외부전문가 ${p.external_expert}`,
+      p?.internal_expert && `기업내부전문가 ${p.internal_expert}`,
+      p?.jurisdiction_manager && `능력개발전담주치의 ${p.jurisdiction_manager}`,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    return `- ${a.round}차 (${a.date || '일자 미입력'}, ${a.method || '방법 미입력'}): ${
+      a.content || '내용 미입력'
+    }${attendees ? ` / 참석: ${attendees}` : ''}`;
+  });
+  return `\n### Ⅲ-1. 훈련과제 도출 수행활동\n${rows.join('\n')}`;
 }
 
 // ============================================================================
@@ -334,6 +361,8 @@ export function buildPBLUserPrompt(
     // Ⅱ-3 HRD 필요성
     hrdReportPdf: PBLHrdReportPdf | null;
     courseNecessity: string;
+    // Ⅲ-1 수행활동 (PBL 자체 입력 — 정본 4역할·수행 일자)
+    performanceActivities: PBLPerformanceActivity[];
     // Ⅲ-2-가 문제 정의서
     problemDefinitionSheet: {
       background?: string;
@@ -341,7 +370,7 @@ export function buildPBLUserPrompt(
       scope?: string;
       constraints?: string;
     };
-    // Ⅲ-3 훈련대상 업무 (선정 사유 + 세부내용). 과업 목록·수행활동·AI역량은 로드맵 연계.
+    // Ⅲ-3 훈련대상 업무 (선정 사유 + 세부내용). 과업 목록·AI역량은 로드맵 연계.
     target: {
       necessity?: string;
       details?: unknown[];
@@ -402,7 +431,9 @@ ${
 ${buildPBLHrdAttachmentSection(i.hrdReportPdf)}
 ## Ⅲ. 훈련과제 도출
 
-(Ⅲ-1 수행활동·Ⅲ-3-가 훈련대상 과업 목록·AI역량 수준은 선행 로드맵 보고서에서 자동 연계된다.)
+(Ⅲ-3-가 훈련대상 과업 목록·AI역량 수준은 선행 로드맵 보고서에서 자동 연계된다.
+Ⅲ-1 수행활동은 PBL 인터뷰 자체 입력이며 아래에 제시한다.)
+${buildPBLPerformanceActivitiesSection(i.performanceActivities)}
 
 ### Ⅲ-2. 문제 정의서
 

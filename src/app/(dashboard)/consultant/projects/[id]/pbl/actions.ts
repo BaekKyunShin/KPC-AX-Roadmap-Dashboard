@@ -40,6 +40,7 @@ import {
   extractLinkedRoadmapSummary,
   fetchLinkedRoadmapData,
   hydrateRoadmapInterview,
+  mergeRoadmapOverrides,
 } from '@/lib/services/pbl/pbl-roadmap-link';
 import { fetchPBLInterviewV2 } from '../interview/actions';
 import {
@@ -47,6 +48,7 @@ import {
   mapPBLInterviewToDb,
   mergeTrainingEnv,
   mergeProblemDefinitionSheet,
+  mergeRoadmapOverridePatch,
 } from '@/lib/services/interview/converters';
 import type { ConsultantProfile } from '@/types/database';
 import type {
@@ -677,11 +679,20 @@ export async function exportPBLAsHwpxAction(
       };
     }
 
-    // 선행 로드맵 연계 데이터 (Ⅱ장 수립·요구분석 · Ⅲ-1 수행활동 · Ⅲ-3-가 과업 목록)
+    // 선행 로드맵 연계 데이터 (Ⅱ장 수립·요구분석 · Ⅲ-3-가 과업 목록).
+    // Ⅲ-1 수행활동은 연계 대상이 아니다 — PBL 인터뷰 자체 입력(정본 4역할·수행 일자).
     const linked = await fetchLinkedRoadmapData(access.data.projectId, admin);
-    const linkedRoadmap = hydrateRoadmapInterview(linked.interview);
-    // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content (이미 조회된 linked 재사용)
-    const linkedRoadmapSummary = extractLinkedRoadmapSummary(linked);
+    // PBL 측 수정값(roadmapOverrides)을 얹는다 — 결과 페이지(`page.tsx`)와 동일 병합 함수.
+    const overrides = mapDbToPBLInterview(
+      (interviewRow as { pbl_data: Record<string, unknown> | null } | null) ?? null
+    ).roadmapOverrides;
+    const linkedRoadmap = mergeRoadmapOverrides(
+      hydrateRoadmapInterview(linked.interview),
+      overrides
+    );
+    // Ⅱ-1-나 r2 요약 — 선행 로드맵 결과 outcome_summary.main_content (이미 조회된 linked 재사용).
+    // PBL 에서 요약을 보정했으면 그 값이 우선한다.
+    const linkedRoadmapSummary = overrides?.roadmapSummary ?? extractLinkedRoadmapSummary(linked);
 
     // 5) payload 변환 + Python 함수 호출
     const payload = buildPBLHwpxPayload({
@@ -896,7 +907,8 @@ export async function editPBLV2(
       patch.companyIssues !== undefined ||
       patch.organization !== undefined ||
       patch.trainingEnv !== undefined ||
-      patch.courseNecessity !== undefined;
+      patch.courseNecessity !== undefined ||
+      patch.roadmapOverrides !== undefined;
     const hasTasks = patch.problemDefinitionSheet !== undefined || patch.target !== undefined;
     const hasInterviewSlice = hasOverview || hasAnalysis || hasTasks;
     const hasOperationsSlice = patch.operations !== undefined;
@@ -1051,6 +1063,16 @@ export async function editPBLV2(
         : {}),
       ...(patch.target !== undefined
         ? { target: patch.target as PBLInterviewStrict['target'] }
+        : {}),
+      // Ⅱ장 로드맵 연계 항목의 PBL 수정값 — 기존 override 와 부분 병합(다른 필드 보존).
+      // 로드맵 원본은 건드리지 않는다: 여기 저장된 값만 mergeRoadmapOverrides 가 얹는다.
+      ...(patch.roadmapOverrides !== undefined
+        ? {
+            roadmapOverrides: mergeRoadmapOverridePatch(
+              current.roadmapOverrides,
+              patch.roadmapOverrides
+            ),
+          }
         : {}),
     };
 

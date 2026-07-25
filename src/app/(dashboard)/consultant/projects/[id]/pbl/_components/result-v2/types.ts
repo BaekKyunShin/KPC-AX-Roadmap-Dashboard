@@ -21,6 +21,7 @@ import type {
   PBLOverview,
   PBLPerformanceActivity,
   PBLProblemDefinitionSheet,
+  PBLRoadmapOverrides,
   PBLTarget,
 } from '@/lib/schemas/interview-pbl';
 import type { RoadmapInterviewStrict } from '@/lib/schemas/interview-roadmap';
@@ -47,6 +48,11 @@ export interface PBLResultEditPayload {
   // R8 PBL-자체-02 — string → 정형 객체 (Partial 로 일부 필드만 patch 가능)
   trainingEnv?: Partial<import('@/lib/schemas/interview-pbl').PBLTrainingEnv>;
   courseNecessity?: string;
+  /**
+   * Ⅱ-1-나 / Ⅱ-2 로드맵 연계 항목의 **PBL 측 수정값**. 지정한 필드만 로드맵 값을
+   * 덮어쓰며, 로드맵 원본은 바뀌지 않는다(`pbl_data.roadmapOverrides` 에만 저장).
+   */
+  roadmapOverrides?: PBLRoadmapOverrides;
 
   // Ⅲ 훈련과제 도출
   /** R8 PBL-자체-04 — 4 정형 항목 (배경/핵심/범위/제약) 단일 세트 */

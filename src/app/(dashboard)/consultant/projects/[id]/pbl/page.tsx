@@ -5,7 +5,9 @@ import { fetchPBLPageDataV2, fetchPBLProjectInfo } from './actions';
 import {
   fetchLinkedRoadmapData,
   hydrateRoadmapInterview,
+  mergeRoadmapOverrides,
 } from '@/lib/services/pbl/pbl-roadmap-link';
+import type { PBLRoadmapOverrides } from '@/lib/schemas/interview-pbl';
 
 export default async function PBLPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCachedUser();
@@ -23,9 +25,6 @@ export default async function PBLPage({ params }: { params: Promise<{ id: string
     fetchPBLPageDataV2(id),
     fetchLinkedRoadmapData(id),
   ]);
-  // 선행 로드맵 인터뷰 복원 (Ⅱ장 자동 연계 읽기 전용 렌더). 미연계 시 null → 배너.
-  const linkedRoadmap = hydrateRoadmapInterview(linked.interview);
-
   if (!projectInfoResult.success) {
     redirect('/dashboard');
   }
@@ -44,6 +43,14 @@ export default async function PBLPage({ params }: { params: Promise<{ id: string
         hasInterview: false,
         projectStatus: '',
       };
+
+  // 선행 로드맵 인터뷰 복원 후 PBL 수정값(roadmapOverrides)을 얹는다 (Ⅱ장 렌더용).
+  // 미연계 시 null → 배너. HWPX export(`actions.ts`)도 같은 병합 함수를 쓰므로
+  // 화면과 산출물이 어긋날 수 없다.
+  const linkedRoadmap = mergeRoadmapOverrides(
+    hydrateRoadmapInterview(linked.interview),
+    (pageData.interview as { roadmapOverrides?: PBLRoadmapOverrides }).roadmapOverrides
+  );
 
   return (
     <PBLResultPageClient

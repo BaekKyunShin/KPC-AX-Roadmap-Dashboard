@@ -188,4 +188,151 @@ describe('TabPBLAnalysis (Ⅱ. 훈련 요구 분석)', () => {
     // 훈련대상 과업 값
     expect(screen.getByText(/외관 검사 AI 보조/)).toBeInTheDocument();
   });
+
+  // ── Ⅱ장 로드맵 연계 항목의 PBL 수정 (roadmapOverrides) ────────────────────
+  describe('로드맵 연계 항목 수정 (roadmapOverrides)', () => {
+    it('배너가 "수정 가능 · 로드맵 원본 불변" 을 안내한다', () => {
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={vi.fn()}
+        />
+      );
+      expect(screen.getByText(/이 보고서에서 수정할 수 있습니다/)).toBeInTheDocument();
+      expect(screen.getByText(/수정해도 로드맵 보고서는 바뀌지 않습니다/)).toBeInTheDocument();
+    });
+
+    it('수립 배경 편집 → onEdit({ roadmapOverrides: { establishmentNecessity } })', async () => {
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={onEdit}
+        />
+      );
+      const field = screen.getByRole('button', { name: /수립 배경 편집/ });
+      await act(async () => {
+        fireEvent.click(field);
+      });
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'PBL 시점 보정 배경' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: '저장' }));
+      });
+      await waitFor(() =>
+        expect(onEdit).toHaveBeenCalledWith({
+          roadmapOverrides: { establishmentNecessity: 'PBL 시점 보정 배경' },
+        })
+      );
+    });
+
+    it('기업 요구분석 "주요 문제" 편집 → companyRequirements 부분 patch', async () => {
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={onEdit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /주요 문제 편집/ }));
+      });
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'PBL 시점 문제' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: '저장' }));
+      });
+      await waitFor(() =>
+        expect(onEdit).toHaveBeenCalledWith({
+          roadmapOverrides: { companyRequirements: { problem: 'PBL 시점 문제' } },
+        })
+      );
+    });
+
+    it('과업분석표 셀 편집 → taskAnalysis 행 index 기준 patch', async () => {
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={onEdit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /1행 개선점 편집/ }));
+      });
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'PBL 보정 개선점' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: '저장' }));
+      });
+      await waitFor(() =>
+        expect(onEdit).toHaveBeenCalledWith({
+          roadmapOverrides: { taskAnalysis: [{ improvement: 'PBL 보정 개선점' }] },
+        })
+      );
+    });
+
+    it('훈련대상 과업 "선정 사유" 편집 → targetTask 부분 patch', async () => {
+      const onEdit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={onEdit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /선정 사유 편집/ }));
+      });
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'PBL 재작성 사유' } });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: '저장' }));
+      });
+      await waitFor(() =>
+        expect(onEdit).toHaveBeenCalledWith({
+          roadmapOverrides: { targetTask: { reason: 'PBL 재작성 사유' } },
+        })
+      );
+    });
+
+    it('주요 활동 표는 편집 불가 — 로드맵 수행 이력이므로 읽기 전용 유지', () => {
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly={false}
+          onEdit={vi.fn()}
+        />
+      );
+      expect(screen.queryByRole('button', { name: /수행 내용 편집/ })).toBeNull();
+      // 값은 그대로 표출
+      expect(screen.getByText('경영진 인터뷰')).toBeInTheDocument();
+    });
+
+    it('readOnly(FINAL) 면 로드맵 연계 항목도 편집 버튼이 없다', () => {
+      render(
+        <TabPBLAnalysis
+          version={null}
+          interview={interview}
+          linkedRoadmap={linkedRoadmap}
+          readOnly
+          onEdit={vi.fn()}
+        />
+      );
+      expect(screen.queryByRole('button', { name: /수립 배경 편집/ })).toBeNull();
+    });
+  });
 });

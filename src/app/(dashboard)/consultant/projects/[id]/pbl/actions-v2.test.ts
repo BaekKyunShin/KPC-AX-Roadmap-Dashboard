@@ -83,6 +83,8 @@ vi.mock('@/lib/services/pbl/pbl-roadmap-link', () => ({
   fetchLinkedRoadmapData: vi.fn().mockResolvedValue({ roadmap: null, interview: null }),
   hydrateRoadmapInterview: vi.fn().mockReturnValue(null),
   extractLinkedRoadmapSummary: vi.fn().mockReturnValue(''),
+  // Ⅱ장 override 병합 — 미연계(null) 고정이므로 병합 결과도 null.
+  mergeRoadmapOverrides: vi.fn().mockReturnValue(null),
 }));
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue({
@@ -387,6 +389,72 @@ describe('editPBLV2', () => {
     expect(sheet.background).toBe('기존 배경');
     expect(sheet.scope).toBe('기존 범위');
     expect(sheet.constraints).toBe('기존 제약');
+  });
+
+  // ── Ⅱ장 로드맵 연계 항목의 PBL 수정값 (roadmapOverrides) ────────────────
+  it('roadmapOverrides patch — pbl_data.roadmapOverrides 에 저장된다', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: { id: 'interview-1', pbl_data: { companyIssues: '기존 이슈' } },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { establishmentNecessity: 'PBL 에서 보정한 수립 배경' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const overrides = pblData.roadmapOverrides as Record<string, unknown>;
+    expect(overrides.establishmentNecessity).toBe('PBL 에서 보정한 수립 배경');
+    // 다른 인터뷰 값은 보존
+    expect(pblData.companyIssues).toBe('기존 이슈');
+  });
+
+  it('roadmapOverrides patch — 기존 override 와 부분 병합 (다른 필드 보존)', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+    adminMock.addResult({
+      data: {
+        id: 'interview-1',
+        pbl_data: {
+          roadmapOverrides: {
+            establishmentNecessity: '기존 보정 배경',
+            selectedTask: '기존 보정 과업',
+          },
+        },
+      },
+      error: null,
+    });
+    adminMock.addResult({ data: null, error: null });
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { selectedTask: '신규 보정 과업' },
+    });
+    await flushAfterCallbacks();
+    expect(r.success).toBe(true);
+
+    const updateCalls = adminMock.chainable.update.mock.calls as Array<[Record<string, unknown>]>;
+    const pblData = updateCalls[0][0].pbl_data as Record<string, unknown>;
+    const overrides = pblData.roadmapOverrides as Record<string, unknown>;
+    expect(overrides.selectedTask).toBe('신규 보정 과업');
+    expect(overrides.establishmentNecessity).toBe('기존 보정 배경');
+  });
+
+  it('roadmapOverrides 는 인터뷰 슬라이스이므로 operations 와 동시 patch 시 차단된다', async () => {
+    await mockCachedAuth();
+    mockPBLReportAccess(adminMock);
+
+    const r = await editPBLV2(VERSION_ID, {
+      roadmapOverrides: { selectedTask: 'x' },
+      operations: { training_plan: { training_instructors: [] } },
+    });
+    expect(r.success).toBe(false);
+    expect(r.success === false && r.error).toContain('한 번에 한 슬라이스만');
   });
 
   it('Ⅰ overview patch — 루트 필드로 병합', async () => {

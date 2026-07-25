@@ -630,6 +630,63 @@ export const PBLTrainingEnvSchema = z.object({
 });
 export type PBLTrainingEnv = z.infer<typeof PBLTrainingEnvSchema>;
 
+// -- Ⅱ-1-나 / Ⅱ-2 로드맵 연계 항목의 PBL 측 수정값 ---------------------------
+//
+// 정본은 Ⅱ장을 선행 로드맵 보고서에서 "자동 연계 / 전산 자동 표출" 하도록 지정한다.
+// 다만 로드맵 확정 후 PBL 착수까지 시간이 흘러 기업 현황·과업 범위가 달라질 수 있고,
+// 오타 하나를 고치려 로드맵으로 되돌아가는 것도 비효율이므로 **PBL 에서 수정 가능**하게
+// 한다. 이때 로드맵 값을 복사(snapshot)하지 않고 **덮어쓴 필드만** 여기에 보관한다:
+//
+//   ⓐ 로드맵 원본 불변이 구조적으로 보장된다 (PBL 은 자기 pbl_data 만 쓴다)
+//   ⓑ 로드맵이 나중에 갱신되면 미수정 항목은 자동으로 최신값을 따른다
+//   ⓒ 무엇을 고쳤는지 추적 가능하고, 되돌리기가 키 삭제로 끝난다
+//
+// 병합은 `mergeRoadmapOverrides`(`services/pbl/pbl-roadmap-link.ts`) 한 곳에서만
+// 수행한다 — 화면과 HWPX payload 가 같은 함수를 통과하므로 값이 어긋날 수 없다.
+//
+// ⚠️ Ⅱ-1-나 "주요 활동"(performanceActivities) 은 override 대상이 아니다. 로드맵
+// 컨설팅을 어떻게 수행했는지의 **이력**이라 PBL 이 고칠 성질이 아니고, 로드맵 결과
+// 화면에서도 읽기 전용이다. PBL 자체 활동은 Ⅲ-1(performanceActivities) 에 따로 있다.
+export const PBLRoadmapOverridesSchema = z.object({
+  // Ⅱ-1-나 수립 배경 (로드맵 Ⅰ-1 수립 필요성)
+  establishmentNecessity: z.string().optional(),
+  // Ⅱ-1-나 수립 결과 — 기업 AI 역량 수준 / 선정 과업 (로드맵 Ⅰ-3)
+  aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  selectedTask: z.string().optional(),
+  // Ⅱ-1-나 수립 주요내용(요약) — 로드맵 FINAL outcome_summary.main_content
+  roadmapSummary: z.string().optional(),
+  // Ⅱ-2-나 기업 요구분석 4행 (로드맵 Ⅱ-2)
+  companyRequirements: z
+    .object({
+      status: z.string().optional(),
+      problem: z.string().optional(),
+      will: z.string().optional(),
+      outcomes: z.string().optional(),
+    })
+    .optional(),
+  // Ⅱ-2-다 과업(Task)·워크플로우 분석표 (로드맵 Ⅱ-3) — 행 index 기준 부분 덮어쓰기
+  taskAnalysis: z
+    .array(
+      z.object({
+        domain: z.string().optional(),
+        task: z.string().optional(),
+        asIs: z.string().optional(),
+        improvement: z.string().optional(),
+      })
+    )
+    .optional(),
+  // Ⅱ-2 훈련대상 과업 선정 (로드맵 Ⅱ-4)
+  targetTask: z
+    .object({
+      name: z.string().optional(),
+      reason: z.string().optional(),
+      expectedAsIs: z.string().optional(),
+      expectedToBe: z.string().optional(),
+    })
+    .optional(),
+});
+export type PBLRoadmapOverrides = z.infer<typeof PBLRoadmapOverridesSchema>;
+
 // -- Ⅱ 훈련 요구 분석 [인터뷰 + PDF 첨부] ----------------------------------
 export const PBLAnalysisSchema = z.object({
   // Ⅱ-1-가 기업 경영 이슈
@@ -647,6 +704,8 @@ export const PBLAnalysisSchema = z.object({
   hrdReportPdf: PBLHrdReportPdfSchema.nullish(),
   // Ⅱ-3-나 AI훈련과정 개발 필요성
   courseNecessity: z.string().min(1, 'AI훈련과정 개발 필요성을 입력하세요.'),
+  // Ⅱ-1-나 / Ⅱ-2 로드맵 연계 항목의 **PBL 측 수정값**. 아래 주석 참조.
+  roadmapOverrides: PBLRoadmapOverridesSchema.optional(),
 });
 export type PBLAnalysis = z.infer<typeof PBLAnalysisSchema>;
 
