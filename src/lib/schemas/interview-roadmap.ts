@@ -605,7 +605,7 @@ export const RoadmapOverviewSchema = z.object({
   establishmentNecessity: z.string().min(1, '수립 필요성을 입력하세요 (5줄 내외).'),
   performanceActivities: z
     .array(RoadmapPerformanceActivitySchema)
-    .max(5, '주요 활동은 최대 5차까지 입력할 수 있습니다.'),
+    .max(15, '주요 활동은 최대 15차까지 입력할 수 있습니다.'),
   aiLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
   selectedTask: z.string().min(1, '선정 과업을 입력하세요.'),
 });

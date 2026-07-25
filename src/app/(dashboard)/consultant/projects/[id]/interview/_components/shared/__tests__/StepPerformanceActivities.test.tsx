@@ -73,11 +73,11 @@ describe('StepPerformanceActivities', () => {
     expect(call[1].round).toBe(2);
   });
 
-  it('기본 프리필 3차수 상태에서도 "차수 추가" 클릭 시 4차가 추가된다 (#4 RED — MAX_ROUNDS=5)', () => {
+  it('기본 프리필 3차수 상태에서도 "차수 추가" 클릭 시 4차가 추가된다 (#4 RED — MAX_ROUNDS=15)', () => {
     const onChange = vi.fn();
     render(<StepPerformanceActivities value={[]} onChange={onChange} />);
     // value=[] → defaultRows() 가 1·2·3차 prefill 한 채 표시. 사용자가 "+ 차수 추가"
-    // 클릭 시 4차가 append 되어 onChange 가 호출돼야 한다 (양식 prefill 보존 + 5차 한계).
+    // 클릭 시 4차가 append 되어 onChange 가 호출돼야 한다 (양식 prefill 보존 + 15차 한계).
     fireEvent.click(screen.getByLabelText('차수 추가'));
     expect(onChange).toHaveBeenCalledTimes(1);
     const call = onChange.mock.calls[0][0] as RoadmapPerformanceActivity[];
@@ -85,15 +85,15 @@ describe('StepPerformanceActivities', () => {
     expect(call[3].round).toBe(4);
   });
 
-  it('4차 상태에서는 "차수 추가" 버튼이 여전히 활성화된다 (5차 한계)', () => {
-    const fourRounds = [1, 2, 3, 4].map((r) => emptyActivity({ round: r }));
-    render(<StepPerformanceActivities value={fourRounds} onChange={() => {}} />);
+  it('14차 상태에서는 "차수 추가" 버튼이 여전히 활성화된다 (15차 한계)', () => {
+    const fourteenRounds = Array.from({ length: 14 }, (_, i) => emptyActivity({ round: i + 1 }));
+    render(<StepPerformanceActivities value={fourteenRounds} onChange={() => {}} />);
     expect(screen.getByLabelText('차수 추가')).not.toBeDisabled();
   });
 
-  it('5차까지 찼으면 "차수 추가" 버튼이 비활성화된다 (스키마 max(5))', () => {
-    const fiveRounds = [1, 2, 3, 4, 5].map((r) => emptyActivity({ round: r }));
-    render(<StepPerformanceActivities value={fiveRounds} onChange={() => {}} />);
+  it('15차까지 찼으면 "차수 추가" 버튼이 비활성화된다 (스키마 max(15))', () => {
+    const fifteenRounds = Array.from({ length: 15 }, (_, i) => emptyActivity({ round: i + 1 }));
+    render(<StepPerformanceActivities value={fifteenRounds} onChange={() => {}} />);
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
   });
 
@@ -186,6 +186,12 @@ describe('StepPerformanceActivities', () => {
     expect(screen.getByLabelText('차수 추가')).toBeDisabled();
     expect(screen.getByLabelText('차수 삭제 1')).toBeDisabled();
     expect(screen.getByLabelText('1차 PM 성명')).toBeDisabled();
+  });
+
+  it('작성 안내의 차수 상한 문구가 15차로 표기된다', () => {
+    render(<StepPerformanceActivities value={[]} onChange={() => {}} />);
+    fireEvent.click(screen.getByText('작성 안내'));
+    expect(screen.getByText(/컨설팅 수행 차수별\(최대 15차\)로/)).toBeInTheDocument();
   });
 
   it('작성 안내에 정본 원문(□)을 그대로 표시한다', () => {

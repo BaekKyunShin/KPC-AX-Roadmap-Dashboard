@@ -23,9 +23,11 @@ import { INTERVIEW_METHOD_OPTIONS, type InterviewMethod } from '@/lib/schemas/in
  * 데이터 슬라이스: `RoadmapOverview.performanceActivities[]`.
  */
 
-// 인터뷰 차수 상한. 양식 prefill 은 1·2·3차이지만 현장 인터뷰가 4·5차로 이어지는
-// 케이스를 허용하기 위해 5 로 확장 (Zod RoadmapOverviewSchema.performanceActivities.max(5)).
-const MAX_ROUNDS = 5;
+// 인터뷰 차수 상한. 양식 prefill 은 1·2·3차이지만 현장 인터뷰가 10차 이상으로
+// 이어지는 케이스까지 허용하기 위해 15 로 확장 — HWPX 정본 Ⅰ-2 표도 15차분 행을
+// 보유하며, 미입력 차수 행은 생성 시 제거된다
+// (Zod RoadmapOverviewSchema.performanceActivities.max(15)).
+const MAX_ROUNDS = 15;
 
 // 양식 √ 안내에 맞춘 초기 prefill 차수. MAX_ROUNDS 와 분리해야
 // '+ 차수 추가' 클릭이 즉시 disabled 되지 않는다 (#4 fix).
@@ -197,7 +199,7 @@ export function StepPerformanceActivities({
               □ 컨설팅 수행일지의 주요내용을 반영하여 시스템에서 자동생성 예정(별도 작성 불요)
             </li>
             <li>
-              컨설팅 수행 차수별(최대 3차)로 수행 일시·내용·방법과 참석자 (컨설팅책임자 PM · 기업
+              컨설팅 수행 차수별(최대 15차)로 수행 일시·내용·방법과 참석자 (컨설팅책임자 PM · 기업
               내부전문가) 성명을 입력합니다.
             </li>
             <li>수행 방법은 대면(인터뷰·워크숍) / 비대면(화상회의) / 기타 중에서 선택합니다.</li>

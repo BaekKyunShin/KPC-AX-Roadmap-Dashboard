@@ -1037,12 +1037,12 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
     );
   });
 
-  it('performanceActivities 는 최대 5차까지 허용 (Ⅰ-2 양식 3행 prefill, 5차 한계)', () => {
-    const fiveRounds = [1, 2, 3, 4, 5].map((r) => ({
-      round: r,
+  it('performanceActivities 는 최대 15차까지 허용 (Ⅰ-2 양식 3행 prefill, 15차 한계)', () => {
+    const fifteenRounds = Array.from({ length: 15 }, (_, i) => ({
+      round: i + 1,
       date: '2026-04-16',
       timeRange: '10:00~12:00',
-      content: `${r}차 수행`,
+      content: `${i + 1}차 수행`,
       method: 'ONSITE',
       pmName: 'PM',
       expertName: '전문가',
@@ -1050,15 +1050,15 @@ describe('RoadmapOverviewSchema (Ⅰ 개요)', () => {
     expect(
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
-        performanceActivities: fiveRounds,
+        performanceActivities: fifteenRounds,
       }).success
     ).toBe(true);
 
-    const sixRounds = [...fiveRounds, { ...fiveRounds[0], round: 6 }];
+    const sixteenRounds = [...fifteenRounds, { ...fifteenRounds[0], round: 16 }];
     expect(
       RoadmapOverviewSchema.safeParse({
         ...validOverview,
-        performanceActivities: sixRounds,
+        performanceActivities: sixteenRounds,
       }).success
     ).toBe(false);
   });
