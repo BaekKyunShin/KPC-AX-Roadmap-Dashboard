@@ -203,6 +203,16 @@ def _generate_roadmap(data: dict) -> bytes:
     from hwpx import HwpxDocument
 
     doc = HwpxDocument.open(ROADMAP_TEMPLATE)
+    # 입력 차수가 양식 원형(3차)을 넘으면 Ⅰ-2 표 행을 먼저 확장 (마커 치환 전)
+    _expand_activity_rows(
+        doc,
+        table_index=6,
+        rows_per_item=2,
+        base_items=_RM_BASE_ACTIVITIES,
+        needed=len(data.get("performance_activities") or []),
+        marker_prefix="roadmap_overview_performance_",
+        max_items=_RM_MAX_ACTIVITIES,
+    )
     _apply_markers(doc, _build_roadmap_markers(data))
 
     # 마커로 표현하기 어려운 텍스트 치환 (분할 run·문단·색 보존):
@@ -236,7 +246,10 @@ def _generate_roadmap(data: dict) -> bytes:
 _MARKER_RE = re.compile(r"\{\{[^}]*\}\}")
 
 # 양식 구조 상수 (SSOT: docs/references/hwpx-placeholders.json)
-_RM_MAX_ACTIVITIES = 3   # Ⅰ-2 수행활동 차수
+# Ⅰ-2 수행활동 차수. 양식(정본)은 3차분 행만 보유하며, 입력이 이를 넘으면
+# `_expand_activity_rows` 가 생성 시점에 행을 복제한다(≤3차는 구조 편집 없음).
+_RM_BASE_ACTIVITIES = 3  # 양식 원형 행 수 (템플릿·SSOT max_items 와 일치)
+_RM_MAX_ACTIVITIES = 15  # 화면 상한 (StepPerformanceActivities MAX_ROUNDS)
 _RM_MAX_TASKS = 6        # Ⅱ-3 과업 분석표 행
 _RM_MAX_COURSES = 6      # Ⅲ  훈련과정 명세서 표
 _RM_MAX_SUBJECTS = 3     # Ⅲ  명세서당 교과목 행
@@ -460,6 +473,113 @@ def _collect_tables(doc):
 
 
 _HP_NS = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+
+
+def _expand_activity_rows(
+    doc,
+    table_index: int,
+    rows_per_item: int,
+    base_items: int,
+    needed: int,
+    marker_prefix: str,
+    max_items: int,
+) -> None:
+    """수행활동 표의 차수 행을 입력 개수만큼 동적 확장한다.
+
+    양식(정본)은 `base_items` 차수분 행만 갖는다. 입력 차수가 이를 넘을 때만
+    **마지막 차수 블록(`rows_per_item` 개 `<hp:tr>`)을 deepcopy 복제**해 뒤에
+    덧붙인다. `needed <= base_items` 면 아무것도 하지 않으므로 대부분의 문서는
+    구조 편집 없이 양식 원형 그대로 생성된다.
+
+    복제본은 마커 인덱스만 `{prefix}{base-1}_` → `{prefix}{i}_` 로 치환하므로,
+    호출 직후의 `_apply_markers` 가 기존 경로 그대로 값을 채운다(마커 치환 전에
+    호출해야 한다). 차수 라벨(col 0)은 마커가 없어 텍스트로 직접 기입한다.
+
+    구조 편집이지만 한컴이 만든 노드를 통째로 복제하므로 OWPML 유효
+    (선례: scripts/insert_placeholders.py::unmerge_rowspan2_col).
+    """
+    import copy
+
+    needed = min(needed, max_items)
+    if needed <= base_items:
+        return
+
+    tables = _collect_tables(doc)
+    if table_index >= len(tables):
+        return
+    tbl = tables[table_index]
+
+    try:
+        tbl_el = tbl.cell(0, 0).element.getparent().getparent()
+    except Exception:
+        return
+
+    hp = _HP_NS
+    trs = tbl_el.findall(f"{hp}tr")
+    if len(trs) < rows_per_item:
+        return
+    last_block = trs[-rows_per_item:]
+
+    # 문단 id 전역 유일화용 시드 (표 내 최대값에서 이어붙임)
+    max_pid = 0
+    for p in tbl_el.iter(f"{hp}p"):
+        try:
+            max_pid = max(max_pid, int(p.get("id") or 0))
+        except (TypeError, ValueError):
+            continue
+
+    old_infix = f"{marker_prefix}{base_items - 1}_"
+    added_height = 0
+
+    for i in range(base_items, needed):
+        # 복제 블록의 rowAddr 이동량 = (i - (base_items-1)) * rows_per_item
+        delta = (i - (base_items - 1)) * rows_per_item
+        new_infix = f"{marker_prefix}{i}_"
+        for tr in last_block:
+            clone = copy.deepcopy(tr)
+            for tc in clone.findall(f"{hp}tc"):
+                addr = tc.find(f"{hp}cellAddr")
+                if addr is not None:
+                    try:
+                        addr.set("rowAddr", str(int(addr.get("rowAddr") or 0) + delta))
+                    except (TypeError, ValueError):
+                        pass
+                    # 차수 라벨(col 0)은 마커가 없으므로 텍스트로 직접 기입
+                    if addr.get("colAddr") == "0":
+                        tnodes = list(tc.iter(f"{hp}t"))
+                        for n, tnode in enumerate(tnodes):
+                            tnode.text = f"{i + 1}차" if n == 0 else ""
+            # 마커 인덱스 치환 (3차 → 4·5…차)
+            for tnode in clone.iter(f"{hp}t"):
+                if tnode.text and old_infix in tnode.text:
+                    tnode.text = tnode.text.replace(old_infix, new_infix)
+            # 문단 id 유일화
+            for p in clone.iter(f"{hp}p"):
+                max_pid += 1
+                p.set("id", str(max_pid))
+            tbl_el.append(clone)
+
+        # 표 전체 높이 = 블록 높이 누적 (첫 행 tc 의 cellSz.height 합)
+        for tr in last_block:
+            tc = tr.find(f"{hp}tc")
+            csz = tc.find(f"{hp}cellSz") if tc is not None else None
+            if csz is not None:
+                try:
+                    added_height += int(csz.get("height") or 0)
+                except (TypeError, ValueError):
+                    pass
+
+    # rowCnt / 표 높이 갱신
+    try:
+        tbl_el.set("rowCnt", str(len(tbl_el.findall(f"{hp}tr"))))
+    except Exception:
+        pass
+    sz = tbl_el.find(f"{hp}sz")
+    if sz is not None and added_height:
+        try:
+            sz.set("height", str(int(sz.get("height") or 0) + added_height))
+        except (TypeError, ValueError):
+            pass
 
 
 def _approx_text_width(s: str) -> int:
@@ -948,6 +1068,28 @@ def _generate_pbl(data: dict) -> bytes:
 
     doc = HwpxDocument.open(PBL_TEMPLATE)
 
+    # 0) 입력 차수가 양식 원형(3차)을 넘으면 수행활동 표 행을 먼저 확장.
+    #    Ⅲ-1(T19) → Ⅱ-1-나(T9) 순으로 처리해 앞 표 확장이 뒤 표 인덱스에
+    #    영향을 주지 않게 한다(둘 다 shallow 인덱스라 무관하나 명시적 순서 유지).
+    _expand_activity_rows(
+        doc,
+        table_index=19,
+        rows_per_item=4,
+        base_items=_PBL_BASE_PERF_ACTS,
+        needed=len(data.get("roadmap_perf_activities") or []),
+        marker_prefix="pbl_perf_",
+        max_items=_PBL_MAX_PERF_ACTS,
+    )
+    _expand_activity_rows(
+        doc,
+        table_index=9,
+        rows_per_item=2,
+        base_items=_PBL_BASE_SETUP_ACTS,
+        needed=len(data.get("roadmap_setup_activities") or []),
+        marker_prefix="pbl_roadmap_activity_",
+        max_items=_PBL_MAX_SETUP_ACTS,
+    )
+
     # 1) 마커 일괄 치환 (본문 단락 + 표 셀)
     _apply_markers(doc, _build_pbl_markers(data))
 
@@ -1051,8 +1193,12 @@ def _replace_many_in_all_runs(doc, pairs) -> None:
 
 
 # 양식 구조 상수 (SSOT: docs/references/hwpx-placeholders.json)
-_PBL_MAX_SETUP_ACTS = 3    # Ⅱ-1-나 주요 활동 차수 (T9)
-_PBL_MAX_PERF_ACTS = 3     # Ⅲ-1 수행활동 차수 (T19)
+# Ⅱ-1-나(T9)·Ⅲ-1(T19) 수행활동 차수. 양식은 3차분 행만 보유하며 초과 입력 시
+# `_expand_activity_rows` 가 생성 시점에 행을 복제한다(≤3차는 구조 편집 없음).
+_PBL_BASE_SETUP_ACTS = 3   # 양식 원형 행 수 (T9)
+_PBL_BASE_PERF_ACTS = 3    # 양식 원형 행 수 (T19)
+_PBL_MAX_SETUP_ACTS = 15   # Ⅱ-1-나 주요 활동 차수 상한 (T9)
+_PBL_MAX_PERF_ACTS = 15    # Ⅲ-1 수행활동 차수 상한 (T19)
 _PBL_MAX_TASKS = 5         # Ⅱ-2-다 과업 분석표 행 (T15)
 _PBL_MAX_SELECTIONS = 5    # Ⅲ-3-가 훈련대상 업무 선정 행 (T23)
 _PBL_MAX_DETAILS = 2       # Ⅲ-3-다 세부내용 행 (T26)

@@ -393,8 +393,10 @@ class TestSafety:
     def test_empty_dict_all_str(self):
         m = _build_pbl_markers({})
         assert all(isinstance(v, str) for v in m.values())
-        # 282 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증)
-        assert len(m) == 282
+        # 402 고유 마커 전부 생성 (템플릿 정합 — verify_hwpx_placeholders 가 보증).
+        # 수행활동 차수 상한 3→15 확대분 포함(12차 × 5필드 × T9·T19 2표 = +120).
+        # 양식에 행이 없는 차수의 마커는 문서에 존재하지 않으므로 무해하다.
+        assert len(m) == 402
 
     def test_none_values_empty_string(self):
         m = _build_pbl_markers({"company_name": None, "roadmap_setup_background": None})
