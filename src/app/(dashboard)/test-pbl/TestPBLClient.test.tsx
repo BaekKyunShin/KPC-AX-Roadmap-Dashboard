@@ -74,6 +74,10 @@ vi.mock(
   () => ({ StepCourseNecessity: () => <div>StepCourseNecessity</div> })
 );
 vi.mock(
+  '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPerformanceActivities',
+  () => ({ StepPerformanceActivities: () => <div>StepPerformanceActivities</div> })
+);
+vi.mock(
   '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems',
   () => ({ StepProblems: () => <div>StepProblems</div> })
 );
@@ -96,6 +100,47 @@ const baseUser = {
   role: 'CONSULTANT_APPROVED',
   status: 'ACTIVE',
 };
+
+describe('TestPBLClient — 스텝 구성 (실제 인터뷰와 정합)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 실제 PBL 인터뷰(PBL_STEPS)는 10스텝이고, 테스트 모드가 제외하는 것은 파일 업로드가
+   * 불가한 `hrdReport`(Ⅱ-1-가)·`sttAttach` **2개뿐**이므로 **8스텝**이어야 한다.
+   *
+   * 회귀 배경: Ⅲ-1 수행활동 스텝을 신설(PBL 자체 입력 전환)할 때 이 페이지 반영이
+   * 누락되어 7스텝으로 운영됐다. 데이터 필드는 이미 있어 타입 검사로는 잡히지 않았다.
+   */
+  it('8스텝이며 Ⅲ-1 수행활동을 포함한다 (HRD PDF·STT 만 제외)', async () => {
+    render(<TestPBLClient user={baseUser} canAccess={true} />);
+    await screen.findByTestId('course-name-display');
+
+    const next = () => screen.getByRole('button', { name: /^다음/ });
+
+    // 1 Ⅰ → 2 Ⅱ-1 → 3 Ⅱ-1-다 → 4 Ⅱ-3-a → 5 Ⅱ-3-b → 6 Ⅲ-1
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await userEvent.click(next());
+      });
+    }
+    expect(screen.getByText('StepPerformanceActivities')).toBeInTheDocument();
+
+    // 7 Ⅲ-2 문제 정의서
+    await act(async () => {
+      await userEvent.click(next());
+    });
+    expect(screen.getByText('StepProblems')).toBeInTheDocument();
+
+    // 8 Ⅲ-3 훈련대상 업무 — 마지막 스텝이므로 "다음" 이 사라진다
+    await act(async () => {
+      await userEvent.click(next());
+    });
+    expect(screen.getByText('StepTarget')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^다음/ })).not.toBeInTheDocument();
+  });
+});
 
 describe('TestPBLClient — 샘플 데이터 채우기 (V2)', () => {
   beforeEach(() => {

@@ -37,6 +37,7 @@ import {
   StepProblems,
   type StepProblemsValue,
 } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepProblems';
+import { StepPerformanceActivities } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepPerformanceActivities';
 import { StepTarget } from '@/app/(dashboard)/consultant/projects/[id]/interview/_components/pbl/StepTarget';
 
 import {
@@ -69,6 +70,7 @@ type StepId =
   | 'trainingEnv'
   | 'expectations'
   | 'courseNecessity'
+  | 'performanceActivities'
   | 'problems'
   | 'target';
 
@@ -98,9 +100,17 @@ const STEPS: ReadonlyArray<{
     stepperLabel: '훈련환경',
   },
   { id: 5, stepId: 'expectations', shortName: 'Ⅱ-3-b', name: '기대효과·요구분석' },
-  // V2: Ⅲ-1 수행활동(로드맵 연동)·Ⅲ-2-나 우선순위·Ⅲ-4 AI역량 진단 제거.
-  { id: 6, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서' },
-  { id: 7, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무' },
+  // Ⅲ-1 수행활동은 PBL 자체 입력(로드맵 연계 아님)이라 테스트 모드에서도 다룬다.
+  // V2 제거 항목: Ⅲ-2-나 우선순위 · Ⅲ-4 AI역량 진단.
+  {
+    id: 6,
+    stepId: 'performanceActivities',
+    shortName: 'Ⅲ-1',
+    name: '훈련과제 도출 수행활동',
+    stepperLabel: '수행활동',
+  },
+  { id: 7, stepId: 'problems', shortName: 'Ⅲ-2', name: '문제 정의서' },
+  { id: 8, stepId: 'target', shortName: 'Ⅲ-3', name: '훈련대상 업무' },
 ];
 
 function emptyOverview(): PBLOverview {
@@ -578,6 +588,13 @@ export default function TestPBLClient({ user, canAccess }: TestPBLClientProps) {
           <StepCourseNecessity
             value={data.courseNecessity ?? ''}
             onChange={(next) => update({ courseNecessity: next })}
+          />
+        );
+      case 'performanceActivities':
+        return (
+          <StepPerformanceActivities
+            value={data.performanceActivities ?? []}
+            onChange={(next) => update({ performanceActivities: next })}
           />
         );
       case 'problems': {
