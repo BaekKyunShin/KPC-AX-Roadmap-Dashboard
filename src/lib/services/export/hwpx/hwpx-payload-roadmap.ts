@@ -270,6 +270,9 @@ export function buildRoadmapHwpxPayload(inputs: RoadmapHwpxPayloadInputs): Roadm
     training_target: s.target_audience,
     subjects: s.subjects.map((subj) => ({
       subject_name: subj.name,
+      // ⚠️ 여기서는 `bulletizeDetails` 를 쓰지 않는다 — `api/hwpx/generate.py` 가
+      // 항목마다 `▪` 를 부여하므로 이중 접두가 된다. 줄 분리까지만 담당.
+      // (화면·PDF·XLSX 는 `bulletizeDetails` 로 같은 모양을 만든다.)
       details: splitByUnit(subj.details),
       hours: String(subj.hours),
     })),

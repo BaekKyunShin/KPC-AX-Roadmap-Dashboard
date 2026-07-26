@@ -17,6 +17,7 @@ import type {
   PBLOperationPlan,
   PBLResultEvaluation,
 } from '../../pbl/pbl-types';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 import { LAYOUT } from './pdf-constants';
 import {
   type DocContext,
@@ -186,7 +187,8 @@ function drawSubjectProfileTable(
   const head = [['업무(단원)명', '세부 내용', '훈련 시간(H)', '외부 강사 (H)', '내부 강사 (H)']];
   const body = rows.map((row) => [
     row.unit_name,
-    row.detail,
+    // 항목별 머리기호(▪) — 화면·한글(HWPX)·XLSX 와 동일 표기.
+    bulletizeDetails(row.detail),
     String(row.training_hours),
     String(row.instructor_hours.external),
     String(row.instructor_hours.internal),

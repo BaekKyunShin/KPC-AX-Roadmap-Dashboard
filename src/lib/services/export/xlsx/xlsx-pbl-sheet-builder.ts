@@ -9,6 +9,7 @@
  */
 
 import type * as XLSX from 'xlsx-js-style';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 import type { PBLContent, PBLOperationPlan } from '../../pbl/pbl-types';
 import { calcRowHeight, formatBulletLines } from './xlsx-formatter';
 import { STYLE, tableBodyCenterStyle, tableBodyStyle } from './xlsx-styles';
@@ -266,7 +267,8 @@ export function buildPBLTrainingSheet(op: PBLOperationPlan): XLSX.WorkSheet {
       ctx,
       [
         row.unit_name,
-        row.detail,
+        // 항목별 머리기호(▪) — 화면·한글(HWPX)·PDF 와 동일 표기.
+        bulletizeDetails(row.detail),
         String(row.training_hours),
         String(row.instructor_hours.external),
         String(row.instructor_hours.internal),

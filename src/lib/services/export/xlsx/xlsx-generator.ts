@@ -11,7 +11,7 @@
 
 import type * as XLSX from 'xlsx-js-style';
 import type { RoadmapCourseSpec } from '../../roadmap/roadmap-types';
-import { splitByUnit } from '@/lib/utils/list-format';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 import type { RoadmapExportData } from '../../export-pdf';
 import { COLOR, NO_BORDER, STYLE, tableBodyStyle, tableBodyCenterStyle } from './xlsx-styles';
 import {
@@ -147,7 +147,7 @@ export function buildCourseSpecSheet(specs: RoadmapCourseSpec[]): XLSX.WorkSheet
     } else {
       subjects.forEach((sub, sIdx) => {
         const alt = sIdx % 2 === 1;
-        const details = splitByUnit(sub.details) || '-';
+        const details = bulletizeDetails(sub.details) || '-';
         setCell(ctx.ws, ctx.r, 0, sub.name || '-', tableBodyStyle(alt));
         setCell(ctx.ws, ctx.r, 1, details, tableBodyStyle(alt));
         setCell(ctx.ws, ctx.r, 2, formatHours(sub.hours ?? 0), tableBodyCenterStyle(alt));

@@ -44,6 +44,36 @@ describe('CourseSpecCard', () => {
       expect(screen.getByText('실습')).toBeInTheDocument();
     });
 
+    it('세부 내용은 항목마다 머리기호(▪)를 붙여 표시한다 (한글·PDF·XLSX 와 동일 표기)', () => {
+      render(
+        <CourseSpecCard
+          spec={makeSpec({
+            subjects: [{ name: 'AI 개요', details: 'LLM 개념 강의\n토큰 이해 실습', hours: 4 }],
+          })}
+          index={0}
+        />
+      );
+      // 기본 normalizer 는 줄바꿈을 공백으로 접으므로 원문 그대로 비교한다.
+      expect(
+        screen.getByText('▪ LLM 개념 강의\n▪ 토큰 이해 실습', { normalizer: (s) => s.trim() })
+      ).toBeInTheDocument();
+    });
+
+    it('편집 모드에서는 원문(머리기호 없음)을 그대로 다룬다 — 저장값 보존', async () => {
+      render(
+        <CourseSpecCard
+          spec={makeSpec({
+            subjects: [{ name: 'AI 개요', details: 'LLM 개념 강의\n토큰 이해 실습', hours: 4 }],
+          })}
+          index={0}
+          canEdit
+          onChange={vi.fn()}
+        />
+      );
+      const cell = await screen.findByLabelText('명세서 1 교과목 1 세부 내용 (단원, 과제명)');
+      expect(cell).toHaveValue('LLM 개념 강의\n토큰 이해 실습');
+    });
+
     // --- v2 신규 필드 ---
     it('훈련시기 라벨과 값을 표시한다', () => {
       render(<CourseSpecCard spec={makeSpec()} index={0} />);

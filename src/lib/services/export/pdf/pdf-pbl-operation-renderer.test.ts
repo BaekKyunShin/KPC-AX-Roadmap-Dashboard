@@ -359,6 +359,31 @@ describe('drawPBLOperationSection', () => {
     ]);
   });
 
+  it('훈련내용 세부 내용은 항목마다 머리기호(▪)를 부여한다 (화면·한글 산출물과 동일 표기)', () => {
+    const plan = {
+      ...baseOperationPlan(),
+      training_plan: {
+        ...baseOperationPlan().training_plan,
+        subject_profile: {
+          ...baseOperationPlan().training_plan.subject_profile,
+          training_contents: [
+            {
+              unit_name: '단원1',
+              detail: 'AI 개념 강의\n데이터 정제 실습',
+              training_hours: 20,
+              instructor_hours: { external: 10, internal: 10 },
+            },
+          ],
+        },
+      },
+    };
+    drawPBLOperationSection(ctx, plan, autoTable, tableBase);
+    const profileCall = autoTableMock.mock.calls.find(
+      (c) => c[1].head?.[0]?.includes('업무(단원)명') && c[1].head[0].includes('훈련 시간(H)')
+    );
+    expect(profileCall?.[1].body?.[0]?.[1]).toBe('▪ AI 개념 강의\n▪ 데이터 정제 실습');
+  });
+
   it('훈련내용 테이블 body 가 비어있으면 placeholder 행을 넣는다', () => {
     const plan = {
       ...baseOperationPlan(),

@@ -6,7 +6,7 @@ import { FormTable, type FormTableRow } from '@/components/forms/FormTable';
 import { InlineEditField } from '@/components/result/InlineEditField';
 import { SectionCard } from '@/components/result/SectionCard';
 import { Badge } from '@/components/ui/badge';
-import { bulletize, bulletizeText, parseBullets, splitByUnit } from '@/lib/utils/list-format';
+import { bulletize, bulletizeDetails, parseBullets } from '@/lib/utils/list-format';
 import type {
   PBLInstructor,
   PBLSubjectProfile,
@@ -294,7 +294,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                     {
                       content: readOnly ? (
                         <span className="whitespace-pre-wrap text-sm">
-                          {bulletizeText(splitByUnit(c.detail)) || '-'}
+                          {bulletizeDetails(c.detail) || '-'}
                         </span>
                       ) : (
                         <InlineEditField
@@ -303,7 +303,7 @@ export function TabPBLOps({ version, readOnly, onEdit }: TabPBLCommonProps) {
                           onSave={(next) => saveTrainingContent(idx, next)}
                           placeholder="세부 내용을 입력하세요"
                           className="text-sm"
-                          displayTransform={(raw) => bulletizeText(splitByUnit(raw))}
+                          displayTransform={bulletizeDetails}
                         />
                       ),
                       align: 'left',

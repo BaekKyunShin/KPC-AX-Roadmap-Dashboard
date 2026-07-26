@@ -533,6 +533,21 @@ describe('buildPBLTrainingSheet', () => {
       expect(findCellWithValue(ws, '20')).toBe(true);
     });
 
+    it('세부 내용은 항목마다 머리기호(▪)를 부여한다 (화면·한글 산출물과 동일 표기)', () => {
+      const plan = makeOperationPlan();
+      plan.training_plan.subject_profile.training_contents = [
+        {
+          unit_name: '단원1',
+          detail: 'AI 개념 강의\n데이터 정제 실습',
+          training_hours: 20,
+          instructor_hours: { external: 10, internal: 10 },
+        },
+      ];
+      const ws = buildPBLTrainingSheet(plan);
+      expect(findCellWithValue(ws, '▪ AI 개념 강의\n▪ 데이터 정제 실습')).toBe(true);
+      expect(findCellWithValue(ws, 'AI 개념 강의\n데이터 정제 실습')).toBe(false);
+    });
+
     it('training_contents가 비어있으면 빈 행이 추가된다', () => {
       const plan = makeOperationPlan();
       plan.training_plan.subject_profile.training_contents = [];

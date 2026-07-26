@@ -239,6 +239,20 @@ describe('buildCourseSpecSheet (v2 명세서)', () => {
     expect(hasCellValue(ws, '세부내용')).toBe(false);
   });
 
+  it('세부 내용은 항목마다 머리기호(▪)를 부여한다 (화면·한글 산출물과 동일 표기)', async () => {
+    const { buildCourseSpecSheet } = await import('./xlsx-generator');
+
+    const ws = buildCourseSpecSheet([
+      createTestCourseSpec({
+        subjects: [{ name: '과목1', details: 'AI 개념 강의\n데이터 정제 실습', hours: 4 }],
+      }),
+    ]);
+
+    expect(hasCellValue(ws, '▪ AI 개념 강의\n▪ 데이터 정제 실습')).toBe(true);
+    // 머리기호 없는 원문이 그대로 남아있지 않아야 한다
+    expect(hasCellValue(ws, 'AI 개념 강의\n데이터 정제 실습')).toBe(false);
+  });
+
   it('빈 specs 는 안내 문구만 렌더한다', async () => {
     const { buildCourseSpecSheet } = await import('./xlsx-generator');
 

@@ -5,11 +5,17 @@
  * 동일한 구조로 보이도록 하기 위한 헬퍼 모음.
  */
 
+/**
+ * 훈련과정 명세서·교과목 "세부 내용" 전용 머리기호.
+ *
+ * ⚠️ `api/hwpx/generate.py` 가 값에 부여하는 문자와 **반드시 동일해야 한다**
+ * (`generate.py::_build_roadmap_markers` / `_build_pbl_markers`). 화면·PDF·XLSX 는
+ * 이 상수를, 한글(HWPX)은 Python 리터럴을 쓰므로 바꿀 때 양쪽을 함께 바꾼다.
+ */
+export const DETAIL_BULLET = '▪ ';
+
 /** 배열 항목들을 머리기호(`• `)로 접두하여 줄바꿈 문자열로 결합. */
-export function bulletize(
-  items: string[] | null | undefined,
-  bullet: string = '• ',
-): string {
+export function bulletize(items: string[] | null | undefined, bullet: string = '• '): string {
   if (!items || items.length === 0) return '';
   return items
     .filter((s) => typeof s === 'string' && s.trim() !== '')
@@ -18,8 +24,11 @@ export function bulletize(
 }
 
 /**
- * `bulletize` 의 역변환. 줄바꿈으로 split 후 머리기호(`•·-*`)와 양 끝 공백을
+ * `bulletize` 의 역변환. 줄바꿈으로 split 후 머리기호(`•·▪-*`)와 양 끝 공백을
  * 제거하고 빈 줄을 걸러 `string[]` 으로 반환한다.
+ *
+ * `▪` 도 제거 대상이다 — 세부 내용은 `DETAIL_BULLET` 로 접두되므로, 이미 접두된
+ * 값을 다시 통과시켜도 머리기호가 **중복되지 않아야** 한다.
  *
  * 라운드트립 보장: `parseBullets(bulletize(x)) === x` (공백 trim 만 적용).
  */
@@ -27,7 +36,7 @@ export function parseBullets(text: string | null | undefined): string[] {
   if (!text) return [];
   return text
     .split('\n')
-    .map((line) => line.replace(/^[•·\-*]\s*/, '').trim())
+    .map((line) => line.replace(/^[•·▪\-*]\s*/, '').trim())
     .filter((line) => line.length > 0);
 }
 
@@ -37,10 +46,7 @@ export function parseBullets(text: string | null | undefined): string[] {
  *
  * 표시 전용 변환이며 DB 저장값에는 영향 없음.
  */
-export function bulletizeText(
-  text: string | null | undefined,
-  bullet: string = '• ',
-): string {
+export function bulletizeText(text: string | null | undefined, bullet: string = '• '): string {
   return bulletize(parseBullets(text), bullet);
 }
 
@@ -67,4 +73,19 @@ export function splitByUnit(details: string | null | undefined): string {
   // `N단원`/`N단원:` 앞에 줄바꿈 삽입. 첫 번째는 제외.
   const pattern = /(?:\s*,\s*|\s+)(?=\d+\s*단원\s*[:.])/g;
   return trimmed.replace(pattern, '\n').trim();
+}
+
+/**
+ * 교과목 "세부 내용(단원, 과제명)" 의 **표시·내보내기 공통 변환** — 단일 출처.
+ *
+ * 단원 경계 줄바꿈(`splitByUnit`) → 항목별 머리기호(`DETAIL_BULLET`) 부여.
+ * 화면(결과 페이지·데모·갤러리)·PDF·XLSX 가 모두 이 함수를 통과하므로 한글(HWPX)과
+ * 모양이 어긋날 수 없다. 이미 머리기호가 붙은 값은 정규화되어 중복 부여되지 않는다.
+ *
+ * ⚠️ HWPX payload 에는 쓰지 않는다 — Python 이 값에 `▪` 를 부여하므로 이중 접두가 된다.
+ *
+ * 표시 전용 변환이며 DB 저장값에는 영향 없다(편집 모드는 raw 값을 그대로 다룬다).
+ */
+export function bulletizeDetails(details: string | null | undefined): string {
+  return bulletizeText(splitByUnit(details), DETAIL_BULLET);
 }

@@ -14,6 +14,7 @@ import {
   TableNumericCell,
   TableTextCell,
 } from '@/components/roadmap/shared';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 import type {
   PBLFacility,
   PBLInstructor,
@@ -213,10 +214,7 @@ function LearningGroupSection({
                   </TableRow>
                 ) : (
                   instructors.map((ins, idx) => (
-                    <SyncedTableRow
-                      key={idx}
-                      deps={[ins.affiliation, ins.position, ins.name]}
-                    >
+                    <SyncedTableRow key={idx} deps={[ins.affiliation, ins.position, ins.name]}>
                       <TableInlineCell
                         canEdit={canEdit}
                         value={ins.type}
@@ -392,7 +390,7 @@ function SubjectProfileSection({
 
   const updateRow = (i: number, patch: Partial<PBLTrainingContent>) => {
     const next = profile.training_contents.map((row, idx) =>
-      idx === i ? { ...row, ...patch } : row,
+      idx === i ? { ...row, ...patch } : row
     );
     updateProfile({ training_contents: next });
   };
@@ -421,7 +419,7 @@ function SubjectProfileSection({
         const sum = row.instructor_hours.external + row.instructor_hours.internal;
         return Math.abs(sum - row.training_hours) > 1e-6 ? sum : null;
       }),
-    [profile.training_contents],
+    [profile.training_contents]
   );
 
   return (
@@ -451,7 +449,11 @@ function SubjectProfileSection({
           </FormField>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="훈련목표" htmlFor="pbl-subject-goals" hint="각 줄에 하나씩 작성 (불릿 자동 적용)">
+          <FormField
+            label="훈련목표"
+            htmlFor="pbl-subject-goals"
+            hint="각 줄에 하나씩 작성 (불릿 자동 적용)"
+          >
             <textarea
               id="pbl-subject-goals"
               className="min-h-[96px] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
@@ -460,7 +462,10 @@ function SubjectProfileSection({
               disabled={!canEdit}
               onChange={(e) =>
                 updateProfile({
-                  training_goals: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                  training_goals: e.target.value
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                 })
               }
             />
@@ -472,7 +477,10 @@ function SubjectProfileSection({
               disabled={!canEdit}
               onChange={(e) =>
                 updateProfile({
-                  ai_tools: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                  ai_tools: e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                 })
               }
             />
@@ -500,13 +508,23 @@ function SubjectProfileSection({
           <Table className="min-w-[900px]">
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead rowSpan={2} className="w-[18%] text-center align-middle">업무(단원)명</TableHead>
-                <TableHead rowSpan={2} className="w-[30%] text-center align-middle">세부 내용</TableHead>
-                <TableHead rowSpan={2} className="w-[14%] text-center align-middle">훈련시간(H)</TableHead>
+                <TableHead rowSpan={2} className="w-[18%] text-center align-middle">
+                  업무(단원)명
+                </TableHead>
+                <TableHead rowSpan={2} className="w-[30%] text-center align-middle">
+                  세부 내용
+                </TableHead>
+                <TableHead rowSpan={2} className="w-[14%] text-center align-middle">
+                  훈련시간(H)
+                </TableHead>
                 <TableHead colSpan={2} className="w-[28%] text-center border-b border-border/40">
                   강사 투입시간(H)
                 </TableHead>
-                {canEdit && <TableHead rowSpan={2} className="w-[10%] text-center align-middle">작업</TableHead>}
+                {canEdit && (
+                  <TableHead rowSpan={2} className="w-[10%] text-center align-middle">
+                    작업
+                  </TableHead>
+                )}
               </TableRow>
               <TableRow>
                 <TableHead className="text-center">외부</TableHead>
@@ -527,16 +545,27 @@ function SubjectProfileSection({
                 profile.training_contents.map((row, idx) => {
                   const warn = rowWarnings[idx];
                   return (
-                    <SyncedTableRow key={idx} deps={[row.unit_name, row.detail, row.training_hours, row.instructor_hours.external, row.instructor_hours.internal]}>
+                    <SyncedTableRow
+                      key={idx}
+                      deps={[
+                        row.unit_name,
+                        row.detail,
+                        row.training_hours,
+                        row.instructor_hours.external,
+                        row.instructor_hours.internal,
+                      ]}
+                    >
                       <TableTextCell
                         canEdit={canEdit}
                         value={row.unit_name}
                         onChange={(v) => updateRow(idx, { unit_name: v })}
                         ariaLabel="업무(단원)명"
                       />
+                      {/* 읽기 모드는 항목별 머리기호(▪) — 한글(HWPX)·PDF·XLSX 와 동일.
+                          편집 모드는 raw 값 유지(저장값 보존). */}
                       <TableTextCell
                         canEdit={canEdit}
-                        value={row.detail}
+                        value={canEdit ? row.detail : bulletizeDetails(row.detail)}
                         onChange={(v) => updateRow(idx, { detail: v })}
                         ariaLabel="세부 내용"
                       />
@@ -847,7 +876,10 @@ function InstructorsSection({
                       value={row.detailed_training_content.join('\n')}
                       onChange={(v) =>
                         updateItem(idx, {
-                          detailed_training_content: v.split('\n').map((s) => s.trim()).filter(Boolean),
+                          detailed_training_content: v
+                            .split('\n')
+                            .map((s) => s.trim())
+                            .filter(Boolean),
                         })
                       }
                       ariaLabel="세부 교육훈련 내용"

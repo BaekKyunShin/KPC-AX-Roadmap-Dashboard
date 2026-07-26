@@ -36,7 +36,7 @@ import {
   CARD_HEADER_CLASS,
   TABLE_CELL_TEXT_CLASS,
 } from '@/components/roadmap/shared';
-import { splitByUnit } from '@/lib/utils/list-format';
+import { bulletizeDetails } from '@/lib/utils/list-format';
 
 // ============================================================================
 // 타입 & 상수
@@ -463,9 +463,11 @@ function SubjectRow({ courseIndex, sIdx, subject, canEdit, onUpdate, onRemove }:
         readOnlyClassName="font-medium text-foreground"
       />
 
+      {/* 읽기 모드는 항목별 머리기호(▪)로 표시 — 한글(HWPX)·PDF·XLSX 와 동일.
+          편집 모드는 raw 값을 그대로 다룬다(저장값 보존). */}
       <TableTextCell
         canEdit={canEdit}
-        value={canEdit ? subject.details : splitByUnit(subject.details)}
+        value={canEdit ? subject.details : bulletizeDetails(subject.details)}
         onChange={(v) => onUpdate(sIdx, { details: v })}
         placeholder="세부 내용 (단원, 과제명)"
         ariaLabel={`명세서 ${courseIndex + 1} 교과목 ${sIdx + 1} 세부 내용 (단원, 과제명)`}

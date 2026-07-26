@@ -102,8 +102,9 @@ describe('drawCourseSpecSection', () => {
     const head = autoTable.mock.calls[0][1].head;
     expect(head[0]).toEqual(['교과목명', '세부 내용 (단원, 과제명)', '훈련시간']);
 
+    // 세부 내용은 항목마다 머리기호(▪)를 부여한다 — 화면·한글(HWPX)·XLSX 와 동일 표기.
     const body = autoTable.mock.calls[0][1].body;
-    expect(body[0]).toEqual(['과목1', '세부1', '4시간']);
+    expect(body[0]).toEqual(['과목1', '▪ 세부1', '4시간']);
   });
 
   it('과정명과 메타정보를 출력한다', () => {
