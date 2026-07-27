@@ -16,6 +16,13 @@ interface SkeletonProps {
 interface TableSkeletonProps {
   /** 표시할 행 개수 */
   rows?: number;
+  /** 모바일 카드 개수 (미지정 시 3) */
+  mobileCards?: number;
+  /**
+   * 이미 카드 래퍼(bg·shadow·rounded) 안에 놓이는 경우 자체 래퍼를 생략한다.
+   * 목록 화면이 로딩 중에도 같은 래퍼를 유지해 문서 높이를 보존할 때 사용.
+   */
+  embedded?: boolean;
 }
 
 /** 테이블 컬럼 설정 */
@@ -193,13 +200,16 @@ function TableSkeletonHeader({
 /** 테이블 래퍼 */
 function TableSkeletonWrapper({
   minWidth,
+  embedded = false,
   children,
 }: {
   minWidth: string;
+  /** 바깥에 이미 카드 래퍼가 있으면 배경·그림자·모서리를 중복 적용하지 않는다 */
+  embedded?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={TABLE_STYLES.wrapper}>
+    <div className={embedded ? 'relative w-full overflow-x-auto' : TABLE_STYLES.wrapper}>
       <table className={`${TABLE_STYLES.table} ${minWidth}`}>{children}</table>
     </div>
   );
@@ -256,12 +266,12 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
 // ============================================================================
 
 /** OPS 프로젝트 목록 테이블 스켈레톤 */
-export function ProjectTableSkeleton({ rows = 5 }: TableSkeletonProps) {
+export function ProjectTableSkeleton({ rows = 5, mobileCards, embedded }: TableSkeletonProps) {
   const { columns, minWidth } = PROJECT_TABLE;
 
   return (
-    <ResponsiveTableSkeleton>
-      <TableSkeletonWrapper minWidth={minWidth}>
+    <ResponsiveTableSkeleton mobileCards={mobileCards}>
+      <TableSkeletonWrapper minWidth={minWidth} embedded={embedded}>
         <TableSkeletonHeader columns={columns} />
         <tbody className={TABLE_STYLES.tbody}>
           {renderItems(rows, (i) => (

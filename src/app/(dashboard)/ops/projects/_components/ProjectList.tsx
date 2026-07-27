@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { Search, X, ChevronLeft, ChevronRight, Building2, FolderOpen, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,7 +141,6 @@ export default function ProjectList({
   onResetCardFilter,
   initialData = null,
 }: ProjectListProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const urlSearchParams = useSearchParams();
 
@@ -168,9 +167,17 @@ export default function ProjectList({
     industries: [],
   });
 
-  // URL 업데이트 헬퍼 (replace로 히스토리 오염 방지)
+  // URL 업데이트 헬퍼 — 히스토리 오염을 막기 위해 replace 시맨틱을 쓴다.
+  //
+  // router.replace 가 아니라 history.replaceState 를 쓰는 이유: 목록 데이터는 이
+  // 컴포넌트가 Server Action 으로 직접 가져오고, page.tsx 는 search 만 소비하며
+  // status·industry·page 는 읽지 않는다. 게다가 서버가 내려주는 initialData 는 첫
+  // 마운트에서만 쓰인다. 따라서 router.replace 는 결과가 달라지지 않는 RSC 왕복과
+  // 전체 스캔(fetchProjectStats)만 유발하고, 그 사이 발생하는 DOM 교체가 진행 중인
+  // 스크롤 애니메이션을 취소시켜 스크롤이 최상단으로 튀는 원인이 됐다.
   const updateParams = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(urlSearchParams.toString());
+    // useSearchParams 대신 실제 주소를 읽어 연속 변경에도 항상 최신 값을 기준으로 한다
+    const params = new URLSearchParams(window.location.search);
     Object.entries(updates).forEach(([key, value]) => {
       if (value && value !== DEFAULT_FILTER_VALUE && value !== '1') {
         params.set(key, value);
@@ -181,7 +188,7 @@ export default function ProjectList({
     // page=1은 기본값이므로 URL에서 제거
     if (params.get('page') === '1') params.delete('page');
     const search = params.toString();
-    router.replace(`${pathname}${search ? `?${search}` : ''}`, { scroll: false });
+    window.history.replaceState(null, '', `${pathname}${search ? `?${search}` : ''}`);
   };
 
   // 업종 옵션만 비동기 로드 (statuses는 이미 동기 초기화됨)
@@ -288,7 +295,7 @@ export default function ProjectList({
     setInternalStatus(DEFAULT_FILTER_VALUE);
     setIndustry(DEFAULT_FILTER_VALUE);
     setPage(1);
-    router.replace(pathname, { scroll: false });
+    window.history.replaceState(null, '', pathname);
     onResetCardFilter?.();
   };
 
@@ -405,191 +412,194 @@ export default function ProjectList({
         )}
       </div>
 
-      {/* 테이블 */}
-      {loading ? (
-        <ProjectTableSkeleton rows={5} />
-      ) : (
-        <div className="bg-white shadow rounded-lg overflow-x-auto">
-          {projects.length === 0 ? (
-            // #4 — EmptyState 통일 (필터 없음 / 필터 활성 분기)
-            hasFilters ? (
-              <EmptyState
-                icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-                title="검색 조건에 맞는 프로젝트가 없습니다"
-                description="필터를 초기화하거나 다른 검색어를 시도해보세요"
-                action={
-                  <Button variant="outline" onClick={handleResetFilters}>
-                    필터 초기화
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState
-                icon={<FolderOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
-                title="등록된 프로젝트가 없습니다"
-                description="새 프로젝트를 생성하여 컨설턴트를 배정하세요"
-                action={
-                  <Button asChild>
-                    <Link href="/ops/projects/new">
-                      <Plus className="mr-2 h-4 w-4" />새 프로젝트 생성
-                    </Link>
-                  </Button>
-                }
-              />
-            )
+      {/* 테이블 — 로딩 중에도 같은 래퍼와 행 수를 유지해 문서 높이 변동을 막는다.
+          높이가 변하면 진행 중이던 스크롤 애니메이션이 취소되며 최상단으로 되돌아간다
+          (e2e/scroll-ux/ops-projects-filter.spec.ts 로 회귀 감시). */}
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        {loading ? (
+          <ProjectTableSkeleton
+            rows={projects.length || 5}
+            mobileCards={projects.length || undefined}
+            embedded
+          />
+        ) : projects.length === 0 ? (
+          // #4 — EmptyState 통일 (필터 없음 / 필터 활성 분기)
+          hasFilters ? (
+            <EmptyState
+              icon={<Search className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+              title="검색 조건에 맞는 프로젝트가 없습니다"
+              description="필터를 초기화하거나 다른 검색어를 시도해보세요"
+              action={
+                <Button variant="outline" onClick={handleResetFilters}>
+                  필터 초기화
+                </Button>
+              }
+            />
           ) : (
-            <>
-              {/* 데스크톱: 테이블 뷰 */}
-              <div className="hidden md:block">
-                <Table className="min-w-[1060px] table-fixed">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[260px] text-center pl-6">기업명</TableHead>
-                      <TableHead className="w-[80px]">트랙</TableHead>
-                      <TableHead className="w-[110px]">업종</TableHead>
-                      <TableHead className="w-[220px] text-center">진행 상태</TableHead>
-                      <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
-                      <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
-                      <TableHead className="w-[80px] text-center pr-6">작업</TableHead>
+            <EmptyState
+              icon={<FolderOpen className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />}
+              title="등록된 프로젝트가 없습니다"
+              description="새 프로젝트를 생성하여 컨설턴트를 배정하세요"
+              action={
+                <Button asChild>
+                  <Link href="/ops/projects/new">
+                    <Plus className="mr-2 h-4 w-4" />새 프로젝트 생성
+                  </Link>
+                </Button>
+              }
+            />
+          )
+        ) : (
+          <>
+            {/* 데스크톱: 테이블 뷰 */}
+            <div className="hidden md:block">
+              <Table className="min-w-[1060px] table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[260px] text-center pl-6">기업명</TableHead>
+                    <TableHead className="w-[80px]">트랙</TableHead>
+                    <TableHead className="w-[110px]">업종</TableHead>
+                    <TableHead className="w-[220px] text-center">진행 상태</TableHead>
+                    <TableHead className="w-[120px]">담당 컨설턴트</TableHead>
+                    <TableHead className="w-[110px]">프로젝트 생성일</TableHead>
+                    <TableHead className="w-[80px] text-center pr-6">작업</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projects.map((projectItem) => (
+                    <TableRow key={projectItem.id}>
+                      <TableCell className="align-top text-left pl-6">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                            <Building2 className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <Link
+                              href={`/ops/projects/${projectItem.id}`}
+                              className="font-medium text-gray-900 break-keep truncate hover:text-blue-700 hover:underline underline-offset-2 block"
+                              title={`${projectItem.company_name} 상세보기`}
+                            >
+                              {projectItem.company_name}
+                            </Link>
+                            <div
+                              className="text-sm text-muted-foreground truncate"
+                              title={projectItem.contact_email}
+                            >
+                              {projectItem.contact_email}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <TrackBadge track={projectItem.track} />
+                      </TableCell>
+                      <TableCell
+                        className="text-muted-foreground align-top truncate"
+                        title={projectItem.industry}
+                      >
+                        {projectItem.industry}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex justify-center">
+                          <MiniStepper
+                            status={projectItem.status as ProjectStatus}
+                            daysInCurrentStatus={projectItem.days_in_current_status}
+                            showLabel={true}
+                            showDays={true}
+                            track={projectItem.track}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground align-top truncate">
+                        {projectItem.assigned_consultant?.name || (
+                          <span className="text-gray-400">미배정</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground align-top whitespace-nowrap">
+                        {formatDateKR(projectItem.created_at)}
+                      </TableCell>
+                      <TableCell className="align-top text-center pr-6">
+                        <div className="flex justify-center">
+                          <DeleteProjectDialog
+                            projectId={projectItem.id}
+                            companyName={projectItem.company_name}
+                            onConfirm={handleDeleteProject}
+                          />
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projects.map((projectItem) => (
-                      <TableRow key={projectItem.id}>
-                        <TableCell className="align-top text-left pl-6">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
-                              <Building2 className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div className="min-w-0 text-left">
-                              <Link
-                                href={`/ops/projects/${projectItem.id}`}
-                                className="font-medium text-gray-900 break-keep truncate hover:text-blue-700 hover:underline underline-offset-2 block"
-                                title={`${projectItem.company_name} 상세보기`}
-                              >
-                                {projectItem.company_name}
-                              </Link>
-                              <div
-                                className="text-sm text-muted-foreground truncate"
-                                title={projectItem.contact_email}
-                              >
-                                {projectItem.contact_email}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="align-top">
-                          <TrackBadge track={projectItem.track} />
-                        </TableCell>
-                        <TableCell
-                          className="text-muted-foreground align-top truncate"
-                          title={projectItem.industry}
-                        >
-                          {projectItem.industry}
-                        </TableCell>
-                        <TableCell className="align-top">
-                          <div className="flex justify-center">
-                            <MiniStepper
-                              status={projectItem.status as ProjectStatus}
-                              daysInCurrentStatus={projectItem.days_in_current_status}
-                              showLabel={true}
-                              showDays={true}
-                              track={projectItem.track}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground align-top truncate">
-                          {projectItem.assigned_consultant?.name || (
-                            <span className="text-gray-400">미배정</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground align-top whitespace-nowrap">
-                          {formatDateKR(projectItem.created_at)}
-                        </TableCell>
-                        <TableCell className="align-top text-center pr-6">
-                          <div className="flex justify-center">
-                            <DeleteProjectDialog
-                              projectId={projectItem.id}
-                              companyName={projectItem.company_name}
-                              onConfirm={handleDeleteProject}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-              {/* 모바일: 카드 뷰 */}
-              <div className="md:hidden space-y-3 p-4">
-                {projects.map((projectItem) => (
-                  <OpsProjectMobileCard
-                    key={projectItem.id}
-                    project={projectItem}
-                    onDelete={handleDeleteProject}
-                  />
-                ))}
-              </div>
+            {/* 모바일: 카드 뷰 */}
+            <div className="md:hidden space-y-3 p-4">
+              {projects.map((projectItem) => (
+                <OpsProjectMobileCard
+                  key={projectItem.id}
+                  project={projectItem}
+                  onDelete={handleDeleteProject}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
-              {/* 페이지네이션 */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t px-4 py-3">
-                  <div className="text-base text-muted-foreground">
-                    {(page - 1) * ITEMS_PER_PAGE + 1}-{Math.min(page * ITEMS_PER_PAGE, total)} /{' '}
-                    {total}개
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(Math.max(1, page - 1))}
-                      disabled={page === 1 || loading}
-                      aria-label="이전 페이지"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    {Array.from({ length: Math.min(MAX_VISIBLE_PAGES, totalPages) }, (_, i) => {
-                      let pageNum;
-                      const middlePage = Math.ceil(MAX_VISIBLE_PAGES / 2);
-                      if (totalPages <= MAX_VISIBLE_PAGES) {
-                        pageNum = i + 1;
-                      } else if (page <= middlePage) {
-                        pageNum = i + 1;
-                      } else if (page >= totalPages - (middlePage - 1)) {
-                        pageNum = totalPages - MAX_VISIBLE_PAGES + 1 + i;
-                      } else {
-                        pageNum = page - (middlePage - 1) + i;
-                      }
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={page === pageNum ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => handlePageChange(pageNum)}
-                          disabled={loading}
-                          className="w-9"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                      disabled={page === totalPages || loading}
-                      aria-label="다음 페이지"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+        {/* 페이지네이션 — 로딩 중에도 자리를 유지해 문서 높이가 흔들리지 않게 한다 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <div className="text-base text-muted-foreground">
+              {(page - 1) * ITEMS_PER_PAGE + 1}-{Math.min(page * ITEMS_PER_PAGE, total)} / {total}개
+            </div>
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(Math.max(1, page - 1))}
+                disabled={page === 1 || loading}
+                aria-label="이전 페이지"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: Math.min(MAX_VISIBLE_PAGES, totalPages) }, (_, i) => {
+                let pageNum;
+                const middlePage = Math.ceil(MAX_VISIBLE_PAGES / 2);
+                if (totalPages <= MAX_VISIBLE_PAGES) {
+                  pageNum = i + 1;
+                } else if (page <= middlePage) {
+                  pageNum = i + 1;
+                } else if (page >= totalPages - (middlePage - 1)) {
+                  pageNum = totalPages - MAX_VISIBLE_PAGES + 1 + i;
+                } else {
+                  pageNum = page - (middlePage - 1) + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={page === pageNum ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNum)}
+                    disabled={loading}
+                    className="w-9"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages || loading}
+                aria-label="다음 페이지"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
